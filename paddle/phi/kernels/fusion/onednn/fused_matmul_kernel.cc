@@ -26,20 +26,6 @@ using paddle::framework::ReshapeToMatrix;
 
 namespace phi {
 
-bool IsOutputFused(const OneDNNContext &dev_ctx) {
-  const auto shape =
-      dev_ctx.HasDnnAttr("fused_reshape_Out")
-          ? PADDLE_GET_CONST(std::vector<int>,
-                             dev_ctx.GetDnnAttr("fused_reshape_Out"))
-          : std::vector<int>();
-  const auto axis =
-      dev_ctx.HasDnnAttr("fused_transpose_Out")
-          ? PADDLE_GET_CONST(std::vector<int>,
-                             dev_ctx.GetDnnAttr("fused_transpose_Out"))
-          : std::vector<int>();
-  return !shape.empty() && !axis.empty();
-}
-
 template <typename XT, typename YT, typename OT>
 class FusedMatmulOneDNNHandler
     : public funcs::OneDNNHandlerNoCachingT<XT, dnnl::matmul> {
@@ -271,22 +257,12 @@ static std::vector<int64_t> TransposeAxis(const std::vector<int64_t> &x,
   return new_x;
 }
 
-static std::vector<int64_t> GetInputStrides(const OneDNNContext &dev_ctx,
+static std::vector<int64_t> GetInputStrides(const std::string input_name,
                                             const DDim &input_dims,
-                                            const std::string input_name,
+                                            std::vector<int> shape,
+                                            std::vector<int> axis,
                                             const bool transpose_input) {
   auto new_dims = input_dims;
-  auto shape =
-      dev_ctx.HasDnnAttr("fused_reshape_" + input_name)
-          ? PADDLE_GET_CONST(std::vector<int>,
-                             dev_ctx.GetDnnAttr("fused_reshape_" + input_name))
-          : std::vector<int>();
-  auto axis = dev_ctx.HasDnnAttr("fused_transpose_" + input_name)
-                  ? PADDLE_GET_CONST(
-                        std::vector<int>,
-                        dev_ctx.GetDnnAttr("fused_transpose_" + input_name))
-                  : std::vector<int>();
-
   if (!shape.empty() && !axis.empty()) {
     new_dims = input_dims.reshape(shape).transpose(axis);
   }
@@ -322,9 +298,11 @@ void ExecuteFusedMatmul(const OneDNNContext &dev_ctx,
                         const std::vector<int64_t> &y_dims,
                         bool trans_x,
                         bool trans_y,
+                        const std::vector<int64_t> &x_strides_override,
+                        const std::vector<int64_t> &y_strides_override,
+                        const bool is_output_fused,
+                        const std::vector<int> &fused_transpose_Out,
                         DenseTensor *out) {
-  auto x_strides_override = GetInputStrides(dev_ctx, x.dims(), "X", trans_x);
-  auto y_strides_override = GetInputStrides(dev_ctx, y.dims(), "Y", trans_y);
   FusedMatmulOneDNNHandler<T, T, T_out> handler(dev_ctx,
                                                 x_dims,
                                                 y_dims,
@@ -332,7 +310,7 @@ void ExecuteFusedMatmul(const OneDNNContext &dev_ctx,
                                                 trans_y,
                                                 x_strides_override,
                                                 y_strides_override,
-                                                IsOutputFused(dev_ctx));
+                                                is_output_fused);
 
   const auto src_memory_p = handler.AcquireSrcMemory(&x);
   const auto weights_memory_p = handler.AcquireWeightsMemory(&y);
@@ -361,13 +339,9 @@ void ExecuteFusedMatmul(const OneDNNContext &dev_ctx,
 
   // TODO(jczaja): Explain why int8 format of dst is ABCD and do not need
   // permute
-  if (IsOutputFused(dev_ctx) && !funcs::is_int8<T_out>()) {
-    const auto axis =
-        dev_ctx.HasDnnAttr("fused_transpose_Out")
-            ? PADDLE_GET_CONST(std::vector<int>,
-                               dev_ctx.GetDnnAttr("fused_transpose_Out"))
-            : std::vector<int>();
-    auto permuted_md = dst_memory_p->get_desc().permute_axes(axis);
+  if (is_output_fused && !funcs::is_int8<T_out>()) {
+    auto permuted_md =
+        dst_memory_p->get_desc().permute_axes(fused_transpose_Out);
     out->set_mem_desc(permuted_md.reshape(vectorize<int64_t>(out->dims())));
   } else {
     out->set_mem_desc(
@@ -375,23 +349,13 @@ void ExecuteFusedMatmul(const OneDNNContext &dev_ctx,
   }
 }
 
-DDim GetDimsForInput(const OneDNNContext &dev_ctx,
-                     DDim input_dims,
-                     std::string input_name) {
-  auto shape =
-      dev_ctx.HasDnnAttr("fused_reshape_" + input_name)
-          ? PADDLE_GET_CONST(std::vector<int>,
-                             dev_ctx.GetDnnAttr("fused_reshape_" + input_name))
-          : std::vector<int>();
-  auto axis = dev_ctx.HasDnnAttr("fused_transpose_" + input_name)
-                  ? PADDLE_GET_CONST(
-                        std::vector<int>,
-                        dev_ctx.GetDnnAttr("fused_transpose_" + input_name))
-                  : std::vector<int>();
+std::vector<int64_t> GetInputShape(DDim input_dims,
+                                   std::vector<int> shape,
+                                   std::vector<int> axis) {
   if (!shape.empty() && !axis.empty()) {
-    return input_dims.reshape(shape).transpose(axis);
+    return vectorize(input_dims.reshape(shape).transpose(axis));
   }
-  return input_dims;
+  return vectorize(input_dims);
 }
 
 void CalculateMatrixDims(const std::vector<int64_t> &x_dims,
@@ -449,6 +413,12 @@ void FusedMatmulKernel(const Context &dev_ctx,
                        bool transpose_x,
                        bool transpose_y,
                        const std::string &fuse_activation,
+                       const std::vector<int> &fused_reshape_X,
+                       const std::vector<int> &fused_transpose_X,
+                       const std::vector<int> &fused_reshape_Y,
+                       const std::vector<int> &fused_transpose_Y,
+                       const std::vector<int> &fused_reshape_Out,
+                       const std::vector<int> &fused_transpose_Out,
                        DenseTensor *out) {
   if (dev_ctx.HasDnnAttr("head_number")) {
     const auto head_number =
@@ -474,8 +444,15 @@ void FusedMatmulKernel(const Context &dev_ctx,
     fuse_relu = true;
   }
 
-  auto x_dims = vectorize(GetDimsForInput(dev_ctx, x.dims(), "X"));
-  auto y_dims = vectorize(GetDimsForInput(dev_ctx, y.dims(), "Y"));
+  auto x_dims = GetInputShape(x.dims(), fused_reshape_X, fused_transpose_X);
+  auto y_dims = GetInputShape(y.dims(), fused_reshape_Y, fused_transpose_Y);
+  auto is_output_fused =
+      !fused_reshape_Out.empty() && !fused_transpose_Out.empty();
+
+  auto x_strides_override = GetInputStrides(
+      "X", x.dims(), fused_reshape_X, fused_transpose_X, transpose_x);
+  auto y_strides_override = GetInputStrides(
+      "Y", y.dims(), fused_reshape_Y, fused_transpose_Y, transpose_y);
 
   int ndims = std::max(x_dims.size(), y_dims.size());
   ndims = std::max(ndims, 3);
@@ -484,20 +461,60 @@ void FusedMatmulKernel(const Context &dev_ctx,
   std::vector<int64_t> y_bd_dims(ndims, 1);
 
   CalculateMatrixDims(
-      x_dims, y_dims, &x_bd_dims, &y_bd_dims, out, IsOutputFused(dev_ctx));
+      x_dims, y_dims, &x_bd_dims, &y_bd_dims, out, is_output_fused);
 
   if (force_fp32_output || ((!is_int8) && (!is_bfloat16))) {
-    ExecuteFusedMatmul<T, float>(
-        dev_ctx, x, y, x_bd_dims, y_bd_dims, transpose_x, transpose_y, out);
+    ExecuteFusedMatmul<T, float>(dev_ctx,
+                                 x,
+                                 y,
+                                 x_bd_dims,
+                                 y_bd_dims,
+                                 transpose_x,
+                                 transpose_y,
+                                 x_strides_override,
+                                 y_strides_override,
+                                 is_output_fused,
+                                 fused_transpose_Out,
+                                 out);
   } else if (is_bfloat16) {
-    ExecuteFusedMatmul<T, paddle::platform::bfloat16>(
-        dev_ctx, x, y, x_bd_dims, y_bd_dims, transpose_x, transpose_y, out);
+    ExecuteFusedMatmul<T, paddle::platform::bfloat16>(dev_ctx,
+                                                      x,
+                                                      y,
+                                                      x_bd_dims,
+                                                      y_bd_dims,
+                                                      transpose_x,
+                                                      transpose_y,
+                                                      x_strides_override,
+                                                      y_strides_override,
+                                                      is_output_fused,
+                                                      fused_transpose_Out,
+                                                      out);
   } else if (fuse_relu) {
-    ExecuteFusedMatmul<T, uint8_t>(
-        dev_ctx, x, y, x_bd_dims, y_bd_dims, transpose_x, transpose_y, out);
+    ExecuteFusedMatmul<T, uint8_t>(dev_ctx,
+                                   x,
+                                   y,
+                                   x_bd_dims,
+                                   y_bd_dims,
+                                   transpose_x,
+                                   transpose_y,
+                                   x_strides_override,
+                                   y_strides_override,
+                                   is_output_fused,
+                                   fused_transpose_Out,
+                                   out);
   } else {
-    ExecuteFusedMatmul<T, int8_t>(
-        dev_ctx, x, y, x_bd_dims, y_bd_dims, transpose_x, transpose_y, out);
+    ExecuteFusedMatmul<T, int8_t>(dev_ctx,
+                                  x,
+                                  y,
+                                  x_bd_dims,
+                                  y_bd_dims,
+                                  transpose_x,
+                                  transpose_y,
+                                  x_strides_override,
+                                  y_strides_override,
+                                  is_output_fused,
+                                  fused_transpose_Out,
+                                  out);
   }
 }
 

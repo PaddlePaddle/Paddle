@@ -178,8 +178,32 @@ class FusedMatmulOpMaker : public framework::OpProtoAndCheckerMaker {
                   "doing multiplication")
         .SetDefault(false);
     AddAttr<std::string>("fuse_activation",
-                         "(string, default \"\") Only used in mkldnn kernel")
+                         "Activation type from matmul_activation fuse pass")
         .SetDefault("");
+    AddAttr<std::vector<int>>(
+        "fused_reshape_X",
+        "Reshape's shape attribute from reshape_transpose_matmul fuse pass")
+        .SetDefault({});
+    AddAttr<std::vector<int>>(
+        "fused_transpose_X",
+        "Transpose's axis attribute from reshape_transpose_matmul fuse pass")
+        .SetDefault({});
+    AddAttr<std::vector<int>>(
+        "fused_reshape_Y",
+        "Reshape's shape attribute from reshape_transpose_matmul fuse pass")
+        .SetDefault({});
+    AddAttr<std::vector<int>>(
+        "fused_transpose_Y",
+        "Transpose's axis attribute from reshape_transpose_matmul fuse pass")
+        .SetDefault({});
+    AddAttr<std::vector<int>>(
+        "fused_reshape_Out",
+        "Reshape's shape attribute from matmul_transpose_reshape fuse pass")
+        .SetDefault({});
+    AddAttr<std::vector<int>>(
+        "fused_transpose_Out",
+        "Transpose's axis attribute from matmul_transpose_reshape fuse pass")
+        .SetDefault({});
     AddComment(
         R"DOC(Matrix multiplication Out = X * Y. A has shape (d0, d1 ... M, K),
         B has shape (d0, d1 ... K, N), Out has shape ((d0, d1 ... M, N)).
