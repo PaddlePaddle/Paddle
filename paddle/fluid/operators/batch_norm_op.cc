@@ -551,6 +551,7 @@ REGISTER_OPERATOR(batch_norm,
                   ops::BatchNormOpInferVarType,
                   ops::BatchNormGradMaker<paddle::framework::OpDesc>,
                   ops::BatchNormGradMaker<paddle::imperative::OpBase>);
+
 REGISTER_OPERATOR(batch_norm_grad,
                   ops::BatchNormGradOp,
                   ops::BatchNormDoubleGradMaker<paddle::framework::OpDesc>,

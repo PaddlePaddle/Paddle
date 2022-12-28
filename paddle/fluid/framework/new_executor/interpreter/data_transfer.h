@@ -41,16 +41,19 @@ class DataTranferHelper {
              std::vector<OpFuncNode>* new_op_func_nodes,
              bool use_local_scope,
              bool is_fetch_v2,
-             const phi::Place& tensor_place);
+             const phi::Place& tensor_place,
+             bool skip_run = false);
 
   void RunAndConstructShareNode(const std::string& src_var_name,
                                 const std::string& dst_var_name,
-                                std::vector<OpFuncNode>* op_func_nodes);
+                                std::vector<OpFuncNode>* op_func_nodes,
+                                bool skip_run = false);
 
   void RunAndConstructOpFuncNode(const std::shared_ptr<OperatorBase>& op,
                                  const std::string& var_name,
                                  const std::string& new_var_name,
-                                 std::vector<OpFuncNode>* op_func_nodes);
+                                 std::vector<OpFuncNode>* op_func_nodes,
+                                 bool skip_run = false);
 
  private:
   platform::Place place_;
@@ -65,7 +68,8 @@ void ApplyDataTransform(const OpKernelType& expected_kernel_key,
                         VariableScope* var_scope,
                         OpFuncNode* op_func_node,
                         std::vector<OpFuncNode>* op_func_nodes,
-                        bool use_local_scope = true);
+                        bool use_local_scope = true,
+                        bool skip_run = false);
 
 void HandleComplexGradToRealGrad(const OpFuncNode& op_func_node,
                                  const platform::Place& place,
@@ -73,7 +77,8 @@ void HandleComplexGradToRealGrad(const OpFuncNode& op_func_node,
                                  VariableValueMap* out_vars,
                                  VariableScope* var_scope,
                                  std::vector<OpFuncNode>* op_func_nodes,
-                                 framework::Scope* local_scope);
+                                 framework::Scope* local_scope,
+                                 bool skip_run = false);
 
 inline bool need_device_transform(const phi::KernelKey& kernel_type_for_var,
                                   const phi::Place& tensor_place,

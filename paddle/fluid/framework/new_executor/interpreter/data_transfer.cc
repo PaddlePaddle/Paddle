@@ -34,7 +34,8 @@ bool DataTranferHelper::apply(const phi::KernelKey& kernel_type_for_var,
                               std::vector<OpFuncNode>* op_func_nodes,
                               bool use_local_scope,
                               bool is_fetch_v2,
-                              const phi::Place& tensor_place) {
+                              const phi::Place& tensor_place,
+                              bool skip_run) {
   bool is_transferred = false;
   auto* src_var_name = &var_name;
 
@@ -49,7 +50,7 @@ bool DataTranferHelper::apply(const phi::KernelKey& kernel_type_for_var,
                              is_fetch_v2);
     if (op) {
       RunAndConstructOpFuncNode(
-          op, *src_var_name, *new_var_name, op_func_nodes);
+          op, *src_var_name, *new_var_name, op_func_nodes, skip_run);
     }
     // update src_var_name
     src_var_name = new_var_name;
@@ -66,7 +67,7 @@ bool DataTranferHelper::apply(const phi::KernelKey& kernel_type_for_var,
         scope_);
     if (op) {
       RunAndConstructOpFuncNode(
-          op, *src_var_name, *new_var_name, op_func_nodes);
+          op, *src_var_name, *new_var_name, op_func_nodes, skip_run);
     }
     // update src_var_name
     src_var_name = new_var_name;
@@ -82,7 +83,7 @@ bool DataTranferHelper::apply(const phi::KernelKey& kernel_type_for_var,
         *src_var_name, new_var_name, src_place, dst_place, var_scope_, scope_);
     if (op) {
       RunAndConstructOpFuncNode(
-          op, *src_var_name, *new_var_name, op_func_nodes);
+          op, *src_var_name, *new_var_name, op_func_nodes, skip_run);
     }
     is_transferred = true;
   }
@@ -92,7 +93,8 @@ bool DataTranferHelper::apply(const phi::KernelKey& kernel_type_for_var,
 void DataTranferHelper::RunAndConstructShareNode(
     const std::string& src_var_name,
     const std::string& dst_var_name,
-    std::vector<OpFuncNode>* op_func_nodes) {
+    std::vector<OpFuncNode>* op_func_nodes,
+    bool skip_run) {
   VariableNameMap in_name_map = {{"X", {src_var_name}}};
   VariableNameMap out_name_map = {{"Out", {dst_var_name}}};
   AttributeMap attr_map;
@@ -105,14 +107,16 @@ void DataTranferHelper::RunAndConstructShareNode(
   VLOG(3) << string::Sprintf(
       "Insert %s with %s -> %s.", op_type, src_var_name, dst_var_name);
 
-  RunAndConstructOpFuncNode(op, src_var_name, dst_var_name, op_func_nodes);
+  RunAndConstructOpFuncNode(
+      op, src_var_name, dst_var_name, op_func_nodes, skip_run);
 }
 
 void DataTranferHelper::RunAndConstructOpFuncNode(
     const std::shared_ptr<OperatorBase>& op,
     const std::string& var_name,
     const std::string& new_var_name,
-    std::vector<OpFuncNode>* new_op_func_nodes) {
+    std::vector<OpFuncNode>* new_op_func_nodes,
+    bool skip_run) {
   auto& op_type = op->Type();
 
   // 1. Construct RuntimeContext
@@ -175,7 +179,13 @@ void DataTranferHelper::RunAndConstructOpFuncNode(
     phi::KernelContext phi_kernel_context;
     op_with_kernel->BuildPhiKernelContext(
         runtime_context, dev_ctx, &phi_kernel_context);
-    (*new_op_func_node.phi_kernel_)(&phi_kernel_context);
+    if (!skip_run) {
+      (*new_op_func_node.phi_kernel_)(&phi_kernel_context);
+    } else {
+      FakeInitializeOutputs(new_op_func_node.phi_kernel_,
+                            op_with_kernel->PhiKernelSignature(),
+                            &phi_kernel_context);
+    }
   }
 
   const phi::Place& place = dev_ctx->GetPlace();
@@ -428,7 +438,8 @@ void ApplyDataTransform(const OpKernelType& expected_kernel_key,
                         VariableScope* var_scope,
                         OpFuncNode* op_func_node,
                         std::vector<OpFuncNode>* new_op_func_nodes,
-                        bool use_local_scope) {
+                        bool use_local_scope,
+                        bool skip_run) {
   Scope* local_scope = use_local_scope ? var_scope->GetMutableLocalScope()
                                        : var_scope->GetMutableScope();
 
@@ -503,7 +514,7 @@ void ApplyDataTransform(const OpKernelType& expected_kernel_key,
                                      op_base->Type() == "fetch_v2");
             if (op) {
               data_transfer_helper.RunAndConstructOpFuncNode(
-                  op, var_name, new_var_name, new_op_func_nodes);
+                  op, var_name, new_var_name, new_op_func_nodes, skip_run);
             }
             is_transferred = true;
           } else {
@@ -531,7 +542,8 @@ void ApplyDataTransform(const OpKernelType& expected_kernel_key,
             new_op_func_nodes,
             use_local_scope,
             op_base->Type() == "fetch_v2",
-            tensor_in->place());
+            tensor_in->place(),
+            skip_run);
       }
 
       if (is_transferred) {
@@ -582,7 +594,8 @@ void HandleComplexGradToRealGrad(const OpFuncNode& op_func_node,
                                  VariableValueMap* out_vars,
                                  VariableScope* var_scope,
                                  std::vector<OpFuncNode>* op_func_nodes,
-                                 framework::Scope* local_scope) {
+                                 framework::Scope* local_scope,
+                                 bool skip_run) {
   DataTranferHelper data_transfer_helper(place, var_scope, local_scope);
   for (auto& var_name_item : out_names) {
     std::vector<Variable*>& vars = out_vars->at(var_name_item.first);
@@ -658,9 +671,9 @@ void HandleComplexGradToRealGrad(const OpFuncNode& op_func_node,
       auto op = TransferDtype(
           var_name, &new_var_name, src_type, dst_type, var_scope, local_scope);
       data_transfer_helper.RunAndConstructOpFuncNode(
-          op, var_name, new_var_name, op_func_nodes);
+          op, var_name, new_var_name, op_func_nodes, skip_run);
       data_transfer_helper.RunAndConstructShareNode(
-          new_var_name, var_name, op_func_nodes);
+          new_var_name, var_name, op_func_nodes, skip_run);
     }
   }
 }
