@@ -22,7 +22,6 @@ import paddle.fluid as fluid
 import paddle.nn.functional as F
 from paddle.fluid import Layer, core
 from paddle.fluid.dygraph import guard, to_variable
-from paddle.fluid.framework import _in_legacy_dygraph
 from paddle.nn import Linear
 
 np.set_printoptions(suppress=True)
@@ -1193,18 +1192,6 @@ class TestDygraphTransformerSortGradient(unittest.TestCase):
                 dy_param_updated,
             )
 
-        with guard():
-            fluid.set_flags({'FLAGS_sort_sum_gradient': True})
-            if _in_legacy_dygraph():
-                (
-                    dy_avg_cost_value,
-                    dy_sum_cost_value,
-                    dy_predict_value,
-                    dy_token_num_value,
-                    dy_param_init,
-                    dy_param_updated,
-                ) = run_dygraph()
-
         with new_program_scope():
             paddle.seed(seed)
             paddle.framework.random._manual_program_seed(seed)
@@ -1296,24 +1283,6 @@ class TestDygraphTransformerSortGradient(unittest.TestCase):
                         static_param_updated[
                             static_param_name_list[k - 4]
                         ] = out[k]
-        if _in_legacy_dygraph():
-            np.testing.assert_array_equal(
-                static_avg_cost_value, dy_avg_cost_value
-            )
-            np.testing.assert_array_equal(
-                static_sum_cost_value, dy_sum_cost_value
-            )
-            np.testing.assert_array_equal(
-                static_predict_value, dy_predict_value
-            )
-            np.testing.assert_array_equal(
-                static_token_num_value, dy_token_num_value
-            )
-
-            for key, value in static_param_init.items():
-                np.testing.assert_array_equal(value, dy_param_init[key])
-            for key, value in static_param_updated.items():
-                np.testing.assert_array_equal(value, dy_param_updated[key])
 
         # compare eager result with imperative result
         with guard():
