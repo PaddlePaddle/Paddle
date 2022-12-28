@@ -183,6 +183,14 @@ class FusedMatmulOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<std::string>("fuse_activation",
                          "Activation type from matmul_activation fuse pass")
         .SetDefault("");
+    AddAttr<float>("fuse_alpha",
+                   "Activation alpha from matmul_activation fuse pass")
+        .SetDefault(0.0f);
+    AddAttr<float>("fuse_beta",
+                   "Activation beta from matmul_activation fuse pass")
+        .SetDefault(0.0f);
+    AddAttr<float>("fused_output_scale", "Scale from operator_scale fuse pass")
+        .SetDefault(1.0f);
     AddAttr<std::vector<int>>(
         "fused_reshape_X",
         "Reshape's shape attribute from reshape_transpose_matmul fuse pass")
