@@ -55,7 +55,6 @@ from .wrapped_decorator import signature_safe_contextmanager
 import warnings
 from paddle import _C_ops, _legacy_C_ops
 from ..fluid.framework import (
-    _in_legacy_dygraph,
     in_dygraph_mode,
     _current_expected_place,
 )
@@ -123,7 +122,7 @@ class Optimizer:
             list(parameter_list) if parameter_list is not None else None
         )
         self._name = name
-        if framework._non_static_mode():
+        if in_dygraph_mode():
             if not isinstance(
                 learning_rate, (float, LearningRateDecay, LRScheduler)
             ):
@@ -525,17 +524,6 @@ class Optimizer:
                         current_lr.dtype,
                         place,
                     )
-
-                elif _in_legacy_dygraph():
-                    _legacy_C_ops.fill_constant(
-                        current_lr,
-                        'value',
-                        float(value),
-                        'dtype',
-                        current_lr.dtype,
-                        'shape',
-                        list(current_lr.shape),
-                    )
                 else:
                     global_block = (
                         framework.default_main_program().global_block()
@@ -696,7 +684,7 @@ class Optimizer:
             name in self._accumulators
             and param.name in self._accumulators[name]
         ):
-            if framework._non_static_mode():
+            if in_dygraph_mode():
                 return self._accumulators[name][param.name]
             raise Exception(
                 "Accumulator {} already exists for parameter {}".format(
@@ -716,7 +704,7 @@ class Optimizer:
             persistable=True,
             dtype=dtype or param.dtype,
             type=core.VarDesc.VarType.LOD_TENSOR
-            if framework._non_static_mode()
+            if in_dygraph_mode()
             else (param.type if type is None else type),
             shape=shape,
             belong_to_optimizer=True,
@@ -728,7 +716,7 @@ class Optimizer:
                 var, initializer=Constant(value=float(fill_value))
             )
 
-        if framework._non_static_mode():
+        if in_dygraph_mode():
             if len(self._accumulators_holder) > 0:
                 assert (
                     var_name in self._accumulators_holder
@@ -763,7 +751,7 @@ class Optimizer:
         if self._name is not None:
             name = self._name + "_" + name
         if name in self._global_accumulators:
-            if framework._non_static_mode():
+            if in_dygraph_mode():
                 return self._global_accumulators[name]
             raise Exception("Global accumulator {} already exists".format(name))
         if shape is None:
@@ -789,7 +777,7 @@ class Optimizer:
                 var, initializer=Constant(value=float(fill_value))
             )
 
-        if framework._non_static_mode():
+        if in_dygraph_mode():
             if len(self._accumulators_holder) > 0:
                 assert (
                     var_name in self._accumulators_holder
@@ -904,7 +892,7 @@ class Optimizer:
         )
         self._create_global_learning_rate()
 
-        if framework._non_static_mode():
+        if in_dygraph_mode():
             for param_and_grad in parameters_and_grads:
                 if param_and_grad[1] is None:
                     continue
@@ -1011,7 +999,7 @@ class Optimizer:
             See examples in ``apply_gradients``.
         """
         act_no_grad_set = None
-        if framework._non_static_mode():
+        if in_dygraph_mode():
             pass
         else:
             act_no_grad_set = self._get_no_grad_set(loss, no_grad_set)
@@ -1020,7 +1008,7 @@ class Optimizer:
         if self._dtype is None:
             self._dtype = loss.dtype
 
-        if framework._non_static_mode():
+        if in_dygraph_mode():
             parameter_list = (
                 parameter_list if parameter_list else self._parameter_list
             )
@@ -1077,7 +1065,7 @@ class Optimizer:
 
         assert regularization_term is not None
 
-        if framework._non_static_mode():
+        if in_dygraph_mode():
             return _legacy_C_ops.sum([grad, regularization_term])
 
         new_grad = grad
@@ -1124,7 +1112,7 @@ class Optimizer:
             Exception: Unknown regularization type
         """
         params_and_grads = []
-        if framework._non_static_mode():
+        if in_dygraph_mode():
             for param, grad in parameters_and_grads:
                 new_grad = self._create_regularization_of_grad(
                     param, grad, regularization
@@ -1295,7 +1283,7 @@ class Optimizer:
         Returns:
             list: A list of operators appended to the current program.
         """
-        if framework._non_static_mode():
+        if in_dygraph_mode():
             with program_guard(
                 framework.default_main_program(),
                 framework.default_startup_program(),
@@ -1555,42 +1543,32 @@ class SGDOptimizer(Optimizer):
                 find_master,
             )
             return None
-        if _in_legacy_dygraph():
-            _legacy_C_ops.sgd(
-                param_and_grad[0],
-                lr,
-                param_and_grad[1],
-                master_weight,
-                param_and_grad[0],
-                master_weight,
+        else:
+            assert isinstance(block, framework.Block)
+            # create the optimize op
+            inputs = {
+                "Param": param_and_grad[0],
+                "Grad": param_and_grad[1],
+                "LearningRate": lr,
+            }
+
+            outputs = {"ParamOut": param_and_grad[0]}
+
+            attrs = {"multi_precision": find_master}
+
+            if find_master:
+                inputs["MasterParam"] = master_weight
+                outputs["MasterParamOut"] = master_weight
+
+            sgd_op = block.append_op(
+                type=self.type,
+                inputs=inputs,
+                outputs=outputs,
+                attrs=attrs,
+                stop_gradient=True,
             )
-            return None
 
-        assert isinstance(block, framework.Block)
-        # create the optimize op
-        inputs = {
-            "Param": param_and_grad[0],
-            "Grad": param_and_grad[1],
-            "LearningRate": lr,
-        }
-
-        outputs = {"ParamOut": param_and_grad[0]}
-
-        attrs = {"multi_precision": find_master}
-
-        if find_master:
-            inputs["MasterParam"] = master_weight
-            outputs["MasterParamOut"] = master_weight
-
-        sgd_op = block.append_op(
-            type=self.type,
-            inputs=inputs,
-            outputs=outputs,
-            attrs=attrs,
-            stop_gradient=True,
-        )
-
-        return sgd_op
+            return sgd_op
 
 
 class MomentumOptimizer(Optimizer):
@@ -1703,7 +1681,7 @@ class MomentumOptimizer(Optimizer):
         )
         lr = self._create_param_lr(param_and_grad)
         master_weight = None
-        if framework._non_static_mode():
+        if in_dygraph_mode():
             _, _, _ = _legacy_C_ops.momentum(
                 param_and_grad[0],
                 param_and_grad[1],
@@ -1719,29 +1697,29 @@ class MomentumOptimizer(Optimizer):
                 self._use_nesterov,
             )
             return None
+        else:
+            attrs = {"mu": self._momentum, "use_nesterov": self._use_nesterov}
+            inputs = {
+                "Param": [param_and_grad[0]],
+                "Grad": [param_and_grad[1]],
+                "Velocity": [velocity_acc],
+                "LearningRate": [lr],
+            }
 
-        attrs = {"mu": self._momentum, "use_nesterov": self._use_nesterov}
-        inputs = {
-            "Param": [param_and_grad[0]],
-            "Grad": [param_and_grad[1]],
-            "Velocity": [velocity_acc],
-            "LearningRate": [lr],
-        }
+            outputs = {
+                "ParamOut": [param_and_grad[0]],
+                "VelocityOut": [velocity_acc],
+            }
+            # create the momentum optimize op
+            momentum_op = block.append_op(
+                type=self.type,
+                inputs=inputs,
+                outputs=outputs,
+                attrs=attrs,
+                stop_gradient=True,
+            )
 
-        outputs = {
-            "ParamOut": [param_and_grad[0]],
-            "VelocityOut": [velocity_acc],
-        }
-        # create the momentum optimize op
-        momentum_op = block.append_op(
-            type=self.type,
-            inputs=inputs,
-            outputs=outputs,
-            attrs=attrs,
-            stop_gradient=True,
-        )
-
-        return momentum_op
+            return momentum_op
 
 
 class LarsMomentumOptimizer(Optimizer):
@@ -1967,7 +1945,7 @@ class LarsMomentumOptimizer(Optimizer):
             inputs["MasterParam"] = master_weight
             outputs["MasterParamOut"] = master_weight
 
-        if framework._non_static_mode():
+        if in_dygraph_mode():
             tmp, tmp2 = _legacy_C_ops.lars_momentum(
                 [param_and_grad[0]],
                 [param_and_grad[1]],
@@ -2113,18 +2091,6 @@ class AdagradOptimizer(Optimizer):
                 param_and_grad[1],
                 moment_acc,
                 self._create_param_lr(param_and_grad),
-                self._epsilon,
-            )
-            return None
-        elif _in_legacy_dygraph():
-            _legacy_C_ops.adagrad(
-                param_and_grad[0],
-                param_and_grad[1],
-                moment_acc,
-                self._create_param_lr(param_and_grad),
-                param_and_grad[0],
-                moment_acc,
-                "epsilon",
                 self._epsilon,
             )
             return None
@@ -2423,7 +2389,7 @@ class AdamOptimizer(Optimizer):
         lr = self._create_param_lr(param_and_grad)
         # create the adam optimize op
 
-        if framework._non_static_mode():
+        if in_dygraph_mode():
             _beta1 = (
                 self._beta1
                 if not isinstance(self._beta1, Variable)
@@ -2714,7 +2680,7 @@ class AdamaxOptimizer(Optimizer):
             self._beta1_pow_acc_str, param_and_grad[0]
         )
 
-        if framework.in_dygraph_mode():
+        if in_dygraph_mode():
             _C_ops.adamax_(
                 param_and_grad[0],
                 param_and_grad[1],
@@ -2724,24 +2690,6 @@ class AdamaxOptimizer(Optimizer):
                 beta1_pow_acc,
                 self._beta1,
                 self._beta2,
-                self._epsilon,
-            )
-        elif framework._in_legacy_dygraph():
-            _legacy_C_ops.adamax(
-                param_and_grad[0],
-                param_and_grad[1],
-                self._create_param_lr(param_and_grad),
-                moment,
-                inf_norm,
-                beta1_pow_acc,
-                param_and_grad[0],
-                moment,
-                inf_norm,
-                "beta1",
-                self._beta1,
-                "beta2",
-                self._beta2,
-                "epsilon",
                 self._epsilon,
             )
         else:
@@ -2783,15 +2731,8 @@ class AdamaxOptimizer(Optimizer):
                 beta1_pow_acc = self._get_accumulator(
                     self._beta1_pow_acc_str, param
                 )
-                if framework._non_static_mode():
-                    if framework.in_dygraph_mode():
-                        tmp = _C_ops.scale(
-                            beta1_pow_acc, self._beta1, 0.0, True
-                        )
-                    else:
-                        tmp = _legacy_C_ops.scale(
-                            beta1_pow_acc, "scale", self._beta1
-                        )
+                if in_dygraph_mode():
+                    tmp = _C_ops.scale(beta1_pow_acc, self._beta1, 0.0, True)
                     beta1_pow_acc.copy_(tmp, False)
                 else:
                     block.append_op(
@@ -2884,7 +2825,7 @@ class DpsgdOptimizer(Optimizer):
         if self._seed is None:
             self._seed = 0
 
-        if framework._non_static_mode():
+        if in_dygraph_mode():
             _legacy_C_ops.dpsgd(
                 param_and_grad[0],
                 param_and_grad[1],
@@ -3016,7 +2957,7 @@ class DecayedAdagradOptimizer(Optimizer):
             self._moment_acc_str, param_and_grad[0]
         )
 
-        if framework._non_static_mode():
+        if in_dygraph_mode():
             _legacy_C_ops.decayed_adagrad(
                 param_and_grad[0],
                 param_and_grad[1],
@@ -3153,7 +3094,7 @@ class AdadeltaOptimizer(Optimizer):
             self._avg_squared_update_acc_str, param_and_grad[0]
         )
 
-        if framework.in_dygraph_mode():
+        if in_dygraph_mode():
             _C_ops.adadelta_(
                 param_and_grad[0],
                 param_and_grad[1],
@@ -3161,20 +3102,6 @@ class AdadeltaOptimizer(Optimizer):
                 avg_squared_update_acc,
                 self._rho,
                 self._epsilon,
-            )
-        elif framework._in_legacy_dygraph():
-            _legacy_C_ops.adadelta(
-                param_and_grad[0],
-                param_and_grad[1],
-                avg_squared_grad_acc,
-                avg_squared_update_acc,
-                param_and_grad[0],
-                avg_squared_grad_acc,
-                avg_squared_update_acc,
-                "epsilon",
-                self._epsilon,
-                "rho",
-                self._rho,
             )
         else:
             # Create the adadelta optimizer op
@@ -3380,27 +3307,6 @@ class RMSPropOptimizer(Optimizer):
                 self._centered,
             )
             return None
-        elif _in_legacy_dygraph():
-            _legacy_C_ops.rmsprop(
-                param_and_grad[0],
-                mean_square_acc,
-                self._create_param_lr(param_and_grad),
-                param_and_grad[1],
-                momentum_acc,
-                param_and_grad[0],
-                momentum_acc,
-                mean_square_acc,
-                mean_grad_acc,
-                "epsilon",
-                self._epsilon,
-                "decay",
-                self._rho,
-                "momentum",
-                self._momentum,
-                "centered",
-                self._centered,
-            )
-            return None
         else:
             rmsprop_op = block.append_op(
                 type=self.type,
@@ -3574,7 +3480,7 @@ class FtrlOptimizer(Optimizer):
         linear_acc = self._get_accumulator(
             self._linear_acc_str, param_and_grad[0]
         )
-        if framework._non_static_mode():
+        if in_dygraph_mode():
             _legacy_C_ops.ftrl(
                 param_and_grad[0],
                 squared_acc,
@@ -3756,7 +3662,7 @@ class LambOptimizer(AdamOptimizer):
             weight_decay = self._weight_decay
         lr = self._create_param_lr(param_and_grad)
         master_weight = None
-        if framework._non_static_mode():
+        if in_dygraph_mode():
             _legacy_C_ops.lamb(
                 param_and_grad[0],
                 param_and_grad[1],
@@ -3933,7 +3839,7 @@ class ModelAverage(Optimizer):
         regularization=None,
         name=None,
     ):
-        if framework._non_static_mode():
+        if in_dygraph_mode():
             raise Exception("In dygraph, don't support ModelAverage.")
         super().__init__(0.0, regularization=regularization, name=name)
         self.average_window = average_window_rate
@@ -4262,7 +4168,7 @@ class ExponentialMovingAverage:
     """
 
     def __init__(self, decay=0.999, thres_steps=None, name=None):
-        if framework._non_static_mode():
+        if in_dygraph_mode():
             raise Exception(
                 "In dygraph, don't support ExponentialMovingAverage."
             )
@@ -4487,7 +4393,7 @@ class PipelineOptimizer:
             self._device = "npu"
         elif core.is_compiled_with_cuda():
             self._device = "gpu"
-        if framework._non_static_mode():
+        if in_dygraph_mode():
             raise Exception("In dygraph, don't support PipelineOptimizer.")
         valid_optimizers = (
             Optimizer,
@@ -6444,7 +6350,7 @@ class RecomputeOptimizer(Optimizer):
     """
 
     def __init__(self, optimizer):
-        if framework._non_static_mode():
+        if in_dygraph_mode():
             raise Exception("In dygraph, don't support RecomputeOptimizer.")
         self._optimizer = optimizer
         self._checkpoints = None
@@ -7059,7 +6965,7 @@ class RecomputeOptimizer(Optimizer):
             self._checkpoints is not None
         ), "You should call _set_checkpoints first"
 
-        if framework._non_static_mode():
+        if in_dygraph_mode():
             raise NotImplementedError(
                 "DyGraph current does not support recompute"
             )
@@ -7157,7 +7063,7 @@ class RecomputeOptimizer(Optimizer):
         assert (
             self._checkpoints is not None
         ), "You should call _set_checkpoints first"
-        if framework._non_static_mode():
+        if in_dygraph_mode():
             raise NotImplementedError(
                 "DyGraph current does not support recompute"
             )
@@ -7241,7 +7147,7 @@ class LookaheadOptimizer:
 
     def __init__(self, inner_optimizer, alpha=0.5, k=5):
 
-        if framework._non_static_mode():
+        if in_dygraph_mode():
             raise Exception("In dygraph, don't support LookaheadOptimizer.")
         assert inner_optimizer is not None, "inner optimizer can not be None"
         assert (
@@ -7420,7 +7326,7 @@ class GradientMergeOptimizer:
     GRAD_MERGE_COND_NAME = "grad_merge_cond_name"
 
     def __init__(self, inner_optimizer, k_steps=1, avg=True):
-        if framework._non_static_mode():
+        if in_dygraph_mode():
             raise Exception(
                 "In dygraph, we don't support GradientMergeOptimizer."
                 "You can do Gradient merge by yourself with k-times forward + backward, "
