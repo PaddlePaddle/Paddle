@@ -13,11 +13,11 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
 
 import paddle
-from paddle.autograd.py_layer import LegacyPyLayer, EagerPyLayer
-from paddle.fluid.framework import _test_eager_guard, in_dygraph_mode
+from paddle.autograd.py_layer import PyLayer
 
 
 class FakeTensor(paddle.fluid.core.VarBase):
@@ -26,8 +26,8 @@ class FakeTensor(paddle.fluid.core.VarBase):
 
 
 class TestPyLayer(unittest.TestCase):
-    def func_test_simple_pylayer_multiple_output(self):
-        class tanh(EagerPyLayer if in_dygraph_mode() else LegacyPyLayer):
+    def test_simple_pylayer_multiple_output(self):
+        class tanh(PyLayer):
             @staticmethod
             def forward(ctx, x1, x2, func1, func2=paddle.square):
                 ctx.func = func2
@@ -58,13 +58,8 @@ class TestPyLayer(unittest.TestCase):
             np.max(np.abs((input1.grad.numpy() - input2.grad.numpy()))) < 1e-10
         )
 
-    def test_simple_pylayer_multiple_output(self):
-        with _test_eager_guard():
-            self.func_test_simple_pylayer_multiple_output()
-        self.func_test_simple_pylayer_multiple_output()
-
-    def func_test_simple_pylayer_return_none_with_no_grad(self):
-        class tanh(EagerPyLayer if in_dygraph_mode() else LegacyPyLayer):
+    def test_simple_pylayer_return_none_with_no_grad(self):
+        class tanh(PyLayer):
             @staticmethod
             def forward(ctx, x1, x2, func1, func2=paddle.square):
                 ctx.func = func2
@@ -99,13 +94,8 @@ class TestPyLayer(unittest.TestCase):
             np.max(np.abs((input1.grad.numpy() - input2.grad.numpy()))) < 1e-10
         )
 
-    def test_simple_pylayer_return_none_with_no_grad(self):
-        with _test_eager_guard():
-            self.func_test_simple_pylayer_return_none_with_no_grad()
-        self.func_test_simple_pylayer_return_none_with_no_grad()
-
-    def func_test_simple_pylayer_single_output(self):
-        class tanh(EagerPyLayer if in_dygraph_mode() else LegacyPyLayer):
+    def test_simple_pylayer_single_output(self):
+        class tanh(PyLayer):
             @staticmethod
             def forward(ctx, x1, func1, func2=paddle.square):
                 ctx.func = func2
@@ -132,13 +122,8 @@ class TestPyLayer(unittest.TestCase):
             np.max(np.abs((input1.grad.numpy() - input2.grad.numpy()))) < 1e-10
         )
 
-    def test_simple_pylayer_single_output(self):
-        with _test_eager_guard():
-            self.func_test_simple_pylayer_single_output()
-        self.func_test_simple_pylayer_single_output()
-
-    def func_test_pylayer_num_output_match(self):
-        class tanh(EagerPyLayer if in_dygraph_mode() else LegacyPyLayer):
+    def test_pylayer_num_output_match(self):
+        class tanh(PyLayer):
             @staticmethod
             def forward(
                 ctx,
@@ -159,13 +144,8 @@ class TestPyLayer(unittest.TestCase):
         with self.assertRaises(ValueError):
             z.mean().backward()
 
-    def test_pylayer_num_output_match(self):
-        with _test_eager_guard():
-            self.func_test_pylayer_num_output_match()
-        self.func_test_pylayer_num_output_match()
-
-    def func_test_pylayer_dtype(self):
-        class tanh(EagerPyLayer if in_dygraph_mode() else LegacyPyLayer):
+    def test_pylayer_dtype(self):
+        class tanh(PyLayer):
             @staticmethod
             def forward(ctx, x, dtype):
                 y = paddle.cast(x, dtype)
@@ -194,13 +174,8 @@ class TestPyLayer(unittest.TestCase):
             z.sum().backward()
             self.assertIsNotNone(input1.grad)
 
-    def test_pylayer_dtype(self):
-        with _test_eager_guard():
-            self.func_test_pylayer_dtype()
-        self.func_test_pylayer_dtype()
-
-    def func_test_pylayer_Exception_forward(self):
-        class Layer_None1(EagerPyLayer if in_dygraph_mode() else LegacyPyLayer):
+    def test_pylayer_Exception_forward(self):
+        class Layer_None1(PyLayer):
             @staticmethod
             def forward(ctx, *args):
                 return None
@@ -213,7 +188,7 @@ class TestPyLayer(unittest.TestCase):
         with self.assertRaises(ValueError):
             z = Layer_None1.apply(input1)
 
-        class Layer_None2(EagerPyLayer if in_dygraph_mode() else LegacyPyLayer):
+        class Layer_None2(PyLayer):
             @staticmethod
             def forward(ctx, *args):
                 return [None, args[0]]
@@ -226,7 +201,7 @@ class TestPyLayer(unittest.TestCase):
         # return None
         z = Layer_None2.apply(input1)
 
-        class Layer_one1(EagerPyLayer if in_dygraph_mode() else LegacyPyLayer):
+        class Layer_one1(PyLayer):
             @staticmethod
             def forward(ctx, *args):
                 return 1
@@ -240,7 +215,7 @@ class TestPyLayer(unittest.TestCase):
         with self.assertRaises(ValueError):
             z = Layer_one1.apply(input1)
 
-        class Layer_one2(EagerPyLayer if in_dygraph_mode() else LegacyPyLayer):
+        class Layer_one2(PyLayer):
             @staticmethod
             def forward(ctx, *args):
                 return [1, 2, args[0]]
@@ -253,7 +228,7 @@ class TestPyLayer(unittest.TestCase):
         # return int
         z = Layer_one2.apply(input1)
 
-        class Layer_no_fw(EagerPyLayer if in_dygraph_mode() else LegacyPyLayer):
+        class Layer_no_fw(PyLayer):
             @staticmethod
             def backward(ctx, *args):
                 return args
@@ -262,13 +237,8 @@ class TestPyLayer(unittest.TestCase):
         with self.assertRaises(NotImplementedError):
             z = Layer_no_fw.apply(input1)
 
-    def test_pylayer_Exception_forward(self):
-        with _test_eager_guard():
-            self.func_test_pylayer_Exception_forward()
-        self.func_test_pylayer_Exception_forward()
-
-    def func_test_pylayer_nograd(self):
-        class tanh(EagerPyLayer if in_dygraph_mode() else LegacyPyLayer):
+    def test_pylayer_nograd(self):
+        class tanh(PyLayer):
             @staticmethod
             def forward(ctx, x1, func1, func2=paddle.square, xx=None):
                 ctx.func = func2
@@ -285,15 +255,8 @@ class TestPyLayer(unittest.TestCase):
         z.mean().backward()
         self.assertIsNone(z.grad)
 
-    def test_pylayer_nograd(self):
-        with _test_eager_guard():
-            self.func_test_pylayer_nograd()
-        self.func_test_pylayer_nograd()
-
-    def func_test_pylayer_Exception_bk(self):
-        class Layer_bk_none1(
-            EagerPyLayer if in_dygraph_mode() else LegacyPyLayer
-        ):
+    def test_pylayer_Exception_bk(self):
+        class Layer_bk_none1(PyLayer):
             @staticmethod
             def forward(ctx, x):
                 return x * 2
@@ -309,9 +272,7 @@ class TestPyLayer(unittest.TestCase):
         with self.assertRaises(ValueError):
             z.sum().backward()
 
-        class Layer_bk_none2(
-            EagerPyLayer if in_dygraph_mode() else LegacyPyLayer
-        ):
+        class Layer_bk_none2(PyLayer):
             @staticmethod
             def forward(ctx, x1, x2):
                 return x1 + x2
@@ -327,9 +288,7 @@ class TestPyLayer(unittest.TestCase):
         with self.assertRaises(ValueError):
             z.mean().backward()
 
-        class Layer_bk_one1(
-            EagerPyLayer if in_dygraph_mode() else LegacyPyLayer
-        ):
+        class Layer_bk_one1(PyLayer):
             @staticmethod
             def forward(ctx, x):
                 return x + x
@@ -345,9 +304,7 @@ class TestPyLayer(unittest.TestCase):
         with self.assertRaises(ValueError):
             z.mean().backward()
 
-        class Layer_bk_one2(
-            EagerPyLayer if in_dygraph_mode() else LegacyPyLayer
-        ):
+        class Layer_bk_one2(PyLayer):
             @staticmethod
             def forward(ctx, x1, x2):
                 return x1 * 2, x2 * 5
@@ -364,7 +321,7 @@ class TestPyLayer(unittest.TestCase):
         with self.assertRaises(ValueError):
             z.mean().backward()
 
-        class Layer_no_bk(EagerPyLayer if in_dygraph_mode() else LegacyPyLayer):
+        class Layer_no_bk(PyLayer):
             @staticmethod
             def forward(ctx, x):
                 return x * 2, x * 5
@@ -377,9 +334,7 @@ class TestPyLayer(unittest.TestCase):
             z = z[0] + z[1]
             z.mean().backward()
 
-        class Layer_bk_match(
-            EagerPyLayer if in_dygraph_mode() else LegacyPyLayer
-        ):
+        class Layer_bk_match(PyLayer):
             @staticmethod
             def forward(ctx, x):
                 return x * 2, x * 5
@@ -395,15 +350,8 @@ class TestPyLayer(unittest.TestCase):
             z = z[0] + z[1]
             z.mean().backward()
 
-    def test_pylayer_Exception_bk(self):
-        with _test_eager_guard():
-            self.func_test_pylayer_Exception_bk()
-        self.func_test_pylayer_Exception_bk()
-
-    def func_test_pylayer_bk_return_none(self):
-        class Layer_bk_none1(
-            EagerPyLayer if in_dygraph_mode() else LegacyPyLayer
-        ):
+    def test_pylayer_bk_return_none(self):
+        class Layer_bk_none1(PyLayer):
             @staticmethod
             def forward(ctx, x1, x2):
                 return x1 + x2
@@ -421,9 +369,7 @@ class TestPyLayer(unittest.TestCase):
         with self.assertRaises(ValueError):
             z.mean().backward()
 
-        class Layer_bk_none2(
-            EagerPyLayer if in_dygraph_mode() else LegacyPyLayer
-        ):
+        class Layer_bk_none2(PyLayer):
             @staticmethod
             def forward(ctx, x1, x2):
                 return x1 * 2, x2 * 5
@@ -441,13 +387,8 @@ class TestPyLayer(unittest.TestCase):
         with self.assertRaises(ValueError):
             z.mean().backward()
 
-    def test_pylayer_bk_return_none(self):
-        with _test_eager_guard():
-            self.func_test_pylayer_bk_return_none()
-        self.func_test_pylayer_bk_return_none()
-
-    def func_test_pylayer_inplace(self):
-        class cus_tanh(EagerPyLayer if in_dygraph_mode() else LegacyPyLayer):
+    def test_pylayer_inplace(self):
+        class cus_tanh(PyLayer):
             @staticmethod
             def forward(ctx, x):
                 return x
@@ -458,7 +399,7 @@ class TestPyLayer(unittest.TestCase):
 
         class Layer(paddle.nn.Layer):
             def __init__(self):
-                super(Layer, self).__init__()
+                super().__init__()
 
             def forward(self, data):
                 data = data**2
@@ -474,118 +415,8 @@ class TestPyLayer(unittest.TestCase):
             z.backward()
             self.assertIsNotNone(data.grad)
 
-    def test_pylayer_inplace(self):
-        with _test_eager_guard():
-            self.func_test_pylayer_inplace()
-        self.func_test_pylayer_inplace()
-
     def test_pylayer_inplace_backward_error(self):
-        with _test_eager_guard():
-
-            class cus_tanh(
-                EagerPyLayer if in_dygraph_mode() else LegacyPyLayer
-            ):
-                @staticmethod
-                def forward(ctx, x):
-                    return x
-
-                @staticmethod
-                def backward(ctx, dy):
-                    return dy
-
-            class Layer(paddle.nn.Layer):
-                def __init__(self):
-                    super(Layer, self).__init__()
-
-                def forward(self, data):
-                    var_b = data**2
-                    var_c = var_b**2
-                    z = cus_tanh.apply(var_b)
-                    loss = paddle.nn.functional.relu(var_c)
-                    return loss
-
-            data = paddle.ones([2, 3], dtype="float64")
-            data.stop_gradient = False
-            layer = Layer()
-            z = layer(data)
-            with self.assertRaisesRegexp(
-                RuntimeError,
-                "received tensor_version:{} != wrapper_version_snapshot:{}".format(
-                    1, 0
-                ),
-            ):
-                z.backward()
-
-    def test_pylayer_inplace_backward_success_1(self):
-        with _test_eager_guard():
-
-            class cus_tanh(
-                EagerPyLayer if in_dygraph_mode() else LegacyPyLayer
-            ):
-                @staticmethod
-                def forward(ctx, x):
-                    return x
-
-                @staticmethod
-                def backward(ctx, dy):
-                    return dy
-
-            class Layer(paddle.nn.Layer):
-                def __init__(self):
-                    super(Layer, self).__init__()
-
-                def forward(self, data):
-                    var_b = data**2
-                    var_c = cus_tanh.apply(var_b)
-                    var_d = var_c**2
-                    loss = var_d.sum()
-                    return loss
-
-            for i in range(2):
-                data = paddle.ones([2, 3], dtype="float64") / (i + 1)
-                data.stop_gradient = False
-                layer = Layer()
-                z = layer(data)
-                z.backward()
-                self.assertIsNotNone(data.grad)
-
-    def test_pylayer_inplace_backward_success_2(self):
-        with _test_eager_guard():
-
-            class cus_tanh(
-                EagerPyLayer if in_dygraph_mode() else LegacyPyLayer
-            ):
-                @staticmethod
-                def forward(ctx, x):
-                    return x
-
-                @staticmethod
-                def backward(ctx, dy):
-                    return dy
-
-            class Layer(paddle.nn.Layer):
-                def __init__(self):
-                    super(Layer, self).__init__()
-
-                def forward(self, data):
-                    var_b = data**2
-                    var_c = cus_tanh.apply(var_b)
-                    var_d = var_c + var_c
-                    loss = var_d.sum()
-                    return loss
-
-            for i in range(2):
-                data = paddle.ones([2, 3], dtype="float64") / (i + 1)
-                data.stop_gradient = False
-                layer = Layer()
-                z = layer(data)
-                z.backward()
-                self.assertIsNotNone(data.grad)
-
-    def func_test_pylayer_inplace_and_leaf_exception(self):
-        class cus_pylayer_op(
-            EagerPyLayer if in_dygraph_mode() else LegacyPyLayer
-        ):
+        class cus_tanh(PyLayer):
             @staticmethod
             def forward(ctx, x):
                 return x
@@ -596,7 +427,98 @@ class TestPyLayer(unittest.TestCase):
 
         class Layer(paddle.nn.Layer):
             def __init__(self):
-                super(Layer, self).__init__()
+                super().__init__()
+
+            def forward(self, data):
+                var_b = data**2
+                var_c = var_b**2
+                z = cus_tanh.apply(var_b)
+                loss = paddle.nn.functional.relu(var_c)
+                return loss
+
+        data = paddle.ones([2, 3], dtype="float64")
+        data.stop_gradient = False
+        layer = Layer()
+        z = layer(data)
+        with self.assertRaisesRegexp(
+            RuntimeError,
+            "received tensor_version:{} != wrapper_version_snapshot:{}".format(
+                1, 0
+            ),
+        ):
+            z.backward()
+
+    def test_pylayer_inplace_backward_success_1(self):
+        class cus_tanh(PyLayer):
+            @staticmethod
+            def forward(ctx, x):
+                return x
+
+            @staticmethod
+            def backward(ctx, dy):
+                return dy
+
+        class Layer(paddle.nn.Layer):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, data):
+                var_b = data**2
+                var_c = cus_tanh.apply(var_b)
+                var_d = var_c**2
+                loss = var_d.sum()
+                return loss
+
+        for i in range(2):
+            data = paddle.ones([2, 3], dtype="float64") / (i + 1)
+            data.stop_gradient = False
+            layer = Layer()
+            z = layer(data)
+            z.backward()
+            self.assertIsNotNone(data.grad)
+
+    def test_pylayer_inplace_backward_success_2(self):
+        class cus_tanh(PyLayer):
+            @staticmethod
+            def forward(ctx, x):
+                return x
+
+            @staticmethod
+            def backward(ctx, dy):
+                return dy
+
+        class Layer(paddle.nn.Layer):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, data):
+                var_b = data**2
+                var_c = cus_tanh.apply(var_b)
+                var_d = var_c + var_c
+                loss = var_d.sum()
+                return loss
+
+        for i in range(2):
+            data = paddle.ones([2, 3], dtype="float64") / (i + 1)
+            data.stop_gradient = False
+            layer = Layer()
+            z = layer(data)
+            z.backward()
+            self.assertIsNotNone(data.grad)
+
+    def test_pylayer_inplace_and_leaf_exception(self):
+        class cus_pylayer_op(PyLayer):
+            @staticmethod
+            def forward(ctx, x):
+                return x
+
+            @staticmethod
+            def backward(ctx, dy):
+                return dy
+
+        class Layer(paddle.nn.Layer):
+            def __init__(self):
+                super().__init__()
 
             def forward(self, data):
                 z = cus_pylayer_op.apply(data)
@@ -610,13 +532,8 @@ class TestPyLayer(unittest.TestCase):
             with self.assertRaises(ValueError):
                 z = layer(data)
 
-    def test_pylayer_inplace_and_leaf_exception(self):
-        with _test_eager_guard():
-            self.func_test_pylayer_inplace_and_leaf_exception()
-        self.func_test_pylayer_inplace_and_leaf_exception()
-
-    def func_test_backward_in_backward(self):
-        class cus_tanh(EagerPyLayer if in_dygraph_mode() else LegacyPyLayer):
+    def test_backward_in_backward(self):
+        class cus_tanh(PyLayer):
             @staticmethod
             def forward(ctx, x):
                 temp = x.detach()
@@ -640,13 +557,8 @@ class TestPyLayer(unittest.TestCase):
             z = paddle.tanh(data)
             z = cus_tanh.apply(data)
 
-    def test_backward_in_backward(self):
-        with _test_eager_guard():
-            self.func_test_backward_in_backward()
-        self.func_test_backward_in_backward()
-
-    def func_test_return_to_tensor(self):
-        class Tanh(EagerPyLayer if in_dygraph_mode() else LegacyPyLayer):
+    def test_return_to_tensor(self):
+        class Tanh(PyLayer):
             @staticmethod
             def forward(ctx, x1):
                 y1 = paddle.tanh(x1)
@@ -667,191 +579,77 @@ class TestPyLayer(unittest.TestCase):
         z, number, none_item, string_item, tensor1 = Tanh.apply(x1=input1)
         z.mean().backward()
 
-    def test_return_to_tensor(self):
-        with _test_eager_guard():
-            self.func_test_return_to_tensor()
-        self.func_test_return_to_tensor()
-
     def test_materialize_grads(self):
-        with _test_eager_guard():
+        class Tanh(PyLayer):
+            @staticmethod
+            def forward(ctx, x):
+                ctx.mark_not_inplace(x)
+                return x, x + x
 
-            class Tanh(EagerPyLayer):
-                @staticmethod
-                def forward(ctx, x):
-                    ctx.mark_not_inplace(x)
-                    return x, x + x
+            @staticmethod
+            def backward(ctx, grad, grad2):
+                self.assertEqual(grad2, paddle.zeros([1]))
+                return grad
 
-                @staticmethod
-                def backward(ctx, grad, grad2):
-                    self.assertEqual(grad2, paddle.zeros([1]))
-                    return grad
-
-            x = paddle.ones([1], dtype="float64")
-            x.stop_gradient = False
-            Tanh.apply(x)[0].backward()
+        x = paddle.ones([1], dtype="float64")
+        x.stop_gradient = False
+        Tanh.apply(x)[0].backward()
 
     def test_dont_materialize_grads(self):
-        with _test_eager_guard():
+        class Tanh(PyLayer):
+            @staticmethod
+            def forward(ctx, x):
+                ctx.mark_not_inplace(x)
+                ctx.set_materialize_grads(False)
+                return x, x + x
 
-            class Tanh(EagerPyLayer):
-                @staticmethod
-                def forward(ctx, x):
-                    ctx.mark_not_inplace(x)
-                    ctx.set_materialize_grads(False)
-                    return x, x + x
+            @staticmethod
+            def backward(ctx, grad, grad2):
+                self.assertIsNone(grad2)
+                return grad
 
-                @staticmethod
-                def backward(ctx, grad, grad2):
-                    self.assertIsNone(grad2)
-                    return grad
-
-            x = paddle.ones([1], dtype="float64")
-            x.stop_gradient = False
-            Tanh.apply(x)[0].backward()
+        x = paddle.ones([1], dtype="float64")
+        x.stop_gradient = False
+        Tanh.apply(x)[0].backward()
 
     def test_mark_non_differentiable(self):
-        with _test_eager_guard():
+        class Tanh(PyLayer):
+            @staticmethod
+            def forward(ctx, x):
+                a = x + x
+                ctx.mark_non_differentiable(a)
+                return a
 
-            class Tanh(EagerPyLayer):
-                @staticmethod
-                def forward(ctx, x):
-                    a = x + x
-                    ctx.mark_non_differentiable(a)
-                    return a
+            @staticmethod
+            def backward(ctx, grad):
+                self.assertTrue(False)  # should not be call
+                return paddle.ones([1], dtype="float64")
 
-                @staticmethod
-                def backward(ctx, grad):
-                    self.assertTrue(False)  # should not be call
-                    return paddle.ones([1], dtype="float64")
-
-            x = paddle.ones([1], dtype="float64")
-            x.stop_gradient = False
-            y = Tanh.apply(x)
-            y.sum().backward()
+        x = paddle.ones([1], dtype="float64")
+        x.stop_gradient = False
+        y = Tanh.apply(x)
+        y.sum().backward()
 
     def test_mark_non_differentiable2(self):
-        with _test_eager_guard():
-
-            class Tanh(EagerPyLayer):
-                @staticmethod
-                def forward(ctx, x):
-                    a = x + x
-                    b = x + x + x
-                    ctx.mark_non_differentiable(a)
-                    return a, b
-
-                @staticmethod
-                def backward(ctx, grad_a, grad_b):
-                    self.assertEqual(grad_a, paddle.zeros([1]))
-                    self.assertEqual(grad_b, paddle.ones([1], dtype="float64"))
-                    return grad_b
-
-            x = paddle.ones([1], dtype="float64")
-            x.stop_gradient = False
-            a, b = Tanh.apply(x)
-            b.sum().backward()
-            self.assertEqual(x.grad, paddle.ones([1], dtype="float64"))
-
-
-class TestPyLayerReturnType(unittest.TestCase):
-    def test_forward_args_fake_tensor(self):
-        class Tanh(LegacyPyLayer):
+        class Tanh(PyLayer):
             @staticmethod
-            def forward(ctx, x1):
-                y1 = FakeTensor()
-                return y1, x1
+            def forward(ctx, x):
+                a = x + x
+                b = x + x + x
+                ctx.mark_non_differentiable(a)
+                return a, b
 
             @staticmethod
-            def backward(ctx, dy1, dy2):
-                return dy1
+            def backward(ctx, grad_a, grad_b):
+                self.assertEqual(grad_a, paddle.zeros([1]))
+                self.assertEqual(grad_b, paddle.ones([1], dtype="float64"))
+                return grad_b
 
-        input1 = FakeTensor()
-
-        with self.assertRaises(ValueError):
-            y1, y2 = Tanh.apply(input1)
-
-    def test_forward_kwargs_fake_tensor(self):
-        class Tanh(LegacyPyLayer):
-            @staticmethod
-            def forward(ctx, x1):
-
-                return x1
-
-            @staticmethod
-            def backward(ctx, dy1, dy2):
-                return dy1
-
-        input1 = FakeTensor()
-
-        with self.assertRaises(ValueError):
-            y = Tanh.apply(x1=input1)
-
-    def test_forward_return_fake_tensor(self):
-        class Tanh(LegacyPyLayer):
-            @staticmethod
-            def forward(ctx, x1):
-
-                return FakeTensor()
-
-            @staticmethod
-            def backward(ctx, dy1, dy2):
-                return dy1
-
-        input1 = paddle.randn([3, 2])
-
-        with self.assertRaises(ValueError):
-            y = Tanh.apply(x1=input1)
-
-    def test_forward_return_fake_tensor_tuple(self):
-        class Tanh(LegacyPyLayer):
-            @staticmethod
-            def forward(ctx, x1):
-
-                return FakeTensor(), FakeTensor()
-
-            @staticmethod
-            def backward(ctx, dy1, dy2):
-                return dy1
-
-        input1 = paddle.randn([3, 2])
-
-        with self.assertRaises(ValueError):
-            y = Tanh.apply(x1=input1)
-
-    def test_backward_return_fake_tensor_tuple(self):
-        class Tanh(LegacyPyLayer):
-            @staticmethod
-            def forward(ctx, x1, x2):
-                return x1 + 1, x1 + 2
-
-            @staticmethod
-            def backward(ctx, dy1, dy2):
-
-                return FakeTensor(), 2
-
-        input1 = paddle.randn([3, 2])
-        input1.stop_gradient = False
-        y, _ = Tanh.apply(input1, 1 + input1)
-
-        with self.assertRaises(ValueError):
-            y.mean().backward()
-
-    def test_backward_return_fake_tensor(self):
-        class Tanh(LegacyPyLayer):
-            @staticmethod
-            def forward(ctx, x1):
-                return x1 + 1, x1 + 2
-
-            @staticmethod
-            def backward(ctx, dy1, dy2):
-                return FakeTensor()
-
-        input1 = paddle.randn([3, 2])
-        input1.stop_gradient = False
-        y, _ = Tanh.apply(input1)
-
-        with self.assertRaises(ValueError):
-            y.mean().backward()
+        x = paddle.ones([1], dtype="float64")
+        x.stop_gradient = False
+        a, b = Tanh.apply(x)
+        b.sum().backward()
+        self.assertEqual(x.grad, paddle.ones([1], dtype="float64"))
 
 
 if __name__ == '__main__':

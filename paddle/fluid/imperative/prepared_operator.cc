@@ -28,9 +28,6 @@
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_op_list.h"
 #endif
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-#include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
-#endif
 #include "paddle/fluid/framework/library_type.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
@@ -235,7 +232,7 @@ PreparedOp PrepareImpl(
   std::string phi_kernel_name;
 
 // NOTE(jiahongyu): The registered MKLDNN kernel have library_type =
-// LibraryType::kMKLDNN and data_layout_ = DataLayout::kMKLDNN. But the default
+// LibraryType::kMKLDNN and data_layout_ = DataLayout::ONEDNN. But the default
 // values are kPlain, so we need to modify the library_type and data_layout_
 // here. There are three statements in if condition:
 // 1. Whether mkldnn kernel fallbacks to plain kernel;
@@ -245,12 +242,12 @@ PreparedOp PrepareImpl(
   if (!op.DnnFallback() && !paddle::platform::in_mkldnn_white_list(op.Type()) &&
       op.CanMKLDNNBeUsed(dygraph_exe_ctx, expected_kernel_key.data_type_)) {
     expected_kernel_key.library_type_ = framework::LibraryType::kMKLDNN;
-    expected_kernel_key.data_layout_ = framework::DataLayout::kMKLDNN;
+    expected_kernel_key.data_layout_ = framework::DataLayout::ONEDNN;
   }
 #endif
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  if (!op.DnnFallback() && paddle::platform::CanCUDNNBeUsed(dygraph_exe_ctx)) {
+  if (op.CanCUDNNBeUsed(dygraph_exe_ctx, expected_kernel_key.data_type_)) {
     expected_kernel_key.library_type_ = framework::LibraryType::kCUDNN;
   }
 #endif
@@ -258,9 +255,9 @@ PreparedOp PrepareImpl(
 #if defined(PADDLE_WITH_XPU)
   bool is_xpu_unsupport =
       paddle::platform::is_xpu_place(expected_kernel_key.place_) &&
-          !paddle::platform::is_xpu_support_op(op.Type(),
-                                               expected_kernel_key) ||
-      paddle::platform::is_in_xpu_black_list(op.Type());
+      !paddle::platform::is_xpu_support_op(
+          op.Type(),
+          framework::TransToPhiDataType(expected_kernel_key.data_type_));
 #endif
 
 #ifdef PADDLE_WITH_MLU
@@ -295,8 +292,10 @@ PreparedOp PrepareImpl(
 #ifdef PADDLE_WITH_XPU_KP
     if (paddle::platform::is_xpu_place(expected_kernel_key.place_)) {
       bool use_xpu_kp_kernel_rt =
-          FLAGS_run_kp_kernel && paddle::platform::is_xpu_kp_support_op(
-                                     op.Type(), expected_kernel_key);
+          FLAGS_run_kp_kernel &&
+          paddle::platform::is_xpu_support_op(
+              op.Type(),
+              framework::TransToPhiDataType(expected_kernel_key.data_type_));
       bool use_xpu_kp_kernel_debug =
           paddle::platform::is_in_xpu_kpwhite_list(op.Type());
       if (use_xpu_kp_kernel_rt) {
@@ -371,7 +370,9 @@ PreparedOp PrepareImpl(
   bool use_xpu_kp_kernel_rt =
       paddle::platform::is_xpu_place(expected_kernel_key.place_) &&
       FLAGS_run_kp_kernel &&
-      paddle::platform::is_xpu_kp_support_op(op.Type(), expected_kernel_key);
+      paddle::platform::is_xpu_support_op(
+          op.Type(),
+          framework::TransToPhiDataType(expected_kernel_key.data_type_));
   bool use_xpu_kp_kernel_debug =
       paddle::platform::is_xpu_place(expected_kernel_key.place_) &&
       paddle::platform::is_in_xpu_kpwhite_list(op.Type());
@@ -392,8 +393,7 @@ PreparedOp PrepareImpl(
 #endif
   ) {
     if (has_phi_kernel) {
-      auto phi_cpu_kernel_key =
-          FallBackToCpu(expected_kernel_key, phi_kernel_key, op);
+      auto phi_cpu_kernel_key = FallBackToCpu(phi_kernel_key, op);
       auto& phi_cpu_kernel =
           phi_kernel_factory.SelectKernel(phi_kernel_name, phi_cpu_kernel_key);
       if (phi_cpu_kernel.IsValid()) {
@@ -603,7 +603,7 @@ static void PreparedOpRunImpl(
     op.Info().infer_shape_(&infer_shape_ctx);
     record_event.End();
     platform::RecordOpInfoSupplement(
-        op.Type(), op.Attrs(), infer_shape_ctx, ctx);
+        op.Type(), op.Attrs(), infer_shape_ctx, ctx, op.Id());
   }
 
   {

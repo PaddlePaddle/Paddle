@@ -16,7 +16,7 @@ import argparse
 import os
 
 
-class Command(object):
+class Command:
     def __init__(self, server, name):
         import etcd3
 

@@ -100,9 +100,13 @@ inline paddle::experimental::DataType GetAmpDestDtype(
       if (paddle::imperative::AmpOperators::Instance()
               .GetMutableAllowOps()
               ->count(op_name)) {
+        paddle::imperative::AmpOperators::Instance().AddToAmpOpList(op_name);
         return paddle::experimental::DataType::FLOAT16;
       } else if (paddle::imperative::AmpOperators::Instance()
                      .GetMutableBlockOps()
+                     ->count(op_name) ||
+                 paddle::imperative::AmpOperators::Instance()
+                     .GetMutableUnsupportedFp16Ops()
                      ->count(op_name)) {
         return paddle::experimental::DataType::FLOAT32;
       } else {
@@ -114,6 +118,8 @@ inline paddle::experimental::DataType GetAmpDestDtype(
                 .GetMutableUnsupportedFp16Ops()
                 ->count(op_name)) {
           dst_type = paddle::experimental::DataType::FLOAT32;
+        } else {
+          paddle::imperative::AmpOperators::Instance().AddToAmpOpList(op_name);
         }
         return dst_type;
       }
@@ -126,6 +132,8 @@ inline paddle::experimental::DataType GetAmpDestDtype(
               .GetMutableBlockOps()
               ->count(op_name)) {
         dst_type = paddle::experimental::DataType::FLOAT32;
+      } else {
+        paddle::imperative::AmpOperators::Instance().AddToAmpOpList(op_name);
       }
       return dst_type;
     }
@@ -134,6 +142,7 @@ inline paddle::experimental::DataType GetAmpDestDtype(
       if (paddle::imperative::AmpOperators::Instance()
               .GetMutableAllowOps()
               ->count(op_name)) {
+        paddle::imperative::AmpOperators::Instance().AddToAmpOpList(op_name);
         return paddle::experimental::DataType::BFLOAT16;
       } else if (paddle::imperative::AmpOperators::Instance()
                      .GetMutableBlockOps()
@@ -149,6 +158,8 @@ inline paddle::experimental::DataType GetAmpDestDtype(
                 .GetMutableUnsupportedBf16Ops()
                 ->count(op_name)) {
           dst_type = paddle::experimental::DataType::FLOAT32;
+        } else {
+          paddle::imperative::AmpOperators::Instance().AddToAmpOpList(op_name);
         }
         return dst_type;
       }
@@ -161,6 +172,8 @@ inline paddle::experimental::DataType GetAmpDestDtype(
               .GetMutableBlockOps()
               ->count(op_name)) {
         dst_type = paddle::experimental::DataType::FLOAT32;
+      } else {
+        paddle::imperative::AmpOperators::Instance().AddToAmpOpList(op_name);
       }
       return dst_type;
     }

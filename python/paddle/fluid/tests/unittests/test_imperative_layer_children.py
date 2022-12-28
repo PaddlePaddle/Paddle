@@ -14,24 +14,23 @@
 
 import unittest
 
-import paddle
-import paddle.nn as nn
-import paddle.fluid as fluid
-
 import numpy as np
-from paddle.fluid.framework import _test_eager_guard
+
+import paddle
+import paddle.fluid as fluid
+import paddle.nn as nn
 
 
 class LeNetDygraph(fluid.dygraph.Layer):
     def __init__(self):
-        super(LeNetDygraph, self).__init__()
+        super().__init__()
         self.features = nn.Sequential(
             nn.Conv2D(1, 6, 3, stride=1, padding=1),
             nn.ReLU(),
-            paddle.fluid.dygraph.Pool2D(2, 'max', 2),
+            paddle.nn.MaxPool2D(2, 2),
             nn.Conv2D(6, 16, 5, stride=1, padding=0),
             nn.ReLU(),
-            paddle.fluid.dygraph.Pool2D(2, 'max', 2),
+            paddle.nn.MaxPool2D(2, 2),
         )
 
     def forward(self, inputs):
@@ -56,9 +55,8 @@ class TestLayerChildren(unittest.TestCase):
             return y1, y2
 
     def test_func_apply_init_weight(self):
-        with _test_eager_guard():
-            paddle.seed(102)
-            self.new_y1, self.new_y2 = self.func_apply_init_weight()
+        paddle.seed(102)
+        self.new_y1, self.new_y2 = self.func_apply_init_weight()
         paddle.seed(102)
         self.ori_y1, self.ori_y2 = self.func_apply_init_weight()
 

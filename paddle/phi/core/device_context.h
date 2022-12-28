@@ -83,6 +83,13 @@ class PADDLE_API DeviceContext {
   void SetZeroAllocator(const Allocator*);
 
   /**
+   * @brief Set the zero-size host Allocator object.
+   *
+   * @param allocator
+   */
+  void SetHostZeroAllocator(const Allocator*);
+
+  /**
    * @brief Set the zero-size Allocator object.
    *
    * @param allocator
@@ -104,6 +111,8 @@ class PADDLE_API DeviceContext {
   const Allocator& GetHostAllocator() const;
 
   const Allocator& GetZeroAllocator() const;
+
+  const Allocator& GetHostZeroAllocator() const;
 
   const Allocator& GetPinnedAllocator() const;
 
@@ -140,7 +149,8 @@ class PADDLE_API DeviceContext {
   void* Alloc(TensorBase*,
               DataType dtype,
               size_t requested_size = 0,
-              bool pinned = false) const;
+              bool pinned = false,
+              bool fake_alloc = false) const;
 
   template <typename T>
   T* Alloc(TensorBase* tensor,
@@ -152,7 +162,8 @@ class PADDLE_API DeviceContext {
    */
   void* HostAlloc(TensorBase* tensor,
                   DataType dtype,
-                  size_t requested_size = 0) const;
+                  size_t requested_size = 0,
+                  bool fake_alloc = false) const;
 
   template <typename T>
   T* HostAlloc(TensorBase* tensor, size_t requested_size = 0) const;

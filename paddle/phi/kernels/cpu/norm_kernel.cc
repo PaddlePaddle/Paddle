@@ -55,9 +55,9 @@ void NormKernel(const Context& ctx,
   Eigen::DSizes<int, 3> shape(pre, n, post);
   Eigen::DSizes<int, 2> norm_shape(pre, post);
 
-  auto x_e = paddle::framework::EigenVector<T>::Flatten(x);
-  auto y_e = paddle::framework::EigenVector<T>::Flatten(*out);
-  auto norm_e = paddle::framework::EigenVector<T>::Flatten(*out_norm);
+  auto x_e = phi::EigenVector<T>::Flatten(x);
+  auto y_e = phi::EigenVector<T>::Flatten(*out);
+  auto norm_e = phi::EigenVector<T>::Flatten(*out_norm);
   auto x_r = x_e.reshape(shape);
   auto y = y_e.reshape(shape);
   auto norm_reshape = norm_e.reshape(norm_shape);

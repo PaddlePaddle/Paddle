@@ -68,3 +68,13 @@ PD_REGISTER_KERNEL(strided_slice_grad,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>) {}
 #endif
+#if defined(PADDLE_WITH_XPU)
+PD_REGISTER_KERNEL(strided_slice_grad,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::StridedSliceGradKernel,
+                   int,
+                   int16_t,
+                   float,
+                   phi::dtype::float16) {}
+#endif

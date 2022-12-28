@@ -22,7 +22,7 @@ __all__ = ['Quant2Int8MkldnnPass']
 OpRole = core.op_proto_and_checker_maker.OpRole
 
 
-class Quant2Int8MkldnnPass(object):
+class Quant2Int8MkldnnPass:
     """
     Transform a quant model IrGraph into MKL-DNN supported INT8 IrGraph.
     The pass consists of the following transformations:
@@ -74,6 +74,7 @@ class Quant2Int8MkldnnPass(object):
             'shape',
             'nearest_interp',
             'nearest_interp_v2',
+            'split',
         ]
         self._scale_ops = ['scale']
         self._conv_ops = ['conv2d', 'depthwise_conv2d']
@@ -110,7 +111,6 @@ class Quant2Int8MkldnnPass(object):
         # graph = self._update_relu_output_scales(graph)
         graph = self._propagate_scales(graph)
         graph = self._quantize_fp32_graph(graph)
-        graph = self._final_optimizations(graph)
         graph = self._cleanup(graph)
         return graph
 
@@ -121,7 +121,6 @@ class Quant2Int8MkldnnPass(object):
 
         self._reset_pass_idx_and_group('fp32')
         graph = self._optimize_fp32_graph(graph)
-        graph = self._final_optimizations(graph)
         graph = self._cleanup(graph)
         return graph
 
@@ -284,6 +283,7 @@ class Quant2Int8MkldnnPass(object):
                         self._var_quant_scales[
                             input_name
                         ] = self._var_quant_scales[output_name]
+
                 elif op.name() == 'concat':
                     output_name = op.output("Out")[0]
                     if output_name in self._var_quant_scales:
@@ -517,11 +517,6 @@ class Quant2Int8MkldnnPass(object):
             )
         self._remove_unused_var_nodes(graph)
         self._pass_idx += 1
-        return graph
-
-    def _final_optimizations(self, graph):
-        # make some MKL-DNN ops working inplace
-        graph = self._apply_pass(graph, 'mkldnn_inplace_pass')
         return graph
 
     def _cleanup(self, graph):

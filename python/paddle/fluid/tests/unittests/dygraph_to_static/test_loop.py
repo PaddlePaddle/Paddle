@@ -12,15 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.utils import gast
 import inspect
-import numpy as np
-import paddle
-import paddle.fluid as fluid
 import unittest
 
-from paddle.fluid.dygraph.dygraph_to_static.loop_transformer import NameVisitor
-from paddle.fluid.dygraph.jit import declarative
+import numpy as np
+
+import paddle
+import paddle.fluid as fluid
+import paddle.nn.functional as F
+from paddle.jit.dy2static.loop_transformer import NameVisitor
+from paddle.utils import gast
 
 SEED = 2020
 np.random.seed(SEED)
@@ -50,7 +51,7 @@ def while_loop_dyfun_with_conflict_var(x):
 
     def relu(y):
         # 'y' is not visible outside the scope.
-        return fluid.layers.relu(y)
+        return F.relu(y)
 
     while x < 10:
         # If a tmp variable is created which has same name
@@ -82,7 +83,7 @@ def while_loop_dyfunc_with_none(x):
 def for_loop_dyfunc(max_len):
     for i in range(max_len):
         ret = fluid.layers.zeros(shape=[1], dtype='float32')
-        fluid.layers.increment(ret, value=2.0, in_place=True)
+        paddle.increment(ret, value=2.0)
     return ret
 
 
@@ -103,14 +104,14 @@ def for_loop_dyfunc2(max_len):
 def for_loop_dyfunc3(max_len):
     ret = fluid.layers.zeros(shape=[1], dtype='float32')
     for i in range(1, 10, 2):
-        fluid.layers.increment(ret, value=2.0, in_place=True)
+        paddle.increment(ret, value=2.0)
     return ret
 
 
 def for_loop_dyfunc4(max_len):
     ret = fluid.layers.zeros(shape=[1], dtype='float32')
     for i in range(10, 1, -2):
-        fluid.layers.increment(ret, value=2.0, in_place=True)
+        paddle.increment(ret, value=2.0)
     return ret
 
 
@@ -118,7 +119,7 @@ def for_loop_dyfunc_not_support(max_len):
     ret = fluid.layers.zeros(shape=[1], dtype='float32')
     a = -2
     for i in range(10, 1, a):
-        fluid.layers.increment(ret, value=2.0, in_place=True)
+        paddle.increment(ret, value=2.0)
     return ret
 
 
@@ -153,7 +154,7 @@ def while_loop_bool_op2(x):
 
 
 def while_loop_class_var(x):
-    class Foo(object):
+    class Foo:
         def __init__(self):
             self.a = 3
             self.b = 4
@@ -179,7 +180,7 @@ def loop_var_contains_property(x):
 
 
 def for_loop_class_var(max_len):
-    class Foo(object):
+    class Foo:
         def __init__(self):
             self.a = 3
             self.b = 4
@@ -322,7 +323,7 @@ class TestTransformWhileLoop(unittest.TestCase):
             # Set the input of dyfunc to VarBase
             tensor_x = fluid.dygraph.to_variable(self.x, zero_copy=False)
             if to_static:
-                ret = declarative(self.dyfunc)(tensor_x)
+                ret = paddle.jit.to_static(self.dyfunc)(tensor_x)
             else:
                 ret = self.dyfunc(tensor_x)
             if hasattr(ret, "numpy"):
@@ -399,7 +400,7 @@ class TestTransformForLoop(unittest.TestCase):
     def _run(self, to_static):
         with fluid.dygraph.guard(self.place):
             if to_static:
-                ret = declarative(self.dyfunc)(self.len)
+                ret = paddle.jit.to_static(self.dyfunc)(self.len)
             else:
                 ret = self.dyfunc(self.len)
             return ret.numpy()
@@ -441,5 +442,4 @@ class TestErrorInForLoop(TestTransformForLoop):
 
 
 if __name__ == '__main__':
-    with fluid.framework._test_eager_guard():
-        unittest.main()
+    unittest.main()

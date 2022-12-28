@@ -12,9 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import yaml
 import argparse
 
+import yaml
 from api_gen import ForwardAPI
 
 PREFIX_TENSOR_NAME = 'input_'
@@ -23,7 +23,7 @@ PREFIX_META_TENSOR_NAME = 'meta_'
 
 class StringsAPI(ForwardAPI):
     def __init__(self, api_item_yaml):
-        super(StringsAPI, self).__init__(api_item_yaml)
+        super().__init__(api_item_yaml)
 
     def get_api_func_name(self):
         return self.api
@@ -31,7 +31,7 @@ class StringsAPI(ForwardAPI):
     def gene_api_declaration(self):
         return f"""
 // {", ".join(self.outputs['names'])}
-{super(StringsAPI, self).gene_api_declaration()}
+{super().gene_api_declaration()}
 """
 
     def get_kernel_tensor_out_type(self, output_name):

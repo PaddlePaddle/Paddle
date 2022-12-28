@@ -12,25 +12,25 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import astor
-from paddle.utils import gast
 import inspect
-import numpy as np
 import textwrap
 import unittest
 
-import paddle
-import paddle.fluid as fluid
-from paddle.fluid.dygraph.dygraph_to_static import ProgramTranslator
-from paddle.fluid.dygraph.jit import declarative
-from paddle.fluid.dygraph.dygraph_to_static.utils import func_to_source_code
-import paddle.jit.dy2static as _jst
-
+import astor
+import numpy as np
 from ifelse_simple_func import (
     dyfunc_with_if_else,
     dyfunc_with_if_else_early_return1,
     dyfunc_with_if_else_early_return2,
 )
+
+import paddle
+import paddle.fluid as fluid
+import paddle.jit.dy2static as _jst
+from paddle.jit import ProgramTranslator
+from paddle.jit.api import to_static
+from paddle.jit.dy2static.utils import func_to_source_code
+from paddle.utils import gast
 
 np.random.seed(0)
 
@@ -42,16 +42,16 @@ np.random.seed(0)
 def simple_func(x, weight_numpy):
     x = fluid.dygraph.to_variable(x)
     w = fluid.dygraph.to_variable(weight_numpy)
-    y = fluid.layers.matmul(x, w)
+    y = paddle.matmul(x, w)
     z = paddle.mean(y)
     return z
 
 
-@declarative
+@to_static
 def decorated_simple_func(x, weight_numpy):
     x = fluid.dygraph.to_variable(x)
     w = fluid.dygraph.to_variable(weight_numpy)
-    y = fluid.layers.matmul(x, w)
+    y = paddle.matmul(x, w)
     z = paddle.mean(y)
     return z
 
@@ -109,7 +109,9 @@ class StaticCode1:
 
         def true_fn_1():
             nonlocal __return_0, __return_1, __return_value_0, loss
-            loss = fluid.layers.cross_entropy(x_v, label)
+            loss = paddle.nn.functional.cross_entropy(
+                x_v, label, reduction='none', use_softmax=False
+            )
             __return_0 = _jst.create_bool_as_type(label is not None, True)
             __return_value_0 = loss
             return
@@ -178,7 +180,9 @@ class StaticCode2:
 
         def true_fn_3():
             nonlocal __return_2, __return_3, __return_value_1, loss
-            loss = fluid.layers.cross_entropy(x_v, label)
+            loss = paddle.nn.functional.cross_entropy(
+                x_v, label, reduction='none', use_softmax=False
+            )
             __return_2 = _jst.create_bool_as_type(label is not None, True)
             __return_value_1 = loss
             return
@@ -202,9 +206,9 @@ class StaticCode2:
 
 
 class NetWithError(fluid.dygraph.layers.Layer):
-    @declarative
+    @to_static
     def forward(self, x):
-        linear = fluid.dygraph.Linear(32, 64)
+        linear = paddle.nn.Linear(32, 64)
         y = linear(x)
         return y
 
@@ -336,7 +340,7 @@ class TestEnableDeclarative(unittest.TestCase):
 
 class Net(fluid.dygraph.layers.Layer):
     def __init__(self):
-        super(Net, self).__init__()
+        super().__init__()
 
     def forward(self, x):
         return x + 1
@@ -366,7 +370,7 @@ class TestErrorWithInitFromStaticMode(unittest.TestCase):
 
 class SwitchModeNet(paddle.nn.Layer):
     def __init__(self):
-        super(SwitchModeNet, self).__init__()
+        super().__init__()
 
     @paddle.jit.to_static
     def forward(self, x):
@@ -439,5 +443,4 @@ class TestRemoveCommentInDy2St(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    with fluid.framework._test_eager_guard():
-        unittest.main()
+    unittest.main()

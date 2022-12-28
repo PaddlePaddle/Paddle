@@ -22,7 +22,7 @@ from paddle.incubate.autograd.primrules import _jvp, _transpose
 paddle.enable_static()
 
 
-############################ Test linearize rules ############################
+# --------------------- Test linearize rules ----------------------- #
 class TestAddPJVPAndTranspose(unittest.TestCase):
     def setUp(self):
         self.main_program = paddle.static.Program()

@@ -14,7 +14,6 @@
 
 import paddle
 import paddle.nn as nn
-
 from paddle.utils.download import get_weights_path_from_url
 
 __all__ = []
@@ -65,7 +64,7 @@ class VGG(nn.Layer):
     """
 
     def __init__(self, features, num_classes=1000, with_pool=True):
-        super(VGG, self).__init__()
+        super().__init__()
         self.features = features
         self.num_classes = num_classes
         self.with_pool = with_pool

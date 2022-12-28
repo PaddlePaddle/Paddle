@@ -13,7 +13,7 @@
 # limitations under the License.
 
 
-class UnionFind(object):
+class UnionFind:
     """Union-find data structure.
 
     Union-find is a data structure that keeps track of a set of elements partitioned

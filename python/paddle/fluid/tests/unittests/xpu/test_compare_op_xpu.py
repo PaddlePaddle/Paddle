@@ -16,11 +16,16 @@ import sys
 
 sys.path.append("..")
 import unittest
+
 import numpy as np
 from op_test_xpu import XPUOpTest
+from xpu.get_test_cover_info import (
+    XPUOpTestWrapper,
+    create_test_class,
+    get_xpu_op_support_types,
+)
+
 import paddle
-from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types
-from xpu.get_test_cover_info import XPUOpTestWrapper
 
 
 class TestCompareOpBase(XPUOpTest):
@@ -100,6 +105,27 @@ class XPUTestLessThanOP(XPUOpTestWrapper):
             self.x_shape = [128, 128, 512]
             self.y_shape = [128, 128, 512]
 
+    class LessThanOpTestCase_ZeroDim1(LessThanOpTestCase1):
+        def set_data(self):
+            self.lbound = -100
+            self.hbound = 100
+            self.x_shape = []
+            self.y_shape = []
+
+    class LessThanOpTestCase_ZeroDim2(LessThanOpTestCase1):
+        def set_data(self):
+            self.lbound = -100
+            self.hbound = 100
+            self.x_shape = []
+            self.y_shape = [11, 17]
+
+    class LessThanOpTestCase_ZeroDim3(LessThanOpTestCase1):
+        def set_data(self):
+            self.lbound = -100
+            self.hbound = 100
+            self.x_shape = [11, 17]
+            self.y_shape = []
+
 
 support_types = get_xpu_op_support_types('less_than')
 for stype in support_types:
@@ -151,6 +177,27 @@ class XPUTestLessEqualOp(XPUOpTestWrapper):
             self.hbound = 200
             self.x_shape = [128, 128, 512]
             self.y_shape = [128, 128, 512]
+
+    class LessEqualOpTestCase_ZeroDim1(LessEqualOpTestCase1):
+        def set_data(self):
+            self.lbound = -100
+            self.hbound = 100
+            self.x_shape = []
+            self.y_shape = []
+
+    class LessEqualOpTestCase_ZeroDim2(LessEqualOpTestCase1):
+        def set_data(self):
+            self.lbound = -100
+            self.hbound = 100
+            self.x_shape = []
+            self.y_shape = [11, 17]
+
+    class LessEqualOpTestCase_ZeroDim3(LessEqualOpTestCase1):
+        def set_data(self):
+            self.lbound = -100
+            self.hbound = 100
+            self.x_shape = [11, 17]
+            self.y_shape = []
 
 
 support_types = get_xpu_op_support_types('less_equal')
@@ -204,6 +251,27 @@ class XPUTestGreaterThanOp(XPUOpTestWrapper):
             self.x_shape = [10, 10, 20, 20]
             self.y_shape = [10, 10, 20, 20]
 
+    class GreaterThanOpTestCase_ZeroDim1(GreaterThanOpTestCase1):
+        def set_data(self):
+            self.lbound = -100
+            self.hbound = 100
+            self.x_shape = []
+            self.y_shape = []
+
+    class GreaterThanOpTestCase_ZeroDim2(GreaterThanOpTestCase1):
+        def set_data(self):
+            self.lbound = -100
+            self.hbound = 100
+            self.x_shape = []
+            self.y_shape = [11, 17]
+
+    class GreaterThanOpTestCase_ZeroDim3(GreaterThanOpTestCase1):
+        def set_data(self):
+            self.lbound = -100
+            self.hbound = 100
+            self.x_shape = [11, 17]
+            self.y_shape = []
+
 
 support_types = get_xpu_op_support_types('greater_than')
 for stype in support_types:
@@ -255,6 +323,27 @@ class XPUTestGreaterEqualOp(XPUOpTestWrapper):
             self.hbound = 100
             self.x_shape = [10, 30, 15]
             self.y_shape = [10, 30, 15]
+
+    class GreaterEqualOpTestCase_ZeroDim1(GreaterEqualOpTestCase1):
+        def set_data(self):
+            self.lbound = -100
+            self.hbound = 100
+            self.x_shape = []
+            self.y_shape = []
+
+    class GreaterEqualOpTestCase_ZeroDim2(GreaterEqualOpTestCase1):
+        def set_data(self):
+            self.lbound = -100
+            self.hbound = 100
+            self.x_shape = []
+            self.y_shape = [11, 17]
+
+    class GreaterEqualOpTestCase_ZeroDim3(GreaterEqualOpTestCase1):
+        def set_data(self):
+            self.lbound = -100
+            self.hbound = 100
+            self.x_shape = [11, 17]
+            self.y_shape = []
 
 
 support_types = get_xpu_op_support_types('greater_equal')
@@ -308,6 +397,27 @@ class XPUTestEqualOp(XPUOpTestWrapper):
             self.x_shape = [11, 17]
             self.y_shape = [1]
 
+    class EqualOpTestCase_ZeroDim1(EqualOpTestCase1):
+        def set_data(self):
+            self.lbound = -100
+            self.hbound = 100
+            self.x_shape = []
+            self.y_shape = []
+
+    class EqualOpTestCase_ZeroDim2(EqualOpTestCase1):
+        def set_data(self):
+            self.lbound = -100
+            self.hbound = 100
+            self.x_shape = []
+            self.y_shape = [11, 17]
+
+    class EqualOpTestCase_ZeroDim3(EqualOpTestCase1):
+        def set_data(self):
+            self.lbound = -100
+            self.hbound = 100
+            self.x_shape = [11, 17]
+            self.y_shape = []
+
 
 support_types = get_xpu_op_support_types('equal')
 for stype in support_types:
@@ -359,6 +469,27 @@ class XPUTestNotEqualOp(XPUOpTestWrapper):
             self.hbound = 100
             self.x_shape = [512, 128]
             self.y_shape = [512, 128]
+
+    class NotEqualOpTestCase_ZeroDim1(NotEqualOpTestCase1):
+        def set_data(self):
+            self.lbound = -100
+            self.hbound = 100
+            self.x_shape = []
+            self.y_shape = []
+
+    class NotEqualOpTestCase_ZeroDim2(NotEqualOpTestCase1):
+        def set_data(self):
+            self.lbound = -100
+            self.hbound = 100
+            self.x_shape = []
+            self.y_shape = [11, 17]
+
+    class NotEqualOpTestCase_ZeroDim3(NotEqualOpTestCase1):
+        def set_data(self):
+            self.lbound = -100
+            self.hbound = 100
+            self.x_shape = [11, 17]
+            self.y_shape = []
 
 
 support_types = get_xpu_op_support_types('not_equal')

@@ -13,11 +13,13 @@
 # limitations under the License.
 """This is unit test of Test shuffle_batch Op."""
 
-import unittest
-import numpy as np
-import paddle.fluid as fluid
-from op_test import OpTest
 import os
+import unittest
+
+import numpy as np
+from op_test import OpTest
+
+import paddle.fluid as fluid
 
 
 class TestShuffleBatchOpBase(OpTest):
@@ -32,7 +34,7 @@ class TestShuffleBatchOpBase(OpTest):
         # NOTE: shuffle_batch is not supported on Windows
         if os.name == 'nt':
             return [fluid.CPUPlace()]
-        return super(TestShuffleBatchOpBase, self)._get_places()
+        return super()._get_places()
 
     def setUp(self):
         self.op_type = 'shuffle_batch'

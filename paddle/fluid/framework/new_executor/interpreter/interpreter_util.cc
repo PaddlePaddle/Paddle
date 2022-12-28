@@ -32,19 +32,16 @@
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-#include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
-#endif
-
-PADDLE_DEFINE_EXPORTED_bool(
-    new_executor_serial_run,
-    false,
-    "Enable serial execution for standalone executor, used for debug.");
 
 PADDLE_DEFINE_EXPORTED_bool(
     new_executor_log_memory_stats,
     false,
     "Log memory stats after each op runs, just used for debug.");
+
+PADDLE_DEFINE_EXPORTED_bool(
+    new_executor_static_build,
+    false,
+    "Build the interpreterCore statically without running.");
 
 DECLARE_bool(use_mkldnn);
 DECLARE_bool(check_nan_inf);
@@ -119,14 +116,9 @@ AsyncWorkQueue::AsyncWorkQueue(size_t host_num_threads,
 
 void AsyncWorkQueue::AddTask(const OpFuncType& op_func_type,
                              std::function<void()> fn) {
-  VLOG(4) << "Add task: " << static_cast<size_t>(op_func_type) << " ";
-  // NOTE(zhiqiu): use the second queue of size of, so only one thread is used.
-  if (FLAGS_new_executor_serial_run) {
-    queue_group_->AddTask(static_cast<size_t>(OpFuncType::kQueueAsync),
-                          std::move(fn));
-  } else {
-    queue_group_->AddTask(static_cast<size_t>(op_func_type), std::move(fn));
-  }
+  // queue_idx=0 : kCpuSync or kGpuSync
+  // queue_idx=1 : kGPUAsync
+  queue_group_->AddTask(op_func_type == OpFuncType::kGpuAsync, std::move(fn));
 }
 
 bool IsCommunicationOp(const std::string& op_name) {
@@ -168,6 +160,33 @@ bool IsMemcpyH2D(const Instruction& instr) {
 
 bool IsMemcpyOp(const Instruction& instr) {
   return IsMemcpyD2H(instr) || IsMemcpyH2D(instr);
+}
+
+bool IsBlockContainsOnlyPhiKernel(const framework::BlockDesc& block) {
+  bool res = true;
+  for (auto& op : block.AllOps()) {
+    auto op_type = op->Type();
+    if (op_type == "feed" || op_type == "fetch_v2") {
+      continue;
+    }
+    auto has_phi_kernel =
+        !phi::KernelFactory::Instance()
+             .SelectKernelMap(phi::TransToPhiKernelName(op_type))
+             .empty();
+
+    if (!has_phi_kernel) {
+      auto kernel_iter = OperatorWithKernel::AllOpKernels().find(op_type);
+      if (kernel_iter != OperatorWithKernel::AllOpKernels().end()) {
+        VLOG(4) << op_type << " has no phi kernel, but has fluid kernel.";
+        res = false;
+      } else {
+        VLOG(4) << op_type << " has no phi kernel, and no fluid kernel.";
+      }
+    } else {
+      VLOG(4) << op_type << " has phi kernel";
+    }
+  }
+  return res;
 }
 
 void AddFetch(const std::vector<std::string>& fetch_names,
@@ -301,6 +320,38 @@ void BuildVariableScope(const framework::BlockDesc& block,
     }
     var_scope->AddVar(var_name, var_desc);
   }
+}
+
+OpFuncType AnalyseOpFuncType(const OpFuncNode& op_func_node,
+                             const platform::Place& place) {
+  if (platform::is_cpu_place(place)) {
+    return OpFuncType::kCpuSync;
+  }
+
+  PADDLE_ENFORCE_EQ(IsSupportedHeterPlace(place),
+                    true,
+                    phi::errors::Fatal("Unsupported current place %s", place));
+
+  // Some GPU OPs do not launch CUDA Kernel, but spend a lot of time on CPU
+  // computing. They execute serially in device thread and block CUDA kernel
+  // launching in other GPU OPs. To improve performance, set them as kGpuSync
+  // and so that they would be dispatched to host thread.
+  std::shared_ptr<OperatorBase> op = op_func_node.operator_base_;
+  if (op->Type() == kCoalesceTensor &&
+      op->Attr<bool>("set_constant") == false &&
+      op->Attr<bool>("copy_data") == false) {
+    return OpFuncType::kGpuSync;
+  }
+
+  // for memcpy explicitly called by user
+  if (platform::is_gpu_place(place) && op->Type() == interpreter::kMemcpyD2H) {
+    return OpFuncType::kGpuSync;
+  }
+
+  if (op->Type() == "shape") {
+    return OpFuncType::kGpuSync;
+  }
+  return OpFuncType::kGpuAsync;
 }
 
 void CreateAllOps(const framework::BlockDesc& block,
@@ -451,28 +502,72 @@ void HandleOperatorBase(const platform::Place& place,
   auto* dev_ctx = pool.Get(place);
   // input, output is prepared. set the other attributes.
   op_func_node->operator_base_ = op_base;
-  if (IsSupportedHeterPlace(place)) {
-    op_func_node->type_ = OpFuncType::kQueueAsync;
-  } else if (platform::is_cpu_place(place)) {
-    op_func_node->type_ = OpFuncType::kQueueSync;
-  } else {
-    PADDLE_THROW(
-        platform::errors::Fatal("Unsupported current place %s", place));
-  }
+  op_func_node->type_ = AnalyseOpFuncType(*op_func_node, place);
   op_func_node->kernel_func_ = nullptr;
   op_base->Run(*local_scope, place);  // Run without data transformer.
-  std::unordered_set<int> no_data_transform_index;
-  for (auto& it : op_func_node->input_index) {
-    for (auto& id : it.second) {
-      no_data_transform_index.emplace(id);
-    }
-  }
-  op_func_node->no_data_transform_index =
-      no_data_transform_index;  // all index is no-need-transform
   op_func_node->dev_ctx_ = dev_ctx;
 }
 
-void BuildOpFuncList(const platform::Place& place,
+void FakeInitializeOutputs(phi::Kernel* phi_kernel,
+                           phi::KernelSignature* kernel_sig,
+                           phi::KernelContext* phi_kernel_context) {
+  auto output_defs = phi_kernel->args_def().output_defs();
+  auto out_names = kernel_sig->output_names;
+
+  for (size_t i = 0; i < out_names.size(); ++i) {
+    VLOG(4) << out_names[i];
+    // calcute the start and end index of the output tensors
+    size_t start_idx = phi_kernel_context->OutputRangeAt(i).first;
+    size_t end_idx = phi_kernel_context->OutputRangeAt(i).second;
+    for (size_t j = start_idx; j < end_idx; ++j) {
+      auto* out_tensor = phi_kernel_context->MutableOutputAt(j);
+      if (out_tensor == nullptr) {
+        VLOG(4) << "Output" << out_names[i] << " is nullptr";
+        continue;
+      }
+      auto backend = output_defs[j].backend;
+      auto* dev_ctx =
+          &(phi_kernel_context->GetDeviceContext<phi::DeviceContext>());
+
+      if (phi::DenseTensor::classof(out_tensor)) {
+        if (!out_tensor->initialized()) {
+          VLOG(4) << "DenseTensor fake alloc 0 bytes of type "
+                  << out_tensor->dtype() << " on backend " << backend << " "
+                  << out_tensor;
+          if (backend == phi::TransToPhiBackend(dev_ctx->GetPlace())) {
+            dev_ctx->Alloc(out_tensor,
+                           out_tensor->dtype(),
+                           /*requested_size=*/0,
+                           /*pinned=*/false,
+                           /*fake_alloc=*/true);
+          } else {
+            if (backend == phi::Backend::CPU ||
+                backend == phi::Backend::ONEDNN) {
+              dev_ctx->HostAlloc(out_tensor,
+                                 out_tensor->dtype(),
+                                 /*requested_size=*/0,
+                                 /*fake_alloc=*/true);
+            }
+          }
+        }
+      } else if (phi::SparseCooTensor::classof(out_tensor)) {
+        // todo
+        VLOG(4) << "SparseCooTensor";
+      } else if (phi::SparseCsrTensor::classof(out_tensor)) {
+        // todo
+        VLOG(4) << "SparseCsrTensor";
+      } else {
+        PADDLE_THROW(phi::errors::Unimplemented(
+            "Only support "
+            "DenseTensor/SparseCooTensor/SparseCsrTensor "
+            "now"));
+        VLOG(4) << "SparseCooTensor";
+      }
+    }
+  }
+}
+
+bool BuildOpFuncList(const platform::Place& place,
                      const framework::BlockDesc& block,
                      const std::set<std::string>& skip_gc_vars,
                      std::vector<OpFuncNode>* vec_func_list,
@@ -485,6 +580,10 @@ void BuildOpFuncList(const platform::Place& place,
       ops_unique;  // its elements will be moved to vec_func_list
   // Step 1: create all ops for current block.
   CreateAllOps(block, &ops_unique);
+
+  auto skip_run =
+      FLAGS_new_executor_static_build && IsBlockContainsOnlyPhiKernel(block);
+  VLOG(4) << "Static build: " << skip_run;
 
   if (!execution_config.used_for_jit) {
     // If gc is enabled and block size > 1
@@ -572,6 +671,17 @@ void BuildOpFuncList(const platform::Place& place,
       op_func_node.execution_stream_ = dist_attr->execution_stream();
     }
 
+    if (dist_attr) {
+      op_func_node.priority_ = dist_attr->scheduling_priority();
+    } else if (interpreter::IsCommunicationOp(op_type)) {
+      // NOTE(Ruibiao): Dispatching computation before communication improves
+      // multi-stream overlap when the time cost of communication less than that
+      // of the calculation (e.g., ResNet50_bs128_pure_fp16 N4C32 training).
+      op_func_node.priority_ = 1;
+    }
+    VLOG(6) << "scheduling priority of " << op_type << " : "
+            << op_func_node.priority_;
+
     SingleStreamGuard single_stream_guard(ops[i]);
 
     VLOG(4) << "Start run " << place << " " << op->DebugStringEx(local_scope);
@@ -607,7 +717,8 @@ void BuildOpFuncList(const platform::Place& place,
         // NOTE(Ruibiao): We do not encourage directly using scope in OP kernel.
         // But some OPs do have such behavior (e.g., cinn_launch OP). Here
         // special treatment for them.
-        if (op_with_kernel->Type() == "cinn_launch") {
+        if (op_with_kernel->Type() == "cinn_launch" ||
+            op_with_kernel->Type() == "cinn_instruction_run") {
           VLOG(6) << "OP(" << op_with_kernel->Type()
                   << ") use scope in kernel, "
                      "so pass a real scope to "
@@ -622,8 +733,8 @@ void BuildOpFuncList(const platform::Place& place,
         auto expected_kernel_key =
             op_with_kernel->GetExpectedKernelType(exec_ctx);
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-        if (!op_with_kernel->DnnFallback() &&
-            paddle::platform::CanCUDNNBeUsed(exec_ctx)) {
+        if (op_with_kernel->CanCUDNNBeUsed(exec_ctx,
+                                           expected_kernel_key.data_type_)) {
           expected_kernel_key.library_type_ = framework::LibraryType::kCUDNN;
         }
 #endif
@@ -643,8 +754,8 @@ void BuildOpFuncList(const platform::Place& place,
           } else {
             if (!op_with_kernel->SupportsKernelType(expected_kernel_key,
                                                     exec_ctx)) {
-              auto phi_cpu_kernel_key = FallBackToCpu(
-                  expected_kernel_key, phi_kernel_key, *op_with_kernel);
+              auto phi_cpu_kernel_key =
+                  FallBackToCpu(phi_kernel_key, *op_with_kernel);
               op_with_kernel->ResetPhiKernel(
                   new phi::Kernel(phi::KernelFactory::Instance().SelectKernel(
                       phi_kernel_name, phi_cpu_kernel_key)));
@@ -660,6 +771,7 @@ void BuildOpFuncList(const platform::Place& place,
             }
           }
         }
+
         VLOG(4) << "if run phi kernel? : " << run_phi_kernel;
         if (!run_phi_kernel) {
           op_with_kernel->ChooseKernel(exec_ctx);
@@ -672,14 +784,9 @@ void BuildOpFuncList(const platform::Place& place,
           dev_ctx = pool.Get(kernel_type.place_);
         }
         op_func_node.dev_ctx_ = dev_ctx;
-        if (IsSupportedHeterPlace(kernel_type.place_)) {
-          op_func_node.type_ = OpFuncType::kQueueAsync;
-        } else if (platform::is_cpu_place(kernel_type.place_)) {
-          op_func_node.type_ = OpFuncType::kQueueSync;
-        } else {
-          PADDLE_THROW(platform::errors::Fatal("Unsupported current place %s",
-                                               kernel_type.place_));
-        }
+        op_func_node.type_ =
+            AnalyseOpFuncType(op_func_node, kernel_type.place_);
+
         VLOG(3) << op_with_kernel->Type()
                 << " : finally selected kernel_key: " << kernel_type;
 
@@ -693,12 +800,14 @@ void BuildOpFuncList(const platform::Place& place,
                            var_scope,
                            &op_func_node,
                            vec_func_list,
-                           use_local_scope);
+                           use_local_scope,
+                           skip_run);
         VLOG(4) << "apply data transform done. ";
         // step 4. infershape, see OperatorWithKernel::RunImpl in operator.cc
         // for why.
         if (!(op->HasAttr(kAllKernelsMustComputeRuntimeShape) &&
               op->Attr<bool>(kAllKernelsMustComputeRuntimeShape))) {
+          VLOG(4) << "infer shape";
           InterpretercoreInferShapeContext infer_shape_ctx(*op,
                                                            runtime_context);
           // TODO(Aurelius84): In case of control flow ops, they are NOT
@@ -711,11 +820,21 @@ void BuildOpFuncList(const platform::Place& place,
           phi::KernelContext phi_kernel_context;
           op_with_kernel->BuildPhiKernelContext(
               runtime_context, dev_ctx, &phi_kernel_context);
-          (*op_func_node.phi_kernel_)(&phi_kernel_context);
+          if (!skip_run) {
+            (*op_func_node.phi_kernel_)(&phi_kernel_context);
+          } else {
+            FakeInitializeOutputs(op_func_node.phi_kernel_,
+                                  op_with_kernel->PhiKernelSignature(),
+                                  &phi_kernel_context);
+          }
         } else {
           // the place of exec_ctx maybe has changed.
-          op_func_node.kernel_func_(ExecutionContext(
-              *op_with_kernel, *runtime_scope, *dev_ctx, runtime_context));
+          if (!skip_run) {
+            op_func_node.kernel_func_(ExecutionContext(
+                *op_with_kernel, *runtime_scope, *dev_ctx, runtime_context));
+          } else {
+            // TODO(zhiqiu): is it needed to support fluid kernel?
+          }
         }
 
         // post-process grad_op.outputs if need cast complex grad into real
@@ -801,12 +920,7 @@ void BuildOpFuncList(const platform::Place& place,
 
     interpreter::LogDeviceMemoryStats(place);
   }
-
-  // NOTE(Ruibiao): Release memory cache to avoid memory fragments in Allocator.
-  // It reduce about 10% memory usage for V100 8-GPU training of
-  // transformer_base_bs4096_amp_fp16 and transformer_base_bs4096_pure_fp16
-  // model.
-  memory::Release(place);
+  return skip_run;
 }
 
 void LogDeviceMemoryStats(const platform::Place& place) {

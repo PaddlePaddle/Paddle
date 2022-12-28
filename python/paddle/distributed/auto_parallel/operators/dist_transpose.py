@@ -12,22 +12,29 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 
-from .common import DistributedOperatorImplContainer
-from .common import DistributedOperatorImpl
-from .common import register_distributed_operator_impl_container
-from .common import register_distributed_operator_impl
-from .common import is_parameter_related
-from ..utils import compute_compatible_and_update_dim_mapping
-from .dist_default import DistributedDefaultImpl0
-from ..cost import Transpose2OpCost, Transpose2GradOpCost
-from ..cost import build_comp_desc_from_dist_op, build_dp_costs
-from ..cost import build_comp_costs_from_descs
 from paddle.distributed.fleet.meta_optimizers.common import OpRole
+
+from ..cost import (
+    Transpose2GradOpCost,
+    Transpose2OpCost,
+    build_comp_costs_from_descs,
+    build_comp_desc_from_dist_op,
+    build_dp_costs,
+)
+from ..utils import compute_compatible_and_update_dim_mapping
+from .common import (
+    DistributedOperatorImpl,
+    DistributedOperatorImplContainer,
+    is_parameter_related,
+    register_distributed_operator_impl,
+    register_distributed_operator_impl_container,
+)
+from .dist_default import DistributedDefaultImpl0
 
 
 class DistributedTranspose2(DistributedOperatorImplContainer):
     def __init__(self, op_type):
-        super(DistributedTranspose2, self).__init__(op_type)
+        super().__init__(op_type)
 
 
 register_distributed_operator_impl_container(
@@ -37,7 +44,7 @@ register_distributed_operator_impl_container(
 
 class DistributedTranspose2Impl(DistributedOperatorImpl):
     def __init__(self, name):
-        super(DistributedTranspose2Impl, self).__init__(name)
+        super().__init__(name)
         self._forward_implemented = False
         self._backward_implemented = False
 
@@ -133,7 +140,7 @@ class DistributedTranspose2Impl(DistributedOperatorImpl):
         desc_mapping = build_comp_desc_from_dist_op(
             dist_op=dist_op, dist_context=ctx
         )
-        processes = dist_op.dist_attr.process_mesh.processes
+        processes = dist_op.dist_attr.process_mesh.process_ids
         op_type = dist_op.serial_op.type
         cost_mapping = build_comp_costs_from_descs(
             Transpose2OpCost, ctx, processes, desc_mapping, cluster
@@ -150,7 +157,7 @@ class DistributedTranspose2Impl(DistributedOperatorImpl):
         )
         dist_attr = dist_op.dist_attr
         process_mesh = dist_attr.process_mesh
-        processes = process_mesh.processes
+        processes = process_mesh.process_ids
         op_type = dist_op.serial_op.type
         cost_mapping = build_comp_costs_from_descs(
             Transpose2GradOpCost, ctx, processes, desc_mapping, cluster
@@ -160,7 +167,6 @@ class DistributedTranspose2Impl(DistributedOperatorImpl):
         backward_op = dist_op.serial_op
         main_block = backward_op.block
         need_gradient_allreduce = False
-        vars = main_block.vars
         for input_name in backward_op.desc.input_names():
             for varname in backward_op.desc.input(input_name):
                 if "@GRAD" not in varname and is_parameter_related(
@@ -169,7 +175,7 @@ class DistributedTranspose2Impl(DistributedOperatorImpl):
                     # NOTE input var's dim_mapping of backward op should be the same with input var instead of corresponding varname of forward op
                     var_dim_mapping = dist_attr.get_input_dims_mapping(varname)
 
-                    mesh_shape = process_mesh.topology
+                    mesh_shape = process_mesh.shape
                     batch_size_axis = var_dim_mapping[0]
                     if batch_size_axis > -1 and mesh_shape[batch_size_axis] > 1:
                         parallel_axis = batch_size_axis

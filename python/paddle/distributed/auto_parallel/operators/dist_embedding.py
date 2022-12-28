@@ -12,46 +12,49 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 
-from .common import infer_shape
-from .common import DistributedOperatorImplContainer
-from .common import DistributedOperatorImpl
-from .common import register_distributed_operator_impl_container
-from .common import gradient_synchronization
-from .common import (
-    naive_copy_op_dist_attr_for_program,
-    register_distributed_operator_impl,
-    set_comm_op_dist_attr_for_program,
-)
-from ..utils import is_dim_shard
-from ..utils import is_dim_replicate
-from ..utils import compute_compatible_and_update_dim_mapping
-from ..dist_attribute import OperatorDistributedAttribute
-from paddle.fluid import core, unique_name
-from paddle.fluid.data_feeder import check_variable_and_dtype, check_dtype
-from paddle.distributed.fleet.meta_optimizers.common import OP_ROLE_KEY, OpRole
-from ..process_group import new_process_group
-from ..utils import (
-    _get_comm_group,
-    _get_idx_in_axis,
-    _get_corresponding_rank,
-    set_var_dist_attr,
-)
-from ..cost import build_comp_desc_from_dist_op, build_comm_desc_from_dist_op
-from ..cost import (
-    build_comm_costs_from_descs,
-    build_comp_costs_from_descs,
-    build_dp_costs,
-)
-from ..cost import EmbeddingOpCost, EmbeddingGradOpCost
 from paddle.distributed.auto_parallel.cost.comm_op_cost import (
     AllreduceSumOpCost,
     IdentityOpCost,
+)
+from paddle.distributed.fleet.meta_optimizers.common import OP_ROLE_KEY, OpRole
+from paddle.fluid import core, unique_name
+from paddle.fluid.data_feeder import check_dtype, check_variable_and_dtype
+
+from ..cost import (
+    EmbeddingGradOpCost,
+    EmbeddingOpCost,
+    build_comm_costs_from_descs,
+    build_comm_desc_from_dist_op,
+    build_comp_costs_from_descs,
+    build_comp_desc_from_dist_op,
+    build_dp_costs,
+)
+from ..dist_attribute import OperatorDistributedAttribute
+from ..process_group import new_process_group
+from ..utils import (
+    _get_comm_group,
+    _get_corresponding_rank,
+    _get_idx_in_axis,
+    compute_compatible_and_update_dim_mapping,
+    is_dim_replicate,
+    is_dim_shard,
+    set_var_dist_attr,
+)
+from .common import (
+    DistributedOperatorImpl,
+    DistributedOperatorImplContainer,
+    gradient_synchronization,
+    infer_shape,
+    naive_copy_op_dist_attr_for_program,
+    register_distributed_operator_impl,
+    register_distributed_operator_impl_container,
+    set_comm_op_dist_attr_for_program,
 )
 
 
 class DistributedEmbedding(DistributedOperatorImplContainer):
     def __init__(self, op_type):
-        super(DistributedEmbedding, self).__init__(op_type)
+        super().__init__(op_type)
 
 
 register_distributed_operator_impl_container(
@@ -153,7 +156,7 @@ def adopt_lookup_table_v1(ctx, main_block, src_op, Ids_var):
 # RowParallel
 class DistributedEmbeddingImpl(DistributedOperatorImpl):
     def __init__(self, name):
-        super(DistributedEmbeddingImpl, self).__init__(name)
+        super().__init__(name)
         self._forward_implemented = True
         self._backward_implemented = True
 
@@ -172,7 +175,7 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
         desc_mapping = build_comp_desc_from_dist_op(
             dist_op=dist_op, dist_context=ctx
         )
-        processes = dist_op.dist_attr.process_mesh.processes
+        processes = dist_op.dist_attr.process_mesh.process_ids
         # embedding need start_index
         cost_mapping = build_comp_costs_from_descs(
             EmbeddingOpCost, ctx, processes, desc_mapping, cluster
@@ -228,7 +231,7 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
         )
 
         process_mesh = dist_attr.process_mesh
-        processes = process_mesh.processes
+        processes = process_mesh.process_ids
         comm_op_cost_list = build_comm_costs_from_descs(
             IdentityOpCost, ctx, processes, c_identity_desc_mapping, cluster
         )
@@ -247,7 +250,7 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
         var_dim_mapping = dist_attr.get_input_dims_mapping(
             backward_op.input("Ids")[0]
         )
-        mesh_shape = process_mesh.topology
+        mesh_shape = process_mesh.shape
         batch_size_axis = var_dim_mapping[0]
         if batch_size_axis > -1 and mesh_shape[batch_size_axis] > 1:
             parallel_axis = batch_size_axis
@@ -370,9 +373,9 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
             kwargs['Out']
         )
 
-        Ids_var = main_block.var(kwargs['Ids'][0])
+        Ids_var = main_block._var_recursive(kwargs['Ids'][0])
         Weight_var = main_block._var_recursive(kwargs['W'][0])
-        Out_var = main_block.var(kwargs['Out'][0])
+        Out_var = main_block._var_recursive(kwargs['Out'][0])
 
         # support lookup_table_v1
         if src_op.type == 'lookup_table':
@@ -387,8 +390,8 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
         ), "row_parallel_embedding's row should be divided by a specific mesh axis, but got [{}]".format(
             embedding_row_dim_mapping
         )
-        process_mesh_shape = op_dist_attr.process_mesh.topology
-        process_mesh_group = op_dist_attr.process_mesh.processes
+        process_mesh_shape = op_dist_attr.process_mesh.shape
+        process_mesh_group = op_dist_attr.process_mesh.process_ids
 
         # FIXME (JZ-LIANG) Remove this hack to support any op mesh group for Pipeline Parallelism
         if rank_id not in process_mesh_group:
@@ -507,7 +510,7 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
         allreduce_op_dist_attr.impl_type = op_dist_attr.impl_type
         allreduce_op_dist_attr.impl_idx = op_dist_attr.impl_idx
         for input_varname in c_allreduce_sum_op.desc.input_arg_names():
-            input_var = main_block.var(input_varname)
+            input_var = main_block._var_recursive(input_varname)
             tensor_dist_attr = ctx.get_tensor_dist_attr_for_program(input_var)
             assert tensor_dist_attr is not None
             allreduce_op_dist_attr.set_input_dist_attr(
@@ -536,13 +539,13 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
             dim_mapping = param_dist_attr.dims_mapping
 
             # NOTE all not splited axis should be presented in mesh
-            for axis, size in enumerate(process_mesh.topology):
+            for axis, size in enumerate(process_mesh.shape):
                 if size <= 1 or axis in dim_mapping:
                     pass
                 else:
                     group_ranks = _get_comm_group(
-                        process_mesh.processes,
-                        process_mesh.topology,
+                        process_mesh.process_ids,
+                        process_mesh.shape,
                         axis,
                         rank_id,
                     )
@@ -576,7 +579,7 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
         )
 
         # FIXME (JZ-LIANG) Remove this hack to support any op mesh group for Pipeline Parallelism
-        if rank_id not in dist_attr.process_mesh.processes:
+        if rank_id not in dist_attr.process_mesh.process_ids:
             rank_id = _get_corresponding_rank(
                 ctx, dist_attr.process_mesh, rank_id
             )
@@ -607,10 +610,10 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
             kwargs['W@GRAD']
         )
 
-        Ids_var = main_block.var(kwargs['Ids'][0])
-        Weight_var = main_block.var(kwargs['W'][0])
-        Out_grad = main_block.var(kwargs['Out@GRAD'][0])
-        Weight_grad = main_block.var(kwargs['W@GRAD'][0])
+        Ids_var = main_block._var_recursive(kwargs['Ids'][0])
+        Weight_var = main_block._var_recursive(kwargs['W'][0])
+        Out_grad = main_block._var_recursive(kwargs['Out@GRAD'][0])
+        Weight_grad = main_block._var_recursive(kwargs['W@GRAD'][0])
 
         embedding_row_dim_mapping = dist_attr.get_input_dims_mapping(
             Weight_var.name
@@ -620,8 +623,8 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
         ), "row_parallel_embedding's row should be divided by a specific mesh axis, but got [{}]".format(
             embedding_row_dim_mapping
         )
-        process_mesh_shape = dist_attr.process_mesh.topology
-        process_mesh_group = dist_attr.process_mesh.processes
+        process_mesh_shape = dist_attr.process_mesh.shape
+        process_mesh_group = dist_attr.process_mesh.process_ids
 
         # A generalized method to caculate embedding offset using cartisian product
         relative_idx = _get_idx_in_axis(

@@ -13,9 +13,10 @@
 # limitations under the License.
 
 import unittest
-import seresnext_net
-from seresnext_test_base import TestResnetBase, DeviceType
 from functools import partial
+
+import seresnext_net
+from seresnext_test_base import DeviceType, TestResnetBase
 
 
 class TestResnetGPU(TestResnetBase):
@@ -32,7 +33,7 @@ class TestResnetGPU(TestResnetBase):
         self._compare_result_with_origin_model(
             check_func,
             use_device=DeviceType.CUDA,
-            delta2=1e-5,
+            delta2=1e-3,
             compare_separately=False,
         )
 

@@ -17,18 +17,17 @@ import unittest.mock
 
 import paddle
 import paddle.nn as nn
-import paddle.static as static
 import paddle.nn.functional as F
-import paddle.utils as utils
+import paddle.static as static
 import paddle.tensor as tensor
-from paddle.fluid import layers
-from paddle.distributed.fleet import auto
+import paddle.utils as utils
+from paddle.distributed import fleet
 from paddle.distributed.auto_parallel.completion import Completer
 from paddle.distributed.auto_parallel.dist_context import DistributedContext
-from paddle.distributed import fleet
 from paddle.distributed.auto_parallel.partitioner import Partitioner
-from paddle.distributed.auto_parallel.utils import _get_comm_group
 from paddle.distributed.auto_parallel.process_group import new_process_group
+from paddle.distributed.auto_parallel.utils import _get_comm_group
+from paddle.distributed.fleet import auto
 
 paddle.enable_static()
 _global_parallel_strategy = None
@@ -106,7 +105,7 @@ def initialization_check(
 ):
     if 'mp' in mode:
         group_ranks = _get_comm_group(
-            process_mesh.processes, process_mesh.topology, mp_parallel_axis, 3
+            process_mesh.process_ids, process_mesh.shape, mp_parallel_axis, 3
         )
         mp_ring_id = new_process_group(group_ranks).id
         broadcast_ops = [
@@ -125,7 +124,7 @@ def initialization_check(
 
     if 'dp' in mode:
         group_ranks = _get_comm_group(
-            process_mesh.processes, process_mesh.topology, dp_parallel_axis, 3
+            process_mesh.process_ids, process_mesh.shape, dp_parallel_axis, 3
         )
         dp_ring_id = new_process_group(group_ranks).id
         nparam = len(serial_startup_prog.all_parameters())
@@ -296,7 +295,7 @@ class MLPLayer(nn.Layer):
         dropout_ratio=0.1,
         initializer_range=0.02,
     ):
-        super(MLPLayer, self).__init__()
+        super().__init__()
         d_model = hidden_size
         dim_feedforward = intermediate_size
         weight_attr = paddle.ParamAttr(
@@ -624,7 +623,7 @@ class AttentionLayer(nn.Layer):
         dropout_ratio=0.1,
         initializer_range=0.02,
     ):
-        super(AttentionLayer, self).__init__()
+        super().__init__()
         self.hidden_size = hidden_size
         self.sequence_len = sequence_len
         self.embed_dim = self.hidden_size
@@ -695,9 +694,8 @@ class AttentionLayer(nn.Layer):
         v = tensor.transpose(x=v, perm=[0, 2, 1, 3])
 
         # scale dot product attention
-        product = layers.matmul(
-            x=q, y=k, transpose_y=True, alpha=self.head_dim**-0.5
-        )
+        product = tensor.matmul(x=q, y=k, transpose_y=True)
+        product = tensor.scale(product, scale=self.head_dim**-0.5)
 
         if self.attn_mask is not None:
             product = product + self.attn_mask
@@ -868,7 +866,8 @@ class TestAttentionAutoPartitioner(unittest.TestCase):
             'transpose2',
             'reshape2',
             'transpose2',
-            'matmul',
+            'matmul_v2',
+            "scale",
             'softmax',
             'dropout',
             'matmul_v2',
@@ -976,7 +975,8 @@ class TestAttentionAutoPartitioner(unittest.TestCase):
             'transpose2',
             'reshape2',
             'transpose2',
-            'matmul',
+            'matmul_v2',
+            "scale",
             'softmax',
             'dropout',
             'matmul_v2',
@@ -1033,7 +1033,7 @@ class DecoderLayer(nn.Layer):
         dropout_ratio=0.1,
         initializer_range=0.02,
     ):
-        super(DecoderLayer, self).__init__()
+        super().__init__()
         self.vocab_size = vocab_size
         self.hidden_size = hidden_size
         self.max_position_embeddings = max_position_embeddings
@@ -1166,9 +1166,8 @@ class DecoderLayer(nn.Layer):
         v = tensor.transpose(x=v, perm=[0, 2, 1, 3])
 
         # scale dot product attention
-        product = layers.matmul(
-            x=q, y=k, transpose_y=True, alpha=self.head_dim**-0.5
-        )
+        product = tensor.matmul(x=q, y=k, transpose_y=True)
+        product = tensor.scale(product, scale=self.head_dim**-0.5)
 
         if self.attn_mask is not None:
             product = product + self.attn_mask
@@ -1347,7 +1346,8 @@ class TestDecoderLayerPartitioner(unittest.TestCase):
             'transpose2',
             'reshape2',
             'transpose2',
-            'matmul',
+            'matmul_v2',
+            "scale",
             'softmax',
             'dropout',
             'matmul_v2',
@@ -1399,15 +1399,15 @@ class TestDecoderLayerPartitioner(unittest.TestCase):
             distributed_attr_check_for_program(dist_main_prog, dist_context)
         )
         # check distribured attr
-        serial_op_idx = [0, 5, 9, 11, 23, 28, 31]
+        serial_op_idx = [0, 5, 9, 11, 24, 29, 32]
         dist_op_idx = [
             [0, 1],
             [6, 7],
             [11, 12],
             [14, 15],
-            [27, 28],
-            [33, 34],
-            [37, 38],
+            [28, 29],
+            [34, 35],
+            [38, 39],
         ]
         self.assertTrue(
             distributed_attr_check_for_dist_op(
@@ -1500,7 +1500,8 @@ class TestDecoderLayerPartitioner(unittest.TestCase):
             'transpose2',
             'reshape2',
             'transpose2',
-            'matmul',
+            'matmul_v2',
+            "scale",
             'softmax',
             'dropout',
             'matmul_v2',

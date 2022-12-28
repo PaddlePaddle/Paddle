@@ -12,23 +12,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import tempfile
 import shutil
+import tempfile
+import unittest
+
 import numpy as np
 
 import paddle
 from paddle import Model
-from paddle.static import InputSpec
-from paddle.vision.models import LeNet
-from paddle.vision.datasets import MNIST
 from paddle.metric import Accuracy
 from paddle.nn.layer.loss import CrossEntropyLoss
+from paddle.static import InputSpec
+from paddle.vision.datasets import MNIST
+from paddle.vision.models import LeNet
 
 
 class MnistDataset(MNIST):
     def __init__(self, mode, return_label=True, sample_num=None):
-        super(MnistDataset, self).__init__(mode=mode)
+        super().__init__(mode=mode)
         self.return_label = return_label
         if sample_num:
             self.images = self.images[:sample_num]

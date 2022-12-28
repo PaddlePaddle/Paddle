@@ -13,35 +13,24 @@
 # limitations under the License.
 
 import paddle
+from paddle import _C_ops, _legacy_C_ops
 from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.layers.tensor import fill_constant
-from ...tensor import concat
-from ...tensor.creation import zeros
-from paddle.static import Variable
+from paddle.framework import core, in_dynamic_mode
+from paddle.static import Variable, default_main_program
+from paddle.tensor.creation import full
 
-# TODO: define the common functions to build a neural network
-from ...tensor.manipulation import squeeze
-from ...tensor.manipulation import unsqueeze
-from ...tensor import clip
-from ...tensor import sum
-from ...tensor import sqrt
 from ...fluid.data_feeder import (
-    check_variable_and_dtype,
     check_dtype,
     check_type,
+    check_variable_and_dtype,
 )
-from ...fluid.framework import (
-    _in_legacy_dygraph,
-    _non_static_mode,
-    in_dygraph_mode,
-)
+from ...fluid.framework import in_dygraph_mode
+from ...tensor import clip, concat, sqrt, sum
+from ...tensor.creation import zeros
 
-from paddle import _C_ops, _legacy_C_ops
-from paddle.framework import in_dynamic_mode
-from paddle.tensor.creation import full
-from paddle.framework import core
-from paddle.fluid.framework import _in_legacy_dygraph
-from paddle.static import default_main_program
+# TODO: define the common functions to build a neural network
+from ...tensor.manipulation import squeeze, unsqueeze
 
 __all__ = []
 
@@ -77,17 +66,17 @@ def unfold(x, kernel_sizes, strides=1, paddings=0, dilations=1, name=None):
                                   data type can be float32 or float64
         kernel_sizes(int|list):   The size of convolution kernel, should be [k_h, k_w]
                                   or an integer k treated as [k, k].
-        strides(int|list):        The strides, should be [stride_h, stride_w]
+        strides(int|list, optional):        The strides, should be [stride_h, stride_w]
                                   or an integer stride treated as [sride, stride].
                                   For default, strides will be [1, 1].
-        paddings(int|list):       The paddings of each dimension, should be
+        paddings(int|list, optional):       The paddings of each dimension, should be
                                   [padding_top, padding_left, padding_bottom, padding_right]
                                   or [padding_h, padding_w] or an integer padding.
                                   If [padding_h, padding_w] was given, it will expanded to
                                   [padding_h, padding_w, padding_h, padding_w]. If an integer
                                   padding was given, [padding, padding, padding, padding] will
                                   be used. For default, paddings will be [0, 0, 0, 0]
-        dilations(int|list):      the dilations of convolution kernel, should be
+        dilations(int|list, optional):      the dilations of convolution kernel, should be
                                   [dilation_h, dilation_w], or an integer dilation treated as
                                   [dilation, dilation]. For default, it will be [1, 1].
         name(str, optional): The default value is None.
@@ -710,6 +699,7 @@ def upsample(
     name=None,
 ):
     """
+
     This API resizes a batch of images.
 
     The input must be a 3-D Tensor of the shape (num_batches, channels, in_w)
@@ -720,11 +710,12 @@ def upsample(
     and the resizing only applies on the three dimensions(depth, height and width).
 
     Supporting resample methods:
-        'linear' : Linear interpolation
-        'bilinear' : Bilinear interpolation
-        'trilinear' : Trilinear interpolation
-        'nearest' : Nearest neighbor interpolation
-        'bicubic' : Bicubic interpolation
+    - 'linear' : Linear interpolation
+    - 'bilinear' : Bilinear interpolation
+    - 'trilinear' : Trilinear interpolation
+    - 'nearest' : Nearest neighbor interpolation
+    - 'bicubic' : Bicubic interpolation
+
     Linear interpolation is the method of using a line connecting two known quantities
     to determine the value of an unknown quantity between the two known quantities.
 
@@ -757,77 +748,78 @@ def upsample(
     `paddle.nn.functional.adaptive_avg_pool2d` or `paddle.nn.functional.adaptive_avg_pool3d`.
 
     Example:
-    .. code-block:: text
+        .. code-block:: text
 
-        For scale_factor:
-            if align_corners = True && out_size > 1 :
-              scale_factor = (in_size-1.0)/(out_size-1.0)
+            For scale_factor:
+                if align_corners = True && out_size > 1 :
+                scale_factor = (in_size-1.0)/(out_size-1.0)
+                else:
+                scale_factor = float(in_size/out_size)
+            Linear interpolation:
+                if:
+                    align_corners = False , align_mode = 0
+                    input : (N,C,W_in)
+                    output: (N,C,W_out) where:
+                    W_out = (W_{in}+0.5) * scale_{factor} - 0.5
+                else:
+                    input : (N,C,W_in)
+                    output: (N,C,W_out) where:
+                    W_out = W_{in} * scale_{factor}
+            Nearest neighbor interpolation:
+            if:
+                align_corners = False
+                input : (N,C,H_in,W_in)
+                output: (N,C,H_out,W_out) where:
+                H_out = floor (H_{in} * scale_{factor})
+                W_out = floor (W_{in} * scale_{factor})
             else:
-              scale_factor = float(in_size/out_size)
-        Linear interpolation:
+                align_corners = True
+                input : (N,C,H_in,W_in)
+                output: (N,C,H_out,W_out) where:
+                H_out = round(H_{in} * scale_{factor})
+                W_out = round(W_{in} * scale_{factor})
+
+            Bilinear interpolation:
             if:
                 align_corners = False , align_mode = 0
-                input : (N,C,W_in)
-                output: (N,C,W_out) where:
+                input : (N,C,H_in,W_in)
+                output: (N,C,H_out,W_out) where:
+                H_out = (H_{in}+0.5) * scale_{factor} - 0.5
                 W_out = (W_{in}+0.5) * scale_{factor} - 0.5
             else:
-                input : (N,C,W_in)
-                output: (N,C,W_out) where:
+                input : (N,C,H_in,W_in)
+                output: (N,C,H_out,W_out) where:
+                H_out = H_{in} * scale_{factor}
                 W_out = W_{in} * scale_{factor}
-        Nearest neighbor interpolation:
-          if:
-              align_corners = False
-              input : (N,C,H_in,W_in)
-              output: (N,C,H_out,W_out) where:
-              H_out = floor (H_{in} * scale_{factor})
-              W_out = floor (W_{in} * scale_{factor})
-          else:
-              align_corners = True
-              input : (N,C,H_in,W_in)
-              output: (N,C,H_out,W_out) where:
-              H_out = round(H_{in} * scale_{factor})
-              W_out = round(W_{in} * scale_{factor})
+            Bicubic interpolation:
+            if:
+                align_corners = False
+                input : (N,C,H_in,W_in)
+                output: (N,C,H_out,W_out) where:
+                H_out = (H_{in}+0.5) * scale_{factor} - 0.5
+                W_out = (W_{in}+0.5) * scale_{factor} - 0.5
+            else:
+                input : (N,C,H_in,W_in)
+                output: (N,C,H_out,W_out) where:
+                H_out = H_{in} * scale_{factor}
+                W_out = W_{in} * scale_{factor}
+            Trilinear interpolation:
+            if:
+                align_corners = False , align_mode = 0
+                input : (N,C,D_in,H_in,W_in)
+                output: (N,C,D_out,H_out,W_out) where:
+                D_out = (D_{in}+0.5) * scale_{factor} - 0.5
+                H_out = (H_{in}+0.5) * scale_{factor} - 0.5
+                W_out = (W_{in}+0.5) * scale_{factor} - 0.5
+            else:
+                input : (N,C,D_in,H_in,W_in)
+                output: (N,C,D_out,H_out,W_out) where:
+                D_out = D_{in} * scale_{factor}
+                H_out = H_{in} * scale_{factor}
+                W_out = W_{in} * scale_{factor}
 
-        Bilinear interpolation:
-          if:
-              align_corners = False , align_mode = 0
-              input : (N,C,H_in,W_in)
-              output: (N,C,H_out,W_out) where:
-              H_out = (H_{in}+0.5) * scale_{factor} - 0.5
-              W_out = (W_{in}+0.5) * scale_{factor} - 0.5
-          else:
-              input : (N,C,H_in,W_in)
-              output: (N,C,H_out,W_out) where:
-              H_out = H_{in} * scale_{factor}
-              W_out = W_{in} * scale_{factor}
-        Bicubic interpolation:
-          if:
-              align_corners = False
-              input : (N,C,H_in,W_in)
-              output: (N,C,H_out,W_out) where:
-              H_out = (H_{in}+0.5) * scale_{factor} - 0.5
-              W_out = (W_{in}+0.5) * scale_{factor} - 0.5
-          else:
-              input : (N,C,H_in,W_in)
-              output: (N,C,H_out,W_out) where:
-              H_out = H_{in} * scale_{factor}
-              W_out = W_{in} * scale_{factor}
-        Trilinear interpolation:
-          if:
-              align_corners = False , align_mode = 0
-              input : (N,C,D_in,H_in,W_in)
-              output: (N,C,D_out,H_out,W_out) where:
-              D_out = (D_{in}+0.5) * scale_{factor} - 0.5
-              H_out = (H_{in}+0.5) * scale_{factor} - 0.5
-              W_out = (W_{in}+0.5) * scale_{factor} - 0.5
-          else:
-              input : (N,C,D_in,H_in,W_in)
-              output: (N,C,D_out,H_out,W_out) where:
-              D_out = D_{in} * scale_{factor}
-              H_out = H_{in} * scale_{factor}
-              W_out = W_{in} * scale_{factor}
-    https://en.wikipedia.org/wiki/Linear_interpolation.
     For details of linear interpolation, please refer to Wikipedia:
+    https://en.wikipedia.org/wiki/Linear_interpolation.
 
     For details of nearest neighbor interpolation, please refer to Wikipedia:
     https://en.wikipedia.org/wiki/Nearest-neighbor_interpolation.
@@ -871,23 +863,24 @@ def upsample(
         name(str, optional): The default value is None.
                              Normally there is no need for user to set this property.
                              For more information, please refer to :ref:`api_guide_Name`
+
     Returns:
         A 3-D Tensor of the shape (num_batches, channels, out_w) or (num_batches, out_w, channels),
         A 4-D Tensor of the shape (num_batches, channels, out_h, out_w) or (num_batches, out_h, out_w, channels),
         or 5-D Tensor of the shape (num_batches, channels, out_d, out_h, out_w) or (num_batches, out_d, out_h, out_w, channels).
 
-        Examples:
-            .. code-block:: python
+    Examples:
+        .. code-block:: python
 
-                import paddle
-                import paddle.nn as nn
+            import paddle
+            import paddle.nn as nn
 
-                input_data = paddle.randn(shape=(2,3,6,10)).astype(paddle.float32)
-                upsample_out = paddle.nn.Upsample(size=[12,12])
+            input_data = paddle.randn(shape=(2,3,6,10)).astype(paddle.float32)
+            upsample_out = paddle.nn.Upsample(size=[12,12])
 
-                output = upsample_out(x=input_data)
-                print(output.shape)
-                # [2L, 3L, 12L, 12L]
+            output = upsample_out(x=input_data)
+            print(output.shape)
+            # [2L, 3L, 12L, 12L]
 
     """
     return interpolate(
@@ -930,30 +923,28 @@ def bilinear(x1, x2, weight, bias=None, name=None):
 
     if in_dygraph_mode():
         return _C_ops.bilinear_tensor_product(x1, x2, weight, bias)
-    elif _non_static_mode():
-        return _legacy_C_ops.bilinear_tensor_product(x1, x2, weight, bias)
+    else:
+        check_variable_and_dtype(x1, 'x1', ['float32', 'float64'], 'bilinear')
+        check_variable_and_dtype(x2, 'x2', ['float32', 'float64'], 'bilinear')
 
-    check_variable_and_dtype(x1, 'x1', ['float32', 'float64'], 'bilinear')
-    check_variable_and_dtype(x2, 'x2', ['float32', 'float64'], 'bilinear')
+        inputs = {"X": x1, "Y": x2, "Weight": weight}
+        if bias is not None:
+            inputs["Bias"] = bias
 
-    inputs = {"X": x1, "Y": x2, "Weight": weight}
-    if bias is not None:
-        inputs["Bias"] = bias
+        helper = LayerHelper("bilinear", **locals())
+        out = helper.create_variable_for_type_inference(dtype=x1.dtype)
 
-    helper = LayerHelper("bilinear", **locals())
-    out = helper.create_variable_for_type_inference(dtype=x1.dtype)
+        helper.append_op(
+            type="bilinear_tensor_product", inputs=inputs, outputs={"Out": out}
+        )
 
-    helper.append_op(
-        type="bilinear_tensor_product", inputs=inputs, outputs={"Out": out}
-    )
-
-    return out
+        return out
 
 
 def dropout(
     x, p=0.5, axis=None, training=True, mode="upscale_in_train", name=None
 ):
-    """
+    r"""
     Dropout is a regularization technique for reducing overfitting by preventing
     neuron co-adaption during training. The dropout operator randomly sets the
     outputs of some units to zero, while upscale others according to the given
@@ -961,22 +952,22 @@ def dropout(
 
     Args:
         x (Tensor): The input tensor. The data type is float32 or float64.
-        p (float|int, optional): Probability of setting units to zero. Default 0.5.
-        axis (int|list|tuple, optional): The axis along which the dropout is performed. Default None.
-        training (bool, optional): A flag indicating whether it is in train phrase or not. Default True.
+        p (float|int, optional): Probability of setting units to zero. Default: 0.5.
+        axis (int|list|tuple, optional): The axis along which the dropout is performed. Default: None.
+        training (bool, optional): A flag indicating whether it is in train phrase or not. Default: True.
         mode(str, optional): ['upscale_in_train'(default) | 'downscale_in_infer'].
 
-            1. upscale_in_train(default), upscale the output at training time
+            1. upscale_in_train (default), upscale the output at training time
 
-                - train: out = input * mask / ( 1.0 - dropout_prob )
-                - inference: out = input
+                - train: :math:`out = input \times \frac{mask}{(1.0 - dropout\_prob)}`
+                - inference: :math:`out = input`
 
             2. downscale_in_infer, downscale the output at inference
 
-                - train: out = input * mask
-                - inference: out = input * (1.0 - dropout_prob)
+                - train: :math:`out = input \times mask`
+                - inference: :math:`out = input \times (1.0 - dropout\_prob)`
 
-        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        name (str, optional): Name for the operation, Default: None. For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         A Tensor representing the dropout, has same shape and data type as `x` .
@@ -1060,8 +1051,8 @@ def dropout(
                  [0 0 0]]
                 Actually this is not what we want because all elements may set to zero~
 
-        When x is a 4d tensor with shape `NCHW`, we can set ``axis=[0,1]`` and the dropout will be performed in channel `N` and `C`, `H` and `W` is tied, i.e. paddle.nn.dropout(x, p, axis=[0,1]) . Please refer to ``paddle.nn.functional.dropout2d`` for more details.
-        Similarly, when x is a 5d tensor with shape `NCDHW`, we can set ``axis=[0,1]`` to perform dropout3d. Please refer to ``paddle.nn.functional.dropout3d`` for more details.
+        When x is a 4d tensor with shape `NCHW`, where `N` is batch size, `C` is the number of channels, H and W are the height and width of the feature, we can set ``axis=[0,1]`` and the dropout will be performed in channel `N` and `C`, `H` and `W` is tied, i.e. paddle.nn.dropout(x, p, axis=[0,1]) . Please refer to ``paddle.nn.functional.dropout2d`` for more details.
+        Similarly, when x is a 5d tensor with shape `NCDHW`, where `D` is the depth of the feature, we can set ``axis=[0,1]`` to perform dropout3d. Please refer to ``paddle.nn.functional.dropout3d`` for more details.
 
         .. code-block:: python
 
@@ -1121,77 +1112,62 @@ def dropout(
             'downgrade_in_infer' if mode == 'downscale_in_infer' else mode
         )  # semantic transfer
 
-        if _non_static_mode():
+        if in_dygraph_mode():
             if default_main_program().random_seed != 0:
                 seed = default_main_program().random_seed
 
-            if in_dygraph_mode():
-                out, mask = _C_ops.dropout(
-                    x,
-                    None,
-                    p,
-                    not training,
-                    mode,
-                    seed if seed is not None else 0,
-                    seed is not None,
-                )
-
-                return out
-            out, mask = _legacy_C_ops.dropout(
+            out, mask = _C_ops.dropout(
                 x,
-                'dropout_prob',
+                None,
                 p,
-                'is_test',
                 not training,
-                'fix_seed',
-                seed is not None,
-                'seed',
-                seed if seed is not None else 0,
-                'dropout_implementation',
                 mode,
+                seed if seed is not None else 0,
+                seed is not None,
+            )
+
+            return out
+        else:
+            helper = LayerHelper('dropout', **locals())
+            check_variable_and_dtype(
+                x, 'x', ['float16', 'float32', 'float64'], 'dropout'
+            )
+
+            out = helper.create_variable_for_type_inference(dtype=x.dtype)
+            mask = helper.create_variable_for_type_inference(
+                dtype=core.VarDesc.VarType.UINT8, stop_gradient=True
+            )
+
+            def get_attrs(prog, dropout_prob, is_test, seed):
+                if (seed is None or seed == 0) and prog.random_seed != 0:
+                    seed = prog.random_seed
+
+                if isinstance(
+                    dropout_prob, Variable
+                ) and not dropout_prob.shape != [1]:
+                    raise TypeError(
+                        "Required p.shape == [1] if type(p) is Variable, but received p.shape = {}".format(
+                            p.shape
+                        )
+                    )
+                attrs = {
+                    'dropout_prob': dropout_prob,
+                    'is_test': is_test,
+                    'fix_seed': seed is not None,
+                    'seed': seed if seed is not None else 0,
+                    'dropout_implementation': mode,
+                }
+                return attrs
+
+            attrs = get_attrs(helper.main_program, p, not training, seed)
+
+            helper.append_op(
+                type='dropout',
+                inputs={'X': [x]},
+                outputs={'Out': [out], 'Mask': [mask]},
+                attrs=attrs,
             )
             return out
-
-        helper = LayerHelper('dropout', **locals())
-        check_variable_and_dtype(
-            x, 'x', ['float16', 'float32', 'float64'], 'dropout'
-        )
-
-        out = helper.create_variable_for_type_inference(dtype=x.dtype)
-        mask = helper.create_variable_for_type_inference(
-            dtype=core.VarDesc.VarType.UINT8, stop_gradient=True
-        )
-
-        def get_attrs(prog, dropout_prob, is_test, seed):
-            if (seed is None or seed == 0) and prog.random_seed != 0:
-                seed = prog.random_seed
-
-            if isinstance(
-                dropout_prob, Variable
-            ) and not dropout_prob.shape != [1]:
-                raise TypeError(
-                    "Required p.shape == [1] if type(p) is Variable, but received p.shape = {}".format(
-                        p.shape
-                    )
-                )
-            attrs = {
-                'dropout_prob': dropout_prob,
-                'is_test': is_test,
-                'fix_seed': seed is not None,
-                'seed': seed if seed is not None else 0,
-                'dropout_implementation': mode,
-            }
-            return attrs
-
-        attrs = get_attrs(helper.main_program, p, not training, seed)
-
-        helper.append_op(
-            type='dropout',
-            inputs={'X': [x]},
-            outputs={'Out': [out], 'Mask': [mask]},
-            attrs=attrs,
-        )
-        return out
     else:  # sometimes called dropout_nd #TODO: optimize with c++
         if not in_dynamic_mode():
             check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'dropout')
@@ -1258,15 +1234,15 @@ def dropout2d(x, p=0.5, training=True, data_format='NCHW', name=None):
     a channel is a 2D feature map with the shape `HW` ). Each channel will be zeroed out independently
     on every forward call with probability `p` using samples from a Bernoulli distribution.
 
-    See ``paddle.nn.functional.dropout`` for more details.
+    See :ref:`api_paddle_nn_functional_dropout` for more details.
 
     Args:
         x (Tensor):  The input is 4-D Tensor with shape [N, C, H, W] or [N, H, W, C].
                      The data type is float32 or float64.
-        p (float): Probability of setting units to zero. Default 0.5.
-        training (bool): A flag indicating whether it is in train phrase or not. Default True.
-        data_format (str, optional): Specify the data format of the input, and the data format of the output will be consistent with that of the input. An optional string from `NCHW` or `NHWC` . The default is `NCHW` . When it is `NCHW` , the data is stored in the order of: [batch_size, input_channels, input_height, input_width].
-        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        p (float, optional): Probability of setting units to zero. Default: 0.5.
+        training (bool, optional): A flag indicating whether it is in train phrase or not. Default: True.
+        data_format (str, optional): Specify the data format of the input, and the data format of the output will be consistent with that of the input. An optional string from `NCHW` or `NHWC` . When it is `NCHW` , the data is stored in the order of: [batch_size, input_channels, input_height, input_width]. Default: `NCHW` .
+        name (str, optional): Name for the operation, Default: None. For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         A Tensor representing the dropout2d, has same shape and data type as `x` .
@@ -1317,15 +1293,15 @@ def dropout3d(x, p=0.5, training=True, data_format='NCDHW', name=None):
     a channel is a 3D feature map with the shape `DHW` ). Each channel will be zeroed out independently
     on every forward call with probability `p` using samples from a Bernoulli distribution.
 
-    See ``paddle.nn.functional.dropout`` for more details.
+    See :ref:`api_paddle_nn_functional_dropout` for more details.
 
     Args:
         x (Tensor):  The input is 5-D Tensor with shape [N, C, D, H, W] or [N, D, H, W, C].
                      The data type is float32 or float64.
-        p (float): Probability of setting units to zero. Default 0.5.
-        training (bool): A flag indicating whether it is in train phrase or not. Default True.
-        data_format (str, optional): Specify the data format of the input, and the data format of the output will be consistent with that of the input. An optional string from ``NCDHW`` or ``NDHWC``. The default is ``NCDHW`` . When it is ``NCDHW`` , the data is stored in the order of: [batch_size, input_channels, input_depth, input_height, input_width].
-        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        p (float, optional): Probability of setting units to zero. Default: 0.5.
+        training (bool, optional): A flag indicating whether it is in train phrase or not. Default: True.
+        data_format (str, optional): Specify the data format of the input, and the data format of the output will be consistent with that of the input. An optional string from ``NCDHW`` or ``NDHWC``. When it is ``NCDHW`` , the data is stored in the order of: [batch_size, input_channels, input_depth, input_height, input_width]. Default: ``NCDHW`` .
+        name (str, optional): Name for the operation, Default: None. For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         A Tensor representing the dropout3d, has same shape and data type with `x` .
@@ -1448,35 +1424,35 @@ def alpha_dropout(x, p=0.5, training=True, name=None):
         return x
 
 
-def pad(x, pad, mode='constant', value=0, data_format="NCHW", name=None):
+def pad(x, pad, mode='constant', value=0.0, data_format="NCHW", name=None):
     """
-    Pad tensor according to 'pad' and 'mode'.
-    If mode is 'constant' and length of pad is twice as length of x dimension,
+    Pad tensor according to ``'pad'`` and ``'mode'``.
+    If mode is ``'constant'`` and length of pad is twice as length of x dimension,
     then the padding will be started from the first dimension and moved back onto x
-    according to 'pad' and 'value'.
-    If mode is 'reflect', pad[0] and pad[1] must be no greater
+    according to ``'pad'`` and ``'value'``.
+    If mode is ``'reflect'``, pad[0] and pad[1] must be no greater
     than width-1. The height and depth dimension has the same condition.
 
     Parameters:
         x (Tensor): The input tensor with data type float32/double/int32/int64_t.
         pad (Tensor|list[int]|tuple[int]): The padding size with data type int.
-            If mode is 'constant' and length of pad is twice as length of x dimension, then x will
+            If mode is ``'constant'`` and length of pad is twice as length of x dimension, then x will
             be padded from the first  dimension to the last dimension.
             Else: 1. If input dimension is 3, then the pad has the form (pad_left,
             pad_right). 2. If the input dimension is 4, then the pad has the form (pad_left, pad_right,
             pad_top, pad_bottom). 3. If the input dimension is 5, then the pad has the form
             (pad_left, pad_right, pad_top, pad_bottom, pad_front, pad_back).
-        mode (str, optional): Four modes: 'constant' (default), 'reflect', 'replicate', 'circular'. Default is 'constant'
+        mode (str, optional): Four modes: ``'constant'`` (default), ``'reflect'``, ``'replicate'``, ``'circular'``. Default is ``'constant'``.
 
            - 'constant' mode, uses a constant value to pad the input tensor.
            - 'reflect' mode, uses reflection of the input boundaries to pad the input tensor.
            - 'replicate' mode, uses input boundaries to pad the input tensor.
            - 'circular' mode, uses circular input to pad the input tensor.
 
-        value (float, optional): The value to fill the padded areas in 'constant' mode . Default is :math:`0.0`，
-        data_format (str, optional): An string from: "NCL", "NLC", NHWC", "NCHW", "NCDHW", "NDHWC". Specify the data format of
-           the input data. Default is "NCHW"，
-        name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+        value (float, optional): The value to fill the padded areas in 'constant' mode . Default is :math:`0.0`.
+        data_format (str, optional): An string from: ``'NCL'``, ``'NLC'``, ``'NHWC'``, ``'NCHW'``, ``'NCDHW'``, ``'NDHWC'``. Specify the data format of
+           the input data. Default: ``'NCHW'``.
+        name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: ``'None'``.
 
     Returns:
         Tensor, a Tensor padded according to pad and mode and data type is same as input.
@@ -1687,38 +1663,21 @@ def pad(x, pad, mode='constant', value=0, data_format="NCHW", name=None):
             pad = pad.numpy().tolist()
         out = _C_ops.pad3d(x, pad, mode, value, data_format)
     else:
-        if _in_legacy_dygraph():
-            if isinstance(pad, Variable):
-                pad = pad.numpy().tolist()
-            out = _legacy_C_ops.pad3d(
-                x,
-                "paddings",
-                pad,
-                "mode",
-                mode,
-                "value",
-                value,
-                "data_format",
-                data_format,
-                "name",
-                name,
-            )
+        attrs = {'mode': mode, 'value': value, 'data_format': data_format}
+        inputs = {'X': [x]}
+        if isinstance(pad, Variable):
+            inputs['Paddings'] = [pad]
+            attrs['paddings'] = []
         else:
-            attrs = {'mode': mode, 'value': value, 'data_format': data_format}
-            inputs = {'X': [x]}
-            if isinstance(pad, Variable):
-                inputs['Paddings'] = [pad]
-                attrs['paddings'] = []
-            else:
-                attrs['paddings'] = pad
+            attrs['paddings'] = pad
 
-            helper = LayerHelper('pad3d', **locals())
+        helper = LayerHelper('pad3d', **locals())
 
-            dtype = helper.input_dtype(input_param_name='input')
-            out = helper.create_variable_for_type_inference(dtype)
-            helper.append_op(
-                type='pad3d', inputs=inputs, outputs={"Out": out}, attrs=attrs
-            )
+        dtype = helper.input_dtype(input_param_name='input')
+        out = helper.create_variable_for_type_inference(dtype)
+        helper.append_op(
+            type='pad3d', inputs=inputs, outputs={"Out": out}, attrs=attrs
+        )
 
     if len(unsqueezed_dim) != 0:
         out = squeeze(out, axis=unsqueezed_dim)
@@ -1876,46 +1835,34 @@ def linear(x, weight, bias=None, name=None):
         # TODO(jiabin): using addmm for fast forward route
         return _C_ops.linear(x, weight, bias)
     else:
-        if _in_legacy_dygraph():
-            pre_bias = _legacy_C_ops.matmul_v2(
-                x, weight, 'trans_x', False, 'trans_y', False
-            )
+        helper = LayerHelper('linear', **locals())
+        dtype = x.dtype
 
-            if bias is None:
-                return pre_bias
+        check_variable_and_dtype(
+            x, 'x', ['float16', 'float32', 'float64'], 'linear'
+        )
+        check_dtype(dtype, 'dtype', ['float16', 'float32', 'float64'], 'linear')
 
-            return _legacy_C_ops.elementwise_add(pre_bias, bias)
-        else:
-            helper = LayerHelper('linear', **locals())
-            dtype = x.dtype
-
-            check_variable_and_dtype(
-                x, 'x', ['float16', 'float32', 'float64'], 'linear'
-            )
-            check_dtype(
-                dtype, 'dtype', ['float16', 'float32', 'float64'], 'linear'
-            )
-
-            inputs = {'X': [x], 'Y': [weight]}
-            attrs = {'trans_x': False, 'trans_y': False}
-            tmp = helper.create_variable_for_type_inference(dtype)
+        inputs = {'X': [x], 'Y': [weight]}
+        attrs = {'trans_x': False, 'trans_y': False}
+        tmp = helper.create_variable_for_type_inference(dtype)
+        helper.append_op(
+            type='matmul_v2',
+            inputs=inputs,
+            outputs={'Out': tmp},
+            attrs=attrs,
+        )
+        if bias is not None:
+            res = helper.create_variable_for_type_inference(dtype)
             helper.append_op(
-                type='matmul_v2',
-                inputs=inputs,
-                outputs={'Out': tmp},
-                attrs=attrs,
+                type='elementwise_add',
+                inputs={'X': [tmp], 'Y': [bias]},
+                outputs={'Out': [res]},
+                attrs={'axis': len(x.shape) - 1},
             )
-            if bias is not None:
-                res = helper.create_variable_for_type_inference(dtype)
-                helper.append_op(
-                    type='elementwise_add',
-                    inputs={'X': [tmp], 'Y': [bias]},
-                    outputs={'Out': [res]},
-                    attrs={'axis': len(x.shape) - 1},
-                )
-            else:
-                res = tmp
-            return res
+        else:
+            res = tmp
+        return res
 
 
 def label_smooth(label, prior_dist=None, epsilon=0.1, name=None):
@@ -1963,18 +1910,16 @@ def label_smooth(label, prior_dist=None, epsilon=0.1, name=None):
         .. code-block:: python
 
             import paddle
-            import numpy as np
-
-            x_data = np.array([[[0, 1, 0],
-                                [ 1,  0, 1]]]).astype("float32")
-            print(x_data.shape)
             paddle.disable_static()
-            x = paddle.to_tensor(x_data, stop_gradient=False)
+
+            x = paddle.to_tensor([[[0, 1, 0],
+                                [ 1,  0, 1]]], dtype="float32", stop_gradient=False)
+
             output = paddle.nn.functional.label_smooth(x)
             print(output)
-
-            #[[[0.03333334 0.93333334 0.03333334]
-            #  [0.93333334 0.03333334 0.93333334]]]
+            # Tensor(shape=[1, 2, 3], dtype=float32, place=Place(gpu:0), stop_gradient=False,
+            #        [[[0.03333334, 0.93333334, 0.03333334],
+            #          [0.93333334, 0.03333334, 0.93333334]]])
     """
     if epsilon > 1.0 or epsilon < 0.0:
         raise ValueError("The value of epsilon must be between 0 and 1.")

@@ -21,8 +21,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
-
 class FusedMultiTransformerOp : public framework::OperatorWithKernel {
  private:
   static constexpr const char *OpName = "FusedMultiTransformerOp";
@@ -93,27 +91,6 @@ class FusedMultiTransformerOp : public framework::OperatorWithKernel {
             x_dim,
             y_dim));
 
-    if (ctx->Attrs().Get<int>("ring_id") == -1) {
-      if (trans_qkvw) {
-        PADDLE_ENFORCE_EQ(y_dim[1] * y_dim[2],
-                          y_dim[3],
-                          platform::errors::InvalidArgument(
-                              "The dimensions of qkv_weight must be 4"
-                              "(3, num_head, dim_head, dim_embed),"
-                              "and must satisfy the limitations: "
-                              "(num_head * dim_head == dim_embed)"));
-
-      } else {
-        PADDLE_ENFORCE_EQ(y_dim[2] * y_dim[3],
-                          y_dim[0],
-                          platform::errors::InvalidArgument(
-                              "The dimensions of qkv_weight must be 4"
-                              "(dim_embed, 3, num_head, dim_head),"
-                              "and must satisfy the limitations: "
-                              "(num_head * dim_head == dim_embed)"));
-      }
-    }
-
     if (ctx->HasInputs("CacheKV")) {
       // [2, batch_size, num_head, max_seq_len, head_size]
       const auto &c_dims = ctx->GetInputsDim("CacheKV");
@@ -164,7 +141,7 @@ class FusedMultiTransformerOp : public framework::OperatorWithKernel {
 
   framework::OpKernelType GetKernelTypeForVar(
       const std::string &var_name,
-      const Tensor &tensor,
+      const phi::DenseTensor &tensor,
       const framework::OpKernelType &expected_kernel_type) const override {
     if (var_name == "TimeStep") {
       VLOG(10) << "var_name:" << var_name << " need not to transform";
@@ -197,6 +174,9 @@ class FusedMultiTransformerOpOpMaker
              "(optional) The prefix caches for generation inference.")
         .AsDispensable()
         .AsDuplicable();
+    AddInput("RotaryPosEmb",
+             "(optional) The RoPE embeddings for generation inference.")
+        .AsDispensable();
     AddInput("TimeStep",
              "(optional, int) The time step for generation inference.")
         .AsDispensable();
@@ -232,6 +212,18 @@ class FusedMultiTransformerOpOpMaker
                   "else, uses post_layer_norm architecuture. "
                   "[default true].")
         .SetDefault(true);
+    AddAttr<int>("rotary_emb_dims",
+                 "the Attr(dims) for RotaryPosEmb's Computation  [default 0].")
+        .SetDefault(0)
+        .AddCustomChecker([](const int &rotary_emb_dims) {
+          PADDLE_ENFORCE_EQ(
+              rotary_emb_dims >= 0 && rotary_emb_dims <= 2,
+              true,
+              platform::errors::InvalidArgument(
+                  "'rotary_emb_dims' in Op(Rotray) should be between"
+                  "0 and 2, But received [%s].",
+                  rotary_emb_dims));
+        });
     AddAttr<float>("epsilon",
                    "Constant for numerical stability [default 1e-5].")
         .SetDefault(1e-5)
@@ -270,7 +262,17 @@ class FusedMultiTransformerOpOpMaker
                   "dropout_implementation can only be downgrade_in_infer or "
                   "upscale_in_train"));
         });
-    AddAttr<std::string>("act_method", "act_method").SetDefault("gelu");
+    AddAttr<std::string>("act_method", "act_method")
+        .SetDefault("gelu")
+        .AddCustomChecker([](const std::string &act_type) {
+          PADDLE_ENFORCE_EQ(
+              act_type == "gelu" || act_type == "relu" || act_type == "none",
+              true,
+              platform::errors::InvalidArgument(
+                  "Only support `gelu`, `relu`, `none` activation in "
+                  "FusedMultiTransformer. "));
+        });
+
     AddAttr<bool>(
         "trans_qkvw",
         "Whether the weights of qkv should be transposed. If true,"

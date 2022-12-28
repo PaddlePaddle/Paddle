@@ -13,9 +13,11 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
-import paddle.fluid as fluid
+
 import paddle
+import paddle.fluid as fluid
 import paddle.nn as nn
 
 
@@ -130,7 +132,7 @@ class TestModelAverage(unittest.TestCase):
 
         class LinearNet(nn.Layer):
             def __init__(self):
-                super(LinearNet, self).__init__()
+                super().__init__()
                 self._linear = nn.Linear(IMAGE_SIZE, CLASS_NUM)
                 self.bias = self._linear.bias
 

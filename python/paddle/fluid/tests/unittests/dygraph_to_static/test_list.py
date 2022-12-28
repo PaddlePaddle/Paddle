@@ -12,12 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
 import unittest
 
-import paddle
 import numpy as np
+
+import paddle
 import paddle.fluid as fluid
-from paddle.fluid.dygraph.jit import declarative
 from paddle.fluid.layers.utils import map_structure
 
 SEED = 2020
@@ -120,8 +121,16 @@ def test_list_append_in_while_loop_with_stack(x, iter_num):
     while i < iter_num.numpy()[0]:
         a.append(x)
         i += 1
-    out = fluid.layers.stack(a, axis=1)
+    out = paddle.stack(a, axis=1)
     return out
+
+
+def test_tensor_array_slice(x, iter_num):
+    a = []
+    for i in range(paddle.to_tensor(3)):
+        a.append(paddle.to_tensor(i))
+    t = a[1:3]
+    return a[2]
 
 
 # Situation 2: Test list pop
@@ -173,7 +182,7 @@ def test_list_pop_in_for_loop(x, iter_num):
         a.append(x + i)
         b.append(x * 2)
 
-    one = fluid.layers.ones(shape=[1], dtype="int32")
+    one = paddle.ones(shape=[1], dtype="int32")
     for i in range(one.numpy()[0]):
         item = a.pop()
     return a[0], item, b[1]
@@ -237,7 +246,7 @@ class TestListWithoutControlFlow(unittest.TestCase):
 
         with fluid.dygraph.guard():
             if to_static:
-                res = declarative(self.dygraph_func)(self.input)
+                res = paddle.jit.to_static(self.dygraph_func)(self.input)
             else:
                 res = self.dygraph_func(self.input)
             return self.varbase_to_numpy(res)
@@ -280,8 +289,10 @@ class TestListInWhileLoop(TestListWithoutControlFlow):
 
         with fluid.dygraph.guard():
             if to_static:
-                print(declarative(self.dygraph_func).code)
-                res = declarative(self.dygraph_func)(self.input, self.iter_num)
+                print(paddle.jit.to_static(self.dygraph_func).code)
+                res = paddle.jit.to_static(self.dygraph_func)(
+                    self.input, self.iter_num
+                )
             else:
                 res = self.dygraph_func(self.input, self.iter_num)
             return self.varbase_to_numpy(res)
@@ -290,6 +301,11 @@ class TestListInWhileLoop(TestListWithoutControlFlow):
 class TestListInWhileLoopWithStack(TestListInWhileLoop):
     def init_dygraph_func(self):
         self.all_dygraph_funcs = [test_list_append_in_while_loop_with_stack]
+
+
+class TestTensorArraySlice(TestListInWhileLoop):
+    def init_dygraph_func(self):
+        self.all_dygraph_funcs = [test_tensor_array_slice]
 
 
 class TestListInForLoop(TestListInWhileLoop):
@@ -320,7 +336,7 @@ class TestListInForLoopWithSubscript(TestListWithoutControlFlow):
 
 class ListWithCondNet(paddle.nn.Layer):
     def __init__(self):
-        super(ListWithCondNet, self).__init__()
+        super().__init__()
 
     @paddle.jit.to_static
     def forward(self, x, index):

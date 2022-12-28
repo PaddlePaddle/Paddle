@@ -12,30 +12,38 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 
-import os
 import copy
-import paddle
-import threading
-import numpy as np
-import warnings
 import logging
+import os
+import threading
+import warnings
 from functools import reduce
 
-import paddle.fluid.core as core
-from paddle.distributed.fleet.meta_optimizers.common import OpRole
-from paddle.distributed.auto_parallel.process_group import (
-    get_all_process_groups,
-)
-from paddle.fluid.io import is_parameter, is_belong_to_optimizer
-from paddle.distributed.auto_parallel.dist_attribute import (
-    TensorDistributedAttribute,
-    OperatorDistributedAttribute,
-)
+import numpy as np
 
-__not_shape_var_type__ = [
+import paddle
+from paddle.fluid.framework import Variable
+from paddle.fluid.io import is_belong_to_optimizer, is_parameter
+from paddle.framework import core
+
+from .dist_attribute import (
+    OperatorDistributedAttribute,
+    TensorDistributedAttribute,
+)
+from .process_group import get_all_process_groups
+
+OpRole = core.op_proto_and_checker_maker.OpRole
+OP_ROLE_KEY = core.op_proto_and_checker_maker.kOpRoleAttrName()
+
+__no_shape_var_type__ = [
     core.VarDesc.VarType.READER,
     core.VarDesc.VarType.STEP_SCOPES,
+    core.VarDesc.VarType.LOD_TENSOR_ARRAY,
+    core.VarDesc.VarType.FEED_MINIBATCH,
+    core.VarDesc.VarType.FETCH_LIST,
 ]
+
+__not_naive_data_parallel_op__ = ["expand_v2"]
 
 
 def get_logger(log_level, name="auto_parallel"):
@@ -92,7 +100,7 @@ def convert_to_dims_mapping(shard_spec, process_mesh):
     for shard in shard_spec:
         if shard is None:
             dims_mapping.append(-1)
-        elif process_mesh.topology[process_mesh.dim_names.index(shard)] == 1:
+        elif process_mesh.shape[process_mesh.dim_names.index(shard)] == 1:
             dims_mapping.append(-1)
         else:
             dims_mapping.append(process_mesh.dim_names.index(shard))
@@ -246,8 +254,10 @@ def print_program_with_dist_attr(program, dist_context=None):
     """
     lock = threading.Lock()
     lock.acquire()
-    from .dist_context import get_default_distributed_context
-    from .dist_context import set_default_distributed_context
+    from .dist_context import (
+        get_default_distributed_context,
+        set_default_distributed_context,
+    )
 
     if dist_context is None:
         dist_context = get_default_distributed_context()
@@ -419,26 +429,26 @@ def _get_corresponding_rank(dist_context, target_mesh, rank):
 
     coordinate = None
     for mesh in dist_context.process_meshes:
-        if rank in mesh.processes and mesh.topology == target_mesh.topology:
+        if rank in mesh.process_ids and mesh.shape == target_mesh.shape:
             coordinate = _linear_idx2coordinate(
-                mesh.topology, mesh.processes.index(rank)
+                mesh.shape, mesh.process_ids.index(rank)
             )
             break
 
     # assert coordinate is not None, "could NOT found rank [{}] in any registered mesh".format(
     #     rank)
     if coordinate is not None:
-        return target_mesh.processes[
-            _coordinate2linear_idx(mesh.topology, coordinate)
+        return target_mesh.process_ids[
+            _coordinate2linear_idx(mesh.shape, coordinate)
         ]
     else:
-        return target_mesh.processes[0]
+        return target_mesh.process_ids[0]
 
 
 def _get_unshard_dist_shape(var, dist_attr):
     var_shape = var.shape
     mapping = dist_attr.dims_mapping
-    mesh = dist_attr.process_mesh.topology
+    mesh = dist_attr.process_mesh.shape
     assert len(var_shape) == len(
         mapping
     ), "variable shape [{}] and dim_mapping [{}] is NOT match !".format(
@@ -822,8 +832,8 @@ def get_dist_attr(program, dist_context=None):
             process_mesh = tensor_dist_attr.process_mesh
             dims_mapping = tensor_dist_attr.dims_mapping
             dist_attr[var.name] = {
-                "process_shape": process_mesh.topology,
-                "process_group": process_mesh.processes,
+                "process_shape": process_mesh.shape,
+                "process_group": process_mesh.process_ids,
                 "dims_mapping": dims_mapping,
             }
     return dist_attr
@@ -1175,7 +1185,6 @@ def _get_split_indices(
 
 def set_grad_var_shape(program, dist_context):
     from .operators.common import infer_shape
-    from paddle.distributed.fleet.meta_optimizers.common import OpRole
 
     block = program.global_block()
     vars = block.vars
@@ -1252,6 +1261,8 @@ def set_grad_var_shape(program, dist_context):
                 "fused_softmax_mask_upper_triangle_grad",
                 "flatten_contiguous_range_grad",
                 "relu_grad",
+                "exp_grad",
+                "sigmoid_grad",
             ]
             forward_list = [
                 "reshape2",
@@ -1270,6 +1281,8 @@ def set_grad_var_shape(program, dist_context):
                 "fused_softmax_mask_upper_triangle",
                 "flatten_contiguous_range",
                 "relu",
+                "exp",
+                "sigmoid",
             ]
             if op.type in need_set_shape_list:
                 for forward_op in block.ops:
@@ -1307,10 +1320,6 @@ def set_grad_var_shape(program, dist_context):
 
             if list(grad_var.shape) != ref_shape:
                 grad_var.desc.set_shape(ref_shape)
-
-
-OP_ROLE_KEY = core.op_proto_and_checker_maker.kOpRoleAttrName()
-OpRole = core.op_proto_and_checker_maker.OpRole
 
 
 def is_forward_op(op):
@@ -1400,6 +1409,30 @@ def naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
         new_op_dist_attr.set_output_dims_mapping(output_varname, ref_mapping)
 
     new_op_dist_attr.process_mesh = process_mesh
+    ctx.set_op_dist_attr_for_program(new_op, new_op_dist_attr)
+
+
+def naive_set_dist_op_attr_for_program_by_mesh(
+    new_op, process_mesh, ctx, is_recompute=False
+):
+    # hack to skip coalesce var for dist attr
+    if not is_recompute:
+        return
+    assert process_mesh is not None
+
+    new_op_dist_attr = OperatorDistributedAttribute()
+
+    for input_varname in new_op.desc.input_arg_names():
+        var = ctx.serial_main_program.global_block().var(input_varname)
+        mapping = ctx.get_tensor_dist_attr_for_program(var).dims_mapping
+        new_op_dist_attr.set_input_dims_mapping(input_varname, mapping)
+    for output_varname in new_op.desc.output_arg_names():
+        var = ctx.serial_main_program.global_block().var(output_varname)
+        mapping = ctx.get_tensor_dist_attr_for_program(var).dims_mapping
+        new_op_dist_attr.set_output_dims_mapping(output_varname, mapping)
+
+    new_op_dist_attr.process_mesh = process_mesh
+    new_op_dist_attr.is_recompute = is_recompute
     ctx.set_op_dist_attr_for_program(new_op, new_op_dist_attr)
 
 
@@ -1788,6 +1821,18 @@ def find_higher_order_backward_op(program):
     return False
 
 
+def get_var_numel(var):
+    """
+    input:
+        - var: variable
+    return:
+        number of elemnet in var
+    """
+    assert isinstance(var, Variable)
+    assert -1 not in var.shape
+    return reduce(lambda x, y: x * y, var.shape)
+
+
 def get_lr(optimizer):
     if isinstance(optimizer, paddle.optimizer.Optimizer):
         return optimizer.get_lr()
@@ -1807,6 +1852,7 @@ def get_lr(optimizer):
 
 def initialize_pg_in_full_mode(all_process_groups, cur_rank):
     import socket
+
     from ..collective import _get_global_env
 
     has_recv_by_socket = []
@@ -1878,22 +1924,102 @@ def initialize_pg_in_full_mode(all_process_groups, cur_rank):
     server_socket.close()
 
 
+def is_recompute_op(op):
+    return op.has_attr('op_namescope') and "/auto_parallel/rc" in op.attr(
+        'op_namescope'
+    )
+
+
+def set_recompute_segments(model, losses, strategy, program):
+    from ..passes.auto_parallel_recompute import RecomputeState
+
+    if not losses:
+        return
+
+    recompute = strategy.recompute
+    if not recompute.enable:
+        return
+
+    # NOTE: hack to enable recompute in engine api for GPT-3
+    # TODO support more PaddleNLP/CV models here
+    # extract ckpts by specific model
+    ckpts = []
+    if isinstance(model, paddle.nn.Layer):
+        if (
+            hasattr(model, "gpt")
+            and model.__class__.__name__
+            in [
+                'GPTForPretraining',
+                'GPTForPretrainingAuto',
+            ]
+            and hasattr(model.gpt, "checkpoints")
+        ):
+            ckpts = model.gpt.checkpoints
+        else:
+            ckpts = recompute.checkpoints
+    else:
+        ckpts = recompute.checkpoints
+
+    if not ckpts:
+        return
+
+    block = program.global_block()
+    rc_state = RecomputeState(block, block.ops)
+    rc_state.build_stats()
+    checkpoints = rc_state.sort_checkpoints(ckpts)
+
+    segments = []
+    start_idx = -1
+    pre_segment_end_idx = -1
+    while start_idx + 1 < len(checkpoints):
+        if start_idx == -1:
+            ckpt_name = checkpoints[start_idx + 1]
+            if ckpt_name not in rc_state.var_op_deps:
+                start_idx += 1
+                continue
+            op_idx_list = rc_state.var_op_deps[ckpt_name]["var_as_output_ops"]
+            if op_idx_list and max(op_idx_list) > 0:
+                segments.append([0, max(op_idx_list) + 1])
+        else:
+            flag, min_idx, max_idx = rc_state.is_subgraph(
+                [checkpoints[start_idx]], [checkpoints[start_idx + 1]]
+            )
+            if flag:
+                min_idx = rc_state._update_segment_start(
+                    min_idx, pre_segment_end_idx
+                )
+                segments.append([min_idx, max_idx + 1])
+            else:
+                logging.debug(
+                    "Could not recompute op range [{}] - [{}] ".format(
+                        min_idx, max_idx + 1
+                    )
+                )
+        start_idx += 1
+
+    for i, segment in enumerate(segments):
+        for j in range(segment[0], segment[1]):
+            block.ops[j]._set_attr(
+                'op_namescope', "/auto_parallel/rc_" + str(i)
+            )
+
+
 def get_input_split_info(cur_rank, var, dist_context):
     # deduce how the input data is split among the cluster
     tensor_dist_attr = dist_context.get_tensor_dist_attr_for_program(var)
     process_mesh = tensor_dist_attr.process_mesh
     dims_mapping = tensor_dist_attr.dims_mapping
 
-    if cur_rank not in process_mesh.processes:
+    if cur_rank not in process_mesh.process_ids:
         rank_id = _get_corresponding_rank(dist_context, process_mesh, cur_rank)
     else:
         rank_id = cur_rank
 
     batch_size_axis = dims_mapping[0]
-    if batch_size_axis > -1 and process_mesh.topology[batch_size_axis] > 1:
+    if batch_size_axis > -1 and process_mesh.shape[batch_size_axis] > 1:
         group_ranks = _get_comm_group(
-            process_mesh.processes,
-            process_mesh.topology,
+            process_mesh.process_ids,
+            process_mesh.shape,
             batch_size_axis,
             rank_id,
         )
@@ -1907,6 +2033,35 @@ def validate_opt(optimizer):
         optimizer._parameter_list = None
         optimizer._param_groups = None
     return optimizer
+
+
+def set_data_parallel(x):
+    from .interface import ProcessMesh, shard_tensor
+    from .process_group import get_world_process_group
+
+    world_ranks = get_world_process_group().ranks
+    process_mesh = ProcessMesh(world_ranks, ['dp'])
+    shard_spec = ['dp' if len(world_ranks) > 1 else None] + [
+        None for _ in range(len(x.shape) - 1)
+    ]
+
+    return shard_tensor(x, process_mesh, shard_spec)
+
+
+def is_naive_data_parallel(dist_context):
+    # Navie data parallel only completes dist_attr once from the front to back.
+    if not dist_context.data_parallel:
+        return False
+
+    ops_type = [
+        op.type
+        for op in dist_context._original_serial_main_program.global_block().ops
+    ]
+    if (
+        not set(ops_type) & set(__not_naive_data_parallel_op__)
+    ) and dist_context.data_parallel:
+        return True
+    return False
 
 
 def _copy_tensor_dist_attr_to_cpp(cpp_dist_attr, py_dist_attr):
@@ -2024,3 +2179,123 @@ def _copy_dist_attr_from_cpp_for_graph(dist_context):
             py_dist_attr = dist_context.get_op_dist_attr_for_graph(node)
             cpp_dist_attr = node.op().dist_attr
             _copy_op_dist_attr_from_cpp(cpp_dist_attr, py_dist_attr)
+
+
+def insert_dependencies_for_two_ops(
+    block,
+    idx,
+    prior_op,
+    posterior_op,
+    dist_context,
+    is_recompute=False,
+    sync=False,
+):
+    """
+    dependency: prior_op should be run before posterior_op
+    """
+
+    assert (
+        len(prior_op.output_arg_names) >= 1
+    ), "first op of dependency should at least have one output. [{}]".format(
+        str(prior_op)
+    )
+    assert (
+        len(posterior_op.input_arg_names) >= 1
+    ), "second op of dependency should at least have one input. [{}]".format(
+        str(posterior_op)
+    )
+    prior_op_mesh = dist_context.get_op_dist_attr_for_program(
+        prior_op
+    ).process_mesh
+    posterior_mesh = dist_context.get_op_dist_attr_for_program(
+        posterior_op
+    ).process_mesh
+    assert (
+        prior_op_mesh == posterior_mesh
+    ), "two ops of dependency should have same mesh but got [{}] and [{}]".format(
+        str(prior_op_mesh), str(posterior_mesh)
+    )
+
+    def _select_best_depend_var(vars):
+
+        # parameter should not be dep var since it maybe partition in sharding pass
+        vars = [var for var in vars if not var.is_parameter]
+        assert len(vars) > 0
+        vars_with_numels = [(var, get_var_numel(var)) for var in vars]
+        vars_with_numels.sort(key=lambda x: x[1])
+
+        return vars_with_numels[-1][0]
+
+    first_var = _select_best_depend_var(
+        [block.var(name) for name in prior_op.output_arg_names]
+    )
+    second_var = _select_best_depend_var(
+        [block.var(name) for name in posterior_op.input_arg_names]
+    )
+
+    return insert_dependencies_for_two_vars(
+        block,
+        idx,
+        first_var,
+        second_var,
+        dist_context,
+        OpRole.Backward,
+        prior_op_mesh,
+        is_recompute,
+        sync,
+    )
+
+
+def insert_dependencies_for_two_vars(
+    block,
+    idx,
+    prior_var,
+    post_var,
+    dist_context,
+    oprole,
+    process_mesh=None,
+    is_recompute=False,
+    sync=False,
+):
+    """
+    dependency: op that generates prior_var should be run before op that generates post_var
+    """
+    assert block.has_var(prior_var.name)
+    assert block.has_var(post_var.name)
+    if process_mesh is None:
+        process_mesh = dist_context.get_tensor_dist_attr_for_program(
+            post_var
+        ).process_mesh
+    assert process_mesh is not None
+
+    depend_op = block._insert_op_without_sync(
+        idx,
+        type='nop',
+        inputs={
+            "X": prior_var,
+        },
+        outputs={"Out": post_var},
+    )
+    # depend_op.desc.set_type("depend")
+    depend_op._set_attr(OP_ROLE_KEY, oprole)
+    # depend_op.desc.set_input("Dep", [first_var.name])
+    # self.desc.set_output(out_proto.name, out_arg_names)
+
+    naive_set_dist_op_attr_for_program_by_mesh(
+        depend_op, process_mesh, dist_context, is_recompute
+    )
+
+    if sync:
+        block._sync_with_cpp()
+
+    return depend_op
+
+
+def use_standalone_executor():
+    return os.environ.get('FLAGS_CONVERT_GRAPH_TO_PROGRAM', None) in [
+        1,
+        '1',
+        True,
+        'True',
+        'true',
+    ]

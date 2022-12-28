@@ -23,10 +23,10 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/memory/memory.h"
-#include "paddle/fluid/platform/for_range.h"
 #include "paddle/phi/backends/dynload/cusolver.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/funcs/for_range.h"
 
 namespace phi {
 
@@ -130,7 +130,7 @@ void CholeskyKernel(const Context& dev_ctx,
       upper ? CUBLAS_FILL_MODE_LOWER : CUBLAS_FILL_MODE_UPPER;
   // portf is inplace, thus copy the triangular part of the input matrices to
   // the output and set the other triangular part to 0 firstly
-  paddle::platform::ForRange<GPUContext> for_range(dev_ctx, tensor_size);
+  phi::funcs::ForRange<GPUContext> for_range(dev_ctx, tensor_size);
   if (upper) {
     MatrixBandPartFunctor<T> matrix_band_part_functor(m,
                                                       m,

@@ -16,21 +16,21 @@ please make sure to run in the tools path
 usage: python sample_test.py {cpu or gpu}
     {cpu or gpu}: running in cpu version or gpu version
 
-for example, you can run cpu version python2 testing like this:
+for example, you can run cpu version testing like this:
 
     python sampcd_processor.py cpu
 
 """
-import os
-import sys
-import subprocess
-import multiprocessing
-import platform
-import inspect
 import argparse
-import shutil
-import re
+import inspect
 import logging
+import multiprocessing
+import os
+import platform
+import re
+import shutil
+import subprocess
+import sys
 import time
 
 logger = logging.getLogger()
@@ -547,7 +547,7 @@ def get_full_api():
     """
     get all the apis
     """
-    global API_DIFF_SPEC_FN  ## readonly
+    global API_DIFF_SPEC_FN  # readonly
     from print_signatures import get_all_api_from_modulelist
 
     member_dict = get_all_api_from_modulelist()
@@ -559,7 +559,7 @@ def get_full_api_by_walk():
     """
     get all the apis
     """
-    global API_DIFF_SPEC_FN  ## readonly
+    global API_DIFF_SPEC_FN  # readonly
     from print_signatures import get_all_api
 
     apilist = get_all_api()
@@ -571,7 +571,7 @@ def get_full_api_from_pr_spec():
     """
     get all the apis
     """
-    global API_PR_SPEC_FN, API_DIFF_SPEC_FN  ## readonly
+    global API_PR_SPEC_FN, API_DIFF_SPEC_FN  # readonly
     pr_api = get_api_md5(API_PR_SPEC_FN)
     if len(pr_api):
         with open(API_DIFF_SPEC_FN, 'w') as f:
@@ -584,7 +584,7 @@ def get_incrementapi():
     '''
     this function will get the apis that difference between API_DEV.spec and API_PR.spec.
     '''
-    global API_DEV_SPEC_FN, API_PR_SPEC_FN, API_DIFF_SPEC_FN  ## readonly
+    global API_DEV_SPEC_FN, API_PR_SPEC_FN, API_DIFF_SPEC_FN  # readonly
     dev_api = get_api_md5(API_DEV_SPEC_FN)
     pr_api = get_api_md5(API_PR_SPEC_FN)
     with open(API_DIFF_SPEC_FN, 'w') as f:

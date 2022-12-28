@@ -12,13 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import tempfile
 import os
+import tempfile
+
 import numpy as np
+
 import paddle
 import paddle.nn as nn
 import paddle.nn.functional as F
-
 from paddle.distributed.fleet import auto
 
 paddle.enable_static()
@@ -78,7 +79,7 @@ class MLPLayer(nn.Layer):
         dropout_ratio=0.1,
         initializer_range=0.02,
     ):
-        super(MLPLayer, self).__init__()
+        super().__init__()
         d_model = hidden_size
         dim_feedforward = intermediate_size
         weight_attr = paddle.ParamAttr(

@@ -13,13 +13,15 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
 from op_test import OpTest, convert_float_to_uint16
+
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-from paddle import _C_ops, _legacy_C_ops
-from paddle.fluid.framework import in_dygraph_mode, _in_legacy_dygraph
+from paddle import _C_ops
+from paddle.fluid.framework import in_dygraph_mode
 
 
 # hack method for test p_norm final state
@@ -28,20 +30,6 @@ def p_norm_python_api(
 ):
     if in_dygraph_mode():
         return _C_ops.p_norm(x, p, axis, epsilon, keepdim, as_vector)
-    if _in_legacy_dygraph():
-        return _legacy_C_ops.p_norm(
-            x,
-            'axis',
-            axis,
-            'porder',
-            float(p),
-            'keepdim',
-            keepdim,
-            'epsilon',
-            epsilon,
-            'as_vector',
-            as_vector,
-        )
 
 
 def p_norm(x, axis, porder, keepdims=False, reduce_all=False):

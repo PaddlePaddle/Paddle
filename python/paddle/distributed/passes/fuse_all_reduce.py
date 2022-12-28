@@ -12,10 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.framework import core
-from paddle.fluid import unique_name
-from .pass_base import PassBase, PassType, register_pass
 import numpy as np
+
+from paddle.framework import core
+from paddle.utils import unique_name
+
+from .pass_base import PassBase, PassType, register_pass
 
 
 def find_adjacent_match_sequences(
@@ -351,7 +353,7 @@ def insert_fuse_all_reduce_by_memory_size(block, groups, max_memory_size):
 @register_pass("fuse_all_reduce")
 class FuseAllReducePass(PassBase):
     def __init__(self):
-        super(FuseAllReducePass, self).__init__()
+        super().__init__()
         self.set_attr("max_memory_size", -1)
 
     def _check_self(self):

@@ -12,13 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/distributed/collective/ProcessGroup.h"
+#include "paddle/fluid/distributed/collective/process_group.h"
 #include "paddle/phi/backends/c_comm_lib.h"
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-#include "paddle/fluid/distributed/collective/ProcessGroupNCCL.h"
+#include "paddle/fluid/distributed/collective/process_group_nccl.h"
 #endif
 #if defined(PADDLE_WITH_CUSTOM_DEVICE)
-#include "paddle/fluid/distributed/collective/ProcessGroupCustom.h"
+#include "paddle/fluid/distributed/collective/process_group_custom.h"
 #endif
 
 namespace phi {
@@ -33,6 +33,8 @@ namespace detail {
 // In principle, the PHI Kernel cannot use the global singleton internally,
 // and the required members need to be passed in from the eucalyptus tree.
 ccl::CCLComm GetCCLComm(const Place& place, int global_gid) {
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+    defined(PADDLE_WITH_CUSTOM_DEVICE)
   paddle::distributed::ProcessGroup* pg = nullptr;
   if (paddle::distributed::ProcessGroupMapFromGid::getInstance()->has(
           global_gid)) {
@@ -41,7 +43,7 @@ ccl::CCLComm GetCCLComm(const Place& place, int global_gid) {
   } else {
     return nullptr;
   }
-
+#endif
   if (paddle::platform::is_gpu_place(place)) {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
     return static_cast<paddle::distributed::ProcessGroupNCCL*>(pg)->NCCLComm(

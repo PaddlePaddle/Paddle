@@ -14,6 +14,7 @@
 
 # example 1: save layer
 import numpy as np
+
 import paddle
 import paddle.nn as nn
 import paddle.optimizer as opt
@@ -42,7 +43,7 @@ class RandomDataset(paddle.io.Dataset):
 
 class LinearNet(nn.Layer):
     def __init__(self):
-        super(LinearNet, self).__init__()
+        super().__init__()
         self._linear = nn.Linear(IMAGE_SIZE, CLASS_NUM)
 
     @paddle.jit.to_static

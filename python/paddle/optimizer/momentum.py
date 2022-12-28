@@ -14,16 +14,14 @@
 
 import warnings
 
-from .optimizer import Optimizer
-from ..fluid import core
-from ..fluid import framework
-from ..fluid.layer_helper import LayerHelper
-from ..fluid import unique_name
-from ..fluid import layers
-from paddle.fluid.regularizer import L2DecayRegularizer
-from paddle import _C_ops, _legacy_C_ops
 import paddle
-from paddle.fluid.framework import in_dygraph_mode, _in_legacy_dygraph
+from paddle import _C_ops
+from paddle.fluid.framework import in_dygraph_mode
+from paddle.fluid.regularizer import L2DecayRegularizer
+
+from ..fluid import core, framework, unique_name
+from ..fluid.layer_helper import LayerHelper
+from .optimizer import Optimizer
 
 __all__ = []
 
@@ -83,8 +81,8 @@ class Momentum(Optimizer):
         .. code-block:: python
 
             import paddle
-            import numpy as np
-            inp = np.random.uniform(-0.1, 0.1, [10, 10]).astype("float32")
+
+            inp = paddle.uniform([10, 10], dtype="float32", min=-0.1, max=0.1)
             linear = paddle.nn.Linear(10, 10)
             inp = paddle.to_tensor(inp)
             out = linear(inp)
@@ -157,7 +155,7 @@ class Momentum(Optimizer):
                     param_group['weight_decay'] = py_regular
 
         py_regular = None if predicate(weight_decay) else weight_decay
-        super(Momentum, self).__init__(
+        super().__init__(
             learning_rate=learning_rate,
             parameters=parameters,
             weight_decay=py_regular,
@@ -211,7 +209,7 @@ class Momentum(Optimizer):
 
             var_name = param.name + "_fp32_master"
             var_name = unique_name.generate(var_name)
-            var = layers.create_global_var(
+            var = paddle.static.create_global_var(
                 name=var_name,
                 shape=param.shape,
                 value=0,
@@ -297,7 +295,7 @@ class Momentum(Optimizer):
             param.regularizer, L2DecayRegularizer
         ):
             return grad
-        return super(Momentum, self)._create_regularization_of_grad(
+        return super()._create_regularization_of_grad(
             param, grad, regularization
         )
 
@@ -335,30 +333,6 @@ class Momentum(Optimizer):
             else None
         )
 
-        if _in_legacy_dygraph():
-            if isinstance(param_and_grad, dict):
-                self._update_regularization(param_and_grad['weight_decay'])
-            _, _, _ = _legacy_C_ops.momentum(
-                param_and_grad[0],
-                param_and_grad[1],
-                velocity_acc,
-                lr,
-                master_weight,
-                param_and_grad[0],
-                velocity_acc,
-                master_weight,
-                'mu',
-                self._momentum,
-                'use_nesterov',
-                self._use_nesterov,
-                'regularization_method',
-                regularization_method,
-                'regularization_coeff',
-                regularization_coeff,
-                'multi_precision',
-                find_master,
-            )
-            return None
         if in_dygraph_mode():
             if isinstance(param_and_grad, dict):
                 self._update_regularization(param_and_grad['weight_decay'])
@@ -375,42 +349,42 @@ class Momentum(Optimizer):
                 find_master,
                 self._rescale_grad,
             )
+        else:
+            attrs = {
+                "mu": self._momentum,
+                "use_nesterov": self._use_nesterov,
+                "regularization_method": regularization_method,
+                "regularization_coeff": regularization_coeff,
+                "multi_precision": find_master,
+                "rescale_grad": self._rescale_grad,
+            }
 
-        attrs = {
-            "mu": self._momentum,
-            "use_nesterov": self._use_nesterov,
-            "regularization_method": regularization_method,
-            "regularization_coeff": regularization_coeff,
-            "multi_precision": find_master,
-            "rescale_grad": self._rescale_grad,
-        }
+            inputs = {
+                "Param": [param_and_grad[0]],
+                "Grad": [param_and_grad[1]],
+                "Velocity": [velocity_acc],
+                "LearningRate": [lr],
+            }
 
-        inputs = {
-            "Param": [param_and_grad[0]],
-            "Grad": [param_and_grad[1]],
-            "Velocity": [velocity_acc],
-            "LearningRate": [lr],
-        }
+            outputs = {
+                "ParamOut": [param_and_grad[0]],
+                "VelocityOut": [velocity_acc],
+            }
 
-        outputs = {
-            "ParamOut": [param_and_grad[0]],
-            "VelocityOut": [velocity_acc],
-        }
+            if find_master:
+                inputs["MasterParam"] = master_weight
+                outputs["MasterParamOut"] = master_weight
 
-        if find_master:
-            inputs["MasterParam"] = master_weight
-            outputs["MasterParamOut"] = master_weight
+            # create the momentum optimize op
+            momentum_op = block.append_op(
+                type=self.type,
+                inputs=inputs,
+                outputs=outputs,
+                attrs=attrs,
+                stop_gradient=True,
+            )
 
-        # create the momentum optimize op
-        momentum_op = block.append_op(
-            type=self.type,
-            inputs=inputs,
-            outputs=outputs,
-            attrs=attrs,
-            stop_gradient=True,
-        )
-
-        return momentum_op
+            return momentum_op
 
     def _multi_tensor_init(self, target_block, parameters, param_group_idx):
         """
@@ -555,50 +529,20 @@ class Momentum(Optimizer):
                     else None
                 )
 
-                if framework._non_static_mode():
-                    if in_dygraph_mode():
-                        _, _, _ = _C_ops.merged_momentum_(
-                            self._param_dict[key][param_group_idx],
-                            grad_dict[key],
-                            self._velocity_dict[key][param_group_idx],
-                            lr_dict[key],
-                            master_weight,
-                            self._momentum,
-                            self._use_nesterov,
-                            self._regularization_method_dict[key][
-                                param_group_idx
-                            ],
-                            self._regularization_coeff_dict[key][
-                                param_group_idx
-                            ],
-                            find_master,
-                            self._rescale_grad,
-                        )
-                    else:
-                        _, _, _ = _legacy_C_ops.merged_momentum(
-                            self._param_dict[key][param_group_idx],
-                            grad_dict[key],
-                            self._velocity_dict[key][param_group_idx],
-                            lr_dict[key],
-                            master_weight,
-                            self._param_dict[key][param_group_idx],
-                            self._velocity_dict[key][param_group_idx],
-                            master_weight,
-                            'mu',
-                            self._momentum,
-                            'use_nesterov',
-                            self._use_nesterov,
-                            'regularization_method',
-                            self._regularization_method_dict[key][
-                                param_group_idx
-                            ],
-                            'regularization_coeff',
-                            self._regularization_coeff_dict[key][
-                                param_group_idx
-                            ],
-                            'multi_precision',
-                            find_master,
-                        )
+                if in_dygraph_mode():
+                    _, _, _ = _C_ops.merged_momentum_(
+                        self._param_dict[key][param_group_idx],
+                        grad_dict[key],
+                        self._velocity_dict[key][param_group_idx],
+                        lr_dict[key],
+                        master_weight,
+                        self._momentum,
+                        self._use_nesterov,
+                        self._regularization_method_dict[key][param_group_idx],
+                        self._regularization_coeff_dict[key][param_group_idx],
+                        find_master,
+                        self._rescale_grad,
+                    )
                 else:
                     inputs = {
                         "Param": self._param_dict[key][param_group_idx],

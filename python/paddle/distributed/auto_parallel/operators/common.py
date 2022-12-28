@@ -13,10 +13,12 @@
 # limitations under the License
 
 import abc
+
 from paddle.distributed.fleet.meta_optimizers.common import OP_ROLE_KEY, OpRole
+
 from ..dist_attribute import OperatorDistributedAttribute
-from ..utils import _get_comm_group, _get_corresponding_rank, is_optimize_op
 from ..process_group import new_process_group
+from ..utils import _get_comm_group, _get_corresponding_rank, is_optimize_op
 
 _g_distributed_operator_impl_containers = {}
 
@@ -266,14 +268,14 @@ def is_parameter_related(varname, block):
         varname = varname[: varname.index(".cast_fp")]
     if ".quantized" in varname:
         varname = varname[: varname.index(".quantized")]
-    assert block.has_var(varname)
-    var = block.var(varname)
+    assert block._find_var_recursive(varname)
+    var = block._var_recursive(varname)
     return var.is_parameter
 
 
 def infer_shape(block, src_var, src_var_dist_attr, op_input_dist_attr):
-    var_shape = block.var(src_var.name).shape
-    var_topoloy = src_var_dist_attr.process_mesh.topology
+    var_shape = block._var_recursive(src_var.name).shape
+    var_topoloy = src_var_dist_attr.process_mesh.shape
     var_dims_mapping = src_var_dist_attr.dims_mapping
 
     complete_shape = []
@@ -285,7 +287,7 @@ def infer_shape(block, src_var, src_var_dist_attr, op_input_dist_attr):
             complete_shape.append(new_shape)
 
     exact_shape = []
-    input_topology = op_input_dist_attr.process_mesh.topology
+    input_topology = op_input_dist_attr.process_mesh.shape
     input_dims_mapping = op_input_dist_attr.dims_mapping
     for idx, shape in enumerate(complete_shape):
         if input_dims_mapping[idx] == -1:
@@ -360,10 +362,10 @@ def get_data_parallel_group(dist_ctx, op, act_grad_names, rank):
 
     op_dist_attr = dist_ctx.get_op_dist_attr_for_program(op)
     process_mesh = op_dist_attr.process_mesh
-    mesh_shape = process_mesh.topology
+    mesh_shape = process_mesh.shape
     # FIXME Hack for Pipeline Parallelism where the current operator
     # not belong to the mesh the current rank belong to.
-    if rank not in process_mesh.processes:
+    if rank not in process_mesh.process_ids:
         rank = _get_corresponding_rank(dist_ctx, process_mesh, rank)
 
     for var_name in act_grad_names:
@@ -374,8 +376,8 @@ def get_data_parallel_group(dist_ctx, op, act_grad_names, rank):
 
         if batch_size_axis > -1 and mesh_shape[batch_size_axis] > 1:
             group_ranks = _get_comm_group(
-                process_mesh.processes,
-                process_mesh.topology,
+                process_mesh.process_ids,
+                process_mesh.shape,
                 batch_size_axis,
                 rank,
             )

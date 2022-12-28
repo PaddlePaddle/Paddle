@@ -13,15 +13,16 @@
 # limitations under the License.
 """ For the PR that only modified the unit test, get cases in pull request. """
 
-import os
 import json
-import re
-import time
-import subprocess
-import requests
-import urllib.request
-import ssl
+import os
 import platform
+import re
+import ssl
+import subprocess
+import time
+import urllib.request
+
+import requests
 from github import Github
 
 PADDLE_ROOT = os.getenv('PADDLE_ROOT', '/paddle/')
@@ -30,7 +31,7 @@ PADDLE_ROOT = PADDLE_ROOT.replace('//', '/')
 ssl._create_default_https_context = ssl._create_unverified_context
 
 
-class PRChecker(object):
+class PRChecker:
     """PR Checker."""
 
     def __init__(self):
@@ -280,11 +281,12 @@ class PRChecker(object):
 
     def file_is_unnit_test(self, unittest_path):
         # get all testcases by ctest-N
-        all_ut_file = '%s/build/all_ut_file' % PADDLE_ROOT
-        os.system(
-            "cd %s/build && ctest -N | awk -F ': ' '{print $2}' | sed '/^$/d' | sed '$d' > %s"
-            % (PADDLE_ROOT, all_ut_file)
-        )
+        all_ut_file = PADDLE_ROOT + 'build/all_ut_list'
+        # all_ut_file = '%s/build/all_ut_file' % PADDLE_ROOT
+        print("PADDLE_ROOT:", PADDLE_ROOT)
+        print("all_ut_file path:", all_ut_file)
+        build_path = PADDLE_ROOT + 'build/'
+        print("build_path:", build_path)
         (unittest_directory, unittest_name) = os.path.split(unittest_path)
         # determine whether filename is in all_ut_case
         with open(all_ut_file, 'r') as f:
@@ -293,8 +295,7 @@ class PRChecker(object):
                 test = test.replace('\n', '').strip()
                 if test == unittest_name.split(".")[0]:
                     return True
-            else:
-                return False
+        return False
 
     def get_pr_ut(self):
         """Get unit tests in pull request."""
@@ -383,6 +384,10 @@ class PRChecker(object):
                 "ipipe_log_param_PRECISION_TEST_Cases_ratio: %s"
                 % PRECISION_TEST_Cases_ratio
             )
+            print(
+                "The unittests in prec delta is shown as following: %s"
+                % ut_list
+            )
             return '\n'.join(ut_list)
         else:
             for f in file_list:
@@ -410,17 +415,17 @@ class PRChecker(object):
                         # determine whether the new added file is a member of added_ut
                         if file_dict[f] in ['added']:
                             f_judge_in_added_ut = False
-                            with open(
-                                '{}/added_ut'.format(PADDLE_ROOT)
-                            ) as utfile:
-                                (filepath, tempfilename) = os.path.split(
-                                    f_judge
-                                )
-                                for f_file in utfile:
-                                    if (
-                                        f_file.strip('\n')
-                                        == tempfilename.split(".")[0]
-                                    ):
+                            path = PADDLE_ROOT + 'added_ut'
+                            print("PADDLE_ROOT:", PADDLE_ROOT)
+                            print("adde_ut path:", path)
+                            (unittest_directory, unittest_name) = os.path.split(
+                                f_judge
+                            )
+                            with open(path, 'r') as f:
+                                added_unittests = f.readlines()
+                                for test in added_unittests:
+                                    test = test.replace('\n', '').strip()
+                                    if test == unittest_name.split(".")[0]:
                                         f_judge_in_added_ut = True
                             if f_judge_in_added_ut:
                                 print(

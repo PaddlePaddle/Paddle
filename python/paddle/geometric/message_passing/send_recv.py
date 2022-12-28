@@ -13,15 +13,15 @@
 # limitations under the License.
 
 import numpy as np
-from paddle.fluid.layer_helper import LayerHelper
-from paddle.fluid.framework import _in_legacy_dygraph, in_dygraph_mode
-from paddle.fluid.framework import Variable
+
+from paddle import _C_ops, _legacy_C_ops
 from paddle.fluid.data_feeder import (
     check_dtype,
     check_type,
     check_variable_and_dtype,
 )
-from paddle import _C_ops, _legacy_C_ops
+from paddle.fluid.framework import Variable, _in_legacy_dygraph, in_dygraph_mode
+from paddle.fluid.layer_helper import LayerHelper
 
 from .utils import (
     convert_out_size_to_list,
@@ -236,13 +236,13 @@ def send_ue_recv(
         src_index (Tensor): An 1-D tensor, and the available data type is int32, int64.
         dst_index (Tensor): An 1-D tensor, and should have the same shape as `src_index`.
                             The available data type is int32, int64.
-        message_op (str): Different message ops for x and e, including `add`, `sub`, `mul`, `div`.
-        reduce_op (str): Different reduce ops, including `sum`, `mean`, `max`, `min`.
+        message_op (str, optional): Different message ops for x and e, including `add`, `sub`, `mul`, `div`.
+        reduce_op (str, optional): Different reduce ops, including `sum`, `mean`, `max`, `min`.
                          Default value is `sum`.
-        out_size (int|Tensor|None): We can set `out_size` to get necessary output shape. If not set or
+        out_size (int|Tensor, optional): We can set `out_size` to get necessary output shape. If not set or
                                     out_size is smaller or equal to 0, then this input will not be used.
                                     Otherwise, `out_size` should be equal with or larger than
-                                    max(dst_index) + 1.
+                                    max(dst_index) + 1. Default value is `None`.
         name (str, optional): Name for the operation (optional, default is None).
                               For more information, please refer to :ref:`api_guide_Name`.
 

@@ -12,12 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import unittest
+
 import numpy as np
+
 import paddle
-from paddle import fluid, nn
 import paddle.fluid.dygraph as dg
 import paddle.nn.functional as F
-import unittest
+from paddle import fluid, nn
 
 
 class Conv1DTransposeTestCase(unittest.TestCase):
@@ -39,7 +41,7 @@ class Conv1DTransposeTestCase(unittest.TestCase):
         data_format="NCL",
         dtype="float32",
     ):
-        super(Conv1DTransposeTestCase, self).__init__(methodName)
+        super().__init__(methodName)
         self.batch_size = batch_size
         self.in_channels = in_channels
         self.out_channels = out_channels

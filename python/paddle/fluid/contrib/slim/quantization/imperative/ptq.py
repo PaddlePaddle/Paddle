@@ -20,7 +20,7 @@ import numpy as np
 import paddle
 import paddle.nn.quant.quant_layers as quant_layers
 from paddle.fluid.log_helper import get_logger
-from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
+from paddle.jit.translated_layer import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 
 from . import fuse_utils
 from . import utils
@@ -36,7 +36,7 @@ _logger = get_logger(
 )
 
 
-class ImperativePTQ(object):
+class ImperativePTQ:
     """
     Static post training quantization.
     """
@@ -51,7 +51,7 @@ class ImperativePTQ(object):
                 In default, the weight_quantizer is PerChannelAbsmaxQuantizer
                 and the activation_quantizer is KLQuantizer.
         """
-        super(ImperativePTQ, self).__init__()
+        super().__init__()
 
         assert isinstance(quant_config, ptq_config.PTQConfig)
 

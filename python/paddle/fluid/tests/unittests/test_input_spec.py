@@ -13,17 +13,16 @@
 # limitations under the License.
 
 import os
-import unittest
 import tempfile
+import unittest
+
 import numpy as np
 
 import paddle
 import paddle.fluid as fluid
-from paddle.static import InputSpec
 from paddle.fluid.framework import convert_np_dtype_to_dtype_
-from paddle.fluid.dygraph.dygraph_to_static.utils import (
-    _compatible_non_tensor_spec,
-)
+from paddle.jit.dy2static.utils import _compatible_non_tensor_spec
+from paddle.static import InputSpec
 
 
 class TestInputSpec(unittest.TestCase):
@@ -121,7 +120,7 @@ class TestInputSpec(unittest.TestCase):
 
 class NetWithNonTensorSpec(paddle.nn.Layer):
     def __init__(self, in_num, out_num):
-        super(NetWithNonTensorSpec, self).__init__()
+        super().__init__()
         self.linear_1 = paddle.nn.Linear(in_num, out_num)
         self.bn_1 = paddle.nn.BatchNorm1D(out_num)
 
@@ -246,7 +245,7 @@ class TestNetWithNonTensorSpec(unittest.TestCase):
 
 class NetWithNonTensorSpecPrune(paddle.nn.Layer):
     def __init__(self, in_num, out_num):
-        super(NetWithNonTensorSpecPrune, self).__init__()
+        super().__init__()
         self.linear_1 = paddle.nn.Linear(in_num, out_num)
         self.bn_1 = paddle.nn.BatchNorm1D(out_num)
 

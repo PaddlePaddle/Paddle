@@ -12,21 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import yaml
 import argparse
 
-from api_gen import ForwardAPI
+import yaml
 from api_base import PREFIX_TENSOR_NAME
+from api_gen import ForwardAPI
 
 
 class SparseAPI(ForwardAPI):
     def __init__(self, api_item_yaml):
-        super(SparseAPI, self).__init__(api_item_yaml)
+        super().__init__(api_item_yaml)
 
     def gene_api_declaration(self):
         return f"""
 // {", ".join(self.outputs['names'])}
-{super(SparseAPI, self).gene_api_declaration()}
+{super().gene_api_declaration()}
 """
 
     def gene_output(

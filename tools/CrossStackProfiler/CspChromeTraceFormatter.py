@@ -15,7 +15,7 @@
 import json
 
 
-class ChromeTraceFormatter(object):
+class ChromeTraceFormatter:
     def __init__(self):
         self._events = []
         self._metadata = []

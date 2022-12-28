@@ -15,13 +15,13 @@
 # Test set_value op in static mode
 
 import unittest
+from functools import reduce
+
 import numpy as np
 
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid.layer_helper import LayerHelper
-from functools import reduce
-from paddle.fluid.framework import _test_eager_guard
 
 
 class TestSetValueBase(unittest.TestCase):
@@ -69,7 +69,7 @@ class TestSetValueApi(TestSetValueBase):
         paddle.enable_static()
         return out
 
-    def func_test_api(self):
+    def test_api(self):
         static_out = self._run_static()
         dynamic_out = self._run_dynamic()
         self._get_answer()
@@ -85,11 +85,6 @@ class TestSetValueApi(TestSetValueBase):
             (self.data == dynamic_out).all(),
             msg=error_msg.format("dynamic", self.data, dynamic_out),
         )
-
-    def test_api(self):
-        with _test_eager_guard():
-            self.func_test_api()
-        self.func_test_api()
 
 
 # 1. Test different type of item: int, Python slice, Paddle Tensor
@@ -155,7 +150,7 @@ class TestSetValueItemSliceInWhile(TestSetValueApi):
             return i, x
 
         i = paddle.zeros(shape=(1,), dtype='int32')
-        i, x = paddle.fluid.layers.while_loop(cond, body, [i, x])
+        i, x = paddle.static.nn.while_loop(cond, body, [i, x])
 
     def _get_answer(self):
         self.data[0] = self.value
@@ -976,7 +971,7 @@ class TestError(TestSetValueBase):
 
 class Model(paddle.nn.Layer):
     def __init__(self):
-        super(Model, self).__init__()
+        super().__init__()
         self.conv = paddle.nn.Conv2D(12, 12, 3)
 
     def forward(self, x, y):
@@ -1033,6 +1028,7 @@ class TestBackward(unittest.TestCase):
         paddle.disable_static()
 
     def func_test_dynamic(self):
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         model = Model()
         x = paddle.ones([1, 12, 3, 3]).astype("float32")
         y = paddle.ones([1, 12, 3, 3]).astype("float32")
@@ -1041,17 +1037,11 @@ class TestBackward(unittest.TestCase):
 
         self.assertTrue(var.grad.shape == x.grad[0, :, 0, 0].shape)
         self.assertTrue((0 == x.grad[0, :, 0, 0]).all())
-
-    def test_dynamic(self):
-        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
-        with _test_eager_guard():
-            self.func_test_dynamic()
-        self.func_test_dynamic()
         fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
 
 class TestGradientTruncated(unittest.TestCase):
-    def func_test_consistent_with_competitor(self):
+    def test_consistent_with_competitor(self):
         paddle.disable_static()
 
         def set_value(t, value):
@@ -1308,11 +1298,6 @@ class TestGradientTruncated(unittest.TestCase):
         self.assertTrue(not x.stop_gradient)
         self.assertTrue(not x.is_leaf)
 
-    def test_consistent_with_competitor(self):
-        with _test_eager_guard():
-            self.func_test_consistent_with_competitor()
-        self.func_test_consistent_with_competitor()
-
     def test_static_graph(self):
         paddle.enable_static()
 
@@ -1436,7 +1421,7 @@ class TestGradientTruncated(unittest.TestCase):
             # set_value_grad_op will not be run during backward.
             y, value = op(x)
             y2 = y + 1
-            loss = paddle.fluid.layers.reduce_sum(y2)
+            loss = paddle.sum(y2)
             sgd = paddle.optimizer.Adam()
             sgd.minimize(loss)
             place = (
@@ -1496,7 +1481,7 @@ class TestSetValueInplace(unittest.TestCase):
 
             self.assertTrue(id(b) == id(c))
             np.testing.assert_array_equal(b.numpy(), c.numpy())
-            self.assertEqual(b.inplace_version, 1)
+            self.assertEqual(b.inplace_version, 0)
 
         paddle.enable_static()
 

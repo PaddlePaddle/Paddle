@@ -12,40 +12,36 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
 import logging
 from collections import defaultdict
 
+import numpy as np
+
 import paddle
+from paddle import _C_ops
+from paddle.fluid import core
 from paddle.fluid.framework import (
     Variable,
+    _current_expected_place,
+    _in_eager_without_dygraph_check,
     default_main_program,
     device_guard,
+    in_dygraph_mode,
     name_scope,
 )
 
-from ..fluid import framework
-from ..fluid import layers
-from ..fluid import unique_name
+from ..fluid import framework, unique_name
 from ..fluid.backward import _get_no_grad_set_name, append_backward
 from ..fluid.clip import (
     GradientClipBase,
     append_gradient_clip_ops,
     error_clip_callback,
 )
-from ..fluid.framework import program_guard, Parameter
+from ..fluid.dygraph import base as imperative_base
+from ..fluid.framework import Parameter, program_guard
 from ..fluid.initializer import Constant
 from ..fluid.layer_helper import LayerHelper
-from ..fluid.dygraph import base as imperative_base
-from paddle.fluid import core
 from .lr import LRScheduler
-from paddle import _C_ops, _legacy_C_ops
-from paddle.fluid.framework import (
-    _in_legacy_dygraph,
-    _in_eager_without_dygraph_check,
-    _current_expected_place,
-    in_dygraph_mode,
-)
 
 __all__ = []
 
@@ -59,7 +55,7 @@ def append_backward_new(
     checkpoints=None,
     distop_context=None,
 ):
-    from paddle.incubate.autograd.primx import orig2prim, Transform
+    from paddle.incubate.autograd.primx import Transform, orig2prim
 
     program = default_main_program()
     assert (
@@ -98,7 +94,7 @@ def append_backward_new(
     return params_and_grads
 
 
-class Optimizer(object):
+class Optimizer:
     r"""Optimizer Base class.
 
     Define the common interface of an optimizer.
@@ -421,15 +417,21 @@ class Optimizer(object):
         return self._opti_name_list
 
     def _create_global_learning_rate(self):
-        # lr var can't be float16, for pure fp16 training, should extra handle the dtype for lr
+        # lr var can't be float16 or bfloat16, for pure fp16 or bf16 training, should extra handle the dtype for lr
         _lr_dtype = (
             paddle.get_default_dtype() if self._dtype is None else self._dtype
         )
         _lr_dtype = (
             paddle.float32
             if (
-                paddle.get_default_dtype() != "float16"
-                and _lr_dtype == paddle.float16
+                (
+                    paddle.get_default_dtype() != "float16"
+                    and _lr_dtype == paddle.float16
+                )
+                or (
+                    paddle.get_default_dtype() != "bfloat16"
+                    and _lr_dtype == paddle.bfloat16
+                )
             )
             else _lr_dtype
         )
@@ -466,7 +468,7 @@ class Optimizer(object):
             else:
                 self._learning_rate_map[
                     framework.default_main_program()
-                ] = layers.create_global_var(
+                ] = paddle.static.create_global_var(
                     name=unique_name.generate("learning_rate"),
                     shape=[1],
                     value=float(self._learning_rate),
@@ -530,17 +532,6 @@ class Optimizer(object):
                     float(value),
                     current_lr.dtype,
                     place,
-                )
-
-            elif _in_legacy_dygraph():
-                _legacy_C_ops.fill_constant(
-                    current_lr,
-                    'value',
-                    float(value),
-                    'dtype',
-                    current_lr.dtype,
-                    'shape',
-                    list(current_lr.shape),
                 )
             else:
                 global_block = framework.default_main_program().global_block()
@@ -724,10 +715,24 @@ class Optimizer(object):
         )
         if device is None:
             device = self._get_device_for_param(param.name)
-        with device_guard(device):
-            self.helper.set_variable_initializer(
-                var, initializer=Constant(value=float(fill_value))
+
+        if (
+            in_dygraph_mode()
+            and (device == 'cpu' or isinstance(device, core.CPUPlace))
+            and (not core.is_compiled_with_xpu())
+        ):
+            _C_ops.full_(
+                var,
+                var.shape,
+                str(float(fill_value)),
+                var.dtype,
+                core.CPUPlace(),
             )
+        else:
+            with device_guard(device):
+                self.helper.set_variable_initializer(
+                    var, initializer=Constant(value=float(fill_value))
+                )
 
         if framework._non_static_mode():
             if len(self._accumulators_holder) > 0:
@@ -1004,14 +1009,13 @@ class Optimizer(object):
             .. code-block:: python
 
                 import paddle
-                import numpy as np
-                value = np.arange(26).reshape(2, 13).astype("float32")
-                a = paddle.to_tensor(value)
+                x = paddle.arange(26, dtype="float32").reshape([2, 13])
+
                 linear = paddle.nn.Linear(13, 5)
                 # This can be any optimizer supported by dygraph.
                 adam = paddle.optimizer.Adam(learning_rate = 0.01,
                                             parameters = linear.parameters())
-                out = linear(a)
+                out = linear(x)
                 out.backward()
                 adam.step()
                 adam.clear_grad()
@@ -1026,17 +1030,16 @@ class Optimizer(object):
         if self._dtype is None:
             self._dtype = loss.dtype
 
-        if framework._non_static_mode():
+        if framework.in_dygraph_mode():
             parameter_list = parameters if parameters else self._parameter_list
 
+            # It is very time-consuming to call c++ functions in a loop on the python side.
+            # We put this part of the code on the c++ side to improve the speed in eager mode.
             params_grads = []
-            for param in parameter_list:
-                if param.stop_gradient:
-                    continue
-                if param._grad_ivar() is not None:
-                    # create gradient tensor
-                    grad_var = param._grad_ivar()
-                    params_grads.append((param, grad_var))
+            grads = core.eager.get_all_grads(parameter_list)
+            for index, grad in enumerate(grads):
+                if grad is not None:
+                    params_grads.append((parameter_list[index], grad))
         else:
             if callbacks is None:
                 callbacks = [error_clip_callback]
@@ -1081,11 +1084,9 @@ class Optimizer(object):
             .. code-block:: python
 
                 import paddle
-                import numpy as np
 
-                inp = np.random.uniform(-0.1, 0.1, [10, 10]).astype("float32")
+                inp = paddle.uniform([10, 10], dtype="float32", min=-0.1, max=0.1)
                 linear = paddle.nn.Linear(10, 10)
-                inp = paddle.to_tensor(inp)
                 out = linear(inp)
                 loss = paddle.mean(out)
                 optimizer = paddle.optimizer.Adam(learning_rate=0.1,
@@ -1182,28 +1183,26 @@ class Optimizer(object):
 
         if framework.in_dygraph_mode():
             return _C_ops.add_n([grad, regularization_term])
-        elif framework._in_legacy_dygraph():
-            return _legacy_C_ops.sum([grad, regularization_term])
+        else:
+            new_grad = grad
+            if grad.type == core.VarDesc.VarType.SELECTED_ROWS:
+                # FIXME(zcd): If the grad is SELECTED_ROWS, after regularization,
+                # the grad's type and name will be changed. But the gradient's name
+                # is used in ParallelExecutor Reduce mode, so I add a flag for
+                # the new_grad here.
+                new_grad = grad.block.create_var(
+                    name=grad.name + core.kNewGradSuffix(),
+                    dtype=param.dtype,
+                    shape=param.shape,
+                    lod_level=param.lod_level,
+                    type=core.VarDesc.VarType.LOD_TENSOR,
+                )
 
-        new_grad = grad
-        if grad.type == core.VarDesc.VarType.SELECTED_ROWS:
-            # FIXME(zcd): If the grad is SELECTED_ROWS, after regularization,
-            # the grad's type and name will be changed. But the gradient's name
-            # is used in ParallelExecutor Reduce mode, so I add a flag for
-            # the new_grad here.
-            new_grad = grad.block.create_var(
-                name=grad.name + core.kNewGradSuffix(),
-                dtype=param.dtype,
-                shape=param.shape,
-                lod_level=param.lod_level,
-                type=core.VarDesc.VarType.LOD_TENSOR,
-            )
+            inputs = {"X": [grad, regularization_term]}
+            outputs = {"Out": [new_grad]}
+            grad.block.append_op(type='sum', inputs=inputs, outputs=outputs)
 
-        inputs = {"X": [grad, regularization_term]}
-        outputs = {"Out": [new_grad]}
-        grad.block.append_op(type='sum', inputs=inputs, outputs=outputs)
-
-        return new_grad
+            return new_grad
 
     def append_regularization_ops(
         self, parameters_and_grads, regularization=None
@@ -1286,11 +1285,9 @@ class Optimizer(object):
         Examples:
             .. code-block:: python
 
-                import numpy as np
                 import paddle
 
-                value = np.arange(26).reshape(2, 13).astype("float32")
-                a = paddle.to_tensor(value)
+                a = paddle.arange(26, dtype="float32").reshape([2, 13])
                 linear = paddle.nn.Linear(13, 5)
                 # This can be any optimizer supported by dygraph.
                 adam = paddle.optimizer.Adam(learning_rate = 0.01,
@@ -1396,14 +1393,12 @@ class Optimizer(object):
             .. code-block:: python
 
                 import paddle
-                import numpy as np
 
-                value = np.arange(26).reshape(2, 13).astype("float32")
-                a = paddle.to_tensor(value)
+                a = paddle.arange(26, dtype="float32").reshape([2, 13])
                 linear = paddle.nn.Linear(13, 5)
                 # This can be any optimizer supported by dygraph.
                 adam = paddle.optimizer.Adam(learning_rate = 0.01,
-                                            parameters = linear.parameters())
+                                        parameters = linear.parameters())
                 out = linear(a)
                 out.backward()
                 adam.step()
@@ -1522,3 +1517,17 @@ class Optimizer(object):
         For Multi Tensor, append optimize merged_operator to block.
         """
         pass
+
+    def _is_dtype_fp16_or_bf16(self, dtype):
+        """
+        check the dtype is fp16 or the dtype is bf16
+        :param dtype: instance of core.VarDesc.VarType
+        :return: True if dtype is one of fp16 or bf16, False otherwise
+        """
+        assert isinstance(
+            dtype, core.VarDesc.VarType
+        ), "The dtype should be an instance of core.VarDesc.VarType."
+        return (
+            dtype == core.VarDesc.VarType.FP16
+            or dtype == core.VarDesc.VarType.BF16
+        )

@@ -12,11 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .optimizer import Optimizer
+from paddle import _C_ops
+
 from ..fluid import framework
-from ..fluid.framework import name_scope
-from paddle import _C_ops, _legacy_C_ops
 from ..fluid.dygraph import no_grad
+from ..fluid.framework import name_scope
+from .optimizer import Optimizer
 
 __all__ = []
 
@@ -84,9 +85,8 @@ class Adamax(Optimizer):
         .. code-block:: python
 
             import paddle
-            import numpy as np
 
-            inp = np.random.uniform(-0.1, 0.1, [10, 10]).astype("float32")
+            inp = paddle.uniform([10, 10], dtype="float32", min=-0.1, max=0.1)
             linear = paddle.nn.Linear(10, 10)
             inp = paddle.to_tensor(inp)
             out = linear(inp)
@@ -153,7 +153,7 @@ class Adamax(Optimizer):
             raise ValueError("Invaild value of beta2, expect beta2 in [0,1).")
         if not 0 <= epsilon:
             raise ValueError("Invaild value of epsilon, expect epsilon >= 0.")
-        super(Adamax, self).__init__(
+        super().__init__(
             learning_rate=learning_rate,
             parameters=parameters,
             weight_decay=weight_decay,
@@ -210,24 +210,6 @@ class Adamax(Optimizer):
                 self._beta2,
                 self._epsilon,
             )
-        elif framework._in_legacy_dygraph():
-            _legacy_C_ops.adamax(
-                param_and_grad[0],
-                param_and_grad[1],
-                self._create_param_lr(param_and_grad),
-                moment,
-                inf_norm,
-                beta1_pow_acc,
-                param_and_grad[0],
-                moment,
-                inf_norm,
-                "beta1",
-                self._beta1,
-                "beta2",
-                self._beta2,
-                "epsilon",
-                self._epsilon,
-            )
         else:
             # create the adamax optimize op
             adamax_op = block.append_op(
@@ -271,20 +253,20 @@ class Adamax(Optimizer):
                             beta1_pow_acc, self._beta1, 0.0, True
                         )
                         beta1_pow_acc.copy_(tmp, False)
-                    continue
-                with param.block.program._optimized_guard(
-                    [param, grad]
-                ), name_scope('adamax'):
-                    beta1_pow_acc = self._get_accumulator(
-                        self._beta1_pow_acc_str, param
-                    )
-                    block.append_op(
-                        type="scale",
-                        inputs={"X": beta1_pow_acc},
-                        outputs={"Out": beta1_pow_acc},
-                        attrs={"scale": self._beta1},
-                        stop_gradient=True,
-                    )
+                else:
+                    with param.block.program._optimized_guard(
+                        [param, grad]
+                    ), name_scope('adamax'):
+                        beta1_pow_acc = self._get_accumulator(
+                            self._beta1_pow_acc_str, param
+                        )
+                        block.append_op(
+                            type="scale",
+                            inputs={"X": beta1_pow_acc},
+                            outputs={"Out": beta1_pow_acc},
+                            attrs={"scale": self._beta1},
+                            stop_gradient=True,
+                        )
         else:
             for param, grad in parameters_and_grads['params']:
                 if grad is None or param.stop_gradient is True:
@@ -301,24 +283,23 @@ class Adamax(Optimizer):
                             beta1_pow_acc, self._beta1, 0.0, True
                         )
                         beta1_pow_acc.copy_(tmp, False)
-                    continue
-
-                with param.block.program._optimized_guard(
-                    [param, grad]
-                ), name_scope('adamax'):
-                    beta1_pow_acc = self._get_accumulator(
-                        self._beta1_pow_acc_str, param
-                    )
-                    self._beta1 = parameters_and_grads.get(
-                        'beta1', self._default_dict['beta1']
-                    )
-                    block.append_op(
-                        type="scale",
-                        inputs={"X": beta1_pow_acc},
-                        outputs={"Out": beta1_pow_acc},
-                        attrs={"scale": self._beta1},
-                        stop_gradient=True,
-                    )
+                else:
+                    with param.block.program._optimized_guard(
+                        [param, grad]
+                    ), name_scope('adamax'):
+                        beta1_pow_acc = self._get_accumulator(
+                            self._beta1_pow_acc_str, param
+                        )
+                        self._beta1 = parameters_and_grads.get(
+                            'beta1', self._default_dict['beta1']
+                        )
+                        block.append_op(
+                            type="scale",
+                            inputs={"X": beta1_pow_acc},
+                            outputs={"Out": beta1_pow_acc},
+                            attrs={"scale": self._beta1},
+                            stop_gradient=True,
+                        )
 
     def _update_param_group(self, parameters):
         self._beta1 = parameters.get('beta1', self._default_dict['beta1'])

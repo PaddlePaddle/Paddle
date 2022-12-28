@@ -21,7 +21,7 @@ from ..utils import deprecated
 __all__ = ['DatasetFactory', 'InMemoryDataset', 'QueueDataset']
 
 
-class DatasetFactory(object):
+class DatasetFactory:
     """
     DatasetFactory is a factory which create dataset by its name,
     you can create "QueueDataset" or "InMemoryDataset", or "FileInstantDataset",
@@ -64,7 +64,7 @@ class DatasetFactory(object):
             )
 
 
-class DatasetBase(object):
+class DatasetBase:
     """Base dataset class."""
 
     def __init__(self):
@@ -376,7 +376,7 @@ class InMemoryDataset(DatasetBase):
     @deprecated(since="2.0.0", update_to="paddle.distributed.InMemoryDataset")
     def __init__(self):
         """Init."""
-        super(InMemoryDataset, self).__init__()
+        super().__init__()
         self.proto_desc.name = "MultiSlotInMemoryDataFeed"
         self.fleet_send_batch_size = None
         self.is_user_set_queue_num = False
@@ -389,6 +389,7 @@ class InMemoryDataset(DatasetBase):
         self.merge_by_lineid = False
         self.fleet_send_sleep_seconds = None
         self.trainer_num = -1
+        self.pass_id = 0
 
     @deprecated(
         since="2.0.0",
@@ -1112,7 +1113,49 @@ class InMemoryDataset(DatasetBase):
         self.proto_desc.graph_config.gpu_graph_training = config.get(
             "gpu_graph_training", True
         )
+        self.proto_desc.graph_config.sage_mode = config.get("sage_mode", False)
+        self.proto_desc.graph_config.samples = config.get("samples", "")
+        self.proto_desc.graph_config.train_table_cap = config.get(
+            "train_table_cap", 800000
+        )
+        self.proto_desc.graph_config.infer_table_cap = config.get(
+            "infer_table_cap", 800000
+        )
         self.dataset.set_gpu_graph_mode(True)
+
+    def set_pass_id(self, pass_id):
+        """
+        Set pass id, user can set pass id in gpu graph mode.
+
+        Args:
+            pass_id: pass id.
+
+        Examples:
+            .. code-block:: python
+
+              import paddle.fluid as fluid
+              pass_id = 0
+              dataset = fluid.DatasetFactory().create_dataset("InMemoryDataset")
+              dataset.set_pass_id(pass_id)
+        """
+        self.pass_id = pass_id
+        self.dataset.set_pass_id(pass_id)
+
+    def get_pass_id(self):
+        """
+        Get pass id, user can set pass id in gpu graph mode.
+
+        Returns:
+            The pass id.
+
+        Examples:
+            .. code-block:: python
+
+              import paddle.fluid as fluid
+              dataset = fluid.DatasetFactory().create_dataset("InMemoryDataset")
+              pass_id = dataset.get_pass_id()
+        """
+        return self.pass_id
 
 
 class QueueDataset(DatasetBase):
@@ -1132,7 +1175,7 @@ class QueueDataset(DatasetBase):
         Initialize QueueDataset
         This class should be created by DatasetFactory
         """
-        super(QueueDataset, self).__init__()
+        super().__init__()
         self.proto_desc.name = "MultiSlotDataFeed"
 
     @deprecated(
@@ -1220,7 +1263,7 @@ class FileInstantDataset(DatasetBase):
         Initialize FileInstantDataset
         This class should be created by DatasetFactory
         """
-        super(FileInstantDataset, self).__init__()
+        super().__init__()
         self.proto_desc.name = "MultiSlotFileInstantDataFeed"
 
     def local_shuffle(self):
@@ -1260,7 +1303,7 @@ class BoxPSDataset(InMemoryDataset):
         Initialize BoxPSDataset
         This class should be created by DatasetFactory
         """
-        super(BoxPSDataset, self).__init__()
+        super().__init__()
         self.boxps = core.BoxPS(self.dataset)
         self.proto_desc.name = "PaddleBoxDataFeed"
 

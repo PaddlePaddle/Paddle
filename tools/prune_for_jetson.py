@@ -16,9 +16,9 @@ This script simply removes all grad ops and kernels. You should use this script
 when cmake ON_INFER=ON, which can greatly reduce the volume of the prediction library.
 """
 
+import glob
 import os
 import re
-import glob
 
 
 def find_type_files(cur_dir, file_type, file_list=[]):
@@ -90,7 +90,7 @@ def prune_phi_kernels():
             content = content.replace(p, '')
 
         with open(op_file, 'w', encoding='utf-8') as f:
-            f.write(u'{}'.format(content))
+            f.write(content)
 
     print('We erase all grad op and kernel for Paddle-Inference lib.')
     print('%50s%10s' % ('type', 'count'))
@@ -137,7 +137,7 @@ def append_fluid_kernels():
         return False
 
     with open(file_name, 'w', encoding='utf-8') as f:
-        f.write(u'{}'.format(new_content))
+        f.write(new_content)
 
     # 2. add op and kernel register
     op_white_list.append("tensorrt_engine")
@@ -170,7 +170,7 @@ def append_fluid_kernels():
                         matches[0], matches[0].replace(k, k + "__")
                     )
                     with open(op_file, 'w', encoding='utf-8') as f:
-                        f.write(u'{}'.format(content))
+                        f.write(content)
 
     return True
 

@@ -15,8 +15,14 @@ limitations under the License. */
 #pragma once
 
 #include <thrust/remove.h>
-#include <thrust/sort.h>
 #include <thrust/unique.h>
+#ifdef __NVCC__
+#include <cub/block/block_scan.cuh>
+#endif
+#ifdef __HIPCC__
+#include <hipcub/hipcub.hpp>
+namespace cub = hipcub;
+#endif
 #include "paddle/phi/kernels/sparse/conv_kernel.h"
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
@@ -167,7 +173,7 @@ inline void GatherV2(const GPUContext& dev_ctx,
 template <typename IntT>
 __global__ void UniqueKernel(const IntT* in_indexs,
                              const int rulebook_len,
-                             int* out_index_table,
+                             int* index_flags,
                              int* out_indexs,
                              int* nnz) {
   extern __shared__ int cache[];
@@ -182,8 +188,8 @@ __global__ void UniqueKernel(const IntT* in_indexs,
   if (i < rulebook_len) {
     // atomicOr only support int
     int index = static_cast<int>(in_indexs[i]);
-    int flag = atomicOr(out_index_table + index, 1);
-    if (flag == 0) {
+    const bool flag = phi::funcs::sparse::SetBits(index, index_flags);
+    if (!flag) {
       int j = atomicAdd(&count, 1);
       cache[j] = index;
     }
@@ -196,6 +202,88 @@ __global__ void UniqueKernel(const IntT* in_indexs,
   __syncthreads();
   for (int i = threadIdx.x; i < count; i += blockDim.x) {
     out_indexs[start + i] = cache[i];
+  }
+}
+
+inline __device__ uint32_t BitCount(const uint32_t data) {
+  uint32_t count = data;
+  count = (count & 0x55555555) + ((count >> 1) & 0x55555555);
+  count = (count & 0x33333333) + ((count >> 2) & 0x33333333);
+  count = (count & 0x0f0f0f0f) + ((count >> 4) & 0x0f0f0f0f);
+  count = (count & 0x00ff00ff) + ((count >> 8) & 0x00ff00ff);
+  count = (count & 0x0000ffff) + ((count >> 16) & 0x0000ffff);
+  return count;
+}
+
+static __global__ void GetOutIndexsCounter(const int* flags,
+                                           const int n,
+                                           int* out) {
+  int tid = threadIdx.x + blockDim.x * blockIdx.x;
+  __shared__ int block_count;
+  if (threadIdx.x == 0) {
+    block_count = 0;
+  }
+  __syncthreads();
+
+  if (tid < n) {
+    // get the count of 1 in flags[tid]
+    uint32_t count = BitCount(static_cast<uint32_t>(flags[tid]));
+    // add to block_count
+    // TODO(zhangkaihuo): replace with block reduce_sum
+    atomicAdd(&block_count, static_cast<int>(count));
+  }
+  __syncthreads();
+  // write to out
+  if (threadIdx.x == 0) {
+    out[blockIdx.x] = block_count;
+  }
+}
+
+template <int BS>
+__global__ void GetOutIndexs(const int* flags,
+                             const int n,
+                             const int* offsets,
+                             const int out_nnz,
+                             int* out) {
+  int tid = threadIdx.x + blockDim.x * blockIdx.x;
+  __shared__ int block_counts[BS];
+  __shared__ int block_outs[BS * 32];
+
+  int count = 0;
+
+  if (tid < n) {
+    // get the count of 1 in flags[tid]
+    int flag = flags[tid];
+    count = BitCount(static_cast<uint32_t>(flag));
+  }
+
+  // call block prefix_sum
+  // using namespace cub;
+  typedef cub::BlockScan<int, BS> BlockScan;
+  __shared__ typename BlockScan::TempStorage temp_storage;
+  BlockScan(temp_storage).ExclusiveSum(count, count);
+  __syncthreads();
+
+  // write index to out
+  if (tid < n) {
+    // get the count of 1 in flags[tid]
+    int flag = flags[tid];
+    // int j = block_counts[threadIdx.x];
+    int j = count;
+    // TODO(zhangkaihuo): opt the loop
+    for (int i = 0; i < 32; ++i) {
+      if ((1 & (flag >> i)) == 1) {
+        block_outs[j++] = (tid << 5) + i;
+      }
+    }
+  }
+
+  __syncthreads();
+  // write to block_outs
+  int start = offsets[blockIdx.x];
+  int end = blockIdx.x == gridDim.x - 1 ? out_nnz : offsets[blockIdx.x + 1];
+  for (int i = threadIdx.x; i < end - start; i += blockDim.x) {
+    out[start + i] = block_outs[i];
   }
 }
 
@@ -284,7 +372,6 @@ __global__ void ProductRuleBookKernel(const T* x_indices,
             atomicAdd(&counter_buf[kernel_index], 1);
             kernel_i = kernel_index;
           }
-          // rulebook[kernel_index * non_zero_num + i] = kernel_i;
           rulebook[kernel_index * non_zero_num + i] = in_i;
           rulebook[kernel_index * non_zero_num + offset + i] = out_index;
           ++kernel_index;
@@ -299,17 +386,19 @@ __global__ void ProductRuleBookKernel(const T* x_indices,
 }
 
 template <typename IntT>
-__global__ void GetOutIndexTable(const IntT* indices,
-                                 const IntT non_zero_num,
-                                 const Dims4D dims,
-                                 int* out_index_table) {
+__global__ void GetOutIndexTable1(const IntT* indices,
+                                  const IntT non_zero_num,
+                                  const Dims4D dims,
+                                  int* index_flags,
+                                  int* out_index_table) {
   CUDA_KERNEL_LOOP_TYPE(i, non_zero_num, int64_t) {
     IntT batch = indices[i];
     IntT in_z = indices[i + non_zero_num];
     IntT in_y = indices[i + 2 * non_zero_num];
     IntT in_x = indices[i + 3 * non_zero_num];
     IntT index = PointToIndex(batch, in_x, in_y, in_z, dims);
-    out_index_table[index] = i == 0 ? -1 : i;
+    phi::funcs::sparse::SetBits(index, index_flags);
+    out_index_table[index] = i;
   }
 }
 
@@ -375,6 +464,7 @@ __global__ void ProductSubmRuleBookKernel(const T* x_indices,
                                           const Dims4D paddings,
                                           const Dims4D dilations,
                                           const Dims4D strides,
+                                          const int* index_flags,
                                           const int* out_index_table,
                                           T* rulebook,
                                           int* counter) {
@@ -417,9 +507,10 @@ __global__ void ProductSubmRuleBookKernel(const T* x_indices,
             T out_x = (in_x + paddings[3] - kx * dilations[3]) / strides[3];
             out_index = phi::funcs::sparse::PointToIndex<Dims4D>(
                 batch, out_x, out_y, out_z, out_dims);
-            int real_out_index = out_index_table[out_index];
-            if (real_out_index != 0) {
-              real_out_index = real_out_index == -1 ? 0 : real_out_index;
+            const bool flag =
+                phi::funcs::sparse::TestBits(out_index, index_flags);
+            if (flag) {
+              int real_out_index = out_index_table[out_index];
               in_i = i;
               int buf_i = atomicAdd(&counter_buf[kernel_index], 1);
               kernel_i = kernel_index;
@@ -440,7 +531,6 @@ __global__ void ProductSubmRuleBookKernel(const T* x_indices,
   __syncthreads();
   for (int i = 0; i < kernel_size; i++) {
     if (threadIdx.x < counter_buf[i]) {
-      // rulebook[i * non_zero_num + counter_buf2[i] + threadIdx.x] = i;
       rulebook[i * non_zero_num + counter_buf2[i] + threadIdx.x] =
           rulebook_buf[i * blockDim.x + threadIdx.x];
       rulebook[i * non_zero_num + offset + counter_buf2[i] + threadIdx.x] =
@@ -575,12 +665,18 @@ int ProductRuleBook(const Context& dev_ctx,
   DenseTensorMeta rulebook_meta(
       indices_dtype, {rulebook_rows, rulebook_cols}, DataLayout::NCHW);
 
-  int64_t table_size = 1;
+  int table_size = 1;
   for (int i = 0; i < out_dims.size() - 1; i++) {
     table_size *= out_dims[i];
   }
   DenseTensor out_index_table = phi::Empty<int>(dev_ctx, {table_size});
   int* out_index_table_ptr = out_index_table.data<int>();
+  // index_flags: flag the indices exist or not
+  int index_flags_size = (table_size + 31) / 32;
+  DenseTensor index_flags = phi::Empty<int>(dev_ctx, {index_flags_size});
+  int* index_flags_ptr = index_flags.data<int>();
+  phi::backends::gpu::GpuMemsetAsync(
+      index_flags_ptr, 0, sizeof(int) * index_flags.numel(), dev_ctx.stream());
 
   if (subm) {
     DenseTensor tmp_rulebook = phi::Empty(dev_ctx, std::move(rulebook_meta));
@@ -590,16 +686,16 @@ int ProductRuleBook(const Context& dev_ctx,
 
     phi::Copy(dev_ctx, x.indices(), dev_ctx.GetPlace(), false, &out_indices);
 
-    phi::backends::gpu::GpuMemsetAsync(
-        out_index_table_ptr, 0, sizeof(int) * table_size, dev_ctx.stream());
-
     auto config =
         phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, non_zero_num, 1);
-    GetOutIndexTable<IntT><<<config.block_per_grid,
-                             config.thread_per_block,
-                             0,
-                             dev_ctx.stream()>>>(
-        out_indices.data<IntT>(), non_zero_num, d_x_dims, out_index_table_ptr);
+    GetOutIndexTable1<IntT><<<config.block_per_grid,
+                              config.thread_per_block,
+                              0,
+                              dev_ctx.stream()>>>(out_indices.data<IntT>(),
+                                                  non_zero_num,
+                                                  d_x_dims,
+                                                  index_flags_ptr,
+                                                  out_index_table_ptr);
 
     size_t cache_size =
         kernel_size * 2 * sizeof(int) +
@@ -625,6 +721,7 @@ int ProductRuleBook(const Context& dev_ctx,
                                                           d_paddings,
                                                           d_dilations,
                                                           d_strides,
+                                                          index_flags_ptr,
                                                           out_index_table_ptr,
                                                           rulebook_ptr,
                                                           counter_ptr);
@@ -696,9 +793,6 @@ int ProductRuleBook(const Context& dev_ctx,
     int* unique_key_ptr = unique_key.data<int>();
 
     phi::backends::gpu::GpuMemsetAsync(
-        out_index_table_ptr, 0, sizeof(int) * table_size, dev_ctx.stream());
-
-    phi::backends::gpu::GpuMemsetAsync(
         unique_key_ptr, 0, sizeof(int), dev_ctx.stream());
 
     config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, rulebook_len, 1);
@@ -708,7 +802,7 @@ int ProductRuleBook(const Context& dev_ctx,
                          cache_size,
                          dev_ctx.stream()>>>(rulebook_ptr + rulebook_len,
                                              rulebook_len,
-                                             out_index_table_ptr,
+                                             index_flags_ptr,
                                              out_index_ptr,
                                              unique_key_ptr);
 
@@ -719,13 +813,25 @@ int ProductRuleBook(const Context& dev_ctx,
                                        gpuMemcpyDeviceToHost,
                                        dev_ctx.stream());
     dev_ctx.Wait();
+
+    const int threads = 256;
+    const int blocks = (index_flags.numel() + threads - 1) / threads;
+    GetOutIndexsCounter<<<blocks, threads, 0, dev_ctx.stream()>>>(
+        index_flags_ptr, index_flags.numel(), out_index_table_ptr);
 #ifdef PADDLE_WITH_HIP
-    thrust::sort(thrust::hip::par.on(dev_ctx.stream()),
+    thrust::exclusive_scan(thrust::hip::par.on(dev_ctx.stream()),
 #else
-    thrust::sort(thrust::cuda::par.on(dev_ctx.stream()),
+    thrust::exclusive_scan(thrust::cuda::par.on(dev_ctx.stream()),
 #endif
-                 out_index_ptr,
-                 out_index_ptr + out_nnz);
+                           out_index_table_ptr,
+                           out_index_table_ptr + blocks,
+                           out_index_table_ptr);
+    GetOutIndexs<threads>
+        <<<blocks, threads, 0, dev_ctx.stream()>>>(index_flags_ptr,
+                                                   index_flags.numel(),
+                                                   out_index_table_ptr,
+                                                   out_nnz,
+                                                   out_index_ptr);
 
     const int64_t sparse_dim = 4;
     phi::DenseTensor out_indices =

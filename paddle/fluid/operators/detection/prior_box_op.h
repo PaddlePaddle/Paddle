@@ -182,7 +182,7 @@ class PriorBoxOpKernel : public framework::OpKernel<T> {
     var_t.mutable_data<K>(
         phi::make_ddim({1, static_cast<int>(variances.size())}),
         ctx.GetPlace());
-    auto var_et = framework::EigenTensor<K, 2>::From(var_t);
+    auto var_et = phi::EigenTensor<K, 2>::From(var_t);
 
 #ifdef PADDLE_WITH_MKLML
 #pragma omp parallel for
@@ -195,7 +195,7 @@ class PriorBoxOpKernel : public framework::OpKernel<T> {
     auto var_dim = vars->dims();
     vars->Resize({box_num, static_cast<int>(variances.size())});
 
-    auto e_vars = framework::EigenMatrix<K, Eigen::RowMajor>::From(*vars);
+    auto e_vars = phi::EigenMatrix<K, Eigen::RowMajor>::From(*vars);
 
 #ifdef PADDLE_WITH_MKLML
 #pragma omp parallel for collapse(2)

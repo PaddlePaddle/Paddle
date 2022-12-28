@@ -14,8 +14,8 @@
 
 #include "paddle/phi/kernels/adagrad_kernel.h"
 
-#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/selected_rows_functor.h"
@@ -47,7 +47,7 @@ __global__ void MergeGradKernel(const T* grad,
   grad += ty * row_numel;
   grad_merge += grad_merge_idx * row_numel;
   for (int index = tid; index < row_numel; index += block_size) {
-    paddle::platform::CudaAtomicAdd(grad_merge + index, grad[index]);
+    phi::CudaAtomicAdd(grad_merge + index, grad[index]);
   }
 }
 
@@ -69,9 +69,9 @@ __global__ void SparseAdagradFunctorKernel(const T* grad,
   for (int index = tid; index < row_numel; index += block_size) {
     // Since index in rows of SelectedRows can be duplicate, we have to use
     // Atomic Operation to avoid concurrent write error.
-    paddle::platform::CudaAtomicAdd(param + index,
-                                    -1.0 * learning_rate[0] * grad[index] /
-                                        (sqrt(moment[index]) + epsilon));
+    phi::CudaAtomicAdd(param + index,
+                       -1.0 * learning_rate[0] * grad[index] /
+                           (sqrt(moment[index]) + epsilon));
   }
 }
 

@@ -12,16 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 
-from .common import DistributedOperatorImplContainer
-from .common import DistributedOperatorImpl
-from .common import register_distributed_operator_impl_container
-from .common import register_distributed_operator_impl
 from ..utils import set_dist_op_desc_original_id
+from .common import (
+    DistributedOperatorImpl,
+    DistributedOperatorImplContainer,
+    register_distributed_operator_impl,
+    register_distributed_operator_impl_container,
+)
 
 
 class DistributedUpdateLossScaling(DistributedOperatorImplContainer):
     def __init__(self, op_type):
-        super(DistributedUpdateLossScaling, self).__init__(op_type)
+        super().__init__(op_type)
 
 
 register_distributed_operator_impl_container(
@@ -31,7 +33,7 @@ register_distributed_operator_impl_container(
 
 class DistributedUpdateLossScalingImpl(DistributedOperatorImpl):
     def __init__(self, name):
-        super(DistributedUpdateLossScalingImpl, self).__init__(name)
+        super().__init__(name)
         self._name = name
         self._forward_implemented = False
         self._backward_implemented = True
@@ -77,7 +79,7 @@ class DistributedUpdateLossScalingImpl(DistributedOperatorImpl):
             str(backward_op)
         )
 
-        assert rank_id in dist_attr.process_mesh.processes
+        assert rank_id in dist_attr.process_mesh.process_ids
 
         assert 'X' in kwargs, "input [{}] is not given".format('X')
         assert 'FoundInfinite' in kwargs, "input [{}] is not given".format(
@@ -151,8 +153,8 @@ class DistributedUpdateLossScalingImpl(DistributedOperatorImpl):
             if (
                 rank_id
                 in ctx.get_tensor_dist_attr_for_program(
-                    main_block.var(varname)
-                ).process_mesh.processes
+                    main_block._var_recursive(varname)
+                ).process_mesh.process_ids
             ):
                 filter_vars.append(varname)
 

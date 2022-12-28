@@ -40,7 +40,7 @@ class ConvOneDNNHandlerT
                                    dnnl::convolution_backward_weights> {
  public:
   ConvOneDNNHandlerT(const OneDNNContext& dev_ctx,
-                     const dnnl::engine mkldnn_engine,
+                     const dnnl::engine onednn_engine,
                      Place cpu_place,
                      const phi::DenseTensor* input,
                      const phi::DenseTensor* filter,
@@ -63,7 +63,7 @@ class ConvOneDNNHandlerT
                               dnnl::convolution_backward_data,
                               dnnl::convolution_backward_weights>(
             dev_ctx,
-            mkldnn_engine,
+            onednn_engine,
             cpu_place,
             funcs::CreateKey(
                 dev_ctx, phi::vectorize(input->dims()), unique_name)) {
@@ -154,7 +154,7 @@ class ConvOneDNNHandlerT
       const auto dst_tz = phi::vectorize(output->dims());
 
       const dnnl::memory::dims stride_dims = strides;
-      const auto onednn_paddings = funcs::ToOnednnPadding(paddings);
+      const auto onednn_paddings = funcs::ToOneDNNPadding(paddings);
       const dnnl::memory::dims dilations_dims = dilations;
       /* create memory descriptor for convolution without specified format
        * ('any') which lets a primitive (convolution in this case) choose
@@ -326,7 +326,7 @@ class ConvOneDNNHandlerT
       auto diff_dst_md = funcs::OneDNNMemDesc(
           dst_tz, funcs::OneDNNGetDataType<T>(), chosen_memory_format);
 
-      auto onednn_paddings = funcs::ToOnednnPadding(paddings);
+      auto onednn_paddings = funcs::ToOneDNNPadding(paddings);
       std::transform(
           dilations.begin(), dilations.end(), dilations.begin(), [](int64_t i) {
             return i - 1;

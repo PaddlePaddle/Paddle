@@ -13,14 +13,18 @@
 # limitations under the License.
 
 from collections import defaultdict
-from paddle.fluid.framework import Block, Program
-from paddle.fluid.framework import _non_static_mode
-import paddle.fluid.core as core
-import paddle.distributed.fleet as fleet
+
 import numpy as np
 
+import paddle.distributed.fleet as fleet
 
-class HybridParallelInferenceHelper(object):
+# (TODO: GhostScreaming) It will be removed later.
+import paddle.fluid.core as core
+from paddle.fluid.framework import in_dygraph_mode
+from paddle.framework import Block, Program
+
+
+class HybridParallelInferenceHelper:
     """
     A helper class to split program for inference with hybrid parallelism.
 
@@ -53,16 +57,16 @@ class HybridParallelInferenceHelper(object):
             while_op = layers.While(cond, is_test=True)
 
             # init global lod_tensor_array for generation task
-            arr = layers.array_write(data, step_idx)
+            arr = paddle.tensor.array_write(data, step_idx)
 
         with while_op.block():
             with paddle.fluid.device_guard(f'{device}:all'):
                 # read data from global lod_tensor_array
-                element_in_arr = layers.array_read(array=arr, i=step_idx)
+                element_in_arr = paddle.tensor.array_read(array=arr, i=step_idx)
                 # write placehold data to global lod_tensor_array,
                 # it need for send_v2 of lod_tensor_array
-                layers.increment(x=step_idx, value=1.0, in_place=True)
-                layers.array_write(element_in_arr, i=step_idx, array=arr)
+                paddle.increment(x=step_idx, value=1.0)
+                paddle.tensor.array_write(element_in_arr, i=step_idx, array=arr)
 
             with paddle.fluid.device_guard(f'{device}:0'):
                 ... some code
@@ -74,7 +78,7 @@ class HybridParallelInferenceHelper(object):
                 # generate some data in while block and write to global lod_tensor_array
                 # that they are read in next while step.
                 # we will using send_v2 to send global lod_tensor_array to other pipeline and sync
-                layers.array_write(other_var, i=step_idx, array=arr)
+                paddle.tensor.array_write(other_var, i=step_idx, array=arr)
 
                 # update cond and assign to cond_int, we will sync cond_int
                 layers.assign(layers.cast(cond, dtype="int32"), cond_int)
@@ -125,17 +129,17 @@ class HybridParallelInferenceHelper(object):
                 step_idx = layers.fill_constant(
                     shape=[1], dtype="int64", value=0, force_cpu=False, name="i")
 
-                data = layers.array_write(X, step_idx)
+                data = paddle.tensor.array_write(X, step_idx)
 
                 cond_int = layers.fill_constant(shape=[1], dtype="int64", value=0, force_cpu=False, name="cond_int")
-                cond = layers.less_than(x=step_idx, y=max_len)
+                cond = paddle.less_than(x=step_idx, y=max_len)
                 while_op = layers.While(cond, is_test=True)
 
             with while_op.block():
                 with paddle.fluid.device_guard(f'{device}:all'):
-                    input = layers.array_read(array=data, i=step_idx)
-                    layers.increment(x=step_idx, value=1.0, in_place=True)
-                    layers.array_write(input, i=step_idx, array=data)
+                    input = paddle.tensor.array_read(array=data, i=step_idx)
+                    paddle.increment(x=step_idx, value=1.0)
+                    paddle.tensor.array_write(input, i=step_idx, array=data)
 
                 with paddle.fluid.device_guard(f'{device}:0'):
                     param_attr = paddle.ParamAttr(initializer=paddle.nn.initializer.Constant(1.0))
@@ -149,10 +153,10 @@ class HybridParallelInferenceHelper(object):
                         shape=[5, 2], dtype='float32', attr=param_attr, is_bias=False)
                     hidden2 = paddle.matmul(hidden1, weight2)
 
-                    layers.array_write(hidden2, i=step_idx, array=data)
+                    paddle.tensor.array_write(hidden2, i=step_idx, array=data)
 
                     # update cond and assign to cond_int, we will sync cond_int
-                    layers.less_than(x=step_idx, y=max_len, cond=cond)
+                    paddle.assign(paddle.less_than(x=step_idx, y=max_len), cond)
                     layers.assign(layers.cast(cond, dtype="int32"), cond_int)
 
                 with paddle.fluid.device_guard(f'{device}:all'):
@@ -202,7 +206,7 @@ class HybridParallelInferenceHelper(object):
         elif core.is_compiled_with_cuda():
             self._device = "gpu"
         assert self._device, "Only gpu and npu are supported."
-        assert not _non_static_mode(), "Only static mode is supported."
+        assert not in_dygraph_mode(), "Only static mode is supported."
 
         op_maker = core.op_proto_and_checker_maker
         self._op_role = op_maker.OpRole

@@ -39,7 +39,7 @@ def DataTypeCast(date_type):
     return np_data_type
 
 
-class TestCollectiveAPIRunnerBase(object):
+class TestCollectiveAPIRunnerBase:
     def get_model(self, train_prog, startup_prog, rank, indata=None):
         raise NotImplementedError(
             "get model should be implemented by child class."

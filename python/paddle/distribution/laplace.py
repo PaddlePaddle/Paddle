@@ -15,6 +15,7 @@
 import numbers
 
 import numpy as np
+
 import paddle
 from paddle.distribution import distribution
 from paddle.fluid import framework as framework
@@ -76,7 +77,7 @@ class Laplace(distribution.Distribution):
         else:
             self.loc, self.scale = loc, scale
 
-        super(Laplace, self).__init__(self.loc.shape)
+        super().__init__(self.loc.shape)
 
     @property
     def mean(self):

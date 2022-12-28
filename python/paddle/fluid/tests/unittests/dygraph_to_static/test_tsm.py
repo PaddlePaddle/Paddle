@@ -13,16 +13,20 @@
 # limitations under the License.
 
 import argparse
-import numpy as np
 import os
 import random
 import sys
 import unittest
+
+import numpy as np
+from tsm_config_utils import merge_configs, parse_config, print_configs
+
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.dygraph import declarative, ProgramTranslator, to_variable
-from paddle.fluid.dygraph.nn import Conv2D, BatchNorm, Linear, Pool2D
-from tsm_config_utils import merge_configs, parse_config, print_configs
+from paddle.fluid.dygraph import to_variable
+from paddle.jit import ProgramTranslator
+from paddle.jit.api import to_static
+from paddle.nn import BatchNorm, Linear
 
 random.seed(0)
 np.random.seed(0)
@@ -56,17 +60,16 @@ class ConvBNLayer(fluid.dygraph.Layer):
         groups=1,
         act=None,
     ):
-        super(ConvBNLayer, self).__init__()
+        super().__init__()
 
-        self._conv = Conv2D(
-            num_channels=num_channels,
-            num_filters=num_filters,
-            filter_size=filter_size,
+        self._conv = paddle.nn.Conv2D(
+            in_channels=num_channels,
+            out_channels=num_filters,
+            kernel_size=filter_size,
             stride=stride,
             padding=(filter_size - 1) // 2,
-            groups=None,
-            act=None,
-            param_attr=fluid.param_attr.ParamAttr(),
+            groups=1,
+            weight_attr=fluid.param_attr.ParamAttr(),
             bias_attr=False,
         )
 
@@ -88,7 +91,7 @@ class BottleneckBlock(fluid.dygraph.Layer):
     def __init__(
         self, num_channels, num_filters, stride, shortcut=True, seg_num=8
     ):
-        super(BottleneckBlock, self).__init__()
+        super().__init__()
 
         self.conv0 = ConvBNLayer(
             num_channels=num_channels,
@@ -122,7 +125,9 @@ class BottleneckBlock(fluid.dygraph.Layer):
         self._num_channels_out = int(num_filters * 4)
 
     def forward(self, inputs):
-        shifts = fluid.layers.temporal_shift(inputs, self.seg_num, 1.0 / 8)
+        shifts = paddle.nn.functional.temporal_shift(
+            inputs, self.seg_num, 1.0 / 8
+        )
         y = self.conv0(shifts)
         conv1 = self.conv1(y)
         conv2 = self.conv2(conv1)
@@ -130,13 +135,13 @@ class BottleneckBlock(fluid.dygraph.Layer):
             short = inputs
         else:
             short = self.short(inputs)
-        y = fluid.layers.elementwise_add(x=short, y=conv2, act="relu")
+        y = paddle.nn.functional.relu(paddle.add(x=short, y=conv2))
         return y
 
 
 class TSM_ResNet(fluid.dygraph.Layer):
     def __init__(self, name_scope, config, mode):
-        super(TSM_ResNet, self).__init__(name_scope)
+        super().__init__(name_scope)
 
         self.layers = config.MODEL.num_layers
         self.seg_num = config.MODEL.seg_num
@@ -156,8 +161,8 @@ class TSM_ResNet(fluid.dygraph.Layer):
         self.conv = ConvBNLayer(
             num_channels=3, num_filters=64, filter_size=7, stride=2, act='relu'
         )
-        self.pool2d_max = Pool2D(
-            pool_size=3, pool_stride=2, pool_padding=1, pool_type='max'
+        self.pool2d_max = paddle.nn.MaxPool2D(
+            kernel_size=3, stride=2, padding=1
         )
 
         self.bottleneck_block_list = []
@@ -179,10 +184,7 @@ class TSM_ResNet(fluid.dygraph.Layer):
                 num_channels = int(bottleneck_block._num_channels_out)
                 self.bottleneck_block_list.append(bottleneck_block)
                 shortcut = True
-        self.pool2d_avg = Pool2D(
-            pool_size=7, pool_type='avg', global_pooling=True
-        )
-
+        self.pool2d_avg = paddle.nn.AdaptiveAvgPool2D(1)
         import math
 
         stdv = 1.0 / math.sqrt(2048 * 1.0)
@@ -190,32 +192,32 @@ class TSM_ResNet(fluid.dygraph.Layer):
         self.out = Linear(
             2048,
             self.class_dim,
-            act="softmax",
-            param_attr=fluid.param_attr.ParamAttr(
-                initializer=fluid.initializer.Uniform(-stdv, stdv)
+            weight_attr=paddle.ParamAttr(
+                initializer=paddle.nn.initializer.Uniform(-stdv, stdv)
             ),
-            bias_attr=fluid.param_attr.ParamAttr(
-                learning_rate=2.0, regularizer=fluid.regularizer.L2Decay(0.0)
+            bias_attr=paddle.ParamAttr(
+                learning_rate=2.0, regularizer=paddle.regularizer.L1Decay()
             ),
         )
 
-    @declarative
+    @to_static
     def forward(self, inputs):
-        y = fluid.layers.reshape(inputs, [-1] + self.reshape_list)
+        y = paddle.reshape(inputs, [-1] + self.reshape_list)
         y = self.conv(y)
         y = self.pool2d_max(y)
         for bottleneck_block in self.bottleneck_block_list:
             y = bottleneck_block(y)
         y = self.pool2d_avg(y)
-        y = fluid.layers.dropout(y, dropout_prob=0.5)
-        y = fluid.layers.reshape(y, [-1, self.seg_num, y.shape[1]])
-        y = fluid.layers.reduce_mean(y, dim=1)
-        y = fluid.layers.reshape(y, shape=[-1, 2048])
+        y = paddle.nn.functional.dropout(y, p=0.5)
+        y = paddle.reshape(y, [-1, self.seg_num, y.shape[1]])
+        y = paddle.mean(y, axis=1)
+        y = paddle.reshape(y, shape=[-1, 2048])
         y = self.out(y)
+        y = paddle.nn.functional.softmax(y)
         return y
 
 
-class FakeDataReader(object):
+class FakeDataReader:
     def __init__(self, mode, cfg):
         self.format = cfg.MODEL.format
         self.num_classes = cfg.MODEL.num_classes
@@ -327,14 +329,18 @@ def train(args, fake_data_reader, to_static):
                 labels = to_variable(y_data)
                 labels.stop_gradient = True
                 outputs = video_model(imgs)
-                loss = fluid.layers.cross_entropy(
-                    input=outputs, label=labels, ignore_index=-1
+                loss = paddle.nn.functional.cross_entropy(
+                    input=outputs,
+                    label=labels,
+                    ignore_index=-1,
+                    reduction='none',
+                    use_softmax=False,
                 )
                 avg_loss = paddle.mean(loss)
-                acc_top1 = fluid.layers.accuracy(
+                acc_top1 = paddle.static.accuracy(
                     input=outputs, label=labels, k=1
                 )
-                acc_top5 = fluid.layers.accuracy(
+                acc_top5 = paddle.static.accuracy(
                     input=outputs, label=labels, k=5
                 )
 
@@ -387,6 +393,4 @@ class TestTsm(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    # switch into new eager mode
-    with fluid.framework._test_eager_guard():
-        unittest.main()
+    unittest.main()

@@ -13,21 +13,22 @@
 # limitations under the License.
 
 import unittest
+
 import paddle
-from paddle.distributed import fleet
 import paddle.nn as nn
-from paddle.fluid.dygraph.layers import Layer
+import paddle.nn.functional as F
+from paddle.distributed import fleet
 from paddle.distributed.fleet.meta_parallel import (
     LayerDesc,
     PipelineLayer,
     PipelineParallelWithInterleave,
 )
-import paddle.nn.functional as F
+from paddle.fluid.dygraph.layers import Layer
 
 
 class ReshapeHelp(Layer):
     def __init__(self, shape):
-        super(ReshapeHelp, self).__init__()
+        super().__init__()
         self.shape = shape
 
     def forward(self, x):
@@ -47,9 +48,7 @@ class MLPForVirtualStageLayerTest(PipelineLayer):
             LayerDesc(nn.Linear, 2, self.num_classes),
             LayerDesc(nn.Linear, self.num_classes, 2),
         ]
-        super(MLPForVirtualStageLayerTest, self).__init__(
-            layers=decs, loss_fn=nn.CrossEntropyLoss(), **kwargs
-        )
+        super().__init__(layers=decs, loss_fn=nn.CrossEntropyLoss(), **kwargs)
 
 
 class TestPipeLayerAPI(unittest.TestCase):

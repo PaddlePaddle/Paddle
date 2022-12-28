@@ -640,6 +640,9 @@ void BatchNormInferMeta(const MetaTensor& x,
   if (saved_variance) {
     saved_variance->set_dims({C});
   }
+  if (reserve_space) {
+    reserve_space->set_dims({-1});
+  }
   y->share_lod(x);
   y->set_dtype(x.dtype());
 }
@@ -1327,17 +1330,13 @@ void GraphSampleNeighborsInferMeta(const MetaTensor& row,
 }
 
 void HSigmoidLossInferMeta(const MetaTensor& x,
-                           const MetaTensor& w,
                            const MetaTensor& label,
+                           const MetaTensor& w,
+                           const MetaTensor& bias,
                            const MetaTensor& path,
                            const MetaTensor& code,
-                           const MetaTensor& bias,
                            int num_classes,
                            bool remote_prefetch,
-                           int trainer_id,
-                           const std::vector<int64_t>& height_sections,
-                           const std::vector<std::string>& epmap,
-                           const std::vector<std::string>& table_names,
                            bool is_sparse,
                            MetaTensor* out,
                            MetaTensor* pre_out,
@@ -2207,6 +2206,14 @@ void MultiplexInferMeta(const std::vector<const MetaTensor*>& ins,
         phi::errors::PreconditionNotMet(
             "All the candidate tensors must have the same size."));
   }
+
+  PADDLE_ENFORCE_GE(
+      in_dim[0],
+      ids_dim[0],
+      phi::errors::InvalidArgument("The 2nd-dim of input cannot be smaller "
+                                   "than batchSize of the index tensor."));
+
+  in_dim[0] = ids_dim[0];
   out->set_dims(in_dim);
   out->set_dtype(ins[0]->dtype());
 }
@@ -2668,6 +2675,30 @@ void UnchangedMultiInferMeta(const std::vector<const MetaTensor*>& x,
   }
 }
 
+void ShareBufferInferMeta(const std::vector<const MetaTensor*>& xs,
+                          const std::vector<bool>& share_dims_and_dtype,
+                          std::vector<MetaTensor*> outs,
+                          std::vector<MetaTensor*> xouts) {
+  if (share_dims_and_dtype.empty()) {
+    return;
+  }
+  PADDLE_ENFORCE_EQ(xs.size(),
+                    share_dims_and_dtype.size(),
+                    phi::errors::PermissionDenied(
+                        "The input(X) and attribute share_dims_and_dtype "
+                        "should have the same size, but got size of input(X) "
+                        "is %d and size of share_dims_and_dtype is %d.",
+                        xs.size(),
+                        share_dims_and_dtype.size()));
+
+  for (size_t i = 0; i < xs.size(); ++i) {
+    if (share_dims_and_dtype[i]) {
+      outs[i]->set_dims(xs[i]->dims());
+      outs[i]->set_dtype(xs[i]->dtype());
+    }
+  }
+}
+
 void UpdateLossScalingInferMeta(const std::vector<const MetaTensor*>& xs,
                                 const MetaTensor& found_infinite,
                                 const MetaTensor& prev_loss_scaling,
@@ -2733,6 +2764,36 @@ void WarpctcInferMeta(const MetaTensor& logits,
 
   loss->set_dims({-1, 1});
   loss->set_dtype(logits.dtype());
+}
+
+void WarprnntInferMeta(const MetaTensor& input,
+                       const MetaTensor& label,
+                       const MetaTensor& input_lengths,
+                       const MetaTensor& label_lengths,
+                       int blank,
+                       float fastemit_lambda,
+                       MetaTensor* loss,
+                       MetaTensor* warpctcgrad) {
+  auto acts_dims = input.dims();
+  int D = acts_dims[3];
+
+  PADDLE_ENFORCE_GE(
+      blank,
+      0,
+      errors::InvalidArgument(
+          "The value of Attr(blank) should be in interval [0, %d), "
+          "but received %d",
+          blank));
+  PADDLE_ENFORCE_LT(
+      blank,
+      D,
+      errors::InvalidArgument(
+          "The value of Attr(blank) should be in interval [0, %d), "
+          "but received %d",
+          blank));
+
+  loss->set_dims({-1});
+  loss->set_dtype(input.dtype());
 }
 
 void WhereInferMeta(const MetaTensor& condition,
@@ -2905,6 +2966,20 @@ void YoloLossInferMeta(const MetaTensor& x,
   std::vector<int64_t> dim_gt_match_mask({dim_gtbox[0], dim_gtbox[1]});
   gt_match_mask->set_dims(phi::make_ddim(dim_gt_match_mask));
   gt_match_mask->set_dtype(x.dtype());
+}
+
+void MoeInferMeta(const MetaTensor& x,
+                  const MetaTensor& gate,
+                  const MetaTensor& bmm0,
+                  const MetaTensor& bias0,
+                  const MetaTensor& bmm1,
+                  const MetaTensor& bias1,
+                  const std::string& act_type,
+                  MetaTensor* out) {
+  out->set_dims(x.dims());
+  out->share_lod(x);
+  out->set_dtype(x.dtype());
+  out->set_layout(x.layout());
 }
 
 }  // namespace phi

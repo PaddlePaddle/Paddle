@@ -12,11 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .optimizer import Optimizer
-from ..fluid import framework
-from ..framework import in_dygraph_mode
 from paddle import _C_ops
+
+from ..fluid import framework
 from ..fluid.dygraph import no_grad
+from ..framework import in_dygraph_mode
+from .optimizer import Optimizer
 
 __all__ = []
 
@@ -68,10 +69,9 @@ class Adadelta(Optimizer):
         .. code-block:: python
 
             import paddle
-            import numpy as np
-            inp = np.random.uniform(-0.1, 0.1, [10, 10]).astype("float32")
+
+            inp = paddle.uniform([10, 10], dtype="float32", min=-0.1, max=0.1)
             linear = paddle.nn.Linear(10, 10)
-            inp = paddle.to_tensor(inp)
             out = linear(inp)
             loss = paddle.mean(out)
             beta1 = paddle.to_tensor([0.9], dtype="float32")
@@ -123,7 +123,7 @@ class Adadelta(Optimizer):
             raise ValueError("epsilon is not set.")
         if rho is None:
             raise ValueError("rho is not set.")
-        super(Adadelta, self).__init__(
+        super().__init__(
             learning_rate=learning_rate,
             parameters=parameters,
             weight_decay=weight_decay,
@@ -170,29 +170,29 @@ class Adadelta(Optimizer):
                     self._epsilon,
                 )
             return None
+        else:
+            if not isinstance(block, framework.Block):
+                raise TypeError("block is not instance of framework.Block.")
 
-        if not isinstance(block, framework.Block):
-            raise TypeError("block is not instance of framework.Block.")
+            # Create the adadelta optimizer op
+            adadelta_op = block.append_op(
+                type=self.type,
+                inputs={
+                    "Param": param_and_grad[0],
+                    "Grad": param_and_grad[1],
+                    "AvgSquaredGrad": avg_squared_grad_acc,
+                    "AvgSquaredUpdate": avg_squared_update_acc,
+                },
+                outputs={
+                    "ParamOut": param_and_grad[0],
+                    "AvgSquaredGradOut": avg_squared_grad_acc,
+                    "AvgSquaredUpdateOut": avg_squared_update_acc,
+                },
+                attrs={"epsilon": self._epsilon, "rho": self._rho},
+                stop_gradient=True,
+            )
 
-        # Create the adadelta optimizer op
-        adadelta_op = block.append_op(
-            type=self.type,
-            inputs={
-                "Param": param_and_grad[0],
-                "Grad": param_and_grad[1],
-                "AvgSquaredGrad": avg_squared_grad_acc,
-                "AvgSquaredUpdate": avg_squared_update_acc,
-            },
-            outputs={
-                "ParamOut": param_and_grad[0],
-                "AvgSquaredGradOut": avg_squared_grad_acc,
-                "AvgSquaredUpdateOut": avg_squared_update_acc,
-            },
-            attrs={"epsilon": self._epsilon, "rho": self._rho},
-            stop_gradient=True,
-        )
-
-        return adadelta_op
+            return adadelta_op
 
     def _update_param_group(self, parameters):
         self._epsilon = parameters.get('epsilon', self._default_dict['epsilon'])

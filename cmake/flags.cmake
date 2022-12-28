@@ -153,7 +153,7 @@ if(NOT WIN32)
       -Wno-error=terminate # Warning in PADDLE_ENFORCE
       -Wno-error=int-in-bool-context # Warning in Eigen gcc 7.2
       -Wimplicit-fallthrough=0 # Warning in tinyformat.h
-      -Wno-error=maybe-uninitialized # Warning in boost gcc 7.2
+      -Wno-error=maybe-uninitialized # Warning in Paddle-Lite
       ${fsanitize})
 
   if(WITH_IPU)
@@ -220,7 +220,8 @@ if(APPLE)
       -Werror=uninitialized
       -Werror=tautological-constant-out-of-range-compare
       -Werror=literal-conversion
-      -Werror=pragma-pack)
+      -Werror=pragma-pack
+      -Werror=c++17-extensions)
 endif()
 
 if(WITH_HETERPS AND WITH_PSLIB)
@@ -257,7 +258,9 @@ if(WITH_ROCM)
   string(REPLACE "-Werror" "-Wno-error" CMAKE_C_FLAGS ${CMAKE_C_FLAGS})
 endif()
 
-if(WITH_PSCORE OR WITH_PSLIB)
+if(WITH_PSCORE
+   OR WITH_PSLIB
+   OR WITH_TENSORRT)
   string(REPLACE "-Wnon-virtual-dtor" "-Wno-non-virtual-dtor" CMAKE_CXX_FLAGS
                  ${CMAKE_CXX_FLAGS})
   string(REPLACE "-Wnon-virtual-dtor" "-Wno-non-virtual-dtor" CMAKE_C_FLAGS

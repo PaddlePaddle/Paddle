@@ -12,11 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.fluid.layer_helper import LayerHelper
-from paddle.fluid.framework import _non_static_mode, default_main_program
-from paddle.fluid.data_feeder import check_variable_and_dtype, check_dtype
-from paddle.fluid import core
 from paddle import _legacy_C_ops
+from paddle.fluid import core
+from paddle.fluid.data_feeder import check_dtype, check_variable_and_dtype
+from paddle.fluid.framework import _non_static_mode, default_main_program
+from paddle.fluid.layer_helper import LayerHelper
 
 __all__ = []
 
@@ -284,9 +284,11 @@ def fused_bias_dropout_residual_layer_norm(
     name=None,
 ):
     r"""
+
     The fused_bias_dropout_residual_layer_norm operator. The pseudo code is as follows:
 
     .. code-block:: python
+
         y = layer_norm(residual + dropout(bias + x))
 
     Parameters:
@@ -315,10 +317,9 @@ def fused_bias_dropout_residual_layer_norm(
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        Tensor: The output Tensor, the data type and shape is same as `x`.
+        Tensor, The output Tensor, the data type and shape is same as `x`.
 
     Examples:
-
         .. code-block:: python
 
             # required: gpu
@@ -336,6 +337,7 @@ def fused_bias_dropout_residual_layer_norm(
                 x, residual, bias)
             # [2, 4, 128]
             print(output.shape)
+
     """
     seed = None
     if mode not in ('downscale_in_infer', 'upscale_in_train'):
@@ -843,9 +845,11 @@ def fused_multi_transformer(
     epsilon=1e-05,
     cache_kvs=None,
     pre_caches=None,
+    rotary_embs=None,
     time_step=None,
     attn_mask=None,
     dropout_rate=0.0,
+    rotary_emb_dims=0,
     activation="gelu",
     training=False,
     mode='upscale_in_train',
@@ -910,11 +914,14 @@ def fused_multi_transformer(
         epsilon (float, optional): Small float value added to denominator of the layer_norm to avoid dividing by zero. Default is 1e-5.
         cache_kvs (list(Tensor)|tuple(Tensor), optional): The cache structure tensors for the generation model. The shape is `[2, bsz, num\_head, max\_seq\_len, head\_dim]`. Default None.
         pre_caches (list(Tensor)|tuple(Tensor), optional): The prefix caches for the generation model. The shape is `[2, bsz, num\_head, cache\_len, head\_dim]`. Default None.
+        rotary_embs (Tensor optional): The RoPE embs for rotary computation. The shape is `[2, bsz, 1, seq\_len, head\_dim]`. Default None.
         time_step (Tensor, optional): The time step tensor for the generation model. Which used in decode stage, to represent the time step, that is, the real seq_len of CacheKV. The shape is `[1]`, must be in CPUPlace. Default None.
         attn_mask (Tensor, optional):  A tensor used in multi-head attention to prevents attention to
             some unwanted positions, usually the paddings or the subsequent positions. It is a tensor
             with shape `[batch_size, 1, sequence_length, sequence_length]`. Default None.
         dropout_rate (float, optional): The dropout probability of setting units to zero. Default 0.0.
+        rotary_emb_dims (int, optional): The rotary_emb_dims of rotary computation, and it is 0 when rotary_embs is None,
+            1 when rotary_embs is not None and pos_extra_ids is None, 2 when rotary_embs and pos_extra_ids are both not None. Default 0.
         activation (str, optional): The activation. Default "gelu".
         training (bool, optional): A flag indicating whether it is in train phrase or not. Default False.
         mode (str, optional): ['upscale_in_train'(default) | 'downscale_in_infer']
@@ -1004,6 +1011,7 @@ def fused_multi_transformer(
             qkv_biases,
             cache_kvs,
             pre_caches,
+            rotary_embs,
             time_step,
             attn_mask,
             linear_weights,
@@ -1021,6 +1029,8 @@ def fused_multi_transformer(
             epsilon,
             'dropout_rate',
             dropout_rate,
+            'rotary_emb_dims',
+            rotary_emb_dims,
             'is_test',
             not training,
             'dropout_implementation',
@@ -1061,6 +1071,8 @@ def fused_multi_transformer(
                 inputs['TimeStep'] = time_step
         if pre_caches is not None:
             inputs['PreCaches'] = pre_caches
+        if rotary_emb_dims > 0:
+            inputs['RotaryPosEmb'] = rotary_embs
         inputs['SrcMask'] = attn_mask
         inputs['OutLinearW'] = linear_weights
         if linear_biases is not None:
@@ -1080,6 +1092,7 @@ def fused_multi_transformer(
             'pre_layer_norm': pre_layer_norm,
             'epsilon': epsilon,
             'dropout_rate': dropout_rate,
+            'rotary_emb_dims': rotary_emb_dims,
             'is_test': not training,
             'dropout_implementation': mode,
             'act_method': activation,

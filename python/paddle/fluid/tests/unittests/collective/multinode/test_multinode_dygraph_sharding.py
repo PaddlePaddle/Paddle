@@ -14,24 +14,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
 
 from test_collective_multi_nodes import TestDistBase
-
-import os
 
 
 class TestDYgrapShardingDP(TestDistBase):
     def setUp(self):
         self._trainers = 16
         self._init_env()
-
-    def test_hybrid_sharding_stage2(self):
-        self.check_with_place(
-            "mn_dygraph_sharding_stage2.py",
-            backend="nccl",
-            need_envs=os.environ,
-        )
 
     def test_hybrid_sharding_stage3(self):
         self.check_with_place(

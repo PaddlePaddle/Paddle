@@ -12,30 +12,36 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import re
 import argparse
 import os
+import re
+
 from codegen_utils import (
-    core_ops_returns_info,
+    AssertMessage,
+    FindForwardName,
+    FunctionGeneratorBase,
+    GeneratorBase,
+    GetAutoGradMetaName,
+    GetAutoGradMetaVectorName,
+    GetConstReference,
+    GetDygraphForwardFunctionName,
+    GetGradNodeName,
+    GetIndent,
+    GetInplacedFunctionName,
+    GetIntermediateAPIFunctionName,
+    GetSavedName,
+    IsPlainTensorType,
+    IsVectorTensorType,
+    ParseYamlBackward,
+    ParseYamlForwardFromBackward,
+    ParseYamlInplaceInfo,
+    ReadBwdFile,
+    RemoveConstAndReference,
     core_ops_args_info,
     core_ops_args_type_info,
+    core_ops_returns_info,
+    ops_to_fill_zero_for_empty_grads,
 )
-from codegen_utils import ReadBwdFile
-from codegen_utils import FindForwardName, GetGradNodeName, GetSavedName
-from codegen_utils import IsPlainTensorType, IsVectorTensorType
-from codegen_utils import GetConstReference, RemoveConstAndReference
-from codegen_utils import (
-    GetDygraphForwardFunctionName,
-    GetIntermediateAPIFunctionName,
-)
-from codegen_utils import GetAutoGradMetaName, GetAutoGradMetaVectorName
-from codegen_utils import GetInplacedFunctionName
-from codegen_utils import ParseYamlForwardFromBackward
-from codegen_utils import ParseYamlBackward
-from codegen_utils import ParseYamlInplaceInfo
-from codegen_utils import FunctionGeneratorBase, GeneratorBase
-from codegen_utils import ops_to_fill_zero_for_empty_grads
-from codegen_utils import AssertMessage, GetIndent
 
 # Note: assign is a inplace api when parameter(output) isn't none,
 # so we should check parameter(output) with rule of inplace.
@@ -54,9 +60,9 @@ black_ops_list = [
 ]
 
 
-###########
-## Utils ##
-###########
+#########
+# Utils #
+#########
 def ParseArguments():
     parser = argparse.ArgumentParser(
         description='Eager Code Generator Args Parser'
@@ -72,9 +78,9 @@ def ParseArguments():
     return args
 
 
-########################
-## Code Gen Templates ##
-########################
+######################
+# Code Gen Templates #
+######################
 SET_PLAIN_TENSOR_WRAPPER_TEMPLATE = """  void SetTensorWrapper{}(const paddle::experimental::Tensor& {}) {{
     {} = egr::TensorWrapper({}, {});
   }}
@@ -224,7 +230,7 @@ FORWARD_FUNCTION_TEMPLATE = """
 
 AFTER_LOG_PRINT_TEMPLATE = """
   if(VLOG_IS_ON(4)){{
-      const char* INPUT_PRINT_TEMPLATE = \"{{ Input: [%s],  Output: [%s] }} \";
+      const char* INPUT_PRINT_TEMPLATE = \"{{ Input: [%s],  \\n Output: [%s] }} \";
       {}
       VLOG(4) << paddle::string::Sprintf(INPUT_PRINT_TEMPLATE, input_str, output_str);
   }}
@@ -479,9 +485,9 @@ def IsInvokeForwardApi(api_contents, forward_api_name_list):
     )
 
 
-#######################
-## Generator Helpers ##
-#######################
+#####################
+# Generator Helpers #
+#####################
 def GenerateCoreOpInfoDeclaration():
     return CORE_OPS_DECLARATION_TEMPLATE
 
@@ -517,9 +523,9 @@ def GenerateCoreOpInfoDefinition():
     return core_ops_info_definition_str
 
 
-#####################
-## Generator Class ##
-#####################
+###################
+# Generator Class #
+###################
 class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
     def __init__(
         self,
@@ -1033,9 +1039,9 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
         # Basic Validation Check
         self.DygraphYamlValidationCheck()
 
-        ##########################
-        ## Parsing Raw Contents ##
-        ##########################
+        ########################
+        # Parsing Raw Contents #
+        ########################
         # Parse forward and backward inplace_map
         self.ParseForwardInplaceInfo()
         if self.grad_api_contents is not None:
@@ -1066,9 +1072,9 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
         # Forwards Validation Check
         self.ForwardsValidationCheck()
 
-        #############################
-        ## Process Parsed Contents ##
-        #############################
+        ###########################
+        # Process Parsed Contents #
+        ###########################
         # Initialize forward_inputs_position_map, forward_outputs_position_map
         self.DetermineForwardPositionMap(
             self.forward_inputs_list, self.forward_returns_list
@@ -1711,9 +1717,9 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
     def run(self):
         super().run()
 
-        #####################
-        ## Code Generation ##
-        #####################
+        ###################
+        # Code Generation #
+        ###################
 
         # Definition And Declaration
         self.GenerateForwardDefinitionAndDeclaration(is_inplaced=False)
@@ -2341,9 +2347,9 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
 
         self.ResetOptionalInputs()
 
-        #####################
-        ## Code Generation ##
-        #####################
+        ###################
+        # Code Generation #
+        ###################
         # Higher-order GradNode generation
         (
             has_higher_order_node,
@@ -2411,7 +2417,6 @@ class DygraphForwardAndNodesGenerator(GeneratorBase):
 
     def GenerateCode(self):
         forward_api_list = self.forward_api_list
-        grad_api_dict = self.grad_api_dict
         forward_apis_dict = {}
         for api_item in forward_api_list:
             forward_apis_dict[api_item['op']] = api_item
@@ -2503,9 +2508,9 @@ class DygraphForwardAndNodesGenerator(GeneratorBase):
         self.GenerateCode()
 
 
-##################
-## File Writers ##
-##################
+################
+# File Writers #
+################
 def GenerateNodeCCFile(filepath, node_definition_str):
     if os.path.exists(filepath):
         os.remove(filepath)

@@ -12,33 +12,34 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import json
+import os
 import tempfile
 import unittest
-import os
-import json
+
 import numpy as np
 
 import paddle
-import paddle.nn as nn
 import paddle.fluid as fluid
+import paddle.nn as nn
 import paddle.nn.functional as F
-import paddle.utils as utils
 import paddle.static as static
-from paddle.fluid import core
-from paddle.fluid import layers
-from paddle.fluid.initializer import NumpyArrayInitializer
+import paddle.utils as utils
 from paddle.distributed import fleet
-
-from paddle.distributed.fleet import auto
+from paddle.distributed.auto_parallel.cluster import Cluster
 from paddle.distributed.auto_parallel.completion import Completer
-from paddle.distributed.auto_parallel.parallelizer import AutoParallelizer
 from paddle.distributed.auto_parallel.dist_context import DistributedContext
+from paddle.distributed.auto_parallel.mapper import (
+    get_comm_volume,
+    get_dtype_bytes,
+    mapping,
+)
+from paddle.distributed.auto_parallel.parallelizer import AutoParallelizer
 from paddle.distributed.auto_parallel.partitioner import Partitioner
 from paddle.distributed.auto_parallel.reshard import Resharder
-from paddle.distributed.auto_parallel.cluster import Cluster
-from paddle.distributed.auto_parallel.mapper import mapping
-from paddle.distributed.auto_parallel.mapper import get_dtype_bytes
-from paddle.distributed.auto_parallel.mapper import get_comm_volume
+from paddle.distributed.fleet import auto
+from paddle.fluid import core, layers
+from paddle.fluid.initializer import NumpyArrayInitializer
 
 if os.getenv("CUDA_VISIBLE_DEVICES") is not None:
     os.environ["CUDA_VISIBLE_DEVICES"] = ""
@@ -364,7 +365,7 @@ class MLPLayer(nn.Layer):
     def __init__(
         self, hidden_size=64, intermediate_size=4 * 64, initializer_range=0.02
     ):
-        super(MLPLayer, self).__init__()
+        super().__init__()
         d_model = hidden_size
         dim_feedforward = intermediate_size
         np.random.seed(2021)

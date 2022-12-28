@@ -111,19 +111,31 @@ function(kernel_declare TARGET_LIST)
 endfunction()
 
 function(append_op_util_declare TARGET)
-  file(READ ${CMAKE_CURRENT_SOURCE_DIR}/${TARGET} target_content)
+  file(READ ${TARGET} target_content)
+  string(REGEX MATCH "(PD_REGISTER_ARG_MAPPING_FN)\\([ \t\r\n]*[a-z0-9_]*"
+               util_registrar "${target_content}")
+  if(NOT ${util_registrar} EQUAL "")
+    string(REPLACE "PD_REGISTER_ARG_MAPPING_FN" "PD_DECLARE_ARG_MAPPING_FN"
+                   util_declare "${util_registrar}")
+    string(APPEND util_declare ");\n")
+    file(APPEND ${op_utils_header} "${util_declare}")
+  endif()
+endfunction()
+
+function(append_op_kernel_map_declare TARGET)
+  file(READ ${TARGET} target_content)
   string(
     REGEX
       MATCH
-      "(PD_REGISTER_BASE_KERNEL_NAME|PD_REGISTER_ARG_MAPPING_FN)\\([ \t\r\n]*[a-z0-9_]*"
-      util_registrar
+      "(PD_REGISTER_BASE_KERNEL_NAME)\\([ \t\r\n]*[a-z0-9_]*,[ \\\t\r\n]*[a-z0-9_]*"
+      kernel_mapping_registrar
       "${target_content}")
-  string(REPLACE "PD_REGISTER_ARG_MAPPING_FN" "PD_DECLARE_ARG_MAPPING_FN"
-                 util_declare "${util_registrar}")
-  string(REPLACE "PD_REGISTER_BASE_KERNEL_NAME" "PD_DECLARE_BASE_KERNEL_NAME"
-                 util_declare "${util_declare}")
-  string(APPEND util_declare ");\n")
-  file(APPEND ${op_utils_header} "${util_declare}")
+  if(NOT ${kernel_mapping_registrar} EQUAL "")
+    string(REPLACE "PD_REGISTER_BASE_KERNEL_NAME" "PD_DECLARE_BASE_KERNEL_NAME"
+                   kernel_mapping_declare "${kernel_mapping_registrar}")
+    string(APPEND kernel_mapping_declare ");\n")
+    file(APPEND ${op_utils_header} "${kernel_mapping_declare}")
+  endif()
 endfunction()
 
 function(register_op_utils TARGET_NAME)
@@ -134,13 +146,11 @@ function(register_op_utils TARGET_NAME)
   cmake_parse_arguments(register_op_utils "${options}" "${oneValueArgs}"
                         "${multiValueArgs}" ${ARGN})
 
-  file(
-    GLOB SIGNATURES
-    RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
-    "*_sig.cc")
+  file(GLOB SIGNATURES "${PADDLE_SOURCE_DIR}/paddle/phi/ops/compat/*_sig.cc")
   foreach(target ${SIGNATURES})
     append_op_util_declare(${target})
-    list(APPEND utils_srcs ${CMAKE_CURRENT_SOURCE_DIR}/${target})
+    append_op_kernel_map_declare(${target})
+    list(APPEND utils_srcs ${target})
   endforeach()
 
   cc_library(

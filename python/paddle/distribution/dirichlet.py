@@ -15,7 +15,7 @@
 import paddle
 from paddle.distribution import exponential_family
 from paddle.fluid.data_feeder import check_variable_and_dtype
-from paddle.fluid.framework import in_dygraph_mode, _in_legacy_dygraph
+from paddle.fluid.framework import in_dygraph_mode
 from paddle.fluid.layer_helper import LayerHelper
 
 
@@ -77,9 +77,7 @@ class Dirichlet(exponential_family.ExponentialFamily):
             )
 
         self.concentration = concentration
-        super(Dirichlet, self).__init__(
-            concentration.shape[:-1], concentration.shape[-1:]
-        )
+        super().__init__(concentration.shape[:-1], concentration.shape[-1:])
 
     @property
     def mean(self):
@@ -168,8 +166,6 @@ def _dirichlet(concentration, name=None):
 
     if in_dygraph_mode():
         return paddle._C_ops.dirichlet(concentration)
-    elif _in_legacy_dygraph():
-        return paddle._legacy_C_ops.dirichlet(concentration)
     else:
         helper = LayerHelper(op_type, **locals())
         out = helper.create_variable_for_type_inference(

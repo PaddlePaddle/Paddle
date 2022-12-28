@@ -12,14 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# TODO: define pooling functions
-from ...fluid.layers import utils, LayerHelper
-from ...tensor.manipulation import unsqueeze, squeeze
+from paddle import _C_ops, _legacy_C_ops, in_dynamic_mode
+from paddle.fluid.framework import Variable, in_dygraph_mode
+
 from ...fluid.data_feeder import check_type, check_variable_and_dtype
-from paddle import _C_ops, _legacy_C_ops
-from paddle import in_dynamic_mode
-from paddle.fluid.framework import _in_legacy_dygraph, Variable
-from paddle.fluid.framework import in_dygraph_mode, _non_static_mode
+
+# TODO: define pooling functions
+from ...fluid.layers import LayerHelper, utils
+from ...tensor.manipulation import squeeze, unsqueeze
 
 __all__ = []
 
@@ -258,63 +258,35 @@ def avg_pool1d(
             False,
             False,
             padding_algorithm,
-            True,
         )
         return squeeze(output, [2])
 
-    if _in_legacy_dygraph():
-        output = _legacy_C_ops.pool2d(
-            x,
-            'pooling_type',
-            'avg',
-            'ksize',
-            kernel_size,
-            'global_pooling',
-            False,
-            'strides',
-            stride,
-            'paddings',
-            padding,
-            'padding_algorithm',
-            padding_algorithm,
-            'use_cudnn',
-            True,
-            'ceil_mode',
-            ceil_mode,
-            'use_mkldnn',
-            False,
-            'exclusive',
-            exclusive,
-            'data_format',
-            data_format,
+    else:
+        op_type = 'pool2d'
+        helper = LayerHelper(op_type, **locals())
+        dtype = helper.input_dtype(input_param_name='x')
+        pool_out = helper.create_variable_for_type_inference(dtype)
+
+        helper.append_op(
+            type=op_type,
+            inputs={"X": x},
+            outputs={"Out": pool_out},
+            attrs={
+                "pooling_type": 'avg',
+                "ksize": kernel_size,
+                "global_pooling": False,
+                "strides": stride,
+                "paddings": padding,
+                "padding_algorithm": padding_algorithm,
+                "use_cudnn": True,
+                "ceil_mode": ceil_mode,
+                "use_mkldnn": False,
+                "exclusive": exclusive,
+                "data_format": data_format,
+            },
         )
-        return squeeze(output, [2])
 
-    op_type = 'pool2d'
-    helper = LayerHelper(op_type, **locals())
-    dtype = helper.input_dtype(input_param_name='x')
-    pool_out = helper.create_variable_for_type_inference(dtype)
-
-    helper.append_op(
-        type=op_type,
-        inputs={"X": x},
-        outputs={"Out": pool_out},
-        attrs={
-            "pooling_type": 'avg',
-            "ksize": kernel_size,
-            "global_pooling": False,
-            "strides": stride,
-            "paddings": padding,
-            "padding_algorithm": padding_algorithm,
-            "use_cudnn": True,
-            "ceil_mode": ceil_mode,
-            "use_mkldnn": False,
-            "exclusive": exclusive,
-            "data_format": data_format,
-        },
-    )
-
-    return squeeze(pool_out, [2])
+        return squeeze(pool_out, [2])
 
 
 def avg_pool2d(
@@ -393,84 +365,58 @@ def avg_pool2d(
         padding, 2, channel_last, ceil_mode=ceil_mode
     )
 
-    if _non_static_mode():
-        if in_dygraph_mode():
-            output = _C_ops.pool2d(
-                x,
-                kernel_size,
-                stride,
-                padding,
-                ceil_mode,
-                exclusive,
-                data_format,
-                'avg',
-                False,
-                False,
-                padding_algorithm,
-                True,
-            )
-        else:
-            output = _legacy_C_ops.pool2d(
-                x,
-                'pooling_type',
-                'avg',
-                'ksize',
-                kernel_size,
-                'global_pooling',
-                False,
-                'padding_algorithm',
-                padding_algorithm,
-                'strides',
-                stride,
-                'paddings',
-                padding,
-                'use_cudnn',
-                True,
-                'ceil_mode',
-                ceil_mode,
-                'use_mkldnn',
-                False,
-                'exclusive',
-                exclusive,
-                'data_format',
-                data_format,
-            )
+    if in_dygraph_mode():
+        output = _C_ops.pool2d(
+            x,
+            kernel_size,
+            stride,
+            padding,
+            ceil_mode,
+            exclusive,
+            data_format,
+            'avg',
+            False,
+            False,
+            padding_algorithm,
+        )
         if divisor_override is None:
             return output
         else:
             _check_instance(divisor_override, "divisor_override")
             return output * (kernel_size[0] * kernel_size[1]) / divisor_override
-
-    op_type = 'pool2d'
-    helper = LayerHelper(op_type, **locals())
-    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'avg_pool2d')
-    dtype = helper.input_dtype(input_param_name='x')
-    pool_out = helper.create_variable_for_type_inference(dtype)
-
-    helper.append_op(
-        type=op_type,
-        inputs={"X": x},
-        outputs={"Out": pool_out},
-        attrs={
-            "pooling_type": "avg",
-            "ksize": kernel_size,
-            "global_pooling": False,
-            "strides": stride,
-            "paddings": padding,
-            "padding_algorithm": padding_algorithm,
-            "use_cudnn": True,
-            "ceil_mode": ceil_mode,
-            "use_mkldnn": False,
-            "exclusive": exclusive,
-            "data_format": data_format,
-        },
-    )
-
-    if divisor_override is None:
-        return pool_out
     else:
-        _check_instance(divisor_override, "divisor_override")
-        return pool_out * (kernel_size[0] * kernel_size[1]) / divisor_override
+        op_type = 'pool2d'
+        helper = LayerHelper(op_type, **locals())
+        check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'avg_pool2d')
+        dtype = helper.input_dtype(input_param_name='x')
+        pool_out = helper.create_variable_for_type_inference(dtype)
+
+        helper.append_op(
+            type=op_type,
+            inputs={"X": x},
+            outputs={"Out": pool_out},
+            attrs={
+                "pooling_type": "avg",
+                "ksize": kernel_size,
+                "global_pooling": False,
+                "strides": stride,
+                "paddings": padding,
+                "padding_algorithm": padding_algorithm,
+                "use_cudnn": True,
+                "ceil_mode": ceil_mode,
+                "use_mkldnn": False,
+                "exclusive": exclusive,
+                "data_format": data_format,
+            },
+        )
+
+        if divisor_override is None:
+            return pool_out
+        else:
+            _check_instance(divisor_override, "divisor_override")
+            return (
+                pool_out * (kernel_size[0] * kernel_size[1]) / divisor_override
+            )
 
 
 def avg_pool3d(
@@ -561,33 +507,6 @@ def avg_pool3d(
             False,
             False,
             padding_algorithm,
-            True,
-        )
-    elif _in_legacy_dygraph():
-        pool_out = _legacy_C_ops.pool3d(
-            x,
-            'pooling_type',
-            'avg',
-            'ksize',
-            kernel_size,
-            'strides',
-            stride,
-            'paddings',
-            padding,
-            'global_pooling',
-            False,
-            'padding_algorithm',
-            padding_algorithm,
-            'use_cudnn',
-            True,
-            'ceil_mode',
-            ceil_mode,
-            'use_mkldnn',
-            False,
-            'exclusive',
-            exclusive,
-            'data_format',
-            data_format,
         )
     else:
         op_type = "pool3d"
@@ -718,99 +637,41 @@ def max_pool1d(
                 False,
                 False,
                 padding_algorithm,
-                True,
             )
             return squeeze(pool_out, [2])
 
-    if _in_legacy_dygraph():
-        if return_mask:
-            pool_out = _legacy_C_ops.max_pool2d_with_index(
-                x,
-                'ksize',
-                kernel_size,
-                'global_pooling',
-                False,
-                'strides',
-                stride,
-                'paddings',
-                padding,
-                'padding_algorithm',
-                padding_algorithm,
-                'use_cudnn',
-                True,
-                'ceil_mode',
-                ceil_mode,
-                'use_mkldnn',
-                False,
-                'exclusive',
-                True,
-                'data_format',
-                data_format,
-            )
-            return (
-                (squeeze(pool_out[0], [2]), squeeze(pool_out[1], [2]))
-                if return_mask
-                else squeeze(pool_out[0], [2])
-            )
-        else:
-            pool_out = _legacy_C_ops.pool2d(
-                x,
-                'pooling_type',
-                'max',
-                'ksize',
-                kernel_size,
-                'global_pooling',
-                False,
-                'padding_algorithm',
-                padding_algorithm,
-                'strides',
-                stride,
-                'paddings',
-                padding,
-                'use_cudnn',
-                True,
-                'ceil_mode',
-                ceil_mode,
-                'use_mkldnn',
-                False,
-                'exclusive',
-                True,
-                'data_format',
-                data_format,
-            )
-            return squeeze(pool_out, [2])
+    else:
+        op_type = 'max_pool2d_with_index' if return_mask else "pool2d"
+        helper = LayerHelper(op_type, **locals())
+        dtype = helper.input_dtype(input_param_name='x')
+        pool_out = helper.create_variable_for_type_inference(dtype)
+        mask = helper.create_variable_for_type_inference('int32')
+        outputs = {"Out": pool_out, "Mask": mask}
 
-    op_type = 'max_pool2d_with_index' if return_mask else "pool2d"
-    helper = LayerHelper(op_type, **locals())
-    dtype = helper.input_dtype(input_param_name='x')
-    pool_out = helper.create_variable_for_type_inference(dtype)
-    mask = helper.create_variable_for_type_inference('int32')
-    outputs = {"Out": pool_out, "Mask": mask}
+        helper.append_op(
+            type=op_type,
+            inputs={"X": x},
+            outputs=outputs,
+            attrs={
+                "pooling_type": 'max',
+                "ksize": kernel_size,
+                "global_pooling": False,
+                "strides": stride,
+                "paddings": padding,
+                "padding_algorithm": padding_algorithm,
+                "use_cudnn": True,
+                "ceil_mode": ceil_mode,
+                "use_mkldnn": False,
+                "exclusive": True,
+                "data_format": data_format,
+            },
+        )
 
-    helper.append_op(
-        type=op_type,
-        inputs={"X": x},
-        outputs=outputs,
-        attrs={
-            "pooling_type": 'max',
-            "ksize": kernel_size,
-            "global_pooling": False,
-            "strides": stride,
-            "paddings": padding,
-            "padding_algorithm": padding_algorithm,
-            "use_cudnn": True,
-            "ceil_mode": ceil_mode,
-            "use_mkldnn": False,
-            "exclusive": True,
-            "data_format": data_format,
-        },
-    )
-
-    return (
-        (squeeze(pool_out, [2]), squeeze(mask, [2]))
-        if return_mask
-        else squeeze(pool_out, [2])
-    )
+        return (
+            (squeeze(pool_out, [2]), squeeze(mask, [2]))
+            if return_mask
+            else squeeze(pool_out, [2])
+        )
 
 
 def _unpool_output_size(x, kernel_size, stride, padding, output_size):
@@ -830,7 +691,7 @@ def _unpool_output_size(x, kernel_size, stride, padding, output_size):
     if output_size is None:
         return default_size
     elif utils._contain_var(output_size):
-        if not _non_static_mode():
+        if not in_dygraph_mode():
             has_static_var = True
             output_size = utils._convert_to_tensor_list(output_size)
         else:
@@ -1363,93 +1224,63 @@ def max_pool2d(
                 False,
                 False,
                 padding_algorithm,
-                True,
             )
 
-    if _in_legacy_dygraph():
+    else:
+        op_type = 'max_pool2d_with_index' if return_mask else "pool2d"
+        helper = LayerHelper(op_type, **locals())
+        check_variable_and_dtype(
+            x, 'x', ['float16', 'float32', 'float64'], 'max_pool2d'
+        )
+        dtype = helper.input_dtype(input_param_name='x')
+        pool_out = helper.create_variable_for_type_inference(dtype)
+
         if return_mask:
-            output = _legacy_C_ops.max_pool2d_with_index(
-                x,
-                'ksize',
-                kernel_size,
-                'global_pooling',
-                False,
-                'strides',
-                stride,
-                'paddings',
-                padding,
-                'padding_algorithm',
-                padding_algorithm,
-                'use_cudnn',
-                True,
-                'ceil_mode',
-                ceil_mode,
-                'use_mkldnn',
-                False,
-                'exclusive',
-                True,
-                'data_format',
-                data_format,
+            mask = helper.create_variable_for_type_inference("int32")
+            outputs = {"Out": pool_out, "Mask": mask}
+
+            helper.append_op(
+                type="max_pool2d_with_index",
+                inputs={"X": x},
+                outputs=outputs,
+                attrs={
+                    "pooling_type": 'max',
+                    "ksize": kernel_size,
+                    "global_pooling": False,
+                    "strides": stride,
+                    "paddings": padding,
+                    "padding_algorithm": padding_algorithm,
+                    "use_cudnn": True,
+                    "ceil_mode": ceil_mode,
+                    "use_mkldnn": False,
+                    "exclusive": True,
+                    "data_format": data_format,
+                },
             )
-            return output if return_mask else output[0]
+            return (pool_out, mask)
+
         else:
-            output = _legacy_C_ops.pool2d(
-                x,
-                'pooling_type',
-                'max',
-                'ksize',
-                kernel_size,
-                'global_pooling',
-                False,
-                'padding_algorithm',
-                padding_algorithm,
-                'strides',
-                stride,
-                'paddings',
-                padding,
-                'use_cudnn',
-                True,
-                'ceil_mode',
-                ceil_mode,
-                'use_mkldnn',
-                False,
-                'exclusive',
-                True,
-                'data_format',
-                data_format,
+            outputs = {"Out": pool_out}
+
+            helper.append_op(
+                type="pool2d",
+                inputs={"X": x},
+                outputs=outputs,
+                attrs={
+                    "pooling_type": 'max',
+                    "ksize": kernel_size,
+                    "global_pooling": False,
+                    "strides": stride,
+                    "paddings": padding,
+                    "padding_algorithm": padding_algorithm,
+                    "use_cudnn": True,
+                    "ceil_mode": ceil_mode,
+                    "use_mkldnn": False,
+                    "exclusive": True,
+                    "data_format": data_format,
+                },
             )
-            return output
-
-    op_type = 'max_pool2d_with_index' if return_mask else "pool2d"
-    helper = LayerHelper(op_type, **locals())
-    check_variable_and_dtype(
-        x, 'x', ['float16', 'float32', 'float64'], 'max_pool2d'
-    )
-    dtype = helper.input_dtype(input_param_name='x')
-    pool_out = helper.create_variable_for_type_inference(dtype)
-    mask = helper.create_variable_for_type_inference("int32")
-    outputs = {"Out": pool_out, "Mask": mask}
-
-    helper.append_op(
-        type=op_type,
-        inputs={"X": x},
-        outputs=outputs,
-        attrs={
-            "pooling_type": 'max',
-            "ksize": kernel_size,
-            "global_pooling": False,
-            "strides": stride,
-            "paddings": padding,
-            "padding_algorithm": padding_algorithm,
-            "use_cudnn": True,
-            "ceil_mode": ceil_mode,
-            "use_mkldnn": False,
-            "exclusive": True,
-            "data_format": data_format,
-        },
-    )
-
-    return (pool_out, mask) if return_mask else pool_out
+            return pool_out
 
 
 def max_pool3d(
@@ -1554,93 +1385,37 @@ def max_pool3d(
                 False,
                 False,
                 padding_algorithm,
-                True,
             )
 
-    if _in_legacy_dygraph():
-        if return_mask:
-            output = _legacy_C_ops.max_pool3d_with_index(
-                x,
-                'pooling_type',
-                'max',
-                'ksize',
-                kernel_size,
-                'strides',
-                stride,
-                'paddings',
-                padding,
-                'global_pooling',
-                False,
-                'padding_algorithm',
-                padding_algorithm,
-                'use_cudnn',
-                True,
-                'ceil_mode',
-                ceil_mode,
-                'use_mkldnn',
-                False,
-                'exclusive',
-                True,
-                'data_format',
-                data_format,
-            )
-            return output if return_mask else output[0]
-        else:
-            output = _legacy_C_ops.pool3d(
-                x,
-                'pooling_type',
-                'max',
-                'ksize',
-                kernel_size,
-                'global_pooling',
-                False,
-                'padding_algorithm',
-                padding_algorithm,
-                'strides',
-                stride,
-                'paddings',
-                padding,
-                'use_cudnn',
-                True,
-                'ceil_mode',
-                ceil_mode,
-                'use_mkldnn',
-                False,
-                'exclusive',
-                True,
-                'data_format',
-                data_format,
-            )
-            return output
+    else:
+        op_type = "max_pool3d_with_index" if return_mask else "pool3d"
+        helper = LayerHelper(op_type, **locals())
+        check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'max_pool3d')
+        dtype = helper.input_dtype(input_param_name='x')
+        pool_out = helper.create_variable_for_type_inference(dtype)
+        mask = helper.create_variable_for_type_inference('int32')
+        outputs = {"Out": pool_out, "Mask": mask}
 
-    op_type = "max_pool3d_with_index" if return_mask else "pool3d"
-    helper = LayerHelper(op_type, **locals())
-    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'max_pool3d')
-    dtype = helper.input_dtype(input_param_name='x')
-    pool_out = helper.create_variable_for_type_inference(dtype)
-    mask = helper.create_variable_for_type_inference('int32')
-    outputs = {"Out": pool_out, "Mask": mask}
+        helper.append_op(
+            type=op_type,
+            inputs={"X": x},
+            outputs=outputs,
+            attrs={
+                "pooling_type": 'max',
+                "ksize": kernel_size,
+                "global_pooling": False,
+                "strides": stride,
+                "paddings": padding,
+                "padding_algorithm": padding_algorithm,
+                "use_cudnn": True,
+                "ceil_mode": ceil_mode,
+                "use_mkldnn": False,
+                "exclusive": False,
+                "data_format": data_format,
+            },
+        )
 
-    helper.append_op(
-        type=op_type,
-        inputs={"X": x},
-        outputs=outputs,
-        attrs={
-            "pooling_type": 'max',
-            "ksize": kernel_size,
-            "global_pooling": False,
-            "strides": stride,
-            "paddings": padding,
-            "padding_algorithm": padding_algorithm,
-            "use_cudnn": True,
-            "ceil_mode": ceil_mode,
-            "use_mkldnn": False,
-            "exclusive": False,
-            "data_format": data_format,
-        },
-    )
-
-    return (pool_out, mask) if return_mask else pool_out
+        return (pool_out, mask) if return_mask else pool_out
 
 
 def adaptive_avg_pool1d(x, output_size, name=None):
@@ -1691,6 +1466,7 @@ def adaptive_avg_pool1d(x, output_size, name=None):
 
     x = unsqueeze(x, [2])
     if in_dygraph_mode():
+        x = x._use_gpudnn(False)
         pool_out = _C_ops.pool2d(
             x,
             pool_size,
@@ -1703,47 +1479,43 @@ def adaptive_avg_pool1d(x, output_size, name=None):
             False,
             True,
             "EXPLICIT",
-            False,
         )
         return squeeze(pool_out, [2])
-    if _in_legacy_dygraph():
-        pool_out = _legacy_C_ops.pool2d(
-            x, 'pooling_type', pool_type, 'ksize', pool_size, 'adaptive', True
+    else:
+        l_type = "pool2d"
+
+        helper = LayerHelper(l_type, **locals())
+        dtype = helper.input_dtype(input_param_name='x')
+        pool_out = helper.create_variable_for_type_inference(dtype)
+
+        outputs = {"Out": pool_out}
+        helper.append_op(
+            type=l_type,
+            inputs={"X": x},
+            outputs=outputs,
+            attrs={
+                "pooling_type": pool_type,
+                "ksize": pool_size,
+                "adaptive": True,
+            },
         )
+
         return squeeze(pool_out, [2])
-
-    l_type = "pool2d"
-
-    helper = LayerHelper(l_type, **locals())
-    dtype = helper.input_dtype(input_param_name='x')
-    pool_out = helper.create_variable_for_type_inference(dtype)
-
-    outputs = {"Out": pool_out}
-    helper.append_op(
-        type=l_type,
-        inputs={"X": x},
-        outputs=outputs,
-        attrs={
-            "pooling_type": pool_type,
-            "ksize": pool_size,
-            "adaptive": True,
-        },
-    )
-
-    return squeeze(pool_out, [2])
 
 
 def adaptive_avg_pool2d(x, output_size, data_format='NCHW', name=None):
     r"""
+
     Applies 2D adaptive avg pooling on input tensor. The h and w dimensions
     of the output tensor are determined by the parameter output_size.
 
     For avg adaptive pool2d:
+
     ..  math::
-        hstart &= floor(i * H_{in} / H_{out})
-        hend &= ceil((i + 1) * H_{in} / H_{out})
-        wstart &= floor(j * W_{in} / W_{out})
-        wend &= ceil((j + 1) * W_{in} / W_{out})
+        hstart &= floor(i * H_{in} / H_{out}) \\
+        hend &= ceil((i + 1) * H_{in} / H_{out}) \\
+        wstart &= floor(j * W_{in} / W_{out}) \\
+        wend &= ceil((j + 1) * W_{in} / W_{out}) \\
         Output(i ,j) &= \frac{\sum Input[hstart:hend, wstart:wend]}{(hend - hstart) * (wend - wstart)}
 
     Args:
@@ -1752,14 +1524,15 @@ def adaptive_avg_pool2d(x, output_size, data_format='NCHW', name=None):
         output_size (int|list|tuple): The pool kernel size. If pool kernel size is a tuple or list,
             it must contain two element, (H, W). H and W can be either a int, or None which means
             the size will be the same as that of the input.
-        data_format (str): The data format of the input and output data. An optional string
+        data_format (str, optional): The data format of the input and output data. An optional string
             from: "NCHW", "NHWC". The default is "NCHW". When it is "NCHW", the data is stored in
             the order of: [batch_size, input_channels, input_height, input_width].
         name(str, optional): For detailed information, please refer
                              to :ref:`api_guide_Name`. Usually name is no need to set and
                              None by default.
+
     Returns:
-        Tensor: The output tensor of avg adaptive pool2d result. The data type is same as input tensor.
+        Tensor, The output tensor of avg adaptive pool2d result. The data type is same as input tensor.
 
     Examples:
         .. code-block:: python
@@ -1780,15 +1553,14 @@ def adaptive_avg_pool2d(x, output_size, data_format='NCHW', name=None):
             #             output[:, :, i, j] = avg(input[:, :, hstart: hend, wstart: wend])
             #
             import paddle
-            import numpy as np
 
-            input_data = np.random.rand(2, 3, 32, 32)
-            x = paddle.to_tensor(input_data)
+            x = paddle.rand([2, 3, 32, 32])
             # x.shape is [2, 3, 32, 32]
             out = paddle.nn.functional.adaptive_avg_pool2d(
                             x = x,
                             output_size=[3, 3])
             # out.shape is [2, 3, 3, 3]
+
     """
     if not in_dynamic_mode():
         check_variable_and_dtype(
@@ -1816,7 +1588,7 @@ def adaptive_avg_pool2d(x, output_size, data_format='NCHW', name=None):
         if output_size[1] is None:
             output_size[1] = in_w
 
-    if _non_static_mode():
+    if in_dygraph_mode():
         output_size = [
             item.numpy().item(0) if isinstance(item, Variable) else item
             for item in output_size
@@ -1826,6 +1598,7 @@ def adaptive_avg_pool2d(x, output_size, data_format='NCHW', name=None):
         output_size = utils._convert_to_tensor_list(output_size)
 
     if in_dygraph_mode():
+        x = x._use_gpudnn(False)
         return _C_ops.pool2d(
             x,
             output_size,
@@ -1838,77 +1611,64 @@ def adaptive_avg_pool2d(x, output_size, data_format='NCHW', name=None):
             False,
             True,
             "EXPLICIT",
-            False,
         )
 
-    if _in_legacy_dygraph():
-        return _legacy_C_ops.pool2d(
-            x,
-            'pooling_type',
-            'avg',
-            'ksize',
-            output_size,
-            'global_pooling',
-            False,
-            'adaptive',
-            True,
-            'data_format',
-            data_format,
+    else:
+        l_type = 'pool2d'
+
+        helper = LayerHelper(l_type, **locals())
+        dtype = helper.input_dtype(input_param_name='x')
+        pool_out = helper.create_variable_for_type_inference(dtype)
+
+        outputs = {"Out": pool_out}
+
+        helper.append_op(
+            type=l_type,
+            inputs={"X": x},
+            outputs=outputs,
+            attrs={
+                "pooling_type": "avg",
+                "ksize": output_size,
+                "adaptive": True,
+                "data_format": data_format,
+            },
         )
 
-    l_type = 'pool2d'
-
-    helper = LayerHelper(l_type, **locals())
-    dtype = helper.input_dtype(input_param_name='x')
-    pool_out = helper.create_variable_for_type_inference(dtype)
-
-    outputs = {"Out": pool_out}
-
-    helper.append_op(
-        type=l_type,
-        inputs={"X": x},
-        outputs=outputs,
-        attrs={
-            "pooling_type": "avg",
-            "ksize": output_size,
-            "adaptive": True,
-            "data_format": data_format,
-        },
-    )
-
-    return pool_out
+        return pool_out
 
 
 def adaptive_avg_pool3d(x, output_size, data_format='NCDHW', name=None):
     r"""
+
     This operation applies 3D adaptive avg pooling on input tensor. The h and w dimensions
     of the output tensor are determined by the parameter output_size.
 
     For avg adaptive pool3d:
+
     ..  math::
-        dstart &= floor(i * D_{in} / D_{out})
-        dend &= ceil((i + 1) * D_{in} / D_{out})
-        hstart &= floor(j * H_{in} / H_{out})
-        hend &= ceil((j + 1) * H_{in} / H_{out})
-        wstart &= floor(k * W_{in} / W_{out})
-        wend &= ceil((k + 1) * W_{in} / W_{out})
+        dstart &= floor(i * D_{in} / D_{out}) \\
+        dend &= ceil((i + 1) * D_{in} / D_{out}) \\
+        hstart &= floor(j * H_{in} / H_{out}) \\
+        hend &= ceil((j + 1) * H_{in} / H_{out}) \\
+        wstart &= floor(k * W_{in} / W_{out}) \\
+        wend &= ceil((k + 1) * W_{in} / W_{out}) \\
         Output(i ,j, k) &= \frac{\sum Input[dstart:dend, hstart:hend, wstart:wend]}
             {(dend - dstart) * (hend - hstart) * (wend - wstart)}
 
     Args:
         x (Tensor): The input tensor of adaptive avg pool3d operator, which is a 5-D tensor.
-                          The data type can be float32, float64.
-        output_size (int|list|tuple): The pool kernel size. If pool kernel size is a tuple or list,
-            it must contain three elements, (D, H, W). D, H and W can be either a int, or None which means
-            the size will be the same as that of the input.
-        data_format (str): The data format of the input and output data. An optional string
+            The data type can be float32, float64.
+        output_size (int|list|tuple): The pool kernel size. If pool kernel size is a tuple or
+            list, it must contain three elements, (D, H, W). D, H and W can be either a int,
+            or None which means the size will be the same as that of the input.
+        data_format (str, optional): The data format of the input and output data. An optional string
             from: "NCDHW", "NDHWC". The default is "NCDHW". When it is "NCDHW", the data is stored in
             the order of: [batch_size, input_channels, input_depth, input_height, input_width].
-        name(str, optional): For detailed information, please refer
-                             to :ref:`api_guide_Name`. Usually name is no need to set and
-                             None by default.
+        name(str, optional): For detailed information, please refer to :ref:`api_guide_Name`.
+            Usually name is no need to set and None by default.
+
     Returns:
-        Tensor: The output tensor of avg adaptive pool3d result. The data type is same as input tensor.
+        Tensor, The output tensor of avg adaptive pool3d result. The data type is same as input tensor.
 
     Examples:
         .. code-block:: python
@@ -1938,6 +1698,7 @@ def adaptive_avg_pool3d(x, output_size, data_format='NCDHW', name=None):
                             x = input_data,
                             output_size=[3, 3, 3])
             # out.shape is [2, 3, 3, 3, 3]
+
     """
     if not in_dynamic_mode():
         check_variable_and_dtype(
@@ -1968,6 +1729,7 @@ def adaptive_avg_pool3d(x, output_size, data_format='NCDHW', name=None):
             output_size[2] = in_w
 
     if in_dygraph_mode():
+        x = x._use_gpudnn(False)
         return _C_ops.pool3d(
             x,
             output_size,
@@ -1980,43 +1742,28 @@ def adaptive_avg_pool3d(x, output_size, data_format='NCDHW', name=None):
             False,
             True,
             "EXPLICIT",
-            False,
         )
-    elif _in_legacy_dygraph():
-        return _legacy_C_ops.pool3d(
-            x,
-            'pooling_type',
-            'avg',
-            'ksize',
-            output_size,
-            'global_pooling',
-            False,
-            'adaptive',
-            True,
-            'data_format',
-            data_format,
+    else:
+        l_type = 'pool3d'
+
+        helper = LayerHelper(l_type, **locals())
+        dtype = helper.input_dtype(input_param_name='x')
+        pool_out = helper.create_variable_for_type_inference(dtype)
+        outputs = {"Out": pool_out}
+
+        helper.append_op(
+            type=l_type,
+            inputs={"X": x},
+            outputs=outputs,
+            attrs={
+                "pooling_type": "avg",
+                "ksize": output_size,
+                "adaptive": True,
+                "data_format": data_format,
+            },
         )
 
-    l_type = 'pool3d'
-
-    helper = LayerHelper(l_type, **locals())
-    dtype = helper.input_dtype(input_param_name='x')
-    pool_out = helper.create_variable_for_type_inference(dtype)
-    outputs = {"Out": pool_out}
-
-    helper.append_op(
-        type=l_type,
-        inputs={"X": x},
-        outputs=outputs,
-        attrs={
-            "pooling_type": "avg",
-            "ksize": output_size,
-            "adaptive": True,
-            "data_format": data_format,
-        },
-    )
-
-    return pool_out
+        return pool_out
 
 
 def adaptive_max_pool1d(x, output_size, return_mask=False, name=None):
@@ -2084,41 +1831,32 @@ def adaptive_max_pool1d(x, output_size, return_mask=False, name=None):
             if return_mask
             else squeeze(pool_out[0], [2])
         )
-    if _in_legacy_dygraph():
-        pool_out = _legacy_C_ops.max_pool2d_with_index(
-            x, 'pooling_type', pool_type, 'ksize', pool_size, 'adaptive', True
+    else:
+        l_type = 'max_pool2d_with_index'
+
+        helper = LayerHelper(l_type, **locals())
+        dtype = helper.input_dtype(input_param_name='x')
+        pool_out = helper.create_variable_for_type_inference(dtype)
+
+        mask = helper.create_variable_for_type_inference('int32')
+        outputs = {"Out": pool_out, "Mask": mask}
+
+        helper.append_op(
+            type=l_type,
+            inputs={"X": x},
+            outputs=outputs,
+            attrs={
+                "pooling_type": pool_type,
+                "ksize": pool_size,
+                "adaptive": True,
+            },
         )
+
         return (
-            (squeeze(pool_out[0], [2]), squeeze(pool_out[1], [2]))
+            (squeeze(pool_out, [2]), squeeze(mask, [2]))
             if return_mask
-            else squeeze(pool_out[0], [2])
+            else squeeze(pool_out, [2])
         )
-
-    l_type = 'max_pool2d_with_index'
-
-    helper = LayerHelper(l_type, **locals())
-    dtype = helper.input_dtype(input_param_name='x')
-    pool_out = helper.create_variable_for_type_inference(dtype)
-
-    mask = helper.create_variable_for_type_inference('int32')
-    outputs = {"Out": pool_out, "Mask": mask}
-
-    helper.append_op(
-        type=l_type,
-        inputs={"X": x},
-        outputs=outputs,
-        attrs={
-            "pooling_type": pool_type,
-            "ksize": pool_size,
-            "adaptive": True,
-        },
-    )
-
-    return (
-        (squeeze(pool_out, [2]), squeeze(mask, [2]))
-        if return_mask
-        else squeeze(pool_out, [2])
-    )
 
 
 def adaptive_max_pool2d(x, output_size, return_mask=False, name=None):
@@ -2183,33 +1921,28 @@ def adaptive_max_pool2d(x, output_size, return_mask=False, name=None):
             x, output_size, [1, 1], [0, 0], False, True
         )
         return pool_out if return_mask else pool_out[0]
-    if _in_legacy_dygraph():
-        pool_out = _legacy_C_ops.max_pool2d_with_index(
-            x, 'pooling_type', 'max', 'ksize', output_size, 'adaptive', True
+    else:
+        l_type = 'max_pool2d_with_index'
+
+        helper = LayerHelper(l_type, **locals())
+        dtype = helper.input_dtype(input_param_name='x')
+        pool_out = helper.create_variable_for_type_inference(dtype)
+
+        mask = helper.create_variable_for_type_inference('int32')
+        outputs = {"Out": pool_out, "Mask": mask}
+
+        helper.append_op(
+            type=l_type,
+            inputs={"X": x},
+            outputs=outputs,
+            attrs={
+                "pooling_type": 'max',
+                "ksize": output_size,
+                "adaptive": True,
+            },
         )
-        return pool_out if return_mask else pool_out[0]
-
-    l_type = 'max_pool2d_with_index'
-
-    helper = LayerHelper(l_type, **locals())
-    dtype = helper.input_dtype(input_param_name='x')
-    pool_out = helper.create_variable_for_type_inference(dtype)
-
-    mask = helper.create_variable_for_type_inference('int32')
-    outputs = {"Out": pool_out, "Mask": mask}
-
-    helper.append_op(
-        type=l_type,
-        inputs={"X": x},
-        outputs=outputs,
-        attrs={
-            "pooling_type": 'max',
-            "ksize": output_size,
-            "adaptive": True,
-        },
-    )
-    # return (pool_out, mask) if return_mask else pool_out
-    return pool_out
+        # return (pool_out, mask) if return_mask else pool_out
+        return pool_out
 
 
 def adaptive_max_pool3d(x, output_size, return_mask=False, name=None):
@@ -2276,36 +2009,31 @@ def adaptive_max_pool3d(x, output_size, return_mask=False, name=None):
         if output_size[2] is None:
             output_size[2] = in_w
 
-    if in_dynamic_mode():
-        if in_dygraph_mode():
-            # By default, strides is [1,1,1] and paddings is [0, 0, 0]
-            pool_out = _C_ops.max_pool3d_with_index(
-                x, output_size, [1, 1, 1], [0, 0, 0], False, True
-            )
-        elif _in_legacy_dygraph():
-            pool_out = _legacy_C_ops.max_pool3d_with_index(
-                x, 'pooling_type', 'max', 'ksize', output_size, 'adaptive', True
-            )
+    if in_dygraph_mode():
+        # By default, strides is [1,1,1] and paddings is [0, 0, 0]
+        pool_out = _C_ops.max_pool3d_with_index(
+            x, output_size, [1, 1, 1], [0, 0, 0], False, True
+        )
         return pool_out if return_mask else pool_out[0]
+    else:
+        l_type = 'max_pool3d_with_index'
 
-    l_type = 'max_pool3d_with_index'
+        helper = LayerHelper(l_type, **locals())
+        dtype = helper.input_dtype(input_param_name='x')
+        pool_out = helper.create_variable_for_type_inference(dtype)
 
-    helper = LayerHelper(l_type, **locals())
-    dtype = helper.input_dtype(input_param_name='x')
-    pool_out = helper.create_variable_for_type_inference(dtype)
+        mask = helper.create_variable_for_type_inference('int32')
+        outputs = {"Out": pool_out, "Mask": mask}
 
-    mask = helper.create_variable_for_type_inference('int32')
-    outputs = {"Out": pool_out, "Mask": mask}
+        helper.append_op(
+            type=l_type,
+            inputs={"X": x},
+            outputs=outputs,
+            attrs={
+                "pooling_type": 'max',
+                "ksize": output_size,
+                "adaptive": True,
+            },
+        )
 
-    helper.append_op(
-        type=l_type,
-        inputs={"X": x},
-        outputs=outputs,
-        attrs={
-            "pooling_type": 'max',
-            "ksize": output_size,
-            "adaptive": True,
-        },
-    )
-
-    return (pool_out, mask) if return_mask else pool_out
+        return (pool_out, mask) if return_mask else pool_out

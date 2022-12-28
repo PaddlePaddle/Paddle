@@ -14,16 +14,19 @@
 
 import copy
 from collections import defaultdict
-from paddle.fluid import framework
-from paddle.fluid.framework import set_flags
-from paddle.fluid import core
-from paddle.distributed.passes import PassContext
-from .dist_tensor import DistributedTensor
-from .dist_op import DistributedOperator
-from .process_mesh import ProcessMesh
-from .utils import _copy_dist_attr_to_cpp
-from .utils import is_loss_grad_op
 
+from paddle.distributed.passes import PassContext
+from paddle.fluid import core, framework
+from paddle.fluid.framework import set_flags
+
+from .dist_op import DistributedOperator
+from .dist_tensor import DistributedTensor
+from .process_mesh import ProcessMesh
+from .utils import (
+    __no_shape_var_type__,
+    _copy_dist_attr_to_cpp,
+    is_loss_grad_op,
+)
 
 # There always exists a default context for user. And user can set it to another one.
 _g_default_distributed_context = None
@@ -862,17 +865,13 @@ class DistributedContext:
         for dist_tensor in self._dist_tensors_for_program.values():
             serial_tensor = dist_tensor.serial_tensor
             dist_attr = dist_tensor.dist_attr
-            if (
-                serial_tensor.type == core.VarDesc.VarType.READER
-                or serial_tensor.type == core.VarDesc.VarType.LOD_TENSOR_ARRAY
-                or serial_tensor.type == core.VarDesc.VarType.STEP_SCOPES
-            ):
+            if serial_tensor.type in __no_shape_var_type__:
                 tensor_shape = []
             else:
                 tensor_shape = serial_tensor.shape
             dims_mapping = dist_attr.dims_mapping
-            process_mesh_shape = dist_attr.process_mesh.topology
-            process_mesh_processes = dist_attr.process_mesh.processes
+            process_mesh_shape = dist_attr.process_mesh.shape
+            process_mesh_processes = dist_attr.process_mesh.process_ids
             # If the dimension of tensor is less than the sharding dimension of process mesh,
             # we just amend the dimension mapping to -1. (Is this really OK?)
             for i in range(len(tensor_shape)):
@@ -888,18 +887,15 @@ class DistributedContext:
         for dist_op in self._dist_ops_for_program.values():
             serial_op = dist_op.serial_op
             dist_attr = dist_op.dist_attr
-            process_mesh_shape = dist_attr.process_mesh.topology
-            process_mesh_processes = dist_attr.process_mesh.processes
+            process_mesh_shape = dist_attr.process_mesh.shape
+            process_mesh_processes = dist_attr.process_mesh.process_ids
             for arg_name in serial_op.input_arg_names:
                 if dist_op.get_serial_input(arg_name) is None:
                     tensor_shape = []
                 else:
                     if (
                         dist_op.get_serial_input(arg_name).type
-                        == core.VarDesc.VarType.READER
-                        or dist_op.get_serial_input(arg_name).type
-                        == core.VarDesc.VarType.LOD_TENSOR_ARRAY
-                        or dist_op.serial_op.type == "create_py_reader"
+                        in __no_shape_var_type__
                     ):
                         tensor_shape = []
                     else:
@@ -923,11 +919,7 @@ class DistributedContext:
             for arg_name in serial_op.output_arg_names:
                 if (
                     dist_op.get_serial_output(arg_name).type
-                    == core.VarDesc.VarType.READER
-                    or dist_op.get_serial_output(arg_name).type
-                    == core.VarDesc.VarType.LOD_TENSOR_ARRAY
-                    or dist_op.get_serial_output(arg_name).type
-                    == core.VarDesc.VarType.STEP_SCOPES
+                    in __no_shape_var_type__
                 ):
                     tensor_shape = []
                 else:
@@ -1146,7 +1138,7 @@ class DistributedOperatorContext:
         return kinputs, koutputs
 
 
-class BlockState(object):
+class BlockState:
     def __init__(self):
         self.nblock = 0
         self.forward_indices = []

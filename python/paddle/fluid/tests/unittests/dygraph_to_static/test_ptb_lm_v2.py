@@ -17,6 +17,7 @@ import time
 import unittest
 
 import numpy as np
+
 import paddle
 
 PRINT_STEP = 20
@@ -29,7 +30,7 @@ class SimpleLSTMRNN(paddle.nn.Layer):
     def __init__(
         self, hidden_size, num_steps, num_layers=2, init_scale=0.1, dropout=None
     ):
-        super(SimpleLSTMRNN, self).__init__()
+        super().__init__()
         self._hidden_size = hidden_size
         self._num_layers = num_layers
         self._init_scale = init_scale
@@ -135,7 +136,7 @@ class PtbModel(paddle.nn.Layer):
         init_scale=0.1,
         dropout=None,
     ):
-        super(PtbModel, self).__init__()
+        super().__init__()
         self.hidden_size = hidden_size
         self.vocab_size = vocab_size
         self.init_scale = init_scale
@@ -149,11 +150,11 @@ class PtbModel(paddle.nn.Layer):
             init_scale=init_scale,
             dropout=dropout,
         )
-        self.embedding = paddle.fluid.dygraph.nn.Embedding(
-            size=[vocab_size, hidden_size],
-            dtype='float32',
-            is_sparse=False,
-            param_attr=paddle.ParamAttr(
+        self.embedding = paddle.nn.Embedding(
+            vocab_size,
+            hidden_size,
+            sparse=False,
+            weight_attr=paddle.ParamAttr(
                 name='embedding_para',
                 initializer=paddle.nn.initializer.Uniform(
                     low=-init_scale, high=init_scale
@@ -214,7 +215,7 @@ class PtbModel(paddle.nn.Layer):
         )
         loss = paddle.reshape(loss, shape=[-1, self.num_steps])
         loss = paddle.mean(loss, axis=[0])
-        loss = paddle.fluid.layers.reduce_sum(loss)
+        loss = paddle.sum(loss)
 
         return loss, last_hidden, last_cell
 

@@ -13,12 +13,11 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
 
 import paddle
-
 import paddle.fluid.core as core
-from paddle.fluid.framework import _test_eager_guard
 
 
 class Optimization_ex1(paddle.nn.Layer):
@@ -28,7 +27,7 @@ class Optimization_ex1(paddle.nn.Layer):
         param_attr=paddle.nn.initializer.Uniform(low=-5.0, high=5.0),
         dtype='float32',
     ):
-        super(Optimization_ex1, self).__init__()
+        super().__init__()
 
         self.theta = self.create_parameter(
             shape=shape, attr=param_attr, dtype=dtype, is_bias=False
@@ -69,10 +68,6 @@ class TestComplexSimpleNet(unittest.TestCase):
     def test_train_success(self):
         for dev in self.devices:
             self.train(dev)
-
-    def test_eager(self):
-        with _test_eager_guard():
-            self.test_train_success()
 
 
 if __name__ == '__main__':

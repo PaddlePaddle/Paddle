@@ -18,7 +18,6 @@ limitations under the Licnse. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
 using NPUDeviceContext = platform::NPUDeviceContext;
 
 template <typename T>
@@ -36,7 +35,7 @@ struct VisitDataArgNPUMaxFunctor {
     auto dtype = ctx.Attr<int>("dtype");
     const bool& flatten = ctx.Attr<bool>("flatten");
 
-    Tensor transformed_x(x.type());
+    phi::DenseTensor transformed_x(x.type());
     transformed_x.ShareDataWith(x);
     if (flatten) {
       transformed_x.Resize(phi::make_ddim({x.numel()}));

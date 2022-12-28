@@ -13,28 +13,33 @@
 # limitations under the License.
 
 import copy
-import time
 import random
+import time
+from collections import OrderedDict
 from functools import reduce
 from itertools import chain, product
-from collections import OrderedDict
 
 import numpy as np
 
 import paddle
 from paddle.distributed.fleet import auto
+
 from .cost_model import estimate_cost
-from .dist_op import DistributedOperator
-from .process_group import get_process_group
-from .operators.common import is_elementwise_op
-from .operators.common import get_distributed_operator_impl_container
-from .utils import update_op_dims_mapping_by_default_dist_impl
-from .utils import update_op_dims_mapping_by_elementwise_like_dist_impl
-from .utils import get_all_distributed_main_program
-from .dist_context import DistributedContext, DistributedOperatorContext
 from .dist_attribute import (
     OperatorDistributedAttribute,
     TensorDistributedAttribute,
+)
+from .dist_context import DistributedContext, DistributedOperatorContext
+from .dist_op import DistributedOperator
+from .operators.common import (
+    get_distributed_operator_impl_container,
+    is_elementwise_op,
+)
+from .process_group import get_process_group
+from .utils import (
+    get_all_distributed_main_program,
+    update_op_dims_mapping_by_default_dist_impl,
+    update_op_dims_mapping_by_elementwise_like_dist_impl,
 )
 
 paddle.seed(123)
@@ -69,7 +74,7 @@ class PlanFilter:
         for var_name in op.input_arg_names:
             dims_mapping = op_dist_attr.get_input_dims_mapping(var_name)
             if not PlanFilter.check_dims_mapping_for_tensor(
-                process_mesh.topology, vars[var_name].shape, dims_mapping
+                process_mesh.shape, vars[var_name].shape, dims_mapping
             ):
                 return False
             if vars[var_name].is_data and len(dims_mapping) > 1:
@@ -80,7 +85,7 @@ class PlanFilter:
         for var_name in op.output_arg_names:
             dims_mapping = op_dist_attr.get_output_dims_mapping(var_name)
             if not PlanFilter.check_dims_mapping_for_tensor(
-                process_mesh.topology, vars[var_name].shape, dims_mapping
+                process_mesh.shape, vars[var_name].shape, dims_mapping
             ):
                 return False
 
@@ -212,13 +217,13 @@ class PlanSpace:
         for var_name in chain(op.input_arg_names, op.output_arg_names):
             visited = [
                 False
-                for _ in range(len(list(range(-1, len(process_mesh.topology)))))
+                for _ in range(len(list(range(-1, len(process_mesh.shape)))))
             ]
             depth = 0
             path = []
             dims_mapping_list = []
             PlanSpace._enum_dims_mapping(
-                process_mesh.topology,
+                process_mesh.shape,
                 visited,
                 path,
                 depth,
@@ -437,7 +442,7 @@ class SearchAlgorithm:
 
     @property
     def name(self):
-        self.name = name
+        self.name = self._name
 
     def search(self):
         raise NotImplementedError("Please Implement this method in subclass.")
@@ -445,7 +450,7 @@ class SearchAlgorithm:
 
 class MCMC(SearchAlgorithm):
     def __init__(self, serial_program_info, parallelizer, max_search_times=5):
-        super(MCMC, self).__init__("mcmc")
+        super().__init__("mcmc")
         self._serial_program_info = serial_program_info
         self._max_search_times = max_search_times
         self._parallelizer = parallelizer
@@ -585,7 +590,10 @@ class MCMC(SearchAlgorithm):
             self.serial_program_info, dist_context, self.parallelizer
         )
         pipeline_config = (
-            [process_mesh.processes for process_mesh in pipeline_process_meshes]
+            [
+                process_mesh.process_ids
+                for process_mesh in pipeline_process_meshes
+            ]
             if pipeline_process_meshes is not None
             else None
         )
@@ -1055,7 +1063,7 @@ class MCMC(SearchAlgorithm):
         # rebuild g_process_group
         pg0 = get_process_group(0)
         for process_mesh in searched_dist_context._process_meshes:
-            pg0.add_ranks(process_mesh.processes)
+            pg0.add_ranks(process_mesh.process_ids)
         end_time = time.time()
         print(
             "End MCMC searching: the min cost is {} and the search time is {}s.".format(

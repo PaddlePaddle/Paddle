@@ -19,7 +19,7 @@ from collections.abc import Sequence, Mapping
 _WARNING_TO_LOG = True
 
 
-class _DatasetFetcher(object):
+class _DatasetFetcher:
     def __init__(self, dataset, auto_collate_batch, collate_fn, drop_last):
         self.dataset = dataset
         self.auto_collate_batch = auto_collate_batch
@@ -82,9 +82,7 @@ class _DatasetFetcher(object):
 
 class _IterableDatasetFetcher(_DatasetFetcher):
     def __init__(self, dataset, auto_collate_batch, collate_fn, drop_last):
-        super(_IterableDatasetFetcher, self).__init__(
-            dataset, auto_collate_batch, collate_fn, drop_last
-        )
+        super().__init__(dataset, auto_collate_batch, collate_fn, drop_last)
         self.dataset_iter = iter(dataset)
 
     def fetch(self, batch_indices, done_event=None):
@@ -119,9 +117,7 @@ class _IterableDatasetFetcher(_DatasetFetcher):
 
 class _MapDatasetFetcher(_DatasetFetcher):
     def __init__(self, dataset, auto_collate_batch, collate_fn, drop_last):
-        super(_MapDatasetFetcher, self).__init__(
-            dataset, auto_collate_batch, collate_fn, drop_last
-        )
+        super().__init__(dataset, auto_collate_batch, collate_fn, drop_last)
 
     def fetch(self, batch_indices, done_event=None):
         if self.auto_collate_batch:

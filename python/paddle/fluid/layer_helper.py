@@ -40,9 +40,7 @@ class LayerHelper(LayerHelperBase):
         if name is None:
             self.kwargs['name'] = unique_name.generate(layer_type)
 
-        super(LayerHelper, self).__init__(
-            self.kwargs['name'], layer_type=layer_type
-        )
+        super().__init__(self.kwargs['name'], layer_type=layer_type)
 
     def append_op(self, *args, **kwargs):
         return self.main_program.current_block().append_op(*args, **kwargs)

@@ -12,14 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
-import paddle.fluid as fluid
-import unittest
-import os
-import numpy as np
 import math
+import os
 import sys
 import tempfile
+import unittest
+
+import numpy as np
+
+import paddle
+import paddle.fluid as fluid
 
 paddle.enable_static()
 
@@ -94,7 +96,12 @@ def train(
         predict_word = fluid.layers.fc(
             input=hidden1, size=dict_size, act='softmax'
         )
-        cost = fluid.layers.cross_entropy(input=predict_word, label=words[4])
+        cost = paddle.nn.functional.cross_entropy(
+            input=predict_word,
+            label=words[4],
+            reduction='none',
+            use_softmax=False,
+        )
         avg_cost = paddle.mean(cost)
         return avg_cost, predict_word
 

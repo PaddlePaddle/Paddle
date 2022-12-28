@@ -472,7 +472,7 @@ def l2_loss(gt, pred):
     return ((gt - pred) ** 2).mean()
 
 
-class tqdm(object):
+class tqdm:
     def __init__(self, total, bar_format='Loading|{bar}', ncols=80):
         self.total = total
         self.bar_format = bar_format

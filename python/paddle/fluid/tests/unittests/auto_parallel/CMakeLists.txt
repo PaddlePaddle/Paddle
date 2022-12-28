@@ -72,6 +72,13 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   py_test_modules(test_parallel_tuner_predict MODULES
                   test_parallel_tuner_predict ENVS ${dist_ENVS})
   set_tests_properties(test_parallel_tuner_predict PROPERTIES TIMEOUT 120)
+  py_test_modules(test_selective_recompute MODULES test_selective_recompute)
+  set_tests_properties(test_selective_recompute PROPERTIES TIMEOUT 50)
+  py_test_modules(test_pass_quantization MODULES test_pass_quantization ENVS
+                  ${dist_ENVS})
+  set_tests_properties(test_pass_quantization PROPERTIES TIMEOUT 60)
+  py_test_modules(test_tuning_recompute MODULES test_tuning_recompute)
+  set_tests_properties(test_tuning_recompute PROPERTIES TIMEOUT 240)
 
   py_test_modules(test_while_op_completion MODULES test_while_op_completion
                   ENVS ${dist_ENVS})
@@ -109,11 +116,17 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   py_test_modules(test_process_mesh MODULES test_process_mesh)
   py_test_modules(test_interface MODULES test_interface)
   py_test_modules(test_strategy MODULES test_strategy)
-  py_test_modules(test_pass_quantization MODULES test_pass_quantization)
   py_test_modules(test_dist_shape MODULES test_dist_shape)
   py_test_modules(test_dist_assign MODULES test_dist_assign)
   py_test_modules(test_conditional_block_reshard MODULES
                   test_conditional_block_reshard)
   py_test_modules(test_engine_api_error MODULES test_engine_api_error)
-
+  py_test_modules(test_fp16_assign MODULES test_fp16_assign)
+  py_test_modules(test_group_operators MODULES test_group_operators)
+  py_test_modules(test_pattern MODULES test_pattern)
+  py_test_modules(test_pattern_match MODULES test_pattern_match)
+  py_test_modules(test_cluster_partition MODULES test_cluster_partition)
+  py_test_modules(test_convert_to_process_meshes MODULES
+                  test_convert_to_process_meshes)
+  py_test_modules(test_dist_saver MODULES test_dist_saver)
 endif()
