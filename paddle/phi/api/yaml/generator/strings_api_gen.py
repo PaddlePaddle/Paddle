@@ -210,6 +210,7 @@ class StringsAPI(ForwardAPI):
   VLOG(6) << "{self.api} api strings kernel key: [" << kernel_backend << ", " << kernel_layout << ", "<< kernel_data_type << "]";
   auto kernel_result = phi::KernelFactory::Instance().SelectKernelOrThrowError(
       "{self.kernel['func'][0]}", {{kernel_backend, kernel_layout, kernel_data_type}});
+  phi::KernelFactory::Instance().AddToLowPrecisionKernelList("{self.api}", kernel_data_type);
   const auto& kernel = kernel_result.kernel;
   VLOG(6) << "{self.api} api strings kernel: " << kernel;
 

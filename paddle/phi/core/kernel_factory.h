@@ -305,10 +305,19 @@ class KernelFactory {
   const KernelArgsDef& GetFirstKernelArgsDef(
       const std::string& kernel_name) const;
 
+  void AddToLowPrecisionKernelList(
+      const std::string& name,
+      const paddle::experimental::DataType& kernel_key_type);
+
+  std::map<const std::string, int> GetLowPrecisionKernelList();
+
  private:
   KernelFactory() = default;
 
   KernelNameMap kernels_;
+
+  // The low precision kernel list of current module.
+  std::map<const std::string, int> low_precision_kernels_;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const KernelKey& kernel_key) {
