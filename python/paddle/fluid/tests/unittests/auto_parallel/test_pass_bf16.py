@@ -104,17 +104,6 @@ class TestBF16Pass(unittest.TestCase):
         self.init(engine)
         return engine
 
-    def check_results(self, ref_losses, check_losses, rtol=None, atol=None):
-        np.testing.assert_allclose(
-            ref_losses,
-            check_losses,
-            rtol=rtol or self.rtol,
-            atol=atol or self.atol,
-            err_msg='pass {} has wrong results!, \nu={}\nv={}\ndiff={}'.format(
-                __class__, ref_losses, check_losses, ref_losses - check_losses
-            ),
-        )
-
     def check_program(self, program):
         bf16_op_list = {
             "matmul_v2",
@@ -208,12 +197,6 @@ class TestBF16Pass(unittest.TestCase):
                             assert var.dtype == core.VarDesc.VarType.FP32
 
     def test_bf16_pass(self):
-        fp32_engine = self.get_engine()
-        history = fp32_engine.fit(
-            self.dataset, 1, batch_size=self.batch_size, steps_per_epoch=10
-        )
-        fp32_losses = np.array(history.history["loss"])
-
         bf16_o1_engine = self.get_engine(True)
         inputs_spec = [InputSpec([None, 1, 28, 28], 'float32', 'input0')]
         labels_spec = [InputSpec([None, 1], 'int64', 'label0')]
@@ -222,16 +205,6 @@ class TestBF16Pass(unittest.TestCase):
         )
         self.check_program(bf16_o1_engine._dist_main_progs["train"][0])
         print("BF16!check program successfully!")
-        # print(bf16_o1_engine._dist_main_progs["train"][0])
-
-        # history = bf16_o1_engine.fit(
-        #     self.dataset, 1, batch_size=self.batch_size, steps_per_epoch=10
-        # )
-        # bf16_o1_losses = np.array(history.history["loss"])
-        # bf16_o1_engine.evaluate(
-        #     self.eval_dataset, 1, batch_size=self.batch_size
-        # )
-        # self.check_results(mp_losses, bf16_o1_losses)
 
 
 if __name__ == "__main__":

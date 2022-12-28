@@ -547,7 +547,7 @@ class BF16Pass(PassBase):
         self.set_attr("input_data", [])
         self.set_attr("loss", None)
         self.set_attr("params_grads", [])
-        self.set_attr("use_pure_bf16", False)
+        self.set_attr("use_bf16_guard", False)
         self._loss = None
 
     def _check_self(self):
