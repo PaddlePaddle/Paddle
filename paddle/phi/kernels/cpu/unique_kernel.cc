@@ -96,6 +96,7 @@ void UniqueRawKernel(const Context& context,
                                                             return_counts));
   } else {
     int axis_value = axis[0];
+    axis_value = (axis_value == -1) ? (x.dims().size() - 1) : axis_value;
     phi::VisitDataTypeTiny(
         dtype,
         phi::funcs::UniqueDimFunctor<Context, T>(context,
