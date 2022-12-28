@@ -20,81 +20,69 @@ We provide users with four installation methods ,which are pip, conda, docker an
 
 ### PIP Installation
 
-#### <a id="PREQUISITES">PREQUISTIES</a>
+#### PREQUISTIES
 
 ##### On Windows:
 
 - **Windows 7/8/10 Pro/Enterprise (64bit)**
-  - **GPU version support CUDA 9.0/9.1/9.2/10.0/10.1，only supports single card**
-- **Python version 2.7.15+/3.5.1+/3.6/3.7/3.8 (64 bit)**
+  - **GPU version support CUDA 10.2/11.2/11.6/11.7**
+  - **Only supports single card**
+- **Python version 3.7/3.8/3.9/3.10 (64 bit)**
 - **pip version 9.0.1+ (64 bit)**
 
 ##### On Linux:
 
 - **Linux Version (64 bit)**
-  - **CentOS 6 (GPU Version Supports CUDA 9.0/9.1/9.2/10.0/10.1, only supports single card**)**
-  - **CentOS 7 (GPUVersion Supports CUDA 9.0/9.1/9.2/10.0/10.1, CUDA 9.1 only supports single card**)**
-  - **Ubuntu 14.04 (GPUVersion Supports CUDA 10.0/10.1)**
-  - **Ubuntu 16.04 (GPUVersion Supports CUDA 9.0/9.1/9.2/10.0/10.1)**
-  - **Ubuntu 18.04 (GPUVersion Supports CUDA 10.0/10.1)**
-- **Python Version: 2.7.15+/3.5.1+/3.6/3.7/3.8 (64 bit)**
+  - **CentOS 7 (GPUVersion Supports CUDA 10.2/11.2/11.6/11.7)**
+  - **Ubuntu 16.04/18.04/20.04/22.04 (GPUVersion Supports CUDA 10.2/11.2/11.6/11.7)**
+- **Python Version: 3.7/3.8/3.9/3.10 (64 bit)**
 - **pip or pip3 Version 20.2.2+ (64 bit)**
 
-##### On MacOS:
+##### On macOS:
 
 - **MacOS version 10.11/10.12/10.13/10.14 (64 bit) (not support GPU version yet)**
 
-- **Python version 2.7.15+/3.5.1+/3.6/3.7/3.8 (64 bit)**
+- **Python version 3.7/3.8/3.9/3.10 (64 bit)**
 
 - **pip or pip3 version 9.0.1+ (64 bit)**
 
 
 
-#### <a id="Commands to install">Commands to install</a>
+#### Commands to install
 
 ###### cpu:
 
-python2:
+```bash
+pip install paddlepaddle
+```
 
-```python -m pip install paddlepaddle```
+###### gpu:
 
-python3:
-
-```python3 -m pip install paddlepaddle```
-
-
-
-###### gpu-cuda10.2:
-
-python2:
-
-```python -m pip install paddlepaddle-gpu```
-
-python3:
-
-```python3 -m pip install paddlepaddle-gpu```
+```bash
+pip install paddlepaddle-gpu
+```
 
 
 
-###### gpu-cuda9、10.0、10.1、11:
+###### specific version cuda:
 
 We only release paddlepaddle-gpu cuda10.2 on pypi.
 
-If you want to install paddlepaddle-gpu with cuda version of 9.0 ,10.0 ,10.1 ,or 11.0, commands to install are on our website: [Installation Document](https://www.paddlepaddle.org.cn/)
+If you want to install paddlepaddle-gpu with cuda version of 10.2/11.2/11.6/11.7, commands to install are on our website: [Installation Document](https://www.paddlepaddle.org.cn/documentation/docs/en/install/pip/frompip_en.html)
 
 
 
-#### <a id="Verify installation">Verify installation	</a>
+#### Verify installation
 
-After the installation is complete, you can use `python` or `python3` to enter the Python interpreter and then use `import paddle.fluid` and `fluid.install_check.run_check()`
+After the installation is complete, you can use `python3` to enter the Python interpreter and then use `import paddle` and `paddle.utils.run_check()`
 
-If `Your Paddle Fluid is installed successfully!` appears, to verify that the installation was successful.
+If `PaddlePaddle is installed successfully!` appears, to verify that the installation was successful.
 
 
 
 ### Other installation methods
 
-If you want to install witch conda or docker or pip,please see commands to install on our website: [Installation Document](https://www.paddlepaddle.org.cn/)
+If you want to install witch conda or docker or pip, please see commands to install on our website: [Installation Document](https://www.paddlepaddle.org.cn/documentation/docs/en/install/index_en.html)
 
 
 
@@ -124,8 +112,8 @@ If you want to install witch conda or docker or pip,please see commands to insta
 
 ## Documentation
 
-We provide [English](http://www.paddlepaddle.org.cn/documentation/docs/en/1.8/beginners_guide/index_en.html) and
-[Chinese](http://www.paddlepaddle.org.cn/documentation/docs/zh/1.8/beginners_guide/index_cn.html) documentation.
+We provide [English](https://www.paddlepaddle.org.cn/documentation/docs/en/guides/index_en.html) and
+[Chinese](https://www.paddlepaddle.org.cn/documentation/docs/zh/guides/index_cn.html) documentation.
 
 - [Basic Deep Learning Models](https://www.paddlepaddle.org.cn/documentation/docs/en/beginners_guide/index_en.html)
 
@@ -146,7 +134,7 @@ We provide [English](http://www.paddlepaddle.org.cn/documentation/docs/en/1.8/be
    Our new API enables much shorter programs.
 
 
-- [How to Contribute](https://www.paddlepaddle.org.cn/documentation/docs/en/advanced_guide/addon_development/contribute_code/index_en.html)
+- [How to Contribute](https://www.paddlepaddle.org.cn/documentation/docs/zh/dev_guides/index_cn.html)
 
    We appreciate your contributions!
 
@@ -154,7 +142,7 @@ We provide [English](http://www.paddlepaddle.org.cn/documentation/docs/en/1.8/be
 
 - [Github Issues](https://github.com/PaddlePaddle/Paddle/issues): bug reports, feature requests, install issues, usage issues, etc.
 - QQ discussion group: 796771754 (PaddlePaddle).
-- [Forums](http://ai.baidu.com/forum/topic/list/168?pageNo=1): discuss implementations, research, etc.
+- [Forums](https://aistudio.baidu.com/paddle/forum/): discuss implementations, research, etc.
 
 ## Copyright and License
-PaddlePaddle is provided under the [Apache-2.0 license](LICENSE).
+PaddlePaddle is provided under the [Apache-2.0 license](https://github.com/PaddlePaddle/Paddle/blob/develop/LICENSE).

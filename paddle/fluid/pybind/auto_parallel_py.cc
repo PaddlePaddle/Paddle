@@ -291,6 +291,9 @@ void BindAutoParallel(py::module *m) {
       .def_property("execution_stream",
                     &OperatorDistAttr::execution_stream,
                     &OperatorDistAttr::set_execution_stream)
+      .def_property("scheduling_priority",
+                    &OperatorDistAttr::scheduling_priority,
+                    &OperatorDistAttr::set_scheduling_priority)
       .def_property("annotated",
                     &OperatorDistAttr::annotated,
                     &OperatorDistAttr::set_annotated)

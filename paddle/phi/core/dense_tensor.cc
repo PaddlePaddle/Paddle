@@ -98,7 +98,8 @@ bool DenseTensor::IsSharedWith(const DenseTensor& b) const {
 
 void* DenseTensor::AllocateFrom(Allocator* allocator,
                                 DataType dtype,
-                                size_t requested_size) {
+                                size_t requested_size,
+                                bool fake_alloc) {
   PADDLE_ENFORCE_NOT_NULL(
       allocator,
       phi::errors::InvalidArgument(
@@ -107,21 +108,28 @@ void* DenseTensor::AllocateFrom(Allocator* allocator,
     VLOG(10) << "change data type in mutbale_data, target dtype - " << dtype;
     meta_.dtype = dtype;
   }
-  PADDLE_ENFORCE(
-      valid(),
-      phi::errors::PreconditionNotMet(
-          "The meta data must be valid when call the mutable data function."));
+
   size_t bytes = numel() * SizeOf(this->dtype());
-  if (requested_size) {
-    PADDLE_ENFORCE_GE(requested_size,
-                      bytes,
-                      phi::errors::InvalidArgument(
-                          "The reserved size %d should be enough to meet the "
-                          "volume required by metadata %d.",
-                          requested_size,
-                          bytes));
-    bytes = requested_size;
+
+  if (fake_alloc) {
+    bytes = 0;
+  } else {
+    PADDLE_ENFORCE(
+        valid(),
+        phi::errors::PreconditionNotMet("The meta data must be valid when "
+                                        "call the mutable data function."));
+    if (requested_size) {
+      PADDLE_ENFORCE_GE(requested_size,
+                        bytes,
+                        phi::errors::InvalidArgument(
+                            "The reserved size %d should be enough to meet the "
+                            "volume required by metadata %d.",
+                            requested_size,
+                            bytes));
+      bytes = requested_size;
+    }
   }
+
   // NOTE(paddle-dev): In case of the allocator of storage_ is different with
   // the incoming allocator, we will re-alloc data using the incoming
   // allocator. See DeviceContext.Alloc in core/device_context.cc.

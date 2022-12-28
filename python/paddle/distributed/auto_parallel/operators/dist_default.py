@@ -39,6 +39,7 @@ from .common import (
 )
 
 __op_not_need_param_init__ = ["while", "cond"]
+__op_has_shape_attr__ = ["fill_constant_batch_size_like", "fill_constant"]
 
 
 def prim_operator_data_parallel_functor(ctx, src_op):
@@ -481,6 +482,26 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
         for output_name in src_op.desc.output_names():
             dist_op_desc.set_output(output_name, kwargs[output_name])
         # TODO: should we add a new dist attr for the new op here?
+
+        if (
+            src_op.has_attr('shape')
+            and src_op.attr('shape')
+            and src_op.type in __op_has_shape_attr__
+        ):
+            shape_list = src_op.attr('shape')
+            Out_var = main_block._var_recursive(kwargs['Out'][0])
+            op_dist_attr = ctx.get_op_dist_attr_for_program(src_op)
+            dim_mapping = op_dist_attr.get_output_dims_mapping(Out_var.name)
+            process_mesh_shape = op_dist_attr.process_mesh.shape
+            assert len(shape_list) == len(dim_mapping)
+            # modify target shape
+            for idx, axis in enumerate(dim_mapping):
+                if axis >= 0:
+                    if len(shape_list) > idx:
+                        shape_list[idx] = (
+                            shape_list[idx] // process_mesh_shape[axis]
+                        )
+            dist_op_desc._set_attr('shape', shape_list)
 
         # data parallel synchronization for primtive operators
         from paddle.incubate.autograd import prim_enabled
