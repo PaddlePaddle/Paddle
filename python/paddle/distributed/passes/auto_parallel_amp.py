@@ -26,7 +26,9 @@ from paddle.distributed.auto_parallel.utils import (
 )
 from paddle.distributed.fleet.meta_optimizers.common import OpRole
 from paddle.fluid import unique_name
-from paddle.fluid.contrib.mixed_precision.fp16_utils import (
+from paddle.fluid.data_feeder import check_type, check_variable_and_dtype
+from paddle.framework import core
+from paddle.static.amp.fp16_utils import (
     AutoMixedPrecisionLists,
     _dtype_to_str,
     _is_in_black_varnames,
@@ -38,8 +40,6 @@ from paddle.fluid.contrib.mixed_precision.fp16_utils import (
     find_true_post_op,
     find_true_prev_op,
 )
-from paddle.fluid.data_feeder import check_type, check_variable_and_dtype
-from paddle.framework import core
 
 from ..auto_parallel.utils import is_backward_op, is_forward_op, is_loss_op
 from .pass_base import PassBase, register_pass

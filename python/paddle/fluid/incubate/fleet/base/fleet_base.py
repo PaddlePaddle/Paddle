@@ -21,7 +21,7 @@ from paddle.optimizer import SGD as SGD_v2
 
 from paddle.fluid.incubate.fleet.base.mode import Mode
 from paddle.distributed.fleet.base.role_maker import RoleMakerBase
-from paddle.fluid.contrib.mixed_precision.decorator import (
+from paddle.static.amp.decorator import (
     OptimizerWithMixedPrecision,
 )
 from . import mode

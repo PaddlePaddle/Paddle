@@ -29,16 +29,16 @@ from paddle.distributed.auto_parallel.utils import (
 )
 from paddle.distributed.fleet.meta_optimizers.common import OP_ROLE_KEY, OpRole
 from paddle.fluid import unique_name
-from paddle.fluid.contrib.mixed_precision.fp16_utils import (
+from paddle.fluid.data_feeder import check_type, check_variable_and_dtype
+from paddle.fluid.framework import default_main_program, default_startup_program
+from paddle.framework import core
+from paddle.static.amp.fp16_utils import (
     AutoMixedPrecisionLists,
     _dtype_to_str,
     _keep_layer_norm_scale_bias_to_fp32,
     _need_keep_fp32,
     _valid_types,
 )
-from paddle.fluid.data_feeder import check_type, check_variable_and_dtype
-from paddle.fluid.framework import default_main_program, default_startup_program
-from paddle.framework import core
 
 from .auto_parallel_amp import AMPPass
 from .pass_base import register_pass

@@ -18,7 +18,7 @@ import contextlib
 import unittest
 import numpy as np
 from paddle.io import Dataset
-from paddle.fluid.contrib.mixed_precision.fp16_utils import cast_model_to_fp16
+from paddle.static.amp.fp16_utils import cast_model_to_fp16
 
 paddle.enable_static()
 

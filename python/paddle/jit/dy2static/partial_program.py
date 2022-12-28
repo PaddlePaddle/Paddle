@@ -18,13 +18,6 @@ import paddle
 from paddle import _legacy_C_ops
 from paddle.fluid import backward, core, framework, program_guard
 from paddle.fluid.compiler import BuildStrategy
-from paddle.fluid.contrib.mixed_precision.decorator import (
-    AutoMixedPrecisionLists,
-)
-from paddle.fluid.contrib.mixed_precision.fp16_utils import (
-    cast_model_to_fp16,
-    rewrite_program,
-)
 from paddle.fluid.dygraph import layers
 from paddle.fluid.dygraph.amp.auto_cast import (
     _in_amp_guard,
@@ -37,6 +30,8 @@ from paddle.fluid.executor import (
 )
 from paddle.fluid.framework import _apply_pass
 from paddle.fluid.layers.utils import _hash_with_id, flatten, pack_sequence_as
+from paddle.static.amp.decorator import AutoMixedPrecisionLists
+from paddle.static.amp.fp16_utils import cast_model_to_fp16, rewrite_program
 
 from . import logging_utils
 from .return_transformer import RETURN_NO_VALUE_MAGIC_NUM

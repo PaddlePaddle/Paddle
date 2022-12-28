@@ -25,7 +25,7 @@ import sys
 sys.path.append('..')
 from op_test import _set_use_system_allocator
 from paddle.fluid import Program, program_guard
-from paddle.fluid.contrib.mixed_precision.fp16_utils import (
+from paddle.static.amp.fp16_utils import (
     _keep_layer_norm_scale_bias_to_fp32,
 )
 from test_layer_norm_op import (

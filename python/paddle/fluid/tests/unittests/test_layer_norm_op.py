@@ -24,9 +24,7 @@ import paddle.fluid as fluid
 import paddle.fluid.core as core
 import paddle.nn.functional as F
 from paddle.fluid import Program, program_guard
-from paddle.fluid.contrib.mixed_precision.fp16_utils import (
-    _keep_layer_norm_scale_bias_to_fp32,
-)
+from paddle.static.amp.fp16_utils import _keep_layer_norm_scale_bias_to_fp32
 
 paddle.enable_static()
 
