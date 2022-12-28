@@ -254,7 +254,15 @@ inline void TransposeQKV_v2(const int batch,
                           head_num,
                           head_size,
                           1024));
+<<<<<<< HEAD
     TransposeQkvKernel_v2<float>
+=======
+<<<<<<< HEAD
+    TransposeQkvKernel_v2<float> 1,1,max_seq, headsize
+=======
+    TransposeQkvKernel_v2<float>
+>>>>>>> 1aecdfa5a0bb367170f9d74689ee4bbf8edb61af
+>>>>>>> 30b917bae69eb7d10fe985076c00d31737d2ff67
         <<<grid, block, 0, stream>>>(head_size, input, output, output_2);
   }
 }
@@ -418,6 +426,10 @@ __global__ void apply_scale(T *data, T scale, int n) {
 
 template <typename T>
 __global__ void RotrayKernel(const T *inputact,
+<<<<<<< HEAD
+=======
+<<<<<<< HEAD
+>>>>>>> 30b917bae69eb7d10fe985076c00d31737d2ff67
                              const T *input1, //cos 1,1,max_seq, headsize
                              const T *intput2, //sin
                              T *output,
@@ -448,6 +460,23 @@ __global__ void RotrayKernel(const T *inputact,
               output[index] = left + intput2[cos_index] * inputact[new_index];
 	  }
   }
+<<<<<<< HEAD
+=======
+=======
+                             const T *input1,
+                             const T *intput2,
+                             T *output,
+                             const int nElement,
+                             const int lastdim) {
+  const int index = blockIdx.x * blockDim.x + threadIdx.x;
+  if (index >= nElement) return;
+  T _1 = input1[index] * inputact[index];
+  int col = index % lastdim;
+  int half_lastdim = lastdim / 2;
+  const int new_index = index - col + (col + half_lastdim) % lastdim;
+  output[index] = _1 + intput2[index] * inputact[new_index];
+>>>>>>> 1aecdfa5a0bb367170f9d74689ee4bbf8edb61af
+>>>>>>> 30b917bae69eb7d10fe985076c00d31737d2ff67
 }
 
 inline int round_up(int seq_len, int multiple = 32) {
@@ -537,14 +566,27 @@ int RoformerNovarlenPlugin::enqueue(
 
     int n_q = seq_len * head_number_ * head_size_ * batch;
     constexpr int threads = 128;
+<<<<<<< HEAD
     constexpr int blocks = 256;
     //int blocks = (n_q + threads - 1) / threads;
+=======
+<<<<<<< HEAD
+    constexpr int blocks = 256;
+    //int blocks = (n_q + threads - 1) / threads;
+=======
+    int blocks = (n_q + threads - 1) / threads;
+>>>>>>> 1aecdfa5a0bb367170f9d74689ee4bbf8edb61af
+>>>>>>> 30b917bae69eb7d10fe985076c00d31737d2ff67
     const float *input_cos_data = static_cast<const float *>(inputs[1]);
     const float *input_sin_data = static_cast<const float *>(inputs[2]);
     RotrayKernel<<<blocks, threads, 0, stream>>>(tmp_roformer_ptr,
                                                  input_cos_data,
                                                  input_sin_data,
                                                  tptr,
+<<<<<<< HEAD
+=======
+<<<<<<< HEAD
+>>>>>>> 30b917bae69eb7d10fe985076c00d31737d2ff67
 						 batch,
 						 seq_len,
 						 head_number_,
@@ -552,10 +594,21 @@ int RoformerNovarlenPlugin::enqueue(
 						 max_seq,
                                                  2*n_q);  // q + k
     /*
+<<<<<<< HEAD
+=======
+=======
+                                                 n_q,
+                                                 head_size_);  // q
+>>>>>>> 1aecdfa5a0bb367170f9d74689ee4bbf8edb61af
+>>>>>>> 30b917bae69eb7d10fe985076c00d31737d2ff67
     RotrayKernel<<<blocks, threads, 0, stream>>>(tmp_roformer_ptr + n_q,
                                                  input_cos_data,
                                                  input_sin_data,
                                                  tptr + n_q,
+<<<<<<< HEAD
+=======
+<<<<<<< HEAD
+>>>>>>> 30b917bae69eb7d10fe985076c00d31737d2ff67
 						 batch,
 						 seq_len,
 						 head_number_,
@@ -563,7 +616,15 @@ int RoformerNovarlenPlugin::enqueue(
                                                  n_q,
                                                  head_size_);  // k
     */
+<<<<<<< HEAD
 
+=======
+=======
+                                                 n_q,
+                                                 head_size_);  // k
+
+>>>>>>> 1aecdfa5a0bb367170f9d74689ee4bbf8edb61af
+>>>>>>> 30b917bae69eb7d10fe985076c00d31737d2ff67
     auto *device_ctx = static_cast<phi::GPUContext *>(
         platform::DeviceContextPool::Instance().Get(
             platform::CUDAPlace(device_id)));
