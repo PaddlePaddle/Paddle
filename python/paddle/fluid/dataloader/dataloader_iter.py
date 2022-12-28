@@ -303,7 +303,7 @@ class _DataLoaderIterSingleProcess(_DataLoaderIterBase):
                 )
                 data = _restore_batch(data, self._structure_infos.pop(0))
             else:
-                # in static mode
+                # in static graph mode
                 if self._return_list:
                     data = self._reader.read_next_list()
                     for i in range(len(data)):
