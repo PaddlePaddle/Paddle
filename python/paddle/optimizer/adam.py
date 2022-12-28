@@ -173,6 +173,8 @@ class Adam(Optimizer):
         lazy_mode=False,
         multi_precision=False,
         use_multi_tensor=False,
+        flatten_param_grads=False,
+        align_size=-1,
         name=None,
     ):
         assert learning_rate is not None
@@ -199,6 +201,8 @@ class Adam(Optimizer):
             parameters=parameters,
             weight_decay=weight_decay,
             grad_clip=grad_clip,
+            flatten_param_grads=flatten_param_grads,
+            align_size=align_size,
             name=name,
         )
         self.type = "adam"

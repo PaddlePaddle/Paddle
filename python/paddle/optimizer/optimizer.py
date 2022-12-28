@@ -1370,7 +1370,7 @@ class Optimizer:
                 for param, grad in parameters_and_grads:
                     if (
                         not repeate_regularizer
-                        and param.regularizer is not None
+                        and getattr(param, 'regularizer', None) is not None
                         and regularization is not None
                     ):
                         repeate_regularizer = True

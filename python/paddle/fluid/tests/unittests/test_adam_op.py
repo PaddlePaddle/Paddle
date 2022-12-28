@@ -850,6 +850,8 @@ class TestAdamOptimizer(unittest.TestCase):
                             beta1=beta1,
                             beta2=beta2,
                             epsilon=epsilon,
+                            flatten_param_grads=flatten_param_grads,
+                            align_size=256,
                             grad_clip=clip,
                         )
                 else:
@@ -865,11 +867,13 @@ class TestAdamOptimizer(unittest.TestCase):
                             grad_clip=clip,
                         )
                     else:
-                        adam = fluid.optimizer.Adam(
+                        adam = paddle.optimizer.Adam(
                             learning_rate=0.01,
                             beta1=beta1_init,
                             beta2=beta2_init,
                             epsilon=epsilon_init,
+                            flatten_param_grads=flatten_param_grads,
+                            align_size=256,
                             grad_clip=clip,
                         )
 
@@ -923,7 +927,9 @@ class TestAdamOptimizer(unittest.TestCase):
         if core.is_compiled_with_cuda():
             self._test_with_place(paddle.CUDAPlace(0))
 
-    def test_adam_flatten_param_grads_with_regularizer(self):
+    def _func_adam_flatten_param_grads_with_regularizer(
+        self, use_fluid_api=True
+    ):
         # flatten_param_grads + regularizer is not supported yet.
         paddle.enable_static()
         main = fluid.Program()
@@ -946,13 +952,22 @@ class TestAdamOptimizer(unittest.TestCase):
             )
             avg_cost = paddle.mean(cost)
 
-            adam = fluid.optimizer.AdamOptimizer(
-                0.01, flatten_param_grads=True, align_size=256
-            )
+            if use_fluid_api:
+                adam = fluid.optimizer.AdamOptimizer(
+                    0.01, flatten_param_grads=True, align_size=256
+                )
+            else:
+                adam = paddle.optimizer.Adam(
+                    0.01, flatten_param_grads=True, align_size=256
+                )
             adam.minimize(avg_cost)
             paddle.disable_static()
 
             self.assertEqual(adam._flatten_param_grads, False)
+
+    def test_adam_flatten_param_grads_with_regularizer(self):
+        for use_fluid_api in [True, False]:
+            self._func_adam_flatten_param_grads_with_regularizer(use_fluid_api)
 
     def test_adam_exception(self):
         paddle.enable_static()
