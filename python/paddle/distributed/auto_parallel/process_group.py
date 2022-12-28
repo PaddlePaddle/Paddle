@@ -14,12 +14,9 @@
 
 from collections import OrderedDict
 
-import paddle
+import paddle.distributed.auto_parallel.utils as auto_utils
 import paddle.fluid.core as core
-from paddle import _legacy_C_ops
-from paddle.fluid.framework import in_dygraph_mode
 
-from ...fluid.layers.tensor import fill_constant
 from ..collective import _get_global_env, _new_ring_id
 
 
@@ -66,6 +63,14 @@ def new_process_group(ranks, group_id=None):
     new_pg = ProcessGroup(group_id, ranks)
     _g_process_group_map[group_id] = new_pg
     return new_pg
+
+
+def init_all_process_groups():
+    all_process_groups = get_all_process_groups()
+    for process_group in all_process_groups:
+        if cur_rank in process_group.ranks:
+            process_group.instantiate()
+        auto_utils.naive_barrier()
 
 
 # This implementation refers to lots of Paddle/python/paddle/distributed/collective.py,
@@ -145,24 +150,7 @@ class ProcessGroup:
                 )
             else:
                 assert False, "No CUDA device found"
-
-            # TODO(shenliang03): This is a temporary solution to solve the problem of
-            # hang caused by cross-creation of new_group
-            paddle.disable_static()
-            paddle.set_device(
-                'gpu:%d' % paddle.distributed.ParallelEnv().dev_id
-            )
-            tmp = (
-                paddle.to_tensor([1], dtype="int32")
-                if in_dygraph_mode()
-                else fill_constant([0], dtype="int32", value="1")
-            )
-            # use legacy ops
-            _legacy_C_ops.c_allreduce_sum_(
-                tmp, 'use_calc_stream', True, 'ring_id', self.id
-            )
-            _legacy_C_ops.c_sync_calc_stream(tmp, tmp)
-            paddle.enable_static()
+            auto_utils.naive_barrier(self.id)
 
         self._is_instantiate = True
 

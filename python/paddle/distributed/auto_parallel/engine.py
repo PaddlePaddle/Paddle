@@ -52,7 +52,11 @@ from .helper import ProgramHelper
 from .interface import CollectionNames, get_collection
 from .parallelizer_v2 import Parallelizer
 from .planner_v2 import Planner
-from .process_group import get_all_process_groups, new_process_group
+from .process_group import (
+    get_all_process_groups,
+    init_all_process_groups,
+    new_process_group,
+)
 from .strategy import Strategy
 
 
@@ -760,10 +764,7 @@ class Engine:
                     all_process_groups, cur_rank
                 )
             else:
-                for process_group in all_process_groups:
-                    if cur_rank not in process_group.ranks:
-                        continue
-                    process_group.instantiate()
+                init_all_process_groups()
 
         self._place = _get_device()
         if isinstance(self._place, fluid.CUDAPlace):

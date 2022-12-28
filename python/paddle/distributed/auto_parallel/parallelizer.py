@@ -41,9 +41,9 @@ from .planner import Planner
 from .process_group import (
     ProcessGroup,
     _g_process_group_map,
-    get_all_process_groups,
     get_process_group,
     get_world_process_group,
+    init_all_process_groups,
 )
 from .reshard import Resharder
 from .utils import SerialProgramInfo, make_data_unshard, set_grad_var_shape
@@ -504,11 +504,7 @@ class AutoParallelizer:
 
             # Traverse different rank programs and traverse each op of them,
             # instantiate communication by process_mapping.
-            all_process_groups = get_all_process_groups()
-            for process_group in all_process_groups:
-                if rank not in process_group.ranks:
-                    continue
-                process_group.instantiate()
+            init_all_process_groups()
 
             # Copy distributed info to the default context
             set_default_distributed_context(self._dist_context)
