@@ -16,6 +16,15 @@
           comment : In order to specify interpolation mode
           default : std::string("bilinear")
 
+- op : pixel_shuffle
+  version :
+    - checkpoint : Compatible upgrade of pixel_shuffle, add a new attribute [data_format]
+      action :
+        - add_attr :
+          name : data_format
+          comment : Specify the data format of the input data
+          default : "true"
+
 - op : roll
   version :
     - checkpoint : Upgrade roll add 1 attribute [axis], delete 1 attribute[dims].
