@@ -24,7 +24,7 @@ from paddle.fluid.dygraph import base as imperative_base
 from paddle.fluid.framework import in_dygraph_mode
 from paddle.fluid.optimizer import Momentum, Optimizer
 from paddle.framework import core
-from paddle.nn.clip import GradientClipByNorm, append_gradient_clip_ops
+from paddle.nn.clip import ClipGradByNorm, append_gradient_clip_ops
 from paddle.static import create_global_var
 
 
@@ -76,9 +76,9 @@ class DGCMomentumOptimizer(Optimizer):
 
         self._dgc_clip_norm = None
         if grad_clip is not None:
-            if not isinstance(grad_clip, GradientClipByNorm):
+            if not isinstance(grad_clip, ClipGradByNorm):
                 raise TypeError(
-                    "The type of grad_clip should be 'GradientClipByNorm', because DGCMomentumOptimizer only support GradientClipByNorm"
+                    "The type of grad_clip should be 'ClipGradByNorm', because DGCMomentumOptimizer only support ClipGradByNorm"
                 )
             assert isinstance(num_trainers, int), (
                 "The type of num_trainers should be 'int', but received %s"

@@ -173,9 +173,7 @@ class TestGradientClipByGlobalNorm(TestGradientClip):
     # test whether the output is right when use 'set_gradient_clip'
     def test_old_gradient_clip(self):
         def func(params_grads):
-            clip = paddle.nn.clip.GradientClipByGlobalNorm(
-                clip_norm=self.clip_norm
-            )
+            clip = paddle.nn.ClipGradByGlobalNorm(clip_norm=self.clip_norm)
             paddle.nn.clip.set_gradient_clip(clip)
             return paddle.nn.clip.append_gradient_clip_ops(params_grads)
 
@@ -185,9 +183,7 @@ class TestGradientClipByGlobalNorm(TestGradientClip):
     # test whether the output is right when use grad_clip
     def test_new_gradient_clip(self):
         def func(params_grads):
-            clip = paddle.nn.clip.GradientClipByGlobalNorm(
-                clip_norm=self.clip_norm
-            )
+            clip = paddle.nn.ClipGradByGlobalNorm(clip_norm=self.clip_norm)
             return clip(params_grads)
 
         self.clip_gradient = func
@@ -196,9 +192,7 @@ class TestGradientClipByGlobalNorm(TestGradientClip):
     # test whether the output is right when use grad_clip under float64
     def test_new_gradient_clip_fp64(self):
         def func(params_grads):
-            clip = paddle.nn.clip.GradientClipByGlobalNorm(
-                clip_norm=self.clip_norm
-            )
+            clip = paddle.nn.ClipGradByGlobalNorm(clip_norm=self.clip_norm)
             return clip(params_grads)
 
         self.clip_gradient = func
@@ -207,7 +201,7 @@ class TestGradientClipByGlobalNorm(TestGradientClip):
     # invoke 'set_gradient_clip' in a wrong order
     def test_wrong_API_order(self):
         def backward_func(cost):
-            clip = paddle.nn.clip.GradientClipByGlobalNorm(clip_norm=5.0)
+            clip = paddle.nn.ClipGradByGlobalNorm(clip_norm=5.0)
             paddle.nn.clip.set_gradient_clip(clip)
             sgd_optimizer = fluid.optimizer.SGD(
                 learning_rate=0.01, grad_clip=clip
@@ -275,7 +269,7 @@ class TestGradientClipByGlobalNorm(TestGradientClip):
         with fluid.program_guard(
             main_program=prog, startup_program=startup_program
         ):
-            clip = paddle.nn.clip.GradientClipByGlobalNorm(self.clip_norm)
+            clip = paddle.nn.ClipGradByGlobalNorm(self.clip_norm)
             x = (
                 fluid.default_main_program()
                 .global_block()
@@ -319,7 +313,7 @@ class TestGradientClipByNorm(TestGradientClip):
     # test whether the output is right when use grad_clip
     def test_gradient_clip(self):
         def func(params_grads):
-            clip = paddle.nn.clip.GradientClipByNorm(clip_norm=self.clip_norm)
+            clip = paddle.nn.ClipGradByNorm(clip_norm=self.clip_norm)
             return clip(params_grads)
 
         self.clip_gradient = func
@@ -327,7 +321,7 @@ class TestGradientClipByNorm(TestGradientClip):
 
     # if grad is None or not need clip
     def test_none_grad(self):
-        clip = paddle.nn.clip.GradientClipByNorm(self.clip_norm)
+        clip = paddle.nn.ClipGradByNorm(self.clip_norm)
         x = (
             fluid.default_main_program()
             .global_block()
@@ -377,9 +371,7 @@ class TestGradientClipByValue(TestGradientClip):
     # test whether the output is right when use grad_clip
     def test_gradient_clip(self):
         def func(params_grads):
-            clip = paddle.nn.clip.GradientClipByValue(
-                max=self.max, min=self.min
-            )
+            clip = paddle.nn.ClipGradByValue(max=self.max, min=self.min)
             return clip(params_grads)
 
         self.clip_gradient = func
@@ -387,7 +379,7 @@ class TestGradientClipByValue(TestGradientClip):
 
     # if grad is None or not need clip
     def test_none_grad(self):
-        clip = paddle.nn.clip.GradientClipByValue(self.max, self.min)
+        clip = paddle.nn.ClipGradByValue(self.max, self.min)
         x = (
             fluid.default_main_program()
             .global_block()
@@ -427,7 +419,7 @@ class TestDygraphGradientClip(unittest.TestCase):
             sgd_optimizer = fluid.optimizer.SGD(
                 learning_rate=0.0,
                 parameter_list=linear.parameters(),
-                grad_clip=paddle.nn.clip.GradientClipByGlobalNorm(0.1),
+                grad_clip=paddle.nn.ClipGradByGlobalNorm(0.1),
             )
             self.check_clip_result(loss, sgd_optimizer)
 
@@ -438,12 +430,8 @@ class TestDygraphGradientClip(unittest.TestCase):
 class TestDygraphGradientClipByGlobalNorm(TestDygraphGradientClip):
     def setUp(self):
         self.clip_norm = 0.8
-        self.clip1 = paddle.nn.clip.GradientClipByGlobalNorm(
-            clip_norm=self.clip_norm
-        )
-        self.clip2 = paddle.nn.clip.GradientClipByGlobalNorm(
-            clip_norm=self.clip_norm
-        )
+        self.clip1 = paddle.nn.ClipGradByGlobalNorm(clip_norm=self.clip_norm)
+        self.clip2 = paddle.nn.ClipGradByGlobalNorm(clip_norm=self.clip_norm)
 
     def check_clip_result(self, loss, optimizer):
         # if grad is None
@@ -484,7 +472,7 @@ class TestDygraphGradientClipByGlobalNorm(TestDygraphGradientClip):
 class TestDygraphGradientClipByNorm(TestDygraphGradientClip):
     def setUp(self):
         self.clip_norm = 0.8
-        self.clip = paddle.nn.clip.GradientClipByNorm(clip_norm=self.clip_norm)
+        self.clip = paddle.nn.ClipGradByNorm(clip_norm=self.clip_norm)
 
     def check_clip_result(self, loss, optimizer):
         # if grad is None
@@ -514,9 +502,7 @@ class TestDygraphGradientClipByValue(TestDygraphGradientClip):
     def setUp(self):
         self.max = 0.2
         self.min = 0.1
-        self.clip = paddle.nn.clip.GradientClipByValue(
-            max=self.max, min=self.min
-        )
+        self.clip = paddle.nn.ClipGradByValue(max=self.max, min=self.min)
 
     def check_clip_result(self, loss, optimizer):
         # if grad is None
@@ -582,7 +568,7 @@ class TestDygraphGradientClipFP16(unittest.TestCase):
                         params_grads.append((param, param._grad_ivar()))
                 _, grads = zip(*params_grads)
                 # clip grads
-                clip = paddle.nn.clip.GradientClipByGlobalNorm(clip_norm=0.8)
+                clip = paddle.nn.ClipGradByGlobalNorm(clip_norm=0.8)
                 params_grads = clip(params_grads)
                 _, grads_clip = zip(*params_grads)
                 # param update
@@ -626,7 +612,7 @@ class TestDygraphGradientClipFP64(unittest.TestCase):
                     params_grads.append((param, param._grad_ivar()))
             _, grads = zip(*params_grads)
             # clip grads
-            clip = paddle.nn.clip.GradientClipByGlobalNorm(clip_norm=0.1)
+            clip = paddle.nn.ClipGradByGlobalNorm(clip_norm=0.1)
             params_grads = clip(params_grads)
             _, grads_clip = zip(*params_grads)
 

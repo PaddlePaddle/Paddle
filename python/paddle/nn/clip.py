@@ -945,7 +945,7 @@ def set_gradient_clip(clip, param_list=None, program=None):
             with fluid.program_guard(fluid.Program(), fluid.Program()):
                 loss = network()
                 paddle.nn.clip.set_gradient_clip(
-                    paddle.nn.clip.GradientClipByGlobalNorm(clip_norm=2.0))
+                    paddle.nn.ClipGradByGlobalNorm(clip_norm=2.0))
                 sgd = fluid.optimizer.SGD(learning_rate=1e-3)
                 sgd.minimize(loss)
 
@@ -953,7 +953,7 @@ def set_gradient_clip(clip, param_list=None, program=None):
             with fluid.program_guard(fluid.Program(), fluid.Program()):
                 loss = network()
                 paddle.nn.clip.set_gradient_clip(
-                    paddle.nn.clip.GradientClipByValue(min=-1.0, max=1.0),
+                    paddle.nn.ClipGradByValue(min=-1.0, max=1.0),
                     param_list=["fc1_param", "fc2_param"])
                 sgd = fluid.optimizer.SGD(learning_rate=1e-3)
                 sgd.minimize(loss)
@@ -964,7 +964,7 @@ def set_gradient_clip(clip, param_list=None, program=None):
                 param_var1 = fluid.default_main_program().global_block().var("fc1_param")
                 param_var2 = fluid.default_main_program().global_block().var("fc2_param")
                 paddle.nn.clip.set_gradient_clip(
-                    paddle.nn.clip.GradientClipByValue(min=-1.0, max=1.0),
+                    paddle.nn.ClipGradByValue(min=-1.0, max=1.0),
                     param_list=[param_var1, param_var2])
                 sgd = fluid.optimizer.SGD(learning_rate=1e-3)
                 sgd.minimize(loss)
@@ -972,8 +972,8 @@ def set_gradient_clip(clip, param_list=None, program=None):
             # network 4: use 'set_gradient_clip' and 'optimize(grad_clip=clip)' together
             with fluid.program_guard(fluid.Program(), fluid.Program()):
                 loss = network()
-                clip1 = paddle.nn.clip.GradientClipByValue(min=-1.0, max=1.0)
-                clip2 = paddle.nn.clip.GradientClipByNorm(clip_norm=1.0)
+                clip1 = paddle.nn.ClipGradByValue(min=-1.0, max=1.0)
+                clip2 = paddle.nn.ClipGradByNorm(clip_norm=1.0)
                 # Set the gradient clipping strategy: clip1
                 paddle.nn.clip.set_gradient_clip(clip1)
                 # Set the gradient clipping strategy: clip2

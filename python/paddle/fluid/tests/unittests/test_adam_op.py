@@ -686,7 +686,7 @@ class TestAdamOpV2(unittest.TestCase):
         value = np.arange(26).reshape(2, 13).astype("float32")
         a = fluid.dygraph.to_variable(value)
         linear = paddle.nn.Linear(13, 5)
-        clip = paddle.nn.clip.GradientClipByGlobalNorm(clip_norm=1.0)
+        clip = paddle.nn.ClipGradByGlobalNorm(clip_norm=1.0)
         adam = paddle.optimizer.Adam(
             0.1, parameters=linear.parameters(), grad_clip=clip
         )

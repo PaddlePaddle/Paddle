@@ -16,8 +16,7 @@ import paddle
 from paddle import framework
 from paddle.autograd import no_grad
 from paddle.framework import core
-from paddle.nn import clip
-from paddle.nn.clip import ClipGradByGlobalNorm
+from paddle.nn import ClipGradByGlobalNorm, clip
 
 from ...base.topology import ParallelMode
 from ...utils.hybrid_parallel_util import (

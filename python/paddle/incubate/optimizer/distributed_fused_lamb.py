@@ -20,7 +20,7 @@ from paddle.fluid.executor import global_scope
 from paddle.fluid.framework import Variable, name_scope
 from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.optimizer import Optimizer
-from paddle.nn.clip import ClipGradByGlobalNorm
+from paddle.nn import ClipGradByGlobalNorm
 
 
 def init_communicator(block, rank, ranks, ring_id):

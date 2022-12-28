@@ -26,7 +26,7 @@ from paddle import nn
 from paddle.autograd import PyLayer
 from paddle.distributed import collective
 from paddle.fluid.framework import EagerParamBase
-from paddle.nn.clip import ClipGradByGlobalNorm
+from paddle.nn import ClipGradByGlobalNorm
 
 from .group_sharded_storage import GradStorage
 from .group_sharded_utils import GroupShardedClipGrad, Type, device_guard
