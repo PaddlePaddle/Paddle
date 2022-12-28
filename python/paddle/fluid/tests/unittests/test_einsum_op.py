@@ -61,6 +61,7 @@ class TestEinsumBinary(OpTest):
             self.check_output(no_check_set=["InnerCache", "XShape"])
 
     def test_grad(self):
+        paddle.disable_static()
         if not self.disable:
             self.check_grad([op[0] for op in self.operands], ["Out"])
 
