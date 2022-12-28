@@ -83,7 +83,7 @@ __global__ void ConcatKernelMultiInputKernel(
 }
 
 template <typename T, typename IndexType>
-void DispatchConcatMultiInputKernelVecsize(const phi::GPUContext& context,
+void DispatchConcatMultiInputKernelMovsize(const phi::GPUContext& context,
                                            const T** inputs_data,
                                            const int64_t* input_cols_ptr,
                                            const int64_t output_rows,
@@ -111,12 +111,13 @@ void DispatchConcatMultiInputKernelVecsize(const phi::GPUContext& context,
       context.GetPlace(),
       inputs_col_num * sizeof(IndexType),
       phi::Stream(reinterpret_cast<phi::StreamId>(context.stream())));
-  auto* restored = phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
-      inputs_col_data, inputs_col_num);
+  auto* restored_inputs_col_data =
+      phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(inputs_col_data,
+                                                             inputs_col_num);
   paddle::memory::Copy(context.GetPlace(),
                        tmp_dev_ins_col_data->ptr(),
                        paddle::platform::CPUPlace(),
-                       restored,
+                       restored_inputs_col_data,
                        inputs_col_num * sizeof(IndexType),
                        context.stream());
   IndexType* dev_ins_col_data =
@@ -128,12 +129,13 @@ void DispatchConcatMultiInputKernelVecsize(const phi::GPUContext& context,
       context.GetPlace(),
       in_num * sizeof(T*),
       phi::Stream(reinterpret_cast<phi::StreamId>(context.stream())));
-  auto* restored2 = phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
-      inputs_data, in_num);
+  auto* restored_inputs_data =
+      phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(inputs_data,
+                                                             in_num);
   paddle::memory::Copy(context.GetPlace(),
                        tmp_dev_ins_data->ptr(),
                        paddle::platform::CPUPlace(),
-                       restored2,
+                       restored_inputs_data,
                        in_num * sizeof(T*),
                        context.stream());
   dev_ins_data = reinterpret_cast<const T**>(tmp_dev_ins_data->ptr());
@@ -191,7 +193,7 @@ void DispatchConcatMultiInputKernelIndexType(const phi::GPUContext& context,
                                              const int64_t vec_size,
                                              const int64_t in_num) {
   if (output_cols > std::numeric_limits<int32_t>::max()) {
-    DispatchConcatMultiInputKernelVecsize<T, int64_t>(context,
+    DispatchConcatMultiInputKernelMovsize<T, int64_t>(context,
                                                       inputs_data,
                                                       input_cols,
                                                       output_rows,
@@ -200,7 +202,7 @@ void DispatchConcatMultiInputKernelIndexType(const phi::GPUContext& context,
                                                       vec_size,
                                                       in_num);
   } else {
-    DispatchConcatMultiInputKernelVecsize<T, int32_t>(context,
+    DispatchConcatMultiInputKernelMovsize<T, int32_t>(context,
                                                       inputs_data,
                                                       input_cols,
                                                       output_rows,
