@@ -29,14 +29,6 @@ from paddle.framework import (
 )
 from paddle.tensor.layer_function_generator import templatedoc
 
-__all__ = [
-    'set_gradient_clip',
-    'ErrorClipByValue',
-    'ClipGradByValue',
-    'ClipGradByNorm',
-    'ClipGradByGlobalNorm',
-]
-
 
 @templatedoc()
 def clip_by_norm(x, max_norm, name=None):
