@@ -214,7 +214,7 @@ def _cast_to_mp_type_if_enabled(x):
 
 def _squared_l2_norm(x):
     r"""
-    This OP returns the squared L2 norm of a tensor.
+    Return the squared L2 norm of a tensor.
     """
 
     x = _cast_to_mp_type_if_enabled(x)
