@@ -785,6 +785,7 @@ def set_gradient_clip(clip, param_list=None, program=None):
             import paddle
             import paddle.fluid as fluid
 
+            paddle.enable_static()
             def network():
                 image = fluid.data(name='image', shape=[
                                    None, 28], dtype='float32')

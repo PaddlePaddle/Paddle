@@ -243,6 +243,7 @@ class UniformInitializer(Initializer):
 
             import paddle
             import paddle.fluid as fluid
+            paddle.enable_static()
             x = fluid.data(name='x', shape=[None, 1], dtype='float32')
             fc = paddle.static.nn.fc(x, size=10,
                 weight_attr=fluid.initializer.Uniform(low=-0.5, high=0.5))
@@ -395,6 +396,7 @@ class NormalInitializer(Initializer):
 
             import paddle
             import paddle.fluid as fluid
+            paddle.enable_static()
             x = fluid.data(name="data", shape=[None, 32, 32], dtype="float32")
             fc = paddle.static.nn.fc(x, size=10,
                 weight_attr=fluid.initializer.Normal(loc=0.0, scale=2.0))
@@ -497,6 +499,7 @@ class TruncatedNormalInitializer(Initializer):
 
             import paddle
             import paddle.fluid as fluid
+            paddle.enable_static()
             x = fluid.data(name='x', shape=[None, 1], dtype='float32')
             fc = paddle.static.nn.fc(x, size=10,
                 weight_attr=fluid.initializer.TruncatedNormal(loc=0.0, scale=2.0))
@@ -647,6 +650,7 @@ class XavierInitializer(Initializer):
 
             import paddle
             import paddle.fluid as fluid
+            paddle.enable_static()
             queries = fluid.data(name='x', shape=[None,1], dtype='float32')
             fc = paddle.static.nn.fc(
                 x=queries, size=10,
@@ -1230,6 +1234,7 @@ class NumpyArrayInitializer(Initializer):
             import paddle
             import paddle.fluid as fluid
             import numpy
+            paddle.enable_static()
             x = fluid.data(name="x", shape=[2, 1], dtype='float32')
             fc = paddle.static.nn.fc(x, size=10,
                 weight_attr=fluid.initializer.NumpyArrayInitializer(numpy.array([1,2])))
