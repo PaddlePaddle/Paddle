@@ -14,7 +14,7 @@
 
 import warnings
 
-from paddle.fluid.framework import default_main_program
+from paddle.fluid.framework import default_main_program, in_dygraph_mode
 
 
 class LayerOpsRecoder:
