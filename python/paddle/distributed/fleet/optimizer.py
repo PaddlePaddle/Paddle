@@ -14,8 +14,8 @@
 
 import copy
 
-import paddle
 from paddle.distributed import fleet
+from paddle.fluid.framework import in_dygraph_mode
 
 from .meta_optimizers import HeterParallelOptimizer, HybridParallelOptimizer
 from .utils.log_util import logger
@@ -74,7 +74,7 @@ def _dygraph_distributed_optimizer(optimizer, strategy=None):
 
 
 def distributed_optimizer(*args, **kwargs):
-    if paddle.framework._non_static_mode():
+    if in_dygraph_mode():
         return _dygraph_distributed_optimizer(*args, **kwargs)
     else:
         return fleet.fleet.distributed_optimizer(*args, **kwargs)

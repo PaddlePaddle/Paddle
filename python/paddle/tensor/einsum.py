@@ -20,10 +20,10 @@ import string
 import numpy as np
 import opt_einsum
 
-from paddle import _C_ops, _legacy_C_ops
+from paddle import _C_ops
 
 from ..fluid.data_feeder import check_type, check_variable_and_dtype
-from ..fluid.framework import _in_legacy_dygraph, in_dygraph_mode
+from ..fluid.framework import in_dygraph_mode
 from ..fluid.layer_helper import LayerHelper
 from .linalg import matmul, transpose
 from .manipulation import reshape, squeeze, unsqueeze
@@ -829,38 +829,35 @@ def gen_einsum_op(equation, *operands):
     """
     EinsumOp Python Interface:
     """
-    assert len(operands) <= 2, "Only support two operands in EinsumOp."
+
     if in_dygraph_mode():
         return _C_ops.einsum(operands, equation)[0]
-
-    if _in_legacy_dygraph():
-        # dygraph
-        return _legacy_C_ops.einsum(
-            operands, len(operands), len(operands), 'equation', equation
-        )[0]
-
-    for inp in operands:
-        check_variable_and_dtype(inp, 'dtype', ['float32', 'float64'], 'einsum')
-    check_type(equation, 'equation', str, 'einsum')
-    helper = LayerHelper('einsum', **locals())
-    out = helper.create_variable_for_type_inference(dtype=operands[0].dtype)
-    attrs = dict()
-    attrs['equation'] = equation
-    caches = [
-        helper.create_variable_for_type_inference(dtype=operands[0].dtype)
-        for i in range(len(operands))
-    ]
-    xshape = [
-        helper.create_variable_for_type_inference(dtype=operands[0].dtype)
-        for i in range(len(operands))
-    ]
-    helper.append_op(
-        type='einsum',
-        inputs={'Operands': operands},
-        outputs={'Out': out, "InnerCache": caches, "XShape": xshape},
-        attrs=attrs,
-    )
-    return out
+    else:
+        assert len(operands) <= 2, "Only support two operands in EinsumOp."
+        for inp in operands:
+            check_variable_and_dtype(
+                inp, 'dtype', ['float32', 'float64'], 'einsum'
+            )
+        check_type(equation, 'equation', str, 'einsum')
+        helper = LayerHelper('einsum', **locals())
+        out = helper.create_variable_for_type_inference(dtype=operands[0].dtype)
+        attrs = dict()
+        attrs['equation'] = equation
+        caches = [
+            helper.create_variable_for_type_inference(dtype=operands[0].dtype)
+            for i in range(len(operands))
+        ]
+        xshape = [
+            helper.create_variable_for_type_inference(dtype=operands[0].dtype)
+            for i in range(len(operands))
+        ]
+        helper.append_op(
+            type='einsum',
+            inputs={'Operands': operands},
+            outputs={'Out': out, "InnerCache": caches, "XShape": xshape},
+            attrs=attrs,
+        )
+        return out
 
 
 def einsum(equation, *operands):

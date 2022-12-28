@@ -18,7 +18,6 @@ import numpy as np
 import paddle
 from paddle import nn
 from paddle.distributed.sharding import group_sharded_parallel
-from paddle.fluid.framework import _test_eager_guard
 
 paddle.seed(2022)
 np.random.seed(2022)
@@ -174,5 +173,4 @@ def test_sharding_api():
 
 
 if __name__ == '__main__':
-    with _test_eager_guard():
-        test_sharding_api()
+    test_sharding_api()

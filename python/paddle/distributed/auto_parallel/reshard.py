@@ -829,7 +829,7 @@ class Remover:
                                 )
                             ).process_mesh
                         )
-                        if rank_id in process_mesh.processes:
+                        if rank_id in process_mesh.process_ids:
                             need_save.append(var_name)
                     if not need_save:
                         remove_op_idx.append(idx)
@@ -845,7 +845,7 @@ class Remover:
                 if op_dist_attr is not None:
                     op_process_mesh = op_dist_attr.process_mesh
                     if (
-                        rank_id not in op_process_mesh.processes
+                        rank_id not in op_process_mesh.process_ids
                         and op.type not in not_remove_op_ref
                     ):
                         remove_op_idx.append(idx)
@@ -1408,9 +1408,11 @@ class Resharder:
         op_process_mesh = dist_op.dist_attr.process_mesh
 
         for process_mesh in self.dist_context.process_meshes:
-            if set(process_mesh.processes) & (
-                set(op_process_mesh.processes)
-            ) and len(process_mesh.processes) < len(op_process_mesh.processes):
+            if set(process_mesh.process_ids) & (
+                set(op_process_mesh.process_ids)
+            ) and len(process_mesh.process_ids) < len(
+                op_process_mesh.process_ids
+            ):
                 process_meshes.append(process_mesh)
 
         # it means the process mesh is not a union when process meshes is null
@@ -1438,13 +1440,13 @@ class Resharder:
 
         source_dims_mapping = tensor_dist_attr.dims_mapping
         source_process_mesh = tensor_dist_attr.process_mesh
-        source_process_group = source_process_mesh.processes
-        source_process_shape = source_process_mesh.topology
+        source_process_group = source_process_mesh.process_ids
+        source_process_shape = source_process_mesh.shape
 
         target_process_mesh = dist_attr[0]
         target_dims_mapping = dist_attr[1]
-        target_process_group = target_process_mesh.processes
-        target_process_shape = target_process_mesh.topology
+        target_process_group = target_process_mesh.process_ids
+        target_process_shape = target_process_mesh.shape
 
         if source_tensor.shape[0] < 0:
             assert source_tensor.shape[0] == -1
@@ -2135,15 +2137,47 @@ class Resharder:
                         input_attrs.append([process_mesh, input_dims_mapping])
         return input_attrs
 
+    def _get_subblock_output_attrs(self, op, var_name):
+        # NOTE: Multi while loop is not supported
+        assert op.type in _g_subblock_ops
+        sub_block = self.auto_parallel_main_prog.blocks[op.attr("sub_block").id]
+        ops = sub_block.ops
+        output_attrs = []
+
+        for op in ops:
+            dist_op = self.dist_context.get_dist_op_for_program(op)
+            if not dist_op:
+                continue
+            dist_attr = dist_op.dist_attr
+            for name in op.output_arg_names:
+                if name == var_name:
+                    process_mesh = dist_attr.process_mesh
+                    output_dims_mapping = dist_attr.get_output_dims_mapping(
+                        var_name
+                    )
+                    has_exist = False
+                    for output_attr in output_attrs:
+                        if (
+                            process_mesh == output_attrs[0]
+                            and output_dims_mapping == output_attrs[1]
+                        ):
+                            has_exist = True
+                            break
+                    if not has_exist:
+                        output_attrs.append([process_mesh, output_dims_mapping])
+        return output_attrs
+
     def _get_common_op_input_attrs(self, op, var_name):
         process_meshes = []
         dist_op = self.dist_context.get_dist_op_for_program(op)
         dist_attr = dist_op.dist_attr
         op_process_mesh = dist_attr.process_mesh
         for process_mesh in self.dist_context.process_meshes:
-            if set(process_mesh.processes) & (
-                set(op_process_mesh.processes)
-            ) and len(process_mesh.processes) < len(op_process_mesh.processes):
+            if set(process_mesh.process_ids) & (
+                set(op_process_mesh.process_ids)
+            ) and len(process_mesh.process_ids) < len(
+                op_process_mesh.process_ids
+            ):
                 process_meshes.append(process_mesh)
 
         # it means that the process mesh is not a union when process meshes is none
@@ -2162,6 +2196,11 @@ class Resharder:
 
         if op.type in _g_subblock_ops:
             op_input_attrs = self._get_subblock_input_attrs(op, var_name)
+            if not op_input_attrs:
+                # NOTE: [hack method]
+                # Adapt to quantization pass, which presist_vars, including inputs and outputs, all are in global_block.
+                # Therefore, the while_op's inputs will contain the all persist_vars, which will be inputs or output of the quantization op in subblock.
+                op_input_attrs = self._get_subblock_output_attrs(op, var_name)
         else:
             op_input_attrs = self._get_common_op_input_attrs(op, var_name)
 
@@ -2176,12 +2215,12 @@ class Resharder:
         if process_mesh_count > 1:
             global_process_mesh_idx = None
             for process_mesh in self.dist_context.process_meshes:
-                for process in process_mesh.processes:
+                for process in process_mesh.process_ids:
                     processes.add(process)
             for idx, process_mesh in enumerate(
                 self.dist_context.process_meshes
             ):
-                if len(set(process_mesh.processes)) == len(processes):
+                if len(set(process_mesh.process_ids)) == len(processes):
                     global_process_mesh_idx = idx
                     break
 
@@ -2191,7 +2230,7 @@ class Resharder:
                 for i, mesh in enumerate(self.dist_context.process_meshes):
                     if i == idx:
                         continue
-                    if set(mesh.processes) < set(global_mesh.processes):
+                    if set(mesh.process_ids) < set(global_mesh.process_ids):
                         is_removed = True
 
                 if is_removed:
@@ -2330,8 +2369,8 @@ class Resharder:
                         # deal with union tensor
                         if is_union_process_mesh_tensor:
                             # if op process mesh is subset of union tensor process mesh, need no reshard
-                            if set(input_attr[0].processes) <= set(
-                                dist_tensor.dist_attr.process_mesh.processes
+                            if set(input_attr[0].process_ids) <= set(
+                                dist_tensor.dist_attr.process_mesh.process_ids
                             ):
                                 continue
 
@@ -2525,14 +2564,14 @@ class Resharder:
                         dist_tensor, output_attr, False
                     ):
                         tensor_processes = set(
-                            tensor_process_mesh.processes
+                            tensor_process_mesh.process_ids
                         ) - (
-                            set(tensor_process_mesh.processes)
-                            & set(output_attr[0].processes)
+                            set(tensor_process_mesh.process_ids)
+                            & set(output_attr[0].process_ids)
                         )
                         if tensor_processes:
                             if len(tensor_processes) != len(
-                                output_attr[0].processes
+                                output_attr[0].process_ids
                             ):
                                 if dist_tensor.dist_attr.dims_mapping.count(
                                     -1
@@ -2555,13 +2594,15 @@ class Resharder:
                                         recv_rank = tensor_process
                                         actual_index = index
                                         if index >= len(
-                                            output_attr[0].processes
+                                            output_attr[0].process_ids
                                         ):
                                             actual_index = (
                                                 index
-                                                - len(output_attr[0].processes)
-                                            ) % len(output_attr[0].processes)
-                                        item = output_attr[0].processes[
+                                                - len(
+                                                    output_attr[0].process_ids
+                                                )
+                                            ) % len(output_attr[0].process_ids)
+                                        item = output_attr[0].process_ids[
                                             actual_index
                                         ]
                                         if recv_rank == item:
@@ -2591,7 +2632,7 @@ class Resharder:
                                     tensor_processes
                                 ):
                                     recv_rank = tensor_process
-                                    item = output_attr[0].processes[index]
+                                    item = output_attr[0].process_ids[index]
                                     if recv_rank == item:
                                         continue
                                     if self.rank_id == item:
