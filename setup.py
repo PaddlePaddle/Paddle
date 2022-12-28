@@ -1262,6 +1262,7 @@ def get_setup_parameters():
         'paddle.nn.functional',
         'paddle.nn.layer',
         'paddle.nn.quant',
+        'paddle.nn.quant.qat',
         'paddle.nn.initializer',
         'paddle.nn.utils',
         'paddle.metric',
