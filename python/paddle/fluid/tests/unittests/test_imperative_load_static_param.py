@@ -134,19 +134,6 @@ class TestDygraphLoadStatic(unittest.TestCase):
         spe_norm_out_2 = paddle.static.nn.spectral_norm(weight=spec_norm, dim=1, power_iters=2)
         '''
 
-        nodes_vector = fluid.data(
-            name='vectors', shape=[None, 10, 5], dtype='float32'
-        )
-        edge_set = fluid.data(
-            name='edge_set', shape=[None, 10, 2], dtype='float32'
-        )
-        tree_conv_out1 = fluid.contrib.layers.tree_conv(
-            nodes_vector, edge_set, 6, 1, 2
-        )
-        tree_conv_out2 = fluid.contrib.layers.tree_conv(
-            nodes_vector, edge_set, 6, 1, 2
-        )
-
         para1 = paddle.create_parameter(
             [100, 100], 'float32', name="weight_test_1"
         )

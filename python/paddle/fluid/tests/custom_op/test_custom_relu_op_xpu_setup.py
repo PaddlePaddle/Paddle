@@ -347,6 +347,7 @@ class TestNewCustomOpSetUpInstall(unittest.TestCase):
                 )
 
     def test_with_dataloader(self):
+        paddle.disable_static()
         for device in self.devices:
             paddle.set_device(device)
             # data loader
@@ -377,6 +378,7 @@ class TestNewCustomOpSetUpInstall(unittest.TestCase):
 
                 if batch_id == 5:
                     break
+        paddle.enable_static()
 
 
 if __name__ == '__main__':

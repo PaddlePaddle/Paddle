@@ -38,6 +38,11 @@ PADDLE_DEFINE_EXPORTED_bool(
     false,
     "Log memory stats after each op runs, just used for debug.");
 
+PADDLE_DEFINE_EXPORTED_bool(
+    new_executor_static_build,
+    false,
+    "Build the interpreterCore statically without running.");
+
 DECLARE_bool(use_mkldnn);
 DECLARE_bool(check_nan_inf);
 
@@ -155,6 +160,33 @@ bool IsMemcpyH2D(const Instruction& instr) {
 
 bool IsMemcpyOp(const Instruction& instr) {
   return IsMemcpyD2H(instr) || IsMemcpyH2D(instr);
+}
+
+bool IsBlockContainsOnlyPhiKernel(const framework::BlockDesc& block) {
+  bool res = true;
+  for (auto& op : block.AllOps()) {
+    auto op_type = op->Type();
+    if (op_type == "feed" || op_type == "fetch_v2") {
+      continue;
+    }
+    auto has_phi_kernel =
+        !phi::KernelFactory::Instance()
+             .SelectKernelMap(phi::TransToPhiKernelName(op_type))
+             .empty();
+
+    if (!has_phi_kernel) {
+      auto kernel_iter = OperatorWithKernel::AllOpKernels().find(op_type);
+      if (kernel_iter != OperatorWithKernel::AllOpKernels().end()) {
+        VLOG(4) << op_type << " has no phi kernel, but has fluid kernel.";
+        res = false;
+      } else {
+        VLOG(4) << op_type << " has no phi kernel, and no fluid kernel.";
+      }
+    } else {
+      VLOG(4) << op_type << " has phi kernel";
+    }
+  }
+  return res;
 }
 
 void AddFetch(const std::vector<std::string>& fetch_names,
@@ -476,7 +508,66 @@ void HandleOperatorBase(const platform::Place& place,
   op_func_node->dev_ctx_ = dev_ctx;
 }
 
-void BuildOpFuncList(const platform::Place& place,
+void FakeInitializeOutputs(phi::Kernel* phi_kernel,
+                           phi::KernelSignature* kernel_sig,
+                           phi::KernelContext* phi_kernel_context) {
+  auto output_defs = phi_kernel->args_def().output_defs();
+  auto out_names = kernel_sig->output_names;
+
+  for (size_t i = 0; i < out_names.size(); ++i) {
+    VLOG(4) << out_names[i];
+    // calcute the start and end index of the output tensors
+    size_t start_idx = phi_kernel_context->OutputRangeAt(i).first;
+    size_t end_idx = phi_kernel_context->OutputRangeAt(i).second;
+    for (size_t j = start_idx; j < end_idx; ++j) {
+      auto* out_tensor = phi_kernel_context->MutableOutputAt(j);
+      if (out_tensor == nullptr) {
+        VLOG(4) << "Output" << out_names[i] << " is nullptr";
+        continue;
+      }
+      auto backend = output_defs[j].backend;
+      auto* dev_ctx =
+          &(phi_kernel_context->GetDeviceContext<phi::DeviceContext>());
+
+      if (phi::DenseTensor::classof(out_tensor)) {
+        if (!out_tensor->initialized()) {
+          VLOG(4) << "DenseTensor fake alloc 0 bytes of type "
+                  << out_tensor->dtype() << " on backend " << backend << " "
+                  << out_tensor;
+          if (backend == phi::TransToPhiBackend(dev_ctx->GetPlace())) {
+            dev_ctx->Alloc(out_tensor,
+                           out_tensor->dtype(),
+                           /*requested_size=*/0,
+                           /*pinned=*/false,
+                           /*fake_alloc=*/true);
+          } else {
+            if (backend == phi::Backend::CPU ||
+                backend == phi::Backend::ONEDNN) {
+              dev_ctx->HostAlloc(out_tensor,
+                                 out_tensor->dtype(),
+                                 /*requested_size=*/0,
+                                 /*fake_alloc=*/true);
+            }
+          }
+        }
+      } else if (phi::SparseCooTensor::classof(out_tensor)) {
+        // todo
+        VLOG(4) << "SparseCooTensor";
+      } else if (phi::SparseCsrTensor::classof(out_tensor)) {
+        // todo
+        VLOG(4) << "SparseCsrTensor";
+      } else {
+        PADDLE_THROW(phi::errors::Unimplemented(
+            "Only support "
+            "DenseTensor/SparseCooTensor/SparseCsrTensor "
+            "now"));
+        VLOG(4) << "SparseCooTensor";
+      }
+    }
+  }
+}
+
+bool BuildOpFuncList(const platform::Place& place,
                      const framework::BlockDesc& block,
                      const std::set<std::string>& skip_gc_vars,
                      std::vector<OpFuncNode>* vec_func_list,
@@ -489,6 +580,10 @@ void BuildOpFuncList(const platform::Place& place,
       ops_unique;  // its elements will be moved to vec_func_list
   // Step 1: create all ops for current block.
   CreateAllOps(block, &ops_unique);
+
+  auto skip_run =
+      FLAGS_new_executor_static_build && IsBlockContainsOnlyPhiKernel(block);
+  VLOG(4) << "Static build: " << skip_run;
 
   if (!execution_config.used_for_jit) {
     // If gc is enabled and block size > 1
@@ -676,6 +771,7 @@ void BuildOpFuncList(const platform::Place& place,
             }
           }
         }
+
         VLOG(4) << "if run phi kernel? : " << run_phi_kernel;
         if (!run_phi_kernel) {
           op_with_kernel->ChooseKernel(exec_ctx);
@@ -704,12 +800,14 @@ void BuildOpFuncList(const platform::Place& place,
                            var_scope,
                            &op_func_node,
                            vec_func_list,
-                           use_local_scope);
+                           use_local_scope,
+                           skip_run);
         VLOG(4) << "apply data transform done. ";
         // step 4. infershape, see OperatorWithKernel::RunImpl in operator.cc
         // for why.
         if (!(op->HasAttr(kAllKernelsMustComputeRuntimeShape) &&
               op->Attr<bool>(kAllKernelsMustComputeRuntimeShape))) {
+          VLOG(4) << "infer shape";
           InterpretercoreInferShapeContext infer_shape_ctx(*op,
                                                            runtime_context);
           // TODO(Aurelius84): In case of control flow ops, they are NOT
@@ -722,11 +820,21 @@ void BuildOpFuncList(const platform::Place& place,
           phi::KernelContext phi_kernel_context;
           op_with_kernel->BuildPhiKernelContext(
               runtime_context, dev_ctx, &phi_kernel_context);
-          (*op_func_node.phi_kernel_)(&phi_kernel_context);
+          if (!skip_run) {
+            (*op_func_node.phi_kernel_)(&phi_kernel_context);
+          } else {
+            FakeInitializeOutputs(op_func_node.phi_kernel_,
+                                  op_with_kernel->PhiKernelSignature(),
+                                  &phi_kernel_context);
+          }
         } else {
           // the place of exec_ctx maybe has changed.
-          op_func_node.kernel_func_(ExecutionContext(
-              *op_with_kernel, *runtime_scope, *dev_ctx, runtime_context));
+          if (!skip_run) {
+            op_func_node.kernel_func_(ExecutionContext(
+                *op_with_kernel, *runtime_scope, *dev_ctx, runtime_context));
+          } else {
+            // TODO(zhiqiu): is it needed to support fluid kernel?
+          }
         }
 
         // post-process grad_op.outputs if need cast complex grad into real
@@ -812,6 +920,7 @@ void BuildOpFuncList(const platform::Place& place,
 
     interpreter::LogDeviceMemoryStats(place);
   }
+  return skip_run;
 }
 
 void LogDeviceMemoryStats(const platform::Place& place) {
