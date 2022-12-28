@@ -441,5 +441,39 @@ class TestErrorInForLoop(TestTransformForLoop):
         self.dyfunc = for_loop_dyfunc_not_support
 
 
+class Net(paddle.nn.Layer):
+    def __init__(self):
+        super().__init__()
+
+        self.layer_dict = paddle.nn.LayerDict(
+            {
+                "conv1": paddle.nn.Conv2D(3, 3, 1),
+                "conv2": paddle.nn.Conv2D(3, 3, 1),
+                "conv3": paddle.nn.Conv2D(3, 3, 1),
+            }
+        )
+
+    def forward(self, x):
+        out = 0
+        for layer_name in self.layer_dict:
+            out += self.layer_dict[layer_name](x)
+        return out
+
+
+class TestForLoopMeetDict(unittest.TestCase):
+    def test_start(self):
+
+        net = Net()
+        model = paddle.jit.to_static(
+            net,
+            input_spec=[
+                paddle.static.InputSpec(
+                    shape=[None, 3, 224, 224], dtype='float32'
+                )
+            ],
+        )
+        paddle.jit.save(model, "./inference/inference")
+
+
 if __name__ == '__main__':
     unittest.main()

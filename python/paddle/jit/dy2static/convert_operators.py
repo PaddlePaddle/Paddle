@@ -42,8 +42,6 @@ def convert_attr(x, attr):
 def indexable(x, code=None):
     if isinstance(x, Variable):
         return x
-    if hasattr(x, '__len__') and hasattr(x, '__getitem__'):
-        return x
     if hasattr(x, '__iter__'):
         return [i for i in x]
     else:
