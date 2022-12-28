@@ -19,6 +19,7 @@
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
 #include "paddle/phi/kernels/fusion/cutlass/moe_kernel_impl.h"
 
+#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 700
 // Ignore CUTLASS warnings about type punning
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wstrict-aliasing"
@@ -36,9 +37,12 @@
 #include "paddle/phi/kernels/fusion/cutlass/linear_combination_ft_gelu.h"
 #include "paddle/phi/kernels/fusion/cutlass/moe_cutlass_kernel.h"
 #pragma GCC diagnostic pop
+#endif
+
 namespace phi {
 
 namespace {
+
 #if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 700
 inline int getSMVersion() {
   const int device = phi::backends::gpu::GetCurrentDeviceId();
@@ -121,9 +125,11 @@ struct Epilogue<ElementType,
       cutlass::epilogue::thread::ScaleType::Nothing>;
 };
 #endif
+
 }  // namespace
 
 namespace fusion {
+
 #if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 700
 template <typename T>
 void InitExpertChoiceRouteKernelLauncher(
@@ -659,6 +665,7 @@ void finalize_moe_routing_kernelLauncher(
   }
 }
 #endif
+
 template <typename T, typename Context>
 void MoeKernel(const Context& ctx,
                const DenseTensor& x,
