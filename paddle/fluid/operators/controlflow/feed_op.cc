@@ -75,9 +75,7 @@ void FeedDenseTensorKernel(const Context& dev_ctx,
     out->ShareDataWith(in_tensor);
 #endif
   } else {
-    platform::DeviceContext* context =
-        platform::DeviceContextPool::Instance().Get(place);
-    framework::TensorCopy(in_tensor, place, *context, out);
+    framework::TensorCopy(in_tensor, place, dev_ctx, out);
   }
   out->set_lod(in_tensor.lod());
 }
@@ -97,12 +95,9 @@ void FeedSparseCooTensorKernel(const Context& dev_ctx,
   if (platform::is_same_place(in_tensor.place(), place)) {
     *out = in_tensor;
   } else {
-    platform::DeviceContext* context =
-        platform::DeviceContextPool::Instance().Get(place);
-
     phi::DenseTensor indices, values;
-    framework::TensorCopy(in_tensor.indices(), place, *context, &indices);
-    framework::TensorCopy(in_tensor.values(), place, *context, &values);
+    framework::TensorCopy(in_tensor.indices(), place, dev_ctx, &indices);
+    framework::TensorCopy(in_tensor.values(), place, dev_ctx, &values);
     out->SetMember(indices, values, in_tensor.meta());
   }
 }
