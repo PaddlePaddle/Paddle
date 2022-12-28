@@ -29,7 +29,7 @@
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
 #include "paddle/fluid/inference/tests/api/tester_helper.h"
 #include "paddle/fluid/inference/utils/io_utils.h"
-#include "paddle/fluid/platform/cpu_info.h"
+#include "paddle/phi/backends/cpu/cpu_info.h"
 
 DEFINE_string(dirname, "", "dirname to tests.");
 
@@ -327,7 +327,7 @@ TEST(AnalysisPredictor, bf16_gpu_pass_strategy) {
   config.EnableUseGpu(100, 0);
   config.EnableMkldnnBfloat16();
 #ifdef PADDLE_WITH_MKLDNN
-  if (platform::MayIUse(platform::cpu_isa_t::avx512_core))
+  if (phi::backends::cpu::MayIUse(phi::backends::cpu::cpu_isa_t::avx512_core))
     ASSERT_EQ(config.mkldnn_bfloat16_enabled(), true);
   else
     ASSERT_EQ(config.mkldnn_bfloat16_enabled(), false);

@@ -19,8 +19,8 @@ limitations under the License. */
 #include "glog/logging.h"
 #include "gtest/gtest.h"
 #include "paddle/fluid/operators/jit/kernels.h"
-#include "paddle/fluid/platform/cpu_info.h"
 #include "paddle/fluid/platform/place.h"
+#include "paddle/phi/backends/cpu/cpu_info.h"
 
 DEFINE_double(acc, 1e-5, "Test accuracy threshold.");
 
@@ -437,7 +437,7 @@ void TestKernelNCHW16CMulNC() {
   EXPECT_TRUE(tgt != nullptr);
 
   if (std::is_same<T, float>::value &&
-      paddle::platform::MayIUse(paddle::platform::avx512f)) {
+      phi::backends::cpu::MayIUse(phi::backends::cpu::avx512f)) {
     EXPECT_TRUE(jitcode != nullptr);
   }
   for (int ni = 0; ni < n; ni++) {
@@ -1393,7 +1393,7 @@ TEST(JITKernel_helper, pack_weights) {
   }
   int block = 0;
   std::vector<int> groups;
-  if (paddle::platform::MayIUse(paddle::platform::avx512f)) {
+  if (phi::backends::cpu::MayIUse(phi::backends::cpu::avx512f)) {
     block = ZMM_FLOAT_BLOCK;
     groups.push_back(30);
   } else {

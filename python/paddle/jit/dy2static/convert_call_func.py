@@ -12,35 +12,32 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import builtins
 import collections
 import copy
 import functools
-import logging
 import inspect
+import logging
 import pdb
 import re
 import types
 
 import numpy
-import builtins
 
-from paddle.nn import Sequential
-from .convert_operators import (
-    convert_len,
-    convert_zip,
-    convert_range,
-    convert_enumerate,
-    convert_print,
-)
-
-from paddle.jit.dy2static.logging_utils import (
-    TranslatorLogger,
-)
-
-from paddle.jit.dy2static.utils import is_paddle_func, unwrap
+from paddle.fluid.dygraph.container import Sequential
 from paddle.fluid.dygraph.layers import Layer
+from paddle.jit.dy2static.logging_utils import TranslatorLogger
+from paddle.jit.dy2static.utils import is_paddle_func, unwrap
 
-__all__ = ["convert_call"]
+from .convert_operators import (
+    convert_enumerate,
+    convert_len,
+    convert_print,
+    convert_range,
+    convert_zip,
+)
+
+__all__ = []
 
 
 # The api(s) should be considered as plain function and convert
@@ -179,9 +176,9 @@ def convert_call(func):
     """
     # NOTE(Aurelius84): Fix it after all files migrating into jit.
     from paddle.jit.dy2static.program_translator import (
+        StaticFunction,
         convert_to_static,
         unwrap_decorators,
-        StaticFunction,
     )
 
     translator_logger.log(
@@ -244,12 +241,12 @@ def convert_call(func):
         if func.__name__ == '<lambda>':
             return func
         try:
-            # Note(Aurelius84): Because `@declarative` returns a class instance instead of
+            # Note(Aurelius84): Because `@to_static` returns a class instance instead of
             # a function. This will modify the value referring to itself in `__globals__`.
 
             # For example:
             #
-            #      @declarative
+            #      @to_static
             #      def foo(x):
             #          return x
             #

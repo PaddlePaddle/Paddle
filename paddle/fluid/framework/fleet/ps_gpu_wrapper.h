@@ -34,6 +34,7 @@ limitations under the License. */
 #include "paddle/fluid/distributed/ps/thirdparty/round_robin.h"
 #include "paddle/fluid/framework/channel.h"
 #include "paddle/fluid/framework/fleet/heter_context.h"
+#include "paddle/fluid/framework/fleet/heter_ps/graph_gpu_wrapper.h"
 #include "paddle/fluid/framework/fleet/heter_ps/heter_ps_base.h"
 #include "paddle/fluid/framework/fleet/heter_ps/heter_resource.h"
 #include "paddle/fluid/framework/heter_util.h"
@@ -63,6 +64,7 @@ limitations under the License. */
 #include "downpour_accessor.h"  // NOLINT
 #endif
 #include "paddle/fluid/framework/fleet/heter_ps/log_patch.h"
+DECLARE_int32(gpugraph_storage_mode);
 
 namespace paddle {
 namespace framework {
@@ -95,6 +97,15 @@ class AfsWrapper {
   paddle::ps::AfsApiWrapper afs_handler_;
 };
 #endif
+
+struct task_info {
+  std::shared_ptr<char> build_values;
+  size_t offset;
+  int device_id;
+  int multi_mf_dim;
+  int start;
+  int end;
+};
 
 class PSGPUWrapper {
   class DCacheBuffer {
@@ -188,30 +199,61 @@ class PSGPUWrapper {
                 int total_len,
                 int* key2slot);
 
+  void divide_to_device(std::shared_ptr<HeterContext> gpu_task);
+  void add_slot_feature(std::shared_ptr<HeterContext> gpu_task);
   void BuildGPUTask(std::shared_ptr<HeterContext> gpu_task);
   void PreBuildTask(std::shared_ptr<HeterContext> gpu_task);
   void BuildPull(std::shared_ptr<HeterContext> gpu_task);
+  void PrepareGPUTask(std::shared_ptr<HeterContext> gpu_task);
   void LoadIntoMemory(bool is_shuffle);
   void BeginPass();
   void EndPass();
+  void add_key_to_local(const std::vector<uint64_t>& keys);
+  void add_key_to_gputask(std::shared_ptr<HeterContext> gpu_task);
+  void resize_gputask(std::shared_ptr<HeterContext> gpu_task);
+  void SparseTableToHbm();
+  void HbmToSparseTable();
   void start_build_thread();
   void pre_build_thread();
+  void build_pull_thread();
   void build_task();
+  void DumpToMem();
+  // set mode
+  void SetMode(bool infer_mode) {
+    infer_mode_ = infer_mode;
+    if (HeterPs_ != NULL) {
+      HeterPs_->set_mode(infer_mode);
+    }
+    VLOG(0) << "set infer mode=" << infer_mode;
+  }
 
   void Finalize() {
     VLOG(3) << "PSGPUWrapper Begin Finalize.";
     if (s_instance_ == nullptr) {
       return;
     }
+    if (FLAGS_gpugraph_storage_mode == GpuGraphStorageMode::WHOLE_HBM) {
+      this->EndPass();
+    }
+    for (size_t i = 0; i < hbm_pools_.size(); i++) {
+      delete hbm_pools_[i];
+    }
     data_ready_channel_->Close();
     buildcpu_ready_channel_->Close();
+    buildpull_ready_channel_->Close();
     gpu_free_channel_->Close();
     running_ = false;
     VLOG(3) << "begin stop pre_build_threads_";
     pre_build_threads_.join();
+    VLOG(3) << "begin stop buildpull_threads_";
+    buildpull_threads_.join();
     s_instance_ = nullptr;
     VLOG(3) << "PSGPUWrapper Finalize Finished.";
     HeterPs_->show_table_collisions();
+    if (HeterPs_ != NULL) {
+      delete HeterPs_;
+      HeterPs_ = NULL;
+    }
     if (device_caches_ != nullptr) {
       delete[] device_caches_;
       device_caches_ = nullptr;
@@ -230,6 +272,12 @@ class PSGPUWrapper {
       auto gloo = paddle::framework::GlooWrapper::GetInstance();
       if (gloo->Size() > 1) {
         multi_node_ = 1;
+        resource_->set_multi_node(multi_node_);
+        optimizer_config_.multi_node = true;
+        VLOG(0) << "init multi node gpu server";
+      } else {
+        optimizer_config_.multi_node = false;
+        VLOG(0) << "init single node gpu server";
       }
 #else
       PADDLE_THROW(
@@ -262,10 +310,15 @@ class PSGPUWrapper {
         opts.setRoot(0);
         gloo::broadcast(opts);
 
+        PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclGroupStart());
         for (int i = 0; i < dev_size; ++i) {
+          platform::CUDADeviceGuard guard(dev_ids[i]);
           platform::dynload::ncclCommInitRank(
               &inter_comms_[i], gloo->Size(), inter_ncclids_[i], gloo->Rank());
         }
+        PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclGroupEnd());
+
+        rank_id_ = gloo->Rank();
         node_size_ = gloo->Size();
 #else
         PADDLE_THROW(
@@ -278,8 +331,16 @@ class PSGPUWrapper {
       data_ready_channel_->SetCapacity(3);
       buildcpu_ready_channel_->Open();
       buildcpu_ready_channel_->SetCapacity(3);
+      buildpull_ready_channel_->Open();
+      buildpull_ready_channel_->SetCapacity(1);
       gpu_free_channel_->Open();
       gpu_free_channel_->SetCapacity(1);
+
+      cpu_reday_channels_.resize(dev_ids.size());
+      for (size_t i = 0; i < dev_ids.size(); i++) {
+        cpu_reday_channels_[i] = paddle::framework::MakeChannel<task_info>();
+        cpu_reday_channels_[i]->SetCapacity(16);
+      }
 
       current_task_ = nullptr;
       gpu_free_channel_->Put(current_task_);
@@ -376,6 +437,11 @@ class PSGPUWrapper {
     hbm_thread_pool_.resize(thread_keys_shard_num_);
     for (size_t i = 0; i < hbm_thread_pool_.size(); i++) {
       hbm_thread_pool_[i].reset(new ::ThreadPool(1));
+    }
+
+    cpu_work_pool_.resize(thread_keys_shard_num_);
+    for (size_t i = 0; i < hbm_thread_pool_.size(); i++) {
+      cpu_work_pool_[i].reset(new ::ThreadPool(16));
     }
 
     auto sparse_table_accessor = sparse_table.accessor();
@@ -535,6 +601,7 @@ class PSGPUWrapper {
   }
   void SetSlotVector(const std::vector<int>& slot_vector) {
     slot_vector_ = slot_vector;
+    VLOG(0) << "slot_vector size is " << slot_vector_.size();
   }
 
   void SetSlotOffsetVector(const std::vector<int>& slot_offset_vector) {
@@ -589,6 +656,10 @@ class PSGPUWrapper {
       dim_index_map[index_dim_vec_[i]] = i;
     }
     hbm_pools_.resize(resource_->total_device() * num_of_dim);
+    for (size_t i = 0; i < hbm_pools_.size(); i++) {
+      hbm_pools_[i] = new HBMMemoryPoolFix();
+    }
+
     mem_pools_.resize(resource_->total_device() * num_of_dim);
     max_mf_dim_ = index_dim_vec_.back();
     multi_mf_dim_ = (dim_index_map.size() >= 1) ? dim_index_map.size() : 0;
@@ -648,7 +719,8 @@ class PSGPUWrapper {
       uint64_t,
       std::vector<std::unordered_map<uint64_t, std::vector<float>>>>
       local_tables_;
-  HeterPsBase* HeterPs_;
+  HeterPsBase* HeterPs_ = NULL;
+  // std::vector<LoDTensor> keys_tensor;  // Cache for pull_sparse
   std::vector<phi::DenseTensor> keys_tensor;  // Cache for pull_sparse
   std::shared_ptr<HeterPsResource> resource_;
   int32_t sleep_seconds_before_fail_exit_;
@@ -670,6 +742,7 @@ class PSGPUWrapper {
   double time_4 = 0.0;
 
   int multi_node_{0};
+  int rank_id_;
   int node_size_;
   uint64_t table_id_;
   int gpu_graph_mode_ = 0;
@@ -691,6 +764,7 @@ class PSGPUWrapper {
   int month_;
   int day_;
   bool slot_info_initialized_ = false;
+  bool hbm_sparse_table_initialized_ = false;
   int use_afs_api_ = 0;
   int optimizer_type_ = 1;
   std::string accessor_class_;
@@ -701,8 +775,8 @@ class PSGPUWrapper {
 
 #ifdef PADDLE_WITH_CUDA
   std::vector<MemoryPool*> mem_pools_;
-  std::vector<HBMMemoryPool*> hbm_pools_;  // in multi mfdim, one table need hbm
-                                           // pools of totol dims number
+  std::vector<HBMMemoryPoolFix*> hbm_pools_;  // in multi mfdim, one table need
+                                              // hbm pools of totol dims number
 #endif
 
   std::shared_ptr<
@@ -717,12 +791,24 @@ class PSGPUWrapper {
       paddle::framework::ChannelObject<std::shared_ptr<HeterContext>>>
       gpu_free_channel_ =
           paddle::framework::MakeChannel<std::shared_ptr<HeterContext>>();
+  std::shared_ptr<
+      paddle::framework::ChannelObject<std::shared_ptr<HeterContext>>>
+      buildpull_ready_channel_ =
+          paddle::framework::MakeChannel<std::shared_ptr<HeterContext>>();
+  std::vector<std::shared_ptr<paddle::framework::ChannelObject<task_info>>>
+      cpu_reday_channels_;
   std::shared_ptr<HeterContext> current_task_ = nullptr;
   std::thread pre_build_threads_;
+  std::thread buildpull_threads_;
   bool running_ = false;
   std::vector<std::shared_ptr<ThreadPool>> pull_thread_pool_;
   std::vector<std::shared_ptr<ThreadPool>> hbm_thread_pool_;
+  std::vector<std::shared_ptr<ThreadPool>> cpu_work_pool_;
   OptimizerConfig optimizer_config_;
+  // gradient push count
+  uint64_t grad_push_count_ = 0;
+  // infer mode
+  bool infer_mode_ = false;
 
  protected:
   static bool is_initialized_;

@@ -27,10 +27,10 @@ from .... import unique_name
 
 from ....framework import Program, program_guard, default_startup_program
 from ....data import data
-from ....layers import mean
 from ....executor import scope_guard
 from ....framework import _get_paddle_place
 from . import utils
+import paddle
 
 __all__ = [
     'QuantizationTransformPass',
@@ -513,11 +513,12 @@ class QuantizationTransformPass:
             var_dtype=var_node.dtype(),
         )
         scale_name = self._quantized_scale_name(name)
-        data_type = (
-            'float64'
-            if var_node.dtype() == core.VarDesc.VarType.FP64
-            else 'float32'
-        )
+        if var_node.dtype() == core.VarDesc.VarType.FP64:
+            data_type = 'float64'
+        elif var_node.dtype() == core.VarDesc.VarType.FP32:
+            data_type = 'float32'
+        else:
+            data_type = "float16"
         try:
             scale_value = np.array(
                 self._scope.find_var(scale_name).get_tensor()
@@ -560,11 +561,12 @@ class QuantizationTransformPass:
         )
 
         scale_name = self._quantized_scale_name(name)
-        data_type = (
-            'float64'
-            if var_node.dtype() == core.VarDesc.VarType.FP64
-            else 'float32'
-        )
+        if var_node.dtype() == core.VarDesc.VarType.FP64:
+            data_type = 'float64'
+        elif var_node.dtype() == core.VarDesc.VarType.FP32:
+            data_type = 'float32'
+        else:
+            data_type = "float16"
         try:
             scale_value = np.array(
                 self._scope.find_var(scale_name).get_tensor()
@@ -591,11 +593,12 @@ class QuantizationTransformPass:
                 shape=[self._window_size],
                 var_dtype=var_node.dtype(),
             )
-            data_type = (
-                'float64'
-                if var_node.dtype() == core.VarDesc.VarType.FP64
-                else 'float32'
-            )
+            if var_node.dtype() == core.VarDesc.VarType.FP64:
+                data_type = 'float64'
+            elif var_node.dtype() == core.VarDesc.VarType.FP32:
+                data_type = 'float32'
+            else:
+                data_type = "float16"
             _init_var_node(
                 scales_node,
                 np.zeros([self._window_size], dtype=data_type),
@@ -640,11 +643,12 @@ class QuantizationTransformPass:
             var_dtype=var_node.dtype(),
         )
         scale_name = self._quantized_scale_name(name)
-        data_type = (
-            'float64'
-            if var_node.dtype() == core.VarDesc.VarType.FP64
-            else 'float32'
-        )
+        if var_node.dtype() == core.VarDesc.VarType.FP64:
+            data_type = 'float64'
+        elif var_node.dtype() == core.VarDesc.VarType.FP32:
+            data_type = 'float32'
+        else:
+            data_type = "float16"
         try:
             scale_value = np.array(
                 self._scope.find_var(scale_name).get_tensor()
@@ -669,11 +673,12 @@ class QuantizationTransformPass:
                 var_dtype=var_node.dtype(),
                 shape=[1],
             )
-            data_type = (
-                'float64'
-                if var_node.dtype() == core.VarDesc.VarType.FP64
-                else 'float32'
-            )
+            if var_node.dtype() == core.VarDesc.VarType.FP64:
+                data_type = 'float64'
+            elif var_node.dtype() == core.VarDesc.VarType.FP32:
+                data_type = 'float32'
+            else:
+                data_type = "float16"
             _init_var_node(
                 state_in_node,
                 np.ones([1], dtype=data_type),
@@ -746,11 +751,12 @@ class QuantizationTransformPass:
             var_dtype=var_node.dtype(),
         )
         scale_name = self._quantized_scale_name(name)
-        data_type = (
-            'float64'
-            if var_node.dtype() == core.VarDesc.VarType.FP64
-            else 'float32'
-        )
+        if var_node.dtype() == core.VarDesc.VarType.FP64:
+            data_type = 'float64'
+        elif var_node.dtype() == core.VarDesc.VarType.FP32:
+            data_type = 'float32'
+        else:
+            data_type = "float16"
         try:
             scale_value = np.array(
                 self._scope.find_var(scale_name).get_tensor()
@@ -927,7 +933,7 @@ class QuantizationTransformPass:
                 out_node = func(in_node)
                 graph.out_node_mapping_table[out_node.name] = var_node.name()
                 # loss shape must be 1 when minimize
-                loss = mean(out_node)
+                loss = paddle.mean(out_node)
                 if not graph._for_test:
                     assert (
                         self._optimizer
@@ -1287,11 +1293,13 @@ class QuantizationFreezePass:
             shape=[channel_scale.shape[0]],
             var_dtype=output_var_node.dtype(),
         )
-        data_type = (
-            'float64'
-            if output_var_node.dtype() == core.VarDesc.VarType.FP64
-            else 'float32'
-        )
+
+        if output_var_node.dtype() == core.VarDesc.VarType.FP64:
+            data_type = 'float64'
+        elif output_var_node.dtype() == core.VarDesc.VarType.FP32:
+            data_type = 'float32'
+        else:
+            data_type = "float16"
         _init_var_node(
             weight_scale_node,
             channel_scale.astype(data_type),
@@ -1439,6 +1447,7 @@ class QuantizationFreezePass:
     def _is_float(self, v):
         return (
             isinstance(v, float)
+            or isinstance(v, np.float16)
             or isinstance(v, np.float32)
             or isinstance(v, np.float64)
         )
@@ -1636,14 +1645,17 @@ class OutScaleForTrainingPass:
                     if in_node.dtype() not in [
                         core.VarDesc.VarType.FP64,
                         core.VarDesc.VarType.FP32,
+                        core.VarDesc.VarType.FP16,
                     ]:
                         continue
 
-                    data_type = (
-                        'float64'
-                        if in_node.dtype() == core.VarDesc.VarType.FP64
-                        else 'float32'
-                    )
+                    if in_node.dtype() == core.VarDesc.VarType.FP64:
+                        data_type = 'float64'
+                    elif in_node.dtype() == core.VarDesc.VarType.FP32:
+                        data_type = 'float32'
+                    else:
+                        data_type = "float16"
+
                     try:
                         graph._find_node_by_name(
                             graph.all_var_nodes(),
@@ -1776,10 +1788,14 @@ class OutScaleForInferencePass:
                     in_node = graph._find_node_by_name(
                         op_node.outputs, var_name
                     )
-                    if in_node.dtype() not in [
-                        core.VarDesc.VarType.FP64,
-                        core.VarDesc.VarType.FP32,
-                    ]:
+                    if (in_node.node.var() is None) or (
+                        in_node.dtype()
+                        not in [
+                            core.VarDesc.VarType.FP64,
+                            core.VarDesc.VarType.FP32,
+                            core.VarDesc.VarType.FP16,
+                        ]
+                    ):
                         continue
 
                     scale_name = self._scale_name(var_name)
@@ -1994,11 +2010,12 @@ class AddQuantDequantPass:
             var_dtype=var_node.dtype(),
         )
         scale_name = "{}.quant_dequant@scale".format(var_node.name())
-        data_type = (
-            'float64'
-            if var_node.dtype() == core.VarDesc.VarType.FP64
-            else 'float32'
-        )
+        if var_node.dtype() == core.VarDesc.VarType.FP64:
+            data_type = 'float64'
+        elif var_node.dtype() == core.VarDesc.VarType.FP32:
+            data_type = 'float32'
+        else:
+            data_type = "float16"
         try:
             if (
                 self._scale_dict is not None
@@ -2033,11 +2050,12 @@ class AddQuantDequantPass:
                 var_dtype=var_node.dtype(),
                 shape=[1],
             )
-            data_type = (
-                'float64'
-                if var_node.dtype() == core.VarDesc.VarType.FP64
-                else 'float32'
-            )
+            if var_node.dtype() == core.VarDesc.VarType.FP64:
+                data_type = 'float64'
+            elif var_node.dtype() == core.VarDesc.VarType.FP32:
+                data_type = 'float32'
+            else:
+                data_type = "float16"
             _init_var_node(
                 state_in_node,
                 np.ones([1], dtype=data_type),
@@ -2134,7 +2152,9 @@ class InsertQuantizeLinear:
         self._moving_rate = moving_rate
         self._scale_dict = scale_dict
 
-    def insert_quant_op(self, graph, var_node, var_name=None):
+    def insert_quant_op(
+        self, graph, var_node, var_name=None, scale_var_node=None
+    ):
         assert var_node.is_var(), '{} is not a var'.format(var_node.name())
         var_name = var_node.name() if not var_name else var_name
         quant_var_node = graph.create_var_node(
@@ -2143,40 +2163,44 @@ class InsertQuantizeLinear:
             shape=var_node.shape(),
             var_dtype=var_node.dtype(),
         )
-        data_type = (
-            'float64'
-            if var_node.dtype() == core.VarDesc.VarType.FP64
-            else 'float32'
-        )
-        scale_name = self._quantized_scale_name(var_name)
-        if self.channel_wise:
-            scale_var_shape = var_node.shape()[self.quant_axis]
-            scale_var_type = core.VarDesc.VarType.LOD_TENSOR
-            init_scale_value = (
-                np.ones(scale_var_shape, dtype=data_type) * _SCALE_DEFAULT_VALUE
-            )
-        else:
-            scale_var_shape = 1
-            scale_var_type = var_node.type()
-            init_scale_value = np.array([_SCALE_DEFAULT_VALUE], dtype=data_type)
+        if not scale_var_node:
+            if var_node.dtype() == core.VarDesc.VarType.FP64:
+                data_type = 'float64'
+            elif var_node.dtype() == core.VarDesc.VarType.FP32:
+                data_type = 'float32'
+            else:
+                data_type = "float16"
+            scale_name = self._quantized_scale_name(var_name)
+            if self.channel_wise:
+                scale_var_shape = var_node.shape()[self.quant_axis]
+                scale_var_type = core.VarDesc.VarType.LOD_TENSOR
+                init_scale_value = (
+                    np.ones(scale_var_shape, dtype=data_type)
+                    * _SCALE_DEFAULT_VALUE
+                )
+            else:
+                scale_var_shape = 1
+                scale_var_type = var_node.type()
+                init_scale_value = np.array(
+                    [_SCALE_DEFAULT_VALUE], dtype=data_type
+                )
 
-        if (
-            self._scale_dict is not None
-            and var_node.name() in self._scale_dict.keys()
-        ):
-            init_scale_value = np.array(
-                [self._scale_dict[var_node.name()]], dtype=data_type
+            if (
+                self._scale_dict is not None
+                and var_node.name() in self._scale_dict.keys()
+            ):
+                init_scale_value = np.array(
+                    [self._scale_dict[var_node.name()]], dtype=data_type
+                )
+            scale_var_node = graph.create_persistable_node(
+                name=scale_name,
+                var_type=scale_var_type,
+                shape=[scale_var_shape],
+                var_dtype=var_node.dtype(),
             )
-
-        scale_var_node = graph.create_persistable_node(
-            name=scale_name,
-            var_type=scale_var_type,
-            shape=[scale_var_shape],
-            var_dtype=var_node.dtype(),
-        )
-        _init_var_node(
-            scale_var_node, init_scale_value, self._scope, self._place
-        )
+            _init_var_node(
+                scale_var_node, init_scale_value, self._scope, self._place
+            )
 
         zero_point_node = None
         if zero_point_node is None:
@@ -2210,11 +2234,12 @@ class InsertQuantizeLinear:
                 var_dtype=var_node.dtype(),
                 shape=[1],
             )
-            data_type = (
-                'float64'
-                if var_node.dtype() == core.VarDesc.VarType.FP64
-                else 'float32'
-            )
+            if var_node.dtype() == core.VarDesc.VarType.FP64:
+                data_type = 'float64'
+            elif var_node.dtype() == core.VarDesc.VarType.FP32:
+                data_type = 'float32'
+            else:
+                data_type = "float16"
             _init_var_node(
                 state_in_node,
                 np.ones([1], dtype=data_type),
@@ -2510,6 +2535,7 @@ class QuantizationTransformPassV2(QuantizationTransformPass):
 
     def _transform_forward(self, graph, op):
         op.op()._set_attr("quantization_type", "qat_with_weight")
+        weight_scale_node = None
         inputs = op.inputs
         for var_node in inputs:
             if var_node.name() not in op.input_arg_names():
@@ -2595,7 +2621,10 @@ class QuantizationTransformPassV2(QuantizationTransformPass):
                 )
 
                 self.dequantized_vars[name] = dequant_var_node
+                if is_weight:
+                    weight_scale_node = scale_var_node
             graph.update_input_link(var_node, dequant_var_node, op)
+        return weight_scale_node
 
     def _transform_backward(self, graph, op):
         for var_node in op.inputs:
@@ -2610,10 +2639,70 @@ class QuantizationTransformPassV2(QuantizationTransformPass):
         for var_node in op.inputs:
             if var_node.name() not in op.input_arg_names():
                 continue
-            name = var_node.name()
             if var_node.name() in self.persistable_vars:
                 has_weight = True
         return has_weight
+
+    def _quant_conv1d(self, graph, op):
+        # conv1d in inference is a combination of unsqueeze2 + conv2d
+        if ("conv2d" not in op.name()) or (
+            "unsqueeze2" not in op.input("Filter")[0]
+        ):
+            return
+        conv_weight_var_name = op.input("Filter")[0]
+        # unsqueeze2 and conv2d will share weight scale
+        weight_scale_node = None
+        # quant unsqueeze2
+        for _op in graph.all_op_nodes():
+            var_names = utils._get_op_output_var_names(_op)
+            if conv_weight_var_name in var_names and self._has_weight(_op):
+                weight_scale_node = self._transform_forward(graph, _op)
+        # insert qdq before conv2d
+        for var_node in op.inputs:
+            quant_bits = (
+                self._weight_bits
+                if var_node.name() == conv_weight_var_name
+                else self._activation_bits
+            )
+            quant_type = (
+                self._weight_quantize_type
+                if var_node.name() == conv_weight_var_name
+                else self._activation_quantize_type
+            )
+            quant_axis = -1
+            channel_wise = False
+            if quant_type == 'channel_wise_abs_max':
+                channel_wise = True
+                quant_axis = (
+                    1 if op.name() in utils._channelwise_quant_axis1_ops else 0
+                )
+            insert_quant_pass = InsertQuantizeLinear(
+                self._place,
+                self._scope,
+                quant_bits=quant_bits,
+                quant_axis=quant_axis,
+                channel_wise=channel_wise,
+                moving_rate=self._moving_rate,
+                is_test=self._is_test,
+            )
+            scale_var_node = (
+                weight_scale_node
+                if var_node.name() == conv_weight_var_name
+                else None
+            )
+            (
+                quant_var_node,
+                scale_var_node,
+            ) = insert_quant_pass.insert_quant_op(
+                graph,
+                var_node,
+                var_name=var_node.name(),
+                scale_var_node=scale_var_node,
+            )
+            dequant_var_node = insert_quant_pass.insert_dequant_op(
+                graph, quant_var_node, scale_var_node
+            )
+            graph.update_input_link(var_node, dequant_var_node, op)
 
     def apply(self, graph):
         """
@@ -2664,6 +2753,9 @@ class QuantizationTransformPassV2(QuantizationTransformPass):
                         op
                     ):
                         self._transform_forward(graph, op)
+                    else:  # op is not persistable
+                        # support conv1d quantization
+                        self._quant_conv1d(graph, op)
                 t.update()
         # The loop for renaming the inputs of backward op.
         for op in ops:
@@ -2907,13 +2999,31 @@ class ReplaceFakeQuantDequantPass:
             graph, IrGraph
         ), 'graph must be the instance of IrGraph.'
         fake_quant_dequant_ops = []
+        remove_fake_quant_ops = []
+        observer_out_node_names = []
+        for op in graph.all_op_nodes():
+            # collect observer node
+            if op.name() == "moving_average_abs_max_scale":
+                observer_out_node_names.append(op.output("Out")[0])
 
         for op in graph.all_op_nodes():
             if (
                 op.name() in _fake_quant_dequant_op_list
                 or op.name() == "moving_average_abs_max_scale"
             ):
-                fake_quant_dequant_ops.append(op)
+                var_name = op.input("X")[0]
+                if var_name in observer_out_node_names:
+                    remove_fake_quant_ops.append(op)
+                else:
+                    fake_quant_dequant_ops.append(op)
+
+        for _op in remove_fake_quant_ops:
+            x_node = graph._find_node_by_name(_op.inputs, _op.input("X")[0])
+            out_node = graph._find_node_by_name(
+                _op.outputs, _op.output("Out")[0]
+            )
+            for next_op_node in out_node.outputs:
+                graph.update_input_link(out_node, x_node, next_op_node)
 
         for _op in fake_quant_dequant_ops:
             self._replace_op(graph, _op)
@@ -3184,6 +3294,7 @@ class AddQuantDequantForInferencePass:
                     if out_node.dtype() not in [
                         core.VarDesc.VarType.FP64,
                         core.VarDesc.VarType.FP32,
+                        core.VarDesc.VarType.FP16,
                     ]:
                         continue
                     if var_name in dequantized_vars_map:

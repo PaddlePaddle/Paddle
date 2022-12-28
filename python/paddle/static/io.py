@@ -128,14 +128,13 @@ def _clone_var_in_block(block, var):
 
 def normalize_program(program, feed_vars, fetch_vars):
     """
-    :api_attr: Static Graph
 
     Normalize/Optimize a program according to feed_vars and fetch_vars.
 
     Args:
         program(Program): Specify a program you want to optimize.
-        feed_vars(Variable | list[Variable]): Variables needed by inference.
-        fetch_vars(Variable | list[Variable]): Variables returned by inference.
+        feed_vars(Tensor | list[Tensor]): Variables needed by inference.
+        fetch_vars(Tensor | list[Tensor]): Variables returned by inference.
 
     Returns:
         Program: Normalized/Optimized program.
@@ -233,6 +232,7 @@ def normalize_program(program, feed_vars, fetch_vars):
 
 def is_persistable(var):
     """
+
     Check whether the given variable is persistable.
 
     Args:
@@ -264,15 +264,15 @@ def is_persistable(var):
 @static_only
 def serialize_program(feed_vars, fetch_vars, **kwargs):
     """
-    :api_attr: Static Graph
 
     Serialize default main program according to feed_vars and fetch_vars.
 
     Args:
-        feed_vars(Variable | list[Variable]): Variables needed by inference.
-        fetch_vars(Variable | list[Variable]): Variables returned by inference.
-        kwargs: Supported keys including 'program'.Attention please, kwargs is used for backward compatibility mainly.
-          - program(Program): specify a program if you don't want to use default main program.
+        feed_vars(Tensor | list[Tensor]): Tensor needed by inference.
+        fetch_vars(Tensor | list[Tensor]): Tensor returned by inference.
+        kwargs: Supported keys including ``program``. Attention please, kwargs is used for backward compatibility mainly.
+
+            - program(Program): specify a program if you don't want to use default main program.
 
     Returns:
         bytes: serialized program.
@@ -323,15 +323,15 @@ def _serialize_program(program):
 @static_only
 def serialize_persistables(feed_vars, fetch_vars, executor, **kwargs):
     """
-    :api_attr: Static Graph
 
     Serialize parameters using given executor and default main program according to feed_vars and fetch_vars.
 
     Args:
-        feed_vars(Variable | list[Variable]): Variables needed by inference.
-        fetch_vars(Variable | list[Variable]): Variables returned by inference.
-        kwargs: Supported keys including 'program'.Attention please, kwargs is used for backward compatibility mainly.
-          - program(Program): specify a program if you don't want to use default main program.
+        feed_vars(Tensor | list[Tensor]): Tensor needed by inference.
+        fetch_vars(Tensor | list[Tensor]): Tensor returned by inference.
+        kwargs: Supported keys including ``program``. Attention please, kwargs is used for backward compatibility mainly.
+
+            - program(Program): specify a program if you don't want to use default main program.
 
     Returns:
         bytes: serialized program.
@@ -423,9 +423,11 @@ def _serialize_persistables(program, executor):
 def save_to_file(path, content):
     """
     Save content to given path.
+
     Args:
         path(str): Path to write content to.
         content(bytes): Content to write.
+
     Returns:
         None
 
@@ -461,15 +463,15 @@ def save_inference_model(
 ):
     """
     Save current model and its parameters to given path. i.e.
-    Given path_prefix = "/path/to/modelname", after invoking
-    save_inference_model(path_prefix, feed_vars, fetch_vars, executor),
-    you will find two files named modelname.pdmodel and modelname.pdiparams
-    under "/path/to", which represent your model and parameters respectively.
+    Given ``path_prefix = "PATH/modelname"``, after invoking
+    ``save_inference_model(path_prefix, feed_vars, fetch_vars, executor)``,
+    you will find two files named ``modelname.pdmodel`` and ``modelname.pdiparams``
+    under ``PATH``, which represent your model and parameters respectively.
 
     Args:
         path_prefix(str): Directory path to save model + model name without suffix.
-        feed_vars(Variable | list[Variable]): Variables needed by inference.
-        fetch_vars(Variable | list[Variable]): Variables returned by inference.
+        feed_vars(Tensor | list[Tensor]): Variables needed by inference.
+        fetch_vars(Tensor | list[Tensor]): Variables returned by inference.
         executor(Executor): The executor that saves the inference model. You can refer
                             to :ref:`api_guide_executor_en` for more details.
         kwargs: Supported keys including 'program' and "clip_extra". Attention please, kwargs is used for backward compatibility mainly.
@@ -551,7 +553,6 @@ def save_inference_model(
 @static_only
 def deserialize_program(data):
     """
-    :api_attr: Static Graph
 
     Deserialize given data to a program.
 
@@ -598,7 +599,6 @@ def deserialize_program(data):
 @static_only
 def deserialize_persistables(program, data, executor):
     """
-    :api_attr: Static Graph
 
     Deserialize given data to parameters according to given program and executor.
 
@@ -704,8 +704,10 @@ def deserialize_persistables(program, data, executor):
 def load_from_file(path):
     """
     Load file in binary mode.
+
     Args:
         path(str): Path of an existed file.
+
     Returns:
         bytes: Content of file.
 
@@ -739,7 +741,6 @@ def load_from_file(path):
 @static_only
 def load_inference_model(path_prefix, executor, **kwargs):
     """
-    :api_attr: Static Graph
 
     Load inference model from a given path. By this API, you can get the model
     structure(Inference Program) and model parameters.
@@ -750,9 +751,11 @@ def load_inference_model(path_prefix, executor, **kwargs):
           - Set to None when reading the model from memory.
         executor(Executor): The executor to run for loading inference model.
                             See :ref:`api_guide_executor_en` for more details about it.
-        kwargs: Supported keys including 'model_filename', 'params_filename'.Attention please, kwargs is used for backward compatibility mainly.
-          - model_filename(str): specify model_filename if you don't want to use default name.
-          - params_filename(str): specify params_filename if you don't want to use default name.
+        kwargs: Supported keys including 'model_filename', 'params_filename'. Attention please, kwargs is used for backward compatibility mainly.
+
+            - model_filename(str): specify model_filename if you don't want to use default name.
+
+            - params_filename(str): specify params_filename if you don't want to use default name.
 
     Returns:
         list: The return of this API is a list with three elements:

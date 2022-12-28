@@ -31,21 +31,10 @@ from .parallel import *
 from . import learning_rate_scheduler
 from .learning_rate_scheduler import *
 
-from . import io
-from .io import *
-
-from . import static_runner
-from .static_runner import StaticModelRunner
-
-from . import rnn
-from .rnn import *
-
 from . import amp
 from .amp import *
 
 from .math_op_patch import monkey_patch_math_varbase
-
-from .inplace_utils import inplace_apis_in_dygraph_only
 
 __all__ = []
 __all__ += layers.__all__
@@ -53,6 +42,4 @@ __all__ += base.__all__
 __all__ += nn.__all__
 __all__ += parallel.__all__
 __all__ += learning_rate_scheduler.__all__
-__all__ += io.__all__
-__all__ += rnn.__all__
 __all__ += amp.__all__

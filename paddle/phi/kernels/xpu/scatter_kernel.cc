@@ -27,7 +27,10 @@ void ScatterKernel(const Context &ctx,
                    const DenseTensor &updates,
                    bool overwrite,
                    DenseTensor *out) {
-  phi::Copy(ctx, x, ctx.GetPlace(), false, out);
+  out->Resize(x.dims());
+  ctx.template Alloc<T>(out);
+  int ret = xpu::copy(ctx.x_context(), x.data<T>(), out->data<T>(), x.numel());
+  PADDLE_ENFORCE_XDNN_SUCCESS(ret, "copy");
   // Apply ScatterUpdate: Out[index] = Updates[:]
   const auto &index_type = index.dtype();
   bool index_type_match =

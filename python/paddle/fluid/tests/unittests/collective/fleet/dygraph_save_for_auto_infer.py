@@ -39,7 +39,6 @@ from paddle.distributed.fleet.meta_parallel.parallel_layers.pp_layers import (
 from paddle.distributed.sharding.group_sharded import group_sharded_parallel
 from paddle.distributed.utils.log_utils import get_logger
 from paddle.fluid.dataloader.dataset import IterableDataset
-from paddle.fluid.dygraph.nn import Embedding
 from paddle.incubate.distributed.utils.io import save_for_auto_inference
 from paddle.nn import Linear
 
@@ -131,7 +130,7 @@ class MLP(fluid.Layer):
         bias_attr=None,
     ):
         super(MLP, self).__init__()
-        self.embedding = Embedding((embedding_size, linear_size))
+        self.embedding = paddle.nn.Embedding(embedding_size, linear_size)
         self._linear1 = Linear(linear_size, linear_size)
         self._linear2 = Linear(linear_size, linear_size)
         self._linear3 = Linear(linear_size, 10)

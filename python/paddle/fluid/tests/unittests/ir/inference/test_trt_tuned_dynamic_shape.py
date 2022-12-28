@@ -34,7 +34,7 @@ class TRTTunedDynamicShapeTest(unittest.TestCase):
             data = fluid.data(
                 name="data", shape=[-1, 6, 64, 64], dtype="float32"
             )
-            conv_out = fluid.layers.conv2d(
+            conv_out = paddle.static.nn.conv2d(
                 input=data,
                 num_filters=3,
                 filter_size=3,
