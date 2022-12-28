@@ -764,7 +764,7 @@ class Engine:
                     all_process_groups, cur_rank
                 )
             else:
-                init_all_process_groups()
+                init_all_process_groups(cur_rank)
 
         self._place = _get_device()
         if isinstance(self._place, fluid.CUDAPlace):

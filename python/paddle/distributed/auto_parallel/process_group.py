@@ -18,6 +18,9 @@ import paddle.distributed.auto_parallel.utils as auto_utils
 import paddle.fluid.core as core
 
 from ..collective import _get_global_env, _new_ring_id
+from ..utils.log_utils import get_logger
+
+logger = get_logger(logging.INFO)
 
 
 def get_all_process_groups():
@@ -65,11 +68,20 @@ def new_process_group(ranks, group_id=None):
     return new_pg
 
 
-def init_all_process_groups():
+def init_all_process_groups(cur_rank):
     all_process_groups = get_all_process_groups()
+    logger.info("Communication Initialization:")
+    logger.info(
+        "Current rank is[{}], total [{}] commnunicators in current task.".format(
+            cur_rank, len(all_process_groups)
+        )
+    )
     for process_group in all_process_groups:
         if cur_rank in process_group.ranks:
             process_group.instantiate()
+            logger.info("Inited group {}".format(str(process_group)))
+        else:
+            logger.info("Skiped group {}".format(str(process_group)))
         auto_utils.naive_barrier()
 
 

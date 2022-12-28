@@ -504,7 +504,7 @@ class AutoParallelizer:
 
             # Traverse different rank programs and traverse each op of them,
             # instantiate communication by process_mapping.
-            init_all_process_groups()
+            init_all_process_groups(rank)
 
             # Copy distributed info to the default context
             set_default_distributed_context(self._dist_context)

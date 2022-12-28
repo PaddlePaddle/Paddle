@@ -87,7 +87,7 @@ def init_process_groups(group_map, rank):
         new_process_group(ranks=ranks, group_id=group_id)
 
     # TODO should instantiate global group first
-    init_all_process_groups()
+    init_all_process_groups(rank)
 
 
 def get_cpp_error_type(error):
