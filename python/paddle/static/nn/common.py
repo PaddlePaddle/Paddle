@@ -13,6 +13,8 @@
 # limitations under the License.
 
 import inspect
+import warnings
+from functools import reduce
 
 import numpy as np
 
@@ -186,7 +188,6 @@ def instance_norm(
     input, epsilon=1e-05, param_attr=None, bias_attr=None, name=None
 ):
     r"""
-    :api_attr: Static Graph
 
     **Instance Normalization Layer**
 
@@ -388,7 +389,6 @@ def data_norm(
     enable_scale_and_shift=False,
 ):
     r"""
-    :api_attr: Static Graph
 
     **Data Normalization Layer**
 
@@ -587,7 +587,6 @@ def group_norm(
     name=None,
 ):
     """
-    :api_attr: Static Graph
 
     **Group Normalization Layer**
 
@@ -1019,7 +1018,6 @@ def conv3d(
     data_format="NCDHW",
 ):
     r"""
-    :api_attr: Static Graph
 
     The convolution3D layer calculates the output based on the input, filter
     and strides, paddings, dilations, groups parameters. Input(Input) and
@@ -1122,19 +1120,6 @@ def conv3d(
         the same with input. If act is None, the tensor variable storing the
         convolution result, and if act is not None, the tensor variable storing
         convolution and non-linearity activation result.
-
-    Raises:
-        ValueError: If the type of `use_cudnn` is not bool.
-        ValueError: If `data_format` is not "NCDHW" or "NDHWC".
-        ValueError: If the channel dimmention of the input is less than or equal to zero.
-        ValueError: If `padding` is a string, but not "SAME" or "VALID".
-        ValueError: If `padding` is a tuple, but the element corresponding to the input's batch size is not 0
-            or the element corresponding to the input's channel is not 0.
-        ShapeError: If the input is not 5-D Tensor.
-        ShapeError: If the input's dimension size and filter's dimension size not equal.
-        ShapeError: If the dimension size of input minus the size of `stride` is not 2.
-        ShapeError: If the number of input channels is not equal to filter's channels * groups.
-        ShapeError: If the number of output channels is not be divided by groups.
 
     Examples:
         .. code-block:: python
@@ -1328,7 +1313,6 @@ def conv2d_transpose(
     data_format='NCHW',
 ):
     r"""
-    :api_attr: Static Graph
 
     The convolution2D transpose layer calculates the output based on the input,
     filter, and dilations, strides, paddings. Input(Input) and output(Output)
@@ -1373,24 +1357,38 @@ def conv2d_transpose(
 
         .. math::
 
-           H^\prime_{out} &= (H_{in} - 1) * strides[0] - pad_height_top - pad_height_bottom + dilations[0] * (H_f - 1) + 1 \\
-           W^\prime_{out} &= (W_{in} - 1) * strides[1] - pad_width_left - pad_width_right + dilations[1] * (W_f - 1) + 1 \\
+           H^\prime_{out} &= (H_{in} - 1) * strides[0] - 2 * paddings[0] + dilations[0] * (H_f - 1) + 1 \\
+           W^\prime_{out} &= (W_{in} - 1) * strides[1] - 2 * paddings[1] + dilations[1] * (W_f - 1) + 1 \\
            H_{out} &\in [ H^\prime_{out}, H^\prime_{out} + strides[0] ] \\
            W_{out} &\in [ W^\prime_{out}, W^\prime_{out} + strides[1] ]
 
-    Note:
-          The conv2d_transpose can be seen as the backward of the conv2d. For conv2d,
-          when stride > 1, conv2d maps multiple input shape to the same output shape,
-          so for conv2d_transpose, when stride > 1, input shape maps multiple output shape.
-          If output_size is None, :math:`H_{out} = H^\prime_{out}, W_{out} = W^\prime_{out}`;
-          else, the :math:`H_{out}` of the output size must between :math:`H^\prime_{out}`
-          and :math:`H^\prime_{out} + strides[0]`, and the :math:`W_{out}` of the output size must
-          between :math:`W^\prime_{out}` and :math:`W^\prime_{out} + strides[1]`,
-          conv2d_transpose can compute the kernel size automatically.
+        If `padding` = `"SAME"`:
+
+        .. math::
+            H^\prime_{out} &= \frac{(H_{in} + stride[0] - 1)}{stride[0]} \\
+            W^\prime_{out} &= \frac{(H_{in} + stride[1] - 1)}{stride[1]}
+
+        If `padding` = `"VALID"`:
+
+        .. math::
+            H^\prime_{out} &= (H_{in} - 1) * strides[0] + dilations[0] * (H_f - 1) + 1 \\
+            W^\prime_{out} &= (W_{in} − 1) * strides[1] + dilations[1] * (W_f − 1) + 1
+
+        If output_size is None, :math:`H_{out} = H^\prime_{out}, W_{out} = W^\prime_{out}`;
+        else, the :math:`H_{out}` of the output size must between :math:`H^\prime_{out}`
+        and :math:`H^\prime_{out} + strides[0]`, and the :math:`W_{out}` of the output size must
+        between :math:`W^\prime_{out}` and :math:`W^\prime_{out} + strides[1]`,
+
+        Since transposed convolution can be treated as the inverse of convolution, and according to the input-output formula for convolution,
+        different sized input feature layers may correspond to the same sized output feature layer,
+        the size of the output feature layer for a fixed sized input feature layer is not unique to transposed convolution
+
+        If `output_size` is specified, `conv2d_transpose` can compute the kernel size automatically.
 
     Args:
-        input(Tensor): 4-D Tensor with [N, C, H, W] or [N, H, W, C] format,
-                         its data type is float32 or float64.
+        input(Tensor): 4-D Tensor with [N, C, H, W] or [N, H, W, C] format where N is the batch_size,
+            C is the input_channels, H is the input_height and W is the input_width.
+            Its data type is float32 or float64.
         num_filters(int): The number of the filter. It is as same as the output
             image channel.
         output_size(int|tuple, optional): The output image size. If output size is a
@@ -1404,26 +1402,23 @@ def conv2d_transpose(
             Otherwise, filter_size_height = filter_size_width = filter_size. None if
             use output size to calculate filter_size. Default: None. filter_size and
             output_size should not be None at the same time.
-        stride(int|tuple, optional): The stride size. It means the stride in transposed convolution.
-            If stride is a tuple, it must contain two integers, (stride_height, stride_width).
-            Otherwise, stride_height = stride_width = stride. Default: stride = 1.
         padding(str|int|list|tuple, optional): The padding size. It means the number of zero-paddings
             on both sides for each dimension. If `padding` is a string, either 'VALID' or
             'SAME' which is the padding algorithm. If `padding` is a tuple or list,
-            it could be in three forms: `[pad_height, pad_width]` or
-            `[pad_height_top, pad_height_bottom, pad_width_left, pad_width_right]`,
-            and when `data_format` is `"NCHW"`, `padding` can be in the form
+            it could be in three forms:
+            (1) Contains 4 binary groups: when `data_format` is `"NCHW"`, `padding` can be in the form
             `[[0,0], [0,0], [pad_height_top, pad_height_bottom], [pad_width_left, pad_width_right]]`.
             when `data_format` is `"NHWC"`, `padding` can be in the form
             `[[0,0], [pad_height_top, pad_height_bottom], [pad_width_left, pad_width_right], [0,0]]`.
-            Default: padding = 0.
+            (2) Contains 4 integer values：`[pad_height_top, pad_height_bottom, pad_width_left, pad_width_right]`
+            (3) Contains 2 integer values：`[pad_height, pad_width]`, in this case, `padding_height_top = padding_height_bottom = padding_height`，
+            `padding_width_left = padding_width_right = padding_width`. If an integer, `padding_height = padding_width = padding`. Default: padding = 0.
+        stride(int|tuple, optional): The stride size. It means the stride in transposed convolution.
+            If stride is a tuple, it must contain two integers, (stride_height, stride_width).
+            Otherwise, stride_height = stride_width = stride. Default: stride = 1.
         dilation(int|tuple, optional): The dilation size. It means the spacing between the kernel points.
             If dilation is a tuple, it must contain two integers, (dilation_height, dilation_width).
             Otherwise, dilation_height = dilation_width = dilation. Default: dilation = 1.
-        filter_size(int|tuple, optional): The filter size. If filter_size is a tuple,
-            it must contain two integers, (filter_size_height, filter_size_width).
-            Otherwise, filter_size_height = filter_size_width = filter_size. None if
-            use output size to calculate filter_size. Default: None.
         groups(int, optional): The groups number of the Conv2d transpose layer. Inspired by
             grouped convolution in Alex Krizhevsky's Deep CNN paper, in which
             when group=2, the first half of the filters is only connected to the
@@ -1434,11 +1429,10 @@ def conv2d_transpose(
             of conv2d_transpose. If it is set to None or one attribute of ParamAttr, conv2d_transpose
             will create ParamAttr as param_attr. If the Initializer of the param_attr
             is not set, the parameter is initialized with Xavier. Default: None.
-        bias_attr (ParamAttr|bool, optional): The parameter attribute for the bias of conv2d_transpose.
-            If it is set to False, no bias will be added to the output units.
-            If it is set to None or one attribute of ParamAttr, conv2d_transpose
-            will create ParamAttr as bias_attr. If the Initializer of the bias_attr
-            is not set, the bias is initialized zero. Default: None.
+        bias_attr (ParamAttr|bool, optional): Specifies the object for the bias parameter attribute.
+            The default value is None, which means that the default bias parameter attribute is used.
+            For detailed information, please refer to :ref:`paramattr`.
+            The default bias initialisation for the conv2d_transpose operator is 0.0.
         use_cudnn(bool, optional): Use cudnn kernel or not, it is valid only when the cudnn
             library is installed. Default: True.
         act (str, optional): Activation type, if it is set to None, activation is not appended.
@@ -1690,7 +1684,6 @@ def conv3d_transpose(
     data_format='NCDHW',
 ):
     r"""
-    :api_attr: Static Graph
 
     The convolution3D transpose layer calculates the output based on the input,
     filter, and dilations, strides, paddings. Input(Input) and output(Output)
@@ -1742,17 +1735,33 @@ def conv3d_transpose(
            H_{out} &\in [ H^\prime_{out}, H^\prime_{out} + strides[1] ] \\
            W_{out} &\in [ W^\prime_{out}, W^\prime_{out} + strides[2] ]
 
-    Note:
-          The conv3d_transpose can be seen as the backward of the conv3d. For conv3d,
-          when stride > 1, conv3d maps multiple input shape to the same output shape,
-          so for conv3d_transpose, when stride > 1, input shape maps multiple output shape.
-          If output_size is None, :math:`H_{out} = H^\prime_{out}, :math:`H_{out} = \
-          H^\prime_{out}, W_{out} = W^\prime_{out}`; else, the :math:`D_{out}` of the output
-          size must between :math:`D^\prime_{out}` and :math:`D^\prime_{out} + strides[0]`,
-          the :math:`H_{out}` of the output size must between :math:`H^\prime_{out}`
-          and :math:`H^\prime_{out} + strides[1]`, and the :math:`W_{out}` of the output size must
-          between :math:`W^\prime_{out}` and :math:`W^\prime_{out} + strides[2]`,
-          conv3d_transpose can compute the kernel size automatically.
+    If `padding` = `"SAME"`:
+
+        .. math::
+            D^\prime_{out} &= \frac{(D_{in} + stride[0] - 1)}{stride[0]} \\
+            H^\prime_{out} &= \frac{(H_{in} + stride[1] - 1)}{stride[1]} \\
+            W^\prime_{out} &= \frac{(H_{in} + stride[2] - 1)}{stride[2]}
+
+    If `padding` = `"VALID"`:
+
+    .. math::
+        D^\prime_{out} &= (D_{in} - 1) * strides[0] + dilations[0] * (D_f - 1) + 1 \\
+        H^\prime_{out} &= (H_{in} - 1) * strides[1] + dilations[1] * (H_f - 1) + 1 \\
+        W^\prime_{out} &= (W_{in} − 1) * strides[2] + dilations[2] * (W_f − 1) + 1
+
+    If `output_size` is None, :math:`D_{out} = D^\prime_{out}, :math:`H_{out} = \
+    H^\prime_{out}, W_{out} = W^\prime_{out}`; else, the specified `output_size_depth` (the depth of the ouput feature layer) :math:`D_{out}`
+    must between :math:`D^\prime_{out}` and :math:`D^\prime_{out} + strides[0]`(not including :math:`D^\prime_{out} + strides[0]`),
+    the specified `output_size_height` (the height of the ouput feature layer) :math:`H_{out}` must between :math:`H^\prime_{out}`
+    and :math:`H^\prime_{out} + strides[1]`(not including :math:`H^\prime_{out} + strides[1]`),
+    and the the specified `output_size_width` (the width of the ouput feature layer) :math:`W_{out}` must
+    between :math:`W^\prime_{out}` and :math:`W^\prime_{out} + strides[2]`(not including :math:`W^\prime_{out} + strides[2]`).
+
+    Since transposed convolution can be treated as the inverse of convolution,
+    and since different sized input feature layers may correspond to the same sized output feature layer according to the input-output formula for convolution,
+    the size of the output feature layer for a fixed sized input feature layer is not unique to transposed convolution.
+
+    If `output_size` is specified, `conv3d_transpose` can compute the kernel size automatically.
 
     Args:
         input(Tensor): The input is 5-D Tensor with shape [N, C, D, H, W] or [N, D, H, W, C], the data type
@@ -1821,19 +1830,6 @@ def conv3d_transpose(
         out_w) or (num_batches, out_d, out_h, out_w, channels). If act is None, the tensor
         variable storing the transposed convolution result, and if act is not None, the tensor
         variable storing transposed convolution and non-linearity activation result.
-
-    Raises:
-        ValueError: If the type of `use_cudnn` is not bool.
-        ValueError: If `data_format` is not "NCDHW" or "NDHWC".
-        ValueError: If `padding` is a string, but not "SAME" or "VALID".
-        ValueError: If `padding` is a tuple, but the element corresponding to the input's batch size is not 0
-            or the element corresponding to the input's channel is not 0.
-        ValueError: If `output_size` and filter_size are None at the same time.
-        ShapeError: If the input is not 5-D Tensor.
-        ShapeError: If the input's dimension size and filter's dimension size not equal.
-        ShapeError: If the dimension size of input minus the size of `stride` is not 2.
-        ShapeError: If the number of input channels is not equal to filter's channels.
-        ShapeError: If the size of `output_size` is not equal to that of `stride`.
 
     Examples:
        .. code-block:: python
@@ -2343,7 +2339,7 @@ def deform_conv2d(
             float32, float64.
         offset (Tensor): The input coordinate offset of deformable convolution layer.
             A Tensor with type float32, float64.
-        mask (Tensor, Optional): The input mask of deformable convolution layer.
+        mask (Tensor): The input mask of deformable convolution layer.
             A Tensor with type float32, float64. It should be None when you use
             deformable convolution v1.
         num_filters(int): The number of filter. It is as same as the output
@@ -2377,7 +2373,7 @@ def deform_conv2d(
             deformable conv will create ParamAttr as weight_attr.
             If the Initializer of the weight_attr is not set, the parameter is
             initialized with :math:`Normal(0.0, std)`, and the
-            :math:`std` is :math:`(\\frac{2.0 }{filter\_elem\_num})^{0.5}`. Default: None.
+            :math:`std` is :math:`(\frac{2.0 }{filter\_elem\_num})^{0.5}`. Default: None.
         bias_attr (ParamAttr|bool, Optional): The parameter attribute for the bias of
             deformable conv layer. If it is set to False, no bias will be added
             to the output units. If it is set to None or one attribute of ParamAttr, conv2d
@@ -2385,9 +2381,9 @@ def deform_conv2d(
             is not set, the bias is initialized zero. Default: None.
         name(str, Optional): For details, please refer to :ref:`api_guide_Name`.
                         Generally, no setting is required. Default: None.
+
     Returns:
-        Tensor: The tensor storing the deformable convolution \
-                  result. A Tensor with type float32, float64.
+        Tensor: The tensor storing the deformable convolution result. A Tensor with type float32, float64.
 
     Examples:
         .. code-block:: python
@@ -3049,6 +3045,7 @@ def py_func(func, x, out, backward_func=None, skip_vars_in_backward_input=None):
     ``x`` will be inferred automatically.
     This API can also be used to debug the neural network by setting the ``func``
     as a function that only print variables.
+
     Args:
         func (callable): The forward function of the registered OP. When the network
             is running, the forward output ``out`` will be calculated according to this
@@ -3072,10 +3069,15 @@ def py_func(func, x, out, backward_func=None, skip_vars_in_backward_input=None):
             that no tensors need to be removed from ``x`` and ``out``. If it is not None,
             these tensors will not be the input of ``backward_func``. This parameter is only
             useful when ``backward_func`` is not None.
+
     Returns:
-        Tensor|tuple(Tensor)|list[Tensor]: The output ``out`` of the forward function ``func``.
+        Tensor|tuple(Tensor)|list[Tensor], The output ``out`` of the forward function ``func``.
+
     Examples:
+
         .. code-block:: python
+            :name: code-example1
+
             # example 1:
             import paddle
             import numpy as np
@@ -3121,7 +3123,10 @@ def py_func(func, x, out, backward_func=None, skip_vars_in_backward_input=None):
                           feed={'x':input1, 'y':input2},
                           fetch_list=[res.name])
             print(out)
+
         .. code-block:: python
+            :name: code-example2
+
             # example 2:
             # This example shows how to turn Tensor into numpy array and
             # use numpy API to register an Python OP
@@ -3231,6 +3236,313 @@ def py_func(func, x, out, backward_func=None, skip_vars_in_backward_input=None):
     return out
 
 
+@templatedoc()
+def row_conv(input, future_context_size, param_attr=None, act=None):
+    """
+    :api_attr: Static Graph
+
+    ${comment}
+
+    Args:
+        input (${x_type}): ${x_comment}.
+        future_context_size (int): Future context size. Please note, the shape
+            of convolution kernel is [future_context_size + 1, D].
+        param_attr (ParamAttr): Attributes of parameters, including
+            name, initializer etc.
+        act (str): Non-linear activation to be applied to output variable.
+
+    Returns:
+        ${out_comment}.
+
+    Examples:
+
+      .. code-block:: python
+
+        # for LodTensor inputs
+        import paddle
+        paddle.enable_static()
+        x = paddle.static.data(name='x', shape=[9, 16],
+                               dtype='float32', lod_level=1)
+        out_x = paddle.static.nn.row_conv(input=x, future_context_size=2)
+        # for Tensor inputs
+        y = paddle.static.data(name='y', shape=[9, 4, 16], dtype='float32')
+        out_y = paddle.static.nn.row_conv(input=y, future_context_size=2)
+    """
+    helper = LayerHelper('row_conv', **locals())
+    check_variable_and_dtype(input, 'input', ['float32'], 'row_conv')
+    dtype = helper.input_dtype()
+    filter_shape = [future_context_size + 1, input.shape[-1]]
+    filter_param = helper.create_parameter(
+        attr=helper.param_attr, shape=filter_shape, dtype=dtype
+    )
+    out = helper.create_variable_for_type_inference(dtype)
+    helper.append_op(
+        type='row_conv',
+        inputs={'X': [input], 'Filter': [filter_param]},
+        outputs={'Out': [out]},
+    )
+    return helper.append_activation(out)
+
+
+@templatedoc()
+def spectral_norm(weight, dim=0, power_iters=1, eps=1e-12, name=None):
+    r"""
+    :api_attr: Static Graph
+
+    **Spectral Normalization Layer**
+
+    This operation calculates the spectral normalization value of weight parameters of
+    fc, conv1d, conv2d, conv3d layers which should be 2-D, 3-D, 4-D, 5-D
+    Parameters. Output tensor will be in same shape with input tensor.
+    Calculations are showed as follows.
+
+    Step 1:
+    Generate vector U in shape of [H], and V in shape of [W].
+    While H is the :attr:`dim` th dimension of the input weights,
+    and W is the product result of remaining dimensions.
+
+    Step 2:
+    :attr:`power_iters` should be a positive integer, do following
+    calculations with U and V for :attr:`power_iters` rounds. Calculations
+    as follows:
+
+    .. math::
+
+        \mathbf{v} := \\frac{\mathbf{W}^{T} \mathbf{u}}{\|\mathbf{W}^{T} \mathbf{u}\|_2}
+
+        \mathbf{u} := \\frac{\mathbf{W}^{T} \mathbf{v}}{\|\mathbf{W}^{T} \mathbf{v}\|_2}
+
+    Step 3:
+    Calculate :math:`\sigma(\mathbf{W})` and normalize weight values.
+
+    .. math::
+
+        \sigma(\mathbf{W}) = \mathbf{u}^{T} \mathbf{W} \mathbf{v}
+
+        \mathbf{W} = \\frac{\mathbf{W}}{\sigma(\mathbf{W})}
+
+
+    Refer to `Spectral Normalization <https://arxiv.org/abs/1802.05957>`_ .
+
+    Args:
+        weight(Tensor): ${weight_comment}
+        dim(int): ${dim_comment}
+        power_iters(int): ${power_iters_comment}
+        eps(float): ${eps_comment}
+        name(str, optional): For detailed information, please refer
+                             to :ref:`api_guide_Name`. Usually name is no need to set and
+                             None by default.
+
+    Returns:
+        Tensor: A tensor of weight parameters after spectral normalization.
+                  The data type and shape is same as input tensor.
+
+    Examples:
+       .. code-block:: python
+
+            import paddle
+
+            paddle.enable_static()
+            weight = paddle.static.data(name='weight', shape=[2, 8, 32, 32], dtype='float32')
+            x = paddle.static.nn.spectral_norm(weight=weight, dim=1, power_iters=2)
+            print(x.shape) # [2, 8, 32, 32]
+    """
+    helper = LayerHelper('spectral_norm', **locals())
+    check_variable_and_dtype(
+        weight, 'weight', ['float32', 'float64'], 'spectral_norm'
+    )
+    check_type(dim, 'dim', int, 'spectral_norm')
+    check_type(power_iters, 'power_iters', int, 'spectral_norm')
+    check_type(eps, 'eps', float, 'spectral_norm')
+    dtype = weight.dtype
+
+    # create intput and parameters
+    input_shape = weight.shape
+    assert weight.numel() > 0, "Any dimension of input cannot be equal to 0."
+    assert dim < len(input_shape), (
+        "The input `dim` should be less than the "
+        "rank of `weight`, but received dim="
+        "{}".format(dim)
+    )
+    h = input_shape[dim]
+    w = np.prod(input_shape) // h
+
+    u = helper.create_parameter(
+        attr=ParamAttr(),
+        shape=[h],
+        dtype=dtype,
+        default_initializer=Normal(0.0, 1.0),
+    )
+    u.stop_gradient = True
+    v = helper.create_parameter(
+        attr=ParamAttr(),
+        shape=[w],
+        dtype=dtype,
+        default_initializer=Normal(0.0, 1.0),
+    )
+    v.stop_gradient = True
+
+    if paddle.framework.in_dygraph_mode():
+        return paddle._C_ops.spectral_norm(weight, u, v, dim, power_iters, eps)
+
+    inputs = {'Weight': weight}
+    inputs['U'] = u
+    inputs['V'] = v
+
+    # create output
+    out = helper.create_variable(dtype=dtype)
+
+    helper.append_op(
+        type="spectral_norm",
+        inputs=inputs,
+        outputs={
+            "Out": out,
+        },
+        attrs={
+            "dim": dim,
+            "power_iters": power_iters,
+            "eps": eps,
+        },
+    )
+
+    return out
+
+
 # For debug usage
 py_func.registered_func = PyFuncRegistry.registered_func
 py_func.registered_func_num = PyFuncRegistry.registered_func_num
+
+
+@templatedoc()
+def layer_norm(
+    input,
+    scale=True,
+    shift=True,
+    begin_norm_axis=1,
+    epsilon=1e-05,
+    param_attr=None,
+    bias_attr=None,
+    act=None,
+    name=None,
+):
+    r"""
+
+    **Layer Normalization Layer**
+
+    The API implements the function of the Layer Normalization Layer and can be applied to mini-batch input data.
+    Refer to `Layer Normalization <https://arxiv.org/pdf/1607.06450v1.pdf>`_
+
+    The formula is as follows:
+
+    ..  math::
+
+        \mu & = \frac{1}{H}\sum_{i=1}^{H} x_i
+
+        \sigma & = \sqrt{\frac{1}{H}\sum_{i=1}^{H}{(x_i - \mu)^2} + \epsilon}
+
+        y & = f(\frac{g}{\sigma}(x - \mu) + b)
+
+    - :math:`x`: the vector representation of the summed inputs to the neurons in that layer.
+    - :math:`H`: the number of hidden units in a layers
+    - :math:`\\epsilon`: the small value added to the variance to prevent division by zero.
+    - :math:`g`: the trainable scale parameter.
+    - :math:`b`: the trainable bias parameter.
+
+    Args:
+        input(Tensor): A multi-dimension ``Tensor`` , and the data type is float32 or float64.
+        scale(bool, optional): Whether to learn the adaptive gain :math:`g` after
+            normalization. Default: True.
+        shift(bool, optional): Whether to learn the adaptive bias :math:`b` after
+            normalization. Default: True.
+        begin_norm_axis(int, optional): The normalization will be performed along
+            dimensions from :attr:`begin_norm_axis` to :attr:`rank(input)`.
+            Default: 1.
+        epsilon(float, optional): The small value added to the variance to prevent
+            division by zero. Default: 1e-05.
+        param_attr(ParamAttr, optional): The parameter attribute for the learnable
+            gain :math:`g`. If :attr:`scale` is False, :attr:`param_attr` is
+            omitted. If :attr:`scale` is True and :attr:`param_attr` is None,
+            a default :code:`ParamAttr` would be added as scale. The
+            :attr:`param_attr` is initialized as 1 if it is added. Default: None.
+        bias_attr(ParamAttr, optional): The parameter attribute for the learnable
+            bias :math:`b`. If :attr:`shift` is False, :attr:`bias_attr` is
+            omitted. If :attr:`shift` is True and :attr:`param_attr` is None,
+            a default :code:`ParamAttr` would be added as bias. The
+            :attr:`bias_attr` is initialized as 0 if it is added. Default: None.
+        act(str, optional): Activation to be applied to the output of layer normalization.
+                  Default: None.
+        name(str, optional): The default value is None.  Normally there is no need for user to set this property.  For more information, please refer to :ref:`api_guide_Name` .
+
+    Returns:
+        Tensor: ``Tensor``  indicating the normalized result, the data type is the same as  ``input`` , and the return dimension is the same as  ``input`` .
+
+    Examples:
+
+        .. code-block:: python
+
+            import paddle
+            paddle.enable_static()
+            x = paddle.static.data(name='x', shape=[8, 32, 32], dtype='float32')
+            output = paddle.static.nn.layer_norm(input=x, begin_norm_axis=1)
+            print(output.shape)  # [8, 32, 32]
+    """
+    assert (
+        _non_static_mode() is not True
+    ), "please use LayerNorm instead of layer_norm in dygraph mode!"
+    helper = LayerHelper('layer_norm', **locals())
+    check_variable_and_dtype(
+        input, 'input', ['float32', 'float64'], 'layer_norm'
+    )
+    dtype = helper.input_dtype()
+
+    # create intput and parameters
+    inputs = {'X': input}
+    input_shape = input.shape
+    param_shape = [reduce(lambda x, y: x * y, input_shape[begin_norm_axis:])]
+    if scale:
+        assert (
+            param_attr is not False
+        ), "param_attr should not be False when using scale."
+        scale = helper.create_parameter(
+            attr=helper.param_attr,
+            shape=param_shape,
+            dtype=dtype,
+            default_initializer=Constant(1.0),
+        )
+        inputs['Scale'] = scale
+    else:
+        if param_attr:
+            warnings.warn("param_attr is only available with scale is True.")
+    if shift:
+        assert (
+            bias_attr is not False
+        ), "bias_attr should not be False when using shift."
+        bias = helper.create_parameter(
+            attr=helper.bias_attr, shape=param_shape, dtype=dtype, is_bias=True
+        )
+        inputs['Bias'] = bias
+    else:
+        if bias_attr:
+            warnings.warn("bias_attr is only available with shift is True.")
+
+    # create output
+    mean_out = helper.create_variable_for_type_inference(
+        dtype=dtype, stop_gradient=True
+    )
+    variance_out = helper.create_variable_for_type_inference(
+        dtype=dtype, stop_gradient=True
+    )
+    layer_norm_out = helper.create_variable_for_type_inference(dtype)
+
+    helper.append_op(
+        type="layer_norm",
+        inputs=inputs,
+        outputs={
+            "Y": layer_norm_out,
+            "Mean": mean_out,
+            "Variance": variance_out,
+        },
+        attrs={"epsilon": epsilon, "begin_norm_axis": begin_norm_axis},
+    )
+
+    return helper.append_activation(layer_norm_out)

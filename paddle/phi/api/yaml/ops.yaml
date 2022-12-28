@@ -16,6 +16,16 @@
     func : acosh
   backward : acosh_grad
 
+- op : addmm
+  args : (Tensor input, Tensor x, Tensor y, float beta=1.0, float alpha=1.0)
+  output : Tensor
+  infer_meta :
+    func : AddmmInferMeta
+  kernel :
+    func : addmm
+    data_type : x
+  backward : addmm_grad
+
 - op : angle
   args : (Tensor x)
   output : Tensor
@@ -151,6 +161,16 @@
   kernel :
     func : cholesky_solve
   backward : cholesky_solve_grad
+
+- op : complex
+  args : (Tensor real, Tensor imag)
+  output : Tensor
+  infer_meta :
+    func : ComplexInferMeta
+  kernel :
+    func : complex
+    data_type : real
+  backward : complex_grad
 
 - op : conj
   args : (Tensor x)
@@ -411,6 +431,25 @@
     func: fold
   backward: fold_grad
 
+- op : frame
+  args : (Tensor x, int frame_length, int hop_length, int axis=-1)
+  output : Tensor(out)
+  infer_meta :
+    func : FrameInferMeta
+  kernel :
+    func : frame
+  backward : frame_grad
+
+- op : gather_nd
+  args : (Tensor x, Tensor index)
+  output : Tensor
+  infer_meta :
+    func : GatherNdInferMeta
+  kernel :
+    func : gather_nd
+    data_type : x
+  backward : gather_nd_grad
+
 - op : gather_tree
   args : (Tensor ids, Tensor parents)
   output : Tensor(out)
@@ -514,6 +553,16 @@
     func : IsEmptyInferMeta
   kernel :
     func : is_empty
+
+- op : isclose
+  args : (Tensor x, Tensor y, Scalar rtol="1e-5", Scalar atol="1e-8",  bool equal_nan=false)
+  output : Tensor(out)
+  infer_meta :
+    func : ValueCompareInferMeta
+    param: [x, y]
+  kernel :
+    func : isclose
+    data_type : x
 
 - op : isfinite
   args : (Tensor x)
@@ -741,6 +790,25 @@
   kernel :
     func : npu_identity
 
+- op : overlap_add
+  args: (Tensor x, int hop_length, int axis=-1)
+  output: Tensor
+  infer_meta:
+    func: OverlapAddInferMeta
+  kernel:
+    func: overlap_add
+    data_type : x
+  backward: overlap_add_grad
+
+- op : pixel_shuffle
+  args : (Tensor x, int upscale_factor=1, str data_format="NCHW")
+  output : Tensor
+  infer_meta :
+    func : PixelShuffleInferMeta
+  kernel :
+    func : pixel_shuffle
+  backward : pixel_shuffle_grad
+
 - op : poisson
   args : (Tensor x)
   output : Tensor
@@ -800,6 +868,16 @@
   kernel :
     func : renorm
   backward : renorm_grad
+
+- op : roll
+  args : (Tensor x, IntArray shifts={}, int64_t[] axis={})
+  output : Tensor(out)
+  infer_meta :
+    func : RollInferMeta
+  kernel :
+    func : roll
+    data_type : x
+  backward : roll_grad
 
 - op : round
   args : (Tensor x)
@@ -1071,6 +1149,15 @@
     func : unfold
   backward : unfold_grad
 
+- op : unstack
+  args : (Tensor x, int axis=0, int num=0)
+  output : Tensor[](out){num}
+  infer_meta :
+    func : UnStackInferMeta
+  kernel :
+    func : unstack
+  backward : unstack_grad
+
 - op : viterbi_decode
   args : (Tensor potentials, Tensor transition_params, Tensor lengths, bool include_bos_eos_tag = true)
   output : Tensor(scores), Tensor(path)
@@ -1079,6 +1166,17 @@
   kernel :
     func : viterbi_decode
     data_type : potentials
+
+- op : warprnnt
+  args : (Tensor input, Tensor label, Tensor input_lengths, Tensor label_lengths, int blank = 0, float fastemit_lambda = 0.0)
+  output :  Tensor(loss), Tensor(warprnntgrad)
+  infer_meta :
+    func : WarprnntInferMeta
+  kernel :
+    func : warprnnt
+    data_type: input
+  intermediate: warprnntgrad
+  backward : warprnnt_grad
 
 - op : where
   args : (Tensor condition, Tensor x, Tensor y)

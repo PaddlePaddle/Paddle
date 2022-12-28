@@ -1808,8 +1808,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
 #endif
       ) {
         fallback_to_cpu = true;
-        auto phi_cpu_kernel_key =
-            FallBackToCpu(*kernel_type_.get(), phi_kernel_key, *this);
+        auto phi_cpu_kernel_key = FallBackToCpu(phi_kernel_key, *this);
         phi_kernel_.reset(
             new phi::Kernel(phi::KernelFactory::Instance().SelectKernel(
                 phi_kernel_name, phi_cpu_kernel_key)));
@@ -3029,6 +3028,7 @@ void OperatorWithKernel::BuildPhiKernelContext(
         (i == 0 ? 0 : phi_kernel_context->OutputRangeAt(i - 1).second);
 
     if (it == ctx.outputs.end() || it->second.empty()) {
+      VLOG(4) << "Output " << output_names[i] << " not found";
       // Deal with the case that some outputs are not found or be NULL when run
       // the kernel.
       // For example : the outputs of matmul_grad are dx and dy,
@@ -3074,6 +3074,7 @@ void OperatorWithKernel::BuildPhiKernelContext(
               framework::ToTypeName(var->Type())));
         }
       } else {
+        VLOG(4) << "Output " << output_names[i] << " is nullptr";
         phi_kernel_context->EmplaceBackOutputWithoutSetRange(tensor_out);
       }
     }

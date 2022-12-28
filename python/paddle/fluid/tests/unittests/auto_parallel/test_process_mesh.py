@@ -23,7 +23,11 @@ import paddle.static as static
 from paddle.distributed.auto_parallel.dist_context import (
     get_default_distributed_context,
 )
-from paddle.distributed.auto_parallel.process_mesh import ProcessMesh
+from paddle.distributed.auto_parallel.process_mesh import (
+    ProcessMesh,
+    compute_compatible_process_mesh,
+    merge_process_meshes,
+)
 
 paddle.enable_static()
 
@@ -129,7 +133,7 @@ class TestProcessMesh(unittest.TestCase):
             initializer_range=0.02,
         )
 
-        with ProcessMesh(mesh, "d"):
+        with ProcessMesh(mesh, ["d"]):
             out = mlp(input)
 
         default_program = paddle.fluid.default_main_program()
@@ -150,6 +154,67 @@ class TestProcessMesh(unittest.TestCase):
                     self.assertEqual(
                         dist_op.dist_attr.process_mesh, ProcessMesh(mesh)
                     )
+
+    def test_compute_compatible_process_mesh(self):
+        process_mesh1 = ProcessMesh(
+            [[0, 1, 2], [3, 4, 5]], dim_names=["x", "y"]
+        )
+        compatible_process_mesh = compute_compatible_process_mesh(
+            [process_mesh1, None]
+        )
+        self.assertEqual(compatible_process_mesh, process_mesh1)
+        compatible_process_mesh = compute_compatible_process_mesh(
+            [None, process_mesh1]
+        )
+        self.assertEqual(compatible_process_mesh, process_mesh1)
+
+        process_mesh2 = ProcessMesh([[0, 1, 2], [3, 4, 5]])
+        compatible_process_mesh = compute_compatible_process_mesh(
+            [process_mesh1, process_mesh2]
+        )
+        self.assertEqual(compatible_process_mesh, process_mesh1)
+        self.assertEqual(compatible_process_mesh, process_mesh2)
+
+        process_mesh2 = ProcessMesh([[0, 1, 2, 3, 4, 5]])
+        compatible_process_mesh = compute_compatible_process_mesh(
+            [process_mesh1, process_mesh2]
+        )
+        self.assertEqual(compatible_process_mesh, process_mesh1)
+
+        process_mesh2 = ProcessMesh([[0, 1, 2]])
+        compatible_process_mesh = compute_compatible_process_mesh(
+            [process_mesh1, process_mesh2]
+        )
+        self.assertEqual(compatible_process_mesh, process_mesh1)
+
+    def test_merge_process_meshes(self):
+        process_mesh1 = ProcessMesh(
+            [[0, 1, 2], [3, 4, 5]], dim_names=["x", "y"]
+        )
+        merged_process_mesh = merge_process_meshes([process_mesh1, None])
+        self.assertEqual(merged_process_mesh, ProcessMesh([0, 1, 2, 3, 4, 5]))
+        merged_process_mesh = merge_process_meshes([None, process_mesh1])
+        self.assertEqual(merged_process_mesh, ProcessMesh([0, 1, 2, 3, 4, 5]))
+
+        process_mesh2 = ProcessMesh([[0, 1, 2], [3, 4, 5]])
+        merged_process_mesh = merge_process_meshes(
+            [process_mesh1, process_mesh2]
+        )
+        self.assertEqual(merged_process_mesh, ProcessMesh([0, 1, 2, 3, 4, 5]))
+
+        process_mesh2 = ProcessMesh([[0, 1, 2]])
+        merged_process_mesh = merge_process_meshes(
+            [process_mesh1, process_mesh2]
+        )
+        self.assertEqual(merged_process_mesh, ProcessMesh([0, 1, 2, 3, 4, 5]))
+
+        process_mesh2 = ProcessMesh([[6, 7]])
+        merged_process_mesh = merge_process_meshes(
+            [process_mesh1, process_mesh2]
+        )
+        self.assertEqual(
+            merged_process_mesh, ProcessMesh([0, 1, 2, 3, 4, 5, 6, 7])
+        )
 
 
 if __name__ == "__main__":

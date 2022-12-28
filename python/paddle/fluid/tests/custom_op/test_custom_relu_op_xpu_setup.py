@@ -21,7 +21,6 @@ import numpy as np
 
 import paddle
 import paddle.static as static
-from paddle.fluid.framework import _test_eager_guard
 from paddle.utils.cpp_extension.extension_utils import run_cmd
 from paddle.vision.transforms import Compose, Normalize
 
@@ -63,6 +62,33 @@ def custom_relu_static(
                 static.default_main_program(),
                 feed={'X': np_x},
                 fetch_list=[out.name],
+            )
+
+    paddle.disable_static()
+    return out_v
+
+
+def custom_relu_static_pe(func, device, dtype, np_x, use_func=True):
+    paddle.enable_static()
+    paddle.set_device(device)
+
+    places = static.xpu_places()
+    with static.scope_guard(static.Scope()):
+        with static.program_guard(static.Program()):
+            x = static.data(name='X', shape=[None, 8], dtype=dtype)
+            x.stop_gradient = False
+            out = func(x) if use_func else paddle.nn.functional.relu(x)
+            static.append_backward(out)
+
+            exe = static.Executor()
+            exe.run(static.default_startup_program())
+
+            # in static mode, x data has been covered by out
+            compiled_prog = static.CompiledProgram(
+                static.default_main_program()
+            ).with_data_parallel(loss_name=out.name, places=places)
+            out_v = exe.run(
+                compiled_prog, feed={'X': np_x}, fetch_list=[out.name]
             )
 
     paddle.disable_static()
@@ -116,6 +142,9 @@ def custom_relu_static_inference(func, device, np_data, np_label, path_prefix):
 
 
 def custom_relu_double_grad_dynamic(func, device, dtype, np_x, use_func=True):
+    import paddle.fluid as fluid
+
+    fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
     paddle.set_device(device)
 
     t = paddle.to_tensor(np_x, dtype=dtype, stop_gradient=False)
@@ -131,6 +160,7 @@ def custom_relu_double_grad_dynamic(func, device, dtype, np_x, use_func=True):
 
     assert dx[0].grad is not None
     return dx[0].numpy(), dx[0].grad.numpy()
+    fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
 
 class TestNewCustomOpSetUpInstall(unittest.TestCase):
@@ -185,7 +215,23 @@ class TestNewCustomOpSetUpInstall(unittest.TestCase):
                     ),
                 )
 
-    def func_dynamic(self):
+    def test_static_pe(self):
+        for device in self.devices:
+            for dtype in self.dtypes:
+                x = np.random.uniform(-1, 1, [4, 8]).astype(dtype)
+                out = custom_relu_static_pe(self.custom_op, device, dtype, x)
+                pd_out = custom_relu_static_pe(
+                    self.custom_op, device, dtype, x, False
+                )
+                np.testing.assert_array_equal(
+                    out,
+                    pd_out,
+                    err_msg='custom op out: {},\n paddle api out: {}'.format(
+                        out, pd_out
+                    ),
+                )
+
+    def test_dynamic(self):
         for device in self.devices:
             for dtype in self.dtypes:
                 x = np.random.uniform(-1, 1, [4, 8]).astype(dtype)
@@ -209,11 +255,6 @@ class TestNewCustomOpSetUpInstall(unittest.TestCase):
                         x_grad, pd_x_grad
                     ),
                 )
-
-    def test_dynamic(self):
-        with _test_eager_guard():
-            self.func_dynamic()
-        self.func_dynamic()
 
     def test_static_save_and_load_inference_model(self):
         paddle.enable_static()
@@ -306,6 +347,7 @@ class TestNewCustomOpSetUpInstall(unittest.TestCase):
                 )
 
     def test_with_dataloader(self):
+        paddle.disable_static()
         for device in self.devices:
             paddle.set_device(device)
             # data loader
@@ -336,6 +378,7 @@ class TestNewCustomOpSetUpInstall(unittest.TestCase):
 
                 if batch_id == 5:
                     break
+        paddle.enable_static()
 
 
 if __name__ == '__main__':

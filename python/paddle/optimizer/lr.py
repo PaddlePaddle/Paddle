@@ -20,8 +20,6 @@ import numpy
 import paddle.fluid.core as core
 from paddle import Tensor
 
-from ..fluid.framework import _in_legacy_dygraph
-
 __all__ = [  # noqa
     'LRScheduler',
     'NoamDecay',
@@ -1395,15 +1393,8 @@ class ReduceOnPlateau(LRScheduler):
         else:
             self.last_epoch = epoch
 
-        if not _in_legacy_dygraph():
-            tmp = core.eager.Tensor
-        else:
-            # need to declarate explicitly
-            from paddle.framework import VarBase as Tensor
-
-            tmp = Tensor
         # loss must be float, numpy.ndarray or 1-D Tensor with shape [1]
-        if isinstance(metrics, (tmp, numpy.ndarray)):
+        if isinstance(metrics, (core.eager.Tensor, numpy.ndarray)):
             assert len(metrics.shape) == 1 and metrics.shape[0] == 1, (
                 "the metrics.shape "
                 "should be (1L,), but the current metrics.shape is {}. Maybe that "

@@ -272,13 +272,16 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
     if (x->Var()->GetDataType() == framework::proto::VarType::INT64) {
       std::string tmp_name = x->Name() + "_cast_to_INT32";
       LOG(WARNING)
-          << "tensorrt_subgraph's input named " << tmp_name
+          << "tensorrt_subgraph's input named " << x->Name()
           << " having int64 dtype in pdmodel description, we will cast them to "
              "int32 dtype to feed them into paddle-trt.";
-      PADDLE_ENFORCE_EQ(scope->FindVar(tmp_name),
-                        nullptr,
-                        platform::errors::InvalidArgument(
-                            "The  var name %s has exists in scope.", tmp_name));
+      /*
+            PADDLE_ENFORCE_EQ(scope->FindVar(tmp_name),
+                              nullptr,
+                              platform::errors::InvalidArgument(
+                                  "The  var name %s has exists in scope.",
+         tmp_name));
+      */
       scope->Var(tmp_name);
     }
   }
@@ -392,7 +395,7 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
             map_origin_outputs_dtype[name]) ==
         framework::proto::VarType::INT64) {
       std::string tmp_name = name + "_cast_to_INT64";
-      LOG(WARNING) << "tensorrt_subgraph's output named " << tmp_name
+      LOG(WARNING) << "tensorrt_subgraph's output named " << name
                    << " having int64 dtype in pdmodel description, but in fact "
                       "it is int32 "
                       "dtype after executing this tensorrt_subgraph, so we "
