@@ -253,7 +253,7 @@ class BaseErrorClipAttr:
 
 class ErrorClipByValue(BaseErrorClipAttr):
     r"""
-    Clips tensor values to the range [min, max].
+    Clip tensor values to the range [min, max].
 
     Given a tensor ``t`` (see Examples below), this operation clips its value \
     to ``min`` and ``max`` inplace.
