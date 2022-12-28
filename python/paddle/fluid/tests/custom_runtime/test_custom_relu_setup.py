@@ -176,6 +176,7 @@ class TestNewCustomOpSetUpInstall(unittest.TestCase):
         SEED = 2021
         paddle.seed(SEED)
         paddle.framework.random._manual_program_seed(SEED)
+        print("DEBUG setup finished")
 
     def tearDown(self):
         run_cmd("pip uninstall paddle_custom_cpu")
