@@ -22,8 +22,10 @@ from functools import reduce
 import numpy as np
 
 import paddle
-from paddle.fluid.framework import Variable
+from paddle import _legacy_C_ops
+from paddle.fluid.framework import Variable, in_dygraph_mode
 from paddle.fluid.io import is_belong_to_optimizer, is_parameter
+from paddle.fluid.layers.tensor import fill_constant
 from paddle.framework import core
 
 from .dist_attribute import (
