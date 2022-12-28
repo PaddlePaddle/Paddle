@@ -1,3 +1,41 @@
+- op : allclose
+  version :
+    - checkpoint : Upgrade allclose, add two new inputs [Rtol] and [Atol].
+      action:
+        - add_input : Rtol
+          comment : The added input 'Rtol' is not dispensable.
+        - add_input : Atol
+          comment : The added input 'Atol' is not dispensable.
+    - checkpoint : Delete two float attributes [rtol] and [atol],
+        then add 2 string attributes [atol, rtol]. Don't be surprised.
+        This is because float cannot represent hight-precision
+        floating-point values, and our framework doesn't support
+        the use of double attributes. As a result, string instead
+        of double is used here to represent high-precision
+        floating-point values.
+      action :
+        - add_attr : rtol
+          comment : The relative tolerance. Default::math:`1e-5` .
+          default : std::string("1e-5")
+        - delete_attr : rtol
+          comment : The attribute 'rtol' is deleted. The reason why it is deleted is that
+                    attributes do not support a float64 value and it is changed to a tensor.
+        - add_attr : atol
+          comment : (string) The absolute tolerance. Default::math:`1e-8` .
+          default : std::string("1e-5")
+        - delete_attr : atol
+          comment : The attribute 'atol' is deleted. The reason why it is deleted is that
+                    attributes do not support a float64 value and it is changed to a tensor.
+
+- op : clip
+  version :
+    - checkpoint :  Upgrade clip add a new input [Min]
+      action :
+        - add_input : Min
+          comment : Pass the mix, min value as input, not attribute. Min is dispensable.
+        - add_input : Max
+          comment : Pass the mix, min value as input, not attribute. Max is dispensable.
+
 - op : flip
   version :
     - checkpoint : Upgrade flip, add new attr [axis] and delete attr [dims]
