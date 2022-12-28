@@ -26,7 +26,9 @@ import paddle.fluid.framework as framework
 class TestPrune(unittest.TestCase):
     def net(self):
         x = paddle.static.data(name='x', shape=[-1, 2], dtype='float32')
+        x.desc.set_need_check_feed(False)
         label = paddle.static.data(name="label", shape=[-1, 1], dtype="int64")
+        label.desc.set_need_check_feed(False)
         y = fluid.layers.fc(input=[x], size=2, act="softmax")
         loss = paddle.nn.functional.cross_entropy(
             input=y, label=label, reduction='none', use_softmax=False
@@ -162,7 +164,9 @@ def _mock_guard(mock):
 class TestExecutorRunAutoPrune(unittest.TestCase):
     def net1(self):
         x = paddle.static.data(name='x', shape=[-1, 2], dtype='float32')
+        x.desc.set_need_check_feed(False)
         label = paddle.static.data(name="label", shape=[-1, 1], dtype="int64")
+        label.desc.set_need_check_feed(False)
         w_param_attrs = fluid.ParamAttr(
             name="fc_weight",
             learning_rate=0.5,
@@ -186,8 +190,11 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
 
     def net2(self):
         x1 = paddle.static.data(name='x1', shape=[-1, 2], dtype='float32')
+        x1.desc.set_need_check_feed(False)
         x2 = paddle.static.data(name='x2', shape=[-1, 2], dtype='float32')
+        x2.desc.set_need_check_feed(False)
         label = paddle.static.data(name="label", shape=[-1, 1], dtype="int64")
+        label.desc.set_need_check_feed(False)
         w1_param_attrs = fluid.ParamAttr(
             name="fc_weight1",
             learning_rate=0.5,

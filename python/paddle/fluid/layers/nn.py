@@ -891,7 +891,7 @@ def unsqueeze(input, axes, name=None):
         .. code-block:: python
 
             import paddle.fluid as fluid
-            x = paddle.static.data(name='x', shape=[-1, 5, 10])
+            x = paddle.static.data(name='x', shape=[-1, 5, 10], dtype="float32")
             y = fluid.layers.unsqueeze(input=x, axes=[1])
 
     """

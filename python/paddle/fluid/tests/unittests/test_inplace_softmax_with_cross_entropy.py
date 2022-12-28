@@ -39,13 +39,13 @@ class TestSoftmaxWithXe(unittest.TestCase):
             with fluid.scope_guard(fluid.Scope()):
                 x_d = paddle.static.data(
                     name='x',
-                    shape=[-1, m, n],
+                    shape=[m, n],
                     dtype=self.dtype,
                 )
                 x_d.desc.set_need_check_feed(False)
                 y_d = paddle.static.data(
                     name='y',
-                    shape=[-1, m, 1] if not self.soft_label else [m, n],
+                    shape=[m, 1] if not self.soft_label else [m, n],
                     dtype='int64' if not self.soft_label else self.dtype,
                 )
                 y_d.desc.set_need_check_feed(False)

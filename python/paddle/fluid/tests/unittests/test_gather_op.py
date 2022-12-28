@@ -226,14 +226,14 @@ class API_TestGather(unittest.TestCase):
     def test_out1(self):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
             data1 = paddle.static.data('data1', shape=[-1, 2], dtype='float64')
+            data1.desc.set_need_check_feed(False)
             index = paddle.static.data('index', shape=[-1, 1], dtype='int32')
+            index.desc.set_need_check_feed(False)
             out = paddle.gather(data1, index)
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
             input = np.array([[1, 2], [3, 4], [5, 6]])
-            input = input.reshape((-1, 2))
-            index_1 = np.array([1, 2]).astype('int32')
-            index_1 = index_1.reshape((-1, 1))
+            index_1 = np.array([1, 2])
             (result,) = exe.run(
                 feed={"data1": input, "index": index_1}, fetch_list=[out]
             )

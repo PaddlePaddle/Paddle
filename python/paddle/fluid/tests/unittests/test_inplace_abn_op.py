@@ -50,7 +50,7 @@ class TestInplaceANBOpTraining(unittest.TestCase):
             with fluid.program_guard(main, startup):
                 data = paddle.static.data(
                     name='input',
-                    shape=[-1] + self.dshape,
+                    shape=self.dshape,
                     dtype=self.dtype,
                 )
                 data.stop_gradient = False

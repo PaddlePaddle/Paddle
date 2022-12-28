@@ -331,10 +331,13 @@ class TestDygraphPtbRnn(unittest.TestCase):
             x = paddle.static.data(
                 name="x", shape=[-1, num_steps], dtype='int64'
             )
+            x.desc.set_need_check_feed(False)
             y = paddle.static.data(name="y", shape=[-1, 1], dtype='float32')
+            y.desc.set_need_check_feed(False)
             init_hidden = paddle.static.data(
                 name="init_hidden", shape=[-1, 1], dtype='float32'
             )
+            init_hidden.desc.set_need_check_feed(False)
             init_cell = paddle.static.data(
                 name="init_cell", shape=[-1, 1], dtype='float32'
             )

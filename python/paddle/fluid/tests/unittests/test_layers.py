@@ -31,6 +31,18 @@ from paddle.fluid.framework import Program, default_main_program, program_guard
 from paddle.tensor import random
 
 
+def wrap_static_data(func):
+    def wrapper(*arg, **kwargs):
+        data = func(*arg, **kwargs)
+        data.desc.set_need_check_feed(False)
+        return data
+
+    return wrapper
+
+
+paddle.static.data = wrap_static_data(paddle.static.data)
+
+
 class LayerTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):

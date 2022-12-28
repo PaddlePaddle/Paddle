@@ -81,12 +81,15 @@ class TestWhereAPI(unittest.TestCase):
                     cond = paddle.static.data(
                         name='cond', shape=[-1] + self.shape, dtype='bool'
                     )
+                    cond.desc.set_need_check_feed(False)
                     x = paddle.static.data(
                         name='x', shape=[-1] + self.shape, dtype='float32'
                     )
+                    x.desc.set_need_check_feed(False)
                     y = paddle.static.data(
                         name='y', shape=[-1] + self.shape, dtype='float32'
                     )
+                    y.desc.set_need_check_feed(False)
                     x.stop_gradient = x_stop_gradient
                     x.desc.set_need_check_feed(False)
                     y.stop_gradient = y_stop_gradient
@@ -130,7 +133,9 @@ class TestWhereAPI(unittest.TestCase):
         main_program = Program()
         with fluid.program_guard(main_program):
             x = paddle.static.data(name='x', shape=[-1, 4, 1], dtype='float32')
+            x.desc.set_need_check_feed(False)
             y = paddle.static.data(name='y', shape=[-1, 4, 2], dtype='float32')
+            y.desc.set_need_check_feed(False)
             x_i = np.array([[0.9383, 0.1983, 3.2, 1.2]]).astype('float32')
             y_i = np.array([[1.0, 1.0, 1.0, 1.0], [1.0, 1.0, 1.0, 1.0]]).astype(
                 'float32'
@@ -156,6 +161,7 @@ class TestWhereAPI(unittest.TestCase):
             cond = paddle.static.data(
                 name='cond', shape=[-1] + cond_shape, dtype='bool'
             )
+            cond.desc.set_need_check_feed(False)
             x_data = 1.0
             y_data = 2.0
             cond_data = np.array([False, False, True, True]).astype('bool')
@@ -339,6 +345,7 @@ class TestWhereDygraphAPI(unittest.TestCase):
         data = np.array([[True, False], [False, True]])
         with program_guard(Program(), Program()):
             x = paddle.static.data(name='x', shape=[(-1), 2], dtype='float32')
+            x.desc.set_need_check_feed(False)
             y = paddle.where(x)
             self.assertEqual(type(y), tuple)
             self.assertEqual(len(y), 2)
@@ -352,6 +359,7 @@ class TestWhereDygraphAPI(unittest.TestCase):
         data = np.array([True, True, False])
         with program_guard(Program(), Program()):
             x = paddle.static.data(name='x', shape=[(-1)], dtype='float32')
+            x.desc.set_need_check_feed(False)
             y = paddle.where(x)
             self.assertEqual(type(y), tuple)
             self.assertEqual(len(y), 1)
@@ -378,10 +386,13 @@ class TestWhereOpError(unittest.TestCase):
 
             def test_type():
                 x = paddle.static.data(name='x', shape=[-1, 4], dtype='bool')
+                x.desc.set_need_check_feed(False)
                 y = paddle.static.data(name='y', shape=[-1, 4], dtype='float16')
+                y.desc.set_need_check_feed(False)
                 cond = paddle.static.data(
                     name='cond', shape=[-1, 4], dtype='int32'
                 )
+                cond.desc.set_need_check_feed(False)
                 paddle.where(cond, x, y)
 
             self.assertRaises(TypeError, test_type)

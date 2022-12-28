@@ -27,18 +27,14 @@ class TestExecutor(unittest.TestCase):
         startup_program = fluid.Program()
         with fluid.program_guard(main_program, startup_program):
             a = paddle.static.data(name='a', shape=[-1, 784], dtype='float32')
-            b = paddle.static.data(
-                name='b', shape=[-1, 784, 100], dtype='float32'
-            )
+            b = paddle.static.data(name='b', shape=[784, 100], dtype='float32')
+            a.desc.set_need_check_feed(False)
+            b.desc.set_need_check_feed(False)
             output = paddle.matmul(x=a, y=b)
 
         # Compute with numpy
-        a_np = np.random.random((100, 784)).astype('float32').reshape((-1, 784))
-        b_np = (
-            np.random.random((784, 100))
-            .astype('float32')
-            .reshape((-1, 784, 100))
-        )
+        a_np = np.random.random((100, 784)).astype('float32')
+        b_np = np.random.random((784, 100)).astype('float32')
         out_np = np.dot(a_np, b_np)
 
         place = paddle.CPUPlace()
