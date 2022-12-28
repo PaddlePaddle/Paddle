@@ -151,6 +151,7 @@ class TestNewCustomOpSetUpInstall(unittest.TestCase):
                 self.temp_dir.name
             ),
         )
+        print(paddle.device.get_all_custom_device_type())
 
         site_dir = site.getsitepackages()[0]
         print("site_dir", site_dir)
