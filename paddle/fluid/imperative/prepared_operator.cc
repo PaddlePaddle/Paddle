@@ -333,7 +333,8 @@ PreparedOp PrepareImpl(
               << " | kernel key: " << expected_kernel_key
               << " | kernel: " << phi_kernel;
 
-      if (expected_kernel_key.backend() != phi::TransToPhiBackend(place)) {
+      if (!framework::backends_are_same_class(expected_kernel_key.backend(),
+                                              phi::TransToPhiBackend(place))) {
         dev_ctx = pool.Get(phi::TransToPhiPlace(expected_kernel_key.backend()));
         VLOG(1) << "DEBUG imperative changed place " << place << " -> "
                 << dev_ctx->GetPlace();

@@ -94,11 +94,12 @@ void TransformData(const phi::KernelKey &expected_kernel_type,
       }
     } else {
       // Case3 - transfrom between Non-ONEDNN OPKernels
-      TransDataLayout(kernel_type_for_var, expected_kernel_type, in, &out);
+      TransDataLayout(
+          kernel_type_for_var, expected_kernel_type, in, &out, place);
     }
 #else
     // Case3 - transfrom between Non-ONEDNN OPKernels
-    TransDataLayout(kernel_type_for_var, expected_kernel_type, in, &out);
+    TransDataLayout(kernel_type_for_var, expected_kernel_type, in, &out, place);
 #endif
     transformed = true;
     PassTensorData(&out, &in);
@@ -112,13 +113,9 @@ void TransformData(const phi::KernelKey &expected_kernel_type,
   }
 
   // do device transform
-  if (expected_kernel_type.backend() != kernel_type_for_var.backend()) {
-    if (expected_kernel_type.backend() == phi::TransToPhiBackend(place)) {
-      TransDataDevice(in, place, &out);
-    } else {
-      TransDataDevice(
-          in, phi::TransToPhiPlace(expected_kernel_type.backend()), &out);
-    }
+  if (kernel_type_for_var.backend() != phi::Backend::ALL_BACKEND &&
+      !platform::is_same_place(in.place(), place)) {
+    TransDataDevice(in, place, &out);
     transformed = true;
     PassTensorData(&out, &in);
   }
