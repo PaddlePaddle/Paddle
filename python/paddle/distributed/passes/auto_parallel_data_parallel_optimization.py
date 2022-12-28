@@ -94,6 +94,7 @@ class DataParallelOptimizationPass(PassBase):
         self.coalesce_prefix = 'coalesce_grad'
         if use_standalone_executor():
             self.gradient_sync_stream = "gradient_sync_stream"
+            self.comm_op_priority = -1
 
         with paddle.static.program_guard(main_program, startup_program):
             self._analyze_program()
@@ -656,6 +657,7 @@ class DataParallelOptimizationPass(PassBase):
                 sync=False,
             )
             depend_op.dist_attr.execution_stream = self.gradient_sync_stream
+            depend_op.dist_attr.scheduling_priority = self.comm_op_priority
         block._sync_with_cpp()
 
         # remove naive synchronization & assign allreduce stream
@@ -672,6 +674,7 @@ class DataParallelOptimizationPass(PassBase):
             if is_data_parallel_reduce_op(op):
                 op._set_attr('use_calc_stream', True)
                 op.dist_attr.execution_stream = self.gradient_sync_stream
+                op.dist_attr.scheduling_priority = self.comm_op_priority
 
             if remove_cond(op):
                 block._remove_op(idx, sync=False)
