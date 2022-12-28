@@ -2429,7 +2429,7 @@ Scope* OperatorWithKernel::PrepareData(
       auto kernel_type_for_var =
           GetKernelTypeForVar(in_name, *tensor_in, expected_kernel_key);
       bool need_trans_dtype =
-          kernel_type_for_var.dtype() != expected_kernel_key.dtype();
+          NeedTransformDataType(expected_kernel_key, kernel_type_for_var);
       bool need_trans_layout = NeedTransformLayout(
           kernel_type_for_var.layout(), expected_kernel_key.layout());
       if (!need_trans_dtype && !need_trans_layout) {

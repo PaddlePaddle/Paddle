@@ -106,7 +106,7 @@ void TransformData(const phi::KernelKey &expected_kernel_type,
   }
 
   // do data type transform
-  if (expected_kernel_type.dtype() != kernel_type_for_var.dtype()) {
+  if (NeedTransformDataType(expected_kernel_type, kernel_type_for_var)) {
     TransDataType(kernel_type_for_var, expected_kernel_type, in, &out);
     transformed = true;
     PassTensorData(&out, &in);

@@ -111,7 +111,8 @@ inline bool NeedTransformLayout(const DataLayout& l, const DataLayout& r) {
 
 inline bool NeedTransformDataType(const phi::KernelKey& l,
                                   const phi::KernelKey& r) {
-  return (l.dtype() != r.dtype());
+  return l.dtype() != phi::DataType::ALL_DTYPE &&
+         r.dtype() != phi::DataType::ALL_DTYPE && l.dtype() != r.dtype();
 }
 
 inline bool backends_are_same_class(const phi::Backend& l,
@@ -131,8 +132,8 @@ inline bool backends_are_same_class(const phi::Backend& l,
 }
 
 inline bool NeedTransform(const phi::KernelKey& l, const phi::KernelKey& r) {
-  return (!backends_are_same_class(l.backend(), r.backend())) ||
-         (l.dtype() != r.dtype()) ||
+  return !backends_are_same_class(l.backend(), r.backend()) ||
+         (NeedTransformDataType(l, r)) ||
          NeedTransformLayout(l.layout(), r.layout());
 }
 
