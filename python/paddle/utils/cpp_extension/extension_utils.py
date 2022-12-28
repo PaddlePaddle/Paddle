@@ -1001,7 +1001,7 @@ def _custom_api_content(op_name):
         """
         import paddle.fluid.core as core
         from paddle.fluid.core import VarBase, CustomOpKernelContext
-        from paddle.fluid.framework import _dygraph_tracer in_dygraph_mode
+        from paddle.fluid.framework import _dygraph_tracer, in_dygraph_mode
         from paddle.fluid.layer_helper import LayerHelper
 
         def {op_name}({inputs}):
