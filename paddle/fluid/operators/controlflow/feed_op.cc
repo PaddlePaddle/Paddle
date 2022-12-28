@@ -158,6 +158,9 @@ It should not be configured by users directly.
 }  // namespace operators
 }  // namespace paddle
 
+// TODO(YuanRisheng): Maybe we need design a new registry macro for
+// registering device independent kernels.
+
 REGISTER_OPERATOR(
     feed,
     paddle::operators::FeedOp,
