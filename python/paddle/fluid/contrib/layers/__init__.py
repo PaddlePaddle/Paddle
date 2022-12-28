@@ -12,12 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from . import nn
-from .nn import *
 
 from . import metric_op
 from .metric_op import *
 
 __all__ = []
-__all__ += nn.__all__
 __all__ += metric_op.__all__

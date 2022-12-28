@@ -438,7 +438,7 @@ def embedding(
     if is_distributed:
         is_distributed = False
         warnings.warn(
-            "is_distributed is go out of use, `fluid.contrib.layers.sparse_embedding` is your needed"
+            "is_distributed is go out of use, `paddle.static.nn.sparse_embedding` is your needed"
         )
 
     remote_prefetch = True if is_sparse else False

@@ -17,8 +17,6 @@ import unittest
 import numpy as np
 from op_test import OpTest
 
-import paddle.fluid as fluid
-
 
 def create_tdm_tree():
     """Create tdm tree info"""
@@ -135,35 +133,6 @@ class TestCase4(TestTDMChildOp):
         self.child_shape = (100, 20, 2)
         self.x_type = 'int32'
         self.info_type = 'int32'
-
-
-class TestTDMChildShape(unittest.TestCase):
-    def test_shape(self):
-        x = fluid.layers.data(name='x', shape=[1], dtype='int32', lod_level=1)
-        tdm_tree_info = create_tdm_tree()
-        tree_info_np = np.array(tdm_tree_info).astype('int32')
-
-        child, leaf_mask = fluid.contrib.layers.tdm_child(
-            x=x,
-            node_nums=26,
-            child_nums=2,
-            param_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.NumpyArrayInitializer(
-                    tree_info_np
-                )
-            ),
-        )
-
-        place = fluid.CPUPlace()
-        exe = fluid.Executor(place=place)
-        exe.run(fluid.default_startup_program())
-
-        feed = {
-            'x': np.array(
-                [[1], [2], [3], [4], [5], [6], [7], [8], [9], [10], [11], [12]]
-            ).astype('int32')
-        }
-        exe.run(feed=feed)
 
 
 if __name__ == "__main__":

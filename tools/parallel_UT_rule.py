@@ -2413,7 +2413,6 @@ TETRAD_PARALLEL_JOB = [
     'test_randperm_op',
     'test_randint_like',
     'test_pylayer_op',
-    'test_pow2_decay_with_linear_warmup_op',
     'test_pow',
     'test_paddle_imperative_double_grad',
     'test_optimizer_for_varbase',

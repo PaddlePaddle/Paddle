@@ -217,7 +217,7 @@ class TestDistMnistAsync2x2WithGauss(TestFleetBase):
             init = fluid.initializer.Uniform()
 
             dnn_layer_dims = [128, 64, 32]
-            dnn_embedding = fluid.contrib.layers.sparse_embedding(
+            dnn_embedding = paddle.static.nn.sparse_embedding(
                 input=dnn_data,
                 size=[dnn_input_dim, dnn_layer_dims[0]],
                 is_test=inference,
@@ -242,7 +242,7 @@ class TestDistMnistAsync2x2WithGauss(TestFleetBase):
                 dnn_out = fc
 
             # build lr model
-            lr_embbding = fluid.contrib.layers.sparse_embedding(
+            lr_embbding = paddle.static.nn.sparse_embedding(
                 input=lr_data,
                 size=[lr_input_dim, 1],
                 is_test=inference,

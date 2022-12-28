@@ -438,7 +438,6 @@ list(REMOVE_ITEM TEST_OPS test_async_ssa_graph_executor_mnist)
 list(REMOVE_ITEM TEST_OPS test_install_check)
 list(REMOVE_ITEM TEST_OPS test_fuse_all_reduce_pass)
 list(REMOVE_ITEM TEST_OPS test_fuse_bn_act_pass)
-list(REMOVE_ITEM TEST_OPS test_fuse_bn_add_act_pass)
 
 # disable this unittest temporarily
 list(REMOVE_ITEM TEST_OPS test_imperative_data_loader_exception)
@@ -773,14 +772,6 @@ py_test_modules(
   test_fuse_bn_act_pass
   MODULES
   test_fuse_bn_act_pass
-  ENVS
-  FLAGS_cudnn_deterministic=1
-  FLAGS_cudnn_batchnorm_spatial_persistent=1
-  FLAGS_conv_workspace_size_limit=1000)
-py_test_modules(
-  test_fuse_bn_add_act_pass
-  MODULES
-  test_fuse_bn_add_act_pass
   ENVS
   FLAGS_cudnn_deterministic=1
   FLAGS_cudnn_batchnorm_spatial_persistent=1
