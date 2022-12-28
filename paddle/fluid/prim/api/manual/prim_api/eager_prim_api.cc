@@ -12,22 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
-#include <string>
-#include <vector>
-#include "paddle/fluid/framework/op_proto_maker.h"
-namespace paddle {
-namespace prims {
+#include "paddle/fluid/prim/api/manual/prim_api/prim_api.h"
 
-template <typename T>
-T* CreateVar(const std::string& name = "",
-             std::vector<int64_t> shape = {},
-             bool is_persistable = false,
-             framework::proto::VarType::Type data_type =
-                 framework::proto::VarType::FP32);
-
-template <typename T>
-T* CreateVarLike(const T& var);
-
-}  // namespace prims
-}  // namespace paddle
+namespace egr {
+template void Pow(const paddle::experimental::Tensor& X,
+                  const paddle::optional<T>& FactorTensor,
+                  float factor,
+                  T* Out) {
+  pow_ad_func()
+}
+}  // namespace egr

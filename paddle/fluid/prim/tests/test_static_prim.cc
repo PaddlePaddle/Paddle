@@ -14,16 +14,19 @@
 
 #include "glog/logging.h"
 #include "gtest/gtest.h"
-#include "paddle/fluid/eager/api/prims/utils.h"
 #include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/framework/op_proto_maker.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/program_desc.h"
+#include "paddle/fluid/prim/api/manual/utils/utils.h"
+#include "paddle/fluid/prim/utils/static/desc_tensor.h"
 #include "paddle/phi/core/enforce.h"
 
 namespace paddle {
-namespace prims {
+namespace prim {
+
+using Tensor = paddle::experimental::Tensor;
 struct TestBaseProgram {
  public:
   const framework::ProgramDesc& main_program() { return program_; }
@@ -84,12 +87,18 @@ TEST(StaticPrim, TanhBackwardComposite) {
   // Prepare for forward tanh
   std::vector<int64_t> shape = {2, 2};
   StaticCompositeContext::Instance().SetBlock(target_block);
-  auto* X = prims::CreateVar<framework::VarDesc>(
-      "a", shape, false, framework::proto::VarType::FP32);
-  auto* Out = prims::CreateVar<framework::VarDesc>(
-      "b", shape, false, framework::proto::VarType::FP32);
+  Tensor x = prim::empty<prim::DescTensor>(
+      shape, phi::DataType::FLOAT32, paddle::Place());
+  Tensor out = prim::empty<prim::DescTensor>(
+      shape, phi::DataType::FLOAT32, paddle::Place());
+  framework::VarDesc* x_desc =
+      static_cast<prim::DescTensor*>(x.impl().get())->get_ptr();
+  target_block->RenameVar(x_desc->Name(), "a");
+  framework::VarDesc* out_desc =
+      static_cast<prim::DescTensor*>(out.impl().get())->get_ptr();
+  target_block->RenameVar(out_desc->Name(), "b");
   // TODO(jiabin): Grad out should be created by full, we can test it later
-  base_program.tanh(X, Out);
+  base_program.tanh(target_block->FindVar("a"), target_block->FindVar("b"));
 
   ASSERT_EQ(target_block->AllOps().size(), static_cast<std::size_t>(1));
   ASSERT_EQ(target_block->AllOps()[0]->Type(), "tanh");
@@ -99,17 +108,22 @@ TEST(StaticPrim, TanhBackwardComposite) {
   ASSERT_EQ(target_block->AllOps()[0]->Outputs().at("Out").size(),
             std::size_t(1));
   ASSERT_EQ(target_block->AllOps()[0]->Outputs().at("Out")[0], "b");
+  ASSERT_EQ(target_block->AllVars().size(), static_cast<std::size_t>(2));
+  ASSERT_EQ(target_block->AllVars()[0]->Name(), "a");
+  ASSERT_EQ(target_block->AllVars()[1]->Name(), "b");
   auto* forward_opdesc = target_block->AllOps()[0];
   std::unordered_map<std::string, std::string> grad_to_var;
   std::vector<framework::BlockDesc*> grad_sub_block;
-  framework::OpInfoMap::Instance()
-      .Get(forward_opdesc->Type())
-      .GradCompOpMaker()(*forward_opdesc,
-                         std::unordered_set<std::string>(),
-                         &grad_to_var,
-                         target_block,
-                         grad_sub_block);
-  ASSERT_EQ(target_block->AllOps().size(), static_cast<std::size_t>(4));
+  std::vector<std::unique_ptr<framework::OpDesc>> grad_ops =
+      std::move(framework::OpInfoMap::Instance()
+                    .Get(forward_opdesc->Type())
+                    .GradCompOpMaker()(*forward_opdesc,
+                                       std::unordered_set<std::string>(),
+                                       &grad_to_var,
+                                       target_block,
+                                       grad_sub_block));
+  ASSERT_EQ(target_block->AllOps().size(), static_cast<std::size_t>(1));
+  ASSERT_EQ(grad_ops.size(), static_cast<std::size_t>(3));
   ASSERT_EQ(target_block->AllOps()[0]->Type(), "tanh");
   ASSERT_EQ(target_block->AllOps()[0]->Inputs().at("X").size(),
             static_cast<std::size_t>(1));
@@ -117,40 +131,35 @@ TEST(StaticPrim, TanhBackwardComposite) {
   ASSERT_EQ(target_block->AllOps()[0]->Outputs().at("Out").size(),
             static_cast<std::size_t>(1));
   ASSERT_EQ(target_block->AllOps()[0]->Outputs().at("Out")[0], "b");
+  ASSERT_EQ(target_block->AllOps()[0]->Outputs().at("Out")[0], "b");
 
-  ASSERT_EQ(target_block->AllOps()[1]->Type(), "pow");
-  ASSERT_EQ(target_block->AllOps()[1]->Inputs().at("X").size(),
-            static_cast<std::size_t>(1));
-  ASSERT_EQ(target_block->AllOps()[1]->Inputs().at("X")[0], "b");
-  ASSERT_EQ(
-      PADDLE_GET_CONST(float, target_block->AllOps()[1]->GetAttr("factor")),
-      static_cast<float>(2.0));
-  ASSERT_EQ(target_block->AllOps()[1]->Outputs().at("Out").size(),
+  ASSERT_EQ(grad_ops[0]->Type(), "pow");
+  ASSERT_EQ(grad_ops[0]->Inputs().at("X").size(), static_cast<std::size_t>(1));
+  ASSERT_EQ(grad_ops[0]->Inputs().at("X")[0], "b");
+  ASSERT_EQ(PADDLE_GET_CONST(float, grad_ops[0]->GetAttr("factor")),
+            static_cast<float>(2.0));
+  ASSERT_EQ(grad_ops[0]->Outputs().at("Out").size(),
             static_cast<std::size_t>(1));
 
-  ASSERT_EQ(target_block->AllOps()[2]->Type(), "scale");
-  ASSERT_EQ(target_block->AllOps()[2]->Inputs().at("X").size(),
-            static_cast<std::size_t>(1));
-  ASSERT_EQ(target_block->AllOps()[2]->Inputs().at("X")[0],
-            target_block->AllOps()[1]->Outputs().at("Out")[0]);
-  ASSERT_EQ(
-      PADDLE_GET_CONST(float, target_block->AllOps()[2]->GetAttr("scale")),
-      static_cast<float>(-1.0));
-  ASSERT_EQ(PADDLE_GET_CONST(float, target_block->AllOps()[2]->GetAttr("bias")),
+  ASSERT_EQ(grad_ops[1]->Type(), "scale");
+  ASSERT_EQ(grad_ops[1]->Inputs().at("X").size(), static_cast<std::size_t>(1));
+  ASSERT_EQ(grad_ops[1]->Inputs().at("X")[0],
+            grad_ops[0]->Outputs().at("Out")[0]);
+  ASSERT_EQ(PADDLE_GET_CONST(float, grad_ops[1]->GetAttr("scale")),
+            static_cast<float>(-1.0));
+  ASSERT_EQ(PADDLE_GET_CONST(float, grad_ops[1]->GetAttr("bias")),
             static_cast<float>(1.0));
-  ASSERT_EQ(target_block->AllOps()[2]->Outputs().at("Out").size(),
+  ASSERT_EQ(grad_ops[1]->Outputs().at("Out").size(),
             static_cast<std::size_t>(1));
 
-  ASSERT_EQ(target_block->AllOps()[3]->Type(), "elementwise_mul");
-  ASSERT_EQ(target_block->AllOps()[3]->Inputs().at("X").size(),
-            static_cast<std::size_t>(1));
-  ASSERT_EQ(target_block->AllOps()[3]->Inputs().at("Y").size(),
-            static_cast<std::size_t>(1));
-  ASSERT_EQ(target_block->AllOps()[3]->Inputs().at("Y")[0],
-            target_block->AllOps()[2]->Outputs().at("Out")[0]);
-  ASSERT_EQ(target_block->AllOps()[3]->Inputs().at("X")[0], "b@GRAD");
-  ASSERT_EQ(target_block->AllOps()[3]->Outputs().at("Out").size(),
+  ASSERT_EQ(grad_ops[2]->Type(), "elementwise_mul");
+  ASSERT_EQ(grad_ops[2]->Inputs().at("X").size(), static_cast<std::size_t>(1));
+  ASSERT_EQ(grad_ops[2]->Inputs().at("Y").size(), static_cast<std::size_t>(1));
+  ASSERT_EQ(grad_ops[2]->Inputs().at("Y")[0],
+            grad_ops[1]->Outputs().at("Out")[0]);
+  ASSERT_EQ(grad_ops[2]->Inputs().at("X")[0], "b@GRAD");
+  ASSERT_EQ(grad_ops[2]->Outputs().at("Out").size(),
             static_cast<std::size_t>(1));
 }
-}  // namespace prims
+}  // namespace prim
 }  // namespace paddle

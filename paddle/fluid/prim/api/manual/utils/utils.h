@@ -13,27 +13,24 @@
 // limitations under the License.
 
 #pragma once
-#include "paddle/phi/common/scalar.h"
-#include "paddle/utils/optional.h"
+#include <string>
+#include <vector>
+#include "paddle/fluid/framework/op_proto_maker.h"
+#include "paddle/phi/common/data_type.h"
+#include "paddle/phi/common/int_array.h"
+#include "paddle/phi/common/place.h"
 namespace paddle {
-namespace prims {
+namespace prim {
 
 template <typename T>
-void Pow(const T& X,
-         const paddle::optional<T>& FactorTensor,
-         float factor,
-         T* Out);
+paddle::experimental::Tensor empty(const paddle::experimental::IntArray& shape,
+                                   paddle::experimental::DataType dype,
+                                   const paddle::Place& place);
 
 template <typename T>
-void Scale(const T& X,
-           const paddle::optional<T>& ScaleTensor,
-           float scale,
-           float bias,
-           bool bias_after_scale,
-           T* out);
+paddle::experimental::Tensor empty_like(const paddle::experimental::Tensor& x,
+                                        paddle::experimental::DataType dtype,
+                                        const paddle::Place& place);
 
-template <typename T>
-void Mul(const T& X, const T& Y, T* Out);
-
-}  // namespace prims
+}  // namespace prim
 }  // namespace paddle

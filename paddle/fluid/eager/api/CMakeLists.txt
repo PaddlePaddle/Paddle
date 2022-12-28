@@ -1,7 +1,6 @@
 add_subdirectory(manual)
 add_subdirectory(utils)
 add_subdirectory(generated)
-add_subdirectory(prims)
 
 cc_library(
   eager_api

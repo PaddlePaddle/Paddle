@@ -12,13 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/eager/api/prims/prim_api.h"
+#include "paddle/fluid/prim/api/all.h"
 
-namespace egr {
-template void Pow(const paddle::experimental::Tensor& X,
-                  const paddle::optional<T>& FactorTensor,
-                  float factor,
-                  T* Out) {
-  pow_ad_func()
-}
-}  // namespace egr
+namespace paddle {
+namespace prim {}  // namespace prim
+}  // namespace paddle

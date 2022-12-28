@@ -12,11 +12,24 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/eager/api/prims/static_global_utils.h"
-
+#pragma once
+#include "paddle/phi/common/scalar.h"
+#include "paddle/utils/optional.h"
 namespace paddle {
-namespace prims {
-StaticCompositeContext* StaticCompositeContext::static_composite_context_ =
-    new StaticCompositeContext();
-}
+namespace prim {
+using Tensor = paddle::experimental::Tensor;
+
+template <typename T>
+Tensor pow(const Tensor& x, const paddle::experimental::Scalar& y);
+
+template <typename T>
+Tensor scale(const Tensor& X,
+             const paddle::experimental::Scalar& scale,
+             float bias,
+             bool bias_after_scale);
+
+template <typename T>
+Tensor multiply(const Tensor& x, const Tensor& y);
+
+}  // namespace prim
 }  // namespace paddle

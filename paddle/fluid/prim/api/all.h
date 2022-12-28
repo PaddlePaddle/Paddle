@@ -13,16 +13,6 @@
 // limitations under the License.
 
 #pragma once
-#include "paddle/fluid/eager/api/prims/prim_api.h"
-#include "paddle/fluid/eager/api/prims/utils.h"
-namespace paddle {
-namespace prims {
-template <typename T>
-void TanhBackwardFunc(const T& out, const T& grad_out, T* grad_x) {
-  T* tmp = CreateVarLike<T>(out);
-  Pow<T>(out, paddle::optional<T>(), 2.0, tmp);
-  Scale<T>(*tmp, paddle::optional<T>(), -1.0, 1.0, true, tmp);
-  Mul<T>(grad_out, *tmp, grad_x);
-}
-}  // namespace prims
-}  // namespace paddle
+#include "paddle/fluid/prim/api/manual/backward/composite_backward_api.h"
+#include "paddle/fluid/prim/api/manual/prim_api/prim_api.h"
+#include "paddle/fluid/prim/api/manual/utils/utils.h"

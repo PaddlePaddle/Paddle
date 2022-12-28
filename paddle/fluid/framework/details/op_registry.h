@@ -23,7 +23,6 @@ limitations under the License. */
 #include <unordered_set>
 #include <vector>
 
-#include "paddle/fluid/eager/api/prims/composite_grad_desc_maker.h"
 #include "paddle/fluid/framework/grad_op_desc_maker.h"
 #include "paddle/fluid/framework/inplace_op_inference.h"
 #include "paddle/fluid/framework/no_need_buffer_vars_inference.h"
@@ -33,6 +32,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/var_type_inference.h"
 #include "paddle/fluid/imperative/dygraph_grad_maker.h"
 #include "paddle/fluid/imperative/type_defs.h"
+#include "paddle/fluid/prim/utils/static/composite_grad_desc_maker.h"
 
 namespace paddle {
 namespace framework {
@@ -58,16 +58,16 @@ struct TypePair {
   static constexpr OpInfoFillType kFillType = kType;
 };
 
-using OpRegistryClasses = std::tuple<                                 // NOLINT
-    TypePair<OperatorBase, kOperator>,                                // NOLINT
-    TypePair<OpProtoAndCheckerMaker, kOpProtoAndCheckerMaker>,        // NOLINT
-    TypePair<GradOpDescMakerBase, kGradOpDescMaker>,                  // NOLINT
-    TypePair<imperative::GradOpBaseMakerBase, kGradOpBaseMaker>,      // NOLINT
-    TypePair<prims::GradCompositeOpMakerBase, kGradCompOpDescMaker>,  // NOLINT
-    TypePair<VarTypeInference, kVarTypeInference>,                    // NOLINT
-    TypePair<InferShapeBase, kShapeInference>,                        // NOLINT
-    TypePair<InplaceOpInference, kInplaceOpInference>,                // NOLINT
-    TypePair<NoNeedBufferVarsInference, kNoNeedBufferVarsInference>   // NOLINT
+using OpRegistryClasses = std::tuple<                                // NOLINT
+    TypePair<OperatorBase, kOperator>,                               // NOLINT
+    TypePair<OpProtoAndCheckerMaker, kOpProtoAndCheckerMaker>,       // NOLINT
+    TypePair<GradOpDescMakerBase, kGradOpDescMaker>,                 // NOLINT
+    TypePair<imperative::GradOpBaseMakerBase, kGradOpBaseMaker>,     // NOLINT
+    TypePair<prim::GradCompositeOpMakerBase, kGradCompOpDescMaker>,  // NOLINT
+    TypePair<VarTypeInference, kVarTypeInference>,                   // NOLINT
+    TypePair<InferShapeBase, kShapeInference>,                       // NOLINT
+    TypePair<InplaceOpInference, kInplaceOpInference>,               // NOLINT
+    TypePair<NoNeedBufferVarsInference, kNoNeedBufferVarsInference>  // NOLINT
     >;
 
 static constexpr int kOpRegistryClassNumber =

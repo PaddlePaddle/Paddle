@@ -27,7 +27,18 @@
 #include "paddle/fluid/framework/type_defs.h"
 
 namespace paddle {
-namespace prims {
+namespace prim {
+class UniqueNameGenerator {
+ public:
+  explicit UniqueNameGenerator(std::string prefix = "") : prefix_(prefix) {}
+  std::string Generate(std::string key = "") {
+    return prefix_ + key + "_" + std::to_string(id_++);
+  }
+
+ private:
+  std::atomic<int> id_{0};
+  std::string prefix_;
+};
 
 class StaticCompositeContext {
  public:
@@ -37,16 +48,23 @@ class StaticCompositeContext {
 
   framework::BlockDesc* GetBlock() { return current_block_desc_; }
 
-  framework::BlockDesc* SetBlock(framework::BlockDesc* new_block) {
-    return current_block_desc_ = new_block;
+  void SetBlock(framework::BlockDesc* new_block) {
+    current_block_desc_ = new_block;
+  }
+
+  std::string GenerateUniqueName(std::string key = "composite_tmp") {
+    return generator_->Generate(key);
   }
 
  private:
-  StaticCompositeContext() = default;
+  StaticCompositeContext()
+      : current_block_desc_(nullptr), generator_(new UniqueNameGenerator()) {}
+
   framework::BlockDesc* current_block_desc_;
+  std::unique_ptr<UniqueNameGenerator> generator_;
   static StaticCompositeContext* static_composite_context_;
   DISABLE_COPY_AND_ASSIGN(StaticCompositeContext);
 };
 
-}  // namespace prims
+}  // namespace prim
 }  // namespace paddle

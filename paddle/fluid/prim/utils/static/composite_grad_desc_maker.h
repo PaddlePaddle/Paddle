@@ -21,13 +21,15 @@
 #include <utility>
 #include <vector>
 
-#include "paddle/fluid/eager/api/prims/static_global_utils.h"
 #include "paddle/fluid/framework/op_call_stack.h"
 #include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/type_defs.h"
+#include "paddle/fluid/prim/utils/static/static_global_utils.h"
+#include "paddle/phi/core/enforce.h"
 namespace paddle {
-namespace prims {
+namespace prim {
 
 /*
   This functor class is responsible for creating the gradient ops for the given
@@ -44,23 +46,47 @@ class GradCompositeOpMakerBase {
       const framework::OpDesc& fwd_op,
       const std::unordered_set<std::string>& no_grad_set,
       std::unordered_map<std::string, std::string>* grad_to_var,
-      framework::BlockDesc* current_block,
+      framework::BlockDesc* original_block,
       const std::vector<framework::BlockDesc*>& grad_block =
           std::vector<framework::BlockDesc*>())
       : fwd_op_(fwd_op),
         no_grad_set_(no_grad_set),
         grad_to_var_(grad_to_var),
-        current_block_(current_block),
+        original_block_(original_block),
+        acting_program_(framework::ProgramDesc()),
         grad_block_(grad_block) {
     // TODO(jiabin): This should always execute by one thread...
-    StaticCompositeContext::Instance().SetBlock(current_block);
+    StaticCompositeContext::Instance().SetBlock(
+        acting_program_.MutableBlock(0));
   }
 
   virtual ~GradCompositeOpMakerBase() = default;
 
-  virtual void operator()() = 0;
+  virtual std::vector<std::unique_ptr<framework::OpDesc>> operator()() {
+    this->Apply();
+    std::vector<std::unique_ptr<framework::OpDesc>> ops;
+    // TODO(jiabin): Support multiple blocks later
+    for (auto* op : StaticCompositeContext::Instance().GetBlock()->AllOps()) {
+      ops.emplace_back(new framework::OpDesc(*op));
+      ops.back()->ResetBlock();
+    }
+    return ops;
+  }
+
+  virtual void Apply() = 0;
 
  protected:
+  void CopyVarFromOrig(const std::string& name) const {
+    VLOG(6) << "Copy Var: " << name << "from block: " << original_block_
+            << " to block: " << StaticCompositeContext::Instance().GetBlock();
+    framework::VarDesc* original_var = original_block_->FindVar(name);
+    PADDLE_ENFORCE_NOT_NULL(
+        original_var,
+        phi::errors::InvalidArgument(
+            "Can't find var: %s in block %s", name, original_block_));
+    *StaticCompositeContext::Instance().GetBlock()->Var(name) = *original_var;
+  }
+
   framework::VarDesc* SingleInputGrad(const std::string& name,
                                       bool drop_empty_grad = true) const {
     auto var_name = this->SingleForwardInputVarName(name);
@@ -71,20 +97,31 @@ class GradCompositeOpMakerBase {
     } else {
       // TODO(jiabin): Will this cause fill zeros error?
       grad_var_name = framework::kEmptyVarName;
+      if (drop_empty_grad) return nullptr;
     }
-    return current_block_->Var(grad_var_name);
+    if (original_block_->HasVar(grad_var_name)) {
+      // Copy Var from original block to active block, or create a new one.
+      CopyVarFromOrig(grad_var_name);
+      return StaticCompositeContext::Instance().GetBlock()->FindVar(
+          grad_var_name);
+    } else {
+      return StaticCompositeContext::Instance().GetBlock()->Var(grad_var_name);
+    }
   }
 
   framework::VarDesc* SingleOutputGrad(const std::string& name) const {
     auto var_name = this->SingleForwardOutputVarName(name);
     auto grad_var_name = framework::GradVarName(var_name);
-    if (no_grad_set_.empty() || !no_grad_set_.count(grad_var_name)) {
-      (*this->grad_to_var_)[grad_var_name] = var_name;
-      VLOG(8) << "Valid gradients: " << grad_var_name;
+    (*this->grad_to_var_)[grad_var_name] = var_name;
+    VLOG(8) << "Valid gradients: " << grad_var_name;
+    if (original_block_->HasVar(grad_var_name)) {
+      // Copy Var from original block to active block, or create a new one.
+      CopyVarFromOrig(grad_var_name);
+      return StaticCompositeContext::Instance().GetBlock()->FindVar(
+          grad_var_name);
     } else {
-      grad_var_name = framework::kEmptyVarName;
+      return StaticCompositeContext::Instance().GetBlock()->Var(grad_var_name);
     }
-    return current_block_->Var(grad_var_name);
   }
 
   std::vector<framework::VarDesc*> MultiInputGrad(
@@ -107,7 +144,15 @@ class GradCompositeOpMakerBase {
                    });
     if (!drop_empty_grad) {
       for (const auto& name : ret_val) {
-        input_grads.emplace_back(current_block_->Var(name));
+        if (original_block_->HasVar(name)) {
+          // Copy Var from original block to active block, or create a new one.
+          CopyVarFromOrig(name);
+          input_grads.emplace_back(
+              StaticCompositeContext::Instance().GetBlock()->FindVar(name));
+        } else {
+          input_grads.emplace_back(
+              StaticCompositeContext::Instance().GetBlock()->Var(name));
+        }
       }
       return input_grads;
     }
@@ -130,7 +175,15 @@ class GradCompositeOpMakerBase {
         [](const std::string& str) { return str != framework::kEmptyVarName; });
     for (const auto& name : dropped_ret_val) {
       // TODO(jiabin): Will this cause fill zeros error?
-      input_grads.emplace_back(current_block_->Var(name));
+      if (original_block_->HasVar(name)) {
+        // Copy Var from original block to active block, or create a new one.
+        CopyVarFromOrig(name);
+        input_grads.emplace_back(
+            StaticCompositeContext::Instance().GetBlock()->FindVar(name));
+      } else {
+        input_grads.emplace_back(
+            StaticCompositeContext::Instance().GetBlock()->Var(name));
+      }
     }
     return input_grads;
   }
@@ -151,24 +204,41 @@ class GradCompositeOpMakerBase {
     std::vector<framework::VarDesc*> grad_out;
     for (const auto& name : ret_val) {
       // TODO(jiabin): Will this cause fill zeros error?
-      grad_out.emplace_back(current_block_->Var(name));
+      if (original_block_->HasVar(name)) {
+        // Copy Var from original block to active block, or create a new one.
+        CopyVarFromOrig(name);
+        grad_out.emplace_back(
+            StaticCompositeContext::Instance().GetBlock()->FindVar(name));
+      } else {
+        grad_out.emplace_back(
+            StaticCompositeContext::Instance().GetBlock()->Var(name));
+      }
     }
     return grad_out;
   }
 
   framework::VarDesc* SingleForwardInput(const std::string& name) const {
-    return current_block_->FindVar(fwd_op_.Input(name).at(0));
+    // Copy Var from original block to active block, or create a new one.
+    CopyVarFromOrig(fwd_op_.Input(name).at(0));
+    return StaticCompositeContext::Instance().GetBlock()->FindVar(
+        fwd_op_.Input(name).at(0));
   }
 
   framework::VarDesc* SingleForwardOutput(const std::string& name) const {
-    return current_block_->FindVar(fwd_op_.Output(name).at(0));
+    // Copy Var from original block to active block, or create a new one.
+    CopyVarFromOrig(fwd_op_.Output(name).at(0));
+    return StaticCompositeContext::Instance().GetBlock()->FindVar(
+        fwd_op_.Output(name).at(0));
   }
 
   std::vector<framework::VarDesc*> MultiForwardInput(
       const std::string& name) const {
     std::vector<framework::VarDesc*> result;
     for (const auto& n : fwd_op_.Input(name)) {
-      result.emplace_back(current_block_->FindVar(n));
+      // Copy Var from original block to active block, or create a new one.
+      CopyVarFromOrig(n);
+      result.emplace_back(
+          StaticCompositeContext::Instance().GetBlock()->FindVar(n));
     }
     return result;
   }
@@ -177,7 +247,10 @@ class GradCompositeOpMakerBase {
       const std::string& name) const {
     std::vector<framework::VarDesc*> result;
     for (const auto& n : fwd_op_.Output(name)) {
-      result.emplace_back(current_block_->FindVar(n));
+      // Copy Var from original block to active block, or create a new one.
+      CopyVarFromOrig(n);
+      result.emplace_back(
+          StaticCompositeContext::Instance().GetBlock()->FindVar(n));
     }
     return result;
   }
@@ -258,11 +331,12 @@ class GradCompositeOpMakerBase {
   const framework::OpDesc& fwd_op_;
   const std::unordered_set<std::string>& no_grad_set_;
   std::unordered_map<std::string, std::string>* grad_to_var_;
-  framework::BlockDesc* current_block_;
+  framework::BlockDesc* original_block_;
+  framework::ProgramDesc acting_program_;
 
  protected:
   std::vector<framework::BlockDesc*> grad_block_;
 };
 
-}  // namespace prims
+}  // namespace prim
 }  // namespace paddle
