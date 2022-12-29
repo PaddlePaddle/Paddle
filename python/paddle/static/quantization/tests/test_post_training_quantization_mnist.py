@@ -21,7 +21,7 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle.dataset.common import download
+from paddle.dataset.common import md5file
 from paddle.static.quantization import PostTrainingQuantization
 
 paddle.enable_static()
@@ -36,12 +36,13 @@ class TestPostTrainingQuantization(unittest.TestCase):
         self.int8_model_path = os.path.join(
             self.root_path.name, "post_training_quantization"
         )
-        self.download_path = 'int8/download'
-        self.cache_folder = os.path.expanduser(
-            '~/.cache/paddle/dataset/' + self.download_path
+        self.download_path = f'download_model_{time.time()}'
+        self.cache_folder = os.path.join(
+            self.root_path.name, self.download_path
         )
         try:
             os.system("mkdir -p " + self.int8_model_path)
+            os.system("mkdir -p " + self.cache_folder)
         except Exception as e:
             print(
                 "Failed to create {} due to {}".format(
@@ -60,11 +61,80 @@ class TestPostTrainingQuantization(unittest.TestCase):
             )
             os.system(cmd)
 
+    def download(self, url, dirname, md5sum, save_name=None):
+        import shutil
+
+        import requests
+
+        filename = os.path.join(
+            dirname, url.split('/')[-1] if save_name is None else save_name
+        )
+
+        if os.path.exists(filename) and md5file(filename) == md5sum:
+            return filename
+
+        retry = 0
+        retry_limit = 3
+        while not (os.path.exists(filename) and md5file(filename) == md5sum):
+            if os.path.exists(filename):
+                sys.stderr.write(
+                    "file %s  md5 %s\n" % (md5file(filename), md5sum)
+                )
+            if retry < retry_limit:
+                retry += 1
+            else:
+                raise RuntimeError(
+                    "Cannot download {0} within retry limit {1}".format(
+                        url, retry_limit
+                    )
+                )
+            sys.stderr.write(
+                "Cache file %s not found, downloading %s \n" % (filename, url)
+            )
+            sys.stderr.write("Begin to download\n")
+            try:
+                r = requests.get(url, stream=True)
+                total_length = r.headers.get('content-length')
+
+                if total_length is None:
+                    with open(filename, 'wb') as f:
+                        shutil.copyfileobj(r.raw, f)
+                else:
+                    with open(filename, 'wb') as f:
+                        chunk_size = 4096
+                        total_length = int(total_length)
+                        total_iter = total_length / chunk_size + 1
+                        log_interval = (
+                            total_iter // 20 if total_iter > 20 else 1
+                        )
+                        log_index = 0
+                        bar = paddle.hapi.progressbar.ProgressBar(
+                            total_iter, name='item'
+                        )
+                        for data in r.iter_content(chunk_size=chunk_size):
+                            f.write(data)
+                            log_index += 1
+                            bar.update(log_index, {})
+                            if log_index % log_interval == 0:
+                                bar.update(log_index)
+
+            except Exception as e:
+                # re-try
+                continue
+        sys.stderr.write("\nDownload finished\n")
+        sys.stdout.flush()
+        return filename
+
     def download_model(self, data_url, data_md5, folder_name):
-        download(data_url, self.download_path, data_md5)
+        self.download(data_url, self.cache_folder, data_md5)
+        os.system(f'wget -q {data_url}')
         file_name = data_url.split('/')[-1]
         zip_path = os.path.join(self.cache_folder, file_name)
-        print('Data is downloaded at {0}'.format(zip_path))
+        print(
+            'Data is downloaded at {0}. File exists: {1}'.format(
+                zip_path, os.path.exists(zip_path)
+            )
+        )
 
         data_cache_folder = os.path.join(self.cache_folder, folder_name)
         self.cache_unzipping(data_cache_folder, zip_path)
@@ -78,7 +148,11 @@ class TestPostTrainingQuantization(unittest.TestCase):
         batch_size,
         infer_iterations,
     ):
-        print("test model path:" + model_path)
+        print(
+            "test model path: {}. File exists: {}".format(
+                model_path, os.path.exists(model_path)
+            )
+        )
         place = paddle.CPUPlace()
         exe = paddle.static.Executor(place)
         [
@@ -199,6 +273,7 @@ class TestPostTrainingQuantization(unittest.TestCase):
                 model_name, infer_iterations * batch_size
             )
         )
+
         (fp32_throughput, fp32_latency, fp32_acc1) = self.run_program(
             origin_model_path,
             model_filename,
