@@ -15,7 +15,7 @@
 import copy
 
 from paddle.fluid.dygraph_utils import _append_activation_in_dygraph
-from paddle.fluid.framework import Parameter, _global_flags, _non_static_mode
+from paddle.fluid.framework import Parameter, _global_flags, in_dygraph_mode
 from paddle.fluid.layer_helper_base import LayerHelperBase
 from paddle.fluid.param_attr import ParamAttr
 
@@ -168,7 +168,7 @@ class LayerObjectHelper(LayerHelperBase):
         if (use_mkldnn is not None) and use_mkldnn:
             act['use_mkldnn'] = use_mkldnn
         act_type = act.pop('type')
-        if _non_static_mode():
+        if in_dygraph_mode():
             res = _append_activation_in_dygraph(
                 input_var, act_type, use_cudnn, use_mkldnn
             )

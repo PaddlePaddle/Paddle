@@ -18,7 +18,6 @@ import functools
 from ..framework import (
     Variable,
     default_main_program,
-    _non_static_mode,
     dygraph_only,
     Parameter,
     ParamBase,
