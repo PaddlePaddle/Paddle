@@ -38,6 +38,7 @@ if(LINUX)
   set(CUDA_USE_STATIC_CUDA_RUNTIME
       OFF
       CACHE BOOL "" FORCE)
+  set(CMAKE_CUDA_FLAGS "--cudart shared")
   enable_language(CUDA)
   execute_process(
     COMMAND "rm" "-rf" "${CMAKE_SOURCE_DIR}/tools/nvcc_lazy"

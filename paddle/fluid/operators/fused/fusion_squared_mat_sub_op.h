@@ -18,9 +18,6 @@
 namespace paddle {
 namespace operators {
 
-using LoDTensor = framework::LoDTensor;
-using Tensor = framework::Tensor;
-
 // ( (A.^2 * B.^2) - (A * B).^2 ) .* scalar
 class FusionSquaredMatSubOp : public framework::OperatorWithKernel {
  public:

@@ -12,46 +12,41 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
+
 import numpy as np
 from inference_pass_test import InferencePassTest
+
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-from paddle.fluid.core import PassVersionChecker
-from paddle.fluid.core import AnalysisConfig
+from paddle.fluid.core import AnalysisConfig, PassVersionChecker
 
 
 class TRTGatherTest1(InferencePassTest):
-
     def setUp(self):
         self.set_params()
         with fluid.program_guard(self.main_program, self.startup_program):
             data = fluid.data(name='data', shape=[-1, 128], dtype='float32')
             index = fluid.data(name='index', shape=[-1, 1], dtype='int32')
-            scale_out = fluid.layers.gather(data, index=index)
-            out = fluid.layers.softmax(input=scale_out)
+            scale_out = paddle.gather(data, index=index)
+            out = paddle.nn.functional.softmax(scale_out)
 
         self.feeds = {
             "data": np.random.random([self.bs, 128]).astype("float32"),
-            "index": self.index
+            "index": self.index,
         }
 
         self.enable_trt = True
         self.trt_parameters = TRTGatherTest1.TensorRTParam(
-            1 << 30, self.bs, 1, AnalysisConfig.Precision.Float32, False, False)
+            1 << 30, self.bs, 1, AnalysisConfig.Precision.Float32, False, False
+        )
         self.dynamic_shape_params = TRTGatherTest1.DynamicShapeParam(
-            {
-                'data': [1, 1],
-                'index': [1, 1]
-            }, {
-                'data': [32, 128],
-                'index': [3, 1]
-            }, {
-                'data': [32, 128],
-                'index': [3, 1]
-            }, False)
+            {'data': [1, 1], 'index': [1, 1]},
+            {'data': [32, 128], 'index': [3, 1]},
+            {'data': [32, 128], 'index': [3, 1]},
+            False,
+        )
         self.fetch_list = [out]
 
     def set_params(self):
@@ -63,38 +58,34 @@ class TRTGatherTest1(InferencePassTest):
             use_gpu = True
             self.check_output_with_option(use_gpu, flatten=False)
             self.assertTrue(
-                PassVersionChecker.IsCompatible('tensorrt_subgraph_pass'))
+                PassVersionChecker.IsCompatible('tensorrt_subgraph_pass')
+            )
 
 
 class TRTGatherTest2(InferencePassTest):
-
     def setUp(self):
         self.set_params()
         with fluid.program_guard(self.main_program, self.startup_program):
             data = fluid.data(name='data', shape=[16, 64], dtype='float32')
             index = fluid.data(name='index', shape=[2], dtype='int32')
-            scale_out = fluid.layers.gather(data, index=index)
-            out = fluid.layers.softmax(input=scale_out)
+            scale_out = paddle.gather(data, index=index)
+            out = paddle.nn.functional.softmax(scale_out)
 
         self.feeds = {
             "data": np.random.random([self.bs, 64]).astype("float32"),
-            "index": self.index
+            "index": self.index,
         }
 
         self.enable_trt = True
         self.trt_parameters = TRTGatherTest2.TensorRTParam(
-            1 << 30, self.bs, 1, AnalysisConfig.Precision.Float32, False, False)
+            1 << 30, self.bs, 1, AnalysisConfig.Precision.Float32, False, False
+        )
         self.dynamic_shape_params = TRTGatherTest2.DynamicShapeParam(
-            {
-                'data': [2, 4],
-                'index': [1]
-            }, {
-                'data': [256, 256],
-                'index': [4]
-            }, {
-                'data': [64, 32],
-                'index': [2]
-            }, False)
+            {'data': [2, 4], 'index': [1]},
+            {'data': [256, 256], 'index': [4]},
+            {'data': [64, 32], 'index': [2]},
+            False,
+        )
         self.fetch_list = [out]
 
     def set_params(self):
@@ -106,7 +97,8 @@ class TRTGatherTest2(InferencePassTest):
             use_gpu = True
             self.check_output_with_option(use_gpu, flatten=False)
             self.assertTrue(
-                PassVersionChecker.IsCompatible('tensorrt_subgraph_pass'))
+                PassVersionChecker.IsCompatible('tensorrt_subgraph_pass')
+            )
 
 
 if __name__ == "__main__":

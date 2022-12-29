@@ -36,7 +36,7 @@ class CPUReadFileKernel : public framework::OpKernel<T> {
 
     input.seekg(0, std::ios::beg);
 
-    auto* out = ctx.Output<framework::LoDTensor>("Out");
+    auto* out = ctx.Output<phi::DenseTensor>("Out");
     std::vector<int64_t> out_shape = {file_size};
     out->Resize(phi::make_ddim(out_shape));
 

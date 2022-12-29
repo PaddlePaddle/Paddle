@@ -23,6 +23,9 @@ namespace paddle {
 namespace inference {
 
 void run(const AnalysisConfig& config, std::vector<float>* out_data, int bs) {
+#if !defined(_WIN32)
+  setenv("NVIDIA_TF32_OVERRIDE", "0", 1);
+#endif
   auto predictor = CreatePaddlePredictor(config);
   auto input_names = predictor->GetInputNames();
 
@@ -30,18 +33,18 @@ void run(const AnalysisConfig& config, std::vector<float>* out_data, int bs) {
   const int run_seq_len = 128;
   size_t len = run_batch * run_seq_len;
 
-  int64_t i0_bs1[run_seq_len] = {
+  int32_t i0_bs1[run_seq_len] = {
       1,    3558, 4,   75,  491, 89, 340, 313, 93,   4,   255,   10, 75,    321,
       4095, 1902, 4,   134, 49,  75, 311, 14,  44,   178, 543,   15, 12043, 2,
       75,   201,  340, 9,   14,  44, 486, 218, 1140, 279, 12043, 2};
-  int64_t i1_bs1[run_seq_len] = {
+  int32_t i1_bs1[run_seq_len] = {
       0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
       0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0,
       0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
       0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
       0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
       0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-  int64_t i2_bs1[run_seq_len] = {0,  1,  2,  3,  4,  5,  6,  7,  8,  9,
+  int32_t i2_bs1[run_seq_len] = {0,  1,  2,  3,  4,  5,  6,  7,  8,  9,
                                  10, 11, 12, 13, 14, 15, 16, 17, 18, 19,
                                  20, 21, 22, 23, 24, 25, 26, 27, 28, 29,
                                  30, 31, 32, 33, 34, 35, 36, 37, 38, 39};
@@ -49,7 +52,7 @@ void run(const AnalysisConfig& config, std::vector<float>* out_data, int bs) {
       1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
       1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
       1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0};
-  std::vector<int64_t> i0_data(len), i1_data(len), i2_data(len);
+  std::vector<int32_t> i0_data(len), i1_data(len), i2_data(len);
   std::vector<float> i3_data(len);
 
   for (size_t i = 0; i < len; i++) {
@@ -130,6 +133,8 @@ void trt_ernie(bool with_fp16,
   config.EnableTensorRtEngine(1 << 30, 1, 5, precision, false, false);
   config.SetTRTDynamicShapeInfo(
       min_input_shape, max_input_shape, opt_input_shape);
+  paddle_infer::experimental::InternalUtils::SetTransformerMaskid(
+      &config, "read_file_0.tmp_4");
   std::vector<float> out_data;
   run(config, &out_data, batch_size);
 
@@ -140,7 +145,7 @@ void trt_ernie(bool with_fp16,
 
 TEST(AnalysisPredictor, no_fp16) {
   std::vector<float> result = {0.597841, 0.219972, 0.182187};
-  trt_ernie(false, result, 1e-5);
+  trt_ernie(false, result, 1e-4);
 }
 
 TEST(AnalysisPredictor, fp16) {
@@ -153,7 +158,7 @@ TEST(AnalysisPredictor, fp16) {
 TEST(AnalysisPredictor, no_fp16_bs2) {
   std::vector<float> result = {
       0.597841, 0.219972, 0.182187, 0.597841, 0.219972, 0.182187};
-  trt_ernie(false, result, 1e-5, 2);
+  trt_ernie(false, result, 1e-4, 2);
 }
 
 TEST(AnalysisPredictor, fp16_bs2) {
@@ -222,6 +227,9 @@ std::shared_ptr<paddle_infer::Predictor> InitPredictor() {
 }
 
 void run(paddle_infer::Predictor* predictor, std::vector<float>* out_data) {
+#if !defined(_WIN32)
+  setenv("NVIDIA_TF32_OVERRIDE", "0", 1);
+#endif
   const int run_batch = 2;
   const int run_seq_len = 71;
   const int max_seq_len = 128;
@@ -379,7 +387,7 @@ void run(paddle_infer::Predictor* predictor, std::vector<float>* out_data) {
   // max_seq_len represents the max sentence length of all the sentences, only
   // length of
   // input i4 is useful, data means nothing.
-  int32_t i4[max_seq_len] = {0};
+  float i4[max_seq_len] = {0};
 
   auto input_names = predictor->GetInputNames();
   // first input
@@ -417,7 +425,7 @@ void run(paddle_infer::Predictor* predictor, std::vector<float>* out_data) {
 
 TEST(AnalysisPredictor, ernie_varlen) {
 #if IS_TRT_VERSION_GE(7234)
-  if (platform::GetGPUComputeCapability(0) >= 75) {
+  if (platform::GetGPUComputeCapability(platform::GetCurrentDeviceId()) >= 75) {
     auto predictor = InitPredictor();
     std::vector<float> out_data;
     run(predictor.get(), &out_data);

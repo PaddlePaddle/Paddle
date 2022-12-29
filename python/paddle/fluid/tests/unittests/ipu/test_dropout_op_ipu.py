@@ -15,13 +15,13 @@
 import unittest
 
 import numpy as np
+
 import paddle
 import paddle.static
 from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
 
 
 class TestBase(IPUOpTest):
-
     def setUp(self):
         self.set_atol()
         self.set_training()
@@ -40,18 +40,18 @@ class TestBase(IPUOpTest):
 
     def set_op_attrs(self):
         self.attrs = {
-            "dropout_prob": 0.5,
-            "is_test": True,
-            "dropout_implementation": "downgrade_in_infer"
+            "p": 0.5,
+            "training": False,
+            "mode": "downgrade_in_infer",
         }
 
     @IPUOpTest.static_graph
     def build_model(self):
-        x = paddle.static.data(name=self.feed_list[0],
-                               shape=self.feed_shape[0],
-                               dtype='float32')
-        x = paddle.fluid.layers.dropout(x, **self.attrs)
-        out = paddle.fluid.layers.elementwise_add(x, x)
+        x = paddle.static.data(
+            name=self.feed_list[0], shape=self.feed_shape[0], dtype='float32'
+        )
+        x = paddle.nn.functional.dropout(x, **self.attrs)
+        out = paddle.add(x, x)
         self.fetch_list = [out.name]
 
     def run_model(self, exec_mode):
@@ -66,22 +66,20 @@ class TestBase(IPUOpTest):
 
 
 class TestCase1(TestBase):
-
     def set_op_attrs(self):
         self.attrs = {
-            "dropout_prob": 0.5,
-            "is_test": True,
-            "dropout_implementation": "upscale_in_train"
+            "p": 0.5,
+            "training": False,
+            "mode": "upscale_in_train",
         }
 
 
 class TestCase2(TestBase):
-
     def set_op_attrs(self):
         self.attrs = {
-            "dropout_prob": 0.0,
-            "is_test": False,
-            "dropout_implementation": "upscale_in_train"
+            "p": 0.0,
+            "training": True,
+            "mode": "upscale_in_train",
         }
 
 

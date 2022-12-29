@@ -19,12 +19,12 @@ namespace phi {
 KernelSignature GraphSendUERecvOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
   if (ctx.HasInput("Out_size")) {
-    return KernelSignature("graph_send_ue_recv",
+    return KernelSignature("send_ue_recv",
                            {"X", "Y", "Src_index", "Dst_index"},
                            {"message_op", "reduce_op", "Out_size"},
                            {"Out", "Dst_count"});
   } else {
-    return KernelSignature("graph_send_ue_recv",
+    return KernelSignature("send_ue_recv",
                            {"X", "Y", "Src_index", "Dst_index"},
                            {"message_op", "reduce_op", "out_size"},
                            {"Out", "Dst_count"});
@@ -34,13 +34,16 @@ KernelSignature GraphSendUERecvOpArgumentMapping(
 KernelSignature GraphSendUERecvGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
   return KernelSignature(
-      "graph_send_ue_recv_grad",
+      "send_ue_recv_grad",
       {"X", "Y", "Src_index", "Dst_index", "Out", "Dst_count", "Out@GRAD"},
       {"message_op", "reduce_op"},
       {"X@GRAD", "Y@GRAD"});
 }
 
 }  // namespace phi
+
+PD_REGISTER_BASE_KERNEL_NAME(graph_send_ue_recv, send_ue_recv);
+PD_REGISTER_BASE_KERNEL_NAME(graph_send_ue_recv_grad, send_ue_recv_grad);
 
 PD_REGISTER_ARG_MAPPING_FN(graph_send_ue_recv,
                            phi::GraphSendUERecvOpArgumentMapping);

@@ -30,7 +30,7 @@ class FillAnyLikeNPUKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& context) const override {
     auto data_type = static_cast<framework::proto::VarType::Type>(
         context.Attr<int>("dtype"));
-    auto* out = context.Output<framework::Tensor>("Out");
+    auto* out = context.Output<phi::DenseTensor>("Out");
     out->mutable_data<T>(context.GetPlace());
 
     float value = context.Attr<float>("value");

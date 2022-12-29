@@ -12,12 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
-from paddle.fluid.layer_helper import LayerHelper
+from paddle import _legacy_C_ops
 from paddle.fluid.framework import _non_static_mode
-from paddle.fluid import core
-from paddle import _C_ops, _legacy_C_ops
+from paddle.fluid.layer_helper import LayerHelper
 
 
 def softmax_mask_fuse_upper_triangle(x):
@@ -32,7 +29,7 @@ def softmax_mask_fuse_upper_triangle(x):
     .. math::
         out = softmax(LowerTriangular(x))
 
-    **Note**:
+    Note:
         This API only supports GPU.
 
     Args:
@@ -66,7 +63,9 @@ def softmax_mask_fuse_upper_triangle(x):
 
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
 
-    helper.append_op(type='fused_softmax_mask_upper_triangle',
-                     inputs={'X': [x]},
-                     outputs={'Out': [out]})
+    helper.append_op(
+        type='fused_softmax_mask_upper_triangle',
+        inputs={'X': [x]},
+        outputs={'Out': [out]},
+    )
     return out

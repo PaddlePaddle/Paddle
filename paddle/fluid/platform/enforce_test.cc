@@ -528,10 +528,9 @@ struct CannotToStringType {
 };
 
 TEST(enforce, cannot_to_string_type) {
-  static_assert(
-      !paddle::platform::details::CanToString<CannotToStringType>::kValue,
-      "CannotToStringType must not be converted to string");
-  static_assert(paddle::platform::details::CanToString<int>::kValue,
+  static_assert(!phi::enforce::details::CanToString<CannotToStringType>::kValue,
+                "CannotToStringType must not be converted to string");
+  static_assert(phi::enforce::details::CanToString<int>::kValue,
                 "int can be converted to string");
   CannotToStringType obj1(3), obj2(4), obj3(3);
 

@@ -23,8 +23,12 @@ import contextlib
 import numpy as np
 import paddle.fluid as fluid
 from PIL import Image, ImageEnhance
-from paddle.fluid.contrib.slim.quantization import PostTrainingQuantizationProgram
-from test_post_training_quantization_mobilenetv1 import TestPostTrainingQuantization
+from paddle.fluid.contrib.slim.quantization import (
+    PostTrainingQuantizationProgram,
+)
+from test_post_training_quantization_mobilenetv1 import (
+    TestPostTrainingQuantization,
+)
 
 paddle.enable_static()
 
@@ -76,13 +80,14 @@ def process_image(sample, mode, color_jitter, rotate):
     return img, sample[1]
 
 
-def _reader_creator(file_list,
-                    mode,
-                    shuffle=False,
-                    color_jitter=False,
-                    rotate=False,
-                    data_dir=DATA_DIR):
-
+def _reader_creator(
+    file_list,
+    mode,
+    shuffle=False,
+    color_jitter=False,
+    rotate=False,
+    data_dir=DATA_DIR,
+):
     def reader():
         with open(file_list) as flist:
             full_lines = [line.strip() for line in flist]
@@ -97,10 +102,9 @@ def _reader_creator(file_list,
                     continue
                 yield img_path, int(label)
 
-    mapper = functools.partial(process_image,
-                               mode=mode,
-                               color_jitter=color_jitter,
-                               rotate=rotate)
+    mapper = functools.partial(
+        process_image, mode=mode, color_jitter=color_jitter, rotate=rotate
+    )
 
     return paddle.reader.xmap_readers(mapper, reader, THREAD, BUF_SIZE)
 
@@ -111,31 +115,33 @@ def val(data_dir=DATA_DIR):
 
 
 class TestPostTrainingQuantizationProgram(TestPostTrainingQuantization):
-
     def run_program(self, model_path, batch_size, infer_iterations):
         image_shape = [3, 224, 224]
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
-        [infer_program, feed_dict, fetch_targets] = \
-            fluid.io.load_inference_model(model_path, exe)
+        [
+            infer_program,
+            feed_dict,
+            fetch_targets,
+        ] = fluid.io.load_inference_model(model_path, exe)
         val_reader = paddle.batch(val(), batch_size)
         iterations = infer_iterations
         test_info = []
         cnt = 0
         periods = []
         for batch_id, data in enumerate(val_reader()):
-            image = np.array([x[0].reshape(image_shape)
-                              for x in data]).astype("float32")
+            image = np.array([x[0].reshape(image_shape) for x in data]).astype(
+                "float32"
+            )
             label = np.array([x[1] for x in data]).astype("int64")
             label = label.reshape([-1, 1])
 
             t1 = time.time()
-            _, acc1, _ = exe.run(infer_program,
-                                 feed={
-                                     feed_dict[0]: image,
-                                     feed_dict[1]: label
-                                 },
-                                 fetch_list=fetch_targets)
+            _, acc1, _ = exe.run(
+                infer_program,
+                feed={feed_dict[0]: image, feed_dict[1]: label},
+                fetch_list=fetch_targets,
+            )
             t2 = time.time()
             period = t2 - t1
             periods.append(period)
@@ -152,10 +158,19 @@ class TestPostTrainingQuantizationProgram(TestPostTrainingQuantization):
         throughput = cnt / np.sum(periods)
         latency = np.average(periods)
         acc1 = np.sum(test_info) / cnt
-        [infer_program, feed_dict, fetch_targets] = \
-                    fluid.io.load_inference_model(model_path, exe)
-        return (throughput, latency, acc1, infer_program, feed_dict,
-                fetch_targets)
+        [
+            infer_program,
+            feed_dict,
+            fetch_targets,
+        ] = fluid.io.load_inference_model(model_path, exe)
+        return (
+            throughput,
+            latency,
+            acc1,
+            infer_program,
+            feed_dict,
+            fetch_targets,
+        )
 
     def generate_quantized_model(
         self,
@@ -173,25 +188,27 @@ class TestPostTrainingQuantizationProgram(TestPostTrainingQuantization):
         try:
             os.system("mkdir " + self.int8_model)
         except Exception as e:
-            print("Failed to create {} due to {}".format(
-                self.int8_model, str(e)))
+            print(
+                "Failed to create {} due to {}".format(self.int8_model, str(e))
+            )
             sys.exit(-1)
 
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
         scope = fluid.global_scope()
         val_reader = val()
-        same_scale_tensor_list = [[
-            'batch_norm_3.tmp_2#/#1', 'batch_norm_4.tmp_2#*#1'
-        ], ['batch_norm_27.tmp_2', 'batch_norm_26.tmp_2'],
-                                  [
-                                      'test_scale_name_not_in_scale_dict1',
-                                      'test_scale_name_not_in_scale_dict2'
-                                  ],
-                                  [
-                                      'test_scale_name_not_in_scale_dict1#/#1',
-                                      'test_scale_name_not_in_scale_dict2#/#1'
-                                  ]]
+        same_scale_tensor_list = [
+            ['batch_norm_3.tmp_2#/#1', 'batch_norm_4.tmp_2#*#1'],
+            ['batch_norm_27.tmp_2', 'batch_norm_26.tmp_2'],
+            [
+                'test_scale_name_not_in_scale_dict1',
+                'test_scale_name_not_in_scale_dict2',
+            ],
+            [
+                'test_scale_name_not_in_scale_dict1#/#1',
+                'test_scale_name_not_in_scale_dict2#/#1',
+            ],
+        ]
         ptq = PostTrainingQuantizationProgram(
             executor=exe,
             program=program,
@@ -206,56 +223,86 @@ class TestPostTrainingQuantizationProgram(TestPostTrainingQuantization):
             is_use_cache_file=is_use_cache_file,
             feed_list=feed_list,
             fetch_list=fetch_list,
-            same_scale_tensor_list=same_scale_tensor_list)
+            same_scale_tensor_list=same_scale_tensor_list,
+        )
         ptq.quantize()
         ptq.save_quantized_model(self.int8_model)
 
-    def run_test(self,
-                 model,
-                 algo,
-                 round_type,
-                 data_urls,
-                 data_md5s,
-                 quantizable_op_type,
-                 is_full_quantize,
-                 is_use_cache_file,
-                 is_optimize_model,
-                 diff_threshold,
-                 onnx_format=False):
+    def run_test(
+        self,
+        model,
+        algo,
+        round_type,
+        data_urls,
+        data_md5s,
+        quantizable_op_type,
+        is_full_quantize,
+        is_use_cache_file,
+        is_optimize_model,
+        diff_threshold,
+        onnx_format=False,
+    ):
         infer_iterations = self.infer_iterations
         batch_size = self.batch_size
         sample_iterations = self.sample_iterations
 
         model_cache_folder = self.download_data(data_urls, data_md5s, model)
 
-        print("Start FP32 inference for {0} on {1} images ...".format(
-            model, infer_iterations * batch_size))
-        (fp32_throughput, fp32_latency, fp32_acc1, infer_program, feed_dict,
-         fetch_targets) = self.run_program(
-             os.path.join(model_cache_folder, "model"), batch_size,
-             infer_iterations)
-        print("Start INT8 post training quantization for {0} on {1} images ...".
-              format(model, sample_iterations * batch_size))
-        self.generate_quantized_model(infer_program, quantizable_op_type,
-                                      feed_dict, fetch_targets, algo,
-                                      round_type, is_full_quantize,
-                                      is_use_cache_file, is_optimize_model,
-                                      onnx_format)
+        print(
+            "Start FP32 inference for {0} on {1} images ...".format(
+                model, infer_iterations * batch_size
+            )
+        )
+        (
+            fp32_throughput,
+            fp32_latency,
+            fp32_acc1,
+            infer_program,
+            feed_dict,
+            fetch_targets,
+        ) = self.run_program(
+            os.path.join(model_cache_folder, "model"),
+            batch_size,
+            infer_iterations,
+        )
+        print(
+            "Start INT8 post training quantization for {0} on {1} images ...".format(
+                model, sample_iterations * batch_size
+            )
+        )
+        self.generate_quantized_model(
+            infer_program,
+            quantizable_op_type,
+            feed_dict,
+            fetch_targets,
+            algo,
+            round_type,
+            is_full_quantize,
+            is_use_cache_file,
+            is_optimize_model,
+            onnx_format,
+        )
 
-        print("Start INT8 inference for {0} on {1} images ...".format(
-            model, infer_iterations * batch_size))
-        (int8_throughput, int8_latency, int8_acc1, _, _,
-         _) = self.run_program(self.int8_model, batch_size, infer_iterations)
+        print(
+            "Start INT8 inference for {0} on {1} images ...".format(
+                model, infer_iterations * batch_size
+            )
+        )
+        (int8_throughput, int8_latency, int8_acc1, _, _, _) = self.run_program(
+            self.int8_model, batch_size, infer_iterations
+        )
 
         print("---Post training quantization of {} method---".format(algo))
         print(
-            "FP32 {0}: batch_size {1}, throughput {2} images/second, latency {3} second, accuracy {4}."
-            .format(model, batch_size, fp32_throughput, fp32_latency,
-                    fp32_acc1))
+            "FP32 {0}: batch_size {1}, throughput {2} images/second, latency {3} second, accuracy {4}.".format(
+                model, batch_size, fp32_throughput, fp32_latency, fp32_acc1
+            )
+        )
         print(
-            "INT8 {0}: batch_size {1}, throughput {2} images/second, latency {3} second, accuracy {4}.\n"
-            .format(model, batch_size, int8_throughput, int8_latency,
-                    int8_acc1))
+            "INT8 {0}: batch_size {1}, throughput {2} images/second, latency {3} second, accuracy {4}.\n".format(
+                model, batch_size, int8_throughput, int8_latency, int8_acc1
+            )
+        )
         sys.stdout.flush()
 
         delta_value = fp32_acc1 - int8_acc1
@@ -263,8 +310,8 @@ class TestPostTrainingQuantizationProgram(TestPostTrainingQuantization):
 
 
 class TestPostTrainingProgramAbsMaxForResnet50(
-        TestPostTrainingQuantizationProgram):
-
+    TestPostTrainingQuantizationProgram
+):
     def test_post_training_abs_max_resnet50(self):
         model = "ResNet-50"
         algo = "abs_max"
@@ -278,9 +325,18 @@ class TestPostTrainingProgramAbsMaxForResnet50(
         is_use_cache_file = False
         is_optimize_model = False
         diff_threshold = 0.025
-        self.run_test(model, algo, round_type, data_urls, data_md5s,
-                      quantizable_op_type, is_full_quantize, is_use_cache_file,
-                      is_optimize_model, diff_threshold)
+        self.run_test(
+            model,
+            algo,
+            round_type,
+            data_urls,
+            data_md5s,
+            quantizable_op_type,
+            is_full_quantize,
+            is_use_cache_file,
+            is_optimize_model,
+            diff_threshold,
+        )
 
 
 if __name__ == '__main__':

@@ -25,10 +25,10 @@ template <typename DeviceContext, typename T>
 class SGDNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* learning_rate = ctx.Input<framework::LoDTensor>("LearningRate");
-    auto* param_var = ctx.Input<framework::LoDTensor>("Param");
-    auto* grad_var = ctx.Input<framework::LoDTensor>("Grad");
-    auto* param_out = ctx.Output<framework::LoDTensor>("ParamOut");
+    auto* learning_rate = ctx.Input<phi::DenseTensor>("LearningRate");
+    auto* param_var = ctx.Input<phi::DenseTensor>("Param");
+    auto* grad_var = ctx.Input<phi::DenseTensor>("Grad");
+    auto* param_out = ctx.Output<phi::DenseTensor>("ParamOut");
 
     param_out->mutable_data<T>(ctx.GetPlace());
 

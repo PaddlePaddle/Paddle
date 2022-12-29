@@ -16,8 +16,8 @@
 
 #include "paddle/fluid/operators/jit/refer/refer.h"
 #include "paddle/fluid/operators/jit/registry.h"
-#include "paddle/fluid/platform/cpu_info.h"
 #include "paddle/fluid/platform/dynload/mklml.h"
+#include "paddle/phi/backends/cpu/cpu_info.h"
 
 namespace paddle {
 namespace operators {
@@ -188,17 +188,17 @@ void StrideASum<double>(const double* x, double* res, int n, int stride) {
 // TODO(TJ): tuning me carefully on AVX, AVX2 and AVX512
 template <>
 bool VMulKernel<float>::CanBeUsed(const int& d) const {
-  return platform::MayIUse(platform::avx512f) && d > 512;
+  return phi::backends::cpu::MayIUse(phi::backends::cpu::avx512f) && d > 512;
 }
 
 template <>
 bool VAddKernel<float>::CanBeUsed(const int& d) const {
-  return platform::MayIUse(platform::avx) && d > 512;
+  return phi::backends::cpu::MayIUse(phi::backends::cpu::avx) && d > 512;
 }
 
 template <>
 bool VScalKernel<float>::CanBeUsed(const int& d) const {
-  return platform::MayIUse(platform::avx512f) && d > 512;
+  return phi::backends::cpu::MayIUse(phi::backends::cpu::avx512f) && d > 512;
 }
 
 template <>
@@ -274,7 +274,7 @@ bool SgdKernel<double>::CanBeUsed(const sgd_attr_t& attr) const {
 
 template <>
 bool MatMulKernel<float>::CanBeUsed(const matmul_attr_t& attr) const {
-  return platform::MayIUse(platform::avx);
+  return phi::backends::cpu::MayIUse(phi::backends::cpu::avx);
 }
 
 template <>
@@ -285,7 +285,7 @@ bool MatMulKernel<double>::CanBeUsed(const matmul_attr_t& attr) const {
 template <>
 bool SoftmaxKernel<float>::CanBeUsed(const int& d) const {
   // tuned on avx2
-  return platform::MayIUse(platform::avx) && d < 60;
+  return phi::backends::cpu::MayIUse(phi::backends::cpu::avx) && d < 60;
 }
 
 #define AWALYS_USE_ME_WITH_DOUBLE(func)                      \

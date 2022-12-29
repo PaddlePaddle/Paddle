@@ -92,8 +92,7 @@ void TemporalShiftGradKernel(const Context& dev_ctx,
   auto* input_grad = x_grad;
   auto* output_grad = &out_grad;
   int t = seg_num;
-  const DataLayout data_layout =
-      paddle::framework::StringToDataLayout(data_format_str);
+  const DataLayout data_layout = phi::StringToDataLayout(data_format_str);
 
   const int nt = output_grad->dims()[0];
   const int c = (data_layout == DataLayout::kNCHW ? output_grad->dims()[1]
@@ -115,8 +114,9 @@ void TemporalShiftGradKernel(const Context& dev_ctx,
       (data_layout == DataLayout::kNCHW ? phi::make_ddim({nt, c, h, w})
                                         : phi::make_ddim({nt, h, w, c}));
   const T* output_grad_data = output_grad->data<T>();
-  T* input_grad_data =
-      input_grad->mutable_data<T>(in_grad_dims, dev_ctx.GetPlace());
+  input_grad->Resize(in_grad_dims);
+
+  T* input_grad_data = dev_ctx.template Alloc<T>(input_grad);
 
   if (data_layout == DataLayout::kNCHW) {
     TemporalShiftBwNCHW<T>(

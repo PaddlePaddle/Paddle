@@ -26,12 +26,13 @@ namespace interpreter {
 struct ExecutionConfig {
   bool used_for_jit{false};
   bool create_local_scope{true};
+  bool used_for_control_flow_op{false};
 
   size_t host_num_threads;
   size_t deivce_num_threads;
-  size_t prepare_num_threads;
 
   std::set<std::string> skip_gc_vars;
+  std::set<std::string> jit_input_vars;
 
   ExecutionConfig(const phi::Place& place, size_t op_num);
   void Log(int log_level);

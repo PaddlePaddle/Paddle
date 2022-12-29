@@ -16,9 +16,9 @@ limitations under the License. */
 #include <string>
 
 #include "paddle/fluid/platform/cpu_helper.h"
-#include "paddle/fluid/platform/cpu_info.h"
 #include "paddle/fluid/platform/device/npu/npu_info.h"
 #include "paddle/fluid/string/split.h"
+#include "paddle/phi/backends/cpu/cpu_info.h"
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #endif
@@ -164,61 +164,65 @@ void LoadCustomDevice(const std::string &library_dir) {
 }
 #endif
 
+static std::once_flag init_devices_flag;
+
 void InitDevices() {
-  // set name at the entry point of Paddle
-  platform::SetCurrentThreadName("MainThread");
+  std::call_once(init_devices_flag, []() {
+    // set name at the entry point of Paddle
+    platform::SetCurrentThreadName("MainThread");
 // CUPTI attribute should be set before any CUDA context is created (see CUPTI
 // documentation about CUpti_ActivityAttribute).
 #ifdef PADDLE_WITH_CUDA
-  InitCupti();
+    InitCupti();
 #endif
-  /*Init all available devices by default */
-  std::vector<int> devices;
+    /*Init all available devices by default */
+    std::vector<int> devices;
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  try {
-    // use user specified GPUs in single-node multi-process mode.
-    devices = platform::GetSelectedDevices();
-  } catch (const std::exception &exp) {
-    LOG(WARNING) << "Compiled with WITH_GPU, but no GPU found in runtime.";
-  }
+    try {
+      // use user specified GPUs in single-node multi-process mode.
+      devices = platform::GetSelectedDevices();
+    } catch (const std::exception &exp) {
+      LOG(WARNING) << "Compiled with WITH_GPU, but no GPU found in runtime.";
+    }
 #endif
 #ifdef PADDLE_WITH_XPU
-  try {
-    // use user specified XPUs in single-node multi-process mode.
-    devices = platform::GetXPUSelectedDevices();
-  } catch (const std::exception &exp) {
-    LOG(WARNING) << "Compiled with WITH_XPU, but no XPU found in runtime.";
-  }
+    try {
+      // use user specified XPUs in single-node multi-process mode.
+      devices = platform::GetXPUSelectedDevices();
+    } catch (const std::exception &exp) {
+      LOG(WARNING) << "Compiled with WITH_XPU, but no XPU found in runtime.";
+    }
 #endif
 #ifdef PADDLE_WITH_ASCEND_CL
-  // NOTE(zhiqiu): use singleton to explicitly init and finalize ACL
-  platform::AclInstance::Instance();  // NOLINT
-  try {
-    // use user specified XPUs in single-node multi-process mode.
-    devices = platform::GetSelectedNPUDevices();
-  } catch (const std::exception &exp) {
-    LOG(WARNING)
-        << "Compiled with PADDLE_WITH_ASCEND_CL, but no NPU found in runtime.";
-  }
+    // NOTE(zhiqiu): use singleton to explicitly init and finalize ACL
+    platform::AclInstance::Instance();  // NOLINT
+    try {
+      // use user specified XPUs in single-node multi-process mode.
+      devices = platform::GetSelectedNPUDevices();
+    } catch (const std::exception &exp) {
+      LOG(WARNING) << "Compiled with PADDLE_WITH_ASCEND_CL, but no NPU found "
+                      "in runtime.";
+    }
 #endif
 #ifdef PADDLE_WITH_IPU
-  try {
-    // use user specified IPUs.
-    devices = platform::GetSelectedIPUDevices();
-  } catch (const std::exception &exp) {
-    LOG(WARNING)
-        << "Compiled with PADDLE_WITH_IPU, but no IPU found in runtime.";
-  }
+    try {
+      // use user specified IPUs.
+      devices = platform::GetSelectedIPUDevices();
+    } catch (const std::exception &exp) {
+      LOG(WARNING)
+          << "Compiled with PADDLE_WITH_IPU, but no IPU found in runtime.";
+    }
 #endif
 #ifdef PADDLE_WITH_MLU
-  try {
-    // use user specified MLUs in single-node multi-process mode.
-    devices = platform::GetMLUSelectedDevices();
-  } catch (const std::exception &exp) {
-    LOG(WARNING) << "Compiled with WITH_MLU, but no MLU found in runtime.";
-  }
+    try {
+      // use user specified MLUs in single-node multi-process mode.
+      devices = platform::GetMLUSelectedDevices();
+    } catch (const std::exception &exp) {
+      LOG(WARNING) << "Compiled with WITH_MLU, but no MLU found in runtime.";
+    }
 #endif
-  InitDevices(devices);
+    InitDevices(devices);
+  });
 }
 
 void InitDevices(const std::vector<int> devices) {
@@ -280,52 +284,6 @@ void InitDevices(const std::vector<int> devices) {
 
 #ifndef PADDLE_WITH_MKLDNN
   platform::SetNumThreads(FLAGS_paddle_num_threads);
-#endif
-
-#if !defined(_WIN32) && !defined(__APPLE__) && !defined(__OSX__)
-  if (platform::MayIUse(platform::avx)) {
-#ifndef __AVX__
-    LOG(WARNING) << "AVX is available, Please re-compile on local machine";
-#endif
-  }
-
-// Throw some informations when CPU instructions mismatch.
-#define AVX_GUIDE(compiletime, runtime)                                  \
-  PADDLE_THROW(platform::errors::Unavailable(                            \
-      "This version is compiled on higher instruction(" #compiletime     \
-      ") system, you may encounter illegal instruction error running on" \
-      " your local CPU machine. Please reinstall the " #runtime          \
-      " version or compile from source code."))
-
-#ifdef __AVX512F__
-  if (!platform::MayIUse(platform::avx512f)) {
-    if (platform::MayIUse(platform::avx2)) {
-      AVX_GUIDE(AVX512, AVX2);
-    } else if (platform::MayIUse(platform::avx)) {
-      AVX_GUIDE(AVX512, AVX);
-    } else {
-      AVX_GUIDE(AVX512, NonAVX);
-    }
-  }
-#endif
-
-#ifdef __AVX2__
-  if (!platform::MayIUse(platform::avx2)) {
-    if (platform::MayIUse(platform::avx)) {
-      AVX_GUIDE(AVX2, AVX);
-    } else {
-      AVX_GUIDE(AVX2, NonAVX);
-    }
-  }
-#endif
-
-#ifdef __AVX__
-  if (!platform::MayIUse(platform::avx)) {
-    AVX_GUIDE(AVX, NonAVX);
-  }
-#endif
-#undef AVX_GUIDE
-
 #endif
 }
 

@@ -17,7 +17,6 @@
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
 class SeedOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;

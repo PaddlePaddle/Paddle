@@ -68,11 +68,11 @@ void TopkKernel(const Context& dev_ctx,
                                 k);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "sorted_topk");
 
-    r = xpu::cast_v2<int32_t, int64_t>(dev_ctx.x_context(),
-                                       (const int32_t*)indices_int_data,
-                                       indices_data,
-                                       indices->numel());
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast_v2");
+    r = xpu::cast<int32_t, int64_t>(dev_ctx.x_context(),
+                                    (const int32_t*)indices_int_data,
+                                    indices_data,
+                                    indices->numel());
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
   } else {
     // do transpose if axis is not the last dim of input
     std::vector<int> trans_axes;
@@ -127,19 +127,19 @@ void TopkKernel(const Context& dev_ctx,
                             k);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "sorted_topk");
 
-    r = xpu::cast_v2<int32_t, int64_t>(dev_ctx.x_context(),
-                                       (const int32_t*)trans_idx_int32_data,
-                                       trans_idx_data,
-                                       indices->numel());
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast_v2");
+    r = xpu::cast<int32_t, int64_t>(dev_ctx.x_context(),
+                                    (const int32_t*)trans_idx_int32_data,
+                                    trans_idx_data,
+                                    indices->numel());
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
     // Transpose back to original dims
     std::vector<int> trans_back_axes;
     for (int i = 0; i < axis; i++) {
-      trans_axes.emplace_back(i);
+      trans_back_axes.emplace_back(i);
     }
-    trans_axes.emplace_back(trans_out_dims.size() - 1);
+    trans_back_axes.emplace_back(trans_out_dims.size() - 1);
     for (int i = axis; i < trans_out_dims.size() - 1; i++) {
-      trans_axes.emplace_back(i);
+      trans_back_axes.emplace_back(i);
     }
 
     std::vector<int> trans_out_shape_host(trans_back_axes.size(), 0);
@@ -173,4 +173,4 @@ void TopkKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(top_k, XPU, ALL_LAYOUT, phi::TopkKernel, float) {}
+PD_REGISTER_KERNEL(topk, XPU, ALL_LAYOUT, phi::TopkKernel, float) {}

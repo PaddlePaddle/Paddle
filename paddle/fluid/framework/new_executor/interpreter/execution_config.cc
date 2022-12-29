@@ -32,32 +32,19 @@ namespace interpreter {
 static constexpr size_t kHostNumThreads = 4;
 static constexpr size_t kDeviceNumThreads = 1;
 static constexpr size_t kNumGcThreads = 1;
-static constexpr size_t kNumPrepareThreads = 0;
-
-static constexpr size_t kMinOpNumForAsyncPrepare = 1000;
 
 // By default, one interpretercore contains:
 // 1-size thread pool for device kernel launch (or 0 for cpu execution),
 // 1-size thread pool for host kernel launch (or more if the system contains
 // enough processors).
 
-// And it may contain:
-// 1-size thread pool for gc if it is can not use FastGC,
-// 1-size thread pool for preparation if the program contains two many ops
-// (1000+).
-
 // Note that the purpose of the config is to limit the total 'possible'
 // threads introduced by interpretercore to avoid hurting performance.
 
-inline std::tuple<int, int, int> GetThreadPoolConfig(const phi::Place& place,
-                                                     size_t op_num) {
+inline std::tuple<int, int> GetThreadPoolConfig(const phi::Place& place,
+                                                size_t op_num) {
   int num_device_threads = kDeviceNumThreads,
-      num_host_threads = kHostNumThreads,
-      num_prepare_threads = kNumPrepareThreads;
-
-  if (op_num > kMinOpNumForAsyncPrepare) {
-    num_prepare_threads = 1;
-  }
+      num_host_threads = kHostNumThreads;
 
   int device_count = 0, processor_count = 0;
   if (platform::is_cpu_place(place)) {
@@ -109,7 +96,7 @@ inline std::tuple<int, int, int> GetThreadPoolConfig(const phi::Place& place,
 
       if (device_count) {
         auto num = processor_count / device_count / 2 -
-                   (kNumGcThreads + kNumPrepareThreads + num_device_threads);
+                   (kNumGcThreads + num_device_threads);
         num_host_threads =
             num > 0 ? (num > kHostNumThreads ? kHostNumThreads : num) : 1;
       }
@@ -126,14 +113,13 @@ inline std::tuple<int, int, int> GetThreadPoolConfig(const phi::Place& place,
           << ", device_count:" << device_count
           << ", serial_run:" << FLAGS_new_executor_serial_run
           << ", num_host_threads:" << num_host_threads
-          << ", num_device_threads:" << num_device_threads
-          << ", num_prepare_threads:" << num_prepare_threads;
-  return std::make_tuple(
-      num_host_threads, num_device_threads, num_prepare_threads);
+          << ", num_device_threads:" << num_device_threads;
+
+  return std::make_tuple(num_host_threads, num_device_threads);
 }
 
 ExecutionConfig::ExecutionConfig(const phi::Place& place, size_t op_num) {
-  std::tie(host_num_threads, deivce_num_threads, prepare_num_threads) =
+  std::tie(host_num_threads, deivce_num_threads) =
       GetThreadPoolConfig(place, op_num);
 }
 
@@ -143,7 +129,6 @@ void ExecutionConfig::Log(int log_level) {
   VLOG(log_level) << "create_local_scope = " << create_local_scope;
   VLOG(log_level) << "host_num_threads = " << host_num_threads;
   VLOG(log_level) << "deivce_num_threads = " << deivce_num_threads;
-  VLOG(log_level) << "prepare_num_threads = " << prepare_num_threads;
   VLOG(log_level) << "skip_gc_vars = ";
   for (const std::string& var : skip_gc_vars) {
     VLOG(log_level) << var;

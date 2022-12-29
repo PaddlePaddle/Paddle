@@ -27,8 +27,8 @@ void AddmmCooCooKernel(const Context& dev_ctx,
                        const SparseCooTensor& input,
                        const SparseCooTensor& x,
                        const SparseCooTensor& y,
-                       float alpha,
                        float beta,
+                       float alpha,
                        SparseCooTensor* out);
 
 /* DENSE + COO @ DENSE -> DENSE */
@@ -37,8 +37,8 @@ void AddmmCooDenseKernel(const Context& dev_ctx,
                          const DenseTensor& input,
                          const SparseCooTensor& x,
                          const DenseTensor& y,
-                         float alpha,
                          float beta,
+                         float alpha,
                          DenseTensor* out);
 
 // TODO(zhouwei25): implement " CSR + CSR @ CSR -> CSR"
@@ -47,8 +47,8 @@ void AddmmCsrCsrKernel(const Context& dev_ctx,
                        const SparseCsrTensor& input,
                        const SparseCsrTensor& x,
                        const SparseCsrTensor& y,
-                       float alpha,
                        float beta,
+                       float alpha,
                        SparseCsrTensor* out);
 
 /* DENSE + CSR @ DENSE -> DENSE */
@@ -57,8 +57,8 @@ void AddmmCsrDenseKernel(const Context& dev_ctx,
                          const DenseTensor& input,
                          const SparseCsrTensor& x,
                          const DenseTensor& y,
-                         float alpha,
                          float beta,
+                         float alpha,
                          DenseTensor* out);
 
 }  // namespace sparse

@@ -84,7 +84,7 @@ void QuantDequantMkldnnPass::CollectInfoFromFake(
                 "The Scales variable [%s] of dequantize op is not found.",
                 var));
 
-        auto* scale_tensor = var->GetMutable<LoDTensor>();
+        auto* scale_tensor = var->GetMutable<phi::DenseTensor>();
         auto* scale_data = scale_tensor->data<float>();
         std::vector<float> thresholds{};
         for (int i = 0; i < scale_tensor->numel(); i++) {
@@ -109,27 +109,34 @@ void QuantDequantMkldnnPass::CollectWeightScalesInfoFromONNXFormatDequantize(
 
     if (op_node->Name() == "dequantize_linear") {
       auto* op_desc = op_node->Op();
+
+      auto scale_name = op_desc->Input("Scale")[0];
+      auto* var = scope->FindVar(scale_name);
+      PADDLE_ENFORCE_NOT_NULL(
+          var,
+          platform::errors::NotFound(
+              "The Scales variable [%s] of dequantize op is not found.", var));
+
+      auto* scale_tensor = var->GetMutable<phi::DenseTensor>();
+      auto* scale_data = scale_tensor->data<float>();
+
       auto x_var_name = op_desc->Input("X")[0];
       auto* weight_var = scope->FindVar(x_var_name);
       if (!weight_var) {
         auto out_var_name = op_desc->Output("Y")[0];
-        if (var_quant_scales->count(x_var_name) &&
-            !var_quant_scales->count(out_var_name)) {
-          std::vector<float> scale_v = var_quant_scales->at(x_var_name);
+        float scale = 1.0 / scale_data[0];
+        if (std::isinf(scale) || std::isnan(scale)) {
+          scale = 0.0;
+        }
+        std::vector<float> scale_v = {scale};
+        if (!var_quant_scales->count(out_var_name)) {
           var_quant_scales->insert(std::make_pair(out_var_name, scale_v));
+        }
+        if (!var_quant_scales->count(x_var_name)) {
+          var_quant_scales->insert(std::make_pair(x_var_name, scale_v));
         }
       } else {
         *onnx_format_quantize_model = true;
-        auto scale_name = op_desc->Input("Scale")[0];
-        auto* var = scope->FindVar(scale_name);
-        PADDLE_ENFORCE_NOT_NULL(
-            var,
-            platform::errors::NotFound(
-                "The Scales variable [%s] of dequantize op is not found.",
-                var));
-
-        auto* scale_tensor = var->GetMutable<LoDTensor>();
-        auto* scale_data = scale_tensor->data<float>();
         std::vector<float> thresholds(scale_data,
                                       scale_data + scale_tensor->numel());
         weight_thresholds->insert(std::make_pair(x_var_name, thresholds));
@@ -178,11 +185,11 @@ void QuantDequantMkldnnPass::CollectInputScalesFromQuantize(
           platform::errors::NotFound(
               "The InScale variable [%s] of quantize op is not found.", var));
 
-      auto* scale_tensor = var->GetMutable<LoDTensor>();
+      auto* scale_tensor = var->GetMutable<phi::DenseTensor>();
       auto* scale_data = scale_tensor->data<float>();
       float scale = 1.0 / scale_data[0];
       if (std::isinf(scale) || std::isnan(scale)) {
-        scale = 0.0;
+        continue;
       }
 
       if (!var_quant_scales->count(x_var_name)) {
@@ -406,7 +413,7 @@ void QuantDequantMkldnnPass::RemoveFakeOps(
   GraphSafeRemoveNodes(graph, nodes2rm);
 }
 
-void QuantDequantMkldnnPass::TransposeWeight(Tensor* input) const {
+void QuantDequantMkldnnPass::TransposeWeight(phi::DenseTensor* input) const {
   const auto in_dims = input->dims();
   std::vector<int> out_dim_v;
   std::vector<int> axis;
@@ -421,10 +428,10 @@ void QuantDequantMkldnnPass::TransposeWeight(Tensor* input) const {
   auto out_stride = phi::stride(out_dims);
   const int count = input->numel();
 
-  Tensor trans_tensor;
+  phi::DenseTensor trans_tensor;
   trans_tensor.Resize(out_dims);
-  float* trans_data = trans_tensor.mutable_data<float>(platform::CPUPlace());
-  float* in_data = input->mutable_data<float>(platform::CPUPlace());
+  float* trans_data = trans_tensor.mutable_data<float>(phi::CPUPlace());
+  float* in_data = input->mutable_data<float>(phi::CPUPlace());
 
   for (int64_t out_idx = 0; out_idx < count; ++out_idx) {
     int64_t in_idx = 0;
@@ -451,7 +458,7 @@ bool QuantDequantMkldnnPass::IsInt8Weight(
   if (var == nullptr) {
     return false;
   }
-  auto* weight_tensor = var->GetMutable<LoDTensor>();
+  auto* weight_tensor = var->GetMutable<phi::DenseTensor>();
   auto* weight_data = weight_tensor->data<float>();
   bool is_int8 = true;
   for (int i = 0; i < weight_tensor->numel(); i++) {
@@ -465,7 +472,7 @@ bool QuantDequantMkldnnPass::IsInt8Weight(
 
 void QuantDequantMkldnnPass::ConvertFromINT8ToFP32(
     const std::vector<float>& scales,
-    Tensor* weight_tensor,
+    phi::DenseTensor* weight_tensor,
     int8_t* int8_weight_data,
     float* fp32_weight_data,
     const std::string& weight_var_name) const {
@@ -486,8 +493,7 @@ void QuantDequantMkldnnPass::ConvertFromINT8ToFP32(
 
     weight_tensor->clear();  // clear int weight
     weight_tensor->Resize(phi::make_ddim(phi::vectorize(weight_dims)));
-    auto* new_weight_data =
-        weight_tensor->mutable_data<float>(platform::CPUPlace());
+    auto* new_weight_data = weight_tensor->mutable_data<float>(phi::CPUPlace());
     memcpy(new_weight_data,
            weight_data.data(),
            weight_tensor->numel() * sizeof(float));
@@ -520,19 +526,16 @@ void QuantDequantMkldnnPass::ConvertFromINT8ToFP32(
     int step_c = step_n / size;
     for (int i = 0; i < weight_dims[0]; i++) {
       int begin_n = i * step_n;
-      for (int j = begin_n; j < begin_n + step_n; j++) {
-        for (int k = 0; k < size; k++) {
-          int begin_c = k * step_c;
-          for (int m = begin_c; m < begin_c + step_c; m++) {
-            weight_data[m] *= scales[k];
-          }
+      for (int j = 0; j < size; j++) {
+        int begin_c = begin_n + j * step_c;
+        for (int k = 0; k < step_c; k++) {
+          weight_data[begin_c + k] *= scales[j];
         }
       }
     }
     weight_tensor->clear();  // clear int weight
     weight_tensor->Resize(phi::make_ddim(phi::vectorize(weight_dims)));
-    auto* new_weight_data =
-        weight_tensor->mutable_data<float>(platform::CPUPlace());
+    auto* new_weight_data = weight_tensor->mutable_data<float>(phi::CPUPlace());
     memcpy(new_weight_data,
            weight_data.data(),
            weight_tensor->numel() * sizeof(float));
@@ -576,9 +579,8 @@ void QuantDequantMkldnnPass::DequantizeOpWeights(
           "The input persistable [%s] var of [%s] op is not found.",
           weight_var_name,
           op_desc->Type()));
-  auto* weight_tensor = var->GetMutable<LoDTensor>();
-  float* fp32_weight_data =
-      weight_tensor->mutable_data<float>(platform::CPUPlace());
+  auto* weight_tensor = var->GetMutable<phi::DenseTensor>();
+  float* fp32_weight_data = weight_tensor->mutable_data<float>(phi::CPUPlace());
   ConvertFromINT8ToFP32(
       scales, weight_tensor, nullptr, fp32_weight_data, weight_var_name);
 }
@@ -588,7 +590,8 @@ void QuantDequantMkldnnPass::DequantizeOpWeightsFromONNXFormat(
     Scope* scope,
     const std::string& weight_name,
     const std::unordered_map<std::string, std::vector<float>>&
-        weight_thresholds) const {
+        weight_thresholds,
+    std::vector<std::string>* dequantized_weights_names) const {
   auto* op_desc = op_node->Op();
   std::string weight_var_name = op_desc->Input(weight_name)[0];
 
@@ -596,6 +599,13 @@ void QuantDequantMkldnnPass::DequantizeOpWeightsFromONNXFormat(
   auto iter = weight_thresholds.find(weight_var_name);
   if (iter != weight_thresholds.end()) {
     scales = iter->second;
+    auto name_iter = std::find(dequantized_weights_names->begin(),
+                               dequantized_weights_names->end(),
+                               weight_var_name);
+    // Has been dequantized
+    if (name_iter != dequantized_weights_names->end()) {
+      return;
+    }
   } else {
     if (!IsInt8Weight(op_node, scope, weight_name)) {
       return;
@@ -605,7 +615,7 @@ void QuantDequantMkldnnPass::DequantizeOpWeightsFromONNXFormat(
         "the model is correct.",
         weight_var_name));
   }
-
+  dequantized_weights_names->push_back(weight_var_name);
   auto* var = scope->FindVar(weight_var_name);
   PADDLE_ENFORCE_NOT_NULL(
       var,
@@ -613,9 +623,9 @@ void QuantDequantMkldnnPass::DequantizeOpWeightsFromONNXFormat(
           "The input persistable [%s] var of [%s] op is not found.",
           weight_var_name,
           op_desc->Type()));
-  auto* weight_tensor = var->GetMutable<LoDTensor>();
+  auto* weight_tensor = var->GetMutable<phi::DenseTensor>();
   int8_t* int8_weight_data =
-      weight_tensor->mutable_data<int8_t>(platform::CPUPlace());
+      weight_tensor->mutable_data<int8_t>(phi::CPUPlace());
 
   ConvertFromINT8ToFP32(
       scales, weight_tensor, int8_weight_data, nullptr, weight_var_name);
@@ -634,14 +644,18 @@ void QuantDequantMkldnnPass::DequantizeWeights(
         << "No need to dequantize weights because weight_thresholds is empty.";
     return;
   }
-
+  std::vector<std::string> dequantized_weights_names;
   for (auto* op_node :
        ir::TopologyVarientSort(*graph, static_cast<ir::SortKind>(0))) {
     if (!op_node->IsOp()) continue;
-    if (op_node->Name() == "conv2d" || op_node->Name() == "depthwise_conv2d") {
+    if (op_node->Name() == "conv2d" || op_node->Name() == "depthwise_conv2d" ||
+        op_node->Name() == "fused_conv2d") {
       if (onnx_format_quantize_model) {
-        DequantizeOpWeightsFromONNXFormat(
-            op_node, scope, "Filter", weight_thresholds);
+        DequantizeOpWeightsFromONNXFormat(op_node,
+                                          scope,
+                                          "Filter",
+                                          weight_thresholds,
+                                          &dequantized_weights_names);
       } else if (IsInt8Weight(op_node, scope, "Filter")) {
         DequantizeOpWeights(
             op_node, scope, "Filter", "Output", weight_thresholds);
@@ -650,7 +664,7 @@ void QuantDequantMkldnnPass::DequantizeWeights(
                op_node->Name() == "matmul_v2") {
       if (onnx_format_quantize_model) {
         DequantizeOpWeightsFromONNXFormat(
-            op_node, scope, "Y", weight_thresholds);
+            op_node, scope, "Y", weight_thresholds, &dequantized_weights_names);
       } else if (IsInt8Weight(op_node, scope, "Y")) {
         DequantizeOpWeights(op_node, scope, "Y", "Out", weight_thresholds);
       }
@@ -695,8 +709,12 @@ void QuantDequantMkldnnPass::ApplyImpl(ir::Graph* graph) const {
   const std::string pattern_name = "quant_dequant_mkldnn_pass";
   FusePassBase::Init(pattern_name, graph);
 
-  const std::unordered_set<std::string> skip_ops = {
-      "conv2d", "depthwise_conv2d", "mul", "matmul", "matmul_v2"};
+  const std::unordered_set<std::string> skip_ops = {"conv2d",
+                                                    "depthwise_conv2d",
+                                                    "fused_conv2d",
+                                                    "mul",
+                                                    "matmul",
+                                                    "matmul_v2"};
 
   const std::unordered_set<std::string> fake_quantize_types = {
       "fake_quantize_moving_average_abs_max", "fake_quantize_range_abs_max"};
@@ -716,10 +734,6 @@ void QuantDequantMkldnnPass::ApplyImpl(ir::Graph* graph) const {
   std::unordered_map<std::string, std::vector<float>> var_quant_scales{};
   bool onnx_format_quantize_model = false;
   auto* scope = param_scope();
-  GetInfoFromTheFirstOp(
-      graph, "has_quant_info", "var_quant_scales", &var_quant_scales);
-  VLOG(1) << "The nums of scale info from slim txt is: "
-          << var_quant_scales.size();
   MarkSkipQuantizedOps(graph, skip_ops);
   CollectInfoFromFake(graph, scope, fake_dequantize_types, &weight_thresholds);
   CollectWeightScalesInfoFromONNXFormatDequantize(graph,

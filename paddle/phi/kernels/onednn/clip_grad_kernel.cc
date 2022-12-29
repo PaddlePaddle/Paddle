@@ -48,7 +48,7 @@ void ClipGradKernel(const Context& dev_ctx,
 
 PD_REGISTER_KERNEL(clip_grad,
                    OneDNN,
-                   ALL_LAYOUT,
+                   ONEDNN,
                    phi::ClipGradKernel,
                    float,
                    phi::dtype::bfloat16) {}

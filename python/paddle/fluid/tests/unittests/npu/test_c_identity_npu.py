@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 import unittest
 import numpy as np
 import paddle
@@ -24,15 +23,14 @@ paddle.enable_static()
 
 
 class TestIdentityOp(TestDistBase):
-
     def _setup_config(self):
         pass
 
     def test_identity(self, col_type="identity"):
         dist_env = os.environ
-        self.check_with_place("collective_identity_op_npu.py",
-                              col_type,
-                              need_envs=dist_env)
+        self.check_with_place(
+            "collective_identity_op_npu.py", col_type, need_envs=dist_env
+        )
 
 
 if __name__ == '__main__':

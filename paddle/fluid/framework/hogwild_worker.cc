@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include <ctime>
 
+#include "paddle/fluid/framework/barrier.h"
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/device_worker.h"
@@ -25,8 +26,13 @@ limitations under the License. */
 #include "paddle/fluid/distributed/ps/service/communicator/communicator.h"
 #endif
 
+DECLARE_bool(enable_exit_when_partial_worker);
+
 namespace paddle {
 namespace framework {
+
+std::atomic<uint64_t> HogwildWorker::worker_num_stat_(0);
+Barrier g_barrier;
 
 void HogwildWorker::Initialize(const TrainerDesc &desc) {
   fetch_config_ = desc.fetch_config();
@@ -74,13 +80,14 @@ void HogwildWorker::CreateThreadScope(const ProgramDesc &program) {
       InitializeVariable(ptr, var->GetType());
       if (stat_var_name_map_.find(var->Name()) != stat_var_name_map_.end() &&
           thread_id_ != 0) {
-        int tensor_dim =
-            root_scope_->FindVar(var->Name())->GetMutable<LoDTensor>()->numel();
+        int tensor_dim = root_scope_->FindVar(var->Name())
+                             ->GetMutable<phi::DenseTensor>()
+                             ->numel();
         auto *ptr1 = thread_scope_->Var(var->Name());
         InitializeVariable(ptr1, var->GetType());
-        LoDTensor *thread_tensor = ptr1->GetMutable<LoDTensor>();
-        LoDTensor *root_tensor =
-            root_scope_->FindVar(var->Name())->GetMutable<LoDTensor>();
+        phi::DenseTensor *thread_tensor = ptr1->GetMutable<phi::DenseTensor>();
+        phi::DenseTensor *root_tensor =
+            root_scope_->FindVar(var->Name())->GetMutable<phi::DenseTensor>();
 #define MemsetCallback(cpp_type, proto_type)                                  \
   do {                                                                        \
     if (framework::TransToProtoVarType(root_tensor->dtype()) == proto_type) { \
@@ -97,8 +104,8 @@ void HogwildWorker::CreateThreadScope(const ProgramDesc &program) {
 }
 
 template <typename T>
-void HogwildWorker::SetZero(LoDTensor *tensor,
-                            LoDTensor *root_tensor,
+void HogwildWorker::SetZero(phi::DenseTensor *tensor,
+                            phi::DenseTensor *root_tensor,
                             int tensor_dim) {
   T *ptr = tensor->mutable_data<T>(root_tensor->dims(), platform::CPUPlace());
   memset(ptr, 0, sizeof(T) * tensor_dim);
@@ -140,9 +147,30 @@ void HogwildWorker::TrainFilesWithProfiler() {
   double read_time = 0.0;
   int cur_batch;
   int batch_cnt = 0;
+  if (thread_id_ == 0) {
+    worker_num_stat_.store(0);
+  }
+  g_barrier.wait();
+  bool train_mode = device_reader_->IsTrainMode();
   timeline.Start();
   uint64_t total_inst = 0;
-  while ((cur_batch = device_reader_->Next()) > 0) {
+#if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
+  device_reader_->InitGraphTrainResource();
+#endif
+  while (1) {
+    cur_batch = device_reader_->Next();
+    if (FLAGS_enable_exit_when_partial_worker && train_mode) {
+      if (cur_batch > 0) {
+        worker_num_stat_.fetch_add(1, std::memory_order_relaxed);
+      }
+      g_barrier.wait();
+      if (worker_num_stat_.load(std::memory_order_relaxed) % thread_num_ != 0) {
+        break;
+      }
+    }
+    if (cur_batch <= 0) {
+      break;
+    }
     VLOG(3) << "read a batch in thread " << thread_id_;
     timeline.Pause();
     read_time += timeline.ElapsedSec();
@@ -236,8 +264,33 @@ void HogwildWorker::TrainFiles() {
   device_reader_->Start();
   int cur_batch;
   int batch_cnt = 0;
+  if (thread_id_ == 0) {
+    worker_num_stat_.store(0);
+  }
+  g_barrier.wait();
 
-  while ((cur_batch = device_reader_->Next()) > 0) {
+#if defined(PADDLE_WITH_HETERPS) && defined(PADDLE_WITH_CUDA)
+  platform::SetDeviceId(thread_id_);
+#endif
+  // while ((cur_batch = device_reader_->Next()) > 0) {
+  bool train_mode = device_reader_->IsTrainMode();
+#if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
+  device_reader_->InitGraphTrainResource();
+#endif
+  while (1) {
+    cur_batch = device_reader_->Next();
+    if (FLAGS_enable_exit_when_partial_worker && train_mode) {
+      if (cur_batch > 0) {
+        worker_num_stat_.fetch_add(1, std::memory_order_relaxed);
+      }
+      g_barrier.wait();
+      if (worker_num_stat_.load(std::memory_order_relaxed) % thread_num_ != 0) {
+        break;
+      }
+    }
+    if (cur_batch <= 0) {
+      break;
+    }
     for (auto &op : ops_) {
       bool need_skip = false;
       for (auto t = 0u; t < skip_ops_.size(); ++t) {

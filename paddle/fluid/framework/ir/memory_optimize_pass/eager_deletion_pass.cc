@@ -47,12 +47,12 @@ static std::map<size_t, std::unordered_set<std::string>> VarsGroupByScopeIdx(
   return result;
 }
 
-// Check whether the variable is LoDTensor based on static VarDesc info
+// Check whether the variable is phi::DenseTensor based on static VarDesc info
 static bool IsLoDTensor(VarDesc *var) {
   return var->Proto()->type().type() == proto::VarType::LOD_TENSOR;
 }
 
-// Get memory size of LoDTensor
+// Get memory size of phi::DenseTensor
 static int64_t GetMemorySize(
     const std::unordered_map<std::string, std::vector<details::VarHandle *>>
         &vars,
@@ -64,7 +64,7 @@ static int64_t GetMemorySize(
   PADDLE_ENFORCE_EQ(IsLoDTensor(var_desc),
                     true,
                     platform::errors::InvalidArgument(
-                        "Var(%s) must be LoDTensor.", var_name));
+                        "Var(%s) must be phi::DenseTensor.", var_name));
   auto dims = var_desc->GetShape();
   return SizeOfType(var_desc->GetDataType()) *
          std::accumulate(dims.begin(),
@@ -73,10 +73,10 @@ static int64_t GetMemorySize(
                          std::multiplies<int64_t>());
 }
 
-// Split all variables in the graph into LoDTensor and Non-LoDTensor (e.g.
-// SelectedRows, LoDTensorArray)
-// Since partial GC is based on static analysis of memory size of each variable
-// So we should skip SelectedRows and LoDTensorArray here
+// Split all variables in the graph into phi::DenseTensor and
+// Non-phi::DenseTensor (e.g. SelectedRows, LoDTensorArray) Since partial GC is
+// based on static analysis of memory size of each variable So we should skip
+// SelectedRows and LoDTensorArray here
 static void SplitIntoLoDTensorAndNonLoDTensorVars(
     const OpToVarNameSetMap &m,
     const details::GraphVars &vars,
@@ -128,7 +128,7 @@ static OpToVarNameSetMap ShrinkGCVars(
   if (fraction_of_memory_size <= 0.0) return {};
 
   /**
-   * Step 1: Split all variables into LoDTensor and Non-LoDTensor.
+   * Step 1: Split all variables into phi::DenseTensor and Non-phi::DenseTensor.
    * We can only calculate memory size of LoDTensors
    */
   OpToVarNameSetMap lod_tensors, other_vars;

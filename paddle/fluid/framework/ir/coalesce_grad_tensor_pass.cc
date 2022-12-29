@@ -175,10 +175,11 @@ class CoalesceGradTensorPass : public ir::Pass {
                 p_g.second));
         pinned_var_set->insert(it->Var()->Name());
       }
-      PADDLE_ENFORCE_EQ(IsLoDTensorType(GetTypeOfVar(vars_info, p_g.second)),
-                        true,
-                        platform::errors::InvalidArgument(
-                            "Parameter@Grad %s is not LoDTensor.", p_g.second));
+      PADDLE_ENFORCE_EQ(
+          IsLoDTensorType(GetTypeOfVar(vars_info, p_g.second)),
+          true,
+          platform::errors::InvalidArgument(
+              "Parameter@Grad %s is not phi::DenseTensor.", p_g.second));
     }
   }
 
@@ -560,7 +561,7 @@ class CoalesceGradTensorPass : public ir::Pass {
       }
     }
     VLOG(4) << "all_persistable:" << all_persistable;
-    VLOG(4) << "any_persistable:" << all_persistable;
+    VLOG(4) << "any_persistable:" << any_persistable;
     // NOTE. In scope_buffered_ssa_graph_executor, after each execution of
     // DropScope(), non persistable vars will be Erase or Clear. So
     // coalesce_tensor op needs to be executed again after the execution

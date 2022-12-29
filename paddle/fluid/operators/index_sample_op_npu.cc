@@ -17,13 +17,12 @@ limitations under the License. */
 
 namespace paddle {
 namespace operators {
-using Tensor = framework::Tensor;
 
 template <typename IndexT>
 void IndexSampleGather(const paddle::platform::NPUDeviceContext& dev_ctx,
-                       const Tensor* index,
-                       const Tensor* input,
-                       Tensor* out) {
+                       const phi::DenseTensor* index,
+                       const phi::DenseTensor* input,
+                       phi::DenseTensor* out) {
   auto index_dims = index->dims();
   auto input_dims = input->dims();
   auto batch_size = input_dims[0];
@@ -38,7 +37,7 @@ void IndexSampleGather(const paddle::platform::NPUDeviceContext& dev_ctx,
       gather_index_vec.push_back(index_vec[i * index_length + j]);
     }
   }
-  Tensor gather_index;
+  phi::DenseTensor gather_index;
   framework::TensorFromVector(gather_index_vec, dev_ctx, &gather_index);
   gather_index.Resize({batch_size, index_length, 2});
 
@@ -56,9 +55,9 @@ class IndexSampleNPUKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto& dev_ctx =
         ctx.template device_context<paddle::platform::NPUDeviceContext>();
-    auto* input = ctx.Input<framework::LoDTensor>("X");
-    auto* index = ctx.Input<framework::LoDTensor>("Index");
-    auto* out = ctx.Output<framework::LoDTensor>("Out");
+    auto* input = ctx.Input<phi::DenseTensor>("X");
+    auto* index = ctx.Input<phi::DenseTensor>("Index");
+    auto* out = ctx.Output<phi::DenseTensor>("Out");
     out->mutable_data<T>(ctx.GetPlace());
 
     const auto& index_type = framework::TransToProtoVarType(index->dtype());
@@ -72,9 +71,9 @@ class IndexSampleNPUKernel : public framework::OpKernel<T> {
 
 template <typename IndexT>
 void IndexSampleGradScatter(const paddle::platform::NPUDeviceContext& dev_ctx,
-                            const Tensor* index,
-                            const Tensor* out_grad,
-                            Tensor* x_grad) {
+                            const phi::DenseTensor* index,
+                            const phi::DenseTensor* out_grad,
+                            phi::DenseTensor* x_grad) {
   auto index_dims = index->dims();
   auto input_dims = x_grad->dims();
   auto batch_size = input_dims[0];
@@ -89,7 +88,7 @@ void IndexSampleGradScatter(const paddle::platform::NPUDeviceContext& dev_ctx,
       scatter_index_vec.push_back(index_vec[i * index_length + j]);
     }
   }
-  Tensor scatter_index;
+  phi::DenseTensor scatter_index;
   framework::TensorFromVector(scatter_index_vec, dev_ctx, &scatter_index);
   scatter_index.Resize({batch_size, index_length, 2});
 
@@ -108,11 +107,9 @@ class IndexSampleGradNPUKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto& dev_ctx =
         ctx.template device_context<paddle::platform::NPUDeviceContext>();
-    auto* index = ctx.Input<framework::LoDTensor>("Index");
-    auto* out_grad =
-        ctx.Input<framework::LoDTensor>(framework::GradVarName("Out"));
-    auto* x_grad =
-        ctx.Output<framework::LoDTensor>(framework::GradVarName("X"));
+    auto* index = ctx.Input<phi::DenseTensor>("Index");
+    auto* out_grad = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+    auto* x_grad = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
     x_grad->mutable_data<T>(ctx.GetPlace());
 
     const auto& index_type = framework::TransToProtoVarType(index->dtype());

@@ -26,14 +26,16 @@ template <typename T>
 class SetValueMLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const {
-    auto* in = ctx.Input<Tensor>("Input");
-    auto* value_tensor = ctx.Input<Tensor>("ValueTensor");
-    auto* out = ctx.Output<Tensor>("Out");
+    auto* in = ctx.Input<phi::DenseTensor>("Input");
+    auto* value_tensor = ctx.Input<phi::DenseTensor>("ValueTensor");
+    auto* out = ctx.Output<phi::DenseTensor>("Out");
     out->mutable_data<T>(ctx.GetPlace());
 
-    auto starts_tensor_list = ctx.MultiInput<Tensor>("StartsTensorList");
-    auto ends_tensor_list = ctx.MultiInput<Tensor>("EndsTensorList");
-    auto steps_tensor_list = ctx.MultiInput<Tensor>("StepsTensorList");
+    auto starts_tensor_list =
+        ctx.MultiInput<phi::DenseTensor>("StartsTensorList");
+    auto ends_tensor_list = ctx.MultiInput<phi::DenseTensor>("EndsTensorList");
+    auto steps_tensor_list =
+        ctx.MultiInput<phi::DenseTensor>("StepsTensorList");
 
     auto axes = ctx.Attr<std::vector<int64_t>>("axes");
     auto starts = ctx.Attr<std::vector<int64_t>>("starts");
@@ -100,7 +102,7 @@ class SetValueMLUKernel : public framework::OpKernel<T> {
       ends_indices[axis_index] = static_cast<int>(ends[i]);
       strides_indices[axis_index] = static_cast<int>(steps[i]);
     }
-    Tensor value_t(in->type());
+    phi::DenseTensor value_t(in->type());
     if (value_tensor != nullptr) {
       value_t.ShareDataWith(*value_tensor);
     } else {
@@ -114,7 +116,7 @@ class SetValueMLUKernel : public framework::OpKernel<T> {
       value_t.Resize(value_dims);
     }
 
-    Tensor value_temp(in->type());
+    phi::DenseTensor value_temp(in->type());
     if (slice_dims_for_assign == value_t.dims()) {
       value_temp.ShareDataWith(value_t);
     } else {
@@ -131,11 +133,11 @@ class SetValueMLUKernel : public framework::OpKernel<T> {
 
     int64_t input_numel = phi::product(in_dims);
     int64_t value_numel = phi::product(value_temp.dims());
-    Tensor in_temp, out_temp, val_temp, index_out;
+    phi::DenseTensor in_temp, out_temp, val_temp, index_out;
     int64_t stride_step = phi::product(in_dims);
     std::vector<int64_t> index_indices(stride_step);
     std::iota(index_indices.begin(), index_indices.end(), 0);
-    framework::Tensor index_temp;
+    phi::DenseTensor index_temp;
     in_temp.ShareDataWith(*in);
     val_temp.ShareDataWith(value_temp);
     paddle::framework::TensorFromVector(
@@ -183,7 +185,7 @@ class SetValueMLUKernel : public framework::OpKernel<T> {
         phi::product(slice_dims_for_assign),
         platform::errors::InvalidArgument(
             "OP(set_value) error index indices and value update not match "));
-    Tensor index_final;
+    phi::DenseTensor index_final;
     index_final.ShareDataWith(index_out);
     int64_t indices_numel = phi::product(index_dims);
     auto new_index_dims = phi::make_ddim({indices_numel});

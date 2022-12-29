@@ -21,8 +21,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using framework::Tensor;
-
 class NCEOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -302,7 +300,7 @@ class NCEOpGradVarTypeInference : public framework::VarTypeInference {
       ctx->SetOutputType(weight_grad, framework::proto::VarType::SELECTED_ROWS);
     } else {
       VLOG(3) << "nce_op_grad op " << weight_grad << " and "
-              << " is set to LoDTensor";
+              << " is set to phi::DenseTensor";
       ctx->SetOutputType(weight_grad, framework::proto::VarType::LOD_TENSOR);
     }
     ctx->SetOutputDataType(weight_grad, ctx->GetInputDataType("Input"));

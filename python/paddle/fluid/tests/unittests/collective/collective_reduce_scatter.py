@@ -12,22 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import division
-from __future__ import print_function
-
 import unittest
 
-import paddle
 import numpy as np
-import random
+
+import paddle
 import paddle.distributed as dist
-import paddle.fluid as fluid
-import paddle.distributed.fleet as fleet
-from paddle import framework
+from paddle.distributed.communication.reduce_scatter import _reduce_scatter_base
 
 
 class TestCollectiveReduceScatter(unittest.TestCase):
-
     def setUp(self):
         dist.init_parallel_env()
         paddle.fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
@@ -83,9 +77,7 @@ class TestCollectiveReduceScatter(unittest.TestCase):
         # [1, 2, 3, 4]  # Rank-1
 
         output = paddle.empty(shape=[2], dtype=input.dtype)
-        task = paddle.distributed.collective._reduce_scatter_base(output,
-                                                                  input,
-                                                                  sync_op=False)
+        task = _reduce_scatter_base(output, input, sync_op=False)
 
         task.wait()
 

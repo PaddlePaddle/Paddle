@@ -99,6 +99,10 @@ set PYTHON_VENV_ROOT=%cache_dir%\python_venv
 set PYTHON_EXECUTABLE=!PYTHON_VENV_ROOT!\Scripts\python.exe
 %PYTHON_ROOT%\python.exe -m venv --clear !PYTHON_VENV_ROOT!
 call !PYTHON_VENV_ROOT!\Scripts\activate.bat
+if %ERRORLEVEL% NEQ 0 (
+    echo activate python virtual environment failed!
+    exit /b 5
+)
 
 if "%WITH_PYTHON%" == "ON" (
     where python
@@ -640,7 +644,6 @@ pip uninstall -y paddlepaddle
 pip uninstall -y paddlepaddle-gpu
 pip install %PADDLE_WHL_FILE_WIN%
 if %ERRORLEVEL% NEQ 0 (
-    call paddle_winci\Scripts\deactivate.bat 2>NUL
     echo pip install whl package failed!
     exit /b 1
 )
@@ -662,6 +665,7 @@ echo    ========================================
 echo    Step 4. Running unit tests ...
 echo    ========================================
 
+pip install requests
 pip install -r %work_dir%\python\unittest_py\requirements.txt
 if %ERRORLEVEL% NEQ 0 (
     echo pip install unittest requirements.txt failed!
@@ -678,8 +682,7 @@ dir %THIRD_PARTY_PATH:/=\%\install\zlib\bin
 dir %THIRD_PARTY_PATH:/=\%\install\mklml\lib
 dir %THIRD_PARTY_PATH:/=\%\install\mkldnn\bin
 dir %THIRD_PARTY_PATH:/=\%\install\warpctc\bin
-
-pip install requests
+dir %THIRD_PARTY_PATH:/=\%\install\onnxruntime\lib
 
 set PATH=%THIRD_PARTY_PATH:/=\%\install\openblas\lib;%THIRD_PARTY_PATH:/=\%\install\openblas\bin;^
 %THIRD_PARTY_PATH:/=\%\install\zlib\bin;%THIRD_PARTY_PATH:/=\%\install\mklml\lib;^
@@ -689,7 +692,9 @@ set PATH=%THIRD_PARTY_PATH:/=\%\install\openblas\lib;%THIRD_PARTY_PATH:/=\%\inst
 %PATH%
 
 REM TODO: make ut find .dll in install\onnxruntime\lib
-xcopy %THIRD_PARTY_PATH:/=\%\install\onnxruntime\lib\onnxruntime.dll %work_dir%\%BUILD_DIR%\paddle\fluid\inference\tests\api\ /Y
+if "%WITH_ONNXRUNTIME%"=="ON" (
+    xcopy %THIRD_PARTY_PATH:/=\%\install\onnxruntime\lib\onnxruntime.dll %work_dir%\%BUILD_DIR%\paddle\fluid\inference\tests\api\ /Y
+)
 
 if "%WITH_GPU%"=="ON" (
     call:parallel_test_base_gpu

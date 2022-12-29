@@ -80,7 +80,7 @@ void SliceGradRawKernel(const Context& dev_ctx,
 
 PD_REGISTER_KERNEL(slice_grad,
                    OneDNN,
-                   ALL_LAYOUT,
+                   ONEDNN,
                    phi::SliceGradRawKernel,
                    float,
                    phi::dtype::bfloat16) {}

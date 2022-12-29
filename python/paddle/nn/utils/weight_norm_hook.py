@@ -12,14 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import paddle
-import numpy as np
-from ... import fluid
-from ...fluid import dygraph
-from ...fluid import layers as F
-from ...fluid.layer_helper import LayerHelper
+from paddle import _C_ops
+
 from ...fluid.data_feeder import check_variable_and_dtype
+from ...fluid.layer_helper import LayerHelper
 from ...framework import in_dygraph_mode
-from paddle import _C_ops, _legacy_C_ops
 
 __all__ = []
 
@@ -37,16 +34,15 @@ def l2_norm(x, axis, epsilon=1e-12, name=None):
     helper = LayerHelper("l2_normalize", **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
     norm = helper.create_variable_for_type_inference(dtype=x.dtype)
-    helper.append_op(type="norm",
-                     inputs={"X": x},
-                     outputs={
-                         "Out": out,
-                         "Norm": norm
-                     },
-                     attrs={
-                         "axis": 1 if axis is None else axis,
-                         "epsilon": epsilon,
-                     })
+    helper.append_op(
+        type="norm",
+        inputs={"X": x},
+        outputs={"Out": out, "Norm": norm},
+        attrs={
+            "axis": 1 if axis is None else axis,
+            "epsilon": epsilon,
+        },
+    )
     return paddle.squeeze(norm, axis=[axis])
 
 
@@ -77,11 +73,11 @@ def _weight_norm(v, g, dim):
         v_normalized = v / (paddle.sqrt(paddle.sum(paddle.square(v))) + 1e-12)
     elif dim == 0:
         p_matrix = paddle.reshape(v, (shape[0], -1))
-        v_normalized = F.l2_normalize(p_matrix, axis=1)
+        v_normalized = paddle.nn.functional.normalize(p_matrix, axis=1)
         v_normalized = paddle.reshape(v_normalized, shape)
     elif dim == ndims - 1:
         p_matrix = paddle.reshape(v, (-1, shape[-1]))
-        v_normalized = F.l2_normalize(p_matrix, axis=0)
+        v_normalized = paddle.nn.functional.normalize(p_matrix, axis=0)
         v_normalized = paddle.reshape(v_normalized, shape)
     else:
         perm = list(range(ndims))
@@ -90,17 +86,16 @@ def _weight_norm(v, g, dim):
         p_transposed = paddle.transpose(v, perm)
         transposed_shape = p_transposed.shape
         p_matrix = paddle.reshape(p_transposed, (p_transposed.shape[0], -1))
-        v_normalized = F.l2_normalize(p_matrix, axis=1)
+        v_normalized = paddle.nn.functional.normalize(p_matrix, axis=1)
         v_normalized = paddle.reshape(v_normalized, transposed_shape)
         v_normalized = paddle.transpose(v_normalized, perm)
-    weight = F.elementwise_mul(v_normalized,
-                               g,
-                               axis=dim if dim is not None else -1)
+    weight = paddle.tensor.math._multiply_with_axis(
+        v_normalized, g, axis=dim if dim is not None else -1
+    )
     return weight
 
 
-class WeightNorm(object):
-
+class WeightNorm:
     def __init__(self, name, dim):
         if dim is None:
             dim = -1
@@ -116,8 +111,10 @@ class WeightNorm(object):
     def apply(layer, name, dim):
         for k, hook in layer._forward_pre_hooks.items():
             if isinstance(hook, WeightNorm) and hook.name == name:
-                raise RuntimeError("Cannot register two weight_norm hooks on "
-                                   "the same parameter {}".format(name))
+                raise RuntimeError(
+                    "Cannot register two weight_norm hooks on "
+                    "the same parameter {}".format(name)
+                )
 
         if dim is None:
             dim = -1
@@ -173,9 +170,10 @@ def weight_norm(layer, name='weight', dim=0):
 
     Weight normalization is a reparameterization of the weight vectors in a neural network that
     decouples the magnitude of those weight vectors from their direction. Weight normalization
-    replaces the parameter specified by `name`(eg: 'weight') with two parameters: one parameter
+    replaces the parameter specified by ``name`` (eg: 'weight') with two parameters: one parameter
     specifying the magnitude (eg: 'weight_g') and one parameter specifying the direction
     (eg: 'weight_v'). Weight normalization has been implemented as discussed in this paper:
+
     `Weight Normalization: A Simple Reparameterization to Accelerate Training of Deep Neural Networks
     <https://arxiv.org/pdf/1602.07868.pdf>`_.
 

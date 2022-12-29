@@ -101,7 +101,7 @@ void SliceRawKernel(const Context& dev_ctx,
 
 PD_REGISTER_KERNEL(slice,
                    OneDNN,
-                   ALL_LAYOUT,
+                   ONEDNN,
                    phi::SliceRawKernel,
                    float,
                    int8_t,

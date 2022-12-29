@@ -34,7 +34,7 @@ namespace cub = hipcub;
 #include "paddle/fluid/operators/elementwise/elementwise_op_broadcast.cu.h"
 #include "paddle/fluid/operators/kernel_primitives/kernel_primitives.h"
 #include "paddle/fluid/operators/reduce_ops/reduce_op.cu.h"
-#include "paddle/fluid/platform/fast_divmod.h"
+#include "paddle/phi/kernels/funcs/fast_divmod.h"
 
 namespace paddle {
 namespace operators {
@@ -324,7 +324,7 @@ void Launch2DColumnReduce(const phi::GPUContext& dev_ctx,
     BiasAddBwSinglePassKernel<T>
         <<<grid, block, 0, stream>>>(d_out, reduce_num, left_num, d_bias);
   } else {
-    framework::Tensor tmp_sum;
+    phi::DenseTensor tmp_sum;
     tmp_sum.Resize({grid.y, left_num});
     dev_ctx.template Alloc<ReduceParamType<T>>(
         &tmp_sum, tmp_sum.numel() * sizeof(ReduceParamType<T>));

@@ -21,7 +21,7 @@
 namespace paddle {
 namespace framework {
 TEST(LodTensor, PrintLodTensor) {
-  LoDTensor tensor1;
+  phi::DenseTensor tensor1;
   tensor1.Resize({2});
   tensor1.mutable_data<float>(platform::CPUPlace());
   tensor1.data<float>()[0] = 0.2;
@@ -31,7 +31,7 @@ TEST(LodTensor, PrintLodTensor) {
   res = PrintLodTensor(&tensor1, 0, 2);
   ASSERT_EQ(res, "0.2,0.5");
 
-  LoDTensor tensor2;
+  phi::DenseTensor tensor2;
   tensor2.Resize({2});
   tensor2.mutable_data<int64_t>(platform::CPUPlace());
   tensor2.data<int64_t>()[0] = 1;
@@ -41,7 +41,7 @@ TEST(LodTensor, PrintLodTensor) {
   res = PrintLodTensor(&tensor2, 0, 2);
   ASSERT_EQ(res, "1,2");
 
-  LoDTensor tensor3;
+  phi::DenseTensor tensor3;
   tensor3.Resize({2});
   tensor3.mutable_data<double>(platform::CPUPlace());
   tensor3.data<double>()[0] = 0.1;
@@ -49,7 +49,7 @@ TEST(LodTensor, PrintLodTensor) {
   res = PrintLodTensor(&tensor3, 0, 2);
   ASSERT_EQ(res, "0.1,0.2");
 
-  LoDTensor tensor4;
+  phi::DenseTensor tensor4;
   tensor4.Resize({2});
   tensor4.mutable_data<double>(platform::CPUPlace());
   tensor4.data<double>()[0] = 0.1;
@@ -58,7 +58,7 @@ TEST(LodTensor, PrintLodTensor) {
   PrintLodTensor(&tensor4, 0, 2, res);
   // ASSERT_EQ(res, "0.1,0.2");
 
-  LoDTensor tensor5;
+  phi::DenseTensor tensor5;
   tensor5.Resize({2});
   tensor5.mutable_data<int64_t>(platform::CPUPlace());
   tensor5.data<int64_t>()[0] = 1;
@@ -70,7 +70,7 @@ TEST(LodTensor, PrintLodTensor) {
   PrintLodTensor(&tensor5, 0, 2, res);
   ASSERT_EQ(res, "1,2");
 
-  LoDTensor tensor6;
+  phi::DenseTensor tensor6;
   tensor6.Resize({2});
   tensor6.mutable_data<float>(platform::CPUPlace());
   tensor6.data<float>()[0] = 0.2;
@@ -85,7 +85,7 @@ TEST(LodTensor, PrintLodTensor) {
 
 TEST(LodTensor, GetTensorBound) {
   LoD lod{{0, 2}};
-  LoDTensor tensor;
+  phi::DenseTensor tensor;
   tensor.set_lod(lod);
   tensor.Resize({2, 1});
   tensor.mutable_data<float>(platform::CPUPlace());
@@ -98,7 +98,7 @@ TEST(LodTensor, GetTensorBound) {
 
 TEST(LodTensor, CheckValidOutput) {
   LoD lod{{0, 1, 2}};
-  LoDTensor tensor;
+  phi::DenseTensor tensor;
   tensor.set_lod(lod);
   tensor.Resize({2, 1});
   tensor.mutable_data<float>(platform::CPUPlace());

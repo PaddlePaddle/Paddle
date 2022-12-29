@@ -19,18 +19,15 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
-using LoDTensor = framework::LoDTensor;
-
 template <typename T>
 class ROIAlignOpMLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* in = ctx.Input<Tensor>("X");
-    auto* rois = ctx.Input<LoDTensor>("ROIs");
-    auto* out = ctx.Output<Tensor>("Out");
+    auto* in = ctx.Input<phi::DenseTensor>("X");
+    auto* rois = ctx.Input<phi::DenseTensor>("ROIs");
+    auto* out = ctx.Output<phi::DenseTensor>("Out");
     out->mutable_data<T>(ctx.GetPlace());
-    out->set_layout(framework::DataLayout::kNHWC);
+    out->set_layout(phi::DataLayout::kNHWC);
 
     auto pooled_height = ctx.Attr<int>("pooled_height");
     auto pooled_width = ctx.Attr<int>("pooled_width");
@@ -46,7 +43,7 @@ class ROIAlignOpMLUKernel : public framework::OpKernel<T> {
     std::vector<int> roi_batch_id_list(rois_num);
     int rois_batch_size = 0;
     if (ctx.HasInput("RoisNum")) {
-      auto* rois_num_t = ctx.Input<Tensor>("RoisNum");
+      auto* rois_num_t = ctx.Input<phi::DenseTensor>("RoisNum");
       rois_batch_size = rois_num_t->numel();
       PADDLE_ENFORCE_EQ(
           rois_batch_size,
@@ -77,7 +74,7 @@ class ROIAlignOpMLUKernel : public framework::OpKernel<T> {
       PADDLE_ENFORCE_EQ(lod.empty(),
                         false,
                         platform::errors::InvalidArgument(
-                            "Input(ROIs) Tensor of ROIAlignOp "
+                            "Input(ROIs) phi::DenseTensor of ROIAlignOp "
                             "does not contain LoD information."));
       auto rois_lod = lod.back();
       rois_batch_size = rois_lod.size() - 1;
@@ -111,7 +108,7 @@ class ROIAlignOpMLUKernel : public framework::OpKernel<T> {
     }
 
     // only support float32 for now
-    Tensor rois_cpu(framework::TransToPhiDataType(VT::FP32));
+    phi::DenseTensor rois_cpu(framework::TransToPhiDataType(VT::FP32));
     rois_cpu.Resize({rois_num, 4});
     rois_cpu.mutable_data<T>(ctx.GetPlace());
     auto& dev_ctx = ctx.template device_context<platform::MLUDeviceContext>();
@@ -120,8 +117,8 @@ class ROIAlignOpMLUKernel : public framework::OpKernel<T> {
     T* rois_cpu_ptr = rois_cpu.mutable_data<T>(platform::CPUPlace());
 
     // boxes; [batch_idx, x1, y1, x2, y2]
-    Tensor boxes_cpu(framework::TransToPhiDataType(VT::FP32));
-    Tensor boxes_mlu(framework::TransToPhiDataType(VT::FP32));
+    phi::DenseTensor boxes_cpu(framework::TransToPhiDataType(VT::FP32));
+    phi::DenseTensor boxes_mlu(framework::TransToPhiDataType(VT::FP32));
     boxes_cpu.Resize({rois_num, 5});
     boxes_mlu.Resize({rois_num, 5});
     T* boxes_cpu_ptr = boxes_cpu.mutable_data<T>(platform::CPUPlace());
@@ -140,8 +137,8 @@ class ROIAlignOpMLUKernel : public framework::OpKernel<T> {
 
     const std::vector<int> perm_to_nhwc = {0, 2, 3, 1};
     const std::vector<int> perm_to_nchw = {0, 3, 1, 2};
-    Tensor input_nhwc(in->type());
-    Tensor output_nhwc(out->type());
+    phi::DenseTensor input_nhwc(in->type());
+    phi::DenseTensor output_nhwc(out->type());
     TransposeFromMLUTensor<T>(
         ctx, perm_to_nhwc, in, &input_nhwc, true /*need_reshape_or_alloc*/);
     auto output_dims = out->dims();
@@ -175,9 +172,9 @@ template <typename T>
 class ROIAlignGradOpMLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* rois = ctx.Input<LoDTensor>("ROIs");
-    auto* out_grad = ctx.Input<Tensor>(framework::GradVarName("Out"));
-    auto* in_grad = ctx.Output<Tensor>(framework::GradVarName("X"));
+    auto* rois = ctx.Input<phi::DenseTensor>("ROIs");
+    auto* out_grad = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+    auto* in_grad = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
 
     auto spatial_scale = ctx.Attr<T>("spatial_scale");
     auto sampling_ratio = ctx.Attr<int>("sampling_ratio");
@@ -193,7 +190,7 @@ class ROIAlignGradOpMLUKernel : public framework::OpKernel<T> {
     auto cplace = platform::CPUPlace();
     int rois_batch_size = 0;
     if (ctx.HasInput("RoisNum")) {
-      auto* rois_num_t = ctx.Input<Tensor>("RoisNum");
+      auto* rois_num_t = ctx.Input<phi::DenseTensor>("RoisNum");
       rois_batch_size = rois_num_t->numel();
       std::vector<int> rois_num_list(rois_batch_size);
       memory::Copy(cplace,
@@ -222,7 +219,7 @@ class ROIAlignGradOpMLUKernel : public framework::OpKernel<T> {
       }
     }
 
-    Tensor rois_cpu(framework::TransToPhiDataType(VT::FP32));
+    phi::DenseTensor rois_cpu(framework::TransToPhiDataType(VT::FP32));
     rois_cpu.Resize({rois_num, 4});
     rois_cpu.mutable_data<T>(ctx.GetPlace());
     auto& dev_ctx = ctx.template device_context<platform::MLUDeviceContext>();
@@ -231,8 +228,8 @@ class ROIAlignGradOpMLUKernel : public framework::OpKernel<T> {
     T* rois_cpu_ptr = rois_cpu.mutable_data<T>(platform::CPUPlace());
 
     // boxes; [batch_idx, x1, y1, x2, y2]
-    Tensor boxes_cpu(framework::TransToPhiDataType(VT::FP32));
-    Tensor boxes_mlu(framework::TransToPhiDataType(VT::FP32));
+    phi::DenseTensor boxes_cpu(framework::TransToPhiDataType(VT::FP32));
+    phi::DenseTensor boxes_mlu(framework::TransToPhiDataType(VT::FP32));
     boxes_cpu.Resize({rois_num, 5});
     boxes_mlu.Resize({rois_num, 5});
     T* boxes_cpu_ptr = boxes_cpu.mutable_data<T>(platform::CPUPlace());
@@ -251,8 +248,8 @@ class ROIAlignGradOpMLUKernel : public framework::OpKernel<T> {
 
     const std::vector<int> perm_to_nhwc = {0, 2, 3, 1};
     const std::vector<int> perm_to_nchw = {0, 3, 1, 2};
-    Tensor grads_nhwc(out_grad->type());
-    Tensor grads_image_nhwc(in_grad->type());
+    phi::DenseTensor grads_nhwc(out_grad->type());
+    phi::DenseTensor grads_image_nhwc(in_grad->type());
     TransposeFromMLUTensor<T>(ctx,
                               perm_to_nhwc,
                               out_grad,

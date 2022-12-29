@@ -14,53 +14,58 @@
 
 import os
 import sys
-import site
+import tempfile
 import unittest
-import numpy as np
 
 
 class TestCustomCPUProfilerPlugin(unittest.TestCase):
-
     def setUp(self):
         # compile so and set to current path
         cur_dir = os.path.dirname(os.path.abspath(__file__))
-        cmd = 'rm -rf PaddleCustomDevice \
+        self.temp_dir = tempfile.TemporaryDirectory()
+        cmd = 'cd {} \
             && git clone {} \
-            && cd PaddleCustomDevice/backends/custom_cpu \
+            && cd PaddleCustomDevice \
+            && git fetch origin \
             && git checkout {} -b dev \
+            && cd backends/custom_cpu \
             && mkdir build && cd build && cmake .. && make -j8'.format(
-            os.getenv('PLUGIN_URL'), os.getenv('PLUGIN_TAG'))
+            self.temp_dir.name, os.getenv('PLUGIN_URL'), os.getenv('PLUGIN_TAG')
+        )
         os.system(cmd)
 
         # set environment for loading and registering compiled custom kernels
         # only valid in current process
         os.environ['CUSTOM_DEVICE_ROOT'] = os.path.join(
-            cur_dir, 'PaddleCustomDevice/backends/custom_cpu/build')
+            cur_dir,
+            '{}/PaddleCustomDevice/backends/custom_cpu/build'.format(
+                self.temp_dir.name
+            ),
+        )
 
-    def test_custom_device(self):
-        import paddle
-        with paddle.fluid.framework._test_eager_guard():
-            self._test_custom_profiler()
+    def tearDown(self):
+        self.temp_dir.cleanup()
+        del os.environ['CUSTOM_DEVICE_ROOT']
 
-    def _test_custom_profiler(self):
+    def test_custom_profiler(self):
         import paddle
         import paddle.profiler as profiler
 
         paddle.set_device('custom_cpu')
 
         x = paddle.to_tensor([1, 2, 3])
-        p = profiler.Profiler(targets=[
-            profiler.ProfilerTarget.CPU, profiler.ProfilerTarget.CUSTOM_DEVICE
-        ])
+        p = profiler.Profiler(
+            targets=[
+                profiler.ProfilerTarget.CPU,
+                profiler.ProfilerTarget.CUSTOM_DEVICE,
+            ]
+        )
         p.start()
         for iter in range(10):
             x = x + 1
             p.step()
         p.stop()
         p.summary()
-
-    def tearDown(self):
-        del os.environ['CUSTOM_DEVICE_ROOT']
 
 
 if __name__ == '__main__':

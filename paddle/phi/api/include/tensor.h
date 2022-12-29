@@ -63,7 +63,7 @@ class AbstractAutogradMeta {
  * computation.
  *
  * This is a new Tensor design, which is independent of the original
- * framework::Tensor in fluid. The original Tensor will be gradually discarded
+ * phi::DenseTensor in fluid. The original Tensor will be gradually discarded
  * in the future.
  *
  * Note: Tensor can be NULL state, Tensor is meaningful only when the
@@ -211,7 +211,7 @@ class PADDLE_API Tensor final {
    *
    * @return DataLayout
    */
-  DataLayout layout() const;
+  phi::DataLayout layout() const;
 
   /**
    * @brief Determine whether tensor is DenseTensor

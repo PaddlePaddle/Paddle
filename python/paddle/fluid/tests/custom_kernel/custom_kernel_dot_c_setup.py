@@ -13,10 +13,12 @@
 # limitations under the License.
 
 import os
-from paddle.fluid import core
 from distutils.sysconfig import get_python_lib
-from distutils.core import setup, Extension
+
+from setuptools import Extension, setup
 from setuptools.command.build_ext import build_ext
+
+from paddle.fluid import core
 
 
 # refer: https://note.qidong.name/2018/03/setup-warning-strict-prototypes
@@ -24,11 +26,10 @@ from setuptools.command.build_ext import build_ext
 # cc1plus: warning: command line option ‘-Wstrict-prototypes’ is valid
 # for C/ObjC but not for C++
 class BuildExt(build_ext):
-
     def build_extensions(self):
         if '-Wstrict-prototypes' in self.compiler.compiler_so:
             self.compiler.compiler_so.remove('-Wstrict-prototypes')
-        super(BuildExt, self).build_extensions()
+        super().build_extensions()
 
 
 # cc flags
@@ -48,8 +49,9 @@ paddle_custom_kernel_include = [
     os.path.join(site_packages_path, 'paddle', 'include'),
 ]
 # include path third_party
-compile_third_party_path = os.path.join(os.environ['PADDLE_BINARY_DIR'],
-                                        'third_party')
+compile_third_party_path = os.path.join(
+    os.environ['PADDLE_BINARY_DIR'], 'third_party'
+)
 paddle_custom_kernel_include += [
     os.path.join(compile_third_party_path, 'install/gflags/include'),  # gflags
     os.path.join(compile_third_party_path, 'install/glog/include'),  # glog
@@ -69,10 +71,13 @@ custom_kernel_dot_module = Extension(
     include_dirs=paddle_custom_kernel_include,
     library_dirs=paddle_custom_kernel_library_dir,
     libraries=libs,
-    extra_compile_args=paddle_extra_compile_args)
+    extra_compile_args=paddle_extra_compile_args,
+)
 
-setup(name='custom_kernel_dot_c',
-      version='1.0',
-      description='custom kernel fot compiling',
-      cmdclass={'build_ext': BuildExt},
-      ext_modules=[custom_kernel_dot_module])
+setup(
+    name='custom_kernel_dot_c',
+    version='1.0',
+    description='custom kernel fot compiling',
+    cmdclass={'build_ext': BuildExt},
+    ext_modules=[custom_kernel_dot_module],
+)

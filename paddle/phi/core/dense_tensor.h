@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/phi/core/allocator.h"
+#include "paddle/phi/core/storage_properties.h"
 #include "paddle/phi/core/stream.h"
 #include "paddle/phi/core/tensor_base.h"
 #include "paddle/phi/core/tensor_meta.h"
@@ -124,7 +125,8 @@ class DenseTensor : public TensorBase,
   /// \return The mutable data pointer value of type T.
   void* AllocateFrom(Allocator* allocator,
                      DataType dtype,
-                     size_t requested_size = 0) override;
+                     size_t requested_size = 0,
+                     bool fake_alloc = false) override;
 
   /// \brief Check if allocation is shared with other objects.
   /// \return Whether the allocation is shared with other objects.
@@ -163,12 +165,62 @@ class DenseTensor : public TensorBase,
 
   void* data();
 
+  /// \brief Get whether the storage_properties is inited.
+  /// \return The init status of storage_properties.
+  bool storage_properties_initialized() const;
+
+  /// \brief Returns the storage_properties of the tensor.
+  /// \return The storage_properties of the tensor.
+  template <typename DeviceT>
+  const DeviceT& storage_properties() const;
+
+  /// \brief Sets the storage_properties of the tensor.
+  /// \param storage_properties The storage_properties of the tensor.
+  void set_storage_properties(
+      std::unique_ptr<StorageProperties>&& storage_properties);
+
  private:
   friend class DenseTensorUtils;
 
  protected:
   DenseTensorMeta meta_;
   std::shared_ptr<phi::Allocation> holder_;
+
+  /** [ Why need StorageProperties? ]
+   *
+   * 1. Some hardware or third-party libraries add some additional storage
+   * properties on top of the description of the basic DenseTensor, such as
+   * memory desc of MKLDNN, storage_format and storage_layout of NPU,
+   * these members are necessary for optimal performance, but if the properties
+   * of each device are added to the DenseTensor with different macro isolation,
+   * the memory layout of the DenseTensor will become more fragmented.
+   * Under different compilation conditions, the member layout of the
+   * DenseTensor is very unstable, which may introduce bugs that are difficult
+   * to debug.
+   *
+   * 2. If the layout of DenseTensor is very different from the framework
+   * itself, it is recommended to directly inherit TensorBase to implement
+   * SpatialTensor.
+   *
+   * TODO(chenweihang): merge the dnnl::memory::desc and
+   * dnnl::memory::format_tag into StorageProperties, dnnl::memory::desc is a
+   * type that takes up a lot of space, original tensor members' size:
+   *
+   * DenseTensor size: 880
+   * -------- ordered members --------:
+   * DenseTensorMeta size: 128
+   *  - is_scalar_ size: 1
+   *  - DDim size: 80
+   *  - DataType size: 4
+   *  - DataLayout size: 4
+   *  - LoD size: 24
+   *  - offset size: 8
+   *  std::shared_ptr<phi::Allocation> size: 16
+   *  std::shared_ptr<InplaceVersion> size: 16 // need to be moved
+   *  dnnl::memory::format_tag size: 4 // need to be moved
+   *  dnnl::memory::desc size: 696 // need to be moved
+   */
+  std::unique_ptr<StorageProperties> storage_properties_{nullptr};
 
  public:
   /* Temporarily put InplaceVersion inside DenseTensor.
@@ -192,9 +244,9 @@ class DenseTensor : public TensorBase,
   - Question: In what scenarios will version counters NOT be shared?
   - Answer: Replacing a `Variable`'s data by calling
   `Tensor::ShareDataWith(...)` or `Tensor::ShareBufferWith(...)`. Because they
-  share the same Allocation but not framework::Tensor.
+  share the same Allocation but not phi::DenseTensor.
 
-  - Question: Why put the inplace_version_counter_ in framework::Tensor instead
+  - Question: Why put the inplace_version_counter_ in phi::DenseTensor instead
   of Allocation or Variable?
   - Answer:
    1. Tensor can call ResetHolder() to reset the corresponding Allocation so
@@ -227,16 +279,6 @@ In the final state, we should come up with a MKLDNN_Tensor and move the
 following codes there.
 */
 #ifdef PADDLE_WITH_MKLDNN
-  /**
-   * @brief the detail format of memory block which have layout as kMKLDNN
-   *
-   * @note MKLDNN lib support various memory format like nchw, nhwc, nChw8C,
-   *       nChw16c, etc. For a MKLDNN memory block, layout will be set as
-   *       DataLayout::kMKLDNN meanwhile detail memory format will be kept in
-   *       this field.
-   */
-  dnnl::memory::format_tag format_ = dnnl::memory::format_tag::undef;
-
   /// \brief memory descriptor of tensor which have layout set as kMKLDNN
   dnnl::memory::desc mem_desc_;
 #endif

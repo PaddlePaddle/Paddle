@@ -12,15 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
-import numpy as np
-import unittest
 import sys
+import unittest
 
 sys.path.append("..")
 import paddle
-from paddle.fluid.tests.unittests.c_embedding_op_base import TestCEmbeddingCPU, TestCEmbeddingOpBase, TestCEmbeddingOpFP32
+from paddle.fluid.tests.unittests.c_embedding_op_base import (
+    TestCEmbeddingCPU,
+    TestCEmbeddingOpBase,
+    TestCEmbeddingOpFP32,
+)
 
 paddle.enable_static()
 

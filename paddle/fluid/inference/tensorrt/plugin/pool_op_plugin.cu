@@ -321,15 +321,15 @@ int PoolPluginDynamic::enqueue(const nvinfer1::PluginTensorDesc *input_desc,
     paddings[1] = 0;
     output_shape[2] = 1;
     output_shape[3] = 1;
+    if (adaptive_) {
+      output_shape[2] = h;
+      output_shape[3] = w;
+    }
   } else {
     auto data_dim = CalcOutputSize(
         {h, w}, ceil_mode_, adaptive_, ksize_, strides_, paddings_);
     output_shape[2] = data_dim[0];
     output_shape[3] = data_dim[1];
-  }
-  if (adaptive_) {
-    output_shape[2] = h;
-    output_shape[3] = w;
   }
 
   if (pool_type_ == "max") {

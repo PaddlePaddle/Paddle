@@ -16,6 +16,7 @@
 
 #include "paddle/fluid/inference/tensorrt/engine.h"
 #include "paddle/fluid/inference/tensorrt/plugin/trt_plugin.h"
+#include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace inference {
@@ -30,11 +31,10 @@ class FusedTokenPrunePluginDynamic : public DynamicPluginTensorRT {
                                         bool keep_first_token,
                                         bool keep_order,
                                         bool flag_varseqlen)
-      : keep_first_token_(keep_first_token),
+      : with_fp16_(with_fp16),
+        keep_first_token_(keep_first_token),
         keep_order_(keep_order),
-        flag_varseqlen_(flag_varseqlen) {
-    with_fp16_ = with_fp16;
-  }
+        flag_varseqlen_(flag_varseqlen) {}
   FusedTokenPrunePluginDynamic(void const* serial_data, size_t serial_length) {
     DeserializeValue(&serial_data, &serial_length, &with_fp16_);
     DeserializeValue(&serial_data, &serial_length, &keep_first_token_);
@@ -42,8 +42,14 @@ class FusedTokenPrunePluginDynamic : public DynamicPluginTensorRT {
     DeserializeValue(&serial_data, &serial_length, &flag_varseqlen_);
   }
   nvinfer1::IPluginV2DynamicExt* clone() const TRT_NOEXCEPT override {
-    return new FusedTokenPrunePluginDynamic(
+    FusedTokenPrunePluginDynamic* ptr = new FusedTokenPrunePluginDynamic(
         with_fp16_, keep_first_token_, keep_order_, flag_varseqlen_);
+    ptr->max_batchs_ = max_batchs_;
+    ptr->max_token_length_ = max_token_length_;
+    ptr->pruned_token_lengths_ = pruned_token_lengths_;
+    ptr->token_index_ = token_index_;
+    ptr->padding_scores_ = padding_scores_;
+    return ptr;
   }
 
   const char* getPluginType() const TRT_NOEXCEPT override {
@@ -84,7 +90,37 @@ class FusedTokenPrunePluginDynamic : public DynamicPluginTensorRT {
   void configurePlugin(const nvinfer1::DynamicPluginTensorDesc* in,
                        int nb_inputs,
                        const nvinfer1::DynamicPluginTensorDesc* out,
-                       int nb_outputs) TRT_NOEXCEPT override {}
+                       int nb_outputs) TRT_NOEXCEPT override {
+    max_batchs_ = in[1].max.d[0];
+    max_token_length_ = in[1].max.d[1];
+    int32_t padding_token_length;
+    if (max_token_length_ <= 64) {
+      padding_token_length = 64;
+    } else if (max_token_length_ <= 128) {
+      padding_token_length = 128;
+    } else if (max_token_length_ <= 256) {
+      padding_token_length = 256;
+    } else if (max_token_length_ <= 384) {
+      padding_token_length = 384;
+    } else if (max_token_length_ <= 512) {
+      padding_token_length = 512;
+    } else {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "Token_prune'token_length(max) must <= 512"));
+    }
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaMalloc(&pruned_token_lengths_,
+                                          (max_batchs_ + 1) * sizeof(int32_t)));
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaMalloc(
+        &token_index_, max_batchs_ * padding_token_length * sizeof(int32_t)));
+    int32_t type_size = 4;
+    if (in[0].desc.type == nvinfer1::DataType::kHALF) {
+      type_size = 2;
+    } else {
+      type_size = 4;
+    }
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaMalloc(
+        &padding_scores_, max_batchs_ * padding_token_length * type_size));
+  }
 
   size_t getWorkspaceSize(const nvinfer1::PluginTensorDesc* inputs,
                           int nb_inputs,
@@ -106,9 +142,15 @@ class FusedTokenPrunePluginDynamic : public DynamicPluginTensorRT {
   void destroy() TRT_NOEXCEPT override { delete this; }
 
  private:
+  bool with_fp16_;
   bool keep_first_token_;
   bool keep_order_;
   bool flag_varseqlen_;
+  int32_t* pruned_token_lengths_;
+  int32_t* token_index_;
+  int32_t max_batchs_;
+  int32_t max_token_length_;
+  void* padding_scores_;
 };
 
 class FusedTokenPrunePluginDynamicCreator : public nvinfer1::IPluginCreator {

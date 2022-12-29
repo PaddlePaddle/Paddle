@@ -39,7 +39,7 @@ class NearestInterpolateV2OpConverter : public OpConverter {
 
     auto input = engine_->GetITensor(input_name);
 
-    auto data_layout = framework::StringToDataLayout(
+    auto data_layout = phi::StringToDataLayout(
         PADDLE_GET_CONST(std::string, op_desc.GetAttr("data_layout")));
     auto interp_method =
         PADDLE_GET_CONST(std::string, op_desc.GetAttr("interp_method"));
@@ -65,9 +65,8 @@ class NearestInterpolateV2OpConverter : public OpConverter {
       // axis are different in static/dynamic mode
       bool with_dynamic = engine_->with_dynamic_shape();
 
-      int h_axis = (data_layout == framework::DataLayout::kNCHW) + with_dynamic;
-      int w_axis =
-          (data_layout == framework::DataLayout::kNCHW) + 1 + with_dynamic;
+      int h_axis = (data_layout == phi::DataLayout::kNCHW) + with_dynamic;
+      int w_axis = (data_layout == phi::DataLayout::kNCHW) + 1 + with_dynamic;
 
       scale_h =
           static_cast<float>(out_h) / static_cast<float>(in_dim.d[h_axis]);
@@ -82,11 +81,11 @@ class NearestInterpolateV2OpConverter : public OpConverter {
       scales.push_back(1.f);
     }
 
-    if (data_layout == framework::DataLayout::kNCHW) {
+    if (data_layout == phi::DataLayout::kNCHW) {
       scales.push_back(1.f);
       scales.push_back(scale_h);
       scales.push_back(scale_w);
-    } else if (data_layout == framework::DataLayout::kNHWC) {
+    } else if (data_layout == phi::DataLayout::kNHWC) {
       // NHWC
       scales.push_back(scale_h);
       scales.push_back(scale_w);

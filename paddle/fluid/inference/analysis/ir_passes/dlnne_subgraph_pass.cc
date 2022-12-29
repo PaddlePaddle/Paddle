@@ -689,6 +689,7 @@ void DlnneSubgraphPass::CreateDlnneOp(
     MKDIR("./dump");
     MKDIR(subgraph_root_path.c_str());
     std::ofstream m_stream;
+
     m_stream.open(subgraph_root_path + "/model.pdmodel", std::ios::out);
     m_stream << model_str;
     m_stream.close();

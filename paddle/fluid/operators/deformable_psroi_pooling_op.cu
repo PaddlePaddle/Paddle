@@ -32,16 +32,14 @@
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/operators/deformable_psroi_pooling_op.h"
-#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
+#include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
-using LoDTensor = framework::LoDTensor;
-using paddle::platform::PADDLE_CUDA_NUM_THREADS;
+using phi::PADDLE_CUDA_NUM_THREADS;
 
 static inline int GET_BLOCKS(const int N) {
   return (N + PADDLE_CUDA_NUM_THREADS - 1) / PADDLE_CUDA_NUM_THREADS;
@@ -184,12 +182,12 @@ template <typename DeviceContext, typename T>
 class DeformablePSROIPoolCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    const Tensor* input = ctx.Input<Tensor>("Input");
-    const LoDTensor* rois = ctx.Input<LoDTensor>("ROIs");
-    const Tensor* trans = ctx.Input<Tensor>("Trans");
-    Tensor* out = ctx.Output<Tensor>("Output");
+    const phi::DenseTensor* input = ctx.Input<phi::DenseTensor>("Input");
+    const phi::DenseTensor* rois = ctx.Input<phi::DenseTensor>("ROIs");
+    const phi::DenseTensor* trans = ctx.Input<phi::DenseTensor>("Trans");
+    phi::DenseTensor* out = ctx.Output<phi::DenseTensor>("Output");
     out->mutable_data<T>(ctx.GetPlace());
-    Tensor* top_count = ctx.Output<Tensor>("TopCount");
+    phi::DenseTensor* top_count = ctx.Output<phi::DenseTensor>("TopCount");
     top_count->mutable_data<T>(ctx.GetPlace());
 
     auto no_trans = ctx.Attr<bool>("no_trans");
@@ -236,7 +234,7 @@ class DeformablePSROIPoolCUDAKernel : public framework::OpKernel<T> {
     const T* bottom_rois = rois->data<T>();
     const T* bottom_trans = no_trans ? NULL : trans->data<T>();
 
-    framework::Tensor roi_batch_id_list;
+    phi::DenseTensor roi_batch_id_list;
     roi_batch_id_list.Resize({num_rois});
     auto cplace = platform::CPUPlace();
     int* roi_batch_id_data = roi_batch_id_list.mutable_data<int>(cplace);
@@ -447,18 +445,14 @@ __global__ void DeformablePSROIPoolBackwardAccKernel(
 
         // compute gradient of input
         if (bottom_data_diff) {
-          platform::CudaAtomicAdd(
-              bottom_data_diff + bottom_index + y0 * width + x0,
-              q00 * diff_val);
-          platform::CudaAtomicAdd(
-              bottom_data_diff + bottom_index + y1 * width + x0,
-              q01 * diff_val);
-          platform::CudaAtomicAdd(
-              bottom_data_diff + bottom_index + y0 * width + x1,
-              q10 * diff_val);
-          platform::CudaAtomicAdd(
-              bottom_data_diff + bottom_index + y1 * width + x1,
-              q11 * diff_val);
+          phi::CudaAtomicAdd(bottom_data_diff + bottom_index + y0 * width + x0,
+                             q00 * diff_val);
+          phi::CudaAtomicAdd(bottom_data_diff + bottom_index + y1 * width + x0,
+                             q01 * diff_val);
+          phi::CudaAtomicAdd(bottom_data_diff + bottom_index + y0 * width + x1,
+                             q10 * diff_val);
+          phi::CudaAtomicAdd(bottom_data_diff + bottom_index + y1 * width + x1,
+                             q11 * diff_val);
         }
 
         // compute gradient of trans
@@ -478,8 +472,8 @@ __global__ void DeformablePSROIPoolBackwardAccKernel(
                     u00 * (1 - dist_x)) *
                    trans_std * diff_val;
         diff_y *= roi_height;
-        platform::CudaAtomicAdd(bottom_trans_diff + trans_index_x, diff_x);
-        platform::CudaAtomicAdd(bottom_trans_diff + trans_index_y, diff_y);
+        phi::CudaAtomicAdd(bottom_trans_diff + trans_index_x, diff_x);
+        phi::CudaAtomicAdd(bottom_trans_diff + trans_index_y, diff_y);
       }
     }
   }
@@ -489,14 +483,16 @@ template <typename DeviceContext, typename T>
 class DeformablePSROIPoolGradCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    const Tensor* input = ctx.Input<Tensor>("Input");
-    const LoDTensor* rois = ctx.Input<LoDTensor>("ROIs");
-    const Tensor* trans = ctx.Input<Tensor>("Trans");
-    const Tensor* top_count = ctx.Input<Tensor>("TopCount");
-    const Tensor* output_grad =
-        ctx.Input<Tensor>(framework::GradVarName("Output"));
-    Tensor* input_grad = ctx.Output<Tensor>(framework::GradVarName("Input"));
-    Tensor* trans_grad = ctx.Output<Tensor>(framework::GradVarName("Trans"));
+    const phi::DenseTensor* input = ctx.Input<phi::DenseTensor>("Input");
+    const phi::DenseTensor* rois = ctx.Input<phi::DenseTensor>("ROIs");
+    const phi::DenseTensor* trans = ctx.Input<phi::DenseTensor>("Trans");
+    const phi::DenseTensor* top_count = ctx.Input<phi::DenseTensor>("TopCount");
+    const phi::DenseTensor* output_grad =
+        ctx.Input<phi::DenseTensor>(framework::GradVarName("Output"));
+    phi::DenseTensor* input_grad =
+        ctx.Output<phi::DenseTensor>(framework::GradVarName("Input"));
+    phi::DenseTensor* trans_grad =
+        ctx.Output<phi::DenseTensor>(framework::GradVarName("Trans"));
 
     phi::funcs::SetConstant<DeviceContext, T> set_zero;
     auto& dev_ctx = ctx.cuda_device_context();
@@ -550,7 +546,7 @@ class DeformablePSROIPoolGradCUDAKernel : public framework::OpKernel<T> {
     }
 
     const T* top_count_data = top_count->data<T>();
-    framework::Tensor roi_batch_id_list;
+    phi::DenseTensor roi_batch_id_list;
     roi_batch_id_list.Resize({num_rois});
     auto cplace = platform::CPUPlace();
     int* roi_batch_id_data = roi_batch_id_list.mutable_data<int>(cplace);

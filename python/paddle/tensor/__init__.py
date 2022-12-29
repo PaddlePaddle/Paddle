@@ -19,6 +19,8 @@ from .attribute import shape  # noqa: F401
 from .attribute import real  # noqa: F401
 from .attribute import imag  # noqa: F401
 from .attribute import is_floating_point  # noqa: F401
+from .creation import create_parameter  # noqa: F401
+from .creation import create_tensor  # noqa: F401
 from .creation import to_tensor  # noqa: F401
 from .creation import diag  # noqa: F401
 from .creation import diagflat  # noqa: F401
@@ -169,6 +171,7 @@ from .math import sqrt_  # noqa: F401
 from .math import square  # noqa: F401
 from .math import stanh  # noqa: F401
 from .math import sum  # noqa: F401
+from .math import nan_to_num  # noqa: F401
 from .math import nansum  # noqa: F401
 from .math import nanmean  # noqa: F401
 from .math import count_nonzero  # noqa: F401
@@ -239,6 +242,7 @@ from .math import heaviside  # noqa: F401
 from .math import frac  # noqa: F401
 from .math import sgn  # noqa: F401
 from .math import take  # noqa: F401
+from .math import frexp  # noqa: F401
 
 from .random import multinomial  # noqa: F401
 from .random import standard_normal  # noqa: F401
@@ -287,6 +291,8 @@ from .einsum import einsum  # noqa: F401
 
 # this list used in math_op_patch.py for _binary_creator_
 tensor_method_func = [  # noqa
+    'create_parameter',
+    'create_tensor',
     'matmul',
     'dot',
     'cov',
@@ -349,6 +355,7 @@ tensor_method_func = [  # noqa
     'square',
     'stanh',
     'sum',
+    'nan_to_num',
     'nansum',
     'nanmean',
     'count_nonzero',
@@ -517,6 +524,7 @@ tensor_method_func = [  # noqa
     'take',
     'bucketize',
     'sgn',
+    'frexp',
 ]
 
 # this list used in math_op_patch.py for magic_method bind

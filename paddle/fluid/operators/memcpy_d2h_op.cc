@@ -39,7 +39,7 @@ class MemcpyD2HOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetKernelTypeForVar(
       const std::string &var_name,
-      const framework::Tensor &tensor,
+      const phi::DenseTensor &tensor,
       const framework::OpKernelType &expected_kernel_type) const override {
     return framework::OpKernelType(expected_kernel_type.data_type_,
                                    expected_kernel_type.place_,
@@ -83,9 +83,9 @@ class MemcpyD2HKernel {
 class MemcpyD2HOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("X", "(LoDTensor) The input variable ");
+    AddInput("X", "(phi::DenseTensor) The input variable ");
     AddOutput("Out",
-              "(LoDTensor) The type of output "
+              "(phi::DenseTensor) The type of output "
               "is the same as input X.");
     AddAttr<int>(
         "dst_place_type",
@@ -98,7 +98,7 @@ class MemcpyD2HOpProtoMaker : public framework::OpProtoAndCheckerMaker {
     MemcpyD2H Operator.
     By now, it ONLY supports the memcopy between NPUPlace/CUDAPlace <-> CUDAPinnedPlace/CPU.
     You would have to update it if you want other more capacities.
-Out = X,  when type in [LoDTensor]
+Out = X,  when type in [phi::DenseTensor]
 raise error if the type is not listed above.
 )DOC");
   }

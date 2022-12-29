@@ -105,7 +105,7 @@ class EmbeddingEltWiseLayerNormOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    auto inputs = ctx.MultiInput<framework::Tensor>("Embs");
+    auto inputs = ctx.MultiInput<phi::DenseTensor>("Embs");
     auto input_data_type = framework::proto::VarType::Type(0);
     bool flag = 0;
     for (auto* input : inputs) {

@@ -12,27 +12,25 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
-import unittest
-import numpy as np
 import collections
+import unittest
 from functools import reduce
+
+import numpy as np
+
 import paddle
 import paddle.fluid as fluid
-import paddle.fluid.core as core
-from paddle.nn.utils import weight_norm, remove_weight_norm
+from paddle.nn.utils import remove_weight_norm, weight_norm
 
 
 class TestDygraphWeightNorm(unittest.TestCase):
-
     def setUp(self):
         self.init_test_case()
         self.set_data()
 
     def init_test_case(self):
         self.batch_size = 3
-        self.data_desc = (['x', [2, 3, 3]], )
+        self.data_desc = (['x', [2, 3, 3]],)
         self.dim = None
 
     def set_data(self):
@@ -40,8 +38,9 @@ class TestDygraphWeightNorm(unittest.TestCase):
         for desc in self.data_desc:
             data_name = desc[0]
             data_shape = desc[1]
-            data_value = np.random.random(size=[self.batch_size] +
-                                          data_shape).astype('float32')
+            data_value = np.random.random(
+                size=[self.batch_size] + data_shape
+            ).astype('float32')
             self.data[data_name] = data_value
 
     def norm_except_dim(self, w, dim=None):
@@ -91,14 +90,22 @@ class TestDygraphWeightNorm(unittest.TestCase):
             perm[dim] = 0
             p_transposed = np.transpose(v, perm)
             transposed_shape = p_transposed.shape
-            transposed_shape_numel = reduce(lambda x, y: x * y,
-                                            transposed_shape)
+            transposed_shape_numel = reduce(
+                lambda x, y: x * y, transposed_shape
+            )
             p_matrix = np.reshape(
-                p_transposed, (p_transposed.shape[0],
-                               transposed_shape_numel // p_transposed.shape[0]))
-            v_norm = v / np.expand_dims(np.expand_dims(
-                np.linalg.norm(p_matrix, axis=1, keepdims=True), axis=0),
-                                        axis=(ndims - 1))
+                p_transposed,
+                (
+                    p_transposed.shape[0],
+                    transposed_shape_numel // p_transposed.shape[0],
+                ),
+            )
+            v_norm = v / np.expand_dims(
+                np.expand_dims(
+                    np.linalg.norm(p_matrix, axis=1, keepdims=True), axis=0
+                ),
+                axis=(ndims - 1),
+            )
             v_norm = np.reshape(v_norm, transposed_shape)
             v_norm = np.transpose(v_norm, perm)
             g = np.squeeze(g, axis=1)
@@ -106,9 +113,10 @@ class TestDygraphWeightNorm(unittest.TestCase):
                 eaxis = 2
             elif dim == 2:
                 eaxis = 1
-            g_mul = np.expand_dims(np.expand_dims(np.expand_dims(g, axis=0),
-                                                  axis=eaxis),
-                                   axis=(ndims - 1))
+            g_mul = np.expand_dims(
+                np.expand_dims(np.expand_dims(g, axis=0), axis=eaxis),
+                axis=(ndims - 1),
+            )
         w = g_mul * v_norm
         return g, v
 
@@ -116,7 +124,7 @@ class TestDygraphWeightNorm(unittest.TestCase):
         fluid.enable_imperative()
         linear = paddle.nn.Conv2D(2, 3, 3)
         before_weight = linear.weight.numpy()
-        if self.dim == None:
+        if self.dim is None:
             self.dim = -1
 
         if self.dim != -1:
@@ -132,52 +140,46 @@ class TestDygraphWeightNorm(unittest.TestCase):
         expect_output = self.weight_normalize(before_weight, self.dim)
 
         for expect, actual in zip(expect_output, self.actual_outputs):
-            np.testing.assert_allclose(np.array(actual),
-                                       expect,
-                                       rtol=1e-05,
-                                       atol=0.001)
+            np.testing.assert_allclose(
+                np.array(actual), expect, rtol=1e-05, atol=0.001
+            )
 
 
 class TestDygraphWeightNormCase1(TestDygraphWeightNorm):
-
     def init_test_case(self):
         self.batch_size = 3
-        self.data_desc = (['x', [2, 3, 3]], )
+        self.data_desc = (['x', [2, 3, 3]],)
         self.dim = 0
 
 
 class TestDygraphWeightNormCase2(TestDygraphWeightNorm):
-
     def init_test_case(self):
         self.batch_size = 3
-        self.data_desc = (['x', [2, 3, 3]], )
+        self.data_desc = (['x', [2, 3, 3]],)
         self.dim = 1
 
 
 class TestDygraphWeightNormCase3(TestDygraphWeightNorm):
-
     def init_test_case(self):
         self.batch_size = 3
-        self.data_desc = (['x', [2, 3, 3]], )
+        self.data_desc = (['x', [2, 3, 3]],)
         self.dim = 3
 
 
 class TestDygraphWeightNormCase4(TestDygraphWeightNorm):
-
     def init_test_case(self):
         self.batch_size = 3
-        self.data_desc = (['x', [2, 3, 3]], )
+        self.data_desc = (['x', [2, 3, 3]],)
         self.dim = -3
 
 
 class TestDygraphRemoveWeightNorm(unittest.TestCase):
-
     def setUp(self):
         self.init_test_case()
 
     def init_test_case(self):
         self.batch_size = 3
-        self.data_desc = (['x', [2, 3, 3]], )
+        self.data_desc = (['x', [2, 3, 3]],)
         self.dim = None
 
     def test_check_output(self):
@@ -187,10 +189,9 @@ class TestDygraphRemoveWeightNorm(unittest.TestCase):
         wn = weight_norm(linear, dim=self.dim)
         rwn = remove_weight_norm(linear)
         after_weight = linear.weight
-        np.testing.assert_allclose(before_weight.numpy(),
-                                   after_weight.numpy(),
-                                   rtol=1e-05,
-                                   atol=0.001)
+        np.testing.assert_allclose(
+            before_weight.numpy(), after_weight.numpy(), rtol=1e-05, atol=0.001
+        )
 
 
 if __name__ == '__main__':

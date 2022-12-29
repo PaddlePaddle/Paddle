@@ -12,11 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
-import os
 import unittest
-import paddle.fluid as fluid
 
 from test_parallel_dygraph_dataparallel import TestMultipleGpus
 
@@ -26,10 +22,7 @@ class TestHybridParallel(TestMultipleGpus):
     # check sharding logic as well as the accuracy with single mode
     def test_hybrid_parallel_sharding_logic(self):
         self.run_mnist_2gpu('hybrid_parallel_sharding_model.py')
-        self.run_mnist_2gpu('hybrid_parallel_sharding_model.py',
-                            eager_mode=False)
 
 
 if __name__ == "__main__":
-    os.environ["FLAGS_enable_eager_mode"] = "1"
     unittest.main()

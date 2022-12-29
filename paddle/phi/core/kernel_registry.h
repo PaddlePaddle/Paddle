@@ -23,6 +23,7 @@
 
 #include "paddle/phi/core/custom_kernel.h"
 #include "paddle/phi/core/enforce.h"
+#include "paddle/phi/core/extended_tensor.h"
 #include "paddle/phi/core/kernel_factory.h"
 #include "paddle/phi/core/kernel_utils.h"
 #include "paddle/phi/core/macros.h"
@@ -96,6 +97,12 @@ struct KernelArgsParseFunctor<Return_ (*)(Args_...)> {
                               arg_type);
       } else if (arg_type == std::type_index(typeid(
                                  const std::vector<const DenseTensor*>&))) {
+        args_def->AppendInput(default_key.backend(),
+                              default_tensor_layout,
+                              default_key.dtype(),
+                              arg_type);
+      } else if (arg_type == std::type_index(typeid(
+                                 const std::vector<const ExtendedTensor*>&))) {
         args_def->AppendInput(default_key.backend(),
                               default_tensor_layout,
                               default_key.dtype(),
@@ -191,6 +198,11 @@ struct KernelArgsParseFunctor<Return_ (*)(Args_...)> {
                                default_tensor_layout,
                                default_key.dtype(),
                                arg_type);
+      } else if (arg_type == std::type_index(typeid(ExtendedTensor*))) {
+        args_def->AppendOutput(default_key.backend(),
+                               default_tensor_layout,
+                               default_key.dtype(),
+                               arg_type);
       } else if (arg_type == std::type_index(typeid(bool))) {
         args_def->AppendAttribute(AttributeType::BOOL);
       } else if (arg_type == std::type_index(typeid(int))) {
@@ -233,8 +245,6 @@ struct KernelArgsParseFunctor<Return_ (*)(Args_...)> {
         args_def->AppendAttribute(AttributeType::DATA_LAYOUT);
       } else if (arg_type == std::type_index(typeid(Place))) {
         args_def->AppendAttribute(AttributeType::PLACE);
-      } else if (arg_type == std::type_index(typeid(RuntimeAttrs))) {
-        // do nothing
       } else {
         PADDLE_THROW(phi::errors::Unavailable(
             "Unsupported kernel argument type `%s`.", arg_type.name()));

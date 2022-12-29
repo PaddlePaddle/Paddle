@@ -55,7 +55,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/phi_utils.h"
 #include "paddle/fluid/framework/prune.h"
 #include "paddle/fluid/framework/reader.h"
-#include "paddle/fluid/framework/save_load_util.h"
 #include "paddle/fluid/framework/scope_pool.h"
 #include "paddle/fluid/framework/selected_rows_utils.h"
 #include "paddle/fluid/framework/tensor_util.h"
@@ -73,7 +72,6 @@ limitations under the License. */
 #include "paddle/fluid/operators/common_infer_shape_functions.h"
 #include "paddle/fluid/operators/py_func_op.h"
 #include "paddle/fluid/platform/cpu_helper.h"
-#include "paddle/fluid/platform/cpu_info.h"
 #include "paddle/fluid/platform/device/device_wrapper.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/dynload/dynamic_loader.h"
@@ -90,6 +88,7 @@ limitations under the License. */
 #include "paddle/fluid/pybind/eager.h"
 #include "paddle/fluid/pybind/imperative.h"
 #include "paddle/fluid/pybind/io.h"
+#include "paddle/phi/backends/cpu/cpu_info.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/lod_utils.h"
 #include "paddle/utils/none.h"
@@ -1055,7 +1054,7 @@ void BindParallelExecutor(pybind11::module &m) {  // NOLINT
            })
       .def("device_count", &ParallelExecutor::DeviceCount);
   using VarQuantScale =
-      std::unordered_map<std::string, std::pair<bool, LoDTensor>>;
+      std::unordered_map<std::string, std::pair<bool, phi::DenseTensor>>;
   py::class_<ir::Pass, std::shared_ptr<ir::Pass>> pass(m, "Pass");
   pass.def(py::init())
       .def("has", &ir::Pass::Has)

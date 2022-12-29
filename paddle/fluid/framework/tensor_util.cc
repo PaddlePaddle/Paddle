@@ -57,7 +57,7 @@ void TensorCopyImpl(const TENSOR& src,
   // oneDNN tensors due to padding may be of bigger size
   // than numel()*size(type())
   auto dst_ptr =
-      src.layout() == DataLayout::kMKLDNN
+      src.layout() == DataLayout::ONEDNN
           ? dst->mutable_data(dst_place, src.dtype(), src.memory_size())
           : dst->mutable_data(dst_place, src.dtype());
 #else
@@ -72,11 +72,11 @@ void TensorCopyImpl(const TENSOR& src,
   VLOG(4) << "src:" << src_ptr << ", dst:" << dst_ptr;
 
 #ifdef PADDLE_WITH_MKLDNN
-  auto size = src.layout() == DataLayout::kMKLDNN
+  auto size = src.layout() == DataLayout::ONEDNN
                   ? src.memory_size()
-                  : src.numel() * framework::DataTypeSize(src.dtype());
+                  : src.numel() * phi::SizeOf(src.dtype());
 #else
-  auto size = src.numel() * framework::DataTypeSize(src.dtype());
+  auto size = src.numel() * phi::SizeOf(src.dtype());
 #endif
 
   if (platform::is_cpu_place(src_place) && platform::is_cpu_place(dst_place)) {
@@ -137,7 +137,7 @@ void TensorCopyImpl(const TENSOR& src,
            platform::is_npu_place(dst_place)) {
     //  1. cpu tensor -> npu pinned tensor
     platform::NPUPinnedPlace npu_pinned_place;
-    Tensor npu_pinned_tensor;
+    phi::DenseTensor npu_pinned_tensor;
     npu_pinned_tensor.Resize(src.dims());
     auto npu_pinned_ptr =
         npu_pinned_tensor.mutable_data(npu_pinned_place, src.dtype());
@@ -179,12 +179,13 @@ void TensorCopyImpl(const TENSOR& src,
     auto src_npu_pinned_place = src_place;
     auto dst_npu_place = dst_place;
     auto ctx_place = ctx.GetPlace();
-    PADDLE_ENFORCE_EQ(platform::is_npu_place(ctx_place),
-                      true,
-                      platform::errors::PreconditionNotMet(
-                          "Device context place mismatch. When copying Tensor "
-                          "data from NPU Pinned memory to NPU memory, current "
-                          "device context place should be NPU."));
+    PADDLE_ENFORCE_EQ(
+        platform::is_npu_place(ctx_place),
+        true,
+        platform::errors::PreconditionNotMet(
+            "Device context place mismatch. When copying phi::DenseTensor "
+            "data from NPU Pinned memory to NPU memory, current "
+            "device context place should be NPU."));
     auto ctx_npu_place = ctx_place;
     PADDLE_ENFORCE_EQ(dst_npu_place,
                       ctx_npu_place,
@@ -204,12 +205,13 @@ void TensorCopyImpl(const TENSOR& src,
     auto src_npu_place = src_place;
     auto dst_npu_pinned_place = dst_place;
     auto ctx_place = ctx.GetPlace();
-    PADDLE_ENFORCE_EQ(platform::is_npu_place(ctx_place),
-                      true,
-                      platform::errors::PreconditionNotMet(
-                          "Device context place mismatch. When copying Tensor "
-                          "data from NPU memory to NPU Pinned memory, current "
-                          "device context place should be NPU."));
+    PADDLE_ENFORCE_EQ(
+        platform::is_npu_place(ctx_place),
+        true,
+        platform::errors::PreconditionNotMet(
+            "Device context place mismatch. When copying phi::DenseTensor "
+            "data from NPU memory to NPU Pinned memory, current "
+            "device context place should be NPU."));
     auto ctx_npu_place = ctx_place;
     PADDLE_ENFORCE_EQ(src_place,
                       ctx_npu_place,
@@ -291,12 +293,13 @@ void TensorCopyImpl(const TENSOR& src,
     auto src_gpu_place = src_place;
     auto dst_cuda_pinned_place = dst_place;
     auto ctx_place = ctx.GetPlace();
-    PADDLE_ENFORCE_EQ(platform::is_gpu_place(ctx_place),
-                      true,
-                      platform::errors::PreconditionNotMet(
-                          "Device context place mismatch. When copying Tensor "
-                          "data from GPU memory to CUDA Pinned memory, current "
-                          "device context place should be GPU."));
+    PADDLE_ENFORCE_EQ(
+        platform::is_gpu_place(ctx_place),
+        true,
+        platform::errors::PreconditionNotMet(
+            "Device context place mismatch. When copying phi::DenseTensor "
+            "data from GPU memory to CUDA Pinned memory, current "
+            "device context place should be GPU."));
     auto ctx_gpu_place = ctx_place;
     PADDLE_ENFORCE_EQ(src_gpu_place,
                       ctx_gpu_place,
@@ -315,12 +318,13 @@ void TensorCopyImpl(const TENSOR& src,
     auto src_cuda_pinned_place = src_place;
     auto dst_gpu_place = dst_place;
     auto ctx_place = ctx.GetPlace();
-    PADDLE_ENFORCE_EQ(platform::is_gpu_place(ctx_place),
-                      true,
-                      platform::errors::PreconditionNotMet(
-                          "Device context place mismatch. When copying Tensor "
-                          "data from CUDA Pinned memory to GPU memory, current "
-                          "device context place should be GPU."));
+    PADDLE_ENFORCE_EQ(
+        platform::is_gpu_place(ctx_place),
+        true,
+        platform::errors::PreconditionNotMet(
+            "Device context place mismatch. When copying phi::DenseTensor "
+            "data from CUDA Pinned memory to GPU memory, current "
+            "device context place should be GPU."));
     auto ctx_gpu_place = ctx_place;
     PADDLE_ENFORCE_EQ(dst_gpu_place,
                       ctx_gpu_place,
@@ -440,21 +444,21 @@ void TensorCopyImpl(const TENSOR& src,
   TensorCopyImpl(src, dst_place, *dev_ctx, dst);
 }
 
-void TensorCopy(const Tensor& src,
+void TensorCopy(const phi::DenseTensor& src,
                 const platform::Place& dst_place,
-                Tensor* dst) {
-  TensorCopyImpl<Tensor>(src, dst_place, dst);
+                phi::DenseTensor* dst) {
+  TensorCopyImpl<phi::DenseTensor>(src, dst_place, dst);
 }
-void TensorCopy(const Tensor& src,
+void TensorCopy(const phi::DenseTensor& src,
                 const platform::Place& dst_place,
                 const platform::DeviceContext& ctx,
-                Tensor* dst) {
-  TensorCopyImpl<Tensor>(src, dst_place, ctx, dst);
+                phi::DenseTensor* dst) {
+  TensorCopyImpl<phi::DenseTensor>(src, dst_place, ctx, dst);
 }
 
-void TensorCopySync(const Tensor& src,
+void TensorCopySync(const phi::DenseTensor& src,
                     const platform::Place& dst_place,
-                    Tensor* dst) {
+                    phi::DenseTensor* dst) {
   if (&src == dst) {
     auto src_copy = src;
     TensorCopySync(src_copy, dst_place, dst);
@@ -467,7 +471,9 @@ void TensorCopySync(const Tensor& src,
   dst->Resize(src.dims());
   dst->set_layout(src.layout());
 #ifdef PADDLE_WITH_MKLDNN
-  dst->set_format(src.format());
+  if (src.layout() == DataLayout::ONEDNN) {
+    dst->set_mem_desc(src.mem_desc());
+  }
 #endif
   auto src_place = src.place();
   auto src_ptr = src.data();
@@ -480,7 +486,7 @@ void TensorCopySync(const Tensor& src,
     return;
   }
 
-  auto size = src.numel() * framework::DataTypeSize(src.dtype());
+  auto size = src.numel() * phi::SizeOf(src.dtype());
   if (platform::is_cpu_place(src_place) && platform::is_cpu_place(dst_place)) {
     memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size);
   }
@@ -652,7 +658,7 @@ void TensorCopySync(const Tensor& src,
 }
 
 void TensorToStream(std::ostream& os,
-                    const Tensor& tensor,
+                    const phi::DenseTensor& tensor,
                     const platform::DeviceContext& dev_ctx) {
   {  // the 1st field, uint32_t version
     constexpr uint32_t version = 0;
@@ -673,7 +679,7 @@ void TensorToStream(std::ostream& os,
     os.write(out.data(), size);
   }
   {  // the 3rd field, tensor data
-    uint64_t size = tensor.numel() * framework::DataTypeSize(tensor.dtype());
+    uint64_t size = tensor.numel() * phi::SizeOf(tensor.dtype());
 
     auto* data_ptr = tensor.data();
     PADDLE_ENFORCE_LT(size,
@@ -813,7 +819,7 @@ void TensorToStream(std::ostream& os,
 
 struct DeserializedDataFunctor {
   DeserializedDataFunctor(void** buf,
-                          Tensor* tensor,
+                          phi::DenseTensor* tensor,
                           const platform::Place& place)
       : buf_(buf), tensor_(tensor), place_(place) {}
 
@@ -823,12 +829,12 @@ struct DeserializedDataFunctor {
   }
 
   void** buf_;
-  Tensor* tensor_;
+  phi::DenseTensor* tensor_;
   platform::Place place_;
 };
 
 void TensorFromStream(std::istream& is,
-                      Tensor* tensor,
+                      phi::DenseTensor* tensor,
                       const platform::DeviceContext& dev_ctx,
                       const size_t& seek,
                       const std::vector<int64_t>& shape) {
@@ -870,7 +876,7 @@ void TensorFromStream(std::istream& is,
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
     defined(PADDLE_WITH_XPU) || defined(PADDLE_WITH_MLU) ||  \
     defined(PADDLE_WITH_ASCEND_CL) || defined(PADDLE_WITH_CUSTOM_DEVICE)
-      Tensor cpu_tensor;
+      phi::DenseTensor cpu_tensor;
       cpu_tensor.Resize(phi::make_ddim(shape));
       framework::VisitDataType(
           desc.data_type(),
@@ -907,7 +913,7 @@ void TensorFromStream(std::istream& is,
 }
 
 void TensorFromStream(std::istream& is,
-                      Tensor* tensor,
+                      phi::DenseTensor* tensor,
                       const platform::DeviceContext& dev_ctx) {
   uint32_t version;
   is.read(reinterpret_cast<char*>(&version), sizeof(version));
@@ -926,10 +932,10 @@ void TensorFromStream(std::istream& is,
         is.good(),
         true,
         platform::errors::Unavailable("Cannot read tensor desc size"));
-    PADDLE_ENFORCE_GE(
-        size,
-        0,
-        platform::errors::InvalidArgument("Tensor desc size should >= 0"));
+    PADDLE_ENFORCE_GE(size,
+                      0,
+                      platform::errors::InvalidArgument(
+                          "phi::DenseTensor desc size should >= 0"));
     std::unique_ptr<char[]> buf(new char[size]);
     is.read(reinterpret_cast<char*>(buf.get()), size);
     PADDLE_ENFORCE_EQ(
@@ -953,7 +959,7 @@ void TensorFromStream(std::istream& is,
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
     defined(PADDLE_WITH_XPU) || defined(PADDLE_WITH_MLU) ||  \
     defined(PADDLE_WITH_ASCEND_CL) || defined(PADDLE_WITH_CUSTOM_DEVICE)
-      Tensor cpu_tensor;
+      phi::DenseTensor cpu_tensor;
       cpu_tensor.Resize(phi::make_ddim(dims));
       framework::VisitDataType(
           desc.data_type(),
@@ -994,7 +1000,7 @@ void TensorFromStream(std::istream& is,
 
 // get tensor data point by DLDataType
 void* GetDstPtrByDLDataType(DLDataType type,
-                            framework::Tensor* dst,
+                            phi::DenseTensor* dst,
                             const platform::Place& dst_place) {
   // vector types not currently supported
   PADDLE_ENFORCE_LE(type.lanes,
@@ -1060,7 +1066,7 @@ void* GetDstPtrByDLDataType(DLDataType type,
   }
 }
 
-void TensorFromDLPack(const ::DLTensor& dl_tensor, framework::Tensor* dst) {
+void TensorFromDLPack(const ::DLTensor& dl_tensor, phi::DenseTensor* dst) {
   platform::CPUPlace dst_place = platform::CPUPlace();
   platform::CPUPlace src_place = platform::CPUPlace();
 
@@ -1102,14 +1108,56 @@ void TensorFromDLPack(const ::DLTensor& dl_tensor, framework::Tensor* dst) {
 #endif
 }
 
+void TensorFromDLPack(const DLManagedTensor* src, phi::DenseTensor* dst) {
+  std::vector<int64_t> vec;
+  std::copy(src->dl_tensor.shape,
+            src->dl_tensor.shape + src->dl_tensor.ndim,
+            std::back_inserter(vec));
+
+  framework::DDim vddim = phi::make_ddim(vec);
+  dst->Resize(vddim);
+  ::DLDataType type = src->dl_tensor.dtype;
+
+  auto src_ptr = static_cast<const void*>(src->dl_tensor.data);
+  auto size = phi::product(vddim) * type.bits / 8;
+
+  if (src->dl_tensor.device.device_type == kDLCPU) {
+    platform::CPUPlace dst_place = platform::CPUPlace();
+    platform::CPUPlace src_place = platform::CPUPlace();
+    void* dst_ptr = GetDstPtrByDLDataType(type, dst, dst_place);
+    memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size);
+  }
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  if (src->dl_tensor.device.device_type == kDLGPU) {
+    platform::CUDAPlace dst_place =
+        platform::CUDAPlace(src->dl_tensor.device.device_id);
+    platform::CUDAPlace src_place =
+        platform::CUDAPlace(src->dl_tensor.device.device_id);
+    void* dst_ptr = GetDstPtrByDLDataType(type, dst, dst_place);
+    auto* ctx = platform::DeviceContextPool::Instance().GetByPlace(dst_place);
+    // Fix copy by share allocation.
+    memory::Copy(dst_place,
+                 dst_ptr,
+                 src_place,
+                 src_ptr,
+                 size,
+                 reinterpret_cast<const phi::GPUContext&>(*ctx).stream());
+  }
+#endif
+  src->deleter(const_cast<DLManagedTensor*>(src));
+#ifdef PADDLE_WITH_XPU
+  PADDLE_THROW(platform::errors::Unimplemented("XPUPlace is not supported"));
+#endif
+}
+
 template <typename T>
-std::string format_tensor(const framework::Tensor& tensor) {
+std::string format_tensor(const phi::DenseTensor& tensor) {
   // TODO(zhiqiu): use the print option to format tensor.
   return "NOT IMPLEMENTED";
 }
 
 template <typename T>
-std::ostream& print_tensor(std::ostream& os, const framework::Tensor& tensor) {
+std::ostream& print_tensor(std::ostream& os, const phi::DenseTensor& tensor) {
   auto inspect = tensor.data<T>();
   auto element_num = tensor.numel();
 
@@ -1136,7 +1184,7 @@ std::ostream& print_tensor(std::ostream& os, const framework::Tensor& tensor) {
 
 template <>
 std::ostream& print_tensor<paddle::platform::complex<float>>(
-    std::ostream& os, const framework::Tensor& tensor) {
+    std::ostream& os, const phi::DenseTensor& tensor) {
   auto inspect = tensor.data<paddle::platform::complex<float>>();
   auto element_num = tensor.numel();
 
@@ -1154,7 +1202,7 @@ std::ostream& print_tensor<paddle::platform::complex<float>>(
 
 template <>
 std::ostream& print_tensor<paddle::platform::complex<double>>(
-    std::ostream& os, const framework::Tensor& tensor) {
+    std::ostream& os, const phi::DenseTensor& tensor) {
   auto inspect = tensor.data<paddle::platform::complex<double>>();
   auto element_num = tensor.numel();
 
@@ -1195,13 +1243,7 @@ std::ostream& operator<<(std::ostream& os, const phi::DenseTensor& t) {
 
   os << "  - place: " << t.place() << "\n";
   os << "  - shape: [" << t.dims() << "]\n";
-  os << "  - layout: " << paddle::framework::DataLayoutToString(t.layout())
-     << "\n";
-
-#ifdef PADDLE_WITH_MKLDNN
-  os << "  - format: "
-     << dnnl_fmt_tag2str(static_cast<dnnl_format_tag_t>(t.format())) << "\n";
-#endif
+  os << "  - layout: " << phi::DataLayoutToString(t.layout()) << "\n";
 
   DenseTensor tensor;
   tensor.Resize(t.dims());

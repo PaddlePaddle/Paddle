@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import logging
-import sys
 
 from paddle.distributed.utils.log_utils import get_logger
 
@@ -68,7 +67,8 @@ def layer_to_str(base, *args, **kwargs):
         if kwargs:
             name += ", "
     if kwargs:
-        name += ", ".join("{}={}".format(key, str(value))
-                          for key, value in kwargs.items())
+        name += ", ".join(
+            "{}={}".format(key, str(value)) for key, value in kwargs.items()
+        )
     name += ")"
     return name
