@@ -19,6 +19,35 @@
 namespace phi {
 namespace funcs {
 
+template <typename IndexT>
+struct DivmodWarpper {
+ public:
+  explicit DivmodWarpper(IndexT d) { divmoder = phi::funcs::FastDivMod(d); }
+  __device__ inline phi::funcs::FastDivMod::DivModT div_mod(IndexT val) {
+    return divmoder.Divmod(val);
+  }
+
+ private:
+  phi::funcs::FastDivMod divmoder;
+};
+
+template <>
+struct DivmodWarpper<int64_t> {
+ public:
+  using DivModT = phi::AlignedVector<int64_t, 2>;
+
+  explicit DivmodWarpper(int64_t d) { divisor = d; }
+  __device__ inline DivModT div_mod(int64_t val) {
+    DivModT data;
+    data[0] = val / divisor;
+    data[1] = val - data[0] * divisor;
+    return data;
+  }
+
+ private:
+  int64_t divisor;
+};
+
 enum class SegmentedArraySize {
   kVariableLength = 0,
   kFixed16 = 16,
@@ -31,7 +60,7 @@ struct ConstPointerArray {
  public:
   const T* data[static_cast<int>(Size)];
 
-  void Set(const std::vector<const T*>& x_ptrs, void* dev_ptr = nullptr) {
+  void Set(const std::vector<const T*>& x_ptrs, const T** dev_ptr = nullptr) {
     for (auto i = 0; i < x_ptrs.size(); ++i) {
       data[i] = x_ptrs[i];
     }
@@ -41,15 +70,60 @@ struct ConstPointerArray {
 template <typename T>
 struct ConstPointerArray<T, SegmentedArraySize::kVariableLength> {
  public:
-  T** data{nullptr};
+  const T** data{nullptr};
 
-  void Set(const std::vector<const T*>& x_ptrs, void* dev_ptr = nullptr) {
-    data = reinterpret_cast<T**>(dev_ptr);
+  void Set(const std::vector<const T*>& x_ptrs, const T** dev_ptr = nullptr) {
+    data = dev_ptr;
   }
 };
 
-template <typename Context, typename T, SegmentedArraySize Size>
-struct PointerArraySetter {
+template <typename T, SegmentedArraySize Size>
+struct PointerArray {
+ public:
+  T* data[static_cast<int>(Size)];
+
+  void Set(const std::vector<T*>& x_ptrs, T** dev_ptr = nullptr) {
+    for (auto i = 0; i < x_ptrs.size(); ++i) {
+      data[i] = x_ptrs[i];
+    }
+  }
+};
+
+template <typename T>
+struct PointerArray<T, SegmentedArraySize::kVariableLength> {
+ public:
+  T** data{nullptr};
+
+  void Set(const std::vector<T*>& x_ptrs, T** dev_ptr = nullptr) {
+    data = dev_ptr;
+  }
+};
+
+template <typename Context>
+struct ArraySetterBase {
+ protected:
+  void* AllocAndCopy(const Context& ctx, void* src, size_t num_bytes) {
+    allocation = paddle::memory::Alloc(
+        ctx.GetPlace(),
+        num_bytes,
+        phi::Stream(reinterpret_cast<phi::StreamId>(ctx.stream())));
+    paddle::memory::Copy(ctx.GetPlace(),
+                         allocation->ptr(),
+                         phi::CPUPlace(),
+                         src,
+                         num_bytes,
+                         ctx.stream());
+    return allocation->ptr();
+  }
+
+  paddle::memory::AllocationPtr allocation{nullptr};
+};
+
+template <typename Context,
+          typename T,
+          SegmentedArraySize Size,
+          bool IsConst = true>
+struct PointerArraySetter : public ArraySetterBase<Context> {
  public:
   ConstPointerArray<T, Size> array;
 
@@ -60,21 +134,11 @@ struct PointerArraySetter {
       x_ptrs[i] = x[i]->data<T>();
     }
 
-    void* dev_ptr = nullptr;
+    const T** dev_ptr = nullptr;
     if (Size == SegmentedArraySize::kVariableLength) {
-      auto byte_len = x.size() * sizeof(T*);
-      allocation = paddle::memory::Alloc(
-          ctx.GetPlace(),
-          byte_len,
-          phi::Stream(reinterpret_cast<phi::StreamId>(ctx.stream())));
-      dev_ptr = allocation->ptr();
-
-      paddle::memory::Copy(ctx.GetPlace(),
-                           dev_ptr,
-                           phi::CPUPlace(),
-                           reinterpret_cast<void*>(x_ptrs.data()),
-                           x_ptrs.size() * sizeof(T*),
-                           ctx.stream());
+      size_t num_bytes = x.size() * sizeof(T*);
+      dev_ptr = reinterpret_cast<const T**>(
+          AllocAndCopy(ctx, reinterpret_cast<void*>(x_ptrs.data()), num_bytes));
     }
 
     array.Set(x_ptrs, dev_ptr);
@@ -82,7 +146,6 @@ struct PointerArraySetter {
 
  private:
   std::vector<const T*> x_ptrs;
-  paddle::memory::AllocationPtr allocation{nullptr};
 };
 
 inline SegmentedArraySize CalcArraySize(int n) {

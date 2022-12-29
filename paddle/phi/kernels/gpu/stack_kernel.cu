@@ -19,42 +19,13 @@
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/fast_divmod.h"
-#include "paddle/phi/kernels/funcs/pointer_array.h"
+#include "paddle/phi/kernels/funcs/segmented_array.h"
 
 namespace phi {
 
-template <typename IndexT>
-struct DivmodWarpper {
- public:
-  explicit DivmodWarpper(IndexT d) { divmoder = phi::funcs::FastDivMod(d); }
-  __device__ inline phi::funcs::FastDivMod::DivModT div_mod(IndexT val) {
-    return divmoder.Divmod(val);
-  }
-
- private:
-  phi::funcs::FastDivMod divmoder;
-};
-
-template <>
-struct DivmodWarpper<int64_t> {
- public:
-  using DivModT = phi::AlignedVector<int64_t, 2>;
-
-  explicit DivmodWarpper(int64_t d) { divisor = d; }
-  __device__ inline DivModT div_mod(int64_t val) {
-    DivModT data;
-    data[0] = val / divisor;
-    data[1] = val - data[0] * divisor;
-    return data;
-  }
-
- private:
-  int64_t divisor;
-};
-
 template <typename T, typename IndexT, funcs::SegmentedArraySize Size>
 __global__ void StackCUDAKernel(funcs::ConstPointerArray<T, Size> array,
-                                DivmodWarpper<IndexT> divmoder,
+                                funcs::DivmodWarpper<IndexT> divmoder,
                                 IndexT split_size,
                                 IndexT rows,
                                 IndexT cols,
@@ -86,7 +57,7 @@ void LaunchStackKernel(const Context& ctx,
   T* y_ptr = ctx.template Alloc<T>(y);
 
   auto config = phi::backends::gpu::GetGpuLaunchConfig2D(ctx, y_col, x_row);
-  DivmodWarpper<IndexT> divmoder(x_col);
+  funcs::DivmodWarpper<IndexT> divmoder(x_col);
   switch (funcs::CalcArraySize(x.size())) {
     POINTER_ARRAY_KERNEL_HELPER(
         StackCUDAKernel<T, IndexT, kArraySize>
