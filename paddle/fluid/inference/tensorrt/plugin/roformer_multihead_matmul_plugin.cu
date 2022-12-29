@@ -428,25 +428,22 @@ __global__ void RotrayKernel(const T *inputact,
 			     int max_seq, //max_seq
                              const int nElement) {
   const int lastdim = h;
+  const int half_lastdim = lastdim / 2;
   const int index = blockIdx.x * blockDim.x + threadIdx.x;
   int step = (size_t)gridDim.x * blockDim.x;
   if (index >= nElement) return;
-  const int half_lastdim = lastdim / 2;
   for (int i = index; i < nElement; i += step)
   {
-	  int sh_index = i % (s * h);
-	  int seq_index = sh_index / h;
-	  int h_index = i % h;
-          int cos_index = seq_index * max_seq + h_index;
-
-	  T left = input1[cos_index] * inputact[i];
-          int col = index % lastdim;
+          if (i >= nElement) return;
+          int sh_index = i % (s * h);
+          T left = input1[sh_index] * inputact[i];
+          int col = i % lastdim;
           const int new_index = i - col + (col + half_lastdim) % lastdim;
-	  if (col >= half_lastdim) {
-              output[index] = left - intput2[cos_index] * inputact[new_index];
-	  } else {
-              output[index] = left + intput2[cos_index] * inputact[new_index];
-	  }
+          if (col >= half_lastdim) {
+              output[i] = left + intput2[sh_index] * inputact[new_index];
+          } else {
+              output[i] = left - intput2[sh_index] * inputact[new_index];
+          }
   }
 }
 
@@ -640,14 +637,6 @@ int RoformerNovarlenPlugin::enqueue(
 						 head_size_,
 						 max_seq,
                                                  2*n_q);  // q +k
-    /*
-    RotrayKernel<<<blocks, threads, 0, stream>>>(tmp_roformer_ptr + n_q,
-                                                 input_cos_data,
-                                                 input_sin_data,
-                                                 tptr + n_q,
-                                                 n_q,
-                                                 head_size_);  // k
-    */
     apply_scale<<<blocks, threads, 0, stream>>>(
         tptr, static_cast<half>(scale_), n_q);
 
