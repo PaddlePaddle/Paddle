@@ -24,7 +24,6 @@ from paddle.fluid.framework import (  # noqa: F401
     OpProtoHolder,
     Variable,
     _dygraph_tracer,
-    _in_legacy_dygraph,
     _non_static_mode,
     _varbase_creator,
     convert_np_dtype_to_dtype_,

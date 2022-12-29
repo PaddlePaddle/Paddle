@@ -17,7 +17,6 @@ from ..framework import (
     Variable,
     convert_np_dtype_to_dtype_,
     _varbase_creator,
-    _in_legacy_dygraph,
     in_dygraph_mode,
 )
 from ..layers.layer_function_generator import OpProtoHolder
@@ -124,10 +123,6 @@ def monkey_patch_math_varbase():
         if not isinstance(dtype, core.VarDesc.VarType):
             dtype = convert_np_dtype_to_dtype_(dtype)
 
-        if _in_legacy_dygraph():
-            return _legacy_C_ops.cast(
-                self, 'in_dtype', self.dtype, 'out_dtype', dtype
-            )
         return _C_ops.cast(self, dtype)
 
     def _scalar_elementwise_op_(var, scale, bias):
@@ -194,10 +189,7 @@ def monkey_patch_math_varbase():
         perm = []
         for i in range(len(var.shape)):
             perm.insert(0, i)
-        if _in_legacy_dygraph():
-            out, _ = _legacy_C_ops.transpose2(var, 'axis', perm)
-        else:
-            out = _C_ops.transpose(var, perm)
+        out = _C_ops.transpose(var, perm)
         return out
 
     def _scalar_add_(var, value):
