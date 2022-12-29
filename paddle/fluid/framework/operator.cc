@@ -2716,25 +2716,27 @@ proto::VarType::Type OperatorWithKernel::IndicateDataType(
       static_cast<proto::VarType::Type>(-1);
   proto::VarType::Type data_type = dafault_data_type;
 
-  std::vector<std::string> sup_tensor_attrs;
+  auto tmp_list = ctx.InNameList();
+  std::vector<std::string> in_name_list;
+  std::transform(tmp_list.begin(),
+                 tmp_list.end(),
+                 std::back_inserter(in_name_list),
+                 [](const std::string* name) { return *name; });
   if (Info().HasOpProtoAndChecker()) {
     for (auto& attr : Info().Proto().attrs()) {
-      if (attr.support_tensor()) {
-        sup_tensor_attrs.emplace_back(attr.name());
+      auto it =
+          std::find(in_name_list.begin(), in_name_list.end(), attr.name());
+      if (attr.support_tensor() && it != in_name_list.end()) {
+        in_name_list.erase(it);
       }
     }
   }
 
-  for (auto* name : ctx.InNameList()) {
-    if (std::find(sup_tensor_attrs.begin(), sup_tensor_attrs.end(), *name) !=
-        sup_tensor_attrs.end()) {
-      continue;
-    }
-
-    if (ctx.InputSize(*name) == 1UL) {
-      ParseInputDataType(ctx.InputVar(*name), *name, &data_type);
+  for (auto& name : in_name_list) {
+    if (ctx.InputSize(name) == 1UL) {
+      ParseInputDataType(ctx.InputVar(name), name, &data_type);
     } else {
-      ParseMultiInputDataType(ctx.MultiInputVar(*name), *name, &data_type);
+      ParseMultiInputDataType(ctx.MultiInputVar(name), name, &data_type);
     }
   }
   PADDLE_ENFORCE_NE(
