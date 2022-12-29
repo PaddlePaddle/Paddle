@@ -81,7 +81,7 @@ def synchronize(device=None):
 
     Parameters:
         device(paddle.CUDAPlace()|int, optional): The device or the ID of the device.
-        If device is None, the device is the current device. Default: None.
+            If device is None, the device is the current device. Default: None.
 
     Examples:
         .. code-block:: python
