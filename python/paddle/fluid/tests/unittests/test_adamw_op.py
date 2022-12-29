@@ -746,4 +746,3 @@ class TestAdamWOpLayerwiseLR(TestAdamWOp):
 
 if __name__ == "__main__":
     unittest.main()
-    paddle.enable_static()
