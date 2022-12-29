@@ -2717,9 +2717,11 @@ proto::VarType::Type OperatorWithKernel::IndicateDataType(
   proto::VarType::Type data_type = dafault_data_type;
 
   std::vector<std::string> sup_tensor_attrs;
-  for (auto& attr : Info().Proto().attrs()) {
-    if (attr.support_tensor()) {
-      sup_tensor_attrs.emplace_back(attr.name());
+  if (Info().HasOpProtoAndChecker()) {
+    for (auto& attr : Info().Proto().attrs()) {
+      if (attr.support_tensor()) {
+        sup_tensor_attrs.emplace_back(attr.name());
+      }
     }
   }
 
