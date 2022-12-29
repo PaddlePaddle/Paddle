@@ -37,7 +37,9 @@ class RangeOp : public framework::OperatorWithKernel {
       return phi::KernelKey(
           tensor.place(), tensor.layout(), expected_kernel_type.dtype());
     }
-    return phi::KernelKey();
+    return phi::KernelKey(phi::Backend::ALL_BACKEND,
+                          expected_kernel_type.layout(),
+                          expected_kernel_type.dtype());
   }
 };
 

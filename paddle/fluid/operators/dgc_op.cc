@@ -51,7 +51,9 @@ class DGCOp : public framework::OperatorWithKernel {
       const phi::KernelKey& expected_kernel_type) const override {
     if (var_name == "current_step" || var_name == "k" || var_name == "nranks") {
       VLOG(10) << "var_name:" << var_name << " need not to transform";
-      return phi::KernelKey();
+      return phi::KernelKey(phi::Backend::ALL_BACKEND,
+                            expected_kernel_type.layout(),
+                            expected_kernel_type.dtype());
     }
 
     return framework::OperatorWithKernel::GetKernelTypeForVar(

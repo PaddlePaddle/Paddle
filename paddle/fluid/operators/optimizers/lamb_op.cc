@@ -40,7 +40,9 @@ class LambOp : public framework::OperatorWithKernel {
       const phi::DenseTensor &tensor,
       const phi::KernelKey &expected_kernel_type) const {
     if (var_name == "Beta1Pow" || var_name == "Beta2Pow") {
-      return phi::KernelKey();
+      return phi::KernelKey(phi::Backend::ALL_BACKEND,
+                            expected_kernel_type.layout(),
+                            expected_kernel_type.dtype());
     } else {
       return phi::KernelKey(
           tensor.place(), tensor.layout(), expected_kernel_type.dtype());

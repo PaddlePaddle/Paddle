@@ -69,11 +69,15 @@ class StridedSliceOp : public framework::OperatorWithKernel {
       const phi::KernelKey &expected_kernel_type) const override {
     if (var_name == "StartsTensor" || var_name == "EndsTensor" ||
         var_name == "StridesTensor") {
-      return phi::KernelKey();
+      return phi::KernelKey(phi::Backend::ALL_BACKEND,
+                            expected_kernel_type.layout(),
+                            expected_kernel_type.dtype());
     }
     if (var_name == "StartsTensorList" || var_name == "EndsTensorList" ||
         var_name == "StridesTensorList") {
-      return phi::KernelKey();
+      return phi::KernelKey(phi::Backend::ALL_BACKEND,
+                            expected_kernel_type.layout(),
+                            expected_kernel_type.dtype());
     }
     return phi::KernelKey(
         tensor.place(), tensor.layout(), expected_kernel_type.dtype());
@@ -174,11 +178,15 @@ class StridedSliceOpGrad : public framework::OperatorWithKernel {
       const phi::KernelKey &expected_kernel_type) const override {
     if (var_name == "StartsTensor" || var_name == "EndsTensor" ||
         var_name == "StridesTensor") {
-      return phi::KernelKey();
+      return phi::KernelKey(phi::Backend::ALL_BACKEND,
+                            expected_kernel_type.layout(),
+                            expected_kernel_type.dtype());
     }
     if (var_name == "StartsTensorList" || var_name == "EndsTensorList" ||
         var_name == "StridesTensorList") {
-      return phi::KernelKey();
+      return phi::KernelKey(phi::Backend::ALL_BACKEND,
+                            expected_kernel_type.layout(),
+                            expected_kernel_type.dtype());
     }
     return phi::KernelKey(
         tensor.place(), tensor.layout(), expected_kernel_type.dtype());
