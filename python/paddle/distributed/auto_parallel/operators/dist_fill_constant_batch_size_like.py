@@ -129,24 +129,6 @@ class DistributedFillConstantBatchSizeLikeImpl0(DistributedOperatorImpl):
         kwargs: inputname_mapping & outputname_mapping
         """
         DistributedDefaultImpl0.forward(ctx, *args, **kwargs)
-        dist_op_context = ctx.dist_op_context
-        src_op = dist_op_context.cur_src_op
-        op_dist_attr = ctx.get_op_dist_attr_for_program(src_op)
-        main_block = dist_op_context.work_block
-        op = main_block.ops[-1]
-        assert op.type == "fill_constant_batch_size_like"
-
-        # modify shape attr according to how output are partitioned
-        out_name = op.output('Out')[0]
-        dims_mapping = op_dist_attr.get_output_dims_mapping(out_name)
-        process_mesh_shape = op_dist_attr.process_mesh.shape
-        shape_list = op.attr("shape")
-        # modify target shape
-        for idx, axis in enumerate(dims_mapping):
-            if axis >= 0:
-                shape_list[idx] = shape_list[idx] // process_mesh_shape[axis]
-
-        op._set_attr("shape", shape_list)
 
     @staticmethod
     def backward(ctx, *args, **kwargs):

@@ -2135,6 +2135,36 @@ class Resharder:
                         input_attrs.append([process_mesh, input_dims_mapping])
         return input_attrs
 
+    def _get_subblock_output_attrs(self, op, var_name):
+        # NOTE: Multi while loop is not supported
+        assert op.type in _g_subblock_ops
+        sub_block = self.auto_parallel_main_prog.blocks[op.attr("sub_block").id]
+        ops = sub_block.ops
+        output_attrs = []
+
+        for op in ops:
+            dist_op = self.dist_context.get_dist_op_for_program(op)
+            if not dist_op:
+                continue
+            dist_attr = dist_op.dist_attr
+            for name in op.output_arg_names:
+                if name == var_name:
+                    process_mesh = dist_attr.process_mesh
+                    output_dims_mapping = dist_attr.get_output_dims_mapping(
+                        var_name
+                    )
+                    has_exist = False
+                    for output_attr in output_attrs:
+                        if (
+                            process_mesh == output_attrs[0]
+                            and output_dims_mapping == output_attrs[1]
+                        ):
+                            has_exist = True
+                            break
+                    if not has_exist:
+                        output_attrs.append([process_mesh, output_dims_mapping])
+        return output_attrs
+
     def _get_common_op_input_attrs(self, op, var_name):
         process_meshes = []
         dist_op = self.dist_context.get_dist_op_for_program(op)
@@ -2164,6 +2194,11 @@ class Resharder:
 
         if op.type in _g_subblock_ops:
             op_input_attrs = self._get_subblock_input_attrs(op, var_name)
+            if not op_input_attrs:
+                # NOTE: [hack method]
+                # Adapt to quantization pass, which presist_vars, including inputs and outputs, all are in global_block.
+                # Therefore, the while_op's inputs will contain the all persist_vars, which will be inputs or output of the quantization op in subblock.
+                op_input_attrs = self._get_subblock_output_attrs(op, var_name)
         else:
             op_input_attrs = self._get_common_op_input_attrs(op, var_name)
 

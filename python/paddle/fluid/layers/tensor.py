@@ -19,9 +19,7 @@ from ..layer_helper import LayerHelper
 from ..framework import (
     _current_expected_place,
     convert_np_dtype_to_dtype_,
-    _non_static_mode,
     _varbase_creator,
-    _in_legacy_dygraph,
     in_dygraph_mode,
 )
 from ..framework import Variable
@@ -81,58 +79,52 @@ def cast(x, dtype):
         if not isinstance(dtype, core.VarDesc.VarType):
             dtype = convert_np_dtype_to_dtype_(dtype)
         return _C_ops.cast(x, dtype)
+    else:
+        check_variable_and_dtype(
+            x,
+            'x',
+            [
+                'bool',
+                'float16',
+                'float32',
+                'float64',
+                'int16',
+                'int32',
+                'int64',
+                'uint8',
+                'uint16',
+            ],
+            'cast',
+        )
+        check_dtype(
+            dtype,
+            'dtype',
+            [
+                'bool',
+                'float16',
+                'float32',
+                'float64',
+                'int8',
+                'int16',
+                'int32',
+                'int64',
+                'uint8',
+                'uint16',
+            ],
+            'cast',
+        )
 
-    if _non_static_mode():
-        if not isinstance(dtype, core.VarDesc.VarType):
-            dtype = convert_np_dtype_to_dtype_(dtype)
-        out = _legacy_C_ops.cast(x, 'in_dtype', x.dtype, 'out_dtype', dtype)
+        helper = LayerHelper('cast', **locals())
+        out = helper.create_variable_for_type_inference(
+            dtype=dtype, stop_gradient=x.stop_gradient
+        )
+        helper.append_op(
+            type='cast',
+            inputs={'X': [x]},
+            outputs={'Out': [out]},
+            attrs={'in_dtype': x.dtype, 'out_dtype': out.dtype},
+        )
         return out
-
-    check_variable_and_dtype(
-        x,
-        'x',
-        [
-            'bool',
-            'float16',
-            'float32',
-            'float64',
-            'int16',
-            'int32',
-            'int64',
-            'uint8',
-            'uint16',
-        ],
-        'cast',
-    )
-    check_dtype(
-        dtype,
-        'dtype',
-        [
-            'bool',
-            'float16',
-            'float32',
-            'float64',
-            'int8',
-            'int16',
-            'int32',
-            'int64',
-            'uint8',
-            'uint16',
-        ],
-        'cast',
-    )
-
-    helper = LayerHelper('cast', **locals())
-    out = helper.create_variable_for_type_inference(
-        dtype=dtype, stop_gradient=x.stop_gradient
-    )
-    helper.append_op(
-        type='cast',
-        inputs={'X': [x]},
-        outputs={'Out': [out]},
-        attrs={'in_dtype': x.dtype, 'out_dtype': out.dtype},
-    )
-    return out
 
 
 def concat(input, axis=0, name=None):
@@ -191,73 +183,69 @@ def concat(input, axis=0, name=None):
             input = [t for t in input if t.shape.count(0) == 0]
         out = _C_ops.concat(input, axis)
         return out
-
-    if _in_legacy_dygraph():
-        if isinstance(axis, Variable):
-            axis = axis.numpy()
-            axis = axis.item(0)
+    else:
+        check_type(input, 'input', (list, tuple, Variable), 'concat')
         if not isinstance(input, Variable):
-            input = [t for t in input if t.shape.count(0) == 0]
-        out = _varbase_creator()
-        _legacy_C_ops.concat(input, out, 'axis', axis)
-        return out
-
-    check_type(input, 'input', (list, tuple, Variable), 'concat')
-    if not isinstance(input, Variable):
-        for id, x in enumerate(input):
-            check_variable_and_dtype(
-                x,
-                'input[' + str(id) + ']',
-                ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
-                'concat',
-            )
-            if x.dtype != input[0].dtype:
-                raise TypeError(
-                    "All the Tensors in the input must have the same data type."
+            for id, x in enumerate(input):
+                check_variable_and_dtype(
+                    x,
+                    'input[' + str(id) + ']',
+                    ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
+                    'concat',
                 )
-    else:
-        input = [input]
-    check_type(axis, 'axis', (int, Variable), 'concat')
+                if x.dtype != input[0].dtype:
+                    raise TypeError(
+                        "All the Tensors in the input must have the same data type."
+                    )
+        else:
+            input = [input]
+        check_type(axis, 'axis', (int, Variable), 'concat')
 
-    if isinstance(axis, Variable):
-        check_dtype(
-            axis.dtype,
-            'axis',
-            ['int32', 'int64'],
-            'concat',
-            "The data type of axis must be int32 or int64 when axis is a Tensor",
-        )
-
-    helper = LayerHelper('concat', **locals())
-    out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
-
-    if input[0].desc.type() == core.VarDesc.VarType.LOD_TENSOR_ARRAY:
-        # NOTE(liym27): Don't remove this if branch!
-        # This feature is supported for Dynamic-to-Static, because after transformed, the type of inputs[0]
-        # is LOD_TENSOR_ARRAY in some scenarios. And this feature can be used in static mode.
-
-        assert len(input) == 1, (
-            "If the elements of 'input' in concat are Variable(LoDTensorArray), "
-            "number of the elements must be 1, but received %s." % len(input)
-        )
-        out_index = helper.create_variable_for_type_inference(dtype="int32")
-        helper.append_op(
-            type='tensor_array_to_tensor',
-            inputs={'X': input[0]},
-            outputs={'Out': [out], 'OutIndex': [out_index]},
-            attrs={'axis': axis, 'use_stack': False},
-        )
-    else:
-        inputs = {'X': input}
-        attrs = {}
         if isinstance(axis, Variable):
-            axis.stop_gradient = True
-        attrs['axis'] = axis
+            check_dtype(
+                axis.dtype,
+                'axis',
+                ['int32', 'int64'],
+                'concat',
+                "The data type of axis must be int32 or int64 when axis is a Tensor",
+            )
 
-        helper.append_op(
-            type='concat', inputs=inputs, outputs={'Out': [out]}, attrs=attrs
+        helper = LayerHelper('concat', **locals())
+        out = helper.create_variable_for_type_inference(
+            dtype=helper.input_dtype()
         )
-    return out
+
+        if input[0].desc.type() == core.VarDesc.VarType.LOD_TENSOR_ARRAY:
+            # NOTE(liym27): Don't remove this if branch!
+            # This feature is supported for Dynamic-to-Static, because after transformed, the type of inputs[0]
+            # is LOD_TENSOR_ARRAY in some scenarios. And this feature can be used in static mode.
+
+            assert len(input) == 1, (
+                "If the elements of 'input' in concat are Variable(LoDTensorArray), "
+                "number of the elements must be 1, but received %s."
+                % len(input)
+            )
+            out_index = helper.create_variable_for_type_inference(dtype="int32")
+            helper.append_op(
+                type='tensor_array_to_tensor',
+                inputs={'X': input[0]},
+                outputs={'Out': [out], 'OutIndex': [out_index]},
+                attrs={'axis': axis, 'use_stack': False},
+            )
+        else:
+            inputs = {'X': input}
+            attrs = {}
+            if isinstance(axis, Variable):
+                axis.stop_gradient = True
+            attrs['axis'] = axis
+
+            helper.append_op(
+                type='concat',
+                inputs=inputs,
+                outputs={'Out': [out]},
+                attrs=attrs,
+            )
+        return out
 
 
 def sums(input, out=None):
@@ -391,22 +379,15 @@ def assign(input, output=None):
         input = numpy.array(input)
     # NOTE(Aurelius84): Why we judge core.VarBase?
     # In case of @to_static, a VarBase can be as input of `assign`,
-    # but _non_static_mode()==False under @to_static, which means
+    # but in_dygraph_mode()==False under @to_static, which means
     # isinstance(VarBase, Variable) == False. It will cause return None
     # after this api.
     if isinstance(input, (Variable, core.VarBase)):
-        if _non_static_mode():
-            if in_dygraph_mode() and output is None:
+        if in_dygraph_mode():
+            if output is None:
                 output = _C_ops.assign(input)
-            elif in_dygraph_mode() and output is not None:
-                _C_ops.assign_out_(input, output)
             else:
-                if output is None:
-                    if _in_legacy_dygraph():
-                        output = core.VarBase()
-                    else:
-                        output = core.eager.Tensor()
-                _legacy_C_ops.assign(input, output)
+                _C_ops.assign_out_(input, output)
         else:
             check_dtype(
                 input.dtype,
@@ -480,18 +461,6 @@ def assign(input, output=None):
                 values,
                 _current_expected_place(),
             )
-        elif _in_legacy_dygraph():
-            if output is None:
-                output = core.VarBase()
-            _legacy_C_ops.assign_value(
-                output,
-                'shape',
-                list(input.shape),
-                'dtype',
-                dtype,
-                value_name,
-                values,
-            )
         else:
             if output is None:
                 output = helper.create_variable_for_type_inference(
@@ -507,7 +476,7 @@ def assign(input, output=None):
                 },
             )
 
-    if is_inplace and _non_static_mode():
+    if is_inplace and in_dygraph_mode():
         output._bump_inplace_version()
 
     return output
@@ -591,83 +560,56 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
             _C_ops.full_(out, shape, float(value), dtype, place)
             out.stop_gradient = True
             return out
-
-    if _in_legacy_dygraph():
-        shape = utils.convert_shape_to_list(shape)
-        if out is None:
-            out = _varbase_creator(dtype=dtype)
-
+    else:
+        helper = LayerHelper("fill_constant", **locals())
+        inputs = {}
         if isinstance(value, Variable):
-            if dtype in ['uint8', 'int16', 'int32', 'int64']:
-                attrs['str_value'] = str(int(value.numpy().item(0)))
-            else:
-                attrs['str_value'] = str(float(value.numpy().item(0)))
+            if convert_dtype(value.dtype) != dtype:
+                value = cast(value, dtype)
+            inputs['ValueTensor'] = value
 
-        _legacy_C_ops.fill_constant(
-            out,
-            'value',
-            float(value),
-            'force_cpu',
-            force_cpu,
+        check_shape(shape)
+        check_dtype(
+            dtype,
             'dtype',
-            out.dtype,
-            'str_value',
-            attrs['str_value'],
-            'shape',
-            shape,
+            [
+                'bool',
+                'float16',
+                'float32',
+                'float64',
+                'uint8',
+                'int16',
+                'int32',
+                'int64',
+                'complex64',
+                'complex128',
+            ],
+            'fill_constant',
+        )
+        check_type(shape, 'shape', (Variable, list, tuple), 'fill_constant')
+
+        if out is not None:
+            check_variable_and_dtype(
+                out, 'out', [convert_dtype(dtype)], 'fill_constant'
+            )
+
+        helper = LayerHelper("fill_constant", **locals())
+        utils.get_shape_tensor_inputs(
+            inputs=inputs, attrs=attrs, shape=shape, op_type='fill_constant'
+        )
+
+        if out is None:
+            out = helper.create_variable_for_type_inference(dtype=dtype)
+        attrs['dtype'] = out.dtype
+        helper.append_op(
+            type='fill_constant',
+            inputs=inputs,
+            outputs={'Out': [out]},
+            attrs=attrs,
+            stop_gradient=True,
         )
         out.stop_gradient = True
         return out
-
-    helper = LayerHelper("fill_constant", **locals())
-    inputs = {}
-    if isinstance(value, Variable):
-        if convert_dtype(value.dtype) != dtype:
-            value = cast(value, dtype)
-        inputs['ValueTensor'] = value
-
-    check_shape(shape)
-    check_dtype(
-        dtype,
-        'dtype',
-        [
-            'bool',
-            'float16',
-            'float32',
-            'float64',
-            'uint8',
-            'int16',
-            'int32',
-            'int64',
-            'complex64',
-            'complex128',
-        ],
-        'fill_constant',
-    )
-    check_type(shape, 'shape', (Variable, list, tuple), 'fill_constant')
-
-    if out is not None:
-        check_variable_and_dtype(
-            out, 'out', [convert_dtype(dtype)], 'fill_constant'
-        )
-
-    helper = LayerHelper("fill_constant", **locals())
-    utils.get_shape_tensor_inputs(
-        inputs=inputs, attrs=attrs, shape=shape, op_type='fill_constant'
-    )
-
-    if out is None:
-        out = helper.create_variable_for_type_inference(dtype=dtype)
-    attrs['dtype'] = out.dtype
-    helper.append_op(
-        type='fill_constant',
-        inputs=inputs,
-        outputs={'Out': [out]},
-        attrs=attrs,
-        stop_gradient=True,
-    )
-    out.stop_gradient = True
-    return out
 
 
 @deprecated(since='1.8.0', update_to="paddle.fluid.layers.fill_constant")
@@ -727,29 +669,29 @@ def fill_constant_batch_size_like(
         )
         out.stop_gradient = True
         return out
-
-    helper = LayerHelper("fill_constant_batch_size_like", **locals())
-    out = helper.create_variable_for_type_inference(dtype=dtype)
-    attrs = {
-        'shape': shape,
-        'dtype': out.dtype,
-        'value': float(value),
-        'input_dim_idx': input_dim_idx,
-        'output_dim_idx': output_dim_idx,
-        'force_cpu': force_cpu,
-    }
-    if convert_dtype(dtype) in ['int64', 'int32']:
-        attrs['str_value'] = str(int(value))
     else:
-        attrs['str_value'] = str(float(value))
-    helper.append_op(
-        type='fill_constant_batch_size_like',
-        inputs={'Input': input},
-        outputs={'Out': [out]},
-        attrs=attrs,
-    )
-    out.stop_gradient = True
-    return out
+        helper = LayerHelper("fill_constant_batch_size_like", **locals())
+        out = helper.create_variable_for_type_inference(dtype=dtype)
+        attrs = {
+            'shape': shape,
+            'dtype': out.dtype,
+            'value': float(value),
+            'input_dim_idx': input_dim_idx,
+            'output_dim_idx': output_dim_idx,
+            'force_cpu': force_cpu,
+        }
+        if convert_dtype(dtype) in ['int64', 'int32']:
+            attrs['str_value'] = str(int(value))
+        else:
+            attrs['str_value'] = str(float(value))
+        helper.append_op(
+            type='fill_constant_batch_size_like',
+            inputs={'Input': input},
+            outputs={'Out': [out]},
+            attrs=attrs,
+        )
+        out.stop_gradient = True
+        return out
 
 
 def argmin(x, axis=0):
