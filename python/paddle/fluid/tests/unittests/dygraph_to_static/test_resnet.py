@@ -327,9 +327,7 @@ class ResNetHelper:
         with fluid.dygraph.guard(place):
             resnet = ResNet()
 
-            model_dict, _ = paddle.load(
-                self.dy_state_dict_save_path + '.pdparams'
-            )
+            model_dict = paddle.load(self.dy_state_dict_save_path + '.pdparams')
             resnet.set_dict(model_dict)
             resnet.eval()
 

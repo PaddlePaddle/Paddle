@@ -74,7 +74,7 @@ class TestDyToStaticSaveLoad(unittest.TestCase):
             dygraph_net = Linear(32, 64)
 
             # Load parameters
-            model_dict, _ = paddle.load(self.model_path + '.pdparams')
+            model_dict = paddle.load(self.model_path + '.pdparams')
             dygraph_net.set_dict(model_dict)
             # Switch into eval mode.
             dygraph_net.eval()

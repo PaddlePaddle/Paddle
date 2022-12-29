@@ -26,7 +26,7 @@ class TestImperativeContainerSequential(unittest.TestCase):
         data = np.random.uniform(-1, 1, [5, 10]).astype('float32')
         with fluid.dygraph.guard():
             data = fluid.dygraph.to_variable(data)
-            model1 = fluid.dygraph.Sequential(Linear(10, 1), Linear(1, 2))
+            model1 = paddle.nn.Sequential(Linear(10, 1), Linear(1, 2))
             res1 = model1(data)
             self.assertListEqual(res1.shape, [5, 2])
             model1[1] = Linear(1, 3)
@@ -60,7 +60,7 @@ class TestImperativeContainerSequential(unittest.TestCase):
         data = np.random.uniform(-1, 1, [5, 10]).astype('float32')
         with fluid.dygraph.guard():
             data = fluid.dygraph.to_variable(data)
-            model1 = fluid.dygraph.Sequential(Linear(10, 1), Linear(1, 2))
+            model1 = paddle.nn.Sequential(Linear(10, 1), Linear(1, 2))
             res1 = model1(data)
             self.assertListEqual(res1.shape, [5, 2])
             model1[1] = Linear(1, 3)
