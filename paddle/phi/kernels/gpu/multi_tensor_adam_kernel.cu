@@ -270,8 +270,8 @@ void MultiTensorAdamKernel(
     const DenseTensor& learning_rate,
     const std::vector<const DenseTensor*>& moments1,
     const std::vector<const DenseTensor*>& moments2,
-    const DenseTensor& beta1_pow,
-    const DenseTensor& beta2_pow,
+    const std::vector<const DenseTensor*>& beta1_pow,
+    const std::vector<const DenseTensor*>& beta2_pow,
     const paddle::optional<std::vector<const DenseTensor*>>& master_params,
     const paddle::optional<DenseTensor>& skip_update,
     const Scalar& beta1,
@@ -285,18 +285,32 @@ void MultiTensorAdamKernel(
     std::vector<DenseTensor*> params_out,
     std::vector<DenseTensor*> moments1_out,
     std::vector<DenseTensor*> moments2_out,
-    DenseTensor* beta1_pow_out,
-    DenseTensor* beta2_pow_out,
+    std::vector<DenseTensor*> beta1_pow_out,
+    std::vector<DenseTensor*> beta2_pow_out,
     std::vector<DenseTensor*> master_params_out) {
   using MPDType = typename phi::dtype::MPTypeTrait<T>::Type;
 
+  auto beta1_pow_first = beta1_pow[0];
+  auto beta2_pow_first = beta2_pow[0];
+
+  for (int i = 1; i < beta1_pow.size(); i++) {
+    PADDLE_ENFORCE_EQ(beta1_pow_first.place(),
+                      beta1_pow[i].place(),
+                      phi::errors::InvalidArgument(
+                          "all Beta1Pow must be in the same place."));
+    PADDLE_ENFORCE_EQ(beta2_pow_first.place(),
+                      beta2_pow[i].place(),
+                      phi::errors::InvalidArgument(
+                          "all Beta2Pow must be in the same place."));
+  }
+
   PADDLE_ENFORCE_EQ(
-      beta1_pow.place(),
-      beta2_pow.place(),
+      beta1_pow_first.place(),
+      beta2_pow_first.place(),
       phi::errors::InvalidArgument(
           "Input(Beta1Pow) and Input(Beta2Pow) must be in the same place."));
 
-  bool is_cpu_betapow = (beta1_pow.place() == CPUPlace());
+  bool is_cpu_betapow = (beta1_pow_first.place() == CPUPlace());
 
   VLOG(4) << "use_global_beta_pow:" << use_global_beta_pow;
   MPDType beta1_tmp = beta1.to<MPDType>();
@@ -325,9 +339,11 @@ void MultiTensorAdamKernel(
           dev_ctx, *moments1[i], dev_ctx.GetPlace(), false, moments1_out[i]);
       phi::Copy(
           dev_ctx, *moments2[i], dev_ctx.GetPlace(), false, moments2_out[i]);
+      phi::Copy(
+          dev_ctx, beta1_pow[i], beta1_pow[i].place(), false, beta1_pow_out[i]);
+      phi::Copy(
+          dev_ctx, beta2_pow[i], beta2_pow[i].place(), false, beta2_pow_out[i]);
     }
-    phi::Copy(dev_ctx, beta1_pow, beta1_pow.place(), false, beta1_pow_out);
-    phi::Copy(dev_ctx, beta2_pow, beta2_pow.place(), false, beta2_pow_out);
     return;
   }
 
@@ -351,40 +367,40 @@ void MultiTensorAdamKernel(
   VLOG(4) << "use_adamw: " << use_adamw;
   VLOG(4) << "multi_precision: " << multi_precision;
 
-#define PD_LAUNCH_MULTI_TENSOR_APPLY_ADAM_KERNEL(                  \
-    __multi_precision, __is_cpu_betapow, __use_adamw, __vec_size)  \
-  do {                                                             \
-    constexpr int kInputNum = __multi_precision ? 5 : 4;           \
-    constexpr int kMaxTensorSize = __multi_precision ? 48 : 60;    \
-    constexpr int kMaxBlockSize = __multi_precision ? 320 : 320;   \
-    constexpr int kBlockSize = 512;                                \
-    MultiTensorAdamBetaPowInfo<T, __is_cpu_betapow> beta_pow_info( \
-        beta1_pow.data<MPDType>(), beta2_pow.data<MPDType>());     \
-    MultiTensorAdamFunctor<T,                                      \
-                           MPDType,                                \
-                           __vec_size,                             \
-                           __multi_precision,                      \
-                           __is_cpu_betapow,                       \
-                           __use_adamw,                            \
-                           kInputNum,                              \
-                           kMaxTensorSize,                         \
-                           kMaxBlockSize>                          \
-        functor;                                                   \
-    funcs::LaunchMultiTensorApplyKernel<kInputNum,                 \
-                                        kMaxTensorSize,            \
-                                        kMaxBlockSize>(            \
-        dev_ctx,                                                   \
-        kBlockSize,                                                \
-        ((chunk_size + __vec_size - 1) / __vec_size) * __vec_size, \
-        input_vector,                                              \
-        grads,                                                     \
-        functor,                                                   \
-        beta1_tmp,                                                 \
-        beta2_tmp,                                                 \
-        beta_pow_info,                                             \
-        epsilon.to<MPDType>(),                                     \
-        learning_rate.data<MPDType>(),                             \
-        static_cast<MPDType>(weight_decay));                       \
+#define PD_LAUNCH_MULTI_TENSOR_APPLY_ADAM_KERNEL(                          \
+    __multi_precision, __is_cpu_betapow, __use_adamw, __vec_size)          \
+  do {                                                                     \
+    constexpr int kInputNum = __multi_precision ? 5 : 4;                   \
+    constexpr int kMaxTensorSize = __multi_precision ? 48 : 60;            \
+    constexpr int kMaxBlockSize = __multi_precision ? 320 : 320;           \
+    constexpr int kBlockSize = 512;                                        \
+    MultiTensorAdamBetaPowInfo<T, __is_cpu_betapow> beta_pow_info(         \
+        beta1_pow_first.data<MPDType>(), beta2_pow_first.data<MPDType>()); \
+    MultiTensorAdamFunctor<T,                                              \
+                           MPDType,                                        \
+                           __vec_size,                                     \
+                           __multi_precision,                              \
+                           __is_cpu_betapow,                               \
+                           __use_adamw,                                    \
+                           kInputNum,                                      \
+                           kMaxTensorSize,                                 \
+                           kMaxBlockSize>                                  \
+        functor;                                                           \
+    funcs::LaunchMultiTensorApplyKernel<kInputNum,                         \
+                                        kMaxTensorSize,                    \
+                                        kMaxBlockSize>(                    \
+        dev_ctx,                                                           \
+        kBlockSize,                                                        \
+        ((chunk_size + __vec_size - 1) / __vec_size) * __vec_size,         \
+        input_vector,                                                      \
+        grads,                                                             \
+        functor,                                                           \
+        beta1_tmp,                                                         \
+        beta2_tmp,                                                         \
+        beta_pow_info,                                                     \
+        epsilon.to<MPDType>(),                                             \
+        learning_rate.data<MPDType>(),                                     \
+        static_cast<MPDType>(weight_decay));                               \
   } while (0)
 
   constexpr auto kVecSize = 4;
@@ -419,22 +435,24 @@ void MultiTensorAdamKernel(
   }
 
   if (!use_global_beta_pow) {
-    if (is_cpu_betapow) {
-      VLOG(10) << "CPU Update BetaPow here...";
-      dev_ctx.template HostAlloc<MPDType>(beta1_pow_out)[0] =
-          beta1_tmp * beta1_pow.data<MPDType>()[0];
-      dev_ctx.template HostAlloc<MPDType>(beta2_pow_out)[0] =
-          beta2_tmp * beta2_pow.data<MPDType>()[0];
-    } else {
-      VLOG(10) << "GPU Update BetaPow here...";
-      // Update with gpu
-      UpdateBetaPow<MPDType><<<1, 1, 0, dev_ctx.stream()>>>(
-          beta1_tmp,
-          beta2_tmp,
-          beta1_pow.data<MPDType>(),
-          beta2_pow.data<MPDType>(),
-          dev_ctx.template Alloc<MPDType>(beta1_pow_out),
-          dev_ctx.template Alloc<MPDType>(beta2_pow_out));
+    for (size_t i = 0; i < beta1_pow.size(); i++) {
+      if (is_cpu_betapow) {
+        VLOG(10) << "CPU Update BetaPow here...";
+        dev_ctx.template HostAlloc<MPDType>(beta1_pow_out[i])[0] =
+            beta1_tmp * beta1_pow[i].data<MPDType>()[0];
+        dev_ctx.template HostAlloc<MPDType>(beta2_pow_out[i])[0] =
+            beta2_tmp * beta2_pow[i].data<MPDType>()[0];
+      } else {
+        VLOG(10) << "GPU Update BetaPow here...";
+        // Update with gpu
+        UpdateBetaPow<MPDType><<<1, 1, 0, dev_ctx.stream()>>>(
+            beta1_tmp,
+            beta2_tmp,
+            beta1_pow[i].data<MPDType>(),
+            beta2_pow[i].data<MPDType>(),
+            dev_ctx.template Alloc<MPDType>(beta1_pow_out[i]),
+            dev_ctx.template Alloc<MPDType>(beta2_pow_out[i]));
+      }
     }
   }
 }

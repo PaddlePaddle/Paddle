@@ -27,8 +27,8 @@ void MultiTensorAdamKernel(
     const DenseTensor &learning_rate,
     const std::vector<const DenseTensor *> &moments1,
     const std::vector<const DenseTensor *> &moments2,
-    const DenseTensor &beta1_pow,
-    const DenseTensor &beta2_pow,
+    const std::vector<const DenseTensor *> &beta1_pow,
+    const std::vector<const DenseTensor *> &beta2_pow,
     const paddle::optional<std::vector<const DenseTensor *>> &master_param,
     const paddle::optional<DenseTensor> &skip_update,
     const Scalar &beta1,
@@ -42,8 +42,8 @@ void MultiTensorAdamKernel(
     std::vector<DenseTensor *> params_out,
     std::vector<DenseTensor *> moments1_out,
     std::vector<DenseTensor *> moments2_out,
-    DenseTensor *beta1_pow_out,
-    DenseTensor *beta2_pow_out,
+    std::vector<DenseTensor *> beta1_pow_out,
+    std::vector<DenseTensor *> beta2_pow_out,
     std::vector<DenseTensor *> master_param_out);
 
 }  // namespace phi

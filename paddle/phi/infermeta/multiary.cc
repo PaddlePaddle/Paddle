@@ -2937,8 +2937,8 @@ void MultiTensorAdamInferMeta(
     const MetaTensor& learning_rate,
     const std::vector<const MetaTensor*>& moments1,
     const std::vector<const MetaTensor*>& moments2,
-    const MetaTensor& beta1_pow,
-    const MetaTensor& beta2_pow,
+    const std::vector<const MetaTensor*>& beta1_pow,
+    const std::vector<const MetaTensor*>& beta2_pow,
     const paddle::optional<std::vector<const MetaTensor*>>& master_params,
     const MetaTensor& skip_update,
     const Scalar& beta1,
@@ -2952,8 +2952,8 @@ void MultiTensorAdamInferMeta(
     std::vector<MetaTensor*> params_out,
     std::vector<MetaTensor*> moments1_out,
     std::vector<MetaTensor*> moments2_out,
-    MetaTensor* beta1_pow_out,
-    MetaTensor* beta2_pow_out,
+    std::vector<MetaTensor*> beta1_pow_out,
+    std::vector<MetaTensor*> beta2_pow_out,
     std::vector<MetaTensor*> master_params_out) {
   size_t in_size = params.size();
   for (size_t i = 0; i < in_size; i++) {
@@ -2963,15 +2963,15 @@ void MultiTensorAdamInferMeta(
     moments1_out[i]->set_dtype(moments1[i]->dtype());
     moments2_out[i]->set_dims(moments2[i]->dims());
     moments2_out[i]->set_dtype(moments2[i]->dtype());
+    beta1_pow_out[i]->set_dims(beta1_pow[i].dims());
+    beta1_pow_out[i]->set_dtype(beta1_pow[i].dtype());
+    beta2_pow_out[i]->set_dims(beta2_pow[i].dims());
+    beta2_pow_out[i]->set_dtype(beta2_pow[i].dtype());
     if (master_params && !master_params_out.empty()) {
       master_params_out[i]->set_dims(master_params.get()[i]->dims());
       master_params_out[i]->set_dtype(master_params.get()[i]->dtype());
     }
   }
-  beta1_pow_out->set_dims(beta1_pow.dims());
-  beta1_pow_out->set_dtype(beta1_pow.dtype());
-  beta2_pow_out->set_dims(beta2_pow.dims());
-  beta2_pow_out->set_dtype(beta2_pow.dtype());
 }
 
 void MoeInferMeta(const MetaTensor& x,

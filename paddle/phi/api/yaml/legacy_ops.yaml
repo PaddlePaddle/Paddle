@@ -1313,8 +1313,8 @@
   backward : multi_dot_grad
 
 - op : multi_tensor_adam_
-  args : (Tensor[] params, Tensor[] grads, Tensor learning_rate, Tensor[] moments1, Tensor[] moments2, Tensor beta1_pow, Tensor beta2_pow, Tensor[] master_params, Tensor skip_update, Scalar beta1, Scalar beta2, Scalar epsilon, int chunk_size, float weight_decay, bool use_adamw, bool multi_precision, bool use_global_beta_pow)
-  output : Tensor[](params_out){params.size()}, Tensor[](moments1_out){params.size()}, Tensor[](moments2_out){params.size()}, Tensor(beta1_pow_out), Tensor(beta2_pow_out), Tensor[](master_params_out){params.size()}
+  args : (Tensor[] params, Tensor[] grads, Tensor learning_rate, Tensor[] moments1, Tensor[] moments2, Tensor[] beta1_pow, Tensor[] beta2_pow, Tensor[] master_params, Tensor skip_update, Scalar beta1, Scalar beta2, Scalar epsilon, int chunk_size, float weight_decay, bool use_adamw, bool multi_precision, bool use_global_beta_pow)
+  output : Tensor[](params_out){params.size()}, Tensor[](moments1_out){params.size()}, Tensor[](moments2_out){params.size()}, Tensor[](beta1_pow_out){params.size()}, Tensor[](beta2_pow_out){params.size()}, Tensor[](master_params_out){params.size()}
   infer_meta :
     func : MultiTensorAdamInferMeta
   kernel :

@@ -40,8 +40,8 @@ void MultiTensorAdamKernel(
     const DenseTensor& learning_rate,
     const std::vector<const DenseTensor*>& moments1,
     const std::vector<const DenseTensor*>& moments2,
-    const DenseTensor& beta1_pow,
-    const DenseTensor& beta2_pow,
+    const std::vector<const DenseTensor*>& beta1_pow,
+    const std::vector<const DenseTensor*>& beta2_pow,
     const paddle::optional<std::vector<const DenseTensor*>>& master_params,
     const paddle::optional<DenseTensor>& skip_update,
     const Scalar& beta1,
@@ -55,8 +55,8 @@ void MultiTensorAdamKernel(
     std::vector<DenseTensor*> params_out,
     std::vector<DenseTensor*> moments1_out,
     std::vector<DenseTensor*> moments2_out,
-    DenseTensor* beta1_pow_out,
-    DenseTensor* beta2_pow_out,
+    std::vector<DenseTensor*> beta1_pow_out,
+    std::vector<DenseTensor*> beta2_pow_out,
     std::vector<DenseTensor*> master_params_out) {
   size_t params_num = params.size();
   PADDLE_ENFORCE_EQ(
@@ -83,19 +83,22 @@ void MultiTensorAdamKernel(
                         "is %d, the size of Input(param) is %d.",
                         moments2.size(),
                         params_num));
-
-  bool skip_update_value = false;
-  if (skip_update.is_initialized()) {
-    PADDLE_ENFORCE_EQ(
-        skip_update->numel(),
-        1,
-        errors::InvalidArgument("Input(SkipUpdate) size must be 1, but get %d",
-                                skip_update->numel()));
-    DenseTensor skip_update_tensor;
-    phi::Copy(
-        dev_ctx, skip_update.get(), CPUPlace(), false, &skip_update_tensor);
-    skip_update_value = skip_update_tensor.data<bool>()[0];
-  }
+  PADDLE_ENFORCE_EQ(param_num,
+                    beta1_pow.size(),
+                    errors::InvalidArgument(
+                        "The size of Input(beta1_pow) must be equal to "
+                        "Input(param), but got the size of Input(beta1_pow) "
+                        "is %d, the size of Input(param) is %d.",
+                        beta1_pow.size(),
+                        param_num));
+  PADDLE_ENFORCE_EQ(param_num,
+                    beta2_pow.size(),
+                    errors::InvalidArgument(
+                        "The size of Input(beta2_pow) must be equal to "
+                        "Input(param), but got the size of Input(beta2_pow) "
+                        "is %d, the size of Input(param) is %d.",
+                        beta2_pow.size(),
+                        param_num));
 
   for (size_t idx = 0; idx < params_num; idx++) {
     paddle::optional<DenseTensor> master_params_tmp = paddle::none;
@@ -120,7 +123,7 @@ void MultiTensorAdamKernel(
           false,
           1000,
           multi_precision,
-          true,
+          use_global_beta_pow,
           params_out[idx],
           moments1_out[idx],
           moments2_out[idx],
@@ -148,7 +151,7 @@ void MultiTensorAdamKernel(
           false,
           1000,
           multi_precision,
-          true,
+          use_global_beta_pow,
           params_out[idx],
           moments1_out[idx],
           moments2_out[idx],
@@ -156,15 +159,6 @@ void MultiTensorAdamKernel(
           beta2_pow_out,
           master_params_out.empty() ? nullptr : master_params_out[idx]);
     }
-  }
-
-  T beta1_ = beta1.to<T>();
-  T beta2_ = beta2.to<T>();
-  if (!use_global_beta_pow && !skip_update_value) {
-    dev_ctx.template Alloc<T>(beta1_pow_out)[0] =
-        beta1_ * beta1_pow.data<T>()[0];
-    dev_ctx.template Alloc<T>(beta2_pow_out)[0] =
-        beta2_ * beta2_pow.data<T>()[0];
   }
 }
 
