@@ -24,8 +24,6 @@ from paddle.fluid.data_feeder import check_type
 from paddle.fluid.dygraph import to_variable
 from paddle.fluid.framework import _dygraph_tracer, dygraph_only
 
-__all__ = ['AmpScaler', 'OptimizerState']
-
 
 class OptimizerState(Enum):
     INIT = 0
