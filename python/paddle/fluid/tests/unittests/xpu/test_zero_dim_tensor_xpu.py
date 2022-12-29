@@ -523,6 +523,7 @@ class TestSundryAPI(unittest.TestCase):
 
     def test_flatten(self):
         x = paddle.full([], 1, 'float32')
+        x.stop_gradient = False
 
         start_axis = 0
         stop_axis = -1
@@ -531,6 +532,7 @@ class TestSundryAPI(unittest.TestCase):
         out.backward()
 
         self.assertEqual(out.shape, [1])
+        self.assertEqual(x.grad.shape, [])
 
 
 # Use to test API whose zero-dim input tensors don't have grad and not need to test backward in OpTest.
