@@ -38,8 +38,8 @@ class TrtConvertElementwiseTest_one_input_corner_case(TrtLayerAutoScanTest):
     def sample_program_configs(self):
         def generate_input(shape):
             return np.random.random(shape).astype(np.float32)
-        
-        for op_type in ["equal","not_equal"]:
+
+        for op_type in ["equal", "not_equal"]:
             for batch in [1, 2, 4]:
                 for shape in [[batch, 1], [batch, 1, 32], [batch, 1, 16, 32]]:
                     for axis in [-1 if len(shape) == 1 else 1]:

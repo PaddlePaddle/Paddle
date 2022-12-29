@@ -134,8 +134,11 @@ class NotEqualOpConverter : public OpConverter {
       X = expand_layer->getOutput(0);
     }
 
-    layer = TRT_ENGINE_ADD_LAYER(
-        engine_, ElementWise, *X, *Y, NOT(nvinfer1::ElementWiseOperation::kEQUAL));
+    layer = TRT_ENGINE_ADD_LAYER(engine_,
+                                 ElementWise,
+                                 *X,
+                                 *Y,
+                                 NOT(nvinfer1::ElementWiseOperation::kEQUAL));
 
     layer = TRT_ENGINE_ADD_LAYER(
         engine_, Unary, *layer->getOutput(0), nvinfer1::UnaryOperation::kNOT);
