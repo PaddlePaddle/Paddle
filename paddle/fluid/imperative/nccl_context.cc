@@ -49,11 +49,9 @@ void NCCLParallelContext::BcastNCCLId(
     int server_fd) {
   if (strategy_.local_rank_ == root) {
     std::vector<std::string> other_trainers;
-    VLOG(0) << "BcastNCCLId from: " << strategy_.local_rank_;
     for (auto &ep : strategy_.trainer_endpoints_) {
       if (ep != strategy_.current_endpoint_) {
         other_trainers.push_back(ep);
-        VLOG(0) << "BcastNCCLId to: " << ep;
       }
     }
     platform::SendBroadCastCommID(other_trainers, &nccl_ids);
@@ -86,7 +84,6 @@ void NCCLParallelContext::Init() {
   for (int ring_id = 0; ring_id < strategy_.nrings_; ring_id++) {
     VLOG(0) << "init nccl context nranks: " << strategy_.nranks_
             << " local rank: " << strategy_.local_rank_ << " gpu id: " << gpu_id
-            << "current endpoint: " << strategy_.current_endpoint_
             << " ring id: " << ring_id;
     // it will assign nccl_comm in phi::GPUContext within ring_id
     platform::NCCLCommContext::Instance().CreateComm(&nccl_ids[ring_id],
@@ -106,26 +103,21 @@ void NCCLParallelContext::InitWithRingID(int ring_id) {
   int server_fd = -1;
   std::vector<ncclUniqueId> nccl_ids;
   nccl_ids.resize(1);
-  VLOG(0) << "To create nccl ring [" << ring_id << "].";
+
   if (strategy_.local_rank_ == 0) {
     // generate the unique ncclid on the root worker
     platform::dynload::ncclGetUniqueId(&nccl_ids[0]);
-    VLOG(0) << "Current rank [" << strategy_.current_endpoint_
-            << "] is Master, to broadcast NcclID.";
   } else {
     // FIXME(wangxi): gloo will use rank0 endpoint, so not create socket server
     // on rank0.
     server_fd = platform::SocketServer::GetInstance(strategy_.current_endpoint_)
                     .socket();
-    VLOG(0) << "Current rank [" << strategy_.current_endpoint_
-            << "] is Slave, listen to NcclID.";
   }
   BcastNCCLId(nccl_ids, 0, server_fd);
 
   int gpu_id = place_.device;
   VLOG(0) << "init nccl context nranks: " << strategy_.nranks_
           << " local rank: " << strategy_.local_rank_ << " gpu id: " << gpu_id
-          << "current endpoint: " << strategy_.current_endpoint_
           << " ring id: " << ring_id;
   // it will assign nccl_comm in phi::GPUContext within ring_id
   platform::NCCLCommContext::Instance().CreateComm(

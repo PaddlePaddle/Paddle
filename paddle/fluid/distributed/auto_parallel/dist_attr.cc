@@ -92,11 +92,10 @@ void TensorDistAttr::set_process_mesh(const ProcessMesh& process_mesh) {
 
 void TensorDistAttr::set_dims_mapping(
     const std::vector<int64_t>& dims_mapping) {
-  // PADDLE_ENFORCE_EQ(verify_dims_mapping(dims_mapping),
-  //                   true,
-  //                   platform::errors::InvalidArgument("Wrong dims_mapping
-  //                   %s.",
-  //                                                     str_join(dims_mapping)));
+  PADDLE_ENFORCE_EQ(verify_dims_mapping(dims_mapping),
+                    true,
+                    platform::errors::InvalidArgument("Wrong dims_mapping %s.",
+                                                      str_join(dims_mapping)));
   dims_mapping_ = dims_mapping;
 }
 
@@ -116,11 +115,11 @@ void TensorDistAttr::set_batch_dim(int64_t batch_dim) {
 }
 
 void TensorDistAttr::set_dynamic_dims(const std::vector<bool>& dynamic_dims) {
-  // PADDLE_ENFORCE_EQ(
-  //     verify_dynamic_dims(dynamic_dims),
-  //     true,
-  //     platform::errors::InvalidArgument("The dynamic_dims [%s] is wrong.",
-  //                                       str_join(dynamic_dims)));
+  PADDLE_ENFORCE_EQ(
+      verify_dynamic_dims(dynamic_dims),
+      true,
+      platform::errors::InvalidArgument("The dynamic_dims [%s] is wrong.",
+                                        str_join(dynamic_dims)));
   dynamic_dims_ = dynamic_dims;
 }
 
@@ -204,7 +203,6 @@ bool TensorDistAttr::verify_batch_dim(int64_t dim) const {
 
 bool TensorDistAttr::verify_dynamic_dims(
     const std::vector<bool>& dynamic_dims) const {
-  return true;
   VLOG(4) << "[TensorDistAttr verify_dynamic_dims] " << str_join(dynamic_dims);
   if (dynamic_dims.size() != tensor_shape_.size()) {
     return false;
@@ -320,8 +318,11 @@ bool operator==(const TensorDistAttr& lhs, const TensorDistAttr& rhs) {
   return true;
 }
 
-std::vector<std::string> OperatorDistAttr::fields_{
-    "process_mesh", "impl_type", "impl_idx", "execution_stream"};
+std::vector<std::string> OperatorDistAttr::fields_{"process_mesh",
+                                                   "impl_type",
+                                                   "impl_idx",
+                                                   "execution_stream",
+                                                   "scheduling_priority"};
 
 OperatorDistAttr::OperatorDistAttr(const OpDesc& op) : op_(&op) {
   VLOG(4) << "[OperatorDistAttr constructor] op type: " << op_->Type();
@@ -381,6 +382,7 @@ void OperatorDistAttr::initialize() {
   impl_type_ = kDefault;
   impl_idx_ = 0;
   execution_stream_ = kDefault;
+  scheduling_priority_ = 0;
 }
 
 void OperatorDistAttr::copy_from(const OperatorDistAttr& dist_attr) {
@@ -390,6 +392,7 @@ void OperatorDistAttr::copy_from(const OperatorDistAttr& dist_attr) {
   set_impl_type(dist_attr.impl_type());
   set_impl_idx(dist_attr.impl_idx());
   set_execution_stream(dist_attr.execution_stream());
+  set_scheduling_priority(dist_attr.scheduling_priority());
   set_annotated(dist_attr.annotated());
 }
 
@@ -505,7 +508,6 @@ void OperatorDistAttr::set_output_dims_mapping(
 
 bool OperatorDistAttr::verify_input_dist_attr(
     const std::string& name, const TensorDistAttr& dist_attr) const {
-  return true;
   VLOG(4) << "[OperatorDistAttr verify_input_dist_attr] " << name << " "
           << dist_attr.to_string();
   if (!dist_attr.verify()) {
@@ -526,7 +528,6 @@ bool OperatorDistAttr::verify_input_dist_attr(
 
 bool OperatorDistAttr::verify_output_dist_attr(
     const std::string& name, const TensorDistAttr& dist_attr) const {
-  return true;
   VLOG(4) << "[OperatorDistAttr verify_output_dist_attr] " << name << " "
           << dist_attr.to_string();
   if (!dist_attr.verify()) {
@@ -671,6 +672,7 @@ std::string OperatorDistAttr::to_string() const {
   str += "impl_type: " + impl_type_ + ", ";
   str += "impl_idx: " + std::to_string(impl_idx_) + ", ";
   str += "execution_stream: " + execution_stream_ + ", ";
+  str += "scheduling_priority: " + std::to_string(scheduling_priority_) + ", ";
   str += "annotated: [" + str_join(annotated_) + "], ";
   str += "\nprocess_mesh: " + process_mesh_.to_string() + ", ";
   str += "\ninput_dist_attrs: [\n";
@@ -753,6 +755,9 @@ bool operator==(const OperatorDistAttr& lhs, const OperatorDistAttr& rhs) {
     return false;
   }
   if (lhs.execution_stream() != rhs.execution_stream()) {
+    return false;
+  }
+  if (lhs.scheduling_priority() != rhs.scheduling_priority()) {
     return false;
   }
   for (auto const& item : lhs.input_dist_attrs()) {
