@@ -164,6 +164,7 @@ class TestIndexSelectAPI(unittest.TestCase):
         repeats = 2
         with program_guard(Program(), Program()):
             x = paddle.static.data(name='x', shape=[-1, 4], dtype='float32')
+            x.desc.set_need_check_feed(False)
             z = paddle.repeat_interleave(x, repeats, axis=0)
             exe = fluid.Executor(fluid.CPUPlace())
             (res,) = exe.run(
