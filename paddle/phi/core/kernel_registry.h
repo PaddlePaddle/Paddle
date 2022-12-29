@@ -32,7 +32,7 @@
 namespace phi {
 
 #define BACKEND(arg__) phi::Backend::arg__
-#define DATALAYOUT(arg__) phi::DataLayout::arg__
+#define _DATALAYOUT(arg__) phi::DataLayout::arg__
 #define DATATYPE(arg__) phi::DataType::arg__
 
 template <typename Func>
@@ -711,7 +711,7 @@ struct KernelRegistrar {
       reg_type,                                                                \
       #kernel_name,                                                            \
       #backend,                                                                \
-      DATALAYOUT(layout),                                                      \
+      _DATALAYOUT(layout),                                                     \
       ::paddle::experimental::CppTypeToDataType<cpp_dtype>::Type(),            \
       arg_parse_functor(meta_kernel_fn, cpp_dtype, context),                   \
       args_def_fn,                                                             \
@@ -1291,7 +1291,7 @@ struct KernelRegistrar {
           reg_type,                                                         \
           #kernel_name,                                                     \
           #backend,                                                         \
-          DATALAYOUT(layout),                                               \
+          _DATALAYOUT(layout),                                              \
           ::phi::KernelArgsParseFunctor<decltype(&kernel_fn)>::Parse,       \
           &__PD_KERNEL_args_def_FN_##kernel_name##_##backend##_##layout,    \
           PHI_KERNEL(kernel_fn),                                            \
@@ -1311,7 +1311,7 @@ struct KernelRegistrar {
           reg_type,                                                         \
           #kernel_name,                                                     \
           #backend,                                                         \
-          DATALAYOUT(layout),                                               \
+          _DATALAYOUT(layout),                                              \
           ::phi::KernelArgsParseFunctor<decltype(&kernel_fn)>::Parse,       \
           &__PD_KERNEL_args_def_FN_##kernel_name##_##backend##_##layout,    \
           PHI_KERNEL(kernel_fn),                                            \
