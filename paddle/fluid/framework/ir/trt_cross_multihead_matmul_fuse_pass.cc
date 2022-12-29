@@ -542,6 +542,12 @@ int TrtCrossMultiHeadMatmulFusePass::BuildCrossFusion(
 
 void TrtCrossMultiHeadMatmulFusePass::ApplyImpl(Graph* graph) const {
   FusePassBase::Init(name_scope_, graph);
+  bool with_dynamic_shape = Get<bool>("with_dynamic_shape");
+  if (!with_dynamic_shape) {
+    VLOG(3) << "Cross attention oss plugin need trt "
+               "with_dynamic_shape. Stop this pass";
+    return;
+  }
   auto* scope = param_scope();
   int fusion_count = BuildCrossFusion(graph, name_scope_, scope);
   AddStatis(fusion_count);
