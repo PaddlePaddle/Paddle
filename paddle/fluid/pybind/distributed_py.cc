@@ -22,7 +22,6 @@ limitations under the License. */
 #endif
 
 #include "paddle/fluid/distributed/collective/process_group.h"
-#include "paddle/fluid/distributed/collective/process_group_stream.h"
 #include "paddle/fluid/distributed/collective/reducer.h"
 #include "paddle/fluid/distributed/collective/types.h"
 #include "paddle/fluid/framework/lod_tensor.h"
