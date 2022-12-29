@@ -12,18 +12,20 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.  See
 the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "math.h"
+
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 
 namespace paddle {
 namespace inference {
 namespace tensorrt {
 
-class MultiheadMatMulCrossMemEffOpConverter : public OpConverter {
+class CrossMultiheadMatMulOpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope,
                   bool test_mode) override {
-    VLOG(3) << "convert a fluid multihead_mamul_cross op to a corresponding tensorrt "
+    VLOG(3) << "convert a cross_multihead_mamul op to a corresponding tensorrt "
         "network structure";
     framework::OpDesc op_desc(op, nullptr);
     auto* input_q = engine_->GetITensor(op_desc.Input("Input_q").front());
@@ -147,12 +149,16 @@ class MultiheadMatMulCrossMemEffOpConverter : public OpConverter {
     int hidden_out = weight_kv_dims[2];  // channels_out
     int head_number = PADDLE_GET_CONST(int, op_desc.GetAttr("head_number"));
     int head_size = hidden_out / head_number;
+    // float scale = PADDLE_GET_CONST(float, op_desc.GetAttr("alpha"));
+    // if(abs(scale - 1.0/sqrt(static_cast<float>(head_size)))>=1e-5){
+    //   VLOG(3)<<"scale in mulithead matmul do not fit the requirement of trt flash attention plugin,";
+    //   return;
+    // }
     // VLOG(0)<<"@@@ hidden_in:"<<hidden_in
     //        << "hidden_out:"<<hidden_out
     //        <<" head_number:"<<head_number
     //        <<" head_size:"<<head_size;
 
-    // float scale = PADDLE_GET_CONST(float, op_desc.GetAttr("alpha"));
     // int m = hidden_in;
     int n = two * hidden_out;
     nvinfer1::ILayer* layer = nullptr;
@@ -305,7 +311,7 @@ class MultiheadMatMulCrossMemEffOpConverter : public OpConverter {
     // return
     layer = reshape_after_mha_layer;
     RreplenishLayerAndOutput(
-        layer, "multihead_matmul_cross_memeff", {output_name}, test_mode);
+        layer, "cross_multihead_matmul", {output_name}, test_mode);
   }
 };
 
@@ -313,4 +319,4 @@ class MultiheadMatMulCrossMemEffOpConverter : public OpConverter {
 }
 }
 
-REGISTER_TRT_OP_CONVERTER(multihead_matmul_v4_cross, MultiheadMatMulCrossMemEffOpConverter);
+REGISTER_TRT_OP_CONVERTER(cross_multihead_matmul, CrossMultiheadMatMulOpConverter);

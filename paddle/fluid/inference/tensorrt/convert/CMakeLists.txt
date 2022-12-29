@@ -25,6 +25,8 @@ list(
   layer_norm_op.cc
   multihead_matmul_op.cc
   multihead_matmul_roformer_op.cc
+  flash_multihead_matmul_op.cc
+  cross_multihead_matmul_op.cc
   shuffle_channel_op.cc
   fill_any_like_op.cc
   where_op.cc
@@ -96,8 +98,8 @@ list(
   fused_lookup_tables_op.cc
   skip_groupnorm_act_op.cc
   preln_groupnorm_act_op.cc
-  multihead_matmul_memeff_op.cc
-  multihead_matmul_cross_memeff_op.cc
+  flash_multihead_matmul_op.cc
+  cross_multihead_matmul_op.cc
   expand_v2_op.cc)
 
 if(${TENSORRT_MAJOR_VERSION} GREATER_EQUAL 7)

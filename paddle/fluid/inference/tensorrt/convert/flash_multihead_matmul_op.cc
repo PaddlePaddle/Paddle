@@ -18,12 +18,12 @@ namespace paddle {
 namespace inference {
 namespace tensorrt {
 
-class MultiheadMatMulMemEffOpConverter : public OpConverter {
+class FlashMultiheadMatMulOpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope,
                   bool test_mode) override {
-    VLOG(3) << "convert a fluid multihead_mamul op to a corresponding tensorrt "
+    VLOG(3) << "convert a flash_multihead_mamul op to a corresponding tensorrt "
         "network structure";
     framework::OpDesc op_desc(op, nullptr);
     auto* input = engine_->GetITensor(op_desc.Input("Input").front());
@@ -200,7 +200,7 @@ class MultiheadMatMulMemEffOpConverter : public OpConverter {
     // return
     layer = reshape_after_mha_layer;
     RreplenishLayerAndOutput(
-        layer, "multihead_matmul_memeff", {output_name}, test_mode);
+        layer, "flash_multihead_matmul", {output_name}, test_mode);
   }
 };
 
@@ -208,4 +208,4 @@ class MultiheadMatMulMemEffOpConverter : public OpConverter {
 }
 }
 
-REGISTER_TRT_OP_CONVERTER(multihead_matmul_v4, MultiheadMatMulMemEffOpConverter);
+REGISTER_TRT_OP_CONVERTER(flash_multihead_matmul, FlashMultiheadMatMulOpConverter);
