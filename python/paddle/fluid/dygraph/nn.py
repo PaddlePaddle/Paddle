@@ -20,7 +20,6 @@ from .. import dygraph_utils
 from . import layers
 from ..framework import (
     Variable,
-    _non_static_mode,
     OpProtoHolder,
     Parameter,
     _dygraph_tracer,
@@ -375,7 +374,7 @@ class RowConv(layers.Layer):
         self, name_scope, future_context_size, param_attr=None, act=None
     ):
         assert (
-            not _non_static_mode()
+            not in_dygraph_mode()
         ), "RowConv is not supported by dynamic graph mode yet!"
         super().__init__(name_scope)
         self._act = act
