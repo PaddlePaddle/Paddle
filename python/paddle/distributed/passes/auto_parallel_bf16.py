@@ -86,28 +86,34 @@ class BF16State(object):
                 break
 
         for op in ops:
-            if str(op.type) in amp_lists.bf16_initializer_list:
-                change_op = True
-                post_ops = []
-                op_out_vars = []
-                for out_name in op.output_names:
-                    for out_var_name in op.output(out_name):
-                        out_var = self._block.var(out_var_name)
-                        post_op = find_true_post_op(ops, op, out_var_name, True)
-                        if out_var is None or out_var.type not in _valid_types:
-                            change_op = False
-                            break
-                        post_ops += post_op
-                        op_out_vars.append(out_var)
-                if change_op and self._are_post_ops_bf16(post_ops):
-                    for out_var in op_out_vars:
-                        if out_var.dtype == core.VarDesc.VarType.FP32:
-                            out_var.desc.set_dtype(core.VarDesc.VarType.BF16)
-                    if (
-                        op.has_attr('dtype')
-                        and op.attr('dtype') == core.VarDesc.VarType.FP32
-                    ):
-                        op._set_attr('dtype', core.VarDesc.VarType.BF16)
+            if len(op.output_arg_names) != 1 and len(op.input_arg_names) != 0:
+                continue
+            if (op.type).startswith("c_"):
+                continue
+            if self._op_bf16_dict.get(op.desc.original_id(), None) is not None:
+                continue
+
+            change_op = True
+            post_ops = []
+            op_out_vars = []
+            for out_name in op.output_names:
+                for out_var_name in op.output(out_name):
+                    out_var = self._block.var(out_var_name)
+                    post_op = find_true_post_op(ops, op, out_var_name, True)
+                    if out_var is None or out_var.type not in _valid_types:
+                        change_op = False
+                        break
+                    post_ops += post_op
+                    op_out_vars.append(out_var)
+            if change_op and self._are_post_ops_bf16(post_ops):
+                for out_var in op_out_vars:
+                    if out_var.dtype == core.VarDesc.VarType.FP32:
+                        out_var.desc.set_dtype(core.VarDesc.VarType.BF16)
+                if (
+                    op.has_attr('dtype')
+                    and op.attr('dtype') == core.VarDesc.VarType.FP32
+                ):
+                    op._set_attr('dtype', core.VarDesc.VarType.BF16)
 
         return training
 
