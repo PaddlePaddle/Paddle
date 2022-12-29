@@ -306,18 +306,29 @@ class Tracer(core.Tracer):
         stop_gradient=False,
         inplace_map=None,
     ):
-        # inputs : {"sum": [tensor], ...}
-        # outputs : {"sum": [tensor], ...}
-        if type in name_mapping.keys():
-            type = name_mapping[type]["final_op_name"]
+        if framework.in_dygraph_mode():
+            # inputs : {"sum": [tensor], ...}
+            # outputs : {"sum": [tensor], ...}
+            if type in name_mapping.keys():
+                type = name_mapping[type]["final_op_name"]
 
-            assert type in _legacy_C_ops.__dict__
-            self.eager_trace_op(
-                type, inputs, outputs, attrs, stop_gradient, inplace_map
-            )
+                assert type in _legacy_C_ops.__dict__
+                self.eager_trace_op(
+                    type, inputs, outputs, attrs, stop_gradient, inplace_map
+                )
+            else:
+                self.eager_legacy_trace_op(
+                    type, inputs, outputs, attrs, stop_gradient, inplace_map
+                )
         else:
-            self.eager_legacy_trace_op(
-                type, inputs, outputs, attrs, stop_gradient, inplace_map
+            self.trace(
+                type,
+                inputs,
+                outputs,
+                attrs,
+                framework._current_expected_place(),
+                self._has_grad and not stop_gradient,
+                inplace_map if inplace_map else {},
             )
 
     def train_mode(self):

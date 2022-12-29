@@ -716,7 +716,7 @@ class OpTest(unittest.TestCase):
 
                 if if_return_inputs_grad_dict:
                     v.stop_gradient = False
-                    if in_dygraph_mode():
+                    if hasattr(v, "retain_grads"):
                         v.retain_grads()
 
                 if has_lod:
