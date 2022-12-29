@@ -414,6 +414,7 @@ class TestUnpoolOpAPI_st(unittest.TestCase):
             pool_out_np, indices_np, [2, 2], [2, 2], [0, 0], [5, 5]
         ).astype("float64")
         np.testing.assert_allclose(results[0], expect_res, rtol=1e-05)
+        paddle.disable_static()
 
 
 class TestOutputSizeTensor(UnittestBase):

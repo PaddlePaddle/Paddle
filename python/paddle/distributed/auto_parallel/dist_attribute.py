@@ -121,32 +121,17 @@ class TensorDistributedAttribute:
         if dist_attr is None:
             return
         assert isinstance(
-            dist_attr, (dict, TensorDistributedAttribute)
+            dist_attr, TensorDistributedAttribute
         ), "The type of dist_attr must be dict or TensorDistributedAttribute."
-        if isinstance(dist_attr, dict):
-            for key, value in dist_attr.items():
-                if key in get_tensor_dist_attr_field_keys():
-                    field_property = TensorDistributedAttribute.__dict__.get(
-                        key, None
-                    )
-                    if field_property:
-                        field_property.fset(self, value)
-                    else:
-                        assert False, "No setter for {} in args {}.".format(
-                            key, dist_attr
-                        )
-        elif isinstance(dist_attr, TensorDistributedAttribute):
-            for key in get_tensor_dist_attr_field_keys():
-                field_property = TensorDistributedAttribute.__dict__.get(
-                    key, None
+        for key in get_tensor_dist_attr_field_keys():
+            field_property = TensorDistributedAttribute.__dict__.get(key, None)
+            if field_property:
+                field_property.fset(self, field_property.fget(dist_attr))
+            else:
+                assert False, "No setter for {} in args {}.".format(
+                    key, dist_attr
                 )
-                if field_property:
-                    field_property.fset(self, field_property.fget(dist_attr))
-                else:
-                    assert False, "No setter for {} in args {}.".format(
-                        key, dist_attr
-                    )
-            self._is_annotated = copy.deepcopy(dist_attr._is_annotated)
+        self._is_annotated = copy.deepcopy(dist_attr._is_annotated)
 
     def reset(self, skip_dist_attr_field_names=None):
         if skip_dist_attr_field_names is None or (
@@ -243,7 +228,9 @@ class OperatorDistributedAttribute:
         if process_mesh is not None:
             assert isinstance(
                 process_mesh, (list, ProcessMesh)
-            ), "The type of process_mesh must be list or ProcessMesh."
+            ), "The type of process_mesh must be list or ProcessMesh, but receive {}".format(
+                type(process_mesh)
+            )
             if isinstance(process_mesh, list):
                 process_mesh = ProcessMesh(process_mesh)
             self._process_mesh = copy.deepcopy(process_mesh)
