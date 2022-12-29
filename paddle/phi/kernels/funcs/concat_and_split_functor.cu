@@ -23,7 +23,7 @@ When we set _ENABLE_EXTENDED_ALIGNED_STORAGE, the alignment will work correctly
 but the compiled library is no longer ABI compatible to code compiled with an
 older version of MSVC.
 */
-#define _ENABLE_EXTENDED_ALIGNED_STORAGE
+#define _ENABLE_EXTENDED_ALIGNED_STORAGE 1
 #endif  // _WIN32
 
 namespace phi {
