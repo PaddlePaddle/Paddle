@@ -58,14 +58,6 @@ std::string DDim::to_str() const {
   return ss.str();
 }
 
-std::size_t DDim::to_hash() const {
-  std::size_t seed = rank_;
-  for (int i = 0; i < rank_; ++i) {
-    seed ^= dim_[i] + 0x9e3779b9 + (seed << 6) + (seed >> 2);
-  }
-  return seed;
-}
-
 struct ProductVisitor {
   template <int D>
   inline int64_t operator()(const Dim<D>& dim) {
@@ -211,3 +203,17 @@ DDim DDim::transpose(const std::vector<int>& axis) const {
 }
 
 }  // namespace phi
+
+namespace std {
+
+    std::size_t hash<phi::DDim>::operator()(phi::DDim const& ddim) const {
+      int ndim = ddim.size();
+      std::size_t seed = ndim;
+      for (int i = 0; i < ndim; ++i) {
+        seed ^= ddim.Get()[i] + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+      }
+      return seed;
+    }
+    
+}  // namespace std
+
