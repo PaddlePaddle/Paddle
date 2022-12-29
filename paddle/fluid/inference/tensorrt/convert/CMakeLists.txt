@@ -70,7 +70,6 @@ list(
   cast_op.cc
   remove_padding_op.cc
   equal_op.cc
-  not_equal_op.cc
   recover_padding_op.cc
   preln_residual_bias.cc
   c_allreduce_op.cc

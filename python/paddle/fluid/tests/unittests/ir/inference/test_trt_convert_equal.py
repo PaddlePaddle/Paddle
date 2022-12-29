@@ -55,6 +55,15 @@ class TrtConvertElementwiseTest_one_input_corner_case(TrtLayerAutoScanTest):
                             "op_attrs": dics[0],
                         },
                         {
+                            "op_type": "not_equal",
+                            "op_inputs": {
+                                "X": ["input_data1"],
+                                "Y": ["input_data2"],
+                            },
+                            "op_outputs": {"Out": ["compare_output_data"]},
+                            "op_attrs": dics[0],
+                        },
+                        {
                             "op_type": "cast",
                             "op_inputs": {"X": ["compare_output_data"]},
                             "op_outputs": {"Out": ["output_data"]},
