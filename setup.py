@@ -633,6 +633,7 @@ def build_steps():
             print("Do not need rerun camke,everything is ready,run build now")
             run_cmake_build(build_path)
             return
+
     args = []
     env_var = os.environ.copy()  # get env variables
     paddle_build_options = {}
