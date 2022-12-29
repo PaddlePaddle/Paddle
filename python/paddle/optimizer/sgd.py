@@ -15,11 +15,11 @@
 import warnings
 
 import paddle
-from paddle import _C_ops, _legacy_C_ops
+from paddle import _C_ops
 
 from ..fluid import core, framework, unique_name
 from ..fluid.dygraph import no_grad
-from ..fluid.framework import _in_legacy_dygraph, in_dygraph_mode
+from ..fluid.framework import in_dygraph_mode
 from ..fluid.layer_helper import LayerHelper
 from .optimizer import Optimizer
 
@@ -166,42 +166,32 @@ class SGD(Optimizer):
                 find_master,
             )
             return None
-        if _in_legacy_dygraph():
-            _legacy_C_ops.sgd(
-                param_and_grad[0],
-                lr,
-                param_and_grad[1],
-                master_weight,
-                param_and_grad[0],
-                master_weight,
+        else:
+            assert isinstance(block, framework.Block)
+            # create the optimize op
+            inputs = {
+                "Param": param_and_grad[0],
+                "Grad": param_and_grad[1],
+                "LearningRate": lr,
+            }
+
+            outputs = {"ParamOut": param_and_grad[0]}
+
+            attrs = {"multi_precision": find_master}
+
+            if find_master:
+                inputs["MasterParam"] = master_weight
+                outputs["MasterParamOut"] = master_weight
+
+            sgd_op = block.append_op(
+                type=self.type,
+                inputs=inputs,
+                outputs=outputs,
+                attrs=attrs,
+                stop_gradient=True,
             )
-            return None
 
-        assert isinstance(block, framework.Block)
-        # create the optimize op
-        inputs = {
-            "Param": param_and_grad[0],
-            "Grad": param_and_grad[1],
-            "LearningRate": lr,
-        }
-
-        outputs = {"ParamOut": param_and_grad[0]}
-
-        attrs = {"multi_precision": find_master}
-
-        if find_master:
-            inputs["MasterParam"] = master_weight
-            outputs["MasterParamOut"] = master_weight
-
-        sgd_op = block.append_op(
-            type=self.type,
-            inputs=inputs,
-            outputs=outputs,
-            attrs=attrs,
-            stop_gradient=True,
-        )
-
-        return sgd_op
+            return sgd_op
 
     def _update_param_group(self, parameters):
         parameters = parameters.get('params')

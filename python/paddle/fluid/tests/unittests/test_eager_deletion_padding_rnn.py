@@ -20,8 +20,6 @@ import numpy as np
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
-from paddle.fluid import ParamAttr
-from paddle.fluid.contrib.layers import basic_lstm
 from paddle.fluid.executor import Executor
 from paddle.fluid.layers.control_flow import StaticRNN as PaddingRNN
 
@@ -85,7 +83,7 @@ class RNNConfig:
         else:
             raise ValueError('Unsupported model_type.')
 
-        if rnn_model not in ('static', 'padding', 'cudnn', 'basic_lstm'):
+        if rnn_model not in ('static', 'padding', 'cudnn'):
             raise ValueError('Unsupported rnn_model.')
 
         self.batch_size = 12
@@ -405,23 +403,6 @@ def lm_model(
             len=num_steps,
             init_hidden=init_hidden_reshape,
             init_cell=init_cell_reshape,
-        )
-    elif rnn_model == "basic_lstm":
-        rnn_out, last_hidden, last_cell = basic_lstm(
-            x_emb,
-            init_hidden,
-            init_cell,
-            hidden_size,
-            num_layers=num_layers,
-            batch_first=True,
-            dropout_prob=dropout,
-            param_attr=ParamAttr(
-                initializer=fluid.initializer.UniformInitializer(
-                    low=-init_scale, high=init_scale
-                )
-            ),
-            bias_attr=ParamAttr(initializer=fluid.initializer.Constant(0.0)),
-            forget_bias=0.0,
         )
     else:
         print("type not support")

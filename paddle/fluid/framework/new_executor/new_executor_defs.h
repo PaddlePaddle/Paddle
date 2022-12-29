@@ -32,6 +32,8 @@ namespace framework {
 
 using OpKernelComputeFunc = std::function<void(const ExecutionContext&)>;
 
+using Priority = int64_t;
+
 constexpr const char* kCoalesceTensor = "coalesce_tensor";
 
 // stream types
@@ -41,8 +43,6 @@ constexpr const char* kD2HStream = "D2HStream";
 constexpr const char* kH2DStream = "H2DStream";
 
 constexpr int kEmptyVarIndex = 0;
-
-enum class Priority { kLowest, kNormal };
 
 class InterpretercoreInferShapeContext : public InferShapeContext {
  public:
@@ -263,29 +263,30 @@ enum class OpFuncType {
 class RuntimeInferShapeContext;
 
 struct OpFuncNode {
-  // TODO(zhiqiu): Better make it unique_ptr
-  std::shared_ptr<OperatorBase> operator_base_;
-  std::string execution_stream_{kDefaultStream};
-  std::map<std::string, std::vector<int>> input_index;
-  std::map<std::string, std::vector<int>> output_index;
+  // fit for phi kernel
+  phi::Kernel* phi_kernel_{nullptr};  // not owned
+  platform::DeviceContext* dev_ctx_;  // not owned
 
   std::map<int, int> inplace_back_map;
 
-  OpKernelComputeFunc kernel_func_;
-  platform::DeviceContext* dev_ctx_;  // not owned
+  std::map<std::string, std::vector<int>> input_index;
+  std::map<std::string, std::vector<int>> output_index;
 
-  // fit for phi kernel
-  phi::Kernel* phi_kernel_{nullptr};  // not owned
+  // TODO(zhiqiu): Better make it unique_ptr
+  std::shared_ptr<OperatorBase> operator_base_;
+  std::string execution_stream_{kDefaultStream};
 
   OpFuncType type_;
+  OpKernelComputeFunc kernel_func_;
+
+  Priority priority_{0};  // lower value, higher priority
 };
 
 class Instruction {
  public:
   Instruction(size_t id,
               OpFuncNode&& op_func_node,
-              const platform::DeviceContext& dev_ctx,
-              const Priority priority);
+              const platform::DeviceContext& dev_ctx);
 
   bool IsArtificial() const { return is_artificial_; }
 
@@ -368,7 +369,7 @@ class Instruction {
 
   void ClearInplace();
 
-  Priority GetPriority() const { return priority_; }
+  Priority GetPriority() const { return op_func_node_.priority_; }
 
  private:
   bool is_artificial_;  // Instruction is artificial means that it is only used
@@ -384,7 +385,6 @@ class Instruction {
 
   OpFuncNode op_func_node_;
   const platform::DeviceContext& dev_ctx_;  // not owned
-  const Priority priority_;
 
   std::shared_ptr<RuntimeContext> runtime_ctx_;
   std::shared_ptr<InterpretercoreInferShapeContext> infershape_ctx_;

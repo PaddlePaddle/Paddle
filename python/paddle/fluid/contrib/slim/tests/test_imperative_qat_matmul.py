@@ -38,7 +38,6 @@ from paddle.nn.quant.quant_layers import (
     QuantizedConv2D,
     QuantizedMatmul,
 )
-from paddle.fluid.framework import _test_eager_guard
 from imperative_test_utils import fix_model_dict
 
 paddle.enable_static()

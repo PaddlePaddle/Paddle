@@ -28,7 +28,9 @@ class TestUniqueOp(OpTest):
         self.init_config()
 
     def test_check_output(self):
+        paddle.enable_static()
         self.check_output()
+        paddle.disable_static()
 
     def init_config(self):
         self.inputs = {
@@ -72,6 +74,8 @@ class TestRandom(TestUniqueOp):
 
 class TestUniqueRaiseError(unittest.TestCase):
     def test_errors(self):
+        paddle.enable_static()
+
         def test_type():
             paddle.unique([10])
 
@@ -82,6 +86,7 @@ class TestUniqueRaiseError(unittest.TestCase):
             paddle.unique(data)
 
         self.assertRaises(TypeError, test_dtype)
+        paddle.disable_static()
 
 
 @unittest.skipIf(
@@ -100,8 +105,10 @@ class TestOneGPU(TestUniqueOp):
 
     def test_check_output(self):
         if core.is_compiled_with_cuda():
+            paddle.enable_static()
             place = core.CUDAPlace(0)
             self.check_output_with_place(place, atol=1e-5)
+            paddle.disable_static()
 
 
 @unittest.skipIf(
@@ -125,8 +132,10 @@ class TestRandomGPU(TestUniqueOp):
 
     def test_check_output(self):
         if core.is_compiled_with_cuda():
+            paddle.enable_static()
             place = core.CUDAPlace(0)
             self.check_output_with_place(place, atol=1e-5)
+            paddle.disable_static()
 
 
 class TestSortedUniqueOp(TestUniqueOp):
@@ -209,16 +218,13 @@ class TestUniqueOpAxis1(TestUniqueOp):
 
 class TestUniqueAPI(unittest.TestCase):
     def test_dygraph_api_out(self):
-        paddle.disable_static()
         x_data = x_data = np.random.randint(0, 10, (120))
         x = paddle.to_tensor(x_data)
         out = paddle.unique(x)
         expected_out = np.unique(x_data)
         self.assertTrue((out.numpy() == expected_out).all(), True)
-        paddle.enable_static()
 
     def test_dygraph_api_attr(self):
-        paddle.disable_static()
         x_data = np.random.random((3, 5, 5)).astype("float32")
         x = paddle.to_tensor(x_data)
         out, index, inverse, counts = paddle.unique(
@@ -239,10 +245,8 @@ class TestUniqueAPI(unittest.TestCase):
         self.assertTrue((index.numpy() == np_index).all(), True)
         self.assertTrue((inverse.numpy() == np_inverse).all(), True)
         self.assertTrue((counts.numpy() == np_counts).all(), True)
-        paddle.enable_static()
 
     def test_dygraph_attr_dtype(self):
-        paddle.disable_static()
         x_data = x_data = np.random.randint(0, 10, (120))
         x = paddle.to_tensor(x_data)
         out, indices, inverse, counts = paddle.unique(
@@ -259,9 +263,9 @@ class TestUniqueAPI(unittest.TestCase):
         self.assertTrue((indices.numpy() == np_indices).all(), True)
         self.assertTrue((inverse.numpy() == np_inverse).all(), True)
         self.assertTrue((counts.numpy() == np_counts).all(), True)
-        paddle.enable_static()
 
     def test_static_graph(self):
+        paddle.enable_static()
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
         ):
@@ -281,6 +285,7 @@ class TestUniqueAPI(unittest.TestCase):
         np.testing.assert_allclose(result[0], np_unique, rtol=1e-05)
         np.testing.assert_allclose(result[1], np_inverse, rtol=1e-05)
         np.testing.assert_allclose(result[2], np_counts, rtol=1e-05)
+        paddle.disable_static()
 
 
 class TestUniqueError(unittest.TestCase):
@@ -295,6 +300,7 @@ class TestUniqueError(unittest.TestCase):
             self.assertRaises(TypeError, test_x_dtype)
 
     def test_attr(self):
+        paddle.enable_static()
         x = paddle.fluid.data(name='x', shape=[10, 10], dtype='float64')
 
         def test_return_index():
@@ -319,6 +325,7 @@ class TestUniqueError(unittest.TestCase):
             result = paddle.unique(x, dtype='float64')
 
         self.assertRaises(TypeError, test_axis)
+        paddle.disable_static()
 
 
 if __name__ == "__main__":

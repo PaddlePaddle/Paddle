@@ -148,16 +148,23 @@ def custom_relu_double_grad_dynamic(func, device, dtype, np_x, use_func=True):
     t = paddle.to_tensor(np_x, dtype=dtype, stop_gradient=False)
 
     out = func(t) if use_func else paddle.nn.functional.relu(t)
-    out.stop_gradient = False
-
     dx = paddle.grad(
-        outputs=[out], inputs=[t], create_graph=True, retain_graph=True
+        outputs=out,
+        inputs=t,
+        grad_outputs=paddle.ones_like(t),
+        create_graph=True,
+        retain_graph=True,
     )
 
-    dx[0].backward()
+    ddout = paddle.grad(
+        outputs=dx[0],
+        inputs=out.grad,
+        grad_outputs=paddle.ones_like(t),
+        create_graph=False,
+    )
 
-    assert dx[0].grad is not None
-    return dx[0].numpy(), dx[0].grad.numpy()
+    assert ddout[0].numpy() is not None
+    return dx[0].numpy(), ddout[0].numpy()
 
 
 class TestNewCustomOpSetUpInstall(unittest.TestCase):
@@ -346,7 +353,7 @@ class TestNewCustomOpSetUpInstall(unittest.TestCase):
             )
         paddle.disable_static()
 
-    def test_func_double_grad_dynamic(self):
+    def test_double_grad_dynamic(self):
         fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         for device in self.devices:
             for dtype in self.dtypes:

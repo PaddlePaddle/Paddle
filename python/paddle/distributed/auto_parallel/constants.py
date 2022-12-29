@@ -107,6 +107,7 @@ set_field_default_config(QAT, "weight_bits", 8)
 set_field_default_config(QAT, "activation_bits", 8)
 set_field_default_config(QAT, "not_quant_pattern", ['skip_quant'])
 set_field_default_config(QAT, "algo", None)
+set_field_default_config(QAT, "onnx_format", True)
 
 # #########################################
 # auto tuning configuration
