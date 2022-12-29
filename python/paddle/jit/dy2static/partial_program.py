@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from copy import deepcopy
+
 import numpy as np
 
 import paddle
@@ -739,10 +741,10 @@ class PartialProgramLayer:
         empty_startup_program = paddle.static.Program()
         use_cuda = True if core.is_compiled_with_cuda() else False
         # skip data var
-        forward_mem_opt_skip_vars = self._parse_skip_gc_vars(forward_program)
-        backward_mem_opt_skip_vars = self._parse_skip_gc_vars(
+        forward_mem_opt_skip_vars = self._parse_skip_gc_vars(
             forward_program, backward_program
         )
+        backward_mem_opt_skip_vars = self._parse_skip_gc_vars(forward_program)
         attrs = {
             "use_cuda": use_cuda,
             "mem_opt_skip_vars": forward_mem_opt_skip_vars,
@@ -787,8 +789,8 @@ class PartialProgramLayer:
         Parse variables that need to skip GC after execute it.
         If specify backward_program, it will keep the variables used in backward.
         """
-        # skip data var
-        skip_vars = self._inout_var_names
+        # skip data var, DO NOT ignore this deepcopy
+        skip_vars = deepcopy(self._inout_var_names)
         for var_name, var in program.global_block().vars.items():
             if var.is_data:
                 skip_vars.append(var_name)
