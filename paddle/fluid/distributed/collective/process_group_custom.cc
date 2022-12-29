@@ -19,6 +19,7 @@
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/place.h"
+#include "paddle/phi/api/lib/utils/allocator.h"
 #include "paddle/phi/common/place.h"
 
 DECLARE_bool(xccl_blocking_wait);

@@ -20,11 +20,9 @@
 #include <unordered_map>
 #include <vector>
 
-#include "paddle/fluid/distributed/collective/process_group_stream.h"
+#include "paddle/fluid/distributed/collective/process_group.h"
 #include "paddle/fluid/distributed/store/store.h"
-#include "paddle/fluid/platform/cuda_device_guard.h"
 #include "paddle/fluid/platform/device_event.h"
-#include "paddle/fluid/platform/enforce.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/device_context.h"
 
@@ -43,9 +41,9 @@ namespace distributed {
 
 using Place = paddle::platform::Place;
 
-class ProcessGroupNCCL final : public ProcessGroupStream {
+class ProcessGroupNCCL final : public ProcessGroup {
  public:
-  class NCCLTask final : public ProcessGroupStream::TaskStream,
+  class NCCLTask final : public ProcessGroup::TaskStream,
                          public std::enable_shared_from_this<NCCLTask> {
    public:
     NCCLTask(const Place& place,
@@ -86,10 +84,24 @@ class ProcessGroupNCCL final : public ProcessGroupStream {
 
   std::string GetBackendName() const override { return "NCCL"; }
 
+  phi::DeviceContext* GetDeviceContext(const Place& place) const override;
+
   phi::DeviceContext* GetDeviceContext(const Place& place,
                                        bool use_calc_stream) const override;
 
-  phi::DeviceContext* GetDeviceContext(const Place& place) const override;
+  std::shared_ptr<ProcessGroup::Task> AllGather(
+      phi::DenseTensor* out_tensor,
+      const phi::DenseTensor& in_tensor,
+      int64_t offset,
+      int64_t numel,
+      bool sync_op) override {
+    return AllGather(out_tensor,
+                     in_tensor,
+                     offset,
+                     numel,
+                     sync_op,
+                     /*use_calc_stream*/ false);
+  }
 
   std::shared_ptr<ProcessGroup::Task> AllGather(
       phi::DenseTensor* out_tensor,
@@ -103,8 +115,34 @@ class ProcessGroupNCCL final : public ProcessGroupStream {
       phi::DenseTensor* out_tensor,
       const phi::DenseTensor& in_tensor,
       const AllreduceOptions& opts,
+      bool sync_op) override {
+    return AllReduce(out_tensor,
+                     in_tensor,
+                     opts,
+                     sync_op,
+                     /*use_calc_stream*/ false);
+  }
+
+  std::shared_ptr<ProcessGroup::Task> AllReduce(
+      phi::DenseTensor* out_tensor,
+      const phi::DenseTensor& in_tensor,
+      const AllreduceOptions& opts,
       bool sync_op,
       bool use_calc_stream) override;
+
+  std::shared_ptr<ProcessGroup::Task> AllToAll(
+      phi::DenseTensor* out_tensor,
+      const phi::DenseTensor& in_tensor,
+      const std::vector<int64_t>& out_size_each_rank,
+      const std::vector<int64_t>& in_size_each_rank,
+      bool sync_op) override {
+    return AllToAll(out_tensor,
+                    in_tensor,
+                    out_size_each_rank,
+                    in_size_each_rank,
+                    sync_op,
+                    /*use_calc_stream*/ false);
+  }
 
   std::shared_ptr<ProcessGroup::Task> AllToAll(
       phi::DenseTensor* out_tensor,
@@ -121,8 +159,31 @@ class ProcessGroupNCCL final : public ProcessGroupStream {
       phi::DenseTensor* out_tensor,
       const phi::DenseTensor& in_tensor,
       const BroadcastOptions& opts,
+      bool sync_op) override {
+    return Broadcast(out_tensor,
+                     in_tensor,
+                     opts,
+                     sync_op,
+                     /*use_calc_stream*/ false);
+  }
+
+  std::shared_ptr<ProcessGroup::Task> Broadcast(
+      phi::DenseTensor* out_tensor,
+      const phi::DenseTensor& in_tensor,
+      const BroadcastOptions& opts,
       bool sync_op,
       bool use_calc_stream) override;
+
+  std::shared_ptr<ProcessGroup::Task> Reduce(phi::DenseTensor* out_tensor,
+                                             const phi::DenseTensor& in_tensor,
+                                             const ReduceOptions& opts,
+                                             bool sync_op) override {
+    return Reduce(out_tensor,
+                  in_tensor,
+                  opts,
+                  sync_op,
+                  /*use_calc_stream*/ false);
+  }
 
   std::shared_ptr<ProcessGroup::Task> Reduce(phi::DenseTensor* out_tensor,
                                              const phi::DenseTensor& in_tensor,
@@ -134,8 +195,31 @@ class ProcessGroupNCCL final : public ProcessGroupStream {
       phi::DenseTensor* out_tensor,
       const phi::DenseTensor& in_tensor,
       const ReduceScatterOptions& opts,
+      bool sync_op) override {
+    return ReduceScatter(out_tensor,
+                         in_tensor,
+                         opts,
+                         sync_op,
+                         /*use_calc_stream*/ false);
+  }
+
+  std::shared_ptr<ProcessGroup::Task> ReduceScatter(
+      phi::DenseTensor* out_tensor,
+      const phi::DenseTensor& in_tensor,
+      const ReduceScatterOptions& opts,
       bool sync_op,
       bool use_calc_stream) override;
+
+  std::shared_ptr<ProcessGroup::Task> Scatter(phi::DenseTensor* out_tensor,
+                                              const phi::DenseTensor& in_tensor,
+                                              const ScatterOptions& opts,
+                                              bool sync_op) override {
+    return Scatter(out_tensor,
+                   in_tensor,
+                   opts,
+                   sync_op,
+                   /*use_calc_stream*/ false);
+  }
 
   std::shared_ptr<ProcessGroup::Task> Scatter(phi::DenseTensor* out_tensor,
                                               const phi::DenseTensor& in_tensor,
@@ -147,8 +231,34 @@ class ProcessGroupNCCL final : public ProcessGroupStream {
                                            int src_rank,
                                            int64_t offset,
                                            int64_t numel,
+                                           bool sync_op) override {
+    return Recv(tensor,
+                src_rank,
+                offset,
+                numel,
+                sync_op,
+                /*use_calc_stream*/ false);
+  }
+
+  std::shared_ptr<ProcessGroup::Task> Recv(phi::DenseTensor* tensor,
+                                           int src_rank,
+                                           int64_t offset,
+                                           int64_t numel,
                                            bool sync_op,
                                            bool use_calc_stream) override;
+
+  std::shared_ptr<ProcessGroup::Task> Send(const phi::DenseTensor& tensor,
+                                           int dst_rank,
+                                           int64_t offset,
+                                           int64_t numel,
+                                           bool sync_op) override {
+    return Send(tensor,
+                dst_rank,
+                offset,
+                numel,
+                sync_op,
+                /*use_calc_stream*/ false);
+  }
 
   std::shared_ptr<ProcessGroup::Task> Send(const phi::DenseTensor& tensor,
                                            int dst_rank,

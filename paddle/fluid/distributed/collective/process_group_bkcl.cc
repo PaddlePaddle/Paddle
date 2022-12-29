@@ -76,7 +76,7 @@ ProcessGroupBKCL::ProcessGroupBKCL(const std::shared_ptr<Store>& store,
                                    int rank,
                                    int size,
                                    int gid)
-    : ProcessGroupStream(rank, size, gid), store_(store) {}
+    : ProcessGroup(rank, size, gid), store_(store) {}
 
 void ProcessGroupBKCL::GroupStart() {
   PADDLE_ENFORCE_XPU_SUCCESS(bkcl_group_start());

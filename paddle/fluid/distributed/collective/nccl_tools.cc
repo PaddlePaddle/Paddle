@@ -14,7 +14,8 @@
 
 #include "paddle/fluid/distributed/collective/nccl_tools.h"
 
-#include "paddle/fluid/platform/enforce.h"
+#include "paddle/phi/core/enforce.h"
+#include "paddle/phi/core/errors.h"
 
 namespace paddle {
 namespace distributed {
@@ -29,7 +30,7 @@ ncclRedOp_t ToNCCLRedType(ReduceOp reduction) {
   auto it = red_type.find(reduction);
   PADDLE_ENFORCE_EQ(it != red_type.end(),
                     true,
-                    platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "Invalid nccl reduction. Must be ncclMin | ncclMax | "
                         "ncclProd | ncclSum"));
   return it->second;
