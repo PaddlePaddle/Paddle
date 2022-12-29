@@ -46,9 +46,13 @@ class TestProcessGroupFp32(unittest.TestCase):
         device_id = paddle.distributed.ParallelEnv().dev_id
         paddle.set_device('gpu:%d' % device_id)
 
+        assert paddle.distributed.is_available()
+
         pg = init_process_group()
         print("rank:", pg.rank(), "size:", pg.size(), "name:", pg.name())
         print("test new group api ok")
+
+        assert paddle.distributed.get_backend() == "NCCL"
 
         # test allreduce sum
         # rank 0
@@ -567,6 +571,22 @@ class TestProcessGroupFp32(unittest.TestCase):
             assert np.array_equal(tensor_y, tensor_x)
 
         print("test send api ok")
+
+        # test send 0-d tensor
+        # rank 0
+        x = np.random.uniform(-1, 1, []).astype(self.dtype)
+        tensor_x = paddle.to_tensor(x)
+        # rank 1
+        y = np.array(0.2022).astype(self.dtype)
+        tensor_y = paddle.to_tensor(y)
+
+        if pg.rank() == 0:
+            task = dist.send(tensor_x, 1, sync_op=True)
+        else:
+            task = dist.recv(tensor_y, 0, sync_op=True)
+            assert np.array_equal(tensor_y, tensor_x) and tensor_y.shape == []
+
+        print("test send & recv 0-d tensor ok")
 
 
 class TestProcessGroupFp16(TestProcessGroupFp32):

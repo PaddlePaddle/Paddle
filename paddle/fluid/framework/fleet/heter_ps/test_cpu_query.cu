@@ -25,10 +25,11 @@
 #include "paddle/fluid/framework/fleet/heter_ps/optimizer.cuh.h"
 #include "paddle/fluid/platform/cuda_device_guard.h"
 
-using namespace paddle::framework;
+using namespace paddle::framework;  // NOLINT
 namespace platform = paddle::platform;
 
 std::string edges[] = {
+    // NOLINT
     std::string("0\t1"),
     std::string("0\t9"),
     std::string("1\t2"),
@@ -48,7 +49,7 @@ std::string edges[] = {
 };
 char edge_file_name[] = "edges1.txt";
 
-std::string nodes[] = {
+std::string nodes[] = {  // NOLINT
     std::string("user\t37\ta 0.34\tb 13 14\tc hello\td abc"),
     std::string("user\t96\ta 0.31\tb 15 10\tc 96hello\td abcd"),
     std::string("user\t59\ta 0.11\tb 11 14"),
@@ -118,7 +119,7 @@ TEST(TEST_FLEET, test_cpu_cache) {
       std::make_shared<HeterPsResource>(device_id_mapping);
   resource->enable_p2p();
   int use_nv = 1;
-  GpuPsGraphTable g(resource, 1, 2);
+  GpuPsGraphTable g(resource, 2);
   g.init_cpu_table(table_proto);
   g.cpu_graph_table_->Load(node_file_name, "nuser");
   g.cpu_graph_table_->Load(node_file_name, "nitem");
@@ -160,9 +161,9 @@ TEST(TEST_FLEET, test_cpu_cache) {
   for (int i = 0; i < 2; i++) {
     // platform::CUDADeviceGuard guard(i);
     LOG(0) << "query on card " << i;
-    //{1,9} or {9,1} is expected for key 0
-    //{0,2} or {2,0} is expected for key 1
-    //{1,3} or {3,1} is expected for key 2
+    // {1,9} or {9,1} is expected for key 0
+    // {0,2} or {2,0} is expected for key 1
+    // {1,3} or {3,1} is expected for key 2
     int step = 2;
     int cur = 0;
     while (true) {
@@ -177,7 +178,7 @@ TEST(TEST_FLEET, test_cpu_cache) {
       query.initialize(
           i, 0, node_query_res.get_val(), 1, node_query_res.get_len());
       query.display();
-      auto c = g.graph_neighbor_sample_v3(query, false);
+      auto c = g.graph_neighbor_sample_v3(query, false, true);
       c.display();
     }
   }
@@ -219,7 +220,7 @@ TEST(TEST_FLEET, test_cpu_cache) {
         query.initialize(i, 0, node_query_res.get_val(), 4,
                          node_query_res.get_len());
         query.display();
-        auto c = g.graph_neighbor_sample_v3(query, true);
+        auto c = g.graph_neighbor_sample_v3(query, true, true);
         c.display();
         platform::CUDADeviceGuard guard(i);
         uint64_t *key;
@@ -229,7 +230,7 @@ TEST(TEST_FLEET, test_cpu_cache) {
         uint64_t t_key = 1;
         cudaMemcpy(key, &t_key, sizeof(uint64_t), cudaMemcpyHostToDevice);
         q1.initialize(i, 0, (uint64_t)key, 2, 1);
-        auto d = g.graph_neighbor_sample_v3(q1, true);
+        auto d = g.graph_neighbor_sample_v3(q1, true, true);
         d.display();
         cudaFree(key);
         g.cpu_graph_table_->set_search_level(1);
