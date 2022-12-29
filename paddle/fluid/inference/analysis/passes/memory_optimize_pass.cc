@@ -258,10 +258,8 @@ void DelInplaceOpFromPlan(
           if (it->second == var) {
             if (tmp_name == "") {
               tmp_name = it->first;
-              it->second = tmp_name;
-            } else {
-              it->second = tmp_name;
             }
+            it->second = tmp_name;
           }
         }
       }
