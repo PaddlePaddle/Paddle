@@ -62,13 +62,13 @@ class AMPState:
     def _build_state(self, amp_lists, dist_context):
         ops = self._block.ops
         dist_op_context = dist_context.dist_op_context
+        self._mark_black_white_ops(amp_lists)
+
         for op in ops:
             if int(op.attr('op_role')) == 257:
                 self.is_train = True
 
-            if int(op.attr('op_role')) == int(OpRole.Forward):
-                self._mark_black_white_ops(amp_lists)
-            elif int(op.attr('op_role')) == int(OpRole.Backward):
+            if int(op.attr('op_role')) == int(OpRole.Backward):
                 if op.desc.original_id() in dist_op_context.grad_op_id_to_op_id:
                     fwd_op_id = dist_op_context.grad_op_id_to_op_id[
                         op.desc.original_id()
