@@ -716,7 +716,6 @@ class ShardingPass(PassBase):
         coalesce_to_group_map, grad_name_to_group_map = self._group_grads(
             main_block,
             sharding_info,
-            max_fuse_numel=self.grad_bucket_size_numel,
         )
         self._overlap_grad_comm(
             main_block,
@@ -924,10 +923,14 @@ class ShardingPass(PassBase):
     def _fuse_overlap_parameter_comm_stage_three(self, sharding_info):
         pass
 
-    def _group_grads(self, block, sharding_info, max_fuse_numel=1):
+    def _group_grads(
+        self,
+        block,
+        sharding_info,
+    ):
         """
         conditions for gradients to be grouped:
-            1. group size < max_fuse_numel
+            1. group size < grad_bucket_size_numel
             2. same dp group (TODO)
             3. same src rank
             4. same dtype
@@ -945,13 +948,13 @@ class ShardingPass(PassBase):
         gradients inside same group would be fuse into one coalesce tensor
         """
         ops = block.ops
-        if max_fuse_numel <= 1:
+        if self.grad_bucket_size_numel < 1:
             # numel for transformer layer
             # h = 4096 + 1
             # ffn_numel = 2 * (4 * h) * h
             # mha_numel = 3 * h * h + h * h
             # max_fuse_numel = ffn_numel + mha_numel
-            max_fuse_numel = 1
+            self.grad_bucket_size_numel = 1
 
         first_backward_op = None
         for op in ops:
@@ -962,7 +965,7 @@ class ShardingPass(PassBase):
             return
         first_backward_varname = first_backward_op.output_arg_names[0]
 
-        cur_group = VarGroup(max_fuse_numel)
+        cur_group = VarGroup(self.grad_bucket_size_numel)
         grad_groups = []
         grouped_grad_names = set()
 
@@ -990,7 +993,7 @@ class ShardingPass(PassBase):
                     cur_group.collect(grad_var, rank)
                 else:
                     grad_groups.append(cur_group)
-                    cur_group = VarGroup(max_fuse_numel)
+                    cur_group = VarGroup(self.grad_bucket_size_numel)
                     cur_group.collect(grad_var, rank)
 
                 if len(cur_group.vars) == 1:
@@ -1021,7 +1024,7 @@ class ShardingPass(PassBase):
                     i += 1
             elif op_depend_on_group(op, cur_group):
                 grad_groups.append(cur_group)
-                cur_group = VarGroup(max_fuse_numel)
+                cur_group = VarGroup(self.grad_bucket_size_numel)
 
             i += 1
         # some grad not in this rank may not be used after dp reduced
