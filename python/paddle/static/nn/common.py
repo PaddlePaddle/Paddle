@@ -3548,6 +3548,7 @@ def layer_norm(
     return helper.append_activation(layer_norm_out)
 
 
+@static_only
 @templatedoc()
 def sparse_embedding(
     input,
