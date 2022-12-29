@@ -106,7 +106,7 @@ __all__ = ['cuda', 'cudnn', 'show']
 
 def show():
     """Get the version of paddle if `paddle` package if tagged. Otherwise, output the corresponding commit id.
-    
+
     Returns:
         If paddle package is not tagged, the commit-id of paddle will be output.
         Otherwise, the following information will be output.
@@ -118,13 +118,13 @@ def show():
         minor: the minor version of paddle
 
         patch: the patch level version of paddle
-        
+
         rc: whether it's rc version
 
         cuda: the cuda version of package. It will return `False` if CPU version paddle package is installed
 
         cudnn: the cudnn version of package. It will return `False` if CPU version paddle package is installed
-    
+
     Examples:
         .. code-block:: python
 
