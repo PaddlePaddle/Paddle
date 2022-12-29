@@ -3651,8 +3651,11 @@ function run_setup(){
 
     # reset ccache zero stats for collect PR's actual hit rate
     ccache -z
-
-    ${PYTHON_EXECUTABLE} setup.py $2;build_error=$?
+    if [ "${PYTHON_EXECUTABLE}" != "" ];then
+        ${PYTHON_EXECUTABLE} setup.py $2;build_error=$?
+    else
+        python setup.py $2;build_error=$?
+    fi
     
     # ci will collect ccache hit rate
     collect_ccache_hits
