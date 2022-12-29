@@ -20,7 +20,6 @@ from paddle.fluid import core
 import contextlib
 from paddle.fluid.framework import (
     Variable,
-    _non_static_mode,
     OpProtoHolder,
     Parameter,
     _dygraph_tracer,
