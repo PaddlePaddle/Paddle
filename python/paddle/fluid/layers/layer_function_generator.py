@@ -272,7 +272,6 @@ def generate_activation_fn(op_type):
             op = getattr(_C_ops, op_type)
             return op(x)
         # TODO(dev): Because some ops' yaml has not been migrated.
-        # Replace it with _in_legacy_dygraph while all yaml work is done.
         if in_dygraph_mode() and hasattr(_legacy_C_ops, op_type):
             op = getattr(_legacy_C_ops, op_type)
             return op(x)

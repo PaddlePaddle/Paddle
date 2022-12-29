@@ -17,8 +17,8 @@ import numbers
 # TODO: define normalization api
 import paddle
 import paddle.fluid as fluid
-from paddle import _C_ops, _legacy_C_ops, in_dynamic_mode
-from paddle.fluid.framework import _in_legacy_dygraph, in_dygraph_mode
+from paddle import _C_ops, in_dynamic_mode
+from paddle.fluid.framework import in_dygraph_mode
 
 from ...fluid import dygraph_utils
 from ...fluid.data_feeder import check_type, check_variable_and_dtype
@@ -336,54 +336,43 @@ def layer_norm(
         out, _, _ = _C_ops.layer_norm(x, weight, bias, epsilon, begin_norm_axis)
         return out
 
-    if _in_legacy_dygraph():
-        out, _, _ = _legacy_C_ops.layer_norm(
-            x,
-            weight,
-            bias,
-            'epsilon',
-            epsilon,
-            'begin_norm_axis',
-            begin_norm_axis,
+    else:
+        check_variable_and_dtype(
+            x, 'input', ['float16', 'float32', 'float64'], 'LayerNorm'
         )
-        return out
 
-    check_variable_and_dtype(
-        x, 'input', ['float16', 'float32', 'float64'], 'LayerNorm'
-    )
+        inputs = dict()
+        inputs['X'] = [x]
+        if weight:
+            inputs['Scale'] = [weight]
+        if bias:
+            inputs['Bias'] = [bias]
+        attrs = {"epsilon": epsilon, "begin_norm_axis": begin_norm_axis}
 
-    inputs = dict()
-    inputs['X'] = [x]
-    if weight:
-        inputs['Scale'] = [weight]
-    if bias:
-        inputs['Bias'] = [bias]
-    attrs = {"epsilon": epsilon, "begin_norm_axis": begin_norm_axis}
+        # create output
+        helper = LayerHelper('layer_norm', **locals())
 
-    # create output
-    helper = LayerHelper('layer_norm', **locals())
+        dtype = x.dtype
+        mean_out = helper.create_variable_for_type_inference(
+            dtype=dtype, stop_gradient=True
+        )
+        variance_out = helper.create_variable_for_type_inference(
+            dtype=dtype, stop_gradient=True
+        )
+        layer_norm_out = helper.create_variable_for_type_inference(dtype)
 
-    dtype = x.dtype
-    mean_out = helper.create_variable_for_type_inference(
-        dtype=dtype, stop_gradient=True
-    )
-    variance_out = helper.create_variable_for_type_inference(
-        dtype=dtype, stop_gradient=True
-    )
-    layer_norm_out = helper.create_variable_for_type_inference(dtype)
+        helper.append_op(
+            type="layer_norm",
+            inputs=inputs,
+            outputs={
+                "Y": layer_norm_out,
+                "Mean": mean_out,
+                "Variance": variance_out,
+            },
+            attrs={"epsilon": epsilon, "begin_norm_axis": begin_norm_axis},
+        )
 
-    helper.append_op(
-        type="layer_norm",
-        inputs=inputs,
-        outputs={
-            "Y": layer_norm_out,
-            "Mean": mean_out,
-            "Variance": variance_out,
-        },
-        attrs={"epsilon": epsilon, "begin_norm_axis": begin_norm_axis},
-    )
-
-    return helper.append_activation(layer_norm_out)
+        return helper.append_activation(layer_norm_out)
 
 
 def instance_norm(
