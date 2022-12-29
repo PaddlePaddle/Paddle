@@ -12,13 +12,28 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/fluid/eager/api/all.h"
+#include "paddle/fluid/eager/api/generated/eager_generated/forwards/dygraph_functions.h"
 #include "paddle/fluid/prim/api/manual/prim_api/prim_api.h"
 
-namespace egr {
-template void Pow(const paddle::experimental::Tensor& X,
-                  const paddle::optional<T>& FactorTensor,
-                  float factor,
-                  T* Out) {
-  pow_ad_func()
+namespace paddle {
+namespace prim {
+template <>
+Tensor pow<Tensor>(const Tensor& x, const paddle::experimental::Scalar& y) {
+  return ::pow_ad_func(x, y);
 }
-}  // namespace egr
+
+template <>
+Tensor scale<Tensor>(const Tensor& x,
+                     const paddle::experimental::Scalar& scale,
+                     float bias,
+                     bool bias_after_scale) {
+  return ::scale_ad_func(x, scale, bias, bias_after_scale);
+}
+
+template <>
+Tensor multiply<Tensor>(const Tensor& x, const Tensor& y) {
+  return ::multiply_ad_func(x, y);
+}
+}  // namespace prim
+}  // namespace paddle
