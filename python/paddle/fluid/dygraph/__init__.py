@@ -21,7 +21,6 @@ from .layers import *
 from . import container
 from .container import *
 
-from . import nn
 from .nn import *
 
 from . import tracer
