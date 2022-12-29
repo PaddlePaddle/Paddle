@@ -3672,7 +3672,7 @@ def sparse_embedding(
     helper = LayerHelper('sparse_embedding', **locals())
 
     check_variable_and_dtype(
-        input, 'input', ['int64'], 'fluid.contrib.layers.sparse_embedding'
+        input, 'input', ['int64'], 'paddle.static.nn.sparse_embedding'
     )
 
     check_dtype(
