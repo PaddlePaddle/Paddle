@@ -502,10 +502,9 @@ OutputGrad({{name_in_forward_orig | to_opmaker_name}})
     {% set name_in_forward = name[:-5] %}
     {% set name_in_forward_orig = input_orig_names[input_names.index(name_in_forward)]%}
 InputGrad({{name_in_forward_orig | to_opmaker_name}})
-  {%- elif (name | to_input_name) in input_names %}
-    {% set name_in_forward = name | to_input_name %}
-    {% set name_in_forward_orig = input_orig_names[input_names.index(name_in_forward)]%}
-InputGrad({{name | to_input_name | to_opmaker_name}})
+  {%- elif (name) in input_names %}
+    {% set name_in_forward_orig = input_orig_names[input_names.index(name)]%}
+Input({{name  | to_opmaker_name}})
   {%- endif %}
 {%- endmacro %}
 

@@ -1823,18 +1823,6 @@
     func : squared_l2_norm
   backward : squared_l2_norm_grad
 
-- op : squeeze
-  args : (Tensor x, IntArray axis)
-  output : Tensor(out), Tensor(xshape)
-  infer_meta :
-    func : SqueezeWithXShapeInferMeta
-  kernel :
-    func : squeeze_with_xshape
-  inplace : (x -> out)
-  view: (x -> out)
-  intermediate : xshape
-  backward : squeeze_grad
-
 - op : stack
   args : (Tensor[] x, int axis)
   output : Tensor

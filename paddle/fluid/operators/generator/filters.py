@@ -109,6 +109,7 @@ def to_input_name(s):
     x -> x_grad
     is more common.
     """
+    print("##### s: ", s)
     match = re.match(r"(d\d*)(\w+)", s)
     assert match.group(1) != "", "it should be a grad style name."
     return match.group(2)

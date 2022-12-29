@@ -739,6 +739,14 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
             self.backward_returns_list,
         ) = ParseYamlBackward(backward_args_str, backward_returns_str)
 
+        # Remove the output which is intermediate
+        if 'intermediate' in grad_api_contents:
+            backward_returns_list_new = []
+            for return_item in self.backward_returns_list:
+                if return_item[0] not in grad_api_contents['intermediate']:
+                    backward_returns_list_new.append(return_item)
+            self.backward_returns_list = backward_returns_list_new
+
     def CollectForwardInfoFromBackwardContents(self):
 
         backward_forward_str = self.backward_forward_str
@@ -1979,7 +1987,6 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
                         fill_zero_str += f"{indent}egr::EagerUtils::FillZeroForEmptyGradInput(&grads[{fwd_position}], input_metas[{fwd_position}]);\n"
 
         inplace_grad_input_str = ""
-        inplaced_tensor_wrapper = False
         inplace_check_str = ""
         optional_inplace_var_name = []
         # Grad Ins from TensorWrappers
