@@ -335,7 +335,7 @@ PreparedOp PrepareImpl(
 
       if (!framework::backends_are_same_class(
               expected_kernel_key.backend(),
-              phi::TransToPhiBackend(dev_ctx.GetPlace()))) {
+              phi::TransToPhiBackend(dev_ctx->GetPlace()))) {
         dev_ctx = pool.Get(phi::TransToPhiPlace(expected_kernel_key.backend()));
         VLOG(1) << "DEBUG imperative changed place " << phi_kernel_name
                 << " place " << place << " -> " << dev_ctx->GetPlace();
@@ -510,10 +510,10 @@ PreparedOp PrepareImpl(
                                  KernelTypeToString(fluid_kernel_type)));
 
   if (!platform::places_are_same_class(fluid_kernel_type.place_,
-                                       dev_ctx.GetPlace())) {
+                                       dev_ctx->GetPlace())) {
     dev_ctx = pool.Get(fluid_kernel_type.place_);
-    VLOG(1) << "DEBUG imperative changed place fluid " << op.Type()
-            << " place " place << " -> " << dev_ctx->GetPlace();
+    VLOG(1) << "DEBUG imperative changed place fluid " << op.Type() << " place "
+            << place << " -> " << dev_ctx->GetPlace();
   }
 
   VLOG(1) << "DEBUG imperative place before fluid PreparedOp " << op.Type()
