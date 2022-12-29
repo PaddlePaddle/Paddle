@@ -28,7 +28,7 @@ from .pass_base import PassBase, register_pass
 
 
 def _sharding_pass_applied(pass_ctx):
-    for applied_pass in pass_ctx.passes():
+    for applied_pass in pass_ctx.passes:
         if isinstance(applied_pass, ShardingPass):
             return True
     return False
