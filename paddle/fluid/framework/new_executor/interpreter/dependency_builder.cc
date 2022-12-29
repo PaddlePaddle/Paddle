@@ -17,6 +17,13 @@
 #include <queue>
 #include "paddle/fluid/framework/new_executor/interpreter/interpreter_util.h"
 
+PADDLE_DEFINE_EXPORTED_bool(
+    add_dependency_for_communication_op,
+    true,
+    "Whether to add dependency for communication Ops. It is just a temporary "
+    "FLAGS especially for auto parallel to avoid the concurrency damage by the "
+    "communication dependency added in standalone executor.");
+
 // The difference between "sequential_run" and "serial_run":
 // "sequential_run" dispatches OPs one by one according to the sequence in the
 // Program, while "serial_run" ensures that all Ops are scheduled in a singal
@@ -25,7 +32,7 @@
 PADDLE_DEFINE_EXPORTED_bool(new_executor_sequential_run,
                             false,
                             "Enable sequential execution for standalone "
-                            "executor, only applied to kGpuAsync OPs.");
+                            "executor, only applied to GPU OPs.");
 
 namespace paddle {
 namespace framework {
@@ -68,14 +75,14 @@ const std::map<size_t, std::set<size_t>>& DependencyBuilder::Build(
 
   if (FLAGS_new_executor_sequential_run) {
     AddDependencyForSequentialRun();
-    VLOG(0) << "NEWEXE: Add Dependency AddDependencyForSequentialRun";
   }
 
   AddDependencyForCoalesceTensorOp();
-  if (FLAGS_new_executor_sequential_run) {
+
+  if (FLAGS_add_dependency_for_communication_op) {
     AddDependencyForCommunicationOp();
-    VLOG(0) << "NEWEXE: Add Dependency AddDependencyForCommunicationOp";
   }
+
   AddDependencyForRandomOp();
   AddDependencyForReadOp();
 
@@ -290,7 +297,7 @@ void DependencyBuilder::AddDependencyForReadOp() {
 void DependencyBuilder::AddDependencyForSequentialRun() {
   size_t dependence_op_idx = ULLONG_MAX;
   for (size_t op_idx = 0; op_idx < op_num_; ++op_idx) {
-    if (instructions_->at(op_idx).KernelType() == OpFuncType::kGpuAsync) {
+    if (!IsCpuOp(instructions_->at(op_idx))) {
       if (dependence_op_idx != ULLONG_MAX) {
         AddDownstreamOp(dependence_op_idx, op_idx);
       }
