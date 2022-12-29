@@ -19,7 +19,7 @@ import numpy as np
 
 from paddle.fluid import core, framework, global_scope
 from paddle.fluid.log_helper import get_logger
-from paddle.fuild.wrapped_decorator import signature_safe_contextmanager
+from paddle.fluid.wrapped_decorator import signature_safe_contextmanager
 
 from .fp16_lists import AutoMixedPrecisionLists
 
