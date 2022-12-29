@@ -270,6 +270,7 @@ class AdamW(MultiTensorBase):
         self._master_weights = {}
         self._lr_first = []
         self._use_multi_tensor_adam = True
+        self.test_lr_and_betapow = True
 
         self._default_dict = {
             'weight_decay': weight_decay,

@@ -259,6 +259,7 @@ class Optimizer:
         # {accum_name : { paramter_name : accumulator_for_parameter, ...}, ...}
         self._accumulators = defaultdict(lambda: dict())
         self.helper = None
+        self.test_lr_and_betapow = True
         self._opti_name_list = []
         self._accumulators_holder = {}
         self._param_device_map = dict()
@@ -362,6 +363,9 @@ class Optimizer:
                 adam.set_state_dict(opti_state_dict)
 
         '''
+
+        self.test_lr_and_betapow = True
+
         if isinstance(self._learning_rate, LRScheduler):
             self._learning_rate.set_state_dict(state_dict["LR_Scheduler"])
 

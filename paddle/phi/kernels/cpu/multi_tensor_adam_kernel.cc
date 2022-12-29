@@ -83,22 +83,22 @@ void MultiTensorAdamKernel(
                         "is %d, the size of Input(param) is %d.",
                         moments2.size(),
                         params_num));
-  PADDLE_ENFORCE_EQ(param_num,
+  PADDLE_ENFORCE_EQ(params_num,
                     beta1_pow.size(),
                     errors::InvalidArgument(
                         "The size of Input(beta1_pow) must be equal to "
                         "Input(param), but got the size of Input(beta1_pow) "
                         "is %d, the size of Input(param) is %d.",
                         beta1_pow.size(),
-                        param_num));
-  PADDLE_ENFORCE_EQ(param_num,
+                        params_num));
+  PADDLE_ENFORCE_EQ(params_num,
                     beta2_pow.size(),
                     errors::InvalidArgument(
                         "The size of Input(beta2_pow) must be equal to "
                         "Input(param), but got the size of Input(beta2_pow) "
                         "is %d, the size of Input(param) is %d.",
                         beta2_pow.size(),
-                        param_num));
+                        params_num));
 
   for (size_t idx = 0; idx < params_num; idx++) {
     paddle::optional<DenseTensor> master_params_tmp = paddle::none;
@@ -113,8 +113,8 @@ void MultiTensorAdamKernel(
           learning_rate,
           *moments1[idx],
           *moments2[idx],
-          beta1_pow,
-          beta2_pow,
+          *beta1_pow[idx],
+          *beta2_pow[idx],
           master_params_tmp,
           skip_update,
           beta1,
@@ -127,8 +127,8 @@ void MultiTensorAdamKernel(
           params_out[idx],
           moments1_out[idx],
           moments2_out[idx],
-          beta1_pow_out,
-          beta2_pow_out,
+          beta1_pow_out[idx],
+          beta2_pow_out[idx],
           master_params_out.empty() ? nullptr : master_params_out[idx]);
     } else {
       AdamwDenseKernel<T, Context>(
@@ -138,8 +138,8 @@ void MultiTensorAdamKernel(
           learning_rate,
           *moments1[idx],
           *moments2[idx],
-          beta1_pow,
-          beta2_pow,
+          *beta1_pow[idx],
+          *beta2_pow[idx],
           master_params_tmp,
           skip_update,
           beta1,
@@ -155,8 +155,8 @@ void MultiTensorAdamKernel(
           params_out[idx],
           moments1_out[idx],
           moments2_out[idx],
-          beta1_pow_out,
-          beta2_pow_out,
+          beta1_pow_out[idx],
+          beta2_pow_out[idx],
           master_params_out.empty() ? nullptr : master_params_out[idx]);
     }
   }

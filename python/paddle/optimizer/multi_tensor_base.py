@@ -13,11 +13,11 @@
 # limitations under the License.
 
 import paddle
-from paddle import _C_ops, _legacy_C_ops
+from paddle import _C_ops
 from paddle.fluid.framework import default_main_program
 
 from ..fluid import core, framework
-from ..fluid.framework import Variable, in_dygraph_mode
+from ..fluid.framework import Variable
 from .optimizer import Optimizer
 
 __all__ = []
@@ -81,6 +81,7 @@ class MultiTensorBase(Optimizer):
 
         self._lr_first = []
         self._use_multi_tensor_adam = True
+        self._use_adamw = False
 
     def _multi_tensor_init(self, target_block, parameters, param_group_idx):
         """
@@ -281,26 +282,28 @@ class MultiTensorBase(Optimizer):
                     else self._beta2.numpy().item(0)
                 )
 
-                i = 0
-                for lr, beta1_pow, beta2_pow in zip(
-                    lr_dict[key],
-                    self._beta1_pow_acc_dict[key][param_group_idx],
-                    self._beta2_pow_acc_dict[key][param_group_idx],
-                ):
-                    if i == 0:
-                        lr_first = lr
-                        beta1_pow_first = beta1_pow
-                        beta2_pow_first = beta2_pow
-                    if framework._non_static_mode():
-                        if (
-                            lr_first != lr
-                            or beta1_pow_first != beta1_pow
-                            or beta2_pow_first != beta2_pow
-                        ):
+                if self.test_lr_and_betapow:
+                    i = 0
+                    for lr, beta1_pow, beta2_pow in zip(
+                        lr_dict[key],
+                        self._beta1_pow_acc_dict[key][param_group_idx],
+                        self._beta2_pow_acc_dict[key][param_group_idx],
+                    ):
+                        if i == 0:
+                            lr_first = lr
+                            beta1_pow_first = beta1_pow
+                            beta2_pow_first = beta2_pow
+                        if framework._non_static_mode():
+                            if (
+                                lr_first != lr
+                                or beta1_pow_first != beta1_pow
+                                or beta2_pow_first != beta2_pow
+                            ):
+                                self._use_multi_tensor_adam = False
+                        else:
                             self._use_multi_tensor_adam = False
-                    else:
-                        self._use_multi_tensor_adam = False
-                    i = i + 1
+                        i = i + 1
+                    self.test_lr_and_betapow = False
 
                 if framework._non_static_mode():
 
@@ -311,215 +314,73 @@ class MultiTensorBase(Optimizer):
                         else None
                     )
                     found_inf = self._get_auxiliary_var('found_inf')
-                    if in_dygraph_mode():
-                        if self._use_multi_tensor_adam:
-                            _, _, _, _, _, _ = _C_ops.multi_tensor_adam_(
-                                self._param_dict[key][param_group_idx],
-                                grad_dict[key],
-                                lr_dict[key][0],
-                                self._moment1_dict[key][param_group_idx],
-                                self._moment2_dict[key][param_group_idx],
-                                self._beta1_pow_acc_dict[key][param_group_idx],
-                                self._beta2_pow_acc_dict[key][param_group_idx],
-                                master_weight,
-                                found_inf,
-                                _beta1,
-                                _beta2,
-                                self._epsilon,
-                                self._chunk_size,
-                                self._weight_decay,
-                                self._use_adamw,
-                                find_master,
-                                False,
-                            )
-                        else:
-                            if self.__class__.__name__ == 'AdamW':
-                                for i in range(
-                                    len(self._param_dict[key][param_group_idx])
-                                ):
+                    if self._use_multi_tensor_adam:
+                        _, _, _, _, _, _ = _C_ops.multi_tensor_adam_(
+                            self._param_dict[key][param_group_idx],
+                            grad_dict[key],
+                            lr_dict[key][0],
+                            self._moment1_dict[key][param_group_idx],
+                            self._moment2_dict[key][param_group_idx],
+                            self._beta1_pow_acc_dict[key][param_group_idx],
+                            self._beta2_pow_acc_dict[key][param_group_idx],
+                            master_weight,
+                            found_inf,
+                            _beta1,
+                            _beta2,
+                            self._epsilon,
+                            self._chunk_size,
+                            self._weight_decay,
+                            self._use_adamw,
+                            find_master,
+                            False,
+                        )
+                    else:
+                        if self.__class__.__name__ == 'AdamW':
+                            for i in range(
+                                len(self._param_dict[key][param_group_idx])
+                            ):
 
-                                    _, _, _, _, _, _ = _C_ops.adamw_(
-                                        self._param_dict[key][param_group_idx][
-                                            i
-                                        ],
-                                        grad_dict[key][i],
-                                        lr_dict[key][i],
-                                        self._moment1_dict[key][
-                                            param_group_idx
-                                        ][i],
-                                        self._moment2_dict[key][
-                                            param_group_idx
-                                        ][i],
-                                        self._beta1_pow_acc_dict[key][
-                                            param_group_idx
-                                        ][i],
-                                        self._beta2_pow_acc_dict[key][
-                                            param_group_idx
-                                        ][i],
-                                        master_weight[i]
-                                        if master_weight
-                                        else None,
-                                        found_inf,
-                                        _beta1,
-                                        _beta2,
-                                        self._epsilon,
-                                        lr_ratio_,
-                                        self._weight_decay,
-                                        with_decay,
-                                        self._lazy_mode,
-                                        1000,
-                                        find_master,
-                                        False,
-                                    )
-                            else:
-                                _, _, _, _, _, _ = _C_ops.merged_adam_(
-                                    self._param_dict[key][param_group_idx],
-                                    grad_dict[key],
-                                    lr_dict[key],
-                                    self._moment1_dict[key][param_group_idx],
-                                    self._moment2_dict[key][param_group_idx],
+                                _, _, _, _, _, _ = _C_ops.adamw_(
+                                    self._param_dict[key][param_group_idx][i],
+                                    grad_dict[key][i],
+                                    lr_dict[key][i],
+                                    self._moment1_dict[key][param_group_idx][i],
+                                    self._moment2_dict[key][param_group_idx][i],
                                     self._beta1_pow_acc_dict[key][
                                         param_group_idx
-                                    ],
+                                    ][i],
                                     self._beta2_pow_acc_dict[key][
                                         param_group_idx
-                                    ],
-                                    master_weight,
+                                    ][i],
+                                    master_weight[i] if master_weight else None,
+                                    found_inf,
                                     _beta1,
                                     _beta2,
                                     self._epsilon,
+                                    lr_ratio_,
+                                    self._weight_decay,
+                                    with_decay,
+                                    self._lazy_mode,
+                                    1000,
                                     find_master,
                                     False,
                                 )
-                    else:
-                        if self._use_multi_tensor_adam:
-                            _, _, _, _, _, _ = _legacy_C_ops.multi_tensor_adam(
+                        else:
+                            _, _, _, _, _, _ = _C_ops.merged_adam_(
                                 self._param_dict[key][param_group_idx],
                                 grad_dict[key],
-                                lr_dict[key][0],
+                                lr_dict[key],
                                 self._moment1_dict[key][param_group_idx],
                                 self._moment2_dict[key][param_group_idx],
                                 self._beta1_pow_acc_dict[key][param_group_idx],
                                 self._beta2_pow_acc_dict[key][param_group_idx],
                                 master_weight,
-                                found_inf,
-                                self._param_dict[key][param_group_idx],
-                                self._moment1_dict[key][param_group_idx],
-                                self._moment2_dict[key][param_group_idx],
-                                self._beta1_pow_acc_dict[key][param_group_idx],
-                                self._beta2_pow_acc_dict[key][param_group_idx],
-                                master_weight,
-                                'beta1',
                                 _beta1,
-                                'beta2',
                                 _beta2,
-                                'epsilon',
                                 self._epsilon,
-                                'chunk_size',
-                                self._chunk_size,
-                                'weight_decay',
-                                self._weight_decay,
-                                'use_adamw',
-                                self._use_adamw,
-                                'multi_precision',
                                 find_master,
+                                False,
                             )
-                        else:
-                            if self.__class__.__name__ == 'AdamW':
-                                for i in range(
-                                    len(self._param_dict[key][param_group_idx])
-                                ):
-                                    _, _, _, _, _, _ = _legacy_C_ops.adamw(
-                                        self._param_dict[key][param_group_idx][
-                                            i
-                                        ],
-                                        grad_dict[key][i],
-                                        lr_dict[key][i],
-                                        self._moment1_dict[key][
-                                            param_group_idx
-                                        ][i],
-                                        self._moment2_dict[key][
-                                            param_group_idx
-                                        ][i],
-                                        self._beta1_pow_acc_dict[key][
-                                            param_group_idx
-                                        ][i],
-                                        self._beta2_pow_acc_dict[key][
-                                            param_group_idx
-                                        ][i],
-                                        master_weight[i]
-                                        if master_weight
-                                        else None,
-                                        self._param_dict[key][param_group_idx][
-                                            i
-                                        ],
-                                        self._moment1_dict[key][
-                                            param_group_idx
-                                        ][i],
-                                        self._moment2_dict[key][
-                                            param_group_idx
-                                        ][i],
-                                        self._beta1_pow_acc_dict[key][
-                                            param_group_idx
-                                        ][i],
-                                        self._beta2_pow_acc_dict[key][
-                                            param_group_idx
-                                        ][i],
-                                        master_weight[i]
-                                        if master_weight
-                                        else None,
-                                        'epsilon',
-                                        self._epsilon,
-                                        'lazy_mode',
-                                        self._lazy_mode,
-                                        'min_row_size_to_use_multithread',
-                                        1000,
-                                        'beta1',
-                                        _beta1,
-                                        'beta2',
-                                        _beta2,
-                                        "with_decay",
-                                        with_decay,
-                                        'coeff',
-                                        self._weight_decay,
-                                        'multi_precision',
-                                        find_master,
-                                        'lr_ratio',
-                                        lr_ratio_,
-                                    )
-                            else:
-                                _, _, _, _, _, _ = _legacy_C_ops.merged_adam(
-                                    self._param_dict[key][param_group_idx],
-                                    grad_dict[key],
-                                    lr_dict[key],
-                                    self._moment1_dict[key][param_group_idx],
-                                    self._moment2_dict[key][param_group_idx],
-                                    self._beta1_pow_acc_dict[key][
-                                        param_group_idx
-                                    ],
-                                    self._beta2_pow_acc_dict[key][
-                                        param_group_idx
-                                    ],
-                                    master_weight,
-                                    self._param_dict[key][param_group_idx],
-                                    self._moment1_dict[key][param_group_idx],
-                                    self._moment2_dict[key][param_group_idx],
-                                    self._beta1_pow_acc_dict[key][
-                                        param_group_idx
-                                    ],
-                                    self._beta2_pow_acc_dict[key][
-                                        param_group_idx
-                                    ],
-                                    master_weight,
-                                    'epsilon',
-                                    self._epsilon,
-                                    'beta1',
-                                    _beta1,
-                                    'beta2',
-                                    _beta2,
-                                    'multi_precision',
-                                    find_master,
-                                )
                 else:
                     if self.__class__.__name__ == 'AdamW':
                         for i in range(

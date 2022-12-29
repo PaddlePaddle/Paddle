@@ -3000,10 +3000,10 @@ void MultiTensorAdamInferMeta(
     moments1_out[i]->set_dtype(moments1[i]->dtype());
     moments2_out[i]->set_dims(moments2[i]->dims());
     moments2_out[i]->set_dtype(moments2[i]->dtype());
-    beta1_pow_out[i]->set_dims(beta1_pow[i].dims());
-    beta1_pow_out[i]->set_dtype(beta1_pow[i].dtype());
-    beta2_pow_out[i]->set_dims(beta2_pow[i].dims());
-    beta2_pow_out[i]->set_dtype(beta2_pow[i].dtype());
+    beta1_pow_out[i]->set_dims(beta1_pow[i]->dims());
+    beta1_pow_out[i]->set_dtype(beta1_pow[i]->dtype());
+    beta2_pow_out[i]->set_dims(beta2_pow[i]->dims());
+    beta2_pow_out[i]->set_dtype(beta2_pow[i]->dtype());
     if (master_params && !master_params_out.empty()) {
       master_params_out[i]->set_dims(master_params.get()[i]->dims());
       master_params_out[i]->set_dtype(master_params.get()[i]->dtype());
