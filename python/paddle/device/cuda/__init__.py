@@ -43,7 +43,7 @@ def current_stream(device=None):
 
     Parameters:
         device(paddle.CUDAPlace()|int, optional): The device or the ID of the device which want to get stream from.
-            If device is None, the device is the current device. Default: None.
+                If device is None, the device is the current device. Default: None.
 
     Returns:
         CUDAStream: the stream to the device.
@@ -81,7 +81,7 @@ def synchronize(device=None):
 
     Parameters:
         device(paddle.CUDAPlace()|int, optional): The device or the ID of the device.
-            If device is None, the device is the current device. Default: None.
+                If device is None, the device is the current device. Default: None.
 
     Examples:
         .. code-block:: python
