@@ -318,5 +318,5 @@ class BatchNorm(layers.Layer):
                 type="batch_norm", inputs=inputs, outputs=outputs, attrs=attrs
             )
 
-        # Currently, we don't support inplace in dygraph mode
-        return self._helper.append_activation(batch_norm_out, self._act)
+            # Currently, we don't support inplace in dygraph mode
+            return self._helper.append_activation(batch_norm_out, self._act)
