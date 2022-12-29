@@ -1229,7 +1229,7 @@
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
 - op : squeeze (squeeze2)
-  backward : squeeze_grad (squeeze2_grad), squeeze_double_grad
+  backward : squeeze_grad (squeeze2_grad), squeeze_double_grad(squeeze2_double_grad)
   inputs :
     x : X
   attrs :
@@ -1359,7 +1359,7 @@
     out : Y
 
 - op : unsqueeze (unsqueeze2)
-  backward : unsqueeze_grad (unsqueeze2_grad), unsqueeze_double_grad
+  backward : unsqueeze_grad (unsqueeze2_grad), unsqueeze_double_grad(unsqueeze2_double_grad)
   inputs :
     x : X
   attrs :
