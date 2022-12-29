@@ -25,9 +25,10 @@ import paddle.distributed.fleet as fleet
 from paddle.distributed.auto_parallel.dist_context import (
     get_default_distributed_context,
 )
+from paddle.distributed.auto_parallel.process_group import (
+    get_all_process_groups,
+)
 from paddle.distributed.passes import PassContext, new_pass
-
-from .process_group import get_all_process_groups
 
 sys.path.append("..")
 
