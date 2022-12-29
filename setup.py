@@ -1274,6 +1274,7 @@ def get_setup_parameters():
         'paddle.static',
         'paddle.static.nn',
         'paddle.static.amp',
+        'paddle.static.amp.bf16',
         'paddle.tensor',
         'paddle.onnx',
         'paddle.autograd',
