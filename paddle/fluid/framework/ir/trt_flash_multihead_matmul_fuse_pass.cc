@@ -67,6 +67,8 @@ PDNode* TrtFlashMultiHeadMatmulPattern::operator()() {
   auto* input0 = pattern->NewNode(input0_repr());
   input0->assert_is_ops_input(mul_ops);
   VLOG(5) << "Start match TrtFlashMultiHeadMatmulPattern";
+  std::cout << "@@ Start match TrtFlashMultiHeadMatmulPattern" << std::endl;
+
   // First path
   auto* mul0 = pattern->NewNode(mul0_repr())->assert_is_ops(mul_ops);
   auto* mul0_w_var = pattern->NewNode(mul0_w_repr())
@@ -372,7 +374,6 @@ int TrtFlashMultiHeadMatmulFusePass::BuildFlashFusion(
     // [in,3,out]
     auto combined_w_dims =
         phi::make_ddim({wq_tensor->dims()[0], 3, wq_tensor->dims()[1]});
-
     auto* combined_w_desc = mul0_w->Var();
     combined_w_desc->SetShape({wq_tensor->dims()[0], 3, wq_tensor->dims()[1]});
     combined_w_desc->SetPersistable(true);
@@ -414,6 +415,7 @@ int TrtFlashMultiHeadMatmulFusePass::BuildFlashFusion(
     IR_NODE_LINK_TO(input0, multihead);
     IR_NODE_LINK_TO(mul0_w, multihead);
     IR_NODE_LINK_TO(multihead, reshape2_qkv_out);
+    std::cout << "@@@ make a fused flash attention" << std::endl;
   };
   int fusion_count{0};
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
@@ -531,6 +533,14 @@ int TrtFlashMultiHeadMatmulFusePass::BuildFlashFusion(
 void TrtFlashMultiHeadMatmulFusePass::ApplyImpl(Graph* graph) const {
   FusePassBase::Init(name_scope_, graph);
   auto* scope = param_scope();
+
+  bool with_dynamic_shape = Get<bool>("with_dynamic_shape");
+  if (!with_dynamic_shape) {
+    VLOG(3) << "Flash attention oss plugin need trt "
+               "with_dynamic_shape. Stop this pass";
+    return;
+  }
+
   int fusion_count = BuildFlashFusion(graph, name_scope_, scope);
   AddStatis(fusion_count);
 }

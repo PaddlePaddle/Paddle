@@ -108,6 +108,7 @@ const std::vector<std::string> kTRTSubgraphPasses({
       "multihead_matmul_roformer_fuse_pass",          //
       "constant_folding_pass",                        //
 #if IS_TRT_VERSION_GE(8522)
+      // #pragma message("@@@ compile flash and cross pass for trt > 8522")
       "trt_flash_multihead_matmul_fuse_pass",  //
       "trt_cross_multihead_matmul_fuse_pass",  //
 #endif

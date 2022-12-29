@@ -25,6 +25,16 @@ class CrossMultiheadMatMulOpConverter : public OpConverter {
                   bool test_mode) override {
     VLOG(3) << "convert a cross_multihead_mamul op to a corresponding tensorrt "
                "network structure";
+    bool with_fp16 = engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
+    if (engine_->precision() == AnalysisConfig::Precision::kInt8) {
+      with_fp16 = true;
+    }
+    PADDLE_ENFORCE_EQ(
+        with_fp16,
+        true,
+        platform::errors::Unimplemented(
+            "Trt cross attention oss plugin only support fp16 mode yet."));
+
     framework::OpDesc op_desc(op, nullptr);
     auto* input_q = engine_->GetITensor(op_desc.Input("Input_q").front());
     auto* input_kv = engine_->GetITensor(op_desc.Input("Input_kv").front());
@@ -52,10 +62,6 @@ class CrossMultiheadMatMulOpConverter : public OpConverter {
         for (int hs = 0; hs < head_size; hs++) {
           for (int hi = 0; hi < hidden_in; hi++) {
             int out_index = hn * head_size * hidden_in + hs * hidden_in + hi;
-            // int out_index = hi*three*head_number*head_size+
-            //                t*head_number*head_size+
-            //                hn*head_size+
-            //                hs;
             int in_index = hi * head_number * head_size + hn * head_size + hs;
             dst[out_index] = src[in_index];
           }
@@ -127,6 +133,7 @@ class CrossMultiheadMatMulOpConverter : public OpConverter {
     float* weight_kv_data = nullptr;
     weight_kv_data = const_cast<float*>(static_cast<const float*>(
         engine_->GetFp32TrtWeight(weight_kv_name, *weight_kv_t).get().values));
+
     // (hidden_in, 2, hidden_out)
     const auto& weight_kv_dims = weight_kv_t->dims();
 
@@ -138,10 +145,9 @@ class CrossMultiheadMatMulOpConverter : public OpConverter {
 
     int n = two * hidden_out;
     nvinfer1::ILayer* layer = nullptr;
-    // auto output_name = op_desc.Output("Out")[0];
+
     // [hidden_in, 3, head_number, head_size]
     // -> [head_number, 3, head_size, hidden_in]
-
     auto transpose_weight = [](const float* src,
                                float* dst,
                                int two,
@@ -154,10 +160,6 @@ class CrossMultiheadMatMulOpConverter : public OpConverter {
             for (int hi = 0; hi < hidden_in; hi++) {
               int out_index = hn * two * head_size * hidden_in +
                               t * head_size * hidden_in + hs * hidden_in + hi;
-              // int out_index = hi*three*head_number*head_size+
-              //                t*head_number*head_size+
-              //                hn*head_size+
-              //                hs;
               int in_index = hi * two * head_number * head_size +
                              t * head_number * head_size + hn * head_size + hs;
               dst[out_index] = src[in_index];
@@ -178,20 +180,12 @@ class CrossMultiheadMatMulOpConverter : public OpConverter {
                      head_number,
                      head_size,
                      hidden_in);
-    // printf("print qkv fc weight : \n ");
-    // for(int i =0;i<3*320*320;i++){
-    //   printf("%f ",weight_data[i]);
-    //   if(i%320==319){
-    //     printf("\n");
-    //   }
-    // }
-    // printf("\n");
     nvinfer1::Weights weight_kv{nvinfer1::DataType::kFLOAT,
                                 static_cast<void*>(weight_kv_data),
                                 static_cast<int32_t>(weight_kv_t->numel())};
     nvinfer1::Weights bias_kv{};
-    // add shuffle for FullyConnected layer
 
+    // add shuffle for FullyConnected layer
     std::vector<nvinfer1::ITensor*> reshape_before_fc_shape_tensor;
     nvinfer1::ITensor* input_shape_tensor = Shape(input_kv);
     for (int i = 0; i < 5; i++) {

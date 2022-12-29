@@ -26,49 +26,56 @@ import paddle.inference as paddle_infer
 class TrtConvertFlashMultiHeadMatmulTest(TrtLayerAutoScanTest):
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         ver = paddle_infer.get_trt_compile_version()
-        if ver[0] * 1000 + ver[1] * 100 + ver[2] * 10 < 8522:
+        if ver[0] * 1000 + ver[1] * 100 + ver[2] * 10 < 8520:
             return False
         return True
 
     def sample_program_configs(self):
         def generate_input1(batch, dim1):
-            return np.random.random((batch, dim1, 320)).astype(np.float32)
+            return np.random.rand(batch, dim1, 320).astype(np.float32) / 10
 
         def generate_weight1():
-            return np.random.random((320, 320)).astype(np.float32)
+            return np.random.rand(320, 320).astype(np.float32) / 10
 
         for batch in [1, 2]:
             self.batch = batch
             for reshape_shape in [[0, 0, 8, 40]]:
                 for dim1 in [4096]:
-                    # input2_shapes = [
-                    #     [batch, reshape_shape[2], dim1, dim1],
-                    #     [batch, 1, 1, dim1],
-                    # ]
-                    # for input2_shape in input2_shapes:
                     dics = [
-                        {"trans_x": False, "trans_y": False},
-                        {"shape": reshape_shape},
-                        {"axis": [0, 2, 1, 3]},
-                        {"trans_x": False, "trans_y": False},
-                        {"shape": reshape_shape},
-                        {"axis": [0, 2, 1, 3]},
-                        {"trans_x": False, "trans_y": False},
-                        {"shape": reshape_shape},
-                        {"axis": [0, 2, 1, 3]},
+                        {"trans_x": False, "trans_y": False},  # 0,matmul_v2_q
+                        {"shape": reshape_shape},  # 1,reshape_q
                         {
+                            "axis": [0, 2, 1, 3],
+                            "data_format": "AnyLayout",
+                        },  # 2,trans_q
+                        {"trans_x": False, "trans_y": False},  # 3,matmul_v2_k
+                        {"shape": reshape_shape},  # 4,reshape_k
+                        {
+                            "axis": [0, 2, 1, 3],
+                            "data_format": "AnyLayout",
+                        },  # 5,trans_k
+                        {"trans_x": False, "trans_y": False},  # 6,matmul_v2_q
+                        {"shape": reshape_shape},  # 7,reshape_q
+                        {
+                            "axis": [0, 2, 1, 3],
+                            "data_format": "AnyLayout",
+                        },  # 8,trans_q
+                        {  # 9,matmul_qk
                             "trans_x": False,
                             "trans_y": True,
                         },
-                        {
+                        {  # 10,scale
                             "scale": 0.15811388194561005,
                             "bias": 0.0,
                             "bias_after_scale": True,
                         },
-                        {"axis": -1, "is_test": True},
-                        {"trans_x": False, "trans_y": False},
-                        {"axis": [0, 2, 1, 3]},
-                        {"shape": [0, 0, 320]},
+                        {"axis": -1, "is_test": True},  # 11,softmax
+                        {"trans_x": False, "trans_y": False},  # 12,matmul_qkv
+                        {
+                            "axis": [0, 2, 1, 3],
+                            "data_format": "AnyLayout",
+                        },  # 13,trans_qkv
+                        {"shape": [0, 0, 320]},  # 14,reshape_qkv
                     ]
 
                     ops_config = [
@@ -158,7 +165,7 @@ class TrtConvertFlashMultiHeadMatmulTest(TrtLayerAutoScanTest):
                         {
                             "op_type": "matmul_v2",
                             "op_inputs": {
-                                "X": ["scale_output"],
+                                "X": ["transpose21_output"],
                                 "Y": ["transpose22_output"],
                             },
                             "op_outputs": {"Out": ["matmul1_output"]},
@@ -182,7 +189,7 @@ class TrtConvertFlashMultiHeadMatmulTest(TrtLayerAutoScanTest):
                             "op_type": "matmul_v2",
                             "op_inputs": {
                                 "X": ["softmax_output"],
-                                "Y": ["transpose21_output"],
+                                "Y": ["transpose23_output"],
                             },
                             "op_outputs": {"Out": ["matmul2_output"]},
                             "op_attrs": dics[12],
@@ -238,15 +245,12 @@ class TrtConvertFlashMultiHeadMatmulTest(TrtLayerAutoScanTest):
             # The last dim of input1 and input2 should be static.
             self.dynamic_shape.min_input_shape = {
                 "input_data1": [1, 4096, 320],
-                "reshape24_output": [1, 4096, 320],
             }
             self.dynamic_shape.max_input_shape = {
                 "input_data1": [16, 4096, 320],
-                "reshape24_output": [16, 4096, 320],
             }
             self.dynamic_shape.opt_input_shape = {
                 "input_data1": [2, 4096, 320],
-                "reshape24_output": [2, 4096, 320],
             }
 
         def clear_dynamic_shape():
@@ -262,43 +266,39 @@ class TrtConvertFlashMultiHeadMatmulTest(TrtLayerAutoScanTest):
         clear_dynamic_shape()
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         self.trt_param.workspace_size = 2013265920
-        yield self.create_inference_config(), (1, 4), (1e-5, 1e-5)
+        yield self.create_inference_config(), (1, 2), (1e-5, 1e-5)
         self.trt_param.precision = paddle_infer.PrecisionType.Half
-        yield self.create_inference_config(), (1, 4), (1e-3, 1e-3)
+        yield self.create_inference_config(), (1, 2), (1e-3, 1e-3)
 
         # for dynamic_shape
         generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         self.trt_param.workspace_size = 2013265920
-        yield self.create_inference_config(), (1, 3), (1e-5, 1e-4)
+        yield self.create_inference_config(), (1, 2), (1e-5, 1e-4)
         self.trt_param.precision = paddle_infer.PrecisionType.Half
-        yield self.create_inference_config(), (1, 3), (1e-3, 1e-3)
+        yield self.create_inference_config(), (1, 2), (1e-2, 1e-3)
 
     def add_skip_trt_case(self):
         def teller1(program_config, predictor_config):
-            if self.trt_param.precision == paddle_infer.PrecisionType.Half:
+            if self.dynamic_shape.min_input_shape == {}:
                 return True
             return False
 
         self.add_skip_case(
             teller1,
             SkipReasons.TRT_NOT_IMPLEMENTED,
-            "The output has diff between gpu and trt in fp16 mode.",
+            "TThe flash attention trt oss plugin do not support static shape yet",
         )
 
         def teller2(program_config, predictor_config):
-            if (
-                self.trt_param.precision == paddle_infer.PrecisionType.Float32
-                and len(self.dynamic_shape.min_input_shape) != 0
-                and self.batch > 2
-            ):
+            if self.trt_param.precision == paddle_infer.PrecisionType.Float32:
                 return True
             return False
 
         self.add_skip_case(
             teller2,
             SkipReasons.TRT_NOT_IMPLEMENTED,
-            "The output has diff between gpu and trt when dynamic fp32 mode and batch size > 2.",
+            "The flash attention trt oss plugin do not support fp32 yet",
         )
 
         def teller3(program_config, predictor_config):
@@ -309,11 +309,11 @@ class TrtConvertFlashMultiHeadMatmulTest(TrtLayerAutoScanTest):
         self.add_skip_case(
             teller3,
             SkipReasons.TRT_NOT_IMPLEMENTED,
-            "The output has diff between gpu and trt in int8 mode.",
+            "The flash attention trt oss plugin do not support int8 yet.",
         )
 
     def test(self):
-        # self.add_skip_trt_case()
+        self.add_skip_trt_case()
         self.run_test()
 
 

@@ -25,6 +25,17 @@ class FlashMultiheadMatMulOpConverter : public OpConverter {
                   bool test_mode) override {
     VLOG(3) << "convert a flash_multihead_mamul op to a corresponding tensorrt "
                "network structure";
+
+    bool with_fp16 = engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
+    if (engine_->precision() == AnalysisConfig::Precision::kInt8) {
+      with_fp16 = true;
+    }
+    PADDLE_ENFORCE_EQ(
+        with_fp16,
+        true,
+        platform::errors::Unimplemented(
+            "Trt flash attention oss plugin only support fp16 mode yet."));
+
     framework::OpDesc op_desc(op, nullptr);
     auto* input = engine_->GetITensor(op_desc.Input("Input").front());
     // auto input_dims = input->getDimensions();
@@ -44,13 +55,12 @@ class FlashMultiheadMatMulOpConverter : public OpConverter {
     int head_size = hidden_out / head_number;
 
     // float scale = PADDLE_GET_CONST(float, op_desc.GetAttr("alpha"));
-    // int m = hidden_in;
     int n = three * hidden_out;
     nvinfer1::ILayer* layer = nullptr;
     auto output_name = op_desc.Output("Out")[0];
+
     // [hidden_in, 3, head_number, head_size]
     // -> [head_number, 3, head_size, hidden_in]
-
     auto transpose_weight = [](const float* src,
                                float* dst,
                                int three,
@@ -63,10 +73,6 @@ class FlashMultiheadMatMulOpConverter : public OpConverter {
             for (int hi = 0; hi < hidden_in; hi++) {
               int out_index = hn * three * head_size * hidden_in +
                               t * head_size * hidden_in + hs * hidden_in + hi;
-              // int out_index = hi*three*head_number*head_size+
-              //                t*head_number*head_size+
-              //                hn*head_size+
-              //                hs;
               int in_index = hi * three * head_number * head_size +
                              t * head_number * head_size + hn * head_size + hs;
               dst[out_index] = src[in_index];
@@ -76,25 +82,24 @@ class FlashMultiheadMatMulOpConverter : public OpConverter {
       }
     };
     std::vector<float> weight_data_tmp;
-
     weight_data_tmp.reserve(weight_t->numel());
     memcpy(
         weight_data_tmp.data(), weight_data, weight_t->numel() * sizeof(float));
+
     transpose_weight(weight_data_tmp.data(),
                      weight_data,
                      three,
                      head_number,
                      head_size,
                      hidden_in);
-
     nvinfer1::Weights weight{nvinfer1::DataType::kFLOAT,
                              static_cast<void*>(weight_data),
                              static_cast<int32_t>(weight_t->numel())};
     nvinfer1::Weights bias{};
     // add shuffle for FullyConnected layer
-
     std::vector<nvinfer1::ITensor*> reshape_before_fc_shape_tensor;
     nvinfer1::ITensor* input_shape_tensor = Shape(input);
+
     for (int i = 0; i < 5; i++) {
       reshape_before_fc_shape_tensor.push_back(Add1DConstantLayer(1));
     }
@@ -110,7 +115,6 @@ class FlashMultiheadMatMulOpConverter : public OpConverter {
     reshape_before_fc_layer->setName(
         ("shuffle_before_fc_multihead_matmul(Output: " + output_name + ")")
             .c_str());
-
     nvinfer1::ILayer* fc_layer = nullptr;
     fc_layer = TRT_ENGINE_ADD_LAYER(engine_,
                                     FullyConnected,
@@ -122,6 +126,7 @@ class FlashMultiheadMatMulOpConverter : public OpConverter {
         ("multihead_mamul_fc(Output: " + output_name + ")").c_str());
 
     // add shuffle for fc layer
+
     auto* reshape_after_fc_layer =
         TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *fc_layer->getOutput(0));
     std::vector<nvinfer1::ITensor*> mha_input_tensor_shape;
@@ -137,7 +142,6 @@ class FlashMultiheadMatMulOpConverter : public OpConverter {
     reshape_after_fc_layer->setName(
         ("shuffle_after_fc_multihead_matmul(Output: " + output_name + ")")
             .c_str());
-
     auto creator = GetPluginRegistry()->getPluginCreator("fMHA_V2", "1");
     assert(creator != nullptr);
     std::vector<nvinfer1::PluginField> fields{};
@@ -157,6 +161,7 @@ class FlashMultiheadMatMulOpConverter : public OpConverter {
         plugin_inputs.data(), plugin_inputs.size(), *plugin);
 
     // add shuffle
+
     nvinfer1::ITensor* batch_tensor =
         GetEleTensorOfShape(input_shape_tensor, 0);
     nvinfer1::ITensor* length_tensor =
