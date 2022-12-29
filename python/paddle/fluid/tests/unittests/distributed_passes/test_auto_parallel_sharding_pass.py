@@ -151,6 +151,12 @@ class TestShardingStage2WithNewEXE(AutoPallelPassTestBase):
             config["enable_hierarchical_comm"] = False
             config["params_grads"] = params_grads
 
+            config["use_sharding"] = True
+            dp_pass = new_pass(
+                "auto_parallel_data_parallel_optimization", config
+            )
+            dp_pass.apply([dist_main_prog], [dist_startup_prog], PassContext())
+
             pass1 = new_pass("auto_parallel_sharding", config)
             pass1.apply([dist_main_prog], [dist_startup_prog], PassContext())
 
