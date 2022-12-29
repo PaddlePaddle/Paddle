@@ -280,7 +280,7 @@ class Optimizer:
                 state_dict = adam.state_dict()
                 paddle.save(state_dict, "paddle_dy.pdopt")
 
-                para_state_dict = paddle.load(paddle_dy.pdparams)
+                para_state_dict = paddle.load("paddle_dy.pdparams")
                 opti_state_dict = paddle.load("paddle_dy.pdopt")
         '''
         from paddle.optimizer.lr import LRScheduler
