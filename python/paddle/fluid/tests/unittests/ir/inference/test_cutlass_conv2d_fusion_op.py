@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+import re
 import unittest
 from functools import partial
 from itertools import product
@@ -21,6 +23,18 @@ from auto_scan_test import CutlassAutoScanTest
 from program_config import ProgramConfig, TensorConfig
 
 import paddle.inference as paddle_infer
+
+
+def get_cuda_version():
+    result = os.popen("nvcc --version").read()
+    regex = r'release (\S+),'
+    match = re.search(regex, result)
+    if match:
+        num = str(match.group(1))
+        integer, decimal = num.split('.')
+        return int(integer) * 1000 + int(float(decimal) * 10)
+    else:
+        return -1
 
 
 # cba pattern
@@ -134,8 +148,10 @@ class TestCutlassConv2dFusionOp1(CutlassAutoScanTest):
     def sample_predictor_configs(self, program_config):
         config = self.create_inference_config(use_gpu=True)
         config.enable_use_gpu(256, 0, paddle_infer.PrecisionType.Half)
-        config.exp_enable_use_cutlass()
-        yield config, (1e-3, 1e-3)
+        # WITH_CUTLASS is ON only when cuda version > 11.0
+        if get_cuda_version() >= 11000 and os.name == 'posix':
+            config.exp_enable_use_cutlass()
+        yield config, (1e-2, 1e-2)
 
     def test(self, *args, **kwargs):
         self.run_test(quant=False, *args, **kwargs)
@@ -295,7 +311,9 @@ class TestCutlassConv2dFusionOp2(CutlassAutoScanTest):
     def sample_predictor_configs(self, program_config):
         config = self.create_inference_config(use_gpu=True)
         config.enable_use_gpu(256, 0, paddle_infer.PrecisionType.Half)
-        config.exp_enable_use_cutlass()
+        # WITH_CUTLASS is ON only when cuda version > 11.0
+        if get_cuda_version() >= 11000 and os.name == 'posix':
+            config.exp_enable_use_cutlass()
         yield config, (1e-2, 1e-2)
 
     def test(self, *args, **kwargs):
