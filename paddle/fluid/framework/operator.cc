@@ -1974,10 +1974,6 @@ OpKernelType OperatorWithKernel::InnerGetExpectedKernelType(
   phi::KernelKey phi_kernel_key = this->GetExpectedKernelType(ctx);
   auto expected_kernel_key =
       framework::TransPhiKernelKeyToOpKernelType(phi_kernel_key);
-  if (phi::TransToPhiBackend(expected_kernel_key.place_) ==
-      phi::TransToPhiBackend(ctx.GetPlace())) {
-    expected_kernel_key.place_ = ctx.GetPlace();
-  }
 
 // NOTE(jiahongyu): PADDLE_WITH_MKLDNN codes are moved outside function
 // GetExpectedKernelType, so that if MKLDNN can be used, the library_type_ and
@@ -2080,6 +2076,12 @@ OpKernelType OperatorWithKernel::InnerGetExpectedKernelType(
       }
     }
   }
+
+  if (platform::places_are_same_class(expected_kernel_key.place_,
+                                      ctx.GetPlace())) {
+    expected_kernel_key.place_ = ctx.GetPlace();
+  }
+
   VLOG(3) << "op type:" << type_
           << ", expected_kernel_key:" << expected_kernel_key;
   return expected_kernel_key;

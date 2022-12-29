@@ -333,11 +333,12 @@ PreparedOp PrepareImpl(
               << " | kernel key: " << expected_kernel_key
               << " | kernel: " << phi_kernel;
 
-      if (!framework::backends_are_same_class(expected_kernel_key.backend(),
-                                              phi::TransToPhiBackend(place))) {
+      if (!framework::backends_are_same_class(
+              expected_kernel_key.backend(),
+              phi::TransToPhiBackend(dev_ctx.GetPlace()))) {
         dev_ctx = pool.Get(phi::TransToPhiPlace(expected_kernel_key.backend()));
-        VLOG(1) << "DEBUG imperative changed place " << place << " -> "
-                << dev_ctx->GetPlace();
+        VLOG(1) << "DEBUG imperative changed place " << phi_kernel_name
+                << " place " << place << " -> " << dev_ctx->GetPlace();
       }
       VLOG(1) << "DEBUG imperative place before PreparedOp "
               << dev_ctx->GetPlace();
@@ -400,7 +401,7 @@ PreparedOp PrepareImpl(
         auto* cpu_ctx = pool.Get(paddle::platform::CPUPlace());
         VLOG(1)
             << "DEBUG imperative place before PreparedOp fallback cpu place "
-            << cpu_ctx->GetPlace();
+            << phi_kernel_name << " place " << cpu_ctx->GetPlace();
         return PreparedOp(op,
                           empty_ctx,
                           phi_cpu_kernel_key,
@@ -508,14 +509,15 @@ PreparedOp PrepareImpl(
                                  op.Type(),
                                  KernelTypeToString(fluid_kernel_type)));
 
-  if (!platform::places_are_same_class(fluid_kernel_type.place_, place)) {
+  if (!platform::places_are_same_class(fluid_kernel_type.place_,
+                                       dev_ctx.GetPlace())) {
     dev_ctx = pool.Get(fluid_kernel_type.place_);
-    VLOG(1) << "DEBUG imperative changed place fluid" << place << " -> "
-            << dev_ctx->GetPlace();
+    VLOG(1) << "DEBUG imperative changed place fluid " << op.Type()
+            << " place " place << " -> " << dev_ctx->GetPlace();
   }
 
-  VLOG(1) << "DEBUG imperative place before fluid PreparedOp "
-          << dev_ctx->GetPlace();
+  VLOG(1) << "DEBUG imperative place before fluid PreparedOp " << op.Type()
+          << " place " << dev_ctx->GetPlace();
 
   return PreparedOp(
       op,

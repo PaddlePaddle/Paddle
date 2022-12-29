@@ -27,24 +27,27 @@ namespace paddle {
 namespace framework {
 namespace interpreter {
 
-bool DataTranferHelper::apply(const phi::KernelKey& kernel_type_for_var,
-                              const phi::KernelKey& expected_kernel_key,
-                              const std::string& var_name,
-                              std::string* new_var_name,
-                              std::vector<OpFuncNode>* op_func_nodes,
-                              bool use_local_scope,
-                              bool is_fetch_v2,
-                              const phi::DenseTensor* tensor,
-                              bool skip_run) {
+bool DataTranferHelper::apply(
+    const phi::KernelKey& kernel_type_for_var,
+    const framework::OpKernelType& expected_kernel_key,
+    const std::string& var_name,
+    std::string* new_var_name,
+    std::vector<OpFuncNode>* op_func_nodes,
+    bool use_local_scope,
+    bool is_fetch_v2,
+    const phi::DenseTensor* tensor,
+    bool skip_run) {
   bool is_transferred = false;
   auto* src_var_name = &var_name;
 
   // 1. layout transform
-  if (need_layout_transform(kernel_type_for_var, expected_kernel_key)) {
+  if (need_layout_transform(
+          kernel_type_for_var,
+          TransOpKernelTypeToPhiKernelKey(expected_kernel_key))) {
     auto op = TransferLayout(*src_var_name,
                              new_var_name,
                              kernel_type_for_var.layout(),
-                             expected_kernel_key.layout(),
+                             expected_kernel_key.data_layout_,
                              var_scope_,
                              scope_,
                              is_fetch_v2);
@@ -57,12 +60,14 @@ bool DataTranferHelper::apply(const phi::KernelKey& kernel_type_for_var,
     is_transferred = true;
   }
   // 2. dype transform
-  if (need_dtype_transform(kernel_type_for_var, expected_kernel_key)) {
+  if (need_dtype_transform(
+          kernel_type_for_var,
+          TransOpKernelTypeToPhiKernelKey(expected_kernel_key))) {
     auto op = TransferDtype(
         *src_var_name,
         new_var_name,
         framework::TransToProtoVarType(kernel_type_for_var.dtype()),
-        framework::TransToProtoVarType(expected_kernel_key.dtype()),
+        expected_kernel_key.data_type_,
         var_scope_,
         scope_);
     if (op) {
@@ -74,28 +79,10 @@ bool DataTranferHelper::apply(const phi::KernelKey& kernel_type_for_var,
     is_transferred = true;
   }
   // 3. device transform
-  if (is_fetch_v2) {
-    if (tensor->IsInitialized() && tensor->place() != phi::CPUPlace()) {
-      auto src_place = tensor->place();
-      auto dst_place = phi::CPUPlace();
-      auto op = TransferDevice(*src_var_name,
-                               new_var_name,
-                               src_place,
-                               dst_place,
-                               var_scope_,
-                               scope_);
-      if (op) {
-        RunAndConstructOpFuncNode(
-            op, *src_var_name, *new_var_name, op_func_nodes, skip_run);
-      }
-      is_transferred = true;
-    }
-  } else if (need_device_transform(kernel_type_for_var,
-                                   tensor->place(),
-                                   expected_kernel_key,
-                                   place_)) {
+  if (need_device_transform(
+          kernel_type_for_var, tensor, expected_kernel_key.place_)) {
     auto src_place = tensor->place();
-    auto dst_place = place_;
+    auto dst_place = expected_kernel_key.place_;
 
     auto op = TransferDevice(
         *src_var_name, new_var_name, src_place, dst_place, var_scope_, scope_);
@@ -552,16 +539,16 @@ void ApplyDataTransform(const OpKernelType& expected_kernel_key,
                     framework::TransOpKernelTypeToPhiKernelKey(
                         expected_kernel_key));
         // apply data transform
-        is_transferred = data_transfer_helper.apply(
-            kernel_type_for_var,
-            framework::TransOpKernelTypeToPhiKernelKey(expected_kernel_key),
-            var_name,
-            &new_var_name,
-            new_op_func_nodes,
-            use_local_scope,
-            op_base->Type() == "fetch_v2",
-            tensor_in,
-            skip_run);
+        is_transferred =
+            data_transfer_helper.apply(kernel_type_for_var,
+                                       expected_kernel_key,
+                                       var_name,
+                                       &new_var_name,
+                                       new_op_func_nodes,
+                                       use_local_scope,
+                                       op_base->Type() == "fetch_v2",
+                                       tensor_in,
+                                       skip_run);
       }
 
       if (is_transferred) {
