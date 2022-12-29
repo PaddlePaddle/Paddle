@@ -16,6 +16,7 @@ import os
 import site
 import sys
 import tempfile
+import time
 import unittest
 
 import numpy as np
@@ -23,7 +24,6 @@ import numpy as np
 import paddle
 import paddle.static as static
 from paddle.fluid.framework import _test_eager_guard, in_dygraph_mode
-from paddle.utils.cpp_extension.extension_utils import run_cmd
 from paddle.vision.transforms import Compose, Normalize
 
 
@@ -119,6 +119,7 @@ def custom_relu_double_grad_dynamic(func, device, dtype, np_x, use_func=True):
 
 class TestNewCustomOpSetUpInstall(unittest.TestCase):
     def setUp(self):
+        self.time_start = time.time()
         # compile so and set to current path
         cur_dir = os.path.dirname(os.path.abspath(__file__))
         self.temp_dir = tempfile.TemporaryDirectory()
@@ -180,15 +181,17 @@ class TestNewCustomOpSetUpInstall(unittest.TestCase):
         paddle.seed(SEED)
         paddle.framework.random._manual_program_seed(SEED)
         print("DEBUG setup finished")
+        print("SETUP TIME", time.time() - self.time_start)
 
     def tearDown(self):
+        print("TearDown TIME", time.time() - self.time_start)
         print("DEBUG begin tearDown")
-        run_cmd("pip uninstall paddle_custom_cpu")
+        os.system("pip uninstall paddle_custom_cpu")
         print("DEBUG uninstall paddle_custom_cpu finish")
         self.temp_dir.cleanup()
         del os.environ['CUSTOM_DEVICE_ROOT']
         print("DEBUG finish tearDown")
-        exit()
+        print("TearDown TIME end", time.time() - self.time_start)
 
     def test_custom_device(self):
         print("DEBUG begin test ")
