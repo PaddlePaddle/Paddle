@@ -88,8 +88,10 @@ bool MultiheadMatmulRoformerPlugin::supportsFormatCombination(
   if (pos == 0) {
     if (with_fp16_) {
 #ifdef TRT_PLUGIN_FP16_AVALIABLE
-      return (in.type == nvinfer1::DataType::kFLOAT ||
-              in.type == nvinfer1::DataType::kHALF) &&
+      //return (in.type == nvinfer1::DataType::kFLOAT ||
+      //        in.type == nvinfer1::DataType::kHALF) &&
+      //       (in.format == nvinfer1::TensorFormat::kLINEAR);
+      return (in.type == nvinfer1::DataType::kFLOAT) &&
              (in.format == nvinfer1::TensorFormat::kLINEAR);
 #else
       return (in.type == nvinfer1::DataType::kFLOAT) &&
