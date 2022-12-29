@@ -74,8 +74,6 @@ class TestShardingStage2WithNewEXE(AutoPallelPassTestBase):
     def init(self):
         if paddle.is_compiled_with_cuda():
             paddle.set_flags({'FLAGS_cudnn_deterministic': 1})
-            os.environ["FLAGS_CONVERT_GRAPH_TO_PROGRAM"] = str(1)
-            os.environ["FLAGS_add_dependency_for_communication_op"] = 'false'
         self.rtol = 1e-5
         self.atol = 1e-8
 
@@ -85,6 +83,8 @@ class TestShardingStage2WithNewEXE(AutoPallelPassTestBase):
         np.random.seed(rank + 2021)
 
     def apply_passes(self):
+        os.environ["FLAGS_CONVERT_GRAPH_TO_PROGRAM"] = str(1)
+        os.environ["FLAGS_add_dependency_for_communication_op"] = 'false'
         dist_strategy = fleet.DistributedStrategy()
         dist_strategy.semi_auto = True
         dist_strategy.recompute = True
@@ -93,6 +93,7 @@ class TestShardingStage2WithNewEXE(AutoPallelPassTestBase):
         self._apply_pass = True
 
     def apply_no_passes(self):
+        os.environ["FLAGS_CONVERT_GRAPH_TO_PROGRAM"] = str(0)
         dist_strategy = fleet.DistributedStrategy()
         dist_strategy.semi_auto = True
         dist_strategy.recompute = True
@@ -143,7 +144,7 @@ class TestShardingStage2WithNewEXE(AutoPallelPassTestBase):
             config["param_bucket_size_numel"] = 1024 * 1024
             config["grad_bucket_size_numel"] = 1024 * 1024
             config["partition_algor"] = 'use_order'
-            config["enable_hierarchical_comm"] = True
+            config["enable_hierarchical_comm"] = False
             config["params_grads"] = params_grads
 
             pass1 = new_pass("auto_parallel_sharding", config)
