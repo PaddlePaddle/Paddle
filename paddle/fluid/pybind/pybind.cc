@@ -1219,13 +1219,18 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("get_grad_op_desc",
         [](const OpDesc &op_desc,
            const std::unordered_set<std::string> &no_grad_set,
+           const BlockDesc& block,
            const std::vector<BlockDesc *> &grad_sub_block) {
           std::unordered_map<std::string, std::string> grad_to_var;
-          std::vector<std::unique_ptr<OpDesc>> grad_op_descs =
-              framework::OpInfoMap::Instance()
-                  .Get(op_desc.Type())
-                  .GradOpMaker()(
-                      op_desc, no_grad_set, &grad_to_var, grad_sub_block);
+
+          auto op_info = framework::OpInfoMap::Instance().Get(op_desc.Type());
+          std::vector<std::unique_ptr<OpDesc>> grad_op_descs;
+          if (op_info.GradCompOpMaker() != nullptr) {
+            grad_op_descs = op_info.GradCompOpMaker()(op_desc, no_grad_set, &grad_to_var, const_cast<BlockDesc*>(&block), grad_sub_block);
+          } else {
+            grad_op_descs = op_info.GradOpMaker()(op_desc, no_grad_set, &grad_to_var, grad_sub_block);
+          }
+
           std::vector<OpDesc *> grad_op_desc_ptrs(grad_op_descs.size());
           std::transform(
               grad_op_descs.begin(),
