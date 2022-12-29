@@ -42,7 +42,6 @@ __all__ = []
 __all__ += layers.__all__
 __all__ += base.__all__
 __all__ += container.__all__
-__all__ += nn.__all__
 __all__ += parallel.__all__
 __all__ += checkpoint.__all__
 __all__ += learning_rate_scheduler.__all__
