@@ -1990,7 +1990,7 @@ set +x
             fi
             read testcase <<< $(echo "$line"|grep -oEi "\w+$")
 
-            if [["$testcase" == "simple_test"]]; then
+            if [[ "$testcase" == "simple_test" ]]; then
                 continue
             fi
 
