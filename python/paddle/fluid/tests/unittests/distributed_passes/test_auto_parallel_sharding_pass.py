@@ -27,6 +27,8 @@ from paddle.distributed.auto_parallel.dist_context import (
 )
 from paddle.distributed.passes import PassContext, new_pass
 
+from .process_group import get_all_process_groups
+
 sys.path.append("..")
 
 
@@ -132,9 +134,10 @@ class TestShardingStage2WithNewEXE(AutoPallelPassTestBase):
         )
 
         if self._apply_pass:
+            cur_rank = paddle.distributed.get_rank()
             config = {}
             config["dist_context"] = get_default_distributed_context()
-            config["global_rank"] = paddle.distributed.get_rank()
+            config["global_rank"] = cur_rank
             config["stage"] = 2
             config["degree"] = 2
             config["sharding_degree"] = 2
@@ -154,6 +157,11 @@ class TestShardingStage2WithNewEXE(AutoPallelPassTestBase):
                 "auto_parallel_supplement_explicit_dependencies", config
             )
             pass2.apply([dist_main_prog], [dist_startup_prog], PassContext())
+
+            for process_group in get_all_process_groups():
+                if cur_rank not in process_group.ranks:
+                    continue
+                process_group.instantiate()
 
             with open(
                 "./appled_program.txt.{}".format(paddle.distributed.get_rank()),
