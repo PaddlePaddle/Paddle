@@ -305,6 +305,7 @@ class TestFLOPSAPI(unittest.TestCase):
         self.assertTrue(
             flops('c_embedding', {'Ids': [[12, 12]], 'W': [[12, 12, 3]]}, {})
             == 0
+        )
         self.assertTrue(
             flops(
                 'reduce_sum',
