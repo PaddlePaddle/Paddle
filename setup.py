@@ -1355,7 +1355,7 @@ def main():
 
     # Log for PYPI, get long_description of setup()
     with open(
-        paddle_source_dir + '/python/paddle/README.rst', "r", encoding='UTF-8'
+        paddle_source_dir + '/python/paddle/README.md', "r", encoding='UTF-8'
     ) as f:
         long_description = f.read()
 

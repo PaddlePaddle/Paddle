@@ -762,7 +762,7 @@ else:
         yield
 
 # Log for PYPI
-with open("@PADDLE_BINARY_DIR@/python/paddle/README.rst", "r", encoding='UTF-8') as f:
+with open("@PADDLE_BINARY_DIR@/python/paddle/README.md", "r", encoding='UTF-8') as f:
     long_description = f.read()
 
 # strip *.so to reduce package size

@@ -17,9 +17,7 @@ from .layer_function_generator import templatedoc
 from ..framework import (
     core,
     Variable,
-    _non_static_mode,
     in_dygraph_mode,
-    _in_legacy_dygraph,
     convert_np_dtype_to_dtype_,
 )
 from ..layer_helper import LayerHelper
@@ -156,7 +154,7 @@ def sequence_conv(
     """
 
     assert (
-        not _non_static_mode()
+        not in_dygraph_mode()
     ), "sequence layer is not supported in dygraph mode yet."
     check_variable_and_dtype(
         input, 'input', ['float32', 'float64'], 'sequence_conv'
@@ -258,7 +256,7 @@ def sequence_softmax(input, use_cudnn=False, name=None):
              x_sequence_softmax_2 = paddle.static.nn.sequence_softmax(input=y)
     """
     assert (
-        not _non_static_mode()
+        not in_dygraph_mode()
     ), "sequence layer is not supported in dygraph mode yet."
     helper = LayerHelper('sequence_softmax', **locals())
     check_variable_and_dtype(
@@ -363,7 +361,7 @@ def sequence_pool(input, pool_type, is_test=False, pad_value=0.0):
             first_x = paddle.static.nn.sequence_pool(input=x, pool_type='first')
     """
     assert (
-        not _non_static_mode()
+        not in_dygraph_mode()
     ), "sequence layer is not supported in dygraph mode yet."
     check_variable_and_dtype(
         input, 'input', ['float32', 'float64'], 'sequence_pool'
@@ -441,7 +439,7 @@ def sequence_concat(input, name=None):
             out = paddle.static.nn.sequence_concat(input=[x, y])
     """
     assert (
-        not _non_static_mode()
+        not in_dygraph_mode()
     ), "sequence layer is not supported in dygraph mode yet."
     helper = LayerHelper('sequence_concat', **locals())
 
@@ -640,7 +638,7 @@ def sequence_slice(input, offset, length, name=None):
                                                    length=length)
     """
     assert (
-        not _non_static_mode()
+        not in_dygraph_mode()
     ), "sequence layer is not supported in dygraph mode yet."
     helper = LayerHelper("sequence_slice", **locals())
 
@@ -794,7 +792,7 @@ def sequence_expand(x, y, ref_level=-1, name=None):
             #    data: [1 2 1 2 3 4 3 4]
     """
     assert (
-        not _non_static_mode()
+        not in_dygraph_mode()
     ), "sequence layer is not supported in dygraph mode yet."
     check_variable_and_dtype(
         x, 'x', ['float32', 'float64', 'int32', 'int64'], 'sequence_expand'
@@ -916,7 +914,7 @@ def sequence_expand_as(x, y, name=None):
             #    data: [1 1 1 2 2 2 3 4]
     """
     assert (
-        not _non_static_mode()
+        not in_dygraph_mode()
     ), "sequence layer is not supported in dygraph mode yet."
     check_variable_and_dtype(
         x, 'x', ['float32', 'float64', 'int32', 'int64'], 'sequence_expand_as'
@@ -1019,7 +1017,7 @@ def sequence_pad(x, pad_value, maxlen=None, name=None):
     """
 
     assert (
-        not _non_static_mode()
+        not in_dygraph_mode()
     ), "sequence layer is not supported in dygraph mode yet."
     helper = LayerHelper('sequence_pad', **locals())
     check_variable_and_dtype(
@@ -1108,7 +1106,7 @@ def sequence_unpad(x, length, name=None):
     """
 
     assert (
-        not _non_static_mode()
+        not in_dygraph_mode()
     ), "sequence layer is not supported in dygraph mode yet."
     helper = LayerHelper('sequence_unpad', **locals())
     check_variable_and_dtype(
@@ -1183,7 +1181,7 @@ def sequence_reshape(input, new_dim):
             x_reshaped = paddle.static.nn.sequence_reshape(input=x, new_dim=4)
     """
     assert (
-        not _non_static_mode()
+        not in_dygraph_mode()
     ), "sequence layer is not supported in dygraph mode yet."
     helper = LayerHelper('sequence_reshape', **locals())
     check_variable_and_dtype(
@@ -1268,7 +1266,7 @@ def sequence_scatter(input, index, updates, name=None):
 
     """
     assert (
-        not _non_static_mode()
+        not in_dygraph_mode()
     ), "sequence layer is not supported in dygraph mode yet."
     helper = LayerHelper('sequence_scatter', **locals())
 
@@ -1350,7 +1348,7 @@ def sequence_enumerate(input, win_size, pad_value=0, name=None):
             out = paddle.static.nn.sequence_enumerate(input=x, win_size=3, pad_value=0)
     """
     assert (
-        not _non_static_mode()
+        not in_dygraph_mode()
     ), "sequence layer is not supported in dygraph mode yet."
     check_variable_and_dtype(
         input, 'input', ['int32', 'int64'], 'sequence_enumerate'
@@ -1479,7 +1477,7 @@ def sequence_reverse(x, name=None):
             x_reversed = paddle.static.nn.sequence_reverse(x)
     """
     assert (
-        not _non_static_mode()
+        not in_dygraph_mode()
     ), "sequence layer is not supported in dygraph mode yet."
     helper = LayerHelper("sequence_reverse", **locals())
     check_variable_and_dtype(

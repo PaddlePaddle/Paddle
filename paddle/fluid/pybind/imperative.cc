@@ -550,7 +550,7 @@ void BindImperative(py::module *m_ptr) {
               string::Sprintf("%s", array.dtype()).compare("object"),
               0,
               platform::errors::InvalidArgument(
-                  "Faild to convert input data to a regular ndarray.\n  * "
+                  "Failed to convert input data to a regular ndarray.\n  * "
                   "Usually this means the input data contains nested "
                   "lists with different lengths.\n  * Check the reader "
                   "function passed to 'set_(sample/sample_list/batch)"
@@ -590,7 +590,7 @@ void BindImperative(py::module *m_ptr) {
             string::Sprintf("%s", array.dtype()).compare("object"),
             0,
             platform::errors::InvalidArgument(
-                "Faild to convert input data to a regular ndarray.\n  * "
+                "Failed to convert input data to a regular ndarray.\n  * "
                 "Usually this means the input data contains nested "
                 "lists with different lengths.\n  * Check the reader "
                 "function passed to 'set_(sample/sample_list/batch)"

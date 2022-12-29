@@ -59,9 +59,7 @@ def parse_op_labels(labelstr, operand):
         labelstr.replace('...', '', 1).find('.') == -1
     ), "Invalid equation: `.` is found outside of an ellipsis."
 
-    # Check shape. Note, in Paddle a tensor rank is always nonzero
     ndims = len(operand.shape)
-    assert ndims > 0
 
     full_labelstr = labelstr.replace('...', '.' * (ndims - len(labelstr) + 3))
 
@@ -743,20 +741,25 @@ def parse_fake_shape(equation, operands, labels):
     list of shape
 
     """
+    origin_labels = map(lambda x: x.strip(), equation.split(','))
     shaped = collections.namedtuple('shaped', ['shape'])
 
-    def fake_shape(label, op):
+    def fake_shape(ori_label, label, op):
+        """
+        1. ori_label is the original labels, not aligned by '....'
+        2. if the '...' is evalulated to empty list, there is no '.' in label
+        """
         assert len(op.shape) == len(label), (
             "length of shape and length of label must be the same, but received %d != %d"
             % (len(op.shape), len(label))
         )
         fakes = [s for i, (l, s) in enumerate(zip(label, op.shape)) if l != '.']
         fakes = list(map(abs, fakes))  # make -1 -> 1
-        if '.' in label:
-            fakes.insert(label.index('.'), 1)
+        if '.' in ori_label:
+            fakes.insert(ori_label.index('.'), 1)
         return shaped(fakes)
 
-    out = list(map(fake_shape, labels, operands))
+    out = list(map(fake_shape, origin_labels, labels, operands))
     return out
 
 
@@ -782,7 +785,7 @@ def gen_equation_for_opteinsum(lhs, rhs):
             if c not in used:
                 return c
         raise ValueError(
-            "You have used all `a` - `z`, there can't find a unused for einsum optimization"
+            "You have used all `a` - `z`, there can't find a unused char for einsum optimization"
         )
 
     cnt = collections.Counter(lhs)

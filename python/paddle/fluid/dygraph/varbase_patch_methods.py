@@ -20,7 +20,7 @@ import sys
 
 import paddle
 from .. import framework
-from ..framework import convert_np_dtype_to_dtype_, _in_legacy_dygraph
+from ..framework import convert_np_dtype_to_dtype_
 from .. import core
 from .. import unique_name
 from ..framework import (
