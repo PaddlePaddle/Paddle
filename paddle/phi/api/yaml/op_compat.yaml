@@ -1242,6 +1242,7 @@
       support_tensor : true
   extra :
     attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32"]
+    outputs : [xshape]
 
 - op : stack
   backward : stack_grad
@@ -1371,6 +1372,8 @@
       data_type : int
       tensor_name : AxesTensor
       tensors_name : AxesTensorList
+  extra :
+    outputs : [xshape]
 
 - op : unstack
   backward : unstack_grad

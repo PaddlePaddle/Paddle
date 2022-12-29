@@ -258,6 +258,10 @@ def replace_compat_name(op_fluid_map_list, forward_op_dict, backward_op_dict):
             scalar_configs = op_args['scalar']
         if 'int_array' in op_args:
             int_array_configs = op_args['int_array']
+        if 'extra' in op_args and 'outputs' in op_args['extra']:
+            for out_item in forward_op_item['outputs']:
+                if out_item['name'] in op_args['extra']['outputs']:
+                    out_item['is_extra'] = True
 
         key_set = ['inputs', 'attrs', 'outputs']
         args_map = {}

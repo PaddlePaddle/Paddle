@@ -53,6 +53,9 @@ AddOutput({{name | to_opmaker_name}}, "({{typename}}), output {{i}} of {{op_name
   {%- if is_intermediate %}
 
     .AsIntermediate()
+  {%- endif %}
+  {%- if "is_extra" in output and output["is_extra"] %}
+
     .AsExtra()
   {%- endif %}
 {%- endmacro %}
