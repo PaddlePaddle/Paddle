@@ -19,9 +19,6 @@
 #ifdef PADDLE_WITH_HIP
 #include <miopen/miopen.h>
 #endif
-#ifdef PADDLE_WITH_TENSORRT
-#include "paddle/fluid/inference/tensorrt/helper.h"
-#endif
 
 #include <glog/logging.h>
 
@@ -107,12 +104,9 @@ const std::vector<std::string> kTRTSubgraphPasses({
       "trt_multihead_matmul_fuse_pass_v3",            //
       "multihead_matmul_roformer_fuse_pass",          //
       "constant_folding_pass",                        //
-#if IS_TRT_VERSION_GE(8522)
-      // #pragma message("@@@ compile flash and cross pass for trt > 8522")
-      "trt_flash_multihead_matmul_fuse_pass",  //
-      "trt_cross_multihead_matmul_fuse_pass",  //
-#endif
-      "vit_attention_fuse_pass",  //
+      "trt_flash_multihead_matmul_fuse_pass",         //
+      "trt_cross_multihead_matmul_fuse_pass",         //
+      "vit_attention_fuse_pass",                      //
 #if defined _WIN32  // Windows CI is TensorRT7.0. Remove this after upgrading.
 #else
       "trt_skip_layernorm_fuse_pass",          //

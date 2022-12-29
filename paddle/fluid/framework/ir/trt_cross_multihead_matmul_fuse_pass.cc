@@ -19,7 +19,9 @@
 
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_version_registry.h"
-
+#ifdef PADDLE_WITH_TENSORRT
+#include "paddle/fluid/inference/tensorrt/helper.h"
+#endif
 namespace paddle {
 namespace framework {
 class Scope;
@@ -542,6 +544,13 @@ int TrtCrossMultiHeadMatmulFusePass::BuildCrossFusion(
 
 void TrtCrossMultiHeadMatmulFusePass::ApplyImpl(Graph* graph) const {
   FusePassBase::Init(name_scope_, graph);
+#ifdef PADDLE_WITH_TENSORRT
+#if IS_TRT_VERSION_LT(8522)
+  VLOG(3) << "Cross attention oss plugin only available for trt version >= "
+             "8.5.2.2. Stop this pass";
+  return;
+#endif
+#endif
   bool with_dynamic_shape = Get<bool>("with_dynamic_shape");
   if (!with_dynamic_shape) {
     VLOG(3) << "Cross attention oss plugin need trt "
