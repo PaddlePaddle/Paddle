@@ -14,6 +14,8 @@
 
 #include "paddle/fluid/distributed/collective/nccl_tools.h"
 
+#include <unordered_map>
+
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/errors.h"
 
@@ -21,7 +23,7 @@ namespace paddle {
 namespace distributed {
 
 ncclRedOp_t ToNCCLRedType(ReduceOp reduction) {
-  static const std::map<ReduceOp, ncclRedOp_t> red_type = {
+  static const std::unordered_map<ReduceOp, ncclRedOp_t> red_type = {
       {ReduceOp::MIN, ncclMin},
       {ReduceOp::MAX, ncclMax},
       {ReduceOp::SUM, ncclSum},
