@@ -134,7 +134,6 @@ struct TrtMultiHeadMatmulV3Pattern : public PatternBase {
   PATTERN_DECL_NODE(matmul_qkv_out);
 };
 
-
 }  // namespace patterns
 
 class TrtMultiHeadMatmulFusePass : public FusePassBase {
@@ -176,7 +175,6 @@ class TrtMultiHeadMatmulV3FusePass : public FusePassBase {
                     const std::string& name_scope,
                     Scope* scope) const;
 };
-
 
 }  // namespace ir
 }  // namespace framework

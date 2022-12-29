@@ -15,7 +15,7 @@
 #include "paddle/fluid/framework/ir/trt_cross_multihead_matmul_fuse_pass.h"
 
 #include <string>
-#include "math.h"
+#include "math.h"  // NOLINT
 
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_version_registry.h"
@@ -59,9 +59,7 @@ namespace patterns {
 //       |
 //    cross_multihead_matmul
 //       |
-//     output 
-
-
+//     output
 
 PDNode* TrtCrossMultiHeadMatmulPattern::operator()() {
   std::unordered_set<std::string> mul_ops{"mul", "matmul_v2"};
@@ -71,7 +69,7 @@ PDNode* TrtCrossMultiHeadMatmulPattern::operator()() {
 
   input0->assert_is_ops_input(mul_ops);
   input1->assert_is_ops_input(mul_ops);
-  VLOG(5)<<"Start match TrtCrossMultiHeadMatmulPattern";
+  VLOG(5) << "Start match TrtCrossMultiHeadMatmulPattern";
   // First path
   auto* mul0 = pattern->NewNode(mul0_repr())->assert_is_ops(mul_ops);
   auto* mul0_w_var = pattern->NewNode(mul0_w_repr())
@@ -93,7 +91,7 @@ PDNode* TrtCrossMultiHeadMatmulPattern::operator()() {
       pattern->NewNode(transpose2_0_repr())->assert_is_op("transpose2");
   auto* transpose2_0_out_var = pattern->NewNode(transpose2_0_out_repr())
                                    ->assert_is_op_output("transpose2");
-  transpose2_0_out_var->AsIntermediate()->assert_is_ops_input(matmul_ops,"X");
+  transpose2_0_out_var->AsIntermediate()->assert_is_ops_input(matmul_ops, "X");
 
   auto* matmul_qk =
       pattern->NewNode(matmul_qk_repr())->assert_is_ops(matmul_ops);
@@ -128,7 +126,7 @@ PDNode* TrtCrossMultiHeadMatmulPattern::operator()() {
       pattern->NewNode(reshape2_qkv_repr())->assert_is_op("reshape2");
   auto* reshape2_qkv_out_var = pattern->NewNode(reshape2_qkv_out_repr())
                                    ->assert_is_op_output("reshape2");
-//   reshape2_qkv_out_var->assert_is_ops_input(mul_ops);
+  //   reshape2_qkv_out_var->assert_is_ops_input(mul_ops);
 
   // Second path to matmul
   auto* mul1 = pattern->NewNode(mul1_repr())->assert_is_ops(mul_ops);
@@ -152,7 +150,7 @@ PDNode* TrtCrossMultiHeadMatmulPattern::operator()() {
   auto* transpose2_1_out_var = pattern->NewNode(transpose2_1_out_repr())
                                    ->assert_is_op_output("transpose2");
   transpose2_1_out_var->AsIntermediate()->assert_is_ops_input(
-      matmul_ops,"Y");  // link to matmul qk
+      matmul_ops, "Y");  // link to matmul qk
 
   // Third path to matmul
   auto* mul2 = pattern->NewNode(mul2_repr())->assert_is_ops(mul_ops);
@@ -161,7 +159,7 @@ PDNode* TrtCrossMultiHeadMatmulPattern::operator()() {
                          ->assert_is_ops_input(mul_ops, "Y");
   auto* mul2_out_var =
       pattern->NewNode(mul2_out_repr())->assert_is_ops_output(mul_ops);
-      
+
   mul2_out_var->AsIntermediate()->assert_is_op_input("reshape2");
 
   auto* reshape2_2 =
@@ -184,7 +182,7 @@ PDNode* TrtCrossMultiHeadMatmulPattern::operator()() {
   transpose2_0->LinksFrom({reshape2_0_out_var}).LinksTo({transpose2_0_out_var});
   // K path
   mul1->LinksFrom({input1, mul1_w_var}).LinksTo({mul1_out_var});
-  
+
   reshape2_1->LinksFrom({mul1_out_var}).LinksTo({reshape2_1_out_var});
   transpose2_1->LinksFrom({reshape2_1_out_var}).LinksTo({transpose2_1_out_var});
   // compute q*k
@@ -194,7 +192,7 @@ PDNode* TrtCrossMultiHeadMatmulPattern::operator()() {
   softmax_qk->LinksFrom({scale_out_var}).LinksTo({softmax_qk_out_var});
   // V  path
   mul2->LinksFrom({input1, mul2_w_var}).LinksTo({mul2_out_var});
-  
+
   reshape2_2->LinksFrom({mul2_out_var}).LinksTo({reshape2_2_out_var});
   transpose2_2->LinksFrom({reshape2_2_out_var}).LinksTo({transpose2_2_out_var});
   // compute q*k*v
@@ -208,8 +206,7 @@ PDNode* TrtCrossMultiHeadMatmulPattern::operator()() {
   return reshape2_qkv_out_var;
 }
 
-} // patterns
-
+}  // namespace patterns
 
 TrtCrossMultiHeadMatmulFusePass::TrtCrossMultiHeadMatmulFusePass() {
   AddOpCompat(OpCompat("mul"))
@@ -320,16 +317,16 @@ TrtCrossMultiHeadMatmulFusePass::TrtCrossMultiHeadMatmulFusePass() {
       .End();
 }
 
-int TrtCrossMultiHeadMatmulFusePass::BuildCrossFusion(Graph* graph,
-                                                const std::string& name_scope,
-                                                Scope* scope) const {
-    GraphPatternDetector gpd;
-    auto* pattern = gpd.mutable_pattern();
+int TrtCrossMultiHeadMatmulFusePass::BuildCrossFusion(
+    Graph* graph, const std::string& name_scope, Scope* scope) const {
+  GraphPatternDetector gpd;
+  auto* pattern = gpd.mutable_pattern();
 
-    // Create pattern.
-    patterns::TrtCrossMultiHeadMatmulPattern multihead_pattern(pattern, name_scope);
+  // Create pattern.
+  patterns::TrtCrossMultiHeadMatmulPattern multihead_pattern(pattern,
+                                                             name_scope);
 
-    multihead_pattern();
+  multihead_pattern();
   auto fuse_creater = [&](Node* input0,
                           Node* input1,
                           Node* mul0,
@@ -345,91 +342,92 @@ int TrtCrossMultiHeadMatmulFusePass::BuildCrossFusion(Graph* graph,
                           Node* reshape2_qkv_out,
                           Node* scale,
                           Node* scale_out) {
-        auto scale_attr = PADDLE_GET_CONST(float, scale->Op()->GetAttr("scale"));
+    auto scale_attr = PADDLE_GET_CONST(float, scale->Op()->GetAttr("scale"));
 
-        // create multihead
-        OpDesc multihead_op_desc(mul0->Op()->Block());
-        auto reshape_desc = reshape2->Op();
-        int head_number =
-            PADDLE_GET_CONST(std::vector<int>, reshape_desc->GetAttr("shape"))
-                .at(2);
-        multihead_op_desc.SetType("cross_multihead_matmul");
-        multihead_op_desc.SetInput("Input_q",{input0->Name()});
-        multihead_op_desc.SetInput("Input_kv",{input1->Name()});
+    // create multihead
+    OpDesc multihead_op_desc(mul0->Op()->Block());
+    auto reshape_desc = reshape2->Op();
+    int head_number =
+        PADDLE_GET_CONST(std::vector<int>, reshape_desc->GetAttr("shape"))
+            .at(2);
+    multihead_op_desc.SetType("cross_multihead_matmul");
+    multihead_op_desc.SetInput("Input_q", {input0->Name()});
+    multihead_op_desc.SetInput("Input_kv", {input1->Name()});
 
-        auto* wq_tensor =
-            scope->FindVar(mul0_w->Name())->GetMutable<phi::DenseTensor>();
-        auto* wk_tensor =
-            scope->FindVar(mul1_w->Name())->GetMutable<phi::DenseTensor>();
-        auto* wv_tensor =
-            scope->FindVar(mul2_w->Name())->GetMutable<phi::DenseTensor>();
-            
-        int hidden_out = wq_tensor->dims()[1];
-        int head_size = hidden_out/head_number;
-        if(abs(scale_attr-1/sqrt(static_cast<float>(head_size)))>1e-5){
-            VLOG(3)<<"scale of muilthead matmul do not fit the requirement of flash attention plugin, disable fusing.";
-            return;
+    auto* wq_tensor =
+        scope->FindVar(mul0_w->Name())->GetMutable<phi::DenseTensor>();
+    auto* wk_tensor =
+        scope->FindVar(mul1_w->Name())->GetMutable<phi::DenseTensor>();
+    auto* wv_tensor =
+        scope->FindVar(mul2_w->Name())->GetMutable<phi::DenseTensor>();
+
+    int hidden_out = wq_tensor->dims()[1];
+    int head_size = hidden_out / head_number;
+    if (abs(scale_attr - 1 / sqrt(static_cast<float>(head_size))) > 1e-5) {
+      VLOG(3) << "scale of muilthead matmul do not fit the requirement of "
+                 "flash attention plugin, disable fusing.";
+      return;
+    }
+    VLOG(5) << "trt cross attention get wq_tensor name = " << mul0_w->Name()
+            << "trt cross attention wk_tensor name = " << mul1_w->Name()
+            << "trt cross attention wv_tensor name = " << mul2_w->Name();
+
+    // auto* wq_data = wq_tensor->mutable_data<float>(platform::CPUPlace());
+    auto* wk_data = wk_tensor->mutable_data<float>(platform::CPUPlace());
+    auto* wv_data = wv_tensor->mutable_data<float>(platform::CPUPlace());
+    // combined_w_dims =
+    // [in,2,out]
+    auto combined_w_kv_dims =
+        phi::make_ddim({wk_tensor->dims()[0], 2, wk_tensor->dims()[1]});
+    VLOG(5) << "trt cross attention trt wk_dim in:" << wk_tensor->dims()[0]
+            << "trt cross attention trt wk_dim out:" << wk_tensor->dims()[1];
+    auto* combined_w_kv_desc = mul1_w->Var();
+    combined_w_kv_desc->SetShape(
+        {wk_tensor->dims()[0], 2, wk_tensor->dims()[1]});
+    combined_w_kv_desc->SetPersistable(true);
+    phi::DenseTensor tmp_combined_w_kv_tensor;
+    tmp_combined_w_kv_tensor.Resize(combined_w_kv_dims);
+    auto* tmp_combined_w_kv_data =
+        tmp_combined_w_kv_tensor.mutable_data<float>(platform::CPUPlace());
+
+    std::vector<float*> w_vec = {wk_data, wv_data};
+    int dims_h = combined_w_kv_dims[0], dims_w = combined_w_kv_dims[2];
+    // dims_h=in_feature, dims_w=out_feature
+    // Combine the three fc weights together.
+    // weight [Hidden_in * 3 * N * H]
+    for (int i = 0; i < dims_h; i++) {
+      for (int j = 0; j < 2; j++) {
+        for (int k = 0; k < dims_w; k++) {
+          int out_index = i * (2 * dims_w) + j * dims_w + k;
+          int in_index = i * dims_w + k;
+          tmp_combined_w_kv_data[out_index] = w_vec[j][in_index];
         }
-        VLOG(5)<<"trt cross attention get wq_tensor name = "<<mul0_w->Name()
-               <<"trt cross attention wk_tensor name = "<<mul1_w->Name()
-               <<"trt cross attention wv_tensor name = "<<mul2_w->Name();
+      }
+    }
 
-        // auto* wq_data = wq_tensor->mutable_data<float>(platform::CPUPlace());
-        auto* wk_data = wk_tensor->mutable_data<float>(platform::CPUPlace());
-        auto* wv_data = wv_tensor->mutable_data<float>(platform::CPUPlace());
-        // combined_w_dims =
-        // [in,2,out]
-        auto combined_w_kv_dims =
-            phi::make_ddim({wk_tensor->dims()[0], 2, wk_tensor->dims()[1]});
-        VLOG(5)<<"trt cross attention trt wk_dim in:"<<wk_tensor->dims()[0]
-               <<"trt cross attention trt wk_dim out:"<<wk_tensor->dims()[1];
-        auto* combined_w_kv_desc = mul1_w->Var();
-        combined_w_kv_desc->SetShape({wk_tensor->dims()[0], 2, wk_tensor->dims()[1]});
-        combined_w_kv_desc->SetPersistable(true);
-        phi::DenseTensor tmp_combined_w_kv_tensor;
-        tmp_combined_w_kv_tensor.Resize(combined_w_kv_dims);
-        auto* tmp_combined_w_kv_data =
-            tmp_combined_w_kv_tensor.mutable_data<float>(platform::CPUPlace());
+    wk_tensor->Resize(combined_w_kv_dims);
+    auto* new_combined_w_kv_data =
+        wk_tensor->mutable_data<float>(platform::CPUPlace());
+    memcpy(new_combined_w_kv_data,
+           tmp_combined_w_kv_data,
+           sizeof(float) * wk_tensor->numel());
 
+    scope->EraseVars({mul2_w->Name()});
 
-        std::vector<float*> w_vec = {wk_data, wv_data};
-        int dims_h = combined_w_kv_dims[0], dims_w = combined_w_kv_dims[2];
-        // dims_h=in_feature, dims_w=out_feature
-        // Combine the three fc weights together.
-        // weight [Hidden_in * 3 * N * H]
-        for (int i = 0; i < dims_h; i++) {
-            for (int j = 0; j < 2; j++) {
-                for (int k = 0; k < dims_w; k++) {
-                    int out_index = i * (2 * dims_w) + j * dims_w + k;
-                    int in_index = i * dims_w + k;
-                    tmp_combined_w_kv_data[out_index] = w_vec[j][in_index];
-                }
-            }
-        }
+    multihead_op_desc.SetInput("W_q", {mul0_w->Name()});
+    multihead_op_desc.SetInput("W_kv", {mul1_w->Name()});
+    multihead_op_desc.SetOutput("Out", {reshape2_qkv_out->Name()});
+    multihead_op_desc.SetAttr("alpha", scale_attr);
+    multihead_op_desc.SetAttr("head_number", head_number);
 
-        wk_tensor->Resize(combined_w_kv_dims);
-        auto* new_combined_w_kv_data =
-            wk_tensor->mutable_data<float>(platform::CPUPlace());
-        memcpy(new_combined_w_kv_data,
-            tmp_combined_w_kv_data,
-            sizeof(float) * wk_tensor->numel());
-
-        scope->EraseVars({mul2_w->Name()});
-
-        multihead_op_desc.SetInput("W_q", {mul0_w->Name()});
-        multihead_op_desc.SetInput("W_kv", {mul1_w->Name()});
-        multihead_op_desc.SetOutput("Out", {reshape2_qkv_out->Name()});
-        multihead_op_desc.SetAttr("alpha", scale_attr);
-        multihead_op_desc.SetAttr("head_number", head_number);
-
-        auto* multihead = graph->CreateOpNode(&multihead_op_desc);
-        IR_NODE_LINK_TO(input0, multihead);
-        IR_NODE_LINK_TO(input1, multihead);
-        IR_NODE_LINK_TO(mul0_w, multihead);
-        IR_NODE_LINK_TO(mul1_w, multihead);
-        IR_NODE_LINK_TO(multihead, reshape2_qkv_out);
-    };
-    int fusion_count{0};
+    auto* multihead = graph->CreateOpNode(&multihead_op_desc);
+    IR_NODE_LINK_TO(input0, multihead);
+    IR_NODE_LINK_TO(input1, multihead);
+    IR_NODE_LINK_TO(mul0_w, multihead);
+    IR_NODE_LINK_TO(mul1_w, multihead);
+    IR_NODE_LINK_TO(multihead, reshape2_qkv_out);
+  };
+  int fusion_count{0};
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
     // GET_IR_NODE_FROM_SUBGRAPH(dropout_out, dropout_out, multihead_pattern);
@@ -504,8 +502,7 @@ int TrtCrossMultiHeadMatmulFusePass::BuildCrossFusion(Graph* graph,
                  scale_out);
 
     std::unordered_set<const Node*> marked_nodes(
-        {
-         reshape2_0,
+        {reshape2_0,
          reshape2_1,
          reshape2_2,
          reshape2_0_out,
@@ -541,7 +538,6 @@ int TrtCrossMultiHeadMatmulFusePass::BuildCrossFusion(Graph* graph,
   gpd(graph, handler);
 
   return fusion_count;
-
 }
 
 void TrtCrossMultiHeadMatmulFusePass::ApplyImpl(Graph* graph) const {
@@ -551,10 +547,9 @@ void TrtCrossMultiHeadMatmulFusePass::ApplyImpl(Graph* graph) const {
   AddStatis(fusion_count);
 }
 
-} // ir
-} // framework
-} // paddle
-
+}  // namespace ir
+}  // namespace framework
+}  // namespace paddle
 
 REGISTER_PASS(trt_cross_multihead_matmul_fuse_pass,
               paddle::framework::ir::TrtCrossMultiHeadMatmulFusePass);
