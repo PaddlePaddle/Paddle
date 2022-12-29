@@ -316,7 +316,7 @@ class KernelFactory {
 
   KernelNameMap kernels_;
 
-  // The low precision kernel list of current module.
+  // Get the low precision kernel list of current module.
   std::map<const std::string, int> low_precision_kernels_;
 };
 
