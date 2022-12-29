@@ -80,17 +80,14 @@ def add_simple_cxx_test(rootPath):
     ):
         simple_test_path = '%s/paddle/utils/simple_test.cc' % rootPath
         os.system('touch %s' % simple_test_path)
+        os.system('echo "\n#include "gtest/gtest.h\n" >> %s' % simple_test_path)
         os.system(
-            'echo "\n#include "gtest/gtest.h"\n" >> %s' % simple_test_path
+            'echo "TEST(interface_test, type) { }\n" >> %s' % simple_test_path
         )
+        os.system('echo "cc_test(" >> %s' % variant_test_cmakeflie_path)
+        os.system('echo "  simple_test" >> %s' % variant_test_cmakeflie_path)
         os.system(
-            'echo "\nTEST(interface_test, type) { }"\n" >> %s'
-            % simple_test_path
-        )
-        os.system('echo "cc_test(\n" >> %s' % variant_test_cmakeflie_path)
-        os.system('echo "  simple_test\n" >> %s' % variant_test_cmakeflie_path)
-        os.system(
-            'echo "  SRCS simple_test.cc\n" >> %s' % variant_test_cmakeflie_path
+            'echo "  SRCS simple_test.cc" >> %s' % variant_test_cmakeflie_path
         )
         os.system('echo "  DEPS gtest)\n" >> %s' % variant_test_cmakeflie_path)
 
