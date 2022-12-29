@@ -3652,7 +3652,7 @@ function run_setup(){
     # reset ccache zero stats for collect PR's actual hit rate
     ccache -z
 
-    python setup.py $2;build_error=$?
+    ${PYTHON_EXECUTABLE} setup.py $2;build_error=$?
     
     # ci will collect ccache hit rate
     collect_ccache_hits
@@ -3668,7 +3668,7 @@ function main() {
     init
     case $CMD in
       build_only)
-        run_setup ${PYTHON_ABI:-""} bdist_wheel
+        cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
         ;;
       build_pr_dev)
         build_pr_and_develop
