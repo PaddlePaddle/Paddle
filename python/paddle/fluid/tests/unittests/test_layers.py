@@ -619,6 +619,7 @@ class TestLayer(LayerTest):
             data_t = paddle.static.data(
                 name='word', shape=[-1, 1], dtype='int64'
             )
+            data_t.desc.set_need_check_feed(False)
             emb2 = paddle.nn.Embedding(
                 dict_size, 32, weight_attr='emb.w', sparse=False
             )
