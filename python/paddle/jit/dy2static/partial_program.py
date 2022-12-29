@@ -788,13 +788,12 @@ class PartialProgramLayer:
         If specify backward_program, it will keep the variables used in backward.
         """
         # skip data var
-        skip_vars = self._inout_var_names()
+        skip_vars = self._inout_var_names
         for var_name, var in program.global_block().vars.items():
             if var.is_data:
                 skip_vars.append(var_name)
 
         if backward_program:
-            assert backward_program is not program
             for var_name in core.parse_safe_eager_deletion_skip_vars(
                 backward_program.desc
             ):
@@ -1093,6 +1092,7 @@ def add_build_strategy_for(
             build_strategy=build_strategy,
         )
         if skip_vars:
+            # TODO(Aurelius84): Need to unify name with C++, such as kSkipVarNames.
             compiled_program._graph.set("skip_gc_vars", set(skip_vars))
         compiled_program._compile(
             core.Scope(), framework._current_expected_place()
