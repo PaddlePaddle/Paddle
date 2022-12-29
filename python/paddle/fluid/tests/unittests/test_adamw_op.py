@@ -750,5 +750,197 @@ class TestAdamWOpLayerwiseLR(TestAdamWOp):
         paddle.disable_static()
 
 
+class LinearNet(paddle.nn.Layer):
+    def __init__(self):
+        super().__init__()
+        weight_attr1 = paddle.ParamAttr(
+            initializer=fluid.initializer.Constant(value=1.0),
+            trainable=True,
+        )
+        weight_attr2 = paddle.ParamAttr(
+            initializer=fluid.initializer.Constant(value=2.0),
+            trainable=True,
+        )
+        self._linear1 = paddle.nn.Linear(2, 2, weight_attr=weight_attr1)
+        self._linear2 = paddle.nn.Linear(2, 2, weight_attr=weight_attr2)
+
+    def forward(self, x):
+        return self._linear2(self._linear1(x))
+
+
+class TestFlattenParamGradsAdamw(unittest.TestCase):
+    def _test_static(
+        self,
+        place,
+        flatten_param_grads=False,
+    ):
+        paddle.enable_static()
+        main_prog = paddle.static.Program()
+        startup_prog = paddle.static.Program()
+        SEED = 2021
+        paddle.seed(SEED)
+        np.random.seed(SEED)
+
+        a_np = np.random.random(size=(2, 2)).astype('float32')
+        b_np = np.random.random(size=(2, 2)).astype('float32')
+        label_np = np.random.randint(2, size=(2, 1)).astype('int64')
+        weight_attr1 = paddle.ParamAttr(
+            name="weight1",
+            initializer=fluid.initializer.Constant(value=1.0),
+            trainable=True,
+        )
+        weight_attr2 = paddle.ParamAttr(
+            name="weight2",
+            initializer=fluid.initializer.Constant(value=2.0),
+            trainable=True,
+        )
+        clip = paddle.nn.ClipGradByGlobalNorm(clip_norm=1.0)
+
+        with paddle.static.program_guard(main_prog, startup_prog):
+            with paddle.utils.unique_name.guard():
+                a = paddle.static.data(name="a", shape=[2, 2], dtype='float32')
+                b = paddle.static.data(name="b", shape=[2, 2], dtype='float32')
+                label = paddle.static.data(
+                    name="label", shape=[2, 1], dtype='int64'
+                )
+
+                sum = paddle.add(a, b)
+                z = paddle.pow(sum, 2.0)
+
+                fc_1 = fluid.layers.fc(input=z, size=2, param_attr=weight_attr1)
+                prediction = fluid.layers.fc(
+                    input=fc_1, size=2, param_attr=weight_attr2, act='softmax'
+                )
+
+                cost = paddle.nn.functional.cross_entropy(
+                    input=prediction,
+                    label=label,
+                    reduction='none',
+                    use_softmax=False,
+                )
+                loss = paddle.mean(cost)
+                beta1_init = 0.9
+                beta2_init = 0.999
+                epsilon_init = 1e-8
+
+                adam = paddle.optimizer.AdamW(
+                    learning_rate=0.01,
+                    beta1=beta1_init,
+                    beta2=beta2_init,
+                    epsilon=epsilon_init,
+                    flatten_param_grads=flatten_param_grads,
+                    align_size=256,
+                    grad_clip=clip,
+                )
+
+                adam.minimize(loss)
+
+        scope = fluid.Scope()
+        with fluid.scope_guard(scope):
+            exe = paddle.static.Executor(place)
+            exe.run(startup_prog)
+
+            print("Start run on {}".format(place))
+            for epoch in range(10):
+                pred_res, loss_res = exe.run(
+                    main_prog,
+                    feed={"a": a_np, "b": b_np, "label": label_np},
+                    fetch_list=[prediction, loss],
+                )
+                print(
+                    "Epoch {} | Prediction[0]: {}, Loss: {}".format(
+                        epoch, pred_res[0], loss_res
+                    )
+                )
+            paddle.disable_static()
+            return pred_res, loss_res
+
+    def _test_dygraph(
+        self,
+        place,
+        flatten_param_grads=False,
+    ):
+        paddle.disable_static()
+        SEED = 2021
+        paddle.seed(SEED)
+        np.random.seed(SEED)
+        paddle.set_device(place)
+
+        input_np = np.random.random(size=(2, 2)).astype('float32')
+        label_np = np.random.randint(2, size=(2, 1)).astype('int64')
+        input = paddle.to_tensor(input_np)
+        label = paddle.to_tensor(label_np)
+
+        model = LinearNet()
+
+        clip = paddle.nn.ClipGradByGlobalNorm(clip_norm=1.0)
+        beta1_init = 0.9
+        beta2_init = 0.999
+        epsilon_init = 1e-8
+        adamw = paddle.optimizer.AdamW(
+            learning_rate=0.01,
+            parameters=model.parameters(),
+            beta1=beta1_init,
+            beta2=beta2_init,
+            epsilon=epsilon_init,
+            flatten_param_grads=flatten_param_grads,
+            align_size=256,
+            grad_clip=clip,
+        )
+
+        print("Start run on {}".format(place))
+        for epoch in range(10):
+            prediction = model(input)
+
+            cost = paddle.nn.functional.cross_entropy(
+                input=prediction,
+                label=label,
+                reduction='none',
+                use_softmax=False,
+            )
+            loss = paddle.mean(cost)
+            loss.backward()
+            adamw.step()
+            adamw.clear_grad()
+            print(
+                "Epoch {} | Prediction[0]: {}, Loss: {}".format(
+                    epoch, prediction[0], loss
+                )
+            )
+        return prediction[0], loss
+
+    def _test_with_place(self, place, is_dygraph=True):
+        preds = []
+        losses = []
+
+        for flatten_param_grads in [True, False]:
+            if is_dygraph:
+                pred, loss = self._test_dygraph(
+                    place,
+                    flatten_param_grads,
+                )
+            else:
+                pred, loss = self._test_static(
+                    place,
+                    flatten_param_grads,
+                )
+            preds.append(pred)
+            losses.append(loss)
+        for pred in preds:
+            np.testing.assert_allclose(pred, preds[0], rtol=1e-05)
+        for loss in losses:
+            np.testing.assert_allclose(loss, losses[0], rtol=1e-05)
+
+    def test_static_adamw_flatten_param_grads(self):
+        self._test_with_place('cpu', is_dygraph=False)
+        if core.is_compiled_with_cuda():
+            self._test_with_place('gpu:0', is_dygraph=False)
+
+    def test_dygraph_adamw_flatten_param_grads(self):
+        self._test_with_place('cpu', is_dygraph=True)
+        if core.is_compiled_with_cuda():
+            self._test_with_place('gpu:0', is_dygraph=True)
+
+
 if __name__ == "__main__":
     unittest.main()

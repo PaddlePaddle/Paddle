@@ -1127,7 +1127,6 @@ class Optimizer:
             need_flatten_grads.append(g)
 
         shape = [np.prod(p.shape) for p in need_flatten_params]
-        block = need_flatten_params[0].block
 
         flatten_param = self.helper.create_global_variable(
             name='flatten_param',
@@ -1136,8 +1135,8 @@ class Optimizer:
             shape=[np.sum(shape)],
             belong_to_optimizer=True,
         )
-
         flatten_param.stop_gradient = False
+
         flatten_grad = self.helper.create_global_variable(
             name='flatten_grad',
             persistable=True,
@@ -1146,6 +1145,12 @@ class Optimizer:
             belong_to_optimizer=True,
         )
 
+        if framework._non_static_mode():
+            use_align = False
+        else:
+            use_align = True
+
+        block = need_flatten_params[0].block
         with program_guard(default_main_program()):
             block.append_op(
                 type="coalesce_tensor",
@@ -1156,7 +1161,7 @@ class Optimizer:
                 },
                 attrs={
                     "copy_data": True,
-                    "use_align": True,
+                    "use_align": use_align,
                     "align_size": self._align_size,
                     "dtype": need_flatten_params[0].dtype,
                 },
@@ -1171,20 +1176,21 @@ class Optimizer:
                 },
                 attrs={
                     "copy_data": True,
-                    "use_align": True,
+                    "use_align": use_align,
                     "align_size": self._align_size,
                     "dtype": need_flatten_grads[0].dtype,
                 },
             )
 
-        # NOTE(zhiqiu): the initializer should be set after coalesce_tensor op,
-        # so the shape of flatten_param and flatten_grad will be inferred.
-        self.helper.set_variable_initializer(
-            flatten_param, initializer=Constant(0.0)
-        )
-        self.helper.set_variable_initializer(
-            flatten_grad, initializer=Constant(0.0)
-        )
+        if not framework._non_static_mode():
+            # NOTE(zhiqiu): the initializer should be set after coalesce_tensor op,
+            # so the shape of flatten_param and flatten_grad will be inferred.
+            self.helper.set_variable_initializer(
+                flatten_param, initializer=Constant(0.0)
+            )
+            self.helper.set_variable_initializer(
+                flatten_grad, initializer=Constant(0.0)
+            )
 
         return [(flatten_param, flatten_grad)]
 
@@ -1259,7 +1265,11 @@ class Optimizer:
                 framework.default_startup_program(),
             ):
                 # NOTE(zhiqiu): currently, only support ClipGradByGlobalNorm and without regularization.
-                if self._flatten_param_grads and self.regularization is None:
+                if (
+                    self._flatten_param_grads
+                    and isinstance(params_grads, list)
+                    and self.regularization is None
+                ):
                     if self._grad_clip is None or isinstance(
                         self._grad_clip, ClipGradByGlobalNorm
                     ):
