@@ -87,7 +87,6 @@ if(WIN32)
   endif()
 else()
   if(WITH_SETUP_INSTALL)
-
     add_custom_command(
       OUTPUT ${PADDLE_PYTHON_BUILD_DIR}/.timestamp
       COMMAND touch stub.cc
