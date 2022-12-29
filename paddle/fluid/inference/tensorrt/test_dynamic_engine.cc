@@ -441,10 +441,14 @@ TEST_F(TensorRTDynamicTestFusedTokenPrune, test_fused_token_prune) {
                           platform::errors::InvalidArgument(
                               "TRT fused_token_prune layer building failed."));
   std::vector<std::string> output_tensor_names{"out_slimmed_x", "out_cls_inds"};
+  // In FusedTokenPrunePluginDynamic plugin, the first output is FLOAT; the
+  // second output is INT32.
+  std::vector<nvinfer1::DataType> layer_output_dtype = {
+      nvinfer1::DataType::kFLOAT, nvinfer1::DataType::kINT32};
   for (size_t i = 0; i < 2; i++) {
     layer->getOutput(i)->setName(output_tensor_names[i].c_str());
     engine_->DeclareOutput(
-        layer, i, output_tensor_names[i], nvinfer1::DataType::kFLOAT);
+        layer, i, output_tensor_names[i], layer_output_dtype[i]);
   }
   engine_->FreezeNetwork();
 

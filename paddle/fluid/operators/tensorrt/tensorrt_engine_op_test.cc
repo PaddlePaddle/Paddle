@@ -92,6 +92,7 @@ void DynamicShapeTest(bool allow_build_at_runtime) {
   AddTensorToBlockDesc(block_, "y", std::vector<int64_t>({4, 6}));
   AddTensorToBlockDesc(block_, "y0", std::vector<int64_t>({6, 8}));
   AddTensorToBlockDesc(block_, "z", std::vector<int64_t>({2, 6}));
+  AddTensorToBlockDesc(block_, "z0", std::vector<int64_t>({2, 8, 1, 1}));
 
   // It is wired, need to copy manually.
   *block_->add_ops() = *fc0->Proto();
