@@ -3668,7 +3668,7 @@ function main() {
     init
     case $CMD in
       build_only)
-        cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
+        run_setup ${PYTHON_ABI:-""} bdist_wheel
         ;;
       build_pr_dev)
         build_pr_and_develop
