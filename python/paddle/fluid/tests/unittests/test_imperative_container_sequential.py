@@ -37,7 +37,7 @@ class TestImperativeContainerSequential(unittest.TestCase):
 
             l1 = Linear(10, 1)
             l2 = Linear(1, 3)
-            model2 = fluid.dygraph.Sequential(('l1', l1), ('l2', l2))
+            model2 = paddle.nn.Sequential(('l1', l1), ('l2', l2))
             self.assertEqual(len(model2), 2)
             res2 = model2(data)
             self.assertTrue(l1 is model2.l1)
@@ -71,7 +71,7 @@ class TestImperativeContainerSequential(unittest.TestCase):
 
             l1 = Linear(10, 1)
             l2 = Linear(1, 3)
-            model2 = fluid.dygraph.Sequential(['l1', l1], ['l2', l2])
+            model2 = paddle.nn.Sequential(['l1', l1], ['l2', l2])
             self.assertEqual(len(model2), 2)
             res2 = model2(data)
             self.assertTrue(l1 is model2.l1)
