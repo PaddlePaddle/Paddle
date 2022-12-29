@@ -12,9 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle import _C_ops, _legacy_C_ops
+from paddle import _C_ops
 from paddle.fluid.data_feeder import check_variable_and_dtype
-from paddle.fluid.framework import _in_legacy_dygraph, in_dygraph_mode
+from paddle.fluid.framework import in_dygraph_mode
 from paddle.fluid.layer_helper import LayerHelper
 
 __all__ = []
@@ -49,35 +49,32 @@ def _npu_identity(x, format=-1):
     """
     if in_dygraph_mode():
         return _C_ops.npu_identity(x, format)
+    else:
+        check_variable_and_dtype(
+            x,
+            'x',
+            [
+                'bool',
+                'int8',
+                'uint8',
+                'int16',
+                'int32',
+                'int64',
+                'float16',
+                'float32',
+                'float64',
+            ],
+            'npu_identity',
+        )
 
-    if _in_legacy_dygraph():
-        return _legacy_C_ops.npu_identity(x, 'format', format)
-
-    check_variable_and_dtype(
-        x,
-        'x',
-        [
-            'bool',
-            'int8',
-            'uint8',
-            'int16',
-            'int32',
-            'int64',
-            'float16',
-            'float32',
-            'float64',
-        ],
-        'npu_identity',
-    )
-
-    helper = LayerHelper('npu_identity', **locals())
-    out = helper.create_variable_for_type_inference(
-        dtype=x.dtype, stop_gradient=x.stop_gradient
-    )
-    helper.append_op(
-        type='npu_identity',
-        inputs={'x': [x]},
-        outputs={'out': [out]},
-        attrs={'format': format},
-    )
-    return out
+        helper = LayerHelper('npu_identity', **locals())
+        out = helper.create_variable_for_type_inference(
+            dtype=x.dtype, stop_gradient=x.stop_gradient
+        )
+        helper.append_op(
+            type='npu_identity',
+            inputs={'x': [x]},
+            outputs={'out': [out]},
+            attrs={'format': format},
+        )
+        return out
