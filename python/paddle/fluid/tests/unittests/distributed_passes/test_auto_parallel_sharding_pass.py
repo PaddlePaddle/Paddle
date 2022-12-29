@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import random
 import sys
 import unittest
@@ -21,6 +22,10 @@ from auto_parallel_pass_test_base import AutoPallelPassTestBase
 
 import paddle
 import paddle.distributed.fleet as fleet
+from paddle.distributed.auto_parallel.dist_context import (
+    get_default_distributed_context,
+)
+from paddle.distributed.passes import PassContext, new_pass
 
 sys.path.append("..")
 
@@ -69,11 +74,8 @@ class TestShardingStage2WithNewEXE(AutoPallelPassTestBase):
     def init(self):
         if paddle.is_compiled_with_cuda():
             paddle.set_flags({'FLAGS_cudnn_deterministic': 1})
-            paddle.set_flags({'FLAGS_CONVERT_GRAPH_TO_PROGRAM': 1})
-            paddle.set_flags(
-                {'FLAGS_add_dependency_for_communication_op': 'false'}
-            )
-
+            os.environ["FLAGS_CONVERT_GRAPH_TO_PROGRAM"] = str(1)
+            os.environ["FLAGS_add_dependency_for_communication_op"] = 'false'
         self.rtol = 1e-5
         self.atol = 1e-8
 
@@ -110,7 +112,6 @@ class TestShardingStage2WithNewEXE(AutoPallelPassTestBase):
         batch_size,
         sequence_len,
         vocab_size,
-        need_params_grads=True,
     ):
 
         (
@@ -121,7 +122,12 @@ class TestShardingStage2WithNewEXE(AutoPallelPassTestBase):
             gen_data,
             params_grads,
         ) = self.get_gpt_model(
-            'dp', place, batch_size, sequence_len, vocab_size
+            'dp',
+            place,
+            batch_size,
+            sequence_len,
+            vocab_size,
+            need_params_grads=True,
         )
 
         if self._apply_pass:
