@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from ..layer_helper import LayerHelper, unique_name
-from ..framework import Variable, in_dygraph_mode, _in_legacy_dygraph
+from ..framework import Variable, in_dygraph_mode
 import paddle
 from paddle import _C_ops, _legacy_C_ops
 
@@ -120,42 +120,31 @@ def _c_allgather(x, nranks, ring_id=0, use_calc_stream=False):
         task = group.process_group.all_gather(x, out)
         task.wait()
         return out
-
-    if _in_legacy_dygraph():
-        attrs = (
-            'nranks',
-            nranks,
-            'ring_id',
-            ring_id,
-            'use_calc_stream',
-            use_calc_stream,
+    else:
+        helper = LayerHelper(op_type, **locals())
+        out_shape = list(x.shape[:])
+        if out_shape[0] > 0:
+            out_shape[0] *= nranks
+        out = helper.create_variable(
+            name=unique_name.generate_with_ignorable_key(
+                '.'.join([x.name, op_type])
+            ),
+            shape=out_shape,
+            dtype=x.dtype,
+            type=x.type,
+            persistable=x.persistable,
         )
-        return _legacy_C_ops.c_allgather(x, *attrs)
-
-    helper = LayerHelper(op_type, **locals())
-    out_shape = list(x.shape[:])
-    if out_shape[0] > 0:
-        out_shape[0] *= nranks
-    out = helper.create_variable(
-        name=unique_name.generate_with_ignorable_key(
-            '.'.join([x.name, op_type])
-        ),
-        shape=out_shape,
-        dtype=x.dtype,
-        type=x.type,
-        persistable=x.persistable,
-    )
-    helper.append_op(
-        type=op_type,
-        inputs={'X': [x]},
-        outputs={'Out': [out]},
-        attrs={
-            'nranks': nranks,
-            'ring_id': ring_id,
-            'use_calc_stream': use_calc_stream,
-        },
-    )
-    return out
+        helper.append_op(
+            type=op_type,
+            inputs={'X': [x]},
+            outputs={'Out': [out]},
+            attrs={
+                'nranks': nranks,
+                'ring_id': ring_id,
+                'use_calc_stream': use_calc_stream,
+            },
+        )
+        return out
 
 
 def _c_reducescatter(x, nranks, ring_id=0, use_calc_stream=False):

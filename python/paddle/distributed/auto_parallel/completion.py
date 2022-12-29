@@ -25,7 +25,7 @@ from .dist_attribute import (
 from .dist_context import _node_id
 from .operators import find_compatible_distributed_operator_impls
 from .process_group import get_world_process_group
-from .process_mesh import ProcessMesh
+from .process_mesh import ProcessMesh, compute_compatible_process_mesh
 from .utils import (
     __no_shape_var_type__,
     get_logger,
@@ -34,47 +34,12 @@ from .utils import (
 )
 
 
-def compute_compatible_process_mesh(process_mesh_list):
-    """Compute the compatible process mesh given a list of process meshes."""
-    if not process_mesh_list:
-        return None
-
-    def _compute_compatible_process_mesh_two(pm1, pm2):
-        if pm1 is None:
-            return True, pm2
-        if pm2 is None:
-            return True, pm1
-        if pm1 == pm2:
-            return True, pm1
-        if pm1.processes == pm2.processes:
-            if len(pm1.topology) >= len(pm2.topology):
-                return True, pm1
-            else:
-                return True, pm2
-        process_set1 = set(pm1.processes)
-        process_set2 = set(pm2.processes)
-        if process_set1.issubset(process_set2):
-            return True, pm2
-        if process_set2.issubset(process_set1):
-            return True, pm1
-        return False, None
-
-    compatible_result = None
-    for process_mesh in process_mesh_list:
-        compatible, compatible_result = _compute_compatible_process_mesh_two(
-            compatible_result, process_mesh
-        )
-        if not compatible:
-            return None
-    return copy.deepcopy(compatible_result)
-
-
 def compute_compatible_dim_mapping(dim_mapping_list):
     """Compute the compatible dim mapping given a list of dim mapping."""
     if not dim_mapping_list:
         return None
 
-    def _compute_compatible_dim_mapping_two(dm1, dm2):
+    def _compute_compatible_dim_mapping_of_two(dm1, dm2):
         if dm1 == -1:
             return True, dm2
         if dm2 == -1:
@@ -85,7 +50,7 @@ def compute_compatible_dim_mapping(dim_mapping_list):
 
     compatible_result = -1
     for mapping in dim_mapping_list:
-        compatible, compatible_result = _compute_compatible_dim_mapping_two(
+        compatible, compatible_result = _compute_compatible_dim_mapping_of_two(
             compatible_result, mapping
         )
         if not compatible:
@@ -122,9 +87,9 @@ def merge_process_mesh_two(pm1, pm2):
     if pm1 is None and pm2 is None:
         return None
     if pm1 is not None:
-        process_set1 = set(pm1.processes)
+        process_set1 = set(pm1.process_ids)
     if pm2 is not None:
-        process_set2 = set(pm2.processes)
+        process_set2 = set(pm2.process_ids)
     merged_process_set = process_set1.union(process_set2)
     merged_process_mesh = ProcessMesh(list(merged_process_set))
     return merged_process_mesh
@@ -134,11 +99,9 @@ def _validate_dims_mapping(dims_mapping, process_mesh):
     if dims_mapping is None:
         return False
     for i in range(len(dims_mapping)):
-        if dims_mapping[i] < -1 or dims_mapping[i] >= len(
-            process_mesh.topology
-        ):
+        if dims_mapping[i] < -1 or dims_mapping[i] >= len(process_mesh.shape):
             return False
-    for i in range(len(process_mesh.topology)):
+    for i in range(len(process_mesh.shape)):
         if dims_mapping.count(i) > 1:
             return False
     return True
@@ -1706,6 +1669,7 @@ class Completer:
                         "elementwise_max",
                         "elementwise_div",
                     ]:
+                        # complete op dist_attr with global world ranks
                         op_dist_attr = OperatorDistributedAttribute()
                         op_dist_attr.process_mesh = world_ranks
                         for in_name in op.input_arg_names:
@@ -1713,8 +1677,8 @@ class Completer:
                             in_dist_attr = self._dist_context.get_tensor_dist_attr_for_program(
                                 in_var
                             )
-                            op_dist_attr.set_input_dist_attr(
-                                in_name, in_dist_attr
+                            op_dist_attr.set_input_dims_mapping(
+                                in_name, in_dist_attr.dims_mapping
                             )
                         for out_name in op.output_arg_names:
                             out_var = vars[out_name]
@@ -1726,10 +1690,11 @@ class Completer:
                             self._dist_context.set_tensor_dist_attr_for_program(
                                 out_var, out_dist_attr
                             )
-                            op_dist_attr.set_output_dist_attr(
-                                out_name, out_dist_attr
+                            op_dist_attr.set_output_dims_mapping(
+                                out_name, out_dist_attr.dims_mapping
                             )
                     else:
+                        # get ref_process_mesh and ref_dims_mapping from input_var
                         in_var = vars[op.input("X")[0]]
                         in_dist_attr = (
                             self._dist_context.get_tensor_dist_attr_for_program(
@@ -1751,6 +1716,7 @@ class Completer:
                             assert ref_dist_attr is not None
                             ref_process_mesh = ref_dist_attr.process_mesh
 
+                        # complete out_var's tensor_dist_attr
                         out_var = vars[op.output("Out")[0]]
                         out_dist_attr = TensorDistributedAttribute()
                         out_dist_attr.process_mesh = ref_process_mesh
@@ -1766,14 +1732,26 @@ class Completer:
                             out_var, out_dist_attr
                         )
 
+                        # complete op'd dist_attr
+                        # complete op process_mesh with input_var's process_mesh
                         op_dist_attr = OperatorDistributedAttribute()
                         op_dist_attr.process_mesh = ref_process_mesh
-                        op_dist_attr.set_input_dist_attr(
-                            in_var.name, in_dist_attr
-                        )
-                        op_dist_attr.set_output_dist_attr(
-                            out_var.name, out_dist_attr
-                        )
+                        for in_name in op.input_arg_names:
+                            in_var = vars[in_name]
+                            in_dist_attr = self._dist_context.get_tensor_dist_attr_for_program(
+                                in_var
+                            )
+                            op_dist_attr.set_input_dims_mapping(
+                                in_name, in_dist_attr.dims_mapping
+                            )
+                        for out_name in op.output_arg_names:
+                            out_var = vars[out_name]
+                            out_dist_attr = self._dist_context.get_tensor_dist_attr_for_program(
+                                out_var
+                            )
+                            op_dist_attr.set_output_dims_mapping(
+                                out_name, out_dist_attr.dims_mapping
+                            )
 
                     self._dist_context.set_op_dist_attr_for_program(
                         op, op_dist_attr

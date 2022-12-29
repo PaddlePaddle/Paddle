@@ -78,6 +78,7 @@ if(NOT WITH_GPU)
   list(REMOVE_ITEM TEST_OPS test_fused_bias_dropout_residual_layer_norm_op_api)
 endif()
 
+list(REMOVE_ITEM TEST_OPS test_fused_ec_moe_op)
 list(REMOVE_ITEM TEST_OPS test_fused_gemm_epilogue_op)
 list(REMOVE_ITEM TEST_OPS test_fused_gemm_epilogue_grad_op)
 list(REMOVE_ITEM TEST_OPS test_fuse_gemm_epilogue_pass)
@@ -143,6 +144,7 @@ if(WIN32)
   list(REMOVE_ITEM TEST_OPS test_trt_convert_preln_residual_bias)
   list(REMOVE_ITEM TEST_OPS test_trt_convert_preln_residual_no_bias)
   list(REMOVE_ITEM TEST_OPS test_fused_multi_transformer_int8_op)
+  list(REMOVE_ITEM TEST_OPS test_fused_ec_moe_op)
 endif()
 list(REMOVE_ITEM TEST_OPS test_checkpoint_saver)
 
@@ -442,15 +444,9 @@ list(REMOVE_ITEM TEST_OPS
 list(REMOVE_ITEM TEST_OPS test_imperative_ocr_attention_model)
 list(REMOVE_ITEM TEST_OPS test_async_ssa_graph_executor_mnist)
 list(REMOVE_ITEM TEST_OPS test_install_check)
-list(REMOVE_ITEM TEST_OPS test_basic_gru_api)
-list(REMOVE_ITEM TEST_OPS test_basic_gru_unit_op)
-list(REMOVE_ITEM TEST_OPS test_basic_lstm_api)
-list(REMOVE_ITEM TEST_OPS test_basic_lstm_unit_op)
 list(REMOVE_ITEM TEST_OPS test_fuse_all_reduce_pass)
 list(REMOVE_ITEM TEST_OPS test_fuse_bn_act_pass)
 list(REMOVE_ITEM TEST_OPS test_fuse_bn_add_act_pass)
-list(REMOVE_ITEM TEST_OPS test_imperative_static_runner_mnist)
-list(REMOVE_ITEM TEST_OPS test_imperative_static_runner_while)
 
 # disable this unittest temporarily
 list(REMOVE_ITEM TEST_OPS test_imperative_data_loader_exception)
@@ -517,7 +513,7 @@ endforeach()
 set(TEST_EAGER_OPS test_jit_save_load test_translated_layer)
 foreach(TEST_OP ${TEST_EAGER_OPS})
   list(REMOVE_ITEM TEST_OPS ${TEST_OP})
-  py_test_modules(${TEST_OP} MODULES ${TEST_OP} ENVS FLAGS_enable_eager_mode=1)
+  py_test_modules(${TEST_OP} MODULES ${TEST_OP})
 endforeach()
 
 if((NOT WITH_GPU)
@@ -569,12 +565,6 @@ py_test_modules(
 py_test_modules(test_install_check MODULES test_install_check ENVS
                 FLAGS_cudnn_deterministic=1)
 set_tests_properties(test_install_check PROPERTIES LABELS "RUN_TYPE=DIST")
-py_test_modules(
-  test_imperative_static_runner_mnist MODULES
-  test_imperative_static_runner_mnist ENVS FLAGS_cudnn_deterministic=1)
-py_test_modules(
-  test_imperative_static_runner_while MODULES
-  test_imperative_static_runner_while ENVS FLAGS_cudnn_deterministic=1)
 
 if((WITH_GPU) AND (CUDA_VERSION GREATER_EQUAL 11.6))
   py_test_modules(test_fused_gemm_epilogue_op MODULES
@@ -632,6 +622,11 @@ if(WITH_DISTRIBUTE)
   list(REMOVE_ITEM DIST_TEST_OPS "test_dist_word2vec")
 
   list(REMOVE_ITEM DIST_TEST_OPS "test_dist_fleet_gloo")
+
+  if(NOT WITH_GPU)
+    list(REMOVE_ITEM DIST_TEST_OPS "test_dist_fleet_spmt")
+    list(REMOVE_ITEM DIST_TEST_OPS "test_dist_fleet_minimize")
+  endif()
 
   if(NOT WITH_HETERPS)
     list(REMOVE_ITEM DIST_TEST_OPS "test_communicator_ps_gpu")
@@ -1084,7 +1079,6 @@ set_tests_properties(test_svd_op PROPERTIES TIMEOUT 80)
 set_tests_properties(test_einsum_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_qr_op PROPERTIES TIMEOUT 60)
 set_tests_properties(test_trilinear_interp_v2_op PROPERTIES TIMEOUT 120)
-set_tests_properties(test_imperative_static_runner_mnist PROPERTIES TIMEOUT 120)
 set_tests_properties(test_masked_select_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_sigmoid_cross_entropy_with_logits_op
                      PROPERTIES TIMEOUT 120)
@@ -1167,8 +1161,6 @@ if(APPLE)
                        PROPERTIES TIMEOUT 300)
   set_tests_properties(test_multiclass_nms_op PROPERTIES TIMEOUT 300)
   set_tests_properties(test_weight_decay PROPERTIES TIMEOUT 300)
-  set_tests_properties(test_imperative_static_runner_mnist PROPERTIES TIMEOUT
-                                                                      300)
 endif()
 
 if((WITH_ROCM OR WITH_GPU) AND NOT WIN32)
@@ -1256,10 +1248,6 @@ py_test_modules(
 set_tests_properties(test_add_reader_dependency_for_interpretercore
                      PROPERTIES TIMEOUT 120)
 
-py_test_modules(test_renorm_op_without_eager MODULES test_renorm_op ENVS
-                FLAGS_enable_eager_mode=0)
-
-set_tests_properties(test_renorm_op_without_eager PROPERTIES TIMEOUT 120)
 py_test_modules(
   test_eager_deletion_padding_rnn_for_interpretercore MODULES
   test_eager_deletion_padding_rnn ENVS FLAGS_CONVERT_GRAPH_TO_PROGRAM=true)

@@ -32,54 +32,12 @@ from ..layers import collective
 from paddle.fluid.dygraph import base as imperative_base
 from paddle.fluid.framework import (
     ParamBase,
-    _in_legacy_dygraph,
-    _non_static_mode,
     in_dygraph_mode,
 )
 
-__all__ = ["prepare_context", "ParallelEnv", "DataParallel"]
+__all__ = ["ParallelEnv", "DataParallel"]
 
 ParallelStrategy = core.ParallelStrategy
-
-
-@deprecated(since="2.0.0", update_to="paddle.distributed.init_parallel_env")
-def prepare_context(strategy=None):
-    '''
-    :api_attr: imperative
-    '''
-    if strategy is None:
-        strategy = ParallelStrategy()
-        strategy.nranks = Env().nranks
-        strategy.local_rank = Env().local_rank
-        strategy.trainer_endpoints = Env().trainer_endpoints
-        strategy.current_endpoint = Env().current_endpoint
-    if strategy.nranks < 2:
-        return
-    assert (
-        framework._non_static_mode() is True
-    ), "dygraph.prepare_context should be used with dygraph mode."
-    place = framework._current_expected_place()
-    assert (
-        place is not None
-    ), "dygraph.prepare_context should be used in fluid.dygraph.guard(place) guard."
-    if not parallel_helper._is_parallel_ctx_initialized():
-        if isinstance(place, core.CUDAPlace):
-            parallel_helper._set_parallel_ctx(
-                core.NCCLParallelContext(strategy, place)
-            )
-        elif isinstance(place, core.XPUPlace):
-            parallel_helper._set_parallel_ctx(
-                core.BKCLParallelContext(strategy, place)
-            )
-        elif isinstance(place, core.NPUPlace):
-            parallel_helper._set_parallel_ctx(
-                core.HCCLParallelContext(strategy, place)
-            )
-        else:
-            # TODO(Yancey1989): add Gloo Parallel Context to support CPU parallel computation
-            assert "Only support CUDAPlace or XPUPlace or NPUPlace for now."
-        parallel_helper._init_parallel_ctx()
-    return strategy
 
 
 class ParallelEnv:
@@ -342,23 +300,7 @@ def _reshape_inplace(x, shape):
 
 @framework.dygraph_only
 def _split_tensors(coalesced_grads_and_grad_vars):
-    if _in_legacy_dygraph():
-        for (
-            coalesced_grad,
-            origin_grad_vars,
-            grad_shapes,
-        ) in coalesced_grads_and_grad_vars:
-            grad_var_len = [np.prod(g_shape) for g_shape in grad_shapes]
-            framework._dygraph_tracer().trace_op(
-                type='split',
-                inputs={'X': coalesced_grad},
-                outputs={'Out': origin_grad_vars},
-                attrs={'sections': grad_var_len, 'axis': 0},
-            )
-            for g_var, g_shape in zip(origin_grad_vars, grad_shapes):
-                _reshape_inplace(x=g_var, shape=g_shape)
-                assert g_var.shape == g_shape
-    elif in_dygraph_mode():
+    if in_dygraph_mode():
         for (
             coalesced_grad,
             origin_grad_vars,
@@ -627,7 +569,7 @@ class DataParallel(layers.Layer):
         super().__init__(layers.full_name() + "_data_parallel")
 
         assert (
-            _non_static_mode()
+            in_dygraph_mode()
         ), "It's not supported to construct DataParallel in static mode."
 
         self._layers = layers
@@ -741,21 +683,6 @@ class DataParallel(layers.Layer):
                 list(reversed(self.group_indices)),
                 is_sparse_gradient,
                 self.group.process_group,
-                [self.last_comm_buffer_size, self.comm_buffer_size],
-                self.find_unused_parameters,
-            )
-        elif _in_legacy_dygraph():
-            self.group_indices = core.assign_group_by_size(
-                trainable_parameters,
-                is_sparse_gradient,
-                [self.last_comm_buffer_size, self.comm_buffer_size],
-            )
-
-            self._reducer = core.Reducer(
-                trainable_parameters,
-                list(reversed(self.group_indices)),
-                is_sparse_gradient,
-                parallel_helper.__parallel_ctx__clz__,
                 [self.last_comm_buffer_size, self.comm_buffer_size],
                 self.find_unused_parameters,
             )
