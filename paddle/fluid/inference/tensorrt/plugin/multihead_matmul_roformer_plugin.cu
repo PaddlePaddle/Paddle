@@ -139,11 +139,8 @@ __global__ void RotrayKernel(const T *inputact,
                              const T *input1, //cos 1,1,max_seq, headsize
                              const T *intput2, //sin
                              T *output,
-                             int b, //batchsize
                              int s, //seqlen len
-                             int n, //number of head
                              int h, //hidden dim
-                             int max_seq, //max_seq
                              const int nElement) {
   const int lastdim = h;
   const int half_lastdim = lastdim / 2;
@@ -198,7 +195,6 @@ int MultiheadMatmulRoformerPlugin::enqueue(
   // input[0], (B, S, 3 * N * H, 1, 1)
   int batch = input_dims.d[0];
   int seq_len = input_dims.d[1];
-  int max_seq = input_desc[1].dims.d[2];
   phi::DenseTensor multihead_temp_tensor;
   // masks
   int scratch_size = batch * head_number_ * seq_len * seq_len * 1;
@@ -253,11 +249,8 @@ int MultiheadMatmulRoformerPlugin::enqueue(
                                                  input_cos_data,
                                                  input_sin_data,
                                                  tptr,
-						 batch,
 						 seq_len,
-						 head_number_,
 						 head_size_,
-						 max_seq,
                                                  2*n_q);  // q + k
 
     auto *device_ctx = static_cast<phi::GPUContext *>(
@@ -335,11 +328,8 @@ int MultiheadMatmulRoformerPlugin::enqueue(
                                                  input_cos_data,
                                                  input_sin_data,
                                                  tptr,
-						 batch,
 						 seq_len,
-						 head_number_,
 						 head_size_,
-						 max_seq,
                                                  2*n_q);  // q + k
 
     apply_scale<<<blocks, threads, 0, stream>>>(
