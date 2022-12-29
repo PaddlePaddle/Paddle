@@ -884,7 +884,7 @@ class TestFlattenParamGradsAdamw(unittest.TestCase):
             beta2=beta2_init,
             epsilon=epsilon_init,
             flatten_param_grads=flatten_param_grads,
-            align_size=256,
+            align_size=-1,
             grad_clip=clip,
         )
 
