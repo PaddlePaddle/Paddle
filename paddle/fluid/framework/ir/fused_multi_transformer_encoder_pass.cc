@@ -3885,7 +3885,7 @@ REGISTER_PASS_CAPABILITY(fused_multi_transformer_encoder_pass)
             .EQ("reshape2", 0)
             .EQ("transpose2", 0)
             .EQ("scale", 0)
-            .LE("matmul", 1)
+            .EQ("matmul", 0)
             .EQ("matmul_v2", 0)
             .EQ("softmax", 0));
 REGISTER_PASS_CAPABILITY(fused_multi_transformer_encoder_fuse_qkv_pass)
@@ -3895,7 +3895,7 @@ REGISTER_PASS_CAPABILITY(fused_multi_transformer_encoder_fuse_qkv_pass)
             .EQ("reshape2", 0)
             .EQ("transpose2", 0)
             .EQ("scale", 0)
-            .LE("matmul", 1)
+            .EQ("matmul", 0)
             .EQ("matmul_v2", 0)
             .EQ("softmax", 0));
 REGISTER_PASS_CAPABILITY(
@@ -3906,6 +3906,6 @@ REGISTER_PASS_CAPABILITY(
             .EQ("reshape2", 0)
             .EQ("transpose2", 0)
             .EQ("scale", 0)
-            .LE("matmul", 1)
+            .EQ("matmul", 0)
             .EQ("matmul_v2", 0)
             .EQ("softmax", 0));

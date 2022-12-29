@@ -84,12 +84,6 @@ class TestMatmulScaleFusePass(PassAutoScanTest):
             transpose_X=transpose_X,
             transpose_Y=transpose_Y,
             alpha=alpha,
-            fused_reshape_X=[],
-            fused_reshape_Y=[],
-            fused_transpose_X=[],
-            fused_transpose_Y=[],
-            fused_reshape_Out=[],
-            fused_transpose_Out=[],
             head_number=1,
         )
         is_scale_tensor = draw(st.booleans())

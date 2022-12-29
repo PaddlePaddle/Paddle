@@ -825,6 +825,6 @@ REGISTER_PASS_CAPABILITY(multihead_matmul_roformer_fuse_pass)
             .EQ("reshape2", 0)
             .EQ("transpose2", 0)
             .EQ("scale", 0)
-            .LE("matmul", 1)
+            .EQ("matmul", 0)
             .EQ("matmul_v2", 0)
             .EQ("softmax", 0));
