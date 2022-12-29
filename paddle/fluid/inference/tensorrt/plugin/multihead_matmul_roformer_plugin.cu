@@ -136,18 +136,33 @@ __global__ void apply_scale(T *data, T scale, int n) {
 
 template <typename T>
 __global__ void RotrayKernel(const T *inputact,
-                             const T *input1,
-                             const T *intput2,
+                             const T *input1, //cos 1,1,max_seq, headsize
+                             const T *intput2, //sin
                              T *output,
-                             const int nElement,
-                             const int lastdim) {
+                             int b, //batchsize
+                             int s, //seqlen len
+                             int n, //number of head
+                             int h, //hidden dim
+                             int max_seq, //max_seq
+                             const int nElement) {
+  const int lastdim = h;
+  const int half_lastdim = lastdim / 2;
   const int index = blockIdx.x * blockDim.x + threadIdx.x;
+  int step = (size_t)gridDim.x * blockDim.x;
   if (index >= nElement) return;
-  T left_elemul_out = input1[index] * inputact[index];
-  int col = index % lastdim;
-  int half_lastdim = lastdim / 2;
-  const int right_index = index - col + (col + half_lastdim) % lastdim;
-  output[index] = left_elemul_out + intput2[index] * inputact[right_index];
+  for (int i = index; i < nElement; i += step)
+  {
+          if (i >= nElement) return;
+          int sh_index = i % (s * h);
+          T left = input1[sh_index] * inputact[i];
+          int col = i % lastdim;
+          const int new_index = i - col + (col + half_lastdim) % lastdim;
+          if (col >= half_lastdim) {
+              output[i] = left + intput2[sh_index] * inputact[new_index];
+          } else {
+              output[i] = left - intput2[sh_index] * inputact[new_index];
+          }
+  }
 }
 
 inline int round_up(int seq_len, int multiple = 32) {
@@ -183,6 +198,7 @@ int MultiheadMatmulRoformerPlugin::enqueue(
   // input[0], (B, S, 3 * N * H, 1, 1)
   int batch = input_dims.d[0];
   int seq_len = input_dims.d[1];
+  int max_seq = input_desc[1].dims.d[2];
   phi::DenseTensor multihead_temp_tensor;
   // masks
   int scratch_size = batch * head_number_ * seq_len * seq_len * 1;
@@ -225,29 +241,24 @@ int MultiheadMatmulRoformerPlugin::enqueue(
     }
     const float *input3_data = static_cast<const float *>(qk_bias);
     // BxSx3xNxH => tptr: 3xBxNxSxH.
-    TransposeQKV(
-        batch, seq_len, head_size_, head_number_, input0_data, tptr, stream);
-    cudaMemcpy(tmp_roformer_ptr,  // dst
-               tptr,              // src
-               input_num * sizeof(float),
-               cudaMemcpyDeviceToDevice);
+    TransposeQKV_v2(
+        batch, seq_len, head_size_, head_number_, input0_data, tptr, tmp_roformer_ptr, stream);
     int n_q = seq_len * head_number_ * head_size_ * batch;
     constexpr int threads = 128;
-    int blocks = (n_q + threads - 1) / threads;
+    //int blocks = (n_q + threads - 1) / threads;
+    constexpr int blocks = 256;
     const float *input_cos_data = static_cast<const float *>(inputs[1]);
     const float *input_sin_data = static_cast<const float *>(inputs[2]);
     RotrayKernel<<<blocks, threads, 0, stream>>>(tmp_roformer_ptr,
                                                  input_cos_data,
                                                  input_sin_data,
                                                  tptr,
-                                                 n_q,
-                                                 head_size_);  // q
-    RotrayKernel<<<blocks, threads, 0, stream>>>(tmp_roformer_ptr + n_q,
-                                                 input_cos_data,
-                                                 input_sin_data,
-                                                 tptr + n_q,
-                                                 n_q,
-                                                 head_size_);  // k
+						 batch,
+						 seq_len,
+						 head_number_,
+						 head_size_,
+						 max_seq,
+                                                 2*n_q);  // q + k
 
     auto *device_ctx = static_cast<phi::GPUContext *>(
         platform::DeviceContextPool::Instance().Get(
@@ -307,12 +318,8 @@ int MultiheadMatmulRoformerPlugin::enqueue(
     }
     const half *input3_data = static_cast<const half *>(qk_bias);
     // BxSx3xNxH => tptr: 3xBxNxSxH.
-    TransposeQKV(
-        batch, seq_len, head_size_, head_number_, input0_data, tptr, stream);
-    cudaMemcpy(tmp_roformer_ptr,
-               tptr,
-               input_num * sizeof(half),
-               cudaMemcpyDeviceToDevice);
+    TransposeQKV_v2(
+        batch, seq_len, head_size_, head_number_, input0_data, tptr, tmp_roformer_ptr, stream);
 
     auto *device_ctx = static_cast<phi::GPUContext *>(
         platform::DeviceContextPool::Instance().Get(
@@ -320,22 +327,20 @@ int MultiheadMatmulRoformerPlugin::enqueue(
 
     int n_q = seq_len * head_number_ * head_size_ * batch;
     constexpr int threads = 128;
-    int blocks = (n_q + threads - 1) / threads;
-
+    //int blocks = (n_q + threads - 1) / threads;
+    constexpr int blocks = 256;
     const half *input_cos_data = static_cast<const half *>(inputs[1]);
     const half *input_sin_data = static_cast<const half *>(inputs[2]);
     RotrayKernel<<<blocks, threads, 0, stream>>>(tmp_roformer_ptr,
                                                  input_cos_data,
                                                  input_sin_data,
                                                  tptr,
-                                                 n_q,
-                                                 head_size_);  // q
-    RotrayKernel<<<blocks, threads, 0, stream>>>(tmp_roformer_ptr + n_q,
-                                                 input_cos_data,
-                                                 input_sin_data,
-                                                 tptr + n_q,
-                                                 n_q,
-                                                 head_size_);  // k
+						 batch,
+						 seq_len,
+						 head_number_,
+						 head_size_,
+						 max_seq,
+                                                 2*n_q);  // q + k
 
     apply_scale<<<blocks, threads, 0, stream>>>(
         tptr, static_cast<half>(scale_), n_q);
