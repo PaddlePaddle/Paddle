@@ -30,7 +30,7 @@ from paddle.fluid.executor import (
 )
 from paddle.fluid.framework import _apply_pass
 from paddle.fluid.layers.utils import _hash_with_id, flatten, pack_sequence_as
-from paddle.static.amp.decorator import AutoMixedPrecisionLists
+from paddle.static.amp.fp16_lists import AutoMixedPrecisionLists
 from paddle.static.amp.fp16_utils import cast_model_to_fp16, rewrite_program
 
 from . import logging_utils
