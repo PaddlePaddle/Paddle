@@ -25,7 +25,8 @@ namespace ir {
 namespace patterns {
 
 struct TrtCrossMultiHeadMatmulPattern : public PatternBase {
-  TrtCrossMultiHeadMatmulPattern(PDPattern* pattern, const std::string& name_scope)
+  TrtCrossMultiHeadMatmulPattern(PDPattern* pattern,
+                                 const std::string& name_scope)
       : PatternBase(pattern, name_scope, "cross_multihead_matmul") {}
 
   PDNode* operator()();
@@ -69,9 +70,7 @@ struct TrtCrossMultiHeadMatmulPattern : public PatternBase {
   PATTERN_DECL_NODE(matmul_qkv_out);
 };
 
-} // namespace patterns
-
-
+}  // namespace patterns
 
 class TrtCrossMultiHeadMatmulFusePass : public FusePassBase {
  public:
@@ -84,11 +83,9 @@ class TrtCrossMultiHeadMatmulFusePass : public FusePassBase {
 
  private:
   int BuildCrossFusion(Graph* graph,
-                    const std::string& name_scope,
-                    Scope* scope) const;
+                       const std::string& name_scope,
+                       Scope* scope) const;
 };
-
-
 
 }  // namespace ir
 }  // namespace framework

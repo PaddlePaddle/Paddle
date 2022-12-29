@@ -24,9 +24,9 @@ namespace framework {
 namespace ir {
 namespace patterns {
 
-
 struct TrtFlashMultiHeadMatmulPattern : public PatternBase {
-  TrtFlashMultiHeadMatmulPattern(PDPattern* pattern, const std::string& name_scope)
+  TrtFlashMultiHeadMatmulPattern(PDPattern* pattern,
+                                 const std::string& name_scope)
       : PatternBase(pattern, name_scope, "flash_multihead_matmul") {}
 
   PDNode* operator()();
@@ -69,11 +69,7 @@ struct TrtFlashMultiHeadMatmulPattern : public PatternBase {
   PATTERN_DECL_NODE(matmul_qkv_out);
 };
 
-
-
-} // patterns
-
-
+}  // namespace patterns
 
 class TrtFlashMultiHeadMatmulFusePass : public FusePassBase {
  public:
@@ -86,10 +82,9 @@ class TrtFlashMultiHeadMatmulFusePass : public FusePassBase {
 
  private:
   int BuildFlashFusion(Graph* graph,
-                    const std::string& name_scope,
-                    Scope* scope) const;
+                       const std::string& name_scope,
+                       Scope* scope) const;
 };
-
 
 }  // namespace ir
 }  // namespace framework

@@ -29,7 +29,7 @@ class TrtConvertFlashMultiHeadMatmulTest(TrtLayerAutoScanTest):
         if ver[0] * 1000 + ver[1] * 100 + ver[2] * 10 < 8522:
             return False
         return True
-        
+
     def sample_program_configs(self):
         def generate_input1(batch, dim1):
             return np.random.random((batch, dim1, 320)).astype(np.float32)
@@ -112,9 +112,7 @@ class TrtConvertFlashMultiHeadMatmulTest(TrtLayerAutoScanTest):
                         },
                         {
                             "op_type": "reshape2",
-                            "op_inputs": {
-                                "X": ["mul2_output"]
-                            },
+                            "op_inputs": {"X": ["mul2_output"]},
                             "op_outputs": {
                                 "Out": ["reshape22_output"],
                                 "XShape": ["reshape22_output_xshape"],
@@ -139,12 +137,9 @@ class TrtConvertFlashMultiHeadMatmulTest(TrtLayerAutoScanTest):
                             "op_outputs": {"Out": ["mul3_output"]},
                             "op_attrs": dics[6],
                         },
-
                         {
                             "op_type": "reshape2",
-                            "op_inputs": {
-                                "X": ["mul3_output"]
-                            },
+                            "op_inputs": {"X": ["mul3_output"]},
                             "op_outputs": {
                                 "Out": ["reshape23_output"],
                                 "XShape": ["reshape23_output_xshape"],
@@ -179,9 +174,7 @@ class TrtConvertFlashMultiHeadMatmulTest(TrtLayerAutoScanTest):
                         },
                         {
                             "op_type": "softmax",
-                            "op_inputs": {
-                                "X": ["scale_output"]
-                            },
+                            "op_inputs": {"X": ["scale_output"]},
                             "op_outputs": {"Out": ["softmax_output"]},
                             "op_attrs": dics[11],
                         },
@@ -226,13 +219,11 @@ class TrtConvertFlashMultiHeadMatmulTest(TrtLayerAutoScanTest):
                             ),
                             "mul3_weight": TensorConfig(
                                 data_gen=partial(generate_weight1)
-                            )
+                            ),
                         },
                         inputs={
                             "input_data1": TensorConfig(
-                                data_gen=partial(
-                                    generate_input1, batch, dim1
-                                )
+                                data_gen=partial(generate_input1, batch, dim1)
                             )
                         },
                         outputs=["reshape24_output"],

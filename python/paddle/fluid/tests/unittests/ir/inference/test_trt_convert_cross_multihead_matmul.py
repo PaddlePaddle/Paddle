@@ -33,6 +33,7 @@ class TrtConvertCrossMultiHeadMatmulTest(TrtLayerAutoScanTest):
     def sample_program_configs(self):
         def generate_input1(batch, dim1):
             return np.random.random((batch, dim1, 320)).astype(np.float32)
+
         def generate_input2(batch, dim2):
             return np.random.random((batch, dim2, 768)).astype(np.float32)
 
@@ -42,17 +43,11 @@ class TrtConvertCrossMultiHeadMatmulTest(TrtLayerAutoScanTest):
         def generate_weight2():
             return np.random.random((768, 320)).astype(np.float32)
 
-
         for batch in [1, 2]:
             self.batch = batch
             for reshape_shape in [[0, 0, 8, 40]]:
                 for dim1 in [4096]:
-                    for dim2 in [768]
-                    # input2_shapes = [
-                    #     [batch, reshape_shape[2], dim1, dim1],
-                    #     [batch, 1, 1, dim1],
-                    # ]
-                    # for input2_shape in input2_shapes:
+                    for dim2 in [768]:
                         dics = [
                             {"trans_x": False, "trans_y": False},
                             {"shape": reshape_shape},
@@ -119,9 +114,7 @@ class TrtConvertCrossMultiHeadMatmulTest(TrtLayerAutoScanTest):
                             },
                             {
                                 "op_type": "reshape2",
-                                "op_inputs": {
-                                    "X": ["mul2_output"]
-                                },
+                                "op_inputs": {"X": ["mul2_output"]},
                                 "op_outputs": {
                                     "Out": ["reshape22_output"],
                                     "XShape": ["reshape22_output_xshape"],
@@ -146,12 +139,9 @@ class TrtConvertCrossMultiHeadMatmulTest(TrtLayerAutoScanTest):
                                 "op_outputs": {"Out": ["mul3_output"]},
                                 "op_attrs": dics[6],
                             },
-
                             {
                                 "op_type": "reshape2",
-                                "op_inputs": {
-                                    "X": ["mul3_output"]
-                                },
+                                "op_inputs": {"X": ["mul3_output"]},
                                 "op_outputs": {
                                     "Out": ["reshape23_output"],
                                     "XShape": ["reshape23_output_xshape"],
@@ -186,9 +176,7 @@ class TrtConvertCrossMultiHeadMatmulTest(TrtLayerAutoScanTest):
                             },
                             {
                                 "op_type": "softmax",
-                                "op_inputs": {
-                                    "X": ["scale_output"]
-                                },
+                                "op_inputs": {"X": ["scale_output"]},
                                 "op_outputs": {"Out": ["softmax_output"]},
                                 "op_attrs": dics[11],
                             },
@@ -233,14 +221,14 @@ class TrtConvertCrossMultiHeadMatmulTest(TrtLayerAutoScanTest):
                                 ),
                                 "mul3_weight": TensorConfig(
                                     data_gen=partial(generate_weight2)
-                                )
+                                ),
                             },
                             inputs={
                                 "input_data1": TensorConfig(
                                     data_gen=partial(
                                         generate_input1, batch, dim1
                                     )
-                                ),                                
+                                ),
                                 "input_data2": TensorConfig(
                                     data_gen=partial(
                                         generate_input2, batch, dim2
