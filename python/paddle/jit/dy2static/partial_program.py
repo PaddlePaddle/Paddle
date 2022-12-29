@@ -30,11 +30,13 @@ from paddle.fluid.executor import (
 )
 from paddle.fluid.framework import _apply_pass
 from paddle.fluid.layers.utils import _hash_with_id, flatten, pack_sequence_as
-from paddle.static.amp.fp16_lists import AutoMixedPrecisionLists
-from paddle.static.amp.fp16_utils import cast_model_to_fp16, rewrite_program
 
 from . import logging_utils
 from .return_transformer import RETURN_NO_VALUE_MAGIC_NUM
+
+# from paddle.static.amp.fp16_lists import AutoMixedPrecisionLists
+# from paddle.static.amp.fp16_utils import cast_model_to_fp16, rewrite_program
+
 
 __all__ = []
 
@@ -169,7 +171,7 @@ class PartialProgramLayer:
         if tracer:
             custom_white_list, custom_black_list = tracer._get_amp_op_list()
         # For AMP training
-        self._amp_list = AutoMixedPrecisionLists(
+        self._amp_list = paddle.static.amp.fp16_lists.AutoMixedPrecisionLists(
             custom_white_list=custom_white_list,
             custom_black_list=custom_black_list,
         )
@@ -218,7 +220,9 @@ class PartialProgramLayer:
     def _create_amp_program(self, is_infer_mode=False):
         amp_program = self._origin_main_program.clone(for_test=is_infer_mode)
         with program_guard(amp_program):
-            rewrite_program(amp_program, self._amp_list)
+            paddle.static.amp.fp16_utils.rewrite_program(
+                amp_program, self._amp_list
+            )
         if is_infer_mode:
             return amp_program
         else:
@@ -232,7 +236,7 @@ class PartialProgramLayer:
             for_test=is_infer_mode
         )
         with program_guard(pure_fp16_program):
-            cast_model_to_fp16(
+            paddle.static.amp.fp16_utils.cast_model_to_fp16(
                 pure_fp16_program, self._amp_list, use_fp16_guard=False
             )
         if is_infer_mode:
