@@ -343,12 +343,12 @@ class FusedDropoutHelper {
 };
 
 template <typename T>
-struct PDDataTypeTraits {
+struct DataTypeTraits {
   using DataType = T;
 };
 
 template <>
-struct PDDataTypeTraits<phi::dtype::float16> {
+struct DataTypeTraits<phi::dtype::float16> {
   // Since LayerNormDirectCUDAFunctor register half type, we need to convert
   // phi::float16 to half.
   using DataType = half;
@@ -390,8 +390,8 @@ class FusedDropoutLayerNormHelper
                  OutType* out,
                  LayerNormParamType<T>* mean,
                  LayerNormParamType<T>* variance) {
-    using InDataType = typename PDDataTypeTraits<InType>::DataType;
-    using OutDataType = typename PDDataTypeTraits<OutType>::DataType;
+    using InDataType = typename DataTypeTraits<InType>::DataType;
+    using OutDataType = typename DataTypeTraits<OutType>::DataType;
 
     phi::LayerNormDirectCUDAFunctor<InDataType, LayerNormParamType<T>>
         layer_norm;

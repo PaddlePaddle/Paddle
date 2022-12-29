@@ -21,9 +21,7 @@ from ..framework import (
     Program,
     Variable,
     Operator,
-    _non_static_mode,
     static_only,
-    _in_legacy_dygraph,
     in_dygraph_mode,
 )
 from ..layer_helper import LayerHelper, unique_name
@@ -1154,7 +1152,7 @@ def while_loop(cond, body, loop_vars, is_test=False, name=None):
             "but given shape as {0}.".format(list(pre_cond.shape))
         )
 
-    if _non_static_mode():
+    if in_dygraph_mode():
         now_cond = pre_cond.numpy()[0]
         while now_cond:
             output_vars = body(*loop_vars)
@@ -1168,33 +1166,33 @@ def while_loop(cond, body, loop_vars, is_test=False, name=None):
             now_cond = cond(*output_vars).numpy()[0]
             map_structure(assign_skip_lod_tensor_array, output_vars, loop_vars)
         return loop_vars
-
-    while_loop_block = While(pre_cond, is_test, name)
-    has_mutable_vars_in_loop = hold_mutable_vars(loop_vars)
-    with while_loop_block.block():
-        # If a variable with mutable type is included in loop_vars, like `dict/list`,
-        # modifying it in the body function will cause origin variable to be modified
-        # synchronously. This will raise an assignment error out of while block.
-        # Here we make a copy of the mutable vars to avoid this problem.
-        if has_mutable_vars_in_loop:
-            new_loop_vars = copy_mutable_vars(loop_vars)
-            output_vars = body(*new_loop_vars)
-        else:
-            output_vars = body(*loop_vars)
-        if not isinstance(output_vars, (list, tuple)):
-            output_vars = [output_vars]
-        try:
-            loop_vars = _deal_with_undefined_var(output_vars, loop_vars)
-            assert_same_structure(output_vars, loop_vars, check_types=False)
-        except ValueError as e:
-            raise ValueError(
-                "body in while_loop should return the same arity "
-                "(length and structure) as loop_vars: {0}".format(e)
-            )
-        now_cond = cond(*output_vars)
-        map_structure(assign_skip_lod_tensor_array, output_vars, loop_vars)
-        assign(now_cond, pre_cond)
-    return loop_vars
+    else:
+        while_loop_block = While(pre_cond, is_test, name)
+        has_mutable_vars_in_loop = hold_mutable_vars(loop_vars)
+        with while_loop_block.block():
+            # If a variable with mutable type is included in loop_vars, like `dict/list`,
+            # modifying it in the body function will cause origin variable to be modified
+            # synchronously. This will raise an assignment error out of while block.
+            # Here we make a copy of the mutable vars to avoid this problem.
+            if has_mutable_vars_in_loop:
+                new_loop_vars = copy_mutable_vars(loop_vars)
+                output_vars = body(*new_loop_vars)
+            else:
+                output_vars = body(*loop_vars)
+            if not isinstance(output_vars, (list, tuple)):
+                output_vars = [output_vars]
+            try:
+                loop_vars = _deal_with_undefined_var(output_vars, loop_vars)
+                assert_same_structure(output_vars, loop_vars, check_types=False)
+            except ValueError as e:
+                raise ValueError(
+                    "body in while_loop should return the same arity "
+                    "(length and structure) as loop_vars: {0}".format(e)
+                )
+            now_cond = cond(*output_vars)
+            map_structure(assign_skip_lod_tensor_array, output_vars, loop_vars)
+            assign(now_cond, pre_cond)
+        return loop_vars
 
 
 # (TODO: Mine) There exists dependency. It will be removed later.
