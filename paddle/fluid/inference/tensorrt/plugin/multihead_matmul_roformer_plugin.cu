@@ -105,6 +105,12 @@ bool MultiheadMatmulRoformerPlugin::supportsFormatCombination(
   if (pos == 1) {
     return in.type == prev.type && in.format == prev.format;
   }
+  if (pos == 2) {
+    return in.type == prev.type && in.format == prev.format;
+  }
+  if (pos == 3) {
+    return in.type == prev.type && in.format == prev.format;
+  }
 
   // output
   return in.type == prev.type && in.format == prev.format;
@@ -242,7 +248,7 @@ int MultiheadMatmulRoformerPlugin::enqueue(
     int n_q = seq_len * head_number_ * head_size_ * batch;
     constexpr int threads = 128;
     //int blocks = (n_q + threads - 1) / threads;
-    constexpr int blocks = 256;
+    constexpr int blocks = 1024;
     const float *input_cos_data = static_cast<const float *>(inputs[1]);
     const float *input_sin_data = static_cast<const float *>(inputs[2]);
     RotrayKernel<<<blocks, threads, 0, stream>>>(tmp_roformer_ptr,
@@ -321,7 +327,7 @@ int MultiheadMatmulRoformerPlugin::enqueue(
     int n_q = seq_len * head_number_ * head_size_ * batch;
     constexpr int threads = 128;
     //int blocks = (n_q + threads - 1) / threads;
-    constexpr int blocks = 256;
+    constexpr int blocks = 1024;
     const half *input_cos_data = static_cast<const half *>(inputs[1]);
     const half *input_sin_data = static_cast<const half *>(inputs[2]);
     RotrayKernel<<<blocks, threads, 0, stream>>>(tmp_roformer_ptr,
