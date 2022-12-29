@@ -685,6 +685,8 @@ class ShardingPass(PassBase):
 
         self.grad_coalesce_prefix = 'sharding_coalecse_grad_'
         self.param_coalesce_prefix = 'sharding_coalecse_param_'
+        # NOTE PR#49275 for detail
+        self.comm_op_scheduling_priority = -1
 
         # TODO support multiple sub_blocks
         assert (
@@ -696,6 +698,8 @@ class ShardingPass(PassBase):
 
         with paddle.static.program_guard(main_program, startup_program):
             self._gradient_sync_optimization(sharding_info)
+            # TODO independent the logic of fuse and overlap
+            # support overlap when no fuse
             if self.param_bucket_size_numel > 1:
                 if self.stage == 2:
                     self._fuse_overlap_parameter_comm_stage_two(sharding_info)
@@ -845,6 +849,9 @@ class ShardingPass(PassBase):
             )
             if self.enable_overlap:
                 new_op.dist_attr.execution_stream = comm_stream
+                new_op.dist_attr.scheduling_priority = (
+                    self.comm_op_scheduling_priority
+                )
 
             # NOTE the current dist context lack the presentation for bucket tensor which
             # composes many tensor with different dims_mapping. we DO NOT assign dist attr
@@ -908,6 +915,9 @@ class ShardingPass(PassBase):
                 )
                 if self.enable_overlap:
                     depend_op.dist_attr.execution_stream = comm_stream
+                    depend_op.dist_attr.scheduling_priority = (
+                        self.comm_op_scheduling_priority
+                    )
 
         main_block._sync_with_cpp()
 
@@ -1228,6 +1238,10 @@ class ShardingPass(PassBase):
 
                 # assign stream
                 op.dist_attr.execution_stream = comm_stream
+                op.dist_attr.scheduling_priority = (
+                    self.comm_op_scheduling_priority
+                )
+
                 op._set_attr("ring_id", comm_group.id)
                 if self.sharding_hybrid_dp and grad_group.is_in_local_shard:
                     next_op = ops[idx + 1]
@@ -1236,6 +1250,9 @@ class ShardingPass(PassBase):
                     # FIXME hybrid sharding-dp support multi comm & stream in feature
                     # next_op._set_attr("ring_id", comm_group.id)
                     next_op.dist_attr.execution_stream = comm_stream
+                    next_op.dist_attr.scheduling_priority = (
+                        self.comm_op_scheduling_priority
+                    )
                     idx += 1
 
                 reduce_op_count += 1
@@ -1261,6 +1278,9 @@ class ShardingPass(PassBase):
                     op_namescope="sharding_grad_comm_dep",
                 )
                 depend_op.dist_attr.execution_stream = comm_stream
+                depend_op.dist_attr.scheduling_priority = (
+                    self.comm_op_scheduling_priority
+                )
 
         # hierarchical grad comm
         if self.enable_hierarchical_comm:
@@ -1302,7 +1322,7 @@ class ShardingPass(PassBase):
             )
             inter_node_groups = []
             intra_node_groups = []
-            for _ in range(grad_comm_stream_num):
+            for _ in range(self.grad_comm_stream_num):
                 # TODO re-use one origin communicator
                 inter_node_groups.append(
                     new_process_group(inter_node_ranks, force_new_group=True)
@@ -1354,6 +1374,9 @@ class ShardingPass(PassBase):
 
                         if self.enable_overlap:
                             new_op.dist_attr.execution_stream = comm_stream
+                            new_op.dist_attr.scheduling_priority = (
+                                self.comm_op_scheduling_priority
+                            )
 
         block._sync_with_cpp()
 
