@@ -312,6 +312,8 @@ class TestNewCustomOpXpuSetUpInstall(unittest.TestCase):
             predictor.get_output_names()[0]
         )
         predict_infer = output_tensor.copy_to_cpu()
+        predict = predict.flatten()
+        predict_infer = predict_infer.flatten()
         np.testing.assert_allclose(
             predict,
             predict_infer,
