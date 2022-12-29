@@ -26,7 +26,7 @@ namespace prim {
 class DescTensor : public phi::ExtendedTensor,
                    public phi::TypeInfoTraits<phi::TensorBase, DescTensor> {
  public:
-  explict DescTensor(framework::VarDesc* desc)
+  explicit DescTensor(framework::VarDesc* desc)
       : desc_ptr_(desc), dims_(phi::make_ddim(desc->GetShape())) {}
   static const char* name() { return "DescTensor"; }
 
