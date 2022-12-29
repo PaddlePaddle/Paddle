@@ -1358,6 +1358,20 @@
   outputs :
     out : Y
 
+- op : unsqueeze (unsqueeze2)
+  backward : unsqueeze_grad (unsqueeze2_grad), unsqueeze_double_grad
+  inputs :
+    x : X
+  attrs :
+   axis : axes
+  outputs :
+    {out : Out, xshape : XShape}
+  int_array:
+    axis :
+      data_type : int
+      tensor_name : AxesTensor
+      tensors_name : AxesTensorList
+
 - op : unstack
   backward : unstack_grad
   inputs :

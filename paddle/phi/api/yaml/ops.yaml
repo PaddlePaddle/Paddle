@@ -1114,6 +1114,19 @@
     func : unfold
   backward : unfold_grad
 
+- op : unsqueeze
+  args : (Tensor x, IntArray axis = {})
+  output : Tensor(out), Tensor(xshape)
+  infer_meta :
+    func : UnsqueezeWithXShapeInferMeta
+  kernel :
+    func : unsqueeze_with_xshape
+    data_type : x
+  inplace : (x -> out)
+  view: (x -> out)
+  intermediate : xshape
+  backward : unsqueeze_grad
+
 - op : unstack
   args : (Tensor x, int axis=0, int num=0)
   output : Tensor[](out){num}
