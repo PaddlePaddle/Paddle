@@ -25,7 +25,6 @@ import types
 import numpy
 
 from paddle.fluid.dygraph.container import Sequential
-from paddle.fluid.dygraph.layers import Layer
 from paddle.jit.dy2static.logging_utils import TranslatorLogger
 from paddle.jit.dy2static.utils import is_paddle_func, unwrap
 
@@ -301,6 +300,8 @@ def convert_call(func):
             converted_call = None
 
     elif hasattr(func, '__class__') and hasattr(func.__class__, '__call__'):
+        from paddle.nn import Layer
+
         if hasattr(func, 'forward') and isinstance(func, Layer):
             try:
                 _, forward_func = unwrap_decorators(func.forward)
