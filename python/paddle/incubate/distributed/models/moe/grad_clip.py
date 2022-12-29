@@ -22,7 +22,7 @@ from paddle.nn.clip import ClipGradBase, _squared_l2_norm
 
 class ClipGradForMOEByGlobalNorm(ClipGradBase):
     r"""
-    The Algrithm is the same as paddle.nn.clip.ClipGradByGlobalNorm
+    The Algrithm is the same as paddle.nn.ClipGradByGlobalNorm
     Given a list of Tensor :math:`t\_list` , calculate the global norm for the elements of all tensors in
     :math:`t\_list` , and limit it to ``clip_norm`` .
 

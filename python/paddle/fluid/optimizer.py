@@ -1253,7 +1253,7 @@ class Optimizer:
         # NOTE(zhiqiu): currently, only support ClipGradByGlobalNorm and without regularization.
         if self._flatten_param_grads and self.regularization is None:
             if self._grad_clip is None or isinstance(
-                self._grad_clip, paddle.nn.clip.ClipGradByGlobalNorm
+                self._grad_clip, paddle.nn.ClipGradByGlobalNorm
             ):
                 params_grads = self.flatten_param_grads(params_grads)
 
