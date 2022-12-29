@@ -248,8 +248,21 @@ void DelInplaceOpFromPlan(
       if (node->Var()->Persistable()) continue;
       std::string var = node->Name();
       if (in_names.find(var) != in_names.end()) {
+        // delete key
         if (node2cluster->count(var)) {
           node2cluster->erase(var);
+        }
+        // delete value
+        std::string tmp_name = "";
+        for (auto it = node2cluster->begin(); it != node2cluster->end(); ++it) {
+          if (it->second == var) {
+            if (tmp_name == "") {
+              tmp_name = it->first;
+              it->second = tmp_name;
+            } else {
+              it->second = tmp_name;
+            }
+          }
         }
       }
     }
