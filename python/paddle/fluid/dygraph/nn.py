@@ -20,7 +20,6 @@ from .. import dygraph_utils
 from . import layers
 from ..framework import (
     Variable,
-    _non_static_mode,
     OpProtoHolder,
     Parameter,
     _dygraph_tracer,
@@ -28,7 +27,6 @@ from ..framework import (
     default_main_program,
     _global_flags,
     in_dygraph_mode,
-    _in_legacy_dygraph,
 )
 
 from ..data_feeder import (
@@ -247,191 +245,78 @@ class BatchNorm(layers.Layer):
         # variance and variance out share the same memory
         variance_out = self._variance
 
-        if _non_static_mode():
-            if in_dygraph_mode():
-                batch_norm_out, t1, t2, t3, t4, _ = _C_ops.batch_norm(
-                    input,
-                    self._mean,
-                    self._variance,
-                    self.weight,
-                    self.bias,
-                    not self.training,
-                    self._momentum,
-                    self._epsilon,
-                    self._data_layout,
-                    self._use_global_stats,
-                    self._trainable_statistics,
-                )
-                return dygraph_utils._append_activation_in_dygraph(
-                    batch_norm_out, act=self._act, use_mkldnn=self._use_mkldnn
-                )
-
-            elif _in_legacy_dygraph():
-                attrs = (
-                    "momentum",
-                    self._momentum,
-                    "epsilon",
-                    self._epsilon,
-                    "is_test",
-                    not self.training,
-                    "data_layout",
-                    self._data_layout,
-                    "use_mkldnn",
-                    self._use_mkldnn,
-                    "fuse_with_relu",
-                    self._fuse_with_relu,
-                    "use_global_stats",
-                    self._use_global_stats,
-                    'trainable_statistics',
-                    self._trainable_statistics,
-                )
-                batch_norm_out, _, _, _, _, _ = _legacy_C_ops.batch_norm(
-                    input,
-                    self.weight,
-                    self.bias,
-                    self._mean,
-                    self._variance,
-                    None,
-                    mean_out,
-                    variance_out,
-                    *attrs
-                )
-
+        if in_dygraph_mode():
+            batch_norm_out, t1, t2, t3, t4, _ = _C_ops.batch_norm(
+                input,
+                self._mean,
+                self._variance,
+                self.weight,
+                self.bias,
+                not self.training,
+                self._momentum,
+                self._epsilon,
+                self._data_layout,
+                self._use_global_stats,
+                self._trainable_statistics,
+            )
             return dygraph_utils._append_activation_in_dygraph(
                 batch_norm_out, act=self._act, use_mkldnn=self._use_mkldnn
             )
+        else:
+            check_variable_and_dtype(
+                input, 'input', ['float16', 'float32', 'float64'], 'BatchNorm'
+            )
 
-        check_variable_and_dtype(
-            input, 'input', ['float16', 'float32', 'float64'], 'BatchNorm'
-        )
+            attrs = {
+                "momentum": self._momentum,
+                "epsilon": self._epsilon,
+                "is_test": self._is_test,
+                "data_layout": self._data_layout,
+                "use_mkldnn": False,
+                "fuse_with_relu": self._fuse_with_relu,
+                "use_global_stats": self._use_global_stats,
+                "trainable_statistics": self._trainable_statistics,
+            }
 
-        attrs = {
-            "momentum": self._momentum,
-            "epsilon": self._epsilon,
-            "is_test": self._is_test,
-            "data_layout": self._data_layout,
-            "use_mkldnn": False,
-            "fuse_with_relu": self._fuse_with_relu,
-            "use_global_stats": self._use_global_stats,
-            "trainable_statistics": self._trainable_statistics,
-        }
+            inputs = {
+                "X": [input],
+                "Scale": [self.weight],
+                "Bias": [self.bias],
+                "Mean": [self._mean],
+                "Variance": [self._variance],
+            }
 
-        inputs = {
-            "X": [input],
-            "Scale": [self.weight],
-            "Bias": [self.bias],
-            "Mean": [self._mean],
-            "Variance": [self._variance],
-        }
+            saved_mean = self._helper.create_variable_for_type_inference(
+                dtype=self._dtype, stop_gradient=True
+            )
+            saved_variance = self._helper.create_variable_for_type_inference(
+                dtype=self._dtype, stop_gradient=True
+            )
+            reserve_space = self._helper.create_variable_for_type_inference(
+                dtype=self._helper.input_dtype(input), stop_gradient=True
+            )
 
-        saved_mean = self._helper.create_variable_for_type_inference(
-            dtype=self._dtype, stop_gradient=True
-        )
-        saved_variance = self._helper.create_variable_for_type_inference(
-            dtype=self._dtype, stop_gradient=True
-        )
-        reserve_space = self._helper.create_variable_for_type_inference(
-            dtype=self._helper.input_dtype(input), stop_gradient=True
-        )
+            batch_norm_out = (
+                input
+                if self._in_place
+                else self._helper.create_variable_for_type_inference(
+                    self._dtype
+                )
+            )
 
-        batch_norm_out = (
-            input
-            if self._in_place
-            else self._helper.create_variable_for_type_inference(self._dtype)
-        )
+            outputs = {
+                "Y": [batch_norm_out],
+                "MeanOut": [mean_out],
+                "VarianceOut": [variance_out],
+                "SavedMean": [saved_mean],
+                "SavedVariance": [saved_variance],
+            }
+            if reserve_space is not None:
+                outputs["ReserveSpace"] = [reserve_space]
 
-        outputs = {
-            "Y": [batch_norm_out],
-            "MeanOut": [mean_out],
-            "VarianceOut": [variance_out],
-            "SavedMean": [saved_mean],
-            "SavedVariance": [saved_variance],
-        }
-        if reserve_space is not None:
-            outputs["ReserveSpace"] = [reserve_space]
+            self._helper.append_op(
+                type="batch_norm", inputs=inputs, outputs=outputs, attrs=attrs
+            )
 
-        self._helper.append_op(
-            type="batch_norm", inputs=inputs, outputs=outputs, attrs=attrs
-        )
-
-        # Currently, we don't support inplace in dygraph mode
-        return self._helper.append_activation(batch_norm_out, self._act)
-
-
-class RowConv(layers.Layer):
-    """
-    ***Row-convolution operator***
-
-    The row convolution is called lookahead convolution.  This operator was introduced in the following paper for DeepSpeech2:
-    http://www.cs.cmu.edu/~dyogatam/papers/wang+etal.iclrworkshop2016.pdf
-
-    The main motivation is that a bidirectional RNN, useful in DeepSpeech like speech models, learns representation for a sequence by performing a
-    forward and a backward pass through the entire sequence. However, unlike
-    unidirectional RNNs, bidirectional RNNs are challenging to deploy in an online
-    and low-latency setting. The lookahead convolution incorporates information
-    from future subsequences in a computationally efficient manner to improve
-    unidirectional recurrent neural networks. The row convolution operator is
-    different from the 1D sequence convolution, and is computed as follows:
-
-    Given an input sequence X of length t and input dimension D, and a filter (W) of size context * D.
-
-    More details about row_conv please refer to the design document https://github.com/PaddlePaddle/Paddle/issues/2228#issuecomment-303903645 .
-
-    Parameters:
-        name_scope(str): The name of this class.
-        future_context_size (int): Future context size. Please note, the shape
-            of convolution kernel is [future_context_size + 1, D].
-        param_attr (ParamAttr): Attributes of parameters, including
-            name, initializer etc. Default: None.
-        act (str): Non-linear activation to be applied to output variable. Default: None.
-
-    Attributes:
-        weight (Parameter): the learnable weights of this layer.
-
-    Returns:
-        the output(Out) is a LodTensor, which supports variable time-length input sequences.
-        The underlying tensor in this LodTensor is a matrix with shape T x N, i.e., the same shape as X.
-
-    Examples:
-        .. code-block:: python
-
-          import paddle.fluid as fluid
-          import numpy
-
-          with fluid.dygraph.guard():
-              x = numpy.random.random((16)).astype('float32')
-              rowConv = fluid.dygraph.nn.RowConv(
-                    'RowConv', future_context_size=2)
-              ret = rowConv(fluid.dygraph.base.to_variable(x))
-
-    """
-
-    def __init__(
-        self, name_scope, future_context_size, param_attr=None, act=None
-    ):
-        assert (
-            not _non_static_mode()
-        ), "RowConv is not supported by dynamic graph mode yet!"
-        super().__init__(name_scope)
-        self._act = act
-        self._param_attr = param_attr
-        self._future_context_size = future_context_size
-
-    def _build_once(self, input):
-        self._dtype = self._helper.input_dtype(input)
-        filter_shape = [self._future_context_size + 1, input.shape[1]]
-        self.weight = self.create_parameter(
-            attr=self._param_attr,
-            shape=filter_shape,
-            dtype=self._dtype,
-            is_bias=False,
-        )
-
-    def forward(self, input):
-        out = self._helper.create_variable_for_type_inference(self._dtype)
-        self._helper.append_op(
-            type='row_conv',
-            inputs={'X': [input], 'Filter': [self.weight]},
-            outputs={'Out': [out]},
-        )
-        return self._helper.append_activation(out, act=self._act)
+            # Currently, we don't support inplace in dygraph mode
+            return self._helper.append_activation(batch_norm_out, self._act)
