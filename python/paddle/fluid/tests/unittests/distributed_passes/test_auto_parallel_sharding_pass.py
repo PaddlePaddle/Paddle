@@ -139,7 +139,7 @@ class TestShardingStage2WithNewEXE(AutoPallelPassTestBase):
             config["degree"] = 2
             config["sharding_degree"] = 2
             config["enable_overlap"] = True
-            config["param_comm_stream_num"] = 3
+            config["param_comm_stream_num"] = 2
             config["grad_comm_stream_num"] = 2
             config["param_bucket_size_numel"] = 1024 * 1024
             config["grad_bucket_size_numel"] = 1024 * 1024

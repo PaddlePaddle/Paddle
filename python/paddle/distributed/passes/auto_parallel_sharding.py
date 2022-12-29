@@ -1030,8 +1030,10 @@ class ShardingPass(PassBase):
 
         _logger.info("Sharding Gradient Communication Optimization:")
         _logger.info(
-            "Original [{}] gradients are fuse into [{}] buckets.".format(
-                len(grouped_grad_names), len(grad_groups)
+            "Gradient Bucket size is [{}], [{}] Gradients are fused into [{}] Buckets.".format(
+                self.grad_bucket_size_numel,
+                len(grouped_grad_names),
+                len(grad_groups),
             )
         )
 
