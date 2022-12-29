@@ -32,7 +32,6 @@ from ..layers import collective
 from paddle.fluid.dygraph import base as imperative_base
 from paddle.fluid.framework import (
     ParamBase,
-    _non_static_mode,
     in_dygraph_mode,
 )
 
@@ -570,7 +569,7 @@ class DataParallel(layers.Layer):
         super().__init__(layers.full_name() + "_data_parallel")
 
         assert (
-            _non_static_mode()
+            in_dygraph_mode()
         ), "It's not supported to construct DataParallel in static mode."
 
         self._layers = layers
