@@ -785,14 +785,14 @@ class TestSundryAPI(unittest.TestCase):
         self.assertEqual(out.shape, [])
         self.assertEqual(out.grad.shape, [])
 
-        new_shape = paddle.full([], 1, "int32")
+        new_shape = paddle.full([1], 1, "int32")
         out = paddle.reshape(x, new_shape)
         out.backward()
         self.assertEqual(x.grad.shape, [1, 1])
         self.assertEqual(out.shape, [1])
         self.assertEqual(out.grad.shape, [1])
 
-        new_shape = paddle.full([], -1, "int32")
+        new_shape = paddle.full([1], -1, "int32")
         out = paddle.reshape(x, new_shape)
         out.backward()
         self.assertEqual(x.grad.shape, [1, 1])
@@ -825,11 +825,11 @@ class TestSundryAPI(unittest.TestCase):
         out = paddle.reshape_(x, [])
         self.assertEqual(out.shape, [])
 
-        new_shape = paddle.full([], 1, "int32")
+        new_shape = paddle.full([1], 1, "int32")
         out = paddle.reshape_(x, new_shape)
         self.assertEqual(out.shape, [1])
 
-        new_shape = paddle.full([], -1, "int32")
+        new_shape = paddle.full([1], -1, "int32")
         out = paddle.reshape_(x, new_shape)
         self.assertEqual(out.shape, [1])
 
@@ -1130,11 +1130,11 @@ class TestSundryAPIStatic(unittest.TestCase):
         x2.stop_gradient = False
         x3.stop_gradient = False
 
-        new_shape = paddle.full([], 1, "int32")
+        new_shape = paddle.full([1], 1, "int32")
         out1 = paddle.reshape(x1, new_shape)
         paddle.static.append_backward(out1)
 
-        new_shape = paddle.full([], -1, "int32")
+        new_shape = paddle.full([1], -1, "int32")
         out2 = paddle.reshape(x2, new_shape)
         paddle.static.append_backward(out2)
 

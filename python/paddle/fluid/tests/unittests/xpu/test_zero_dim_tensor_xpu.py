@@ -634,26 +634,17 @@ class TestSundryAPI(unittest.TestCase):
         out = paddle.reshape_(x, [])
         self.assertEqual(out.shape, [])
 
-        new_shape = paddle.full([], 1, "int32")
+        new_shape = paddle.full([1], 1, "int32")
         out = paddle.reshape_(x, new_shape)
         self.assertEqual(out.shape, [1])
 
-        new_shape = paddle.full([], -1, "int32")
+        new_shape = paddle.full([1], -1, "int32")
         out = paddle.reshape_(x, new_shape)
         self.assertEqual(out.shape, [1])
 
         new_shape = [paddle.full([], -1, "int32"), paddle.full([], 1, "int32")]
         out = paddle.reshape_(x, new_shape)
         self.assertEqual(out.shape, [1, 1])
-
-    def test_reverse(self):
-        x = paddle.rand([])
-        x.stop_gradient = False
-        out = paddle.reverse(x, axis=[])
-        out.backward()
-        self.assertEqual(x.shape, [])
-        self.assertEqual(out.shape, [])
-        self.assertEqual(out.grad.shape, [])
 
 
 # Use to test API whose zero-dim input tensors don't have grad and not need to test backward in OpTest.
