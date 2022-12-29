@@ -38,6 +38,7 @@ def apply_pass(use_bf16=False):
         amp = strategy.amp
         amp.enable = True
         amp.enable_bf16 = True
+        amp.custom_bf16_list = ["reduce_mean"]
     return strategy
 
 
@@ -112,20 +113,19 @@ class TestBF16Pass(unittest.TestCase):
             "elementwise_add_grad",
             "matmul_v2_grad",
             "relu_grad",
+            "reduce_mean_grad",
+            "reduce_mean",
         }
 
         fp32_op_list = {
             "flatten_contiguous_range",
-            "reduce_mean",
             "softmax_with_cross_entropy",
-            "fill_constant",
-            "reduce_mean_grad",
             "softmax_with_cross_entropy_grad",
         }
 
         for block in program.blocks:
             for op in block.ops:
-                if op not in bf16_op_list and op not in fp32_op_list:
+                if op.type not in bf16_op_list and op not in fp32_op_list:
                     continue
 
                 for in_name in op.input_names:
@@ -168,6 +168,7 @@ class TestBF16Pass(unittest.TestCase):
                                 continue
                             assert var.dtype == core.VarDesc.VarType.FP32
                             if "cast_fp32" in in_var_name:
+                                tmp_in_var_name = in_var_name
                                 prev_op = find_true_prev_op(
                                     block.ops, op, tmp_in_var_name
                                 )

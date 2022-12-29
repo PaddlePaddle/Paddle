@@ -57,17 +57,23 @@ class BF16State(object):
     def _is_bf16_op(self, op_id):
         return self._op_bf16_dict.get(op_id, None)
 
+    def _are_post_ops_bf16(self, post_ops):
+        for op in post_ops:
+            if self._is_bf16_op(op.desc.original_id()) is False:
+                return False
+        return True
+
     def _build_state(self, amp_lists, dist_context):
         ops = self._block.ops
         dist_op_context = dist_context.dist_op_context
         training = False
+
+        self._mark_black_white_op(amp_lists)
+
         for op in ops:
             if int(op.attr("op_role")) == 257:
                 training = True
-
-            if int(op.attr("op_role")) == int(OpRole.Forward):
-                self._mark_black_white_op(amp_lists, op, ops)
-            elif int(op.attr("op_role")) == int(OpRole.Backward):
+            if int(op.attr("op_role")) == int(OpRole.Backward):
                 if op.desc.original_id() in dist_op_context.grad_op_id_to_op_id:
                     fwd_op_id = dist_op_context.grad_op_id_to_op_id[
                         op.desc.original_id()
@@ -78,57 +84,89 @@ class BF16State(object):
                         self._op_bf16_dict[op.desc.original_id()] = False
             elif int(op.attr("op_role")) == int(OpRole.Optimize):
                 break
+
+        for op in ops:
+            if str(op.type) in amp_lists.bf16_initializer_list:
+                change_op = True
+                post_ops = []
+                op_out_vars = []
+                for out_name in op.output_names:
+                    for out_var_name in op.output(out_name):
+                        out_var = self._block.var(out_var_name)
+                        post_op = find_true_post_op(ops, op, out_var_name, True)
+                        if out_var is None or out_var.type not in _valid_types:
+                            change_op = False
+                            break
+                        post_ops += post_op
+                        op_out_vars.append(out_var)
+                if change_op and self._are_post_ops_bf16(post_ops):
+                    for out_var in op_out_vars:
+                        if out_var.dtype == core.VarDesc.VarType.FP32:
+                            out_var.desc.set_dtype(core.VarDesc.VarType.BF16)
+                    if (
+                        op.has_attr('dtype')
+                        and op.attr('dtype') == core.VarDesc.VarType.FP32
+                    ):
+                        op._set_attr('dtype', core.VarDesc.VarType.BF16)
+
         return training
 
-    def _mark_black_white_op(self, amp_lists, op, ops):
-        if op.type == "create_py_reader" or op.type == "read":
-            return
-        if amp_lists.fp32_varnames is not None and _is_in_fp32_varnames(
-            op, amp_lists
-        ):
-            self._op_bf16_dict[op.desc.original_id()] = False
-            return
-        if op.type in amp_lists.bf16_list:
-            self._op_bf16_dict[op.desc.original_id()] = True
-        elif op.type in amp_lists.gray_list:
-            is_fp32_op = False
-            is_bf16_op = False
-            for in_name in op.input_names:
-                if in_name:
-                    for in_var_name in op.input(in_name):
-                        in_var = self._block.var(in_var_name)
-                        if in_var.op is None:
-                            continue
-                        elif in_var.op is op:
-                            prev_op = find_true_prev_op(ops, op, in_var_name)
-                            if prev_op is None:
-                                continue
-                        else:
-                            prev_op = in_var.op
-                        if (
-                            self._op_bf16_dict.get(
-                                prev_op.desc.original_id(), False
-                            )
-                            is False
-                            or prev_op.type in amp_lists.fp32_list
-                        ):
-                            is_fp32_op = True
-                        elif (
-                            self._op_bf16_dict.get(
-                                prev_op.desc.original_id(), False
-                            )
-                            is True
-                            or prev_op.type in amp_lists.bf16_list
-                        ):
-                            is_bf16_op = True
-            if is_fp32_op:
+    def _mark_black_white_op(self, amp_lists):
+        self._block._sync_with_cpp()
+        ops = self._block.ops
+        for op in ops:
+            if int(op.attr("op_role")) == int(OpRole.Backward):
+                break
+            if op.type == "create_py_reader" or op.type == "read":
+                continue
+            if amp_lists.fp32_varnames is not None and _is_in_fp32_varnames(
+                op, amp_lists
+            ):
                 self._op_bf16_dict[op.desc.original_id()] = False
-            elif is_bf16_op:
+                continue
+            if op.type in amp_lists.bf16_list:
                 self._op_bf16_dict[op.desc.original_id()] = True
+            elif op.type in amp_lists.gray_list:
+                is_fp32_op = False
+                is_bf16_op = False
+                for in_name in op.input_names:
+                    if in_name:
+                        for in_var_name in op.input(in_name):
+                            in_var = self._block.var(in_var_name)
+                            if in_var.op is None:
+                                continue
+                            elif in_var.op is op:
+                                prev_op = find_true_prev_op(
+                                    ops, op, in_var_name
+                                )
+                                if prev_op is None:
+                                    continue
+                            else:
+                                prev_op = in_var.op
+                            if (
+                                self._op_bf16_dict.get(
+                                    prev_op.desc.original_id(), False
+                                )
+                                is False
+                                or prev_op.type in amp_lists.fp32_list
+                            ):
+                                is_fp32_op = True
+                            elif (
+                                self._op_bf16_dict.get(
+                                    prev_op.desc.original_id(), False
+                                )
+                                is True
+                                or prev_op.type in amp_lists.bf16_list
+                            ):
+                                is_bf16_op = True
+                if is_fp32_op:
+                    self._op_bf16_dict[op.desc.original_id()] = False
+                elif is_bf16_op:
+                    self._op_bf16_dict[op.desc.original_id()] = True
+                else:
+                    pass
             else:
-                pass
-        else:
-            self._op_bf16_dict[op.desc.original_id()] = False
+                self._op_bf16_dict[op.desc.original_id()] = False
 
     def cast_forward_program(self, dist_context):
         ops = self._block.ops
