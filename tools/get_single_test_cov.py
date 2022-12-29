@@ -27,15 +27,17 @@ def getFNDAFile(rootPath, test):
     except FileNotFoundError:
         print("%s is not found." % filename)
         return
-    lines = f.readlines()
-    for line in lines:
-        line = line.replace('\n', '')
-        if line.startswith(('SF:')):
-            os.system('echo %s >> %s' % (line, fn_filename))
-        elif line.startswith(('FNDA:')):
-            hit = int(line.split('FNDA:')[1].split(',')[0])
-            if hit != 0:
-                os.system('echo %s >> %s' % (line, fn_filename))
+    all_data = f.read().split('TN:')
+    del all_data[0]
+    for gcov_data in all_data:
+        message_list = gcov_data.split('\n')
+        os.system('echo %s >> %s' % (message_list[1], fn_filename))
+        if 'FNH:0' not in gcov_data:
+            for message in message_list:
+                if message.startswith(('FNDA:')) and (
+                    not message.startswith(('FNDA:0,'))
+                ):
+                    os.system('echo %s >> %s' % (message, fn_filename))
     f.close()
 
 
