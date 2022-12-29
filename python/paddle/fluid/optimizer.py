@@ -2981,7 +2981,7 @@ class DecayedAdagradOptimizer(Optimizer):
             paddle.enable_static()
             x = fluid.data(name='x', shape=[None, 10], dtype='float32')
             trans = paddle.static.nn.fc(x, 100)
-            cost = fluid.layers.reduce_mean(trans)
+            cost = paddle.mean(trans)
             optimizer = fluid.optimizer.DecayedAdagradOptimizer(learning_rate=0.2)
             optimizer.minimize(cost)
     """
@@ -3105,7 +3105,7 @@ class AdadeltaOptimizer(Optimizer):
             paddle.enable_static()
             image = fluid.data(name='image', shape=[None, 28], dtype='float32')
             fc = paddle.static.nn.fc(image, size=10)
-            cost = fluid.layers.reduce_mean(fc)
+            cost = paddle.mean(fc)
             optimizer = fluid.optimizer.Adadelta(
                 learning_rate=0.0003, epsilon=1.0e-6, rho=0.95)
 
@@ -4472,7 +4472,7 @@ class PipelineOptimizer:
             with fluid.device_guard("gpu:1"):
                 concat = layers.concat([emb_x, emb_y], axis=1)
                 fc = paddle.static.nn.fc(x=concat, name="fc", size=1, num_flatten_dims=1, bias_attr=False)
-                loss = layers.reduce_mean(fc)
+                loss = paddle.mean(fc)
             optimizer = fluid.optimizer.SGD(learning_rate=0.5)
             optimizer = fluid.optimizer.PipelineOptimizer(optimizer)
             optimizer.minimize(loss)

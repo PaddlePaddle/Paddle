@@ -793,7 +793,7 @@ def set_gradient_clip(clip, param_list=None, program=None):
                 fc1 = paddle.static.nn.fc(image, size=10, weight_attr=param_attr1)
                 param_attr2 = fluid.ParamAttr("fc2_param")
                 fc2 = paddle.static.nn.fc(fc1, size=10, weight_attr=param_attr2)
-                loss = fluid.layers.reduce_mean(fc2)
+                loss = paddle.mean(fc2)
                 return loss
 
 
