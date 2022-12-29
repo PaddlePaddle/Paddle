@@ -101,10 +101,11 @@ const std::vector<std::string> kTRTSubgraphPasses({
       "delete_c_identity_op_pass",                    //
       "trt_multihead_matmul_fuse_pass_v2",            //
       "trt_multihead_matmul_fuse_pass_v3",            //
-      "trt_multihead_matmul_fuse_pass_v4",            //
-      "trt_multihead_matmul_fuse_pass_v4_cross",      //
       "multihead_matmul_roformer_fuse_pass",          //
       "constant_folding_pass",                        //
+      "trt_flash_multihead_matmul_fuse_pass",         //
+      "trt_cross_multihead_matmul_fuse_pass",         //
+
       "vit_attention_fuse_pass",                      //
 #if defined _WIN32  // Windows CI is TensorRT7.0. Remove this after upgrading.
 #else
