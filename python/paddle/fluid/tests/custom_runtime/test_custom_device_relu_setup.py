@@ -15,7 +15,6 @@
 import os
 import sys
 import tempfile
-import time
 import unittest
 from site import getsitepackages
 
@@ -133,7 +132,6 @@ def custom_relu_double_grad_dynamic(func, device, dtype, np_x, use_func=True):
 
 class TestNewCustomOpSetUpInstall(unittest.TestCase):
     def setUp(self):
-        self.time_start = time.time()
         # compile so and set to current path
         self.cur_dir = os.path.dirname(os.path.abspath(__file__))
         self.temp_dir = tempfile.TemporaryDirectory()
@@ -146,10 +144,8 @@ class TestNewCustomOpSetUpInstall(unittest.TestCase):
             && mkdir build && cd build && cmake .. && make -j8 \
             && cd {}'.format(
             self.temp_dir.name,
-            # os.getenv('PLUGIN_URL'),
-            "https://github.com/PaddlePaddle/PaddleCustomDevice.git",
-            # os.getenv('PLUGIN_TAG'),
-            "develop",
+            os.getenv('PLUGIN_URL'),
+            os.getenv('PLUGIN_TAG'),
             self.cur_dir,
         )
         os.system(cmd)
@@ -165,11 +161,6 @@ class TestNewCustomOpSetUpInstall(unittest.TestCase):
 
         # `import paddle` loads custom_cpu.so, hence we must import paddle after finishing build PaddleCustomDevice
         import paddle
-
-        print(
-            "DEBUG paddle setup custom_device",
-            paddle.device.get_all_custom_device_type(),
-        )
 
         # [Why specific paddle_includes directory?]
         # Add paddle_includes to pass CI, for more details,
@@ -203,33 +194,16 @@ class TestNewCustomOpSetUpInstall(unittest.TestCase):
         paddle.seed(SEED)
         paddle.framework.random._manual_program_seed(SEED)
 
-        print("SETUP TIME", time.time() - self.time_start)
-
     def tearDown(self):
-        print("TearDown TIME begin", time.time() - self.time_start)
         self.temp_dir.cleanup()
         del os.environ['CUSTOM_DEVICE_ROOT']
-        print("TearDown TIME end", time.time() - self.time_start)
 
     def test_custom_device(self):
-        import paddle
-
-        print(
-            "DEBUG paddle custom_device",
-            paddle.device.get_all_custom_device_type(),
-        )
-
-        print("DEBUG begin test ")
         self._test_static()
-        print("DEBUG finish test _test_static")
         self._test_static_pe()
-        print("DEBUG finish test _test_static_pe")
         self._test_dynamic()
-        print("DEBUG finish test _test_dynamic")
         self._test_double_grad_dynamic()
-        print("DEBUG finish test _test_double_grad_dynamic")
         self._test_with_dataloader()
-        print("DEBUG finish test _test_with_dataloader")
 
     def _test_static(self):
         for dtype in self.dtypes:
