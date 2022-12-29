@@ -16,6 +16,16 @@ limitations under the License. */
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/phi/backends/gpu/cuda/cuda_graph_with_memory_pool.h"
 
+#if defined(_WIN32)
+/*
+Since MSVC has different behavior when align > alignof(max_align_t).
+When we set _ENABLE_EXTENDED_ALIGNED_STORAGE, the alignment will work correctly
+but the compiled library is no longer ABI compatible to code compiled with an
+older version of MSVC.
+*/
+#define _ENABLE_EXTENDED_ALIGNED_STORAGE
+#endif  // _WIN32
+
 namespace phi {
 namespace funcs {
 
