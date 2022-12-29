@@ -26,87 +26,6 @@ static inline size_t AlignTo16(const size_t& input) {
   return ALIGNMENT * ((input + ALIGNMENT - 1) / ALIGNMENT);
 }
 
-/*
-WarpReduce multi values.
-TODO(zhengzekang): Add blocksize templates to reduce shared memory usage.
-*/
-template <typename T, int NUM>
-__inline__ __device__ T warpReduceSumV2(T* val) {
-#pragma unroll
-  for (int i = 0; i < NUM; i++) {
-#pragma unroll
-    for (int mask = 16; mask > 0; mask >>= 1)
-      val[i] += __shfl_xor_sync(FINAL_MASK, val[i], mask, 32);
-  }
-  return (T)(0.0f);
-}
-
-template <typename T, int NUM>
-__inline__ __device__ T blockReduceSumV2(T* val) {
-  static __shared__ T shared[NUM][33];
-  int lane = threadIdx.x & 0x1f;
-  int wid = threadIdx.x >> 5;
-
-  warpReduceSumV2<T, NUM>(val);
-
-  if (lane == 0) {
-#pragma unroll
-    for (int i = 0; i < NUM; i++) {
-      shared[i][wid] = val[i];
-    }
-  }
-
-  __syncthreads();
-
-  bool is_mask = threadIdx.x < (blockDim.x / 32.f);
-#pragma unroll
-  for (int i = 0; i < NUM; i++) {
-    val[i] = is_mask ? shared[i][lane] : (T)(0.0f);
-  }
-  warpReduceSumV2<T, NUM>(val);
-  return (T)0.0f;
-}
-
-template <typename T, int NUM>
-__inline__ __device__ T warpReduceMaxV2(T* val) {
-#pragma unroll
-  for (int i = 0; i < NUM; i++) {
-#pragma unroll
-    for (int mask = 16; mask > 0; mask >>= 1)
-      val[i] = max(val[i], __shfl_xor_sync(FINAL_MASK, val[i], mask, 32));
-  }
-  return (T)(0.0f);
-}
-
-template <typename T, int NUM>
-__inline__ __device__ T blockReduceMaxV2(T* val) {
-  static __shared__ T shared[32][NUM];
-  int lane = threadIdx.x & 0x1f;  // in-warp idx
-  int wid = threadIdx.x >> 5;     // warp idx
-
-  warpReduceMaxV2<T, NUM>(val);  // get maxx in each warp
-
-  if (lane == 0) {  // record in-warp maxx by warp Idx
-#pragma unroll
-    for (int i = 0; i < NUM; i++) {
-      shared[wid][i] = val[i];
-    }
-  }
-
-  __syncthreads();
-
-  // Modify from blockDim.x << 5 to blockDim.x / 32. to prevent
-  // blockDim.x is not divided by 32
-  bool is_mask = threadIdx.x < (blockDim.x / 32.f);
-#pragma unroll
-  for (int i = 0; i < NUM; i++) {
-    val[i] = is_mask ? shared[lane][i] : (T)-1e20f;
-  }
-  warpReduceMaxV2<T, NUM>(val);
-
-  return (T)0.0f;
-}
-
 class CubKeyValueSorter {
  public:
   CubKeyValueSorter();
@@ -341,8 +260,8 @@ __global__ void softmax_kernel_v4(
 
     float max_val =
         blockDim.x <= 32
-            ? phi::funcs::warpReduceMax<float>(local_max, 0xFFFFFFFF)
-            : phi::funcs::blockReduceMax<float>(local_max, 0xffffffff);
+            ? phi::funcs::WarpReduceMax<float>(local_max, 0xFFFFFFFF)
+            : phi::funcs::BlockReduceMax<float>(local_max, 0xffffffff);
     if (threadIdx.x == 0) {
       s_max = max_val;
     }
@@ -355,8 +274,8 @@ __global__ void softmax_kernel_v4(
     }
     float sum_val =
         blockDim.x <= 32
-            ? phi::funcs::warpReduceSum<float>(local_sum, 0xffffffff)
-            : phi::funcs::blockReduceSum<float>(local_sum, 0xffffffff);
+            ? phi::funcs::WarpReduceSum<float>(local_sum, 0xffffffff)
+            : phi::funcs::BlockReduceSum<float>(local_sum, 0xffffffff);
     if (threadIdx.x == 0) {
       s_mean = sum_val + 1e-6f;
       s_mean = __fdividef(1.0f, s_mean);
@@ -412,8 +331,8 @@ __global__ void softmax_kernel_v4_half2(T* qk_buf_,
 
     float max_val =
         blockDim.x <= 32
-            ? phi::funcs::warpReduceMax<float>(local_max, 0xFFFFFFFF)
-            : phi::funcs::blockReduceMax<float>(local_max, 0xFFFFFFFF);
+            ? phi::funcs::WarpReduceMax<float>(local_max, 0xFFFFFFFF)
+            : phi::funcs::BlockReduceMax<float>(local_max, 0xFFFFFFFF);
     if (threadIdx.x == 0) {
       s_max = max_val;
     }
@@ -429,8 +348,8 @@ __global__ void softmax_kernel_v4_half2(T* qk_buf_,
 
     float sum_val =
         blockDim.x <= 32
-            ? phi::funcs::warpReduceSum<float>(local_sum, 0xFFFFFFFF)
-            : phi::funcs::blockReduceSum<float>(local_sum, 0xFFFFFFFF);
+            ? phi::funcs::WarpReduceSum<float>(local_sum, 0xFFFFFFFF)
+            : phi::funcs::BlockReduceSum<float>(local_sum, 0xFFFFFFFF);
 
     if (threadIdx.x == 0) {
       s_mean = sum_val + 1e-6f;
@@ -515,9 +434,9 @@ __global__ void softmax_kernel_v5_half2(T* qk_buf_,
       }
     }
     if (blockDim.x <= 32) {
-      warpReduceMaxV2<float, NUM>(local_max);
+      phi::funcs::WarpReduceMaxV2<float, NUM>(local_max);
     } else {
-      blockReduceMaxV2<float, NUM>(local_max);
+      phi::funcs::BlockReduceMaxV2<float, NUM>(local_max);
     }
 
     if (threadIdx.x == 0) {
@@ -548,9 +467,10 @@ __global__ void softmax_kernel_v5_half2(T* qk_buf_,
     }
 
     if (blockDim.x <= 32) {
-      warpReduceSumV2<float, NUM>(local_sum);
+      phi::funcs::WarpReduceSumV2<float, NUM>(local_sum);
+
     } else {
-      blockReduceSumV2<float, NUM>(local_sum);
+      phi::funcs::BlockReduceSumV2<float, NUM>(local_sum);
     }
 
     if (threadIdx.x == 0) {

@@ -26,6 +26,7 @@
 #include "paddle/fluid/operators/fused/fused_layernorm_residual_dropout_bias.h"
 #include "paddle/fluid/operators/layer_norm_kernel.cu.h"
 #include "paddle/fluid/operators/math/bert_encoder_functor.h"
+#include "paddle/phi/kernels/funcs/math_cuda_utils.h"
 
 namespace paddle {
 namespace inference {
@@ -33,41 +34,6 @@ namespace tensorrt {
 namespace plugin {
 #ifdef TRT_PLUGIN_FP16_AVALIABLE
 #define FINAL_MASK 0xffffffff
-template <typename T, int NUM>
-__inline__ __device__ T warpReduceSumV2(T *val) {
-#pragma unroll
-  for (int i = 0; i < NUM; i++) {
-#pragma unroll
-    for (int mask = 16; mask > 0; mask >>= 1)
-      val[i] += __shfl_xor_sync(FINAL_MASK, val[i], mask, 32);
-  }
-  return (T)(0.0f);
-}
-
-template <typename T, int NUM>
-__inline__ __device__ T blockReduceSumV2(T *val) {
-  static __shared__ T shared[NUM][33];
-  int lane = threadIdx.x & 0x1f;
-  int wid = threadIdx.x >> 5;
-
-  warpReduceSumV2<T, NUM>(val);
-
-  if (lane == 0) {
-#pragma unroll
-    for (int i = 0; i < NUM; i++) {
-      shared[i][wid] = val[i];
-    }
-  }
-  __syncthreads();
-
-  bool is_mask = threadIdx.x < (blockDim.x / 32.f);
-#pragma unroll
-  for (int i = 0; i < NUM; i++) {
-    val[i] = is_mask ? shared[i][lane] : (T)(0.0f);
-  }
-  warpReduceSumV2<T, NUM>(val);
-  return (T)0.0f;
-}
 
 template <int UNROLL_FACTOR>
 __global__ void generalAddBiasResidualLayerNormOpt2(
@@ -119,7 +85,7 @@ __global__ void generalAddBiasResidualLayerNormOpt2(
   float sums[2];
   sums[0] = x_sum;
   sums[1] = x2_sum;
-  blockReduceSumV2<float, 2>(sums);
+  phi::funcs::BlockReduceSumV2<float, 2>(sums);
 
   if (threadIdx.x == 0) {
     s_mean = sums[0] / n / 2;

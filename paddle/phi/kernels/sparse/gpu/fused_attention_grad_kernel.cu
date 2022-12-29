@@ -47,7 +47,7 @@ __global__ void AttnSoftmaxGpuGradKernel(const int64_t* out_crows,
   for (int idx = threadIdx.x; idx < row_nnz; idx += blockDim.x) {
     mul += out_values[row_first + idx] * dout_values[row_first + idx];
   }
-  T mul_sum = phi::funcs::warpReduceSum<T>(mul, 0xFFFFFFFF);
+  T mul_sum = phi::funcs::WarpReduceSum<T>(mul, 0xFFFFFFFF);
 
   for (int idx = threadIdx.x; idx < row_nnz; idx += blockDim.x) {
     dx_values[row_first + idx] = (dout_values[row_first + idx] - mul_sum) *
