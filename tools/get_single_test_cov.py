@@ -12,12 +12,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import json
 import os
 import re
 import sys
 
 
 def getFNDAFile(rootPath, test):
+    # load base fnda
+    fnda_base_dict = {}
+    find_file_cmd = os.popen("find %s -name %s.cc" % (rootPath, test))
+    if find_file_cmd.read() != "":
+        print("%s is a c++ unittest" % test)
+        with open(
+            "%s/build/ut_map/simple_test/base_fnda.json" % rootPath, 'r'
+        ) as load_f:
+            fnda_base_dict = json.load(load_f)
+    # analyse fnda
     filename = '%s/build/ut_map/%s/coverage.info.tmp' % (rootPath, test)
     fn_filename = '%s/build/ut_map/%s/fnda.tmp' % (rootPath, test)
     os.system('touch %s' % fn_filename)
@@ -37,7 +48,18 @@ def getFNDAFile(rootPath, test):
                 if message.startswith(('FNDA:')) and (
                     not message.startswith(('FNDA:0,'))
                 ):
-                    os.system('echo %s >> %s' % (message, fn_filename))
+                    tmp_data = message.split('FNDA:')[1].split(',')
+                    hit = int(tmp_data[0])
+                    symbol = tmp_data[1]
+                    if symbol in fnda_base_dict:
+                        if (hit - fnda_base_dict[symbol]) > 0:
+                            fnda_str = 'FNDA:%s,%s' % (
+                                str(hit - fnda_base_dict[symbol]),
+                                symbol,
+                            )
+                            os.system('echo %s >> %s' % (fnda_str, fn_filename))
+                    else:
+                        os.system('echo %s >> %s' % (message, fn_filename))
     f.close()
 
 
@@ -114,6 +136,32 @@ def analysisFNDAFile(rootPath, test):
     f.close()
 
 
+def getBaseFnda(rootPath, test):
+    filename = '%s/build/ut_map/%s/coverage.info.tmp' % (rootPath, test)
+    try:
+        f = open(filename)
+        print("oepn %s succesfully" % filename)
+    except FileNotFoundError:
+        print("%s is not found." % filename)
+    symbol_fnda = {}
+    all_data = f.read().split('TN:')
+    del all_data[0]
+    for gcov_data in all_data:
+        message_list = gcov_data.split('\n')
+        # only for cc file
+        if ".cc" in message_list[1]:
+            for message in message_list:
+                if message.startswith(('FNDA:')) and (
+                    not message.startswith(('FNDA:0,'))
+                ):
+                    tmp_data = message.split('FNDA:')[1].split(',')
+                    symbol_fnda[tmp_data[1]] = int(tmp_data[0])
+    f.close()
+
+    with open("%s/build/ut_map/%s/base_fnda.json" % (rootPath, test), "w") as f:
+        json.dump(symbol_fnda, f, indent=4)
+
+
 def getCovinfo(rootPath, test):
     ut_map_path = '%s/build/ut_map/%s' % (rootPath, test)
     os.system(
@@ -141,8 +189,11 @@ def getCovinfo(rootPath, test):
 
     os.system('rm -rf %s/paddle' % ut_map_path)
     os.system('rm -rf %s/coverage.info' % ut_map_path)
-    getFNDAFile(rootPath, test)
-    analysisFNDAFile(rootPath, test)
+    if test == "simple_test":
+        getBaseFnda(rootPath, test)
+    else:
+        getFNDAFile(rootPath, test)
+        analysisFNDAFile(rootPath, test)
     os.system('rm -rf %s/coverage.info.tmp' % ut_map_path)
 
 
