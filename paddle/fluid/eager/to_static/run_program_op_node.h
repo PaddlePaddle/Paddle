@@ -797,7 +797,7 @@ class GradNodeRunProgram : public egr::GradNodeBase {
                       out_grad_names.size(),
                       paddle::platform::errors::InvalidArgument(
                           "The hooked_grads[0].size() and "
-                          "fwd_out_names_.size() should be equal."));
+                          "out_grad_names.size() should be equal."));
     for (size_t i = 0; i < out_grad_names.size(); ++i) {
       VLOG(1) << "out_grad_names[i]: " << out_grad_names[i];
       hooked_grads[0][i].set_name(out_grad_names[i]);
@@ -830,10 +830,6 @@ class GradNodeRunProgram : public egr::GradNodeBase {
 
   void SetStepScope(const std::vector<paddle::framework::Scope *> &scopes) {
     step_scope_ = scopes;
-  }
-
-  void SetFwdOutNames(std::vector<std::string> out_names) {
-    fwd_out_names_ = out_names;
   }
 
  protected:
@@ -891,8 +887,6 @@ class GradNodeRunProgram : public egr::GradNodeBase {
   std::vector<paddle::experimental::Tensor> x_;
   std::vector<paddle::experimental::Tensor> params_;
   std::vector<paddle::framework::Scope *> step_scope_;
-
-  std::vector<std::string> fwd_out_names_;
 
   // Attribute Map
   paddle::framework::AttributeMap attrs_;
