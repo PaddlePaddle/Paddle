@@ -90,7 +90,7 @@ class TestShardingStage2WithNewEXE(unittest.TestCase):
 
     def test_grad_clip(self):
         # dp2 training
-        dp_engine = self.get_engine(True)
+        dp_engine = self.get_engine(False)
         dp_engine.fit(
             self.dataset,
             3,
@@ -104,12 +104,20 @@ class TestShardingStage2WithNewEXE(unittest.TestCase):
         ) as f:
             f.write(str(dp_engine.main_program))
 
-        # # dp2sharding2 training
-        # sharding_engine = self.get_engine(True)
-        # sharding_engine.fit(self.dataset, 3, batch_size=self.batch_size)
-        # sharding_param_values = get_parameter_value(
-        #     sharding_engine.main_program
-        # )
+        # dp2sharding2 training
+        sharding_engine = self.get_engine(True)
+        sharding_engine.fit(
+            self.dataset,
+            3,
+            epochs=1,
+            steps_per_epoch=self.batch_num,
+            log_freq=1,
+            batch_size=self.batch_size,
+        )
+        with open(
+            "/sharding_prog.txt.{}".format(paddle.distributed.get_rank()), "w+"
+        ) as f:
+            f.write(str(sharding_engine.main_program))
 
         # self.check_result(dp_param_values, sharding_param_values)
 
