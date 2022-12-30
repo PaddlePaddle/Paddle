@@ -427,7 +427,10 @@ class PartialProgramLayer:
         fwd_end_op_index = self._get_end_op_index()
         for i in range(
             fwd_end_op_index + 1,
-            fwd_end_op_index + 2 * len(self._outputs.var_ids),
+            min(
+                fwd_end_op_index + 2 * len(self._outputs.var_ids),
+                len(self.program.block(0).ops),
+            ),
             2,
         ):
             op = self.program.block(0).ops[i]
