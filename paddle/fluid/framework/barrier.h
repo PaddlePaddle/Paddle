@@ -32,30 +32,31 @@ class Barrier {
   explicit Barrier(int count = 1) {
 #ifdef __LINUX__
     CHECK_GE(count, 1);
-    CHECK_EQ(pthread_barrier_init(&_barrier, NULL, count), 0);
+    int ret = pthread_barrier_init(&_barrier, NULL, count);
+    CHECK_EQ(0, ret);
 #endif
   }
-
   ~Barrier() {
 #ifdef __LINUX__
-    CHECK_EQ(pthread_barrier_destroy(&_barrier), 0);
+    int ret = pthread_barrier_destroy(&_barrier);
+    CHECK_EQ(0, ret);
 #endif
   }
-
   void reset(int count) {
 #ifdef __LINUX__
     CHECK_GE(count, 1);
-    CHECK_EQ(pthread_barrier_destroy(&_barrier), 0);
-    CHECK_EQ(pthread_barrier_init(&_barrier, NULL, count), 0);
+    int ret = pthread_barrier_destroy(&_barrier);
+    CHECK_EQ(0, ret);
+    ret = pthread_barrier_init(&_barrier, NULL, count);
+    CHECK_EQ(0, ret);
 #endif
   }
 
   void wait() {
 #ifdef __LINUX__
     int err = pthread_barrier_wait(&_barrier);
-    if (err != 0 && err != PTHREAD_BARRIER_SERIAL_THREAD) {
-      CHECK_EQ(1, 0);
-    }
+    err = pthread_barrier_wait(&_barrier);
+    CHECK_EQ(true, (err == 0 || err == PTHREAD_BARRIER_SERIAL_THREAD));
 #endif
   }
 
@@ -82,29 +83,33 @@ class Semaphore {
  public:
   Semaphore() {
 #ifdef __LINUX__
-    CHECK_EQ(sem_init(&_sem, 0, 0), 0);
+    int ret = sem_init(&_sem, 0, 0);
+    CHECK_EQ(0, ret);
 #endif
   }
   ~Semaphore() {
 #ifdef __LINUX__
-    CHECK_EQ(sem_destroy(&_sem), 0);
+    int ret = sem_destroy(&_sem);
+    CHECK_EQ(0, ret);
 #endif
   }
   void post() {
 #ifdef __LINUX__
-    CHECK_EQ(sem_post(&_sem), 0);
+    int ret = sem_post(&_sem);
+    CHECK_EQ(0, ret);
 #endif
   }
   void wait() {
 #ifdef __LINUX__
-    CHECK_EQ(ignore_signal_call(sem_wait, &_sem), 0);
+    int ret = ignore_signal_call(sem_wait, &_sem);
+    CHECK_EQ(0, ret);
 #endif
   }
   bool try_wait() {
     int err = 0;
 #ifdef __LINUX__
-    CHECK((err = ignore_signal_call(sem_trywait, &_sem),
-           err == 0 || errno == EAGAIN));
+    int err = ignore_signal_call(sem_trywait, &_sem);
+    CHECK_EQ(true, (err == 0 || errno == EAGAIN));
 #endif
     return err == 0;
   }
@@ -113,6 +118,43 @@ class Semaphore {
 #ifdef __LINUX__
   sem_t _sem;
 #endif
+};
+class WaitGroup {
+ public:
+  WaitGroup() {}
+  void clear() {
+    std::lock_guard<std::mutex> lock(mutex_);
+    counter_ = 0;
+    cond_.notify_all();
+  }
+  void add(int delta) {
+    if (delta == 0) {
+      return;
+    }
+
+    std::lock_guard<std::mutex> lock(mutex_);
+    counter_ += delta;
+    if (counter_ == 0) {
+      cond_.notify_all();
+    }
+  }
+  void done() { add(-1); }
+  void wait() {
+    std::unique_lock<std::mutex> lock(mutex_);
+
+    while (counter_ != 0) {
+      cond_.wait(lock);
+    }
+  }
+  int count(void) {
+    std::unique_lock<std::mutex> lock(mutex_);
+    return counter_;
+  }
+
+ private:
+  std::mutex mutex_;
+  std::condition_variable cond_;
+  int counter_ = 0;
 };
 }  // namespace framework
 }  // namespace paddle
