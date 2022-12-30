@@ -295,8 +295,6 @@ if(WITH_PYTHON)
     list(APPEND OP_FUNCTION_GENERETOR_DEPS ${PYTHON_LIBRARIES})
   endif()
 
-  add_executable(op_function_generator op_function_generator.cc)
-  target_link_libraries(op_function_generator ${OP_FUNCTION_GENERETOR_DEPS})
   add_executable(eager_legacy_op_function_generator
                  eager_legacy_op_function_generator.cc)
   target_link_libraries(eager_legacy_op_function_generator
@@ -308,11 +306,9 @@ if(WITH_PYTHON)
   endif()
 
   get_property(os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
-  target_link_libraries(op_function_generator ${os_dependency_modules})
   target_link_libraries(eager_legacy_op_function_generator
                         ${os_dependency_modules})
   if(WITH_ROCM)
-    target_link_libraries(op_function_generator ${ROCM_HIPRTC_LIB})
     target_link_libraries(eager_legacy_op_function_generator ${ROCM_HIPRTC_LIB})
     target_link_libraries(kernel_signature_generator ${ROCM_HIPRTC_LIB})
   endif()
@@ -346,7 +342,6 @@ if(WITH_PYTHON)
       "${PADDLE_SOURCE_DIR}/paddle/fluid/pybind/"
       "${CODE_GEN_SPLIT_FILE_COUNT}")
 
-  set(OP_IMPL_DEPS op_function_generator)
   set(EAGER_OP_IMPL_DEPS eager_legacy_op_function_generator
                          eager_python_c_codegen)
 
@@ -356,25 +351,6 @@ if(WITH_PYTHON)
     else()
       set(op_impl_path "${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_BUILD_TYPE}")
     endif()
-
-    file(
-      WRITE
-      ${CMAKE_BINARY_DIR}/paddle/fluid/pybind/op_function_generator_retry.bat
-      ""
-      "set build_times=1\n"
-      ":retry\n"
-      "ECHO op_function_generator run %build_times% time\n"
-      "taskkill /f /im op_function_generator.exe 2>NUL\n"
-      "${op_impl_path}/op_function_generator.exe ${op_function_output_path} ${CODE_GEN_SPLIT_FILE_COUNT}\n"
-      "if %ERRORLEVEL% NEQ 0 (\n"
-      "    set /a build_times=%build_times%+1\n"
-      "    if %build_times% GEQ 10 (\n"
-      "        exit /b 1\n"
-      "    ) else (\n"
-      "        goto :retry\n"
-      "    )\n"
-      ")\n"
-      "exit /b 0")
 
     file(
       WRITE
@@ -441,8 +417,6 @@ if(WITH_PYTHON)
 
     add_custom_command(
       OUTPUT op_function
-      COMMAND
-        ${CMAKE_BINARY_DIR}/paddle/fluid/pybind/op_function_generator_retry.bat
       COMMAND ${CMAKE_COMMAND} -E copy_if_different ${tmp_impl_file1}
               ${impl_file1}
       COMMENT "copy_if_different ${tmp_impl_file1} to ${impl_file1}"
@@ -526,10 +500,6 @@ if(WITH_PYTHON)
     endif()
     add_custom_command(
       OUTPUT op_function
-      COMMAND
-        ${CMAKE_COMMAND} -E env "LD_LIBRARY_PATH=$ENV{LD_LIBRARY_PATH}:."
-        "${CMAKE_CURRENT_BINARY_DIR}/op_function_generator"
-        "${op_function_output_path}" "${CODE_GEN_SPLIT_FILE_COUNT}"
       COMMAND ${CMAKE_COMMAND} -E copy_if_different ${tmp_impl_file1}
               ${impl_file1}
       COMMENT "copy_if_different ${tmp_impl_file1} to ${impl_file1}"
@@ -570,7 +540,6 @@ if(WITH_PYTHON)
         VERBATIM)
     endif()
   endif()
-  add_custom_target(op_function_generator_cmd ALL DEPENDS op_function)
   if(NOT ((NOT WITH_PYTHON) AND ON_INFER))
     add_custom_target(eager_legacy_op_function_generator_cmd ALL
                       DEPENDS ${eager_impl_file})
@@ -647,6 +616,5 @@ if(WITH_PYTHON)
 
   get_property(os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
   target_link_libraries(${SHARD_LIB_NAME} ${os_dependency_modules})
-  add_dependencies(${SHARD_LIB_NAME} op_function_generator_cmd)
 
 endif()
