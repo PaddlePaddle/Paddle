@@ -59,6 +59,7 @@ void InitGpuProperties(Place place,
 
   const gpuDeviceProp& prop =
       backends::gpu::GetDeviceProperties(place.GetDeviceId());
+
   static const std::set<int> compiled_archs{CUDA_REAL_ARCHS};
   // Make sure compiled cuda arch is as same as runtime cuda arch.
   if (compiled_archs.find(*compute_capability) == compiled_archs.cend() &&

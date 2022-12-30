@@ -16,10 +16,12 @@ if(WITH_GPU OR WITH_ROCM)
         list(APPEND CUDA_REAL_ARCHS_LIST ${CMAKE_MATCH_1})
       endif()
     endforeach()
+
     string(JOIN "," CUDA_REAL_ARCHS ${CUDA_REAL_ARCHS_LIST})
 
-    set_source_files_properties(gpu/gpu_resources.cc
-                                PROPERTIES COMPILE_FLAGS "-DCUDA_REAL_ARCHS=\"${CUDA_REAL_ARCHS}\"")
+    set_source_files_properties(
+      gpu/gpu_resources.cc
+      PROPERTIES COMPILE_FLAGS "-DCUDA_REAL_ARCHS=\"${CUDA_REAL_ARCHS}\"")
 
   endif()
   if(WITH_ROCM)
