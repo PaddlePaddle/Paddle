@@ -15,6 +15,7 @@
 import json
 import os
 import re
+import subprocess
 import sys
 
 
@@ -165,8 +166,27 @@ def getBaseFnda(rootPath, test):
 
 def getCovinfo(rootPath, test):
     ut_map_path = '%s/build/ut_map/%s' % (rootPath, test)
+    print("start get fluid ===>")
+    cmd_fluid = 'lcov --capture -d ./paddle/fluid/ -o ./paddle/fluid/coverage_fluid.info --rc lcov_branch_coverage=0'
+    p_fluid = subprocess.Popen(cmd_fluid, shell=True, stdout=subprocess.DEVNULL)
+
+    print("start get phi ===>")
+    cmd_phi = 'lcov --capture -d ./paddle/phi -o ./paddle/phi/coverage_phi.info --rc lcov_branch_coverage=0'
+    p_phi = subprocess.Popen(cmd_phi, shell=True, stdout=subprocess.DEVNULL)
+
+    print("start get utils ===>")
+    cmd_utils = 'lcov --capture -d ./paddle/utils -o ./paddle/utils/coverage_utils.info --rc lcov_branch_coverage=0'
+    p_utils = subprocess.Popen(cmd_utils, shell=True, stdout=subprocess.DEVNULL)
+
+    print("start wiat fluid ===>")
+    p_fluid.wait()
+    print("start wiat phi ===>")
+    p_phi.wait()
+    print("start wiat utils ===>")
+    p_utils.wait()
+    print("end wait...")
     os.system(
-        'cd %s && lcov --capture -d . -o coverage.info --rc lcov_branch_coverage=0 > /dev/null 2>&1'
+        'cd %s && lcov -a paddle/fluid/coverage_fluid.info -a paddle/phi/coverage_phi.info -a paddle/utils/coverage_utils.info -o coverage.info --rc lcov_branch_coverage=0 > /dev/null 2>&1'
         % ut_map_path
     )
     coverage_info_path = ut_map_path + '/coverage.info'
