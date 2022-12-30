@@ -75,23 +75,23 @@ struct PointerToPointer : public DivmodWarpper<IndexT> {
                    const std::vector<const DenseTensor*>& x,
                    IndexT num,
                    IndexT divisor,
-                   paddle::memory::AllocationPtr& dev_ins_ptr) {
+                   paddle::memory::AllocationPtr* dev_ins_ptr) {
     this->SetDivisor(divisor);
     std::vector<const T*> x_datas(num);
     for (int i = 0; i < num; ++i) {
       x_datas[i] = x[i]->data<T>();
     }
-    dev_ins_ptr = paddle::memory::Alloc(
+    *dev_ins_ptr = paddle::memory::Alloc(
         ctx.GetPlace(),
         num * sizeof(T*),
         phi::Stream(reinterpret_cast<phi::StreamId>(ctx.stream())));
     paddle::memory::Copy(ctx.GetPlace(),
-                         dev_ins_ptr->ptr(),
+                         (*dev_ins_ptr)->ptr(),
                          phi::CPUPlace(),
                          reinterpret_cast<void*>(x_datas.data()),
                          num * sizeof(T*),
                          ctx.stream());
-    data = reinterpret_cast<T**>(dev_ins_ptr->ptr());
+    data = reinterpret_cast<T**>((*dev_ins_ptr)->ptr());
   }
 };
 
@@ -135,7 +135,7 @@ void LaunchStackCUDAKernelWithIndexType(
   } break;
 
 #define IMPL_STACK_CUDA_KERNEL_HELPER(...)        \
-  IMPL_STACK_CUDA_KERNEL_CASE(4, ##__VA_ARGS__);  \
+  IMPL_STACK_CUDA_KERNEL_CASE(2, ##__VA_ARGS__);  \
   IMPL_STACK_CUDA_KERNEL_CASE(8, ##__VA_ARGS__);  \
   IMPL_STACK_CUDA_KERNEL_CASE(16, ##__VA_ARGS__); \
   IMPL_STACK_CUDA_KERNEL_CASE(32, ##__VA_ARGS__); \
@@ -150,7 +150,7 @@ void LaunchStackCUDAKernelWithIndexType(
     default: {
       paddle::memory::AllocationPtr dev_ins_ptr{nullptr};
       PointerToPointer<Context, T, IndexT> ptr_array(
-          ctx, x, num, x_col, dev_ins_ptr);
+          ctx, x, num, x_col, &dev_ins_ptr);
       StackCUDAKernel<T, IndexT, decltype(ptr_array)>
           <<<cfg.block_per_grid, cfg.thread_per_block, 0, ctx.stream()>>>(
               ptr_array, x_col, x_row, out_col, dst_data);
