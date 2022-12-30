@@ -78,7 +78,12 @@ def _conv2d_flops(input_shapes, attrs):
         bias_flops = out_channels * active_elements
         equation: flops = conv_flops + bias_flops
     """
-    bias = input_shapes.get('Bias')[0]
+
+    bias = (
+        input_shapes.get('Bias')[0]
+        if len(input_shapes.get('Bias')) > 0
+        else None
+    )
     input = input_shapes.get('Input')[0]
     weight = input_shapes.get('Filter')[0]
 
@@ -96,7 +101,7 @@ def _conv2d_flops(input_shapes, attrs):
 
     paddings = (
         padding
-        if padding is list
+        if isinstance(padding, list)
         else [
             padding,
         ]
@@ -104,7 +109,7 @@ def _conv2d_flops(input_shapes, attrs):
     )
     strides = (
         stride
-        if stride is list
+        if isinstance(stride, list)
         else [
             stride,
         ]
@@ -112,7 +117,7 @@ def _conv2d_flops(input_shapes, attrs):
     )
     dilations = (
         dilation
-        if dilation is list
+        if isinstance(dilation, list)
         else [
             dilation,
         ]
