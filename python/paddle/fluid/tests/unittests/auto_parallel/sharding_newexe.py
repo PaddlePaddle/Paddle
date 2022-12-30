@@ -91,9 +91,9 @@ class TestShardingStage2WithNewEXE(unittest.TestCase):
                 num_broadcast += 1
 
         if paddle.distributed.get_rank() == 0:
-            self.assertEqual(num_op, 21)
+            self.assertEqual(num_op, 22)
         else:
-            self.assertEqual(num_op, 53)
+            self.assertEqual(num_op, 54)
 
         self.assertEqual(num_coalesce, 5)
         self.assertEqual(num_reduce, 14)
