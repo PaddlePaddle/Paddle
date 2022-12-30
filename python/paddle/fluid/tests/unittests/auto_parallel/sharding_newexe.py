@@ -90,7 +90,11 @@ class TestShardingStage2WithNewEXE(unittest.TestCase):
             elif op.type == "c_broadcast":
                 num_broadcast += 1
 
-        self.assertEqual(num_op, 21)
+        if paddle.distributed.get_rank() == 0:
+            self.assertEqual(num_op, 21)
+        else:
+            self.assertEqual(num_op, 53)
+
         self.assertEqual(num_coalesce, 5)
         self.assertEqual(num_reduce, 14)
         self.assertEqual(num_broadcast, 2)
