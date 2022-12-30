@@ -254,7 +254,7 @@ if(WIN32)
   list(REMOVE_ITEM TEST_OPS test_imperative_qat_amp)
   list(REMOVE_ITEM TEST_OPS test_imperative_qat_lsq)
   list(REMOVE_ITEM TEST_OPS test_imperative_qat_matmul)
-
+  list(REMOVE_ITEM TEST_OPS test_quant_aware)
 endif()
 
 if(LINUX AND WITH_MKLDNN)
@@ -539,6 +539,8 @@ if(NOT WIN32)
   set_tests_properties(test_imperative_ptq PROPERTIES TIMEOUT 120)
   set_tests_properties(test_weight_quantization_mobilenetv1 PROPERTIES TIMEOUT
                                                                        120)
+  set_tests_properties(test_quant_aware PROPERTIES TIMEOUT 1200 LABELS
+                                                   "RUN_TYPE=NIGHTLY")
 endif()
 
 set_tests_properties(test_graph PROPERTIES TIMEOUT 120)

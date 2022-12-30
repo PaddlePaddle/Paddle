@@ -22,6 +22,8 @@ from . import post_training_quantization
 from .post_training_quantization import *
 from . import imperative
 from .imperative import *
+from . import quanter
+from .quanter import *
 
 __all__ = []
 __all__ += quantization_pass.__all__
