@@ -38,7 +38,6 @@ from paddle.fluid.framework import (
     _dygraph_tracer,
     _enable_legacy_dygraph,
     _in_eager_without_dygraph_check,
-    _test_eager_guard,
     in_dygraph_mode,
 )
 from paddle.fluid.op import Operator
@@ -1784,54 +1783,6 @@ class OpTest(unittest.TestCase):
                         + self.checker_name,
                     )
 
-        class EagerChecker(DygraphChecker):
-            def init(self):
-                self.checker_name = "eager checker"
-
-            def calculate_output(self):
-                # we only check end2end api when check_eager=True
-                with _test_eager_guard():
-                    self.is_python_api_test = True
-                    eager_dygraph_outs = self.op_test._calc_python_api_output(
-                        place
-                    )
-                    if eager_dygraph_outs is None:
-                        self.is_python_api_test = False
-                        # missing KernelSignature, fall back to eager middle output.
-                        eager_dygraph_outs = self.op_test._calc_dygraph_output(
-                            place, no_check_set=no_check_set
-                        )
-                self.outputs = eager_dygraph_outs
-
-            def _compare_numpy(self, name, actual_np, expect_np):
-                with _test_eager_guard():
-                    super()._compare_numpy(name, actual_np, expect_np)
-
-            def convert_uint16_to_float_ifneed(self, actual_np, expect_np):
-                with _test_eager_guard():
-                    return super().convert_uint16_to_float_ifneed(
-                        actual_np, expect_np
-                    )
-
-            def find_actual_value(self, name):
-                with _test_eager_guard():
-                    return super().find_actual_value(name)
-
-            def _compare_list(self, name, actual, expect):
-                """if expect is a tuple, we need to compare list."""
-                with _test_eager_guard():
-                    super()._compare_list(name, actual, expect)
-
-            def _is_skip_name(self, name):
-                # if in final state and kernel signature don't have name, then skip it.
-                if (
-                    self.is_python_api_test
-                    and hasattr(self.op_test, "python_out_sig")
-                    and name not in self.op_test.python_out_sig
-                ):
-                    return True
-                return super()._is_skip_name(name)
-
         # set some flags by the combination of arguments.
         self.infer_dtype_from_inputs_outputs(self.inputs, self.outputs)
         if (
@@ -1873,10 +1824,6 @@ class OpTest(unittest.TestCase):
             dygraph_outs = dygraph_checker.outputs
             # yield the original state
             g_disable_legacy_dygraph()
-        if check_eager:
-            eager_checker = EagerChecker(self, self.outputs)
-            eager_checker.check()
-            eager_dygraph_outs = eager_checker.outputs
 
         # Note(zhiqiu): inplace_atol should be only set when op doesn't ensure
         # computational consistency.
@@ -1902,10 +1849,7 @@ class OpTest(unittest.TestCase):
                 place, no_check_set=no_check_set, inplace_atol=inplace_atol
             )
 
-        if check_eager:
-            assert not check_dygraph
-            return outs, eager_dygraph_outs, fetch_list
-        elif check_dygraph:
+        if check_dygraph:
             return outs, dygraph_outs, fetch_list
         else:
             return outs, fetch_list
@@ -1992,9 +1936,9 @@ class OpTest(unittest.TestCase):
         check_eager=False,
     ):
 
-        # disable legacy dygraph check when check_eager is True
         if check_eager:
-            check_dygraph = False
+            warnings.warn("check_eager is deprecated")
+            check_eager = False
 
         self.__class__.op_type = self.op_type
         if self.is_mkldnn_op():
@@ -2133,9 +2077,9 @@ class OpTest(unittest.TestCase):
         check_eager=False,
     ):
 
-        # disable legacy dygraph check when check_eager is True
         if check_eager:
-            check_dygraph = False
+            warnings.warn("check_eager is deprecated")
+            check_eager = False
 
         self._check_grad_helper()
         places = self._get_places()
@@ -2169,7 +2113,9 @@ class OpTest(unittest.TestCase):
         numeric_place=None,
         check_eager=False,
     ):
-
+        if check_eager:
+            warnings.warn("check_eager is depracated")
+            check_eager = False
         # disable legacy dygraph check when check_eager is True
         if check_eager:
             check_dygraph = False
@@ -2329,36 +2275,6 @@ class OpTest(unittest.TestCase):
             )
             # ensure switch back eager dygraph
             g_disable_legacy_dygraph()
-
-        if check_eager:
-            with fluid.dygraph.base.guard(place):
-                with _test_eager_guard():
-                    eager_dygraph_grad = self._get_dygraph_grad(
-                        inputs_to_check,
-                        place,
-                        output_names,
-                        user_defined_grad_outputs,
-                        no_grad_set,
-                        check_eager,
-                    )
-                    fp32_grads = []
-                    for grad in eager_dygraph_grad:
-                        if grad.dtype == np.uint16:
-                            grad = convert_uint16_to_float(grad)
-                            max_relative_error = (
-                                0.03
-                                if max_relative_error < 0.03
-                                else max_relative_error
-                            )
-                        fp32_grads.append(grad)
-                    eager_dygraph_grad = fp32_grads
-                    self._assert_is_close(
-                        numeric_grads,
-                        eager_dygraph_grad,
-                        inputs_to_check,
-                        max_relative_error,
-                        "Gradient Check On %s" % str(place),
-                    )
 
     def _find_var_in_dygraph(self, output_vars, name):
         if name in output_vars:
