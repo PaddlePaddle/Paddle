@@ -162,10 +162,10 @@ class FusedAttentionOpKernel : public framework::OpKernel<T> {
 
     auto *x_data = input_x->data<T>();
     auto *qkv_weight_data = qkv_weight->data<T>();
-    auto *qkv_weight_tmp_data = qkv_weight_tmp->data<T>();
+    auto *qkv_weight_tmp_data = qkv_weight_tmp.data<T>();
     auto *qkv_bias_data = (qkv_bias == nullptr) ? nullptr : qkv_bias->data<T>();
     auto *qkv_bias_tmp_data =
-        (qkv_bias == nullptr) ? nullptr : qkv_bias_tmp->data<T>();
+        (qkv_bias == nullptr) ? nullptr : qkv_bias_tmp.data<T>();
     auto *qkv_out_data =
         dev_ctx.template Alloc<T>(qkv_out, qkv_out->numel() * sizeof(T));
     auto *qkv_bias_out_data =
@@ -297,16 +297,16 @@ class FusedAttentionOpKernel : public framework::OpKernel<T> {
                                         ln_out_data,
                                         ln_mean_data,
                                         ln_var_data);
-      qkv_compute.ComputeForward(qkv_weight_tmp,
+      qkv_compute.ComputeForward(&qkv_weight_tmp,
                                  ln_out,
-                                 qkv_bias_tmp,
+                                 &qkv_bias_tmp,
                                  qkv_out,
                                  qkv_bias_out,
                                  qkvw_transpose_out);
     } else {
-      qkv_compute.ComputeForward(qkv_weight_tmp,
+      qkv_compute.ComputeForward(&qkv_weight_tmp,
                                  input_x,
-                                 qkv_bias_tmp,
+                                 &qkv_bias_tmp,
                                  qkv_out,
                                  qkv_bias_out,
                                  qkvw_transpose_out);

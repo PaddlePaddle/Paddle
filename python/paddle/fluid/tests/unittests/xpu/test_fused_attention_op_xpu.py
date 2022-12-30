@@ -281,6 +281,7 @@ class XPUTestFusedAttentionOp(XPUOpTestWrapper):
             final_out = incubate_f.fused_multi_head_attention(
                 x,
                 qkv_weight_tensor,
+                self.num_heads,
                 out_linear_weight,
                 self.pre_layer_norm,
                 ln1_scale,
