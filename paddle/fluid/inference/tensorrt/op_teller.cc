@@ -42,6 +42,7 @@ struct SimpleOpTypeSetTeller : public Teller {
     teller_set.insert("group_norm");
     teller_set.insert("multiclass_nms3");
     teller_set.insert("multiclass_nms");
+    int8_teller_set.insert("group_norm");
     int8_teller_set.insert("multiclass_nms3");
     int8_teller_set.insert("multiclass_nms");
 #endif
