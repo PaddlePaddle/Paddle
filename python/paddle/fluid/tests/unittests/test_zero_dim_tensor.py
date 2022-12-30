@@ -712,6 +712,25 @@ class TestSundryAPI(unittest.TestCase):
         self.assertEqual(out.numpy()[3], 2)
         self.assertEqual(out.grad.shape, [5])
 
+    def test_embedding(self):
+        ids = paddle.full(shape=[], fill_value=1, dtype='int64')
+        w0 = paddle.arange(3, 9).reshape((3, 2)).astype(paddle.float32)
+        w = paddle.to_tensor(w0, stop_gradient=False)
+        emb = paddle.nn.functional.embedding(
+            x=ids, weight=w, sparse=True, name="embedding"
+        )
+        self.assertEqual(emb.shape, [2])
+        res = [5.0, 6.0]
+        for i in range(len(res)):
+            self.assertEqual(emb.numpy()[i], res[i])
+
+    def test_one_hot_label(self):
+        label = paddle.full(shape=[], fill_value=2, dtype='int64')
+        # label.shape = [4]
+        one_hot_label = paddle.nn.functional.one_hot(label, num_classes=4)
+        self.assertEqual(one_hot_label.shape, [4])
+        self.assertEqual(one_hot_label.numpy()[2], 1)
+
 
 class TestSundryAPIStatic(unittest.TestCase):
     def setUp(self):
@@ -913,6 +932,40 @@ class TestSundryAPIStatic(unittest.TestCase):
         res = self.exe.run(prog, feed={'index': index_data}, fetch_list=[out])
         self.assertEqual(res[0].shape, (5,))
         self.assertEqual(res[0][3], 2)
+
+    @prog_scope()
+    def test_embedding(self):
+        ids = paddle.full(shape=[], fill_value=1, dtype='int64')
+        w0 = paddle.arange(3, 9).reshape((3, 2)).astype(paddle.float32)
+        w = paddle.to_tensor(w0, stop_gradient=False)
+        emb = paddle.nn.functional.embedding(
+            x=ids, weight=w, sparse=True, name="embedding"
+        )
+
+        prog = paddle.static.default_main_program()
+        res = self.exe.run(prog, fetch_list=[emb])
+        self.assertEqual(res[0].shape, (2,))
+
+    @prog_scope()
+    def test_static_embedding(self):
+        ids = paddle.full(shape=[], fill_value=1, dtype='int64')
+        emb = paddle.static.nn.embedding(ids, (20, 3))
+        prog = paddle.static.default_main_program()
+        self.exe.run(paddle.fluid.default_startup_program())
+        res = self.exe.run(prog, fetch_list=[emb])
+        self.assertEqual(res[0].shape, (3,))
+
+    @prog_scope()
+    def test_one_hot_label(self):
+        label = paddle.full(shape=[], fill_value=2, dtype='int64')
+        # label.shape = [4]
+        one_hot_label = paddle.nn.functional.one_hot(label, num_classes=4)
+        prog = paddle.static.default_main_program()
+        self.exe.run(paddle.fluid.default_startup_program())
+        res = self.exe.run(prog, fetch_list=[one_hot_label])
+
+        self.assertEqual(res[0].shape, (4,))
+        self.assertEqual(res[0][2], 1)
 
 
 # Use to test API whose zero-dim input tensors don't have grad and not need to test backward in OpTest.
