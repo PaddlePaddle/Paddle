@@ -451,10 +451,10 @@ cinn_buffer_t* CinnLaunchContext::GetCinnBufferOfVar(
     const std::string& var_name) {
   auto res = paddle2argument_.find(var_name);
   PADDLE_ENFORCE_NE(
-        res,
-        paddle2argument_.end(),
-        platform::errors::NotFound("Variable(%s) not found in compilation result", 
-			           var_name));
+      res,
+      paddle2argument_.end(),
+      platform::errors::NotFound("Variable(%s) not found in compilation result",
+                                 var_name));
   return static_cast<cinn_buffer_t*>(res->second);
 }
 
