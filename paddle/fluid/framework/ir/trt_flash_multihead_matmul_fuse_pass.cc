@@ -69,7 +69,6 @@ PDNode* TrtFlashMultiHeadMatmulPattern::operator()() {
   auto* input0 = pattern->NewNode(input0_repr());
   input0->assert_is_ops_input(mul_ops);
   VLOG(5) << "Start match TrtFlashMultiHeadMatmulPattern";
-  std::cout << "@@ Start match TrtFlashMultiHeadMatmulPattern" << std::endl;
 
   // First path
   auto* mul0 = pattern->NewNode(mul0_repr())->assert_is_ops(mul_ops);
@@ -417,7 +416,6 @@ int TrtFlashMultiHeadMatmulFusePass::BuildFlashFusion(
     IR_NODE_LINK_TO(input0, multihead);
     IR_NODE_LINK_TO(mul0_w, multihead);
     IR_NODE_LINK_TO(multihead, reshape2_qkv_out);
-    std::cout << "@@@ make a fused flash attention" << std::endl;
   };
   int fusion_count{0};
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
