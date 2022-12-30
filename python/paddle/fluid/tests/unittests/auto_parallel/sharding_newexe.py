@@ -68,7 +68,7 @@ class TestShardingStage2WithNewEXE(unittest.TestCase):
         reset_prog()
 
         strategy = apply_pass(use_sharding)
-        clip = paddle.nn.ClipGradByNorm(self.clip_norm)
+        clip = paddle.nn.ClipGradByGlobalNorm(self.clip_norm)
         opt = paddle.optimizer.AdamW(learning_rate=0.00001, grad_clip=clip)
         model, loss = generate_model("dp")
         engine = auto.Engine(model, loss, opt, strategy=strategy)
@@ -110,10 +110,7 @@ class TestShardingStage2WithNewEXE(unittest.TestCase):
             log_freq=1,
             batch_size=self.batch_size,
         )
-        with open(
-            "./main_prog.txt.{}".format(paddle.distributed.get_rank()), "w+"
-        ) as f:
-            f.write(str(dp_engine.main_program))
+        dp_loss = dp_history.history['loss'][0]
 
         # sharding2
         sharding_engine = self.get_engine(True)
@@ -125,15 +122,10 @@ class TestShardingStage2WithNewEXE(unittest.TestCase):
             log_freq=1,
             batch_size=self.batch_size,
         )
+        sharding_loss = sharding_history.history['loss'][0]
+
         self.check_param_grad_fuse_overlap(sharding_engine.main_program)
-        print("sharding_history: ", sharding_history.history)
-
-        with open(
-            "./sharding_prog.txt.{}".format(paddle.distributed.get_rank()), "w+"
-        ) as f:
-            f.write(str(sharding_engine.main_program))
-
-        # self.check_result(dp_param_values, sharding_param_values)
+        self.assertEqual(np.allclose(dp_loss, sharding_loss))
 
 
 if __name__ == "__main__":
