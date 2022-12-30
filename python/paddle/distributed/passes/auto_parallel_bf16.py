@@ -33,10 +33,13 @@ from paddle.static.amp.bf16.amp_utils import (
     _dtype_to_str,
     _is_in_fp32_varnames,
     _valid_types,
-    find_op_index,
     find_true_post_op,
 )
-from paddle.static.amp.fp16_utils import _rename_arg, find_true_prev_op
+from paddle.static.amp.fp16_utils import (
+    _rename_arg,
+    find_op_index,
+    find_true_prev_op,
+)
 
 from ..auto_parallel.utils import is_backward_op, is_forward_op, is_loss_op
 
