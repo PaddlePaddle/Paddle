@@ -168,7 +168,7 @@ class FusedAttentionOpKernel : public framework::OpKernel<T> {
     qkvw_transpose_out.set_meta(qkv_weight->meta());
     qkvw_transpose_out.Resize({3, num_head, dim_head, dim_embed});
     auto *qkvw_transpose_out_data = dev_ctx.template Alloc<T>(
-        qkvw_transpose_out, qkvw_transpose_out.numel() * sizeof(T));
+        &qkvw_transpose_out, qkvw_transpose_out.numel() * sizeof(T));
 
     auto *x_data = input_x->data<T>();
     auto *qkv_weight_data = qkv_weight->data<T>();
@@ -609,7 +609,7 @@ class FusedAttentionGradKernel : public framework::OpKernel<T> {
       qkvw_transpose_out.set_meta(qkv_weight->meta());
       qkvw_transpose_out.Resize({3, num_head, dim_head, dim_embed});
       auto *qkvw_transpose_out_data = dev_ctx.template Alloc<T>(
-          qkvw_transpose_out, qkvw_transpose_out.numel() * sizeof(T));
+          &qkvw_transpose_out, qkvw_transpose_out.numel() * sizeof(T));
       std::vector<int> perm = {1, 2, 3, 0};
       phi::funcs::TransposeGPUKernelDriver<T>(
           dev_ctx, qkv_weight_tmp, perm, &qkvw_transpose_out);
@@ -618,7 +618,7 @@ class FusedAttentionGradKernel : public framework::OpKernel<T> {
       d_qkvw_transpose_out.set_meta(qkv_weight->meta());
       d_qkvw_transpose_out.Resize({3, num_head, dim_head, dim_embed});
       auto *d_qkvw_transpose_out_data = dev_ctx.template Alloc<T>(
-          d_qkvw_transpose_out, d_qkvw_transpose_out.numel() * sizeof(T));
+          &d_qkvw_transpose_out, d_qkvw_transpose_out.numel() * sizeof(T));
     }
 
     bool transA = false;
@@ -785,22 +785,22 @@ class FusedAttentionGradKernel : public framework::OpKernel<T> {
                                            d_ln_bias->numel() * sizeof(U)));
       if (qkv_bias != nullptr) {
         qkv_compute.ComputeBackward(ln_out,
-                                    *qkvw_transpose_out,
+                                    &qkvw_transpose_out,
                                     d_qkv_bias_out,
                                     d_ln_out,
                                     d_qkv_weight,
                                     d_qkv_bias,
                                     false,
-                                    *d_qkvw_transpose_out);
+                                    &d_qkvw_transpose_out);
       } else {
         qkv_compute.ComputeBackward(ln_out,
-                                    *qkvw_transpose_out,
+                                    &qkvw_transpose_out,
                                     d_qkv_out,
                                     d_ln_out,
                                     d_qkv_weight,
                                     d_qkv_bias,
                                     false,
-                                    *d_qkvw_transpose_out);
+                                    &d_qkvw_transpose_out);
       }
       // tensor model parallel
       AllReduce<T>(*d_ln_out, ring_id, ctx.cuda_device_context());
@@ -815,22 +815,22 @@ class FusedAttentionGradKernel : public framework::OpKernel<T> {
     } else {
       if (qkv_bias != nullptr) {
         qkv_compute.ComputeBackward(input_x,
-                                    *qkvw_transpose_out,
+                                    &qkvw_transpose_out,
                                     d_qkv_bias_out,
                                     d_x,
                                     d_qkv_weight,
                                     d_qkv_bias,
                                     false,
-                                    *d_qkvw_transpose_out);
+                                    &d_qkvw_transpose_out);
       } else {
         qkv_compute.ComputeBackward(input_x,
-                                    *qkvw_transpose_out,
+                                    &qkvw_transpose_out,
                                     d_qkv_out,
                                     d_x,
                                     d_qkv_weight,
                                     d_qkv_bias,
                                     false,
-                                    *d_qkvw_transpose_out);
+                                    &d_qkvw_transpose_out);
       }
       // tensor model parallel
       AllReduce<T>(*d_x, ring_id, ctx.cuda_device_context());
