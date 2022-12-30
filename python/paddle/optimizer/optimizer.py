@@ -13,17 +13,19 @@
 # limitations under the License.
 
 import logging
+import warnings
 from collections import defaultdict
 
 import numpy as np
 
 import paddle
-from paddle import _C_ops
+from paddle import _C_ops, _legacy_C_ops
 from paddle.fluid import core
 from paddle.fluid.framework import (
     Variable,
     _current_expected_place,
     _in_eager_without_dygraph_check,
+    _in_legacy_dygraph,
     default_main_program,
     device_guard,
     in_dygraph_mode,
@@ -33,6 +35,7 @@ from paddle.fluid.framework import (
 from ..fluid import framework, unique_name
 from ..fluid.backward import _get_no_grad_set_name, append_backward
 from ..fluid.clip import (
+    ClipGradByGlobalNorm,
     GradientClipBase,
     append_gradient_clip_ops,
     error_clip_callback,
@@ -109,7 +112,7 @@ class Optimizer:
             different parameter groups such as the learning rate, weight decay, etc, \
             then the parameters are list of dict. Note that the learning_rate in paramter groups \
             represents the scale of base learning_rate. \
-            The default value is None in static graph mode, at this time all parameters will be updated.
+            The default value is None in static mode, at this time all parameters will be updated.
         weight_decay (float|WeightDecayRegularizer, optional): The strategy of regularization. \
             It canbe a float value as coeff of L2 regularization or \
             :ref:`api_fluid_regularizer_L1Decay`, :ref:`api_fluid_regularizer_L2Decay`.
@@ -175,6 +178,8 @@ class Optimizer:
         parameters=None,
         weight_decay=None,
         grad_clip=None,
+        flatten_param_grads=False,
+        align_size=-1,
         name=None,
     ):
 
@@ -237,6 +242,8 @@ class Optimizer:
             self.regularization = weight_decay
         self._grad_clip = grad_clip
         self._learning_rate = learning_rate
+        self._flatten_param_grads = flatten_param_grads
+        self._align_size = align_size
 
         self._dtype = None
         # Infer the dtype form parameter
@@ -258,7 +265,7 @@ class Optimizer:
         # to train. These tensors are called accumulators.
         # {accum_name : { paramter_name : accumulator_for_parameter, ...}, ...}
         self._accumulators = defaultdict(lambda: dict())
-        self.helper = None
+        self.helper = LayerHelper(self.__class__.__name__)
         self._opti_name_list = []
         self._accumulators_holder = {}
         self._param_device_map = dict()
@@ -532,6 +539,17 @@ class Optimizer:
                     float(value),
                     current_lr.dtype,
                     place,
+                )
+
+            elif _in_legacy_dygraph():
+                _legacy_C_ops.fill_constant(
+                    current_lr,
+                    'value',
+                    float(value),
+                    'dtype',
+                    current_lr.dtype,
+                    'shape',
+                    list(current_lr.shape),
                 )
             else:
                 global_block = framework.default_main_program().global_block()
@@ -896,6 +914,7 @@ class Optimizer:
                             param_group_idx=param_group_idx,
                         )
         else:
+            print("yoki: final param_grads3: ", parameters_and_grads)
             if not framework._non_static_mode():
                 params_grads_device_map = (
                     parameters_and_grads['params']
@@ -915,6 +934,7 @@ class Optimizer:
                         if not p[0].stop_gradient
                     ],
                 )
+                print("yoki: final param_grads4: ", parameters_and_grads)
             else:
                 params_acc_dict = parameters_and_grads.copy()
                 params_acc_dict['params'] = [
@@ -933,6 +953,7 @@ class Optimizer:
                             self._append_optimize_op(
                                 target_block, param_and_grad
                             )
+                    print("yoki: final param_grads5: ", parameters_and_grads)
                 else:
                     for param_and_grad in parameters_and_grads['params']:
                         if param_and_grad[1] is None:
@@ -971,6 +992,7 @@ class Optimizer:
         self._finish_update(target_block, parameters_and_grads)
 
         end = len(target_block.ops)
+        print("yoki: final param_grads6: ", parameters_and_grads)
         return target_block._slice_ops(start, end)
 
     def _append_dgc_ops(self, param_and_grad):
@@ -1030,16 +1052,28 @@ class Optimizer:
         if self._dtype is None:
             self._dtype = loss.dtype
 
-        if framework.in_dygraph_mode():
+        if framework._non_static_mode():
             parameter_list = parameters if parameters else self._parameter_list
 
-            # It is very time-consuming to call c++ functions in a loop on the python side.
-            # We put this part of the code on the c++ side to improve the speed in eager mode.
-            params_grads = []
-            grads = core.eager.get_all_grads(parameter_list)
-            for index, grad in enumerate(grads):
-                if grad is not None:
-                    params_grads.append((parameter_list[index], grad))
+            if framework.in_dygraph_mode():
+                # It is very time-consuming to call c++ functions in a loop on the python side.
+                # We put this part of the code on the c++ side to improve the speed in eager mode.
+                params_grads = []
+                grads = core.eager.get_all_grads(parameter_list)
+                for index, grad in enumerate(grads):
+                    if grad is not None:
+                        params_grads.append((parameter_list[index], grad))
+            else:
+                # Keep the original code to support legacy mode.
+                # Delete the else branch when the legacy mode exits.
+                params_grads = []
+                for param in parameter_list:
+                    if param.stop_gradient:
+                        continue
+                    if param._grad_ivar() is not None:
+                        # create gradient tensor
+                        grad_var = param._grad_ivar()
+                        params_grads.append((param, grad_var))
         else:
             if callbacks is None:
                 callbacks = [error_clip_callback]
@@ -1069,6 +1103,505 @@ class Optimizer:
                 self._append_dgc_ops(params_grads)
         return params_grads
 
+    """
+    def flatten_param_grads(self, params_grads):
+        self.helper = LayerHelper(self.__class__.__name__)
+        need_flatten_params = []
+        need_flatten_grads = []
+        for p, g in params_grads:
+            if g is None:
+                continue
+            g.persistable = True
+            if (
+                getattr(p, 'need_clip', True) is False
+                or getattr(p, 'regularizer', None) is not None
+            ):
+                warnings.warn(
+                    "flatten_param_grads=True will be discarded since paramter '{}''s need_clip is False or "
+                    "the regularizer is set".format(p.name)
+                )
+                self._flatten_param_grads = False
+                return params_grads
+
+            need_flatten_params.append(p)
+            need_flatten_grads.append(g)
+
+        shape = [np.prod(p.shape) for p in need_flatten_params]
+        
+        if framework._non_static_mode():
+            flatten_param = self.helper.create_global_variable(
+                name='flatten_param',
+                persistable=True,
+                dtype=need_flatten_params[0].dtype,
+                shape=[np.sum(shape)],
+                belong_to_optimizer=True,
+            )
+            flatten_param.stop_gradient = False
+
+            flatten_grad = self.helper.create_global_variable(
+                name='flatten_grad',
+                persistable=True,
+                dtype=need_flatten_grads[0].dtype,
+                shape=[np.sum(shape)],
+                belong_to_optimizer=True,
+            )
+            # print("yoki101 dygraph ori param: ", need_flatten_params)s
+            
+            param_outputs, flatten_param = paddle._C_ops.coalesce_tensor(
+                need_flatten_params,
+                need_flatten_params[0].dtype,
+                True,
+                False,
+                False,
+                0.0,
+                False,
+                -1,
+                -1,
+                [],
+                [],
+            )
+            flatten_param.stop_gradient = False
+            flatten_param.persistable = True
+            flatten_param.retain_grads()
+            for i in range(len(need_flatten_params)):
+                # need_flatten_params[i]._share_buffer_to(param_outputs[i])
+                param_outputs[i]._share_buffer_to(need_flatten_params[i])
+
+            grad_outputs, flatten_grad = paddle._C_ops.coalesce_tensor(
+                need_flatten_grads,
+                need_flatten_grads[0].dtype,
+                True,
+                False,
+                False,
+                0.0,
+                False,
+                -1,
+                -1,
+                [],
+                [],
+            )
+            # flatten_grad.stop_gradient = False
+            flatten_grad.persistable = True
+            flatten_grad.retain_grads()
+            for i in range(len(need_flatten_grads)):
+                # need_flatten_grads[i]._share_buffer_to(grad_outputs[i])
+                grad_outputs[i]._share_buffer_to(need_flatten_grads[i])
+            
+            # print("yoki20 dygraph: ", flatten_param)
+            # print("yoki20 dygraph param: ", param_outputs)
+            # flatten_param[0] = -1111
+            # print("yoki201 dygraph: ", flatten_param)
+            # print("yoki201 dygraph param: ", param_outputs)
+            # print("yoki201 dygraph ori param: ", need_flatten_params)
+            # print("yoki21 dygraph: ", flatten_grad)
+            # print("yoki21 dygraph grad: ", grad_outputs)
+            return [(flatten_param, flatten_grad)]
+        
+        if framework._non_static_mode():
+            # # print("yoki1: need_flatten_params: ", need_flatten_params)
+            # flatten_param = paddle.create_parameter(
+            #             shape=[np.sum(shape)],
+            #             # shape=[256],
+            #             dtype=need_flatten_params[0].dtype,
+            #             default_initializer=paddle.nn.initializer.Constant(0.0),
+            #         )
+            # flatten_param.stop_gradient = False
+            # flatten_param.persistable = True
+            # flatten_param.retain_grads()
+            
+            # flatten_grad = paddle.create_parameter(
+            #             shape=[np.sum(shape)],
+            #             # shape=[256],
+            #             dtype=need_flatten_grads[0].dtype,
+            #             default_initializer=paddle.nn.initializer.Constant(0.0),
+            #         )
+            # flatten_grad.stop_gradient = True
+            # flatten_grad.persistable = True
+            # flatten_grad.retain_grads()
+            flatten_param = self.helper.create_global_variable(
+                name='flatten_param',
+                persistable=True,
+                dtype=need_flatten_params[0].dtype,
+                shape=[np.sum(shape)],
+                # belong_to_optimizer=True,
+            )
+            flatten_param.stop_gradient = False
+
+            flatten_grad = self.helper.create_global_variable(
+                name='flatten_grad',
+                persistable=True,
+                dtype=need_flatten_grads[0].dtype,
+                shape=[np.sum(shape)],
+                # belong_to_optimizer=True,
+            )
+            
+            _legacy_C_ops.coalesce_tensor(
+                            need_flatten_params,
+                            need_flatten_params,
+                            flatten_param,
+                            "copy_data",
+                            True,
+                            "use_align",
+                            False,
+                            "dtype",
+                            need_flatten_params[0].dtype,
+                        )
+            
+            _legacy_C_ops.coalesce_tensor(
+                            need_flatten_grads,
+                            need_flatten_grads,
+                            flatten_grad,
+                            "copy_data",
+                            True,
+                            "use_align",
+                            False,
+                            "dtype",
+                            need_flatten_grads[0].dtype,
+                        )
+            # print("yoki20 dygraph: ", flatten_param)
+            # print("yoki21 dygraph: ", flatten_grad)
+            return [(flatten_param, flatten_grad)]
+
+        flatten_param = self.helper.create_global_variable(
+            name='flatten_param',
+            persistable=True,
+            dtype=need_flatten_params[0].dtype,
+            shape=[np.sum(shape)],
+            belong_to_optimizer=True,
+        )
+        flatten_param.stop_gradient = False
+
+        flatten_grad = self.helper.create_global_variable(
+            name='flatten_grad',
+            persistable=True,
+            dtype=need_flatten_grads[0].dtype,
+            shape=[np.sum(shape)],
+            belong_to_optimizer=True,
+        )
+
+        if framework._non_static_mode():
+            use_align = False
+        else:
+            use_align = True
+        
+        block = need_flatten_params[0].block
+        with program_guard(default_main_program()):
+            block.append_op(
+                type="coalesce_tensor",
+                inputs={"Input": need_flatten_params},
+                outputs={
+                    "Output": need_flatten_params,
+                    "FusedOutput": flatten_param,
+                },
+                attrs={
+                    "copy_data": True,
+                    "use_align": use_align,
+                    "align_size": self._align_size,
+                    "dtype": need_flatten_params[0].dtype,
+                },
+            )
+
+            block.append_op(
+                type="coalesce_tensor",
+                inputs={"Input": need_flatten_grads},
+                outputs={
+                    "Output": need_flatten_grads,
+                    "FusedOutput": flatten_grad,
+                },
+                attrs={
+                    "copy_data": True,
+                    "use_align": use_align,
+                    "align_size": self._align_size,
+                    "dtype": need_flatten_grads[0].dtype,
+                },
+            )
+        
+        if not framework._non_static_mode():
+            # NOTE(zhiqiu): the initializer should be set after coalesce_tensor op,
+            # so the shape of flatten_param and flatten_grad will be inferred.
+            self.helper.set_variable_initializer(
+                flatten_param, initializer=Constant(0.0)
+            )
+            self.helper.set_variable_initializer(
+                flatten_grad, initializer=Constant(0.0)
+            )
+        # print("yoki20 dygraph: ", flatten_param)
+        # flatten_param[0] = -1111
+        # print("yoki201 dygraph: ", flatten_param)
+        # print("yoki201 dygraph ori param: ", need_flatten_params)
+        # print("yoki21 dygraph: ", flatten_grad)
+        return [(flatten_param, flatten_grad)]
+    """
+    """
+    def flatten_param_grads(self, params_grads):
+        self.helper = LayerHelper(self.__class__.__name__)
+        need_flatten_params = []
+        need_flatten_grads = []
+        # print("yoki0: ", params_grads)
+        print("yoki: flatten_param_grads")
+        for p, g in params_grads:
+            if g is None:
+                continue
+            g.persistable = True
+            if (
+                getattr(p, 'need_clip', True) is False
+                or getattr(p, 'regularizer', None) is not None
+            ):
+                warnings.warn(
+                    "flatten_param_grads=True will be discarded since paramter '{}''s need_clip is False or "
+                    "the regularizer is set".format(p.name)
+                )
+                self._flatten_param_grads = False
+                return params_grads
+
+            need_flatten_params.append(p)
+            need_flatten_grads.append(g)
+        
+        shape = [np.prod(p.shape) for p in need_flatten_params]
+        
+        if framework._non_static_mode():
+            # print("yoki1: need_flatten_params: ", need_flatten_params)
+            flatten_param = paddle.create_parameter(
+                        shape=[np.sum(shape)],
+                        # shape=[256],
+                        dtype=need_flatten_params[0].dtype,
+                        default_initializer=paddle.nn.initializer.Constant(0.0),
+                    )
+            flatten_param.stop_gradient = False
+            
+            flatten_grad = paddle.create_parameter(
+                        shape=[np.sum(shape)],
+                        # shape=[256],
+                        dtype=need_flatten_grads[0].dtype,
+                        default_initializer=paddle.nn.initializer.Constant(0.0),
+                    )
+            
+            _legacy_C_ops.coalesce_tensor(
+                            need_flatten_params,
+                            need_flatten_params,
+                            flatten_param,
+                            "copy_data",
+                            True,
+                            "use_align",
+                            False,
+                            "dtype",
+                            need_flatten_params[0].dtype,
+                        )
+            
+            _legacy_C_ops.coalesce_tensor(
+                            need_flatten_grads,
+                            need_flatten_grads,
+                            flatten_grad,
+                            "copy_data",
+                            True,
+                            "use_align",
+                            False,
+                            "dtype",
+                            need_flatten_grads[0].dtype,
+                        )
+            print("yoki20 dygraph: ", flatten_param)
+            print("yoki21 dygraph: ", flatten_grad)
+            return [(flatten_param, flatten_grad)]
+        
+        # print("yoki2: shape: ", shape)
+        block = need_flatten_params[0].block
+        
+        flatten_param = self.helper.create_global_variable(
+            name='flatten_param',
+            persistable=True,
+            dtype=need_flatten_params[0].dtype,
+            shape=[np.sum(shape)],
+            # shape=[256],
+            belong_to_optimizer=True,
+        )
+        # print("yoki3: flatten_param: ", flatten_param)
+
+        flatten_param.stop_gradient = False
+        flatten_grad = self.helper.create_global_variable(
+            name='flatten_grad',
+            persistable=True,
+            dtype=need_flatten_grads[0].dtype,
+            shape=[np.sum(shape)],
+            # shape=[256],
+            belong_to_optimizer=True,
+        )
+        
+
+        # self.helper.set_variable_initializer(
+        #     flatten_param, initializer=Constant(0.0)
+        # )
+        # self.helper.set_variable_initializer(
+        #     flatten_grad, initializer=Constant(0.0)
+        # )
+
+        with program_guard(default_main_program()):
+            # print("yoki4: ", flatten_param)
+            block.append_op(
+                type="coalesce_tensor",
+                inputs={"Input": need_flatten_params},
+                outputs={
+                    "Output": need_flatten_params,
+                    "FusedOutput": flatten_param,
+                },
+                attrs={
+                    "copy_data": True,
+                    "use_align": False,
+                    # "use_align": True,
+                    # "align_size": self._align_size,
+                    "dtype": need_flatten_params[0].dtype,
+                },
+            )
+            # print("yoki5: ", flatten_param)
+
+            block.append_op(
+                type="coalesce_tensor",
+                inputs={"Input": need_flatten_grads},
+                outputs={
+                    "Output": need_flatten_grads,
+                    "FusedOutput": flatten_grad,
+                },
+                attrs={
+                    "copy_data": True,
+                    "use_align": False,
+                    # "use_align": True,
+                    # "align_size": self._align_size,
+                    "dtype": need_flatten_grads[0].dtype,
+                },
+            )
+
+        # NOTE(zhiqiu): the initializer should be set after coalesce_tensor op,
+        # so the shape of flatten_param and flatten_grad will be inferred.
+        if not framework._non_static_mode():
+            self.helper.set_variable_initializer(
+                flatten_param, initializer=Constant(0.0)
+            )
+            self.helper.set_variable_initializer(
+                flatten_grad, initializer=Constant(0.0)
+            )
+        # print("yoki4: ", need_flatten_params)
+        
+        
+
+        print("yoki20: ", flatten_param)
+        print("yoki21: ", flatten_grad)
+
+        return [(flatten_param, flatten_grad)]
+    """
+
+    def flatten_param_grads(self, params_grads):
+        self.helper = LayerHelper(self.__class__.__name__)
+        need_flatten_params = []
+        need_flatten_grads = []
+        for p, g in params_grads:
+            if g is None:
+                continue
+            g.persistable = True
+            if (
+                getattr(p, 'need_clip', True) is False
+                or getattr(p, 'regularizer', None) is not None
+            ):
+                warnings.warn(
+                    "flatten_param_grads=True will be discarded since paramter '{}''s need_clip is False or "
+                    "the regularizer is set".format(p.name)
+                )
+                self._flatten_param_grads = False
+                return params_grads
+
+            need_flatten_params.append(p)
+            need_flatten_grads.append(g)
+
+        shape = [np.prod(p.shape) for p in need_flatten_params]
+
+        flatten_param = self.helper.create_global_variable(
+            name='flatten_param',
+            persistable=True,
+            dtype=need_flatten_params[0].dtype,
+            shape=[np.sum(shape)],
+            belong_to_optimizer=True,
+        )
+
+        flatten_grad = self.helper.create_global_variable(
+            name='flatten_grad',
+            persistable=True,
+            dtype=need_flatten_grads[0].dtype,
+            shape=[np.sum(shape)],
+            belong_to_optimizer=True,
+        )
+
+        if framework._non_static_mode():
+            flatten_param.stop_gradient = False
+            _legacy_C_ops.coalesce_tensor(
+                            need_flatten_params,
+                            need_flatten_params,
+                            flatten_param,
+                            "copy_data",
+                            True,
+                            "use_align",
+                            False,
+                            "dtype",
+                            need_flatten_params[0].dtype,
+                        )
+            
+            _legacy_C_ops.coalesce_tensor(
+                            need_flatten_grads,
+                            need_flatten_grads,
+                            flatten_grad,
+                            "copy_data",
+                            True,
+                            "use_align",
+                            False,
+                            "dtype",
+                            need_flatten_grads[0].dtype,
+                        )
+            return [(flatten_param, flatten_grad)]
+
+        flatten_param.trainable = True
+        flatten_param.optimize_attr = need_flatten_params[0].optimize_attr
+        flatten_param.regularizer = need_flatten_params[0].regularizer
+
+        block = need_flatten_params[0].block
+        with program_guard(default_main_program()):
+            block.append_op(
+                type="coalesce_tensor",
+                inputs={"Input": need_flatten_params},
+                outputs={
+                    "Output": need_flatten_params,
+                    "FusedOutput": flatten_param,
+                },
+                attrs={
+                    "copy_data": True,
+                    "use_align": True,
+                    "align_size": self._align_size,
+                    "dtype": need_flatten_params[0].dtype,
+                },
+            )
+
+            block.append_op(
+                type="coalesce_tensor",
+                inputs={"Input": need_flatten_grads},
+                outputs={
+                    "Output": need_flatten_grads,
+                    "FusedOutput": flatten_grad,
+                },
+                attrs={
+                    "copy_data": True,
+                    "use_align": True,
+                    "align_size": self._align_size,
+                    "dtype": need_flatten_grads[0].dtype,
+                },
+            )
+
+        # NOTE(zhiqiu): the initializer should be set after coalesce_tensor op,
+        # so the shape of flatten_param and flatten_grad will be inferred.
+        self.helper.set_variable_initializer(
+            flatten_param, initializer=Constant(0.0)
+        )
+        self.helper.set_variable_initializer(
+            flatten_grad, initializer=Constant(0.0)
+        )
+
+        return [(flatten_param, flatten_grad)]
+
     def apply_gradients(self, params_grads):
         """
         Second part of `minimize`, appending optimization operators for
@@ -1097,6 +1630,14 @@ class Optimizer:
         """
 
         params_grads = sorted(params_grads, key=lambda x: x[0].name)
+        # print("yoki: ", params_grads)
+
+        # NOTE(zhiqiu): currently, only support ClipGradByGlobalNorm and without regularization.
+        if self._flatten_param_grads and self.regularization is None:
+            if self._grad_clip is None or isinstance(
+                self._grad_clip, ClipGradByGlobalNorm
+            ):
+                params_grads = self.flatten_param_grads(params_grads)
 
         # 'optimizer(grad_clip)' or 'set_gradient_clip'
         if self._grad_clip is not None:
@@ -1132,6 +1673,14 @@ class Optimizer:
                 framework.default_main_program(),
                 framework.default_startup_program(),
             ):
+                print("yoki: param_grads: ", params_grads)
+                # NOTE(zhiqiu): currently, only support ClipGradByGlobalNorm and without regularization.
+                if self._flatten_param_grads and isinstance(params_grads, list) and self.regularization is None:
+                    if self._grad_clip is None or isinstance(
+                        self._grad_clip, ClipGradByGlobalNorm
+                    ):
+                        params_grads = self.flatten_param_grads(params_grads)
+                """
                 if isinstance(params_grads, list):
                     if self._grad_clip is not None:
                         params_grads = self._grad_clip(params_grads)
@@ -1148,9 +1697,12 @@ class Optimizer:
                     params_grads['params'] = self.append_regularization_ops(
                         params_grads['params'], self.regularization
                     )
+                """
+                print("yoki: final param_grads1: ", params_grads)
                 optimize_ops = self._create_optimization_pass(
                     params_grads, param_group_idx=param_group_idx
                 )
+                print("yoki: final param_grads2: ", params_grads)
         else:
             assert param_group_idx == 0
             program = loss.block.program
@@ -1183,26 +1735,28 @@ class Optimizer:
 
         if framework.in_dygraph_mode():
             return _C_ops.add_n([grad, regularization_term])
-        else:
-            new_grad = grad
-            if grad.type == core.VarDesc.VarType.SELECTED_ROWS:
-                # FIXME(zcd): If the grad is SELECTED_ROWS, after regularization,
-                # the grad's type and name will be changed. But the gradient's name
-                # is used in ParallelExecutor Reduce mode, so I add a flag for
-                # the new_grad here.
-                new_grad = grad.block.create_var(
-                    name=grad.name + core.kNewGradSuffix(),
-                    dtype=param.dtype,
-                    shape=param.shape,
-                    lod_level=param.lod_level,
-                    type=core.VarDesc.VarType.LOD_TENSOR,
-                )
+        elif framework._in_legacy_dygraph():
+            return _legacy_C_ops.sum([grad, regularization_term])
 
-            inputs = {"X": [grad, regularization_term]}
-            outputs = {"Out": [new_grad]}
-            grad.block.append_op(type='sum', inputs=inputs, outputs=outputs)
+        new_grad = grad
+        if grad.type == core.VarDesc.VarType.SELECTED_ROWS:
+            # FIXME(zcd): If the grad is SELECTED_ROWS, after regularization,
+            # the grad's type and name will be changed. But the gradient's name
+            # is used in ParallelExecutor Reduce mode, so I add a flag for
+            # the new_grad here.
+            new_grad = grad.block.create_var(
+                name=grad.name + core.kNewGradSuffix(),
+                dtype=param.dtype,
+                shape=param.shape,
+                lod_level=param.lod_level,
+                type=core.VarDesc.VarType.LOD_TENSOR,
+            )
 
-            return new_grad
+        inputs = {"X": [grad, regularization_term]}
+        outputs = {"Out": [new_grad]}
+        grad.block.append_op(type='sum', inputs=inputs, outputs=outputs)
+
+        return new_grad
 
     def append_regularization_ops(
         self, parameters_and_grads, regularization=None
@@ -1240,7 +1794,7 @@ class Optimizer:
                 for param, grad in parameters_and_grads:
                     if (
                         not repeate_regularizer
-                        and param.regularizer is not None
+                        and getattr(param, 'regularizer', None) is not None
                         and regularization is not None
                     ):
                         repeate_regularizer = True
@@ -1404,7 +1958,6 @@ class Optimizer:
                 adam.step()
                 adam.clear_grad()
         """
-
         if not isinstance(self._param_groups[0], dict):
             params_grads = []
             for param in self._param_groups:
