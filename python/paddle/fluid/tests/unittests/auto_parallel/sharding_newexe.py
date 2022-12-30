@@ -38,8 +38,8 @@ def apply_pass(use_sharding=False):
         sharding.enable_overlap = True
         sharding.param_comm_stream_num = 2
         sharding.grad_comm_stream_num = 2
-        sharding.param_bucket_size_numel = 2
-        sharding.grad_bucket_size_numel = 2
+        sharding.param_bucket_size_numel = 512 * 512
+        sharding.grad_bucket_size_numel = 128 * 128
         sharding.partition_algor = 'use_order'
 
     return strategy
