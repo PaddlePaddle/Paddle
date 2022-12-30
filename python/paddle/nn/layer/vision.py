@@ -22,11 +22,9 @@ __all__ = []
 class PixelShuffle(Layer):
     """
 
-    PixelShuffle Layer
-
     Rearranges elements in a tensor of shape :math:`[N, C, H, W]`
-    to a tensor of shape :math:`[N, C/upscale_factor^2, H*upscale_factor, W \times upscale_factor]`,
-    or from shape :math:`[N, H, W, C]` to :math:`[N, H \times upscale_factor, W \times upscale_factor, C/upscale_factor^2]`.
+    to a tensor of shape :math:`[N, C/upscale_factor^2, H*upscale_factor, W*upscale_factor]`,
+    or from shape :math:`[N, H, W, C]` to :math:`[N, H*upscale_factor, W*upscale_factor, C/upscale_factor^2]`.
     This is useful for implementing efficient sub-pixel convolution
     with a stride of 1/upscale_factor.
     Please refer to the paper: `Real-Time Single Image and Video Super-Resolution
@@ -36,12 +34,12 @@ class PixelShuffle(Layer):
     Parameters:
 
         upscale_factor(int): factor to increase spatial resolution.
-        data_format (str, optional): The data format of the input and output data. An optional string from: "NCHW", "NHWC". The default is "NCHW". When it is "NCHW", the data is stored in the order of: [batch_size, input_channels, input_height, input_width].
+        data_format (str, optional): The data format of the input and output data. An optional string from: `'NCHW'``, ``'NHWC'``. When it is ``'NCHW'``, the data is stored in the order of: [batch_size, input_channels, input_height, input_width]. Default: ``'NCHW'``.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Shape:
         - x: 4-D tensor with shape of :math:`(N, C, H, W)` or :math:`(N, H, W, C)`.
-        - out: 4-D tensor with shape of :math:`(N, C/upscale_factor^2, H \times upscale_factor, W \times upscale_factor)` or :math:`(N, H \times upscale_factor, W \times upscale_factor, C/upscale_factor^2)`.
+        - out: 4-D tensor with shape of :math:`(N, C/upscale_factor^2, H*upscale_factor, W*upscale_factor)` or :math:`(N, H*upscale_factor, W*upscale_factor, C/upscale_factor^2)`.
 
 
     Examples:
@@ -100,7 +98,7 @@ class PixelUnshuffle(Layer):
 
     Parameters:
         downscale_factor (int): Factor to decrease spatial resolution.
-        data_format (str, optional): The data format of the input and output data. An optional string of NCHW or NHWC. The default is NCHW. When it is NCHW, the data is stored in the order of [batch_size, input_channels, input_height, input_width].
+        data_format (str, optional): The data format of the input and output data. An optional string of ``'NCHW'`` or ``'NHWC'``. When it is ``'NCHW'``, the data is stored in the order of [batch_size, input_channels, input_height, input_width]. Default: ``'NCHW'``.
         name (str, optional): Name for the operation (optional, default is None). Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`.
 
     Shape:

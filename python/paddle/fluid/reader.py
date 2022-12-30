@@ -64,7 +64,6 @@ import os
 import multiprocessing
 import signal
 
-# NOTE: queue has a different name in python2 and python3
 import queue
 
 # NOTE: [ avoid hanging & failed quickly ] These value is used in getting data from another process
@@ -1348,7 +1347,7 @@ class GeneratorLoader(DataLoaderBase):
         self._iterable = iterable
         self._return_list = return_list
         if not self._feed_list:
-            raise Exception("Feed list must be given under static mode.")
+            raise Exception("Feed list must be given under static graph mode.")
         self._use_double_buffer = use_double_buffer
         self._capacity = capacity
         if not self._iterable:
@@ -1810,7 +1809,7 @@ class PyReader(DataLoaderBase):
                    paddle.batch(user_defined_reader, batch_size=BATCH_SIZE),
                    place)
                for image, label in py_reader():
-                   relu = fluid.layers.relu(image)
+                   relu = paddle.nn.functional.relu(image)
     """
 
     def __init__(

@@ -27,12 +27,6 @@ import paddle
 # deprecated module import
 from paddle import fluid
 from paddle.fluid import core
-from paddle.fluid.dygraph.io import (
-    INFER_MODEL_SUFFIX,
-    INFER_PARAMS_SUFFIX,
-    _construct_params_and_buffers,
-    _construct_program_holders,
-)
 from paddle.fluid.framework import (
     EagerParamBase,
     ParamBase,
@@ -52,6 +46,12 @@ from paddle.fluid.io import (
     _unpack_saved_dict,
 )
 from paddle.jit.api import _SaveLoadConfig
+from paddle.jit.translated_layer import (
+    INFER_MODEL_SUFFIX,
+    INFER_PARAMS_SUFFIX,
+    _construct_params_and_buffers,
+    _construct_program_holders,
+)
 
 __all__ = []
 
@@ -902,7 +902,7 @@ def load(path, **configs):
         directory, such as ``model`` and model is a directory.
 
     Note:
-        If you load ``state_dict`` from the saved result of static mode API such as
+        If you load ``state_dict`` from the saved result of static graph mode API such as
         ``paddle.static.save`` or ``paddle.static.save_inference_model`` ,
         the structured variable name in dynamic mode will cannot be restored.
         You need to set the argument ``use_structured_name=False`` when using

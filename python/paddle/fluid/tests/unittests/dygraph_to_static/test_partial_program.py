@@ -21,7 +21,7 @@ import paddle
 import paddle.fluid as fluid
 from paddle.fluid.layers.utils import flatten
 from paddle.jit import ProgramTranslator
-from paddle.jit.api import declarative
+from paddle.jit.api import to_static
 
 SEED = 2020
 
@@ -78,7 +78,7 @@ class TestWithNestedInput(unittest.TestCase):
                 self.fake_input()
 
             if to_static:
-                out = declarative(nested_input)(self.x, self.y)
+                out = paddle.jit.to_static(nested_input)(self.x, self.y)
             else:
                 out = nested_input(self.x, self.y)
 
@@ -102,7 +102,7 @@ class TestWithNestedOutput(unittest.TestCase):
                 self.y = fake_data([10, 16])
 
             if to_static:
-                out = declarative(nested_output)(self.x, self.y)
+                out = paddle.jit.to_static(nested_output)(self.x, self.y)
             else:
                 out = nested_output(self.x, self.y)
 
@@ -185,7 +185,7 @@ class GPT2LMHeadModel(fluid.dygraph.Layer):
             np.random.rand(2, 3).astype('float32')
         )
 
-    @declarative
+    @to_static
     def forward(self, x):
         x = paddle.reshape(x, shape=[-1, 6])
         x1, x2, x3 = paddle.split(x=x, axis=1, num_or_sections=3)

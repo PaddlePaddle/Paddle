@@ -16,8 +16,6 @@
 import http.server as SimpleHTTPServer
 import logging
 import threading
-
-# NOTE: HTTPServer has a different name in python2 and python3
 from http.server import HTTPServer
 
 __all__ = []

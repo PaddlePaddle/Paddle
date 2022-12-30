@@ -13,9 +13,6 @@
 # limitations under the License.
 
 import os
-
-os.environ['FLAGS_enable_eager_mode'] = '1'
-
 import tempfile
 import unittest
 

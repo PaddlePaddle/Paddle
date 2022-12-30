@@ -174,7 +174,7 @@ void PreparePass(std::unique_ptr<ir::Graph>* graph,
 void CheckScales(const OpDesc* op, float scale, float shift) {
   std::string type = op->Type();
   std::vector<std::string> scale_names;
-  if (type == "conv2d" || type == "fc") {
+  if (type == "conv2d" || type == "fused_conv2d" || type == "fc") {
     EXPECT_EQ(op->GetAttrIfExists<std::vector<float>>("Scale_weights")[0],
               scale);
     scale_names.push_back("Scale_in");
@@ -330,7 +330,7 @@ TEST(CpuQuantizePass, quantize) {
   // Insert nodes: 8 Quant + 8 IN + 7 OUT + 7 DEQUANT
   int added_nodes = 8 + 8 + 7 + 7;
   std::unordered_map<std::string, int> expected_operators = {
-      {"conv2d", 4}, {"pool2d", 2}, {"quantize", 8}, {"dequantize", 7}};
+      {"fused_conv2d", 4}, {"pool2d", 2}, {"quantize", 8}, {"dequantize", 7}};
   MainTest(BuildProgramDesc(use_mkldnn, mkldnn_data_type),
            variable_names,
            expected_operators,
@@ -343,7 +343,7 @@ TEST(CpuQuantizePass, do_not_quantize) {
   std::string mkldnn_data_type = "float32";
   int added_nodes = 0;
   std::unordered_map<std::string, int> expected_operators = {
-      {"conv2d", 4}, {"pool2d", 2}, {"quantize", 0}, {"dequantize", 0}};
+      {"fused_conv2d", 4}, {"pool2d", 2}, {"quantize", 0}, {"dequantize", 0}};
   MainTest(BuildProgramDesc(use_mkldnn, mkldnn_data_type),
            variable_names,
            expected_operators,

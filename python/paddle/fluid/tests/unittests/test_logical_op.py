@@ -17,7 +17,6 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle.fluid.framework import _test_eager_guard
 from paddle.framework import _non_static_mode
 from paddle.static import Executor, Program, program_guard
 
@@ -106,15 +105,14 @@ def run_eager(x_np, y_np, op_str, use_gpu=False, binary_op=True):
     if use_gpu and paddle.is_compiled_with_cuda():
         place = paddle.CUDAPlace(0)
     paddle.disable_static(place)
-    with _test_eager_guard():
-        op = getattr(paddle, op_str)
-        x = paddle.to_tensor(x_np, dtype=x_np.dtype)
-        if not binary_op:
-            dygraph_result = op(x)
-        else:
-            y = paddle.to_tensor(y_np, dtype=y_np.dtype)
-            dygraph_result = op(x, y)
-        return dygraph_result
+    op = getattr(paddle, op_str)
+    x = paddle.to_tensor(x_np, dtype=x_np.dtype)
+    if not binary_op:
+        dygraph_result = op(x)
+    else:
+        y = paddle.to_tensor(y_np, dtype=y_np.dtype)
+        dygraph_result = op(x, y)
+    return dygraph_result
 
 
 def np_data_generator(np_shape, dtype, *args, **kwargs):

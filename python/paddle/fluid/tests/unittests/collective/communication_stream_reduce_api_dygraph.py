@@ -59,9 +59,9 @@ class StreamReduceTestCase:
 
         result = sum(test_data_list)
         if rank == 1:
-            assert np.allclose(tensor, result, rtol=1e-05, atol=1e-05)
+            np.testing.assert_allclose(tensor, result, rtol=1e-05, atol=1e-05)
         else:
-            assert np.allclose(
+            np.testing.assert_allclose(
                 tensor, test_data_list[rank], rtol=1e-05, atol=1e-05
             )
 

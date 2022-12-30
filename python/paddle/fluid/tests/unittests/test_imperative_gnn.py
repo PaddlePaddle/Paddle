@@ -23,7 +23,6 @@ import paddle.fluid as fluid
 import paddle.fluid.core as core
 import paddle.nn.functional as F
 from paddle.fluid.dygraph.base import to_variable
-from paddle.fluid.framework import _test_eager_guard
 from paddle.fluid.optimizer import AdamOptimizer
 
 
@@ -64,7 +63,7 @@ class GCN(fluid.Layer):
 
 
 class TestDygraphGNN(unittest.TestCase):
-    def func_gnn_float32(self):
+    def test_gnn_float32(self):
         paddle.seed(90)
         paddle.framework.random._manual_program_seed(90)
         startup = fluid.Program()
@@ -187,11 +186,6 @@ class TestDygraphGNN(unittest.TestCase):
             static_weight, model2_gc_weight_value, rtol=1e-05
         )
         sys.stderr.write('%s %s\n' % (static_loss, loss_value))
-
-    def test_gnn_float32(self):
-        with _test_eager_guard():
-            self.func_gnn_float32()
-        self.func_gnn_float32()
 
 
 if __name__ == '__main__':

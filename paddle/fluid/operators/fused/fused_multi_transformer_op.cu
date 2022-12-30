@@ -77,6 +77,10 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
     auto *qkv_out_data =
         dev_ctx.Alloc<T>(&qkv_out, qkv_out.numel() * sizeof(T));
 
+    // 2.1 rotary
+    auto *rotary_tensor = ctx.Input<phi::DenseTensor>("RotaryPosEmb");
+    const int rotary_emb_dims = ctx.Attr<int>("rotary_emb_dims");
+
     // 3. fmha
     AttnDropoutParam attn_param(
         true, "upscale_in_train", 0.0, true, true, 0, nullptr);
@@ -297,6 +301,7 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
                 qkv_out,
                 *qkv_bias,
                 *src_mask,
+                rotary_tensor,
                 cache_kv_out,
                 &fmha_out,
                 bsz,
@@ -304,6 +309,7 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
                 num_head,
                 dim_head,
                 time_step->data<int>()[0],
+                rotary_emb_dims,
                 1. / sqrt(dim_head));
       } else if (cache_kv_out) {  // generation context stage
         const phi::DenseTensor *pre_cache_kv_tensor =
@@ -322,8 +328,25 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
                                         seq_len,
                                         dim_head,
                                         compute_bias);
-        fmha_compute.ComputeForwardWithoutTranspose(qkv_out,
-                                                    pre_cache_kv_tensor,
+
+        // q_transpose_out_data [bs, head_num, seq_len, dim_head]
+        // kv_transpose_out_data [2， bs, head_num, seq_len, dim_head]
+        if (rotary_emb_dims != 0) {
+          auto *rotary_emb_data = rotary_tensor->data<T>();
+          rotary_qk(dev_ctx,
+                    q_transpose_out_data,
+                    kv_transpose_out_data,
+                    q_transpose_out_data,
+                    kv_transpose_out_data,
+                    rotary_emb_data,
+                    rotary_emb_dims,
+                    bsz,
+                    num_head,
+                    seq_len,
+                    dim_head);
+        }
+
+        fmha_compute.ComputeForwardWithoutTranspose(pre_cache_kv_tensor,
                                                     src_mask,
                                                     &q_transpose_out,
                                                     &kv_transpose_out,
@@ -383,8 +406,25 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
                                         seq_len,
                                         dim_head,
                                         compute_bias);
-        fmha_compute.ComputeForwardWithoutTranspose(qkv_out,
-                                                    cache_kv,
+
+        // q_transpose_out_data [bs, head_num, seq_len, dim_head]
+        // kv_transpose_out_data [2， bs, head_num, seq_len, dim_head]
+        if (rotary_emb_dims != 0) {
+          auto *rotary_emb_data = rotary_tensor->data<T>();
+          rotary_qk(dev_ctx,
+                    q_transpose_out_data,
+                    kv_transpose_out_data,
+                    q_transpose_out_data,
+                    kv_transpose_out_data,
+                    rotary_emb_data,
+                    rotary_emb_dims,
+                    bsz,
+                    num_head,
+                    seq_len,
+                    dim_head);
+        }
+
+        fmha_compute.ComputeForwardWithoutTranspose(cache_kv,
                                                     src_mask,
                                                     &q_transpose_out,
                                                     &kv_transpose_out,
@@ -593,6 +633,10 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
     qkv_out.Resize({{bsz, seq_len, 3, num_head, dim_head}});
     auto *qkv_out_data =
         dev_ctx.Alloc<T>(&qkv_out, qkv_out.numel() * sizeof(T));
+
+    // 2.1 rotary
+    auto *rotary_tensor = ctx.Input<phi::DenseTensor>("RotaryPosEmb");
+    const int rotary_emb_dims = ctx.Attr<int>("rotary_emb_dims");
 
     // 3. fmha
     AttnDropoutParam attn_param(
@@ -821,6 +865,7 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
                 qkv_out,
                 *qkv_bias,
                 *src_mask,
+                rotary_tensor,
                 cache_kv_out,
                 &fmha_out,
                 bsz,
@@ -828,6 +873,7 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
                 num_head,
                 dim_head,
                 time_step->data<int>()[0],
+                rotary_emb_dims,
                 1. / sqrt(dim_head));
       } else if (cache_kv_out) {  // generation context stage
         const phi::DenseTensor *pre_cache_kv_tensor =
@@ -846,8 +892,25 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
                                         seq_len,
                                         dim_head,
                                         compute_bias);
-        fmha_compute.ComputeForwardWithoutTranspose(qkv_out,
-                                                    pre_cache_kv_tensor,
+
+        // q_transpose_out_data [bs, head_num, seq_len, dim_head]
+        // kv_transpose_out_data [2， bs, head_num, seq_len, dim_head]
+        if (rotary_emb_dims != 0) {
+          auto *rotary_emb_data = rotary_tensor->data<T>();
+          rotary_qk(dev_ctx,
+                    q_transpose_out_data,
+                    kv_transpose_out_data,
+                    q_transpose_out_data,
+                    kv_transpose_out_data,
+                    rotary_emb_data,
+                    rotary_emb_dims,
+                    bsz,
+                    num_head,
+                    seq_len,
+                    dim_head);
+        }
+
+        fmha_compute.ComputeForwardWithoutTranspose(pre_cache_kv_tensor,
                                                     src_mask,
                                                     &q_transpose_out,
                                                     &kv_transpose_out,
@@ -907,8 +970,25 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
                                         seq_len,
                                         dim_head,
                                         compute_bias);
-        fmha_compute.ComputeForwardWithoutTranspose(qkv_out,
-                                                    cache_kv,
+
+        // q_transpose_out_data [bs, head_num, seq_len, dim_head]
+        // kv_transpose_out_data [2， bs, head_num, seq_len, dim_head]
+        if (rotary_emb_dims != 0) {
+          auto *rotary_emb_data = rotary_tensor->data<T>();
+          rotary_qk(dev_ctx,
+                    q_transpose_out_data,
+                    kv_transpose_out_data,
+                    q_transpose_out_data,
+                    kv_transpose_out_data,
+                    rotary_emb_data,
+                    rotary_emb_dims,
+                    bsz,
+                    num_head,
+                    seq_len,
+                    dim_head);
+        }
+
+        fmha_compute.ComputeForwardWithoutTranspose(cache_kv,
                                                     src_mask,
                                                     &q_transpose_out,
                                                     &kv_transpose_out,

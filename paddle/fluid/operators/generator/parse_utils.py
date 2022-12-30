@@ -276,10 +276,50 @@ def parse_forward(op_name: str, forward_config: str) -> Dict[str, Any]:
     return forward_cfg
 
 
+def check_op_config(op_entry, op_name):
+    base_key_set = (
+        'op',
+        'backward_op',
+        'forward',
+        'args',
+        'output',
+        'infer_meta',
+        'kernel',
+        'backward',
+        'invoke',
+        'inplace',
+        'view',
+        'optional',
+        'intermediate',
+        'no_need_buffer',
+        'data_transform',
+    )
+    infer_meta_key_set = ('func', 'param')
+    kernel_key_set = ('func', 'param', 'data_type', 'layout', 'backend')
+    for key in op_entry.keys():
+        assert (
+            key in base_key_set
+        ), f"Op ({op_name}) : invalid key ({key}) in Yaml."
+
+    if 'infer_meta' in op_entry:
+        for infer_meta_key in op_entry['infer_meta'].keys():
+            assert (
+                infer_meta_key in infer_meta_key_set
+            ), f"Op ({op_name}) : invalid key (infer_meta.{infer_meta_key}) in Yaml."
+
+    if 'kernel' in op_entry:
+        for kernel_key in op_entry['kernel'].keys():
+            assert (
+                kernel_key in kernel_key_set
+            ), f"Op ({op_name}) : invalid key (kernel.{kernel_key}) in Yaml."
+
+
 def parse_op_entry(op_entry: Dict[str, Any], name_field="op"):
     op_name = op_entry[name_field]
     inputs, attrs = parse_input_and_attr(op_name, op_entry["args"])
     outputs = parse_outputs(op_name, op_entry["output"])
+
+    check_op_config(op_entry, op_name)
 
     # validate default value of DataType and DataLayout
     for attr in attrs:

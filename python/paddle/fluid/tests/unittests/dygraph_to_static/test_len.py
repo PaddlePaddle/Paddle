@@ -18,7 +18,6 @@ import numpy as np
 
 import paddle
 import paddle.fluid as fluid
-from paddle.jit.api import declarative
 from paddle.jit.dy2static import Call
 
 SEED = 2020
@@ -58,7 +57,7 @@ class TestLen(unittest.TestCase):
     def _run(self, to_static):
         with fluid.dygraph.guard(self.place):
             if to_static:
-                out = declarative(self.func)(self.x_data)
+                out = paddle.jit.to_static(self.func)(self.x_data)
             else:
                 out = self.func(self.x_data)
 

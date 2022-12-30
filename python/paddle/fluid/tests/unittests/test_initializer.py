@@ -661,7 +661,7 @@ class TestSetGlobalInitializer(unittest.TestCase):
         with fluid.program_guard(main_prog, startup_prog):
             x = fluid.data(name="x", shape=[1, 3, 32, 32])
             # default initilizer of param in layers.conv2d is NormalInitializer
-            conv = fluid.layers.conv2d(x, 5, 3)
+            conv = paddle.static.nn.conv2d(x, 5, 3)
 
         block = startup_prog.global_block()
         self.assertEqual(len(block.ops), 2)
@@ -689,7 +689,7 @@ class TestSetGlobalInitializer(unittest.TestCase):
         with fluid.program_guard(main_prog, startup_prog):
             x = fluid.data(name="x", shape=[1, 3, 32, 32])
             # default initilizer of bias in layers.conv2d is ConstantInitializer
-            conv = fluid.layers.conv2d(x, 5, 3)
+            conv = paddle.static.nn.conv2d(x, 5, 3)
 
         block = startup_prog.global_block()
         self.assertEqual(len(block.ops), 2)

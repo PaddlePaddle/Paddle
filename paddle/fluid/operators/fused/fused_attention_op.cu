@@ -30,7 +30,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-#include "paddle/fluid/distributed/collective/ProcessGroupNCCL.h"
+#include "paddle/fluid/distributed/collective/process_group_nccl.h"
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #endif
@@ -514,15 +514,24 @@ class FusedAttentionGradKernel : public framework::OpKernel<T> {
     auto *d_ln_2_bias =
         ctx.Output<phi::DenseTensor>(framework::GradVarName("Ln2Bias"));
 
-    auto *d_qkv_weight_data = dev_ctx.template Alloc<T>(
-        d_qkv_weight, d_qkv_weight->numel() * sizeof(T));
+    auto *d_qkv_weight_data =
+        (d_qkv_weight == nullptr)
+            ? nullptr
+            : dev_ctx.template Alloc<T>(d_qkv_weight,
+                                        d_qkv_weight->numel() * sizeof(T));
+
     auto *d_qkv_bias_data =
         (d_qkv_bias == nullptr)
             ? nullptr
             : dev_ctx.template Alloc<T>(d_qkv_bias,
                                         d_qkv_bias->numel() * sizeof(T));
-    auto *d_out_linear_weight_data = dev_ctx.template Alloc<T>(
-        d_out_linear_weight, d_out_linear_weight->numel() * sizeof(T));
+    auto *d_out_linear_weight_data =
+        (d_out_linear_weight == nullptr)
+            ? nullptr
+            : dev_ctx.template Alloc<T>(
+                  d_out_linear_weight,
+                  d_out_linear_weight->numel() * sizeof(T));
+
     auto *d_out_linear_bias_data =
         (d_out_linear_bias == nullptr)
             ? nullptr

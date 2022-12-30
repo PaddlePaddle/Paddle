@@ -192,7 +192,7 @@ class TestCholeskySolveAPI(unittest.TestCase):
             )
             np.testing.assert_allclose(fetches[0], z_np, rtol=1e-05)
 
-    # test in static mode
+    # test in static graph mode
     def test_static(self):
         for place in self.place:
             self.check_static_result(place=place)

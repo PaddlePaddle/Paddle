@@ -17,9 +17,7 @@ from .layer_function_generator import templatedoc
 from ..framework import (
     core,
     Variable,
-    _non_static_mode,
     in_dygraph_mode,
-    _in_legacy_dygraph,
     convert_np_dtype_to_dtype_,
 )
 from ..layer_helper import LayerHelper
@@ -63,7 +61,7 @@ def sequence_conv(
     r"""
 
     Note:
-        Only receives LoDTensor as input. If your input is Tensor, please use conv2d Op.(fluid.layers.** :ref:`api_fluid_layers_conv2d` ).
+        Only receives LoDTensor as input. If your input is Tensor, please use conv2d Op.(fluid.layers.** :ref:`api_paddle_nn_functional_conv2d` ).
 
     This operator receives input sequences with variable length and other convolutional
     configuration parameters(num_filters, filter_size) to apply the convolution operation.
@@ -114,29 +112,29 @@ def sequence_conv(
             and K is hidden_size of input. Only lod_level of 1 is supported. The data type should be float32 or
             float64.
         num_filters (int): the number of filters.
-        filter_size (int): the height of filter. Specified filter width is not supported, the width is
+        filter_size (int, optional): the height of filter. Specified filter width is not supported, the width is
             hidden_size by default. Default: 3.
-        filter_stride (int): stride of the filter. Currently only supports :attr:`stride` = 1.
-        padding (bool): the parameter :attr:`padding` take no effect and will be discarded in the
+        filter_stride (int, optional): stride of the filter. Currently only supports :attr:`stride` = 1.
+        padding (bool, optional): the parameter :attr:`padding` take no effect and will be discarded in the
             future. Currently, it will always pad input to make sure the length of the output is
             the same as input whether :attr:`padding` is set true or false. Because the length of
             input sequence may be shorter than :attr:`filter\_size`, which will cause the convolution
             result to not be computed correctly. These padding data will not be trainable or updated
             while training. Default: True.
-        padding_start (int): It is used to indicate the start index for padding the input
+        padding_start (int, optional): It is used to indicate the start index for padding the input
             sequence, which can be negative. The negative number means to pad
             :attr:`|padding_start|` time-steps of all-zero data at the beginning of each instance.
             The positive number means to skip :attr:`padding_start` time-steps of each instance,
             and it will pad :math:`filter\_size + padding\_start - 1` time-steps of all-zero data
             at the end of the sequence to ensure that the output is the same length as the input.
-            If set None, the same length :math:`\\frac{filter\_size}{2}` of data will be filled
+            If set None, the same length :math:`\frac{filter\_size}{2}` of data will be filled
             on both sides of the sequence. If set 0, the length of :math:`filter\_size - 1` data
             is padded at the end of each input sequence. Default: None.
-        bias_attr (ParamAttr): To specify the bias parameter property. Default: None, which means the
-            default bias parameter property is used. See usage for details in :ref:`api_fluid_ParamAttr` .
-        param_attr (ParamAttr): To specify the weight parameter property. Default: None, which means the
-            default weight parameter property is used. See usage for details in :ref:`api_fluid_ParamAttr` .
-        act (str): Activation to be applied to the output of this layer, such as tanh, softmax,
+        bias_attr (ParamAttr, optional): To specify the bias parameter property. Default: None, which means the
+            default bias parameter property is used. See usage for details in :ref:`api_paddle_ParamAttr` .
+        param_attr (ParamAttr, optional): To specify the weight parameter property. Default: None, which means the
+            default weight parameter property is used. See usage for details in :ref:`api_paddle_ParamAttr` .
+        act (str, optional): Activation to be applied to the output of this layer, such as tanh, softmax,
             sigmoid, relu. For more information, please refer to :ref:`api_guide_activations_en` . Default: None.
         name (str, optional): The default value is None.  Normally there is no need for user to set this property.
             For more information, please refer to :ref:`api_guide_Name` .
@@ -156,7 +154,7 @@ def sequence_conv(
     """
 
     assert (
-        not _non_static_mode()
+        not in_dygraph_mode()
     ), "sequence layer is not supported in dygraph mode yet."
     check_variable_and_dtype(
         input, 'input', ['float32', 'float64'], 'sequence_conv'
@@ -258,7 +256,7 @@ def sequence_softmax(input, use_cudnn=False, name=None):
              x_sequence_softmax_2 = paddle.static.nn.sequence_softmax(input=y)
     """
     assert (
-        not _non_static_mode()
+        not in_dygraph_mode()
     ), "sequence layer is not supported in dygraph mode yet."
     helper = LayerHelper('sequence_softmax', **locals())
     check_variable_and_dtype(
@@ -363,7 +361,7 @@ def sequence_pool(input, pool_type, is_test=False, pad_value=0.0):
             first_x = paddle.static.nn.sequence_pool(input=x, pool_type='first')
     """
     assert (
-        not _non_static_mode()
+        not in_dygraph_mode()
     ), "sequence layer is not supported in dygraph mode yet."
     check_variable_and_dtype(
         input, 'input', ['float32', 'float64'], 'sequence_pool'
@@ -441,7 +439,7 @@ def sequence_concat(input, name=None):
             out = paddle.static.nn.sequence_concat(input=[x, y])
     """
     assert (
-        not _non_static_mode()
+        not in_dygraph_mode()
     ), "sequence layer is not supported in dygraph mode yet."
     helper = LayerHelper('sequence_concat', **locals())
 
@@ -640,7 +638,7 @@ def sequence_slice(input, offset, length, name=None):
                                                    length=length)
     """
     assert (
-        not _non_static_mode()
+        not in_dygraph_mode()
     ), "sequence layer is not supported in dygraph mode yet."
     helper = LayerHelper("sequence_slice", **locals())
 
@@ -794,7 +792,7 @@ def sequence_expand(x, y, ref_level=-1, name=None):
             #    data: [1 2 1 2 3 4 3 4]
     """
     assert (
-        not _non_static_mode()
+        not in_dygraph_mode()
     ), "sequence layer is not supported in dygraph mode yet."
     check_variable_and_dtype(
         x, 'x', ['float32', 'float64', 'int32', 'int64'], 'sequence_expand'
@@ -916,7 +914,7 @@ def sequence_expand_as(x, y, name=None):
             #    data: [1 1 1 2 2 2 3 4]
     """
     assert (
-        not _non_static_mode()
+        not in_dygraph_mode()
     ), "sequence layer is not supported in dygraph mode yet."
     check_variable_and_dtype(
         x, 'x', ['float32', 'float64', 'int32', 'int64'], 'sequence_expand_as'
@@ -1019,7 +1017,7 @@ def sequence_pad(x, pad_value, maxlen=None, name=None):
     """
 
     assert (
-        not _non_static_mode()
+        not in_dygraph_mode()
     ), "sequence layer is not supported in dygraph mode yet."
     helper = LayerHelper('sequence_pad', **locals())
     check_variable_and_dtype(
@@ -1108,7 +1106,7 @@ def sequence_unpad(x, length, name=None):
     """
 
     assert (
-        not _non_static_mode()
+        not in_dygraph_mode()
     ), "sequence layer is not supported in dygraph mode yet."
     helper = LayerHelper('sequence_unpad', **locals())
     check_variable_and_dtype(
@@ -1183,7 +1181,7 @@ def sequence_reshape(input, new_dim):
             x_reshaped = paddle.static.nn.sequence_reshape(input=x, new_dim=4)
     """
     assert (
-        not _non_static_mode()
+        not in_dygraph_mode()
     ), "sequence layer is not supported in dygraph mode yet."
     helper = LayerHelper('sequence_reshape', **locals())
     check_variable_and_dtype(
@@ -1268,7 +1266,7 @@ def sequence_scatter(input, index, updates, name=None):
 
     """
     assert (
-        not _non_static_mode()
+        not in_dygraph_mode()
     ), "sequence layer is not supported in dygraph mode yet."
     helper = LayerHelper('sequence_scatter', **locals())
 
@@ -1302,9 +1300,9 @@ def sequence_enumerate(input, win_size, pad_value=0, name=None):
     r"""
 
     Generate a new sequence for the input index sequence with \
-        shape ``[d_1, win_size]``, which enumerates all the \
-        sub-sequences with length ``win_size`` of the input with \
-        shape ``[d_1, 1]``, and padded by ``pad_value`` if necessary in generation.
+    shape ``[d_1, win_size]``, which enumerates all the \
+    sub-sequences with length ``win_size`` of the input with \
+    shape ``[d_1, 1]``, and padded by ``pad_value`` if necessary in generation.
 
     Please note that the `input` must be LodTensor.
 
@@ -1350,7 +1348,7 @@ def sequence_enumerate(input, win_size, pad_value=0, name=None):
             out = paddle.static.nn.sequence_enumerate(input=x, win_size=3, pad_value=0)
     """
     assert (
-        not _non_static_mode()
+        not in_dygraph_mode()
     ), "sequence layer is not supported in dygraph mode yet."
     check_variable_and_dtype(
         input, 'input', ['int32', 'int64'], 'sequence_enumerate'
@@ -1479,7 +1477,7 @@ def sequence_reverse(x, name=None):
             x_reversed = paddle.static.nn.sequence_reverse(x)
     """
     assert (
-        not _non_static_mode()
+        not in_dygraph_mode()
     ), "sequence layer is not supported in dygraph mode yet."
     helper = LayerHelper("sequence_reverse", **locals())
     check_variable_and_dtype(

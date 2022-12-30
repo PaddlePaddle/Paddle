@@ -1138,8 +1138,12 @@ class RandomCrop(BaseTransform):
         if w == tw and h == th:
             return 0, 0, h, w
 
-        i = random.randint(0, h - th)
-        j = random.randint(0, w - tw)
+        if paddle.in_dynamic_mode():
+            i = random.randint(0, h - th)
+            j = random.randint(0, w - tw)
+        else:
+            i = paddle.randint(low=0, high=h - th)
+            j = paddle.randint(low=0, high=w - tw)
         return i, j, th, tw
 
     def _apply_image(self, img):
@@ -1516,7 +1520,12 @@ class RandomRotation(BaseTransform):
         self.fill = fill
 
     def _get_param(self, degrees):
-        angle = random.uniform(degrees[0], degrees[1])
+        if paddle.in_dynamic_mode():
+            angle = random.uniform(degrees[0], degrees[1])
+        else:
+            angle = paddle.uniform(
+                [1], dtype="float32", min=degrees[0], max=degrees[1]
+            )
 
         return angle
 
