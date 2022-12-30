@@ -21,7 +21,6 @@
 #include "paddle/fluid/operators/run_program_op.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
-#include "paddle/utils/string/string_helper.h"
 
 namespace details {
 using Tensor = paddle::experimental::Tensor;
