@@ -159,6 +159,10 @@ def _convert_into_variable(tensor):
             new_var = tensor._to_static_var(
                 to_parameter=False, persistable=is_persistable
             )
+        # add param into parameter recorder to collect all the params used in this program.
+        from paddle.jit.dy2static.program_translator import ProgramTranslator
+
+        ProgramTranslator.params_recorder().add(tensor.block.program, tensor)
         return new_var
     else:
         return tensor

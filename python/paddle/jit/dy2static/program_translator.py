@@ -57,6 +57,16 @@ __all__ = []
 MAX_TRACED_PROGRAM_COUNT = 10
 
 
+def synchronized(func):
+    func.__lock__ = threading.Lock()
+
+    def lock_func(*args, **kwargs):
+        with func.__lock__:
+            return func(*args, **kwargs)
+
+    return lock_func
+
+
 class FunctionCache:
     """
     Caches the transformed functions to avoid redundant conversions of the same function.
@@ -994,6 +1004,14 @@ class ConcreteProgram:
                             error_data.raise_new_exception()
                         raise
 
+                from paddle.jit.dy2static.program_translator import (
+                    ProgramTranslator,
+                )
+
+                all_parameters_and_buffers = (
+                    ProgramTranslator.params_recorder().pop(main_program)
+                )
+
                 if outputs is not None:
                     need_wrap_into_list = (
                         not isinstance(outputs, (tuple, list))
@@ -1024,6 +1042,34 @@ def _extract_indeed_params_buffers(class_instance):
     buffers = [buffer for buffer in buffers if len(buffer.shape) != 0]
 
     return params + buffers
+
+
+class ParametersRecorder:
+    def __init__(self):
+        self.params_dict = {}
+
+    @synchronized
+    def add(self, program, param):
+        """use the default_program as key, append param the parameter list."""
+        key = self._program_hash(program)
+        if key not in self.params_dict:
+            self.params_dict[key] = set()
+        params = self.params_dict[key]
+        params.add(param)
+
+    def pop(self, program):
+        params = self.params_dict.get(self._program_hash(program))
+        if params is None:
+            return []
+        del self.params_dict[self._program_hash(program)]
+        return list(params)
+
+    def _program_hash(self, program):
+        """
+        because program is not deleted while calling from_func_spec.
+        so it's ok to use id(program)
+        """
+        return id(program)
 
 
 class ProgramCache:
@@ -1098,16 +1144,6 @@ class ProgramCache:
         return [cp for key, (cp, _) in self._caches.items()]
 
 
-def synchronized(func):
-    func.__lock__ = threading.Lock()
-
-    def lock_func(*args, **kwargs):
-        with func.__lock__:
-            return func(*args, **kwargs)
-
-    return lock_func
-
-
 class ProgramTranslator:
     """
     Class to translate dygraph function into static graph function. The object
@@ -1159,6 +1195,7 @@ class ProgramTranslator:
             return
         self._initialized = True
         self._program_cache = ProgramCache()
+        self._params_recorder = ParametersRecorder()
         self.enable_to_static = True
 
     def enable(self, enable_to_static):
@@ -1202,6 +1239,10 @@ class ProgramTranslator:
             "ProgramTranslator.enable",
         )
         self.enable_to_static = enable_to_static
+
+    @classmethod
+    def params_recorder(cls):
+        return cls.get_instance()._params_recorder
 
     def get_output(self, dygraph_func, *args, **kwargs):
         """
