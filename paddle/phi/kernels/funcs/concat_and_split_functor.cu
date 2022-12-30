@@ -46,24 +46,24 @@ struct PointerToPointer {
   PointerToPointer(const phi::GPUContext& ctx,
                    const std::vector<phi::DenseTensor>& ins,
                    const T** pre_alloced_host_ptr,
-                   paddle::memory::AllocationPtr& dev_ins_ptr) {
+                   paddle::memory::AllocationPtr* dev_ins_ptr) {
     auto in_num = ins.size();
     for (auto i = 0; i < in_num; ++i) {
       pre_alloced_host_ptr[i] = ins[i].data<T>();
     }
-    dev_ins_ptr = paddle::memory::Alloc(
+    *dev_ins_ptr = paddle::memory::Alloc(
         ctx.GetPlace(),
         in_num * sizeof(T*),
         phi::Stream(reinterpret_cast<phi::StreamId>(ctx.stream())));
     auto* restored = phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
         pre_alloced_host_ptr, in_num);
     paddle::memory::Copy(ctx.GetPlace(),
-                         dev_ins_ptr->ptr(),
+                         (*dev_ins_ptr)->ptr(),
                          phi::CPUPlace(),
                          restored,
                          in_num * sizeof(T*),
                          ctx.stream());
-    ins_addr = reinterpret_cast<T**>(dev_ins_ptr->ptr());
+    ins_addr = reinterpret_cast<T**>((*dev_ins_ptr)->ptr());
   }
 };
 
@@ -99,21 +99,21 @@ struct PointerToPointerAndCol {
                          const IndexT inputs_col_num,
                          const T** pre_alloced_host_ptr,
                          IndexT* inputs_col,
-                         paddle::memory::AllocationPtr& dev_ins_ptr,
-                         paddle::memory::AllocationPtr& dev_col_ptr) {
-    dev_col_ptr = paddle::memory::Alloc(
+                         paddle::memory::AllocationPtr* dev_ins_ptr,
+                         paddle::memory::AllocationPtr* dev_col_ptr) {
+    *dev_col_ptr = paddle::memory::Alloc(
         ctx.GetPlace(),
         inputs_col_num * sizeof(IndexT),
         phi::Stream(reinterpret_cast<phi::StreamId>(ctx.stream())));
     auto* restored = phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
         inputs_col, inputs_col_num);
     paddle::memory::Copy(ctx.GetPlace(),
-                         dev_col_ptr->ptr(),
+                         (*dev_col_ptr)->ptr(),
                          phi::CPUPlace(),
                          restored,
                          inputs_col_num * sizeof(IndexT),
                          ctx.stream());
-    col_length = static_cast<IndexT*>(dev_col_ptr->ptr());
+    col_length = static_cast<IndexT*>((*dev_col_ptr)->ptr());
     ins_ptr_wrapper =
         PointerToPointer<T>(ctx, ins, pre_alloced_host_ptr, dev_ins_ptr);
   }
@@ -368,7 +368,7 @@ void ConcatFunctorWithIndexType(const phi::GPUContext& ctx,
               ptr_array, in_col, out_row, out_col, output->data<T>()));
       default: {
         paddle::memory::AllocationPtr dev_ins_ptr{nullptr};
-        PointerToPointer<T> ptr_array(ctx, ins, inputs_data, dev_ins_ptr);
+        PointerToPointer<T> ptr_array(ctx, ins, inputs_data, &dev_ins_ptr);
         ConcatTensorWithSameShape<T, IndexT, decltype(ptr_array)>
             <<<grid_dims, block_dims, 0, ctx.stream()>>>(
                 ptr_array, in_col, out_row, out_col, output->data<T>());
@@ -389,8 +389,8 @@ void ConcatFunctorWithIndexType(const phi::GPUContext& ctx,
           ConcatTensorWithDifferentShape<T, IndexT, decltype(ptr_col_array)>
           <<<grid_dims, block_dims, 0, ctx.stream()>>>(ptr_col_array,
                                                        inputs_col_num,
-                                                       (out_row),
-                                                       (out_col),
+                                                       out_row,
+                                                       out_col,
                                                        output->data<T>()));
       default: {
         paddle::memory::AllocationPtr dev_ins_ptr{nullptr};
@@ -400,13 +400,13 @@ void ConcatFunctorWithIndexType(const phi::GPUContext& ctx,
                                                         inputs_col_num,
                                                         inputs_data,
                                                         inputs_col,
-                                                        dev_ins_ptr,
-                                                        dev_col_ptr);
+                                                        &dev_ins_ptr,
+                                                        &dev_col_ptr);
         ConcatTensorWithDifferentShape<T, IndexT, decltype(ptr_col_array)>
             <<<grid_dims, block_dims, 0, ctx.stream()>>>(ptr_col_array,
                                                          inputs_col_num,
-                                                         (out_row),
-                                                         (out_col),
+                                                         out_row,
+                                                         out_col,
                                                          output->data<T>());
       }
     }
