@@ -18,14 +18,14 @@ import numpy as np
 
 import paddle
 from paddle.fluid import core, framework
-from paddle.fluid.contrib.slim.quantization import (
+from paddle.fluid.dygraph.parallel import ParallelEnv
+from paddle.static.quantization import (
     AddQuantDequantForInferencePass,
     AddQuantDequantPassV2,
     OutScaleForTrainingPass,
     QuantizationTransformPassV2,
     utils,
 )
-from paddle.fluid.dygraph.parallel import ParallelEnv
 
 from ..auto_parallel.converter import Converter
 from ..auto_parallel.dist_attribute import (
@@ -229,8 +229,8 @@ class QuantizationPass(PassBase):
             var_dist_attr = dist_context.get_tensor_dist_attr_for_program(var)
             dist_attr = {
                 "dims_mapping": var_dist_attr.dims_mapping,
-                "process_shape": var_dist_attr.process_mesh.topology,
-                "process_group": var_dist_attr.process_mesh.processes,
+                "process_shape": var_dist_attr.process_mesh.shape,
+                "process_group": var_dist_attr.process_mesh.process_ids,
             }
 
             # slice tensor_value with dist_attr
