@@ -143,11 +143,11 @@ class TestShardingStage2WithNewEXE(unittest.TestCase):
         )
         sharding_loss = sharding_history.history['loss'][0]
 
-        # sharding2, amp, recompute
-        all_engine = self.get_engine(
-            use_sharding=True, use_amp=True, use_recompute=True
+        # amp, recompute
+        amp_recompute_engine = self.get_engine(
+            use_sharding=False, use_amp=True, use_recompute=True
         )
-        all_history = sharding_engine.fit(
+        amp_recompute_history = amp_recompute_engine.fit(
             self.dataset,
             3,
             epochs=1,
@@ -155,11 +155,25 @@ class TestShardingStage2WithNewEXE(unittest.TestCase):
             log_freq=1,
             batch_size=self.batch_size,
         )
-        all_loss = sharding_history.history['loss'][0]
+        amp_recompute_loss = amp_recompute_history.history['loss'][0]
+
+        # sharding2, amp, recompute
+        all_engine = self.get_engine(
+            use_sharding=True, use_amp=True, use_recompute=True
+        )
+        all_history = all_engine.fit(
+            self.dataset,
+            3,
+            epochs=1,
+            steps_per_epoch=self.batch_num,
+            log_freq=1,
+            batch_size=self.batch_size,
+        )
+        all_loss = all_history.history['loss'][0]
 
         self.check_param_grad_fuse_overlap(sharding_engine.main_program)
         self.assertTrue(np.allclose(dp_loss, sharding_loss))
-        self.assertTrue(np.allclose(dp_loss, all_loss))
+        self.assertTrue(np.allclose(amp_recompute_loss, all_loss))
 
 
 if __name__ == "__main__":
