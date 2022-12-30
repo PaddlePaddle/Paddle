@@ -2545,12 +2545,6 @@ Scope* OperatorWithKernel::PrepareData(
 
       // Do transfer
       phi::DenseTensor out;
-      VLOG(1) << "DEBUG old static expected_kernel_key place "
-              << phi::TransToPhiPlace(expected_kernel_key.backend()) << " -> "
-              << (new_expected_kernel_key
-                      ? phi::TransToPhiPlace(new_expected_kernel_key->backend())
-                      : place)
-              << " final place";
       TransformData(
           new_expected_kernel_key ? *new_expected_kernel_key
                                   : expected_kernel_key,

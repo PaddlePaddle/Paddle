@@ -683,8 +683,6 @@ class OperatorWithKernel : public OperatorBase {
 
   platform::Place GetExecutionPlace(
       const platform::Place& platform) const override {
-    VLOG(1) << "DEBUG OpWithKernel place diff? input " << platform << " output "
-            << kernel_type_->place_;
     return kernel_type_->place_;
   }
 

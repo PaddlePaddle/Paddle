@@ -201,8 +201,6 @@ inline int TransToProtoVarType(const DataType& dtype) {
       return ProtoDataType::BOOL;
     case DataType::PSTRING:
       return ProtoDataType::PSTRING;
-    case DataType::UNDEFINED:
-      return ProtoDataType::RAW;
     default:
       PADDLE_THROW(phi::errors::Unimplemented(
           "Unsupported data type `%s` when casting it into "
