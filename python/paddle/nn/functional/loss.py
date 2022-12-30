@@ -2663,7 +2663,7 @@ def cross_entropy(
                     weight_sum = _C_ops.sum(weight_ignored, [], None, False)
                     ret = out_sum / (weight_sum + (weight_sum == 0.0))
                 return ret
-            elif weight is not None:  # non ignore label
+            elif weight is not None:
                 out_sum = _C_ops.sum(out, [], None, False)
                 total_weight = _C_ops.sum(
                     weight_gather_reshape, [], None, False
