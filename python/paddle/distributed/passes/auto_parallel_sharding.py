@@ -683,8 +683,8 @@ class ShardingPass(PassBase):
         if self.stage <= 1:
             return
 
-        self.grad_coalesce_prefix = 'sharding_coalecse_grad_'
-        self.param_coalesce_prefix = 'sharding_coalecse_param_'
+        self.grad_coalesce_prefix = 'sharding_coalesce_grad_'
+        self.param_coalesce_prefix = 'sharding_coalesce_param_'
         # NOTE PR#49275 for detail
         self.comm_op_scheduling_priority = -1
 
@@ -907,7 +907,7 @@ class ShardingPass(PassBase):
                     OpRole.Optimize,
                     process_mesh=[
                         -1
-                    ],  # hack to avoid initialize the dist attr for coalesc var
+                    ],  # hack to avoid initialize the dist attr for coalesce var
                     is_recompute=False,
                     sync=False,
                     op_namescope="sharding_stage2_broadcast_dep",
@@ -940,8 +940,8 @@ class ShardingPass(PassBase):
             1. record coalesce group
             2. record all dp allreduce/reduce op idx
 
-            3. insert coalesc op
-            4. insert coalesc dependency (avoid allocate memory too early)
+            3. insert coalesce op
+            4. insert coalesce dependency (avoid allocate memory too early)
             5. modify and remove allreduce/reduce op
             6. ensure sharding-dp hybrid parallel logic
 
@@ -998,7 +998,7 @@ class ShardingPass(PassBase):
 
                 if len(cur_group.vars) == 1:
                     cur_group.coalesce_op_idx = i - 1
-                    # NOTE coalecse dependency: control when allocate memory for gradients
+                    # NOTE coalesce dependency: control when allocate memory for gradients
                     # too early would increase the peak memory requirement, too later would hurt the performance
                     j = 2
                     while is_dep_skip_op(ops[i - j]):
@@ -1142,7 +1142,7 @@ class ShardingPass(PassBase):
                     OpRole.Backward,
                     process_mesh=[
                         -1
-                    ],  # hack to avoid initialize the dist attr for coalesc var
+                    ],  # hack to avoid initialize the dist attr for coalesce var
                     is_recompute=False,
                     sync=False,
                     op_namescope="sharding_grad_coalesce_dep",
@@ -1277,7 +1277,7 @@ class ShardingPass(PassBase):
                     OpRole.Backward,
                     process_mesh=[
                         -1
-                    ],  # hack to avoid initialize the dist attr for coalesc var
+                    ],  # hack to avoid initialize the dist attr for coalesce var
                     is_recompute=False,
                     sync=False,
                     op_namescope="sharding_grad_comm_dep",

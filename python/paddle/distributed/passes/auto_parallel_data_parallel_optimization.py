@@ -463,7 +463,7 @@ class DataParallelOptimizationPass(PassBase):
                 group.coalesce_var = group.gradients[0]
                 continue
 
-            # create coalecse tensor
+            # create coalesce tensor
             group.coalesce_var = block.create_var(
                 name=unique_name.generate(
                     self.coalesce_prefix + '_{}'.format(i)
@@ -511,7 +511,7 @@ class DataParallelOptimizationPass(PassBase):
                 ), "Unexpected: try to remove op {}".format(str(block.ops[idx]))
                 block._remove_op(idx, False)
 
-            # insert coalecse op
+            # insert coalesce op
             concated_shapes = []
             concated_ranks = []
             for grad_ in group.gradients:
@@ -649,7 +649,7 @@ class DataParallelOptimizationPass(PassBase):
                 OpRole.Backward,
                 process_mesh=[
                     -1
-                ],  # hack to avoid initialize the dist attr for coalesc var
+                ],  # hack to avoid initialize the dist attr for coalesce var
                 is_recompute=False,
                 sync=False,
                 op_namescope="data_parallel_overlap_dep",
@@ -694,7 +694,7 @@ class DataParallelOptimizationPass(PassBase):
 
         if len(grad_groups) > 0:
             self._logger.info(
-                "origin {} allreduce ops are fused into {} coalecse allreduce ops.".format(
+                "origin {} allreduce ops are fused into {} coalesce allreduce ops.".format(
                     len(self._grad_name_to_group_map.keys()), len(grad_groups)
                 )
             )
@@ -702,7 +702,7 @@ class DataParallelOptimizationPass(PassBase):
             fused_grads = set()
             for i, group in enumerate(grad_groups):
                 self._logger.info(
-                    "coalecse gradient [{}] is composed by: {}".format(
+                    "coalesce gradient [{}] is composed by: {}".format(
                         i, [grad.name for grad in group.gradients]
                     )
                 )
