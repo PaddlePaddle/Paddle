@@ -62,10 +62,6 @@ class FusedAttentionOp : public framework::OperatorWithKernel {
                      "QKVBiasOut",
                      "FusedAttentionOp");
     }
-    OP_INOUT_CHECK(ctx->HasOutput("QKVWTransposeOut"),
-                   "Output",
-                   "QKVWTransposeOut",
-                   "FusedAttentionOp");
     OP_INOUT_CHECK(ctx->HasOutput("TransposeOut2"),
                    "Output",
                    "TransposeOut2",
@@ -163,8 +159,6 @@ class FusedAttentionOp : public framework::OperatorWithKernel {
       ctx->SetOutputDim("Ln2Variance", {x_dim[0] * x_dim[1]});
       ctx->SetOutputDim("BiasDropoutResidualOut", ctx->GetInputDim("X"));
     }
-    ctx->SetOutputDim("QKVWTransposeOut",
-                      {3, num_heads, head_dim, hidden_size});
 
     // [batch_size, seq_len, 3, num_head, head_size]
     ctx->SetOutputDim("QKVOut", {x_dim[0], x_dim[1], 3, num_heads, head_dim});
@@ -297,9 +291,6 @@ class FusedAttentionOpMaker : public framework::OpProtoAndCheckerMaker {
              "(optional) Bias is a 1-dimensional tensor of size "
              "H. Here, H represents the last dimension of its input tensor.")
         .AsDispensable();
-    AddOutput("QKVWTransposeOut",
-              "Transpose temp var for qkv weight transpose.")
-        .AsIntermediate();
     AddOutput("LnMean", "Mean of the current mini batch.").AsIntermediate();
     AddOutput("LnVariance", "Variance of the current mini batch.")
         .AsIntermediate();
@@ -564,10 +555,6 @@ class FusedAttentionGradOp : public framework::OperatorWithKernel {
       ctx->SetOutputDim(framework::GradVarName("QKTVOut"),
                         ctx->GetInputDim("QKTVOut"));
     }
-    if (ctx->HasOutput(framework::GradVarName("QKVWTransposeOut"))) {
-      ctx->SetOutputDim(framework::GradVarName("QKVWTransposeOut"),
-                        ctx->GetInputDim("QKVWTransposeOut"));
-    }
     if (ctx->HasOutput(framework::GradVarName("TransposeOut2"))) {
       ctx->SetOutputDim(framework::GradVarName("TransposeOut2"),
                         ctx->GetInputDim("TransposeOut2"));
@@ -701,7 +688,6 @@ class FusedAttentionGradOpMaker : public framework::SingleGradOpMaker<T> {
     }
     op->SetInput("QKVOut", this->Output("QKVOut"));
 
-    op->SetInput("QKVWTransposeOut", this->Output("QKVWTransposeOut"));
     op->SetInput("TransposeOut2", this->Output("TransposeOut2"));
     op->SetInput("QKOut", this->Output("QKOut"));
     op->SetInput("QKTVOut", this->Output("QKTVOut"));
@@ -729,8 +715,6 @@ class FusedAttentionGradOpMaker : public framework::SingleGradOpMaker<T> {
 
     op->SetOutput(framework::GradVarName("QKTVOut"),
                   this->OutputGrad("QKTVOut"));
-    op->SetOutput(framework::GradVarName("QKVWTransposeOut"),
-                  this->OutputGrad("QKVWTransposeOut"));
     op->SetOutput(framework::GradVarName("TransposeOut2"),
                   this->OutputGrad("TransposeOut2"));
     op->SetOutput(framework::GradVarName("QKOut"), this->OutputGrad("QKOut"));

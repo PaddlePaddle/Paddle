@@ -659,7 +659,6 @@ def fused_multi_head_attention(
             _,
             _,
             _,
-            _,
             cache_kv_out,
             final_out,
         ) = _legacy_C_ops.fused_attention(
@@ -769,9 +768,6 @@ def fused_multi_head_attention(
         }
 
         # set outputs
-        qkv_weight_transpose_out = helper.create_variable_for_type_inference(
-            dtype=dtype, stop_gradient=True
-        )
         pre_ln_mean_out = helper.create_variable_for_type_inference(
             dtype=dtype, stop_gradient=True
         )
@@ -815,7 +811,6 @@ def fused_multi_head_attention(
             type='fused_attention',
             inputs=inputs,
             outputs={
-                "QKVWTransposeOut": qkv_weight_transpose_out,
                 "LnMean": pre_ln_mean_out,
                 "LnVariance": pre_ln_variance_out,
                 "LnOut": pre_ln_out,
