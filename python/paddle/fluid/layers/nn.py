@@ -22,19 +22,16 @@ import numpy as np
 
 import paddle
 from ..layer_helper import LayerHelper
-from paddle.fluid.framework import _in_legacy_dygraph
 from ..initializer import Normal, Constant
 from ..framework import (
     Variable,
     OpProtoHolder,
-    _non_static_mode,
     dygraph_only,
     _dygraph_tracer,
     default_main_program,
     _varbase_creator,
     static_only,
     _global_flags,
-    _in_legacy_dygraph,
     in_dygraph_mode,
 )
 from ..framework import _current_expected_place
@@ -128,10 +125,6 @@ def _elementwise_op_in_dygraph(
                 OP_NAMEMAPPING[op_name] if not is_inplace(op_name) else op_name,
             )
             out = op(x, y)
-
-        if _in_legacy_dygraph():
-            op = getattr(_legacy_C_ops, op_name)
-            out = op(x, y, 'axis', axis, 'use_mkldnn', use_mkldnn)
     return dygraph_utils._append_activation_in_dygraph(
         out, act, use_mkldnn=use_mkldnn
     )
@@ -794,26 +787,25 @@ def reduce_sum(input, dim=None, keep_dim=False, name=None):
 
     if in_dygraph_mode():
         return _C_ops.sum(input, dim, None, keep_dim)
-    elif _in_legacy_dygraph():
-        return _legacy_C_ops.reduce_sum(
-            input, 'dim', dim, 'keep_dim', keep_dim, 'reduce_all', reduce_all
+    else:
+        attrs = {'dim': dim, 'keep_dim': keep_dim, 'reduce_all': reduce_all}
+        check_variable_and_dtype(
+            input,
+            'input',
+            ['float16', 'float32', 'float64', 'int32', 'int64'],
+            'reduce_sum',
         )
-    attrs = {'dim': dim, 'keep_dim': keep_dim, 'reduce_all': reduce_all}
-    check_variable_and_dtype(
-        input,
-        'input',
-        ['float16', 'float32', 'float64', 'int32', 'int64'],
-        'reduce_sum',
-    )
-    helper = LayerHelper('reduce_sum', **locals())
-    out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
-    helper.append_op(
-        type='reduce_sum',
-        inputs={'X': input},
-        outputs={'Out': out},
-        attrs=attrs,
-    )
-    return out
+        helper = LayerHelper('reduce_sum', **locals())
+        out = helper.create_variable_for_type_inference(
+            dtype=helper.input_dtype()
+        )
+        helper.append_op(
+            type='reduce_sum',
+            inputs={'X': input},
+            outputs={'Out': out},
+            attrs=attrs,
+        )
+        return out
 
 
 def autoincreased_step_counter(counter_name=None, begin=1, step=1):
@@ -895,7 +887,7 @@ def unsqueeze(input, axes, name=None):
             y = fluid.layers.unsqueeze(input=x, axes=[1])
 
     """
-    if _non_static_mode():
+    if in_dygraph_mode():
         if isinstance(axes, int):
             axes = [axes]
         elif isinstance(axes, Variable):
@@ -905,98 +897,106 @@ def unsqueeze(input, axes, name=None):
                 item.numpy().item(0) if isinstance(item, Variable) else item
                 for item in axes
             ]
-        if _in_legacy_dygraph():
-            out, _ = _legacy_C_ops.unsqueeze2(input, 'axes', axes)
-            return out
         return _C_ops.unsqueeze(input, axes)
+    else:
+        check_type(axes, 'axis/axes', (int, list, tuple, Variable), 'unsqueeze')
+        check_variable_and_dtype(
+            input,
+            'input',
+            [
+                'float16',
+                'float32',
+                'float64',
+                'bool',
+                'int8',
+                'int16',
+                'int32',
+                'int64',
+                'complex64',
+                'complex128',
+            ],
+            'unsqueeze',
+        )
+        helper = LayerHelper("unsqueeze2", **locals())
+        inputs = {"X": input}
+        attrs = {}
 
-    check_type(axes, 'axis/axes', (int, list, tuple, Variable), 'unsqueeze')
-    check_variable_and_dtype(
-        input,
-        'input',
-        [
-            'float16',
-            'float32',
-            'float64',
-            'bool',
-            'int8',
-            'int16',
-            'int32',
-            'int64',
-            'complex64',
-            'complex128',
-        ],
-        'unsqueeze',
-    )
-    helper = LayerHelper("unsqueeze2", **locals())
-    inputs = {"X": input}
-    attrs = {}
+        if isinstance(axes, int):
+            axes = [axes]
+        if isinstance(axes, Variable):
+            axes.stop_gradient = True
+            inputs["AxesTensor"] = axes
+        elif isinstance(axes, (list, tuple)):
+            if utils._contain_var(axes):
+                inputs["AxesTensorList"] = utils._convert_to_tensor_list(axes)
+            else:
+                attrs["axes"] = axes
 
-    if isinstance(axes, int):
-        axes = [axes]
-    if isinstance(axes, Variable):
-        axes.stop_gradient = True
-        inputs["AxesTensor"] = axes
-    elif isinstance(axes, (list, tuple)):
-        if utils._contain_var(axes):
-            inputs["AxesTensorList"] = utils._convert_to_tensor_list(axes)
-        else:
-            attrs["axes"] = axes
+        out = helper.create_variable_for_type_inference(dtype=input.dtype)
+        x_shape = helper.create_variable_for_type_inference(dtype=input.dtype)
+        helper.append_op(
+            type="unsqueeze2",
+            inputs=inputs,
+            attrs=attrs,
+            outputs={"Out": out, "XShape": x_shape},
+        )
 
-    out = helper.create_variable_for_type_inference(dtype=input.dtype)
-    x_shape = helper.create_variable_for_type_inference(dtype=input.dtype)
-    helper.append_op(
-        type="unsqueeze2",
-        inputs=inputs,
-        attrs=attrs,
-        outputs={"Out": out, "XShape": x_shape},
-    )
-
-    return out
+        return out
 
 
 def _logical_op(op_name, x, y, out=None, name=None, binary_op=True):
-    if _non_static_mode():
+    if in_dygraph_mode():
         op = getattr(_legacy_C_ops, op_name)
         if binary_op:
             return op(x, y)
         else:
             return op(x)
-    check_variable_and_dtype(
-        x,
-        "x",
-        ["bool", "int8", "int16", "int32", "int64", "float32", "float64"],
-        op_name,
-    )
-    if y is not None:
+    else:
         check_variable_and_dtype(
-            y,
-            "y",
+            x,
+            "x",
             ["bool", "int8", "int16", "int32", "int64", "float32", "float64"],
             op_name,
         )
-    if out is not None:
-        check_type(out, "out", Variable, op_name)
+        if y is not None:
+            check_variable_and_dtype(
+                y,
+                "y",
+                [
+                    "bool",
+                    "int8",
+                    "int16",
+                    "int32",
+                    "int64",
+                    "float32",
+                    "float64",
+                ],
+                op_name,
+            )
+        if out is not None:
+            check_type(out, "out", Variable, op_name)
 
-    helper = LayerHelper(op_name, **locals())
+        helper = LayerHelper(op_name, **locals())
 
-    if binary_op and x.dtype != y.dtype:
-        raise ValueError(
-            "(InvalidArgument) The DataType of %s Op's Variable must be consistent, but received %s and %s."
-            % (op_name, x.dtype, y.dtype)
-        )
+        if binary_op and x.dtype != y.dtype:
+            raise ValueError(
+                "(InvalidArgument) The DataType of %s Op's Variable must be consistent, but received %s and %s."
+                % (op_name, x.dtype, y.dtype)
+            )
 
-    if out is None:
-        out = helper.create_variable_for_type_inference(dtype=x.dtype)
+        if out is None:
+            out = helper.create_variable_for_type_inference(dtype=x.dtype)
 
-    if binary_op:
-        helper.append_op(
-            type=op_name, inputs={"X": x, "Y": y}, outputs={"Out": out}
-        )
-    else:
-        helper.append_op(type=op_name, inputs={"X": x}, outputs={"Out": out})
+        if binary_op:
+            helper.append_op(
+                type=op_name, inputs={"X": x, "Y": y}, outputs={"Out": out}
+            )
+        else:
+            helper.append_op(
+                type=op_name, inputs={"X": x}, outputs={"Out": out}
+            )
 
-    return out
+        return out
 
 
 @templatedoc()
@@ -1082,30 +1082,28 @@ def clip_by_norm(x, max_norm, name=None):
 
     if in_dygraph_mode():
         return _C_ops.clip_by_norm(x, max_norm)
-    if _non_static_mode():
-        return _legacy_C_ops.clip_by_norm(x, 'max_norm', max_norm)
+    else:
+        helper = LayerHelper("clip_by_norm", **locals())
+        check_variable_and_dtype(x, 'X', ['float32', 'float16'], 'clip_by_norm')
+        check_type(max_norm, 'max_norm', (float), 'clip_by_norm')
 
-    helper = LayerHelper("clip_by_norm", **locals())
-    check_variable_and_dtype(x, 'X', ['float32', 'float16'], 'clip_by_norm')
-    check_type(max_norm, 'max_norm', (float), 'clip_by_norm')
+        if name is None:
+            name = unique_name.generate_with_ignorable_key(
+                ".".join([helper.name, 'tmp'])
+            )
 
-    if name is None:
-        name = unique_name.generate_with_ignorable_key(
-            ".".join([helper.name, 'tmp'])
+        out = helper.create_variable(
+            type=x.type, name=name, dtype=x.dtype, persistable=False
         )
 
-    out = helper.create_variable(
-        type=x.type, name=name, dtype=x.dtype, persistable=False
-    )
+        helper.append_op(
+            type="clip_by_norm",
+            inputs={"X": x},
+            attrs={"max_norm": max_norm},
+            outputs={"Out": out},
+        )
 
-    helper.append_op(
-        type="clip_by_norm",
-        inputs={"X": x},
-        attrs={"max_norm": max_norm},
-        outputs={"Out": out},
-    )
-
-    return out
+        return out
 
 
 @templatedoc()
@@ -1132,19 +1130,16 @@ def merge_selected_rows(x, name=None):
     """
     if in_dygraph_mode():
         return _C_ops.merge_selected_rows(x)
-
-    if _non_static_mode():
-        return _legacy_C_ops.merge_selected_rows(x)
-
-    helper = LayerHelper("merge_selected_rows", **locals())
-    out = helper.create_variable_for_type_inference(dtype=x.dtype)
-    helper.append_op(
-        type="merge_selected_rows",
-        inputs={"X": x},
-        attrs={},
-        outputs={"Out": out},
-    )
-    return out
+    else:
+        helper = LayerHelper("merge_selected_rows", **locals())
+        out = helper.create_variable_for_type_inference(dtype=x.dtype)
+        helper.append_op(
+            type="merge_selected_rows",
+            inputs={"X": x},
+            attrs={},
+            outputs={"Out": out},
+        )
+        return out
 
 
 @templatedoc()

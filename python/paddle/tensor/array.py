@@ -26,7 +26,7 @@ def array_length(array):
     This OP is used to get the length of the input array.
 
     Args:
-        array (list|Tensor): The input array that will be used to compute the length. In dynamic mode, ``array`` is a Python list. But in static mode, array is a Tensor whose VarType is LOD_TENSOR_ARRAY.
+        array (list|Tensor): The input array that will be used to compute the length. In dynamic mode, ``array`` is a Python list. But in static graph mode, array is a Tensor whose VarType is LOD_TENSOR_ARRAY.
 
     Returns:
         Tensor: 1-D Tensor with shape [1], which is the length of array.
@@ -88,7 +88,7 @@ def array_read(array, i):
             output = [0.4, 0.2]
 
     Args:
-        array (list|Tensor): The input array. In dynamic mode, ``array`` is a Python list. But in static mode, array is a Tensor whose ``VarType`` is ``LOD_TENSOR_ARRAY``.
+        array (list|Tensor): The input array. In dynamic mode, ``array`` is a Python list. But in static graph mode, array is a Tensor whose ``VarType`` is ``LOD_TENSOR_ARRAY``.
         i (Tensor): 1-D Tensor, whose shape is [1] and dtype is int64. It represents the
             specified read position of ``array``.
 
@@ -150,7 +150,7 @@ def array_write(x, i, array=None):
             ``x`` is written.
         array (list|Tensor, optional): The array into which ``x`` is written. The default value is None,
             when a new array will be created and returned as a result. In dynamic mode, ``array`` is a Python list.
-            But in static mode, array is a Tensor whose ``VarType`` is ``LOD_TENSOR_ARRAY``.
+            But in static graph mode, array is a Tensor whose ``VarType`` is ``LOD_TENSOR_ARRAY``.
 
     Returns:
         list|Tensor: The input ``array`` after ``x`` is written into.
@@ -230,7 +230,7 @@ def create_array(dtype, initialized_list=None):
                     All values in initialized list should be a Tensor.
 
     Returns:
-        list|Tensor: An empty array. In dynamic mode, ``array`` is a Python list. But in static mode, array is a Tensor
+        list|Tensor: An empty array. In dynamic mode, ``array`` is a Python list. But in static graph mode, array is a Tensor
         whose ``VarType`` is ``LOD_TENSOR_ARRAY``.
 
     Examples:
@@ -258,7 +258,7 @@ def create_array(dtype, initialized_list=None):
             )
         array = list(initialized_list)
 
-    # NOTE: Only support plain list like [x, y,...], not support nested list in static mode.
+    # NOTE: Only support plain list like [x, y,...], not support nested list in static graph mode.
     for val in array:
         if not isinstance(val, Variable):
             raise TypeError(

@@ -1212,7 +1212,7 @@ class TestMultiTensorAdam(unittest.TestCase):
             np.testing.assert_allclose(
                 params_dygraph1[idx], params_dygraph2[idx], rtol=1e-05
             )
-        # test static mode
+        # test static graph mode
         output_static1 = self._adam_optimize_static(
             place=place, use_amp=use_amp, use_multi_tensor=True
         )
