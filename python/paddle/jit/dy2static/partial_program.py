@@ -402,6 +402,25 @@ class PartialProgramLayer:
     def _infer_pure_fp16_program_id(self):
         return _hash_with_id(self._infer_pure_fp16_program, self)
 
+    @LazyInitialized
+    def _param_grad_names(self):
+        names = []
+        # NOTE: `names` and `self._params` must be in the same order so that
+        # the param grad name can be set correctly in the run_program.
+        for param in self._params:
+            candidate = [
+                var.name
+                for var in self.backward_program.list_vars()
+                if var.name.endswith(param.name + '@GRAD')
+            ]
+            if candidate:
+                names.append(
+                    max(candidate, key=lambda name: name.count('grad/'))
+                )
+            else:
+                names.append(param.name + '@GRAD')
+        return names
+
     @property
     def whole_program_id(self):
         if self.training:
@@ -591,20 +610,6 @@ class PartialProgramLayer:
             infer_program = self.infer_program
         return infer_program.desc.block(0).op_size()
 
-    def _get_param_grad_names(self):
-        result = []
-        for param in self._params:
-            candidate = [
-                var.name
-                for var in self.backward_program.list_vars()
-                if var.name.endswith(param.name + '@GRAD')
-            ]
-            if candidate:
-                result.append(
-                    max(candidate, key=lambda name: name.count('grad/'))
-                )
-        return result
-
     def __call__(self, inputs):
         in_vars, out_vars = self._prepare(inputs)
 
@@ -623,8 +628,10 @@ class PartialProgramLayer:
             self.program_id,
         ]
         if self.training:
-            param_grad_names = self._get_param_grad_names()
-            attrs.extend(('param_grad_names', param_grad_names))
+            # NOTE: In the case of higher-order gradient, the name of the parameter grad may be like
+            # `grad/grad/grad/linear_0.w_0@GRAD` instead of simply `linear_0.w_0@GRAD`, so we get
+            # the correct name of the parameter grad from program.
+            attrs.extend(('param_grad_names', self._param_grad_names))
         if self._cuda_graph_capture_mode:
             attrs.extend(
                 (

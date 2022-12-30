@@ -851,37 +851,30 @@ class GradNodeRunProgram : public egr::GradNodeBase {
   }
 
   void ConstructParamGradTensors(
-      const std::vector<paddle::experimental::Tensor> &param,
-      std::vector<paddle::experimental::Tensor> *param_grad) {
-    auto param_grad_nams = PADDLE_GET_CONST(std::vector<std::string>,
-                                            attrs_.at("param_grad_names"));
+      const std::vector<paddle::experimental::Tensor> &params,
+      std::vector<paddle::experimental::Tensor> *param_grads) {
+    auto param_grad_names = PADDLE_GET_CONST(std::vector<std::string>,
+                                             attrs_.at("param_grad_names"));
+    PADDLE_ENFORCE_EQ(params.size(),
+                      param_grad_names.size(),
+                      paddle::platform::errors::InvalidArgument(
+                          "The param.size() and "
+                          "param_grad_names.size() should be equal."));
 
-    for (auto &t : param) {
-      auto t_grad = egr::EagerUtils::unsafe_autograd_meta(t)->Grad();
+    for (size_t i = 0; i < params.size(); ++i) {
+      auto &p = params[i];
+      auto &p_grad = egr::EagerUtils::unsafe_autograd_meta(p)->Grad();
       // In eager mode, the number of param_grad should be the same as
       // param, so here an empty Tensor is added for the param with
       // stop_gradient=True
-      if (!t_grad.defined()) {
-        param_grad->emplace_back();
-      } else if (t_grad.is_dense_tensor()) {
-        param_grad->emplace_back(std::make_shared<phi::DenseTensor>());
-      } else if (t_grad.is_selected_rows()) {
-        param_grad->emplace_back(std::make_shared<phi::SelectedRows>());
+      if (!p_grad.defined()) {
+        param_grads->emplace_back();
+      } else if (p_grad.is_dense_tensor()) {
+        param_grads->emplace_back(std::make_shared<phi::DenseTensor>());
+      } else if (p_grad.is_selected_rows()) {
+        param_grads->emplace_back(std::make_shared<phi::SelectedRows>());
       }
-
-      auto it = std::find_if(
-          param_grad_nams.begin(),
-          param_grad_nams.end(),
-          [&t](std::string grad_name) {
-            return paddle::string::ends_with(
-                grad_name, t.name() + paddle::framework::kGradVarSuffix);
-          });
-      if (it != param_grad_nams.end()) {
-        param_grad->back().set_name(*it);
-      } else {
-        param_grad->back().set_name(t.name() +
-                                    paddle::framework::kGradVarSuffix);
-      }
+      param_grads->back().set_name(param_grad_names[i]);
     }
   }
 
