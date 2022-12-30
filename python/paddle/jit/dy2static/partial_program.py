@@ -421,6 +421,21 @@ class PartialProgramLayer:
                 names.append(param.name + '@GRAD')
         return names
 
+    @LazyInitialized
+    def _out_grad_names(self):
+        names = []
+        fwd_end_op_index = self._get_end_op_index()
+        for i in range(
+            fwd_end_op_index + 1,
+            fwd_end_op_index + 2 * len(self._outputs.var_ids),
+            step=2,
+        ):
+            op = self.program.block(0).ops[i]
+            if op.type == 'fill_constant':
+                var_name = op.output('Out')[0]
+                names.append(var_name)
+        return names
+
     @property
     def whole_program_id(self):
         if self.training:
@@ -631,7 +646,14 @@ class PartialProgramLayer:
             # NOTE: In the case of higher-order gradient, the name of the parameter grad may be like
             # `grad/grad/grad/linear_0.w_0@GRAD` instead of simply `linear_0.w_0@GRAD`, so we get
             # the correct name of the parameter grad from program.
-            attrs.extend(('param_grad_names', self._param_grad_names))
+            attrs.extend(
+                (
+                    'param_grad_names',
+                    self._param_grad_names,
+                    'out_grad_names',
+                    self._out_grad_names,
+                )
+            )
         if self._cuda_graph_capture_mode:
             attrs.extend(
                 (

@@ -792,13 +792,16 @@ class GradNodeRunProgram : public egr::GradNodeBase {
       }
     }
 
+    auto out_grad_names =
+        PADDLE_GET_CONST(std::vector<std::string>, attrs_.at("out_grad_names"));
     PADDLE_ENFORCE_EQ(hooked_grads[0].size(),
-                      fwd_out_names_.size(),
+                      out_grad_names.size(),
                       paddle::platform::errors::InvalidArgument(
                           "The hooked_grads[0].size() and "
                           "fwd_out_names_.size() should be equal."));
-    for (size_t i = 0; i < fwd_out_names_.size(); ++i) {
-      hooked_grads[0][i].set_name(fwd_out_names_[i] + "@GRAD");
+    for (size_t i = 0; i < out_grad_names.size(); ++i) {
+      VLOG(1) << "out_grad_names[i]: " << out_grad_names[i];
+      hooked_grads[0][i].set_name(out_grad_names[i]);
     }
     RunProgramGradAPI(x_,
                       params_,
