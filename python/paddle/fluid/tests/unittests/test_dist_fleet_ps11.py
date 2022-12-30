@@ -210,7 +210,7 @@ class TestPSPassWithBow(unittest.TestCase):
         slots = ["slot1", "slot2", "slot3", "slot4"]
         slots_vars = []
         for slot in slots:
-            var = paddle.static.dataa(
+            var = paddle.static.data(
                 name=slot, shape=[-1, 1], dtype="int64", lod_level=1
             )
             slots_vars.append(var)
