@@ -164,7 +164,6 @@ __all__ = (
         'ParamAttr',
         'WeightNormParamAttr',
         'DataFeeder',
-        'clip',
         'profiler',
         'unique_name',
         'Scope',
