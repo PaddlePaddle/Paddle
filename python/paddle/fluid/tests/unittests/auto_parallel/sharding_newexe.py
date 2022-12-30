@@ -75,21 +75,28 @@ class TestShardingStage2WithNewEXE(unittest.TestCase):
         self.init(engine)
         return engine
 
-    def check_result(self, dp_params, sharding_params):
-        assert len(dp_params) == len(sharding_params)
-        for dp_p, sharding_p in zip(dp_params, sharding_params):
-            np.testing.assert_allclose(
-                dp_p,
-                sharding_p,
-                rtol=1e-05,
-                atol=1e-08,
-                err_msg='gradient clip by global norm has wrong results!, \nu={}\nv={}\ndiff={}'.format(
-                    dp_p, sharding_p, dp_p - sharding_p
-                ),
-            )
+    def check_param_grad_fuse_overlap(self, program):
+        num_op = 0
+        num_coalesce = 0
+        num_reduce = 0
+        num_broadcast = 0
+        for op in program.global_block().ops:
+            if op.type == "nop" or op.type == "depend":
+                num_op += 1
+            elif op.type == "coalesce_tensor":
+                num_coalesce += 1
+            elif op.type == "c_reduce_sum":
+                num_reduce += 1
+            elif op.type == "c_broadcast":
+                num_broadcast += 1
 
-    def test_grad_clip(self):
-        # dp2 training
+        self.assertEqual(num_op, 21)
+        self.assertEqual(num_coalesce, 5)
+        self.assertEqual(num_reduce, 14)
+        self.assertEqual(num_broadcast, 2)
+
+    def test_param_grad_fuse_overlap(self):
+        # dp2
         dp_engine = self.get_engine(False)
         dp_engine.fit(
             self.dataset,
@@ -104,7 +111,7 @@ class TestShardingStage2WithNewEXE(unittest.TestCase):
         ) as f:
             f.write(str(dp_engine.main_program))
 
-        # dp2sharding2 training
+        # sharding2
         sharding_engine = self.get_engine(True)
         sharding_engine.fit(
             self.dataset,
@@ -114,6 +121,8 @@ class TestShardingStage2WithNewEXE(unittest.TestCase):
             log_freq=1,
             batch_size=self.batch_size,
         )
+        self.check_param_grad_fuse_overlap(sharding_engine.main_program)
+
         with open(
             "./sharding_prog.txt.{}".format(paddle.distributed.get_rank()), "w+"
         ) as f:
