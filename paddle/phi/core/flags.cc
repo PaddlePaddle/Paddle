@@ -1001,7 +1001,7 @@ PADDLE_DEFINE_EXPORTED_bool(enable_interpretercore_launch_cinn,
  * auto-tune feature enabled
  */
 PADDLE_DEFINE_EXPORTED_bool(enable_cinn_auto_tune,
-                            false,
+                            true,
                             "It controls whether to use cinn with "
                             "its auto-tune feature enabled");
 

@@ -20,7 +20,9 @@ if(NOT CINN_GIT_TAG)
   set(CINN_GIT_TAG release/v0.2)
 endif()
 
+option(CINN_WITH_CUDNN "Compile CINN with CUDNN" ON)
 message(STATUS "CINN version: " ${CINN_GIT_TAG})
+message(STATUS "Compile CINN with CUDNN:" ${CINN_WITH_CUDNN})
 
 # TODO(zhhsplendid): CINN has lots of warnings during early development.
 # They will be treated as errors under paddle. We set no-error now and we will
@@ -35,7 +37,7 @@ set(CINN_PREFIX_DIR ${THIRD_PARTY_PATH}/CINN)
 set(CINN_OPTIONAL_ARGS
     -DPY_VERSION=${PY_VERSION}
     -DWITH_CUDA=${WITH_GPU}
-    -DWITH_CUDNN=${WITH_GPU}
+    -DWITH_CUDNN=${CINN_WITH_CUDNN}
     -DWITH_MKL_CBLAS=${WITH_MKL}
     -DWITH_MKLDNN=${WITH_MKL}
     -DPUBLISH_LIBS=ON

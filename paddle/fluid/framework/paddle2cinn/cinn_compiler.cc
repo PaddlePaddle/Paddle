@@ -293,7 +293,8 @@ std::unique_ptr<CinnCompiledObject> CinnCompiler::CompileGraph(
     auto_tuner = std::make_unique<AutoTuner>(target, cinn_graph.get());
     auto_tuner->Initialize(AutoTuner::Config(), graph_compiler.get());
     ::cinn::auto_schedule::TuningOptions tuning_options;
-    tuning_options.num_measure_trials = 0;
+    tuning_options.num_measure_trials = 1;
+    tuning_options.num_samples_per_iteration = 1;
     auto tuning_result = auto_tuner->Tune(tuning_options);
     options.Apply(tuning_result);
   }
