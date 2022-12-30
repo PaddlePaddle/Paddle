@@ -21,7 +21,7 @@
 #include "paddle/phi/common/place.h"
 namespace paddle {
 namespace prim {
-
+// We put some api like utils here
 template <typename T>
 paddle::experimental::Tensor empty(const paddle::experimental::IntArray& shape,
                                    paddle::experimental::DataType dype,
