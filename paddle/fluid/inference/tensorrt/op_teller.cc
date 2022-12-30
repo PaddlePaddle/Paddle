@@ -2341,26 +2341,7 @@ struct SimpleOpTypeSetTeller : public Teller {
     }
 #endif
 
-    if (op_type == "equal") {
-#if !IS_TRT_VERSION_GE(8000)
-      VLOG(3) << "compare is not supported when TensorRT < 8.0";
-      return false;
-#else
-      int axis = PADDLE_GET_CONST(int, desc.GetAttr("axis"));
-      if (axis == 0) {
-        return false;
-      }
-      auto* block = desc.Block();
-      if (block == nullptr) {
-        VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
-                   "Developers need to check whether block_desc is passed in "
-                   "the pass.";
-        return false;
-      }
-#endif
-    }
-
-    if (op_type == "not_equal") {
+    if (op_type == "equal" || op_type == "not_equal") {
 #if !IS_TRT_VERSION_GE(8000)
       VLOG(3) << "compare is not supported when TensorRT < 8.0";
       return false;
