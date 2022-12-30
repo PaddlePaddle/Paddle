@@ -693,15 +693,16 @@ class DataParallelOptimizationPass(PassBase):
             self._logger.addHandler(log_handler)
 
         if len(grad_groups) > 0:
+            self._logger.info("Data Parallel Optimization: ")
             self._logger.info(
-                "origin {} allreduce ops are fused into {} coalesce allreduce ops.".format(
+                " {} Allreduce ops are fused into {} coalesce allreduce ops.".format(
                     len(self._grad_name_to_group_map.keys()), len(grad_groups)
                 )
             )
-            self._logger.info("gradient fusing group are following: ")
+            self._logger.debug("gradient fusing group are following: ")
             fused_grads = set()
             for i, group in enumerate(grad_groups):
-                self._logger.info(
+                self._logger.debug(
                     "coalesce gradient [{}] is composed by: {}".format(
                         i, [grad.name for grad in group.gradients]
                     )
@@ -710,12 +711,14 @@ class DataParallelOptimizationPass(PassBase):
             individual_grads = set(self._grad_name_to_group_map.keys()) - set(
                 fused_grads
             )
-            self._logger.info(
+            self._logger.debug(
                 "the following [{}] gradients are not fused: ".format(
                     len(individual_grads)
                 )
             )
-            self._logger.info("individual gradient {}".format(individual_grads))
+            self._logger.debug(
+                "individual gradient {}".format(individual_grads)
+            )
 
 
 class GradientsGroup:

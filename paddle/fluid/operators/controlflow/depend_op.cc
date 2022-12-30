@@ -46,6 +46,15 @@ class DependOp : public framework::OperatorBase {
     OP_INOUT_CHECK(HasInputs("X"), "Input", "X", "Feed");
     OP_INOUT_CHECK(HasOutputs("Out"), "Output", "Out", "Feed");
 
+    auto x_name = Input("X");
+    auto out_name = Output("Out");
+    PADDLE_ENFORCE_EQ(x_name,
+                      out_name,
+                      platform::errors::PreconditionNotMet(
+                          "Input(X) and Output(Out) varibale should be the "
+                          "same, but got Input is %s and Output is %s.",
+                          x_name,
+                          out_name));
     return;
   }
 };
@@ -58,10 +67,10 @@ class DependOpShapeInference : public framework::InferShapeBase {
 class DependOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("X", "Tensor, the dependence is added for.").AsDuplicable();
+    AddInput("X", "Tensor, the dependence is added for.");
     AddInput("Dep", "The tensors that should be generated before X.")
         .AsDuplicable();
-    AddOutput("Out", "Tensor, the same as input X").AsDuplicable();
+    AddOutput("Out", "Tensor, the same as input X");
     AddComment(R"DOC(
 Depend Operator, allows to add explicit dependency between tensors.
 For example, given two ops:
