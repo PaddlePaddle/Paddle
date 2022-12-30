@@ -132,7 +132,7 @@ class RunProgramOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(nullptr);
     AddAttr<std::vector<std::string>>("param_grad_names",
                                       "std::vector<std::string>"
-                                      "param_grad_names.")
+                                      "The names of parameter gradients.")
         .SetDefault({});
     AddComment(R"DOC(
 RunProgram operator.
