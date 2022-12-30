@@ -133,7 +133,7 @@ class TrtConvertCrossMultiHeadMatmulTest(TrtLayerAutoScanTest):
                             {
                                 "op_type": "matmul_v2",
                                 "op_inputs": {
-                                    "X": ["input_data3"],
+                                    "X": ["input_data2"],
                                     "Y": ["mul3_weight"],
                                 },
                                 "op_outputs": {"Out": ["mul3_output"]},
