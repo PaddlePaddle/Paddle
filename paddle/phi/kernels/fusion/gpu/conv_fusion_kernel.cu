@@ -35,6 +35,7 @@ namespace phi {
 namespace fusion {
 
 namespace {
+// TODO(wilber): Add a LRU strategy.
 class CudnnConvDescManager {
  public:
   static CudnnConvDescManager* Instance() {
@@ -43,12 +44,12 @@ class CudnnConvDescManager {
   }
 
   struct CudnnCacheInfo {
-    phi::backends::gpu::TensorDescriptor* x_desc;
-    phi::backends::gpu::FilterDescriptor* w_desc;
-    phi::backends::gpu::TensorDescriptor* b_desc;
-    phi::backends::gpu::TensorDescriptor* o_desc;
-    phi::backends::gpu::ConvolutionDescriptor* conv_desc;
-    phi::backends::gpu::ActivationDescriptor* act_desc;
+    phi::backends::gpu::TensorDescriptor* x_desc{nullptr};
+    phi::backends::gpu::FilterDescriptor* w_desc{nullptr};
+    phi::backends::gpu::TensorDescriptor* b_desc{nullptr};
+    phi::backends::gpu::TensorDescriptor* o_desc{nullptr};
+    phi::backends::gpu::ConvolutionDescriptor* conv_desc{nullptr};
+    phi::backends::gpu::ActivationDescriptor* act_desc{nullptr};
     size_t workspace_size;
     cudnnConvolutionFwdAlgo_t algo;
 
@@ -111,7 +112,7 @@ class CudnnConvDescManager {
     XXH64_update(state, &groups, sizeof(int));
     XXH64_update(state, &dtype, sizeof(int));
     XXH64_update(state, &format, sizeof(int));
-    XXH64_update(state, &act, act.size() * sizeof(char));
+    XXH64_update(state, act.data(), act.length() * sizeof(char));
     // XXH64_update(state, &value_max, sizeof(double));
     XXH64_hash_t hash_key = XXH64_digest(state);
     XXH64_freeState(state);
@@ -163,7 +164,6 @@ class CudnnConvDescManager {
                                  const std::vector<int>& filter_dims,
                                  const std::vector<int>& strides,
                                  cudnnTensorFormat_t format) {
-    // std::hash takes about 5us, xxhash can optimize to 2.5us.
     XXH64_state_t* const state = XXH64_createState();
     if (state == nullptr) {
       PADDLE_THROW(phi::errors::PreconditionNotMet(
@@ -180,8 +180,9 @@ class CudnnConvDescManager {
     XXH64_update(state, filter_dims.data(), filter_dims.size() * sizeof(int));
     XXH64_update(state, strides.data(), strides.size() * sizeof(int));
     XXH64_update(state, &format, sizeof(int));
-    XXH64_update(
-        state, &padding_algorithm, padding_algorithm.size() * sizeof(char));
+    XXH64_update(state,
+                 padding_algorithm.data(),
+                 padding_algorithm.length() * sizeof(char));
     XXH64_hash_t hash_key = XXH64_digest(state);
     XXH64_freeState(state);
 
