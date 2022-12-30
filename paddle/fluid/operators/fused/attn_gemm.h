@@ -20,6 +20,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/broadcast_function.h"
 #include "paddle/phi/kernels/funcs/elementwise_functor.h"
+#include "paddle/phi/kernels/funcs/functors.h"
 #include "paddle/phi/kernels/funcs/transpose_function.cu.h"
 
 namespace paddle {
@@ -56,7 +57,7 @@ class AttnMatMul {
     if (qkv_weight_transpose != nullptr) {
       std::vector<int> perm = {1, 2, 3, 0};
       phi::funcs::TransposeGPUKernelDriver<T>(
-          dev_ctx_, weight, perm, qkv_weight_transpose);
+          dev_ctx_, *weight, perm, qkv_weight_transpose);
     }
 
     // Note: for blas.GEMM API in Paddle, it treats all inputs as row-major.
@@ -128,7 +129,7 @@ class AttnMatMul {
           if (d_qkvw_transpose != nullptr) {
             std::vector<int> perm = {3, 0, 1, 2};
             phi::funcs::TransposeGPUKernelDriver<T>(
-                dev_ctx_, d_qkvw_transpose, perm, d_weight);
+                dev_ctx_, *d_qkvw_transpose, perm, d_weight);
           }
         }
 

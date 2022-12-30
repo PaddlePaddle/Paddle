@@ -149,14 +149,23 @@ class FusedAttentionOpKernel : public framework::OpKernel<T> {
     int dim_embed = input_x_dims[2];
     int dim_head = dim_embed / num_head;
 
-    qkv_weight->Resize({dim_embed, 3, num_head, dim_head});
+    // Create two tmp tensor for weight and bias for reshape.
+    // These two new tensors' holders are same with the ref.
+    // So, no extra mem will declare. Just remove const qualifier.
+    phi::DenseTensor qkv_weight_tmp = *qkv_weight;
+    qkv_weight_tmp.Resize({dim_embed, 3, num_head, dim_head});
+    phi::DenseTensor qkv_bias_tmp;
     if (qkv_bias != nullptr) {
-      qkv_bias->Resize({3, num_head, dim_head});
+      qkv_bias_tmp = *qkv_bias;
+      qkv_bias_tmp.Resize({3, num_head, dim_head});
     }
 
     auto *x_data = input_x->data<T>();
     auto *qkv_weight_data = qkv_weight->data<T>();
+    auto *qkv_weight_tmp_data = qkv_weight_tmp->data<T>();
     auto *qkv_bias_data = (qkv_bias == nullptr) ? nullptr : qkv_bias->data<T>();
+    auto *qkv_bias_tmp_data =
+        (qkv_bias == nullptr) ? nullptr : qkv_bias_tmp->data<T>();
     auto *qkv_out_data =
         dev_ctx.template Alloc<T>(qkv_out, qkv_out->numel() * sizeof(T));
     auto *qkv_bias_out_data =
@@ -288,16 +297,16 @@ class FusedAttentionOpKernel : public framework::OpKernel<T> {
                                         ln_out_data,
                                         ln_mean_data,
                                         ln_var_data);
-      qkv_compute.ComputeForward(qkv_weight,
+      qkv_compute.ComputeForward(qkv_weight_tmp,
                                  ln_out,
-                                 qkv_bias,
+                                 qkv_bias_tmp,
                                  qkv_out,
                                  qkv_bias_out,
                                  qkvw_transpose_out);
     } else {
-      qkv_compute.ComputeForward(qkv_weight,
+      qkv_compute.ComputeForward(qkv_weight_tmp,
                                  input_x,
-                                 qkv_bias,
+                                 qkv_bias_tmp,
                                  qkv_out,
                                  qkv_bias_out,
                                  qkvw_transpose_out);
