@@ -1186,6 +1186,26 @@
   backward : square_double_grad
   inplace : (out_grad -> x_grad)
 
+- backward_op : squeeze_double_grad
+  forward : squeeze_grad(Tensor xshape, Tensor grad_out, IntArray axis) -> Tensor(grad_x)
+  args : (Tensor grad_x_grad, IntArray axis)
+  output : Tensor(grad_out_grad), Tensor(xshape)
+  invoke: squeeze(grad_x_grad, axis)
+  intermediate : xshape
+
+- backward_op : squeeze_grad
+  forward : squeeze(Tensor x, IntArray axis) -> Tensor(out), Tensor(xshape)
+  args : (Tensor xshape, Tensor out_grad, IntArray axis)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : KernelWithXShapeInferMeta
+    param: [xshape]
+  kernel :
+    func : squeeze_grad
+    data_type : out_grad
+  inplace : (out_grad -> x_grad)
+  backward: squeeze_double_grad
+
 - backward_op : svd_grad
   forward : svd (Tensor x, bool full_matrices = false) -> Tensor(u), Tensor(s), Tensor(vh)
   args : (Tensor x, Tensor u, Tensor vh, Tensor s, Tensor u_grad, Tensor vh_grad, Tensor s_grad, bool full_matrices)
@@ -1320,6 +1340,27 @@
     func : unfold_grad
     data_type : out_grad
   no_need_buffer : x
+
+- backward_op : unsqueeze_double_grad
+  forward : unsqueeze_grad(Tensor xshape, Tensor grad_out, IntArray axes) -> Tensor(grad_x)
+  args : (Tensor grad_x_grad, IntArray axes)
+  output : Tensor(grad_out_grad), Tensor(xshape)
+  invoke : unsqueeze(grad_x_grad, axes)
+  intermediate : xshape
+
+- backward_op : unsqueeze_grad
+  forward : unsqueeze(Tensor x, IntArray axes) -> Tensor(out), Tensor(xshape)
+  args : (Tensor xshape, Tensor out_grad, IntArray axes)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : KernelWithXShapeInferMeta
+    param: [xshape]
+  kernel :
+    func : unsqueeze_grad
+    param : [xshape, out_grad]
+    data_type : out_grad
+  inplace : (out_grad -> x_grad)
+  backward : unsqueeze_double_grad
 
 - backward_op : unstack_grad
   forward : unstack (Tensor x, int axis=0, int num=0) -> Tensor[](out)

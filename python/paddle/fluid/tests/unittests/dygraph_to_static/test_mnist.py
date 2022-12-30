@@ -259,7 +259,7 @@ class TestMNISTWithToStatic(TestMNIST):
                 input_spec=input_spec,
                 output_spec=[gt_out],
             )
-            # load in static mode
+            # load in static graph mode
             static_infer_out = self.jit_load_and_run_inference_static(
                 model_save_dir, model_filename, params_filename, inputs
             )

@@ -776,7 +776,7 @@ def resize(img, size, interpolation='bilinear', data_format='CHW'):
 
     if isinstance(size, int):
         w, h = _get_image_size(img, data_format)
-        # TODO(Aurelius84): In static mode, w and h will be -1 for dynamic shape.
+        # TODO(Aurelius84): In static graph mode, w and h will be -1 for dynamic shape.
         # We should consider to support this case in future.
         if w <= 0 or h <= 0:
             raise NotImplementedError(
