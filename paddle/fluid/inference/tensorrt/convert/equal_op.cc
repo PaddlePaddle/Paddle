@@ -133,7 +133,7 @@ class NotEqualOpConverter : public OpConverter {
     layer = TRT_ENGINE_ADD_LAYER(
         engine_, Unary, *layer->getOutput(0), nvinfer1::UnaryOperation::kNOT);
 
-    RreplenishLayerAndOutput(layer, "equal", {output_name}, test_mode);
+    RreplenishLayerAndOutput(layer, "not_equal", {output_name}, test_mode);
   }
 };
 
