@@ -420,42 +420,6 @@ class TestJitSaveInCompiletime(TestErrorBase):
         self._test_raise_new_exception()
 
 
-# # Situation 4: NotImplementedError
-
-
-class TestSuggestionErrorInRuntime(TestErrorBase):
-    def set_func(self):
-        self.func = func_suggestion_error_in_runtime
-
-    def set_input(self):
-        self.input = paddle.to_tensor([2.0])
-
-    def set_exception_type(self):
-        self.exception_type = ValueError
-
-    def set_message(self):
-        self.expected_message = [
-            'File "{}", line 118, in forward'.format(self.filepath),
-            'return self.inner_net.forward(x)',
-            'File "{}", line 127, in forward'.format(self.filepath),
-            'def forward(self, x):',
-            'out = paddle.matmul(self.w, x)',
-            '<--- HERE',
-            'return out',
-            'Revise suggestion:',
-            'Please ensure all your sublayers are inheritted from nn.Layer.',
-            'Please ensure there is no tensor created explicitly depended on external data, we suggest to register it as buffer tensor. See',
-        ]
-
-    def set_func_call(self):
-        # NOTE: self.func(self.input) is the StaticLayer().__call__(self.input)
-        self.func_call = lambda: self.func(self.input)
-
-    def test_error(self):
-        for disable_new_error in [0, 1]:
-            self._test_raise_new_exception(disable_new_error)
-
-
 @paddle.jit.to_static
 def func_ker_error(x):
     d = {'x': x}
