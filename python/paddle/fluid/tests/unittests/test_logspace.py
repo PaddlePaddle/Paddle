@@ -38,8 +38,7 @@ class TestLogspaceOpCommonCase(OpTest):
         self.outputs = {'Out': np.power(2, np.arange(0, 11)).astype(dtype)}
 
     def test_check_output(self):
-        self.check_output()
-        # self.check_output(check_eager=True)
+        self.check_output(check_eager=True)
 
 
 class TestLogspaceOpReverseCase(TestLogspaceOpCommonCase):

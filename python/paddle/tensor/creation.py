@@ -448,7 +448,12 @@ def logspace(start, stop, num, base=10.0, dtype=None, name=None):
             tensor_base = fill_constant([1], dtype, base)
     if in_dygraph_mode():
         return _C_ops.logspace(
-            tensor_start, tensor_stop, tensor_num, tensor_base, dtype
+            tensor_start,
+            tensor_stop,
+            tensor_num,
+            tensor_base,
+            dtype,
+            _current_expected_place(),
         )
     if _non_static_mode():
         return _legacy_C_ops.logspace(
