@@ -334,6 +334,7 @@ def generate_inplace_fn(inplace_op_type):
     origin_op_type = inplace_op_type[:-1]
 
     def func(x, name=None):
+
         if in_dygraph_mode():
             if hasattr(_C_ops, inplace_op_type):
                 op = getattr(_C_ops, inplace_op_type)
@@ -343,7 +344,7 @@ def generate_inplace_fn(inplace_op_type):
                 return op(x)
         else:
             warnings.warn(
-                "In static mode, {}() is the same as {}() and does not perform inplace operation.".format(
+                "In static graph mode, {}() is the same as {}() and does not perform inplace operation.".format(
                     inplace_op_type, origin_op_type
                 )
             )

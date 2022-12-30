@@ -3523,7 +3523,7 @@ function run_setup(){
                 export DYLD_LIBRARY_PATH=${DYLD_LIBRARY_PATH}:/Library/Frameworks/Python.framework/Versions/3.10/lib/
                 export PATH=/Library/Frameworks/Python.framework/Versions/3.10/bin/:${PATH}
                 #after changing "PYTHON_LIBRARY:FILEPATH" to "PYTHON_LIBRARY" ,we can use export
-                export PYTHON_EXECUTABLE=/Library/Frameworks/Python.framework/Versions/3.9/lib/libpython3.9.dylib
+                export PYTHON_EXECUTABLE=/Library/Frameworks/Python.framework/Versions/3.10/bin/python3
                 export PYTHON_INCLUDE_DIR=/Library/Frameworks/Python.framework/Versions/3.10/include/python3.10/
                 export PYTHON_LIBRARY=/Library/Frameworks/Python.framework/Versions/3.10/lib/libpython3.10.dylib
                 pip3.10 install --user -r ${PADDLE_ROOT}/python/requirements.txt
@@ -3651,8 +3651,11 @@ function run_setup(){
 
     # reset ccache zero stats for collect PR's actual hit rate
     ccache -z
-
-    python setup.py $2;build_error=$?
+    if [ "${PYTHON_EXECUTABLE}" != "" ];then
+        ${PYTHON_EXECUTABLE} setup.py $2;build_error=$?
+    else
+        python setup.py $2;build_error=$?
+    fi
     
     # ci will collect ccache hit rate
     collect_ccache_hits
