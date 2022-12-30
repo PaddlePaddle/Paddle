@@ -68,22 +68,20 @@ class AmpScaler:
      .. code-block:: python
 
         import numpy as np
-        import paddle.fluid as fluid
         import paddle
 
         data = np.random.uniform(-1, 1, [10, 3, 32, 32]).astype('float32')
-        with fluid.dygraph.guard():
-            model = paddle.nn.Conv2D(3, 2, 3)
-            optimizer = fluid.optimizer.SGDOptimizer(
-                    learning_rate=0.01, parameter_list=model.parameters())
-            scaler = paddle.amp.AmpScaler(init_loss_scaling=1024)
-            data = fluid.dygraph.to_variable(data)
-            with paddle.amp.amp_guard():
-                conv = model(data)
-                loss = paddle.mean(conv)
-                scaled = scaler.scale(loss)
-                scaled.backward()
-                scaler.minimize(optimizer, scaled)
+        model = paddle.nn.Conv2D(3, 2, 3)
+        optimizer = paddle.optimizer.SGDOptimizer(
+                learning_rate=0.01, parameter_list=model.parameters())
+        scaler = paddle.amp.AmpScaler(init_loss_scaling=1024)
+        data = paddle.to_tensor(data)
+        with paddle.amp.amp_guard():
+            conv = model(data)
+            loss = paddle.mean(conv)
+            scaled = scaler.scale(loss)
+            scaled.backward()
+            scaler.minimize(optimizer, scaled)
     """
 
     @dygraph_only
@@ -163,22 +161,20 @@ class AmpScaler:
             .. code-block:: python
 
                 import numpy as np
-                import paddle.fluid as fluid
                 import paddle
 
                 data = np.random.uniform(-1, 1, [10, 3, 32, 32]).astype('float32')
-                with fluid.dygraph.guard():
-                    model = paddle.nn.Conv2D(3, 2, 3)
-                    optimizer = fluid.optimizer.SGDOptimizer(
-                            learning_rate=0.01, parameter_list=model.parameters())
-                    scaler = paddle.amp.AmpScaler(init_loss_scaling=1024)
-                    data = fluid.dygraph.to_variable(data)
-                    with paddle.amp.amp_guard():
-                        conv = model(data)
-                        loss = paddle.mean(conv)
-                        scaled = scaler.scale(loss)
-                        scaled.backward()
-                        scaler.minimize(optimizer, scaled)
+                model = paddle.nn.Conv2D(3, 2, 3)
+                optimizer = paddle.optimizer.SGDOptimizer(
+                        learning_rate=0.01, parameter_list=model.parameters())
+                scaler = paddle.amp.AmpScaler(init_loss_scaling=1024)
+                data = paddle.to_tensor(data)
+                with paddle.amp.amp_guard():
+                    conv = model(data)
+                    loss = paddle.mean(conv)
+                    scaled = scaler.scale(loss)
+                    scaled.backward()
+                    scaler.minimize(optimizer, scaled)
         """
         check_type(var, "var", core.VarBase, 'AmpScaler.scale()')
 
@@ -206,22 +202,20 @@ class AmpScaler:
             .. code-block:: python
 
                 import numpy as np
-                import paddle.fluid as fluid
                 import paddle
 
                 data = np.random.uniform(-1, 1, [10, 3, 32, 32]).astype('float32')
-                with fluid.dygraph.guard():
-                    model = paddle.nn.Conv2D(3, 2, 3)
-                    optimizer = fluid.optimizer.SGDOptimizer(
-                            learning_rate=0.01, parameter_list=model.parameters())
-                    scaler = paddle.amp.AmpScaler(init_loss_scaling=1024)
-                    data = fluid.dygraph.to_variable(data)
-                    with paddle.amp.amp_guard():
-                        conv = model(data)
-                        loss = paddle.mean(conv)
-                        scaled = scaler.scale(loss)
-                        scaled.backward()
-                        scaler.minimize(optimizer, scaled)
+                model = paddle.nn.Conv2D(3, 2, 3)
+                optimizer = paddle.optimizer.SGDOptimizer(
+                        learning_rate=0.01, parameter_list=model.parameters())
+                scaler = paddle.amp.AmpScaler(init_loss_scaling=1024)
+                data = paddle.to_tensor(data)
+                with paddle.amp.amp_guard():
+                    conv = model(data)
+                    loss = paddle.mean(conv)
+                    scaled = scaler.scale(loss)
+                    scaled.backward()
+                    scaler.minimize(optimizer, scaled)
         """
         if not self._enable:
             return optimizer.minimize(*args, **kwargs)

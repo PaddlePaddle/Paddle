@@ -313,15 +313,14 @@ def amp_guard(
         import paddle
 
         data = np.random.uniform(-1, 1, [10, 3, 32, 32]).astype('float32')
-        with paddle.fluid.dygraph.guard():
-            conv2d = paddle.nn.Conv2D(3, 2, 3)
-            data = paddle.fluid.dygraph.to_variable(data)
-            with paddle.amp.amp_guard():
-                conv = conv2d(data)
-                print(conv.dtype) # FP16
-            with paddle.amp.amp_guard(enable=False):
-                conv = conv2d(data)
-                print(conv.dtype) # FP32
+        conv2d = paddle.nn.Conv2D(3, 2, 3)
+        data = paddle.to_tensor(data)
+        with paddle.amp.amp_guard():
+            conv = conv2d(data)
+            print(conv.dtype) # FP16
+        with paddle.amp.amp_guard(enable=False):
+            conv = conv2d(data)
+            print(conv.dtype) # FP32
 
     """
     amp_state = locals()
@@ -478,11 +477,10 @@ class StateDictHook:
     def __call__(self, state_dict):
         for key in state_dict:
             param = state_dict[key]
-            with paddle.fluid.dygraph.guard():
-                if paddle.is_floating_point(param):
-                    param_applied = paddle.cast(param, self._save_dtype)
-                    param_applied.name = param.name
-                    state_dict[key] = param_applied
+            if paddle.is_floating_point(param):
+                param_applied = paddle.cast(param, self._save_dtype)
+                param_applied.name = param.name
+                state_dict[key] = param_applied
 
 
 def _set_multi_precision(optimizer, multi_precision):
