@@ -100,7 +100,7 @@ class TestShardingStage2WithNewEXE(unittest.TestCase):
             batch_size=self.batch_size,
         )
         with open(
-            "/main_prog.txt.{}".format(paddle.distributed.get_rank()), "w+"
+            "./main_prog.txt.{}".format(paddle.distributed.get_rank()), "w+"
         ) as f:
             f.write(str(dp_engine.main_program))
 
@@ -115,7 +115,7 @@ class TestShardingStage2WithNewEXE(unittest.TestCase):
             batch_size=self.batch_size,
         )
         with open(
-            "/sharding_prog.txt.{}".format(paddle.distributed.get_rank()), "w+"
+            "./sharding_prog.txt.{}".format(paddle.distributed.get_rank()), "w+"
         ) as f:
             f.write(str(sharding_engine.main_program))
 
