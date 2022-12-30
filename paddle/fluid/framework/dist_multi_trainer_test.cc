@@ -115,8 +115,8 @@ TEST(DisMultiTrainerTest, test2) {
   dataset->CreateReaders();
   Scope root_scope;
   tmp1->SetScope(&root_scope);
-  tmp1->SetDebug(false);
   tmp1->Initialize(t, dataset.get());
+  tmp1->SetDebug(false);
   ProgramDesc p;
   tmp1->InitOtherEnv(p);
   tmp1->Run();
@@ -153,10 +153,11 @@ TEST(DisMultiTrainerTest, test3) {
   dataset->SetDataFeedDesc(str);
   dataset->CreateChannel();
   dataset->CreateReaders();
+  dataset->SetGpuGraphMode(true);
   Scope root_scope;
   tmp1->SetScope(&root_scope);
-  tmp1->SetDebug(true);
   tmp1->Initialize(t, dataset.get());
+  tmp1->SetDebug(true);
   ProgramDesc p;
   tmp1->InitOtherEnv(p);
   tmp1->Run();
