@@ -66,6 +66,7 @@ limitations under the License. */
 #include "paddle/fluid/imperative/amp_auto_cast.h"
 #include "paddle/fluid/imperative/layer.h"
 #include "paddle/fluid/memory/allocation/allocator_strategy.h"
+#include "paddle/fluid/prim/utils/utils.h"
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/memory/allocation/cuda_ipc_allocator.h"
 #endif
@@ -1225,16 +1226,33 @@ All parameter, weight, gradient are variables in Paddle.
           auto op_info = framework::OpInfoMap::Instance().Get(op_desc.Type());
           std::vector<std::unique_ptr<OpDesc>> grad_op_descs;
 
-          if (op_info.GradCompOpMaker() != nullptr) {
-            grad_op_descs = op_info.GradCompOpMaker()(
-                op_desc,
-                no_grad_set,
-                &grad_to_var,
-                const_cast<BlockDesc *>(op_desc.Block()),
-                grad_sub_block);
+          // In PrimEnabled mode, the priority of GradCompOpMaker is grater than
+          // GradCompMaker as we need split first-order grad operator into
+          // primitive operators for compiler. In PrimDisabled mode, the
+          // priority of GradCompOpMaker is less than GradCompMaker for better
+          // performance.
+          if (paddle::prim::PrimCommonUtils::IsPrimEnabled()) {
+            if (op_info.GradCompOpMaker() != nullptr) {
+              grad_op_descs = op_info.GradCompOpMaker()(op_desc,
+                                                        no_grad_set,
+                                                        &grad_to_var,
+                                                        op_desc.Block(),
+                                                        grad_sub_block);
+            } else {
+              grad_op_descs = op_info.GradOpMaker()(
+                  op_desc, no_grad_set, &grad_to_var, grad_sub_block);
+            }
           } else {
-            grad_op_descs = op_info.GradOpMaker()(
-                op_desc, no_grad_set, &grad_to_var, grad_sub_block);
+            if (op_info.GradOpMaker() != nullptr) {
+              grad_op_descs = op_info.GradOpMaker()(
+                  op_desc, no_grad_set, &grad_to_var, grad_sub_block);
+            } else {
+              grad_op_descs = op_info.GradCompOpMaker()(op_desc,
+                                                        no_grad_set,
+                                                        &grad_to_var,
+                                                        op_desc.Block(),
+                                                        grad_sub_block);
+            }
           }
 
           std::vector<OpDesc *> grad_op_desc_ptrs(grad_op_descs.size());

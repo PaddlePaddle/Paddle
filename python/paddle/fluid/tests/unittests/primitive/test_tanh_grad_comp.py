@@ -13,7 +13,10 @@
 # limitations under the License.
 
 
+import os
 import unittest
+
+os.environ['FLAGS_prim_enabled'] = 'True'
 
 import autograd
 import autograd.numpy
