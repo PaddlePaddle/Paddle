@@ -21,12 +21,7 @@ from paddle import _C_ops, _legacy_C_ops
 from paddle.common_ops_import import Variable, check_type, default_main_program
 from paddle.fluid import core, framework, layers, unique_name
 from paddle.fluid.data_feeder import check_variable_and_dtype
-from paddle.framework import (
-    LayerHelper,
-    _in_legacy_dygraph,
-    _non_static_mode,
-    in_dygraph_mode,
-)
+from paddle.framework import LayerHelper, _non_static_mode, in_dygraph_mode
 from paddle.tensor.layer_function_generator import templatedoc
 
 __all__ = []
@@ -223,8 +218,6 @@ def _squared_l2_norm(x):
 
     if in_dygraph_mode():
         return _C_ops.squared_l2_norm(x)
-    elif _in_legacy_dygraph():
-        return _legacy_C_ops.squared_l2_norm(x)
 
     op_type = 'squared_l2_norm'
     check_variable_and_dtype(x, 'x', ['float32', 'float64'], op_type)
