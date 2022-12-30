@@ -693,10 +693,17 @@ void SearchAllSubgraphs(Graph* graph, bool is_inference_stage) {
     VLOG(4) << "Cluster internal vars: "
             << cluster_debug_info(cluster_internals);
 
-    // Create a new subgraph according to the found cluster and
-    // save it in CinnCompiler
-    auto compilation_key = cinn_compiler->AddGraph(CreateNewSubGraph(
-        cluster_set, cluster_internals, cluster_inputs, cluster_outputs));
+    // Create a new subgraph with the found cluster and save it into the
+    // CinnCompiler
+    auto sub_graph = CreateNewSubGraph(
+        cluster_set, cluster_internals, cluster_inputs, cluster_outputs);
+    // Deliver the kSkipGcVarNames attr (if it exists) to each sub_graph
+    if (graph->Has(kSkipGcVarNames)) {
+      sub_graph->SetNotOwned(
+          kSkipGcVarNames,
+          &graph->Get<std::unordered_set<std::string>>(kSkipGcVarNames));
+    }
+    auto compilation_key = cinn_compiler->AddGraph(std::move(sub_graph));
     VLOG(4) << "Compilation Key:\n"
             << cinn_compiler->ReadableKey(compilation_key);
 
