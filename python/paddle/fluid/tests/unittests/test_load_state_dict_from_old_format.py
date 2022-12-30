@@ -67,7 +67,7 @@ class TestLoadStateDictFromSaveInferenceModel(unittest.TestCase):
         self.epoch_num = 1
         self.batch_size = 128
         self.batch_num = 10
-        # enable static mode
+        # enable static graph mode
         paddle.enable_static()
 
     def tearDown(self):

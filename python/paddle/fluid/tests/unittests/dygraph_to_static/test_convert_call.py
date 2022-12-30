@@ -68,7 +68,7 @@ class A:
     def add(a, b):
         """
         dygraph mode, return a numpy object.
-        static mode, return a variable object.
+        static graph mode, return a variable object.
         """
         return paddle.to_tensor(a.numpy() + b.numpy())
 
