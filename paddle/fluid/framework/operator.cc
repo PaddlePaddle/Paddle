@@ -2715,7 +2715,23 @@ proto::VarType::Type OperatorWithKernel::IndicateDataType(
   proto::VarType::Type dafault_data_type =
       static_cast<proto::VarType::Type>(-1);
   proto::VarType::Type data_type = dafault_data_type;
-  for (auto* name : ctx.InNameList()) {
+
+  auto in_name_list = ctx.InNameList();
+  if (Info().HasOpProtoAndChecker()) {
+    for (auto& attr : Info().Proto().attrs()) {
+      auto it =
+          std::find_if(in_name_list.begin(),
+                       in_name_list.end(),
+                       [&attr](const std::string* name) {
+                         return attr.support_tensor() && *name == attr.name();
+                       });
+      if (it != in_name_list.end()) {
+        in_name_list.erase(it);
+      }
+    }
+  }
+
+  for (auto* name : in_name_list) {
     if (ctx.InputSize(*name) == 1UL) {
       ParseInputDataType(ctx.InputVar(*name), *name, &data_type);
     } else {
