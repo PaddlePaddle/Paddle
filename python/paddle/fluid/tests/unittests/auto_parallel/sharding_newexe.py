@@ -98,7 +98,7 @@ class TestShardingStage2WithNewEXE(unittest.TestCase):
     def test_param_grad_fuse_overlap(self):
         # dp2
         dp_engine = self.get_engine(False)
-        dp_engine.fit(
+        dp_history = dp_engine.fit(
             self.dataset,
             3,
             epochs=1,
@@ -113,7 +113,7 @@ class TestShardingStage2WithNewEXE(unittest.TestCase):
 
         # sharding2
         sharding_engine = self.get_engine(True)
-        sharding_engine.fit(
+        sharding_history = sharding_engine.fit(
             self.dataset,
             3,
             epochs=1,
@@ -122,6 +122,7 @@ class TestShardingStage2WithNewEXE(unittest.TestCase):
             batch_size=self.batch_size,
         )
         self.check_param_grad_fuse_overlap(sharding_engine.main_program)
+        print("sharding_history: ", sharding_history)
 
         with open(
             "./sharding_prog.txt.{}".format(paddle.distributed.get_rank()), "w+"
