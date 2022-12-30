@@ -44,7 +44,6 @@ typedef SSIZE_T ssize_t;
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/python_headers.h"
 #include "paddle/fluid/memory/allocation/mmap_allocator.h"
-#include "paddle/fluid/pybind/op_function_common.h"
 #include "paddle/fluid/pybind/tensor_py.h"
 #include "paddle/phi/core/ddim.h"
 #include "paddle/phi/kernels/funcs/math_function.h"

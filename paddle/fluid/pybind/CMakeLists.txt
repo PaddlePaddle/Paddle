@@ -117,7 +117,6 @@ set(PYBIND_SRCS
     reader_py.cc
     protobuf.cc
     exception.cc
-    op_function_common.cc
     parallel_executor.cc
     tensor.cc
     place.cc

@@ -498,7 +498,6 @@ int main(int argc, char* argv[]) {
       "\"paddle/fluid/pybind/eager_utils.h\"",
       "\"paddle/fluid/platform/profiler/event_tracing.h\"",
       "\"paddle/fluid/pybind/exception.h\"",
-      "\"paddle/fluid/pybind/op_function_common.h\"",
       "\"paddle/fluid/pybind/eager_legacy_custom_python_api.h\"",
       "\"paddle/fluid/pybind/eager.h\""};
 
