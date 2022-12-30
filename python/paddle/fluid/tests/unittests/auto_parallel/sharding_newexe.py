@@ -53,7 +53,7 @@ def reset_prog():
 class TestShardingStage2WithNewEXE(unittest.TestCase):
     def setUp(self):
         self.batch_size = 2
-        self.batch_num = 5
+        self.batch_num = 10
         self.clip_norm = 0.2
         self.dataset = FakeDataset(self.batch_size * self.batch_num)
 
