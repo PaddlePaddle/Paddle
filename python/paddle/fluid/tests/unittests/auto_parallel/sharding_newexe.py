@@ -25,7 +25,7 @@ from paddle.fluid.dygraph.parallel import ParallelEnv
 paddle.enable_static()
 
 
-def apply_pass(use_sharding=False):
+def apply_pass(use_sharding=False, use_amp=False, use_recompute=False):
     strategy = auto.Strategy()
     strategy.auto_mode = "semi"
     strategy.reinit = True
@@ -41,6 +41,23 @@ def apply_pass(use_sharding=False):
         sharding.param_bucket_size_numel = 512 * 512
         sharding.grad_bucket_size_numel = 128 * 128
         sharding.partition_algor = 'use_order'
+    if use_recompute:
+        recompute = strategy.recompute
+        recompute.enable = True
+        recompute.no_recompute_segments = [0]
+    if use_amp:
+        amp = strategy.amp
+        amp.enable = True
+        amp.custom_white_list = ['softmax', 'layer_norm', 'gelu']
+        amp.custom_black_list = [
+            'c_softmax_with_cross_entropy',
+            'elementwise_div',
+            'reduce_sum',
+        ]
+        amp.init_loss_scaling = 32768
+        amp.use_fp16_guard = False
+        amp.use_pure_fp16 = True
+        amp.use_optimizer_fp16 = False
 
     return strategy
 
@@ -64,10 +81,12 @@ class TestShardingStage2WithNewEXE(unittest.TestCase):
         place = paddle.fluid.CUDAPlace(ParallelEnv().dev_id)
         engine._executor = paddle.static.Executor(place)
 
-    def get_engine(self, use_sharding=False):
+    def get_engine(
+        self, use_sharding=False, use_amp=False, use_recompute=False
+    ):
         reset_prog()
 
-        strategy = apply_pass(use_sharding)
+        strategy = apply_pass(use_sharding, use_amp, use_recompute)
         clip = paddle.nn.ClipGradByGlobalNorm(self.clip_norm)
         opt = paddle.optimizer.AdamW(learning_rate=0.00001, grad_clip=clip)
         model, loss = generate_model("dp")
@@ -101,7 +120,7 @@ class TestShardingStage2WithNewEXE(unittest.TestCase):
 
     def test_param_grad_fuse_overlap(self):
         # dp2
-        dp_engine = self.get_engine(False)
+        dp_engine = self.get_engine()
         dp_history = dp_engine.fit(
             self.dataset,
             3,
@@ -113,7 +132,7 @@ class TestShardingStage2WithNewEXE(unittest.TestCase):
         dp_loss = dp_history.history['loss'][0]
 
         # sharding2
-        sharding_engine = self.get_engine(True)
+        sharding_engine = self.get_engine(use_sharding=True)
         sharding_history = sharding_engine.fit(
             self.dataset,
             3,
@@ -124,8 +143,23 @@ class TestShardingStage2WithNewEXE(unittest.TestCase):
         )
         sharding_loss = sharding_history.history['loss'][0]
 
+        # sharding2, amp, recompute
+        all_engine = self.get_engine(
+            use_sharding=True, use_amp=True, use_recompute=True
+        )
+        all_history = sharding_engine.fit(
+            self.dataset,
+            3,
+            epochs=1,
+            steps_per_epoch=self.batch_num,
+            log_freq=1,
+            batch_size=self.batch_size,
+        )
+        all_loss = sharding_history.history['loss'][0]
+
         self.check_param_grad_fuse_overlap(sharding_engine.main_program)
         self.assertTrue(np.allclose(dp_loss, sharding_loss))
+        self.assertTrue(np.allclose(dp_loss, all_loss))
 
 
 if __name__ == "__main__":
