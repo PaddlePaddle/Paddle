@@ -23,31 +23,6 @@ namespace operators {
 
 using Tensor = phi::DenseTensor;
 
-class MultiTensorAdamOp : public framework::OperatorWithKernel {
- public:
-  using framework::OperatorWithKernel::OperatorWithKernel;
-
-  framework::OpKernelType GetExpectedKernelType(
-      const framework::ExecutionContext& ctx) const override {
-    auto param_dtype =
-        framework::OperatorWithKernel::IndicateVarDataType(ctx, "Params");
-    return framework::OpKernelType(param_dtype, ctx.GetPlace());
-  }
-
-  framework::OpKernelType GetKernelTypeForVar(
-      const std::string& var_name,
-      const Tensor& tensor,
-      const framework::OpKernelType& expected_kernel_type) const override {
-    if (var_name == "Beta1Pow" || var_name == "Beta2Pow" ||
-        var_name == "SkipUpdate") {
-      return expected_kernel_type;
-    } else {
-      return framework::OpKernelType(
-          expected_kernel_type.data_type_, tensor.place(), tensor.layout());
-    }
-  }
-};
-
 class MultiTensorAdamOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
@@ -156,7 +131,6 @@ DECLARE_INFER_SHAPE_FUNCTOR(multi_tensor_adam,
                             PD_INFER_META(phi::MultiTensorAdamInferMeta));
 REGISTER_OPERATOR(
     multi_tensor_adam,
-    ops::MultiTensorAdamOp,
     ops::MultiTensorAdamOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,

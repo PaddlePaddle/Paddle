@@ -23,15 +23,6 @@
 
 namespace phi {
 
-static paddle::optional<DenseTensor> TensorPtrToOptionalTensor(
-    const DenseTensor* t) {
-  if (t != nullptr) {
-    return *t;
-  } else {
-    return paddle::none;
-  }
-}
-
 template <typename T, typename Context>
 void MultiTensorAdamKernel(
     const Context& dev_ctx,
@@ -102,9 +93,6 @@ void MultiTensorAdamKernel(
 
   for (size_t idx = 0; idx < params_num; idx++) {
     paddle::optional<DenseTensor> master_params_tmp = paddle::none;
-    if (master_params) {
-      master_params_tmp = TensorPtrToOptionalTensor(master_params.get()[idx]);
-    }
     if (!use_adamw) {
       AdamDenseKernel<T, Context>(
           dev_ctx,
