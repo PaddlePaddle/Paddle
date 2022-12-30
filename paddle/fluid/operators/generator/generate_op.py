@@ -131,9 +131,10 @@ def process_int_array(op_item, int_array_configs):
                 )
                 if attr_item['is_support_tensor']:
                     attr_item['typename'] = (
-                        data_type_map[int_array_config['data_type']]
+                        'int[]'
                         if 'data_type' in int_array_config
-                        else 'std::vector<int64_t>'
+                        and int_array_config['data_type'] == 'int'
+                        else 'int64_t[]'
                     )
                 else:
                     attr_item['data_type'] = (
@@ -153,21 +154,95 @@ def process_int_array(op_item, int_array_configs):
 
 
 # replace name of op and params for OpMaker
-def replace_compat_name(op_op_map, forward_op_dict, backward_op_dict):
-    def get_op_and_op_name(op_item):
+def replace_compat_name(op_fluid_map_list, forward_op_dict, backward_op_dict):
+    def get_phi_and_fluid_op_name(op_item):
         names = op_item.split('(')
         if len(names) == 1:
             return names[0].strip(), names[0].strip()
         else:
             return names[0].strip(), names[1].split(')')[0].strip()
 
-    def update_op_attr_name(attrs, attrs_alias_map):
-        for attr_item in attrs:
-            if attr_item['name'] in attrs_alias_map:
-                attr_item['name'] = attrs_alias_map[attr_item['name']]
+    def update_op_param_name(op_args, args_alias_map):
+        for item in op_args:
+            if item['name'] in args_alias_map:
+                item['name'] = args_alias_map[item['name']]
 
-    for op_args in op_op_map:
-        new_op_name, op_name = get_op_and_op_name(op_args['op'])
+    def update_grad_args_name(op_args, args_alias_map):
+        for item in op_args:
+            if (
+                item['name'].endswith('_grad')
+                and item['name'][:-5] in args_alias_map
+            ):
+                args_alias_map[item['name']] = (
+                    args_alias_map[item['name'][:-5]] + '_grad'
+                )
+                item['name'] = args_alias_map[item['name'][:-5]] + '_grad'
+
+    def get_param_list_alias(param_list, args_map):
+        return [
+            args_map[param] if param in args_map else param
+            for param in param_list
+        ]
+
+    def update_common_params_name(
+        op_item, args_name_map, scalar_configs, int_array_configs
+    ):
+        if 'inplace' in op_item and op_item['inplace']:
+            inplace_map = {}
+            for key, val in op_item['inplace'].items():
+                if key in args_map:
+                    key = args_map[key]
+                if val in args_map:
+                    val = args_map[val]
+                inplace_map[key] = val
+            op_item['inplace'] = inplace_map
+        if 'no_need_buffer' in op_item and op_item['no_need_buffer']:
+            op_item['no_need_buffer'] = get_param_list_alias(
+                op_item['no_need_buffer'], args_map
+            )
+
+        process_scalar(op_item, scalar_configs)
+        process_int_array(op_item, int_array_configs)
+
+        if 'invoke' in op_item:
+            op_item['invoke']['args'] = [
+                args_map[param.strip()]
+                if param.strip() in args_map
+                else param.strip()
+                for param in op_item['invoke']['args'].split(',')
+            ]
+            return
+        op_item['infer_meta']['param'] = get_param_list_alias(
+            op_item['infer_meta']['param'], args_name_map
+        )
+        op_item['kernel']['param'] = get_param_list_alias(
+            op_item['kernel']['param'], args_name_map
+        )
+        if op_item['kernel']['data_type']:
+            op_item['kernel']['data_type']['candidates'] = get_param_list_alias(
+                op_item['kernel']['data_type']['candidates'], args_name_map
+            )
+        if op_item['kernel']['backend']:
+            op_item['kernel']['backend']['candidates'] = get_param_list_alias(
+                op_item['kernel']['backend']['candidates'], args_name_map
+            )
+        if op_item['kernel']['layout']:
+            op_item['kernel']['layout']['candidates'] = get_param_list_alias(
+                op_item['kernel']['layout']['candidates'], args_name_map
+            )
+
+    def update_grad_op_compat_name(grad_op_item, args_name_map):
+        update_op_param_name(grad_op_item['inputs'], args_name_map)
+        update_op_param_name(grad_op_item['outputs'], args_name_map)
+        update_op_param_name(grad_op_item['attrs'], args_name_map)
+        update_op_param_name(grad_op_item['forward']['inputs'], args_name_map)
+        update_op_param_name(grad_op_item['forward']['outputs'], args_name_map)
+        update_op_param_name(grad_op_item['forward']['attrs'], args_name_map)
+        update_grad_args_name(grad_op_item['inputs'], args_map)
+        update_grad_args_name(grad_op_item['outputs'], args_map)
+
+    for op_args in op_fluid_map_list:
+        new_op_name, op_name = get_phi_and_fluid_op_name(op_args['op'])
         if new_op_name not in forward_op_dict:
             continue
         forward_op_item = forward_op_dict[new_op_name]
@@ -179,64 +254,14 @@ def replace_compat_name(op_op_map, forward_op_dict, backward_op_dict):
 
         scalar_configs = None
         int_array_configs = None
-
         if 'scalar' in op_args:
             scalar_configs = op_args['scalar']
         if 'int_array' in op_args:
             int_array_configs = op_args['int_array']
-
-        process_scalar(forward_op_item, scalar_configs)
-        process_int_array(forward_op_item, int_array_configs)
-
-        if 'backward' in op_args and has_backward:
-            backward_op_list = op_args['backward'].split(',')
-            _, bw_op_name = get_op_and_op_name(backward_op_list[0])
-            forward_op_item['backward'] = bw_op_name
-            backward_op_item['op_name'] = bw_op_name
-
-            process_scalar(backward_op_item, scalar_configs)
-            process_int_array(backward_op_item, int_array_configs)
-
-            # for double grad
-            if len(backward_op_list) > 1:
-                (
-                    new_double_grad_op_name,
-                    double_grad_op_name,
-                ) = get_op_and_op_name(backward_op_list[1])
-                double_grad_item = backward_op_dict[new_double_grad_op_name]
-                backward_op_item['backward'] = double_grad_op_name
-                double_grad_item['op_name'] = double_grad_op_name
-                if 'attrs' in op_args:
-                    update_op_attr_name(
-                        double_grad_item['attrs'], op_args['attrs']
-                    )
-                    update_op_attr_name(
-                        double_grad_item['forward']['attrs'], op_args['attrs']
-                    )
-
-                process_scalar(double_grad_item, scalar_configs)
-                process_int_array(double_grad_item, int_array_configs)
-
-                # for triple grad
-                if len(backward_op_list) > 2:
-                    (
-                        new_triple_grad_op_name,
-                        triple_grad_op_name,
-                    ) = get_op_and_op_name(backward_op_list[2])
-                    triple_grad_item = backward_op_dict[new_triple_grad_op_name]
-                    double_grad_item['backward'] = triple_grad_op_name
-                    triple_grad_item['op_name'] = triple_grad_op_name
-                    if 'attrs' in op_args:
-                        update_op_attr_name(
-                            triple_grad_item['attrs'], op_args['attrs']
-                        )
-                        update_op_attr_name(
-                            triple_grad_item['forward']['attrs'],
-                            op_args['attrs'],
-                        )
-
-                    process_scalar(triple_grad_item, scalar_configs)
-                    process_int_array(triple_grad_item, int_array_configs)
+        if 'extra' in op_args and 'outputs' in op_args['extra']:
+            for out_item in forward_op_item['outputs']:
+                if out_item['name'] in op_args['extra']['outputs']:
+                    out_item['is_extra'] = True
 
         key_set = ['inputs', 'attrs', 'outputs']
         args_map = {}
@@ -245,123 +270,86 @@ def replace_compat_name(op_op_map, forward_op_dict, backward_op_dict):
                 args_map.update(op_args[key])
                 for args_item in forward_op_item[key]:
                     if args_item['name'] in op_args[key]:
+                        if (
+                            scalar_configs
+                            and args_item['name'] in scalar_configs
+                        ):
+                            scalar_configs[
+                                op_args[key][args_item['name']]
+                            ] = scalar_configs[args_item['name']]
+                        if (
+                            int_array_configs
+                            and args_item['name'] in int_array_configs
+                        ):
+                            int_array_configs[
+                                op_args[key][args_item['name']]
+                            ] = int_array_configs[args_item['name']]
                         args_item['name'] = op_args[key][args_item['name']]
                 if has_backward:
                     for args_item in backward_op_item['forward'][key]:
                         if args_item['name'] in op_args[key]:
                             args_item['name'] = op_args[key][args_item['name']]
-        forward_op_item['infer_meta']['param'] = [
-            args_map[param] if param in args_map else param
-            for param in forward_op_item['infer_meta']['param']
-        ]
-        forward_op_item['kernel']['param'] = [
-            args_map[param] if param in args_map else param
-            for param in forward_op_item['kernel']['param']
-        ]
-        if forward_op_item['kernel']['data_type']:
-            forward_op_item['kernel']['data_type']['candidates'] = [
-                args_map[param] if param in args_map else param
-                for param in forward_op_item['kernel']['data_type'][
-                    'candidates'
-                ]
-            ]
-        if forward_op_item['kernel']['backend']:
-            forward_op_item['kernel']['backend']['candidates'] = [
-                args_map[param] if param in args_map else param
-                for param in forward_op_item['kernel']['backend']['candidates']
-            ]
-        if forward_op_item['kernel']['layout']:
-            forward_op_item['kernel']['layout']['candidates'] = [
-                args_map[param] if param in args_map else param
-                for param in forward_op_item['kernel']['layout']['candidates']
-            ]
-        if forward_op_item['inplace']:
-            inplace_map = {}
-            for key, val in forward_op_item['inplace'].items():
-                if key in args_map:
-                    key = args_map[key]
-                if val in args_map:
-                    val = args_map[val]
-                inplace_map[key] = val
-            forward_op_item['inplace'] = inplace_map
+        forward_op_item["attr_dict"] = to_named_dict(forward_op_item["attrs"])
+        update_common_params_name(
+            forward_op_item, args_map, scalar_configs, int_array_configs
+        )
 
         if has_backward:
-            for args_item in backward_op_item['inputs']:
-                if args_item['name'] in args_map:
-                    args_item['name'] = args_map[args_item['name']]
-                elif (
-                    args_item['name'].endswith('_grad')
-                    and args_item['name'][:-5] in args_map
-                ):
-                    args_map[args_item['name']] = (
-                        args_map[args_item['name'][:-5]] + '_grad'
-                    )
-                    args_item['name'] = args_map[args_item['name']]
-            for args_item in backward_op_item['attrs']:
-                if args_item['name'] in args_map:
-                    args_item['name'] = args_map[args_item['name']]
-            for args_item in backward_op_item['outputs']:
-                if (
-                    args_item['name'].endswith('_grad')
-                    and args_item['name'][:-5] in args_map
-                ):
-                    args_map[args_item['name']] = (
-                        args_map[args_item['name'][:-5]] + '_grad'
-                    )
-                    args_item['name'] = args_map[args_item['name']]
+            update_grad_op_compat_name(backward_op_item, args_map)
+            update_common_params_name(
+                backward_op_item, args_map, scalar_configs, int_array_configs
+            )
+            backward_op_item["attr_dict"] = to_named_dict(
+                backward_op_item["attrs"]
+            )
 
-            if 'invoke' in backward_op_item:
-                backward_op_item['invoke']['args'] = [
-                    args_map[param.strip()]
-                    if param.strip() in args_map
-                    else param.strip()
-                    for param in backward_op_item['invoke']['args'].split(',')
-                ]
+            if 'backward' not in op_args:
                 continue
 
-            backward_op_item['infer_meta']['param'] = [
-                args_map[param] if param in args_map else param
-                for param in backward_op_item['infer_meta']['param']
-            ]
-            backward_op_item['kernel']['param'] = [
-                args_map[param] if param in args_map else param
-                for param in backward_op_item['kernel']['param']
-            ]
-            if backward_op_item['kernel']['data_type']:
-                backward_op_item['kernel']['data_type']['candidates'] = [
-                    args_map[param] if param in args_map else param
-                    for param in backward_op_item['kernel']['data_type'][
-                        'candidates'
-                    ]
-                ]
-            if backward_op_item['kernel']['backend']:
-                backward_op_item['kernel']['backend']['candidates'] = [
-                    args_map[param] if param in args_map else param
-                    for param in backward_op_item['kernel']['backend'][
-                        'candidates'
-                    ]
-                ]
-            if backward_op_item['kernel']['layout']:
-                backward_op_item['kernel']['layout']['candidates'] = [
-                    args_map[param] if param in args_map else param
-                    for param in backward_op_item['kernel']['layout'][
-                        'candidates'
-                    ]
-                ]
-            if backward_op_item['no_need_buffer']:
-                backward_op_item['no_need_buffer'] = [
-                    args_map[param] if param in args_map else param
-                    for param in backward_op_item['no_need_buffer']
-                ]
-            if backward_op_item['inplace']:
-                inplace_map = {}
-                for key, val in backward_op_item['inplace'].items():
-                    if key in args_map:
-                        key = args_map[key]
-                    if val in args_map:
-                        val = args_map[val]
-                    inplace_map[key] = val
-                backward_op_item['inplace'] = inplace_map
+            backward_op_list = op_args['backward'].split(',')
+            _, bw_op_name = get_phi_and_fluid_op_name(backward_op_list[0])
+            forward_op_item['backward'] = bw_op_name
+            backward_op_item['op_name'] = bw_op_name
+
+            # for double grad
+            if len(backward_op_list) > 1:
+                (
+                    phi_double_grad_op_name,
+                    double_grad_op_name,
+                ) = get_phi_and_fluid_op_name(backward_op_list[1])
+                double_grad_item = backward_op_dict[phi_double_grad_op_name]
+                backward_op_item['backward'] = double_grad_op_name
+                double_grad_item['op_name'] = double_grad_op_name
+                update_grad_op_compat_name(double_grad_item, args_map)
+                update_common_params_name(
+                    double_grad_item,
+                    args_map,
+                    scalar_configs,
+                    int_array_configs,
+                )
+                double_grad_item["attr_dict"] = to_named_dict(
+                    double_grad_item["attrs"]
+                )
+
+                # for triple grad
+                if len(backward_op_list) > 2:
+                    (
+                        phi_triple_grad_op_name,
+                        triple_grad_op_name,
+                    ) = get_phi_and_fluid_op_name(backward_op_list[2])
+                    triple_grad_item = backward_op_dict[phi_triple_grad_op_name]
+                    double_grad_item['backward'] = triple_grad_op_name
+                    triple_grad_item['op_name'] = triple_grad_op_name
+                    update_grad_op_compat_name(triple_grad_item, args_map)
+                    update_common_params_name(
+                        triple_grad_item,
+                        args_map,
+                        scalar_configs,
+                        int_array_configs,
+                    )
+                    triple_grad_item["attr_dict"] = to_named_dict(
+                        triple_grad_item["attrs"]
+                    )
 
 
 def process_invoke_op(forward_op_dict, backward_op_dict):
@@ -372,6 +360,7 @@ def process_invoke_op(forward_op_dict, backward_op_dict):
             args_index = 0
             if invoke_op in forward_op_dict:
                 reuse_op = forward_op_dict[invoke_op]
+                bw_op['invoke']['func'] = reuse_op['op_name']
                 bw_op['invoke']['inputs'] = []
                 bw_op['invoke']['attrs'] = []
                 bw_op['invoke']['outputs'] = []
@@ -430,14 +419,14 @@ def main(
         forward_op_dict[op_version['op']]['version'] = op_version['version']
 
     with open(op_compat_yaml_path, "rt") as f:
-        op_op_map = yaml.safe_load(f)
+        op_fluid_map_list = yaml.safe_load(f)
 
     for op in ops:
         op['op_name'] = op['name']
     for bw_op in backward_ops:
         bw_op['op_name'] = bw_op['name']
 
-    replace_compat_name(op_op_map, forward_op_dict, backward_op_dict)
+    replace_compat_name(op_fluid_map_list, forward_op_dict, backward_op_dict)
 
     # prepare for invoke case
     process_invoke_op(forward_op_dict, backward_op_dict)
