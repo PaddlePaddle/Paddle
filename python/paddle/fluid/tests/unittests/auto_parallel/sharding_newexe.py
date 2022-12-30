@@ -126,7 +126,7 @@ class TestShardingStage2WithNewEXE(unittest.TestCase):
             batch_size=self.batch_size,
         )
         self.check_param_grad_fuse_overlap(sharding_engine.main_program)
-        print("sharding_history: ", sharding_history)
+        print("sharding_history: ", sharding_history.history)
 
         with open(
             "./sharding_prog.txt.{}".format(paddle.distributed.get_rank()), "w+"
