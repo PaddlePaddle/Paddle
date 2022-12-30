@@ -104,13 +104,11 @@ CinnLaunchContext::CinnLaunchContext(const framework::ir::Graph& graph,
       [&outer_varinfo, &skip_gc_vars, this](const std::string& var_name) {
         // if a var exists at the outer_varinfo map, that means it will be
         // erased by the following eager_deletion_op of current cinn_launch op
-        // in the main graph
         if (!outer_varinfo.count(var_name)) {
           skip_eager_vars_.emplace_back(var_name);
         }
-        // collect skip_gc_vars_ for the runtime_graph_ by intersect
-        // external(in/out) variables with the kSkipGcVarNames of the orignal
-        // subgraph
+        // collect skip_gc_vars_ for the runtime_graph_ by intersecting
+        // external(in/out) variables with the kSkipGcVarNames
         if (skip_gc_vars && skip_gc_vars->count(var_name)) {
           skip_gc_vars_.insert(var_name);
         }
