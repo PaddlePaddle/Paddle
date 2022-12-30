@@ -62,6 +62,10 @@ class FusedAttentionOp : public framework::OperatorWithKernel {
                      "QKVBiasOut",
                      "FusedAttentionOp");
     }
+    OP_INOUT_CHECK(ctx->HasOutput("QKVWTransposeOut"),
+                   "Output",
+                   "QKVWTransposeOut",
+                   "FusedAttentionOp");
     OP_INOUT_CHECK(ctx->HasOutput("TransposeOut2"),
                    "Output",
                    "TransposeOut2",

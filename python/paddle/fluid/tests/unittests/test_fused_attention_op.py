@@ -279,7 +279,7 @@ class TestFusedAttentionOp(OpTest):
         k_proj_weight = k_proj_weight.numpy()
         v_proj_weight = v_proj_weight.numpy()
         qkv_weight = np.concatenate(
-            (q_proj_weight, k_proj_weight, v_proj_weight)
+            (q_proj_weight, k_proj_weight, v_proj_weight), axis=1
         )
         qkv_weight_tensor = paddle.to_tensor(qkv_weight, stop_gradient=False)
 
@@ -637,7 +637,7 @@ class TestFusedAttentionOpParamStopGradient(OpTest):
         k_proj_weight = k_proj_weight.numpy()
         v_proj_weight = v_proj_weight.numpy()
         qkv_weight = np.concatenate(
-            (q_proj_weight, k_proj_weight, v_proj_weight)
+            (q_proj_weight, k_proj_weight, v_proj_weight), axis=1
         )
 
         x = paddle.to_tensor(self.query, stop_gradient=False)
