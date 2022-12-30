@@ -44,11 +44,16 @@ def apply_pass(use_sharding=False, use_amp=False, use_recompute=False):
     if use_recompute:
         recompute = strategy.recompute
         recompute.enable = True
-        recompute.no_recompute_segments = [0]
     if use_amp:
         amp = strategy.amp
         amp.enable = True
-        amp.custom_white_list = ['softmax', 'layer_norm', 'gelu']
+        amp.custom_white_list = [
+            'lookup_table_v2',
+            'lookup_table',
+            'softmax',
+            'layer_norm',
+            'gelu',
+        ]
         amp.custom_black_list = [
             'c_softmax_with_cross_entropy',
             'elementwise_div',
