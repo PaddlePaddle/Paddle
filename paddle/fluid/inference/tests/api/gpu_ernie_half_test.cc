@@ -175,8 +175,6 @@ TEST(Ernie_gpu_fp16_with_ir, compare_results) {
   config.SetModel(FLAGS_infer_model);
   config.EnableUseGpu(512, 0, paddle_infer::PrecisionType::kHalf);
   config.SwitchIrOptim(true);
-  // The fc_fuse_pass has diff, which will be repaired later.
-  config.pass_builder()->DeletePass("fc_fuse_pass");
   // There is a problem with the model itself, which has nothing to do with
   // constant_folding_pass.
   config.pass_builder()->DeletePass("constant_folding_pass");
@@ -254,8 +252,6 @@ TEST(Ernie_gpu_bf16_with_ir, compare_results) {
   config.SetModel(FLAGS_infer_model);
   config.EnableUseGpu(512, 0, paddle_infer::PrecisionType::kBf16);
   config.SwitchIrOptim(true);
-  // The fc_fuse_pass has diff, which will be repaired later.
-  config.pass_builder()->DeletePass("fc_fuse_pass");
   // There is a problem with the model itself, which has nothing to do with
   // constant_folding_pass.
   config.pass_builder()->DeletePass("constant_folding_pass");

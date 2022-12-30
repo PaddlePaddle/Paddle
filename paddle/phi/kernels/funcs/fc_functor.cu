@@ -169,13 +169,12 @@ __global__ void bias_relu_v4_half2(const int num,
         data_vec[unroll_idx].y =
             __hmul(data_vec[unroll_idx].y > zero, data_vec[unroll_idx].y);
 #else
-        half zero = 0.0f;
         data_vec[unroll_idx].x =
-            static_cast<half>(data_vec[unroll_idx].x > zero) *
-            data_vec[unroll_idx].x;
+            static_cast<int>(static_cast<float>(data_vec[unroll_idx].x) > 0) *
+            static_cast<float>(data_vec[unroll_idx].x);
         data_vec[unroll_idx].y =
-            static_cast<half>(data_vec[unroll_idx].y > zero) *
-            data_vec[unroll_idx].y;
+            static_cast<int>(static_cast<float>(data_vec[unroll_idx].y) > 0) *
+            static_cast<float>(data_vec[unroll_idx].y);
 #endif
       }
     }

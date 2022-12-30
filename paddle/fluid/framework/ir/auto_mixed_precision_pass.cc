@@ -764,7 +764,7 @@ void AutoMixedPrecisionPass::InsertCastOp() const {
                            in_var_node,
                            op_node,
                            in_var_type,
-                           VarType::FP32,
+                           to_type,
                            block_desc,
                            &suffix,
                            &cache);
