@@ -97,4 +97,6 @@ class OneHotV2MLUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_MLU_KERNEL(one_hot_v2, ops::OneHotV2MLUKernel<int32_t>);
+REGISTER_OP_MLU_KERNEL(one_hot_v2,
+                       ops::OneHotV2MLUKernel<int32_t>,
+                       ops::OneHotV2MLUKernel<int64_t>);
