@@ -1759,7 +1759,7 @@ class TestProgramStateOldSaveSingleModel(unittest.TestCase):
 
 class TestStaticSaveLoadPickle(unittest.TestCase):
     def test_pickle_protocol(self):
-        # enable static mode
+        # enable static graph mode
         paddle.enable_static()
 
         with new_program_scope():

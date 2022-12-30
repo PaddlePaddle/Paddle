@@ -75,6 +75,7 @@ ExternalProject_Add(
 add_library(rocksdb STATIC IMPORTED GLOBAL)
 
 add_dependencies(extern_rocksdb snappy)
+add_dependencies(extern_rocksdb extern_jemalloc)
 set_property(TARGET rocksdb PROPERTY IMPORTED_LOCATION ${ROCKSDB_LIBRARIES})
 add_dependencies(rocksdb extern_rocksdb)
 

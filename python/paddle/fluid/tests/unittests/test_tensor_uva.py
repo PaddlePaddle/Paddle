@@ -18,7 +18,6 @@ import numpy as np
 
 import paddle
 from paddle.fluid import core
-from paddle.fluid.framework import _in_legacy_dygraph
 
 
 class TestTensorCopyFrom(unittest.TestCase):
@@ -46,12 +45,8 @@ class TestUVATensorFromNumpy(unittest.TestCase):
             ]
             for dtype in dtype_list:
                 data = np.random.randint(10, size=[4, 5]).astype(dtype)
-                if _in_legacy_dygraph():
-                    tensor = paddle.fluid.core.to_uva_tensor(data, 0)
-                    tensor2 = paddle.fluid.core.to_uva_tensor(data)
-                else:
-                    tensor = core.eager.to_uva_tensor(data, 0)
-                    tensor2 = core.eager.to_uva_tensor(data)
+                tensor = core.eager.to_uva_tensor(data, 0)
+                tensor2 = core.eager.to_uva_tensor(data)
 
                 self.assertTrue(tensor.place.is_gpu_place())
                 self.assertTrue(tensor2.place.is_gpu_place())
