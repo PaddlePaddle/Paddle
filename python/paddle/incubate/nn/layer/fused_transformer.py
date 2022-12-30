@@ -315,22 +315,21 @@ class FusedMultiHeadAttention(Layer):
 
         # tensor model parallel
         assert num_heads % nranks == 0
-        num_heads = num_heads // nranks
 
         self.qkv_weight = self.create_parameter(
-            shape=[3, num_heads, self.head_dim, embed_dim],
+            shape=[embed_dim, 3 * embed_dim],
             attr=qkv_weight_attr,
             dtype=self._dtype,
             is_bias=False,
         )
         self.qkv_bias = self.create_parameter(
-            shape=[3, num_heads, self.head_dim],
+            shape=[3 * embed_dim],
             attr=qkv_bias_attr,
             dtype=self._dtype,
             is_bias=True,
         )
         self.linear_weight = self.create_parameter(
-            shape=[num_heads * self.head_dim, embed_dim],
+            shape=[embed_dim, embed_dim],
             attr=linear_weight_attr,
             dtype=self._dtype,
             is_bias=False,
@@ -420,6 +419,7 @@ class FusedMultiHeadAttention(Layer):
         out = incubate_f.fused_multi_head_attention(
             x=query,
             qkv_weight=self.qkv_weight,
+            num_heads=self.num_heads,
             linear_weight=self.linear_weight,
             pre_layer_norm=self.normalize_before,
             pre_ln_scale=self.pre_ln_scale,

@@ -20,6 +20,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/broadcast_function.h"
 #include "paddle/phi/kernels/funcs/elementwise_functor.h"
+#include "paddle/phi/kernels/funcs/transpose_function.cu.h"
 
 namespace paddle {
 namespace operators {
@@ -50,7 +51,14 @@ class AttnMatMul {
                       const phi::DenseTensor* input,
                       const phi::DenseTensor* bias,
                       phi::DenseTensor* output,
-                      phi::DenseTensor* bias_out) {
+                      phi::DenseTensor* bias_out,
+                      phi::DenseTensor* qkv_weight_transpose = nullptr) {
+    if (qkv_weight_transpose != nullptr) {
+      std::vector<int> perm = {1, 2, 3, 0};
+      phi::funcs::TransposeGPUKernelDriver<T>(
+          dev_ctx_, weight, perm, qkv_weight_transpose);
+    }
+
     // Note: for blas.GEMM API in Paddle, it treats all inputs as row-major.
     // here: (transa, transb): nt, input * weight.
     CBLAS_TRANSPOSE transA = transA_ ? CblasTrans : CblasNoTrans;
@@ -67,7 +75,7 @@ class AttnMatMul {
               input_size_,
               alpha,
               input->data<T>(),
-              weight->data<T>(),
+              qkv_weight_transpose->data<T>(),
               beta,
               output->data<T>());
     if (compute_bias_) {
@@ -85,7 +93,8 @@ class AttnMatMul {
                        phi::DenseTensor* d_input,
                        phi::DenseTensor* d_weight,
                        phi::DenseTensor* d_bias,
-                       bool use_addto = false) {
+                       bool use_addto = false,
+                       phi::DenseTensor* d_qkvw_transpose = nullptr) {
     T alpha = static_cast<T>(1.0);
     T beta_dA = use_addto ? static_cast<T>(1.0) : static_cast<T>(0.0);
     T beta_dB = static_cast<T>(0.0);
@@ -100,7 +109,12 @@ class AttnMatMul {
           int dB_n = input_size_;
           int dB_k = bsz_seq_;
 
-          T* dB_output_ptr = d_weight->data<T>();
+          T* dB_output_ptr;
+          if (d_qkvw_transpose != nullptr) {
+            dB_output_ptr = d_qkvw_transpose->data<T>();
+          } else {
+            dB_output_ptr = d_weight->data<T>();
+          }
           blas.GEMM(CblasTrans,
                     CblasNoTrans,
                     dB_m,
@@ -111,6 +125,11 @@ class AttnMatMul {
                     input->data<T>(),
                     beta_dB,
                     dB_output_ptr);
+          if (d_qkvw_transpose != nullptr) {
+            std::vector<int> perm = {3, 0, 1, 2};
+            phi::funcs::TransposeGPUKernelDriver<T>(
+                dev_ctx_, d_qkvw_transpose, perm, d_weight);
+          }
         }
 
         // backward: gemm-nn, dA = dC * B

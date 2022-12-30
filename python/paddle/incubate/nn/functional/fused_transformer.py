@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import warnings
 
 from paddle import _legacy_C_ops
 from paddle.fluid import core
@@ -464,6 +465,7 @@ def fused_bias_dropout_residual_layer_norm(
 def fused_multi_head_attention(
     x,
     qkv_weight,
+    num_heads,
     linear_weight,
     pre_layer_norm=False,
     pre_ln_scale=None,
@@ -524,7 +526,8 @@ def fused_multi_head_attention(
     Parameters:
         x (Tensor): The input tensor of fused_multi_head_attention. The shape is
             `[batch\_size, sequence\_len, embed\_dim]`.
-        qkv_weight (Tensor): The qkv weight tensor. The shape is `[3, num_head, dim_head, dim_embed]`.
+        qkv_weight (Tensor): The qkv weight tensor. The shape is `[dim_embed, dim_embed]`.
+        num_heads (int): The number of num heads.
         linear_weight (Tensor): The linear weight tensor. The shape is `[embed_dim, embed_dim]`.
         pre_layer_norm (bool, optional): whether it is pre_layer_norm (True) or post_layer_norm architecture
                                         (False). Default False.
@@ -534,7 +537,7 @@ def fused_multi_head_attention(
         ln_bias (Tensor, optional): The bias tensor of layernorm. Default None.
         pre_ln_epsilon (float, optional): Small float value added to denominator of the pre layer_norm
             to avoid dividing by zero. Default is 1e-5.
-        qkv_bias (Tensor, optional): The bias of qkv computation. The shape is `[3, num_head, dim_head]`.
+        qkv_bias (Tensor, optional): The bias of qkv computation. The shape is `[dim_head, 3 * dim_embed]`.
             Default None.
         linear_bias (Tensor, optional): The bias of linear. The shape is `[embed_dim]`. Default None.
         cache_kv (Tensor, optional): For generation model, cache structure. The shape is `[2, bsz, num_head, seq_len, head_dim]`. Default None.
@@ -602,6 +605,9 @@ def fused_multi_head_attention(
             print(output.shape)
     """
 
+    assert num_heads >= 1, "num_heads should be greater or equal than 1."
+    if num_heads == 1:
+        warnings.warn("Setting num_heads to 1 for multi_head_attention")
     seed = None
     if mode not in ('downscale_in_infer', 'upscale_in_train'):
         raise ValueError(
@@ -618,21 +624,24 @@ def fused_multi_head_attention(
         # qktv_out, softmax_out, attn_dropout_mask_out, attn_dropout_out, attn_mask_out, fmha_out,
         # linear_out, dropout_mask_out, ln_mean_out, ln_var_out, bias_dropout_residual_out, final_out
         assert (
-            len(qkv_weight.shape) == 4
-        ), "The dims of the shape of qkv_weight should be 4."
+            len(qkv_weight.shape) == 2
+        ), "The dims of the shape of qkv_weight should be 2."
         assert (
-            qkv_weight.shape[0] == 3
-        ), "The shape of qkv_weight should be [3, num_head, head_dim, embed_dim]."
+            qkv_weight.shape[1] == 3 * qkv_weight.shape[0]
+        ), "The shape of qkv_weight should be [embed_dim, 3 * embed_dim]."
         assert (
-            qkv_weight.shape[3] == x.shape[2]
-        ), "The 3rd dim of qkv_weight and 2nd dim of x should be the same, i.e., embed_dim."
-        if ring_id == -1:
-            # under mp, the num head will be split, this equation will not hold
+            qkv_weight.shape[0] == x.shape[2]
+        ), "The 1st dim of qkv_weight and 2nd dim of x should be the same, i.e., embed_dim."
+        if qkv_bias is not None:
             assert (
-                qkv_weight.shape[1] * qkv_weight.shape[2] == qkv_weight.shape[3]
-            ), "embed_dim must be divisible by num_heads."
+                len(qkv_bias.shape) == 1
+            ), "The dims of the shape of qkv_bias should be 1."
+            assert (
+                qkv_bias.shape[0] == qkv_weight.shape[1]
+            ), "The 1st dim of qkv_bias and 2nd dim of qkv_weight should be the same, i.e., embed_dim."
 
         (
+            _,
             _,
             _,
             _,
@@ -665,6 +674,8 @@ def fused_multi_head_attention(
             linear_bias,
             ln_scale,
             ln_bias,
+            'num_heads',
+            num_heads,
             'pre_layer_norm',
             pre_layer_norm,
             'epsilon',
@@ -740,6 +751,7 @@ def fused_multi_head_attention(
 
         # set attrs
         attrs = {
+            'num_heads': num_heads,
             'pre_layer_norm': pre_layer_norm,
             'epsilon': pre_ln_epsilon,
             'ln_epsilon': ln_epsilon,
@@ -757,6 +769,9 @@ def fused_multi_head_attention(
         }
 
         # set outputs
+        qkv_weight_transpose_out = helper.create_variable_for_type_inference(
+            dtype=dtype, stop_gradient=True
+        )
         pre_ln_mean_out = helper.create_variable_for_type_inference(
             dtype=dtype, stop_gradient=True
         )
@@ -800,6 +815,7 @@ def fused_multi_head_attention(
             type='fused_attention',
             inputs=inputs,
             outputs={
+                "QKVWTransposeOut": qkv_weight_transpose_out,
                 "LnMean": pre_ln_mean_out,
                 "LnVariance": pre_ln_variance_out,
                 "LnOut": pre_ln_out,

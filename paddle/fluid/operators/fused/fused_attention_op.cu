@@ -80,6 +80,7 @@ class FusedAttentionOpKernel : public framework::OpKernel<T> {
     auto *input_x = ctx.Input<phi::DenseTensor>("X");
     auto &dev_ctx = ctx.template device_context<phi::GPUContext>();
     const auto pre_layer_norm = ctx.Attr<bool>("pre_layer_norm");
+    const auto num_head = ctx.Attr<int>("num_heads");
     const float epsilon = ctx.Attr<float>("epsilon");
     auto *ln_scale = ctx.Input<phi::DenseTensor>("LnScale");
     auto *ln_bias = ctx.Input<phi::DenseTensor>("LnBias");
@@ -88,13 +89,14 @@ class FusedAttentionOpKernel : public framework::OpKernel<T> {
     auto *ln_out = ctx.Output<phi::DenseTensor>("LnOut");
 
     // x: qkv's input [batch_size, seq_len, dim_embed]
-    // y: qkv's weight: [3, num_head, dim_head, dim_embed]
+    // y: qkv's weight: [dim_embed, 3 * dim_embed]
     auto *qkv_weight = ctx.Input<phi::DenseTensor>("QKVW");
     auto *qkv_bias = ctx.Input<phi::DenseTensor>("QKVBias");
     auto *qkv_out = ctx.Output<phi::DenseTensor>("QKVOut");
     auto *qkv_bias_out = ctx.Output<phi::DenseTensor>("QKVBiasOut");
 
     auto *src_mask = ctx.Input<phi::DenseTensor>("SrcMask");
+    auto *qkvw_transpose_out = ctx.Output<phi::DenseTensor>("QKVWTransposeOut");
     auto *transpose_out_2 = ctx.Output<phi::DenseTensor>("TransposeOut2");
     auto *cache_kv = ctx.Input<phi::DenseTensor>("CacheKV");
     auto *cache_kv_out = ctx.Output<phi::DenseTensor>("CacheKVOut");
@@ -141,7 +143,16 @@ class FusedAttentionOpKernel : public framework::OpKernel<T> {
 
     // get data ptr for qkv part.
     const auto input_x_dims = input_x->dims();
-    const auto qkv_w_dims = qkv_weight->dims();
+
+    int batch_size = input_x_dims[0];
+    int max_seq_len = input_x_dims[1];
+    int dim_embed = input_x_dims[2];
+    int dim_head = dim_embed / num_head;
+
+    qkv_weight->Resize({dim_embed, 3, num_head, dim_head});
+    if (qkv_bias != nullptr) {
+      qkv_bias->Resize({3, num_head, dim_head});
+    }
 
     auto *x_data = input_x->data<T>();
     auto *qkv_weight_data = qkv_weight->data<T>();
@@ -153,6 +164,8 @@ class FusedAttentionOpKernel : public framework::OpKernel<T> {
             ? nullptr
             : dev_ctx.template Alloc<T>(qkv_bias_out,
                                         qkv_bias_out->numel() * sizeof(T));
+    auto *qkvw_transpose_out_data = dev_ctx.template Alloc<T>(
+        qkvw_transpose_out, qkvw_transpose_out->numel() * sizeof(T));
 
     // get data ptr for FMHA.
     auto *transpose_out_2_data = dev_ctx.template Alloc<T>(
@@ -201,13 +214,6 @@ class FusedAttentionOpKernel : public framework::OpKernel<T> {
             : nullptr;
     auto *final_out_data =
         dev_ctx.template Alloc<T>(out, out->numel() * sizeof(T));
-
-    int batch_size = input_x_dims[0];
-    int max_seq_len = input_x_dims[1];
-    int dim_embed = input_x_dims[2];
-
-    int num_head = qkv_w_dims[1];
-    int dim_head = qkv_w_dims[2];
 
     int bsz_seq = batch_size * max_seq_len;
     int hidden_size = num_head * dim_head;
@@ -282,11 +288,19 @@ class FusedAttentionOpKernel : public framework::OpKernel<T> {
                                         ln_out_data,
                                         ln_mean_data,
                                         ln_var_data);
-      qkv_compute.ComputeForward(
-          qkv_weight, ln_out, qkv_bias, qkv_out, qkv_bias_out);
+      qkv_compute.ComputeForward(qkv_weight,
+                                 ln_out,
+                                 qkv_bias,
+                                 qkv_out,
+                                 qkv_bias_out,
+                                 qkvw_transpose_out);
     } else {
-      qkv_compute.ComputeForward(
-          qkv_weight, input_x, qkv_bias, qkv_out, qkv_bias_out);
+      qkv_compute.ComputeForward(qkv_weight,
+                                 input_x,
+                                 qkv_bias,
+                                 qkv_out,
+                                 qkv_bias_out,
+                                 qkvw_transpose_out);
     }
     if (qkv_bias == nullptr) {
       fmha_ref_compute.ComputeForward(*qkv_out,
@@ -374,6 +388,7 @@ class FusedAttentionGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
     using U = LayerNormParamType<T>;
+    const auto num_head = ctx.Attr<int>("num_heads");
     const auto pre_layer_norm = ctx.Attr<bool>("pre_layer_norm");
     const float epsilon = ctx.Attr<float>("epsilon");
     const float ln2epsilon = ctx.Attr<float>("ln_epsilon");
@@ -410,10 +425,12 @@ class FusedAttentionGradKernel : public framework::OpKernel<T> {
     // fw parameters.
     auto *src_mask = ctx.Input<phi::DenseTensor>("SrcMask");
     auto *qkv_weight = ctx.Input<phi::DenseTensor>("QKVW");
+    auto *qkvw_transpose_out = ctx.Input<phi::DenseTensor>("QKVWTransposeOut");
     auto *qkv_bias = ctx.Input<phi::DenseTensor>("QKVBias");
     auto *out_linear_weight = ctx.Input<phi::DenseTensor>("OutLinearW");
     auto *out_linear_bias = ctx.Input<phi::DenseTensor>("OutLinearBias");
     auto *qkv_weight_data = qkv_weight->data<T>();
+    auto *qkvw_transpose_out_data = qkvw_transpose_out->data<T>();
     auto *qkv_bias_data = (qkv_bias == nullptr) ? nullptr : qkv_bias->data<T>();
     auto *out_linear_weight_data = out_linear_weight->data<T>();
     auto *out_linear_bias_data =
@@ -449,6 +466,8 @@ class FusedAttentionGradKernel : public framework::OpKernel<T> {
         ctx.Output<phi::DenseTensor>(framework::GradVarName("QKVBiasOut"));
     auto *d_qktv_out =
         ctx.Output<phi::DenseTensor>(framework::GradVarName("QKTVOut"));
+    auto *d_qkvw_transpose_out = ctx.Output<phi::DenseTensor>(
+        framework::GradVarName("QKVWTransposeOut"));
     auto *d_transpose_out_2 =
         ctx.Output<phi::DenseTensor>(framework::GradVarName("TransposeOut2"));
     auto *d_qk_out =
@@ -479,6 +498,8 @@ class FusedAttentionGradKernel : public framework::OpKernel<T> {
                                         d_qkv_bias_out->numel() * sizeof(T));
     auto *d_qktv_out_data =
         dev_ctx.template Alloc<T>(d_qktv_out, d_qktv_out->numel() * sizeof(T));
+    auto *d_qkvw_transpose_out_data = dev_ctx.template Alloc<T>(
+        d_qkvw_transpose_out, d_qkvw_transpose_out->numel() * sizeof(T));
     auto *d_transpose_out_2_data = dev_ctx.template Alloc<T>(
         d_transpose_out_2, d_transpose_out_2->numel() * sizeof(T));
     auto *d_qk_out_data =
@@ -539,13 +560,11 @@ class FusedAttentionGradKernel : public framework::OpKernel<T> {
                                         d_out_linear_bias->numel() * sizeof(T));
 
     const auto input_x_dims = input_x->dims();
-    const auto qkv_w_dims = qkv_weight->dims();
 
     int batch_size = input_x_dims[0];
     int max_seq_len = input_x_dims[1];
     int dim_embed = input_x_dims[2];
-    int num_head = qkv_w_dims[1];
-    int dim_head = qkv_w_dims[2];
+    int dim_head = dim_embed / num_head;
 
     int bsz_seq = batch_size * max_seq_len;
     int hidden_size = num_head * dim_head;
@@ -691,6 +710,12 @@ class FusedAttentionGradKernel : public framework::OpKernel<T> {
                                        d_qkv_out);
     }
 
+    if (d_qkv_weight != nullptr) {
+      d_qkv_weight->Resize({dim_embed, 3, num_head, dim_head});
+    }
+    if (d_qkv_bias != nullptr) {
+      d_qkv_bias->Resize({3, num_head, dim_head});
+    }
     if (pre_layer_norm) {
       auto *ln_mean = ctx.Input<phi::DenseTensor>("LnMean");
       auto *ln_var = ctx.Input<phi::DenseTensor>("LnVariance");
@@ -719,14 +744,22 @@ class FusedAttentionGradKernel : public framework::OpKernel<T> {
                                            d_ln_bias->numel() * sizeof(U)));
       if (qkv_bias != nullptr) {
         qkv_compute.ComputeBackward(ln_out,
-                                    qkv_weight,
+                                    qkvw_transpose_out,
                                     d_qkv_bias_out,
                                     d_ln_out,
                                     d_qkv_weight,
-                                    d_qkv_bias);
+                                    d_qkv_bias,
+                                    false,
+                                    d_qkvw_transpose_out);
       } else {
-        qkv_compute.ComputeBackward(
-            ln_out, qkv_weight, d_qkv_out, d_ln_out, d_qkv_weight, d_qkv_bias);
+        qkv_compute.ComputeBackward(ln_out,
+                                    qkvw_transpose_out,
+                                    d_qkv_out,
+                                    d_ln_out,
+                                    d_qkv_weight,
+                                    d_qkv_bias,
+                                    false,
+                                    d_qkvw_transpose_out);
       }
       // tensor model parallel
       AllReduce<T>(*d_ln_out, ring_id, ctx.cuda_device_context());
@@ -740,14 +773,33 @@ class FusedAttentionGradKernel : public framework::OpKernel<T> {
                                          d_ln_bias_data);
     } else {
       if (qkv_bias != nullptr) {
-        qkv_compute.ComputeBackward(
-            input_x, qkv_weight, d_qkv_bias_out, d_x, d_qkv_weight, d_qkv_bias);
+        qkv_compute.ComputeBackward(input_x,
+                                    qkvw_transpose_out,
+                                    d_qkv_bias_out,
+                                    d_x,
+                                    d_qkv_weight,
+                                    d_qkv_bias,
+                                    false,
+                                    d_qkvw_transpose_out);
       } else {
-        qkv_compute.ComputeBackward(
-            input_x, qkv_weight, d_qkv_out, d_x, d_qkv_weight, d_qkv_bias);
+        qkv_compute.ComputeBackward(input_x,
+                                    qkvw_transpose_out,
+                                    d_qkv_out,
+                                    d_x,
+                                    d_qkv_weight,
+                                    d_qkv_bias,
+                                    false,
+                                    d_qkvw_transpose_out);
       }
       // tensor model parallel
       AllReduce<T>(*d_x, ring_id, ctx.cuda_device_context());
+    }
+
+    if (d_qkv_weight != nullptr) {
+      d_qkv_weight->Resize({dim_embed, 3 * dim_embed});
+    }
+    if (d_qkv_bias != nullptr) {
+      d_qkv_bias->Resize({3 * dim_embed});
     }
 
     if (add_residual) {

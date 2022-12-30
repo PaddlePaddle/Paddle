@@ -265,7 +265,6 @@ class TestFusedAttentionOp(OpTest):
             qkv_bias = np.concatenate(
                 (q_proj_bias.numpy(), k_proj_bias.numpy(), v_proj_bias.numpy())
             )
-            qkv_bias = qkv_bias.reshape((3, self.num_heads, self.head_dim))
             qkv_bias_tensor = paddle.to_tensor(qkv_bias, stop_gradient=False)
             out_linear_bias = paddle.to_tensor(
                 self.out_proj.bias, stop_gradient=False
@@ -276,15 +275,13 @@ class TestFusedAttentionOp(OpTest):
         ln2_scale = paddle.to_tensor(self.norm2.weight, stop_gradient=False)
         ln2_bias = paddle.to_tensor(self.norm2.bias, stop_gradient=False)
 
-        q_proj_weight = q_proj_weight.numpy().transpose((1, 0))
-        k_proj_weight = k_proj_weight.numpy().transpose((1, 0))
-        v_proj_weight = v_proj_weight.numpy().transpose((1, 0))
+        q_proj_weight = q_proj_weight.numpy()
+        k_proj_weight = k_proj_weight.numpy()
+        v_proj_weight = v_proj_weight.numpy()
         qkv_weight = np.concatenate(
             (q_proj_weight, k_proj_weight, v_proj_weight)
         )
-        qkv_weight = qkv_weight.reshape(
-            (3, self.num_heads, self.head_dim, self.embed_dim)
-        )
+        qkv_weight_tensor = paddle.to_tensor(qkv_weight, stop_gradient=False)
 
         x = paddle.to_tensor(self.query, stop_gradient=False)
         cache_kv = None
@@ -294,7 +291,6 @@ class TestFusedAttentionOp(OpTest):
             attn_mask = paddle.to_tensor(self.attn_mask, stop_gradient=False)
         else:
             attn_mask = None
-        qkv_weight_tensor = paddle.to_tensor(qkv_weight, stop_gradient=False)
         epsilon = 1e-05
         ln2_epsilon = 1e-05
 
