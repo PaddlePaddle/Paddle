@@ -1310,7 +1310,6 @@ void PSGPUWrapper::LoadIntoMemory(bool is_shuffle) {
     std::shared_ptr<HeterContext> gpu_task = gpu_task_pool_.Get();
     gpu_task->Reset();
     gpu_task->pass_id_ = (uint16_t)(dataset_->GetPassID());
-
     data_ready_channel_->Put(std::make_pair(gpu_task, dataset_));
   } else if (hbm_sparse_table_initialized_ == false) {
     SparseTableToHbm();
@@ -1319,7 +1318,7 @@ void PSGPUWrapper::LoadIntoMemory(bool is_shuffle) {
   std::shared_ptr<HeterContext> gpu_task = gpu_task_pool_.Get();
   gpu_task->Reset();
   gpu_task->pass_id_ = (uint16_t)(dataset_->GetPassID());
-  data_ready_channel_->Put(gpu_task);
+  data_ready_channel_->Put(std::make_pair(gpu_task, dataset_));
 #endif
   VLOG(3) << "End LoadIntoMemory(), dataset[" << dataset_ << "]";
 }
