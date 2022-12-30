@@ -251,7 +251,7 @@ class PartialProgramLayer:
 
     @switch_to_static_graph
     def _create_forward_backward_train_program(self):
-        whole_program = self._create_program()
+        whole_program = self._train_program
         forward_end_op_index = self._infer_program.desc.block(0).op_size()
         return self._get_forward_backward_program_form(
             whole_program, forward_end_op_index
@@ -259,7 +259,7 @@ class PartialProgramLayer:
 
     @switch_to_static_graph
     def _create_forward_backward_train_amp_program(self):
-        whole_program = self._create_amp_program()
+        whole_program = self._train_amp_program
         forward_end_op_index = self._infer_amp_program.desc.block(0).op_size()
         return self._get_forward_backward_program_form(
             whole_program, forward_end_op_index
@@ -267,7 +267,7 @@ class PartialProgramLayer:
 
     @switch_to_static_graph
     def _create_forward_backward_train_pure_fp16_program(self):
-        whole_program = self._create_pure_fp16_program()
+        whole_program = self._train_pure_fp16_program
         forward_end_op_index = self._infer_pure_fp16_program.desc.block(
             0
         ).op_size()
@@ -409,9 +409,9 @@ class PartialProgramLayer:
         # the param grad name can be set correctly in the run_program.
         for param in self._params:
             candidate = [
-                var.name
-                for var in self.backward_program.list_vars()
-                if var.name.endswith(param.name + '@GRAD')
+                var_name
+                for var_name in self.backward_program.block(0).vars.keys()
+                if var_name.endswith(param.name + '@GRAD')
             ]
             if candidate:
                 names.append(
@@ -428,7 +428,7 @@ class PartialProgramLayer:
         for i in range(
             fwd_end_op_index + 1,
             fwd_end_op_index + 2 * len(self._outputs.var_ids),
-            step=2,
+            2,
         ):
             op = self.program.block(0).ops[i]
             if op.type == 'fill_constant':
