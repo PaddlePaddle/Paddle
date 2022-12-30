@@ -121,7 +121,8 @@ void AnalysisPredictor::MkldnnQuantizer::CalculateScalesForOpOutputs(
       // force unsigned type if already know it
       bool is_unsigned = false;
       bool compute_scale = true;
-      if (op->Type() == "conv2d" || op->Type() == "fc") {
+      if (op->Type() == "conv2d" || op->Type() == "fused_conv2d" ||
+          op->Type() == "fc") {
         // output of conv2d with relu must be unsigned
         std::string fuse_activation =
             op->GetAttrIfExists<std::string>("fuse_activation");

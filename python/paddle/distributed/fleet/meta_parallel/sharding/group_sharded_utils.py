@@ -119,11 +119,7 @@ class GroupShardedClipGrad:
         global_unslice_fp32 = paddle.sum(global_unslice_fp32)
         global_unslice_var = global_unslice_fp16 + global_unslice_fp32
 
-        global_norm_var = (
-            global_norm_fp16
-            + global_norm_fp32
-            + 1.0 / self._group.nranks * global_unslice_var
-        )
+        global_norm_var = global_norm_fp16 + global_norm_fp32
 
         # add all reduce to get global norm of distributed params_and_grads
         dev_id = int(self._device.split(":")[1])
@@ -133,7 +129,7 @@ class GroupShardedClipGrad:
         with device_guard(dev_id, self._device.split(":")[0]):
             paddle.distributed.all_reduce(global_norm_var, group=self._group)
 
-        global_norm_var = paddle.sqrt(global_norm_var)
+        global_norm_var = paddle.sqrt(global_norm_var + global_unslice_var)
         max_global_norm = layers.fill_constant(
             shape=[1], dtype=global_norm_var.dtype, value=self.clip_norm
         )
@@ -150,9 +146,9 @@ class GroupShardedClipGrad:
             origin_state = g.stop_gradient
             g.stop_gradient = True
             if p.dtype == paddle.float16:
-                g.scale_(clip_var_fp16.item())
+                g.scale_(clip_var_fp16)
             else:
-                g.scale_(clip_var.item())
+                g.scale_(clip_var)
             g.stop_gradient = origin_state
             # p._reset_grad_inplace_version(True)
 

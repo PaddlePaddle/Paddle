@@ -24,7 +24,7 @@ from paddle.fluid.executor import (
     _is_dy2st_enable_standalone_executor,
     _is_enable_standalone_executor,
 )
-from paddle.fluid.framework import Variable, _in_legacy_dygraph
+from paddle.fluid.framework import Variable
 from paddle.fluid.layers.utils import _hash_with_id
 
 
@@ -63,22 +63,13 @@ def _create_out(var):
     assert isinstance(var, Variable)
     var_desc = var.desc
     varbase = None
-    if _in_legacy_dygraph():
-        var_base = core.VarBase(
-            var_desc.dtype(),
-            var_desc.shape(),
-            var_desc.name(),
-            var_desc.type(),
-            False,
-        )
-    else:
-        var_base = core.eager.Tensor(
-            var_desc.dtype(),
-            var_desc.shape(),
-            var_desc.name(),
-            var_desc.type(),
-            False,
-        )
+    var_base = core.eager.Tensor(
+        var_desc.dtype(),
+        var_desc.shape(),
+        var_desc.name(),
+        var_desc.type(),
+        False,
+    )
     return var_base
 
 

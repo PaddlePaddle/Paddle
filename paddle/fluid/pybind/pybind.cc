@@ -673,7 +673,7 @@ PYBIND11_MODULE(libpaddle, m) {
 
   m.def("is_cuda_graph_capturing", &platform::IsCUDAGraphCapturing);
 #ifdef PADDLE_WITH_CUDA
-  py::class_<platform::CUDAGraph>(m, "CUDAGraph")
+  py::class_<phi::backends::gpu::CUDAGraph>(m, "CUDAGraph")
       .def_static("begin_capture",
                   [](platform::CUDAPlace place, int mode) {
                     platform::BeginCUDAGraphCapture(
@@ -681,10 +681,11 @@ PYBIND11_MODULE(libpaddle, m) {
                   })
       .def_static("end_capture", &platform::EndCUDAGraphCapture)
       .def_static("gen_new_memory_pool_id",
-                  &platform::CUDAGraph::UniqueMemoryPoolID)
-      .def("replay", &platform::CUDAGraph::Replay)
-      .def("reset", &platform::CUDAGraph::Reset)
-      .def("print_to_dot_files", &platform::CUDAGraph::PrintToDotFiles);
+                  &phi::backends::gpu::CUDAGraph::UniqueMemoryPoolID)
+      .def("replay", &phi::backends::gpu::CUDAGraph::Replay)
+      .def("reset", &phi::backends::gpu::CUDAGraph::Reset)
+      .def("print_to_dot_files",
+           &phi::backends::gpu::CUDAGraph::PrintToDotFiles);
 #endif
 
   m.def("wait_device", [](const platform::Place &place) {
@@ -2543,6 +2544,10 @@ All parameter, weight, gradient are variables in Paddle.
 
   m.def("update_autotune_status",
         [] { return phi::autotune::AutoTuneStatus::Instance().Update(); });
+
+  m.def("get_low_precision_op_list", [] {
+    return paddle::imperative::AmpOperators::Instance().GetAmpOpList();
+  });
 
   m.def("autotune_status", [] {
     py::dict res;

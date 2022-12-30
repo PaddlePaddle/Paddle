@@ -143,6 +143,44 @@ ConvAffineChannelFusePass::ConvAffineChannelFusePass() {
       .IsStringIn({"NCHW", "AnyLayout"})
       .End();
 
+  AddOpCompat(OpCompat("fused_conv2d"))
+      .AddInput("Input")
+      .IsTensor()
+      .End()
+      .AddInput("Filter")
+      .IsTensor()
+      .End()
+      .AddInput("Bias")
+      .IsTensor()
+      .IsOptional()
+      .End()
+      .AddInput("ResidualData")
+      .IsTensor()
+      .IsOptional()
+      .End()
+      .AddOutput("Output")
+      .IsTensor()
+      .End()
+      .AddAttr("strides")
+      .IsType<std::vector<int>>()
+      .End()
+      .AddAttr("paddings")
+      .IsType<std::vector<int>>()
+      .End()
+      .AddAttr("padding_algorithm")
+      .IsOptional()
+      .IsStringIn({"EXPLICIT", "SAME", "VALID"})
+      .End()
+      .AddAttr("groups")
+      .IsNumGE(1)
+      .End()
+      .AddAttr("dilations")
+      .IsType<std::vector<int>>()
+      .End()
+      .AddAttr("data_format")
+      .IsStringIn({"NCHW", "AnyLayout"})
+      .End();
+
   AddOpCompat(OpCompat("affine_channel"))
       .AddInput("X")
       .IsTensor()
@@ -177,6 +215,12 @@ ConvAffineChannelFusePass::ConvAffineChannelFusePass() {
 }
 
 void ConvAffineChannelFusePass::ApplyImpl(ir::Graph* graph) const {
+  FuseConvAffineChannel(graph, "conv2d");
+  FuseConvAffineChannel(graph, "fused_conv2d");
+}
+
+void ConvAffineChannelFusePass::FuseConvAffineChannel(
+    ir::Graph* graph, const std::string& conv_type) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph, platform::errors::InvalidArgument("Graph cannot be nullptr."));
   FusePassBase::Init(name_scope_, graph);
@@ -190,10 +234,10 @@ void ConvAffineChannelFusePass::ApplyImpl(ir::Graph* graph) const {
       gpd.mutable_pattern()
           ->NewNode(patterns::PDNodeName(name_scope_, "conv_input"))
           ->AsInput()
-          ->assert_is_op_input("conv2d", "Input");
+          ->assert_is_op_input(conv_type, "Input");
   patterns::ConvAffineChannel conv_ac_pattern(gpd.mutable_pattern(),
                                               name_scope_);
-  conv_ac_pattern(conv_input, false /*with_eltwise_add*/);
+  conv_ac_pattern(conv_input, conv_type, false /*with_eltwise_add*/);
 
   int found_conv_ac_count = 0;
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,

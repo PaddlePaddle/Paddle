@@ -89,7 +89,7 @@ class CUDAGraphWithInOuts {
   int64_t PoolID() const { return graph_->PoolID(); }
 
  private:
-  std::unique_ptr<platform::CUDAGraph> graph_;
+  std::unique_ptr<phi::backends::gpu::CUDAGraph> graph_;
   std::vector<phi::DenseTensor> ins_;
   std::vector<phi::DenseTensor> outs_;
   std::vector<int64_t> in_indices_;

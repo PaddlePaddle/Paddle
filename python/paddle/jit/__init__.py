@@ -15,7 +15,7 @@
 
 from .api import save
 from .api import load
-from .api import declarative as to_static
+from .api import to_static
 from .api import not_to_static
 from .dy2static.logging_utils import set_code_level, set_verbosity
 

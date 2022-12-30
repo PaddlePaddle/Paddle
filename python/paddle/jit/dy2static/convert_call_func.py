@@ -241,12 +241,12 @@ def convert_call(func):
         if func.__name__ == '<lambda>':
             return func
         try:
-            # Note(Aurelius84): Because `@declarative` returns a class instance instead of
+            # Note(Aurelius84): Because `@to_static` returns a class instance instead of
             # a function. This will modify the value referring to itself in `__globals__`.
 
             # For example:
             #
-            #      @declarative
+            #      @to_static
             #      def foo(x):
             #          return x
             #

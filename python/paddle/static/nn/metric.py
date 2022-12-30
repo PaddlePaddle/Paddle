@@ -154,19 +154,25 @@ def auc(
         label(Tensor): A 2D int Tensor indicating the label of the training
                          data. The height is batch size and width is always 1.
                          A Tensor with type int32,int64.
-        curve(str): Curve type, can be 'ROC' or 'PR'. Default 'ROC'.
-        num_thresholds(int): The number of thresholds to use when discretizing
+        curve(str, optional): Curve type, can be 'ROC' or 'PR'. Default 'ROC'.
+        num_thresholds(int, optional): The number of thresholds to use when discretizing
                              the roc curve. Default 4095.
-        topk(int): only topk number of prediction output will be used for auc.
-        slide_steps: when calc batch auc, we can not only use step currently but the previous steps can be used. slide_steps=1 means use the current step, slide_steps=3 means use current step and the previous second steps, slide_steps=0 use all of the steps.
-        ins_tag_weight(Tensor): A 2D int Tensor indicating the data's tag weight, 1 means real data, 0 means fake data. Default None, and it will be assigned to a tensor of value 1.
+        topk(int, optional): only topk number of prediction output will be used for auc.
+        slide_steps(int, optional): when calc batch auc, we can not only use step currently but the previous steps can be used. slide_steps=1 means use the current step, slide_steps=3 means use current step and the previous second steps, slide_steps=0 use all of the steps.
+        ins_tag_weight(Tensor, optional): A 2D int Tensor indicating the data's tag weight, 1 means real data, 0 means fake data. Default None, and it will be assigned to a tensor of value 1.
                          A Tensor with type float32,float64.
 
     Returns:
-        Tensor: A tuple representing the current AUC.
-        The return tuple is auc_out, batch_auc_out, [
-        batch_stat_pos, batch_stat_neg, stat_pos, stat_neg ]
-        Data type is Tensor, supporting float32, float64.
+        Tensor: A tuple representing the current AUC. Data type is Tensor, supporting float32, float64.
+        The return tuple is auc_out, batch_auc_out, [batch_stat_pos, batch_stat_neg, stat_pos, stat_neg ]
+
+            auc_out: the result of the accuracy rate
+            batch_auc_out: the result of the batch accuracy
+            batch_stat_pos: the statistic value for label=1 at the time of batch calculation
+            batch_stat_neg: the statistic value for label=0 at the time of batch calculation
+            stat_pos: the statistic for label=1 at the time of calculation
+            stat_neg: the statistic for label=0 at the time of calculation
+
 
     Examples:
         .. code-block:: python

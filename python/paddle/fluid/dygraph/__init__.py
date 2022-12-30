@@ -36,9 +36,6 @@ from .checkpoint import *
 from . import learning_rate_scheduler
 from .learning_rate_scheduler import *
 
-from . import static_runner
-from .static_runner import StaticModelRunner
-
 from . import amp
 from .amp import *
 

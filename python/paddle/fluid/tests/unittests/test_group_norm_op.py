@@ -21,7 +21,6 @@ from testsuite import create_op
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-from paddle.fluid.framework import _test_eager_guard
 
 
 def group_norm_naive(x, scale, bias, epsilon, groups, data_layout):
@@ -307,20 +306,15 @@ class TestGroupNormEager(unittest.TestCase):
             groupNorm = paddle.nn.GroupNorm(num_channels=32, num_groups=4)
             ret1 = groupNorm(tensor_1)
             ret1.backward()
-            with _test_eager_guard():
-                tensor_eager_1 = fluid.dygraph.to_variable(input)
-                tensor_eager_1.stop_gradient = False
-                groupNorm_eager = paddle.nn.GroupNorm(
-                    num_channels=32, num_groups=4
-                )
-                ret2 = groupNorm_eager(tensor_eager_1)
-                ret2.backward()
-                self.assertEqual(
-                    (
-                        tensor_1.grad.numpy() == tensor_eager_1.grad.numpy()
-                    ).all(),
-                    True,
-                )
+            tensor_eager_1 = fluid.dygraph.to_variable(input)
+            tensor_eager_1.stop_gradient = False
+            groupNorm_eager = paddle.nn.GroupNorm(num_channels=32, num_groups=4)
+            ret2 = groupNorm_eager(tensor_eager_1)
+            ret2.backward()
+            self.assertEqual(
+                (tensor_1.grad.numpy() == tensor_eager_1.grad.numpy()).all(),
+                True,
+            )
 
 
 class TestGroupNormEager_fp32(unittest.TestCase):
@@ -335,20 +329,15 @@ class TestGroupNormEager_fp32(unittest.TestCase):
             groupNorm = paddle.nn.GroupNorm(num_channels=32, num_groups=4)
             ret1 = groupNorm(tensor_1)
             ret1.backward()
-            with _test_eager_guard():
-                tensor_eager_1 = fluid.dygraph.to_variable(input)
-                tensor_eager_1.stop_gradient = False
-                groupNorm_eager = paddle.nn.GroupNorm(
-                    num_channels=32, num_groups=4
-                )
-                ret2 = groupNorm_eager(tensor_eager_1)
-                ret2.backward()
-                self.assertEqual(
-                    (
-                        tensor_1.grad.numpy() == tensor_eager_1.grad.numpy()
-                    ).all(),
-                    True,
-                )
+            tensor_eager_1 = fluid.dygraph.to_variable(input)
+            tensor_eager_1.stop_gradient = False
+            groupNorm_eager = paddle.nn.GroupNorm(num_channels=32, num_groups=4)
+            ret2 = groupNorm_eager(tensor_eager_1)
+            ret2.backward()
+            self.assertEqual(
+                (tensor_1.grad.numpy() == tensor_eager_1.grad.numpy()).all(),
+                True,
+            )
 
 
 class TestGroupNormEager_fp16(unittest.TestCase):
@@ -367,20 +356,15 @@ class TestGroupNormEager_fp16(unittest.TestCase):
             groupNorm = paddle.nn.GroupNorm(num_channels=32, num_groups=4)
             ret1 = groupNorm(tensor_1)
             ret1.backward()
-            with _test_eager_guard():
-                tensor_eager_1 = fluid.dygraph.to_variable(input)
-                tensor_eager_1.stop_gradient = False
-                groupNorm_eager = paddle.nn.GroupNorm(
-                    num_channels=32, num_groups=4
-                )
-                ret2 = groupNorm_eager(tensor_eager_1)
-                ret2.backward()
-                self.assertEqual(
-                    (
-                        tensor_1.grad.numpy() == tensor_eager_1.grad.numpy()
-                    ).all(),
-                    True,
-                )
+            tensor_eager_1 = fluid.dygraph.to_variable(input)
+            tensor_eager_1.stop_gradient = False
+            groupNorm_eager = paddle.nn.GroupNorm(num_channels=32, num_groups=4)
+            ret2 = groupNorm_eager(tensor_eager_1)
+            ret2.backward()
+            self.assertEqual(
+                (tensor_1.grad.numpy() == tensor_eager_1.grad.numpy()).all(),
+                True,
+            )
 
 
 if __name__ == '__main__':

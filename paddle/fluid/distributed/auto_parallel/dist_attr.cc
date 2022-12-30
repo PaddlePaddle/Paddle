@@ -318,8 +318,11 @@ bool operator==(const TensorDistAttr& lhs, const TensorDistAttr& rhs) {
   return true;
 }
 
-std::vector<std::string> OperatorDistAttr::fields_{
-    "process_mesh", "impl_type", "impl_idx", "execution_stream"};
+std::vector<std::string> OperatorDistAttr::fields_{"process_mesh",
+                                                   "impl_type",
+                                                   "impl_idx",
+                                                   "execution_stream",
+                                                   "scheduling_priority"};
 
 OperatorDistAttr::OperatorDistAttr(const OpDesc& op) : op_(&op) {
   VLOG(4) << "[OperatorDistAttr constructor] op type: " << op_->Type();
@@ -379,6 +382,7 @@ void OperatorDistAttr::initialize() {
   impl_type_ = kDefault;
   impl_idx_ = 0;
   execution_stream_ = kDefault;
+  scheduling_priority_ = 0;
 }
 
 void OperatorDistAttr::copy_from(const OperatorDistAttr& dist_attr) {
@@ -388,6 +392,7 @@ void OperatorDistAttr::copy_from(const OperatorDistAttr& dist_attr) {
   set_impl_type(dist_attr.impl_type());
   set_impl_idx(dist_attr.impl_idx());
   set_execution_stream(dist_attr.execution_stream());
+  set_scheduling_priority(dist_attr.scheduling_priority());
   set_annotated(dist_attr.annotated());
 }
 
@@ -667,6 +672,7 @@ std::string OperatorDistAttr::to_string() const {
   str += "impl_type: " + impl_type_ + ", ";
   str += "impl_idx: " + std::to_string(impl_idx_) + ", ";
   str += "execution_stream: " + execution_stream_ + ", ";
+  str += "scheduling_priority: " + std::to_string(scheduling_priority_) + ", ";
   str += "annotated: [" + str_join(annotated_) + "], ";
   str += "\nprocess_mesh: " + process_mesh_.to_string() + ", ";
   str += "\ninput_dist_attrs: [\n";
@@ -749,6 +755,9 @@ bool operator==(const OperatorDistAttr& lhs, const OperatorDistAttr& rhs) {
     return false;
   }
   if (lhs.execution_stream() != rhs.execution_stream()) {
+    return false;
+  }
+  if (lhs.scheduling_priority() != rhs.scheduling_priority()) {
     return false;
   }
   for (auto const& item : lhs.input_dist_attrs()) {

@@ -52,3 +52,15 @@ else()
   math_library(selected_rows_functor DEPS selected_rows_utils math_function
                blas mixed_vector)
 endif()
+
+if(WITH_ROCM)
+  hip_library(
+    gather_scatter_functor
+    SRCS gather_scatter_functor.cc gather_scatter_functor.cu
+    DEPS tensor)
+else()
+  cc_library(
+    gather_scatter_functor
+    SRCS gather_scatter_functor.cc gather_scatter_functor.cu
+    DEPS tensor)
+endif()

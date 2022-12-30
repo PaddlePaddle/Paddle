@@ -17,10 +17,53 @@
 #include <cuda_runtime.h>
 #include <device_launch_parameters.h>
 #include <stdio.h>
+#include <time.h>
+#include <algorithm>
+#include <random>
+#include <vector>
 #include "paddle/fluid/platform/enforce.h"
+
+DECLARE_bool(gpugraph_debug_gpu_memory);
 
 namespace paddle {
 namespace framework {
+
+/**
+ * @brief wrapper of the std::default_random_engine each construction will have
+ * different seeds.
+ */
+struct random_engine_wrapper_t {
+  std::default_random_engine engine;
+#if !defined(_WIN32)
+  random_engine_wrapper_t() {
+    timespec tp;
+    clock_gettime(CLOCK_REALTIME, &tp);
+    static std::atomic<unsigned long> x(  // NOLINT
+        static_cast<unsigned long>(1));   // NOLINT
+    std::seed_seq sseq = {
+        x++, x++, x++, static_cast<uint64_t>(tp.tv_sec * 1e9 + tp.tv_nsec)};
+    engine.seed(sseq);
+  }
+#endif
+};
+
+/**
+ * @brief Get a n-size vector<int>, but its element has unique shuffled int
+ * value (from 0 to n-1).
+ * @param n vector size
+ * @return the shuffled vector.
+ */
+inline std::vector<int> shuffle_int_vector(int n) {
+  random_engine_wrapper_t random_engine_wrapper;
+  std::vector<int> ret(n);
+  int i = 0;
+
+  for (auto& e : ret) {
+    e = i++;
+  }
+  std::shuffle(ret.begin(), ret.end(), random_engine_wrapper.engine);
+  return std::move(ret);
+}
 
 #define CUDA_CHECK(cmd)                                                       \
   do {                                                                        \
@@ -39,6 +82,9 @@ class CudaDeviceRestorer {
 };
 
 inline void debug_gpu_memory_info(int gpu_id, const char* desc) {
+  if (!FLAGS_gpugraph_debug_gpu_memory) {
+    return;
+  }
   CudaDeviceRestorer r;
 
   size_t avail{0};
@@ -52,11 +98,15 @@ inline void debug_gpu_memory_info(int gpu_id, const char* desc) {
   VLOG(0) << "updatex gpu memory on device " << gpu_id << ", "
           << "avail=" << avail / 1024.0 / 1024.0 / 1024.0 << "g, "
           << "total=" << total / 1024.0 / 1024.0 / 1024.0 << "g, "
-          << "use_rate=" << (total - avail) / double(total) << "%, "
+          << "use_rate=" << (total - avail) / static_cast<double>(total)
+          << "%, "
           << "desc=" << desc;
 }
 
 inline void debug_gpu_memory_info(const char* desc) {
+  if (!FLAGS_gpugraph_debug_gpu_memory) {
+    return;
+  }
   CudaDeviceRestorer r;
 
   int device_num = 0;
@@ -78,7 +128,8 @@ inline void debug_gpu_memory_info(const char* desc) {
     VLOG(0) << "update gpu memory on device " << i << ", "
             << "avail=" << avail / 1024.0 / 1024.0 / 1024.0 << "g, "
             << "total=" << total / 1024.0 / 1024.0 / 1024.0 << "g, "
-            << "use_rate=" << (total - avail) / double(total) << "%, "
+            << "use_rate=" << (total - avail) / static_cast<double>(total)
+            << "%, "
             << "desc=" << desc;
   }
 }
