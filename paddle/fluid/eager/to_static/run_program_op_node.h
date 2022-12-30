@@ -21,6 +21,7 @@
 #include "paddle/fluid/operators/run_program_op.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
+#include "paddle/utils/string/string_helper.h"
 
 namespace details {
 using Tensor = paddle::experimental::Tensor;
@@ -852,6 +853,9 @@ class GradNodeRunProgram : public egr::GradNodeBase {
   void ConstructParamGradTensors(
       const std::vector<paddle::experimental::Tensor> &param,
       std::vector<paddle::experimental::Tensor> *param_grad) {
+    auto param_grad_nams = PADDLE_GET_CONST(std::vector<std::string>,
+                                            attrs_.at("param_grad_names"));
+
     for (auto &t : param) {
       auto t_grad = egr::EagerUtils::unsafe_autograd_meta(t)->Grad();
       // In eager mode, the number of param_grad should be the same as
@@ -864,7 +868,20 @@ class GradNodeRunProgram : public egr::GradNodeBase {
       } else if (t_grad.is_selected_rows()) {
         param_grad->emplace_back(std::make_shared<phi::SelectedRows>());
       }
-      param_grad->back().set_name(t.name() + "@GRAD");
+
+      auto it = std::find_if(
+          param_grad_nams.begin(),
+          param_grad_nams.end(),
+          [&t](std::string grad_name) {
+            return paddle::string::ends_with(
+                grad_name, t.name() + paddle::framework::kGradVarSuffix);
+          });
+      if (it != param_grad_nams.end()) {
+        param_grad->back().set_name(*it);
+      } else {
+        param_grad->back().set_name(t.name() +
+                                    paddle::framework::kGradVarSuffix);
+      }
     }
   }
 

@@ -591,6 +591,20 @@ class PartialProgramLayer:
             infer_program = self.infer_program
         return infer_program.desc.block(0).op_size()
 
+    def _get_param_grad_names(self):
+        result = []
+        for param in self._params:
+            candidate = [
+                var.name
+                for var in self.backward_program.list_vars()
+                if var.name.endswith(param.name + '@GRAD')
+            ]
+            if candidate:
+                result.append(
+                    max(candidate, key=lambda name: name.count('grad/'))
+                )
+        return result
+
     def __call__(self, inputs):
         in_vars, out_vars = self._prepare(inputs)
 
@@ -608,6 +622,9 @@ class PartialProgramLayer:
             'program_id',
             self.program_id,
         ]
+        if self.training:
+            param_grad_names = self._get_param_grad_names()
+            attrs.extend(('param_grad_names', param_grad_names))
         if self._cuda_graph_capture_mode:
             attrs.extend(
                 (
