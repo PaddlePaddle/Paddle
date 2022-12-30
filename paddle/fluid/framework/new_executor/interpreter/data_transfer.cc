@@ -30,12 +30,12 @@ namespace interpreter {
 bool DataTranferHelper::apply(
     const phi::KernelKey& kernel_type_for_var,
     const framework::OpKernelType& expected_kernel_key,
+    const phi::DenseTensor* tensor,
     const std::string& var_name,
     std::string* new_var_name,
     std::vector<OpFuncNode>* op_func_nodes,
     bool use_local_scope,
     bool is_fetch_v2,
-    const phi::DenseTensor* tensor,
     bool skip_run) {
   bool is_transferred = false;
   auto* src_var_name = &var_name;
@@ -542,12 +542,12 @@ void ApplyDataTransform(const OpKernelType& expected_kernel_key,
         is_transferred =
             data_transfer_helper.apply(kernel_type_for_var,
                                        expected_kernel_key,
+                                       tensor_in,
                                        var_name,
                                        &new_var_name,
                                        new_op_func_nodes,
                                        use_local_scope,
                                        op_base->Type() == "fetch_v2",
-                                       tensor_in,
                                        skip_run);
       }
 

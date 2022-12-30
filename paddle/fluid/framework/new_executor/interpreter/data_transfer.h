@@ -36,12 +36,12 @@ class DataTranferHelper {
 
   bool apply(const phi::KernelKey& kernel_type_for_var,
              const framework::OpKernelType& expected_kernel_key,
+             const phi::DenseTensor* tensor,
              const std::string& var_name,
              std::string* new_var_name,
              std::vector<OpFuncNode>* new_op_func_nodes,
              bool use_local_scope,
              bool is_fetch_v2,
-             const phi::DenseTensor* tensor,
              bool skip_run = false);
 
   void RunAndConstructShareNode(const std::string& src_var_name,

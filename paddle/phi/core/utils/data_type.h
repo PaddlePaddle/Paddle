@@ -125,7 +125,6 @@ enum ProtoDataType {
   FP16 = 4,
   FP32 = 5,
   FP64 = 6,
-  RAW = 17,
   UINT8 = 20,
   INT8 = 21,
   BF16 = 22,
@@ -164,8 +163,6 @@ inline DataType TransToPhiDataType(const int& dtype) {
       return DataType::BOOL;
     case ProtoDataType::PSTRING:
       return DataType::PSTRING;
-    case ProtoDataType::RAW:
-      return DataType::ALL_DTYPE;
     default:
       return DataType::UNDEFINED;
   }

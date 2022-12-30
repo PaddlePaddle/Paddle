@@ -133,7 +133,7 @@ inline bool backends_are_same_class(const phi::Backend& l,
 
 inline bool NeedTransform(const phi::KernelKey& l, const phi::KernelKey& r) {
   return !backends_are_same_class(l.backend(), r.backend()) ||
-         (NeedTransformDataType(l, r)) ||
+         NeedTransformDataType(l, r) ||
          NeedTransformLayout(l.layout(), r.layout());
 }
 
