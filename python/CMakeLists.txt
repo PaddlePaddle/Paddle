@@ -119,7 +119,7 @@ if(WITH_TESTING)
   add_subdirectory(paddle/tests)
   add_subdirectory(paddle/fluid/tests)
   add_subdirectory(paddle/fluid/contrib/tests)
-  add_subdirectory(paddle/fluid/contrib/slim/tests)
+  add_subdirectory(paddle/static/quantization/tests)
 endif()
 
 if(NOT WITH_SETUP_INSTALL)

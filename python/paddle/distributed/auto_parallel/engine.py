@@ -1617,9 +1617,7 @@ class Engine:
             fetch_vars = self._fetch_vars["predict"]['outputs']
             dist_main_prog = self._dist_main_progs["predict"][self._cur_rank]
             if self._strategy.qat.enable and self._strategy.qat.onnx_format:
-                from paddle.fluid.contrib.slim.quantization import (
-                    QuantWeightPass,
-                )
+                from paddle.static.quantization import QuantWeightPass
 
                 self._logger.info("export quantized model.")
                 self._logger.info(
