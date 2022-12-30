@@ -138,6 +138,7 @@ if(WITH_TENSORRT)
   pass_library(reverse_roll_fuse_pass inference)
   pass_library(preln_layernorm_x_fuse_pass inference)
   pass_library(elementwise_groupnorm_act_pass inference)
+  pass_library(preln_elementwise_groupnorm_act_pass inference)
 endif()
 
 if(WITH_TENSORRT)

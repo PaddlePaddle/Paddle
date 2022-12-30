@@ -20,21 +20,19 @@ namespace paddle {
 namespace framework {
 namespace ir {
 //
-//
-//
 //  |           |
-// elementwise_add     fuse       |    |
-//       |              ->      skip_gn_act
-//   group_norm                      |
-//       |
-//      silu
-//       |
+// elementwise_add            fuse         |       |
+//   |         |               ->        preln_gn_act
+// other op  group_norm                    |       |
+//             |                        other op
+//            silu
+//             |
 
 class Graph;
 
-class SkipGroupNormActFusePass : public FusePassBase {
+class PrelnGroupNormActFusePass : public FusePassBase {
  public:
-  SkipGroupNormActFusePass() {
+  PrelnGroupNormActFusePass() {
     AddOpCompat(OpCompat("elementwise_add"))
         .AddInput("X")
         .IsTensor()
@@ -86,7 +84,7 @@ class SkipGroupNormActFusePass : public FusePassBase {
         .End();
   }
 
-  virtual ~SkipGroupNormActFusePass() {}
+  virtual ~PrelnGroupNormActFusePass() {}
 
  protected:
   void ApplyImpl(ir::Graph* graph) const override;
