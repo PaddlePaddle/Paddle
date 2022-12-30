@@ -23,11 +23,7 @@ from ...fluid.data_feeder import (
     check_type,
     check_variable_and_dtype,
 )
-from ...fluid.framework import (
-    _in_legacy_dygraph,
-    _non_static_mode,
-    in_dygraph_mode,
-)
+from ...fluid.framework import in_dygraph_mode
 from ...fluid.layer_helper import LayerHelper
 from ...framework import convert_np_dtype_to_dtype_, core
 from ...static import Variable
@@ -326,25 +322,20 @@ def gather_tree(ids, parents):
     if in_dygraph_mode():
         return _C_ops.gather_tree(ids, parents)
     else:
-        if _in_legacy_dygraph():
-            return _legacy_C_ops.gather_tree(ids, parents)
-        else:
-            helper = LayerHelper('gather_tree', **locals())
-            check_variable_and_dtype(
-                ids, 'ids', ['int32', 'int64'], 'gather_tree'
-            )
-            check_variable_and_dtype(
-                parents, 'parents', ['int32', 'int64'], 'gather_tree'
-            )
-            out = helper.create_variable_for_type_inference(dtype=ids.dtype)
+        helper = LayerHelper('gather_tree', **locals())
+        check_variable_and_dtype(ids, 'ids', ['int32', 'int64'], 'gather_tree')
+        check_variable_and_dtype(
+            parents, 'parents', ['int32', 'int64'], 'gather_tree'
+        )
+        out = helper.create_variable_for_type_inference(dtype=ids.dtype)
 
-            helper.append_op(
-                type="gather_tree",
-                inputs={"Ids": ids, "Parents": parents},
-                outputs={"Out": out},
-            )
+        helper.append_op(
+            type="gather_tree",
+            inputs={"Ids": ids, "Parents": parents},
+            outputs={"Out": out},
+        )
 
-            return out
+        return out
 
 
 @templatedoc()
@@ -385,35 +376,27 @@ def temporal_shift(x, seg_num, shift_ratio=0.25, name=None, data_format="NCHW"):
         )
     if in_dygraph_mode():
         return _C_ops.temporal_shift(x, seg_num, shift_ratio, data_format)
-    if _non_static_mode():
-        return _legacy_C_ops.temporal_shift(
-            x,
-            'seg_num',
-            seg_num,
-            'shift_ratio',
-            shift_ratio,
-            'data_format',
-            data_format,
+    else:
+        helper = LayerHelper("temporal_shift", **locals())
+        check_variable_and_dtype(
+            x, 'x', ['float32', 'float64'], 'temporal_shift'
         )
+        check_type(seg_num, 'seg_num', int, 'temporal_shift')
+        check_type(shift_ratio, 'shift_ratio', float, 'temporal_shift')
 
-    helper = LayerHelper("temporal_shift", **locals())
-    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'temporal_shift')
-    check_type(seg_num, 'seg_num', int, 'temporal_shift')
-    check_type(shift_ratio, 'shift_ratio', float, 'temporal_shift')
+        out = helper.create_variable_for_type_inference(dtype=x.dtype)
 
-    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+        if not isinstance(seg_num, int):
+            raise TypeError("seg_num must be int type.")
 
-    if not isinstance(seg_num, int):
-        raise TypeError("seg_num must be int type.")
-
-    helper.append_op(
-        type="temporal_shift",
-        inputs={"X": x},
-        outputs={"Out": out},
-        attrs={
-            "seg_num": seg_num,
-            "shift_ratio": shift_ratio,
-            "data_format": data_format,
-        },
-    )
-    return out
+        helper.append_op(
+            type="temporal_shift",
+            inputs={"X": x},
+            outputs={"Out": out},
+            attrs={
+                "seg_num": seg_num,
+                "shift_ratio": shift_ratio,
+                "data_format": data_format,
+            },
+        )
+        return out

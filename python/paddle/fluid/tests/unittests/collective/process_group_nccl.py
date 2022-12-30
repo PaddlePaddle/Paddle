@@ -488,6 +488,9 @@ class TestProcessGroupFp32(unittest.TestCase):
             task.wait()
 
         print("test reduce prod api ok")
+
+        test_reduce_with_zero_dim([], self.dtype, pg)
+
         # test Scatter
         # rank 0
         in_shape = list(self.shape)
@@ -599,6 +602,89 @@ class TestProcessGroupFp16(TestProcessGroupFp32):
     def config(self):
         self.dtype = "float16"
         self.shape = (4, 20, 20)
+
+
+def test_reduce_with_zero_dim(shape, dtype, pg):
+    # test Reduce With Zero Dim
+    # rank 0
+    x = np.random.random(shape).astype(dtype)
+    y = np.random.random(shape).astype(dtype)
+    tensor_x = paddle.to_tensor(x)
+    tensor_y = paddle.to_tensor(y)
+    sum_result = tensor_x + tensor_y
+    if pg.rank() == 0:
+        task = dist.reduce(tensor_x, 0, sync_op=True)
+        paddle.device.cuda.synchronize()
+    # rank 1
+    else:
+        task = dist.reduce(tensor_y, 0, sync_op=False)
+        task.wait()
+        paddle.device.cuda.synchronize()
+    if pg.rank() == 0:
+        assert np.array_equal(tensor_x, sum_result) and len(tensor_x.shape) == 0
+    print("test reduce with zero dim sum api ok\n")
+
+    # test reduce with zero dim max
+    # rank 0
+    x = np.random.random(shape).astype(dtype)
+    tensor_x = paddle.to_tensor(x)
+    # rank 1
+    y = np.random.random(shape).astype(dtype)
+    tensor_y = paddle.to_tensor(y)
+
+    max_result = paddle.maximum(tensor_x, tensor_y)
+
+    if pg.rank() == 0:
+        task = dist.reduce(tensor_x, 0, dist.ReduceOp.MAX, sync_op=False)
+        task.wait()
+        assert np.array_equal(tensor_x, max_result) and len(tensor_x.shape) == 0
+    else:
+        task = dist.reduce(tensor_y, 0, dist.ReduceOp.MAX, sync_op=False)
+        task.wait()
+
+    print("test reduce with zero dim max api ok")
+
+    # test reduce with zero dim min
+    # rank 0
+    x = np.random.random(shape).astype(dtype)
+    tensor_x = paddle.to_tensor(x)
+    # rank 1
+    y = np.random.random(shape).astype(dtype)
+    tensor_y = paddle.to_tensor(y)
+
+    min_result = paddle.minimum(tensor_x, tensor_y)
+
+    if pg.rank() == 0:
+        task = dist.reduce(tensor_x, 0, dist.ReduceOp.MIN, sync_op=False)
+        task.wait()
+        assert np.array_equal(tensor_x, min_result) and len(tensor_x.shape) == 0
+    else:
+        task = dist.reduce(tensor_y, 0, dist.ReduceOp.MIN, sync_op=False)
+        task.wait()
+
+    print("test reduce with zero dim min api ok")
+
+    # test reduce with zero dim product
+    # rank 0
+    x = np.random.random(shape).astype(dtype)
+    tensor_x = paddle.to_tensor(x)
+    # rank 1
+    y = np.random.random(shape).astype(dtype)
+    tensor_y = paddle.to_tensor(y)
+
+    prod_result = np.multiply(x, y)
+
+    if pg.rank() == 0:
+        task = dist.reduce(tensor_x, 0, dist.ReduceOp.PROD, sync_op=False)
+        task.wait()
+        assert (
+            np.array_equal(tensor_x, prod_result) and len(tensor_x.shape) == 0
+        )
+    else:
+        task = dist.reduce(tensor_y, 0, dist.ReduceOp.PROD, sync_op=False)
+        task.wait()
+
+    print("test reduce with zero dim prod api ok")
 
 
 if __name__ == "__main__":

@@ -1593,7 +1593,7 @@ def conv2d_transpose(
                 output_size
             ):
                 raise ValueError(
-                    "filter_size should not be None when output_size is Tensor or contain Tensor in static mode."
+                    "filter_size should not be None when output_size is Tensor or contain Tensor in static graph mode."
                 )
         else:
             output_size = utils.convert_shape_to_list(output_size)
