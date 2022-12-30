@@ -31,8 +31,6 @@ def apply_pass(use_sharding=False):
     strategy.reinit = True
 
     if use_sharding:
-        os.environ["FLAGS_CONVERT_GRAPH_TO_PROGRAM"] = str(1)
-        os.environ["FLAGS_add_dependency_for_communication_op"] = 'false'
         sharding = strategy.sharding
         sharding.enable = True
         sharding.degree = 2
