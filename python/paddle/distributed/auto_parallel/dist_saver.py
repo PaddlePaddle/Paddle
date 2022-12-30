@@ -202,7 +202,9 @@ class DistributedSaver:
             if var_name not in used_outputs:
                 fetch_vars_names.pop(idx)
 
-        dist_feed_vars = [global_block.vars[name] for name in feed_vars_names]
+        dist_feed_vars = list(
+            reversed([global_block.vars[name] for name in feed_vars_names])
+        )
         dist_fetch_vars = [global_block.vars[name] for name in fetch_vars_names]
 
         dist_filename = filename + "_dist" + str(rank_id)

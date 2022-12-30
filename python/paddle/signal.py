@@ -14,7 +14,7 @@
 
 import paddle
 from paddle import _C_ops, _legacy_C_ops
-from paddle.fluid.framework import _in_legacy_dygraph, in_dygraph_mode
+from paddle.fluid.framework import in_dygraph_mode
 
 from .fft import fft_c2c, fft_c2r, fft_r2c
 from .fluid.data_feeder import check_variable_and_dtype
@@ -125,23 +125,10 @@ def frame(x, frame_length, hop_length, axis=-1, name=None):
                 f'but got ({frame_length}) > ({x.shape[axis]}).'
             )
 
-    op_type = 'frame'
-
     if in_dygraph_mode():
         return _C_ops.frame(x, frame_length, hop_length, axis)
-
-    if _in_legacy_dygraph():
-        attrs = (
-            'frame_length',
-            frame_length,
-            'hop_length',
-            hop_length,
-            'axis',
-            axis,
-        )
-        op = getattr(_legacy_C_ops, op_type)
-        out = op(x, *attrs)
     else:
+        op_type = 'frame'
         check_variable_and_dtype(
             x, 'x', ['int32', 'int64', 'float16', 'float32', 'float64'], op_type
         )

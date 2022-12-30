@@ -134,4 +134,7 @@ REGISTER_OP_CUDA_KERNEL(c_concat,
                         ops::CConcatOpCUDAKernel<double>,
                         ops::CConcatOpCUDAKernel<int>,
                         ops::CConcatOpCUDAKernel<int64_t>,
+#if NCCL_VERSION_CODE >= 21000
+                        ops::CConcatOpCUDAKernel<plat::bfloat16>,
+#endif
                         ops::CConcatOpCUDAKernel<plat::float16>);
