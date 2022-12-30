@@ -1347,7 +1347,7 @@ class GeneratorLoader(DataLoaderBase):
         self._iterable = iterable
         self._return_list = return_list
         if not self._feed_list:
-            raise Exception("Feed list must be given under static mode.")
+            raise Exception("Feed list must be given under static graph mode.")
         self._use_double_buffer = use_double_buffer
         self._capacity = capacity
         if not self._iterable:

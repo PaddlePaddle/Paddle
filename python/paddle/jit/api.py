@@ -195,7 +195,7 @@ def to_static(
 ):
     """
     Converts imperative dygraph APIs into declarative function APIs. Decorator
-    @to_static handles the Program and Executor of static mode and returns
+    @to_static handles the Program and Executor of static graph mode and returns
     the result as dygraph Tensor(s). Users could use the returned dygraph
     Tensor(s) to do imperative training, inference, or other operations. If the
     decorated function calls other imperative function, the called one will be

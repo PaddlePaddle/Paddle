@@ -1593,7 +1593,7 @@ def adaptive_avg_pool2d(x, output_size, data_format='NCHW', name=None):
             item.numpy().item(0) if isinstance(item, Variable) else item
             for item in output_size
         ]
-    # output_size support Variable in static mode
+    # output_size support Variable in static graph mode
     elif utils._contain_var(output_size):
         output_size = utils._convert_to_tensor_list(output_size)
 
