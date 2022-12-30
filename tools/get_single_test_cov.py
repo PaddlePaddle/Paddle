@@ -25,7 +25,8 @@ def getFNDAFile(rootPath, test):
     if find_file_cmd.read() != "":
         print("%s is a c++ unittest" % test)
         with open(
-            "%s/build/ut_map/simple_test/base_fnda.json" % rootPath, 'r'
+            "%s/build/ut_map/simple_precision_test/base_fnda.json" % rootPath,
+            'r',
         ) as load_f:
             fnda_base_dict = json.load(load_f)
     # analyse fnda
@@ -189,7 +190,7 @@ def getCovinfo(rootPath, test):
 
     os.system('rm -rf %s/paddle' % ut_map_path)
     os.system('rm -rf %s/coverage.info' % ut_map_path)
-    if test == "simple_test":
+    if test == "simple_precision_test":
         getBaseFnda(rootPath, test)
     else:
         getFNDAFile(rootPath, test)

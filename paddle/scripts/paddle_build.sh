@@ -1990,7 +1990,7 @@ set +x
             fi
             read testcase <<< $(echo "$line"|grep -oEi "\w+$")
 
-            if [[ "$testcase" == "simple_test" ]]; then
+            if [[ "$testcase" == "simple_precision_test" ]]; then
                 continue
             fi
 
@@ -2038,7 +2038,7 @@ set -x
     mkdir -p ${PADDLE_ROOT}/build/ut_map
     mkdir -p ${PADDLE_ROOT}/build/pytest
     #run all unittest to get the coverage information of .c and .h files
-    precise_card_test_single "^simple_test$" 1
+    precise_card_test_single "^simple_precision_test$" 1
     wait;
     precise_card_test_single "$single_card_tests" 1
     precise_card_test_single "$single_card_tests_1" 1
