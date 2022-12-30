@@ -1135,7 +1135,6 @@ class Optimizer:
             shape=[np.sum(shape)],
             belong_to_optimizer=True,
         )
-        flatten_param.stop_gradient = False
 
         flatten_grad = self.helper.create_global_variable(
             name='flatten_grad',
@@ -1146,9 +1145,35 @@ class Optimizer:
         )
 
         if framework._non_static_mode():
-            use_align = False
-        else:
-            use_align = True
+            flatten_param.stop_gradient = False
+            _legacy_C_ops.coalesce_tensor(
+                need_flatten_params,
+                need_flatten_params,
+                flatten_param,
+                "copy_data",
+                True,
+                "use_align",
+                False,
+                "dtype",
+                need_flatten_params[0].dtype,
+            )
+
+            _legacy_C_ops.coalesce_tensor(
+                need_flatten_grads,
+                need_flatten_grads,
+                flatten_grad,
+                "copy_data",
+                True,
+                "use_align",
+                False,
+                "dtype",
+                need_flatten_grads[0].dtype,
+            )
+            return [(flatten_param, flatten_grad)]
+
+        flatten_param.trainable = True
+        flatten_param.optimize_attr = need_flatten_params[0].optimize_attr
+        flatten_param.regularizer = need_flatten_params[0].regularizer
 
         block = need_flatten_params[0].block
         with program_guard(default_main_program()):
@@ -1161,7 +1186,7 @@ class Optimizer:
                 },
                 attrs={
                     "copy_data": True,
-                    "use_align": use_align,
+                    "use_align": True,
                     "align_size": self._align_size,
                     "dtype": need_flatten_params[0].dtype,
                 },
@@ -1176,21 +1201,20 @@ class Optimizer:
                 },
                 attrs={
                     "copy_data": True,
-                    "use_align": use_align,
+                    "use_align": True,
                     "align_size": self._align_size,
                     "dtype": need_flatten_grads[0].dtype,
                 },
             )
 
-        if not framework._non_static_mode():
-            # NOTE(zhiqiu): the initializer should be set after coalesce_tensor op,
-            # so the shape of flatten_param and flatten_grad will be inferred.
-            self.helper.set_variable_initializer(
-                flatten_param, initializer=Constant(0.0)
-            )
-            self.helper.set_variable_initializer(
-                flatten_grad, initializer=Constant(0.0)
-            )
+        # NOTE(zhiqiu): the initializer should be set after coalesce_tensor op,
+        # so the shape of flatten_param and flatten_grad will be inferred.
+        self.helper.set_variable_initializer(
+            flatten_param, initializer=Constant(0.0)
+        )
+        self.helper.set_variable_initializer(
+            flatten_grad, initializer=Constant(0.0)
+        )
 
         return [(flatten_param, flatten_grad)]
 
