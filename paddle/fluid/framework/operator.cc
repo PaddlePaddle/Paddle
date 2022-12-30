@@ -1603,11 +1603,11 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   }
 #endif
 
-  auto exe_ctx = ExecutionContext(*this, scope, *dev_ctx, *runtime_ctx);
   // using cache
   if (kernel_type_.get()) {
     dev_ctx = pool.Get(kernel_type_->place_);
   }
+  auto exe_ctx = ExecutionContext(*this, scope, *dev_ctx, *runtime_ctx);
 
 // TODO(Liu-xiandong): Now we are using too much if-else and hard code in XPU
 // device, it's ugly, and we will refactor in the future.
@@ -1679,12 +1679,12 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
               phi_kernel_name, phi_kernel_key)));
 
       if (phi_kernel_->IsValid()) {
-        VLOG(6) << "Static mode ChoosePhiKernel - kernel name: "
+        VLOG(6) << "Static graph mode ChoosePhiKernel - kernel name: "
                 << phi_kernel_name << " | kernel key: " << phi_kernel_key
                 << " | kernel: " << *phi_kernel_;
       } else {
-        VLOG(6) << "Static mode ChoosePhiKernel - kernel `" << phi_kernel_name
-                << "` not found.";
+        VLOG(6) << "Static graph mode ChoosePhiKernel - kernel `"
+                << phi_kernel_name << "` not found.";
       }
     } else {
       phi_kernel_name = kernel_signature_->name;
@@ -1815,7 +1815,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
 
         dev_ctx = pool.Get(platform::CPUPlace());
         if (phi_kernel_->IsValid()) {
-          VLOG(6) << "Static mode PrepareImpl - kernel name: "
+          VLOG(6) << "Static graph mode PrepareImpl - kernel name: "
                   << phi_kernel_name << " | kernel key: " << phi_cpu_kernel_key
                   << " | kernel: " << *phi_kernel_;
           run_phi_kernel_ = true;
@@ -2083,11 +2083,11 @@ phi::KernelKey OperatorWithKernel::ChoosePhiKernel(
       phi_kernel_name, phi_kernel_key)));
 
   if (phi_kernel_->IsValid()) {
-    VLOG(6) << "Static mode ChoosePhiKernel - kernel name: " << phi_kernel_name
-            << " | kernel key: " << phi_kernel_key
+    VLOG(6) << "Static graph mode ChoosePhiKernel - kernel name: "
+            << phi_kernel_name << " | kernel key: " << phi_kernel_key
             << " | kernel: " << *phi_kernel_;
   } else {
-    VLOG(6) << "Static mode ChoosePhiKernel - kernel `" << phi_kernel_name
+    VLOG(6) << "Static graph mode ChoosePhiKernel - kernel `" << phi_kernel_name
             << "` not found.";
   }
   return phi_kernel_key;
@@ -2715,7 +2715,23 @@ proto::VarType::Type OperatorWithKernel::IndicateDataType(
   proto::VarType::Type dafault_data_type =
       static_cast<proto::VarType::Type>(-1);
   proto::VarType::Type data_type = dafault_data_type;
-  for (auto* name : ctx.InNameList()) {
+
+  auto in_name_list = ctx.InNameList();
+  if (Info().HasOpProtoAndChecker()) {
+    for (auto& attr : Info().Proto().attrs()) {
+      auto it =
+          std::find_if(in_name_list.begin(),
+                       in_name_list.end(),
+                       [&attr](const std::string* name) {
+                         return attr.support_tensor() && *name == attr.name();
+                       });
+      if (it != in_name_list.end()) {
+        in_name_list.erase(it);
+      }
+    }
+  }
+
+  for (auto* name : in_name_list) {
     if (ctx.InputSize(*name) == 1UL) {
       ParseInputDataType(ctx.InputVar(*name), *name, &data_type);
     } else {
@@ -3028,6 +3044,7 @@ void OperatorWithKernel::BuildPhiKernelContext(
         (i == 0 ? 0 : phi_kernel_context->OutputRangeAt(i - 1).second);
 
     if (it == ctx.outputs.end() || it->second.empty()) {
+      VLOG(4) << "Output " << output_names[i] << " not found";
       // Deal with the case that some outputs are not found or be NULL when run
       // the kernel.
       // For example : the outputs of matmul_grad are dx and dy,
@@ -3073,6 +3090,7 @@ void OperatorWithKernel::BuildPhiKernelContext(
               framework::ToTypeName(var->Type())));
         }
       } else {
+        VLOG(4) << "Output " << output_names[i] << " is nullptr";
         phi_kernel_context->EmplaceBackOutputWithoutSetRange(tensor_out);
       }
     }

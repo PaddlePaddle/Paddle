@@ -32,8 +32,6 @@ from ..layers import collective
 from paddle.fluid.dygraph import base as imperative_base
 from paddle.fluid.framework import (
     ParamBase,
-    _in_legacy_dygraph,
-    _non_static_mode,
     in_dygraph_mode,
 )
 
@@ -302,23 +300,7 @@ def _reshape_inplace(x, shape):
 
 @framework.dygraph_only
 def _split_tensors(coalesced_grads_and_grad_vars):
-    if _in_legacy_dygraph():
-        for (
-            coalesced_grad,
-            origin_grad_vars,
-            grad_shapes,
-        ) in coalesced_grads_and_grad_vars:
-            grad_var_len = [np.prod(g_shape) for g_shape in grad_shapes]
-            framework._dygraph_tracer().trace_op(
-                type='split',
-                inputs={'X': coalesced_grad},
-                outputs={'Out': origin_grad_vars},
-                attrs={'sections': grad_var_len, 'axis': 0},
-            )
-            for g_var, g_shape in zip(origin_grad_vars, grad_shapes):
-                _reshape_inplace(x=g_var, shape=g_shape)
-                assert g_var.shape == g_shape
-    elif in_dygraph_mode():
+    if in_dygraph_mode():
         for (
             coalesced_grad,
             origin_grad_vars,
@@ -587,8 +569,8 @@ class DataParallel(layers.Layer):
         super().__init__(layers.full_name() + "_data_parallel")
 
         assert (
-            _non_static_mode()
-        ), "It's not supported to construct DataParallel in static mode."
+            in_dygraph_mode()
+        ), "It's not supported to construct DataParallel in static graph mode."
 
         self._layers = layers
         self.find_unused_parameters = find_unused_parameters
@@ -701,21 +683,6 @@ class DataParallel(layers.Layer):
                 list(reversed(self.group_indices)),
                 is_sparse_gradient,
                 self.group.process_group,
-                [self.last_comm_buffer_size, self.comm_buffer_size],
-                self.find_unused_parameters,
-            )
-        elif _in_legacy_dygraph():
-            self.group_indices = core.assign_group_by_size(
-                trainable_parameters,
-                is_sparse_gradient,
-                [self.last_comm_buffer_size, self.comm_buffer_size],
-            )
-
-            self._reducer = core.Reducer(
-                trainable_parameters,
-                list(reversed(self.group_indices)),
-                is_sparse_gradient,
-                parallel_helper.__parallel_ctx__clz__,
                 [self.last_comm_buffer_size, self.comm_buffer_size],
                 self.find_unused_parameters,
             )

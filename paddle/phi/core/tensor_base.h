@@ -66,7 +66,8 @@ class TensorBase {
   /// \return The mutable data pointer value of type T.
   virtual void* AllocateFrom(Allocator* allocator,
                              DataType dtype,
-                             size_t requested_size = 0) = 0;
+                             size_t requested_size = 0,
+                             bool fake_alloc = false) = 0;
 
   /// \brief Return the type information of the derived class to support
   /// safely downcast in non-rtti environment.

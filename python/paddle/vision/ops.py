@@ -18,12 +18,7 @@ from paddle import _C_ops, _legacy_C_ops
 from paddle.tensor.math import _add_with_axis
 
 from ..fluid.data_feeder import check_type, check_variable_and_dtype
-from ..fluid.framework import (
-    Variable,
-    _in_legacy_dygraph,
-    _non_static_mode,
-    in_dygraph_mode,
-)
+from ..fluid.framework import Variable, in_dygraph_mode
 from ..fluid.initializer import Normal
 from ..fluid.layer_helper import LayerHelper
 from ..fluid.layers import utils
@@ -211,76 +206,56 @@ def yolo_loss(
         )
         return loss
 
-    if _non_static_mode():
-        loss, _, _ = _legacy_C_ops.yolov3_loss(
-            x,
-            gt_box,
-            gt_label,
-            gt_score,
-            'anchors',
-            anchors,
-            'anchor_mask',
-            anchor_mask,
-            'class_num',
-            class_num,
-            'ignore_thresh',
-            ignore_thresh,
-            'downsample_ratio',
-            downsample_ratio,
-            'use_label_smooth',
-            use_label_smooth,
-            'scale_x_y',
-            scale_x_y,
+    else:
+        helper = LayerHelper('yolov3_loss', **locals())
+
+        check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'yolo_loss')
+        check_variable_and_dtype(
+            gt_box, 'gt_box', ['float32', 'float64'], 'yolo_loss'
+        )
+        check_variable_and_dtype(gt_label, 'gt_label', 'int32', 'yolo_loss')
+        check_type(anchors, 'anchors', (list, tuple), 'yolo_loss')
+        check_type(anchor_mask, 'anchor_mask', (list, tuple), 'yolo_loss')
+        check_type(class_num, 'class_num', int, 'yolo_loss')
+        check_type(ignore_thresh, 'ignore_thresh', float, 'yolo_loss')
+        check_type(use_label_smooth, 'use_label_smooth', bool, 'yolo_loss')
+
+        loss = helper.create_variable_for_type_inference(dtype=x.dtype)
+
+        objectness_mask = helper.create_variable_for_type_inference(
+            dtype='int32'
+        )
+        gt_match_mask = helper.create_variable_for_type_inference(dtype='int32')
+
+        inputs = {
+            "X": x,
+            "GTBox": gt_box,
+            "GTLabel": gt_label,
+        }
+        if gt_score is not None:
+            inputs["GTScore"] = gt_score
+
+        attrs = {
+            "anchors": anchors,
+            "anchor_mask": anchor_mask,
+            "class_num": class_num,
+            "ignore_thresh": ignore_thresh,
+            "downsample_ratio": downsample_ratio,
+            "use_label_smooth": use_label_smooth,
+            "scale_x_y": scale_x_y,
+        }
+
+        helper.append_op(
+            type='yolov3_loss',
+            inputs=inputs,
+            outputs={
+                'Loss': loss,
+                'ObjectnessMask': objectness_mask,
+                'GTMatchMask': gt_match_mask,
+            },
+            attrs=attrs,
         )
         return loss
-
-    helper = LayerHelper('yolov3_loss', **locals())
-
-    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'yolo_loss')
-    check_variable_and_dtype(
-        gt_box, 'gt_box', ['float32', 'float64'], 'yolo_loss'
-    )
-    check_variable_and_dtype(gt_label, 'gt_label', 'int32', 'yolo_loss')
-    check_type(anchors, 'anchors', (list, tuple), 'yolo_loss')
-    check_type(anchor_mask, 'anchor_mask', (list, tuple), 'yolo_loss')
-    check_type(class_num, 'class_num', int, 'yolo_loss')
-    check_type(ignore_thresh, 'ignore_thresh', float, 'yolo_loss')
-    check_type(use_label_smooth, 'use_label_smooth', bool, 'yolo_loss')
-
-    loss = helper.create_variable_for_type_inference(dtype=x.dtype)
-
-    objectness_mask = helper.create_variable_for_type_inference(dtype='int32')
-    gt_match_mask = helper.create_variable_for_type_inference(dtype='int32')
-
-    inputs = {
-        "X": x,
-        "GTBox": gt_box,
-        "GTLabel": gt_label,
-    }
-    if gt_score is not None:
-        inputs["GTScore"] = gt_score
-
-    attrs = {
-        "anchors": anchors,
-        "anchor_mask": anchor_mask,
-        "class_num": class_num,
-        "ignore_thresh": ignore_thresh,
-        "downsample_ratio": downsample_ratio,
-        "use_label_smooth": use_label_smooth,
-        "scale_x_y": scale_x_y,
-    }
-
-    helper.append_op(
-        type='yolov3_loss',
-        inputs=inputs,
-        outputs={
-            'Loss': loss,
-            'ObjectnessMask': objectness_mask,
-            'GTMatchMask': gt_match_mask,
-        },
-        attrs=attrs,
-    )
-    return loss
 
 
 def yolo_box(
@@ -409,63 +384,41 @@ def yolo_box(
         )
         return boxes, scores
 
-    if _non_static_mode():
-        boxes, scores = _legacy_C_ops.yolo_box(
-            x,
-            img_size,
-            'anchors',
-            anchors,
-            'class_num',
-            class_num,
-            'conf_thresh',
-            conf_thresh,
-            'downsample_ratio',
-            downsample_ratio,
-            'clip_bbox',
-            clip_bbox,
-            'scale_x_y',
-            scale_x_y,
-            'iou_aware',
-            iou_aware,
-            'iou_aware_factor',
-            iou_aware_factor,
+    else:
+        helper = LayerHelper('yolo_box', **locals())
+
+        check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'yolo_box')
+        check_variable_and_dtype(img_size, 'img_size', 'int32', 'yolo_box')
+        check_type(anchors, 'anchors', (list, tuple), 'yolo_box')
+        check_type(conf_thresh, 'conf_thresh', float, 'yolo_box')
+
+        boxes = helper.create_variable_for_type_inference(dtype=x.dtype)
+        scores = helper.create_variable_for_type_inference(dtype=x.dtype)
+
+        attrs = {
+            "anchors": anchors,
+            "class_num": class_num,
+            "conf_thresh": conf_thresh,
+            "downsample_ratio": downsample_ratio,
+            "clip_bbox": clip_bbox,
+            "scale_x_y": scale_x_y,
+            "iou_aware": iou_aware,
+            "iou_aware_factor": iou_aware_factor,
+        }
+
+        helper.append_op(
+            type='yolo_box',
+            inputs={
+                "X": x,
+                "ImgSize": img_size,
+            },
+            outputs={
+                'Boxes': boxes,
+                'Scores': scores,
+            },
+            attrs=attrs,
         )
         return boxes, scores
-
-    helper = LayerHelper('yolo_box', **locals())
-
-    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'yolo_box')
-    check_variable_and_dtype(img_size, 'img_size', 'int32', 'yolo_box')
-    check_type(anchors, 'anchors', (list, tuple), 'yolo_box')
-    check_type(conf_thresh, 'conf_thresh', float, 'yolo_box')
-
-    boxes = helper.create_variable_for_type_inference(dtype=x.dtype)
-    scores = helper.create_variable_for_type_inference(dtype=x.dtype)
-
-    attrs = {
-        "anchors": anchors,
-        "class_num": class_num,
-        "conf_thresh": conf_thresh,
-        "downsample_ratio": downsample_ratio,
-        "clip_bbox": clip_bbox,
-        "scale_x_y": scale_x_y,
-        "iou_aware": iou_aware,
-        "iou_aware_factor": iou_aware_factor,
-    }
-
-    helper.append_op(
-        type='yolo_box',
-        inputs={
-            "X": x,
-            "ImgSize": img_size,
-        },
-        outputs={
-            'Boxes': boxes,
-            'Scores': scores,
-        },
-        attrs=attrs,
-    )
-    return boxes, scores
 
 
 def prior_box(
@@ -587,31 +540,6 @@ def prior_box(
         )
         return box, var
 
-    if _in_legacy_dygraph():
-        attrs = (
-            'min_sizes',
-            min_sizes,
-            'aspect_ratios',
-            aspect_ratios,
-            'variances',
-            variance,
-            'flip',
-            flip,
-            'clip',
-            clip,
-            'step_w',
-            steps[0],
-            'step_h',
-            steps[1],
-            'offset',
-            offset,
-            'min_max_aspect_ratios_order',
-            min_max_aspect_ratios_order,
-        )
-        if cur_max_sizes is not None:
-            attrs += ('max_sizes', cur_max_sizes)
-        box, var = _legacy_C_ops.prior_box(input, image, *attrs)
-        return box, var
     else:
         attrs = {
             'min_sizes': min_sizes,
@@ -783,36 +711,6 @@ def box_coder(
             raise TypeError("Input prior_box_var must be Variable or list")
         return output_box
 
-    if _in_legacy_dygraph():
-        if isinstance(prior_box_var, Variable):
-            output_box = _legacy_C_ops.box_coder(
-                prior_box,
-                prior_box_var,
-                target_box,
-                "code_type",
-                code_type,
-                "box_normalized",
-                box_normalized,
-                "axis",
-                axis,
-            )
-        elif isinstance(prior_box_var, list):
-            output_box = _legacy_C_ops.box_coder(
-                prior_box,
-                None,
-                target_box,
-                "code_type",
-                code_type,
-                "box_normalized",
-                box_normalized,
-                "axis",
-                axis,
-                "variance",
-                prior_box_var,
-            )
-        else:
-            raise TypeError("Input prior_box_var must be Variable or list")
-        return output_box
     else:
         helper = LayerHelper("box_coder", **locals())
 
@@ -985,35 +883,6 @@ def deform_conv2d(
             groups,
             1,
         )
-        if bias is not None:
-            out = _add_with_axis(pre_bias, bias, axis=1)
-        else:
-            out = pre_bias
-    elif _in_legacy_dygraph():
-        attrs = (
-            'strides',
-            stride,
-            'paddings',
-            padding,
-            'dilations',
-            dilation,
-            'deformable_groups',
-            deformable_groups,
-            'groups',
-            groups,
-            'im2col_step',
-            1,
-        )
-        if use_deform_conv2d_v1:
-            op_type = 'deformable_conv_v1'
-            pre_bias = getattr(_legacy_C_ops, op_type)(
-                x, offset, weight, *attrs
-            )
-        else:
-            op_type = 'deformable_conv'
-            pre_bias = getattr(_legacy_C_ops, op_type)(
-                x, offset, mask, weight, *attrs
-            )
         if bias is not None:
             out = _add_with_axis(pre_bias, bias, axis=1)
         else:
@@ -1370,31 +1239,6 @@ def distribute_fpn_proposals(
         )
         return multi_rois, restore_ind, rois_num_per_level
 
-    if _non_static_mode():
-        assert (
-            rois_num is not None
-        ), "rois_num should not be None in dygraph mode."
-        attrs = (
-            'min_level',
-            min_level,
-            'max_level',
-            max_level,
-            'refer_level',
-            refer_level,
-            'refer_scale',
-            refer_scale,
-            'pixel_offset',
-            pixel_offset,
-        )
-        (
-            multi_rois,
-            restore_ind,
-            rois_num_per_level,
-        ) = _legacy_C_ops.distribute_fpn_proposals(
-            fpn_rois, rois_num, num_lvl, num_lvl, *attrs
-        )
-        return multi_rois, restore_ind, rois_num_per_level
-
     else:
         check_variable_and_dtype(
             fpn_rois,
@@ -1472,19 +1316,19 @@ def read_file(filename, name=None):
             # [142915]
     """
 
-    if _non_static_mode():
+    if in_dygraph_mode():
         return _legacy_C_ops.read_file('filename', filename)
+    else:
+        inputs = dict()
+        attrs = {'filename': filename}
 
-    inputs = dict()
-    attrs = {'filename': filename}
+        helper = LayerHelper("read_file", **locals())
+        out = helper.create_variable_for_type_inference('uint8')
+        helper.append_op(
+            type="read_file", inputs=inputs, attrs=attrs, outputs={"Out": out}
+        )
 
-    helper = LayerHelper("read_file", **locals())
-    out = helper.create_variable_for_type_inference('uint8')
-    helper.append_op(
-        type="read_file", inputs=inputs, attrs=attrs, outputs={"Out": out}
-    )
-
-    return out
+        return out
 
 
 def decode_jpeg(x, mode='unchanged', name=None):
@@ -1524,19 +1368,17 @@ def decode_jpeg(x, mode='unchanged', name=None):
     """
     if in_dygraph_mode():
         return _C_ops.decode_jpeg(x, mode, _current_expected_place())
-    elif _non_static_mode():
-        return _legacy_C_ops.decode_jpeg(x, "mode", mode)
+    else:
+        inputs = {'X': x}
+        attrs = {"mode": mode}
 
-    inputs = {'X': x}
-    attrs = {"mode": mode}
+        helper = LayerHelper("decode_jpeg", **locals())
+        out = helper.create_variable_for_type_inference('uint8')
+        helper.append_op(
+            type="decode_jpeg", inputs=inputs, attrs=attrs, outputs={"Out": out}
+        )
 
-    helper = LayerHelper("decode_jpeg", **locals())
-    out = helper.create_variable_for_type_inference('uint8')
-    helper.append_op(
-        type="decode_jpeg", inputs=inputs, attrs=attrs, outputs={"Out": out}
-    )
-
-    return out
+        return out
 
 
 def psroi_pool(x, boxes, boxes_num, output_size, spatial_scale=1.0, name=None):
@@ -1594,36 +1436,22 @@ def psroi_pool(x, boxes, boxes_num, output_size, spatial_scale=1.0, name=None):
             output_channels,
             spatial_scale,
         )
-    if _in_legacy_dygraph():
-        return _legacy_C_ops.psroi_pool(
-            x,
-            boxes,
-            boxes_num,
-            "output_channels",
-            output_channels,
-            "spatial_scale",
-            spatial_scale,
-            "pooled_height",
-            pooled_height,
-            "pooled_width",
-            pooled_width,
+    else:
+        helper = LayerHelper('psroi_pool', **locals())
+        dtype = helper.input_dtype()
+        out = helper.create_variable_for_type_inference(dtype)
+        helper.append_op(
+            type='psroi_pool',
+            inputs={'X': x, 'ROIs': boxes},
+            outputs={'Out': out},
+            attrs={
+                'output_channels': output_channels,
+                'spatial_scale': spatial_scale,
+                'pooled_height': pooled_height,
+                'pooled_width': pooled_width,
+            },
         )
-
-    helper = LayerHelper('psroi_pool', **locals())
-    dtype = helper.input_dtype()
-    out = helper.create_variable_for_type_inference(dtype)
-    helper.append_op(
-        type='psroi_pool',
-        inputs={'X': x, 'ROIs': boxes},
-        outputs={'Out': out},
-        attrs={
-            'output_channels': output_channels,
-            'spatial_scale': spatial_scale,
-            'pooled_height': pooled_height,
-            'pooled_width': pooled_width,
-        },
-    )
-    return out
+        return out
 
 
 class PSRoIPool(Layer):
@@ -1721,23 +1549,6 @@ def roi_pool(x, boxes, boxes_num, output_size, spatial_scale=1.0, name=None):
         return _C_ops.roi_pool(
             x, boxes, boxes_num, pooled_height, pooled_width, spatial_scale
         )
-    if _in_legacy_dygraph():
-        assert (
-            boxes_num is not None
-        ), "boxes_num should not be None in dygraph mode."
-        pool_out, argmaxes = _legacy_C_ops.roi_pool(
-            x,
-            boxes,
-            boxes_num,
-            "pooled_height",
-            pooled_height,
-            "pooled_width",
-            pooled_width,
-            "spatial_scale",
-            spatial_scale,
-        )
-        return pool_out
-
     else:
         check_variable_and_dtype(x, 'x', ['float32'], 'roi_pool')
         check_variable_and_dtype(boxes, 'boxes', ['float32'], 'roi_pool')
@@ -1903,27 +1714,6 @@ def roi_align(
             sampling_ratio,
             aligned,
         )
-    if _in_legacy_dygraph():
-        assert (
-            boxes_num is not None
-        ), "boxes_num should not be None in dygraph mode."
-        align_out = _legacy_C_ops.roi_align(
-            x,
-            boxes,
-            boxes_num,
-            "pooled_height",
-            pooled_height,
-            "pooled_width",
-            pooled_width,
-            "spatial_scale",
-            spatial_scale,
-            "sampling_ratio",
-            sampling_ratio,
-            "aligned",
-            aligned,
-        )
-        return align_out
-
     else:
         check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'roi_align')
         check_variable_and_dtype(
@@ -2143,18 +1933,16 @@ def nms(
         if in_dygraph_mode():
             return _C_ops.nms(boxes, iou_threshold)
 
-        if _non_static_mode():
-            return _legacy_C_ops.nms(boxes, 'iou_threshold', iou_threshold)
-
-        helper = LayerHelper('nms', **locals())
-        out = helper.create_variable_for_type_inference('int64')
-        helper.append_op(
-            type='nms',
-            inputs={'Boxes': boxes},
-            outputs={'KeepBoxesIdxs': out},
-            attrs={'iou_threshold': iou_threshold},
-        )
-        return out
+        else:
+            helper = LayerHelper('nms', **locals())
+            out = helper.create_variable_for_type_inference('int64')
+            helper.append_op(
+                type='nms',
+                inputs={'Boxes': boxes},
+                outputs={'KeepBoxesIdxs': out},
+                attrs={'iou_threshold': iou_threshold},
+            )
+            return out
 
     if scores is None:
         return _nms(boxes, iou_threshold)
@@ -2222,7 +2010,7 @@ def nms(
     if top_k is None:
         return keep_boxes_idxs[sorted_sub_indices]
 
-    if _non_static_mode():
+    if in_dygraph_mode():
         top_k = shape if shape < top_k else top_k
         _, topk_sub_indices = paddle.topk(scores[keep_boxes_idxs], top_k)
         return keep_boxes_idxs[topk_sub_indices]
@@ -2331,92 +2119,70 @@ def generate_proposals(
         )
 
         return rpn_rois, rpn_roi_probs, rpn_rois_num
-    elif _non_static_mode():
-        assert (
-            return_rois_num
-        ), "return_rois_num should be True in dygraph mode."
-        attrs = (
-            'pre_nms_topN',
-            pre_nms_top_n,
-            'post_nms_topN',
-            post_nms_top_n,
-            'nms_thresh',
-            nms_thresh,
-            'min_size',
-            min_size,
-            'eta',
-            eta,
-            'pixel_offset',
-            pixel_offset,
+    else:
+        helper = LayerHelper('generate_proposals_v2', **locals())
+
+        check_variable_and_dtype(
+            scores, 'scores', ['float32'], 'generate_proposals_v2'
         )
-        (
-            rpn_rois,
-            rpn_roi_probs,
-            rpn_rois_num,
-        ) = _legacy_C_ops.generate_proposals_v2(
-            scores, bbox_deltas, img_size, anchors, variances, *attrs
+        check_variable_and_dtype(
+            bbox_deltas, 'bbox_deltas', ['float32'], 'generate_proposals_v2'
         )
+        check_variable_and_dtype(
+            img_size,
+            'img_size',
+            ['float32', 'float64'],
+            'generate_proposals_v2',
+        )
+        check_variable_and_dtype(
+            anchors, 'anchors', ['float32'], 'generate_proposals_v2'
+        )
+        check_variable_and_dtype(
+            variances, 'variances', ['float32'], 'generate_proposals_v2'
+        )
+
+        rpn_rois = helper.create_variable_for_type_inference(
+            dtype=bbox_deltas.dtype
+        )
+        rpn_roi_probs = helper.create_variable_for_type_inference(
+            dtype=scores.dtype
+        )
+        outputs = {
+            'RpnRois': rpn_rois,
+            'RpnRoiProbs': rpn_roi_probs,
+        }
+        if return_rois_num:
+            rpn_rois_num = helper.create_variable_for_type_inference(
+                dtype='int32'
+            )
+            rpn_rois_num.stop_gradient = True
+            outputs['RpnRoisNum'] = rpn_rois_num
+
+        helper.append_op(
+            type="generate_proposals_v2",
+            inputs={
+                'Scores': scores,
+                'BboxDeltas': bbox_deltas,
+                'ImShape': img_size,
+                'Anchors': anchors,
+                'Variances': variances,
+            },
+            attrs={
+                'pre_nms_topN': pre_nms_top_n,
+                'post_nms_topN': post_nms_top_n,
+                'nms_thresh': nms_thresh,
+                'min_size': min_size,
+                'eta': eta,
+                'pixel_offset': pixel_offset,
+            },
+            outputs=outputs,
+        )
+        rpn_rois.stop_gradient = True
+        rpn_roi_probs.stop_gradient = True
+        if not return_rois_num:
+            rpn_rois_num = None
 
         return rpn_rois, rpn_roi_probs, rpn_rois_num
-
-    helper = LayerHelper('generate_proposals_v2', **locals())
-
-    check_variable_and_dtype(
-        scores, 'scores', ['float32'], 'generate_proposals_v2'
-    )
-    check_variable_and_dtype(
-        bbox_deltas, 'bbox_deltas', ['float32'], 'generate_proposals_v2'
-    )
-    check_variable_and_dtype(
-        img_size, 'img_size', ['float32', 'float64'], 'generate_proposals_v2'
-    )
-    check_variable_and_dtype(
-        anchors, 'anchors', ['float32'], 'generate_proposals_v2'
-    )
-    check_variable_and_dtype(
-        variances, 'variances', ['float32'], 'generate_proposals_v2'
-    )
-
-    rpn_rois = helper.create_variable_for_type_inference(
-        dtype=bbox_deltas.dtype
-    )
-    rpn_roi_probs = helper.create_variable_for_type_inference(
-        dtype=scores.dtype
-    )
-    outputs = {
-        'RpnRois': rpn_rois,
-        'RpnRoiProbs': rpn_roi_probs,
-    }
-    if return_rois_num:
-        rpn_rois_num = helper.create_variable_for_type_inference(dtype='int32')
-        rpn_rois_num.stop_gradient = True
-        outputs['RpnRoisNum'] = rpn_rois_num
-
-    helper.append_op(
-        type="generate_proposals_v2",
-        inputs={
-            'Scores': scores,
-            'BboxDeltas': bbox_deltas,
-            'ImShape': img_size,
-            'Anchors': anchors,
-            'Variances': variances,
-        },
-        attrs={
-            'pre_nms_topN': pre_nms_top_n,
-            'post_nms_topN': post_nms_top_n,
-            'nms_thresh': nms_thresh,
-            'min_size': min_size,
-            'eta': eta,
-            'pixel_offset': pixel_offset,
-        },
-        outputs=outputs,
-    )
-    rpn_rois.stop_gradient = True
-    rpn_roi_probs.stop_gradient = True
-    if not return_rois_num:
-        rpn_rois_num = None
-
-    return rpn_rois, rpn_roi_probs, rpn_rois_num
 
 
 def matrix_nms(
@@ -2530,31 +2296,6 @@ def matrix_nms(
             background_label,
             normalized,
         )
-        if not return_index:
-            index = None
-        if not return_rois_num:
-            rois_num = None
-        return out, rois_num, index
-    elif _in_legacy_dygraph():
-        attrs = (
-            'background_label',
-            background_label,
-            'score_threshold',
-            score_threshold,
-            'post_threshold',
-            post_threshold,
-            'nms_top_k',
-            nms_top_k,
-            'gaussian_sigma',
-            gaussian_sigma,
-            'use_gaussian',
-            use_gaussian,
-            'keep_top_k',
-            keep_top_k,
-            'normalized',
-            normalized,
-        )
-        out, index, rois_num = _legacy_C_ops.matrix_nms(bboxes, scores, *attrs)
         if not return_index:
             index = None
         if not return_rois_num:
