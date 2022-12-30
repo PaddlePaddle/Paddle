@@ -59,14 +59,24 @@ class CudnnConvDescManager {
     std::vector<int> new_input_shape_vec;
     bool is_sys_pad;
 
-    ~CudnnCacheInfo() {
-      if (x_desc) delete x_desc;
-      if (w_desc) delete w_desc;
-      if (b_desc) delete b_desc;
-      if (o_desc) delete o_desc;
-      if (conv_desc) delete conv_desc;
-      if (act_desc) delete act_desc;
-    }
+    // TODO(wilber): The destruction of cudnn descriptor depends on the
+    // phi::dynload::cudnn singleton, but when the process exits, the singleton
+    // destruction order cannot be determined.
+    // After testing, it is found that the phi::dynload::cudnn related singleton
+    // on Windows is destructed first, causing the descriptor to be destructed
+    // and failed, while the descriptor on Linux is destructed first, and the
+    // phi::dynload::cudnn singleton is destructed later, so that it is correct.
+    // To circumvent this problem, we rely entirely on freeing resources when
+    // the process exits.
+
+    // ~CudnnCacheInfo() {
+    //   if (x_desc) delete x_desc;
+    //   if (w_desc) delete w_desc;
+    //   if (b_desc) delete b_desc;
+    //   if (o_desc) delete o_desc;
+    //   if (conv_desc) delete conv_desc;
+    //   if (act_desc) delete act_desc;
+    // }
   };
 
   CudnnCacheInfo* GetCudnnCacheInfo(
