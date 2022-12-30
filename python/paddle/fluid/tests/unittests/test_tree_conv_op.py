@@ -17,9 +17,6 @@ import unittest
 import numpy as np
 from op_test import OpTest
 
-import paddle.fluid as fluid
-from paddle.fluid.framework import Program, program_guard
-
 
 def collect_node_patch(og, max_depth):
     """
@@ -164,36 +161,6 @@ class TestTreeConvOp(OpTest):
             axis=0,
         )
         return vec
-
-
-class TestTreeConv_OpError(unittest.TestCase):
-    def test_errors(self):
-        with program_guard(Program(), Program()):
-            nodes_vector_1 = np.random.random((10, 5)).astype("float32")
-            edge_set_1 = fluid.layers.data(
-                name='edge_set_1', shape=[10, 2], dtype='float32'
-            )
-            # the nodes_vector of tree_conv must be Variable.
-            self.assertRaises(
-                TypeError,
-                fluid.contrib.layers.tree_conv,
-                nodes_vector_1,
-                edge_set_1,
-                3,
-            )
-
-            nodes_vector_2 = fluid.layers.data(
-                name='vectors2', shape=[10, 5], dtype='float32'
-            )
-            edge_set_2 = np.random.random((10, 2)).astype("float32")
-            # the edge_set of tree_conv must be Variable.
-            self.assertRaises(
-                TypeError,
-                fluid.contrib.layers.tree_conv,
-                nodes_vector_2,
-                edge_set_2,
-                3,
-            )
 
 
 if __name__ == "__main__":

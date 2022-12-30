@@ -27,7 +27,6 @@ from ..data_feeder import convert_dtype
 import warnings
 from ..framework import (
     _get_paddle_place,
-    _in_legacy_dygraph,
     _in_eager_without_dygraph_check,
 )
 import paddle
@@ -113,11 +112,7 @@ _functional_dygraph_context_manager = None
 @signature_safe_contextmanager
 def param_guard(parameters):
     # Note: parameters is a reference of self._parameters or self._buffers
-    if (
-        in_declarative_mode()
-        and not framework._non_static_mode()
-        and parameters
-    ):
+    if in_declarative_mode() and not framework.in_dygraph_mode() and parameters:
         origin_parameters = parameters.copy()
         for name, var_base in parameters.items():
             if isinstance(var_base, list):
@@ -189,7 +184,7 @@ def enabled():
             print(fluid.dygraph.enabled())  # False
     """
     # TODO(jiabin): Make this check as in_dygraph_mode when we support default eager mode.
-    return framework._non_static_mode()
+    return framework.in_dygraph_mode()
 
 
 def enable_dygraph(place=None):
