@@ -254,7 +254,7 @@ def train_mlp_static(args, model, loss, opt_state=None, save_model=False):
     model.fit(dataset, epochs=1)
     model.save(os.path.join(args.output_dir, "static_save"))
     paddle.device.cuda.synchronize()
-    print("=============== predict in static mode =================")
+    print("=============== predict in static graph mode =================")
     out = model.predict(dataset, verbose=1000)
 
     if save_model:

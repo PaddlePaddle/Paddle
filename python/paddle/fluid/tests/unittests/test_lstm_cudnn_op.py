@@ -522,9 +522,11 @@ class TestCUDNNLstmOp(OpTest):
                 place, atol=1e-5, no_check_set=['Reserve', 'StateOut']
             )
         else:
+            paddle.enable_static()
             self.check_output_with_place(
                 place, no_check_set=['Reserve', 'StateOut']
             )
+            paddle.disable_static()
 
     def test_grad_with_place(self):
         place = core.CUDAPlace(0)
