@@ -188,7 +188,6 @@ def instance_norm(
     input, epsilon=1e-05, param_attr=None, bias_attr=None, name=None
 ):
     r"""
-    :api_attr: Static Graph
 
     **Instance Normalization Layer**
 
@@ -390,7 +389,6 @@ def data_norm(
     enable_scale_and_shift=False,
 ):
     r"""
-    :api_attr: Static Graph
 
     **Data Normalization Layer**
 
@@ -589,7 +587,6 @@ def group_norm(
     name=None,
 ):
     """
-    :api_attr: Static Graph
 
     **Group Normalization Layer**
 
@@ -1021,7 +1018,6 @@ def conv3d(
     data_format="NCDHW",
 ):
     r"""
-    :api_attr: Static Graph
 
     The convolution3D layer calculates the output based on the input, filter
     and strides, paddings, dilations, groups parameters. Input(Input) and
@@ -1124,19 +1120,6 @@ def conv3d(
         the same with input. If act is None, the tensor variable storing the
         convolution result, and if act is not None, the tensor variable storing
         convolution and non-linearity activation result.
-
-    Raises:
-        ValueError: If the type of `use_cudnn` is not bool.
-        ValueError: If `data_format` is not "NCDHW" or "NDHWC".
-        ValueError: If the channel dimmention of the input is less than or equal to zero.
-        ValueError: If `padding` is a string, but not "SAME" or "VALID".
-        ValueError: If `padding` is a tuple, but the element corresponding to the input's batch size is not 0
-            or the element corresponding to the input's channel is not 0.
-        ShapeError: If the input is not 5-D Tensor.
-        ShapeError: If the input's dimension size and filter's dimension size not equal.
-        ShapeError: If the dimension size of input minus the size of `stride` is not 2.
-        ShapeError: If the number of input channels is not equal to filter's channels * groups.
-        ShapeError: If the number of output channels is not be divided by groups.
 
     Examples:
         .. code-block:: python
@@ -1330,7 +1313,6 @@ def conv2d_transpose(
     data_format='NCHW',
 ):
     r"""
-    :api_attr: Static Graph
 
     The convolution2D transpose layer calculates the output based on the input,
     filter, and dilations, strides, paddings. Input(Input) and output(Output)
@@ -1375,24 +1357,38 @@ def conv2d_transpose(
 
         .. math::
 
-           H^\prime_{out} &= (H_{in} - 1) * strides[0] - pad_height_top - pad_height_bottom + dilations[0] * (H_f - 1) + 1 \\
-           W^\prime_{out} &= (W_{in} - 1) * strides[1] - pad_width_left - pad_width_right + dilations[1] * (W_f - 1) + 1 \\
+           H^\prime_{out} &= (H_{in} - 1) * strides[0] - 2 * paddings[0] + dilations[0] * (H_f - 1) + 1 \\
+           W^\prime_{out} &= (W_{in} - 1) * strides[1] - 2 * paddings[1] + dilations[1] * (W_f - 1) + 1 \\
            H_{out} &\in [ H^\prime_{out}, H^\prime_{out} + strides[0] ] \\
            W_{out} &\in [ W^\prime_{out}, W^\prime_{out} + strides[1] ]
 
-    Note:
-          The conv2d_transpose can be seen as the backward of the conv2d. For conv2d,
-          when stride > 1, conv2d maps multiple input shape to the same output shape,
-          so for conv2d_transpose, when stride > 1, input shape maps multiple output shape.
-          If output_size is None, :math:`H_{out} = H^\prime_{out}, W_{out} = W^\prime_{out}`;
-          else, the :math:`H_{out}` of the output size must between :math:`H^\prime_{out}`
-          and :math:`H^\prime_{out} + strides[0]`, and the :math:`W_{out}` of the output size must
-          between :math:`W^\prime_{out}` and :math:`W^\prime_{out} + strides[1]`,
-          conv2d_transpose can compute the kernel size automatically.
+        If `padding` = `"SAME"`:
+
+        .. math::
+            H^\prime_{out} &= \frac{(H_{in} + stride[0] - 1)}{stride[0]} \\
+            W^\prime_{out} &= \frac{(H_{in} + stride[1] - 1)}{stride[1]}
+
+        If `padding` = `"VALID"`:
+
+        .. math::
+            H^\prime_{out} &= (H_{in} - 1) * strides[0] + dilations[0] * (H_f - 1) + 1 \\
+            W^\prime_{out} &= (W_{in} − 1) * strides[1] + dilations[1] * (W_f − 1) + 1
+
+        If output_size is None, :math:`H_{out} = H^\prime_{out}, W_{out} = W^\prime_{out}`;
+        else, the :math:`H_{out}` of the output size must between :math:`H^\prime_{out}`
+        and :math:`H^\prime_{out} + strides[0]`, and the :math:`W_{out}` of the output size must
+        between :math:`W^\prime_{out}` and :math:`W^\prime_{out} + strides[1]`,
+
+        Since transposed convolution can be treated as the inverse of convolution, and according to the input-output formula for convolution,
+        different sized input feature layers may correspond to the same sized output feature layer,
+        the size of the output feature layer for a fixed sized input feature layer is not unique to transposed convolution
+
+        If `output_size` is specified, `conv2d_transpose` can compute the kernel size automatically.
 
     Args:
-        input(Tensor): 4-D Tensor with [N, C, H, W] or [N, H, W, C] format,
-                         its data type is float32 or float64.
+        input(Tensor): 4-D Tensor with [N, C, H, W] or [N, H, W, C] format where N is the batch_size,
+            C is the input_channels, H is the input_height and W is the input_width.
+            Its data type is float32 or float64.
         num_filters(int): The number of the filter. It is as same as the output
             image channel.
         output_size(int|tuple, optional): The output image size. If output size is a
@@ -1406,26 +1402,23 @@ def conv2d_transpose(
             Otherwise, filter_size_height = filter_size_width = filter_size. None if
             use output size to calculate filter_size. Default: None. filter_size and
             output_size should not be None at the same time.
-        stride(int|tuple, optional): The stride size. It means the stride in transposed convolution.
-            If stride is a tuple, it must contain two integers, (stride_height, stride_width).
-            Otherwise, stride_height = stride_width = stride. Default: stride = 1.
         padding(str|int|list|tuple, optional): The padding size. It means the number of zero-paddings
             on both sides for each dimension. If `padding` is a string, either 'VALID' or
             'SAME' which is the padding algorithm. If `padding` is a tuple or list,
-            it could be in three forms: `[pad_height, pad_width]` or
-            `[pad_height_top, pad_height_bottom, pad_width_left, pad_width_right]`,
-            and when `data_format` is `"NCHW"`, `padding` can be in the form
+            it could be in three forms:
+            (1) Contains 4 binary groups: when `data_format` is `"NCHW"`, `padding` can be in the form
             `[[0,0], [0,0], [pad_height_top, pad_height_bottom], [pad_width_left, pad_width_right]]`.
             when `data_format` is `"NHWC"`, `padding` can be in the form
             `[[0,0], [pad_height_top, pad_height_bottom], [pad_width_left, pad_width_right], [0,0]]`.
-            Default: padding = 0.
+            (2) Contains 4 integer values：`[pad_height_top, pad_height_bottom, pad_width_left, pad_width_right]`
+            (3) Contains 2 integer values：`[pad_height, pad_width]`, in this case, `padding_height_top = padding_height_bottom = padding_height`，
+            `padding_width_left = padding_width_right = padding_width`. If an integer, `padding_height = padding_width = padding`. Default: padding = 0.
+        stride(int|tuple, optional): The stride size. It means the stride in transposed convolution.
+            If stride is a tuple, it must contain two integers, (stride_height, stride_width).
+            Otherwise, stride_height = stride_width = stride. Default: stride = 1.
         dilation(int|tuple, optional): The dilation size. It means the spacing between the kernel points.
             If dilation is a tuple, it must contain two integers, (dilation_height, dilation_width).
             Otherwise, dilation_height = dilation_width = dilation. Default: dilation = 1.
-        filter_size(int|tuple, optional): The filter size. If filter_size is a tuple,
-            it must contain two integers, (filter_size_height, filter_size_width).
-            Otherwise, filter_size_height = filter_size_width = filter_size. None if
-            use output size to calculate filter_size. Default: None.
         groups(int, optional): The groups number of the Conv2d transpose layer. Inspired by
             grouped convolution in Alex Krizhevsky's Deep CNN paper, in which
             when group=2, the first half of the filters is only connected to the
@@ -1436,11 +1429,10 @@ def conv2d_transpose(
             of conv2d_transpose. If it is set to None or one attribute of ParamAttr, conv2d_transpose
             will create ParamAttr as param_attr. If the Initializer of the param_attr
             is not set, the parameter is initialized with Xavier. Default: None.
-        bias_attr (ParamAttr|bool, optional): The parameter attribute for the bias of conv2d_transpose.
-            If it is set to False, no bias will be added to the output units.
-            If it is set to None or one attribute of ParamAttr, conv2d_transpose
-            will create ParamAttr as bias_attr. If the Initializer of the bias_attr
-            is not set, the bias is initialized zero. Default: None.
+        bias_attr (ParamAttr|bool, optional): Specifies the object for the bias parameter attribute.
+            The default value is None, which means that the default bias parameter attribute is used.
+            For detailed information, please refer to :ref:`paramattr`.
+            The default bias initialisation for the conv2d_transpose operator is 0.0.
         use_cudnn(bool, optional): Use cudnn kernel or not, it is valid only when the cudnn
             library is installed. Default: True.
         act (str, optional): Activation type, if it is set to None, activation is not appended.
@@ -1601,7 +1593,7 @@ def conv2d_transpose(
                 output_size
             ):
                 raise ValueError(
-                    "filter_size should not be None when output_size is Tensor or contain Tensor in static mode."
+                    "filter_size should not be None when output_size is Tensor or contain Tensor in static graph mode."
                 )
         else:
             output_size = utils.convert_shape_to_list(output_size)
@@ -1692,7 +1684,6 @@ def conv3d_transpose(
     data_format='NCDHW',
 ):
     r"""
-    :api_attr: Static Graph
 
     The convolution3D transpose layer calculates the output based on the input,
     filter, and dilations, strides, paddings. Input(Input) and output(Output)
@@ -1744,17 +1735,33 @@ def conv3d_transpose(
            H_{out} &\in [ H^\prime_{out}, H^\prime_{out} + strides[1] ] \\
            W_{out} &\in [ W^\prime_{out}, W^\prime_{out} + strides[2] ]
 
-    Note:
-          The conv3d_transpose can be seen as the backward of the conv3d. For conv3d,
-          when stride > 1, conv3d maps multiple input shape to the same output shape,
-          so for conv3d_transpose, when stride > 1, input shape maps multiple output shape.
-          If output_size is None, :math:`H_{out} = H^\prime_{out}, :math:`H_{out} = \
-          H^\prime_{out}, W_{out} = W^\prime_{out}`; else, the :math:`D_{out}` of the output
-          size must between :math:`D^\prime_{out}` and :math:`D^\prime_{out} + strides[0]`,
-          the :math:`H_{out}` of the output size must between :math:`H^\prime_{out}`
-          and :math:`H^\prime_{out} + strides[1]`, and the :math:`W_{out}` of the output size must
-          between :math:`W^\prime_{out}` and :math:`W^\prime_{out} + strides[2]`,
-          conv3d_transpose can compute the kernel size automatically.
+    If `padding` = `"SAME"`:
+
+        .. math::
+            D^\prime_{out} &= \frac{(D_{in} + stride[0] - 1)}{stride[0]} \\
+            H^\prime_{out} &= \frac{(H_{in} + stride[1] - 1)}{stride[1]} \\
+            W^\prime_{out} &= \frac{(H_{in} + stride[2] - 1)}{stride[2]}
+
+    If `padding` = `"VALID"`:
+
+    .. math::
+        D^\prime_{out} &= (D_{in} - 1) * strides[0] + dilations[0] * (D_f - 1) + 1 \\
+        H^\prime_{out} &= (H_{in} - 1) * strides[1] + dilations[1] * (H_f - 1) + 1 \\
+        W^\prime_{out} &= (W_{in} − 1) * strides[2] + dilations[2] * (W_f − 1) + 1
+
+    If `output_size` is None, :math:`D_{out} = D^\prime_{out}, :math:`H_{out} = \
+    H^\prime_{out}, W_{out} = W^\prime_{out}`; else, the specified `output_size_depth` (the depth of the ouput feature layer) :math:`D_{out}`
+    must between :math:`D^\prime_{out}` and :math:`D^\prime_{out} + strides[0]`(not including :math:`D^\prime_{out} + strides[0]`),
+    the specified `output_size_height` (the height of the ouput feature layer) :math:`H_{out}` must between :math:`H^\prime_{out}`
+    and :math:`H^\prime_{out} + strides[1]`(not including :math:`H^\prime_{out} + strides[1]`),
+    and the the specified `output_size_width` (the width of the ouput feature layer) :math:`W_{out}` must
+    between :math:`W^\prime_{out}` and :math:`W^\prime_{out} + strides[2]`(not including :math:`W^\prime_{out} + strides[2]`).
+
+    Since transposed convolution can be treated as the inverse of convolution,
+    and since different sized input feature layers may correspond to the same sized output feature layer according to the input-output formula for convolution,
+    the size of the output feature layer for a fixed sized input feature layer is not unique to transposed convolution.
+
+    If `output_size` is specified, `conv3d_transpose` can compute the kernel size automatically.
 
     Args:
         input(Tensor): The input is 5-D Tensor with shape [N, C, D, H, W] or [N, D, H, W, C], the data type
@@ -1823,19 +1830,6 @@ def conv3d_transpose(
         out_w) or (num_batches, out_d, out_h, out_w, channels). If act is None, the tensor
         variable storing the transposed convolution result, and if act is not None, the tensor
         variable storing transposed convolution and non-linearity activation result.
-
-    Raises:
-        ValueError: If the type of `use_cudnn` is not bool.
-        ValueError: If `data_format` is not "NCDHW" or "NDHWC".
-        ValueError: If `padding` is a string, but not "SAME" or "VALID".
-        ValueError: If `padding` is a tuple, but the element corresponding to the input's batch size is not 0
-            or the element corresponding to the input's channel is not 0.
-        ValueError: If `output_size` and filter_size are None at the same time.
-        ShapeError: If the input is not 5-D Tensor.
-        ShapeError: If the input's dimension size and filter's dimension size not equal.
-        ShapeError: If the dimension size of input minus the size of `stride` is not 2.
-        ShapeError: If the number of input channels is not equal to filter's channels.
-        ShapeError: If the size of `output_size` is not equal to that of `stride`.
 
     Examples:
        .. code-block:: python
@@ -3051,6 +3045,7 @@ def py_func(func, x, out, backward_func=None, skip_vars_in_backward_input=None):
     ``x`` will be inferred automatically.
     This API can also be used to debug the neural network by setting the ``func``
     as a function that only print variables.
+
     Args:
         func (callable): The forward function of the registered OP. When the network
             is running, the forward output ``out`` will be calculated according to this
@@ -3074,10 +3069,15 @@ def py_func(func, x, out, backward_func=None, skip_vars_in_backward_input=None):
             that no tensors need to be removed from ``x`` and ``out``. If it is not None,
             these tensors will not be the input of ``backward_func``. This parameter is only
             useful when ``backward_func`` is not None.
+
     Returns:
-        Tensor|tuple(Tensor)|list[Tensor]: The output ``out`` of the forward function ``func``.
+        Tensor|tuple(Tensor)|list[Tensor], The output ``out`` of the forward function ``func``.
+
     Examples:
+
         .. code-block:: python
+            :name: code-example1
+
             # example 1:
             import paddle
             import numpy as np
@@ -3123,7 +3123,10 @@ def py_func(func, x, out, backward_func=None, skip_vars_in_backward_input=None):
                           feed={'x':input1, 'y':input2},
                           fetch_list=[res.name])
             print(out)
+
         .. code-block:: python
+            :name: code-example2
+
             # example 2:
             # This example shows how to turn Tensor into numpy array and
             # use numpy API to register an Python OP

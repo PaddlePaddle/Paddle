@@ -70,6 +70,7 @@ set(COMMON_KERNEL_DEPS
     matrix_inverse
     matrix_solve
     phi_dynload_warpctc
+    phi_dynload_warprnnt
     sequence_padding
     sequence_scale
     fft

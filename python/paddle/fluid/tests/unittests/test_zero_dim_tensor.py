@@ -712,6 +712,41 @@ class TestSundryAPI(unittest.TestCase):
         self.assertEqual(out.numpy()[3], 2)
         self.assertEqual(out.grad.shape, [5])
 
+    def test_scale(self):
+        x = paddle.rand([])
+        x.stop_gradient = False
+        out = paddle.scale(x, scale=2.0, bias=1.0)
+        out.backward()
+
+        self.assertEqual(out.shape, [])
+        self.assertEqual(out.grad.shape, [])
+        self.assertEqual(x.grad.shape, [])
+
+    def test_floor_divide(self):
+        # 1-d // 0-d
+        x = paddle.to_tensor([1, -2, 3], dtype="int64")
+        y = paddle.full([], 2, dtype='int64')
+        out1_1 = paddle.floor_divide(x, y)
+        out1_2 = paddle.Tensor.__floordiv__(x, y)
+
+        np.testing.assert_array_equal(out1_1.numpy(), out1_2.numpy())
+        np.testing.assert_array_equal(out1_1.numpy(), np.asarray([0, -1, 1]))
+
+        # 0-d // 1-d
+        out2_1 = paddle.floor_divide(y, x)
+        out2_2 = paddle.Tensor.__floordiv__(y, x)
+
+        np.testing.assert_array_equal(out2_1.numpy(), out2_2.numpy())
+        np.testing.assert_array_equal(out2_2.numpy(), np.asarray([2, -1, 0]))
+
+        # 0-d // 0-d
+        x = paddle.full([], 3, dtype='int64')
+        out3_1 = paddle.floor_divide(x, y)
+        out3_2 = paddle.Tensor.__floordiv__(x, y)
+
+        np.testing.assert_array_equal(out3_1.numpy(), out3_2.numpy())
+        np.testing.assert_array_equal(out3_2.numpy(), np.asarray(1))
+
 
 class TestSundryAPIStatic(unittest.TestCase):
     def setUp(self):
@@ -913,6 +948,47 @@ class TestSundryAPIStatic(unittest.TestCase):
         res = self.exe.run(prog, feed={'index': index_data}, fetch_list=[out])
         self.assertEqual(res[0].shape, (5,))
         self.assertEqual(res[0][3], 2)
+
+    @prog_scope()
+    def test_scale(self):
+        x = paddle.rand([])
+        x.stop_gradient = False
+        out = paddle.scale(x, scale=2.0, bias=1.0)
+        paddle.static.append_backward(out)
+
+        prog = paddle.static.default_main_program()
+        res = self.exe.run(prog, fetch_list=[out])
+        self.assertEqual(res[0].shape, ())
+
+    @prog_scope()
+    def test_floor_divide(self):
+        # 1-d // 0-d
+        x = paddle.to_tensor([1, -2, 3], dtype="int64")
+        y = paddle.full([], 2, dtype='int64')
+        out1_1 = paddle.floor_divide(x, y)
+        out1_2 = x // y
+
+        # 0-d // 1-d
+        out2_1 = paddle.floor_divide(y, x)
+        out2_2 = y // x
+
+        # 0-d // 0-d
+        x = paddle.full([], 3, dtype='int64')
+        out3_1 = paddle.floor_divide(x, y)
+        out3_2 = x // y
+
+        prog = paddle.static.default_main_program()
+        res = self.exe.run(
+            prog, fetch_list=[out1_1, out1_2, out2_1, out2_2, out3_1, out3_2]
+        )
+        out1_1, out1_2, out2_1, out2_2, out3_1, out3_2 = res
+
+        np.testing.assert_array_equal(out1_1, out1_2)
+        np.testing.assert_array_equal(out1_1, np.asarray([0, -1, 1]))
+        np.testing.assert_array_equal(out2_1, out2_2)
+        np.testing.assert_array_equal(out2_2, np.asarray([2, -1, 0]))
+        np.testing.assert_array_equal(out3_1, out3_2)
+        np.testing.assert_array_equal(out3_2, np.asarray(1))
 
 
 # Use to test API whose zero-dim input tensors don't have grad and not need to test backward in OpTest.
