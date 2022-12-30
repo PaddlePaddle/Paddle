@@ -733,24 +733,42 @@ void AutoMixedPrecisionPass::InsertCastOp() const {
                 << " with type " << in_var_type;
 
         if (IsFloatType(in_var_type) && op_run_low_precision_.count(op_type)) {
-          DoInsertCastOp(subgraphes_[i],
-                         in_var_node,
-                         op_node,
-                         in_var_type,
-                         framework::TransToProtoVarType(low_precision_),
-                         block_desc,
-                         &suffix,
-                         &cache);
+          auto to_type = framework::TransToProtoVarType(low_precision_);
+          auto* prev_op = in_var_node->inputs[0];
+          CHECK_EQ(prev_op->IsOp(), true);
+          if (GetOpOriginalType(prev_op->Op()->Type()) == "cast") {
+            in_var_node->Var()->SetDataType(to_type);
+            prev_op->Op()->SetAttr("out_dtype", static_cast<int>(to_type));
+            prev_op->Op()->Flush();
+          } else {
+            DoInsertCastOp(subgraphes_[i],
+                           in_var_node,
+                           op_node,
+                           in_var_type,
+                           to_type,
+                           block_desc,
+                           &suffix,
+                           &cache);
+          }
         } else if (IsHalfType(in_var_type) &&
                    op_run_low_precision_.count(op_type) == 0) {
-          DoInsertCastOp(subgraphes_[i],
-                         in_var_node,
-                         op_node,
-                         in_var_type,
-                         VarType::FP32,
-                         block_desc,
-                         &suffix,
-                         &cache);
+          auto to_type = VarType::FP32;
+          auto* prev_op = in_var_node->inputs[0];
+          CHECK_EQ(prev_op->IsOp(), true);
+          if (GetOpOriginalType(prev_op->Op()->Type()) == "cast") {
+            in_var_node->Var()->SetDataType(to_type);
+            prev_op->Op()->SetAttr("out_dtype", static_cast<int>(to_type));
+            prev_op->Op()->Flush();
+          } else {
+            DoInsertCastOp(subgraphes_[i],
+                           in_var_node,
+                           op_node,
+                           in_var_type,
+                           VarType::FP32,
+                           block_desc,
+                           &suffix,
+                           &cache);
+          }
         }
       }
 
