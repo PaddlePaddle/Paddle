@@ -91,7 +91,14 @@ class TestShardingStage2WithNewEXE(unittest.TestCase):
     def test_grad_clip(self):
         # dp2 training
         dp_engine = self.get_engine(True)
-        dp_engine.fit(self.dataset, 3, batch_size=self.batch_size)
+        dp_engine.fit(
+            self.dataset,
+            3,
+            epochs=1,
+            steps_per_epoch=5,
+            log_freq=1,
+            batch_size=self.batch_size,
+        )
         with open(
             "/main_prog.txt.{}".format(paddle.distributed.get_rank()), "w+"
         ) as f:
