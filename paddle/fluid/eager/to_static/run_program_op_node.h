@@ -799,7 +799,6 @@ class GradNodeRunProgram : public egr::GradNodeBase {
                           "The hooked_grads[0].size() and "
                           "out_grad_names.size() should be equal."));
     for (size_t i = 0; i < out_grad_names.size(); ++i) {
-      VLOG(1) << "out_grad_names[i]: " << out_grad_names[i];
       hooked_grads[0][i].set_name(out_grad_names[i]);
     }
     RunProgramGradAPI(x_,
