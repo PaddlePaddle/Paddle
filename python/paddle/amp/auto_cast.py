@@ -285,8 +285,6 @@ def amp_guard(
     dtype='float16',
 ):
     """
-    :api_attr: imperative
-
     Create a context which enables auto-mixed-precision(AMP) of operators executed in dynamic graph mode.
     If enabled, the input data type (float32 or float16) of each operator is decided
     by autocast algorithm for better performance.

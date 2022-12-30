@@ -37,8 +37,6 @@ def _refresh_optimizer_state():
 
 class AmpScaler:
     """
-    :api_attr: imperative
-
     AmpScaler is used for Auto-Mixed-Precision training/inferring in imperative
     mode. It controls the scaling of loss, helps avoiding numerical overflow.
     The object of this class has seventeen methods `scale()`, `unscale_()`, `minimize()` and `get`/`set` api of parameters.
@@ -152,13 +150,13 @@ class AmpScaler:
 
     def scale(self, var):
         """
-        Multiplies a variable(Tensor) by the scale factor and returns scaled outputs.
+        Multiplies a Tensor by the scale factor and returns scaled outputs.
         If this instance of :class:`AmpScaler` is not enabled, output are returned unmodified.
 
         Args:
-            var (Variable):  The variable to scale.
+            var (Tensor):  The Tensor to scale.
         Returns:
-            The scaled variable or original variable.
+            The scaled Tensor or original Tensor.
 
         Examples:
 
