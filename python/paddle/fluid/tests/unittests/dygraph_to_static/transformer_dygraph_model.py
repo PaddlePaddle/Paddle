@@ -593,7 +593,9 @@ class CrossEntropyCriterion:
     def __call__(self, predict, label, weights):
         if self.label_smooth_eps:
             label_out = F.label_smooth(
-                label=layers.one_hot(input=label, depth=predict.shape[-1]),
+                label=paddle.squeeze(
+                    paddle.nn.functional.one_hot(label, predict.shape[-1])
+                ),
                 epsilon=self.label_smooth_eps,
             )
 

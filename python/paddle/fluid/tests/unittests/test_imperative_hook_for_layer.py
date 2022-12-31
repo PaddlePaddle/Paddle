@@ -20,7 +20,6 @@ from test_imperative_lod_tensor_to_selected_rows import SimpleNet
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 import paddle.fluid.dygraph.base as base
-from paddle.fluid.framework import _test_eager_guard
 
 call_forward_post_hook = False
 call_forward_pre_hook = False
@@ -47,7 +46,7 @@ def forward_pre_hook1(layer, input):
 
 class Test_Forward_Hook(unittest.TestCase):
     # test forward_pre_hook and forward_post_hook that have return value
-    def func_forward_hook_return_value(self):
+    def test_forward_hook_return_value(self):
         seed = 90
 
         places = [fluid.CPUPlace()]
@@ -129,7 +128,7 @@ class Test_Forward_Hook(unittest.TestCase):
                 )
 
     # test forward_pre_hook and forward_post_hook that don't have return value
-    def func_forward_hook(self):
+    def test_forward_hook(self):
         seed = 90
 
         places = [fluid.CPUPlace()]
@@ -209,13 +208,6 @@ class Test_Forward_Hook(unittest.TestCase):
                 outs_remove_hook = simplenet(input, y)
                 self.assertFalse(call_forward_post_hook)
                 self.assertFalse(call_forward_pre_hook)
-
-    def test_forward_hook_return_value(self):
-        with _test_eager_guard():
-            self.func_forward_hook()
-            self.func_forward_hook_return_value()
-        self.func_forward_hook()
-        self.func_forward_hook_return_value()
 
 
 if __name__ == '__main__':

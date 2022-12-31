@@ -56,8 +56,8 @@ class FakeDataReader:
                 img = np.random.normal(
                     0.485, 0.229, [3, cfg.input_size, cfg.input_size]
                 )
-                point1 = cfg.input_size / 4
-                point2 = cfg.input_size / 2
+                point1 = 1 / 4
+                point2 = 1 / 2
                 gt_boxes = np.array([[point1, point1, point2, point2]])
                 gt_labels = np.random.randint(
                     low=0, high=cfg.class_num, size=[1]

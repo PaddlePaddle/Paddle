@@ -418,7 +418,7 @@ class TestImperativeAutoPrune(unittest.TestCase):
             label = linear(label)
             label = fluid.layers.cast(label, dtype="float32")
             label = fluid.layers.cast(label, dtype='int64')
-            out = fluid.layers.one_hot(input=label, depth=100)
+            out = paddle.nn.functional.one_hot(label, 100)
             loss = paddle.mean(out)
             loss.backward()
             self.assertIsNone(linear.weight._grad_ivar())

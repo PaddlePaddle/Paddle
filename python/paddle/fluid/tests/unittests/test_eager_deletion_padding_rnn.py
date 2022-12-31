@@ -20,8 +20,6 @@ import numpy as np
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
-from paddle.fluid import ParamAttr
-from paddle.fluid.contrib.layers import basic_lstm
 from paddle.fluid.executor import Executor
 from paddle.fluid.layers.control_flow import StaticRNN as PaddingRNN
 
@@ -85,7 +83,7 @@ class RNNConfig:
         else:
             raise ValueError('Unsupported model_type.')
 
-        if rnn_model not in ('static', 'padding', 'cudnn', 'basic_lstm'):
+        if rnn_model not in ('static', 'padding', 'cudnn'):
             raise ValueError('Unsupported rnn_model.')
 
         self.batch_size = 12
@@ -406,23 +404,6 @@ def lm_model(
             init_hidden=init_hidden_reshape,
             init_cell=init_cell_reshape,
         )
-    elif rnn_model == "basic_lstm":
-        rnn_out, last_hidden, last_cell = basic_lstm(
-            x_emb,
-            init_hidden,
-            init_cell,
-            hidden_size,
-            num_layers=num_layers,
-            batch_first=True,
-            dropout_prob=dropout,
-            param_attr=ParamAttr(
-                initializer=fluid.initializer.UniformInitializer(
-                    low=-init_scale, high=init_scale
-                )
-            ),
-            bias_attr=ParamAttr(initializer=fluid.initializer.Constant(0.0)),
-            forget_bias=0.0,
-        )
     else:
         print("type not support")
         return
@@ -663,7 +644,7 @@ class PaddingRNNTestBase(unittest.TestCase):
         self, parallel=True, use_program_cache=True
     ):
         '''
-        Test that train ppl of padding mode is same to that of static mode
+        Test that train ppl of padding mode is same to that of static graph mode
         '''
         config = RNNConfig('test', 'padding')
         with fluid.scope_guard(fluid.Scope()):
@@ -677,7 +658,7 @@ class PaddingRNNTestBase(unittest.TestCase):
 class EagerDeletionPaddingRNNTest(PaddingRNNTestBase):
     def test_padding_mode_no_eager_deletion(self):
         '''
-        Test that train ppl of padding mode is same to that of static mode without eager deletion
+        Test that train ppl of padding mode is same to that of static graph mode without eager deletion
         '''
         fluid.core._set_eager_deletion_mode(-1.0, 1.0, True)
         # When parallel is True, use_program_cache does not make a difference.
@@ -685,7 +666,7 @@ class EagerDeletionPaddingRNNTest(PaddingRNNTestBase):
 
     def test_padding_mode_eager_deletion(self):
         '''
-        Test that train ppl of padding mode is same to that of static mode under eager deletion
+        Test that train ppl of padding mode is same to that of static graph mode under eager deletion
         '''
         fluid.core._set_eager_deletion_mode(0.0, 1.0, True)
         # When parallel is True, use_program_cache does not make a difference.

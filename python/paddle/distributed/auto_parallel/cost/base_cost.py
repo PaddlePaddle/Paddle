@@ -80,7 +80,7 @@ def build_comp_desc_from_dist_op(dist_op, dist_context):
     dist_attr = dist_op.dist_attr
     process_mesh = dist_attr.process_mesh
     assert process_mesh, "Process mesh must not be None."
-    processes = process_mesh.processes
+    processes = process_mesh.process_ids
     for process in processes:
         desc = {}
         desc["op"] = op.type
@@ -103,7 +103,7 @@ def build_comp_desc_from_dist_op(dist_op, dist_context):
                 global_sizes = var.shape
                 # NOTE: When support uneven partition, the shard_sizes will be got from dist_attr.
                 shard_sizes = None
-                topology = process_mesh.topology
+                topology = process_mesh.shape
                 shape = DistributedTensor.get_local_sizes(
                     global_sizes,
                     dims_mapping,
@@ -129,7 +129,7 @@ def build_comp_desc_from_dist_op(dist_op, dist_context):
                         )
                         relative_idx = _get_idx_in_axis(
                             processes,
-                            dist_attr.process_mesh.topology,
+                            dist_attr.process_mesh.shape,
                             embedding_row_dim_mapping,
                             process,
                         )
@@ -153,8 +153,8 @@ def build_comp_desc_from_dist_op(dist_op, dist_context):
                 process_mesh = dist_attr.process_mesh
                 global_sizes = var.shape
                 shard_sizes = None
-                processes = process_mesh.processes
-                topology = process_mesh.topology
+                processes = process_mesh.process_ids
+                topology = process_mesh.shape
                 shape = DistributedTensor.get_local_sizes(
                     global_sizes,
                     dims_mapping,
@@ -170,7 +170,7 @@ def build_comp_desc_from_dist_op(dist_op, dist_context):
                     # Modify shape attr according to how output are partitioned
                     out_name = var_name_list[0]
                     dims_mapping = dist_attr.get_output_dims_mapping(out_name)
-                    process_mesh_shape = dist_attr.process_mesh.topology
+                    process_mesh_shape = dist_attr.process_mesh.shape
                     shape_list = op.attr("shape")
                     # Modify target shape
                     for idx, axis in enumerate(dims_mapping):
@@ -253,7 +253,7 @@ def build_comm_desc_from_dist_op(
     process_mesh = dist_attr.process_mesh
     assert process_mesh, "Process mesh must not be None."
 
-    processes = process_mesh.processes
+    processes = process_mesh.process_ids
     op_descs = {}
     for process in processes:
         rank_id = process
@@ -295,7 +295,7 @@ def build_comm_desc_from_dist_op(
                 )
                 global_sizes = var.shape
                 shard_sizes = None
-                topology = process_mesh.topology
+                topology = process_mesh.shape
                 shape = DistributedTensor.get_local_sizes(
                     global_sizes,
                     dims_mapping,
@@ -311,8 +311,8 @@ def build_comm_desc_from_dist_op(
 
             # Get comm group by parallel_axis or the given group_ranks.
             if parallel_axis is not None:
-                process_mesh_shape = process_mesh.topology
-                process_mesh_group = process_mesh.processes
+                process_mesh_shape = process_mesh.shape
+                process_mesh_group = process_mesh.process_ids
                 comm_group_ranks = _get_comm_group(
                     process_mesh_group,
                     process_mesh_shape,
@@ -384,7 +384,7 @@ def build_dp_costs(
 
     dist_attr = dist_op.dist_attr
     process_mesh = dist_attr.process_mesh
-    processes = process_mesh.processes
+    processes = process_mesh.process_ids
     assert len(var_names) == 1
     vars = dist_op.serial_op.block.vars
     var_name = var_names[0]
@@ -443,7 +443,7 @@ def build_dp_costs(
             )
             global_sizes = var.shape
             shard_sizes = None
-            topology = process_mesh.topology
+            topology = process_mesh.shape
             shape = DistributedTensor.get_local_sizes(
                 global_sizes,
                 dims_mapping,
