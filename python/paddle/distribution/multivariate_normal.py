@@ -186,7 +186,7 @@ class MultivariateNormal(distribution.Distribution):
         """
         if not isinstance(value, type(self.loc)):
             raise TypeError(
-                f"Expected type of value is {type(loc)}, but got {type(value)}"
+                f"Expected type of value is {type(self.loc)}, but got {type(value)}"
             )
 
         return paddle.exp(self.log_prob(value))
