@@ -41,6 +41,7 @@ from .dy2static import logging_utils
 from .dy2static.convert_call_func import (
     ConversionOptions,
     CONVERSION_OPTIONS,
+    add_ignore_module,
 )
 from .dy2static.program_translator import (
     ProgramTranslator,
@@ -188,6 +189,34 @@ def copy_decorator_attrs(original_func, decorated_obj):
         decorated_obj.__module__ = original_func.__module__
 
     return decorated_obj
+
+
+def ignore_module(modules: List):
+    """
+    Adds modules that ignore transcription.
+    Builtin modules that have been ignored are collections, pdb, copy, inspect, re, numpy, logging, six
+
+    Args:
+        modules (list[]): Ignored modules that you want to add
+
+    Examples:
+        .. code-block:: python
+
+            import scipy
+            import pandas
+
+            import paddle
+            from paddle.jit import ignore_module
+
+            modules = [
+               scipy,
+               pandas
+            ]
+
+            ignore_module(modules)
+
+    """
+    add_ignore_module(modules)
 
 
 def to_static(
