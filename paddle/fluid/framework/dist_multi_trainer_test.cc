@@ -153,9 +153,9 @@ TEST(DisMultiTrainerTest, test3) {
   dataset->SetDataFeedDesc(str);
   dataset->CreateChannel();
   dataset->SetGpuGraphMode(true);
+  dataset->CreateReaders();
   auto readers = dataset->GetReaders();
   readers[0]->SetGpuGraphMode(true);
-  dataset->CreateReaders();
   Scope root_scope;
   tmp1->SetScope(&root_scope);
   tmp1->Initialize(t, dataset.get());
