@@ -139,8 +139,12 @@ class MultivariateNormal(distribution.Distribution):
             Tensor: The variance value.
 
         """
-        matrix_decompos = paddle.linalg.cholesky(self.covariance_matrix).pow(2).sum(-1)
-        return paddle.expand(matrix_decompos, self._batch_shape + self._event_shape)
+        matrix_decompos = (
+            paddle.linalg.cholesky(self.covariance_matrix).pow(2).sum(-1)
+        )
+        return paddle.expand(
+            matrix_decompos, self._batch_shape + self._event_shape
+        )
 
     @property
     def stddev(self):
@@ -209,18 +213,23 @@ class MultivariateNormal(distribution.Distribution):
         """
         if not isinstance(value, type(self.loc)):
             raise TypeError(
-                f"Expected type of value is {type(loc)}, but got {type(value)}"
+                f"Expected type of value is {type(self.loc)}, but got {type(value)}"
             )
 
         diff = value - self.loc
         M = self._batch_mahalanobis(self._unbroadcasted_scale_tril, diff)
 
-        half_log_det = paddle.diagonal(self._unbroadcasted_scale_tril, axis1=-2, axis2=-1).log().sum(-1)
+        half_log_det = (
+            paddle.diagonal(self._unbroadcasted_scale_tril, axis1=-2, axis2=-1)
+            .log()
+            .sum(-1)
+        )
 
         return (
             -0.5 * (self.event_shape[0] * math.log(2 * math.pi) + M)
             - half_log_det
         )
+
     def entropy(self):
         r"""Entropy of multivariate_normal distribution
 
@@ -426,10 +435,9 @@ class MultivariateNormal(distribution.Distribution):
         flat_x_swap = paddle.transpose(flat_x, perm=[1, 2, 0])
         # shape = [b, c]
         M_swap = (
-            paddle.linalg.triangular_solve(
-                flat_L, flat_x_swap, upper=False)
-                .pow(2)
-                .sum(-2)
+            paddle.linalg.triangular_solve(flat_L, flat_x_swap, upper=False)
+            .pow(2)
+            .sum(-2)
         )
         # shape = [c, b]
         M = M_swap.t()

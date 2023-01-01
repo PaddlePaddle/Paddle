@@ -179,6 +179,7 @@ def _kl_uniform_uniform(p, q):
 def _kl_laplace_laplace(p, q):
     return p.kl_divergence(q)
 
+
 @register_kl(MultivariateNormal, MultivariateNormal)
 def _kl_multnormal_multnormal(p, q):
     return p.kl_divergence(q)
