@@ -22,9 +22,9 @@ from paddle.distribution.distribution import Distribution
 from paddle.distribution.exponential_family import ExponentialFamily
 from paddle.distribution.laplace import Laplace
 from paddle.distribution.lognormal import LogNormal
+from paddle.distribution.multivariate_normal import MultivariateNormal
 from paddle.distribution.normal import Normal
 from paddle.distribution.uniform import Uniform
-from paddle.distribution.multivariate_normal import MultivariateNormal
 from paddle.fluid.framework import _non_static_mode
 
 __all__ = ["register_kl", "kl_divergence"]
@@ -179,9 +179,10 @@ def _kl_uniform_uniform(p, q):
 def _kl_laplace_laplace(p, q):
     return p.kl_divergence(q)
 
-@register_kl(MultivariateNormal,MultivariateNormal)
-def _kl_multnormal_multnormal(p,q):
+@register_kl(MultivariateNormal, MultivariateNormal)
+def _kl_multnormal_multnormal(p, q):
     return p.kl_divergence(q)
+
 
 @register_kl(ExponentialFamily, ExponentialFamily)
 def _kl_expfamily_expfamily(p, q):

@@ -12,8 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
 import math
+
+import paddle
 from paddle.distribution import distribution
 
 
@@ -77,20 +78,28 @@ class MultivariateNormal(distribution.Distribution):
 
         if covariance_matrix is not None:
             if covariance_matrix.dim() < 2:
-                raise ValueError("covariance_matrix must be at least two-dimensional, "
-                                 "with optional leading batch dimensions")
-            if (covariance_matrix.shape[:-2] == [] or loc.shape[:-1] == []):
+                raise ValueError(
+                    "covariance_matrix must be at least two-dimensional, "
+                    "with optional leading batch dimensions"
+                )
+            if covariance_matrix.shape[:-2] == [] or loc.shape[:-1] == []:
                 batch_shape = []
             else:
-                batch_shape = paddle.broadcast_shape(covariance_matrix.shape[:-2], loc.shape[:-1])
-            self.covariance_matrix = covariance_matrix.expand(batch_shape + [-1, -1])
+                batch_shape = paddle.broadcast_shape(
+                    covariance_matrix.shape[:-2], loc.shape[:-1]
+                )
+            self.covariance_matrix = covariance_matrix.expand(
+                batch_shape + [-1, -1]
+            )
 
         self.loc = loc.expand(batch_shape + [-1])
         event_shape = self.loc.shape[-1:]
         super(MultivariateNormal, self).__init__(batch_shape, event_shape)
 
         if covariance_matrix is not None:
-            self._unbroadcasted_scale_tril = paddle.linalg.cholesky(covariance_matrix)
+            self._unbroadcasted_scale_tril = paddle.linalg.cholesky(
+                covariance_matrix
+            )
 
     @property
     def mean(self):
@@ -208,8 +217,10 @@ class MultivariateNormal(distribution.Distribution):
 
         half_log_det = paddle.diagonal(self._unbroadcasted_scale_tril, axis1=-2, axis2=-1).log().sum(-1)
 
-        return -0.5 * (self.event_shape[0] * math.log(2 * math.pi) + M) - half_log_det
-
+        return (
+            -0.5 * (self.event_shape[0] * math.log(2 * math.pi) + M)
+            - half_log_det
+        )
     def entropy(self):
         r"""Entropy of multivariate_normal distribution
 
@@ -227,8 +238,15 @@ class MultivariateNormal(distribution.Distribution):
         Returns:
             Tensor: entropy value
         """
-        half_log_det = paddle.diagonal(self._unbroadcasted_scale_tril, axis1=-2, axis2=-1).log().sum(-1)
-        H = 0.5 * self._event_shape[0] * (1.0 + math.log(2 * math.pi)) + half_log_det
+        half_log_det = (
+            paddle.diagonal(self._unbroadcasted_scale_tril, axis1=-2, axis2=-1)
+            .log()
+            .sum(-1)
+        )
+        H = (
+            0.5 * self._event_shape[0] * (1.0 + math.log(2 * math.pi))
+            + half_log_det
+        )
         if len(self._batch_shape) == 0:
             return H
         else:
@@ -255,7 +273,9 @@ class MultivariateNormal(distribution.Distribution):
         """
         shape = self._extend_shape(shape)
         eps = paddle.standard_normal(shape, dtype=None, name=None)
-        unbroadcasted_scale_tril = paddle.linalg.cholesky(self.covariance_matrix)
+        unbroadcasted_scale_tril = paddle.linalg.cholesky(
+            self.covariance_matrix
+        )
 
         return self.loc + self._batch_product_mv(unbroadcasted_scale_tril, eps)
 
@@ -294,20 +314,37 @@ class MultivariateNormal(distribution.Distribution):
 
         """
         if self.event_shape != other.event_shape:
-            raise ValueError("KL-divergence between two Multivariate Normals with\
-                              different event shapes cannot be computed")
+            raise ValueError(
+                "KL-divergence between two Multivariate Normals with\
+                              different event shapes cannot be computed"
+            )
 
-        sector1 = (paddle.diagonal(self._unbroadcasted_scale_tril, axis1=-2, axis2=-1).log().sum(-1) -
-                   paddle.diagonal(other._unbroadcasted_scale_tril, axis1=-2, axis2=-1).log().sum(-1))
+        sector1 = paddle.diagonal(
+            self._unbroadcasted_scale_tril, axis1=-2, axis2=-1
+        ).log().sum(-1) - paddle.diagonal(
+            other._unbroadcasted_scale_tril, axis1=-2, axis2=-1
+        ).log().sum(
+            -1
+        )
         if list(self.batch_shape) == [] and list(other.batch_shape) == []:
             combined_batch_shape = []
         else:
             combined_batch_shape = [self.batch_shape, other.batch_shape]
         n = self.event_shape[0]
-        self_scale_tril = self._unbroadcasted_scale_tril.expand(combined_batch_shape + [n, n])
-        other_scale_tril = other._unbroadcasted_scale_tril.expand(combined_batch_shape + [n, n])
-        sector2 = self._batch_trace_XXT(paddle.linalg.triangular_solve(self_scale_tril, other_scale_tril, upper=False))
-        sector3 = self._batch_mahalanobis(self._unbroadcasted_scale_tril, (self.loc - other.loc))
+        self_scale_tril = self._unbroadcasted_scale_tril.expand(
+            combined_batch_shape + [n, n]
+        )
+        other_scale_tril = other._unbroadcasted_scale_tril.expand(
+            combined_batch_shape + [n, n]
+        )
+        sector2 = self._batch_trace_XXT(
+            paddle.linalg.triangular_solve(
+                self_scale_tril, other_scale_tril, upper=False
+            )
+        )
+        sector3 = self._batch_mahalanobis(
+            self._unbroadcasted_scale_tril, (self.loc - other.loc)
+        )
         return sector1 + 0.5 * (sector2 + sector3 - n)
 
     def _batch_trace_XXT(self, batch_matrix):
@@ -322,7 +359,7 @@ class MultivariateNormal(distribution.Distribution):
         n = batch_matrix.shape[-1]
         m = batch_matrix.shape[-2]
         flat_trace = paddle.reshape(batch_matrix, [1, m * n]).pow(2).sum(-1)
-        if (batch_matrix.shape[:-2] == []):
+        if batch_matrix.shape[:-2] == []:
             return flat_trace
         else:
             return paddle.reshape(flat_trace, batch_matrix.shape[:-2])
@@ -366,15 +403,19 @@ class MultivariateNormal(distribution.Distribution):
         new_batch_dims = outer_batch_dims + 2 * bL_batch_dims
         bx_new_shape = batch_x.shape[:outer_batch_dims]
 
-        for (sL, sx) in zip(batch_L.shape[:-2], batch_x.shape[outer_batch_dims:-1]):
+        for (sL, sx) in zip(
+            batch_L.shape[:-2], batch_x.shape[outer_batch_dims:-1]
+        ):
             bx_new_shape += (sx // sL, sL)
         bx_new_shape += [n]
         batch_x = paddle.reshape(batch_x, bx_new_shape)
 
-        permute_dims = (list(range(outer_batch_dims)) +
-                        list(range(outer_batch_dims, new_batch_dims, 2)) +
-                        list(range(outer_batch_dims + 1, new_batch_dims, 2)) +
-                        [new_batch_dims])
+        permute_dims = (
+            list(range(outer_batch_dims))
+            + list(range(outer_batch_dims, new_batch_dims, 2))
+            + list(range(outer_batch_dims + 1, new_batch_dims, 2))
+            + [new_batch_dims]
+        )
 
         batch_x = paddle.transpose(batch_x, perm=permute_dims)
         # shape = [b, n, n]
@@ -384,7 +425,12 @@ class MultivariateNormal(distribution.Distribution):
         # shape = [b, n, c]
         flat_x_swap = paddle.transpose(flat_x, perm=[1, 2, 0])
         # shape = [b, c]
-        M_swap = paddle.linalg.triangular_solve(flat_L, flat_x_swap, upper=False).pow(2).sum(-2)
+        M_swap = (
+            paddle.linalg.triangular_solve(
+                flat_L, flat_x_swap, upper=False)
+                .pow(2)
+                .sum(-2)
+        )
         # shape = [c, b]
         M = M_swap.t()
 
