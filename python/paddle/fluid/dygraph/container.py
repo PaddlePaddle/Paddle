@@ -31,10 +31,8 @@ class Sequential(Layer):
         .. code-block:: python
 
             import paddle
-            import numpy as np
-
-            data = np.random.uniform(-1, 1, [30, 10]).astype('float32')
-            data = paddle.to_tensor(data)
+            
+            data = paddle.uniform(shape=[30,10],dtype="float32")
             # create Sequential with iterable Layers
             model1 = paddle.nn.Sequential(
                 paddle.nn.Linear(10, 1), paddle.nn.Linear(1, 2)
