@@ -137,4 +137,5 @@ PD_REGISTER_KERNEL(conv2d_fusion_cutlass,
                    GPU,
                    ALL_LAYOUT,
                    phi::fusion::cutlass_internal::Conv2dFusionKernel,
+                   float,
                    phi::dtype::float16) {}
