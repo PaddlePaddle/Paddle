@@ -109,7 +109,7 @@ disable_win_inference_test="^trt_quant_int8_yolov3_r50_test$|\
 ^test_variable$|\
 ^test_mkldnn_conv_hard_sigmoid_fuse_pass$|\
 ^test_mkldnn_conv_hard_swish_fuse_pass$|\
-^test_conv_act_onednn_fuse_pass$|\
+^test_conv_act_mkldnn_fuse_pass$|\
 ^test_matmul_scale_fuse_pass$|\
 ^test_addmm_op$|\
 ^test_inverse_op$|\
