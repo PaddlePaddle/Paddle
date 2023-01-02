@@ -87,6 +87,17 @@ struct MultiheadMatmul : public PatternBase {
   PATTERN_DECL_NODE(multihead_matmul_out);
 };
 
+struct MultiheadMatmulRoformer : public PatternBase {
+  MultiheadMatmulRoformer(PDPattern *pattern, const std::string &name_scope)
+      : PatternBase(pattern, name_scope, "multihead_matmul_roformer") {}
+
+  void operator()();
+
+  PATTERN_DECL_NODE(multihead_matmul_roformer_input);
+  PATTERN_DECL_NODE(multihead_matmul_roformer_op);
+  PATTERN_DECL_NODE(multihead_matmul_roformer_out);
+};
+
 struct Fc : public PatternBase {
   Fc(PDPattern *pattern, const std::string &name_scope)
       : PatternBase(pattern, name_scope, "fc") {}

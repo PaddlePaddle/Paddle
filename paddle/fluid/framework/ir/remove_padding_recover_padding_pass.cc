@@ -110,6 +110,22 @@ void MultiheadMatmul::operator()() {
       .LinksTo({multihead_matmul_out});
 }
 
+void MultiheadMatmulRoformer::operator()() {
+  // Create nodes for multihead_matmul_roformer.
+  auto* multihead_matmul_roformer_input =
+      pattern->NewNode(multihead_matmul_roformer_input_repr())
+          ->assert_is_op_input("multihead_matmul_roformer", "Input");
+  auto* multihead_matmul_roformer_op = pattern->NewNode(multihead_matmul_roformer_op_repr())
+                                  ->assert_is_op("multihead_matmul_roformer");
+  auto* multihead_matmul_roformer_out =
+      pattern->NewNode(multihead_matmul_roformer_out_repr())
+          ->assert_is_op_output("multihead_matmul_roformer", "Out");
+
+  // Add links for multihead_matmul_roformer op.
+  multihead_matmul_roformer_op->LinksFrom({multihead_matmul_roformer_input})
+      .LinksTo({multihead_matmul_roformer_out});
+}
+
 void Fc::operator()() {
   // Create nodes for fc.
   auto* fc_input =
@@ -353,6 +369,33 @@ void RemovePaddingRecoverPaddingPass::ApplyImpl(ir::Graph* graph) const {
     found_subgraph_count++;
   };
   gpd1(graph, handler1);
+
+  GraphPatternDetector gpd1_2;
+  patterns::MultiheadMatmulRoformer multihead_matmul_roformer(
+      gpd1_2.mutable_pattern(), "remove_padding_recover_padding_pass");
+  multihead_matmul_roformer();
+
+  std::vector<int64_t> multihead_matmul_roformer_input_shape;
+  auto handler1_2 = [&](const GraphPatternDetector::subgraph_t& subgraph,
+                      Graph* graph) {
+    VLOG(3) << "remove_padding_recover_padding_pass for transformer: "
+               "multihead_matmul_roformer";
+
+    GET_IR_NODE_FROM_SUBGRAPH(
+        multihead_matmul_roformer_input, multihead_matmul_roformer_input, multihead_matmul_roformer);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        multihead_matmul_roformer_op, multihead_matmul_roformer_op, multihead_matmul_roformer);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        multihead_matmul_roformer_out, multihead_matmul_roformer_out, multihead_matmul_roformer);
+
+    multihead_matmul_roformer_input_shape = multihead_matmul_roformer_input->Var()->GetShape();
+
+    insert_remove_padding_op(multihead_matmul_roformer_input, multihead_matmul_roformer_op);
+    insert_recover_padding_op(multihead_matmul_roformer_op, multihead_matmul_roformer_out);
+
+    found_subgraph_count++;
+  };
+  gpd1_2(graph, handler1_2);
 
   GraphPatternDetector gpd2;
   patterns::SkipLayernorm skip_layernorm(gpd2.mutable_pattern(),
