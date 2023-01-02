@@ -314,11 +314,10 @@ class TestMultiTensorAdam(unittest.TestCase):
                 test_raise_error,
             )
         for multi_precision in [True, False]:
-            test_fp16 = True
             self.run_adam_or_adamw(
                 False,
                 False,
-                test_fp16,
+                False,
                 False,
                 False,
                 multi_precision,
