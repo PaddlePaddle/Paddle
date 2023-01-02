@@ -159,23 +159,14 @@ bool OpSupportPrecision(const std::string& op_type,
 // The set of ops that support fp16 calculation and are considered
 // numerically-dangerous, slower and whose effects may also be observed in
 // downstream ops.
+// ref to python/paddle/fluid/contrib/mixed_precision/fp16_lists.py
 void AutoMixedPrecisionPass::SetDefaultBlacklist() const {
   black_list_.insert({
       // numerically-dangerous
-      "acos",
-      "asin",
-      "cosh",
-      "tan",
       "exp",
-      "expm1",
       "square",
       "log",
-      "log2",
-      "log10",
-      "log1p",
-      "logsumexp",
       "mean",
-      "rsqrt",
       "sum",
       "cos_sim",
       "softmax_with_cross_entropy",
@@ -271,6 +262,9 @@ void AutoMixedPrecisionPass::ApplyImpl(Graph* graph) const {
   VLOG(4) << "InsertCastOp done";
   RestoreOpOriginType();
   VLOG(4) << "RestoreOpOriginType done";
+  LOG(INFO) << "The number of ops run at low precision ["
+            << op_run_low_precision_.size() << "/" << op_original_type_.size()
+            << "]";
 }
 
 void AutoMixedPrecisionPass::SetOpUniqueType() const {
@@ -314,6 +308,21 @@ void AutoMixedPrecisionPass::ProcessOpWithDtypeAttr() const {
   for (const auto& nodes : all_op_nodes_) {
     for (auto* op_node : nodes) {
       auto op_type = op_node->Op()->Type();
+
+      if (op_node->Op()->HasAttr("in_dtype")) {
+        auto* var_node = op_node->inputs[0];
+        auto* real_var_node = real_vars_[var_node->Var()->Name()];
+        if (IsFP16AndBFP16(real_var_node->Var()->GetDataType())) {
+          op_node->Op()->SetAttr(
+              "in_dtype",
+              static_cast<int>(framework::TransToProtoVarType(low_precision_)));
+          op_node->Op()->Flush();
+          VLOG(4) << "process op with in_dtype attr: " << op_type << " ( "
+                  << static_cast<int>(real_var_node->Var()->GetDataType())
+                  << " --->" << static_cast<int>(low_precision_) << " )";
+        }
+      }
+
       if (op_run_low_precision_.count(op_type) == 0) continue;
 
       if (op_node->Op()->HasAttr("dtype")) {
@@ -753,9 +762,9 @@ void AutoMixedPrecisionPass::InsertCastOp() const {
         if (IsFP32AndFP64(in_var_type) &&
             op_run_low_precision_.count(op_type)) {
           auto to_type = framework::TransToProtoVarType(low_precision_);
-          auto* prev_op = in_var_node->inputs[0];
-          CHECK_EQ(prev_op->IsOp(), true);
-          if (GetOpOriginalType(prev_op->Op()->Type()) == "cast") {
+          auto* prev_op =
+              in_var_node->inputs.empty() ? nullptr : in_var_node->inputs[0];
+          if (prev_op && GetOpOriginalType(prev_op->Op()->Type()) == "cast") {
             in_var_node->Var()->SetDataType(to_type);
             prev_op->Op()->SetAttr("out_dtype", static_cast<int>(to_type));
             prev_op->Op()->Flush();
@@ -772,9 +781,9 @@ void AutoMixedPrecisionPass::InsertCastOp() const {
         } else if (IsFP16AndBFP16(in_var_type) &&
                    op_run_low_precision_.count(op_type) == 0) {
           auto to_type = VarType::FP32;
-          auto* prev_op = in_var_node->inputs[0];
-          CHECK_EQ(prev_op->IsOp(), true);
-          if (GetOpOriginalType(prev_op->Op()->Type()) == "cast") {
+          auto* prev_op =
+              in_var_node->inputs.empty() ? nullptr : in_var_node->inputs[0];
+          if (prev_op && GetOpOriginalType(prev_op->Op()->Type()) == "cast") {
             in_var_node->Var()->SetDataType(to_type);
             prev_op->Op()->SetAttr("out_dtype", static_cast<int>(to_type));
             prev_op->Op()->Flush();
