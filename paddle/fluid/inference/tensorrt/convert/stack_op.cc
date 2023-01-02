@@ -43,7 +43,7 @@ class StackOpConverter : public OpConverter {
     int input_num = input.size();
     std::vector<nvinfer1::ITensor*> inputs;
     auto output_name = op_desc.Output("Y").front();
-
+    VLOG(4) << "46 ok";
     for (int i = 0; i < input_num; ++i) {
       inputs.push_back(engine_->GetITensor(input[i]));
       if (op_desc.HasAttr("out_threshold")) {
@@ -52,6 +52,7 @@ class StackOpConverter : public OpConverter {
         engine_->SetTensorDynamicRange(inputs[i], out_scale);
       }
     }
+    VLOG(4) << "55 ok";
 
     int axis = PADDLE_GET_CONST(int, op_desc.GetAttr("axis"));
     int output_rank = inputs[0]->getDimensions().nbDims + 1;
@@ -59,6 +60,7 @@ class StackOpConverter : public OpConverter {
       axis = axis + output_rank;
     }
     // Now, axis is relative to output_rank.
+    VLOG(4) << "63 ok";
 
     auto* shape_tensor = Shape(inputs[0]);
     std::vector<nvinfer1::ITensor*> shape_tensor_vec;
@@ -73,6 +75,7 @@ class StackOpConverter : public OpConverter {
     }
     auto* after_shape_tensor = Concat(shape_tensor_vec);
 
+    VLOG(4) << "77 ok";
     for (int i = 0; i < input_num; ++i) {
       auto* reshape_layer = TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *inputs[i]);
       reshape_layer->setInput(1, *after_shape_tensor);
@@ -82,10 +85,12 @@ class StackOpConverter : public OpConverter {
                                  .c_str());
     }
 
+    VLOG(4) << "87 ok";
     auto* layer = TRT_ENGINE_ADD_LAYER(
         engine_, Concatenation, inputs.data(), inputs.size());
     layer->setAxis(axis);
 
+    VLOG(4) << "93 ok";
     RreplenishLayerAndOutput(layer, "stack", {output_name}, test_mode);
   }
 };
