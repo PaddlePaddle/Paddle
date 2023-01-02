@@ -180,7 +180,7 @@ class TestBaseCost(unittest.TestCase):
         for op in train_program.global_block().ops:
             dist_op = dist_context.get_dist_op_for_program(op)
             if dist_op:
-                processes = dist_op.dist_attr.process_mesh.processes
+                processes = dist_op.dist_attr.process_mesh.process_ids
                 comp_descs = build_comp_desc_from_dist_op(dist_op, dist_context)
                 self.assertTrue(isinstance(comp_descs, dict) and comp_descs)
                 var_names = None

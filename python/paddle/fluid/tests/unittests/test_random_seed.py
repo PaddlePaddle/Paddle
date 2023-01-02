@@ -97,11 +97,11 @@ class TestGeneratorSeed(unittest.TestCase):
         st = gen.get_state()
         # x = np.arange(1,101).reshape(2,50).astype("float32")
         x = paddle.uniform([2, 10], dtype="float32", min=0.0, max=1.0)
-        y = fluid.layers.dropout(x, 0.5)
+        y = paddle.nn.functional.dropout(x, 0.5)
         gen.manual_seed(111111111)
         # gen.set_state(st)
         x1 = paddle.uniform([2, 10], dtype="float32", min=0.0, max=1.0)
-        y1 = fluid.layers.dropout(x1, 0.5)
+        y1 = paddle.nn.functional.dropout(x1, 0.5)
         y_np = y.numpy()
         y1_np = y1.numpy()
 
@@ -120,7 +120,7 @@ class TestGeneratorSeed(unittest.TestCase):
             # example 1:
             # attr shape is a list which doesn't contain tensor Variable.
             x_1 = paddle.uniform(shape=[2, 10])
-            y_1 = fluid.layers.dropout(x_1, 0.5)
+            y_1 = paddle.nn.functional.dropout(x_1, 0.5)
             exe = fluid.Executor(fluid.CPUPlace())
             exe.run(startup_program)
             out1 = exe.run(train_program, feed={}, fetch_list=[y_1])

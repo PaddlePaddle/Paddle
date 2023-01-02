@@ -31,7 +31,7 @@ class TestConvDoubleGradCheck(unittest.TestCase):
         eps = 0.005
         dtype = np.float32 if fluid.core.is_compiled_with_rocm() else np.float64
         x = layers.data('x', shape, False, dtype)
-        y = layers.conv2d(x, 2, 1, groups=1, bias_attr=False)
+        y = paddle.static.nn.conv2d(x, 2, 1, groups=1, bias_attr=False)
         x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
 
         w = fluid.default_main_program().global_block().all_parameters()
@@ -58,7 +58,7 @@ class TestConvDoubleGradCheckTest0(unittest.TestCase):
         eps = 0.005
         dtype = np.float32 if fluid.core.is_compiled_with_rocm() else np.float64
         x = layers.data('x', shape, False, dtype)
-        y = layers.conv2d(x, 2, 1, bias_attr=False)
+        y = paddle.static.nn.conv2d(x, 2, 1, bias_attr=False)
         x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
 
         w = fluid.default_main_program().global_block().all_parameters()
@@ -84,7 +84,7 @@ class TestConvDoubleGradCheckTest1(unittest.TestCase):
         eps = 0.005
         dtype = np.float32 if fluid.core.is_compiled_with_rocm() else np.float64
         x = layers.data('x', shape, False, dtype)
-        y = layers.conv2d(x, 2, 1, padding=1, bias_attr=False)
+        y = paddle.static.nn.conv2d(x, 2, 1, padding=1, bias_attr=False)
         x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
 
         w = fluid.default_main_program().global_block().all_parameters()
@@ -163,7 +163,7 @@ class TestConv2DoubleGradCheck_AsyPadding(unittest.TestCase):
         eps = 0.005
         dtype = np.float32 if fluid.core.is_compiled_with_rocm() else np.float64
         x = layers.data('x', shape, False, dtype)
-        y = layers.conv2d(
+        y = paddle.static.nn.conv2d(
             input=x,
             num_filters=2,
             filter_size=1,
@@ -196,7 +196,7 @@ class TestConv2DoubleGradCheck_PaddingSAME(unittest.TestCase):
         eps = 0.005
         dtype = np.float32 if fluid.core.is_compiled_with_rocm() else np.float64
         x = layers.data('x', shape, False, dtype)
-        y = layers.conv2d(
+        y = paddle.static.nn.conv2d(
             input=x,
             num_filters=2,
             filter_size=1,
@@ -229,7 +229,7 @@ class TestConv2DoubleGradCheck_PaddingVALID(unittest.TestCase):
         eps = 0.005
         dtype = np.float32 if fluid.core.is_compiled_with_rocm() else np.float64
         x = layers.data('x', shape, False, dtype)
-        y = layers.conv2d(
+        y = paddle.static.nn.conv2d(
             input=x,
             num_filters=2,
             filter_size=1,
@@ -262,7 +262,7 @@ class TestConv2DoubleGradCheck_ChannelLast(unittest.TestCase):
         eps = 0.005
         dtype = np.float32 if fluid.core.is_compiled_with_rocm() else np.float64
         x = layers.data('x', shape, False, dtype)
-        y = layers.conv2d(
+        y = paddle.static.nn.conv2d(
             input=x,
             num_filters=2,
             filter_size=1,
@@ -297,7 +297,7 @@ class TestConv2DoubleGradCheck_ChannelLast_AsyPadding(unittest.TestCase):
         eps = 0.005
         dtype = np.float32 if fluid.core.is_compiled_with_rocm() else np.float64
         x = layers.data('x', shape, False, dtype)
-        y = layers.conv2d(
+        y = paddle.static.nn.conv2d(
             input=x,
             num_filters=2,
             filter_size=1,
@@ -507,7 +507,7 @@ class TestDepthWiseConvDoubleGradCheck(unittest.TestCase):
         # use_cudnn == False
         # groups == filters
         # num_filters % num_channels == 0
-        y = layers.conv2d(
+        y = paddle.static.nn.conv2d(
             x, shape[1], 1, groups=shape[1], bias_attr=False, use_cudnn=False
         )
         x_arr = np.random.uniform(-1, 1, shape).astype(dtype)

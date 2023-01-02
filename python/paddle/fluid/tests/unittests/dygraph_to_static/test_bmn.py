@@ -24,8 +24,8 @@ import paddle
 import paddle.fluid as fluid
 from paddle.fluid import ParamAttr
 from paddle.fluid.dygraph import to_variable
-from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 from paddle.jit import ProgramTranslator, to_static
+from paddle.jit.translated_layer import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 
 SEED = 2000
 DATATYPE = 'float32'
@@ -135,7 +135,7 @@ class Conv1D(fluid.dygraph.Layer):
         )
 
     def forward(self, x):
-        x = fluid.layers.unsqueeze(input=x, axes=[2])
+        x = paddle.unsqueeze(x, axis=[2])
         x = self._conv2d(x)
         x = paddle.squeeze(x, axis=[2])
         return x

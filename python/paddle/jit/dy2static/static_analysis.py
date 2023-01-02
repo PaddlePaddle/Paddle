@@ -13,13 +13,14 @@
 # limitations under the License.
 
 from paddle.utils import gast
+
 from .logging_utils import warn
 from .utils import (
-    is_paddle_api,
+    ast_to_source_code,
+    index_in_list,
     is_dygraph_api,
     is_numpy_api,
-    index_in_list,
-    ast_to_source_code,
+    is_paddle_api,
 )
 
 __all__ = []

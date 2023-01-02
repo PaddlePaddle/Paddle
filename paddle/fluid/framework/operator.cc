@@ -24,6 +24,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/details/nan_inf_utils.h"
 #include "paddle/fluid/framework/op_call_stack.h"
 #include "paddle/fluid/framework/phi_utils.h"
+#include "paddle/fluid/framework/raw_tensor.h"
 #include "paddle/fluid/framework/shape_inference.h"
 #include "paddle/fluid/framework/transfer_scope_cache.h"
 #include "paddle/fluid/framework/unused_var_check.h"
@@ -1602,11 +1603,11 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   }
 #endif
 
-  auto exe_ctx = ExecutionContext(*this, scope, *dev_ctx, *runtime_ctx);
   // using cache
   if (kernel_type_.get()) {
     dev_ctx = pool.Get(kernel_type_->place_);
   }
+  auto exe_ctx = ExecutionContext(*this, scope, *dev_ctx, *runtime_ctx);
 
 // TODO(Liu-xiandong): Now we are using too much if-else and hard code in XPU
 // device, it's ugly, and we will refactor in the future.
@@ -1678,12 +1679,12 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
               phi_kernel_name, phi_kernel_key)));
 
       if (phi_kernel_->IsValid()) {
-        VLOG(6) << "Static mode ChoosePhiKernel - kernel name: "
+        VLOG(6) << "Static graph mode ChoosePhiKernel - kernel name: "
                 << phi_kernel_name << " | kernel key: " << phi_kernel_key
                 << " | kernel: " << *phi_kernel_;
       } else {
-        VLOG(6) << "Static mode ChoosePhiKernel - kernel `" << phi_kernel_name
-                << "` not found.";
+        VLOG(6) << "Static graph mode ChoosePhiKernel - kernel `"
+                << phi_kernel_name << "` not found.";
       }
     } else {
       phi_kernel_name = kernel_signature_->name;
@@ -1807,15 +1808,14 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
 #endif
       ) {
         fallback_to_cpu = true;
-        auto phi_cpu_kernel_key =
-            FallBackToCpu(*kernel_type_.get(), phi_kernel_key, *this);
+        auto phi_cpu_kernel_key = FallBackToCpu(phi_kernel_key, *this);
         phi_kernel_.reset(
             new phi::Kernel(phi::KernelFactory::Instance().SelectKernel(
                 phi_kernel_name, phi_cpu_kernel_key)));
 
         dev_ctx = pool.Get(platform::CPUPlace());
         if (phi_kernel_->IsValid()) {
-          VLOG(6) << "Static mode PrepareImpl - kernel name: "
+          VLOG(6) << "Static graph mode PrepareImpl - kernel name: "
                   << phi_kernel_name << " | kernel key: " << phi_cpu_kernel_key
                   << " | kernel: " << *phi_kernel_;
           run_phi_kernel_ = true;
@@ -2083,11 +2083,11 @@ phi::KernelKey OperatorWithKernel::ChoosePhiKernel(
       phi_kernel_name, phi_kernel_key)));
 
   if (phi_kernel_->IsValid()) {
-    VLOG(6) << "Static mode ChoosePhiKernel - kernel name: " << phi_kernel_name
-            << " | kernel key: " << phi_kernel_key
+    VLOG(6) << "Static graph mode ChoosePhiKernel - kernel name: "
+            << phi_kernel_name << " | kernel key: " << phi_kernel_key
             << " | kernel: " << *phi_kernel_;
   } else {
-    VLOG(6) << "Static mode ChoosePhiKernel - kernel `" << phi_kernel_name
+    VLOG(6) << "Static graph mode ChoosePhiKernel - kernel `" << phi_kernel_name
             << "` not found.";
   }
   return phi_kernel_key;
@@ -2715,7 +2715,23 @@ proto::VarType::Type OperatorWithKernel::IndicateDataType(
   proto::VarType::Type dafault_data_type =
       static_cast<proto::VarType::Type>(-1);
   proto::VarType::Type data_type = dafault_data_type;
-  for (auto* name : ctx.InNameList()) {
+
+  auto in_name_list = ctx.InNameList();
+  if (Info().HasOpProtoAndChecker()) {
+    for (auto& attr : Info().Proto().attrs()) {
+      auto it =
+          std::find_if(in_name_list.begin(),
+                       in_name_list.end(),
+                       [&attr](const std::string* name) {
+                         return attr.support_tensor() && *name == attr.name();
+                       });
+      if (it != in_name_list.end()) {
+        in_name_list.erase(it);
+      }
+    }
+  }
+
+  for (auto* name : in_name_list) {
     if (ctx.InputSize(*name) == 1UL) {
       ParseInputDataType(ctx.InputVar(*name), *name, &data_type);
     } else {
@@ -3008,6 +3024,9 @@ void OperatorWithKernel::BuildPhiKernelContext(
         need_prepare_phi_data_ = true;
         tensor_in = &(var->Get<framework::LoDTensorArray>());
         phi_kernel_context->EmplaceBackInputWithoutSetRange(tensor_in);
+      } else if (var->IsType<framework::Vocab>()) {
+        tensor_in = &(var->Get<framework::Vocab>());
+        phi_kernel_context->EmplaceBackInputWithoutSetRange(tensor_in);
       } else {
         PADDLE_THROW(platform::errors::Unimplemented(
             "Unsupported input `%s` type when call pt kernel.",
@@ -3025,6 +3044,7 @@ void OperatorWithKernel::BuildPhiKernelContext(
         (i == 0 ? 0 : phi_kernel_context->OutputRangeAt(i - 1).second);
 
     if (it == ctx.outputs.end() || it->second.empty()) {
+      VLOG(4) << "Output " << output_names[i] << " not found";
       // Deal with the case that some outputs are not found or be NULL when run
       // the kernel.
       // For example : the outputs of matmul_grad are dx and dy,
@@ -3057,12 +3077,20 @@ void OperatorWithKernel::BuildPhiKernelContext(
           // Note: If the input LoDTensorArray size is 0, the output
           // LoDTensorArray is also 0
           phi_kernel_context->EmplaceBackOutputWithoutSetRange(tensor_out);
+        } else if (var->template IsType<paddle::framework::RawTensor>()) {
+          tensor_out = var->template GetMutable<paddle::framework::RawTensor>();
+          phi_kernel_context->EmplaceBackOutputWithoutSetRange(tensor_out);
+        } else if (!var->IsInitialized()) {
+          // The following is for RAW type of var
+          tensor_out = var->template GetMutable<paddle::framework::RawTensor>();
+          phi_kernel_context->EmplaceBackOutputWithoutSetRange(tensor_out);
         } else {
           PADDLE_THROW(platform::errors::Unimplemented(
               "Unsupported output `%s` type when call pt kernel.",
               framework::ToTypeName(var->Type())));
         }
       } else {
+        VLOG(4) << "Output " << output_names[i] << " is nullptr";
         phi_kernel_context->EmplaceBackOutputWithoutSetRange(tensor_out);
       }
     }
@@ -3156,6 +3184,7 @@ void OperatorWithKernel::BuildPhiKernelContext(
           }
         }
         break;
+
       case phi::AttributeType::SCALARS: {
         PADDLE_ENFORCE_NE(
             attr_iter,

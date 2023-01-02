@@ -24,7 +24,7 @@ class TestStrategy(unittest.TestCase):
 
         recompute = strategy.recompute
         self.assertEqual(recompute.enable, False)
-        self.assertIsNone(recompute.checkpoints)
+        self.assertEqual(recompute.checkpoints, [])
 
         amp = strategy.amp
         self.assertEqual(amp.enable, False)
@@ -40,6 +40,13 @@ class TestStrategy(unittest.TestCase):
         self.assertEqual(amp.use_pure_fp16, False)
         self.assertEqual(amp.use_fp16_guard, True)
         self.assertEqual(amp.use_optimizer_fp16, False)
+
+        self.assertEqual(amp.enable_bf16, False)
+        self.assertEqual(amp.custom_bf16_list, [])
+        self.assertEqual(amp.custom_fp32_list, [])
+        self.assertEqual(amp.custom_fp32_varnames, [])
+        self.assertEqual(amp.use_pure_bf16, False)
+        self.assertEqual(amp.use_bf16_guard, False)
 
         sharding = strategy.sharding
         self.assertEqual(sharding.enable, False)
@@ -66,12 +73,10 @@ class TestStrategy(unittest.TestCase):
 
         tuning = strategy.tuning
         self.assertEqual(tuning.enable, False)
-        self.assertEqual(tuning.batch_size, 1)
-        self.assertIsNone(tuning.dataset)
         self.assertEqual(tuning.profile_start_step, 1)
         self.assertEqual(tuning.profile_end_step, 1)
         self.assertEqual(tuning.run_after_tuning, True)
-        self.assertEqual(tuning.verbose, True)
+        self.assertEqual(tuning.debug, False)
 
     def test_modify_config(self):
         strategy = auto.Strategy()

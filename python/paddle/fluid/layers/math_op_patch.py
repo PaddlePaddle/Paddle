@@ -18,7 +18,6 @@ import inspect
 from .. import core
 from ..framework import Variable, unique_name, static_only
 from .layer_function_generator import OpProtoHolder
-from .control_flow import array_write
 from paddle.fluid.dygraph.base import in_declarative_mode
 
 _supported_int_dtype_ = [
@@ -156,12 +155,12 @@ def monkey_patch_variable():
     @static_only
     def place(self):
         """
-        Variable don't have 'place' interface in static mode
+        Variable don't have 'place' interface in static graph mode
         But this interface can greatly facilitate dy2static.
         So we give a warnning here and return None.
         """
         warnings.warn(
-            "Variable do not have 'place' interface for static mode, try not to use it. None will be returned."
+            "Variable do not have 'place' interface for static graph mode, try not to use it. None will be returned."
         )
         return None
 
@@ -246,7 +245,7 @@ def monkey_patch_variable():
                     self.type
                 )
             )
-        from paddle.tensor.array import array_length
+        from paddle.tensor.array import array_length, array_write
 
         array_write(x=var, i=array_length(self), array=self)
 

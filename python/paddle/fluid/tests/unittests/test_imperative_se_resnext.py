@@ -20,12 +20,8 @@ from test_imperative_base import new_program_scope
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid import core
-from paddle.fluid.dygraph.nn import BatchNorm
-from paddle.fluid.framework import _test_eager_guard
 from paddle.fluid.layer_helper import LayerHelper
-
-if fluid.is_compiled_with_cuda():
-    fluid.set_flags({'FLAGS_cudnn_deterministic': True})
+from paddle.nn import BatchNorm
 
 batch_size = 8
 train_parameters = {
@@ -120,7 +116,6 @@ class SqueezeExcitation(fluid.dygraph.Layer):
                 initializer=paddle.nn.initializer.Constant(value=0.05)
             ),
         )
-
         self.act_2 = paddle.nn.Softmax()
 
     def forward(self, input):
@@ -130,7 +125,7 @@ class SqueezeExcitation(fluid.dygraph.Layer):
         y = self.act_1(y)
         y = self._excitation(y)
         y = self.act_2(y)
-        y = fluid.layers.elementwise_mul(x=input, y=y, axis=0)
+        y = paddle.tensor.math._multiply_with_axis(x=input, y=y, axis=0)
         return y
 
 
@@ -422,13 +417,12 @@ class TestImperativeResneXt(unittest.TestCase):
             ) = run_dygraph()
 
         with fluid.dygraph.guard():
-            with _test_eager_guard():
-                (
-                    eager_out,
-                    eager_param_init_value,
-                    eager_param_value,
-                    eager_grad_value,
-                ) = run_dygraph()
+            (
+                eager_out,
+                eager_param_init_value,
+                eager_param_value,
+                eager_grad_value,
+            ) = run_dygraph()
 
         with new_program_scope():
             paddle.seed(seed)

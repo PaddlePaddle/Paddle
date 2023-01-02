@@ -22,18 +22,17 @@ from functools import reduce
 import numpy as np
 
 import paddle
-import paddle.fluid.core as core
-from paddle.distributed.auto_parallel.dist_attribute import (
+from paddle.fluid.framework import Variable
+from paddle.fluid.io import is_belong_to_optimizer, is_parameter
+from paddle.framework import core
+
+from .dist_attribute import (
     OperatorDistributedAttribute,
     TensorDistributedAttribute,
 )
-from paddle.distributed.auto_parallel.process_group import (
-    get_all_process_groups,
-)
-from paddle.distributed.fleet.meta_optimizers.common import OpRole
-from paddle.fluid.framework import Variable
-from paddle.fluid.io import is_belong_to_optimizer, is_parameter
+from .process_group import get_all_process_groups
 
+OpRole = core.op_proto_and_checker_maker.OpRole
 OP_ROLE_KEY = core.op_proto_and_checker_maker.kOpRoleAttrName()
 
 __no_shape_var_type__ = [
@@ -101,7 +100,7 @@ def convert_to_dims_mapping(shard_spec, process_mesh):
     for shard in shard_spec:
         if shard is None:
             dims_mapping.append(-1)
-        elif process_mesh.topology[process_mesh.dim_names.index(shard)] == 1:
+        elif process_mesh.shape[process_mesh.dim_names.index(shard)] == 1:
             dims_mapping.append(-1)
         else:
             dims_mapping.append(process_mesh.dim_names.index(shard))
@@ -430,26 +429,26 @@ def _get_corresponding_rank(dist_context, target_mesh, rank):
 
     coordinate = None
     for mesh in dist_context.process_meshes:
-        if rank in mesh.processes and mesh.topology == target_mesh.topology:
+        if rank in mesh.process_ids and mesh.shape == target_mesh.shape:
             coordinate = _linear_idx2coordinate(
-                mesh.topology, mesh.processes.index(rank)
+                mesh.shape, mesh.process_ids.index(rank)
             )
             break
 
     # assert coordinate is not None, "could NOT found rank [{}] in any registered mesh".format(
     #     rank)
     if coordinate is not None:
-        return target_mesh.processes[
-            _coordinate2linear_idx(mesh.topology, coordinate)
+        return target_mesh.process_ids[
+            _coordinate2linear_idx(mesh.shape, coordinate)
         ]
     else:
-        return target_mesh.processes[0]
+        return target_mesh.process_ids[0]
 
 
 def _get_unshard_dist_shape(var, dist_attr):
     var_shape = var.shape
     mapping = dist_attr.dims_mapping
-    mesh = dist_attr.process_mesh.topology
+    mesh = dist_attr.process_mesh.shape
     assert len(var_shape) == len(
         mapping
     ), "variable shape [{}] and dim_mapping [{}] is NOT match !".format(
@@ -833,8 +832,8 @@ def get_dist_attr(program, dist_context=None):
             process_mesh = tensor_dist_attr.process_mesh
             dims_mapping = tensor_dist_attr.dims_mapping
             dist_attr[var.name] = {
-                "process_shape": process_mesh.topology,
-                "process_group": process_mesh.processes,
+                "process_shape": process_mesh.shape,
+                "process_group": process_mesh.process_ids,
                 "dims_mapping": dims_mapping,
             }
     return dist_attr
@@ -1262,6 +1261,8 @@ def set_grad_var_shape(program, dist_context):
                 "fused_softmax_mask_upper_triangle_grad",
                 "flatten_contiguous_range_grad",
                 "relu_grad",
+                "exp_grad",
+                "sigmoid_grad",
             ]
             forward_list = [
                 "reshape2",
@@ -1280,6 +1281,8 @@ def set_grad_var_shape(program, dist_context):
                 "fused_softmax_mask_upper_triangle",
                 "flatten_contiguous_range",
                 "relu",
+                "exp",
+                "sigmoid",
             ]
             if op.type in need_set_shape_list:
                 for forward_op in block.ops:
@@ -1921,10 +1924,16 @@ def initialize_pg_in_full_mode(all_process_groups, cur_rank):
     server_socket.close()
 
 
-def set_recompute_ckpts(model, strategy):
-    from .interface import _g_recompute_idx
+def is_recompute_op(op):
+    return op.has_attr('op_namescope') and "/auto_parallel/rc" in op.attr(
+        'op_namescope'
+    )
 
-    if _g_recompute_idx > -1:
+
+def set_recompute_segments(model, losses, strategy, program):
+    from ..passes.auto_parallel_recompute import RecomputeState
+
+    if not losses:
         return
 
     recompute = strategy.recompute
@@ -1934,24 +1943,65 @@ def set_recompute_ckpts(model, strategy):
     # NOTE: hack to enable recompute in engine api for GPT-3
     # TODO support more PaddleNLP/CV models here
     # extract ckpts by specific model
+    ckpts = []
     if isinstance(model, paddle.nn.Layer):
-        if hasattr(model, "gpt") and model.__class__.__name__ in [
-            'GPTForPretraining',
-            'GPTForPretrainingAuto',
-        ]:
-            exact_ckpts = model.gpt.checkpoints
+        if (
+            hasattr(model, "gpt")
+            and model.__class__.__name__
+            in [
+                'GPTForPretraining',
+                'GPTForPretrainingAuto',
+            ]
+            and hasattr(model.gpt, "checkpoints")
+        ):
+            ckpts = model.gpt.checkpoints
         else:
-            exact_ckpts = recompute.checkpoints
+            ckpts = recompute.checkpoints
     else:
-        exact_ckpts = recompute.checkpoints
+        ckpts = recompute.checkpoints
 
-    # modify strategy
-    recompute.checkpoints = exact_ckpts[:]
-    logs = {
-        'Model Class': model.__class__.__name__,
-        'Applied Recompute ckpts': exact_ckpts,
-    }
-    logging.info(logs)
+    if not ckpts:
+        return
+
+    block = program.global_block()
+    rc_state = RecomputeState(block, block.ops)
+    rc_state.build_stats()
+    checkpoints = rc_state.sort_checkpoints(ckpts)
+
+    segments = []
+    start_idx = -1
+    pre_segment_end_idx = -1
+    while start_idx + 1 < len(checkpoints):
+        if start_idx == -1:
+            ckpt_name = checkpoints[start_idx + 1]
+            if ckpt_name not in rc_state.var_op_deps:
+                start_idx += 1
+                continue
+            op_idx_list = rc_state.var_op_deps[ckpt_name]["var_as_output_ops"]
+            if op_idx_list and max(op_idx_list) > 0:
+                segments.append([0, max(op_idx_list) + 1])
+        else:
+            flag, min_idx, max_idx = rc_state.is_subgraph(
+                [checkpoints[start_idx]], [checkpoints[start_idx + 1]]
+            )
+            if flag:
+                min_idx = rc_state._update_segment_start(
+                    min_idx, pre_segment_end_idx
+                )
+                segments.append([min_idx, max_idx + 1])
+            else:
+                logging.debug(
+                    "Could not recompute op range [{}] - [{}] ".format(
+                        min_idx, max_idx + 1
+                    )
+                )
+        start_idx += 1
+
+    for i, segment in enumerate(segments):
+        for j in range(segment[0], segment[1]):
+            block.ops[j]._set_attr(
+                'op_namescope', "/auto_parallel/rc_" + str(i)
+            )
 
 
 def get_input_split_info(cur_rank, var, dist_context):
@@ -1960,16 +2010,16 @@ def get_input_split_info(cur_rank, var, dist_context):
     process_mesh = tensor_dist_attr.process_mesh
     dims_mapping = tensor_dist_attr.dims_mapping
 
-    if cur_rank not in process_mesh.processes:
+    if cur_rank not in process_mesh.process_ids:
         rank_id = _get_corresponding_rank(dist_context, process_mesh, cur_rank)
     else:
         rank_id = cur_rank
 
     batch_size_axis = dims_mapping[0]
-    if batch_size_axis > -1 and process_mesh.topology[batch_size_axis] > 1:
+    if batch_size_axis > -1 and process_mesh.shape[batch_size_axis] > 1:
         group_ranks = _get_comm_group(
-            process_mesh.processes,
-            process_mesh.topology,
+            process_mesh.process_ids,
+            process_mesh.shape,
             batch_size_axis,
             rank_id,
         )
@@ -2168,6 +2218,9 @@ def insert_dependencies_for_two_ops(
 
     def _select_best_depend_var(vars):
 
+        # parameter should not be dep var since it maybe partition in sharding pass
+        vars = [var for var in vars if not var.is_parameter]
+        assert len(vars) > 0
         vars_with_numels = [(var, get_var_numel(var)) for var in vars]
         vars_with_numels.sort(key=lambda x: x[1])
 

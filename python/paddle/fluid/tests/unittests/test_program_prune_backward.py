@@ -17,7 +17,6 @@ import unittest
 
 import numpy as np
 import seresnext_net
-from fake_reader import fake_imdb_reader
 from simple_nets import fc_with_batchnorm, init_data, simple_fc_net
 from test_parallel_executor_transformer import (
     DeviceType,
@@ -28,37 +27,6 @@ from test_parallel_executor_transformer import (
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-
-
-def lstm_net(use_feed):
-    dict_dim = 5147
-    emb_dim = 128
-    hid_dim = 128
-    hid_dim2 = 96
-    class_dim = 2
-    emb_lr = 30.0
-    data = fluid.layers.data(
-        name="words", shape=[1], dtype="int64", lod_level=1
-    )
-    label = fluid.layers.data(name="label", shape=[1], dtype="int64")
-    emb = fluid.layers.embedding(
-        input=data,
-        size=[dict_dim, emb_dim],
-        param_attr=fluid.ParamAttr(learning_rate=emb_lr),
-    )
-    fc0 = fluid.layers.fc(input=emb, size=hid_dim * 4)
-    lstm_h, c = fluid.layers.dynamic_lstm(
-        input=fc0, size=hid_dim * 4, is_reverse=False
-    )
-    lstm_max = fluid.layers.sequence_pool(input=lstm_h, pool_type='max')
-    lstm_max_tanh = paddle.tanh(lstm_max)
-    fc1 = fluid.layers.fc(input=lstm_max_tanh, size=hid_dim2, act='tanh')
-    prediction = fluid.layers.fc(input=fc1, size=class_dim, act='softmax')
-    cost = paddle.nn.functional.cross_entropy(
-        input=prediction, label=label, reduction='none', use_softmax=False
-    )
-    avg_cost = paddle.mean(x=cost)
-    return avg_cost
 
 
 def simple_fc_net_with_accuracy(use_feed):
@@ -266,29 +234,6 @@ class TestProgramPruneBackward(unittest.TestCase):
             )
             self.check_prune_correctness(
                 method=transformer, feed_dict=feed_dict, optimizer=optimizer
-            )
-
-    def test_lstm(self):
-        def optimizer():
-            optimizer = fluid.optimizer.Adagrad(
-                learning_rate=0.001,
-                regularization=fluid.regularizer.L2Decay(1e-4),
-            )
-            return optimizer
-
-        with self.program_scope_guard():
-            word_dict_size = 5147
-            reader = fake_imdb_reader(word_dict_size, 1)
-            data = fluid.layers.data(
-                name="words", shape=[1], dtype="int64", lod_level=1
-            )
-            label = fluid.layers.data(name="label", shape=[1], dtype="int64")
-            feeder = fluid.DataFeeder(
-                feed_list=[data, label], place=core.CPUPlace()
-            )
-            feed_data = feeder.feed(reader())
-            self.check_prune_correctness(
-                method=lstm_net, feed_dict=feed_data, optimizer=optimizer
             )
 
     def test_cond(self):

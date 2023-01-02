@@ -13,8 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/math/softmax.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/softmax.h"
 
 namespace paddle {
 namespace operators {
@@ -61,7 +61,7 @@ class SequenceSoftmaxCUDNNKernel : public framework::OpKernel<T> {
           phi::make_ddim({1UL, end_pos - start_pos});
       x_i.Resize(dims_i);
       out_i.Resize(dims_i);
-      math::SoftmaxCUDNNFunctor<T, phi::GPUContext>()(
+      phi::funcs::SoftmaxCUDNNFunctor<T, phi::GPUContext>()(
           ctx.template device_context<phi::GPUContext>(), &x_i, &out_i);
     }
   }
@@ -95,7 +95,7 @@ class SequenceSoftmaxGradCUDNNKernel : public framework::OpKernel<T> {
       out_i.Resize(dims_i);
       out_grad_i.Resize(dims_i);
       x_grad_i.Resize(dims_i);
-      math::SoftmaxGradCUDNNFunctor<T, phi::GPUContext>()(
+      phi::funcs::SoftmaxGradCUDNNFunctor<T, phi::GPUContext>()(
           ctx.template device_context<phi::GPUContext>(),
           &out_i,
           &out_grad_i,

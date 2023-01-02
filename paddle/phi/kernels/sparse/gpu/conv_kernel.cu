@@ -126,7 +126,7 @@ void Conv3dCooGPUKernel(const GPUContext& dev_ctx,
 
 #ifdef PADDLE_WITH_CUTLASS
   bool cutlass = true;
-  if (dev_ctx.GetComputeCapability() < 80) cutlass = false;
+  if (dev_ctx.GetComputeCapability() < 75) cutlass = false;
   if (in_channels % 4 != 0 || out_channels % 4 != 0) {
     if (std::is_same<T, phi::dtype::float16>::value) cutlass = false;
     if (std::is_same<T, float>::value) cutlass = false;
@@ -167,7 +167,7 @@ void Conv3dCooGPUKernel(const GPUContext& dev_ctx,
             N,
             K,
             static_cast<const int32_t*>(gather_indices),
-            nullptr,
+            nullptr,            
             static_cast<const int32_t*>(scatter_indices),
             static_cast<cutlass::half_t>(1),
             static_cast<cutlass::half_t>(1));
@@ -176,7 +176,7 @@ void Conv3dCooGPUKernel(const GPUContext& dev_ctx,
                     std::is_same<IntT, int32_t>::value) {
 #if 0
         fp32_gather_gemm_scatter gather_gemm_scatter =
-            getBestFp32Kernel<true, false, true>(M, N, K);
+            getBestFp32Kernel(M, N, K, dev_ctx.GetComputeCapability());
         gather_gemm_scatter(dev_ctx,
                             x.non_zero_elements().data<T>(),
                             tmp_kernel_ptr,

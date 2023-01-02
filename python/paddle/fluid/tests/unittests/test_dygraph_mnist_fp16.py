@@ -18,7 +18,6 @@ import numpy as np
 
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.framework import _test_eager_guard
 from paddle.nn import Linear
 
 
@@ -136,8 +135,6 @@ class TestMnist(unittest.TestCase):
             print(loss.numpy())
 
     def test_mnist_fp16(self):
-        with _test_eager_guard():
-            self.func_mnist_fp16()
         self.func_mnist_fp16()
 
 

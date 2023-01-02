@@ -64,7 +64,18 @@ typedef void (*fp64_gather_gemm_scatter)(const GPUContext& dev_ctx,
                                          const int32_t* c_d_indices,
                                          double const alpha,
                                          double const beta);
-template <typename T, typename KernelConfig>
+
+fp16_gather_gemm_scatter getBestFp16Kernel(const int M,
+                                           const int K,
+                                           const int N);
+fp32_gather_gemm_scatter getBestFp32Kernel(const int M,
+                                           const int K,
+                                           const int N,
+                                           const int SM);
+fp64_gather_gemm_scatter getBestFp64Kernel(const int M,
+                                           const int K,
+                                           const int N);
+template <typename T, typename Gemm>
 void launchKernel(const GPUContext& dev_ctx,
                   const T* const a,
                   const T* const b,
@@ -756,288 +767,31 @@ struct cutlass_tensorop_d884gemm_32x16_16x5_nn_align1 {
   static const cutlass::gemm::GemmUniversalMode Mode = Mode_;
   static const int SplitKSlices = SplitKSlices_;
 };
-template <bool GatherA, bool GatherB, bool ScatterD>
-fp16_gather_gemm_scatter getBestFp16Kernel(const int M,
-                                           const int N,
-                                           const int K) {
-  if (K == 4 && N == 16) {
-    return launchKernel<
-        cutlass::half_t,
-        cutlass_tensorop_h1688gemm_64x64_32x2_nn_align4<GatherA,
-                                                        GatherB,
-                                                        ScatterD>>;
-  }
-  if (K == 16 && N == 16) {
-    return launchKernel<
-        cutlass::half_t,
-        cutlass_tensorop_h1688gemm_64x64_32x2_nn_align8<GatherA,
-                                                        GatherB,
-                                                        ScatterD>>;
-  }
-  if (K == 16 && N == 32) {
-    return launchKernel<
-        cutlass::half_t,
-        cutlass_tensorop_h1688gemm_64x64_32x2_nn_align8<GatherA,
-                                                        GatherB,
-                                                        ScatterD>>;
-  }
-  if (K == 32 && N == 32) {
-    return launchKernel<
-        cutlass::half_t,
-        cutlass_tensorop_h1688gemm_64x64_32x2_nn_align8<GatherA,
-                                                        GatherB,
-                                                        ScatterD>>;
-  }
-  if (K == 32 && N == 64) {
-    return launchKernel<
-        cutlass::half_t,
-        cutlass_tensorop_h1688gemm_64x64_32x2_nn_align8<GatherA,
-                                                        GatherB,
-                                                        ScatterD>>;
-  }
-  if (K == 64 && N == 64) {
-    if (M > 100000)
-      launchKernel<
-          cutlass::half_t,
-          cutlass_tensorop_f16_s1688gemm_f16_64x128_32x2_nn_align8<GatherA,
-                                                                   GatherB,
-                                                                   ScatterD>>;
-    if (M > 20000)
-      launchKernel<
-          cutlass::half_t,
-          cutlass_tensorop_f16_s1688gemm_f16_64x64_32x2_nn_align8<GatherA,
-                                                                  GatherB,
-                                                                  ScatterD>>;
-    if (M > 15000)
-      return launchKernel<
-          cutlass::half_t,
-          cutlass_tensorop_h1688gemm_128x64_32x2_nn_align8<GatherA,
-                                                           GatherB,
-                                                           ScatterD>>;
-    return launchKernel<
-        cutlass::half_t,
-        cutlass_tensorop_h1688gemm_64x64_32x2_nn_align8<GatherA,
-                                                        GatherB,
-                                                        ScatterD>>;
-  }
-  if (K == 128) {
-    if (M >= 5000)
-      return launchKernel<
-          cutlass::half_t,
-          cutlass_tensorop_h1688gemm_64x64_32x2_nn_align8<GatherA,
-                                                          GatherB,
-                                                          ScatterD>>;
-    return launchKernel<
-        cutlass::half_t,
-        cutlass_tensorop_h16816gemm_64x64_64x5_nn_align8<GatherA,
-                                                         GatherB,
-                                                         ScatterD>>;
-  }
-  if (N == 128) {
-    return launchKernel<
-        cutlass::half_t,
-        cutlass_tensorop_h1688gemm_64x64_32x2_nn_align8<GatherA,
-                                                        GatherB,
-                                                        ScatterD>>;
-  }
-  return launchKernel<
+
+
+// sm75
+struct cutlass_tensorop_s1688gemm_f16_64x64_32x2_nn_align4 {
+  using Gemm = cutlass::gemm::device::GemmUniversal<
       cutlass::half_t,
-      cutlass_tensorop_h1688gemm_64x64_32x2_nn_align4<GatherA,
-                                                      GatherB,
-                                                      ScatterD>>;
-}
-template <bool GatherA, bool GatherB, bool ScatterD>
-fp32_gather_gemm_scatter getBestFp32Kernel(const int M,
-                                           const int N,
-                                           const int K,
-                                           const bool transposedA = false,
-                                           const bool transposedB = false) {
-  if (!transposedA && !transposedB) {
-    if (K == 4 && N == 16) {
-      return launchKernel<
-          float,
-          cutlass_tensorop_s1688f16gemm_64x64_16x10_nn_align4<GatherA,
-                                                              GatherB,
-                                                              ScatterD>>;
-    }
-    if (K == 16 && N == 16) {
-      return launchKernel<
-          float,
-          cutlass_tensorop_s1688f16gemm_64x64_16x10_nn_align4<GatherA,
-                                                              GatherB,
-                                                              ScatterD>>;
-    }
-    if (K == 16 && N == 32) {
-      if (M >= 10000)
-        return launchKernel<
-            float,
-            cutlass_tensorop_s1688gemm_64x64_16x3_nn_align4<GatherA,
-                                                            GatherB,
-                                                            ScatterD>>;
-      return launchKernel<
-          float,
-          cutlass_tensorop_s1688f16gemm_64x64_16x10_nn_align4<GatherA,
-                                                              GatherB,
-                                                              ScatterD>>;
-    }
-    if (K == 32 && N == 32) {
-      if (M >= 10000)
-        return launchKernel<
-            float,
-            cutlass_tensorop_s1688gemm_64x64_16x3_nn_align4<GatherA,
-                                                            GatherB,
-                                                            ScatterD>>;
-      return launchKernel<
-          float,
-          cutlass_tensorop_s1688f16gemm_64x64_16x10_nn_align4<GatherA,
-                                                              GatherB,
-                                                              ScatterD>>;
-    }
-    if (K == 32 && N == 64) {
-      if (M >= 10000)
-        return launchKernel<
-            float,
-            cutlass_tensorop_s1688gemm_64x64_16x3_nn_align4<GatherA,
-                                                            GatherB,
-                                                            ScatterD>>;
-      return launchKernel<
-          float,
-          cutlass_tensorop_s1688f16gemm_64x64_16x10_nn_align4<GatherA,
-                                                              GatherB,
-                                                              ScatterD>>;
-    }
-    if (K == 64 && N == 64) {
-      if (M >= 15000)
-        return launchKernel<
-            float,
-            cutlass_tensorop_s1688gemm_64x64_16x3_nn_align4<GatherA,
-                                                            GatherB,
-                                                            ScatterD>>;
-      return launchKernel<
-          float,
-          cutlass_tensorop_s1688f16gemm_64x64_16x10_nn_align4<GatherA,
-                                                              GatherB,
-                                                              ScatterD>>;
-    }
-    if (K == 128) {
-      if (M >= 100000)
-        return launchKernel<
-            float,
-            cutlass_tensorop_s1688f16gemm_128x128_16x3_nn_align4<GatherA,
-                                                                 GatherB,
-                                                                 ScatterD>>;
-      if (M >= 5000)
-        return launchKernel<
-            float,
-            cutlass_tensorop_s1688f16gemm_256x64_16x4_nn_align4<GatherA,
-                                                                GatherB,
-                                                                ScatterD>>;
-      return launchKernel<
-          float,
-          cutlass_tensorop_s1688tf32gemm_256x128_16x3_nn_align4<GatherA,
-                                                                GatherB,
-                                                                ScatterD>>;
-    }
-    if (N == 128) {
-      if (M >= 100000)
-        return launchKernel<
-            float,
-            cutlass_tensorop_s1688tf32gemm_256x128_16x3_nn_align4<GatherA,
-                                                                  GatherB,
-                                                                  ScatterD>>;
-      if (M >= 5000)
-        return launchKernel<
-            float,
-            cutlass_tensorop_s1688f16gemm_128x128_16x3_nn_align4<GatherA,
-                                                                 GatherB,
-                                                                 ScatterD>>;
-      return launchKernel<
-          float,
-          cutlass_tensorop_s1688f16gemm_64x128_16x6_nn_align4<GatherA,
-                                                              GatherB,
-                                                              ScatterD>>;
-    }
-    return launchKernel<
-        float,
-        cutlass_tensorop_s1688f16gemm_64x64_16x10_nn_align4<GatherA,
-                                                            GatherB,
-                                                            ScatterD>>;
-  }
-  if (transposedA && !transposedB) {
-    return launchKernel<
-        float,
-        cutlass_tensorop_s1688bf16gemm_64x64_32x5_tn_align4<
-            GatherA,
-            GatherB,
-            ScatterD,
-            cutlass::gemm::GemmUniversalMode::kGemmSplitKParallel,
-            30>>;
-  }
-  if (!transposedA && transposedB) {
-    return launchKernel<
-        float,
-        cutlass_tensorop_s1688gemm_64x64_16x3_nt_align4<GatherA,
-                                                        GatherB,
-                                                        ScatterD>>;
-  }
-}
-template <bool GatherA, bool GatherB, bool ScatterD>
-fp64_gather_gemm_scatter getBestFp64Kernel(const int M,
-                                           const int N,
-                                           const int K) {
-  if (K == 4 && N == 16) {
-    return launchKernel<
-        double,
-        cutlass_tensorop_d884gemm_16x32_16x5_nn_align1<GatherA,
-                                                       GatherB,
-                                                       ScatterD>>;
-  }
-  if (K == 16 && N == 16) {
-    if (M >= 10000)
-      return launchKernel<
-          double,
-          cutlass_tensorop_d884gemm_32x16_16x5_nn_align1<GatherA,
-                                                         GatherB,
-                                                         ScatterD>>;
-    return launchKernel<
-        double,
-        cutlass_tensorop_d884gemm_16x32_16x5_nn_align1<GatherA,
-                                                       GatherB,
-                                                       ScatterD>>;
-  }
-  if (K == 16 && N == 32) {
-    return launchKernel<
-        double,
-        cutlass_tensorop_d884gemm_32x16_16x5_nn_align1<GatherA,
-                                                       GatherB,
-                                                       ScatterD>>;
-  }
-  if (K == 32 && N == 32) {
-    return launchKernel<
-        double,
-        cutlass_tensorop_d884gemm_16x32_16x5_nn_align1<GatherA,
-                                                       GatherB,
-                                                       ScatterD>>;
-  }
-  if (K == 32 && N == 64) {
-    return launchKernel<
-        double,
-        cutlass_tensorop_d884gemm_32x16_16x5_nn_align1<GatherA,
-                                                       GatherB,
-                                                       ScatterD>>;
-  }
-  if (K == 64 && N == 64) {
-    return launchKernel<
-        double,
-        cutlass_tensorop_d884gemm_32x16_16x5_nn_align1<GatherA,
-                                                       GatherB,
-                                                       ScatterD>>;
-  }
-  return launchKernel<double,
-                      cutlass_tensorop_d884gemm_32x16_16x5_nn_align1<GatherA,
-                                                                     GatherB,
-                                                                     ScatterD>>;
-}
+      cutlass::layout::RowMajor,
+      cutlass::half_t,
+      cutlass::layout::RowMajor,
+      float,
+      cutlass::layout::RowMajor,
+      float,
+      cutlass::arch::OpClassTensorOp,
+      cutlass::arch::Sm75,
+      cutlass::gemm::GemmShape<64, 64, 32>,
+      cutlass::gemm::GemmShape<32, 32, 32>,
+      cutlass::gemm::GemmShape<16, 8, 8>,
+      cutlass::epilogue::thread::LinearCombination<float, 4, float, float>,
+      cutlass::gemm::threadblock::GemmIdentityThreadblockSwizzle<8>,
+      2,
+      8,
+      8,
+      cutlass::arch::OpMultiplyAdd>;
+};
+
 }  // namespace sparse
 }  // namespace phi
 #endif

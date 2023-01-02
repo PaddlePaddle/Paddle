@@ -18,7 +18,7 @@ import numpy as np
 
 import paddle
 import paddle.fluid as fluid
-import paddle.fluid.layers as layers
+import paddle.nn.functional as F
 from paddle import _legacy_C_ops
 
 
@@ -66,7 +66,7 @@ class TestVariable(unittest.TestCase):
             a = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
             x = fluid.dygraph.to_variable(a)
 
-            res1 = layers.relu(x)
+            res1 = F.relu(x)
             res2 = _legacy_C_ops.relu(x)
 
             np.testing.assert_array_equal(res1.numpy(), res2.numpy())

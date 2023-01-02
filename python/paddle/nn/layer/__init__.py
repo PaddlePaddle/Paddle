@@ -77,6 +77,7 @@ from .loss import KLDivLoss  # noqa: F401
 from .loss import MarginRankingLoss  # noqa: F401
 from .loss import MultiLabelSoftMarginLoss
 from .loss import CTCLoss  # noqa: F401
+from .loss import RNNTLoss  # noqa: F401
 from .loss import SmoothL1Loss  # noqa: F401
 from .loss import HingeEmbeddingLoss  # noqa: F401
 from .loss import TripletMarginWithDistanceLoss

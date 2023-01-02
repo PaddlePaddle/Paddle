@@ -16,7 +16,7 @@ import unittest
 import warnings
 
 import paddle
-from paddle.fluid.layers.control_flow import cond
+from paddle.static.nn import cond
 
 
 @paddle.jit.to_static

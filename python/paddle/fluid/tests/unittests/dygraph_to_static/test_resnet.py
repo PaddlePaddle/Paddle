@@ -23,9 +23,9 @@ from predictor_utils import PredictorTools
 
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
-from paddle.fluid.dygraph.nn import BatchNorm
 from paddle.jit import ProgramTranslator
+from paddle.jit.translated_layer import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
+from paddle.nn import BatchNorm
 
 SEED = 2020
 IMAGENET1000 = 1281167
@@ -237,7 +237,7 @@ class ResNetHelper:
 
     def train(self, to_static, build_strategy=None):
         """
-        Tests model decorated by `dygraph_to_static_output` in static mode. For users, the model is defined in dygraph mode and trained in static mode.
+        Tests model decorated by `dygraph_to_static_output` in static graph mode. For users, the model is defined in dygraph mode and trained in static graph mode.
         """
         with fluid.dygraph.guard(place):
             np.random.seed(SEED)
@@ -272,7 +272,12 @@ class ResNetHelper:
                     img, label = data
 
                     pred = resnet(img)
-                    loss = fluid.layers.cross_entropy(input=pred, label=label)
+                    loss = paddle.nn.functional.cross_entropy(
+                        input=pred,
+                        label=label,
+                        reduction='none',
+                        use_softmax=False,
+                    )
                     avg_loss = paddle.mean(x=loss)
                     acc_top1 = paddle.static.accuracy(
                         input=pred, label=label, k=1

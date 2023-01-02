@@ -1039,54 +1039,69 @@ void ScatterNdAddInferMeta(const MetaTensor& x,
   const auto& updates_dims = updates.dims();
   auto updates_dims_size = updates_dims.size();
 
-  PADDLE_ENFORCE_LE(
-      index_dims[index_dims_size - 1],
-      ref_dims_size,
-      phi::errors::InvalidArgument(
-          "The last dimension of Input(Index)'s shape should be no greater "
-          "than the rank of Input(X), but received the last dimension of "
-          "Input(Index)'s shape is %d, the rank of Input(X) is %d.",
-          index_dims[index_dims_size - 1],
-          ref_dims_size));
-  PADDLE_ENFORCE_GE(index_dims_size,
-                    2UL,
-                    phi::errors::InvalidArgument(
-                        "The rank of Input(Index) should be greater than 1, "
-                        "but received the rank of Input(Index) is %d.",
-                        index_dims_size));
-
-  // update.shape = index.shape[:-1] + output.shape[index.shape[-1]:]
-  std::vector<int64_t> r_updates_dims;
-  for (int64_t i = 0; i < index_dims_size - 1; ++i) {
-    r_updates_dims.emplace_back(index_dims[i]);
-  }
-  for (int64_t i = index_dims[index_dims_size - 1]; i < ref_dims_size; ++i) {
-    r_updates_dims.emplace_back(ref_dims[i]);
-  }
-
-  PADDLE_ENFORCE_EQ(
-      r_updates_dims.size(),
-      updates_dims_size,
-      phi::errors::InvalidArgument(
-          "Updates has wrong shape. The shape of Updates and Input(Updates) "
-          "should be same, but received the shape of Updates is %d, "
-          "the shape of Input(Updates) is %d.",
-          r_updates_dims.size(),
-          updates_dims_size));
-
-  for (int64_t i = 0; i < updates_dims_size; ++i) {
+  if (updates_dims_size == 0) {
+    // check for 0d updates
     PADDLE_ENFORCE_EQ(
-        r_updates_dims[i],
-        updates_dims[i],
+        index_dims_size,
+        1,
+        phi::errors::InvalidArgument("When the updates is a 0d tensor, the "
+                                     "index should be a 1d tensor."));
+    PADDLE_ENFORCE_EQ(
+        index_dims[index_dims_size - 1],
+        ref_dims_size,
         phi::errors::InvalidArgument(
-            "Updates has wrong shape. The dimensions of Updates and "
-            "Input(Updates) should match, but received Updates's"
-            "%d-th dimension is %d, Input(Updates)'s %d-th "
-            "dimension is %d.",
-            i,
-            r_updates_dims[i],
-            i,
-            updates_dims[i]));
+            "When the update is a 0d tensor, The last dimension of "
+            "Input(Index)'s shape should be equal with the rank of Input(X)."));
+  } else {
+    PADDLE_ENFORCE_LE(
+        index_dims[index_dims_size - 1],
+        ref_dims_size,
+        phi::errors::InvalidArgument(
+            "The last dimension of Input(Index)'s shape should be no greater "
+            "than the rank of Input(X), but received the last dimension of "
+            "Input(Index)'s shape is %d, the rank of Input(X) is %d.",
+            index_dims[index_dims_size - 1],
+            ref_dims_size));
+    PADDLE_ENFORCE_GE(index_dims_size,
+                      2UL,
+                      phi::errors::InvalidArgument(
+                          "The rank of Input(Index) should be greater than 1, "
+                          "but received the rank of Input(Index) is %d.",
+                          index_dims_size));
+
+    // update.shape = index.shape[:-1] + output.shape[index.shape[-1]:]
+    std::vector<int64_t> r_updates_dims;
+    for (int64_t i = 0; i < index_dims_size - 1; ++i) {
+      r_updates_dims.emplace_back(index_dims[i]);
+    }
+    for (int64_t i = index_dims[index_dims_size - 1]; i < ref_dims_size; ++i) {
+      r_updates_dims.emplace_back(ref_dims[i]);
+    }
+    // check for non-0d updates
+    PADDLE_ENFORCE_EQ(
+        r_updates_dims.size(),
+        updates_dims_size,
+        phi::errors::InvalidArgument(
+            "Updates has wrong shape. The shape of Updates and Input(Updates) "
+            "should be same, but received the shape of Updates is %d, "
+            "the shape of Input(Updates) is %d.",
+            r_updates_dims.size(),
+            updates_dims_size));
+
+    for (int64_t i = 0; i < updates_dims_size; ++i) {
+      PADDLE_ENFORCE_EQ(
+          r_updates_dims[i],
+          updates_dims[i],
+          phi::errors::InvalidArgument(
+              "Updates has wrong shape. The dimensions of Updates and "
+              "Input(Updates) should match, but received Updates's"
+              "%d-th dimension is %d, Input(Updates)'s %d-th "
+              "dimension is %d.",
+              i,
+              r_updates_dims[i],
+              i,
+              updates_dims[i]));
+    }
   }
   out->set_dims(ref_dims);
   out->share_lod(x);

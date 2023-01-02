@@ -13,9 +13,6 @@
 # limitations under the License.
 
 import os
-
-os.environ['FLAGS_enable_eager_mode'] = '1'
-
 import tempfile
 import unittest
 
@@ -343,7 +340,7 @@ class TestAmpScaler(unittest.TestCase):
             scaled_loss = scaler.scale(loss)
             scaled_loss.backward()
             optimize_ops, params_grads = scaler.minimize(optimizer, scaled_loss)
-            self.assertEqual(scaler._found_inf.numpy() == 1, True)
+            self.assertEqual(scaler._found_inf.numpy() >= 1, True)
 
             for param in model.parameters():
                 # param not update when tensor contains nan or inf

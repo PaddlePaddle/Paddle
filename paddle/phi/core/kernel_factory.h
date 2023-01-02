@@ -141,7 +141,7 @@ enum class AttributeType {
   INT_ARRAY,
   DATA_TYPE,
   DATA_LAYOUT,
-  PLACE,
+  PLACE
 };
 
 struct AttributeArgDef {

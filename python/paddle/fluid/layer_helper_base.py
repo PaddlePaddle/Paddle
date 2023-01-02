@@ -115,8 +115,6 @@ class LayerHelperBase:
             )
 
     def _create_weight_normalize(self, attr, shape, dtype):
-        from .layers import elementwise_mul
-
         # Remove these ops when LayerHelper and layers support indicating
         # program and block.
         def __norm_op(
@@ -272,7 +270,7 @@ class LayerHelperBase:
             # Currently, elementwise_mul only support broadcast when the shape
             # of y is a subset of the shape of x. Thus, we reshape y to squeeze
             # to achieve the subset.
-            w = elementwise_mul(
+            w = paddle.tensor.math._multiply_with_axis(
                 x=v,
                 y=scale
                 if dim is None

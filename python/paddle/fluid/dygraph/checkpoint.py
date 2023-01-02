@@ -18,7 +18,6 @@ import functools
 from ..framework import (
     Variable,
     default_main_program,
-    _non_static_mode,
     dygraph_only,
     Parameter,
     ParamBase,
@@ -32,7 +31,7 @@ import warnings
 from .. import core
 from .base import guard
 from paddle.jit.api import _SaveLoadConfig
-from paddle.fluid.dygraph.io import (
+from paddle.jit.translated_layer import (
     _construct_program_holders,
     _construct_params_and_buffers,
 )
@@ -248,7 +247,6 @@ def load_dygraph(model_path, **configs):
             )
 
             # 2. load layer parameters & buffers
-            # NOTE: using fluid.dygraph.guard() here will cause import error in py2
             with guard():
                 persistable_var_dict = _construct_params_and_buffers(
                     model_prefix,
