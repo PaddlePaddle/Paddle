@@ -3669,8 +3669,8 @@ function run_setup(){
     else
       parallel_number=8
     fi
-    if [ "$2" != "" ]; then
-      parallel_number=$2
+    if [ "$3" != "" ]; then
+      parallel_number=$3
     fi
     export MAX_JOBS=${parallel_number}
 
@@ -3679,9 +3679,9 @@ function run_setup(){
     ccache -z
     cd ..
     if [ "${PYTHON_EXECUTABLE}" != "" ];then
-        ${PYTHON_EXECUTABLE} setup.py $3;build_error=$?
+        ${PYTHON_EXECUTABLE} setup.py $2;build_error=$?
     else
-        python setup.py $3;build_error=$?
+        python setup.py $2;build_error=$?
     fi
     
     # ci will collect ccache hit rate
@@ -3703,7 +3703,7 @@ function main() {
     init
     case $CMD in
       build_only)
-        run_setup ${PYTHON_ABI:-""} ${parallel_number} bdist_wheel
+        run_setup ${PYTHON_ABI:-""} bdist_wheel ${parallel_number}
         ;;
       build_pr_dev)
         build_pr_and_develop
@@ -3820,7 +3820,7 @@ function main() {
         ;;
       cicheck_coverage)
         check_diff_file_for_coverage
-        run_setup ${PYTHON_ABI:-""} ${parallel_number} install
+        run_setup ${PYTHON_ABI:-""} install ${parallel_number}
         enable_unused_var_check
         parallel_test
         check_coverage
@@ -3907,7 +3907,7 @@ function main() {
         build_mac
         ;;
       cicheck_py37)
-        run_setup ${PYTHON_ABI:-""} ${parallel_number} bdist_wheel
+        run_setup ${PYTHON_ABI:-""} bdist_wheel ${parallel_number} 
         run_linux_cpu_test ${PYTHON_ABI:-""} ${PROC_RUN:-1}
         ;;
       test_cicheck_py37)
@@ -3920,7 +3920,7 @@ function main() {
         parallel_test
         ;;
       build_gpubox)
-        run_setup ${PYTHON_ABI:-""} ${parallel_number} install
+        run_setup ${PYTHON_ABI:-""} install ${parallel_number} 
         ;;
       check_xpu)
         cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
