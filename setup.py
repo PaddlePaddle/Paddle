@@ -21,8 +21,8 @@ import platform
 import re
 import shutil
 import subprocess
-import sysconfig
 import sys
+import sysconfig
 from contextlib import contextmanager
 from distutils.spawn import find_executable
 from subprocess import CalledProcessError
@@ -50,20 +50,21 @@ assert (
     CMAKE
 ), 'The "cmake" executable is not found. Please check if Cmake is installed.'
 
-#CMAKE: full path to python library
-if (platform.system() == "Windows"):
+# CMAKE: full path to python library
+if platform.system() == "Windows":
     cmake_python_library = "{}/libs/python{}.lib".format(
-        sysconfig.get_config_var("prefix"),
-        sysconfig.get_config_var("VERSION"))
+        sysconfig.get_config_var("prefix"), sysconfig.get_config_var("VERSION")
+    )
     # Fix virtualenv builds
     if not os.path.exists(cmake_python_library):
         cmake_python_library = "{}/libs/python{}.lib".format(
-            sys.base_prefix,
-            sysconfig.get_config_var("VERSION"))
+            sys.base_prefix, sysconfig.get_config_var("VERSION")
+        )
 else:
     cmake_python_library = "{}/{}".format(
         sysconfig.get_config_var("LIBDIR"),
-        sysconfig.get_config_var("INSTSONAME"))
+        sysconfig.get_config_var("INSTSONAME"),
+    )
 
 TOP_DIR = os.path.dirname(os.path.realpath(__file__))
 
@@ -571,14 +572,17 @@ def options_process(args, build_options):
     for key, value in sorted(build_options.items()):
         if value is not None:
             args.append("-D{}={}".format(key, value))
-    if ('PYTHON_EXECUTABLE:FILEPATH' not in build_options.keys()):
-        args.append("-D{}={}".format('PYTHON_EXECUTABLE',sys.executable))
-    if ('PYTHON_INCLUDE_DIR:PATH' not in build_options.keys()):
-        args.append('-D{}={}'.format('PYTHON_INCLUDE_DIR',sysconfig.get_path("include")))
-    if ('PYTHON_LIBRARY:FILEPATH' not in build_options.keys()):
-        args.append('-D{}={}'.format('PYTHON_LIBRARY',cmake_python_library))
-        
-        
+    if 'PYTHON_EXECUTABLE:FILEPATH' not in build_options.keys():
+        args.append("-D{}={}".format('PYTHON_EXECUTABLE', sys.executable))
+    if 'PYTHON_INCLUDE_DIR:PATH' not in build_options.keys():
+        args.append(
+            '-D{}={}'.format(
+                'PYTHON_INCLUDE_DIR', sysconfig.get_path("include")
+            )
+        )
+    if 'PYTHON_LIBRARY:FILEPATH' not in build_options.keys():
+        args.append('-D{}={}'.format('PYTHON_LIBRARY', cmake_python_library))
+
 
 def get_cmake_generator():
     if os.getenv("CMAKE_GENERATOR"):
@@ -698,11 +702,13 @@ def build_steps():
     # if rerun_cmake is True,remove CMakeCache.txt and rerun camke
     if os.path.isfile(cmake_cache_file_path) and rerun_cmake is True:
         os.remove(cmake_cache_file_path)
-        
+
     CMAKE_GENERATOR = get_cmake_generator()
-    bool_ninja = (CMAKE_GENERATOR == "Ninja")
+    bool_ninja = CMAKE_GENERATOR == "Ninja"
     build_ninja_file_path = os.path.join(build_path, "build.ninja")
-    if os.path.exists(cmake_cache_file_path) and not (bool_ninja and not os.path.exists(build_ninja_file_path)):
+    if os.path.exists(cmake_cache_file_path) and not (
+        bool_ninja and not os.path.exists(build_ninja_file_path)
+    ):
         print("Do not need rerun camke,everything is ready,run build now")
     else:
         cmake_run(build_path)
