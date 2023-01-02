@@ -22,6 +22,7 @@ from simple_nets import fc_with_batchnorm, init_data, simple_fc_net
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
+import paddle.nn.functional as F
 
 
 class TestMNIST(TestParallelExecutorBase):
@@ -97,8 +98,8 @@ class TestFuseActElewiseAddInplaceGradPass(unittest.TestCase):
             X = fluid.data(name="X", shape=[3, 3], dtype='float32')
             Y = fluid.data(name="Y", shape=[3, 3], dtype='float32')
             Out1 = X * 5
-            Out2 = fluid.layers.relu(Out1)
-            prediction = fluid.layers.elementwise_add(Y, Out2, axis=1)
+            Out2 = F.relu(Out1)
+            prediction = paddle.tensor.math._add_with_axis(Y, Out2, axis=1)
             loss = paddle.mean(prediction)
             sgd = fluid.optimizer.SGD(learning_rate=0.001)
             sgd.minimize(loss)

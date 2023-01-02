@@ -29,6 +29,9 @@ limitations under the License. */
 namespace phi {
 namespace funcs {
 
+template <typename T>
+void BatchTranspose(T* output, const T* input, int batch, int m, int n);
+
 template <typename DeviceContext, typename T>
 struct TransposeNormal {
   // for dims >= 7 situation

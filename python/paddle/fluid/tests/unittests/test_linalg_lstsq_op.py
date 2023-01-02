@@ -73,7 +73,6 @@ class LinalgLstsqTestCase(unittest.TestCase):
 
     def test_eager_dygraph(self):
         paddle.disable_static()
-        paddle.fluid.framework._disable_legacy_dygraph()
         for dev in self.devices:
             paddle.set_device(dev)
             place = paddle.CPUPlace() if dev == "cpu" else paddle.CUDAPlace(0)

@@ -98,7 +98,7 @@ def train(fetch):
     tuning.profile_start_step = 1
     tuning.profile_end_step = 5
     tuning.run_after_tuning = True
-    tuning.verbose = True
+    tuning.debug = True
 
     dataset = MyDataset(batch_num * batch_size)
     engine = auto.Engine(

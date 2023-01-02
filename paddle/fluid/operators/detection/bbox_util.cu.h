@@ -30,8 +30,6 @@ namespace cub = hipcub;
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
-
 #define DIVUP(m, n) ((m) / (n) + ((m) % (n) > 0))
 
 int const kThreadsPerBlock = sizeof(uint64_t) * 8;
@@ -47,11 +45,11 @@ struct RangeInitFunctor {
 
 template <typename T>
 static void SortDescending(const phi::GPUContext &ctx,
-                           const Tensor &value,
-                           Tensor *value_out,
-                           Tensor *index_out) {
+                           const phi::DenseTensor &value,
+                           phi::DenseTensor *value_out,
+                           phi::DenseTensor *index_out) {
   int num = static_cast<int>(value.numel());
-  Tensor index_in_t;
+  phi::DenseTensor index_in_t;
   int *idx_in = index_in_t.mutable_data<int>({num}, ctx.GetPlace());
   platform::ForRange<phi::GPUContext> for_range(ctx, num);
   for_range(RangeInitFunctor{0, 1, idx_in});
@@ -287,10 +285,10 @@ static __global__ void NMSKernel(const int n_boxes,
 
 template <typename T>
 static void NMS(const phi::GPUContext &ctx,
-                const Tensor &proposals,
-                const Tensor &sorted_indices,
+                const phi::DenseTensor &proposals,
+                const phi::DenseTensor &sorted_indices,
                 const T nms_threshold,
-                Tensor *keep_out,
+                phi::DenseTensor *keep_out,
                 bool pixel_offset = true) {
   int boxes_num = proposals.dims()[0];
   const int col_blocks = DIVUP(boxes_num, kThreadsPerBlock);

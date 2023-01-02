@@ -22,7 +22,6 @@ import numpy as np
 
 import paddle.vision.transforms as T
 from paddle.dataset.common import _check_exists_and_download
-from paddle.fluid.framework import _test_eager_guard
 from paddle.vision.datasets import (
     MNIST,
     DatasetFolder,
@@ -47,7 +46,7 @@ class TestFolderDatasets(unittest.TestCase):
     def tearDown(self):
         shutil.rmtree(self.data_dir)
 
-    def func_test_dataset(self):
+    def test_dataset(self):
         dataset_folder = DatasetFolder(self.data_dir)
 
         for _ in dataset_folder:
@@ -60,12 +59,7 @@ class TestFolderDatasets(unittest.TestCase):
         for _ in dataset_folder:
             pass
 
-    def test_dataset(self):
-        with _test_eager_guard():
-            self.func_test_dataset()
-        self.func_test_dataset()
-
-    def func_test_folder(self):
+    def test_folder(self):
         loader = ImageFolder(self.data_dir)
 
         for _ in loader:
@@ -77,12 +71,7 @@ class TestFolderDatasets(unittest.TestCase):
 
         assert len(loader) == 4
 
-    def test_folder(self):
-        with _test_eager_guard():
-            self.func_test_folder()
-        self.func_test_folder()
-
-    def func_test_transform(self):
+    def test_transform(self):
         def fake_transform(img):
             return img
 
@@ -96,12 +85,7 @@ class TestFolderDatasets(unittest.TestCase):
         for _ in loader:
             pass
 
-    def test_transform(self):
-        with _test_eager_guard():
-            self.func_test_transform()
-        self.func_test_transform()
-
-    def func_test_errors(self):
+    def test_errors(self):
         with self.assertRaises(RuntimeError):
             ImageFolder(self.empty_dir)
         with self.assertRaises(RuntimeError):
@@ -110,14 +94,9 @@ class TestFolderDatasets(unittest.TestCase):
         with self.assertRaises(ValueError):
             _check_exists_and_download('temp_paddle', None, None, None, False)
 
-    def test_errors(self):
-        with _test_eager_guard():
-            self.func_test_errors()
-        self.func_test_errors()
-
 
 class TestMNISTTest(unittest.TestCase):
-    def func_test_main(self):
+    def test_main(self):
         transform = T.Transpose()
         mnist = MNIST(mode='test', transform=transform)
         self.assertTrue(len(mnist) == 10000)
@@ -130,14 +109,9 @@ class TestMNISTTest(unittest.TestCase):
         self.assertTrue(label.shape[0] == 1)
         self.assertTrue(0 <= int(label) <= 9)
 
-    def test_main(self):
-        with _test_eager_guard():
-            self.func_test_main()
-        self.func_test_main()
-
 
 class TestMNISTTrain(unittest.TestCase):
-    def func_test_main(self):
+    def test_main(self):
         transform = T.Transpose()
         mnist = MNIST(mode='train', transform=transform)
         self.assertTrue(len(mnist) == 60000)
@@ -166,14 +140,9 @@ class TestMNISTTrain(unittest.TestCase):
         with self.assertRaises(ValueError):
             mnist = MNIST(mode='train', transform=transform, backend=1)
 
-    def test_main(self):
-        with _test_eager_guard():
-            self.func_test_main()
-        self.func_test_main()
-
 
 class TestFASHIONMNISTTest(unittest.TestCase):
-    def func_test_main(self):
+    def test_main(self):
         transform = T.Transpose()
         mnist = FashionMNIST(mode='test', transform=transform)
         self.assertTrue(len(mnist) == 10000)
@@ -186,14 +155,9 @@ class TestFASHIONMNISTTest(unittest.TestCase):
         self.assertTrue(label.shape[0] == 1)
         self.assertTrue(0 <= int(label) <= 9)
 
-    def test_main(self):
-        with _test_eager_guard():
-            self.func_test_main()
-        self.func_test_main()
-
 
 class TestFASHIONMNISTTrain(unittest.TestCase):
-    def func_test_main(self):
+    def test_main(self):
         transform = T.Transpose()
         mnist = FashionMNIST(mode='train', transform=transform)
         self.assertTrue(len(mnist) == 60000)
@@ -222,26 +186,16 @@ class TestFASHIONMNISTTrain(unittest.TestCase):
         with self.assertRaises(ValueError):
             mnist = FashionMNIST(mode='train', transform=transform, backend=1)
 
-    def test_main(self):
-        with _test_eager_guard():
-            self.func_test_main()
-        self.func_test_main()
-
-    def func_test_dataset_value(self):
+    def test_dataset_value(self):
         fmnist = FashionMNIST(mode='train')
         value = np.mean([np.array(x[0]) for x in fmnist])
 
         # 72.94035223214286 was getted from competitive products
         np.testing.assert_allclose(value, 72.94035223214286)
 
-    def test_dataset_value(self):
-        with _test_eager_guard():
-            self.func_test_dataset_value()
-        self.func_test_dataset_value()
-
 
 class TestFlowersTrain(unittest.TestCase):
-    def func_test_main(self):
+    def test_main(self):
         flowers = Flowers(mode='train')
         self.assertTrue(len(flowers) == 6149)
 
@@ -254,14 +208,9 @@ class TestFlowersTrain(unittest.TestCase):
         self.assertTrue(image.shape[2] == 3)
         self.assertTrue(label.shape[0] == 1)
 
-    def test_main(self):
-        with _test_eager_guard():
-            self.func_test_main()
-        self.func_test_main()
-
 
 class TestFlowersValid(unittest.TestCase):
-    def func_test_main(self):
+    def test_main(self):
         flowers = Flowers(mode='valid')
         self.assertTrue(len(flowers) == 1020)
 
@@ -274,14 +223,9 @@ class TestFlowersValid(unittest.TestCase):
         self.assertTrue(image.shape[2] == 3)
         self.assertTrue(label.shape[0] == 1)
 
-    def test_main(self):
-        with _test_eager_guard():
-            self.func_test_main()
-        self.func_test_main()
-
 
 class TestFlowersTest(unittest.TestCase):
-    def func_test_main(self):
+    def test_main(self):
         flowers = Flowers(mode='test')
         self.assertTrue(len(flowers) == 1020)
 
@@ -309,11 +253,6 @@ class TestFlowersTest(unittest.TestCase):
 
         with self.assertRaises(ValueError):
             flowers = Flowers(mode='test', backend=1)
-
-    def test_main(self):
-        with _test_eager_guard():
-            self.func_test_main()
-        self.func_test_main()
 
 
 if __name__ == '__main__':

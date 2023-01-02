@@ -23,8 +23,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
-
 template <typename DeviceContext, typename T>
 class DropoutNPUKernel : public framework::OpKernel<T> {
  public:
@@ -56,8 +54,8 @@ class DropoutNPUKernel : public framework::OpKernel<T> {
 
     // only achieve the default `upscale_in_train` method
     if (!is_test) {
-      Tensor tmp_x(x->dtype());
-      Tensor tmp_out(out->dtype());
+      phi::DenseTensor tmp_x(x->dtype());
+      phi::DenseTensor tmp_out(out->dtype());
       tmp_x.ShareDataWith(*x);
       tmp_out.ShareDataWith(*out);
       if (x->dims().size() == 1) {
@@ -80,7 +78,7 @@ class DropoutNPUKernel : public framework::OpKernel<T> {
         seed = ctx.Attr<bool>("fix_seed") ? ctx.Attr<int>("seed") : 0;
       }
 
-      Tensor keep_prob_tensor(x->dtype());
+      phi::DenseTensor keep_prob_tensor(x->dtype());
       keep_prob_tensor.mutable_data<T>({1}, ctx.GetPlace());
       FillNpuTensorWithConstant<T>(&keep_prob_tensor,
                                    static_cast<T>(keep_prob));
@@ -89,14 +87,14 @@ class DropoutNPUKernel : public framework::OpKernel<T> {
 
       // mask used in `DropOutGenMask` NPU OP is different from
       // the output `Mask`.
-      Tensor npu_mask(experimental::DataType::UINT8);
+      phi::DenseTensor npu_mask(experimental::DataType::UINT8);
       uint32_t length = (x->numel() + 128 - 1) / 128 * 128;
       npu_mask.Resize(phi::make_ddim({length / 8}));
       npu_mask.mutable_data<uint8_t>(ctx.GetPlace());
 
       // TODO(pangyoki): `keep_prob` used in `DropOutGenMask` NPU
       // OP must be a scalar with shape[0]. At present, the shape
-      // of the `prob` Tensor of this OP is forced to be set to 0
+      // of the `prob` phi::DenseTensor of this OP is forced to be set to 0
       // in `npu_op_runner.cc`, which needs to be optimized later.
       NpuOpRunner runner_gen_mask;
       runner_gen_mask.SetType("DropOutGenMask")
@@ -116,7 +114,7 @@ class DropoutNPUKernel : public framework::OpKernel<T> {
       runner_dropout.Run(stream);
 
       // cast `out` from float/float16 to bool
-      Tensor cast_mask(experimental::DataType::BOOL);
+      phi::DenseTensor cast_mask(experimental::DataType::BOOL);
       cast_mask.Resize(mask->dims());
       cast_mask.mutable_data<bool>(ctx.GetPlace());
       auto dst_dtype_bool =
@@ -176,7 +174,7 @@ class DropoutGradNPUKernel : public framework::OpKernel<T> {
     }
 
     // cast mask from uint8 to float32/float16
-    Tensor cast_mask(dx->dtype());
+    phi::DenseTensor cast_mask(dx->dtype());
     cast_mask.Resize(mask->dims());
     cast_mask.mutable_data<T>(ctx.GetPlace());
     auto dst_dtype =

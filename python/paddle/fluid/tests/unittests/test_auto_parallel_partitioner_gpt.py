@@ -256,9 +256,8 @@ class MultiHeadAttention(nn.Layer):
                 query, key, value, use_cache, cache
             )
         # scale dot product attention
-        product = layers.matmul(
-            x=q, y=k, transpose_y=True, alpha=self.head_dim**-0.5
-        )
+        product = tensor.matmul(x=q, y=k, transpose_y=True)
+        product = tensor.scale(product, scale=self.head_dim**-0.5)
 
         if attn_mask is not None:
             product = product + attn_mask
@@ -959,12 +958,12 @@ class TestGPTPartitioner(unittest.TestCase):
         dp_parallel_axis = 0
 
         group_ranks = _get_comm_group(
-            process_mesh.processes, process_mesh.topology, mp_parallel_axis, 3
+            process_mesh.process_ids, process_mesh.shape, mp_parallel_axis, 3
         )
         mp_ring_id = new_process_group(group_ranks).id
 
         group_ranks = _get_comm_group(
-            process_mesh.processes, process_mesh.topology, dp_parallel_axis, 3
+            process_mesh.process_ids, process_mesh.shape, dp_parallel_axis, 3
         )
         dp_ring_id = new_process_group(group_ranks).id
 

@@ -150,11 +150,11 @@ class PtbModel(paddle.nn.Layer):
             init_scale=init_scale,
             dropout=dropout,
         )
-        self.embedding = paddle.fluid.dygraph.nn.Embedding(
-            size=[vocab_size, hidden_size],
-            dtype='float32',
-            is_sparse=False,
-            param_attr=paddle.ParamAttr(
+        self.embedding = paddle.nn.Embedding(
+            vocab_size,
+            hidden_size,
+            sparse=False,
+            weight_attr=paddle.ParamAttr(
                 name='embedding_para',
                 initializer=paddle.nn.initializer.Uniform(
                     low=-init_scale, high=init_scale
@@ -215,7 +215,7 @@ class PtbModel(paddle.nn.Layer):
         )
         loss = paddle.reshape(loss, shape=[-1, self.num_steps])
         loss = paddle.mean(loss, axis=[0])
-        loss = paddle.paddle.sum(loss)
+        loss = paddle.sum(loss)
 
         return loss, last_hidden, last_cell
 

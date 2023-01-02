@@ -218,6 +218,7 @@ class TestListenAndServOp(unittest.TestCase):
             opt_info["scale_datanorm"] = -1
             opt_info["dump_slot"] = False
             opt_info["stat_var_names"] = []
+            opt_info["user_define_dump_filename"] = "./dump_filename/dump.txt"
             worker = DownpourWorker(None)
             worker.get_desc().CopyFrom(ps_param.trainer_param[0])
             opt_info["program_id_to_worker"] = {program_id: worker}

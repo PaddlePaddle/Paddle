@@ -25,7 +25,7 @@ from .param_attr import ParamAttr
 from .initializer import Constant
 from . import layers
 from . import backward
-from .dygraph import Layer, nn
+from .dygraph import Layer
 from . import executor
 from . import optimizer
 from . import core
@@ -39,8 +39,10 @@ __all__ = ['run_check']
 class SimpleLayer(Layer):
     def __init__(self, input_size):
         super().__init__()
-        self._linear1 = nn.Linear(
-            input_size, 3, param_attr=ParamAttr(initializer=Constant(value=0.1))
+        self._linear1 = paddle.nn.Linear(
+            input_size,
+            3,
+            weight_attr=ParamAttr(initializer=Constant(value=0.1)),
         )
 
     def forward(self, inputs):

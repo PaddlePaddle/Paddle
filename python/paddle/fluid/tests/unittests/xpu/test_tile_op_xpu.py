@@ -59,6 +59,9 @@ class XPUTestTileOpRank1(XPUOpTestWrapper):
         def test_check_output(self):
             self.check_output_with_place(self.place)
 
+        def test_check_grad(self):
+            self.check_grad_with_place(self.place, ['X'], 'Out')
+
     # with dimension expanding
     class TestTileOpRank2Expanding(TestTileOpRank1):
         def init_data(self):
@@ -126,6 +129,9 @@ class XPUTestTileOpRank1_tensor_attr(XPUOpTestWrapper):
         def test_check_output(self):
             self.check_output_with_place(self.place)
 
+        def test_check_grad(self):
+            self.check_grad_with_place(self.place, ['X'], 'Out')
+
     class TestTileOpRank2_Corner_tensor_attr(TestTileOpRank1_tensor_attr):
         def init_data(self):
             self.ori_shape = [12, 14]
@@ -167,6 +173,9 @@ class XPUTestTileOpRank1_tensor(XPUOpTestWrapper):
 
         def test_check_output(self):
             self.check_output_with_place(self.place)
+
+        def test_check_grad(self):
+            self.check_grad_with_place(self.place, ['X'], 'Out')
 
     class TestTileOpRank2_tensor(TestTileOpRank1_tensor):
         def init_data(self):

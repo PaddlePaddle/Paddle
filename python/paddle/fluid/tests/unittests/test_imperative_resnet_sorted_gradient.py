@@ -22,7 +22,6 @@ import paddle
 import paddle.fluid as fluid
 from paddle.fluid import core
 from paddle.fluid.dygraph.base import to_variable
-from paddle.fluid.framework import _test_eager_guard
 
 batch_size = 8
 train_parameters = {
@@ -73,7 +72,7 @@ def optimizer_setting(params, parameter_list=None):
 
 
 class TestDygraphResnetSortGradient(unittest.TestCase):
-    def func_test_resnet_sort_gradient_float32(self):
+    def test_resnet_sort_gradient_float32(self):
         seed = 90
 
         batch_size = train_parameters["batch_size"]
@@ -118,7 +117,9 @@ class TestDygraphResnetSortGradient(unittest.TestCase):
                 label.stop_gradient = True
 
                 out = resnet(img)
-                loss = fluid.layers.cross_entropy(input=out, label=label)
+                loss = paddle.nn.functional.cross_entropy(
+                    input=out, label=label, reduction='none', use_softmax=False
+                )
                 avg_loss = paddle.mean(x=loss)
 
                 dy_out = avg_loss.numpy()
@@ -174,7 +175,9 @@ class TestDygraphResnetSortGradient(unittest.TestCase):
             )
             label = fluid.layers.data(name='label', shape=[1], dtype='int64')
             out = resnet(img)
-            loss = fluid.layers.cross_entropy(input=out, label=label)
+            loss = paddle.nn.functional.cross_entropy(
+                input=out, label=label, reduction='none', use_softmax=False
+            )
             avg_loss = paddle.mean(x=loss)
             optimizer.minimize(avg_loss)
 
@@ -261,11 +264,6 @@ class TestDygraphResnetSortGradient(unittest.TestCase):
             np.testing.assert_allclose(value, dy_param_value[key], rtol=1e-05)
             self.assertTrue(np.isfinite(value.all()))
             self.assertFalse(np.isnan(value.any()))
-
-    def test_resnet_sort_gradient_float32(self):
-        with _test_eager_guard():
-            self.func_test_resnet_sort_gradient_float32()
-        self.func_test_resnet_sort_gradient_float32()
 
 
 if __name__ == '__main__':

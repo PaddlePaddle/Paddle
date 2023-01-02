@@ -39,7 +39,7 @@ class TestFeedPersistableVar(unittest.TestCase):
         }
 
     def optimizer(self):
-        learning_rate = fluid.layers.create_global_var(
+        learning_rate = paddle.static.create_global_var(
             name="learning_rate",
             shape=[1],
             value=1.0,

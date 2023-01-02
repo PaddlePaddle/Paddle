@@ -21,7 +21,7 @@ from test_fetch_feed import Linear, Pool2D
 import paddle
 import paddle.fluid as fluid
 from paddle.jit import ProgramTranslator
-from paddle.jit.api import declarative
+from paddle.jit.api import to_static
 from paddle.jit.dy2static import convert_to_static
 
 
@@ -138,7 +138,7 @@ class TestConvertWithCache(unittest.TestCase):
         self.assertTrue(id(static_func), id(cached_func))
 
 
-@declarative
+@to_static
 def sum_even_until_limit(max_len, limit):
     ret_sum = fluid.dygraph.to_variable(np.zeros((1)).astype('int32'))
     for i in range(max_len):
@@ -166,7 +166,7 @@ class TestToOutputWithCache(unittest.TestCase):
             ret = sum_even_until_limit(80, 10)
             self.assertEqual(ret.numpy(), 30)
 
-            ret = declarative(sum_under_while)(100)
+            ret = to_static(sum_under_while)(100)
             self.assertEqual(ret.numpy(), 5050)
 
 

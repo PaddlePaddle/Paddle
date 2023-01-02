@@ -67,7 +67,12 @@ class TestFeedData(unittest.TestCase):
 
         predict_label = fluid.layers.fc(hidden, size=class_num, act='softmax')
         loss = paddle.mean(
-            fluid.layers.cross_entropy(input=predict_label, label=label)
+            paddle.nn.functional.cross_entropy(
+                input=predict_label,
+                label=label,
+                reduction='none',
+                use_softmax=False,
+            )
         )
 
         optimizer = fluid.optimizer.Adam()

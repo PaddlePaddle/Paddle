@@ -22,8 +22,6 @@
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
-
 template <typename DeviceContext, typename T>
 class OneHotXPUKernel : public framework::OpKernel<T> {
  public:

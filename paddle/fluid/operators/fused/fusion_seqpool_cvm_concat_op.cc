@@ -77,7 +77,8 @@ void FusionSeqPoolCVMConcatOpMaker::Make() {
   AddInput("X", "(phi::DenseTensor) Input tensors of this operator.")
       .AsDuplicable();
   AddInput("CVM",
-           "(Tensor),  a 2-D Tensor with shape [N x 2], where N is the batch "
+           "(phi::DenseTensor),  a 2-D phi::DenseTensor with shape [N x 2], "
+           "where N is the batch "
            "size, 2 is show and click.");
   AddOutput("Out", "(phi::DenseTensor) Output tensor of concat operator.");
   AddAttr<std::string>("pooltype",

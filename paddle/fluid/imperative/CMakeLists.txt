@@ -5,7 +5,7 @@ cc_library(
 cc_library(
   var_helper
   SRCS var_helper.cc
-  DEPS tensor selected_rows)
+  DEPS tensor selected_rows extended_tensor)
 if(WITH_XPU)
   cc_library(
     prepared_operator

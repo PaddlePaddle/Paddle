@@ -19,6 +19,7 @@ from inference_pass_test import InferencePassTest
 
 import paddle
 import paddle.fluid as fluid
+import paddle.nn.functional as F
 from paddle.fluid.core import PassVersionChecker
 
 
@@ -69,7 +70,7 @@ class ElementwiseActivationMkldnnFusePassTest_Add_Relu(
 ):
     def set_params(self):
         self.operand = paddle.add
-        self.act = fluid.layers.relu
+        self.act = F.relu
 
 
 class ElementwiseActivationMkldnnFusePassTest_Add_Tanh(
@@ -102,7 +103,7 @@ class ElementwiseActivationMkldnnFusePassTest_Add_HardSwish(
 ):
     def set_params(self):
         self.operand = paddle.add
-        self.act = fluid.layers.hard_swish
+        self.act = paddle.nn.functional.hardswish
 
 
 class ElementwiseActivationMkldnnFusePassTest_Add_SQRT(
@@ -169,7 +170,7 @@ class ElementwiseActivationMkldnnFusePassTest_Sub_Relu(
 ):
     def set_params(self):
         self.operand = paddle.subtract
-        self.act = fluid.layers.relu
+        self.act = F.relu
 
 
 class ElementwiseActivationMkldnnFusePassTest_Sub_Tanh(
@@ -202,7 +203,7 @@ class ElementwiseActivationMkldnnFusePassTest_Sub_HardSwish(
 ):
     def set_params(self):
         self.operand = paddle.subtract
-        self.act = fluid.layers.hard_swish
+        self.act = paddle.nn.functional.hardswish
 
 
 class ElementwiseActivationMkldnnFusePassTest_Sub_ABS(
@@ -261,7 +262,7 @@ class ElementwiseActivationMkldnnFusePassTest_Mul_Relu(
 ):
     def set_params(self):
         self.operand = paddle.multiply
-        self.act = fluid.layers.relu
+        self.act = F.relu
 
 
 class ElementwiseActivationMkldnnFusePassTest_Mul_Tanh(
@@ -294,7 +295,7 @@ class ElementwiseActivationMkldnnFusePassTest_Mul_HardSwish(
 ):
     def set_params(self):
         self.operand = paddle.multiply
-        self.act = fluid.layers.hard_swish
+        self.act = paddle.nn.functional.hardswish
 
 
 class ElementwiseActivationMkldnnFusePassTest_Mul_SQRT(
@@ -360,7 +361,7 @@ class ElementwiseScaleOneDNNFusePassTest_Add(
     ElementwiseActivationMkldnnFusePassTest
 ):
     def set_params(self):
-        self.operand = fluid.layers.elementwise_add
+        self.operand = paddle.add
         self.act_alpha = 0.6
         self.act = paddle.scale
 
@@ -369,7 +370,7 @@ class ElementwiseScaleOneDNNFusePassTest_Sub(
     ElementwiseActivationMkldnnFusePassTest
 ):
     def set_params(self):
-        self.operand = fluid.layers.elementwise_sub
+        self.operand = paddle.subtract
         self.act_alpha = 0.6
         self.act = paddle.scale
 
@@ -378,7 +379,7 @@ class ElementwiseScaleOneDNNFusePassTest_Mul(
     ElementwiseActivationMkldnnFusePassTest
 ):
     def set_params(self):
-        self.operand = fluid.layers.elementwise_mul
+        self.operand = paddle.multiply
         self.act_alpha = 0.6
         self.act = paddle.scale
 
@@ -387,7 +388,7 @@ class ElementwiseScaleOneDNNFusePassTest_Div(
     ElementwiseActivationMkldnnFusePassTest
 ):
     def set_params(self):
-        self.operand = fluid.layers.elementwise_div
+        self.operand = paddle.divide
         self.act_alpha = 0.6
         self.act = paddle.scale
 

@@ -22,11 +22,9 @@ __all__ = []
 class PixelShuffle(Layer):
     """
 
-    PixelShuffle Layer
-
     Rearranges elements in a tensor of shape :math:`[N, C, H, W]`
-    to a tensor of shape :math:`[N, C/upscale_factor^2, H*upscale_factor, W \times upscale_factor]`,
-    or from shape :math:`[N, H, W, C]` to :math:`[N, H \times upscale_factor, W \times upscale_factor, C/upscale_factor^2]`.
+    to a tensor of shape :math:`[N, C/upscale_factor^2, H*upscale_factor, W*upscale_factor]`,
+    or from shape :math:`[N, H, W, C]` to :math:`[N, H*upscale_factor, W*upscale_factor, C/upscale_factor^2]`.
     This is useful for implementing efficient sub-pixel convolution
     with a stride of 1/upscale_factor.
     Please refer to the paper: `Real-Time Single Image and Video Super-Resolution
@@ -36,12 +34,12 @@ class PixelShuffle(Layer):
     Parameters:
 
         upscale_factor(int): factor to increase spatial resolution.
-        data_format (str, optional): The data format of the input and output data. An optional string from: "NCHW", "NHWC". The default is "NCHW". When it is "NCHW", the data is stored in the order of: [batch_size, input_channels, input_height, input_width].
+        data_format (str, optional): The data format of the input and output data. An optional string from: `'NCHW'``, ``'NHWC'``. When it is ``'NCHW'``, the data is stored in the order of: [batch_size, input_channels, input_height, input_width]. Default: ``'NCHW'``.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Shape:
         - x: 4-D tensor with shape of :math:`(N, C, H, W)` or :math:`(N, H, W, C)`.
-        - out: 4-D tensor with shape of :math:`(N, C/upscale_factor^2, H \times upscale_factor, W \times upscale_factor)` or :math:`(N, H \times upscale_factor, W \times upscale_factor, C/upscale_factor^2)`.
+        - out: 4-D tensor with shape of :math:`(N, C/upscale_factor^2, H*upscale_factor, W*upscale_factor)` or :math:`(N, H*upscale_factor, W*upscale_factor, C/upscale_factor^2)`.
 
 
     Examples:
@@ -52,10 +50,9 @@ class PixelShuffle(Layer):
 
             x = paddle.randn(shape=[2,9,4,4])
             pixel_shuffle = nn.PixelShuffle(3)
-            out_var = pixel_shuffle(x)
-            out = out_var.numpy()
+            out = pixel_shuffle(x)
             print(out.shape)
-            # (2, 1, 12, 12)
+            # [2, 1, 12, 12]
 
     """
 
@@ -101,7 +98,7 @@ class PixelUnshuffle(Layer):
 
     Parameters:
         downscale_factor (int): Factor to decrease spatial resolution.
-        data_format (str, optional): The data format of the input and output data. An optional string of NCHW or NHWC. The default is NCHW. When it is NCHW, the data is stored in the order of [batch_size, input_channels, input_height, input_width].
+        data_format (str, optional): The data format of the input and output data. An optional string of ``'NCHW'`` or ``'NHWC'``. When it is ``'NCHW'``, the data is stored in the order of [batch_size, input_channels, input_height, input_width]. Default: ``'NCHW'``.
         name (str, optional): Name for the operation (optional, default is None). Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`.
 
     Shape:
@@ -157,7 +154,7 @@ class PixelUnshuffle(Layer):
 
 class ChannelShuffle(Layer):
     """
-    This operator divides channels in a tensor of shape [N, C, H, W] or [N, H, W, C] into g groups,
+    Can divide channels in a tensor of shape [N, C, H, W] or [N, H, W, C] into g groups,
     getting a tensor with the shape of [N, g, C/g, H, W] or [N, H, W, g, C/g], and transposes them
     as [N, C/g, g, H, W] or [N, H, W, g, C/g], then rearranges them to original tensor shape. This
     operation can improve the interaction between channels, using features efficiently. Please
@@ -167,7 +164,7 @@ class ChannelShuffle(Layer):
 
     Parameters:
         groups (int): Number of groups to divide channels in.
-        data_format (str): The data format of the input and output data. An optional string of NCHW or NHWC. The default is NCHW. When it is NCHW, the data is stored in the order of [batch_size, input_channels, input_height, input_width].
+        data_format (str, optional): The data format of the input and output data. An optional string of NCHW or NHWC. The default is NCHW. When it is NCHW, the data is stored in the order of [batch_size, input_channels, input_height, input_width].
         name (str, optional): Name for the operation (optional, default is None). Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`.
 
     Shape:

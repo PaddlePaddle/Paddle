@@ -48,7 +48,6 @@ namespace operators {
             keep_dim);                                           \
   }
 
-using Tensor = phi::DenseTensor;
 using DDim = framework::DDim;
 
 inline void GetShuffledDim(const DDim& src_dims,
@@ -137,7 +136,7 @@ void HandleLargeDim(const framework::ExecutionContext& context,
                     const std::vector<int>& dims,
                     bool keep_dim) {
   //  shuffle the reduced dim to the end
-  Tensor shuffled_input;
+  phi::DenseTensor shuffled_input;
   GetShuffledInput<DeviceContext, OutT>(context, input, &shuffled_input, dims);
 
   // transpose to 2D tensor whose shape is {unreduced, reduced}.
@@ -168,7 +167,7 @@ void HandleLargeDimGrad(const framework::ExecutionContext& context,
   DDim out_dim(out->dims());
   DDim x_dim(x->dims());
   // transpose and reshape X
-  Tensor shuffled_x;
+  phi::DenseTensor shuffled_x;
   GetShuffledInput<DeviceContext, T>(context, x, &shuffled_x, dims);
   DDim shuffled_dim = shuffled_x.dims();
   shuffled_x.Resize({unreduced, reduced});
@@ -185,7 +184,7 @@ void HandleLargeDimGrad(const framework::ExecutionContext& context,
   // transpose dX
   std::vector<int> origin_axis(x_dim.size());
   GetOriginDimFromShuffled(x_dim, dims, &origin_axis);
-  Tensor dx_tmp;
+  phi::DenseTensor dx_tmp;
   framework::TensorCopy(*dx, context.GetPlace(), &dx_tmp);
   dx_tmp.Resize(shuffled_dim);
   dx->Resize(x_dim);
@@ -453,7 +452,7 @@ class ReduceGradKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& context) const override {
     int in_dtype = context.Attr<int>("in_dtype");
     if (in_dtype >= 0) {
-      Tensor tmp_tensor;
+      phi::DenseTensor tmp_tensor;
       auto* pre_input =
           context.Input<phi::DenseTensor>(framework::GradVarName("Out"));
       auto in_kernel_type = framework::OpKernelType(

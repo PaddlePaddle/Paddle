@@ -30,7 +30,6 @@
 
 namespace paddle {
 namespace operators {
-using Tensor = phi::DenseTensor;
 
 inline std::vector<int64_t> GetNewDataFromShapeTensor(
     const phi::DenseTensor* new_data_tensor) {

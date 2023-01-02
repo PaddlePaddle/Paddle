@@ -15,7 +15,7 @@
 import os
 
 import paddle
-from paddle.fluid import core, framework, layers, unique_name
+from paddle.fluid import core, framework, unique_name
 from paddle.fluid.clip import ClipGradByGlobalNorm
 from paddle.fluid.executor import global_scope
 from paddle.fluid.framework import Variable, name_scope
@@ -172,7 +172,7 @@ class DistributedFusedLamb(Optimizer):
 
     def _create_scale_from_constant(self, value):
         name = unique_name.generate('global_scale')
-        return layers.create_global_var(
+        return paddle.static.create_global_var(
             name=name,
             shape=[1],
             dtype='float32',

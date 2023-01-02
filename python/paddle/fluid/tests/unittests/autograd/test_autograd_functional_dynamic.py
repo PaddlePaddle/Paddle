@@ -24,7 +24,6 @@ from utils import matmul, mul, nested, o2, reduce, reduce_dim
 import paddle
 import paddle.fluid as fluid
 import paddle.nn.functional as F
-from paddle.fluid.framework import _test_eager_guard
 from paddle.incubate.autograd.utils import as_tensors
 
 
@@ -201,14 +200,6 @@ class TestVJP(TestAutogradFunctional):
         self.check_results(ref_result, aliased_result)
 
     def test_all_cases(self):
-        with _test_eager_guard():
-            self.func_vjp_i1o1()
-            self.func_vjp_i2o1()
-            self.func_vjp_i2o2()
-            self.func_vjp_i2o2_omitting_v()
-            self.func_vjp_nested()
-            self.func_vjp_aliased_input()
-
         self.func_vjp_i1o1()
         self.func_vjp_i2o1()
         self.func_vjp_i2o2()
@@ -237,16 +228,11 @@ class TestVJP(TestAutogradFunctional):
     ),
 )
 class TestVJPException(unittest.TestCase):
-    def func_vjp(self):
+    def test_vjp(self):
         with self.assertRaises(self.expected_exception):
             paddle.incubate.autograd.vjp(
                 self.fun, paddle.to_tensor(self.xs), paddle.to_tensor(self.v)
             )
-
-    def test_all_cases(self):
-        with _test_eager_guard():
-            self.func_vjp()
-        self.func_vjp()
 
 
 def jac(grad_fn, f, inputs):
@@ -324,11 +310,6 @@ class TestJVP(TestAutogradFunctional):
             self.check_results(results_omitting_v, results_with_v)
 
     def test_all_cases(self):
-        with _test_eager_guard():
-            self.func_jvp_i1o1()
-            self.func_jvp_i2o1()
-            self.func_jvp_i2o2()
-            self.func_jvp_i2o2_omitting_v()
         self.func_jvp_i1o1()
         self.func_jvp_i2o1()
         self.func_jvp_i2o2()
@@ -372,7 +353,7 @@ class TestJacobianNoBatch(unittest.TestCase):
             .get("atol")
         )
 
-    def func_jacobian(self):
+    def test_jacobian(self):
         xs = (
             [paddle.to_tensor(x) for x in self.xs]
             if isinstance(self.xs, typing.Sequence)
@@ -408,11 +389,6 @@ class TestJacobianNoBatch(unittest.TestCase):
             self.func, xs, self._eps, self._dtype
         )
         return utils._np_concat_matrix_sequence(jac, utils.MatrixFormat.NM)
-
-    def test_all_cases(self):
-        with _test_eager_guard():
-            self.func_jacobian()
-        self.func_jacobian()
 
 
 @utils.place(config.DEVICES)
@@ -451,7 +427,7 @@ class TestJacobianBatchFirst(unittest.TestCase):
             .get("atol")
         )
 
-    def func_jacobian(self):
+    def test_jacobian(self):
         xs = (
             [paddle.to_tensor(x) for x in self.xs]
             if isinstance(self.xs, typing.Sequence)
@@ -504,11 +480,6 @@ class TestJacobianBatchFirst(unittest.TestCase):
         return utils._np_transpose_matrix_format(
             jac, utils.MatrixFormat.NBM, utils.MatrixFormat.BNM
         )
-
-    def test_all_cases(self):
-        with _test_eager_guard():
-            self.func_jacobian()
-        self.func_jacobian()
 
 
 class TestHessianNoBatch(unittest.TestCase):
@@ -607,13 +578,6 @@ class TestHessianNoBatch(unittest.TestCase):
             paddle.incubate.autograd.Hessian(func, paddle.ones([3]))
 
     def test_all_cases(self):
-        with _test_eager_guard():
-            self.setUpClass()
-            self.func_single_input()
-            self.func_multi_input()
-            self.func_allow_unused_true()
-            self.func_create_graph_true()
-            self.func_out_not_single()
         self.setUpClass()
         self.func_single_input()
         self.func_multi_input()
@@ -744,13 +708,6 @@ class TestHessianBatchFirst(unittest.TestCase):
             )
 
     def test_all_cases(self):
-        with _test_eager_guard():
-            self.setUpClass()
-            self.func_single_input()
-            self.func_multi_input()
-            self.func_allow_unused()
-            self.func_stop_gradient()
-            self.func_out_not_single()
         self.setUpClass()
         self.func_single_input()
         self.func_multi_input()

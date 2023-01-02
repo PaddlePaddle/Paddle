@@ -41,33 +41,21 @@ class TestGeneratorSeed(unittest.TestCase):
         gen.manual_seed(111111111)
         st = paddle.get_cuda_rng_state()
 
-        x = fluid.layers.uniform_random(
-            [2, 10], dtype="float32", min=0.0, max=1.0
-        )
-        x_again = fluid.layers.uniform_random(
-            [2, 10], dtype="float32", min=0.0, max=1.0
-        )
-        x_third = fluid.layers.uniform_random(
-            [2, 10], dtype="float32", min=0.0, max=1.0
-        )
+        x = paddle.uniform([2, 10], dtype="float32", min=0.0, max=1.0)
+        x_again = paddle.uniform([2, 10], dtype="float32", min=0.0, max=1.0)
+        x_third = paddle.uniform([2, 10], dtype="float32", min=0.0, max=1.0)
         print("x: {}".format(x.numpy()))
         print("x_again: {}".format(x_again.numpy()))
         x = x + x_again + x_third
-        y = fluid.layers.dropout(x, 0.5)
+        y = paddle.nn.functional.dropout(x, 0.5)
 
         paddle.set_cuda_rng_state(st)
 
-        x1 = fluid.layers.uniform_random(
-            [2, 10], dtype="float32", min=0.0, max=1.0
-        )
-        x1_again = fluid.layers.uniform_random(
-            [2, 10], dtype="float32", min=0.0, max=1.0
-        )
-        x1_third = fluid.layers.uniform_random(
-            [2, 10], dtype="float32", min=0.0, max=1.0
-        )
+        x1 = paddle.uniform([2, 10], dtype="float32", min=0.0, max=1.0)
+        x1_again = paddle.uniform([2, 10], dtype="float32", min=0.0, max=1.0)
+        x1_third = paddle.uniform([2, 10], dtype="float32", min=0.0, max=1.0)
         x1 = x1 + x1_again + x1_third
-        y1 = fluid.layers.dropout(x1, 0.5)
+        y1 = paddle.nn.functional.dropout(x1, 0.5)
         y_np = y.numpy()
         y1_np = y1.numpy()
 
@@ -128,7 +116,7 @@ class TestGeneratorSeed(unittest.TestCase):
         with fluid.program_guard(train_program, startup_program):
             # example 1:
             # attr shape is a list which doesn't contain tensor Variable.
-            x = fluid.layers.uniform_random(shape=[2, 10])
+            x = paddle.uniform(shape=[2, 10])
             result_1 = fluid.layers.fc(
                 input=x,
                 size=10,

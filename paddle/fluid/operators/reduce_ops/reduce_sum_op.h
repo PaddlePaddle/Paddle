@@ -80,7 +80,7 @@ class ReduceSumGradKernel : public framework::OpKernel<T> {
       int in_dtype = context.Attr<int>("out_dtype");
 
       if (in_dtype >= 0) {
-        Tensor tmp_tensor;
+        phi::DenseTensor tmp_tensor;
         auto* pre_input =
             context.Input<phi::DenseTensor>(framework::GradVarName("Out"));
         auto in_kernel_type = framework::OpKernelType(

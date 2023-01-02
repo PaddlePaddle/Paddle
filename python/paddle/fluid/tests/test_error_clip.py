@@ -31,7 +31,9 @@ with fluid.program_guard(main_program=prog):
 
     label = fluid.layers.data(name='y', shape=[1], dtype='int64')
 
-    cost = fluid.layers.cross_entropy(input=predict, label=label)
+    cost = paddle.nn.functional.cross_entropy(
+        input=predict, label=label, reduction='none', use_softmax=False
+    )
     avg_cost = paddle.mean(cost)
 
 prog_clip = prog.clone()

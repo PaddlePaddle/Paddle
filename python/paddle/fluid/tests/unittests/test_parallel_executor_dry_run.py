@@ -82,7 +82,9 @@ class TestMNISTDryRun(TestBase):
         for _ in range(10):
             hidden = fluid.layers.fc(input=img, size=200, act='tanh')
         prediction = fluid.layers.fc(input=hidden, size=10, act='softmax')
-        loss = fluid.layers.cross_entropy(input=prediction, label=label)
+        loss = paddle.nn.functional.cross_entropy(
+            input=prediction, label=label, reduction='none', use_softmax=False
+        )
         avg_loss = paddle.mean(loss)
         fluid.optimizer.Adam().minimize(avg_loss)
         return avg_loss

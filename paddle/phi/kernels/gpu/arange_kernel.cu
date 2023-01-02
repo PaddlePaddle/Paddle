@@ -57,10 +57,11 @@ void ArangeKernel(const Context& dev_ctx,
   T* out_data = dev_ctx.template Alloc<T>(out);
 
   auto stream = dev_ctx.stream();
-  int block = std::min(size, static_cast<int64_t>(256));
-  PADDLE_ENFORCE_NE(
-      block, 0, errors::OutOfRange("The value of block cannot be 0."));
-  int grid = (size + block - 1) / block;
+  int64_t block = std::min(size, static_cast<int64_t>(256));
+  if (block == 0) {
+    return;
+  }
+  int64_t grid = (size + block - 1) / block;
   Range<T><<<grid, block, 0, stream>>>(start_value, step_value, size, out_data);
 }
 

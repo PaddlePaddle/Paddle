@@ -23,7 +23,7 @@ def forward_grad(outputs, inputs, grad_inputs=None):
     """Forward mode of automatic differentiation.
 
     Note:
-        **ONLY available in the static mode and primitive operators.**
+        **ONLY available in the static graph mode and primitive operators.**
 
     Args:
         outputs(Tensor|Sequence[Tensor]): The output tensor or tensors.
@@ -106,7 +106,7 @@ def grad(outputs, inputs, grad_outputs=None):
     """Reverse mode of automatic differentiation.
 
     Note:
-        **ONLY available in the static mode and primitive operators**
+        **ONLY available in the static graph mode and primitive operators**
 
     Args:
         outputs(Tensor|Sequence[Tensor]): The output Tensor or Tensors.

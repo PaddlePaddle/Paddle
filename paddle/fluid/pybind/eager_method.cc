@@ -29,6 +29,7 @@ typedef SSIZE_T ssize_t;
 #include "paddle/fluid/eager/hooks.h"
 #include "paddle/fluid/eager/utils.h"
 #include "paddle/fluid/framework/convert_utils.h"
+#include "paddle/fluid/framework/string_array.h"
 #include "paddle/fluid/memory/allocation/allocator.h"
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -1493,7 +1494,7 @@ static PyObject* tensor_method_set_vocab(TensorObject* self,
                                          PyObject* args,
                                          PyObject* kwargs) {
   EAGER_TRY
-  using Vocab = std::unordered_map<std::wstring, int>;
+  using Vocab = paddle::framework::Vocab;
   auto vocab = CastPyArg2Vocab(PyTuple_GET_ITEM(args, 0), 0);
   auto var_tensor = std::make_shared<egr::VariableCompatTensor>();
   *var_tensor->GetMutable<Vocab>() = vocab;
@@ -1524,7 +1525,7 @@ static PyObject* tensor_method_get_map_tensor(TensorObject* self,
       true,
       paddle::platform::errors::Fatal(
           "this method is only effective for VariableCompatTensor"));
-  using Vocab = std::unordered_map<std::wstring, int>;
+  using Vocab = paddle::framework::Vocab;
   auto* var_tensor =
       static_cast<const egr::VariableCompatTensor*>(self->tensor.impl().get());
   return ToPyObject(var_tensor->Get<Vocab>());
@@ -1895,9 +1896,10 @@ static PyObject* tensor_data_ptr(TensorObject* self,
                                  PyObject* kwargs) {
   EAGER_TRY
   if (self->tensor.initialized() && self->tensor.is_dense_tensor()) {
-    ToPyObject((int64_t)std::dynamic_pointer_cast<phi::DenseTensor>(  // NOLINT
-                   self->tensor.impl())
-                   ->data());
+    return ToPyObject(
+        (int64_t)std::dynamic_pointer_cast<phi::DenseTensor>(  // NOLINT
+            self->tensor.impl())
+            ->data());
   }
   RETURN_PY_NONE
   EAGER_CATCH_AND_THROW_RETURN_NULL

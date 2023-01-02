@@ -60,6 +60,9 @@ namespace paddle::framework::paddle2cinn {
   SET_TYPE_CASE_ITEM(cinn_uint64_t, UINT64)
   SET_TYPE_CASE_ITEM(cinn_float32_t, FLOAT32)
   SET_TYPE_CASE_ITEM(cinn_float64_t, FLOAT64)
+#ifdef CINN_COMMON_FLOAT16_H
+  SET_TYPE_CASE_ITEM(cinn_float16_t, FLOAT16)
+#endif  // CINN_COMMON_FLOAT16_H
 
   PADDLE_THROW(platform::errors::Unimplemented("Input type not supported yet"));
   return ::phi::DataType::UNDEFINED;

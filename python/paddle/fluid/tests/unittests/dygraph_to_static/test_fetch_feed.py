@@ -19,7 +19,7 @@ import numpy as np
 import paddle
 import paddle.fluid as fluid
 from paddle.jit import ProgramTranslator
-from paddle.jit.api import declarative
+from paddle.jit.api import to_static
 
 SEED = 2020
 
@@ -29,7 +29,7 @@ class Pool2D(fluid.dygraph.Layer):
         super().__init__()
         self.pool2d = paddle.nn.AvgPool2D(kernel_size=2, stride=1)
 
-    @declarative
+    @to_static
     def forward(self, x):
         # Add func `get_result` for testing arg_name_to_idx in ast transformation.
         def get_result(x):
@@ -54,7 +54,7 @@ class Linear(fluid.dygraph.Layer):
         )
         self.act = paddle.nn.ReLU()
 
-    @declarative
+    @to_static
     def forward(self, x):
         pre = self.fc(x)
         pre = self.act(pre)

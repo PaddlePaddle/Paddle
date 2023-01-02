@@ -154,7 +154,9 @@ class TestDistCTR2x2(FleetDistRunnerBase):
             input=predict, label=label
         )
 
-        cost = fluid.layers.cross_entropy(input=predict, label=label)
+        cost = paddle.nn.functional.cross_entropy(
+            input=predict, label=label, reduction='none', use_softmax=False
+        )
         avg_cost = paddle.mean(x=cost)
 
         self.feeds = datas
@@ -391,6 +393,10 @@ class TestDistCTR2x2(FleetDistRunnerBase):
         if patch_dirname:
             fleet.save_persistables(exe, patch_dirname, None, 5)
             fleet.check_save_pre_patch_done()
+
+        # add for gpugrahp
+        fleet.save_cache_table(0, 0)
+        fleet.shrink()
 
 
 if __name__ == "__main__":

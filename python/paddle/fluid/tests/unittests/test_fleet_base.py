@@ -203,7 +203,12 @@ class TestFleetBaseSingleError(unittest.TestCase):
 
             fc_1 = fluid.layers.fc(input=input_x, size=64, act='tanh')
             prediction = fluid.layers.fc(input=fc_1, size=2, act='softmax')
-            cost = fluid.layers.cross_entropy(input=prediction, label=input_y)
+            cost = paddle.nn.functional.cross_entropy(
+                input=prediction,
+                label=input_y,
+                reduction='none',
+                use_softmax=False,
+            )
             avg_cost = paddle.mean(x=cost)
             fleet.init(is_collective=True)
 

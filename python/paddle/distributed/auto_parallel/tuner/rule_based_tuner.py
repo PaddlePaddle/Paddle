@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import math
 from abc import abstractmethod
 
 from ..graph import Graph
@@ -502,6 +503,100 @@ class OperatorClusteringUtil:
             if not isinstance(item, list):
                 return False
         return True
+
+
+class ClusterPartitionUtil:
+    @staticmethod
+    def factorization(num):
+        factors = []
+        for i in range(1, int(math.floor(math.sqrt(num))) + 1):
+            if num % i == 0:
+                factors.append([i, int(num / i)])
+        return factors
+
+    @staticmethod
+    def complete_meshes(partitions: list, num: int):
+        if len(partitions) == 1:
+            partitions = ClusterPartitionUtil.factorization(num - 1)
+            partitions.append([1])
+        return partitions
+
+    @staticmethod
+    def partition_cluster(
+        n: int,
+        m: int,
+        filter=[
+            complete_meshes.__func__,
+        ],
+    ) -> list:
+        """
+        Partiton cluster into possible device meshes.
+
+        Args:
+            n (int): The number of nodes.
+            m (int): The number of single devices on each node.
+            filter (list): Functions for filtering useful meshes
+
+        Returns:
+            device_meshed (list) : The possible device meshes.
+        """
+        partition_result = ClusterPartitionUtil.factorization(n)
+        for func in filter:
+            partition_result = func(partition_result, n)
+        device_meshes = []
+        if n == 1:
+            partition_result = ClusterPartitionUtil.factorization(m)
+            for partition in partition_result:
+                device_mesh = []
+                for i in range(partition[0]):
+                    device_mesh.append([1, partition[1]])
+                device_meshes.append(device_mesh)
+        else:
+            incerement = 1 if partition_result[-1] == [1] else 0
+            for partition in partition_result:
+                if len(partition) < 2:
+                    continue
+                device_mesh = []
+                for i in range(partition[0]):
+                    device_mesh.append([partition[1], m])
+                device_mesh[-1][0] += incerement
+                device_meshes.append(device_mesh)
+
+        return device_meshes
+
+
+def convert_to_process_meshes(device_mesh: list) -> list:
+    """
+    Transfer device_meshes into possible process meshes.
+
+    Args:
+        device meshes (list): [n,m], one device mesh.
+
+    Returns:
+        process_meshes (list): Possible process_meshes
+    """
+    n, m = device_mesh[0], device_mesh[1]
+    factors = (
+        ClusterPartitionUtil.factorization(m)
+        if n == 1
+        else ClusterPartitionUtil.factorization(n)
+    )
+    process_meshes = []
+    if n == 1:
+        for factor in factors:
+            if factor[0] == 1:
+                process_meshes.append([factor[1]])
+                continue
+            process_meshes.append(factor)
+    else:
+        for factor in factors:
+            mul1, mul2 = factor[0], factor[1]
+            if mul1 == 1:
+                process_meshes.append([m * mul2])
+            elif mul1 != mul2:
+                process_meshes.append([int(n / mul2), m * mul2])
+            process_meshes.append([int(n / mul1), m * mul1])
+    return process_meshes
 
 
 class RuleBasedTuner:

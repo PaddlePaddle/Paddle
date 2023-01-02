@@ -580,6 +580,13 @@ class GroupShardedOptimizerStage2(Optimizer):
 
         return __impl__
 
+    def set_lr(self, lr):
+        super().set_lr(lr)
+        self._optim.set_lr(lr)
+
+    def get_lr(self):
+        return self._optim.get_lr()
+
     @paddle.autograd.no_grad()
     def _broadcast_params_overlap_forward(self):
         # Exchange all the shards with the other ranks,

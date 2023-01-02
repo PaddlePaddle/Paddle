@@ -18,8 +18,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
-
 template <typename T>
 class ElementwisePowMLUKernel : public framework::OpKernel<T> {
  public:
@@ -64,11 +62,11 @@ class ElementwisePowGradMLUKernel : public framework::OpKernel<T> {
     auto dout_dims = dout->dims();
     if (dx) {
       // dx = dout * y * pow(x, y - 1);
-      Tensor one_dx(y->type());
+      phi::DenseTensor one_dx(y->type());
       one_dx.mutable_data<T>(phi::make_ddim(y_dims_array), place);
       FillMLUTensorWithHostValue(ctx, static_cast<T>(1), &one_dx);
 
-      Tensor sub_dx(y->type());
+      phi::DenseTensor sub_dx(y->type());
       sub_dx.mutable_data<T>(phi::make_ddim(y_dims_array), place);
       MLUCnnlOpTensorDesc op_tensor_desc(
           CNNL_OP_TENSOR_SUB, data_type, CNNL_NOT_PROPAGATE_NAN);
@@ -82,7 +80,7 @@ class ElementwisePowGradMLUKernel : public framework::OpKernel<T> {
                         GetBasePtr(&sub_dx),
                         data_type);
 
-      Tensor tmp_dx(x->type());
+      phi::DenseTensor tmp_dx(x->type());
       tmp_dx.mutable_data<T>(phi::make_ddim(out_dims_array), place);
       MLUCnnl::Pow(ctx,
                    CNNL_COMPUTATION_HIGH_PRECISION,
@@ -134,7 +132,7 @@ class ElementwisePowGradMLUKernel : public framework::OpKernel<T> {
     }
     if (dy) {
       // dy = dout * log(x) * pow(x, y)
-      Tensor tmp_dy(y->type());
+      phi::DenseTensor tmp_dy(y->type());
       tmp_dy.mutable_data<T>(phi::make_ddim(out_dims_array), place);
       MLUCnnl::Pow(ctx,
                    CNNL_COMPUTATION_HIGH_PRECISION,
@@ -145,7 +143,7 @@ class ElementwisePowGradMLUKernel : public framework::OpKernel<T> {
                    out_desc.get(),
                    GetBasePtr(&tmp_dy));
 
-      Tensor log_x(x->type());
+      phi::DenseTensor log_x(x->type());
       log_x.mutable_data<T>(x->dims(), place);
       MLUCnnl::Log(ctx,
                    CNNL_COMPUTATION_HIGH_PRECISION,

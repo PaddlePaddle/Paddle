@@ -29,8 +29,6 @@ static inline int GET_BLOCKS(const int N) {
   return (N + CUDA_NUM_THREADS - 1) / CUDA_NUM_THREADS;
 }
 
-using Tensor = phi::DenseTensor;
-
 template <typename T>
 __global__ void random_routing_kernel(int64_t* data,
                                       const int64_t length,

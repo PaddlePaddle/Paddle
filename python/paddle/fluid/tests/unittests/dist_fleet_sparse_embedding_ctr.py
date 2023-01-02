@@ -140,7 +140,9 @@ class TestDistCTR2x2(FleetDistRunnerBase):
 
         acc = paddle.static.accuracy(input=predict, label=label)
         auc_var, _, _ = paddle.static.auc(input=predict, label=label)
-        cost = fluid.layers.cross_entropy(input=predict, label=label)
+        cost = paddle.nn.functional.cross_entropy(
+            input=predict, label=label, reduction='none', use_softmax=False
+        )
         avg_cost = paddle.mean(x=cost)
 
         self.feeds = datas

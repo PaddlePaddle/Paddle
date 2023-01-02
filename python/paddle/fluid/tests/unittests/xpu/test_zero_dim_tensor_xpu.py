@@ -475,6 +475,87 @@ class TestSundryAPI(unittest.TestCase):
         for i in range(3):
             self.assertEqual(out.numpy()[1][i], updates.numpy()[i])
 
+    def test_diagflat(self):
+        x1 = paddle.rand([])
+        x2 = paddle.rand([])
+        x3 = paddle.rand([])
+
+        x1.stop_gradient = False
+        x2.stop_gradient = False
+        x3.stop_gradient = False
+
+        out1 = paddle.diagflat(x1, 1)
+        out2 = paddle.diagflat(x2, -1)
+        out3 = paddle.diagflat(x3, 0)
+
+        out1.backward()
+        out2.backward()
+        out3.backward()
+
+        self.assertEqual(out1.shape, [2, 2])
+        self.assertEqual(out2.shape, [2, 2])
+        self.assertEqual(out3.shape, [1, 1])
+
+        self.assertEqual(out1.grad.shape, [2, 2])
+        self.assertEqual(out2.grad.shape, [2, 2])
+        self.assertEqual(out3.grad.shape, [1, 1])
+
+        self.assertEqual(x1.grad.shape, [])
+        self.assertEqual(x2.grad.shape, [])
+        self.assertEqual(x3.grad.shape, [])
+
+    def test_scatter__1D(self):
+        x = paddle.to_tensor([1.0, 3.0, 5.0, 7.0, 9.0])
+        index = paddle.full([], 2, 'int64')
+        updates = paddle.full([], 4.0)
+        out = paddle.scatter_(x, index, updates)
+
+        self.assertEqual(out.numpy()[2], 4)
+
+    def test_scatter__XD(self):
+        x = paddle.to_tensor([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
+        index = paddle.full([], 1, 'int64')
+        updates = paddle.to_tensor([1.0, 2.0, 3.0])
+        out = paddle.scatter_(x, index, updates)
+
+        for i in range(3):
+            self.assertEqual(out.numpy()[1][i], updates.numpy()[i])
+
+    def test_scale(self):
+        x = paddle.rand([])
+        x.stop_gradient = False
+        out = paddle.scale(x, scale=2.0, bias=1.0)
+        out.backward()
+
+        self.assertEqual(out.shape, [])
+        self.assertEqual(out.grad.shape, [])
+        self.assertEqual(x.grad.shape, [])
+
+    def test_floor_divide(self):
+        # 1-d // 0-d
+        x = paddle.to_tensor([1, -2, 3], dtype="int64")
+        y = paddle.full([], 2, dtype='int64')
+        out1_1 = paddle.floor_divide(x, y)
+        out1_2 = paddle.Tensor.__floordiv__(x, y)
+
+        np.testing.assert_array_equal(out1_1.numpy(), out1_2.numpy())
+        np.testing.assert_array_equal(out1_1.numpy(), np.asarray([0, -1, 1]))
+
+        # 0-d // 1-d
+        out2_1 = paddle.floor_divide(y, x)
+        out2_2 = paddle.Tensor.__floordiv__(y, x)
+
+        np.testing.assert_array_equal(out2_1.numpy(), out2_2.numpy())
+        np.testing.assert_array_equal(out2_2.numpy(), np.asarray([2, -1, 0]))
+
+        # 0-d // 0-d
+        x = paddle.full([], 3, dtype='int64')
+        out3_1 = paddle.floor_divide(x, y)
+        out3_2 = paddle.Tensor.__floordiv__(x, y)
+
+        np.testing.assert_array_equal(out3_1.numpy(), out3_2.numpy())
+        np.testing.assert_array_equal(out3_2.numpy(), np.asarray(1))
+
 
 # Use to test API whose zero-dim input tensors don't have grad and not need to test backward in OpTest.
 class TestNoBackwardAPI(unittest.TestCase):
