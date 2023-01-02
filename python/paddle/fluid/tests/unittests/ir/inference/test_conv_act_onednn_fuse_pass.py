@@ -19,8 +19,8 @@ from auto_scan_test import PassAutoScanTest
 from program_config import OpConfig, ProgramConfig, TensorConfig
 
 
-class TestConvActMkldnnFusePass(PassAutoScanTest):
-    r"""
+class TestConvActOneDNNFusePass(PassAutoScanTest):
+    r'''
     x_var   f_var(persistable)
       \       /
         conv2d
@@ -30,38 +30,41 @@ class TestConvActMkldnnFusePass(PassAutoScanTest):
          act
           |
         act_var
-    """
+    '''
 
     def sample_predictor_configs(self, program_config):
         # MKLDNN
         config = self.create_inference_config(use_gpu=False)
         config.enable_mkldnn()
-        yield config, ["conv2d"], (1e-4, 1e-5)
+        yield config, ['fused_conv2d'], (1e-4, 1e-5)
 
     def is_program_valid(self, prog_config):
-        paddings = prog_config.ops[0].attrs["paddings"]
-        strides = prog_config.ops[0].attrs["strides"]
-        groups = prog_config.ops[0].attrs["groups"]
-        padding_algorithm = prog_config.ops[0].attrs["padding_algorithm"]
-        dilations = prog_config.ops[0].attrs["dilations"]
-        data_format = prog_config.ops[0].attrs["data_format"]
-        filter_shape = prog_config.weights["filter"].shape
-        input_shape = prog_config.inputs["input_x"].shape
-        if padding_algorithm == "VALID":
+        paddings = prog_config.ops[0].attrs['paddings']
+        strides = prog_config.ops[0].attrs['strides']
+        groups = prog_config.ops[0].attrs['groups']
+        padding_algorithm = prog_config.ops[0].attrs['padding_algorithm']
+        dilations = prog_config.ops[0].attrs['dilations']
+        data_format = prog_config.ops[0].attrs['data_format']
+        filter_shape = prog_config.weights['filter'].shape
+        input_shape = prog_config.inputs['input_x'].shape
+
+        height = input_shape[data_format.index('H')]
+        width = input_shape[data_format.index('W')]
+        if padding_algorithm == 'VALID':
             if (
-                (input_shape[2] - (dilations[0] * (filter_shape[2] - 1) + 1))
+                (height - (dilations[0] * (filter_shape[2] - 1) + 1))
                 / strides[0]
                 + 1
             ) <= 1 or (
-                (input_shape[3] - (dilations[1] * (filter_shape[3] - 1) + 1))
+                (width - (dilations[1] * (filter_shape[3] - 1) + 1))
                 / strides[1]
                 + 1
             ) <= 1:
                 return False
-        if padding_algorithm == "EXPLICIT":
+        if padding_algorithm == 'EXPLICIT':
             if (
                 (
-                    input_shape[2]
+                    height
                     + paddings[0]
                     + paddings[1]
                     - (dilations[0] * (filter_shape[2] - 1) + 1)
@@ -70,7 +73,7 @@ class TestConvActMkldnnFusePass(PassAutoScanTest):
                 + 1
             ) <= 1 or (
                 (
-                    input_shape[3]
+                    width
                     + paddings[2]
                     + paddings[3]
                     - (dilations[1] * (filter_shape[3] - 1) + 1)
@@ -79,7 +82,8 @@ class TestConvActMkldnnFusePass(PassAutoScanTest):
                 + 1
             ) <= 1:
                 return False
-        if data_format == "NCHW":
+
+        if data_format == 'NCHW':
             if input_shape[1] != filter_shape[1] * groups:
                 return False
             if filter_shape[0] % groups != 0:
@@ -89,6 +93,7 @@ class TestConvActMkldnnFusePass(PassAutoScanTest):
                 return False
             if filter_shape[0] % groups != 0:
                 return False
+
         return True
 
     def sample_program_config(self, draw):
@@ -101,7 +106,7 @@ class TestConvActMkldnnFusePass(PassAutoScanTest):
         x_shape[1] = draw(st.integers(min_value=5, max_value=10))
 
         # 2. Generate legal attr:data_format of conv2d
-        data_format = draw(st.sampled_from(["NCHW", "NHWC"]))
+        data_format = draw(st.sampled_from(['NCHW', 'NHWC']))
 
         # 3. Generate legal shape of input:Y of conv2d
         f_shape = draw(
@@ -109,7 +114,7 @@ class TestConvActMkldnnFusePass(PassAutoScanTest):
                 st.integers(min_value=1, max_value=5), min_size=4, max_size=4
             )
         )
-        if data_format == "NCHW":
+        if data_format == 'NCHW':
             f_shape[1] = x_shape[1]
         else:
             f_shape[1] = x_shape[3]
@@ -122,7 +127,7 @@ class TestConvActMkldnnFusePass(PassAutoScanTest):
         )
 
         # 5. Generate legal attr:padding_algorithm of conv2d
-        padding_algorithm = draw(st.sampled_from(["EXPLICIT", "SAME", "VALID"]))
+        padding_algorithm = draw(st.sampled_from(['EXPLICIT', 'SAME', 'VALID']))
 
         # 6. Generate legal attr:padding of conv2d
         padding = draw(
@@ -160,34 +165,44 @@ class TestConvActMkldnnFusePass(PassAutoScanTest):
         if draw(st.booleans()):
             conv_bias_shape = [f_shape[0]]
             inputs = {
-                "Input": ["input_x"],
-                "Filter": ["filter"],
-                "ResidualData": ["residualdata"],
-                "Bias": ["conv_bias"],
+                'Input': ['input_x'],
+                'Filter': ['filter'],
+                'ResidualData': ['residualdata'],
+                'Bias': ['conv_bias'],
             }
             weights = {
-                "filter": TensorConfig(shape=f_shape),
-                "conv_bias": TensorConfig(shape=conv_bias_shape),
+                'filter': TensorConfig(shape=f_shape),
+                'conv_bias': TensorConfig(shape=conv_bias_shape),
             }
             use_mkldnn = True
         else:
             inputs = {
-                "Input": ["input_x"],
-                "Filter": ["filter"],
-                "ResidualData": ["residualdata"],
+                'Input': ['input_x'],
+                'Filter': ['filter'],
+                'ResidualData': ['residualdata'],
             }
-            weights = {"filter": TensorConfig(shape=f_shape)}
+            weights = {'filter': TensorConfig(shape=f_shape)}
             use_mkldnn = False
 
         # 11. Generate legal act type of conv2d
         act_type = draw(
-            st.sampled_from(["relu", "leaky_relu", "relu6", "swish"])
+            st.sampled_from(
+                [
+                    'relu',
+                    'leaky_relu',
+                    'relu6',
+                    'swish',
+                    'mish',
+                    'hard_sigmoid',
+                    'hard_swish',
+                ]
+            )
         )
 
         conv2d_op = OpConfig(
-            "conv2d",
+            'conv2d',
             inputs=inputs,
-            outputs={"Output": ["conv2d_out"]},
+            outputs={'Output': ['conv2d_out']},
             strides=strides,
             padding_algorithm=padding_algorithm,
             paddings=padding,
@@ -199,48 +214,44 @@ class TestConvActMkldnnFusePass(PassAutoScanTest):
 
         # 11. Generate legal attr of act
         act_op = None
-        self.passes = ["conv_activation_mkldnn_fuse_pass"]
-        if act_type == "relu6":
-            threshold = draw(st.floats(min_value=1.0, max_value=10.0))
+        self.passes = ['conv_activation_mkldnn_fuse_pass']
+        if act_type == 'relu6':
             act_op = OpConfig(
-                "relu6",
-                inputs={"X": ["conv2d_out"]},
-                outputs={"Out": ["relu_out"]},
-                threshold=threshold,
+                'relu6',
+                inputs={'X': ['conv2d_out']},
+                outputs={'Out': ['relu_out']},
+                threshold=draw(st.floats(min_value=1.0, max_value=10.0)),
             )
-        elif act_type == "leaky_relu":
-            alpha = draw(st.floats(min_value=0.1, max_value=1.0))
+        elif act_type == 'leaky_relu':
             act_op = OpConfig(
-                "leaky_relu",
-                inputs={"X": ["conv2d_out"]},
-                outputs={"Out": ["relu_out"]},
-                alpha=alpha,
+                'leaky_relu',
+                inputs={'X': ['conv2d_out']},
+                outputs={'Out': ['relu_out']},
+                alpha=draw(st.floats(min_value=0.1, max_value=1.0)),
             )
-        elif act_type == "relu":
+        elif act_type == 'swish':
             act_op = OpConfig(
-                "relu",
-                inputs={"X": ["conv2d_out"]},
-                outputs={"Out": ["relu_out"]},
+                'swish',
+                inputs={'X': ['conv2d_out']},
+                outputs={'Out': ['swish_out']},
+                beta=draw(st.floats(min_value=0.1, max_value=1.0)),
             )
-        elif act_type == "swish":
-            beta = draw(st.floats(min_value=0.1, max_value=1.0))
+        else:
             act_op = OpConfig(
-                "swish",
-                inputs={"X": ["conv2d_out"]},
-                outputs={"Out": ["swish_out"]},
-                beta=beta,
+                act_type,
+                inputs={'X': ['conv2d_out']},
+                outputs={'Out': ['activation_output']},
             )
-
         ops = [conv2d_op, act_op]
 
         program_config = ProgramConfig(
             ops=ops,
             weights=weights,
             inputs={
-                "input_x": TensorConfig(shape=x_shape),
-                "residualdata": TensorConfig(shape=res_shape),
+                'input_x': TensorConfig(shape=x_shape),
+                'residualdata': TensorConfig(shape=res_shape),
             },
-            outputs=ops[-1].outputs["Out"],
+            outputs=ops[-1].outputs['Out'],
         )
         return program_config
 
@@ -248,5 +259,5 @@ class TestConvActMkldnnFusePass(PassAutoScanTest):
         self.run_and_statis(quant=False, max_examples=300, passes=self.passes)
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     unittest.main()
