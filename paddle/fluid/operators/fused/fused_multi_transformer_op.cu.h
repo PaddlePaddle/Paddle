@@ -127,6 +127,11 @@ struct Masked_multihead_attention_params {
   // v [B, num_head, max_seq_len, dim_head]
   T *cache_kv;
 
+  // The RoPE embedding, [B, 1, 1, dim_head]
+  // rotary_emb_dims = 1 if pos_ids_extra is null else 2
+  const T *rotary_emb;
+  int rotary_emb_dims;
+
   int batch_size;
   int num_head;
   int timestep;  // cache_seq_length
@@ -402,6 +407,18 @@ inline __device__ float4 mul(float4 a, float b) {
   res.z = a.z * b;
   res.w = a.w * b;
   return res;
+}
+
+template <typename Qk_vec>
+inline __device__ Qk_vec apply_rotary_emb(Qk_vec input_left,
+                                          Qk_vec input_right,
+                                          Qk_vec cos_emb,
+                                          Qk_vec sin_emb,
+                                          float alpha) {
+  Qk_vec res1 = mul<Qk_vec, Qk_vec, Qk_vec>(input_left, cos_emb);
+  Qk_vec res2 = mul<Qk_vec, Qk_vec, Qk_vec>(input_right, sin_emb);
+  res2 = mul<Qk_vec, Qk_vec, float>(res2, alpha);
+  return add(res1, res2);
 }
 
 inline __device__ float sum(float v) { return v; }
@@ -804,6 +821,67 @@ __global__ void masked_multihead_attention_kernel(
     //   we may not require k_bias.
     k = add(k, k_bias);
 
+    // rotary pos emb
+    if (params.rotary_emb_dims != 0) {
+      int last_dim = Dh / params.rotary_emb_dims;
+      int half_lastdim = last_dim / 2;
+      int rotary_offset = bi * Dh + tid * QK_VEC_SIZE;
+      const T *cos_base = params.rotary_emb;
+      const T *sin_base = params.rotary_emb + params.batch_size * Dh;
+      int stride = half_lastdim / QK_VEC_SIZE;
+      int stride_all_lastdim = 2 * stride;
+      int right_id = tid / stride_all_lastdim * stride_all_lastdim +
+                     (tid + stride) % (stride_all_lastdim);
+      int qk_right_offset = qkv_base_offset + right_id * QK_VEC_SIZE;
+      int qk_right_bias_offset = hi * Dh + right_id * QK_VEC_SIZE;
+      Qk_vec q_right;
+      zero(q_right);
+      q_right =
+          (Dh == Dh_MAX || right_id * QK_VEC_SIZE < Dh)
+              ? *reinterpret_cast<const Qk_vec *>(&q_base[qk_right_offset])
+              : q_right;
+      Qk_vec k_right;
+      zero(k_right);
+      k_right =
+          (Dh == Dh_MAX || right_id * QK_VEC_SIZE < Dh)
+              ? *reinterpret_cast<const Qk_vec *>(&k_base[qk_right_offset])
+              : k_right;
+
+      Qk_vec q_right_bias;
+      zero(q_right_bias);
+      q_right_bias = (Dh == Dh_MAX || right_id * QK_VEC_SIZE < Dh)
+                         ? *reinterpret_cast<const Qk_vec *>(
+                               &q_bias_base[qk_right_bias_offset])
+                         : q_right_bias;
+      Qk_vec k_right_bias;
+      zero(k_right_bias);
+      k_right_bias = (Dh == Dh_MAX || right_id * QK_VEC_SIZE < Dh)
+                         ? *reinterpret_cast<const Qk_vec *>(
+                               &k_bias_base[qk_right_bias_offset])
+                         : k_right_bias;
+
+      q_right = add(q_right, q_right_bias);
+      k_right = add(k_right, k_right_bias);
+
+      Qk_vec cos_emb;
+      zero(cos_emb);
+      cos_emb =
+          (Dh == Dh_MAX || tid * QK_VEC_SIZE < Dh)
+              ? *reinterpret_cast<const Qk_vec *>(&cos_base[rotary_offset])
+              : cos_emb;
+
+      Qk_vec sin_emb;
+      zero(sin_emb);
+      sin_emb =
+          (Dh == Dh_MAX || tid * QK_VEC_SIZE < Dh)
+              ? *reinterpret_cast<const Qk_vec *>(&sin_base[rotary_offset])
+              : sin_emb;
+      float alpha = (tid % stride_all_lastdim) < stride ? static_cast<float>(-1)
+                                                        : static_cast<float>(1);
+      q = apply_rotary_emb(q, q_right, cos_emb, sin_emb, alpha);
+      k = apply_rotary_emb(k, k_right, cos_emb, sin_emb, alpha);
+    }
+
     *reinterpret_cast<Qk_vec *>(&q_smem[tid * QK_VEC_SIZE]) = q;
 
     int co = tid / QK_VECS_IN_16B;
@@ -1120,6 +1198,7 @@ void fmha(const phi::GPUContext &dev_ctx,
           const phi::DenseTensor &qkv_tensor,
           const phi::DenseTensor &qkv_bias_tensor,
           const phi::DenseTensor &src_mask_tensor,
+          const phi::DenseTensor *rotary_tensor,
           phi::DenseTensor *cache_kv_tensor,
           phi::DenseTensor *out_tensor,
           int batch_size,
@@ -1127,6 +1206,7 @@ void fmha(const phi::GPUContext &dev_ctx,
           int num_head,
           int dim_head,
           int timestep,
+          int rotary_emb_dims,
           float inv_sqrt_dh) {
   Masked_multihead_attention_params<T> params;
   params.out = out_tensor->data<T>();
@@ -1134,12 +1214,18 @@ void fmha(const phi::GPUContext &dev_ctx,
   params.qkv_bias = qkv_bias_tensor.data<T>();
   params.attn_mask = src_mask_tensor.data<T>();
   params.cache_kv = cache_kv_tensor->data<T>();
+  if (rotary_emb_dims > 0) {
+    params.rotary_emb = rotary_tensor->data<T>();
+  } else {
+    params.rotary_emb = nullptr;
+  }
 
   params.batch_size = batch_size;
   params.num_head = num_head;
   params.timestep = timestep;
   params.max_seq_length = max_seq_length;
   params.inv_sqrt_dh = inv_sqrt_dh;
+  params.rotary_emb_dims = rotary_emb_dims;
 
   switch (dim_head) {
     case 10:
@@ -1167,6 +1253,35 @@ void fmha(const phi::GPUContext &dev_ctx,
       PADDLE_THROW(platform::errors::Unimplemented(
           "Dim_head = %d is unsupport!", dim_head));
   }
+}
+
+template <typename T>
+void fmha(const phi::GPUContext &dev_ctx,
+          const phi::DenseTensor &qkv_tensor,
+          const phi::DenseTensor &qkv_bias_tensor,
+          const phi::DenseTensor &src_mask_tensor,
+          phi::DenseTensor *cache_kv_tensor,
+          phi::DenseTensor *out_tensor,
+          int batch_size,
+          int max_seq_length,
+          int num_head,
+          int dim_head,
+          int timestep,
+          float inv_sqrt_dh) {
+  fmha<T>(dev_ctx,
+          qkv_tensor,
+          qkv_bias_tensor,
+          src_mask_tensor,
+          nullptr,
+          cache_kv_tensor,
+          out_tensor,
+          batch_size,
+          max_seq_length,
+          num_head,
+          dim_head,
+          timestep,
+          0,
+          inv_sqrt_dh);
 }
 
 // NOTE: simd with 16Bytes(128bit), float is 4, float16 is 8
@@ -1403,6 +1518,94 @@ void qkv_bias_add_transpose_split(const phi::GPUContext &dev_ctx,
                                                         head_num,
                                                         size_per_head);
   }
+}
+
+template <typename T>
+__global__ void RotrayKernel(const T *input,
+                             const T *cos_emb,
+                             const T *sin_emb,
+                             T *output,
+                             const int batch_size,
+                             const int head_num,
+                             const int seq_len,
+                             const int last_dim) {
+  int bi = blockIdx.x;
+  int hi = blockIdx.y;
+  int si = blockIdx.z;
+  int half_lastdim = last_dim / 2;
+  // Note(ZhenyuLi): Calculate the relevant data at one time, so that no
+  // additional space is required.
+  for (int ti = threadIdx.x; ti < half_lastdim; ti += blockDim.x) {
+    int base_idx = bi * head_num * seq_len * last_dim +
+                   hi * seq_len * last_dim + si * last_dim;
+    int left_idx = base_idx + ti;
+    const int right_idx = base_idx + ti + half_lastdim;
+    int emb_idx = bi * seq_len * last_dim + si * last_dim + ti;
+    T input_left = input[left_idx];
+    T input_right = input[right_idx];
+    T cos_tmp = cos_emb[emb_idx];
+    T sin_tmp = sin_emb[emb_idx];
+    T res1 = input_left * cos_tmp - input_right * sin_tmp;
+    T res2 = input_right * cos_tmp + input_left * sin_tmp;
+    output[left_idx] = res1;
+    output[right_idx] = res2;
+  }
+}
+
+template <typename T>
+void rotary_qk(const phi::GPUContext &dev_ctx,
+               T *q,
+               T *k,              // kv
+               const T *q_input,  // q
+               const T *k_input,  // kv
+               const T *rotary_emb,
+               const int rotary_emb_dims,
+               const int batch_size,
+               const int head_num,
+               const int seq_len,
+               const int dim_head) {
+  // q_transpose_out_data [bs, head_num, seq_len, dim_head] -> [bs, head_num,
+  // seq_len * rotary_emb_dims, dim_head / rotary_emb_dims]
+  // kv_transpose_out_data [bs, head_num, seq_len, dim_head] -> [bs, head_num,
+  // seq_len * rotary_emb_dims, dim_head / rotary_emb_dims] rotary_emb [2, bs,
+  // 1, seq_len, dim_head] -> [2, bs, 1, seq_len * rotary_emb_dims, dim_head /
+  // rotary_emb_dims]
+  dim3 grid(batch_size, head_num, seq_len * rotary_emb_dims);
+  const int last_dim = dim_head / rotary_emb_dims;
+  auto getBlockSize = [](int dim) {
+    if (dim > 256) {
+      return 512;
+    } else if (dim > 128) {
+      return 256;
+    } else if (dim > 64) {
+      return 128;
+    } else if (dim > 32) {
+      return 64;
+    } else {
+      return 32;
+    }
+  };
+  int BlockSize = getBlockSize(last_dim / 2);
+  const T *cos_emb = rotary_emb;
+  const T *sin_emb = rotary_emb + batch_size * seq_len * dim_head;
+  RotrayKernel<<<grid, BlockSize, 0, dev_ctx.stream()>>>(
+      q_input,
+      cos_emb,
+      sin_emb,
+      q,
+      batch_size,
+      head_num,
+      seq_len * rotary_emb_dims,
+      last_dim);
+  RotrayKernel<<<grid, BlockSize, 0, dev_ctx.stream()>>>(
+      k_input,
+      cos_emb,
+      sin_emb,
+      k,
+      batch_size,
+      head_num,
+      seq_len * rotary_emb_dims,
+      last_dim);
 }
 
 #if CUDA_VERSION >= 11060

@@ -13,8 +13,7 @@
 # limitations under the License.
 
 from paddle import _C_ops, _legacy_C_ops, in_dynamic_mode
-from paddle.fluid.framework import _in_legacy_dygraph, in_dygraph_mode
-from paddle.framework import _non_static_mode
+from paddle.fluid.framework import in_dygraph_mode
 
 from ...device import get_cudnn_version, is_compiled_with_rocm
 from ...fluid.data_feeder import check_variable_and_dtype
@@ -381,22 +380,22 @@ def pixel_shuffle(x, upscale_factor, data_format="NCHW", name=None):
         )
     if in_dygraph_mode():
         return _C_ops.pixel_shuffle(x, upscale_factor, data_format)
-
-    if _in_legacy_dygraph():
-        return _legacy_C_ops.pixel_shuffle(
-            x, "upscale_factor", upscale_factor, "data_format", data_format
+    else:
+        helper = LayerHelper("pixel_shuffle", **locals())
+        check_variable_and_dtype(
+            x, 'x', ['float32', 'float64'], 'pixel_shuffle'
         )
-
-    helper = LayerHelper("pixel_shuffle", **locals())
-    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'pixel_shuffle')
-    out = helper.create_variable_for_type_inference(dtype=x.dtype)
-    helper.append_op(
-        type="pixel_shuffle",
-        inputs={"X": x},
-        outputs={"Out": out},
-        attrs={"upscale_factor": upscale_factor, "data_format": data_format},
-    )
-    return out
+        out = helper.create_variable_for_type_inference(dtype=x.dtype)
+        helper.append_op(
+            type="pixel_shuffle",
+            inputs={"X": x},
+            outputs={"Out": out},
+            attrs={
+                "upscale_factor": upscale_factor,
+                "data_format": data_format,
+            },
+        )
+        return out
 
 
 def pixel_unshuffle(x, downscale_factor, data_format="NCHW", name=None):
@@ -442,7 +441,7 @@ def pixel_unshuffle(x, downscale_factor, data_format="NCHW", name=None):
             "But recevie Attr(data_format): {} ".format(data_format)
         )
 
-    if _non_static_mode():
+    if in_dygraph_mode():
         return _legacy_C_ops.pixel_unshuffle(
             x, "downscale_factor", downscale_factor, "data_format", data_format
         )
@@ -516,7 +515,7 @@ def channel_shuffle(x, groups, data_format="NCHW", name=None):
             "But recevie Attr(data_format): {} ".format(data_format)
         )
 
-    if _non_static_mode():
+    if in_dygraph_mode():
         return _legacy_C_ops.channel_shuffle(
             x, "groups", groups, "data_format", data_format
         )
