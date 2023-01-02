@@ -589,7 +589,6 @@ def get_cmake_generator():
         cmake_generator = os.getenv("CMAKE_GENERATOR")
     else:
         cmake_generator = "Unix Makefiles"
-
     return cmake_generator
 
 
