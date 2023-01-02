@@ -49,6 +49,10 @@ enum class AlgorithmType {
   kConvBackwardFilterV8 = 6,
   kTranspose = 7,
   kAlgorithmCount = 8
+#elif defined (PADDLE_WITH_CUTLASS)
+  kCutlass = 4,
+  kTranspose = 5,
+  kAlgorithmCount = 6
 #else
   kTranspose = 4,
   kAlgorithmCount = 5

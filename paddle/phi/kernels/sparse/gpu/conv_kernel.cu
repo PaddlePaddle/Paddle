@@ -24,6 +24,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/sparse/gpu/conv.cu.h"
 #ifdef PADDLE_WITH_CUTLASS
 #include "paddle/phi/kernels/sparse/gpu/gather_gemm_scatter.h"
+#include "paddle/phi/kernels/sparse/gpu/cutlass_tuner.cu.h"
 #endif
 
 #include "glog/logging.h"
@@ -173,6 +174,7 @@ void Conv3dCooGPUKernel(const GPUContext& dev_ctx,
       }
       if constexpr (std::is_same<T, float>::value &&
                     std::is_same<IntT, int32_t>::value) {
+#if 0
         fp32_gather_gemm_scatter gather_gemm_scatter =
             getBestFp32Kernel<true, false, true>(M, N, K);
         gather_gemm_scatter(dev_ctx,
@@ -188,6 +190,20 @@ void Conv3dCooGPUKernel(const GPUContext& dev_ctx,
                             scatter_indices,
                             static_cast<T>(1),
                             static_cast<T>(1));
+#endif
+        GatherGemmScatterGPUKernelDriver(dev_ctx,
+                                         x.non_zero_elements().data<T>(),
+                                         tmp_kernel_ptr,
+                                         out_values_ptr,
+                                         out_values_ptr,
+                                         M,
+                                         N,
+                                         K,
+                                         gather_indices,
+                                         nullptr,
+                                         scatter_indices,
+                                         static_cast<T>(1),
+                                         static_cast<T>(1));
       }
       if constexpr (std::is_same<T, double>::value &&
                     std::is_same<IntT, int32_t>::value) {
