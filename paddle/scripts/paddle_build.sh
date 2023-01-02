@@ -3673,7 +3673,9 @@ function run_setup(){
       parallel_number=$3
     fi
     export MAX_JOBS=${parallel_number}
-
+    if [[ "$ENABLE_MAKE_CLEAN" != "OFF" ]]; then
+        export MAKE_CLEAN='ON'
+    fi
     # reset ccache zero stats for collect PR's actual hit rate
 
     ccache -z

@@ -717,8 +717,8 @@ def build_steps():
             "You have finished running cmake, the program exited,run 'ccmake build' to adjust build options and 'python setup.py install to build'"
         )
         sys.exit()
-    if os.getenv("ENABLE_MAKE_CLEAN") is not None:
-        # os.system('cd %s && make clean' % build_path)
+    if os.getenv("MAKE_CLEAN") == 'ON':
+        os.system('cd %s && make clean' % build_path)
         print("make clean finished")
 
     run_cmake_build(build_path)
