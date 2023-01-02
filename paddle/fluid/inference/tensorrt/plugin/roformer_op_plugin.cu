@@ -22,7 +22,7 @@ namespace tensorrt {
 namespace plugin {
 
 template <typename T>
-__global__ void RotrayKernel(const T *inputact,
+__global__ void RoformerKernel(const T *inputact,
                              const T *input1, //cos 1,1,max_seq, headsize
                              const T *input2, //sin
                              T *output,
@@ -195,7 +195,6 @@ int32_t RoformerPlugin::enqueue(const nvinfer1::PluginTensorDesc *inputDesc,
         reinterpret_cast<const half *>(inputs[2]),
         reinterpret_cast<half *>(outputs[0]),
 	S,
-        nElement,
         head_num_,
         head_size_,
         nElement);
