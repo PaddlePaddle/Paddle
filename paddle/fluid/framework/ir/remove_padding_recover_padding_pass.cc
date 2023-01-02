@@ -375,7 +375,6 @@ void RemovePaddingRecoverPaddingPass::ApplyImpl(ir::Graph* graph) const {
       gpd1_2.mutable_pattern(), "remove_padding_recover_padding_pass");
   multihead_matmul_roformer();
 
-  std::vector<int64_t> multihead_matmul_roformer_input_shape;
   auto handler1_2 = [&](const GraphPatternDetector::subgraph_t& subgraph,
                       Graph* graph) {
     VLOG(3) << "remove_padding_recover_padding_pass for transformer: "
@@ -387,8 +386,8 @@ void RemovePaddingRecoverPaddingPass::ApplyImpl(ir::Graph* graph) const {
         multihead_matmul_roformer_op, multihead_matmul_roformer_op, multihead_matmul_roformer);
     GET_IR_NODE_FROM_SUBGRAPH(
         multihead_matmul_roformer_out, multihead_matmul_roformer_out, multihead_matmul_roformer);
-
-    multihead_matmul_roformer_input_shape = multihead_matmul_roformer_input->Var()->GetShape();
+    //trick
+    multihead_matmul_input_shape = multihead_matmul_roformer_input->Var()->GetShape();
 
     insert_remove_padding_op(multihead_matmul_roformer_input, multihead_matmul_roformer_op);
     insert_recover_padding_op(multihead_matmul_roformer_op, multihead_matmul_roformer_out);
