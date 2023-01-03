@@ -1088,6 +1088,7 @@ void AnalysisPredictor::PrepareArgument() {
   // Init std::unique_ptr argument_.
   argument_.reset(new Argument);
   argument_->SetUseGPU(config_.use_gpu());
+  argument_->SetUseCutlass(config_.use_cutlass_);
   argument_->SetUseFcPadding(config_.use_fc_padding());
   argument_->SetGPUDeviceId(config_.gpu_device_id());
   argument_->SetEnableIrOptim(config_.enable_ir_optim_);

@@ -695,11 +695,16 @@ class PostTrainingQuantization:
                     _logger.warning(
                         op_type + " is not supported for quantization."
                     )
+                is_conv1d_quant = (op_type == "unsqueeze2") and (
+                    utils._get_op_input_var_names(op)[0]
+                    in persistable_var_names
+                )
                 # For quantized ops, sample inputs and outputs
                 if (
                     op_type in self.quant_config.weight_quant_operation_types
                     or op_type
                     in self.quant_config.activation_quant_operation_types
+                    or is_conv1d_quant
                 ):
                     collect_var_name(
                         utils._get_op_input_var_names(op),
