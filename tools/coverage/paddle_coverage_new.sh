@@ -206,6 +206,32 @@ function gen_python_diff_html_report() {
 
 # assert coverage lines
 
+function covinfo_combine_full(){
+    if [ -f "other-coverage.info" ];then
+        if [ -f "infer-coverage.info" ];then
+            lcov -a other-coverage.info -a infer-coverage.info -o coverage.info
+        else
+            mv other-coverage.info coverage.info
+        fi
+    elif [ -f "infer-coverage.info" ];then
+        mv infer-coverage.info coverage.info
+    else
+        echo "Cannot found coverage.info"
+    fi
+
+    if [ -f "other-python-coverage-full.info" ];then
+        if [ -f "infer-python-coverage-full.info" ];then
+            lcov -a other-python-coverage-full.info -a infer-python-coverage-full.info -o python-coverage-full.info
+        else
+            mv other-python-coverage-full.info python-coverage-full.info
+        fi
+    elif [ -f "infer-coverage.info" ];then
+        mv infer-python-coverage-full.info python-coverage-full.info
+    else
+        echo "Cannot found python coverage.info"
+    fi  
+}
+
 function cov_rate_judge(){
     echo "Assert CPP Diff Coverage"
     python3.7 ${PADDLE_ROOT}/tools/coverage/coverage_lines.py coverage-diff.info 0.9 || COVERAGE_LINES_ASSERT=1
@@ -217,7 +243,7 @@ function cov_rate_judge(){
     elif [ ${WITH_ASCEND_CL:-OFF} == "ON" ]; then
         echo "NPU has no python coverage!"
     else
-        if [[ "${NO_PYTHON_COVERAGE_DATA}" != "1" ]];then
+        if [[ python-coverage-diff.info ]];then
             python3.7 ${PADDLE_ROOT}/tools/coverage/coverage_lines.py python-coverage-diff.info 0.9 || PYTHON_COVERAGE_LINES_ASSERT=1
         fi
     fi
@@ -235,6 +261,12 @@ function main () {
       gen_cov_info)
         gen_cpp_covinfo
         gen_py_covinfo
+        ;;
+      combine_cov_info)
+      covinfo_combine_full
+      gen_diff_html_report
+      gen_python_diff_html_report
+      cov_rate_judge
         ;;
       *)
         print_usage
