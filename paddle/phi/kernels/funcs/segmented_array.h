@@ -139,8 +139,9 @@ struct PointerArraySetter : public ArraySetterBase<Context> {
     const T** dev_ptr = nullptr;
     if (Size == SegmentedArraySize::kVariableLength) {
       size_t num_bytes = x.size() * sizeof(T*);
-      dev_ptr = reinterpret_cast<const T**>(
-          AllocAndCopy(ctx, reinterpret_cast<void*>(x_ptrs.data()), num_bytes));
+      dev_ptr =
+          reinterpret_cast<const T**>(ArraySetterBase<Context>::AllocAndCopy(
+              ctx, reinterpret_cast<void*>(x_ptrs.data()), num_bytes));
     }
 
     array.Set(x_ptrs, dev_ptr);
