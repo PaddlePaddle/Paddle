@@ -404,7 +404,7 @@ def ParseYamlInplaceInfo(string):
 
 
 def ParseYamlCompositeInfo(string):
-    # example  composite: fun(args1, args2,.....)
+    # example:  composite: fun(args1, args2, ...)
     fname = r'(.*?)'
     wspace = r'\s*'
     fargs = r'(.*?)'
