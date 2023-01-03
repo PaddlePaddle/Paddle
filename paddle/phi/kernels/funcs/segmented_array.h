@@ -51,6 +51,7 @@ struct DivmodWarpper<int64_t> {
 
 enum class SegmentedArraySize {
   kVariableLength = 0,
+  kFixed8 = 8,
   kFixed16 = 16,
   kFixed32 = 32,
   kFixed64 = 64,
@@ -150,7 +151,9 @@ struct PointerArraySetter : public ArraySetterBase<Context> {
 };
 
 inline SegmentedArraySize CalcArraySize(int n) {
-  if (n <= 16) {
+  if (n <= 8) {
+    return SegmentedArraySize::kFixed8;
+  } else if (n <= 16) {
     return SegmentedArraySize::kFixed16;
   } else if (n <= 32) {
     return SegmentedArraySize::kFixed32;
@@ -177,6 +180,8 @@ inline SegmentedArraySize CalcArraySize(int n) {
   } break
 
 #define POINTER_ARRAY_KERNEL_HELPER(...)                                    \
+  _POINTER_ARRAY_KERNEL_CASE(funcs::SegmentedArraySize::kFixed8,            \
+                             ##__VA_ARGS__);                                \
   _POINTER_ARRAY_KERNEL_CASE(funcs::SegmentedArraySize::kFixed16,           \
                              ##__VA_ARGS__);                                \
   _POINTER_ARRAY_KERNEL_CASE(funcs::SegmentedArraySize::kFixed32,           \
