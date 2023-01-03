@@ -13,16 +13,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Temporary disable isort to avoid circular import
-# This can be removed after the circular import is resolved
-# isort: skip_file
+from __future__ import annotations
+
+import inspect
 import os
 import pickle
+import threading
 import warnings
 from collections import OrderedDict
-import inspect
-import threading
-from typing import Text, Tuple, Any, List
+from typing import Any
 
 import paddle
 from paddle.fluid import core, dygraph
@@ -32,45 +31,42 @@ from paddle.fluid.compiler import (
     ExecutionStrategy,
 )
 from paddle.fluid.data_feeder import check_type
-from paddle.fluid.layers.utils import flatten, pack_sequence_as
 from paddle.fluid.dygraph.base import (
     program_desc_tracing_guard,
     switch_to_static_graph,
-)
-from .dy2static import logging_utils
-from .dy2static.convert_call_func import (
-    ConversionOptions,
-    CONVERSION_OPTIONS,
-)
-from .dy2static.program_translator import (
-    ProgramTranslator,
-    StaticFunction,
-    unwrap_decorators,
-)
-from paddle.jit.translated_layer import (
-    TranslatedLayer,
-    INFER_MODEL_SUFFIX,
-    INFER_PARAMS_SUFFIX,
-    INFER_PARAMS_INFO_SUFFIX,
-    INFER_PROPERTY_SUFFIX,
 )
 from paddle.fluid.dygraph.layers import Layer
 from paddle.fluid.executor import Executor, scope_guard
 from paddle.fluid.framework import (
     Block,
+    EagerParamBase,
     ParamBase,
+    Parameter,
     Program,
     Variable,
-    Parameter,
-    EagerParamBase,
-)
-from paddle.fluid.framework import (
     _current_expected_place,
     _dygraph_guard,
     _dygraph_tracer,
+    _non_static_mode,
+    dygraph_only,
 )
-from paddle.fluid.framework import dygraph_only, _non_static_mode
+from paddle.fluid.layers.utils import flatten, pack_sequence_as
 from paddle.fluid.wrapped_decorator import wrap_decorator
+from paddle.jit.translated_layer import (
+    INFER_MODEL_SUFFIX,
+    INFER_PARAMS_INFO_SUFFIX,
+    INFER_PARAMS_SUFFIX,
+    INFER_PROPERTY_SUFFIX,
+    TranslatedLayer,
+)
+
+from .dy2static import logging_utils
+from .dy2static.convert_call_func import CONVERSION_OPTIONS, ConversionOptions
+from .dy2static.program_translator import (
+    ProgramTranslator,
+    StaticFunction,
+    unwrap_decorators,
+)
 
 __all__ = []
 
@@ -705,12 +701,12 @@ def _run_save_pre_hooks(func):
     return wrapper
 
 
-def _save_property(filename: Text, property_vals: List[Tuple[Any, Text]]):
+def _save_property(filename: str, property_vals: list[tuple[Any, str]]):
     """class property serialization.
 
     Args:
-        filename (Text): *.meta
-        property_vals (List[Tuple): class property.
+        filename (str): *.meta
+        property_vals (list[tuple[Any, str]]): class property.
     """
 
     def set_property(meta, key, val):
