@@ -7753,4 +7753,3 @@ def _get_paddle_place_list(places):
         ret.append(p)
 
     return ret
-
