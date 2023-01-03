@@ -186,7 +186,7 @@ class MultiheadMatMulRoformerOpConverter : public OpConverter {
           roformerplugin_inputs.push_back(engine_->GetITensor(
               engine_->Get<std::string>("ernie_pos_name")));
         } else {
-          plugin_inputs.push_back(engine_->GetITensor(
+          roformerplugin_inputs.push_back(engine_->GetITensor(
               engine_->network()
                   ->getInput(2)
                   ->getName()));  // cu_seqlens, eval_placeholder_2

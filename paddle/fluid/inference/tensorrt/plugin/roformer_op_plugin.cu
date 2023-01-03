@@ -25,7 +25,7 @@ template <typename T>
 __global__ void RoformerKernel(const T *inputact,
                              const T *input1, //cos 1,1,max_seq, headsize
                              const T *input2, //sin
-                             const T *input3, //cu_seqlen
+                             const int *input3, //cu_seqlen
                              T *output,
                              int b, //batchsize
                              int n, //head num
@@ -194,7 +194,7 @@ int32_t RoformerPlugin::enqueue(const nvinfer1::PluginTensorDesc *inputDesc,
         reinterpret_cast<const float *>(inputs[0]),
         reinterpret_cast<const float *>(inputs[1]),
         reinterpret_cast<const float *>(inputs[2]),
-        reinterpret_cast<const float *>(inputs[3]),
+        reinterpret_cast<const int *>(inputs[3]),
         reinterpret_cast<float *>(outputs[0]),
 	b,
         head_num_,
@@ -205,7 +205,7 @@ int32_t RoformerPlugin::enqueue(const nvinfer1::PluginTensorDesc *inputDesc,
         reinterpret_cast<const half *>(inputs[0]),
         reinterpret_cast<const half *>(inputs[1]),
         reinterpret_cast<const half *>(inputs[2]),
-        reinterpret_cast<const half *>(inputs[3]),
+        reinterpret_cast<const int *>(inputs[3]),
         reinterpret_cast<half *>(outputs[0]),
 	b,
         head_num_,
