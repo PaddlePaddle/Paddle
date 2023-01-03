@@ -177,8 +177,12 @@ class TestShardingStage2WithNewEXE(unittest.TestCase):
         all_loss = all_history.history['loss'][0]
 
         self.check_param_grad_fuse_overlap(sharding_engine.main_program)
-        self.assertTrue(np.allclose(dp_loss, sharding_loss))
-        self.assertTrue(np.allclose(amp_recompute_loss, all_loss))
+        np.testing.assert_allclose(
+            dp_loss, sharding_loss, rtol=1e-05, atol=1e-08
+        )
+        np.testing.assert_allclose(
+            amp_recompute_loss, all_loss, rtol=1e-05, atol=1e-08
+        )
 
 
 if __name__ == "__main__":
