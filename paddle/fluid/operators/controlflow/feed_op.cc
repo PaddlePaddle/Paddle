@@ -77,6 +77,7 @@ void FeedDenseTensorKernel(const Context& dev_ctx,
   } else {
     framework::TensorCopy(in_tensor, place, dev_ctx, out);
   }
+
   out->set_lod(in_tensor.lod());
 }
 
@@ -121,7 +122,38 @@ void FeedStringsKernel(const Context& dev_ctx,
 class FeedOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
-  void InferShape(framework::InferShapeContext* ctx) const override {}
+  void InferShape(framework::InferShapeContext* ctx) const override {
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "feed");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "feed");
+    if (ctx->IsRuntime()) {
+      framework::Variable* x_var =
+          PADDLE_GET(framework::Variable*, ctx->GetInputVarPtrs("X")[0]);
+      auto& x = x_var->Get<framework::FeedList>();
+      int col = ctx->Attrs().Get<int>("col");
+      auto& feed_item = x[col];
+      if (feed_item.index() == 0) {
+        const auto& feed_item = CheckAndGetFeedItem(x, col);
+        auto& feed_tensor = PADDLE_GET_CONST(phi::DenseTensor, feed_item);
+        ctx->SetOutputDim("Out", feed_tensor.dims());
+      } else if (feed_item.index() == 1) {
+        auto& feed_str = PADDLE_GET_CONST(framework::Strings, feed_item);
+        framework::Variable* out_var =
+            PADDLE_GET(framework::Variable*, ctx->GetOutputVarPtrs("Out")[0]);
+        out_var->GetMutable<framework::Strings>()->resize(feed_str.size());
+      } else {
+        auto& feed_sparse_tensor =
+            PADDLE_GET_CONST(phi::SparseCooTensor, feed_item);
+        framework::Variable* out_var =
+            PADDLE_GET(framework::Variable*, ctx->GetOutputVarPtrs("Out")[0]);
+        out_var->GetMutable<phi::SparseCooTensor>()->set_meta(
+            feed_sparse_tensor.meta());
+        out_var->GetMutable<phi::SparseCooTensor>()->SetCoalesced(
+            feed_sparse_tensor.coalesced());
+        out_var->GetMutable<phi::SparseCooTensor>()->SetIndicesDict(
+            feed_sparse_tensor.GetIndicesDict());
+      }
+    }
+  }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
