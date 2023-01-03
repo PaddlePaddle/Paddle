@@ -698,13 +698,11 @@ class ShardingPass(PassBase):
 
         with paddle.static.program_guard(main_program, startup_program):
             self._gradient_sync_optimization(sharding_info)
-            # TODO independent the logic of fuse and overlap
             # support overlap when no fuse
-            if self.param_bucket_size_numel > 1:
-                if self.stage == 2:
-                    self._fuse_overlap_parameter_comm_stage_two(sharding_info)
-                elif self.stage == 3:
-                    self._fuse_overlap_parameter_comm_stage_three(sharding_info)
+            if self.stage == 2:
+                self._fuse_overlap_parameter_comm_stage_two(sharding_info)
+            elif self.stage == 3:
+                self._fuse_overlap_parameter_comm_stage_three(sharding_info)
 
     def _gradient_sync_optimization(self, sharding_info):
 
@@ -725,6 +723,10 @@ class ShardingPass(PassBase):
         )
 
     def _fuse_overlap_parameter_comm_stage_two(self, sharding_info):
+
+        # TODO independent the logic of fuse and overlap
+        if self.param_bucket_size_numel <= 1:
+            return
 
         main_block = default_main_program().global_block()
         startup_block = default_startup_program().global_block()
