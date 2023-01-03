@@ -491,6 +491,26 @@
     data_type : out_grad
   no_need_buffer : x
 
+- backward_op : frame_grad
+  forward : frame(Tensor x, int frame_length, int hop_length, int axis=-1) -> Tensor(out)
+  args : (Tensor x, Tensor out_grad, int frame_length, int hop_length, int axis)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : frame_grad
+
+- backward_op : gather_nd_grad
+  forward : gather_nd (Tensor x, Tensor index) -> Tensor(out)
+  args : (Tensor x, Tensor index, Tensor out_grad)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : GatherNdGradInferMeta
+  kernel :
+    func : gather_nd_grad
+  no_need_buffer : x
+
 - backward_op : gelu_grad
   forward : gelu(Tensor x,  bool approximate) -> Tensor(out)
   args : (Tensor x, Tensor out_grad,  bool approximate)
@@ -798,6 +818,25 @@
     func : nll_loss_grad
     data_type : input
   optional : weight
+
+- backward_op : overlap_add_grad
+  forward : overlap_add(Tensor x, int hop_length, int axis) -> Tensor(out)
+  args : (Tensor x, Tensor out_grad, int hop_length, int axis)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : OverlapAddGradInferMeta
+  kernel :
+    func : overlap_add_grad
+    data_type : x
+
+- backward_op : pixel_shuffle_grad
+  forward : pixel_shuffle (Tensor x, int upscale_factor=1, str data_format="NCHW") -> Tensor(out)
+  args : (Tensor out_grad, int upscale_factor, str data_format)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : PixelShuffleGradInferMeta
+  kernel :
+    func : pixel_shuffle_grad
 
 - backward_op : poisson_grad
   forward : poisson (Tensor x) -> Tensor(out)
@@ -1147,6 +1186,26 @@
   backward : square_double_grad
   inplace : (out_grad -> x_grad)
 
+- backward_op : squeeze_double_grad
+  forward : squeeze_grad(Tensor xshape, Tensor grad_out, IntArray axis) -> Tensor(grad_x)
+  args : (Tensor grad_x_grad, IntArray axis)
+  output : Tensor(grad_out_grad), Tensor(xshape)
+  invoke: squeeze(grad_x_grad, axis)
+  intermediate : xshape
+
+- backward_op : squeeze_grad
+  forward : squeeze(Tensor x, IntArray axis) -> Tensor(out), Tensor(xshape)
+  args : (Tensor xshape, Tensor out_grad, IntArray axis)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : KernelWithXShapeInferMeta
+    param: [xshape]
+  kernel :
+    func : squeeze_grad
+    data_type : out_grad
+  inplace : (out_grad -> x_grad)
+  backward: squeeze_double_grad
+
 - backward_op : svd_grad
   forward : svd (Tensor x, bool full_matrices = false) -> Tensor(u), Tensor(s), Tensor(vh)
   args : (Tensor x, Tensor u, Tensor vh, Tensor s, Tensor u_grad, Tensor vh_grad, Tensor s_grad, bool full_matrices)
@@ -1282,6 +1341,27 @@
     data_type : out_grad
   no_need_buffer : x
 
+- backward_op : unsqueeze_double_grad
+  forward : unsqueeze_grad(Tensor xshape, Tensor grad_out, IntArray axes) -> Tensor(grad_x)
+  args : (Tensor grad_x_grad, IntArray axes)
+  output : Tensor(grad_out_grad), Tensor(xshape)
+  invoke : unsqueeze(grad_x_grad, axes)
+  intermediate : xshape
+
+- backward_op : unsqueeze_grad
+  forward : unsqueeze(Tensor x, IntArray axes) -> Tensor(out), Tensor(xshape)
+  args : (Tensor xshape, Tensor out_grad, IntArray axes)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : KernelWithXShapeInferMeta
+    param: [xshape]
+  kernel :
+    func : unsqueeze_grad
+    param : [xshape, out_grad]
+    data_type : out_grad
+  inplace : (out_grad -> x_grad)
+  backward : unsqueeze_double_grad
+
 - backward_op : unstack_grad
   forward : unstack (Tensor x, int axis=0, int num=0) -> Tensor[](out)
   args : (Tensor[] out_grad, int axis)
@@ -1290,6 +1370,17 @@
     func : UnStackGradInferMeta
   kernel :
     func : unstack_grad
+
+- backward_op : warprnnt_grad
+  forward : warprnnt (Tensor input, Tensor label, Tensor input_lengths, Tensor label_lengths, int blank = 0, float fastemit_lambda = 0.0) -> Tensor(loss), Tensor(warprnntgrad)
+  args : (Tensor input, Tensor input_lengths, Tensor warprnntgrad, Tensor loss_grad, int blank = 0, float fastemit_lambda = 0.0)
+  output : Tensor(input_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [input]
+  kernel :
+    func : warprnnt_grad
+  no_need_buffer : input
 
 - backward_op : where_grad
   forward : where (Tensor condition, Tensor x, Tensor y) -> Tensor(out)

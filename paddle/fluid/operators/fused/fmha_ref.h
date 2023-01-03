@@ -256,8 +256,7 @@ class FMHARef {
         dev_ctx_, *qktv_out_tensor, perm_3, fmha_out_tensor);
   }
 
-  void ComputeForwardWithoutTranspose(const phi::DenseTensor& qkv_input_tensor,
-                                      const phi::DenseTensor* cache_kv_tensor,
+  void ComputeForwardWithoutTranspose(const phi::DenseTensor* cache_kv_tensor,
                                       const phi::DenseTensor* src_mask_tensor,
                                       phi::DenseTensor* q_transpose_out_tensor,
                                       phi::DenseTensor* kv_transpose_out_tensor,
