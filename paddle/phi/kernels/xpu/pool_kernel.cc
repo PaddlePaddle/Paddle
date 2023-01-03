@@ -167,7 +167,7 @@ void MaxPool2dWithIndexKernel(const Context& ctx,
                               DenseTensor* mask) {
   using XPUType = typename XPUTypeTrait<T>::Type;
 
-  mask->mutable_data<int>(ctx.GetPlace());
+  ctx.template Alloc<int>(mask);
   auto* index_data = mask->data<int>();
 
   std::vector<int> ksize(kernel_size);
