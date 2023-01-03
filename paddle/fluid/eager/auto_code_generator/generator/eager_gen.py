@@ -875,7 +875,7 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
         backward_grad_outputs_map = self.backward_grad_outputs_map
         backward_attrs_list = self.backward_attrs_list
         optional_inputs = self.optional_inputs
-        is_composite_forward_api = False if self.composite_func_info == [] else True
+        is_composite_grad_api = False if self.composite_func_info == [] else True
 
         # Pass Stop Gradient Args
         pass_stop_gradient_args_str = self.GetPassStopGradientArgsList(
@@ -1833,19 +1833,23 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
         is_invoke_forward_api = IsInvokeForwardApi(
             self.grad_api_contents, self.forward_apis_dict
         )
-        is_composite_forward_api = False if self.composite_func_info == [] else True
+        is_composite_grad_api = False if self.composite_func_info == [] else True
         
         if next_node_generator is not None:
             has_higher_order_node = True
             return (
                 has_higher_order_node,
                 is_invoke_forward_api,
-                is_composite_forward_api,
+                is_composite_grad_api,
                 next_grad_node_creation_str,
                 next_grad_node_out_list,
                 next_node_generator.backward_forward_inputs_map,
             )
-        elif not is_invoke_forward_api and not is_composite_forward_api:
+        # TODO(Ruting):Integrate invoke and composite as composite so the rest branch canbe covered
+        # TODO(Ruting): modify next_grad_node_creation_str when Flags_prim_enable deleted in the future
+        # if is_composite_grad_api:
+        #     next_grad_node_creation_str = ''
+        elif not is_invoke_forward_api and not is_composite_grad_api:
             next_grad_node_creation_str = f"""  if(trace_backward) {{
     PADDLE_THROW(phi::errors::Unavailable(
     \"The Op {self.backward_api_name} doesn't have any grad\"
@@ -1855,7 +1859,7 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
         return (
             has_higher_order_node,
             is_invoke_forward_api,
-            is_composite_forward_api,
+            is_composite_grad_api,
             next_grad_node_creation_str,
             next_grad_node_out_list,
             None,
@@ -2242,6 +2246,7 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
   {indent}{autograd_api_out} api_output = paddle::experimental::{self.namespace}{self.grad_api_contents['invoke']};
   {out_assign_str}{indent}}}
   """
+  #TODO(Ruting):using composite only when we don't have backward kernel in the future.
         elif is_composite_grad_api:
             grad_function_call_str = f"""
   if (paddle::prim::PrimCommonUtils::IsPrimEnabled()) {{
@@ -2354,9 +2359,6 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
             var_str += f"\n{indent}  output_str += output_{new_name}_str; "
 
         log_str = AFTER_LOG_PRINT_TEMPLATE.format(var_str)
-        # TODO Ruting modify in the future
-        # if is_composite_forward_api:
-        #     next_grad_node_creation_str = ''
 
         self.node_definition_str = GRAD_FUNCTION_TEMPLATE.format(
             grad_node_name,
