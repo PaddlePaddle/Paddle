@@ -36,6 +36,10 @@ namespace paddle {
 namespace framework {
 namespace details {
 
+void SetNanInfDebugPath(const std::string& nan_inf_path);
+
+std::string GetNanPath();
+
 template <typename T,
           typename MT,
           std::enable_if_t<std::is_same<T, float>::value, bool> = true>
@@ -106,26 +110,26 @@ HOSTDEVICE void PrintForDifferentLevel(const char* debug_info,
 }
 
 template <typename T, typename MT>
-HOSTDEVICE void PrintForDifferentLevelFile(const char* debug_info,
-                                           int64_t numel,
-                                           int64_t num_nan,
-                                           int64_t num_inf,
-                                           MT max_value,
-                                           MT min_value,
-                                           MT mean_value,
-                                           int check_nan_inf_level,
-                                           const std::string& log_name) {
+void PrintForDifferentLevelFile(const char* debug_info,
+                                int64_t numel,
+                                int64_t num_nan,
+                                int64_t num_inf,
+                                MT max_value,
+                                MT min_value,
+                                MT mean_value,
+                                int check_nan_inf_level,
+                                const std::string& log_name) {
   int dev_id = 0;
 #ifdef PADDLE_WITH_HIP
   hipGetDevice(&dev_id);
 #elif PADDLE_WITH_CUDA
   cudaGetDevice(&dev_id);
 #endif
-  MKDIR("log_dir_nan");
+  auto file_path = GetNanPath();
+  MKDIR(file_path.c_str());
   std::string file_name = "worker_" + log_name + "." + std::to_string(dev_id);
-  std::string path = "log_dir_nan/" + file_name;
+  std::string path = file_path + file_name;
   std::ofstream outfile(path, std::ios::app);
-
   if (!outfile.is_open()) {
     return;
   }
@@ -241,7 +245,11 @@ static void CheckNanInfCpuImpl(const T* value_ptr,
     max_value = std::max(thread_max_value[i], max_value);
     mean_value += thread_mean_value[i];
   }
-  if (FLAGS_check_nan_inf_level >= 4) {
+  auto file_path = GetNanPath();
+  // Write log to file
+  if (file_path.size() > 0) {
+    VLOG(4) << "[FLAGS_check_nan_inf_level=" << FLAGS_check_nan_inf_level
+            << "]. Write log to " << file_path;
     PrintForDifferentLevelFile<T, MT>(cpu_hint_str.c_str(),
                                       numel,
                                       num_nan,
@@ -253,6 +261,7 @@ static void CheckNanInfCpuImpl(const T* value_ptr,
                                       log_name);
     return;
   }
+
   PrintForDifferentLevel<T, MT>(cpu_hint_str.c_str(),
                                 numel,
                                 num_nan,

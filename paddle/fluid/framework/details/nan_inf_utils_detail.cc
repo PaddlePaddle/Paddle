@@ -30,6 +30,23 @@ DECLARE_int32(check_nan_inf_level);
 namespace paddle {
 namespace framework {
 namespace details {
+struct DebugTools {
+  DebugTools() {}
+  std::string path = "";
+};
+static DebugTools debug_nan_inf;
+
+void SetNanInfDebugPath(const std::string& nan_inf_path) {
+  debug_nan_inf.path = nan_inf_path;
+  VLOG(4) << "Set the log's path of debug tools : " << nan_inf_path;
+}
+
+std::string GetNanPath() {
+  if (debug_nan_inf.path.empty()) {
+    return "";
+  }
+  return debug_nan_inf.path + "/";
+}
 
 static std::once_flag white_list_init_flag;
 

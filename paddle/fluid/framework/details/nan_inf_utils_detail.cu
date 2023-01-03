@@ -404,7 +404,9 @@ void TensorCheckerVisitor<phi::GPUContext>::apply(
   auto* dev_ctx = reinterpret_cast<phi::GPUContext*>(
       platform::DeviceContextPool::Instance().Get(tensor.place()));
   int dev_id = tensor.place().device;
-  if (FLAGS_check_nan_inf_level >= 4) {
+  // Write log to file
+  auto file_path = GetNanPath();
+  if (file_path.size() > 0) {
     phi::DenseTensor cpu_tensor;
     platform::CPUPlace cpu_place;
     cpu_tensor.Resize(tensor.dims());
@@ -418,6 +420,8 @@ void TensorCheckerVisitor<phi::GPUContext>::apply(
     CheckNanInfCpuImpl(cpu_tensor.data<T>(), tensor.numel(), debug_info, "gpu");
     return;
   }
+
+  // Write log to window
   char* gpu_str_ptr =
       GetGpuHintStringPtr<T>(*dev_ctx, op_type, var_name, dev_id);
 
