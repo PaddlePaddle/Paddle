@@ -24,7 +24,7 @@ namespace phi {
 constexpr int kWarpSize = 32;
 constexpr int kMaxOut = 16;
 
-template <typename T, typename IntType>
+template <typename T, typename IndexT>
 __global__ void UnStackHelperCUDAKernel(const T* __restrict__ input,
                                         int pre_dim_size,
                                         int split_dim_size,
@@ -36,50 +36,48 @@ __global__ void UnStackHelperCUDAKernel(const T* __restrict__ input,
   // In this case they are equal
   assert(split_dim_size % num_split == 0);
 
-  IntType size = pre_dim_size * split_dim_size * suf_dim_size;
-  IntType each_dim_size = split_dim_size / num_split;
+  IndexT size = pre_dim_size * split_dim_size * suf_dim_size;
+  IndexT each_dim_size = split_dim_size / num_split;
 
-  for (IntType offset = blockIdx.x * blockDim.x + threadIdx.x; offset < size;
+  for (IndexT offset = blockIdx.x * blockDim.x + threadIdx.x; offset < size;
        offset += blockDim.x * gridDim.x) {
-    IntType i = offset / (split_dim_size * suf_dim_size);
-    IntType j = (offset % (split_dim_size * suf_dim_size)) / suf_dim_size;
-    IntType k = offset % suf_dim_size;
+    IndexT i = offset / (split_dim_size * suf_dim_size);
+    IndexT j = (offset % (split_dim_size * suf_dim_size)) / suf_dim_size;
+    IndexT k = offset % suf_dim_size;
 
     T* output = output_ptrs[j / each_dim_size];
     if (output == nullptr) {
       return;
     }
-    IntType output_ind = i * each_dim_size * suf_dim_size +
+    IndexT output_ind = i * each_dim_size * suf_dim_size +
                          (j % each_dim_size) * suf_dim_size + k;
     *(output + output_ind) = input[offset];
   }
 }
 
-template <typename T, typename IndexT, typename PointT>
+template <typename T, typename IndexT>
 __global__ void StackGradKernelForLastDim(const T* __restrict__ in_data,
-                                          const int split_num,
-                                          const int num_per_block,
-                                          const int num_tile_x,
-                                          const IndexT col,
-                                          const IndexT row,
-                                          PointT out_datas) {
+                                          const IndexT cols,
+                                          const IndexT rows,
+                                          const IndexT tile_num_y,
+                                          T** out_datas) {
   constexpr int buffer_size = 512;
-  __shared__ T s_buffer[buffer_size];
-  for (int tile_y = blockIdx.y; tile_y < row; tile_y += gridDim.y) {
-    int col_range = (blockIdx.x < num_tile_x)
-                        ? kMaxOut
-                        : split_num - (kMaxOut * num_tile_x);
-    int read_size = kWarpSize * num_per_block;
-    if (threadIdx.y < col_range) {
-      IndexT row_idx = tile_y * read_size * split_num;
-      IndexT col_idx = threadIdx.x + threadIdx.y * blockDim.x;
-      T data = in_data[row_idx + col_idx + blockIdx.x * full_stride];
-      int s_idx = col_idx s_buffer[s_idx] = data;
-    }
-    __syncthreads();
+  __shared__ T s_buf[buffer_size];
 
-    for () {
-      out_datas.val[] = s_buffer;
+  for (IndexT tile_y = blockIdx.y; tile_y < tile_num_y; tile_y += gridDim.y) {
+    IndexT row_idx = tile_y * blockDim.y + threadIdx.y;
+    IndexT col_idx = blockIdx.x * blockDim.x + threadIdx.x;
+    
+    if (col_idx < cols && row_idx < rows) {
+      int s_idx = threadIdx.x * blockDim.y + threadIdx.y;
+      T data = in_data[row_idx * cols + col_idx];
+      s_buf[s_idx] = data;
+      __syncthreads();
+      
+      int out_idx = threadIdx.x + blockIdx.x * blockDim.x;
+      if (out_datas[threadIdx.x] == nullptr) {
+        out_datas[out_idx][row_idx] = s_buf[s_idx];
+      }
     }
   }
 }
@@ -91,64 +89,31 @@ void StackGradKernel(const Context& dev_ctx,
                      std::vector<DenseTensor*> x_grad) {
   auto& dy_dims = out.dims();
   if (axis < 0) axis += dy_dims.size();
-  int n = dy_dims[axis];
-  PADDLE_ENFORCE_EQ(n,
+  int num = dy_dims[axis];
+  PADDLE_ENFORCE_EQ(num,
                     x_grad.size(),
                     phi::errors::InvalidArgument(
-                        "Output x_grad size should be equal to n, but"
-                        " received n is:%d x_grad size is:%d.",
-                        n,
-                        x_grad.size()));
+                    "Output x_grad size should be equal to num, but"
+                    " received num is:%d x_grad size is:%d.",
+                    num,
+                    x_grad.size()));
   auto dy_data = out.data<T>();
-  bool use_int32 = out->numel() < std::numeric_limits<int32_t>::max();
+  bool use_int32 = out.numel() < std::numeric_limits<int32_t>::max();
 
   // x_grad is output, so save each data address, then copy each dy into dx_data
-  std::vector<T*> outputs(n);
+  std::vector<T*> outputs(num);
   for (size_t j = 0; j < x_grad.size(); ++j) {
-    if (x_grad[j] == nullptr) {
+    if (x_grad[j] == nullptr || x_grad[j]->numel() == 0UL) {
       outputs[j] = nullptr;
-      continue;
-    }
-    if (x_grad[j]->numel() != 0UL) {
-      T* ptr = dev_ctx.template Alloc<T>(x_grad[j]);
-      outputs[j] = ptr;
     } else {
-      outputs[j] = nullptr;
+      outputs[j] = dev_ctx.template Alloc<T>(x_grad[j]);
     }
   }
 
   int64_t dy_pre = 1;
-  for (int i = 0; i < n; ++i) {
-    dy_pre *= dy_dims[i];
-  }
-
-  if (axis == (dy_dims.size() - 1)) {
-    int tid_y = std::min(kMaxOut, GetLastPow2(n));
-    int bid_x = n > kMaxOut ? (n + kMaxOut - 1) / kMaxOut : 1;
-    int num_per_block = n <= (kMaxOut >> 1) ? kMaxOut / tid_y : 1;
-    int tid_x = num_per_block * kWarpSize;
-    int bid_y = (dy_pre + tid_x - 1) / tid_x;
-    dim3 blocks(tid_x, tid_y, 1);
-    dim3 grids(bid_x, bid_y, 1);
-    if (use_int32) {
-      StackGradKernelForLastDim<T, int32_t, decltype()>
-          <<<blocks, grids, 0, ctx.stream()>>>(dy_data, n, num_per_block,
-
-          )
-    } else {
-    }
-  } else {
-    int64_t dy_rest = out.numel() / (n * dy_pre);
-  }
-
-  // each x_grad should have same shape
-  int dy_pre = 1, dy_suf = 1;
-  int split_dim = n;
   for (int i = 0; i < axis; ++i) {
     dy_pre *= dy_dims[i];
   }
-  dy_suf = out.numel() / (split_dim * dy_pre);
-
   auto tmp_out_data = paddle::memory::Alloc(
       dev_ctx.GetPlace(),
       outputs.size() * sizeof(T*),
@@ -160,7 +125,39 @@ void StackGradKernel(const Context& dev_ctx,
                        outputs.size() * sizeof(T*),
                        dev_ctx.stream());
 
-  auto config = phi::backends::gpu::GetGpuLaunchConfig1D(
+  if (axis == (dy_dims.size() - 1)) {
+    constexpr int threads = 512;
+    int tid_x = std::min(kMaxOut, num);
+    int tid_y = tid_x < kMaxOut ? threads / backends::gpu::RoundToNextHighPowOfTwo(tid_x) : kWarpSize;
+    tid_y = std::min(static_cast<int>(backends::gpu::RoundToNextHighPowOfTwo(dy_pre)), tid_y);
+    int bid_x = num > kMaxOut ? backends::gpu::DivUp<int>(num, kMaxOut): 1;
+    int tile_y_num = backends::gpu::DivUp<int>(dy_pre, tid_y);
+    int bid_y = std::min(tile_y_num, backends::gpu::kMultiDimslimit);
+    printf("tid_x = %d\t, tid_y = %d\n", tid_x, tid_y);
+    printf("bid_x = %d\t, bid_y = %d\n", bid_x, bid_y);
+    dim3 blocks(tid_x, tid_y, 1);
+    dim3 grids(bid_x, bid_y, 1);
+    
+    if (use_int32) {
+      StackGradKernelForLastDim<T, int32_t>
+          <<<blocks, grids, 0, dev_ctx.stream()>>>(dy_data, num, dy_pre, 
+            tile_y_num, reinterpret_cast<T**>(tmp_out_data->ptr()));
+    } else {
+      StackGradKernelForLastDim<T, int64_t>
+          <<<blocks, grids, 0, dev_ctx.stream()>>>(dy_data, num, dy_pre, 
+            tile_y_num, reinterpret_cast<T**>(tmp_out_data->ptr()));
+    }
+    return;
+  } else {
+    int64_t dy_rest = out.numel() / (num * dy_pre);
+  }
+
+  // each x_grad should have same shape
+  int dy_suf = 1;
+  int split_dim = num;
+  dy_suf = out.numel() / (split_dim * dy_pre);
+
+  auto config = backends::gpu::GetGpuLaunchConfig1D(
       dev_ctx, dy_pre * split_dim * dy_suf);
 
   if (out.numel() < std::numeric_limits<int32_t>::max()) {
@@ -196,10 +193,7 @@ PD_REGISTER_KERNEL(stack_grad,
                    phi::StackGradKernel,
                    float,
                    double,
-                   bool,
                    int64_t,
                    int,
-                   uint8_t,
-                   int8_t,
                    phi::dtype::float16,
                    phi::dtype::bfloat16) {}
