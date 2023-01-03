@@ -31,6 +31,7 @@ def apply_pass(use_sharding=False):
     strategy.reinit = True
     if use_sharding:
         sharding = strategy.sharding
+        sharding.enable = True
         sharding.degree = 2
         sharding.stage = 2
     return strategy
@@ -79,7 +80,8 @@ class TestGradientClipByGlobalNorm(unittest.TestCase):
         reset_prog()
 
         strategy = apply_pass(use_sharding)
-        clip = paddle.nn.ClipGradByGlobalNorm(self.clip_norm)
+        clip = paddle.nn.ClipGradByNorm(self.clip_norm)
+        paddle.fluid.clip.ClipGradByGlobalNorm()
         opt = paddle.optimizer.AdamW(learning_rate=0.00001, grad_clip=clip)
         model, loss = generate_model("dp")
         engine = auto.Engine(model, loss, opt, strategy=strategy)
