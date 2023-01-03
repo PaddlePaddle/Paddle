@@ -921,6 +921,7 @@ class ShardingPass(PassBase):
         main_block._sync_with_cpp()
 
     def _fuse_overlap_parameter_comm_stage_three(self, sharding_info):
+        print("_fuse_overlap_parameter_comm_stage_three: ")
 
         main_block = default_main_program().global_block()
 
@@ -936,6 +937,7 @@ class ShardingPass(PassBase):
 
                 # init order dependencies
                 dep_map[i] = [(i, [prior_var], [init_var], None)]
+                print("Analyze deps: ", str(op))
 
         # insert deps
         indice = sorted(list(dep_map.keys()), reverse=True)
