@@ -570,7 +570,7 @@ class DataParallel(layers.Layer):
 
         assert (
             in_dygraph_mode()
-        ), "It's not supported to construct DataParallel in static mode."
+        ), "It's not supported to construct DataParallel in static graph mode."
 
         self._layers = layers
         self.find_unused_parameters = find_unused_parameters

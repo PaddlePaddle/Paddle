@@ -39,45 +39,46 @@ class TrtConvertElementwiseTest_one_input_corner_case(TrtLayerAutoScanTest):
         def generate_input(shape):
             return np.random.random(shape).astype(np.float32)
 
-        for batch in [1, 2, 4]:
-            for shape in [[batch, 1], [batch, 1, 32], [batch, 1, 16, 32]]:
-                for axis in [-1 if len(shape) == 1 else 1]:
-                    self.dims = len(shape)
-                    dics = [{"axis": axis}, {"in_dtype": 0, "out_dtype": 5}]
-                    ops_config = [
-                        {
-                            "op_type": "equal",
-                            "op_inputs": {
-                                "X": ["input_data1"],
-                                "Y": ["input_data2"],
+        for op_type in ["equal", "not_equal"]:
+            for batch in [1, 2, 4]:
+                for shape in [[batch, 1], [batch, 1, 32], [batch, 1, 16, 32]]:
+                    for axis in [-1 if len(shape) == 1 else 1]:
+                        self.dims = len(shape)
+                        dics = [{"axis": axis}, {"in_dtype": 0, "out_dtype": 5}]
+                        ops_config = [
+                            {
+                                "op_type": op_type,
+                                "op_inputs": {
+                                    "X": ["input_data1"],
+                                    "Y": ["input_data2"],
+                                },
+                                "op_outputs": {"Out": ["compare_output_data"]},
+                                "op_attrs": dics[0],
                             },
-                            "op_outputs": {"Out": ["compare_output_data"]},
-                            "op_attrs": dics[0],
-                        },
-                        {
-                            "op_type": "cast",
-                            "op_inputs": {"X": ["compare_output_data"]},
-                            "op_outputs": {"Out": ["output_data"]},
-                            "op_attrs": dics[1],
-                        },
-                    ]
-                    ops = self.generate_op_config(ops_config)
+                            {
+                                "op_type": "cast",
+                                "op_inputs": {"X": ["compare_output_data"]},
+                                "op_outputs": {"Out": ["output_data"]},
+                                "op_attrs": dics[1],
+                            },
+                        ]
+                        ops = self.generate_op_config(ops_config)
 
-                    program_config = ProgramConfig(
-                        ops=ops,
-                        weights={},
-                        inputs={
-                            "input_data1": TensorConfig(
-                                data_gen=partial(generate_input, shape)
-                            ),
-                            "input_data2": TensorConfig(
-                                data_gen=partial(generate_input, shape)
-                            ),
-                        },
-                        outputs=["output_data"],
-                    )
+                        program_config = ProgramConfig(
+                            ops=ops,
+                            weights={},
+                            inputs={
+                                "input_data1": TensorConfig(
+                                    data_gen=partial(generate_input, shape)
+                                ),
+                                "input_data2": TensorConfig(
+                                    data_gen=partial(generate_input, shape)
+                                ),
+                            },
+                            outputs=["output_data"],
+                        )
 
-                    yield program_config
+                        yield program_config
 
     def sample_predictor_configs(
         self, program_config
