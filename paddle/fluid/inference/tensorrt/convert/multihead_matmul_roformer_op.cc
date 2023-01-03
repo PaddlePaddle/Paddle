@@ -32,9 +32,11 @@ class MultiheadMatMulRoformerOpConverter : public OpConverter {
     // Declare inputs
     auto* input = engine_->GetITensor(op_desc.Input("Input").front());
     int input_cos_len = op_desc.Input("Input_cos").front().length();
-    std::string new_input_cos = op_desc.Input("Input_cos").front().substr(0, input_cos_len - 1);
+    std::string new_input_cos =
+        op_desc.Input("Input_cos").front().substr(0, input_cos_len - 1);
     int input_sin_len = op_desc.Input("Input_sin").front().length();
-    std::string new_input_sin = op_desc.Input("Input_sin").front().substr(0, input_sin_len - 1);
+    std::string new_input_sin =
+        op_desc.Input("Input_sin").front().substr(0, input_sin_len - 1);
 
     auto* input_cos = engine_->GetITensor(new_input_cos);
     auto* input_sin = engine_->GetITensor(new_input_sin);
@@ -91,25 +93,25 @@ class MultiheadMatMulRoformerOpConverter : public OpConverter {
                           engine_->tensorrt_transformer_posid() != "" &&
                           engine_->tensorrt_transformer_maskid() != "";
 
-    VLOG(3) << "flag_varseqlen: "<<flag_varseqlen;
+    VLOG(3) << "flag_varseqlen: " << flag_varseqlen;
     if (engine_->with_dynamic_shape()) {
       if (flag_varseqlen) {
         if (engine_->precision() == AnalysisConfig::Precision::kFloat32) {
           PADDLE_THROW(platform::errors::Fatal(
               "use use_oss must be int8 or half, not float32."));
         }
-	if (engine_->with_interleaved()) {
+        if (engine_->with_interleaved()) {
           PADDLE_THROW(platform::errors::Fatal(
               "not support interleaved in roformer yet"));
-	}
-	nvinfer1::Weights weight{nvinfer1::DataType::kFLOAT,
+        }
+        nvinfer1::Weights weight{nvinfer1::DataType::kFLOAT,
                                  static_cast<void*>(weight_data),
                                  static_cast<int32_t>(weight_t->numel())};
         nvinfer1::Weights bias{nvinfer1::DataType::kFLOAT,
                                static_cast<void*>(bias_data),
                                static_cast<int32_t>(bias_t->numel())};
 
-	nvinfer1::ITensor* mask_tensor;
+        nvinfer1::ITensor* mask_tensor;
         nvinfer1::ITensor* pos_id_tensor;
         nvinfer1::ITensor* max_seqlen_tensor;
         VLOG(3) << "before get tensor";
@@ -118,7 +120,7 @@ class MultiheadMatMulRoformerOpConverter : public OpConverter {
         max_seqlen_tensor = engine_->GetITensor("max_seqlen_tensor");
         VLOG(3) << "get tensor ok";
 
-	int head_size = hidden_out / head_number;
+        int head_size = hidden_out / head_number;
         // [3, head_number, head_size, hidden_in] -> [head_number, 3,
         // head_size, hidden_in]
         auto transpose_weight_v2 = [](const float* src,
@@ -203,7 +205,7 @@ class MultiheadMatMulRoformerOpConverter : public OpConverter {
             ("roformerlayer(Output: " + output_name + ")").c_str());
         roformerlayer->setPrecision(nvinfer1::DataType::kFLOAT);
 
-        //auto mask_tensor = engine_->GetITensor("qkv_plugin_mask");
+        // auto mask_tensor = engine_->GetITensor("qkv_plugin_mask");
         auto creator = GetPluginRegistry()->getPluginCreator(
             "CustomQKVToContextPluginDynamic", "2");
         assert(creator != nullptr);
@@ -216,27 +218,19 @@ class MultiheadMatMulRoformerOpConverter : public OpConverter {
         int var_seqlen = 1;
         std::vector<nvinfer1::PluginField> fields{
             {"type_id", &type, nvinfer1::PluginFieldType::kINT32, 1},
-            {"hidden_size",
-             &hidden_out,
-             nvinfer1::PluginFieldType::kINT32,
-             1},
+            {"hidden_size", &hidden_out, nvinfer1::PluginFieldType::kINT32, 1},
             {"num_heads", &head_number, nvinfer1::PluginFieldType::kINT32, 1},
             {"has_mask", &has_mask, nvinfer1::PluginFieldType::kINT32, 1},
-            {"var_seqlen",
-             &var_seqlen,
-             nvinfer1::PluginFieldType::kINT32,
-             1}};
+            {"var_seqlen", &var_seqlen, nvinfer1::PluginFieldType::kINT32, 1}};
         if (qkv2context_plugin_int8) {
-          fields.push_back({"dq_probs",
-                            &dp_probs,
-                            nvinfer1::PluginFieldType::kFLOAT32,
-                            1});
+          fields.push_back(
+              {"dq_probs", &dp_probs, nvinfer1::PluginFieldType::kFLOAT32, 1});
         }
         nvinfer1::PluginFieldCollection* plugin_collection =
-            static_cast<nvinfer1::PluginFieldCollection*>(malloc(
-                sizeof(*plugin_collection) +
-                fields.size() *
-                    sizeof(nvinfer1::PluginField)));  // remember to free
+            static_cast<nvinfer1::PluginFieldCollection*>(
+                malloc(sizeof(*plugin_collection) +
+                       fields.size() *
+                           sizeof(nvinfer1::PluginField)));  // remember to free
         plugin_collection->nbFields = static_cast<int>(fields.size());
         plugin_collection->fields = fields.data();
         auto plugin = creator->createPlugin("CustomQKVToContextPluginDynamic",
@@ -246,18 +240,19 @@ class MultiheadMatMulRoformerOpConverter : public OpConverter {
         // remeber to modify
         plugin_inputs.emplace_back(roformerlayer->getOutput(0));
         plugin_inputs.emplace_back(mask_tensor);
-	plugin_inputs.emplace_back(pos_id_tensor);
-        plugin_inputs.emplace_back(max_seqlen_tensor);  // max_seqlen, eval_placeholder_3
+        plugin_inputs.emplace_back(pos_id_tensor);
+        plugin_inputs.emplace_back(
+            max_seqlen_tensor);  // max_seqlen, eval_placeholder_3
 
-        //engine_->SetTensorDynamicRange(shuffle_layer->getOutput(0), 1.0f);
+        // engine_->SetTensorDynamicRange(shuffle_layer->getOutput(0), 1.0f);
 
         auto plugin_layer = engine_->network()->addPluginV2(
             plugin_inputs.data(), plugin_inputs.size(), *plugin);
         plugin_layer->setName(
-              ("CustomQKVToContextPluginDynamic: " + output_name).c_str());
-	engine_->SetITensor(output_name, plugin_layer->getOutput(0));
+            ("CustomQKVToContextPluginDynamic: " + output_name).c_str());
+        engine_->SetITensor(output_name, plugin_layer->getOutput(0));
 
-      } else { // no varlen
+      } else {  // no varlen
         PADDLE_ENFORCE_EQ(
             input->getDimensions().nbDims,
             3,
@@ -363,8 +358,8 @@ class MultiheadMatMulRoformerOpConverter : public OpConverter {
           "You can use the config.SetTRTDynamicShapeInfo(...) interface to set "
           "the shape information to run the dynamic shape mode."));
     }
-    //RreplenishLayerAndOutput(
-    //    layer, "multihead_matmul_roformer", {output_name}, test_mode);
+    // RreplenishLayerAndOutput(
+    //     layer, "multihead_matmul_roformer", {output_name}, test_mode);
   }
 };
 

@@ -14,7 +14,7 @@
 
 #include "paddle/fluid/framework/ir/multihead_matmul_roformer_fuse_pass.h"
 
-#include <string> 
+#include <string>
 
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_version_registry.h"
@@ -85,15 +85,16 @@ PDNode* MultiHeadMatmulRoformerPattern::operator()() {
       ->assert_is_op_input("split", "X");
 
   auto* shape_q = pattern->NewNode(shape_q_repr())->assert_is_op("shape");
-  auto* shape_q_out_var = pattern->NewNode(shape_q_out_repr())
-                                   ->assert_is_op_output("shape");
+  auto* shape_q_out_var =
+      pattern->NewNode(shape_q_out_repr())->assert_is_op_output("shape");
   auto* slice_q = pattern->NewNode(slice_q_repr())->assert_is_op("slice");
-  auto* slice_q_out_var = pattern->NewNode(slice_q_out_repr())
-                                   ->assert_is_op_output("slice");
+  auto* slice_q_out_var =
+      pattern->NewNode(slice_q_out_repr())->assert_is_op_output("slice");
 
-  auto* slice_cos_q = pattern->NewNode(slice_cos_q_repr())->assert_is_op("slice");
-  auto* slice_cos_q_out_var = pattern->NewNode(slice_cos_q_out_repr())
-                                   ->assert_is_op_output("slice");
+  auto* slice_cos_q =
+      pattern->NewNode(slice_cos_q_repr())->assert_is_op("slice");
+  auto* slice_cos_q_out_var =
+      pattern->NewNode(slice_cos_q_out_repr())->assert_is_op_output("slice");
 
   auto* eltmul_cos_q =
       pattern->NewNode(eltmul_cos_q_repr())->assert_is_op("elementwise_mul");
@@ -103,10 +104,12 @@ PDNode* MultiHeadMatmulRoformerPattern::operator()() {
                                                              "X");
 
   auto* split_q = pattern->NewNode(split_q_repr())->assert_is_op("split");
-  auto* split_q_out_0_var =
-      pattern->NewNode(split_q_out_0_repr())->assert_is_op_output("split")->assert_is_op_input("concat");
-  auto* split_q_out_1_var =
-      pattern->NewNode(split_q_out_1_repr())->assert_is_op_output("split")->assert_is_op_input("scale");
+  auto* split_q_out_0_var = pattern->NewNode(split_q_out_0_repr())
+                                ->assert_is_op_output("split")
+                                ->assert_is_op_input("concat");
+  auto* split_q_out_1_var = pattern->NewNode(split_q_out_1_repr())
+                                ->assert_is_op_output("split")
+                                ->assert_is_op_input("scale");
 
   auto* scale_q = pattern->NewNode(scale_q_repr())->assert_is_op("scale");
   auto* scale_q_out_var =
@@ -117,9 +120,10 @@ PDNode* MultiHeadMatmulRoformerPattern::operator()() {
       pattern->NewNode(concat_q_out_repr())->assert_is_op_output("concat");
   concat_q_out_var->AsIntermediate()->assert_is_op_input("elementwise_mul",
                                                          "X");
-  auto* slice_sin_q = pattern->NewNode(slice_sin_q_repr())->assert_is_op("slice");
-  auto* slice_sin_q_out_var = pattern->NewNode(slice_sin_q_out_repr())
-                                   ->assert_is_op_output("slice");
+  auto* slice_sin_q =
+      pattern->NewNode(slice_sin_q_repr())->assert_is_op("slice");
+  auto* slice_sin_q_out_var =
+      pattern->NewNode(slice_sin_q_out_repr())->assert_is_op_output("slice");
 
   auto* eltmul_sin_q =
       pattern->NewNode(eltmul_sin_q_repr())->assert_is_op("elementwise_mul");
@@ -216,15 +220,16 @@ PDNode* MultiHeadMatmulRoformerPattern::operator()() {
       ->assert_is_op_input("split", "X");  // link to matmul qk
 
   auto* shape_k = pattern->NewNode(shape_k_repr())->assert_is_op("shape");
-  auto* shape_k_out_var = pattern->NewNode(shape_k_out_repr())
-                                   ->assert_is_op_output("shape");
+  auto* shape_k_out_var =
+      pattern->NewNode(shape_k_out_repr())->assert_is_op_output("shape");
   auto* slice_k = pattern->NewNode(slice_k_repr())->assert_is_op("slice");
-  auto* slice_k_out_var = pattern->NewNode(slice_k_out_repr())
-                                   ->assert_is_op_output("slice");
+  auto* slice_k_out_var =
+      pattern->NewNode(slice_k_out_repr())->assert_is_op_output("slice");
 
-  auto* slice_cos_k = pattern->NewNode(slice_cos_k_repr())->assert_is_op("slice");
-  auto* slice_cos_k_out_var = pattern->NewNode(slice_cos_k_out_repr())
-                                   ->assert_is_op_output("slice");
+  auto* slice_cos_k =
+      pattern->NewNode(slice_cos_k_repr())->assert_is_op("slice");
+  auto* slice_cos_k_out_var =
+      pattern->NewNode(slice_cos_k_out_repr())->assert_is_op_output("slice");
 
   auto* eltmul_cos_k =
       pattern->NewNode(eltmul_cos_k_repr())->assert_is_op("elementwise_mul");
@@ -234,10 +239,12 @@ PDNode* MultiHeadMatmulRoformerPattern::operator()() {
                                                              "X");
 
   auto* split_k = pattern->NewNode(split_k_repr())->assert_is_op("split");
-  auto* split_k_out_0_var =
-      pattern->NewNode(split_k_out_0_repr())->assert_is_op_output("split")->assert_is_op_input("concat");
-  auto* split_k_out_1_var =
-      pattern->NewNode(split_k_out_1_repr())->assert_is_op_output("split")->assert_is_op_input("scale");
+  auto* split_k_out_0_var = pattern->NewNode(split_k_out_0_repr())
+                                ->assert_is_op_output("split")
+                                ->assert_is_op_input("concat");
+  auto* split_k_out_1_var = pattern->NewNode(split_k_out_1_repr())
+                                ->assert_is_op_output("split")
+                                ->assert_is_op_input("scale");
 
   auto* scale_k = pattern->NewNode(scale_k_repr())->assert_is_op("scale");
   auto* scale_k_out_var =
@@ -249,9 +256,10 @@ PDNode* MultiHeadMatmulRoformerPattern::operator()() {
   concat_k_out_var->AsIntermediate()->assert_is_op_input("elementwise_mul",
                                                          "X");
 
-  auto* slice_sin_k = pattern->NewNode(slice_sin_k_repr())->assert_is_op("slice");
-  auto* slice_sin_k_out_var = pattern->NewNode(slice_sin_k_out_repr())
-                                   ->assert_is_op_output("slice");
+  auto* slice_sin_k =
+      pattern->NewNode(slice_sin_k_repr())->assert_is_op("slice");
+  auto* slice_sin_k_out_var =
+      pattern->NewNode(slice_sin_k_out_repr())->assert_is_op_output("slice");
   auto* eltmul_sin_k =
       pattern->NewNode(eltmul_sin_k_repr())->assert_is_op("elementwise_mul");
   auto* eltmul_sin_k_out_var = pattern->NewNode(eltmul_sin_k_out_repr())
@@ -307,14 +315,18 @@ PDNode* MultiHeadMatmulRoformerPattern::operator()() {
 
   reshape2_0->LinksFrom({eltadd0_out_var}).LinksTo({reshape2_0_out_var});
   transpose2_0->LinksFrom({reshape2_0_out_var}).LinksTo({transpose2_0_out_var});
-  split_q->LinksFrom({transpose2_0_out_var}).LinksTo({split_q_out_0_var, split_q_out_1_var});
+  split_q->LinksFrom({transpose2_0_out_var})
+      .LinksTo({split_q_out_0_var, split_q_out_1_var});
   scale_q->LinksFrom({split_q_out_1_var}).LinksTo({scale_q_out_var});
-  concat_q->LinksFrom({scale_q_out_var, split_q_out_0_var}).LinksTo({concat_q_out_var});
+  concat_q->LinksFrom({scale_q_out_var, split_q_out_0_var})
+      .LinksTo({concat_q_out_var});
 
   shape_q->LinksFrom({transpose2_0_out_var}).LinksTo({shape_q_out_var});
   slice_q->LinksFrom({shape_q_out_var}).LinksTo({slice_q_out_var});
-  slice_cos_q->LinksFrom({input_cos_q, slice_q_out_var}).LinksTo({slice_cos_q_out_var});
-  slice_sin_q->LinksFrom({input_sin_q, slice_q_out_var}).LinksTo({slice_sin_q_out_var});
+  slice_cos_q->LinksFrom({input_cos_q, slice_q_out_var})
+      .LinksTo({slice_cos_q_out_var});
+  slice_sin_q->LinksFrom({input_sin_q, slice_q_out_var})
+      .LinksTo({slice_sin_q_out_var});
 
   eltmul_cos_q->LinksFrom({transpose2_0_out_var, slice_cos_q_out_var})
       .LinksTo({eltmul_cos_q_out_var});
@@ -328,14 +340,18 @@ PDNode* MultiHeadMatmulRoformerPattern::operator()() {
   eltadd1->LinksFrom({mul1_out_var, eltadd1_b_var}).LinksTo({eltadd1_out_var});
   reshape2_1->LinksFrom({eltadd1_out_var}).LinksTo({reshape2_1_out_var});
   transpose2_1->LinksFrom({reshape2_1_out_var}).LinksTo({transpose2_1_out_var});
-  split_k->LinksFrom({transpose2_1_out_var}).LinksTo({split_k_out_0_var, split_k_out_1_var});
+  split_k->LinksFrom({transpose2_1_out_var})
+      .LinksTo({split_k_out_0_var, split_k_out_1_var});
   scale_k->LinksFrom({split_k_out_1_var}).LinksTo({scale_k_out_var});
-  concat_k->LinksFrom({scale_k_out_var, split_k_out_0_var}).LinksTo({concat_k_out_var});
+  concat_k->LinksFrom({scale_k_out_var, split_k_out_0_var})
+      .LinksTo({concat_k_out_var});
 
   shape_k->LinksFrom({transpose2_1_out_var}).LinksTo({shape_k_out_var});
   slice_k->LinksFrom({shape_k_out_var}).LinksTo({slice_k_out_var});
-  slice_cos_k->LinksFrom({input_cos_q, slice_k_out_var}).LinksTo({slice_cos_k_out_var});
-  slice_sin_k->LinksFrom({input_sin_q, slice_k_out_var}).LinksTo({slice_sin_k_out_var});
+  slice_cos_k->LinksFrom({input_cos_q, slice_k_out_var})
+      .LinksTo({slice_cos_k_out_var});
+  slice_sin_k->LinksFrom({input_sin_q, slice_k_out_var})
+      .LinksTo({slice_sin_k_out_var});
 
   eltmul_cos_k->LinksFrom({transpose2_1_out_var, slice_cos_k_out_var})
       .LinksTo({eltmul_cos_k_out_var});
@@ -344,8 +360,10 @@ PDNode* MultiHeadMatmulRoformerPattern::operator()() {
   eltadd_k->LinksFrom({eltmul_cos_k_out_var, eltmul_sin_k_out_var});
 
   // compute q*k
-  matmul_qk->LinksFrom({scale_out_var, eltadd_k_out_var}).LinksTo({matmul_qk_out_var});
-  eltadd_qk->LinksFrom({matmul_qk_out_var, eltadd_qk_b_var}).LinksTo({eltadd_qk_out_var});
+  matmul_qk->LinksFrom({scale_out_var, eltadd_k_out_var})
+      .LinksTo({matmul_qk_out_var});
+  eltadd_qk->LinksFrom({matmul_qk_out_var, eltadd_qk_b_var})
+      .LinksTo({eltadd_qk_out_var});
   softmax_qk->LinksFrom({eltadd_qk_out_var}).LinksTo({softmax_qk_out_var});
   // V  path
   mul2->LinksFrom({input0, mul2_w_var}).LinksTo({mul2_out_var});
@@ -621,11 +639,14 @@ int MultiHeadMatmulRoformerFusePass::BuildFusion(Graph* graph,
         PADDLE_GET_CONST(std::vector<int>, reshape_desc->GetAttr("shape"))
             .at(2);
 
-
-    auto* input_cos_tensor = scope->FindVar(input_cos_q->Name())->GetMutable<phi::DenseTensor>();
-    auto* input_sin_tensor = scope->FindVar(input_sin_q->Name())->GetMutable<phi::DenseTensor>();
-    std::cout<<"myflag: "<<input_cos_q->Name() <<" address:"<<input_cos_tensor<<std::endl;
-    std::cout<<"myflag: "<<input_sin_q->Name() <<" address:"<<input_sin_tensor<<std::endl;
+    auto* input_cos_tensor =
+        scope->FindVar(input_cos_q->Name())->GetMutable<phi::DenseTensor>();
+    auto* input_sin_tensor =
+        scope->FindVar(input_sin_q->Name())->GetMutable<phi::DenseTensor>();
+    std::cout << "myflag: " << input_cos_q->Name()
+              << " address:" << input_cos_tensor << std::endl;
+    std::cout << "myflag: " << input_sin_q->Name()
+              << " address:" << input_sin_tensor << std::endl;
     auto* input_cos_q_desc = input_cos_q->Var();
     input_cos_q_desc->SetPersistable(true);
     auto* input_sin_q_desc = input_sin_q->Var();
@@ -636,18 +657,22 @@ int MultiHeadMatmulRoformerFusePass::BuildFusion(Graph* graph,
     auto *input_cos_q_tensor = input_cos_q_var->GetMutable<phi::DenseTensor>();
 
     auto* input_cos_q_desc = input_cos_q->Var()->GetMutable<phi::DenseTensor>();
-    size_t input_cos_q_size = input_cos_q_desc->numel(); 
+    size_t input_cos_q_size = input_cos_q_desc->numel();
     input_cos_q_var->SetShape(input_cos_q_desc->dims());
     input_cos_q_var->SetPersistable(true);
-    memcpy(input_cos_q_desc->mutable_data<float>(platform::CPUPlace(), input_cos_q_var->mutable_data<float>(platform::CPUPlace(), sizeof(float) * input_cos_q_size);
+    memcpy(input_cos_q_desc->mutable_data<float>(platform::CPUPlace(),
+    input_cos_q_var->mutable_data<float>(platform::CPUPlace(), sizeof(float) *
+    input_cos_q_size);
 
     auto *input_sin_q_var = scope->Var(input_cos_q->Name());
     auto* input_sin_q_desc = input_sin_q->Var()->GetMutable<phi::DenseTensor>();
-    size_t input_sin_q_size = input_sin_q_desc->numel(); 
+    size_t input_sin_q_size = input_sin_q_desc->numel();
     input_sin_q_var->SetShape(input_sin_q_desc->dims());
     input_sin_q_var->SetPersistable(true);
-    memcpy(input_sin_q_desc->mutable_data<float>(platform::CPUPlace(), input_sin_q_var->mutable_data<float>(platform::CPUPlace(), sizeof(float) * input_sin_q_size);
-    
+    memcpy(input_sin_q_desc->mutable_data<float>(platform::CPUPlace(),
+    input_sin_q_var->mutable_data<float>(platform::CPUPlace(), sizeof(float) *
+    input_sin_q_size);
+
     std::string new_input_cos_q_name = input_cos_q->Name() + "0";
     std::string new_input_sin_q_name = input_sin_q->Name() + "0";
     scope->Rename(input_cos_q->Name(), new_input_cos_q_name);
@@ -659,8 +684,8 @@ int MultiHeadMatmulRoformerFusePass::BuildFusion(Graph* graph,
     multihead_op_desc.SetInput("Input", {input0->Name()});
     multihead_op_desc.SetInput("Input_cos", {input_cos_q->Name()});
     multihead_op_desc.SetInput("Input_sin", {input_sin_q->Name()});
-    //multihead_op_desc.SetInput("Input_cos", {new_input_cos_q_name});
-    //multihead_op_desc.SetInput("Input_sin", {new_input_sin_q_name});
+    // multihead_op_desc.SetInput("Input_cos", {new_input_cos_q_name});
+    // multihead_op_desc.SetInput("Input_sin", {new_input_sin_q_name});
     multihead_op_desc.SetInput("W", {mul0_w->Name()});
     multihead_op_desc.SetInput("Bias", {eltadd0_b->Name()});
     multihead_op_desc.SetInput("BiasQK", {eltadd_qk_b->Name()});
@@ -714,9 +739,11 @@ int MultiHeadMatmulRoformerFusePass::BuildFusion(Graph* graph,
     GET_IR_NODE_FROM_SUBGRAPH(slice_q, slice_q, multihead_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(slice_q_out, slice_q_out, multihead_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(slice_cos_q, slice_cos_q, multihead_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(slice_cos_q_out, slice_cos_q_out, multihead_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        slice_cos_q_out, slice_cos_q_out, multihead_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(slice_sin_q, slice_sin_q, multihead_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(slice_sin_q_out, slice_sin_q_out, multihead_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        slice_sin_q_out, slice_sin_q_out, multihead_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(scale_q, scale_q, multihead_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(scale_q_out, scale_q_out, multihead_pattern);
 
@@ -749,9 +776,11 @@ int MultiHeadMatmulRoformerFusePass::BuildFusion(Graph* graph,
     GET_IR_NODE_FROM_SUBGRAPH(slice_k, slice_k, multihead_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(slice_k_out, slice_k_out, multihead_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(slice_cos_k, slice_cos_k, multihead_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(slice_cos_k_out, slice_cos_k_out, multihead_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        slice_cos_k_out, slice_cos_k_out, multihead_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(slice_sin_k, slice_sin_k, multihead_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(slice_sin_k_out, slice_sin_k_out, multihead_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        slice_sin_k_out, slice_sin_k_out, multihead_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(scale_k, scale_k, multihead_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(scale_k_out, scale_k_out, multihead_pattern);
 
@@ -872,26 +901,26 @@ int MultiHeadMatmulRoformerFusePass::BuildFusion(Graph* graph,
                                                   split_k_out_0,
                                                   split_k_out_1,
 
-						  scale_q,
-						  scale_q_out,
-						  scale_k,
-						  scale_k_out,
-						  shape_q,
-						  shape_q_out,
-						  shape_k,
-						  shape_k_out,
-						  slice_q,
-						  slice_q_out,
-						  slice_cos_q,
-						  slice_cos_q_out,
-						  slice_sin_q,
-						  slice_sin_q_out,
-						  slice_k,
-						  slice_k_out,
-						  slice_cos_k,
-						  slice_cos_k_out,
-						  slice_sin_k,
-						  slice_sin_k_out,
+                                                  scale_q,
+                                                  scale_q_out,
+                                                  scale_k,
+                                                  scale_k_out,
+                                                  shape_q,
+                                                  shape_q_out,
+                                                  shape_k,
+                                                  shape_k_out,
+                                                  slice_q,
+                                                  slice_q_out,
+                                                  slice_cos_q,
+                                                  slice_cos_q_out,
+                                                  slice_sin_q,
+                                                  slice_sin_q_out,
+                                                  slice_k,
+                                                  slice_k_out,
+                                                  slice_cos_k,
+                                                  slice_cos_k_out,
+                                                  slice_sin_k,
+                                                  slice_sin_k_out,
 
                                                   concat_k,
                                                   concat_k_out,

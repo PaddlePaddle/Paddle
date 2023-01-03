@@ -119,7 +119,6 @@ struct MultiHeadMatmulRoformerPattern : public PatternBase {
   PATTERN_DECL_NODE(transpose2_2_out);
   PATTERN_DECL_NODE(transpose2_qkv_out);
 
-  
   PATTERN_DECL_NODE(shape_q);
   PATTERN_DECL_NODE(shape_q_out);
   PATTERN_DECL_NODE(slice_q);

@@ -115,8 +115,9 @@ void MultiheadMatmulRoformer::operator()() {
   auto* multihead_matmul_roformer_input =
       pattern->NewNode(multihead_matmul_roformer_input_repr())
           ->assert_is_op_input("multihead_matmul_roformer", "Input");
-  auto* multihead_matmul_roformer_op = pattern->NewNode(multihead_matmul_roformer_op_repr())
-                                  ->assert_is_op("multihead_matmul_roformer");
+  auto* multihead_matmul_roformer_op =
+      pattern->NewNode(multihead_matmul_roformer_op_repr())
+          ->assert_is_op("multihead_matmul_roformer");
   auto* multihead_matmul_roformer_out =
       pattern->NewNode(multihead_matmul_roformer_out_repr())
           ->assert_is_op_output("multihead_matmul_roformer", "Out");
@@ -376,21 +377,27 @@ void RemovePaddingRecoverPaddingPass::ApplyImpl(ir::Graph* graph) const {
   multihead_matmul_roformer();
 
   auto handler1_2 = [&](const GraphPatternDetector::subgraph_t& subgraph,
-                      Graph* graph) {
+                        Graph* graph) {
     VLOG(3) << "remove_padding_recover_padding_pass for transformer: "
                "multihead_matmul_roformer";
 
-    GET_IR_NODE_FROM_SUBGRAPH(
-        multihead_matmul_roformer_input, multihead_matmul_roformer_input, multihead_matmul_roformer);
-    GET_IR_NODE_FROM_SUBGRAPH(
-        multihead_matmul_roformer_op, multihead_matmul_roformer_op, multihead_matmul_roformer);
-    GET_IR_NODE_FROM_SUBGRAPH(
-        multihead_matmul_roformer_out, multihead_matmul_roformer_out, multihead_matmul_roformer);
-    //trick
-    multihead_matmul_input_shape = multihead_matmul_roformer_input->Var()->GetShape();
+    GET_IR_NODE_FROM_SUBGRAPH(multihead_matmul_roformer_input,
+                              multihead_matmul_roformer_input,
+                              multihead_matmul_roformer);
+    GET_IR_NODE_FROM_SUBGRAPH(multihead_matmul_roformer_op,
+                              multihead_matmul_roformer_op,
+                              multihead_matmul_roformer);
+    GET_IR_NODE_FROM_SUBGRAPH(multihead_matmul_roformer_out,
+                              multihead_matmul_roformer_out,
+                              multihead_matmul_roformer);
+    // trick
+    multihead_matmul_input_shape =
+        multihead_matmul_roformer_input->Var()->GetShape();
 
-    insert_remove_padding_op(multihead_matmul_roformer_input, multihead_matmul_roformer_op);
-    insert_recover_padding_op(multihead_matmul_roformer_op, multihead_matmul_roformer_out);
+    insert_remove_padding_op(multihead_matmul_roformer_input,
+                             multihead_matmul_roformer_op);
+    insert_recover_padding_op(multihead_matmul_roformer_op,
+                              multihead_matmul_roformer_out);
 
     found_subgraph_count++;
   };

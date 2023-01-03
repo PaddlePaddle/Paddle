@@ -23,20 +23,20 @@ namespace plugin {
 
 template <typename T>
 __global__ void RoformerKernel(const T *inputact,
-                             const T *input1, //cos 1,1,max_seq, headsize
-                             const T *input2, //sin
-                             const int *input3, //cu_seqlen
-                             T *output,
-                             int b, //batchsize
-                             int n, //head num
-                             int h, //hidden dim
-                             const int nElement) {
+                               const T *input1,    // cos 1,1,max_seq, headsize
+                               const T *input2,    // sin
+                               const int *input3,  // cu_seqlen
+                               T *output,
+                               int b,  // batchsize
+                               int n,  // head num
+                               int h,  // hidden dim
+                               const int nElement) {
   const int lastdim = h;
   const int half_lastdim = lastdim / 2;
-  const int tnh = 3*n*h;
+  const int tnh = 3 * n * h;
   const int _index = blockIdx.x * tnh + threadIdx.x;
   int right_index = blockIdx.x * tnh + tnh;
-  //intput3[0,b];
+  // intput3[0,b];
   int base = 0;
   for (int i = 1; i <= b; i++) {
     if (blockIdx.x < input3[i]) {
@@ -47,7 +47,7 @@ __global__ void RoformerKernel(const T *inputact,
   const int seq_index = blockIdx.x - base;
   for (int index = _index; index < right_index; index += blockDim.x) {
     if (index >= nElement) return;
-    float qkv_index = (index /  h) % 3;
+    float qkv_index = (index / h) % 3;
     if (qkv_index >= 2.0) {
       output[index] = inputact[index];
       continue;
@@ -191,7 +191,7 @@ int32_t RoformerPlugin::enqueue(const nvinfer1::PluginTensorDesc *inputDesc,
         reinterpret_cast<const float *>(inputs[2]),
         reinterpret_cast<const int *>(inputs[3]),
         reinterpret_cast<float *>(outputs[0]),
-	b,
+        b,
         head_num_,
         head_size_,
         nElement);
@@ -202,7 +202,7 @@ int32_t RoformerPlugin::enqueue(const nvinfer1::PluginTensorDesc *inputDesc,
         reinterpret_cast<const half *>(inputs[2]),
         reinterpret_cast<const int *>(inputs[3]),
         reinterpret_cast<half *>(outputs[0]),
-	b,
+        b,
         head_num_,
         head_size_,
         nElement);

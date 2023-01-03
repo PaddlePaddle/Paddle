@@ -88,9 +88,9 @@ bool MultiheadMatmulRoformerPlugin::supportsFormatCombination(
   if (pos == 0) {
     if (with_fp16_) {
 #ifdef TRT_PLUGIN_FP16_AVALIABLE
-      //return (in.type == nvinfer1::DataType::kFLOAT ||
-      //        in.type == nvinfer1::DataType::kHALF) &&
-      //       (in.format == nvinfer1::TensorFormat::kLINEAR);
+      // return (in.type == nvinfer1::DataType::kFLOAT ||
+      //         in.type == nvinfer1::DataType::kHALF) &&
+      //        (in.format == nvinfer1::TensorFormat::kLINEAR);
       return (in.type == nvinfer1::DataType::kFLOAT) &&
              (in.format == nvinfer1::TensorFormat::kLINEAR);
 #else
@@ -144,29 +144,28 @@ __global__ void apply_scale(T *data, T scale, int n) {
 
 template <typename T>
 __global__ void RotrayKernel(const T *inputact,
-                             const T *input1, //cos 1,1,max_seq, headsize
-                             const T *intput2, //sin
+                             const T *input1,   // cos 1,1,max_seq, headsize
+                             const T *intput2,  // sin
                              T *output,
-                             int s, //seqlen len
-                             int h, //hidden dim
+                             int s,  // seqlen len
+                             int h,  // hidden dim
                              const int nElement) {
   const int lastdim = h;
   const int half_lastdim = lastdim / 2;
   const int index = blockIdx.x * blockDim.x + threadIdx.x;
   int step = (size_t)gridDim.x * blockDim.x;
   if (index >= nElement) return;
-  for (int i = index; i < nElement; i += step)
-  {
-          if (i >= nElement) return;
-          int sh_index = i % (s * h);
-          T left = input1[sh_index] * inputact[i];
-          int col = i % lastdim;
-          const int new_index = i - col + (col + half_lastdim) % lastdim;
-          if (col >= half_lastdim) {
-              output[i] = left + intput2[sh_index] * inputact[new_index];
-          } else {
-              output[i] = left - intput2[sh_index] * inputact[new_index];
-          }
+  for (int i = index; i < nElement; i += step) {
+    if (i >= nElement) return;
+    int sh_index = i % (s * h);
+    T left = input1[sh_index] * inputact[i];
+    int col = i % lastdim;
+    const int new_index = i - col + (col + half_lastdim) % lastdim;
+    if (col >= half_lastdim) {
+      output[i] = left + intput2[sh_index] * inputact[new_index];
+    } else {
+      output[i] = left - intput2[sh_index] * inputact[new_index];
+    }
   }
 }
 
@@ -245,11 +244,17 @@ int MultiheadMatmulRoformerPlugin::enqueue(
     }
     const float *input3_data = static_cast<const float *>(qk_bias);
     // BxSx3xNxH => tptr: 3xBxNxSxH.
-    TransposeQKV_v2(
-        batch, seq_len, head_size_, head_number_, input0_data, tptr, tmp_roformer_ptr, stream);
+    TransposeQKV_v2(batch,
+                    seq_len,
+                    head_size_,
+                    head_number_,
+                    input0_data,
+                    tptr,
+                    tmp_roformer_ptr,
+                    stream);
     int n_q = seq_len * head_number_ * head_size_ * batch;
     constexpr int threads = 128;
-    //int blocks = (n_q + threads - 1) / threads;
+    // int blocks = (n_q + threads - 1) / threads;
     constexpr int blocks = 1024;
     const float *input_cos_data = static_cast<const float *>(inputs[1]);
     const float *input_sin_data = static_cast<const float *>(inputs[2]);
@@ -257,9 +262,9 @@ int MultiheadMatmulRoformerPlugin::enqueue(
                                                  input_cos_data,
                                                  input_sin_data,
                                                  tptr,
-						 seq_len,
-						 head_size_,
-                                                 2*n_q);  // q + k
+                                                 seq_len,
+                                                 head_size_,
+                                                 2 * n_q);  // q + k
 
     auto *device_ctx = static_cast<phi::GPUContext *>(
         platform::DeviceContextPool::Instance().Get(
@@ -319,8 +324,14 @@ int MultiheadMatmulRoformerPlugin::enqueue(
     }
     const half *input3_data = static_cast<const half *>(qk_bias);
     // BxSx3xNxH => tptr: 3xBxNxSxH.
-    TransposeQKV_v2(
-        batch, seq_len, head_size_, head_number_, input0_data, tptr, tmp_roformer_ptr, stream);
+    TransposeQKV_v2(batch,
+                    seq_len,
+                    head_size_,
+                    head_number_,
+                    input0_data,
+                    tptr,
+                    tmp_roformer_ptr,
+                    stream);
 
     auto *device_ctx = static_cast<phi::GPUContext *>(
         platform::DeviceContextPool::Instance().Get(
@@ -328,7 +339,7 @@ int MultiheadMatmulRoformerPlugin::enqueue(
 
     int n_q = seq_len * head_number_ * head_size_ * batch;
     constexpr int threads = 128;
-    //int blocks = (n_q + threads - 1) / threads;
+    // int blocks = (n_q + threads - 1) / threads;
     constexpr int blocks = 1024;
     const half *input_cos_data = static_cast<const half *>(inputs[1]);
     const half *input_sin_data = static_cast<const half *>(inputs[2]);
@@ -336,9 +347,9 @@ int MultiheadMatmulRoformerPlugin::enqueue(
                                                  input_cos_data,
                                                  input_sin_data,
                                                  tptr,
-						 seq_len,
-						 head_size_,
-                                                 2*n_q);  // q + k
+                                                 seq_len,
+                                                 head_size_,
+                                                 2 * n_q);  // q + k
 
     apply_scale<<<blocks, threads, 0, stream>>>(
         tptr, static_cast<half>(scale_), n_q);
