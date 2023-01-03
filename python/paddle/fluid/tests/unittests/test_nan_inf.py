@@ -162,6 +162,7 @@ class TestNanInfCheckResult(unittest.TestCase):
             self.check_nan_inf_level(use_cuda=True, dtype="float16")
 
     def test_check_nan_inf_to_file(self):
+        # set output_dir
         paddle.fluid.core.set_nan_inf_debug_path("nan_inf_log_dir")
         paddle.set_flags(
             {"FLAGS_check_nan_inf": 1, "FLAGS_check_nan_inf_level": 3}
