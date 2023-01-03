@@ -119,8 +119,9 @@ class TestBert(unittest.TestCase):
                     if to_static:
                         paddle.jit.save(bert, self.model_save_prefix)
                     else:
-                        fluid.dygraph.save_dygraph(
-                            bert.state_dict(), self.dy_state_dict_save_path
+                        paddle.save(
+                            bert.state_dict(),
+                            self.dy_state_dict_save_path + '.pdparams',
                         )
                     break
             return loss, ppl
@@ -161,9 +162,7 @@ class TestBert(unittest.TestCase):
             bert = PretrainModelLayer(
                 config=bert_config, weight_sharing=False, use_fp16=False
             )
-            model_dict, _ = fluid.dygraph.load_dygraph(
-                self.dy_state_dict_save_path
-            )
+            model_dict = paddle.load(self.dy_state_dict_save_path + '.pdparams')
 
             bert.set_dict(model_dict)
             bert.eval()

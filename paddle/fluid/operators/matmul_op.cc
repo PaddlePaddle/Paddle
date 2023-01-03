@@ -345,26 +345,6 @@ class MatMulGradKernel : public framework::OpKernel<T> {
   }
 };
 
-framework::DDim GetDimForInput(const framework::InferShapeContext &ctx,
-                               std::string input_name) {
-  auto shape = ctx.Attrs().Get<std::vector<int>>("fused_reshape_" + input_name);
-  auto axis =
-      ctx.Attrs().Get<std::vector<int>>("fused_transpose_" + input_name);
-  auto dim = ctx.GetInputDim(input_name);
-
-  PADDLE_ENFORCE_GT(dim.size(),
-                    0,
-                    platform::errors::InvalidArgument(
-                        "The Input(%s) has not been initialized properly. The "
-                        "shape of Input(%s) = [%s].",
-                        dim));
-
-  if (!shape.empty() && !axis.empty()) {
-    dim = dim.reshape(shape).transpose(axis);
-  }
-  return dim;
-}
-
 template <typename DeviceContext, typename T>
 class MatMulDoubleGradKernel : public framework::OpKernel<T> {
  public:
@@ -579,8 +559,8 @@ class MatMulOp : public framework::OperatorWithKernel {
     OP_INOUT_CHECK(context->HasInput("Y"), "Input", "Y", "matmul");
     OP_INOUT_CHECK(context->HasOutput("Out"), "Output", "Out", "matmul");
 
-    auto dim_x = GetDimForInput(*context, "X");
-    auto dim_y = GetDimForInput(*context, "Y");
+    auto dim_x = context->GetInputDim("X");
+    auto dim_y = context->GetInputDim("Y");
 
 #ifdef PADDLE_WITH_MKLDNN
     // (jczaja): For NHWC execution output shape needs
@@ -681,14 +661,6 @@ class MatMulOp : public framework::OperatorWithKernel {
 
     framework::DDim ddim_out = phi::make_ddim(dim_out);
 
-#ifdef PADDLE_WITH_MKLDNN
-    auto shape = context->Attrs().Get<std::vector<int>>("fused_reshape_Out");
-    auto axis = context->Attrs().Get<std::vector<int>>("fused_transpose_Out");
-
-    if (!shape.empty() && !axis.empty()) {
-      ddim_out = ddim_out.transpose(axis).reshape(shape);
-    }
-#endif
     context->SetOutputDim("Out", ddim_out);
     context->ShareLoD("X", "Out");
   }

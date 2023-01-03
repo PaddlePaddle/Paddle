@@ -72,7 +72,7 @@ void StackKernel(const Context& ctx,
                  int axis,
                  DenseTensor* out) {
   if (axis < 0) axis += (x[0]->dims().size() + 1);
-  int n = static_cast<int>(x.size());
+  int num = static_cast<int>(x.size());
 
   // Split x dim from axis to matrix
   int64_t x_row = 1;
@@ -80,7 +80,7 @@ void StackKernel(const Context& ctx,
     x_row *= x[0]->dims()[i];
   }
   int64_t x_col = x[0]->numel() / x_row;
-  int64_t out_col = x_col * n;
+  int64_t out_col = x_col * num;
 
   if (out->numel() < std::numeric_limits<int32_t>::max()) {
     LaunchStackKernel<Context, T, int32_t>(ctx, x, x_row, x_col, out_col, out);

@@ -107,7 +107,7 @@ def train(use_pure_fp16=True, use_nesterov=False, optimizer=""):
         )
         label = fluid.layers.data(name='label', shape=[1], dtype='int64')
         net = resnet_cifar10(images)
-        logits = fluid.layers.fc(input=net, size=classdim, act="softmax")
+        logits = paddle.static.nn.fc(x=net, size=classdim, activation="softmax")
         cost = paddle.nn.functional.softmax_with_cross_entropy(
             logits, label, return_softmax=False
         )
@@ -300,7 +300,9 @@ class TestAmpWithNonIterableDataLoader(unittest.TestCase):
                         fluid.layers.assign(input=one_var, output=label)
 
                 net = resnet_cifar10(image)
-                logits = fluid.layers.fc(input=net, size=10, act="softmax")
+                logits = paddle.static.nn.fc(
+                    x=net, size=10, activation="softmax"
+                )
 
         block = main_prog.global_block()
         for op in block.ops:

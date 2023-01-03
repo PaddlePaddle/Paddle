@@ -747,8 +747,9 @@ class TestTrain(unittest.TestCase):
                         if to_static:
                             paddle.jit.save(bmn, self.model_save_prefix)
                         else:
-                            fluid.dygraph.save_dygraph(
-                                bmn.state_dict(), self.dy_param_path
+                            paddle.save(
+                                bmn.state_dict(),
+                                self.dy_param_path + '.pdparams',
                             )
                         break
             return np.array(loss_data)
@@ -825,7 +826,7 @@ class TestTrain(unittest.TestCase):
         with fluid.dygraph.guard(self.place):
             bmn = BMN(self.args)
             # load dygraph trained parameters
-            model_dict, _ = fluid.load_dygraph(self.dy_param_path + ".pdparams")
+            model_dict = paddle.load(self.dy_param_path + ".pdparams")
             bmn.set_dict(model_dict)
             bmn.eval()
 
