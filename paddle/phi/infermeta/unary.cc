@@ -1744,7 +1744,7 @@ void KthvalueInferMeta(const MetaTensor& x,
                        MetaConfig config) {
   auto input_dims = x.dims();
   const int& dim_size = input_dims.size();
-  PADDLE_ENFORCE_LT(axis,
+  PADDLE_ENFORCE_LE(axis,
                     dim_size,
                     phi::errors::InvalidArgument(
                         "the axis must be [-%d, %d), but received %d .",
@@ -2032,7 +2032,7 @@ void ModeInferMeta(const MetaTensor& x,
                    MetaTensor* indices) {
   auto input_dims = x.dims();
   const int& dim_size = input_dims.size();
-  PADDLE_ENFORCE_LT(axis,
+  PADDLE_ENFORCE_LE(axis,
                     dim_size,
                     phi::errors::InvalidArgument(
                         "the axis must be [-%d, %d), but received %d .",
