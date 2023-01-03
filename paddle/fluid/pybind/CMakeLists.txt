@@ -138,15 +138,7 @@ set(PYBIND_SRCS
     cuda_streams_py.cc
     xpu_streams_py.cc
     jit.cc
-    auto_parallel_py.cc
-    op_function1.cc
-    op_function2.cc
-    op_function3.cc
-    op_function4.cc
-    op_function5.cc
-    op_function6.cc
-    op_function7.cc
-    op_function8.cc)
+    auto_parallel_py.cc)
 
 if(WITH_CUSTOM_DEVICE)
   set(PYBIND_DEPS ${PYBIND_DEPS} phi_capi)
@@ -314,22 +306,6 @@ if(WITH_PYTHON)
   endif()
 
   set(op_function_output_path ${CMAKE_SOURCE_DIR}/paddle/fluid/pybind/)
-  set(impl_file1 ${CMAKE_SOURCE_DIR}/paddle/fluid/pybind/op_function1.cc)
-  set(tmp_impl_file1 ${impl_file1}.tmp)
-  set(impl_file2 ${CMAKE_SOURCE_DIR}/paddle/fluid/pybind/op_function2.cc)
-  set(tmp_impl_file2 ${impl_file2}.tmp)
-  set(impl_file3 ${CMAKE_SOURCE_DIR}/paddle/fluid/pybind/op_function3.cc)
-  set(tmp_impl_file3 ${impl_file3}.tmp)
-  set(impl_file4 ${CMAKE_SOURCE_DIR}/paddle/fluid/pybind/op_function4.cc)
-  set(tmp_impl_file4 ${impl_file4}.tmp)
-  set(impl_file5 ${CMAKE_SOURCE_DIR}/paddle/fluid/pybind/op_function5.cc)
-  set(tmp_impl_file5 ${impl_file5}.tmp)
-  set(impl_file6 ${CMAKE_SOURCE_DIR}/paddle/fluid/pybind/op_function6.cc)
-  set(tmp_impl_file6 ${impl_file6}.tmp)
-  set(impl_file7 ${CMAKE_SOURCE_DIR}/paddle/fluid/pybind/op_function7.cc)
-  set(tmp_impl_file7 ${impl_file7}.tmp)
-  set(impl_file8 ${CMAKE_SOURCE_DIR}/paddle/fluid/pybind/op_function8.cc)
-  set(tmp_impl_file8 ${impl_file8}.tmp)
   set(CODE_GEN_SPLIT_FILE_COUNT "8")
   set(eager_impl_file
       ${CMAKE_SOURCE_DIR}/paddle/fluid/pybind/eager_legacy_op_function.cc)
