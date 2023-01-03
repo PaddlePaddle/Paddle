@@ -539,7 +539,7 @@ class Engine:
 
             paddle.enable_static()
         else:
-            # build program in static mode
+            # build program in static graph mode
             serial_main_prog = self._serial_main_progs.get(mode, None)
             if serial_main_prog is not None:
                 return
@@ -1617,9 +1617,7 @@ class Engine:
             fetch_vars = self._fetch_vars["predict"]['outputs']
             dist_main_prog = self._dist_main_progs["predict"][self._cur_rank]
             if self._strategy.qat.enable and self._strategy.qat.onnx_format:
-                from paddle.fluid.contrib.slim.quantization import (
-                    QuantWeightPass,
-                )
+                from paddle.static.quantization import QuantWeightPass
 
                 self._logger.info("export quantized model.")
                 self._logger.info(

@@ -294,14 +294,61 @@ class TestFLOPSAPI(unittest.TestCase):
             == 3 * 12 * 12 * 12 * 2 * 8
         )
         self.assertTrue(
-            flops('relu', {'X': [[12, 12, 12]]}, {}) == 12 * 12 * 12
-        )
-        self.assertTrue(
             flops('softmax', {'X': [[12, 12, 12]]}, {}) == 3 * 12 * 12 * 12
         )
         self.assertTrue(
             flops('c_embedding', {'Ids': [[12, 12]], 'W': [[12, 12, 3]]}, {})
             == 0
+        )
+        self.assertTrue(
+            flops(
+                'elu',
+                {
+                    'X': [[12, 12]],
+                },
+                {},
+            )
+            == 144
+        )
+        self.assertTrue(
+            flops(
+                'leaky_relu',
+                {
+                    'X': [[12, 12]],
+                },
+                {},
+            )
+            == 144
+        )
+        self.assertTrue(
+            flops(
+                'prelu',
+                {
+                    'X': [[12, 12]],
+                },
+                {},
+            )
+            == 144
+        )
+        self.assertTrue(
+            flops(
+                'relu6',
+                {
+                    'X': [[12, 12]],
+                },
+                {},
+            )
+            == 144
+        )
+        self.assertTrue(
+            flops(
+                'silu',
+                {
+                    'X': [[12, 12]],
+                },
+                {},
+            )
+            == 144
         )
 
 

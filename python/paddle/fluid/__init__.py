@@ -99,7 +99,6 @@ from . import compiler
 from .compiler import *
 from paddle.fluid.layers.math_op_patch import monkey_patch_variable
 from . import install_check
-from .dygraph.nn import *
 from .dygraph.layers import *
 from .dygraph.base import enable_dygraph, disable_dygraph
 from .io import save, load, load_program_state, set_program_state

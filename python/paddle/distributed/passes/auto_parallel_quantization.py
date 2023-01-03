@@ -18,14 +18,14 @@ import numpy as np
 
 import paddle
 from paddle.fluid import core, framework
-from paddle.fluid.contrib.slim.quantization import (
+from paddle.fluid.dygraph.parallel import ParallelEnv
+from paddle.static.quantization import (
     AddQuantDequantForInferencePass,
     AddQuantDequantPassV2,
     OutScaleForTrainingPass,
     QuantizationTransformPassV2,
     utils,
 )
-from paddle.fluid.dygraph.parallel import ParallelEnv
 
 from ..auto_parallel.converter import Converter
 from ..auto_parallel.dist_attribute import (
