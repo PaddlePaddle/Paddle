@@ -1864,12 +1864,12 @@ function precise_card_test_single {
             mkdir ${PADDLE_ROOT}/build/ut_map/$case
         fi
         set -x
-        find paddle/fluid -name '*.gcda'|xargs -I {} cp --path {} ut_map/$case
-        find paddle/phi -name '*.gcda'|xargs -I {} cp --path {} ut_map/$case
-        find paddle/utils -name '*.gcda'|xargs -I {} cp --path {} ut_map/$case
-        find paddle/phi -name '*.gcno'|xargs -I {} cp --path {} ut_map/$case
-        find paddle/utils -name '*.gcno'|xargs -I {} cp --path {} ut_map/$case
-        find paddle/fluid -name '*.gcno'|xargs -I {} cp --path {} ut_map/$case
+        find paddle/fluid -name '*.gcda'|xargs -I {} cp --parents {} ut_map/$case
+        find paddle/phi -name '*.gcda'|xargs -I {} cp --parents {} ut_map/$case
+        find paddle/utils -name '*.gcda'|xargs -I {} cp --parents {} ut_map/$case
+        find paddle/phi -name '*.gcno'|xargs -I {} cp --parents {} ut_map/$case
+        find paddle/utils -name '*.gcno'|xargs -I {} cp --parents {} ut_map/$case
+        find paddle/fluid -name '*.gcno'|xargs -I {} cp --parents {} ut_map/$case
         python ${PADDLE_ROOT}/tools/get_single_test_cov.py ${PADDLE_ROOT} $case &
 
         # python
@@ -2013,7 +2013,7 @@ set +x
                 fi
             else
                 single_card_test_num=$(($single_card_test_num+1))
-                if [[ $single_card_test_num -gt 3000 ]];then
+                if [[ $single_card_test_num -gt 1000 ]];then
                     if [[ "$single_card_tests_1" == "" ]]; then
                         single_card_tests_1="^$testcase$"
                     else
@@ -2041,6 +2041,7 @@ set -x
     precise_card_test_single "^simple_precision_test$" 1
     wait;
     precise_card_test_single "$single_card_tests" 1
+    wait;
     precise_card_test_single "$single_card_tests_1" 1
     precise_card_test_single "$multiple_card_tests" 2
     precise_card_test_single "$exclusive_tests"
