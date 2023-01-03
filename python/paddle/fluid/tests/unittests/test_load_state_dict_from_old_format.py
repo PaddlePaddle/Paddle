@@ -42,7 +42,9 @@ def convolutional_neural_network(img):
         pool_stride=2,
         act="relu",
     )
-    prediction = fluid.layers.fc(input=conv_pool_2, size=10, act='softmax')
+    prediction = paddle.static.nn.fc(
+        x=conv_pool_2, size=10, activation='softmax'
+    )
     return prediction
 
 
