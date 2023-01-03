@@ -332,6 +332,9 @@ NODE_CC_FILE_TEMPLATE = """
 #include "paddle/fluid/eager/nan_inf_utils.h"
 #include "paddle/phi/api/include/sparse_api.h"
 #include "paddle/fluid/eager/api/manual/eager_manual/nodes/nodes.h"
+#include "paddle/fluid/prim/api/manual/backward/composite_backward_api.h"
+#include "paddle/fluid/prim/api/all.h"
+#include "paddle/fluid/prim/utils/utils.h"
 DECLARE_bool(check_nan_inf);
 {}
 """
@@ -1048,6 +1051,8 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
             self.ParseBackwardInplaceInfo()
             # Parse no_need_buffer
             self.ParseNoNeedBuffer()
+            # Parse composite
+            self.ParseComposite()
 
         # Parse optional_inputs
         self.ParseDispensable()
@@ -1818,16 +1823,18 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
         is_invoke_forward_api = IsInvokeForwardApi(
             self.grad_api_contents, self.forward_apis_dict
         )
+        is_composite_forward_api = False if self.composite_func_info == [] else True
         if next_node_generator is not None:
             has_higher_order_node = True
             return (
                 has_higher_order_node,
                 is_invoke_forward_api,
+                is_composite_forward_api,
                 next_grad_node_creation_str,
                 next_grad_node_out_list,
                 next_node_generator.backward_forward_inputs_map,
             )
-        elif not is_invoke_forward_api:
+        elif not is_invoke_forward_api and not is_composite_forward_api:
             next_grad_node_creation_str = f"""  if(trace_backward) {{
     PADDLE_THROW(phi::errors::Unavailable(
     \"The Op {self.backward_api_name} doesn't have any grad\"
@@ -1837,6 +1844,7 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
         return (
             has_higher_order_node,
             is_invoke_forward_api,
+            is_composite_forward_api,
             next_grad_node_creation_str,
             next_grad_node_out_list,
             None,
@@ -1934,6 +1942,7 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
         self,
         has_higher_order_node,
         is_invoke_forward_api,
+        is_composite_grad_api,
         next_grad_node_creation_str,
         next_grad_node_out_list,
         backward_forward_inputs_map_next,
@@ -1941,6 +1950,7 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
         namespace = self.namespace
         forward_api_name = self.forward_api_name
         backward_api_name = self.backward_api_name
+        composite_backward_api_name = self.composite_func_info[0] if is_composite_grad_api else None
         backward_forward_inputs_map = self.backward_forward_inputs_map
         backward_grad_inputs_map = self.backward_grad_inputs_map
         backward_grad_outputs_map = self.backward_grad_outputs_map
@@ -2126,6 +2136,7 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
         # Grad Function Call String
         slot_num_bwd_outputs = len(self.forward_inputs_position_map.keys())
         grad_api_namespace = f"paddle::experimental::{namespace}"
+        composite_grad_api_namespace = f"paddle::prim::{namespace}"
         grad_function_prepare_str = f"""
   const auto& out_metas = OutputMeta();
   paddle::small_vector<std::vector<paddle::experimental::Tensor>, egr::kSlotSmallVectorSize> returns({slot_num_bwd_outputs});
@@ -2196,6 +2207,7 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
   }}"""
 
         grad_api_args_str = ", ".join(grad_api_args)
+        composite_grad_api_args_str = ", ".join(grad_api_args)
 
         if is_invoke_forward_api:
             autograd_api_out = "auto"
@@ -2218,6 +2230,14 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
   {out_assign_str}}} else {{
   {indent}{autograd_api_out} api_output = paddle::experimental::{self.namespace}{self.grad_api_contents['invoke']};
   {out_assign_str}{indent}}}
+  """
+        elif is_composite_grad_api:
+            grad_function_call_str = f"""
+  if (paddle::prim::PrimCommonUtils::IsPrimEnabled) {{
+  {indent}{composite_grad_api_namespace}{composite_backward_api_name}({composite_grad_api_args_str});
+  }}else{{
+  {indent}{grad_api_namespace}{backward_api_name}({grad_api_args_str});
+  }}
   """
         else:
             grad_function_call_str = f"""
@@ -2354,6 +2374,7 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
         (
             has_higher_order_node,
             is_invoke_forward_api,
+            is_composite_grad_api,
             next_grad_node_creation_str,
             next_grad_node_out_list,
             backward_forward_inputs_map,
@@ -2364,6 +2385,7 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
         self.GenerateNodeDefinition(
             has_higher_order_node,
             is_invoke_forward_api,
+            is_composite_grad_api,
             next_grad_node_creation_str,
             next_grad_node_out_list,
             backward_forward_inputs_map,

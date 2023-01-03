@@ -438,6 +438,7 @@ class FunctionGeneratorBase:
         # Special Op Attributes
         self.optional_inputs = []  # [name, ...]
         self.no_need_buffers = []  # [name, ...]
+        self.composite_func_info = [] # [func_name, input_name, ...]
         self.intermediate_outputs = []  # [name, ...]
         self.forward_inplace_map = {}  # {name : name, ...}
 
@@ -458,6 +459,15 @@ class FunctionGeneratorBase:
                 name = name.strip()
                 name = RemoveSpecialSymbolsInName(name)
                 self.no_need_buffers.append(name.strip())
+
+    def ParseComposite(self):
+        grad_api_contents = self.grad_api_contents
+        
+        if 'compoiste' in grad_api_contents.keys():
+            composite_str = grad_api_contents['compoiste']
+            compiste_list = re.split(", |( |)", composite_str) 
+            for name in composite_str:
+                self.comosite_func_info.append(name.strip())
 
     def ParseDispensable(self):
         forward_api_contents = self.forward_api_contents
