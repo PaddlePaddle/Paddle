@@ -454,6 +454,15 @@ class TestSundryAPI(unittest.TestCase):
         paddle.disable_static()
         self.x = paddle.rand([])
 
+    def test_flip(self):
+        x = paddle.rand([])
+        x.stop_gradient = False
+        out = paddle.flip(x, axis=[])
+        out.backward()
+        self.assertEqual(x.shape, [])
+        self.assertEqual(out.shape, [])
+        self.assertEqual(out.grad.shape, [])
+
     def test_linear(self):
         x = paddle.randn([3, 2])
         w = paddle.full(shape=[2, 4], fill_value=0.5)
@@ -752,6 +761,18 @@ class TestSundryAPIStatic(unittest.TestCase):
     def setUp(self):
         paddle.enable_static()
         self.exe = paddle.static.Executor()
+
+    @prog_scope()
+    def test_flip(self):
+        x = paddle.rand([])
+        x.stop_gradient = False
+        out = paddle.flip(x, axis=[])
+        paddle.static.append_backward(out)
+
+        program = paddle.static.default_main_program()
+        res1, res2 = self.exe.run(program, fetch_list=[x, out])
+        self.assertEqual(res1.shape, ())
+        self.assertEqual(res2.shape, ())
 
     @prog_scope()
     def test_pow_factor(self):
