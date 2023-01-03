@@ -1232,14 +1232,14 @@ All parameter, weight, gradient are variables in Paddle.
             // operators, such as LeaklyReluDoubleGrad op.
             std::string type =
                 op_info.proto_ ? op_info.proto_->type() : "unknown";
-            platform::errors::NotFound(
+            PADDLE_THROW(platform::errors::NotFound(
                 "Neither operator %s's GradOpMaker nor GradCompOpMaker has "
                 "been registered.\nPlease check whether (%s) operator has "
                 "gradient operator.\nIf not, please set stop_gradient to be "
                 "True for its input and output variables using "
                 "var.stop_gradient=True.",
                 type.c_str(),
-                type.c_str());
+                type.c_str()));
           }
 
           // In PrimEnabled mode, the priority of GradCompOpMaker is grater than
