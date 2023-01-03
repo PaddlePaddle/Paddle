@@ -110,7 +110,6 @@ endif()
 
 set(PYBIND_SRCS
     pybind.cc
-    imperative.cc
     inference_api.cc
     ir.cc
     bind_fleet_executor.cc
