@@ -152,21 +152,6 @@ class FusedAttentionOpKernel : public framework::OpKernel<T> {
     const auto input_x_dims = input_x->dims();
     const auto qkv_w_dims = qkv_weight->dims();
 
-    int batch_size = input_x_dims[0];
-    int max_seq_len = input_x_dims[1];
-    int dim_embed = input_x_dims[2];
-
-    int num_head;
-    int dim_head;
-    // get num_head and dim_head in two different ways
-    if (!transpose_qkv_wb) {
-      num_head = qkv_w_dims[1];
-      dim_head = qkv_w_dims[2];
-    } else {
-      num_head = num_heads;
-      dim_head = dim_embed / num_head;
-    }
-
     auto *x_data = input_x->data<T>();
     auto *qkv_weight_data = qkv_weight->data<T>();
     auto *qkv_bias_data = (qkv_bias == nullptr) ? nullptr : qkv_bias->data<T>();
@@ -216,6 +201,21 @@ class FusedAttentionOpKernel : public framework::OpKernel<T> {
         (out_linear_bias == nullptr) ? nullptr : out_linear_bias->data<T>();
     auto *out_linear_out_data = dev_ctx.template Alloc<T>(
         out_linear_out, out_linear_out->numel() * sizeof(T));
+
+    int batch_size = input_x_dims[0];
+    int max_seq_len = input_x_dims[1];
+    int dim_embed = input_x_dims[2];
+
+    int num_head;
+    int dim_head;
+    // get num_head and dim_head in two different ways
+    if (!transpose_qkv_wb) {
+      num_head = qkv_w_dims[1];
+      dim_head = qkv_w_dims[2];
+    } else {
+      num_head = num_heads;
+      dim_head = dim_embed / num_head;
+    }
 
     // get data ptr for bias+dropout+residual+layernorm
     auto *dropout_mask_out_data =
@@ -723,7 +723,7 @@ class FusedAttentionGradKernel : public framework::OpKernel<T> {
     }
 
     if (transpose_qkv_wb) {
-      if (compute_bias) {
+      if (compute_qkv_bias) {
         d_qkv_bias_out->Resize({batch_size, max_seq_len, 3 * hidden_size});
       } else {
         d_qkv_out->Resize({batch_size, max_seq_len, 3 * hidden_size});

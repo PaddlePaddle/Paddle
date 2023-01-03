@@ -111,8 +111,9 @@ def compute_reference(
     else:
         assert len(qkv_weight.shape) == 2
         assert qkv_weight.shape[0] * 3 == qkv_weight.shape[1]
-        assert len(qkv_bias.shape) == 1
-        assert qkv_bias.shape[0] == qkv_weight.shape[1]
+        if qkv_bias is not None:
+            assert len(qkv_bias.shape) == 1
+            assert qkv_bias.shape[0] == qkv_weight.shape[1]
 
     if pre_layer_norm:
         ln_out = ln_out.reshape(batch_size * seq_len, embed_dim)
@@ -604,6 +605,14 @@ class TestFusedAttentionAPIBiasIsNone(TestFusedAttentionAPI):
 class TestFusedAttentionAPITransposeWAndB(TestFusedAttentionAPI):
     def setTransposeWAndB(self):
         self.transpose_qkv_wb = True
+
+
+class TestFusedAttentionAPITransposeWAndBWithoutBias(TestFusedAttentionAPI):
+    def setTransposeWAndB(self):
+        self.transpose_qkv_wb = True
+
+    def setBiasAttr(self):
+        self.bias_attr = False
 
 
 if __name__ == "__main__":

@@ -356,10 +356,17 @@ class TestFusedAttentionOpBiasIsNone(TestFusedAttentionOp):
         self.bias_attr = False
 
 
-class TestFusedAttentionOpTransposeQKVWB(TestFusedAttentionOp):
+class TestFusedAttentionAPITransposeWAndB(TestFusedAttentionOp):
     def config(self):
         super().config()
         self.transpose_qkv_wb = True
+
+
+class TestFusedAttentionAPITransposeWAndBWithoutBias(TestFusedAttentionOp):
+    def config(self):
+        super().config()
+        self.transpose_qkv_wb = True
+        self.bias_attr = False
 
 
 class TestFusedAttentionOpPreLn(TestFusedAttentionOp):
