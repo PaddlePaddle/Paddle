@@ -287,8 +287,9 @@ class TestFusedAttentionOp(OpTest):
             k_proj_weight = k_proj_weight.numpy()
             v_proj_weight = v_proj_weight.numpy()
 
+        concatenate_axis = 1 if self.transpose_qkv_wb else 0
         qkv_weight = np.concatenate(
-            (q_proj_weight, k_proj_weight, v_proj_weight)
+            (q_proj_weight, k_proj_weight, v_proj_weight), axis=concatenate_axis
         )
         if not self.transpose_qkv_wb:
             qkv_weight = qkv_weight.reshape(
