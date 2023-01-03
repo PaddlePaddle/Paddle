@@ -26,6 +26,7 @@ from .creation import diag  # noqa: F401
 from .creation import diagflat  # noqa: F401
 from .creation import eye  # noqa: F401
 from .creation import linspace  # noqa: F401
+from .creation import fill_constant  # noqa: F401
 from .creation import ones  # noqa: F401
 from .creation import ones_like  # noqa: F401
 from .creation import zeros  # noqa: F401
