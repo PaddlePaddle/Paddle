@@ -138,9 +138,6 @@ class ProcessGroup:
                 genv.trainer_endpoints[i] for i in self.ranks
             ]
             strategy.current_endpoint = genv.current_endpoint
-            import time
-
-            time.sleep(5)
             strategy.nrings = 1
             if core.is_compiled_with_cuda():
                 place = core.CUDAPlace(genv.device_id)

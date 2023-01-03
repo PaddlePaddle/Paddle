@@ -237,21 +237,14 @@ class AutoPallelPassTestBase(DistPassTestBase):
             )
         optimizer = fleet.distributed_optimizer(optimizer)
         startup_program = paddle.static.default_startup_program()
-        (
-            optimize_ops,
-            params_grads,
-            dist_startup_prog,
-            dist_main_prog,
-        ) = optimizer.minimize(loss, startup_program)
+        _, _, dist_startup_prog, dist_main_prog = optimizer.minimize(
+            loss, startup_program
+        )
 
-        return_list = [
+        return (
             dist_main_prog,
             dist_startup_prog,
             data_holder,
             [loss],
             data_loader,
-        ]
-        if kwargs.get("need_params_grads", False):
-            return_list.append(params_grads)
-
-        return return_list
+        )
