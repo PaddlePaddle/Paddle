@@ -767,9 +767,11 @@ def get_package_data_and_package_dir():
     libs_path = paddle_binary_dir + '/python/paddle/libs'
     package_data['paddle.libs'] = []
     package_data['paddle.libs'] = [
-        ('libwarpctc' if os.name != 'nt' else 'warpctc') + ext_suffix
+        ('libwarpctc' if os.name != 'nt' else 'warpctc') + ext_suffix,
+        ('libwarprnnt' if os.name != 'nt' else 'warprnnt') + ext_suffix,
     ]
     shutil.copy(env_dict.get("WARPCTC_LIBRARIES"), libs_path)
+    shutil.copy(env_dict.get("WARPRNNT_LIBRARIES"), libs_path)
     package_data['paddle.libs'] += [
         os.path.basename(env_dict.get("LAPACK_LIB")),
         os.path.basename(env_dict.get("BLAS_LIB")),
@@ -857,6 +859,14 @@ def get_package_data_and_package_dir():
         )
         package_data['paddle.libs'] += ['libcinnapi.so']
         package_data['paddle.libs'] += ['cinn_cuda_runtime_source.cuh']
+
+        cinn_fp16_file = (
+            env_dict.get("CINN_INCLUDE_DIR") + '/cinn/runtime/cuda/float16.h'
+        )
+        if os.path.exists(cinn_fp16_file):
+            shutil.copy(cinn_fp16_file, libs_path)
+            package_data['paddle.libs'] += ['float16.h']
+
         if env_dict.get("CMAKE_BUILD_TYPE") == 'Release' and os.name != 'nt':
             command = (
                 "patchelf --set-rpath '$ORIGIN/' %s/" % libs_path
@@ -941,11 +951,11 @@ def get_package_data_and_package_dir():
                         "command: %s" % command,
                     )
         shutil.copy(env_dict.get("XPU_API_LIB"), libs_path)
-        shutil.copy(env_dict.get("XPU_RT_LIB"), libs_path)
-        package_data['paddle.libs'] += [
-            env_dict.get("XPU_API_LIB_NAME"),
-            env_dict.get("XPU_RT_LIB_NAME"),
-        ]
+        package_data['paddle.libs'] += [env_dict.get("XPU_API_LIB_NAME")]
+        xpu_rt_lib_list = glob.glob(env_dict.get("XPU_RT_LIB") + '*')
+        for xpu_rt_lib_file in xpu_rt_lib_list:
+            shutil.copy(xpu_rt_lib_file, libs_path)
+            package_data['paddle.libs'] += [os.path.basename(xpu_rt_lib_file)]
 
     if env_dict.get("WITH_XPU_BKCL") == 'ON':
         shutil.copy(env_dict.get("XPU_BKCL_LIB"), libs_path)
@@ -957,7 +967,7 @@ def get_package_data_and_package_dir():
     package_dir['paddle.libs'] = libs_path
 
     # change rpath of ${FLUID_CORE_NAME}.ext, add $ORIGIN/../libs/ to it.
-    # The reason is that libwarpctc.ext, libiomp5.ext etc are in paddle.libs, and
+    # The reason is that libwarpctc.ext, libwarprnnt.ext, libiomp5.ext etc are in paddle.libs, and
     # ${FLUID_CORE_NAME}.ext is in paddle.fluid, thus paddle/fluid/../libs will pointer to above libraries.
     # This operation will fix https://github.com/PaddlePaddle/Paddle/issues/3213
     if env_dict.get("CMAKE_BUILD_TYPE") == 'Release':
@@ -1199,10 +1209,6 @@ def get_setup_parameters():
         'paddle.fluid.layers',
         'paddle.fluid.dataloader',
         'paddle.fluid.contrib',
-        'paddle.fluid.contrib.quantize',
-        'paddle.fluid.contrib.slim',
-        'paddle.fluid.contrib.slim.quantization',
-        'paddle.fluid.contrib.slim.quantization.imperative',
         'paddle.fluid.contrib.extend_optimizer',
         'paddle.fluid.contrib.mixed_precision',
         'paddle.fluid.contrib.mixed_precision.bf16',
@@ -1247,6 +1253,8 @@ def get_setup_parameters():
         'paddle.incubate.distributed.models',
         'paddle.incubate.distributed.models.moe',
         'paddle.incubate.distributed.models.moe.gate',
+        'paddle.quantization',
+        'paddle.quantization.quanters',
         'paddle.sparse',
         'paddle.sparse.nn',
         'paddle.sparse.nn.layer',
@@ -1264,6 +1272,9 @@ def get_setup_parameters():
         'paddle.static',
         'paddle.static.nn',
         'paddle.static.amp',
+        'paddle.static.quantization',
+        'paddle.quantization',
+        'paddle.quantization.imperative',
         'paddle.tensor',
         'paddle.onnx',
         'paddle.autograd',
@@ -1344,7 +1355,7 @@ def main():
 
     # Log for PYPI, get long_description of setup()
     with open(
-        paddle_source_dir + '/python/paddle/README.rst', "r", encoding='UTF-8'
+        paddle_source_dir + '/python/paddle/README.md', "r", encoding='UTF-8'
     ) as f:
         long_description = f.read()
 

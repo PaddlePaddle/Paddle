@@ -21,9 +21,9 @@ ExternalProject_Add(
   URL ${JEMALLOC_URL}
   INSTALL_DIR ${JEMALLOC_INSTALL}
   DOWNLOAD_DIR "${JEMALLOC_DOWNLOAD_DIR}"
-  BUILD_COMMAND $(MAKE)
+  BUILD_COMMAND make
   BUILD_IN_SOURCE 1
-  INSTALL_COMMAND $(MAKE) install
+  INSTALL_COMMAND make install
   CONFIGURE_COMMAND "${JEMALLOC_DOWNLOAD_DIR}/configure"
                     --prefix=${JEMALLOC_INSTALL} --disable-initial-exec-tls)
 

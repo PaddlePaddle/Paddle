@@ -48,7 +48,7 @@ class DataLoaderKeepOrderTestBase(unittest.TestCase):
             capacity=16, feed_list=[input_data], iterable=self.iterable
         )
 
-        fc = fluid.layers.fc(input_data, size=10)
+        fc = paddle.static.nn.fc(input_data, size=10)
         loss = paddle.mean(fc)
 
         loader.set_batch_generator(

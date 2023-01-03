@@ -60,11 +60,11 @@ def cnn_model(data):
     param_shape = [reduce(lambda a, b: a * b, input_shape[1:], 1)] + [SIZE]
     scale = (2.0 / (param_shape[0] ** 2 * SIZE)) ** 0.5
 
-    predict = fluid.layers.fc(
-        input=conv_pool_2,
+    predict = paddle.static.nn.fc(
+        x=conv_pool_2,
         size=SIZE,
-        act="softmax",
-        param_attr=fluid.param_attr.ParamAttr(
+        activation="softmax",
+        weight_attr=fluid.param_attr.ParamAttr(
             initializer=fluid.initializer.Constant(value=0.01)
         ),
     )

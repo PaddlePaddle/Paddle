@@ -34,9 +34,6 @@ from ..fluid.data_feeder import (
 from ..fluid.layers import utils
 from ..framework import (
     LayerHelper,
-    _in_legacy_dygraph,
-    _non_static_mode,
-    _varbase_creator,
     convert_np_dtype_to_dtype_,
     core,
     in_dygraph_mode,
@@ -158,16 +155,14 @@ def log(x, name=None):
     """
     if in_dygraph_mode():
         return _C_ops.log(x)
-    if _in_legacy_dygraph():
-        return _legacy_C_ops.log(x)
-
-    check_variable_and_dtype(x, 'x', ['float32', 'float64'], "log")
-    inputs = {'X': [x]}
-    helper = LayerHelper('log', **locals())
-    dtype = helper.input_dtype(input_param_name='x')
-    out = helper.create_variable_for_type_inference(dtype)
-    helper.append_op(type="log", inputs={"X": x}, outputs={"Out": out})
-    return out
+    else:
+        check_variable_and_dtype(x, 'x', ['float32', 'float64'], "log")
+        inputs = {'X': [x]}
+        helper = LayerHelper('log', **locals())
+        dtype = helper.input_dtype(input_param_name='x')
+        out = helper.create_variable_for_type_inference(dtype)
+        helper.append_op(type="log", inputs={"X": x}, outputs={"Out": out})
+        return out
 
 
 def scale(x, scale=1.0, bias=0.0, bias_after_scale=True, act=None, name=None):
@@ -220,51 +215,39 @@ def scale(x, scale=1.0, bias=0.0, bias_after_scale=True, act=None, name=None):
     if in_dygraph_mode():
         out = _C_ops.scale(x, scale, float(bias), bias_after_scale)
         return dygraph_utils._append_activation_in_dygraph(out, act)
-    elif _in_legacy_dygraph():
-        _scale = scale.numpy().item(0) if isinstance(scale, Variable) else scale
-        out = _legacy_C_ops.scale(
-            x,
-            'scale',
-            float(_scale),
-            'bias',
-            float(bias),
-            'bias_after_scale',
-            bias_after_scale,
-        )
-        return dygraph_utils._append_activation_in_dygraph(out, act)
-
-    check_variable_and_dtype(
-        x,
-        "x",
-        [
-            'float16',
-            'uint16',
-            'float32',
-            'float64',
-            'int8',
-            'int16',
-            'int32',
-            'int64',
-            'uint8',
-        ],
-        "scale",
-    )
-    inputs = {'X': [x]}
-    attrs = {
-        'bias': float(bias),
-        'bias_after_scale': bias_after_scale,
-    }
-    if isinstance(scale, Variable):
-        inputs['ScaleTensor'] = [scale]
     else:
-        attrs['scale'] = float(scale)
-    helper = LayerHelper('scale', **locals())
-    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+        check_variable_and_dtype(
+            x,
+            "x",
+            [
+                'float16',
+                'uint16',
+                'float32',
+                'float64',
+                'int8',
+                'int16',
+                'int32',
+                'int64',
+                'uint8',
+            ],
+            "scale",
+        )
+        inputs = {'X': [x]}
+        attrs = {
+            'bias': float(bias),
+            'bias_after_scale': bias_after_scale,
+        }
+        if isinstance(scale, Variable):
+            inputs['ScaleTensor'] = [scale]
+        else:
+            attrs['scale'] = float(scale)
+        helper = LayerHelper('scale', **locals())
+        out = helper.create_variable_for_type_inference(dtype=x.dtype)
 
-    helper.append_op(
-        type='scale', inputs=inputs, outputs={'Out': out}, attrs=attrs
-    )
-    return helper.append_activation(out)
+        helper.append_op(
+            type='scale', inputs=inputs, outputs={'Out': out}, attrs=attrs
+        )
+        return helper.append_activation(out)
 
 
 def stanh(x, scale_a=0.67, scale_b=1.7159, name=None):
@@ -295,20 +278,22 @@ def stanh(x, scale_a=0.67, scale_b=1.7159, name=None):
 
     """
 
-    if _non_static_mode():
+    if in_dygraph_mode():
         return _legacy_C_ops.stanh(x, 'scale_a', scale_a, 'scale_b', scale_b)
+    else:
+        check_variable_and_dtype(
+            x, 'x', ['float16', 'float32', 'float64'], 'stanh'
+        )
 
-    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'stanh')
-
-    helper = LayerHelper('stanh', **locals())
-    out = helper.create_variable_for_type_inference(dtype=x.dtype)
-    helper.append_op(
-        type='stanh',
-        inputs={'X': x},
-        outputs={'Out': out},
-        attrs={'scale_a': scale_a, 'scale_b': scale_b},
-    )
-    return out
+        helper = LayerHelper('stanh', **locals())
+        out = helper.create_variable_for_type_inference(dtype=x.dtype)
+        helper.append_op(
+            type='stanh',
+            inputs={'X': x},
+            outputs={'Out': out},
+            attrs={'scale_a': scale_a, 'scale_b': scale_b},
+        )
+        return out
 
 
 def multiplex(inputs, index, name=None):
@@ -363,32 +348,32 @@ def multiplex(inputs, index, name=None):
     """
     if in_dygraph_mode():
         return _C_ops.multiplex(inputs, index)
-    elif _in_legacy_dygraph():
-        return _legacy_C_ops.multiplex(index, inputs)
+    else:
+        helper = LayerHelper('multiplex', **locals())
 
-    helper = LayerHelper('multiplex', **locals())
-
-    check_type(inputs, 'inputs', (list), 'multiplex')
-    if len(inputs) < 2:
-        raise ValueError(
-            "inputs should be a list object with at least 2 elements."
-        )
-    for id, x in enumerate(inputs):
+        check_type(inputs, 'inputs', (list), 'multiplex')
+        if len(inputs) < 2:
+            raise ValueError(
+                "inputs should be a list object with at least 2 elements."
+            )
+        for id, x in enumerate(inputs):
+            check_variable_and_dtype(
+                x,
+                'input[' + str(id) + ']',
+                ['float32', 'float64', 'int32', 'int64'],
+                'multiplex',
+            )
         check_variable_and_dtype(
-            x,
-            'input[' + str(id) + ']',
-            ['float32', 'float64', 'int32', 'int64'],
-            'multiplex',
+            index, "index", ['int32', 'int64'], 'multiplex'
         )
-    check_variable_and_dtype(index, "index", ['int32', 'int64'], 'multiplex')
 
-    out = helper.create_variable_for_type_inference(inputs[0].dtype)
-    helper.append_op(
-        type='multiplex',
-        inputs={'X': inputs, 'Ids': index},
-        outputs={'Out': [out]},
-    )
-    return out
+        out = helper.create_variable_for_type_inference(inputs[0].dtype)
+        helper.append_op(
+            type='multiplex',
+            inputs={'X': inputs, 'Ids': index},
+            outputs={'Out': [out]},
+        )
+        return out
 
 
 @inplace_apis_in_dygraph_only
@@ -399,17 +384,6 @@ def scale_(x, scale=1.0, bias=0.0, bias_after_scale=True, act=None, name=None):
     """
     if in_dygraph_mode():
         return _C_ops.scale_(x, scale, float(bias), bias_after_scale)
-    if _in_legacy_dygraph():
-        _scale = scale.numpy().item(0) if isinstance(scale, Variable) else scale
-        return _legacy_C_ops.scale_(
-            x,
-            'scale',
-            float(_scale),
-            'bias',
-            float(bias),
-            'bias_after_scale',
-            bias_after_scale,
-        )
 
 
 def pow(x, y, name=None):
@@ -469,36 +443,26 @@ def pow(x, y, name=None):
             raise TypeError(
                 'y must be scalar or tensor type, but received: %s ' % (y.dtype)
             )
-    if _in_legacy_dygraph():
+    else:
+        # in static graph mode
         if isinstance(y, (int, float)):
-            return _legacy_C_ops.pow(x, 'factor', y)
-        elif isinstance(y, (paddle.Tensor, Variable)):
-            return _elementwise_op_in_dygraph(
-                x, y, axis=-1, act=None, op_name='elementwise_pow'
+            helper = LayerHelper('pow', **locals())
+            inputs = {'X': x}
+            attrs = {'factor': y}
+            out = helper.create_variable_for_type_inference(dtype=x.dtype)
+            helper.append_op(
+                type='pow', inputs=inputs, outputs={'Out': out}, attrs=attrs
             )
+            return out
+        elif isinstance(y, (paddle.Tensor, Variable)):
+            # TODO A potential speed improvement is supporting different types in C++ and removing the cast ops here
+            helper = LayerHelper('elementwise_pow', **locals())
+            out = helper.create_variable_for_type_inference(dtype=x.dtype)
+            return _elementwise_op(LayerHelper('elementwise_pow', **locals()))
         else:
             raise TypeError(
-                'y must be scalar or tensor type, but received: %s ' % (y.dtype)
+                'y must be scalar or tensor type, but received: %s ' % (type(y))
             )
-    # in static graph mode
-    if isinstance(y, (int, float)):
-        helper = LayerHelper('pow', **locals())
-        inputs = {'X': x}
-        attrs = {'factor': y}
-        out = helper.create_variable_for_type_inference(dtype=x.dtype)
-        helper.append_op(
-            type='pow', inputs=inputs, outputs={'Out': out}, attrs=attrs
-        )
-        return out
-    elif isinstance(y, (paddle.Tensor, Variable)):
-        # TODO A potential speed improvement is supporting different types in C++ and removing the cast ops here
-        helper = LayerHelper('elementwise_pow', **locals())
-        out = helper.create_variable_for_type_inference(dtype=x.dtype)
-        return _elementwise_op(LayerHelper('elementwise_pow', **locals()))
-    else:
-        raise TypeError(
-            'y must be scalar or tensor type, but received: %s ' % (type(y))
-        )
 
 
 OP_NAMEMAPPING = {
@@ -531,11 +495,6 @@ def _elementwise_op_in_dygraph(
                 OP_NAMEMAPPING[op_name] if not is_inplace(op_name) else op_name,
             )
             out = op(x, y)
-
-        if _in_legacy_dygraph():
-            op = getattr(_legacy_C_ops, op_name)
-            out = op(x, y, 'axis', axis, 'use_mkldnn', use_mkldnn)
-
     return dygraph_utils._append_activation_in_dygraph(
         out, act, use_mkldnn=use_mkldnn
     )
@@ -643,10 +602,7 @@ def add(x, y, name=None):
     if in_dygraph_mode():
         return _C_ops.add(x, y)
     else:
-        if _in_legacy_dygraph():
-            return _legacy_C_ops.elementwise_add(x, y)
-        else:
-            return _elementwise_op(LayerHelper('elementwise_add', **locals()))
+        return _elementwise_op(LayerHelper('elementwise_add', **locals()))
 
 
 @inplace_apis_in_dygraph_only
@@ -735,12 +691,7 @@ def subtract(x, y, name=None):
     if in_dygraph_mode():
         return _C_ops.subtract(x, y)
     else:
-        if _in_legacy_dygraph():
-            return _elementwise_op_in_dygraph(
-                x, y, axis=axis, act=act, op_name=op_type
-            )
-        else:
-            return _elementwise_op(LayerHelper(op_type, **locals()))
+        return _elementwise_op(LayerHelper(op_type, **locals()))
 
 
 @inplace_apis_in_dygraph_only
@@ -807,12 +758,7 @@ def divide(x, y, name=None):
     if in_dygraph_mode():
         return _C_ops.divide(x, y)
     else:
-        if _in_legacy_dygraph():
-            return _elementwise_op_in_dygraph(
-                x, y, axis=axis, act=act, op_name=op_type
-            )
-        else:
-            return _elementwise_op(LayerHelper(op_type, **locals()))
+        return _elementwise_op(LayerHelper(op_type, **locals()))
 
 
 def floor_divide(x, y, name=None):
@@ -853,10 +799,8 @@ def floor_divide(x, y, name=None):
     axis = -1
     if in_dygraph_mode():
         return _C_ops.floor_divide(x, y)
-    elif _in_legacy_dygraph():
-        return _elementwise_op_in_dygraph(x, y, axis=axis, op_name=op_type)
-
-    return _elementwise_op(LayerHelper(op_type, **locals()))
+    else:
+        return _elementwise_op(LayerHelper(op_type, **locals()))
 
 
 def remainder(x, y, name=None):
@@ -897,10 +841,8 @@ def remainder(x, y, name=None):
 
     if in_dygraph_mode():
         return _C_ops.remainder(x, y)
-    elif _in_legacy_dygraph():
-        return _elementwise_op_in_dygraph(x, y, axis=axis, op_name=op_type)
-
-    return _elementwise_op(LayerHelper(op_type, **locals()))
+    else:
+        return _elementwise_op(LayerHelper(op_type, **locals()))
 
 
 @inplace_apis_in_dygraph_only
@@ -971,18 +913,13 @@ def multiply(x, y, name=None):
     if in_dygraph_mode():
         return _C_ops.multiply(x, y)
     else:
-        if _in_legacy_dygraph():
-            return _elementwise_op_in_dygraph(
-                x, y, axis=axis, act=act, op_name=op_type
+        if x.dtype != y.dtype:
+            raise TypeError(
+                'Input tensors must be same type, but received type of x: %s, type of y: %s '
+                % (x.dtype, y.dtype)
             )
-        else:
-            if x.dtype != y.dtype:
-                raise TypeError(
-                    'Input tensors must be same type, but received type of x: %s, type of y: %s '
-                    % (x.dtype, y.dtype)
-                )
 
-            return _elementwise_op(LayerHelper(op_type, **locals()))
+        return _elementwise_op(LayerHelper(op_type, **locals()))
 
 
 @dygraph_only
@@ -1017,12 +954,7 @@ def _add_with_axis(x, y, axis=-1, name=None):
     else:
         op_type = 'elementwise_add'
         act = None
-        if _in_legacy_dygraph():
-            return _elementwise_op_in_dygraph(
-                x, y, axis=axis, act=act, op_name=op_type
-            )
-        else:
-            return _elementwise_op(LayerHelper(op_type, **locals()))
+        return _elementwise_op(LayerHelper(op_type, **locals()))
 
 
 def _subtract_with_axis(x, y, axis=-1, name=None):
@@ -1034,12 +966,7 @@ def _subtract_with_axis(x, y, axis=-1, name=None):
     else:
         op_type = 'elementwise_sub'
         act = None
-        if _in_legacy_dygraph():
-            return _elementwise_op_in_dygraph(
-                x, y, axis=axis, act=act, op_name=op_type
-            )
-        else:
-            return _elementwise_op(LayerHelper(op_type, **locals()))
+        return _elementwise_op(LayerHelper(op_type, **locals()))
 
 
 def _multiply_with_axis(x, y, axis=-1, name=None):
@@ -1051,12 +978,7 @@ def _multiply_with_axis(x, y, axis=-1, name=None):
     else:
         op_type = 'elementwise_mul'
         act = None
-        if _in_legacy_dygraph():
-            return _elementwise_op_in_dygraph(
-                x, y, axis=axis, act=act, op_name=op_type
-            )
-        else:
-            return _elementwise_op(LayerHelper(op_type, **locals()))
+        return _elementwise_op(LayerHelper(op_type, **locals()))
 
 
 def _divide_with_axis(x, y, axis=-1, name=None):
@@ -1066,12 +988,7 @@ def _divide_with_axis(x, y, axis=-1, name=None):
     else:
         op_type = 'elementwise_div'
         act = None
-        if _in_legacy_dygraph():
-            return _elementwise_op_in_dygraph(
-                x, y, axis=axis, act=act, op_name=op_type
-            )
-        else:
-            return _elementwise_op(LayerHelper(op_type, **locals()))
+        return _elementwise_op(LayerHelper(op_type, **locals()))
 
 
 def maximum(x, y, name=None):
@@ -1135,11 +1052,8 @@ def maximum(x, y, name=None):
     act = None
     if in_dygraph_mode():
         return _C_ops.maximum(x, y)
-    elif _in_legacy_dygraph():
-        return _elementwise_op_in_dygraph(
-            x, y, axis=axis, act=act, op_name=op_type
-        )
-    return _elementwise_op(LayerHelper(op_type, **locals()))
+    else:
+        return _elementwise_op(LayerHelper(op_type, **locals()))
 
 
 def minimum(x, y, name=None):
@@ -1203,11 +1117,8 @@ def minimum(x, y, name=None):
     act = None
     if in_dygraph_mode():
         return _C_ops.minimum(x, y)
-    elif _in_legacy_dygraph():
-        return _elementwise_op_in_dygraph(
-            x, y, axis=axis, act=act, op_name=op_type
-        )
-    return _elementwise_op(LayerHelper(op_type, **locals()))
+    else:
+        return _elementwise_op(LayerHelper(op_type, **locals()))
 
 
 def fmax(x, y, name=None):
@@ -1273,11 +1184,8 @@ def fmax(x, y, name=None):
     act = None
     if in_dygraph_mode():
         return _C_ops.fmax(x, y)
-    if _in_legacy_dygraph():
-        return _elementwise_op_in_dygraph(
-            x, y, axis=axis, act=act, op_name=op_type
-        )
-    return _elementwise_op(LayerHelper(op_type, **locals()))
+    else:
+        return _elementwise_op(LayerHelper(op_type, **locals()))
 
 
 def fmin(x, y, name=None):
@@ -1343,11 +1251,8 @@ def fmin(x, y, name=None):
     act = None
     if in_dygraph_mode():
         return _C_ops.fmin(x, y)
-    if _in_legacy_dygraph():
-        return _elementwise_op_in_dygraph(
-            x, y, axis=axis, act=act, op_name=op_type
-        )
-    return _elementwise_op(LayerHelper(op_type, **locals()))
+    else:
+        return _elementwise_op(LayerHelper(op_type, **locals()))
 
 
 def sum(x, axis=None, dtype=None, keepdim=False, name=None):
@@ -1417,68 +1322,46 @@ def sum(x, axis=None, dtype=None, keepdim=False, name=None):
 
     if in_dygraph_mode():
         return _C_ops.sum(x, axis, dtype, keepdim)
-
-    reduce_all, axis = _get_reduce_axis_with_tensor(axis, x)
-
-    if _in_legacy_dygraph():
-        if dtype_flag:
-            return _legacy_C_ops.reduce_sum(
-                x,
-                'dim',
-                axis,
-                'keep_dim',
-                keepdim,
-                'reduce_all',
-                reduce_all,
-                'in_dtype',
-                x.dtype,
-                'out_dtype',
-                dtype,
-            )
-        else:
-            return _legacy_C_ops.reduce_sum(
-                x,
-                'dim',
-                axis,
-                'keep_dim',
-                keepdim,
-                'reduce_all',
-                reduce_all,
-            )
-
-    attrs = {'dim': axis, 'keep_dim': keepdim, 'reduce_all': reduce_all}
-
-    if dtype_flag:
-        attrs.update({'in_dtype': x.dtype, 'out_dtype': dtype})
-
-    check_variable_and_dtype(
-        x,
-        'x',
-        [
-            'bool',
-            'float16',
-            'float32',
-            'float64',
-            'int16',
-            'int32',
-            'int64',
-            'complex64',
-            'complex128',
-        ],
-        'sum',
-    )
-
-    check_type(axis, 'axis', (int, list, tuple, type(None), Variable), 'sum')
-
-    helper = LayerHelper('sum', **locals())
-    if dtype_flag:
-        out = helper.create_variable_for_type_inference(dtype=dtype)
     else:
-        out = helper.create_variable_for_type_inference(dtype=x.dtype)
-    helper.append_op(
-        type='reduce_sum', inputs={'X': x}, outputs={'Out': out}, attrs=attrs
-    )
-    return out
+        reduce_all, axis = _get_reduce_axis_with_tensor(axis, x)
+        attrs = {'dim': axis, 'keep_dim': keepdim, 'reduce_all': reduce_all}
+
+        if dtype_flag:
+            attrs.update({'in_dtype': x.dtype, 'out_dtype': dtype})
+
+        check_variable_and_dtype(
+            x,
+            'x',
+            [
+                'bool',
+                'float16',
+                'float32',
+                'float64',
+                'int16',
+                'int32',
+                'int64',
+                'complex64',
+                'complex128',
+            ],
+            'sum',
+        )
+
+        check_type(
+            axis, 'axis', (int, list, tuple, type(None), Variable), 'sum'
+        )
+
+        helper = LayerHelper('sum', **locals())
+        if dtype_flag:
+            out = helper.create_variable_for_type_inference(dtype=dtype)
+        else:
+            out = helper.create_variable_for_type_inference(dtype=x.dtype)
+        helper.append_op(
+            type='reduce_sum',
+            inputs={'X': x},
+            outputs={'Out': out},
+            attrs=attrs,
+        )
+        return out
 
 
 def nan_to_num(x, nan=0.0, posinf=None, neginf=None, name=None):
@@ -1784,41 +1667,37 @@ def add_n(inputs, name=None):
         if isinstance(inputs, Variable):
             inputs = [inputs]
         return _C_ops.add_n(inputs)
-    if _in_legacy_dygraph():
-        if isinstance(inputs, Variable):
-            inputs = [inputs]
-        return _legacy_C_ops.sum(inputs, 'use_mkldnn', False)
-
-    helper = LayerHelper('add_n', **locals())
-    check_type(inputs, 'inputs', (Variable, tuple, list), 'add_n')
-    if isinstance(inputs, list) or isinstance(inputs, tuple):
-        if len(inputs) > 0:
-            for input in inputs:
-                check_variable_and_dtype(
-                    input,
-                    "inputs",
-                    ['float16', 'float32', 'float64', 'int32', 'int64'],
-                    'add_n',
-                )
     else:
-        check_variable_and_dtype(
-            inputs,
-            "inputs",
-            ['float16', 'float32', 'float64', 'int32', 'int64'],
-            'add_n',
+        helper = LayerHelper('add_n', **locals())
+        check_type(inputs, 'inputs', (Variable, tuple, list), 'add_n')
+        if isinstance(inputs, list) or isinstance(inputs, tuple):
+            if len(inputs) > 0:
+                for input in inputs:
+                    check_variable_and_dtype(
+                        input,
+                        "inputs",
+                        ['float16', 'float32', 'float64', 'int32', 'int64'],
+                        'add_n',
+                    )
+        else:
+            check_variable_and_dtype(
+                inputs,
+                "inputs",
+                ['float16', 'float32', 'float64', 'int32', 'int64'],
+                'add_n',
+            )
+
+        out = helper.create_variable_for_type_inference(
+            dtype=helper.input_dtype('inputs')
+        )
+        helper.append_op(
+            type='sum',
+            inputs={'X': inputs},
+            outputs={'Out': out},
+            attrs={'use_mkldnn': False},
         )
 
-    out = helper.create_variable_for_type_inference(
-        dtype=helper.input_dtype('inputs')
-    )
-    helper.append_op(
-        type='sum',
-        inputs={'X': inputs},
-        outputs={'Out': out},
-        attrs={'use_mkldnn': False},
-    )
-
-    return out
+        return out
 
 
 def trunc(input, name=None):
@@ -1852,22 +1731,19 @@ def trunc(input, name=None):
     if in_dygraph_mode():
         return _C_ops.trunc(input)
     else:
-        if _in_legacy_dygraph():
-            return _legacy_C_ops.trunc(input)
-        else:
-            inputs = {"X": input}
-            attrs = {}
+        inputs = {"X": input}
+        attrs = {}
 
-            helper = LayerHelper("trunc", **locals())
-            check_variable_and_dtype(
-                input, 'X', ['int32', 'int64', 'float32', 'float64'], 'trunc'
-            )
-            out = helper.create_variable_for_type_inference(dtype=input.dtype)
+        helper = LayerHelper("trunc", **locals())
+        check_variable_and_dtype(
+            input, 'X', ['int32', 'int64', 'float32', 'float64'], 'trunc'
+        )
+        out = helper.create_variable_for_type_inference(dtype=input.dtype)
 
-            helper.append_op(
-                type="trunc", inputs=inputs, attrs=attrs, outputs={"Out": out}
-            )
-            return out
+        helper.append_op(
+            type="trunc", inputs=inputs, attrs=attrs, outputs={"Out": out}
+        )
+        return out
 
 
 def mm(input, mat2, name=None):
@@ -1939,53 +1815,54 @@ def mm(input, mat2, name=None):
     """
     if in_dygraph_mode():
         return _C_ops.matmul(input, mat2, False, False)
-    elif paddle.in_dynamic_mode():
-        return _legacy_C_ops.matmul_v2(input, mat2)
+    else:
 
-    def __check_input(x, y):
-        var_names = {'x': x, 'y': y}
-        for name, val in var_names.items():
-            check_variable_and_dtype(
-                val, name, ['float16', 'float32', 'float64'], 'mm'
-            )
-        x_shape = list(x.shape)
-        y_shape = list(y.shape)
-        if len(x_shape) == 1:
-            x_shape = [1] + x_shape
-        if len(y_shape) == 1:
-            y_shape = y_shape + [1]
-
-        # check the inner 2 dimensions
-        if x_shape[-1] != y_shape[-2]:
-            if not ((x_shape[-1] == -1) or (y_shape[-2] == -1)):
-                raise ValueError(
-                    "After performing an optional transpose, Input X's width should be "
-                    "equal to Y's width for multiplication "
-                    "prerequisites. But received X's shape: %s, Y's shape: %s\n"
-                    % (x_shape, y_shape)
+        def __check_input(x, y):
+            var_names = {'x': x, 'y': y}
+            for name, val in var_names.items():
+                check_variable_and_dtype(
+                    val, name, ['float16', 'float32', 'float64'], 'mm'
                 )
+            x_shape = list(x.shape)
+            y_shape = list(y.shape)
+            if len(x_shape) == 1:
+                x_shape = [1] + x_shape
+            if len(y_shape) == 1:
+                y_shape = y_shape + [1]
 
-        if len(y_shape) > 2 and len(x_shape) > 2:
-            for i, dim_x in enumerate(x_shape[:-2]):
-                # don't check neg shape
-                if dim_x < 0 or y_shape[i] < 0:
-                    continue
-                if dim_x != y_shape[i]:
+            # check the inner 2 dimensions
+            if x_shape[-1] != y_shape[-2]:
+                if not ((x_shape[-1] == -1) or (y_shape[-2] == -1)):
                     raise ValueError(
-                        "When the matrix is larger than 2 dimensions, the higher "
-                        "dimensional values of the two matrices need to be equal. "
-                        "But received x_shape[%d] != y_shape[%d]. X's shape: %s, "
-                        "Y's shape: %s.\n" % (i, i, x_shape, y_shape)
+                        "After performing an optional transpose, Input X's width should be "
+                        "equal to Y's width for multiplication "
+                        "prerequisites. But received X's shape: %s, Y's shape: %s\n"
+                        % (x_shape, y_shape)
                     )
 
-    __check_input(input, mat2)
+            if len(y_shape) > 2 and len(x_shape) > 2:
+                for i, dim_x in enumerate(x_shape[:-2]):
+                    # don't check neg shape
+                    if dim_x < 0 or y_shape[i] < 0:
+                        continue
+                    if dim_x != y_shape[i]:
+                        raise ValueError(
+                            "When the matrix is larger than 2 dimensions, the higher "
+                            "dimensional values of the two matrices need to be equal. "
+                            "But received x_shape[%d] != y_shape[%d]. X's shape: %s, "
+                            "Y's shape: %s.\n" % (i, i, x_shape, y_shape)
+                        )
 
-    helper = LayerHelper('mm', **locals())
-    out = helper.create_variable_for_type_inference(dtype=input.dtype)
-    helper.append_op(
-        type='matmul_v2', inputs={'X': input, 'Y': mat2}, outputs={'Out': out}
-    )
-    return out
+        __check_input(input, mat2)
+
+        helper = LayerHelper('mm', **locals())
+        out = helper.create_variable_for_type_inference(dtype=input.dtype)
+        helper.append_op(
+            type='matmul_v2',
+            inputs={'X': input, 'Y': mat2},
+            outputs={'Out': out},
+        )
+        return out
 
 
 def addmm(input, x, y, beta=1.0, alpha=1.0, name=None):
@@ -2080,25 +1957,21 @@ def addmm(input, x, y, beta=1.0, alpha=1.0, name=None):
     if in_dygraph_mode():
         return _C_ops.addmm(input, x, y, beta, alpha)
     else:
-        if _in_legacy_dygraph():
-            out = _legacy_C_ops.addmm(input, x, y, "Alpha", alpha, "Beta", beta)
-            return out
-        else:
-            inputs = {'Input': input, "X": x, "Y": y}
-            attrs = {'Alpha': alpha, 'Beta': beta}
+        inputs = {'Input': input, "X": x, "Y": y}
+        attrs = {'Alpha': alpha, 'Beta': beta}
 
-            helper = LayerHelper("addmm", **locals())
-            check_variable_and_dtype(
-                input, 'Input', ['float32', 'float64'], 'addmm'
-            )
-            check_variable_and_dtype(x, 'X', ['float32', 'float64'], 'addmm')
-            check_variable_and_dtype(y, 'Y', ['float32', 'float64'], 'addmm')
-            out = helper.create_variable_for_type_inference(dtype=x.dtype)
+        helper = LayerHelper("addmm", **locals())
+        check_variable_and_dtype(
+            input, 'Input', ['float32', 'float64'], 'addmm'
+        )
+        check_variable_and_dtype(x, 'X', ['float32', 'float64'], 'addmm')
+        check_variable_and_dtype(y, 'Y', ['float32', 'float64'], 'addmm')
+        out = helper.create_variable_for_type_inference(dtype=x.dtype)
 
-            helper.append_op(
-                type="addmm", inputs=inputs, attrs=attrs, outputs={"Out": out}
-            )
-            return out
+        helper.append_op(
+            type="addmm", inputs=inputs, attrs=attrs, outputs={"Out": out}
+        )
+        return out
 
 
 def renorm(x, p, axis, max_norm):
@@ -2154,22 +2027,17 @@ def renorm(x, p, axis, max_norm):
     if in_dygraph_mode():
         out = _C_ops.renorm(x, p, axis, max_norm)
         return out
-    elif _in_legacy_dygraph():
-        out = _legacy_C_ops.renorm(
-            x, 'p', p, 'axis', axis, 'max_norm', max_norm
+    else:
+        inputs = {'X': x}
+        attrs = {'p': p, 'axis': axis, 'max_norm': max_norm}
+
+        helper = LayerHelper("renorm", **locals())
+        out = helper.create_variable_for_type_inference(dtype=x.dtype)
+
+        helper.append_op(
+            type="renorm", inputs=inputs, attrs=attrs, outputs={"Out": out}
         )
         return out
-
-    inputs = {'X': x}
-    attrs = {'p': p, 'axis': axis, 'max_norm': max_norm}
-
-    helper = LayerHelper("renorm", **locals())
-    out = helper.create_variable_for_type_inference(dtype=x.dtype)
-
-    helper.append_op(
-        type="renorm", inputs=inputs, attrs=attrs, outputs={"Out": out}
-    )
-    return out
 
 
 def inner(x, y, name=None):
@@ -2213,36 +2081,37 @@ def inner(x, y, name=None):
 
         if in_dygraph_mode():
             return _C_ops.matmul(nx, ny.T, False, False).reshape(dstshape)
-        elif paddle.in_dynamic_mode():
-            return _legacy_C_ops.matmul_v2(nx, ny.T).reshape(dstshape)
+        else:
 
-        def __check_input(x, y):
-            var_names = {'x': x, 'y': y}
-            for name, val in var_names.items():
-                check_variable_and_dtype(
-                    val, name, ['float16', 'float32', 'float64'], 'inner'
-                )
-            x_shape = list(xshape)
-            y_shape = list(yshape)
-
-            # check the inner 2 dimensions
-            if x_shape[-1] != y_shape[-1]:
-                if not ((x_shape[-1] == -1) or (y_shape[-1] == -1)):
-                    raise ValueError(
-                        "After performing an optional transpose, Input X's last dim should be "
-                        "equal to Y's last dim for multiplication "
-                        "prerequisites. But received X's shape: %s, Y's shape: %s\n"
-                        % (x_shape, y_shape)
+            def __check_input(x, y):
+                var_names = {'x': x, 'y': y}
+                for name, val in var_names.items():
+                    check_variable_and_dtype(
+                        val, name, ['float16', 'float32', 'float64'], 'inner'
                     )
+                x_shape = list(xshape)
+                y_shape = list(yshape)
 
-        __check_input(nx, ny)
+                # check the inner 2 dimensions
+                if x_shape[-1] != y_shape[-1]:
+                    if not ((x_shape[-1] == -1) or (y_shape[-1] == -1)):
+                        raise ValueError(
+                            "After performing an optional transpose, Input X's last dim should be "
+                            "equal to Y's last dim for multiplication "
+                            "prerequisites. But received X's shape: %s, Y's shape: %s\n"
+                            % (x_shape, y_shape)
+                        )
 
-        helper = LayerHelper('inner', **locals())
-        out = helper.create_variable_for_type_inference(dtype=nx.dtype)
-        helper.append_op(
-            type='matmul_v2', inputs={'X': nx, 'Y': ny.T}, outputs={'Out': out}
-        )
-        return out.reshape(dstshape)
+            __check_input(nx, ny)
+
+            helper = LayerHelper('inner', **locals())
+            out = helper.create_variable_for_type_inference(dtype=nx.dtype)
+            helper.append_op(
+                type='matmul_v2',
+                inputs={'X': nx, 'Y': ny.T},
+                outputs={'Out': out},
+            )
+            return out.reshape(dstshape)
 
 
 def outer(x, y, name=None):
@@ -2279,24 +2148,23 @@ def outer(x, y, name=None):
 
     if in_dygraph_mode():
         return _C_ops.matmul(nx, ny, False, False)
-    elif paddle.in_dynamic_mode():
-        return _legacy_C_ops.matmul_v2(nx, ny)
+    else:
 
-    def __check_input(x, y):
-        var_names = {'x': x, 'y': y}
-        for name, val in var_names.items():
-            check_variable_and_dtype(
-                val, name, ['float16', 'float32', 'float64'], 'inner'
-            )
+        def __check_input(x, y):
+            var_names = {'x': x, 'y': y}
+            for name, val in var_names.items():
+                check_variable_and_dtype(
+                    val, name, ['float16', 'float32', 'float64'], 'inner'
+                )
 
-    __check_input(nx, ny)
+        __check_input(nx, ny)
 
-    helper = LayerHelper('outer', **locals())
-    out = helper.create_variable_for_type_inference(dtype=nx.dtype)
-    helper.append_op(
-        type='matmul_v2', inputs={'X': nx, 'Y': ny}, outputs={'Out': out}
-    )
-    return out
+        helper = LayerHelper('outer', **locals())
+        out = helper.create_variable_for_type_inference(dtype=nx.dtype)
+        helper.append_op(
+            type='matmul_v2', inputs={'X': nx, 'Y': ny}, outputs={'Out': out}
+        )
+        return out
 
 
 def logsumexp(x, axis=None, keepdim=False, name=None):
@@ -2345,20 +2213,16 @@ def logsumexp(x, axis=None, keepdim=False, name=None):
 
     if in_dygraph_mode():
         return _C_ops.logsumexp(x, axis, keepdim, reduce_all)
-    if _in_legacy_dygraph():
-        return _legacy_C_ops.logsumexp(
-            x, 'axis', axis, 'keepdim', keepdim, 'reduce_all', reduce_all
+    else:
+        check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'logsumexp')
+
+        helper = LayerHelper('logsumexp', **locals())
+        attrs = {'axis': axis, 'keepdim': keepdim, 'reduce_all': reduce_all}
+        out = helper.create_variable_for_type_inference(x.dtype)
+        helper.append_op(
+            type='logsumexp', inputs={'X': x}, outputs={'Out': out}, attrs=attrs
         )
-
-    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'logsumexp')
-
-    helper = LayerHelper('logsumexp', **locals())
-    attrs = {'axis': axis, 'keepdim': keepdim, 'reduce_all': reduce_all}
-    out = helper.create_variable_for_type_inference(x.dtype)
-    helper.append_op(
-        type='logsumexp', inputs={'X': x}, outputs={'Out': out}, attrs=attrs
-    )
-    return out
+        return out
 
 
 def inverse(x, name=None):
@@ -2390,25 +2254,24 @@ def inverse(x, name=None):
     """
     if in_dygraph_mode():
         return _C_ops.inverse(x)
-    elif paddle.in_dynamic_mode():
-        return _legacy_C_ops.inverse(x)
+    else:
 
-    def _check_input(x):
-        check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'inverse')
-        if len(x.shape) < 2:
-            raise ValueError(
-                "The input of inverse is expected to be a Tensor whose number "
-                "of dimensions is no less than 2. But reviced: %d, "
-                "x's shape: %s." % (len(x.shape), x.shape)
-            )
+        def _check_input(x):
+            check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'inverse')
+            if len(x.shape) < 2:
+                raise ValueError(
+                    "The input of inverse is expected to be a Tensor whose number "
+                    "of dimensions is no less than 2. But reviced: %d, "
+                    "x's shape: %s." % (len(x.shape), x.shape)
+                )
 
-    _check_input(x)
-    helper = LayerHelper('inverse', **locals())
-    out = helper.create_variable_for_type_inference(dtype=x.dtype)
-    helper.append_op(
-        type='inverse', inputs={'Input': [x]}, outputs={'Output': [out]}
-    )
-    return out
+        _check_input(x)
+        helper = LayerHelper('inverse', **locals())
+        out = helper.create_variable_for_type_inference(dtype=x.dtype)
+        helper.append_op(
+            type='inverse', inputs={'Input': [x]}, outputs={'Output': [out]}
+        )
+        return out
 
 
 def max(x, axis=None, keepdim=False, name=None):
@@ -2491,27 +2354,23 @@ def max(x, axis=None, keepdim=False, name=None):
 
     if in_dygraph_mode():
         return _C_ops.max(x, axis, keepdim)
-    reduce_all, axis = _get_reduce_axis_with_tensor(axis, x)
-    if _in_legacy_dygraph():
-        return _legacy_C_ops.reduce_max(
-            x, 'dim', axis, 'keep_dim', keepdim, 'reduce_all', reduce_all
+    else:
+        reduce_all, axis = _get_reduce_axis_with_tensor(axis, x)
+        helper = LayerHelper('max', **locals())
+        check_variable_and_dtype(
+            x, 'x', ['float32', 'float64', 'int32', 'int64'], 'max'
         )
+        if not isinstance(axis, Variable) and utils._contain_var(axis):
+            axis = utils._convert_to_tensor_list(axis)
 
-    helper = LayerHelper('max', **locals())
-    check_variable_and_dtype(
-        x, 'x', ['float32', 'float64', 'int32', 'int64'], 'max'
-    )
-    if not isinstance(axis, Variable) and utils._contain_var(axis):
-        axis = utils._convert_to_tensor_list(axis)
-
-    out = helper.create_variable_for_type_inference(dtype=x.dtype)
-    helper.append_op(
-        type='reduce_max',
-        inputs={'X': x},
-        outputs={'Out': out},
-        attrs={'dim': axis, 'keep_dim': keepdim, 'reduce_all': reduce_all},
-    )
-    return out
+        out = helper.create_variable_for_type_inference(dtype=x.dtype)
+        helper.append_op(
+            type='reduce_max',
+            inputs={'X': x},
+            outputs={'Out': out},
+            attrs={'dim': axis, 'keep_dim': keepdim, 'reduce_all': reduce_all},
+        )
+        return out
 
 
 def min(x, axis=None, keepdim=False, name=None):
@@ -2593,26 +2452,21 @@ def min(x, axis=None, keepdim=False, name=None):
 
     if in_dygraph_mode():
         return _C_ops.min(x, axis, keepdim)
-
-    reduce_all, axis = _get_reduce_axis_with_tensor(axis, x)
-    if _in_legacy_dygraph():
-        return _legacy_C_ops.reduce_min(
-            x, 'dim', axis, 'keep_dim', keepdim, 'reduce_all', reduce_all
+    else:
+        reduce_all, axis = _get_reduce_axis_with_tensor(axis, x)
+        helper = LayerHelper('min', **locals())
+        check_variable_and_dtype(
+            x, 'x', ['float32', 'float64', 'int32', 'int64'], 'min'
         )
 
-    helper = LayerHelper('min', **locals())
-    check_variable_and_dtype(
-        x, 'x', ['float32', 'float64', 'int32', 'int64'], 'min'
-    )
-
-    out = helper.create_variable_for_type_inference(dtype=x.dtype)
-    helper.append_op(
-        type='reduce_min',
-        inputs={'X': x},
-        outputs={'Out': out},
-        attrs={'dim': axis, 'keep_dim': keepdim, 'reduce_all': reduce_all},
-    )
-    return out
+        out = helper.create_variable_for_type_inference(dtype=x.dtype)
+        helper.append_op(
+            type='reduce_min',
+            inputs={'X': x},
+            outputs={'Out': out},
+            attrs={'dim': axis, 'keep_dim': keepdim, 'reduce_all': reduce_all},
+        )
+        return out
 
 
 def amax(x, axis=None, keepdim=False, name=None):
@@ -2707,25 +2561,21 @@ def amax(x, axis=None, keepdim=False, name=None):
     if in_dygraph_mode():
         return _C_ops.amax(x, axis, keepdim)
 
-    reduce_all, axis = _get_reduce_axis(axis, x)
-    if _in_legacy_dygraph():
-        return _legacy_C_ops.reduce_amax(
-            x, 'dim', axis, 'keep_dim', keepdim, 'reduce_all', reduce_all
+    else:
+        reduce_all, axis = _get_reduce_axis(axis, x)
+        helper = LayerHelper('amax', **locals())
+        check_variable_and_dtype(
+            x, 'x', ['float32', 'float64', 'int32', 'int64'], 'amax'
         )
 
-    helper = LayerHelper('amax', **locals())
-    check_variable_and_dtype(
-        x, 'x', ['float32', 'float64', 'int32', 'int64'], 'amax'
-    )
-
-    out = helper.create_variable_for_type_inference(dtype=x.dtype)
-    helper.append_op(
-        type='reduce_amax',
-        inputs={'X': x},
-        outputs={'Out': out},
-        attrs={'dim': axis, 'keep_dim': keepdim, 'reduce_all': reduce_all},
-    )
-    return out
+        out = helper.create_variable_for_type_inference(dtype=x.dtype)
+        helper.append_op(
+            type='reduce_amax',
+            inputs={'X': x},
+            outputs={'Out': out},
+            attrs={'dim': axis, 'keep_dim': keepdim, 'reduce_all': reduce_all},
+        )
+        return out
 
 
 def amin(x, axis=None, keepdim=False, name=None):
@@ -2821,24 +2671,21 @@ def amin(x, axis=None, keepdim=False, name=None):
     if in_dygraph_mode():
         return _C_ops.amin(x, axis, keepdim)
 
-    reduce_all, axis = _get_reduce_axis(axis, x)
-    if _in_legacy_dygraph():
-        return _legacy_C_ops.reduce_amin(
-            x, 'dim', axis, 'keep_dim', keepdim, 'reduce_all', reduce_all
+    else:
+        reduce_all, axis = _get_reduce_axis(axis, x)
+        helper = LayerHelper('amin', **locals())
+        check_variable_and_dtype(
+            x, 'x', ['float32', 'float64', 'int32', 'int64'], 'amin'
         )
-    helper = LayerHelper('amin', **locals())
-    check_variable_and_dtype(
-        x, 'x', ['float32', 'float64', 'int32', 'int64'], 'amin'
-    )
 
-    out = helper.create_variable_for_type_inference(dtype=x.dtype)
-    helper.append_op(
-        type='reduce_amin',
-        inputs={'X': x},
-        outputs={'Out': out},
-        attrs={'dim': axis, 'keep_dim': keepdim, 'reduce_all': reduce_all},
-    )
-    return out
+        out = helper.create_variable_for_type_inference(dtype=x.dtype)
+        helper.append_op(
+            type='reduce_amin',
+            inputs={'X': x},
+            outputs={'Out': out},
+            attrs={'dim': axis, 'keep_dim': keepdim, 'reduce_all': reduce_all},
+        )
+        return out
 
 
 def log1p(x, name=None):
@@ -2867,16 +2714,14 @@ def log1p(x, name=None):
 
     if in_dygraph_mode():
         return _C_ops.log1p(x)
-    if _in_legacy_dygraph():
-        return _legacy_C_ops.log1p(x)
-
-    check_variable_and_dtype(x, 'x', ['float32', 'float64'], "log1p")
-    inputs = {'X': [x]}
-    helper = LayerHelper('log1p', **locals())
-    dtype = helper.input_dtype(input_param_name='x')
-    out = helper.create_variable_for_type_inference(dtype)
-    helper.append_op(type="log1p", inputs={"X": x}, outputs={"Out": out})
-    return out
+    else:
+        check_variable_and_dtype(x, 'x', ['float32', 'float64'], "log1p")
+        inputs = {'X': [x]}
+        helper = LayerHelper('log1p', **locals())
+        dtype = helper.input_dtype(input_param_name='x')
+        out = helper.create_variable_for_type_inference(dtype)
+        helper.append_op(type="log1p", inputs={"X": x}, outputs={"Out": out})
+        return out
 
 
 def log2(x, name=None):
@@ -2919,16 +2764,16 @@ def log2(x, name=None):
     """
     if in_dygraph_mode():
         return _C_ops.log2(x)
-    if _in_legacy_dygraph():
-        return _legacy_C_ops.log2(x)
-
-    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], "log2")
-    inputs = {'X': [x]}
-    helper = LayerHelper('log2', **locals())
-    dtype = helper.input_dtype(input_param_name='x')
-    out = helper.create_variable_for_type_inference(dtype)
-    helper.append_op(type="log2", inputs={"X": x}, outputs={"Out": out})
-    return out
+    else:
+        check_variable_and_dtype(
+            x, 'x', ['float16', 'float32', 'float64'], "log2"
+        )
+        inputs = {'X': [x]}
+        helper = LayerHelper('log2', **locals())
+        dtype = helper.input_dtype(input_param_name='x')
+        out = helper.create_variable_for_type_inference(dtype)
+        helper.append_op(type="log2", inputs={"X": x}, outputs={"Out": out})
+        return out
 
 
 def log10(x, name=None):
@@ -2971,16 +2816,16 @@ def log10(x, name=None):
     """
     if in_dygraph_mode():
         return _C_ops.log10(x)
-    if _in_legacy_dygraph():
-        return _legacy_C_ops.log10(x)
-
-    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], "log10")
-    inputs = {'X': [x]}
-    helper = LayerHelper('log10', **locals())
-    dtype = helper.input_dtype(input_param_name='x')
-    out = helper.create_variable_for_type_inference(dtype)
-    helper.append_op(type="log10", inputs={"X": x}, outputs={"Out": out})
-    return out
+    else:
+        check_variable_and_dtype(
+            x, 'x', ['float16', 'float32', 'float64'], "log10"
+        )
+        inputs = {'X': [x]}
+        helper = LayerHelper('log10', **locals())
+        dtype = helper.input_dtype(input_param_name='x')
+        out = helper.create_variable_for_type_inference(dtype)
+        helper.append_op(type="log10", inputs={"X": x}, outputs={"Out": out})
+        return out
 
 
 def clip(x, min=None, max=None, name=None):
@@ -3038,65 +2883,56 @@ def clip(x, min=None, max=None, name=None):
         min = min_ if min is None else min
         max = max_ if max is None else max
         return _C_ops.clip(x, min, max)
+    else:
+        if min is not None:
+            check_type(min, 'min', (float, int, Variable), 'clip')
+            if isinstance(min, Variable):
+                check_dtype(
+                    min.dtype,
+                    'min',
+                    ['float32', 'float64', 'int32'],
+                    'clip',
+                    '(When the type of min in clip is Variable.)',
+                )
+        if max is not None:
+            check_type(max, 'max', (float, int, Variable), 'clip')
+            if isinstance(max, Variable):
+                check_dtype(
+                    max.dtype,
+                    'max',
+                    ['float32', 'float64', 'int32'],
+                    'clip',
+                    '(When the type of max in clip is Variable.)',
+                )
 
-    if _in_legacy_dygraph():
+        check_variable_and_dtype(
+            x, 'x', ['float32', 'float64', 'int32', 'int64'], 'clip'
+        )
+
+        inputs = {'X': x}
+        attrs = {'min': min_, 'max': max_}
+
         if isinstance(min, Variable):
-            min = min.numpy().item(0)
+            min.stop_gradient = True
+            inputs['Min'] = min
+        elif min is not None:
+            attrs['min'] = min
+
         if isinstance(max, Variable):
-            max = max.numpy().item(0)
-        min = min_ if min is None else min
-        max = max_ if max is None else max
-        return _legacy_C_ops.clip(x, "min", min, "max", max)
+            max.stop_gradient = True
+            inputs['Max'] = max
+        elif max is not None:
+            attrs['max'] = max
 
-    if min is not None:
-        check_type(min, 'min', (float, int, Variable), 'clip')
-        if isinstance(min, Variable):
-            check_dtype(
-                min.dtype,
-                'min',
-                ['float32', 'float64', 'int32'],
-                'clip',
-                '(When the type of min in clip is Variable.)',
-            )
-    if max is not None:
-        check_type(max, 'max', (float, int, Variable), 'clip')
-        if isinstance(max, Variable):
-            check_dtype(
-                max.dtype,
-                'max',
-                ['float32', 'float64', 'int32'],
-                'clip',
-                '(When the type of max in clip is Variable.)',
-            )
+        helper = LayerHelper('clip', **locals())
+        output = helper.create_variable_for_type_inference(
+            dtype=helper.input_dtype('x')
+        )
+        helper.append_op(
+            type='clip', inputs=inputs, outputs={'Out': [output]}, attrs=attrs
+        )
 
-    check_variable_and_dtype(
-        x, 'x', ['float32', 'float64', 'int32', 'int64'], 'clip'
-    )
-
-    inputs = {'X': x}
-    attrs = {'min': min_, 'max': max_}
-
-    if isinstance(min, Variable):
-        min.stop_gradient = True
-        inputs['Min'] = min
-    elif min is not None:
-        attrs['min'] = min
-
-    if isinstance(max, Variable):
-        max.stop_gradient = True
-        inputs['Max'] = max
-    elif max is not None:
-        attrs['max'] = max
-
-    helper = LayerHelper('clip', **locals())
-    output = helper.create_variable_for_type_inference(
-        dtype=helper.input_dtype('x')
-    )
-    helper.append_op(
-        type='clip', inputs=inputs, outputs={'Out': [output]}, attrs=attrs
-    )
-
-    return output
+        return output
 
 
 @inplace_apis_in_dygraph_only
@@ -3116,9 +2952,6 @@ def clip_(x, min=None, max=None, name=None):
 
     if in_dygraph_mode():
         return _C_ops.clip_(x, min, max)
-
-    if _in_legacy_dygraph():
-        return _legacy_C_ops.clip_(x, "min", min, "max", max)
 
 
 def trace(x, offset=0, axis1=0, axis2=1, name=None):
@@ -3196,24 +3029,19 @@ def trace(x, offset=0, axis1=0, axis2=1, name=None):
 
     if in_dygraph_mode():
         return _C_ops.trace(x, offset, axis1, axis2)
+    else:
+        __check_input(x, offset, axis1, axis2)
 
-    if _in_legacy_dygraph():
-        return _legacy_C_ops.trace(
-            x, 'offset', offset, 'axis1', axis1, 'axis2', axis2
+        helper = LayerHelper('trace', **locals())
+        out = helper.create_variable_for_type_inference(dtype=x.dtype)
+
+        helper.append_op(
+            type='trace',
+            inputs={'Input': [x]},
+            attrs={'offset': offset, 'axis1': axis1, 'axis2': axis2},
+            outputs={'Out': [out]},
         )
-
-    __check_input(x, offset, axis1, axis2)
-
-    helper = LayerHelper('trace', **locals())
-    out = helper.create_variable_for_type_inference(dtype=x.dtype)
-
-    helper.append_op(
-        type='trace',
-        inputs={'Input': [x]},
-        attrs={'offset': offset, 'axis1': axis1, 'axis2': axis2},
-        outputs={'Out': [out]},
-    )
-    return out
+        return out
 
 
 def diagonal(x, offset=0, axis1=0, axis2=1, name=None):
@@ -3284,54 +3112,50 @@ def diagonal(x, offset=0, axis1=0, axis2=1, name=None):
     if in_dygraph_mode():
         return _C_ops.diagonal(x, offset, axis1, axis2)
     else:
-        if _in_legacy_dygraph():
-            return _legacy_C_ops.diagonal(
-                x, 'offset', offset, 'axis1', axis1, 'axis2', axis2
+
+        def __check_input(x, offset, axis1, axis2):
+            check_dtype(
+                x.dtype,
+                'Input',
+                ['bool', 'int32', 'int64', 'float16', 'float32', 'float64'],
+                'diagonal',
             )
 
-    def __check_input(x, offset, axis1, axis2):
-        check_dtype(
-            x.dtype,
-            'Input',
-            ['bool', 'int32', 'int64', 'float16', 'float32', 'float64'],
-            'diagonal',
+            input_shape = list(x.shape)
+            assert len(input_shape) >= 2, (
+                "The x must be at least 2-dimensional, "
+                "But received Input x's dimensional: %s.\n" % len(input_shape)
+            )
+
+            axis1_ = axis1 if axis1 >= 0 else len(input_shape) + axis1
+            axis2_ = axis2 if axis2 >= 0 else len(input_shape) + axis2
+
+            assert axis1_ < len(input_shape), (
+                "The argument axis1 is out of range (expected to be in range of [%d, %d], but got %d).\n"
+                % (-(len(input_shape)), len(input_shape) - 1, axis1)
+            )
+
+            assert axis2_ < len(input_shape), (
+                "The argument axis2 is out of range (expected to be in range of [%d, %d], but got %d).\n"
+                % (-(len(input_shape)), len(input_shape) - 1, axis2)
+            )
+
+            assert axis1_ != axis2_, (
+                "axis1 and axis2 cannot be the same axis."
+                "But received axis1 = %d, axis2 = %d\n" % (axis1, axis2)
+            )
+
+        __check_input(x, offset, axis1, axis2)
+        helper = LayerHelper('diagonal', **locals())
+        out = helper.create_variable_for_type_inference(dtype=x.dtype)
+
+        helper.append_op(
+            type='diagonal',
+            inputs={'Input': [x]},
+            attrs={'offset': offset, 'axis1': axis1, 'axis2': axis2},
+            outputs={'Out': [out]},
         )
-
-        input_shape = list(x.shape)
-        assert len(input_shape) >= 2, (
-            "The x must be at least 2-dimensional, "
-            "But received Input x's dimensional: %s.\n" % len(input_shape)
-        )
-
-        axis1_ = axis1 if axis1 >= 0 else len(input_shape) + axis1
-        axis2_ = axis2 if axis2 >= 0 else len(input_shape) + axis2
-
-        assert axis1_ < len(input_shape), (
-            "The argument axis1 is out of range (expected to be in range of [%d, %d], but got %d).\n"
-            % (-(len(input_shape)), len(input_shape) - 1, axis1)
-        )
-
-        assert axis2_ < len(input_shape), (
-            "The argument axis2 is out of range (expected to be in range of [%d, %d], but got %d).\n"
-            % (-(len(input_shape)), len(input_shape) - 1, axis2)
-        )
-
-        assert axis1_ != axis2_, (
-            "axis1 and axis2 cannot be the same axis."
-            "But received axis1 = %d, axis2 = %d\n" % (axis1, axis2)
-        )
-
-    __check_input(x, offset, axis1, axis2)
-    helper = LayerHelper('diagonal', **locals())
-    out = helper.create_variable_for_type_inference(dtype=x.dtype)
-
-    helper.append_op(
-        type='diagonal',
-        inputs={'Input': [x]},
-        attrs={'offset': offset, 'axis1': axis1, 'axis2': axis2},
-        outputs={'Out': [out]},
-    )
-    return out
+        return out
 
 
 @templatedoc(op_type="kron")
@@ -3363,21 +3187,22 @@ def kron(x, y, name=None):
             #         [12, 15, 18, 16, 20, 24],
             #         [21, 24, 27, 28, 32, 36]])
     """
-    if _in_legacy_dygraph():
-        return _legacy_C_ops.kron(x, y)
     if in_dygraph_mode():
-        return _C_ops.kron(x, y)
-    helper = LayerHelper('kron', **locals())
-    check_variable_and_dtype(
-        x, 'x', ['float16', 'float32', 'float64', 'int32', 'int64'], 'kron'
-    )
-    check_variable_and_dtype(
-        y, 'y', ['float16', 'float32', 'float64', 'int32', 'int64'], 'kron'
-    )
+        return _legacy_C_ops.kron(x, y)
+    else:
+        helper = LayerHelper('kron', **locals())
+        check_variable_and_dtype(
+            x, 'x', ['float16', 'float32', 'float64', 'int32', 'int64'], 'kron'
+        )
+        check_variable_and_dtype(
+            y, 'y', ['float16', 'float32', 'float64', 'int32', 'int64'], 'kron'
+        )
 
-    out = helper.create_variable_for_type_inference(dtype=x.dtype)
-    helper.append_op(type="kron", inputs={"X": x, "Y": y}, outputs={"Out": out})
-    return out
+        out = helper.create_variable_for_type_inference(dtype=x.dtype)
+        helper.append_op(
+            type="kron", inputs={"X": x, "Y": y}, outputs={"Out": out}
+        )
+        return out
 
 
 def cumsum(x, axis=None, dtype=None, name=None):
@@ -3432,20 +3257,15 @@ def cumsum(x, axis=None, dtype=None, name=None):
         if axis is None:
             axis = -1
         return _C_ops.cumsum(x, axis, flatten, False, False)
-    if _in_legacy_dygraph():
-        if axis is None:
-            return _legacy_C_ops.cumsum(x, 'flatten', flatten)
-        else:
-            return _legacy_C_ops.cumsum(x, 'axis', axis, 'flatten', flatten)
-
-    check_type(x, 'x', (Variable), 'cumsum')
-    locals_var = locals().copy()
-    kwargs = dict()
-    for name, val in locals_var.items():
-        if val is not None:
-            kwargs[name] = val
-    _cum_sum_ = generate_layer_fn('cumsum')
-    return _cum_sum_(**kwargs)
+    else:
+        check_type(x, 'x', (Variable), 'cumsum')
+        locals_var = locals().copy()
+        kwargs = dict()
+        for name, val in locals_var.items():
+            if val is not None:
+                kwargs[name] = val
+        _cum_sum_ = generate_layer_fn('cumsum')
+        return _cum_sum_(**kwargs)
 
 
 def logcumsumexp(x, axis=None, dtype=None, name=None):
@@ -3507,27 +3327,20 @@ def logcumsumexp(x, axis=None, dtype=None, name=None):
         if axis is None:
             axis = -1
         return _C_ops.logcumsumexp(x, axis, flatten, False, False)
-    if _in_legacy_dygraph():
-        if axis is None:
-            return _legacy_C_ops.logcumsumexp(x, 'flatten', flatten)
-        else:
-            return _legacy_C_ops.logcumsumexp(
-                x, 'axis', axis, 'flatten', flatten
-            )
+    else:
+        check_variable_and_dtype(
+            x, 'x', ['float16', 'float32', 'float64'], "logcumsumexp"
+        )
 
-    check_variable_and_dtype(
-        x, 'x', ['float16', 'float32', 'float64'], "logcumsumexp"
-    )
-
-    helper = LayerHelper('logcumsumexp', **locals())
-    out = helper.create_variable_for_type_inference(x.dtype)
-    helper.append_op(
-        type='logcumsumexp',
-        inputs={'X': x},
-        outputs={'Out': out},
-        attrs={'axis': axis, 'flatten': flatten},
-    )
-    return out
+        helper = LayerHelper('logcumsumexp', **locals())
+        out = helper.create_variable_for_type_inference(x.dtype)
+        helper.append_op(
+            type='logcumsumexp',
+            inputs={'X': x},
+            outputs={'Out': out},
+            attrs={'axis': axis, 'flatten': flatten},
+        )
+        return out
 
 
 def cumprod(x, dim=None, dtype=None, name=None):
@@ -3586,26 +3399,24 @@ def cumprod(x, dim=None, dtype=None, name=None):
 
     if in_dygraph_mode():
         return _C_ops.cumprod(x, dim)
-    if _in_legacy_dygraph():
-        return _legacy_C_ops.cumprod(x, 'dim', dim)
+    else:
+        check_variable_and_dtype(
+            x,
+            "x",
+            ['complex64', 'complex128', 'float32', 'float64', 'int32', 'int64'],
+            'cumprod',
+        )
+        check_type(dim, 'dim', int, 'cumprod')
 
-    check_variable_and_dtype(
-        x,
-        "x",
-        ['complex64', 'complex128', 'float32', 'float64', 'int32', 'int64'],
-        'cumprod',
-    )
-    check_type(dim, 'dim', int, 'cumprod')
-
-    helper = LayerHelper('cumprod', **locals())
-    out = helper.create_variable_for_type_inference(x.dtype)
-    helper.append_op(
-        type='cumprod',
-        inputs={'X': x},
-        outputs={'Out': out},
-        attrs={'dim': dim},
-    )
-    return out
+        helper = LayerHelper('cumprod', **locals())
+        out = helper.create_variable_for_type_inference(x.dtype)
+        helper.append_op(
+            type='cumprod',
+            inputs={'X': x},
+            outputs={'Out': out},
+            attrs={'dim': dim},
+        )
+        return out
 
 
 def isfinite(x, name=None):
@@ -3631,15 +3442,19 @@ def isfinite(x, name=None):
     """
     if in_dygraph_mode():
         return _C_ops.isfinite(x)
-    if _in_legacy_dygraph():
-        return _legacy_C_ops.isfinite_v2(x)
-    helper = LayerHelper("isfinite_v2", **locals())
-    check_variable_and_dtype(
-        x, 'x', ['float16', 'float32', 'float64', 'int32', 'int64'], 'isfinite'
-    )
-    out = helper.create_variable_for_type_inference('bool')
-    helper.append_op(type="isfinite_v2", inputs={"X": x}, outputs={"Out": out})
-    return out
+    else:
+        helper = LayerHelper("isfinite_v2", **locals())
+        check_variable_and_dtype(
+            x,
+            'x',
+            ['float16', 'float32', 'float64', 'int32', 'int64'],
+            'isfinite',
+        )
+        out = helper.create_variable_for_type_inference('bool')
+        helper.append_op(
+            type="isfinite_v2", inputs={"X": x}, outputs={"Out": out}
+        )
+        return out
 
 
 def isinf(x, name=None):
@@ -3665,15 +3480,14 @@ def isinf(x, name=None):
     """
     if in_dygraph_mode():
         return _C_ops.isinf(x)
-    if _in_legacy_dygraph():
-        return _legacy_C_ops.isinf_v2(x)
-    helper = LayerHelper("isinf_v2", **locals())
-    check_variable_and_dtype(
-        x, 'x', ['float16', 'float32', 'float64', 'int32', 'int64'], 'isinf'
-    )
-    out = helper.create_variable_for_type_inference(dtype='bool')
-    helper.append_op(type="isinf_v2", inputs={"X": x}, outputs={"Out": out})
-    return out
+    else:
+        helper = LayerHelper("isinf_v2", **locals())
+        check_variable_and_dtype(
+            x, 'x', ['float16', 'float32', 'float64', 'int32', 'int64'], 'isinf'
+        )
+        out = helper.create_variable_for_type_inference(dtype='bool')
+        helper.append_op(type="isinf_v2", inputs={"X": x}, outputs={"Out": out})
+        return out
 
 
 def isnan(x, name=None):
@@ -3699,16 +3513,14 @@ def isnan(x, name=None):
     """
     if in_dygraph_mode():
         return _C_ops.isnan(x)
-
-    if _in_legacy_dygraph():
-        return _legacy_C_ops.isnan_v2(x)
-    helper = LayerHelper("isnan_v2", **locals())
-    check_variable_and_dtype(
-        x, 'x', ['float16', 'float32', 'float64', 'int32', 'int64'], 'isnan'
-    )
-    out = helper.create_variable_for_type_inference(dtype='bool')
-    helper.append_op(type="isnan_v2", inputs={"X": x}, outputs={"Out": out})
-    return out
+    else:
+        helper = LayerHelper("isnan_v2", **locals())
+        check_variable_and_dtype(
+            x, 'x', ['float16', 'float32', 'float64', 'int32', 'int64'], 'isnan'
+        )
+        out = helper.create_variable_for_type_inference(dtype='bool')
+        helper.append_op(type="isnan_v2", inputs={"X": x}, outputs={"Out": out})
+        return out
 
 
 def prod(x, axis=None, keepdim=False, dtype=None, name=None):
@@ -3775,24 +3587,24 @@ def prod(x, axis=None, keepdim=False, dtype=None, name=None):
     reduce_all, axis = _get_reduce_axis_with_tensor(axis, x)
     if in_dygraph_mode():
         return _C_ops.prod(x, axis, keepdim, reduce_all)
-
-    if _in_legacy_dygraph():
-        return _legacy_C_ops.reduce_prod(
-            x, 'dim', axis, 'keep_dim', keepdim, 'reduce_all', reduce_all
+    else:
+        helper = LayerHelper('reduce_prod', **locals())
+        check_variable_and_dtype(
+            x,
+            'x/input',
+            ['float32', 'float64', 'int32', 'int64'],
+            'reduce_prod',
         )
-
-    helper = LayerHelper('reduce_prod', **locals())
-    check_variable_and_dtype(
-        x, 'x/input', ['float32', 'float64', 'int32', 'int64'], 'reduce_prod'
-    )
-    out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
-    helper.append_op(
-        type='reduce_prod',
-        inputs={'X': x},
-        outputs={'Out': out},
-        attrs={'dim': axis, 'keep_dim': keepdim, 'reduce_all': reduce_all},
-    )
-    return out
+        out = helper.create_variable_for_type_inference(
+            dtype=helper.input_dtype()
+        )
+        helper.append_op(
+            type='reduce_prod',
+            inputs={'X': x},
+            outputs={'Out': out},
+            attrs={'dim': axis, 'keep_dim': keepdim, 'reduce_all': reduce_all},
+        )
+        return out
 
 
 def sign(x, name=None):
@@ -3817,17 +3629,16 @@ def sign(x, name=None):
     """
     if in_dygraph_mode():
         return _C_ops.sign(x)
+    else:
+        check_variable_and_dtype(
+            x, 'x', ['float16', 'float32', 'float64'], 'sign'
+        )
+        helper = LayerHelper("sign", **locals())
+        out = helper.create_variable_for_type_inference(dtype=x.dtype)
 
-    if _in_legacy_dygraph():
-        return _legacy_C_ops.sign(x)
+        helper.append_op(type='sign', inputs={'X': [x]}, outputs={'Out': [out]})
 
-    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'sign')
-    helper = LayerHelper("sign", **locals())
-    out = helper.create_variable_for_type_inference(dtype=x.dtype)
-
-    helper.append_op(type='sign', inputs={'X': [x]}, outputs={'Out': [out]})
-
-    return out
+        return out
 
 
 def tanh(x, name=None):
@@ -3857,16 +3668,15 @@ def tanh(x, name=None):
     """
     if in_dygraph_mode():
         return _C_ops.tanh(x)
-
-    if _in_legacy_dygraph():
-        return _legacy_C_ops.tanh(x)
-
-    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'tanh')
-    check_type(x, 'x', (Variable), 'tanh')
-    helper = LayerHelper('tanh', **locals())
-    out = helper.create_variable_for_type_inference(x.dtype)
-    helper.append_op(type='tanh', inputs={'X': x}, outputs={'Out': out})
-    return out
+    else:
+        check_variable_and_dtype(
+            x, 'x', ['float16', 'float32', 'float64'], 'tanh'
+        )
+        check_type(x, 'x', (Variable), 'tanh')
+        helper = LayerHelper('tanh', **locals())
+        out = helper.create_variable_for_type_inference(x.dtype)
+        helper.append_op(type='tanh', inputs={'X': x}, outputs={'Out': out})
+        return out
 
 
 @inplace_apis_in_dygraph_only
@@ -3875,9 +3685,7 @@ def tanh_(x, name=None):
     Inplace version of ``tanh`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_tensor_tanh`.
     """
-    if in_dygraph_mode():
-        return _C_ops.tanh_(x)
-    return _legacy_C_ops.tanh_(x)
+    return _C_ops.tanh_(x)
 
 
 def increment(x, value=1.0, name=None):
@@ -3905,21 +3713,18 @@ def increment(x, value=1.0, name=None):
     """
     if in_dygraph_mode():
         return _C_ops.increment_(x, value)
-
-    if _in_legacy_dygraph():
-        return _legacy_C_ops.increment(x, 'step', value)
-
-    check_variable_and_dtype(
-        x, 'x', ['float32', 'float64', 'int32', 'int64'], 'increment'
-    )
-    helper = LayerHelper("increment", **locals())
-    helper.append_op(
-        type='increment',
-        inputs={'X': [x]},
-        outputs={'Out': [x]},
-        attrs={'step': float(value)},
-    )
-    return x
+    else:
+        check_variable_and_dtype(
+            x, 'x', ['float32', 'float64', 'int32', 'int64'], 'increment'
+        )
+        helper = LayerHelper("increment", **locals())
+        helper.append_op(
+            type='increment',
+            inputs={'X': [x]},
+            outputs={'Out': [x]},
+            attrs={'step': float(value)},
+        )
+        return x
 
 
 def all(x, axis=None, keepdim=False, name=None):
@@ -3973,28 +3778,26 @@ def all(x, axis=None, keepdim=False, name=None):
     """
     if in_dygraph_mode():
         return _C_ops.all(x, axis, keepdim)
+    else:
+        reduce_all, axis = _get_reduce_axis(axis, x)
+        attrs = {
+            'dim': axis,
+            'keep_dim': keepdim,
+            'reduce_all': reduce_all,
+        }
+        check_variable_and_dtype(x, 'x', ['bool'], 'all')
 
-    reduce_all, axis = _get_reduce_axis(axis, x)
-    if _in_legacy_dygraph():
-        return _legacy_C_ops.reduce_all(
-            x, 'dim', axis, 'keep_dim', keepdim, 'reduce_all', reduce_all
+        check_type(axis, 'axis', (int, list, tuple, type(None)), 'all')
+
+        helper = LayerHelper('all', **locals())
+        out = helper.create_variable_for_type_inference(dtype=x.dtype)
+        helper.append_op(
+            type='reduce_all',
+            inputs={'X': x},
+            outputs={'Out': out},
+            attrs=attrs,
         )
-
-    attrs = {
-        'dim': axis,
-        'keep_dim': keepdim,
-        'reduce_all': reduce_all,
-    }
-    check_variable_and_dtype(x, 'x', ['bool'], 'all')
-
-    check_type(axis, 'axis', (int, list, tuple, type(None)), 'all')
-
-    helper = LayerHelper('all', **locals())
-    out = helper.create_variable_for_type_inference(dtype=x.dtype)
-    helper.append_op(
-        type='reduce_all', inputs={'X': x}, outputs={'Out': out}, attrs=attrs
-    )
-    return out
+        return out
 
 
 def any(x, axis=None, keepdim=False, name=None):
@@ -4049,29 +3852,27 @@ def any(x, axis=None, keepdim=False, name=None):
     """
     if in_dygraph_mode():
         return _C_ops.any(x, axis, keepdim)
+    else:
+        reduce_all, axis = _get_reduce_axis(axis, x)
+        attrs = {
+            'dim': axis,
+            'keep_dim': keepdim,
+            'reduce_all': reduce_all,
+        }
 
-    reduce_all, axis = _get_reduce_axis(axis, x)
-    if _in_legacy_dygraph():
-        return _legacy_C_ops.reduce_any(
-            x, 'dim', axis, 'keep_dim', keepdim, 'reduce_all', reduce_all
+        check_variable_and_dtype(x, 'x', ['bool'], 'any')
+
+        check_type(axis, 'axis', (int, list, tuple, type(None)), 'any')
+
+        helper = LayerHelper('any', **locals())
+        out = helper.create_variable_for_type_inference(dtype=x.dtype)
+        helper.append_op(
+            type='reduce_any',
+            inputs={'X': x},
+            outputs={'Out': out},
+            attrs=attrs,
         )
-
-    attrs = {
-        'dim': axis,
-        'keep_dim': keepdim,
-        'reduce_all': reduce_all,
-    }
-
-    check_variable_and_dtype(x, 'x', ['bool'], 'any')
-
-    check_type(axis, 'axis', (int, list, tuple, type(None)), 'any')
-
-    helper = LayerHelper('any', **locals())
-    out = helper.create_variable_for_type_inference(dtype=x.dtype)
-    helper.append_op(
-        type='reduce_any', inputs={'X': x}, outputs={'Out': out}, attrs=attrs
-    )
-    return out
+        return out
 
 
 def broadcast_shape(x_shape, y_shape):
@@ -4137,22 +3938,21 @@ def conj(x, name=None):
     """
     if in_dygraph_mode():
         return _C_ops.conj(x)
+    else:
+        check_variable_and_dtype(
+            x,
+            "x",
+            ['complex64', 'complex128', 'float32', 'float64', 'int32', 'int64'],
+            'conj',
+        )
 
-    if paddle.in_dynamic_mode():
-        return _legacy_C_ops.conj(x)
+        helper = LayerHelper('conj', **locals())
+        out = helper.create_variable_for_type_inference(
+            dtype=helper.input_dtype()
+        )
 
-    check_variable_and_dtype(
-        x,
-        "x",
-        ['complex64', 'complex128', 'float32', 'float64', 'int32', 'int64'],
-        'conj',
-    )
-
-    helper = LayerHelper('conj', **locals())
-    out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
-
-    helper.append_op(type='conj', inputs={'X': x}, outputs={'Out': [out]})
-    return out
+        helper.append_op(type='conj', inputs={'X': x}, outputs={'Out': [out]})
+        return out
 
 
 def digamma(x, name=None):
@@ -4184,14 +3984,11 @@ def digamma(x, name=None):
     if in_dygraph_mode():
         return _C_ops.digamma(x)
     else:
-        if _in_legacy_dygraph():
-            return _legacy_C_ops.digamma(x)
-
-    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'digamma')
-    helper = LayerHelper('digamma', **locals())
-    out = helper.create_variable_for_type_inference(x.dtype)
-    helper.append_op(type='digamma', inputs={'X': x}, outputs={'Out': out})
-    return out
+        check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'digamma')
+        helper = LayerHelper('digamma', **locals())
+        out = helper.create_variable_for_type_inference(x.dtype)
+        helper.append_op(type='digamma', inputs={'X': x}, outputs={'Out': out})
+        return out
 
 
 def lgamma(x, name=None):
@@ -4221,14 +4018,12 @@ def lgamma(x, name=None):
     """
     if in_dygraph_mode():
         return _C_ops.lgamma(x)
-    elif _in_legacy_dygraph():
-        return _legacy_C_ops.lgamma(x)
-
-    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'lgamma')
-    helper = LayerHelper('lgamma', **locals())
-    out = helper.create_variable_for_type_inference(x.dtype)
-    helper.append_op(type='lgamma', inputs={'X': x}, outputs={'Out': out})
-    return out
+    else:
+        check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'lgamma')
+        helper = LayerHelper('lgamma', **locals())
+        out = helper.create_variable_for_type_inference(x.dtype)
+        helper.append_op(type='lgamma', inputs={'X': x}, outputs={'Out': out})
+        return out
 
 
 def neg(x, name=None):
@@ -4304,27 +4099,24 @@ def atan2(x, y, name=None):
     if in_dygraph_mode():
         return _C_ops.atan2(x, y)
     else:
-        if _in_legacy_dygraph():
-            return _legacy_C_ops.atan2(x, y)
-        else:
-            check_variable_and_dtype(
-                x,
-                'x',
-                ['int32', 'int64', 'float16', 'float32', 'float64'],
-                'atan2',
-            )
-            check_variable_and_dtype(
-                y,
-                'y',
-                ['int32', 'int64', 'float16', 'float32', 'float64'],
-                'atan2',
-            )
+        check_variable_and_dtype(
+            x,
+            'x',
+            ['int32', 'int64', 'float16', 'float32', 'float64'],
+            'atan2',
+        )
+        check_variable_and_dtype(
+            y,
+            'y',
+            ['int32', 'int64', 'float16', 'float32', 'float64'],
+            'atan2',
+        )
 
-            helper = LayerHelper('atan2', **locals())
-            inputs = {'X1': x, 'X2': y}
-            out = helper.create_variable_for_type_inference(dtype=x.dtype)
-            helper.append_op(type='atan2', inputs=inputs, outputs={'Out': out})
-            return out
+        helper = LayerHelper('atan2', **locals())
+        inputs = {'X1': x, 'X2': y}
+        out = helper.create_variable_for_type_inference(dtype=x.dtype)
+        helper.append_op(type='atan2', inputs=inputs, outputs={'Out': out})
+        return out
 
 
 def logit(x, eps=None, name=None):
@@ -4367,20 +4159,23 @@ def logit(x, eps=None, name=None):
             # [-1.0277, -4.5365, -0.9544, -1.3269,  1.4468]
 
     """
-
     if eps is None:
         eps = 0.0
-    if _in_legacy_dygraph():
-        return _legacy_C_ops.logit(x, 'eps', eps)
     if in_dygraph_mode():
         return _C_ops.logit(x, eps)
-    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'logit')
-    helper = LayerHelper("logit", **locals())
-    out = helper.create_variable_for_type_inference(x.dtype)
-    helper.append_op(
-        type='logit', inputs={'X': x}, outputs={'Out': out}, attrs={'eps': eps}
-    )
-    return out
+    else:
+        check_variable_and_dtype(
+            x, 'x', ['float16', 'float32', 'float64'], 'logit'
+        )
+        helper = LayerHelper("logit", **locals())
+        out = helper.create_variable_for_type_inference(x.dtype)
+        helper.append_op(
+            type='logit',
+            inputs={'X': x},
+            outputs={'Out': out},
+            attrs={'eps': eps},
+        )
+        return out
 
 
 def lerp(x, y, weight, name=None):
@@ -4419,23 +4214,21 @@ def lerp(x, y, weight, name=None):
             weight = paddle.to_tensor(weight, dtype=x.dtype)
 
         return _C_ops.lerp(x, y, weight)
-    if _in_legacy_dygraph():
+    else:
         if isinstance(weight, float):
-            weight = paddle.to_tensor(weight, dtype=x.dtype)
-        return _legacy_C_ops.lerp(x, y, weight)
+            weight = paddle.full(shape=[1], fill_value=weight, dtype=x.dtype)
 
-    if isinstance(weight, float):
-        weight = paddle.full(shape=[1], fill_value=weight, dtype=x.dtype)
+        check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'lerp')
+        check_variable_and_dtype(y, 'y', ['float32', 'float64'], 'lerp')
+        check_variable_and_dtype(
+            weight, 'weight', ['float32', 'float64'], 'lerp'
+        )
 
-    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'lerp')
-    check_variable_and_dtype(y, 'y', ['float32', 'float64'], 'lerp')
-    check_variable_and_dtype(weight, 'weight', ['float32', 'float64'], 'lerp')
-
-    helper = LayerHelper('lerp', **locals())
-    inputs = {'X': x, 'Y': y, 'Weight': weight}
-    out = helper.create_variable_for_type_inference(dtype=x.dtype)
-    helper.append_op(type='lerp', inputs=inputs, outputs={'Out': out})
-    return out
+        helper = LayerHelper('lerp', **locals())
+        inputs = {'X': x, 'Y': y, 'Weight': weight}
+        out = helper.create_variable_for_type_inference(dtype=x.dtype)
+        helper.append_op(type='lerp', inputs=inputs, outputs={'Out': out})
+        return out
 
 
 @inplace_apis_in_dygraph_only
@@ -4456,9 +4249,7 @@ def lerp_(x, y, weight, name=None):
                 out_shape, x.shape
             )
         )
-    if in_dygraph_mode():
-        return _C_ops.lerp_(x, y, weight)
-    return _legacy_C_ops.lerp_(x, y, weight)
+    return _C_ops.lerp_(x, y, weight)
 
 
 def erfinv(x, name=None):
@@ -4488,16 +4279,12 @@ def erfinv(x, name=None):
     """
     if in_dygraph_mode():
         return _C_ops.erfinv(x)
-
-    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'erfinv')
-
-    if paddle.in_dynamic_mode():
-        return _legacy_C_ops.erfinv(x)
-
-    helper = LayerHelper('erfinv', **locals())
-    out = helper.create_variable_for_type_inference(dtype=x.dtype)
-    helper.append_op(type='erfinv', inputs={'X': x}, outputs={'Out': out})
-    return out
+    else:
+        check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'erfinv')
+        helper = LayerHelper('erfinv', **locals())
+        out = helper.create_variable_for_type_inference(dtype=x.dtype)
+        helper.append_op(type='erfinv', inputs={'X': x}, outputs={'Out': out})
+        return out
 
 
 @inplace_apis_in_dygraph_only
@@ -4507,9 +4294,7 @@ def erfinv_(x, name=None):
     Please refer to :ref:`api_tensor_erfinv`.
     """
     check_type(x, 'x', (paddle.Tensor, Variable), 'erfinv')
-    if in_dygraph_mode():
-        return _C_ops.erfinv_(x)
-    return _legacy_C_ops.erfinv_(x)
+    return _C_ops.erfinv_(x)
 
 
 def rad2deg(x, name=None):
@@ -4558,10 +4343,6 @@ def rad2deg(x, name=None):
         if convert_dtype(x.dtype) in ['int32', 'int64']:
             x = cast(x, dtype="float32")
         return _C_ops.scale(x, rad2deg_scale, 0.0, True)
-    elif paddle.in_dynamic_mode():
-        if convert_dtype(x.dtype) in ['int32', 'int64']:
-            x = cast(x, dtype="float32")
-        return _legacy_C_ops.scale(x, 'scale', rad2deg_scale)
     else:
         check_variable_and_dtype(
             x, 'x', ['int32', 'int64', 'float32', 'float64'], 'rad2deg'
@@ -4626,10 +4407,6 @@ def deg2rad(x, name=None):
         if convert_dtype(x.dtype) in ['int32', 'int64']:
             x = cast(x, dtype="float32")
         return _C_ops.scale(x, deg2rad_scale, 0.0, True)
-    elif paddle.in_dynamic_mode():
-        if convert_dtype(x.dtype) in ['int32', 'int64']:
-            x = cast(x, dtype="float32")
-        return _legacy_C_ops.scale(x, 'scale', deg2rad_scale)
     else:
         check_variable_and_dtype(
             x, 'x', ['int32', 'int64', 'float32', 'float64'], 'deg2rad'
@@ -4729,7 +4506,7 @@ def gcd(x, y, name=None):
         )
         return (paddle.where(x < y, y, x), paddle.where(x < y, x, y))
 
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
         while _gcd_cond_fn(x, y):
             x, y = _gcd_body_fn(x, y)
 
@@ -4907,68 +4684,6 @@ def diff(x, n=1, axis=-1, prepend=None, append=None, name=None):
             return _C_ops.logical_xor(input_back, input_front)
         else:
             return _C_ops.subtract(input_back, input_front)
-    elif _in_legacy_dygraph():
-        has_pend = False
-        input_list = []
-        if prepend is not None and append is not None:
-            input_list = [prepend, x, append]
-            has_pend = True
-        elif prepend is not None:
-            input_list = [prepend, x]
-            has_pend = True
-        elif append is not None:
-            input_list = [x, append]
-            has_pend = True
-        if has_pend:
-            new_input = _varbase_creator()
-            _legacy_C_ops.concat(input_list, new_input, 'axis', axis)
-        else:
-            new_input = x
-
-        attrs_1 = ()
-        attrs_2 = ()
-
-        dim_len = new_input.shape[axis]
-
-        starts_1 = [0]
-        attrs_1 += ('starts', starts_1)
-        ends_1 = [dim_len - 1]
-        attrs_1 += ('ends', ends_1)
-        input_front = _legacy_C_ops.slice(
-            new_input,
-            None,
-            None,
-            None,
-            None,
-            'axes',
-            axes,
-            'infer_flags',
-            infer_flags,
-            *attrs_1
-        )
-        starts_2 = [1]
-        attrs_2 += ('starts', starts_2)
-        ends_2 = [dim_len]
-        attrs_2 += ('ends', ends_2)
-        input_back = _legacy_C_ops.slice(
-            new_input,
-            None,
-            None,
-            None,
-            None,
-            'axes',
-            axes,
-            'infer_flags',
-            infer_flags,
-            *attrs_2
-        )
-
-        if x.dtype == paddle.bool:
-            return _legacy_C_ops.logical_xor(input_back, input_front)
-        else:
-            return paddle.tensor.math._subtract_with_axis(
-                input_back, input_front, axis=axis
-            )
     else:
         check_variable_and_dtype(
             x, 'x', ['float32', 'float64', 'bool', 'int32', 'int64'], 'diff'
@@ -5082,21 +4797,19 @@ def angle(x, name=None):
 
     if in_dygraph_mode():
         return _C_ops.angle(x)
-    elif paddle.in_dynamic_mode():
-        return _legacy_C_ops.angle(x)
-
-    check_variable_and_dtype(
-        x, 'x', ['float32', 'float64', 'complex64', 'complex128'], 'angle'
-    )
-    op_type = "angle"
-    helper = LayerHelper(op_type, **locals())
-    inputs = {"X": x}
-    out = helper.create_variable_for_type_inference(
-        dtype=_complex_to_real_dtype(x.dtype)
-    )
-    outputs = {"Out": out}
-    helper.append_op(type=op_type, inputs=inputs, outputs=outputs)
-    return out
+    else:
+        check_variable_and_dtype(
+            x, 'x', ['float32', 'float64', 'complex64', 'complex128'], 'angle'
+        )
+        op_type = "angle"
+        helper = LayerHelper(op_type, **locals())
+        inputs = {"X": x}
+        out = helper.create_variable_for_type_inference(
+            dtype=_complex_to_real_dtype(x.dtype)
+        )
+        outputs = {"Out": out}
+        helper.append_op(type=op_type, inputs=inputs, outputs=outputs)
+        return out
 
 
 def heaviside(x, y, name=None):
@@ -5143,11 +4856,12 @@ def heaviside(x, y, name=None):
     op_type = 'elementwise_heaviside'
     axis = -1
     act = None
-    if _non_static_mode():
+    if in_dygraph_mode():
         return _elementwise_op_in_dygraph(
             x, y, axis=axis, act=act, op_name=op_type
         )
-    return _elementwise_op(LayerHelper(op_type, **locals()))
+    else:
+        return _elementwise_op(LayerHelper(op_type, **locals()))
 
 
 def frac(x, name=None):
@@ -5192,24 +4906,18 @@ def frac(x, name=None):
         y = _C_ops.trunc(x)
         return _C_ops.subtract(x, y)
     else:
-        if _in_legacy_dygraph():
-            y = _legacy_C_ops.trunc(x)
-            return _elementwise_op_in_dygraph(
-                x, y, axis=axis, act=act, op_name=op_type
-            )
-        else:
-            inputs = {"X": x}
-            attrs = {}
+        inputs = {"X": x}
+        attrs = {}
 
-            helper = LayerHelper("trunc", **locals())
-            check_variable_and_dtype(
-                x, "X", ['int32', 'int64', 'float32', 'float64'], 'trunc'
-            )
-            y = helper.create_variable_for_type_inference(dtype=x.dtype)
-            helper.append_op(
-                type="trunc", inputs=inputs, attrs=attrs, outputs={"Out": y}
-            )
-            return _elementwise_op(LayerHelper(op_type, **locals()))
+        helper = LayerHelper("trunc", **locals())
+        check_variable_and_dtype(
+            x, "X", ['int32', 'int64', 'float32', 'float64'], 'trunc'
+        )
+        y = helper.create_variable_for_type_inference(dtype=x.dtype)
+        helper.append_op(
+            type="trunc", inputs=inputs, attrs=attrs, outputs={"Out": y}
+        )
+        return _elementwise_op(LayerHelper(op_type, **locals()))
 
 
 def sgn(x, name=None):
@@ -5334,7 +5042,7 @@ def take(x, index, mode='raise', name=None):
             )
         )
 
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
         if not isinstance(index, (paddle.Tensor, Variable)):
             raise TypeError(
                 "The type of 'index' must be Tensor, but got {}".format(
