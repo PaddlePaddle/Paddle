@@ -403,6 +403,23 @@ def ParseYamlInplaceInfo(string):
     return inplace_map
 
 
+def ParseYamlCompositeInfo(string):
+    # example  composite: fun(args1, args2,.....)
+    fname = r'(.*?)'
+    wspace = r'\s*'
+    fargs = r'(.*?)'
+    pattern = (
+        fr'{fname}{wspace}\({wspace}{fargs}{wspace}\)'
+    )
+
+    m = re.search(pattern, string)
+    composite_fun_info = []
+    composite_fun_info.append(m.group(1))
+    func_args = m.group(2).split(",")
+    for fun_arg in func_args:
+        composite_fun_info.append(fun_arg.strip())
+
+    return composite_fun_info
 ####################
 #  Generator Base  #
 ####################
@@ -463,11 +480,9 @@ class FunctionGeneratorBase:
     def ParseComposite(self):
         grad_api_contents = self.grad_api_contents
         
-        if 'compoiste' in grad_api_contents.keys():
-            composite_str = grad_api_contents['compoiste']
-            compiste_list = re.split(", |( |)", composite_str) 
-            for name in composite_str:
-                self.comosite_func_info.append(name.strip())
+        if 'composite' in grad_api_contents.keys():
+            composite_str = grad_api_contents['composite']
+            self.composite_func_info = ParseYamlCompositeInfo(composite_str)
 
     def ParseDispensable(self):
         forward_api_contents = self.forward_api_contents

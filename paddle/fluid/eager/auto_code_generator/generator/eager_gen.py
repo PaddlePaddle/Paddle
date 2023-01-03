@@ -549,6 +549,7 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
         # self.forward_outputs_position_map
         # self.optional_inputs
         # self.no_need_buffers
+        # self.composite_func_info
         # self.intermediate_outputs
         # self.forward_inplace_map
         FunctionGeneratorBase.__init__(self, forward_api_contents, namespace)
@@ -874,6 +875,7 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
         backward_grad_outputs_map = self.backward_grad_outputs_map
         backward_attrs_list = self.backward_attrs_list
         optional_inputs = self.optional_inputs
+        is_composite_forward_api = False if self.composite_func_info == [] else True
 
         # Pass Stop Gradient Args
         pass_stop_gradient_args_str = self.GetPassStopGradientArgsList(
@@ -1832,6 +1834,7 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
             self.grad_api_contents, self.forward_apis_dict
         )
         is_composite_forward_api = False if self.composite_func_info == [] else True
+        
         if next_node_generator is not None:
             has_higher_order_node = True
             return (
@@ -2215,6 +2218,7 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
 
         grad_api_args_str = ", ".join(grad_api_args)
         composite_grad_api_args_str = ", ".join(grad_api_args)
+        composite_template_name = "<paddle::experimental::Tensor>"
 
         if is_invoke_forward_api:
             autograd_api_out = "auto"
@@ -2240,8 +2244,8 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
   """
         elif is_composite_grad_api:
             grad_function_call_str = f"""
-  if (paddle::prim::PrimCommonUtils::IsPrimEnabled) {{
-  {indent}{composite_grad_api_namespace}{composite_backward_api_name}({composite_grad_api_args_str});
+  if (paddle::prim::PrimCommonUtils::IsPrimEnabled()) {{
+  {indent}{composite_grad_api_namespace}{composite_backward_api_name}{composite_template_name}({composite_grad_api_args_str});
   }}else{{
   {indent}{grad_api_namespace}{backward_api_name}({grad_api_args_str});
   }}
@@ -2348,6 +2352,9 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
             var_str += f"\n{indent}  output_str += output_{new_name}_str; "
 
         log_str = AFTER_LOG_PRINT_TEMPLATE.format(var_str)
+        # TODO Ruting modify in the future
+        # if is_composite_forward_api:
+        #     next_grad_node_creation_str = ''
 
         self.node_definition_str = GRAD_FUNCTION_TEMPLATE.format(
             grad_node_name,
