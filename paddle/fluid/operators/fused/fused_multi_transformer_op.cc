@@ -174,6 +174,9 @@ class FusedMultiTransformerOpOpMaker
              "(optional) The prefix caches for generation inference.")
         .AsDispensable()
         .AsDuplicable();
+    AddInput("RotaryPosEmb",
+             "(optional) The RoPE embeddings for generation inference.")
+        .AsDispensable();
     AddInput("TimeStep",
              "(optional, int) The time step for generation inference.")
         .AsDispensable();
@@ -209,6 +212,18 @@ class FusedMultiTransformerOpOpMaker
                   "else, uses post_layer_norm architecuture. "
                   "[default true].")
         .SetDefault(true);
+    AddAttr<int>("rotary_emb_dims",
+                 "the Attr(dims) for RotaryPosEmb's Computation  [default 0].")
+        .SetDefault(0)
+        .AddCustomChecker([](const int &rotary_emb_dims) {
+          PADDLE_ENFORCE_EQ(
+              rotary_emb_dims >= 0 && rotary_emb_dims <= 2,
+              true,
+              platform::errors::InvalidArgument(
+                  "'rotary_emb_dims' in Op(Rotray) should be between"
+                  "0 and 2, But received [%s].",
+                  rotary_emb_dims));
+        });
     AddAttr<float>("epsilon",
                    "Constant for numerical stability [default 1e-5].")
         .SetDefault(1e-5)

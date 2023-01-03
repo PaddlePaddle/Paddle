@@ -75,7 +75,6 @@ void TensorRTEngine::InitNetwork() {
   }
 
   infer_builder_config_.reset(infer_builder_->createBuilderConfig());
-  // optim_profile_ = infer_builder_->createOptimizationProfile();
   optim_profiles_.resize(max_profile_num_);
   for (int i = 0; i < max_profile_num_; i++)
     optim_profiles_[i] = infer_builder_->createOptimizationProfile();

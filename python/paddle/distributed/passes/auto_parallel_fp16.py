@@ -663,8 +663,6 @@ def _insert_memcopy(block, idx, src_var, dist_context, direction="D2H"):
     # TODO to support CUDAPinned/NPU/XPU Places
     if direction == "D2H":
         dst_place_type = 0
-    elif direction == "D2H":
-        dst_place_type = 1
     else:
         raise NotImplementedError(
             "direction [{}] is not supported yet.".format(direction)
@@ -673,7 +671,7 @@ def _insert_memcopy(block, idx, src_var, dist_context, direction="D2H"):
     attrs = {'dst_place_type': dst_place_type}
     new_op = block._insert_op_without_sync(
         index=idx,
-        type='memcpy',
+        type='memcpy_d2h',
         inputs={'X': [src_var]},
         outputs={'Out': [output_var]},
         attrs=attrs,

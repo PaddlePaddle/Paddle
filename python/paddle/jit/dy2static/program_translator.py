@@ -415,7 +415,7 @@ class StaticFunction:
         if not _non_static_mode():
             raise RuntimeError(
                 "Failed to run the callable object {} decorated by '@paddle.jit.to_static', "
-                "because it is NOT in dynamic mode. Please disable the static mode to enter dynamic mode with the "
+                "because it is NOT in dynamic mode. Please disable the static graph mode to enter dynamic mode with the "
                 "following API: paddle.disable_static().".format(
                     self.dygraph_function
                 )
@@ -691,7 +691,7 @@ class StaticFunction:
                         return out
 
                 x = paddle.randn([10, 1], 'float32')
-                net = paddle.jit.to_static(Net())  # convert into static mode
+                net = paddle.jit.to_static(Net())  # convert into static graph mode
                 out = net(x)
 
                 net.forward.rollback()  # rollback into dygraph mode
@@ -751,7 +751,7 @@ class StaticFunction:
                         return out
 
                 x = paddle.randn([10, 1], 'float32')
-                net = paddle.jit.to_static(Net())  # convert into static mode
+                net = paddle.jit.to_static(Net())  # convert into static graph mode
 
                 copy_net = copy.deepcopy(net)      # deepcopy a new net without @to_static
 

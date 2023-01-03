@@ -106,7 +106,7 @@ __all__ = ['cuda', 'cudnn', 'show']
 
 def show():
     """Get the version of paddle if `paddle` package if tagged. Otherwise, output the corresponding commit id.
-    
+
     Returns:
         If paddle package is not tagged, the commit-id of paddle will be output.
         Otherwise, the following information will be output.
@@ -118,13 +118,13 @@ def show():
         minor: the minor version of paddle
 
         patch: the patch level version of paddle
-        
+
         rc: whether it's rc version
 
         cuda: the cuda version of package. It will return `False` if CPU version paddle package is installed
 
         cudnn: the cudnn version of package. It will return `False` if CPU version paddle package is installed
-    
+
     Examples:
         .. code-block:: python
 
@@ -338,10 +338,6 @@ packages=['paddle',
           'paddle.fluid.layers',
           'paddle.fluid.dataloader',
           'paddle.fluid.contrib',
-          'paddle.fluid.contrib.quantize',
-          'paddle.fluid.contrib.slim',
-          'paddle.fluid.contrib.slim.quantization',
-          'paddle.fluid.contrib.slim.quantization.imperative',
           'paddle.fluid.contrib.extend_optimizer',
           'paddle.fluid.contrib.mixed_precision',
           'paddle.fluid.contrib.mixed_precision.bf16',
@@ -386,6 +382,8 @@ packages=['paddle',
           'paddle.incubate.distributed.models',
           'paddle.incubate.distributed.models.moe',
           'paddle.incubate.distributed.models.moe.gate',
+          'paddle.quantization',
+          'paddle.quantization.quanters',
           'paddle.sparse',
           'paddle.sparse.nn',
           'paddle.sparse.nn.layer',
@@ -403,6 +401,9 @@ packages=['paddle',
           'paddle.static',
           'paddle.static.nn',
           'paddle.static.amp',
+          'paddle.static.quantization',
+          'paddle.quantization',
+          'paddle.quantization.imperative',
           'paddle.tensor',
           'paddle.onnx',
           'paddle.autograd',
@@ -456,8 +457,12 @@ package_dir={
 libs_path='${PADDLE_BINARY_DIR}/python/paddle/libs'
 
 package_data['paddle.libs']= []
-package_data['paddle.libs']=[('libwarpctc' if os.name != 'nt' else 'warpctc') + ext_name]
+package_data['paddle.libs']=[
+    ('libwarpctc' if os.name != 'nt' else 'warpctc') + ext_name,
+    ('libwarprnnt' if os.name != 'nt' else 'warprnnt') + ext_name,
+]
 shutil.copy('${WARPCTC_LIBRARIES}', libs_path)
+shutil.copy('${WARPRNNT_LIBRARIES}', libs_path)
 
 package_data['paddle.libs']+=[
     os.path.basename('${LAPACK_LIB}'), 
@@ -516,6 +521,12 @@ if '${WITH_CINN}' == 'ON':
     shutil.copy('${CINN_INCLUDE_DIR}/cinn/runtime/cuda/cinn_cuda_runtime_source.cuh', libs_path)
     package_data['paddle.libs']+=['libcinnapi.so']
     package_data['paddle.libs']+=['cinn_cuda_runtime_source.cuh']
+
+    cinn_fp16_file = '${CINN_INCLUDE_DIR}/cinn/runtime/cuda/float16.h'
+    if os.path.exists(cinn_fp16_file):
+        shutil.copy(cinn_fp16_file, libs_path)
+        package_data['paddle.libs']+=['float16.h']
+
     if '${CMAKE_BUILD_TYPE}' == 'Release' and os.name != 'nt':
         command = "patchelf --set-rpath '$ORIGIN/' %s/${CINN_LIB_NAME}" % libs_path
         if os.system(command) != 0:
@@ -751,7 +762,7 @@ else:
         yield
 
 # Log for PYPI
-with open("@PADDLE_BINARY_DIR@/python/paddle/README.rst", "r", encoding='UTF-8') as f:
+with open("@PADDLE_BINARY_DIR@/python/paddle/README.md", "r", encoding='UTF-8') as f:
     long_description = f.read()
 
 # strip *.so to reduce package size
