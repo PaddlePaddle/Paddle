@@ -47,7 +47,7 @@ __global__ void RoformerKernel(const T *inputact,
     base = input3[i];
   }
   //const int seq_index = blockIdx.x % s;
-  const int seq_index = input3[cu_index] - base;
+  const int seq_index = blockIdx.x - base;
   for (int index = _index; index < right_index; index += blockDim.x) {
     if (index >= nElement) return;
     float qkv_index = (index /  h) % 3;
