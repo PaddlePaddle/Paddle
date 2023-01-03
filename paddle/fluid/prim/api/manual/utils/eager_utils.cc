@@ -20,21 +20,21 @@ namespace paddle {
 namespace prim {
 
 template<>
-Tensor empty<Tensor>(const IntArray& shape,
-             DataType dtype,
-             const Place& place){
-    if(dtype == DataType::UNDEFINED){
-        dtype = DataType::FLOAT32;
+Tensor empty<Tensor>(const paddle::experimental::IntArray& shape,
+             paddle::experimental::DataType dtype,
+             const paddle::Place& place){
+    if(dtype == paddle::experimental::DataType::UNDEFINED){
+        dtype = paddle::experimental::DataType::FLOAT32;
     }
     return empty_ad_func(shape, dtype, place);
 }
 
 template<>
-Tensor empty_like<Tensor>(const Tensor& x,
-                  DataType dtype,
-                  const Place& place){
-    if(dtype == DataType::UNDEFINED){
-        dtype = DataType::FLOAT32;
+Tensor empty_like<Tensor>(const paddle::experimental::Tensor& x,
+                  paddle::experimental::DataType dtype,
+                  const paddle::Place& place){
+    if(dtype == paddle::experimental::DataType::UNDEFINED){
+        dtype = paddle::experimental::DataType::FLOAT32;
     }   
     return empty_like_ad_func(x, dtype, place);
 }
