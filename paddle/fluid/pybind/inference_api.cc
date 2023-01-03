@@ -646,6 +646,7 @@ void BindAnalysisConfig(py::module *m) {
            py::arg("memory_pool_init_size_mb"),
            py::arg("device_id") = 0,
            py::arg("precision_mode") = AnalysisConfig::Precision::kFloat32)
+      .def("exp_enable_use_cutlass", &AnalysisConfig::Exp_EnableUseCutlass)
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       .def("set_exec_stream",
            [](AnalysisConfig &self, phi::CUDAStream &stream) {

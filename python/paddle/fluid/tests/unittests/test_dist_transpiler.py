@@ -584,7 +584,7 @@ class TestL2Decay(TranspilerTest):
         def filter(param):
             return param.name == "fc_w"
 
-        clip = fluid.clip.GradientClipByValue(0.1, need_clip=filter)
+        clip = paddle.nn.ClipGradByValue(0.1, need_clip=filter)
         sgd_optimizer.minimize(avg_cost, grad_clip=clip)
 
     def transpiler_test_impl(self):
