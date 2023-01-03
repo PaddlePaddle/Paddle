@@ -171,3 +171,8 @@ TEST(StaticPrim, TestFlags) {
 }
 }  // namespace prim
 }  // namespace paddle
+USE_OP_ITSELF(tanh);
+USE_OP_ITSELF(tanh_grad);
+USE_OP_ITSELF(pow);
+USE_OP_ITSELF(elementwise_mul);
+USE_OP_ITSELF(scale);
