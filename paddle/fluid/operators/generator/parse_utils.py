@@ -276,6 +276,28 @@ def parse_forward(op_name: str, forward_config: str) -> Dict[str, Any]:
     return forward_cfg
 
 
+def parse_composite(
+    op_name: str,
+    composite_config: str,
+) -> Dict[str, Any]:
+    # composite_config: fun(args1, args2,.....)
+    fname = r'(.*?)'
+    wspace = r'\s*'
+    fargs = r'(.*?)'
+    pattern = fr'{fname}{wspace}\({wspace}{fargs}{wspace}\)'
+
+    m = re.search(pattern, composite_config)
+    func_name = m.group(1)
+    func_args = m.group(2)
+    func_args = func_args.split(",")
+    fun_inputs = [fun_input.strip() for fun_input in func_args]
+
+    composite_dict = {}
+    composite_dict["fun_name"] = func_name
+    composite_dict["inputs"] = fun_inputs
+    return composite_dict
+
+
 def check_op_config(op_entry, op_name):
     base_key_set = (
         'op',
@@ -293,6 +315,7 @@ def check_op_config(op_entry, op_name):
         'intermediate',
         'no_need_buffer',
         'data_transform',
+        'composite',
     )
     infer_meta_key_set = ('func', 'param')
     kernel_key_set = ('func', 'param', 'data_type', 'layout', 'backend')
@@ -318,9 +341,13 @@ def parse_op_entry(op_entry: Dict[str, Any], name_field="op"):
     op_name = op_entry[name_field]
     inputs, attrs = parse_input_and_attr(op_name, op_entry["args"])
     outputs = parse_outputs(op_name, op_entry["output"])
-
+    if "composite" in op_entry:
+        composite_dict = parse_composite(op_name, op_entry["composite"])
+        valid_args = [input["name"] for input in inputs]
+        for output in outputs:
+            valid_args.append(output["name"])
+        validate_composite_args(op_name, composite_dict["inputs"], valid_args)
     check_op_config(op_entry, op_name)
-
     # validate default value of DataType and DataLayout
     for attr in attrs:
         if "default_value" in attr:
@@ -428,6 +455,10 @@ def parse_op_entry(op_entry: Dict[str, Any], name_field="op"):
         invoke = parse_invoke(op_name, op_entry["invoke"])
         op["invoke"] = invoke
 
+    # has composite ?
+    if "composite" in op_entry:
+        op.update({"composite": composite_dict})
+
     # backward
     if "backward" in op_entry:
         backward = op_entry["backward"]
@@ -450,6 +481,13 @@ def parse_op_entry(op_entry: Dict[str, Any], name_field="op"):
             forward = None
         op["forward"] = forward
     return op
+
+
+def validate_composite_args(op, composite_args, valid_args):
+    for composite_arg in composite_args:
+        assert (
+            composite_arg in valid_args
+        ), f"Op ({op}) : invalid args \"{composite_arg}\" in composite function "
 
 
 def validate_backward_attrs(op, forward_attrs, backward_attrs):

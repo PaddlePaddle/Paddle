@@ -154,6 +154,11 @@ def process_int_array(op_item, int_array_configs):
 
 # replace name of op and params for OpMaker
 def replace_compat_name(op_op_map, forward_op_dict, backward_op_dict):
+    print("forward_op_dict")
+    print(forward_op_dict)
+    print("backward_op_dict")
+    print(backward_op_dict)
+
     def get_op_and_op_name(op_item):
         names = op_item.split('(')
         if len(names) == 1:
@@ -438,7 +443,6 @@ def main(
         bw_op['op_name'] = bw_op['name']
 
     replace_compat_name(op_op_map, forward_op_dict, backward_op_dict)
-
     # prepare for invoke case
     process_invoke_op(forward_op_dict, backward_op_dict)
 
