@@ -77,7 +77,6 @@ class TrtConvertElementwiseTest_one_input_corner_case(TrtLayerAutoScanTest):
                         },
                         outputs=["output_data"],
                     )
-
                     yield program_config
 
     def sample_predictor_configs(
