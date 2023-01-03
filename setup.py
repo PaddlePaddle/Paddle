@@ -50,6 +50,22 @@ assert (
     CMAKE
 ), 'The "cmake" executable is not found. Please check if Cmake is installed.'
 
+# CMAKE: full path to python library
+if platform.system() == "Windows":
+    cmake_python_library = "{}/libs/python{}.lib".format(
+        sysconfig.get_config_var("prefix"), sysconfig.get_config_var("VERSION")
+    )
+    # Fix virtualenv builds
+    if not os.path.exists(cmake_python_library):
+        cmake_python_library = "{}/libs/python{}.lib".format(
+            sys.base_prefix, sysconfig.get_config_var("VERSION")
+        )
+else:
+    libname = sysconfig.get_config_var("INSTSONAME")
+    libdir = sysconfig.get_config_var('LIBDIR') + (
+        sysconfig.get_config_var("multiarchsubdir") or ""
+    )
+    cmake_python_library = os.path.join(libdir, libname)
 
 TOP_DIR = os.path.dirname(os.path.realpath(__file__))
 
@@ -565,6 +581,8 @@ def options_process(args, build_options):
                 'PYTHON_INCLUDE_DIR', sysconfig.get_path("include")
             )
         )
+    if 'PYTHON_LIBRARY:FILEPATH' not in build_options.keys():
+        args.append('-D{}={}'.format('PYTHON_LIBRARY', cmake_python_library))
 
 
 def get_cmake_generator():
