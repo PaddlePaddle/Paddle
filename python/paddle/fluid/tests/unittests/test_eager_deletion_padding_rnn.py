@@ -504,8 +504,8 @@ class PaddingRNNTestBase(unittest.TestCase):
                     self.feed_order,
                 ) = res_vars
 
-                fluid.clip.set_gradient_clip(
-                    clip=fluid.clip.GradientClipByGlobalNorm(
+                paddle.nn.clip.set_gradient_clip(
+                    clip=paddle.nn.ClipGradByGlobalNorm(
                         clip_norm=config.max_grad_norm
                     )
                 )
@@ -644,7 +644,7 @@ class PaddingRNNTestBase(unittest.TestCase):
         self, parallel=True, use_program_cache=True
     ):
         '''
-        Test that train ppl of padding mode is same to that of static mode
+        Test that train ppl of padding mode is same to that of static graph mode
         '''
         config = RNNConfig('test', 'padding')
         with fluid.scope_guard(fluid.Scope()):
@@ -658,7 +658,7 @@ class PaddingRNNTestBase(unittest.TestCase):
 class EagerDeletionPaddingRNNTest(PaddingRNNTestBase):
     def test_padding_mode_no_eager_deletion(self):
         '''
-        Test that train ppl of padding mode is same to that of static mode without eager deletion
+        Test that train ppl of padding mode is same to that of static graph mode without eager deletion
         '''
         fluid.core._set_eager_deletion_mode(-1.0, 1.0, True)
         # When parallel is True, use_program_cache does not make a difference.
@@ -666,7 +666,7 @@ class EagerDeletionPaddingRNNTest(PaddingRNNTestBase):
 
     def test_padding_mode_eager_deletion(self):
         '''
-        Test that train ppl of padding mode is same to that of static mode under eager deletion
+        Test that train ppl of padding mode is same to that of static graph mode under eager deletion
         '''
         fluid.core._set_eager_deletion_mode(0.0, 1.0, True)
         # When parallel is True, use_program_cache does not make a difference.

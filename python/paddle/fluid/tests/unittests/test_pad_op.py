@@ -178,6 +178,22 @@ class TestPaddingValueTensor2(TestPaddingValueTensor):
         return out
 
 
+class TestPaddingValueTensor3(unittest.TestCase):
+    def test_static(self):
+        np_x = np.random.random((16, 16)).astype('float32')
+        main_prog = Program()
+        starup_prog = Program()
+        with program_guard(main_prog, starup_prog):
+            x = paddle.assign(np_x).astype('float32')
+            pad_value = paddle.assign([0.0]).astype('float64')
+            y = paddle.nn.functional.pad(x, [0, 1, 2, 3], value=pad_value)
+
+        exe = paddle.static.Executor(paddle.CPUPlace())
+        [pd_out] = exe.run(main_prog, fetch_list=[y])
+        np_out = np.pad(np_x, [(0, 1), (2, 3)], constant_values=0.0)
+        np.testing.assert_allclose(pd_out, np_out)
+
+
 if __name__ == '__main__':
     paddle.enable_static()
     unittest.main()

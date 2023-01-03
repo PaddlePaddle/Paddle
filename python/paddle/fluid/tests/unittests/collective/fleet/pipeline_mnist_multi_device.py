@@ -122,7 +122,7 @@ class TestDistMnist2x2(TestDistRunnerBase):
         opt = fluid.optimizer.Momentum(
             learning_rate=lr_val,
             momentum=0.9,
-            grad_clip=fluid.clip.GradientClipByGlobalNorm(clip_norm=1.0),
+            grad_clip=paddle.nn.ClipGradByGlobalNorm(clip_norm=1.0),
         )
 
         acc_steps = 2  # accumulated steps for pipeline
