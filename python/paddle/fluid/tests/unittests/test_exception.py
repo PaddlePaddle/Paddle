@@ -42,7 +42,7 @@ class TestExceptionNoCStack(unittest.TestCase):
     def test_exception_in_static_mode(self):
         x = fluid.layers.data(name='X', shape=[-1, 13], dtype='float32')
         y = fluid.layers.data(name='Y', shape=[-1, 1], dtype='float32')
-        predict = fluid.layers.fc(input=x, size=1, act=None)
+        predict = paddle.static.nn.fc(x, size=1)
         loss = paddle.nn.functional.square_error_cost(input=predict, label=y)
         avg_loss = paddle.mean(loss)
 
