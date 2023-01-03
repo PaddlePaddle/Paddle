@@ -131,9 +131,9 @@ class FusedAttentionOp : public framework::OperatorWithKernel {
       PADDLE_ENFORCE_EQ(y_dim.size(),
                         4,
                         platform::errors::InvalidArgument(
-                            "The dimensions of qkv_weight must be 4"
-                            "(3, num_head, dim_head, dim_embed), but received"
-                            "dimensions of Input is [%d]",
+                            "The dimensions of qkv_weight must be 4 if not"
+                            "enable transpose_qkv_wb: (3, num_head, dim_head, "
+                            "dim_embed), but received [%d]",
                             y_dim.size()));
       PADDLE_ENFORCE_EQ(x_dim[2],
                         y_dim[3],
