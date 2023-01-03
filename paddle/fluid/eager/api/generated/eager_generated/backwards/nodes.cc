@@ -15602,9 +15602,11 @@ TanhGradNode::operator()(
 
   // Call grad_api function
   if (paddle::prim::PrimCommonUtils::IsPrimEnabled()) {
+    VLOG(3) << "Runing tanh_grad composite";
     paddle::prim::tanh_grad<paddle::experimental::Tensor>(
         out, grad_out, api_output_0);
   } else {
+    VLOG(3) << "Runing tanh_grad PHI";
     paddle::experimental::tanh_grad(out, grad_out, api_output_0);
   }
   // Check NaN and Inf id needed

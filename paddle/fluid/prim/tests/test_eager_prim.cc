@@ -56,6 +56,7 @@ TEST(EagerPrim, TanhBackwardTest) {
   std::vector<paddle::experimental::Tensor> outs0 = {out0};
   // Disable prim
   FLAGS_prim_enabled = false;
+  ASSERT_FALSE(PrimCommonUtils::IsPrimEnabled());
   // 4. Run Backward
   egr::Backward(outs0, {}, false);
 
