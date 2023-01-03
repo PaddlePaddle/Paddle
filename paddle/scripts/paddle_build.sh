@@ -1843,6 +1843,11 @@ function precise_card_test_single {
     for case in $(echo $testcases | tr "$|^" "\n" | awk '!/^$/')
     do
         cd ${PADDLE_ROOT}/build
+        
+        find paddle/fluid -name *.gcda | xargs rm -f 
+        find paddle/phi -name *.gcda | xargs rm -f 
+        find paddle/utils -name *.gcda | xargs rm -f 
+
         precise_card_test "^${case}$" $num
 
         #if test failed,continue,if test succeed ,go on 
@@ -1876,9 +1881,6 @@ function precise_card_test_single {
             fi
             mv python-coverage.data.* ${PADDLE_ROOT}/build/pytest/$case
         fi
-        find paddle/fluid -name *.gcda | xargs rm -f 
-        find paddle/phi -name *.gcda | xargs rm -f 
-        find paddle/utils -name *.gcda | xargs rm -f 
     done
 }
 
@@ -1988,6 +1990,10 @@ set +x
             fi
             read testcase <<< $(echo "$line"|grep -oEi "\w+$")
 
+            if [[ "$testcase" == "simple_precision_test" ]]; then
+                continue
+            fi
+
             if [[ "$is_multicard" == "" ]]; then
                 # trick: treat all test case with prefix "test_dist" as dist case, and would run on 2 GPUs
                 read is_multicard <<< $(echo "$testcase"|grep -oEi "test_dist_")
@@ -2032,6 +2038,8 @@ set -x
     mkdir -p ${PADDLE_ROOT}/build/ut_map
     mkdir -p ${PADDLE_ROOT}/build/pytest
     #run all unittest to get the coverage information of .c and .h files
+    precise_card_test_single "^simple_precision_test$" 1
+    wait;
     precise_card_test_single "$single_card_tests" 1
     precise_card_test_single "$single_card_tests_1" 1
     precise_card_test_single "$multiple_card_tests" 2
@@ -2871,8 +2879,11 @@ function parallel_test() {
     mkdir -p ${PADDLE_ROOT}/build
     cd ${PADDLE_ROOT}/build
     pip install hypothesis
-    if [ -d "${PADDLE_ROOT}/build/python/dist/" ]; then
+    if ls ${PADDLE_ROOT}/build/python/dist/*whl >/dev/null 2>&1; then
         pip install ${PADDLE_ROOT}/build/python/dist/*whl
+    fi
+    if ls ${PADDLE_ROOT}/dist/*whl >/dev/null 2>&1; then
+        pip install ${PADDLE_ROOT}/dist/*whl
     fi
     cp ${PADDLE_ROOT}/build/python/paddle/fluid/tests/unittests/testsuite.py ${PADDLE_ROOT}/build/python
     cp -r ${PADDLE_ROOT}/build/python/paddle/fluid/tests/unittests/white_list ${PADDLE_ROOT}/build/python
@@ -3465,7 +3476,6 @@ function check_coverage_build() {
     set -x
 }
 function run_setup(){
-    rm -rf ${PADDLE_ROOT}/build
     # Build script will not fail if *.deb does not exist
     rm *.deb 2>/dev/null || true
     # Delete previous built egg packages
@@ -3473,7 +3483,6 @@ function run_setup(){
     # Delete previous built paddle cache
     rm -rf ${PADDLE_ROOT}/build/python/paddle 2>/dev/null || true
     startTime_s=`date +%s`
-
     SYSTEM=`uname -s`
     if [ "$SYSTEM" == "Darwin" ]; then
         echo "Using python abi: $1"
@@ -3522,7 +3531,7 @@ function run_setup(){
                 export DYLD_LIBRARY_PATH=${DYLD_LIBRARY_PATH}:/Library/Frameworks/Python.framework/Versions/3.10/lib/
                 export PATH=/Library/Frameworks/Python.framework/Versions/3.10/bin/:${PATH}
                 #after changing "PYTHON_LIBRARY:FILEPATH" to "PYTHON_LIBRARY" ,we can use export
-                export PYTHON_EXECUTABLE=/Library/Frameworks/Python.framework/Versions/3.9/lib/libpython3.9.dylib
+                export PYTHON_EXECUTABLE=/Library/Frameworks/Python.framework/Versions/3.10/bin/python3
                 export PYTHON_INCLUDE_DIR=/Library/Frameworks/Python.framework/Versions/3.10/include/python3.10/
                 export PYTHON_LIBRARY=/Library/Frameworks/Python.framework/Versions/3.10/lib/libpython3.10.dylib
                 pip3.10 install --user -r ${PADDLE_ROOT}/python/requirements.txt
@@ -3650,8 +3659,11 @@ function run_setup(){
 
     # reset ccache zero stats for collect PR's actual hit rate
     ccache -z
-
-    python setup.py $2;build_error=$?
+    if [ "${PYTHON_EXECUTABLE}" != "" ];then
+        ${PYTHON_EXECUTABLE} setup.py $2;build_error=$?
+    else
+        python setup.py $2;build_error=$?
+    fi
     
     # ci will collect ccache hit rate
     collect_ccache_hits
@@ -3667,7 +3679,7 @@ function main() {
     init
     case $CMD in
       build_only)
-        cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
+        run_setup ${PYTHON_ABI:-""} bdist_wheel
         ;;
       build_pr_dev)
         build_pr_and_develop

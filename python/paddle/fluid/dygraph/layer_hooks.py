@@ -14,7 +14,7 @@
 
 import warnings
 
-from paddle.fluid.framework import default_main_program, _non_static_mode
+from paddle.fluid.framework import default_main_program, in_dygraph_mode
 
 
 class LayerOpsRecoder:
@@ -34,7 +34,7 @@ def record_program_ops_pre_hook(layer, inputs):
     """
     A pre-hook to mark op numbers before enter layer.forward.
     """
-    if not _non_static_mode():
+    if not in_dygraph_mode():
         if layer._op_recorder.start < 0:
             layer._op_recorder.start = len(
                 default_main_program().current_block().ops
@@ -55,7 +55,7 @@ def set_op_customized_attrs_post_hook(layer, inputs, outputs):
     """
     A post-hook to append customized attributes into all operators generated in current layer.
     """
-    if not _non_static_mode() and layer._op_recorder.is_valid:
+    if not in_dygraph_mode() and layer._op_recorder.is_valid:
 
         start = layer._op_recorder.start
         end = len(default_main_program().current_block().ops)

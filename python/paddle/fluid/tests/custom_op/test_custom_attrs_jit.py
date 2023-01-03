@@ -19,7 +19,6 @@ import numpy as np
 from utils import extra_cc_args, extra_nvcc_args, paddle_includes
 
 import paddle
-from paddle.fluid.framework import _test_eager_guard
 from paddle.utils.cpp_extension import get_build_directory, load
 from paddle.utils.cpp_extension.extension_utils import run_cmd
 
@@ -57,7 +56,7 @@ class TestJitCustomAttrs(unittest.TestCase):
         self.int64_vec_attr = [10000000000, 10000000000, 10000000000]
         self.str_vec_attr = ["StrAttr", "StrAttr", "StrAttr"]
 
-    def func_attr_value(self):
+    def test_func_attr_value(self):
         x = paddle.ones([2, 2], dtype='float32')
         x.stop_gradient = False
         out = custom_attrs.attr_test(
@@ -77,12 +76,7 @@ class TestJitCustomAttrs(unittest.TestCase):
 
         np.testing.assert_array_equal(x.numpy(), out.numpy())
 
-    def test_attr_value(self):
-        with _test_eager_guard():
-            self.func_attr_value()
-        self.func_attr_value()
-
-    def func_const_attr_value(self):
+    def test_const_attr_value(self):
         x = paddle.ones([2, 2], dtype='float32')
         x.stop_gradient = False
         out = custom_attrs.const_attr_test(
@@ -101,11 +95,6 @@ class TestJitCustomAttrs(unittest.TestCase):
         out.backward()
 
         np.testing.assert_array_equal(x.numpy(), out.numpy())
-
-    def test_const_attr_value(self):
-        with _test_eager_guard():
-            self.func_const_attr_value()
-        self.func_const_attr_value()
 
 
 if __name__ == '__main__':

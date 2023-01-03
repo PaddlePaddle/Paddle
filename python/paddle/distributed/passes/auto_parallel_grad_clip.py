@@ -164,8 +164,8 @@ class ClipHelper:
 
         param = self.params[self.params_name.index(name)]
         dist_attr = self._get_dist_attr(name)
-        topology = dist_attr.process_mesh.topology
-        processes = dist_attr.process_mesh.processes
+        topology = dist_attr.process_mesh.shape
+        processes = dist_attr.process_mesh.process_ids
         dims_mapping = dist_attr.dims_mapping
         return _is_about_global_norm(
             self.rank_id,
@@ -188,7 +188,7 @@ class ClipHelper:
     def _is_local_var(self, name):
         dist_attr = self._get_dist_attr(name)
         assert dist_attr is not None
-        return self.rank_id in dist_attr.process_mesh.processes
+        return self.rank_id in dist_attr.process_mesh.process_ids
 
     def _init_dist_attr(self, op):
         op_dist_attr = OperatorDistributedAttribute()

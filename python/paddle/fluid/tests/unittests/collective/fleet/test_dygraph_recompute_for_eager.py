@@ -312,15 +312,6 @@ class TestRecompute(unittest.TestCase):
             recompute_block=[2], recompute_kwargs=kwargs
         )
 
-    def test_recompute_cpu_rng(self):
-        paddle.set_device("cpu")
-        for flag in [True, False]:
-            with self.assertRaises(RuntimeError):
-                loss_ref, param_ref, grad_ref = run_model(
-                    recompute_block=[2],
-                    recompute_kwargs={"use_reentrant": flag},
-                )
-
 
 if __name__ == '__main__':
     unittest.main()
