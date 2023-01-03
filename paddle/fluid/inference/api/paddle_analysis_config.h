@@ -395,6 +395,12 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   bool use_gpu() const { return use_gpu_; }
   ///
+  /// \brief When running the fp16 model on Nvidia GPU, you can also try running
+  /// your model on cutlass.
+  ///
+  void Exp_EnableUseCutlass();
+  ///
+  ///
   /// \brief A boolean state telling whether the XPU is turned on.
   ///
   /// \return bool Whether the XPU is turned on.
@@ -1047,6 +1053,7 @@ struct PD_INFER_DECL AnalysisConfig {
 
   // GPU related.
   bool use_gpu_{false};
+  bool use_cutlass_{false};
   int gpu_device_id_{0};
   uint64_t memory_pool_init_size_mb_{100};  // initial size is 100MB.
   bool enable_gpu_mixed_{false};

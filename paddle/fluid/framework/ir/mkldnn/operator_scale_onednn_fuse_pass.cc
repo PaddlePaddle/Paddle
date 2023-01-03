@@ -85,6 +85,17 @@ void FuseOperatorScaleOneDNNPass::FuseScale(Graph *graph,
       scale = *(scale_tensor->data<float>());
     }
 
+    if (op_type == "matmul") {
+      operator_op->Op()->SetType("matmul_v2");
+      operator_op->Op()->SetAttr("trans_x",
+                                 operator_op->Op()->GetAttr("transpose_X"));
+      operator_op->Op()->SetAttr("trans_y",
+                                 operator_op->Op()->GetAttr("transpose_Y"));
+      auto matmul_alpha = operator_op->Op()->GetAttrIfExists<float>("alpha");
+      if (matmul_alpha != 1.0f) {
+        operator_op->Op()->SetAttr("alpha", matmul_alpha);
+      }
+    }
     operator_op->Op()->SetAttr("fused_output_scale", scale);
     operator_op->Op()->SetOutput("Out", {scale_out->Name()});
 

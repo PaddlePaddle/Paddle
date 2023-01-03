@@ -145,7 +145,7 @@ class SetValueMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<std::vector<int64_t>>("shape", "(vector<int64_t>) Shape of values.")
         .SetDefault({});
     AddComment(R"DOC(SetValue operator.
-Assignment to a phi::DenseTensor in static mode.
+Assignment to a phi::DenseTensor in static graph mode.
 )DOC");
   }
 };
