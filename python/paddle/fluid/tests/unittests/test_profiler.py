@@ -40,7 +40,7 @@ class TestProfiler(unittest.TestCase):
             image = paddle.static.data(
                 name='x', shape=[-1, 784], dtype='float32'
             )
-            hidden1 = fluid.layers.fc(input=image, size=64, act='relu')
+            hidden1 = paddle.static.nn.fc(x=image, size=64, activation='relu')
             i = layers.zeros(shape=[1], dtype='int64')
             counter = fluid.layers.zeros(
                 shape=[1], dtype='int64', force_cpu=True
@@ -50,14 +50,20 @@ class TestProfiler(unittest.TestCase):
             cond = paddle.less_than(x=counter, y=until)
             while_op = paddle.static.nn.control_flow.While(cond=cond)
             with while_op.block():
-                hidden_n = fluid.layers.fc(input=hidden1, size=64, act='relu')
+                hidden_n = paddle.static.nn.fc(
+                    x=hidden1, size=64, activation='relu'
+                )
                 paddle.tensor.array_write(hidden_n, i, data_arr)
                 paddle.increment(x=counter, value=1)
                 paddle.assign(paddle.less_than(x=counter, y=until), cond)
 
             hidden_n = paddle.tensor.array_read(data_arr, i)
-            hidden2 = fluid.layers.fc(input=hidden_n, size=64, act='relu')
-            predict = fluid.layers.fc(input=hidden2, size=10, act='softmax')
+            hidden2 = paddle.static.nn.fc(
+                x=hidden_n, size=64, activation='relu'
+            )
+            predict = paddle.static.nn.fc(
+                x=hidden2, size=10, activation='softmax'
+            )
             label = paddle.static.data(name='y', shape=[-1, 1], dtype='int64')
             cost = paddle.nn.functional.cross_entropy(
                 input=predict, label=label, reduction='none', use_softmax=False

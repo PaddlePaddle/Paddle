@@ -35,7 +35,7 @@ class ConditionalBlockTest(unittest.TestCase):
             cond = ConditionalBlock(inputs=[data])
             out = paddle.tensor.create_tensor(dtype='float32')
             with cond.block():
-                hidden = layers.fc(input=data, size=10)
+                hidden = paddle.static.nn.fc(x=data, size=10)
                 layers.assign(hidden, out)
 
             cpu = core.CPUPlace()

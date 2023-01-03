@@ -161,7 +161,7 @@ struct PD_INFER_DECL AnalysisConfig {
   explicit AnalysisConfig(const std::string& prog_file,
                           const std::string& params_file);
   ///
-  /// \brief Precision of inference in TensorRT.
+  /// \brief Precision of inference.
   ///
   enum class Precision {
     kFloat32 = 0,  ///< fp32

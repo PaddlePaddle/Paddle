@@ -59,7 +59,7 @@ class TestCloudRoleMaker(unittest.TestCase):
             show = paddle.static.data(
                 name="show", shape=[-1, 1], dtype="float32", lod_level=1
             )
-            fc = fluid.layers.fc(input=show, size=1, act=None)
+            fc = paddle.static.nn.fc(x=show, size=1, activation=None)
             label = paddle.static.data(
                 name="click", shape=[-1, 1], dtype="int64", lod_level=1
             )

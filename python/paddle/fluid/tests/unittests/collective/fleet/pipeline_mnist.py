@@ -60,20 +60,20 @@ def cnn_model(data):
     scale = (2.0 / (param_shape[0] ** 2 * SIZE)) ** 0.5
 
     with fluid.device_guard("gpu:1"):
-        predict = fluid.layers.fc(
-            input=conv_pool_2,
+        predict = paddle.static.nn.fc(
+            x=conv_pool_2,
             size=SIZE,
-            act="softmax",
-            param_attr=fluid.param_attr.ParamAttr(
+            activation="softmax",
+            weight_attr=fluid.param_attr.ParamAttr(
                 initializer=fluid.initializer.Constant(value=0.01)
             ),
         )
         # To cover @RENAMED@GRADIENT
-        predict2 = fluid.layers.fc(
-            input=conv_pool_1,
+        predict2 = paddle.static.nn.fc(
+            x=conv_pool_1,
             size=SIZE,
-            act="softmax",
-            param_attr=fluid.param_attr.ParamAttr(
+            activation="softmax",
+            weight_attr=fluid.param_attr.ParamAttr(
                 initializer=fluid.initializer.Constant(value=0.01)
             ),
         )

@@ -283,10 +283,10 @@ class TestUniformRandomOpApi(unittest.TestCase):
         x = paddle.static.data(
             'x', shape=[-1, 16], dtype='float32', lod_level=1
         )
-        y = fluid.layers.fc(
+        y = paddle.static.nn.fc(
             x,
             size=16,
-            param_attr=fluid.initializer.Uniform(
+            weight_attr=fluid.initializer.Uniform(
                 low=-0.5,
                 high=0.5,
                 seed=10,

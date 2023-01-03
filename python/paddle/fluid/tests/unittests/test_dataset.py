@@ -954,7 +954,7 @@ class TestDatasetWithFetchHandler(unittest.TestCase):
             poolings.append(pool)
 
         concated = fluid.layers.concat(poolings, axis=1)
-        fc = fluid.layers.fc(input=concated, act='tanh', size=32)
+        fc = paddle.static.nn.fc(x=concated, activation='tanh', size=32)
         return slots_vars, fc
 
     def get_dataset(self, inputs, files):

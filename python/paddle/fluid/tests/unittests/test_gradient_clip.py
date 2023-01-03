@@ -38,9 +38,11 @@ def bow_net(
     )
     bow = fluid.layers.sequence_pool(input=emb, pool_type='sum')
     bow_tanh = paddle.tanh(bow)
-    fc_1 = fluid.layers.fc(input=bow_tanh, size=hid_dim, act="tanh")
-    fc_2 = fluid.layers.fc(input=fc_1, size=hid_dim2, act="tanh")
-    prediction = fluid.layers.fc(input=[fc_2], size=class_dim, act="softmax")
+    fc_1 = paddle.static.nn.fc(x=bow_tanh, size=hid_dim, activation="tanh")
+    fc_2 = paddle.static.nn.fc(x=fc_1, size=hid_dim2, activation="tanh")
+    prediction = paddle.static.nn.fc(
+        x=[fc_2], size=class_dim, activation="softmax"
+    )
     cost = paddle.nn.functional.cross_entropy(
         input=prediction, label=label, reduction='none', use_softmax=False
     )
@@ -80,10 +82,16 @@ class TestGradientClip(unittest.TestCase):
             label = fluid.data(name="b", shape=[-1, 1], dtype='int64')
             if dtype != 'float32':
                 image_cast = paddle.cast(image, dtype)
-                hidden = fluid.layers.fc(input=image_cast, size=32, act='relu')
+                hidden = paddle.static.nn.fc(
+                    x=image_cast, size=32, activation='relu'
+                )
             else:
-                hidden = fluid.layers.fc(input=image, size=32, act='relu')
-            predict = fluid.layers.fc(input=hidden, size=10, act='softmax')
+                hidden = paddle.static.nn.fc(
+                    x=image, size=32, activation='relu'
+                )
+            predict = paddle.static.nn.fc(
+                x=hidden, size=10, activation='softmax'
+            )
 
             cost = paddle.nn.functional.cross_entropy(
                 input=predict, label=label, reduction='none', use_softmax=False
