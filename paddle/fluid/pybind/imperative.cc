@@ -497,15 +497,6 @@ static void VarBaseCopy(std::shared_ptr<imperative::VarBase> &src,  // NOLINT
 void BindImperative(py::module *m_ptr) {
   auto &m = *m_ptr;
 
-  BindOpFunctions1(&m);
-  BindOpFunctions2(&m);
-  BindOpFunctions3(&m);
-  BindOpFunctions4(&m);
-  BindOpFunctions5(&m);
-  BindOpFunctions6(&m);
-  BindOpFunctions7(&m);
-  BindOpFunctions8(&m);
-
 #ifndef _WIN32
   // Dygraph DataLoader signal handler
   m.def("_set_process_pids", [](int64_t key, py::object &obj) {
