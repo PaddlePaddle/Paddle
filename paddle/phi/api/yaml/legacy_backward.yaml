@@ -539,16 +539,6 @@
   kernel :
     func : fmin_grad
 
-- backward_op : frame_grad
-  forward : frame(Tensor x, int frame_length, int hop_length, int axis) -> Tensor(out)
-  args : (Tensor x, Tensor out_grad, int frame_length, int hop_length, int axis)
-  output : Tensor(x_grad)
-  infer_meta :
-    func : UnchangedInferMeta
-    param : [x]
-  kernel :
-    func : frame_grad
-
 - backward_op : frobenius_norm_grad
   forward : frobenius_norm(Tensor x, int64_t[] axis,  bool keep_dim,  bool reduce_all) -> Tensor(out)
   args : (Tensor x, Tensor out, Tensor out_grad, int64_t[] axis,  bool keep_dim,  bool reduce_all)
@@ -569,17 +559,6 @@
   kernel :
     data_type: x
     func : gather_grad
-  no_need_buffer : x
-
-- backward_op : gather_nd_grad
-  forward : gather_nd (Tensor x, Tensor index) -> Tensor(out)
-  args : (Tensor x, Tensor index, Tensor out_grad)
-  output : Tensor(x_grad)
-  infer_meta :
-    func : UnchangedInferMeta
-    param : [x]
-  kernel :
-    func : gather_nd_grad
   no_need_buffer : x
 
 - backward_op : group_norm_grad
@@ -992,16 +971,6 @@
   kernel :
     func : norm_grad
 
-- backward_op : overlap_add_grad
-  forward : overlap_add(Tensor x, int hop_length, int axis) -> Tensor(out)
-  args : (Tensor x, Tensor out_grad, int hop_length, int axis)
-  output : Tensor(x_grad)
-  infer_meta :
-    func : OverlapAddGradInferMeta
-  kernel :
-    func : overlap_add_grad
-    data_type : x
-
 - backward_op : p_norm_grad
   forward : p_norm(Tensor x,  float porder,  int axis,  float epsilon,  bool keepdim,  bool asvector=false) -> Tensor(out)
   args : (Tensor x, Tensor out, Tensor out_grad,  float porder,  int axis,  float epsilon,  bool keepdim,  bool asvector)
@@ -1054,15 +1023,6 @@
     param: [out_grad, paddings, pad_value]
   no_need_buffer : x
   backward : pad_double_grad
-
-- backward_op : pixel_shuffle_grad
-  forward : pixel_shuffle (Tensor x, int upscale_factor, str data_format) -> Tensor(out)
-  args : (Tensor out_grad, int upscale_factor, str data_format)
-  output : Tensor(x_grad)
-  infer_meta :
-    func : PixelShuffleGradInferMeta
-  kernel :
-    func : pixel_shuffle_grad
 
 - backward_op : pool2d_double_grad
   forward : pool2d_grad(Tensor x, Tensor out, Tensor grad_out, IntArray kernel_size, int[] strides, int[] paddings, bool ceil_mode, bool exclusive, str data_format, str pooling_type, bool global_pooling, bool adaptive, str padding_algorithm) -> Tensor(grad_x)
@@ -1403,24 +1363,6 @@
   kernel :
     func : squared_l2_norm_grad
 
-- backward_op : squeeze_double_grad
-  forward : squeeze_grad(Tensor xshape, Tensor grad_out, IntArray axis) -> Tensor(grad_x)
-  args : (Tensor grad_x_grad, IntArray axis)
-  output : Tensor(grad_out_grad)
-  invoke: squeeze(grad_x_grad, axis)
-
-- backward_op : squeeze_grad
-  forward : squeeze(Tensor x, IntArray axis) -> Tensor(out), Tensor(xshape)
-  args : (Tensor xshape, Tensor out_grad, IntArray axis)
-  output : Tensor(x_grad)
-  infer_meta :
-    func : KernelWithXShapeInferMeta
-    param: [xshape]
-  kernel :
-    func : squeeze_grad
-  inplace : (out_grad -> x_grad)
-  backward: squeeze_double_grad
-
 - backward_op : stack_grad
   forward : stack (Tensor[] x, int axis) -> Tensor(out)
   args : (Tensor[] x, Tensor out_grad, int axis)
@@ -1613,25 +1555,6 @@
   kernel :
     func : uniform_inplace_grad
   inplace : (out_grad -> x_grad)
-
-- backward_op : unsqueeze_double_grad
-  forward : unsqueeze_grad(Tensor xshape, Tensor grad_out, IntArray axes) -> Tensor(grad_x)
-  args : (Tensor grad_x_grad, IntArray axes)
-  output : Tensor(grad_out_grad)
-  invoke : unsqueeze(grad_x_grad, axes)
-
-- backward_op : unsqueeze_grad
-  forward : unsqueeze(Tensor x, IntArray axes) -> Tensor(out), Tensor(xshape)
-  args : (Tensor xshape, Tensor out_grad, IntArray axes)
-  output : Tensor(x_grad)
-  infer_meta :
-    func : KernelWithXShapeInferMeta
-    param: [xshape]
-  kernel :
-    func : unsqueeze_grad
-    param: [xshape, out_grad]
-  inplace : (out_grad -> x_grad)
-  backward : unsqueeze_double_grad
 
 - backward_op : warpctc_grad
   forward : warpctc (Tensor logits, Tensor label, Tensor logits_length, Tensor labels_length, int blank, bool norm_by_times) -> Tensor(loss), Tensor(warpctcgrad)
