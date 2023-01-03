@@ -139,6 +139,7 @@ class TestOneHotOp_exception(unittest.TestCase):
                 dtype='float32',
                 lod_level=1,
             )
+            x.desc.set_need_check_feed(False)
             block = program.current_block()
             one_hot_out = block.create_var(
                 name="one_hot_out",
@@ -191,6 +192,7 @@ class TestOneHotOpApi(unittest.TestCase):
 
     def _run(self, depth):
         label = paddle.static.data(name="label", shape=[-1, 1], dtype="int64")
+        label.desc.set_need_check_feed(False)
         one_hot_label = fluid.one_hot(input=label, depth=depth)
 
         place = fluid.CPUPlace()
@@ -219,6 +221,7 @@ class BadInputTestOnehotV2(unittest.TestCase):
                     shape=[-1, 4],
                     dtype="float32",
                 )
+                label.desc.set_need_check_feed(False)
                 one_hot_label = fluid.one_hot(input=label, depth=4)
 
             self.assertRaises(TypeError, test_bad_x)
