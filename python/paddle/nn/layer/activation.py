@@ -356,11 +356,15 @@ class Hardtanh(Layer):
 
 class PReLU(Layer):
     """
-    PReLU Activation.
+    PReLU Activation. The calculation formula is follows:
+
+    If approximate calculation is used:
 
     .. math::
 
         PReLU(x) = max(0, x) + weight * min(0, x)
+
+    x is input Tensor.
 
     Parameters:
         num_parameters (int, optional): Number of `weight` to learn. The supported values are:
@@ -479,8 +483,8 @@ class RReLU(Layer):
     :math:`lower` and :math:`upper` are the bounds of uniform distribution.
 
     Parameters:
-        lower (float, optional): The lower bound of uniform distribution. Default: 0.125.
-        upper (float, optional): The upper bound of uniform distribution. Default: 0.333.
+        lower (float, optional): The lower bound of uniform distribution. Default: 1.0/8.0.
+        upper (float, optional): The upper bound of uniform distribution. Default: 1.0/3.0.
         name (str, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
@@ -531,11 +535,13 @@ class RReLU(Layer):
 
 class ReLU(Layer):
     """
-    ReLU Activation.
+    ReLU Activation. The calculation formula is follows:
 
     .. math::
 
         ReLU(x) = max(x, 0)
+
+    x is input Tensor.
 
     Parameters:
         name (str, optional): Name for the operation (optional, default is None).
@@ -576,6 +582,8 @@ class ReLU6(Layer):
     .. math::
 
         ReLU6(x) = min(max(0,x), 6)
+
+    x is input Tensor.
 
     Parameters:
         name (str, optional): Name for the operation (optional, default is None).
@@ -624,8 +632,8 @@ class SELU(Layer):
             \right.
 
     Parameters:
-        scale (float, optional): The value of scale(must be greater than 1.0) for SELU. Default is 1.0507009873554804934193349852946
-        alpha (float, optional): The value of alpha(must be no less than zero) for SELU. Default is 1.6732632423543772848170429916717
+        scale (float, optional): The value of scale(must be greater than 1.0) for SELU. Default is 1.0507009873554804934193349852946.
+        alpha (float, optional): The value of alpha(must be no less than zero) for SELU. Default is 1.6732632423543772848170429916717.
         name (str, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
