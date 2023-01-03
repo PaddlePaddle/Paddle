@@ -1535,7 +1535,7 @@ class Model:
                 assert isinstance(
                     self._optimizer._grad_clip,
                     (paddle.nn.ClipGradByGlobalNorm, paddle.nn.ClipGradByNorm),
-                ), "Only GradientClipByNorm and GradientClipByGlobalNorm are supported in amp training with level=O2 currently."
+                ), "Only ClipGradByNorm and ClipGradByGlobalNorm are supported in amp training with level=O2 currently."
 
         self._adapter._amp_custom_lists = {}
         self._adapter._amp_configs = {}

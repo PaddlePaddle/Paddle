@@ -114,11 +114,6 @@ class ReshapeOp : public framework::OperatorWithKernel {
       return;
     }
 
-    PADDLE_ENFORCE_EQ(!shape.empty(),
-                      true,
-                      platform::errors::InvalidArgument(
-                          "The parameter 'shape' in ReshapeOp must be set. "
-                          "But received 'shape' is empty."));
     auto x_dims = ctx->GetInputDim("X");
     auto out_dims = ValidateShape(shape, x_dims);
     ctx->SetOutputDim("Out", out_dims);

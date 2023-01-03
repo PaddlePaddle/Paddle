@@ -556,6 +556,96 @@ class TestSundryAPI(unittest.TestCase):
         np.testing.assert_array_equal(out3_1.numpy(), out3_2.numpy())
         np.testing.assert_array_equal(out3_2.numpy(), np.asarray(1))
 
+    def test_reshape_list(self):
+        x = paddle.rand([])
+        x.stop_gradient = False
+
+        out = paddle.reshape(x, [])
+        out.backward()
+        self.assertEqual(x.grad.shape, [])
+        self.assertEqual(out.shape, [])
+        self.assertEqual(out.grad.shape, [])
+
+        out = paddle.reshape(x, [1])
+        out.backward()
+        self.assertEqual(x.grad.shape, [])
+        self.assertEqual(out.shape, [1])
+        self.assertEqual(out.grad.shape, [1])
+
+        out = paddle.reshape(x, [-1])
+        out.backward()
+        self.assertEqual(x.grad.shape, [])
+        self.assertEqual(out.shape, [1])
+        self.assertEqual(out.grad.shape, [1])
+
+        out = paddle.reshape(x, [-1, 1])
+        out.backward()
+        self.assertEqual(x.grad.shape, [])
+        self.assertEqual(out.shape, [1, 1])
+        self.assertEqual(out.grad.shape, [1, 1])
+
+    def test_reshape_tensor(self):
+        x = paddle.rand([1, 1])
+        x.stop_gradient = False
+
+        out = paddle.reshape(x, [])
+        out.backward()
+        self.assertEqual(x.grad.shape, [1, 1])
+        self.assertEqual(out.shape, [])
+        self.assertEqual(out.grad.shape, [])
+
+        new_shape = paddle.full([], 1, "int32")
+        out = paddle.reshape(x, new_shape)
+        out.backward()
+        self.assertEqual(x.grad.shape, [1, 1])
+        self.assertEqual(out.shape, [1])
+        self.assertEqual(out.grad.shape, [1])
+
+        new_shape = paddle.full([], -1, "int32")
+        out = paddle.reshape(x, new_shape)
+        out.backward()
+        self.assertEqual(x.grad.shape, [1, 1])
+        self.assertEqual(out.shape, [1])
+        self.assertEqual(out.grad.shape, [1])
+
+        new_shape = [paddle.full([], -1, "int32"), paddle.full([], 1, "int32")]
+        out = paddle.reshape(x, new_shape)
+        out.backward()
+        self.assertEqual(x.grad.shape, [1, 1])
+        self.assertEqual(out.shape, [1, 1])
+        self.assertEqual(out.grad.shape, [1, 1])
+
+    def test_reshape__list(self):
+        x = paddle.rand([])
+        out = paddle.reshape_(x, [])
+        self.assertEqual(out.shape, [])
+
+        out = paddle.reshape_(x, [1])
+        self.assertEqual(out.shape, [1])
+
+        out = paddle.reshape_(x, [-1])
+        self.assertEqual(out.shape, [1])
+
+        out = paddle.reshape_(x, [-1, 1])
+        self.assertEqual(out.shape, [1, 1])
+
+    def test_reshape__tensor(self):
+        x = paddle.rand([1, 1])
+        out = paddle.reshape_(x, [])
+        self.assertEqual(out.shape, [])
+
+        new_shape = paddle.full([1], 1, "int32")
+        out = paddle.reshape_(x, new_shape)
+        self.assertEqual(out.shape, [1])
+
+        new_shape = paddle.full([1], -1, "int32")
+        out = paddle.reshape_(x, new_shape)
+        self.assertEqual(out.shape, [1])
+
+        new_shape = [paddle.full([], -1, "int32"), paddle.full([], 1, "int32")]
+        out = paddle.reshape_(x, new_shape)
+        self.assertEqual(out.shape, [1, 1])
+
 
 # Use to test API whose zero-dim input tensors don't have grad and not need to test backward in OpTest.
 class TestNoBackwardAPI(unittest.TestCase):
