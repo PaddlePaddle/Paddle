@@ -163,12 +163,15 @@ void MaxPool2dWithIndexGradKernel(const Context& ctx,
   std::vector<int> paddings(paddings_t);
   const auto* index_data = mask.data<int>();
 
-  PADDLE_ENFORCE_EQ(ksize.size(), 2, phi::errors::InvalidArgument(
-                                         "The Pool2d XPU OP only support 2 "
-                                         "dimension pooling!, but received "
-                                         "%d-dimension pool kernel size",
-                                         ksize.size()));
-  PADDLE_ENFORCE_EQ(!adaptive || (ksize[0] * ksize[1] == 1), true,
+  PADDLE_ENFORCE_EQ(
+      ksize.size(),
+      2,
+      phi::errors::InvalidArgument("The Pool2d XPU OP only support 2 "
+                                   "dimension pooling!, but received "
+                                   "%d-dimension pool kernel size",
+                                   ksize.size()));
+  PADDLE_ENFORCE_EQ(!adaptive || (ksize[0] * ksize[1] == 1),
+                    true,
                     phi::errors::InvalidArgument(
                         "The Pool2d XPU OP does not support (adaptive == "
                         "true && output_size != 1)"));
@@ -191,12 +194,26 @@ void MaxPool2dWithIndexGradKernel(const Context& ctx,
 
   int r = xpu::Error_t::SUCCESS;
   r = xpu::max_pool2d_grad<XPUType>(
-      ctx.x_context(), input, nullptr/*expect api catches all excepts...*/, index_data, output_grad,
-      input_grad, n, c, in_h, in_w, ksize, strides, paddings, true);
-  PADDLE_ENFORCE_EQ(r, xpu::Error_t::SUCCESS,
-                    phi::errors::External(
-                        "The Pool2dGrad XPU OP return wrong value[%d %s]", r,
-                        XPUAPIErrorMsg[r]));
+      ctx.x_context(),
+      input,
+      nullptr /*expect api catches all excepts...*/,
+      index_data,
+      output_grad,
+      input_grad,
+      n,
+      c,
+      in_h,
+      in_w,
+      ksize,
+      strides,
+      paddings,
+      true);
+  PADDLE_ENFORCE_EQ(
+      r,
+      xpu::Error_t::SUCCESS,
+      phi::errors::External("The Pool2dGrad XPU OP return wrong value[%d %s]",
+                            r,
+                            XPUAPIErrorMsg[r]));
 }
 }  // namespace phi
 

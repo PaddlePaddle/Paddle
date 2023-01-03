@@ -174,11 +174,12 @@ void MaxPool2dWithIndexKernel(const Context& ctx,
   std::vector<int> strides(strides_t);
   std::vector<int> paddings(paddings_t);
 
-  PADDLE_ENFORCE_EQ(
-      ksize.size(), 2,
-      phi::errors::InvalidArgument(
-          "The Pool2d XPU OP only support 2 dimension pooling!"));
-  PADDLE_ENFORCE_EQ(!adaptive || (ksize[0] * ksize[1] == 1), true,
+  PADDLE_ENFORCE_EQ(ksize.size(),
+                    2,
+                    phi::errors::InvalidArgument(
+                        "The Pool2d XPU OP only support 2 dimension pooling!"));
+  PADDLE_ENFORCE_EQ(!adaptive || (ksize[0] * ksize[1] == 1),
+                    true,
                     phi::errors::InvalidArgument(
                         "The Pool2d XPU OP does not support (adaptive == "
                         "true && output_size != 1)"));
@@ -197,18 +198,34 @@ void MaxPool2dWithIndexKernel(const Context& ctx,
   ctx.template Alloc<T>(out);
   auto output = reinterpret_cast<XPUType*>(out->data<T>());
   int r = xpu::Error_t::SUCCESS;
-  r = xpu::max_pool2d<XPUType>(ctx.x_context(), input, output,
-                                index_data, n, c, in_h, in_w, ksize, strides,
-                                paddings, true);
-  PADDLE_ENFORCE_EQ(r, xpu::Error_t::SUCCESS,
-                    phi::errors::External(
-                        "The max_pool2d with index XPU API return wrong value[%d %s]", r,
-                        XPUAPIErrorMsg[r]));
+  r = xpu::max_pool2d<XPUType>(ctx.x_context(),
+                               input,
+                               output,
+                               index_data,
+                               n,
+                               c,
+                               in_h,
+                               in_w,
+                               ksize,
+                               strides,
+                               paddings,
+                               true);
+  PADDLE_ENFORCE_EQ(
+      r,
+      xpu::Error_t::SUCCESS,
+      phi::errors::External(
+          "The max_pool2d with index XPU API return wrong value[%d %s]",
+          r,
+          XPUAPIErrorMsg[r]));
 }
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
     pool2d, XPU, ALL_LAYOUT, phi::Pool2dKernel, float, phi::dtype::float16) {}
 
-PD_REGISTER_KERNEL(
-    max_pool2d_with_index, XPU, ALL_LAYOUT, phi::MaxPool2dWithIndexKernel, float, phi::dtype::float16) {}
+PD_REGISTER_KERNEL(max_pool2d_with_index,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::MaxPool2dWithIndexKernel,
+                   float,
+                   phi::dtype::float16) {}
