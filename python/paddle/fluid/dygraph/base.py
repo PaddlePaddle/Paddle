@@ -160,7 +160,7 @@ def _convert_into_variable(tensor):
                 to_parameter=False, persistable=is_persistable
             )
         # add param into parameter recorder to collect all the params used in this program.
-        if len(tensor.shape) > 0:
+        if new_var.persistable is True:
             # TODO(@xiongkun): 0d-tensor may be affected at present,
             # but there is no particularly good method to identify whether 0d-tensor
             # is used as buffer or "drop_out_state" in LSTM buffer variable.

@@ -979,12 +979,7 @@ class ConcreteProgram:
                         [class_instance] + list(static_inputs)
                     )
 
-                # 2. Gets all ParamBases and buffered VarBases in the function
-                all_parameters_and_buffers = _extract_indeed_params_buffers(
-                    class_instance
-                )
-
-                # 3. Builds program only once and returns the output Variables.
+                # 2. Builds program only once and returns the output Variables.
                 with param_guard(
                     get_parameters(class_instance, False)
                 ), param_guard(get_buffers(class_instance, False)):
@@ -1008,6 +1003,7 @@ class ConcreteProgram:
                     ProgramTranslator,
                 )
 
+                # 3. Gets all ParamBases and buffered VarBases in the function
                 all_parameters_and_buffers = (
                     ProgramTranslator.params_recorder().pop(main_program)
                 )
