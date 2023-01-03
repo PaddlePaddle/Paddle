@@ -82,7 +82,7 @@ class TestHistogramOpError(unittest.TestCase):
         """Test bins should be greater than or equal to 1."""
 
         def net_func():
-            input_value = paddle.fluid.layers.fill_constant(
+            input_value = paddle.tensor.fill_constant(
                 shape=[3, 4], dtype='float32', value=3.0
             )
             paddle.histogram(input=input_value, bins=-1, min=1, max=5)
@@ -94,7 +94,7 @@ class TestHistogramOpError(unittest.TestCase):
         """Test max must be larger or equal to min."""
 
         def net_func():
-            input_value = paddle.fluid.layers.fill_constant(
+            input_value = paddle.tensor.fill_constant(
                 shape=[3, 4], dtype='float32', value=3.0
             )
             paddle.histogram(input=input_value, bins=1, min=5, max=1)
@@ -106,7 +106,7 @@ class TestHistogramOpError(unittest.TestCase):
         """Test range of min, max is not finite"""
 
         def net_func():
-            input_value = paddle.fluid.layers.fill_constant(
+            input_value = paddle.tensor.fill_constant(
                 shape=[3, 4], dtype='float32', value=3.0
             )
             paddle.histogram(input=input_value, bins=1, min=-np.inf, max=5)

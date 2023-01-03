@@ -63,7 +63,7 @@ def test_continue_in_for_at_end(x):
 
 def test_continue_in_while(x):
     x = fluid.dygraph.to_variable(x)
-    i = fluid.layers.fill_constant(shape=[1], dtype='int32', value=0)
+    i = paddle.tensor.fill_constant(shape=[1], dtype='int32', value=0)
     while i < 10:
         i += 1
         if i > 5:
@@ -95,7 +95,7 @@ def test_break_in_for_at_end(x):
 
 def test_break_in_while(x):
     x = fluid.dygraph.to_variable(x)
-    i = fluid.layers.fill_constant(shape=[1], dtype='int32', value=0)
+    i = paddle.tensor.fill_constant(shape=[1], dtype='int32', value=0)
     while i < 10:
         i += 1
         if i > 5:
@@ -117,8 +117,8 @@ def test_break_continue_in_for(x):
             break
         x += 10086
 
-    a = fluid.layers.fill_constant(shape=[1], dtype='int32', value=0)
-    b = fluid.layers.fill_constant(shape=[1], dtype='int32', value=3)
+    a = paddle.tensor.fill_constant(shape=[1], dtype='int32', value=0)
+    b = paddle.tensor.fill_constant(shape=[1], dtype='int32', value=3)
     # b = 10
     # TODO: add Raise Error and suggestion for usage:
     #   Py for contains break/continue depends on control-flow.
@@ -193,7 +193,7 @@ def test_optim_break_in_for(x):
 
 def test_optim_break_in_while(x):
     x = paddle.to_tensor(x)
-    i = fluid.layers.fill_constant(shape=[1], dtype='int32', value=0)
+    i = paddle.tensor.fill_constant(shape=[1], dtype='int32', value=0)
     while i < 10:
         if i > 5:
             break

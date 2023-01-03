@@ -84,7 +84,7 @@ class Evaluator:
             for var in self.states:
                 assert isinstance(var, Variable)
                 g_var = _clone_var_(reset_program.current_block(), var)
-                layers.fill_constant(
+                paddle.tensor.fill_constant(
                     shape=g_var.shape, value=0.0, dtype=g_var.dtype, out=g_var
                 )
 

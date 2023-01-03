@@ -67,7 +67,7 @@ class TestConditionalBlockOpInferShape(unittest.TestCase):
             step_scope = global_block.create_var(
                 type=core.VarDesc.VarType.STEP_SCOPES
             )
-            cond_var = layers.fill_constant(
+            cond_var = paddle.tensor.fill_constant(
                 shape=[1], dtype='bool', value=False
             )
 

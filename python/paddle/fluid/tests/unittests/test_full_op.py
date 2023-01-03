@@ -24,9 +24,9 @@ from paddle.fluid import Program, program_guard
 # Test python API
 class TestFullAPI(unittest.TestCase):
     def test_api(self):
-        positive_2_int32 = fluid.layers.fill_constant([1], "int32", 2)
+        positive_2_int32 = paddle.tensor.fill_constant([1], "int32", 2)
 
-        positive_2_int64 = fluid.layers.fill_constant([1], "int64", 2)
+        positive_2_int64 = paddle.tensor.fill_constant([1], "int64", 2)
         shape_tensor_int32 = fluid.data(
             name="shape_tensor_int32", shape=[2], dtype="int32"
         )
@@ -57,7 +57,9 @@ class TestFullAPI(unittest.TestCase):
             shape=shape_tensor_int64, dtype=np.float32, fill_value=1.1
         )
 
-        val = fluid.layers.fill_constant(shape=[1], dtype=np.float32, value=1.1)
+        val = paddle.tensor.fill_constant(
+            shape=[1], dtype=np.float32, value=1.1
+        )
         out_7 = paddle.full(
             shape=shape_tensor_int64, dtype=np.float32, fill_value=val
         )
@@ -82,9 +84,11 @@ class TestFullAPI(unittest.TestCase):
 
     def test_api_eager(self):
         with fluid.dygraph.base.guard():
-            positive_2_int32 = fluid.layers.fill_constant([1], "int32", 2)
-            positive_2_int64 = fluid.layers.fill_constant([1], "int64", 2)
-            positive_4_int64 = fluid.layers.fill_constant([1], "int64", 4, True)
+            positive_2_int32 = paddle.tensor.fill_constant([1], "int32", 2)
+            positive_2_int64 = paddle.tensor.fill_constant([1], "int64", 2)
+            positive_4_int64 = paddle.tensor.fill_constant(
+                [1], "int64", 4, True
+            )
 
             out_1 = paddle.full(shape=[1, 2], dtype="float32", fill_value=1.1)
 
@@ -106,7 +110,7 @@ class TestFullAPI(unittest.TestCase):
 
             out_6 = paddle.full(shape=[1, 2], dtype=np.float32, fill_value=1.1)
 
-            val = fluid.layers.fill_constant(
+            val = paddle.tensor.fill_constant(
                 shape=[1], dtype=np.float32, value=1.1
             )
             out_7 = paddle.full(shape=[1, 2], dtype=np.float32, fill_value=val)

@@ -131,7 +131,7 @@ class GroupShardedClipGrad:
             paddle.distributed.all_reduce(global_norm_var, group=self._group)
 
         global_norm_var = paddle.sqrt(global_norm_var + global_unslice_var)
-        max_global_norm = layers.fill_constant(
+        max_global_norm = paddle.tensor.fill_constant(
             shape=[1], dtype=global_norm_var.dtype, value=self.clip_norm
         )
 

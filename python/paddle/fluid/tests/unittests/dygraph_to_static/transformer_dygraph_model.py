@@ -797,7 +797,7 @@ class Transformer(Layer):
         # constant number
         inf = float(1.0 * 1e7)
         max_len = (enc_output.shape[1] + 20) if max_len is None else max_len
-        vocab_size_tensor = layers.fill_constant(
+        vocab_size_tensor = paddle.tensor.fill_constant(
             shape=[1], dtype="int64", value=self.trg_vocab_size
         )
         end_token_tensor = to_variable(
@@ -825,7 +825,7 @@ class Transformer(Layer):
             np.full([batch_size, beam_size], 0, dtype="bool")
         )
 
-        trg_word = layers.fill_constant(
+        trg_word = paddle.tensor.fill_constant(
             shape=[batch_size * beam_size, 1], dtype="int64", value=bos_id
         )
 
@@ -839,12 +839,12 @@ class Transformer(Layer):
         # init states (caches) for transformer, need to be updated according to selected beam
         caches = [
             {
-                "k": layers.fill_constant(
+                "k": paddle.tensor.fill_constant(
                     shape=[batch_size, beam_size, self.n_head, 0, self.d_key],
                     dtype=enc_output.dtype,
                     value=0,
                 ),
-                "v": layers.fill_constant(
+                "v": paddle.tensor.fill_constant(
                     shape=[batch_size, beam_size, self.n_head, 0, self.d_value],
                     dtype=enc_output.dtype,
                     value=0,
@@ -854,7 +854,7 @@ class Transformer(Layer):
         ]
 
         for i in range(paddle.to_tensor(max_len)):
-            trg_pos = layers.fill_constant(
+            trg_pos = paddle.tensor.fill_constant(
                 shape=trg_word.shape, dtype="int64", value=i
             )
             caches = map_structure(

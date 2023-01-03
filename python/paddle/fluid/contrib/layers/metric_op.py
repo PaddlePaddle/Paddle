@@ -14,7 +14,7 @@
 """
 Contrib layers just related to metric.
 """
-
+import paddle
 import warnings
 from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.initializer import Normal, Constant
@@ -78,7 +78,7 @@ def ctr_metric_bundle(input, label, ins_tag_weight=None):
 
     """
     if ins_tag_weight is None:
-        ins_tag_weight = tensor.fill_constant(
+        ins_tag_weight = paddle.tensor.fill_constant(
             shape=[1, 1], dtype="float32", value=1.0
         )
 

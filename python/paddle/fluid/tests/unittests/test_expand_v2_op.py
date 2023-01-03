@@ -209,7 +209,7 @@ class TestExpandV2API(unittest.TestCase):
             name='x', shape=[12, 14], append_batch_size=False, dtype="float32"
         )
 
-        positive_2 = fluid.layers.fill_constant([1], "int32", 12)
+        positive_2 = paddle.tensor.fill_constant([1], "int32", 12)
         expand_shape = fluid.layers.data(
             name="expand_shape",
             shape=[2],

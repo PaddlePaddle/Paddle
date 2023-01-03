@@ -213,7 +213,7 @@ class ConstantLayer:
         shape = list(shape)
         input_shape = paddle.shape(input)
         shape[0] = input_shape[0]
-        constant = fluid.layers.fill_constant(shape, dtype, value)
+        constant = paddle.tensor.fill_constant(shape, dtype, value)
         return constant
 
 

@@ -287,10 +287,10 @@ class TestAmpWithNonIterableDataLoader(unittest.TestCase):
                     iterable=False,
                     use_double_buffer=False,
                 )
-                zero_var = fluid.layers.fill_constant(
+                zero_var = paddle.tensor.fill_constant(
                     shape=[1], dtype='int64', value=0
                 )
-                one_var = fluid.layers.fill_constant(
+                one_var = paddle.tensor.fill_constant(
                     shape=[1], dtype='int64', value=1
                 )
                 with fluid.layers.control_flow.Switch() as switch:

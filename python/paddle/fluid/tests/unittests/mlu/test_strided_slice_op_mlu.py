@@ -525,8 +525,8 @@ class TestStridedSliceOp_strides_Tensor(OpTest):
 class TestStridedSliceAPI(unittest.TestCase):
     def test_1(self):
         input = np.random.random([3, 4, 5, 6]).astype("float32")
-        minus_1 = fluid.layers.fill_constant([1], "int32", -1)
-        minus_3 = fluid.layers.fill_constant([1], "int32", -3)
+        minus_1 = paddle.tensor.fill_constant([1], "int32", -1)
+        minus_3 = paddle.tensor.fill_constant([1], "int32", -3)
         starts = fluid.layers.data(
             name='starts', shape=[3], dtype='int32', append_batch_size=False
         )

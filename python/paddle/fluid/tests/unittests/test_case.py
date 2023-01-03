@@ -30,20 +30,32 @@ paddle.enable_static()
 class TestAPICase(unittest.TestCase):
     def test_return_single_var(self):
         def fn_1():
-            return layers.fill_constant(shape=[4, 2], dtype='int32', value=1)
+            return paddle.tensor.fill_constant(
+                shape=[4, 2], dtype='int32', value=1
+            )
 
         def fn_2():
-            return layers.fill_constant(shape=[4, 2], dtype='int32', value=2)
+            return paddle.tensor.fill_constant(
+                shape=[4, 2], dtype='int32', value=2
+            )
 
         def fn_3():
-            return layers.fill_constant(shape=[4, 3], dtype='int32', value=3)
+            return paddle.tensor.fill_constant(
+                shape=[4, 3], dtype='int32', value=3
+            )
 
         main_program = Program()
         startup_program = Program()
         with program_guard(main_program, startup_program):
-            x = layers.fill_constant(shape=[1], dtype='float32', value=0.3)
-            y = layers.fill_constant(shape=[1], dtype='float32', value=0.1)
-            z = layers.fill_constant(shape=[1], dtype='float32', value=0.2)
+            x = paddle.tensor.fill_constant(
+                shape=[1], dtype='float32', value=0.3
+            )
+            y = paddle.tensor.fill_constant(
+                shape=[1], dtype='float32', value=0.1
+            )
+            z = paddle.tensor.fill_constant(
+                shape=[1], dtype='float32', value=0.2
+            )
             pred_2 = paddle.less_than(x, y)  # false: 0.3 < 0.1
             pred_1 = paddle.less_than(z, x)  # true: 0.2 < 0.3
 
@@ -91,26 +103,32 @@ class TestAPICase(unittest.TestCase):
 
     def test_return_var_tuple(self):
         def fn_1():
-            return layers.fill_constant(
+            return paddle.tensor.fill_constant(
                 shape=[1, 2], dtype='int32', value=1
-            ), layers.fill_constant(shape=[2, 3], dtype='float32', value=2)
+            ), paddle.tensor.fill_constant(
+                shape=[2, 3], dtype='float32', value=2
+            )
 
         def fn_2():
-            return layers.fill_constant(
+            return paddle.tensor.fill_constant(
                 shape=[3, 4], dtype='int32', value=3
-            ), layers.fill_constant(shape=[4, 5], dtype='float32', value=4)
+            ), paddle.tensor.fill_constant(
+                shape=[4, 5], dtype='float32', value=4
+            )
 
         def fn_3():
-            return layers.fill_constant(
+            return paddle.tensor.fill_constant(
                 shape=[5], dtype='int32', value=5
-            ), layers.fill_constant(shape=[5, 6], dtype='float32', value=6)
+            ), paddle.tensor.fill_constant(
+                shape=[5, 6], dtype='float32', value=6
+            )
 
         main_program = Program()
         startup_program = Program()
         with program_guard(main_program, startup_program):
-            x = layers.fill_constant(shape=[1], dtype='float32', value=1)
-            y = layers.fill_constant(shape=[1], dtype='float32', value=1)
-            z = layers.fill_constant(shape=[1], dtype='float32', value=3)
+            x = paddle.tensor.fill_constant(shape=[1], dtype='float32', value=1)
+            y = paddle.tensor.fill_constant(shape=[1], dtype='float32', value=1)
+            z = paddle.tensor.fill_constant(shape=[1], dtype='float32', value=3)
 
             pred_1 = paddle.equal(x, y)  # true
             pred_2 = paddle.equal(x, z)  # false
@@ -138,8 +156,12 @@ class TestAPICase(unittest.TestCase):
 class TestAPICase_Nested(unittest.TestCase):
     def test_nested_case(self):
         def fn_1(x=1):
-            var_5 = layers.fill_constant(shape=[1], dtype='int32', value=5)
-            var_6 = layers.fill_constant(shape=[1], dtype='int32', value=6)
+            var_5 = paddle.tensor.fill_constant(
+                shape=[1], dtype='int32', value=5
+            )
+            var_6 = paddle.tensor.fill_constant(
+                shape=[1], dtype='int32', value=6
+            )
             out = paddle.static.nn.control_flow.case(
                 pred_fn_pairs=[
                     (
@@ -165,8 +187,12 @@ class TestAPICase_Nested(unittest.TestCase):
             return out
 
         def fn_2(x=2):
-            var_5 = layers.fill_constant(shape=[1], dtype='int32', value=5)
-            var_6 = layers.fill_constant(shape=[1], dtype='int32', value=6)
+            var_5 = paddle.tensor.fill_constant(
+                shape=[1], dtype='int32', value=5
+            )
+            var_6 = paddle.tensor.fill_constant(
+                shape=[1], dtype='int32', value=6
+            )
             out = paddle.static.nn.control_flow.case(
                 pred_fn_pairs=[
                     (var_5 < var_6, partial(fn_1, x=x)),
@@ -184,8 +210,12 @@ class TestAPICase_Nested(unittest.TestCase):
             return out
 
         def fn_3():
-            var_5 = layers.fill_constant(shape=[1], dtype='int32', value=5)
-            var_6 = layers.fill_constant(shape=[1], dtype='int32', value=6)
+            var_5 = paddle.tensor.fill_constant(
+                shape=[1], dtype='int32', value=5
+            )
+            var_6 = paddle.tensor.fill_constant(
+                shape=[1], dtype='int32', value=6
+            )
             out = paddle.static.nn.control_flow.case(
                 pred_fn_pairs=[
                     (var_5 < var_6, partial(fn_2, x=3)),
@@ -205,9 +235,15 @@ class TestAPICase_Nested(unittest.TestCase):
         main_program = Program()
         startup_program = Program()
         with program_guard(main_program, startup_program):
-            x = layers.fill_constant(shape=[1], dtype='float32', value=0.3)
-            y = layers.fill_constant(shape=[1], dtype='float32', value=0.1)
-            z = layers.fill_constant(shape=[1], dtype='float32', value=0.2)
+            x = paddle.tensor.fill_constant(
+                shape=[1], dtype='float32', value=0.3
+            )
+            y = paddle.tensor.fill_constant(
+                shape=[1], dtype='float32', value=0.1
+            )
+            z = paddle.tensor.fill_constant(
+                shape=[1], dtype='float32', value=0.2
+            )
             pred_2 = paddle.less_than(x, y)  # false: 0.3 < 0.1
             pred_1 = paddle.less_than(z, x)  # true: 0.2 < 0.3
 
@@ -240,13 +276,19 @@ class TestAPICase_Nested(unittest.TestCase):
 class TestAPICase_Error(unittest.TestCase):
     def test_error(self):
         def fn_1():
-            return layers.fill_constant(shape=[4, 2], dtype='int32', value=1)
+            return paddle.tensor.fill_constant(
+                shape=[4, 2], dtype='int32', value=1
+            )
 
         main_program = Program()
         startup_program = Program()
         with program_guard(main_program, startup_program):
-            x = layers.fill_constant(shape=[1], dtype='float32', value=0.23)
-            z = layers.fill_constant(shape=[1], dtype='float32', value=0.2)
+            x = paddle.tensor.fill_constant(
+                shape=[1], dtype='float32', value=0.23
+            )
+            z = paddle.tensor.fill_constant(
+                shape=[1], dtype='float32', value=0.2
+            )
             pred_1 = paddle.less_than(z, x)  # true
 
             # The type of 'pred_fn_pairs' in case must be list or tuple
@@ -314,7 +356,7 @@ class TestMutiTask(unittest.TestCase):
 
         switch_id = fluid.data(name='switch_id', shape=[1], dtype='int32')
 
-        one = layers.fill_constant(shape=[1], dtype='int32', value=1)
+        one = paddle.tensor.fill_constant(shape=[1], dtype='int32', value=1)
         adam = optimizer.Adam(learning_rate=0.001)
         adagrad = optimizer.Adagrad(learning_rate=0.001)
 

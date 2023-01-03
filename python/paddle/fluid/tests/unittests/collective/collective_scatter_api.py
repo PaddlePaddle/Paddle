@@ -33,7 +33,7 @@ class TestCollectiveScatterAPI(TestCollectiveAPIRunnerBase):
                 dtype='float32',
                 append_batch_size=False,
             )
-            toutdata = layers.fill_constant(
+            toutdata = paddle.tensor.fill_constant(
                 shape=[5, 1000], dtype='float32', value=1.0
             )
             tensor_list = None

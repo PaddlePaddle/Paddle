@@ -15,10 +15,9 @@
 import paddle
 from paddle import _C_ops, _legacy_C_ops
 from paddle.fluid.layer_helper import LayerHelper
-from paddle.fluid.layers.tensor import fill_constant
 from paddle.framework import core, in_dynamic_mode
 from paddle.static import Variable, default_main_program
-from paddle.tensor.creation import full
+from paddle.tensor.creation import fill_constant, full
 
 from ...fluid.data_feeder import (
     check_dtype,

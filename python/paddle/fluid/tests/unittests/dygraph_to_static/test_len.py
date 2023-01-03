@@ -35,7 +35,7 @@ def len_with_tensor(x):
 def len_with_lod_tensor_array(x):
     x = fluid.dygraph.to_variable(x)
 
-    i = fluid.layers.fill_constant(shape=[1], dtype='int64', value=0)
+    i = paddle.tensor.fill_constant(shape=[1], dtype='int64', value=0)
     arr = paddle.tensor.array_write(x, i=i)
     arr_len = len(arr)
 

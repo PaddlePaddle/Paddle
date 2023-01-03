@@ -16,7 +16,6 @@ import unittest
 
 import paddle
 import paddle.fluid as fluid
-import paddle.fluid.layers as layers
 
 
 class TestProgramToReadableCode(unittest.TestCase):
@@ -37,14 +36,22 @@ class TestProgramToReadableCode(unittest.TestCase):
 
     def append_cond_op(self, program):
         def true_func():
-            return layers.fill_constant(shape=[2, 3], dtype='int32', value=2)
+            return paddle.tensor.fill_constant(
+                shape=[2, 3], dtype='int32', value=2
+            )
 
         def false_func():
-            return layers.fill_constant(shape=[3, 2], dtype='int32', value=-1)
+            return paddle.tensor.fill_constant(
+                shape=[3, 2], dtype='int32', value=-1
+            )
 
         with fluid.program_guard(program):
-            x = layers.fill_constant(shape=[1], dtype='float32', value=0.1)
-            y = layers.fill_constant(shape=[1], dtype='float32', value=0.23)
+            x = paddle.tensor.fill_constant(
+                shape=[1], dtype='float32', value=0.1
+            )
+            y = paddle.tensor.fill_constant(
+                shape=[1], dtype='float32', value=0.23
+            )
             pred = paddle.less_than(y, x)
             out = paddle.static.nn.cond(pred, true_func, false_func)
 

@@ -26,7 +26,7 @@ from paddle.fluid.executor import Executor
 class TestLoDArrayLength(unittest.TestCase):
     def test_array_length(self):
         tmp = layers.zeros(shape=[10], dtype='int32')
-        i = layers.fill_constant(shape=[1], dtype='int64', value=10)
+        i = paddle.tensor.fill_constant(shape=[1], dtype='int64', value=10)
         arr = paddle.tensor.array_write(tmp, i=i)
         arr_len = paddle.tensor.array_length(arr)
         cpu = core.CPUPlace()

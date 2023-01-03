@@ -20,7 +20,6 @@ import numpy as np
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-import paddle.fluid.layers as layers
 import paddle.fluid.optimizer as optimizer
 from paddle.fluid.framework import Program, program_guard
 
@@ -99,7 +98,7 @@ def static(
         sgd = optimizer.SGD(learning_rate=LR)
 
         id = fluid.data('id', [1], 'int32')
-        two = layers.fill_constant([1], 'int32', 2)
+        two = paddle.tensor.fill_constant([1], 'int32', 2)
         mod_two = paddle.remainder(id, two) == 0
 
         if loss_in_switch:
@@ -271,7 +270,7 @@ class TestMultiOptimizersMultiCardsError(unittest.TestCase):
             adam = optimizer.Adam(learning_rate=LR)
             sgd = optimizer.SGD(learning_rate=LR)
 
-            cond = layers.fill_constant([1], 'bool', True)
+            cond = paddle.tensor.fill_constant([1], 'bool', True)
 
             paddle.static.nn.case(
                 [(cond, lambda: fn_1(adam, avg_loss))],

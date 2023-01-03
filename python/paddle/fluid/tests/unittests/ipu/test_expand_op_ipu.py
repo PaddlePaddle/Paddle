@@ -80,7 +80,7 @@ class TestCase1(TestBase):
         x = paddle.static.data(
             name=self.feed_list[0], shape=self.feed_shape[0], dtype="float32"
         )
-        expand_times = paddle.fluid.layers.fill_constant(
+        expand_times = paddle.tensor.fill_constant(
             shape=[len(self.feed_shape[0])], dtype="int32", value=2
         )
         out = paddle.expand(x, expand_times, **self.attrs)

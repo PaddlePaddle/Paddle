@@ -239,8 +239,8 @@ class TestEmptyAPI(unittest.TestCase):
     def test_static_graph(self):
         dtype = 'float64'
 
-        positive_2_int32 = fluid.layers.fill_constant([1], "int32", 3)
-        positive_2_int64 = fluid.layers.fill_constant([1], "int64", 3)
+        positive_2_int32 = paddle.tensor.fill_constant([1], "int32", 3)
+        positive_2_int64 = paddle.tensor.fill_constant([1], "int64", 3)
 
         shape_tensor_int32 = fluid.data(
             name="shape_tensor_int32", shape=[2], dtype="int32"

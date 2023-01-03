@@ -210,7 +210,7 @@ class ClipGradForMOEByGlobalNorm(ClipGradBase):
 
         params_and_grads = []
         global_norm_var = paddle.sqrt(global_norm_var)
-        max_global_norm = layers.fill_constant(
+        max_global_norm = paddle.tensor.fill_constant(
             shape=[1], dtype=global_norm_var.dtype, value=self.clip_norm
         )
         clip_var = paddle.divide(

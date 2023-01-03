@@ -50,9 +50,9 @@ class HybridParallelInferenceHelper:
         # while op pattern
         with paddle.fluid.device_guard(f'{device}:all'):
             # init global cond
-            max_len = layers.fill_constant(shape=[1], dtype="int64", value=10, force_cpu=False)
-            step_idx = layers.fill_constant(shape=[1], dtype="int64", value=0, force_cpu=False)
-            cond_int = layers.fill_constant(shape=[1], dtype="int64", value=0, force_cpu=False, name="cond_int")
+            max_len = paddle.tensor.fill_constant(shape=[1], dtype="int64", value=10, force_cpu=False)
+            step_idx = paddle.tensor.fill_constant(shape=[1], dtype="int64", value=0, force_cpu=False)
+            cond_int = paddle.tensor.fill_constant(shape=[1], dtype="int64", value=0, force_cpu=False, name="cond_int")
             cond = layers.cast(step_idx < max_len, dtype="bool")
             while_op = layers.While(cond, is_test=True)
 
@@ -124,14 +124,14 @@ class HybridParallelInferenceHelper:
                 X = paddle.static.data(name='X', shape=[None, 2], dtype='float32')
 
             with paddle.fluid.device_guard(f'{device}:all'):
-                max_len = layers.fill_constant(
+                max_len = paddle.tensor.fill_constant(
                     shape=[1], dtype="int64", value=5, force_cpu=False, name="n")
-                step_idx = layers.fill_constant(
+                step_idx = paddle.tensor.fill_constant(
                     shape=[1], dtype="int64", value=0, force_cpu=False, name="i")
 
                 data = paddle.tensor.array_write(X, step_idx)
 
-                cond_int = layers.fill_constant(shape=[1], dtype="int64", value=0, force_cpu=False, name="cond_int")
+                cond_int = paddle.tensor.fill_constant(shape=[1], dtype="int64", value=0, force_cpu=False, name="cond_int")
                 cond = paddle.less_than(x=step_idx, y=max_len)
                 while_op = layers.While(cond, is_test=True)
 

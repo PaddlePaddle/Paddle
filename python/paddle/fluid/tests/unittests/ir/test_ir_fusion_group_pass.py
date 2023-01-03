@@ -84,7 +84,7 @@ class FusionGroupPassComplicatedTest(FusionGroupPassTest):
         with fluid.program_guard(self.main_program, self.startup_program):
             self.feed_vars = self._prepare_feed_vars([32, 64], dtype, 5)
 
-            one = layers.fill_constant(shape=[1], dtype=dtype, value=1.0)
+            one = paddle.tensor.fill_constant(shape=[1], dtype=dtype, value=1.0)
             tmp_0 = one * self.feed_vars[0]
             # subgraph with 9 op nodes
             tmp_1 = tmp_0 * paddle.nn.functional.sigmoid(
@@ -139,7 +139,9 @@ class FusionGroupPassTestCastAndFP16(FusionGroupPassTest):
             # subgraph with 2 op nodes
             tmp_0 = self.feed_vars[0] * self.feed_vars[1]
             tmp_1 = layers.cast(tmp_0, dtype="float16")
-            zero = layers.fill_constant(shape=[128], dtype="float16", value=0)
+            zero = paddle.tensor.fill_constant(
+                shape=[128], dtype="float16", value=0
+            )
             # TODO(xreki): fix precision problem when using softmax of float16.
             # tmp_2 = layers.softmax(tmp_1)
             tmp_2 = paddle.add(tmp_1, zero)
@@ -206,7 +208,9 @@ class FusionGroupPassFillConstantTest(FusionGroupPassTest):
             self.feed_vars = self._prepare_feed_vars([2, 2], dtype, 2)
 
             tmp_0 = paddle.add(self.feed_vars[0], self.feed_vars[1])
-            tmp_1 = layers.fill_constant(shape=[2, 2], dtype=dtype, value=2.0)
+            tmp_1 = paddle.tensor.fill_constant(
+                shape=[2, 2], dtype=dtype, value=2.0
+            )
             tmp_2 = paddle.scale(
                 tmp_1, scale=3.0, bias=1.0, bias_after_scale=True
             )

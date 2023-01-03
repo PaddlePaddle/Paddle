@@ -1756,10 +1756,10 @@ def fast_decode(
     )
 
     def beam_search():
-        max_len = layers.fill_constant(
+        max_len = paddle.tensor.fill_constant(
             shape=[1], dtype=start_tokens.dtype, value=max_out_len
         )
-        step_idx = layers.fill_constant(
+        step_idx = paddle.tensor.fill_constant(
             shape=[1], dtype=start_tokens.dtype, value=0
         )
         cond = paddle.less_than(x=step_idx, y=max_len)
