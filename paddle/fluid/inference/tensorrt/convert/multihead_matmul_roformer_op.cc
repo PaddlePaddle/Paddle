@@ -108,6 +108,13 @@ class MultiheadMatMulRoformerOpConverter : public OpConverter {
                                static_cast<void*>(bias_data),
                                static_cast<int32_t>(bias_t->numel())};
 
+	nvinfer1::ITensor* mask_tensor;
+        nvinfer1::ITensor* pos_id_tensor;
+        nvinfer1::ITensor* max_seqlen_tensor;
+        mask_tensor = engine_->GetITensor("qkv_plugin_mask");
+        pos_id_tensor = engine_->GetITensor("pos_id");
+        max_seqlen_tensor = engine_->GetITensor("max_seqlen_tensor");
+
 	int head_size = hidden_out / head_number;
         // [3, head_number, head_size, hidden_in] -> [head_number, 3,
         // head_size, hidden_in]
@@ -182,15 +189,7 @@ class MultiheadMatMulRoformerOpConverter : public OpConverter {
         roformerplugin_inputs.push_back(fc_layer->getOutput(0));
         roformerplugin_inputs.push_back(input_cos);
         roformerplugin_inputs.push_back(input_sin);
-        if (engine_->Has("ernie_pos_name")) {
-          roformerplugin_inputs.push_back(engine_->GetITensor(
-              engine_->Get<std::string>("ernie_pos_name")));
-        } else {
-          roformerplugin_inputs.push_back(engine_->GetITensor(
-              engine_->network()
-                  ->getInput(2)
-                  ->getName()));  // cu_seqlens, eval_placeholder_2
-        }
+        roformerplugin_inputs.push_back(pos_id_tensor);
 
         plugin::DynamicPluginTensorRT* roformerplugin =
             new plugin::RoformerPlugin(
@@ -201,7 +200,7 @@ class MultiheadMatMulRoformerOpConverter : public OpConverter {
             ("roformerlayer(Output: " + output_name + ")").c_str());
         roformerlayer->setPrecision(nvinfer1::DataType::kFLOAT);
 
-        auto mask_tensor = engine_->GetITensor("qkv_plugin_mask");
+        //auto mask_tensor = engine_->GetITensor("qkv_plugin_mask");
         auto creator = GetPluginRegistry()->getPluginCreator(
             "CustomQKVToContextPluginDynamic", "2");
         assert(creator != nullptr);
@@ -244,31 +243,16 @@ class MultiheadMatMulRoformerOpConverter : public OpConverter {
         // remeber to modify
         plugin_inputs.emplace_back(roformerlayer->getOutput(0));
         plugin_inputs.emplace_back(mask_tensor);
-        if (engine_->Has("ernie_pos_name")) {
-          plugin_inputs.emplace_back(engine_->GetITensor(
-              engine_->Get<std::string>("ernie_pos_name")));
-        } else {
-          plugin_inputs.emplace_back(engine_->GetITensor(
-              engine_->network()
-                  ->getInput(2)
-                  ->getName()));  // cu_seqlens, eval_placeholder_2
-        }
-        auto max_seqlen_tensor =
-            engine_->GetITensor(engine_->network()->getInput(3)->getName());
-        auto* shuffle_layer = TRT_ENGINE_ADD_LAYER(
-            engine_,
-            Shuffle,
-            *const_cast<nvinfer1::ITensor*>(max_seqlen_tensor));
-        nvinfer1::Dims shape_dim;
-        shape_dim.nbDims = 1;
-        shape_dim.d[0] = -1;
-        shuffle_layer->setReshapeDimensions(shape_dim);
-        engine_->SetTensorDynamicRange(shuffle_layer->getOutput(0), 1.0f);
-        plugin_inputs.emplace_back(
-            shuffle_layer->getOutput(0));  // max_seqlen, eval_placeholder_3
+	plugin_inputs.emplace_back(pos_id_tensor);
+        plugin_inputs.emplace_back(max_seqlen_tensor);  // max_seqlen, eval_placeholder_3
+
+        //engine_->SetTensorDynamicRange(shuffle_layer->getOutput(0), 1.0f);
+
         auto plugin_layer = engine_->network()->addPluginV2(
             plugin_inputs.data(), plugin_inputs.size(), *plugin);
-        layer = plugin_layer;
+        plugin_layer->setName(
+              ("CustomQKVToContextPluginDynamic: " + output_name).c_str());
+	engine_->SetITensor(output_name, plugin_layer->getOutput(0));
 
       } else { // no varlen
         PADDLE_ENFORCE_EQ(
