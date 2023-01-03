@@ -169,7 +169,7 @@ class ConstantInitializer(Initializer):
             fc = fluid.layers.fc(
                 input=x,
                 size=10,
-                param_attr=fluid.initializer.Constant(value=2.0))
+                param_attr=paddle.nn.initializer.ConstantInitializer(value=2.0))
 
     """
 

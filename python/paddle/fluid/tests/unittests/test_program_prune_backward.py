@@ -40,7 +40,7 @@ def simple_fc_net_with_accuracy(use_feed):
             size=200,
             act='relu',
             bias_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(value=1.0)
+                initializer=paddle.nn.initializer.ConstantInitializer(value=1.0)
             ),
         )
     prediction = fluid.layers.fc(hidden, size=10, act='softmax')

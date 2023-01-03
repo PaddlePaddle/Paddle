@@ -322,7 +322,9 @@ class TestSGDOpBF16API(unittest.TestCase):
                 print(e)
 
     def _set_initializer(self):
-        self.initializer = fluid.initializer.Constant(value=self.value)
+        self.initializer = paddle.nn.initializer.ConstantInitializer(
+            value=self.value
+        )
 
     def _data_reader(self):
         for sample in range(self.sample_count):

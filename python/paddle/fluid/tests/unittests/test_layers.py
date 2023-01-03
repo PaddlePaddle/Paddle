@@ -805,7 +805,9 @@ class TestLayer(LayerTest):
             ret = paddle.static.nn.group_norm(
                 input=X,
                 groups=2,
-                param_attr=fluid.initializer.Uniform(low=-0.5, high=0.5),
+                param_attr=paddle.nn.initializer.UniformInitializer(
+                    low=-0.5, high=0.5
+                ),
                 bias_attr=paddle.nn.initializer.ConstantInitializer(value=1),
             )
             static_ret = self.get_static_graph_result(
@@ -829,7 +831,9 @@ class TestLayer(LayerTest):
             groupNorm = paddle.nn.GroupNorm(
                 num_channels=shape[1],
                 num_groups=2,
-                weight_attr=fluid.initializer.Uniform(low=-0.5, high=0.5),
+                weight_attr=paddle.nn.initializer.UniformInitializer(
+                    low=-0.5, high=0.5
+                ),
                 bias_attr=paddle.nn.initializer.ConstantInitializer(value=1),
             )
             ret = groupNorm(X)
@@ -847,7 +851,9 @@ class TestLayer(LayerTest):
             groupNorm = paddle.nn.GroupNorm(
                 num_channels=shape[1],
                 num_groups=2,
-                weight_attr=fluid.initializer.Uniform(low=-0.5, high=0.5),
+                weight_attr=paddle.nn.initializer.UniformInitializer(
+                    low=-0.5, high=0.5
+                ),
                 bias_attr=paddle.nn.initializer.ConstantInitializer(value=1),
             )
             dy_ret = groupNorm(base.to_variable(input))

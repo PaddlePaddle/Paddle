@@ -172,7 +172,7 @@ class DGCMomentumOptimizer(Optimizer):
         if is_new_var:
             helper.set_variable_initializer(
                 counter,
-                initializer=paddle.fluid.initializer.Constant(
+                initializer=paddle.nn.initializer.ConstantInitializer(
                     value=float(begin - 1), force_cpu=True
                 ),
             )
@@ -195,7 +195,7 @@ class DGCMomentumOptimizer(Optimizer):
         if is_new_var:
             helper.set_variable_initializer(
                 counter,
-                initializer=paddle.fluid.initializer.Constant(
+                initializer=paddle.nn.initializer.ConstantInitializer(
                     value=float(value), force_cpu=True
                 ),
             )

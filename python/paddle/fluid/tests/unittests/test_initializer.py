@@ -661,7 +661,9 @@ class TestSetGlobalInitializer(unittest.TestCase):
         """Test Set Global Param initilizer with UniformInitializer"""
         main_prog = framework.Program()
         startup_prog = framework.Program()
-        fluid.set_global_initializer(initializer.Uniform(low=-0.5, high=0.5))
+        fluid.set_global_initializer(
+            paddle.nn.initializer.UniformInitializer(low=-0.5, high=0.5)
+        )
         with fluid.program_guard(main_prog, startup_prog):
             x = fluid.data(name="x", shape=[1, 3, 32, 32])
             # default initilizer of param in layers.conv2d is NormalInitializer
@@ -687,7 +689,7 @@ class TestSetGlobalInitializer(unittest.TestCase):
         main_prog = framework.Program()
         startup_prog = framework.Program()
         fluid.set_global_initializer(
-            initializer.Uniform(low=-0.5, high=0.5),
+            paddle.nn.initializer.UniformInitializer(low=-0.5, high=0.5),
             bias_init=initializer.Normal(loc=0.0, scale=2.0),
         )
         with fluid.program_guard(main_prog, startup_prog):

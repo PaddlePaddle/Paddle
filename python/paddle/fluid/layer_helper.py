@@ -22,7 +22,7 @@ from .framework import (
     _global_flags,
 )
 from . import unique_name
-from paddle.fluid.initializer import Constant, Xavier
+from paddle.fluid.initializer import Xavier
 from .param_attr import ParamAttr
 from . import core
 
@@ -181,7 +181,7 @@ class LayerHelper(LayerHelperBase):
             return Xavier()
         else:
             # For integer and boolean types, initialize with all zeros
-            return Constant()
+            return paddle.nn.initializer.ConstantInitializer()
 
     # TODO (jiabin): reconstruct this in LayerObjHelper and avoid dependency of kwargs
     def is_instance(self, param_name, cls):

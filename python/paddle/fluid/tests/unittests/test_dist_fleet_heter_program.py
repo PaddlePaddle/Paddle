@@ -89,7 +89,7 @@ class TestDistFleetHeterProgram(unittest.TestCase):
                 size=[100001, 10],
                 param_attr=fluid.ParamAttr(
                     name="SparseFeatFactors",
-                    initializer=fluid.initializer.Uniform(),
+                    initializer=paddle.nn.initializer.UniformInitializer(),
                 ),
             )
 

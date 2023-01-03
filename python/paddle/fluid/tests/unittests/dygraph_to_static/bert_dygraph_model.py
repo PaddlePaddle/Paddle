@@ -343,7 +343,7 @@ class PretrainModelLayer(Layer):
 
         self.mask_lm_out_bias_attr = fluid.ParamAttr(
             name="mask_lm_out_fc.b_0",
-            initializer=fluid.initializer.Constant(value=0.0),
+            initializer=paddle.nn.initializer.ConstantInitializer(value=0.0),
         )
 
         if not self._weight_sharing:

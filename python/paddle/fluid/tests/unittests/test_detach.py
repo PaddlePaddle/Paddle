@@ -119,7 +119,7 @@ class Test_Detach(unittest.TestCase):
                 initializer=paddle.nn.initializer.Constant(5.0)
             )
             linear_b_param_attrs = fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(6.0)
+                initializer=paddle.nn.initializer.ConstantInitializer(6.0)
             )
             linear = Linear(
                 4,
@@ -131,7 +131,7 @@ class Test_Detach(unittest.TestCase):
                 initializer=paddle.nn.initializer.Constant(7.0)
             )
             linear1_b_param_attrs = fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(8.0)
+                initializer=paddle.nn.initializer.ConstantInitializer(8.0)
             )
             linear1 = Linear(
                 10,

@@ -32,10 +32,10 @@ from paddle.fluid.framework import (  # noqa: F401
     dygraph_only,
     in_dygraph_mode,
 )
-from paddle.fluid.initializer import Constant  # noqa: F401
 from paddle.fluid.layer_helper import LayerHelper  # noqa: F401
 from paddle.fluid.layers import fill_constant, utils  # noqa: F401
 from paddle.fluid.layers.layer_function_generator import (  # noqa: F401
     templatedoc,
 )
 from paddle.fluid.param_attr import ParamAttr  # noqa: F401
+from paddle.nn.initializer import ConstantInitializer  # noqa: F401

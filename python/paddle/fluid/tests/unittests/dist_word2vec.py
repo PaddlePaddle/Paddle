@@ -41,7 +41,9 @@ class TestDistWord2vec2x2(TestDistRunnerBase):
                 is_sparse=IS_SPARSE,
                 param_attr=fluid.ParamAttr(
                     name='shared_w',
-                    initializer=fluid.initializer.Constant(value=0.1),
+                    initializer=paddle.nn.initializer.ConstantInitializer(
+                        value=0.1
+                    ),
                 ),
             )
             embed_second = fluid.layers.embedding(
@@ -51,7 +53,9 @@ class TestDistWord2vec2x2(TestDistRunnerBase):
                 is_sparse=IS_SPARSE,
                 param_attr=fluid.ParamAttr(
                     name='shared_w',
-                    initializer=fluid.initializer.Constant(value=0.1),
+                    initializer=paddle.nn.initializer.ConstantInitializer(
+                        value=0.1
+                    ),
                 ),
             )
             embed_third = fluid.layers.embedding(
@@ -61,7 +65,9 @@ class TestDistWord2vec2x2(TestDistRunnerBase):
                 is_sparse=IS_SPARSE,
                 param_attr=fluid.ParamAttr(
                     name='shared_w',
-                    initializer=fluid.initializer.Constant(value=0.1),
+                    initializer=paddle.nn.initializer.ConstantInitializer(
+                        value=0.1
+                    ),
                 ),
             )
             embed_forth = fluid.layers.embedding(
@@ -71,7 +77,9 @@ class TestDistWord2vec2x2(TestDistRunnerBase):
                 is_sparse=IS_SPARSE,
                 param_attr=fluid.ParamAttr(
                     name='shared_w',
-                    initializer=fluid.initializer.Constant(value=0.1),
+                    initializer=paddle.nn.initializer.ConstantInitializer(
+                        value=0.1
+                    ),
                 ),
             )
 
@@ -84,7 +92,9 @@ class TestDistWord2vec2x2(TestDistRunnerBase):
                 size=HIDDEN_SIZE,
                 act='sigmoid',
                 param_attr=fluid.ParamAttr(
-                    initializer=fluid.initializer.Constant(value=0.1)
+                    initializer=paddle.nn.initializer.ConstantInitializer(
+                        value=0.1
+                    )
                 ),
             )
             predict_word = fluid.layers.fc(
@@ -92,7 +102,9 @@ class TestDistWord2vec2x2(TestDistRunnerBase):
                 size=dict_size,
                 act='softmax',
                 param_attr=fluid.ParamAttr(
-                    initializer=fluid.initializer.Constant(value=0.1)
+                    initializer=paddle.nn.initializer.ConstantInitializer(
+                        value=0.1
+                    )
                 ),
             )
             cost = paddle.nn.functional.cross_entropy(

@@ -400,10 +400,14 @@ class PrePostProcessLayer(Layer):
                 self._layer_norm = paddle.nn.LayerNorm(
                     normalized_shape=d_model,
                     weight_attr=fluid.ParamAttr(
-                        initializer=fluid.initializer.Constant(1.0)
+                        initializer=paddle.nn.initializer.ConstantInitializer(
+                            1.0
+                        )
                     ),
                     bias_attr=fluid.ParamAttr(
-                        initializer=fluid.initializer.Constant(0.0)
+                        initializer=paddle.nn.initializer.ConstantInitializer(
+                            0.0
+                        )
                     ),
                 )
 

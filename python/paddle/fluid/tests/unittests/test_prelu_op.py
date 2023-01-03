@@ -153,7 +153,7 @@ class TestNNPReluAPI(unittest.TestCase):
         x = paddle.to_tensor(self.x_np)
         m = paddle.nn.PReLU(
             weight_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(0.5)
+                initializer=paddle.nn.initializer.ConstantInitializer(0.5)
             )
         )
         out = m(x)

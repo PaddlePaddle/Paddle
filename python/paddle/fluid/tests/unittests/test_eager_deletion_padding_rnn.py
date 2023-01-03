@@ -138,7 +138,9 @@ def lm_model(
                 [hidden_size * 4],
                 dtype="float32",
                 name="fc_bias1_" + str(i),
-                default_initializer=fluid.initializer.Constant(0.0),
+                default_initializer=paddle.nn.initializer.ConstantInitializer(
+                    0.0
+                ),
             )
             bias_arr.append(bias_1)
 
@@ -259,7 +261,9 @@ def lm_model(
                 [hidden_size * 4],
                 dtype="float32",
                 name="fc_bias1_" + str(i),
-                default_initializer=fluid.initializer.Constant(0.0),
+                default_initializer=paddle.nn.initializer.ConstantInitializer(
+                    0.0
+                ),
             )
             bias_arr.append(bias_1)
 

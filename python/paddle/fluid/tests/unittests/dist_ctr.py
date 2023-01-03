@@ -63,7 +63,9 @@ class TestDistCTR2x2(TestDistRunnerBase):
             size=[dnn_input_dim, dnn_layer_dims[0]],
             param_attr=fluid.ParamAttr(
                 name="deep_embedding",
-                initializer=fluid.initializer.Constant(value=0.01),
+                initializer=paddle.nn.initializer.ConstantInitializer(
+                    value=0.01
+                ),
             ),
             is_sparse=IS_SPARSE,
         )
@@ -77,7 +79,9 @@ class TestDistCTR2x2(TestDistRunnerBase):
                 size=dim,
                 act="relu",
                 param_attr=fluid.ParamAttr(
-                    initializer=fluid.initializer.Constant(value=0.01)
+                    initializer=paddle.nn.initializer.ConstantInitializer(
+                        value=0.01
+                    )
                 ),
                 name='dnn-fc-%d' % i,
             )
@@ -90,7 +94,9 @@ class TestDistCTR2x2(TestDistRunnerBase):
             size=[lr_input_dim, 1],
             param_attr=fluid.ParamAttr(
                 name="wide_embedding",
-                initializer=fluid.initializer.Constant(value=0.01),
+                initializer=paddle.nn.initializer.ConstantInitializer(
+                    value=0.01
+                ),
             ),
             is_sparse=IS_SPARSE,
         )

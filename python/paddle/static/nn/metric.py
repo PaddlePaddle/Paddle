@@ -15,10 +15,10 @@
 All layers just related to metric.
 """
 
+import paddle
 from paddle import _legacy_C_ops
 from paddle.fluid.data_feeder import check_variable_and_dtype
 from paddle.fluid.framework import Variable, _non_static_mode, _varbase_creator
-from paddle.fluid.initializer import Constant
 from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.layers import tensor
 
@@ -266,7 +266,10 @@ def auc(
 
     for var in [batch_stat_pos, batch_stat_neg, stat_pos, stat_neg]:
         helper.set_variable_initializer(
-            var, Constant(value=0.0, force_cpu=False)
+            var,
+            paddle.nn.initializer.ConstantInitializer(
+                value=0.0, force_cpu=False
+            ),
         )
 
     # "InsTagWeight": [ins_tag_weight]

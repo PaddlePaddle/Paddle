@@ -204,7 +204,7 @@ def positionwise_feed_forward(x, d_inner_hid, d_hid):
         input=x,
         size=d_inner_hid,
         num_flatten_dims=2,
-        param_attr=fluid.initializer.Uniform(
+        param_attr=paddle.nn.initializer.UniformInitializer(
             low=-(d_hid**-0.5), high=(d_hid**-0.5)
         ),
         act="relu",
@@ -213,7 +213,7 @@ def positionwise_feed_forward(x, d_inner_hid, d_hid):
         input=hidden,
         size=d_hid,
         num_flatten_dims=2,
-        param_attr=fluid.initializer.Uniform(
+        param_attr=paddle.nn.initializer.UniformInitializer(
             low=-(d_inner_hid**-0.5), high=(d_inner_hid**-0.5)
         ),
     )
@@ -235,8 +235,8 @@ def pre_post_process_layer(prev_out, out, process_cmd, dropout=0.0):
             out = paddle.static.nn.layer_norm(
                 out,
                 begin_norm_axis=len(out.shape) - 1,
-                param_attr=fluid.initializer.Constant(1.0),
-                bias_attr=fluid.initializer.Constant(0.0),
+                param_attr=paddle.nn.initializer.ConstantInitializer(1.0),
+                bias_attr=paddle.nn.initializer.ConstantInitializer(0.0),
             )
         elif cmd == "d":  # add dropout
             if dropout:

@@ -121,7 +121,9 @@ class SE_ResNeXt:
             size=class_dim,
             act='softmax',
             param_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(value=0.05)
+                initializer=paddle.nn.initializer.ConstantInitializer(
+                    value=0.05
+                )
             ),
         )
         return out
@@ -174,7 +176,9 @@ class SE_ResNeXt:
             act=None,
             # avoid pserver CPU init differs from GPU
             param_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(value=0.05)
+                initializer=paddle.nn.initializer.ConstantInitializer(
+                    value=0.05
+                )
             ),
             bias_attr=False,
         )
@@ -187,7 +191,9 @@ class SE_ResNeXt:
             input=pool,
             size=num_channels // reduction_ratio,
             param_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(value=0.05)
+                initializer=paddle.nn.initializer.ConstantInitializer(
+                    value=0.05
+                )
             ),
             act='relu',
         )
@@ -196,7 +202,9 @@ class SE_ResNeXt:
             input=squeeze,
             size=num_channels,
             param_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(value=0.05)
+                initializer=paddle.nn.initializer.ConstantInitializer(
+                    value=0.05
+                )
             ),
             act='sigmoid',
         )

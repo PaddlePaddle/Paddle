@@ -22,7 +22,7 @@ import numpy as np
 
 import paddle
 from ..layer_helper import LayerHelper
-from ..initializer import Normal, Constant
+from ..initializer import Normal
 from ..framework import (
     Variable,
     OpProtoHolder,
@@ -841,7 +841,10 @@ def autoincreased_step_counter(counter_name=None, begin=1, step=1):
     )
     if is_new_var:
         helper.set_variable_initializer(
-            counter, initializer=Constant(value=begin - 1, force_cpu=True)
+            counter,
+            initializer=paddle.nn.initializer.ConstantInitializer(
+                value=begin - 1, force_cpu=True
+            ),
         )
         helper.main_program.global_block()._prepend_op(
             type='increment',

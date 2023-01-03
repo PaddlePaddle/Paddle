@@ -355,7 +355,7 @@ class conv2d(fluid.dygraph.Layer):
             con_bias_attr = False
         else:
             con_bias_attr = fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(0.0)
+                initializer=paddle.nn.initializer.ConstantInitializer(0.0)
             )
 
         self.conv = paddle.nn.Conv2D(
@@ -384,7 +384,7 @@ class conv2d(fluid.dygraph.Layer):
                     initializer=fluid.initializer.NormalInitializer(1.0, 0.02)
                 ),
                 bias_attr=fluid.ParamAttr(
-                    initializer=fluid.initializer.Constant(0.0)
+                    initializer=paddle.nn.initializer.ConstantInitializer(0.0)
                 ),
                 trainable_statistics=True,
             )
@@ -424,7 +424,7 @@ class DeConv2D(fluid.dygraph.Layer):
             de_bias_attr = False
         else:
             de_bias_attr = fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(0.0)
+                initializer=paddle.nn.initializer.ConstantInitializer(0.0)
             )
 
         self._deconv = paddle.nn.Conv2DTranspose(
@@ -450,7 +450,7 @@ class DeConv2D(fluid.dygraph.Layer):
                     initializer=fluid.initializer.NormalInitializer(1.0, 0.02)
                 ),
                 bias_attr=fluid.ParamAttr(
-                    initializer=fluid.initializer.Constant(0.0)
+                    initializer=paddle.nn.initializer.ConstantInitializer(0.0)
                 ),
                 trainable_statistics=True,
             )

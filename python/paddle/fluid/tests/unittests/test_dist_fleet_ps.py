@@ -78,7 +78,9 @@ class TestPSPassWithBow(unittest.TestCase):
             is_distributed=is_distributed,
             size=[dict_dim, emb_dim],
             param_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(value=0.01),
+                initializer=paddle.nn.initializer.ConstantInitializer(
+                    value=0.01
+                ),
                 name="__emb__",
                 learning_rate=emb_lr,
             ),
@@ -93,7 +95,9 @@ class TestPSPassWithBow(unittest.TestCase):
             input=q_ss,
             size=hid_dim,
             param_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(value=0.01),
+                initializer=paddle.nn.initializer.ConstantInitializer(
+                    value=0.01
+                ),
                 name="__q_fc__",
                 learning_rate=base_lr,
             ),
@@ -110,7 +114,9 @@ class TestPSPassWithBow(unittest.TestCase):
             is_distributed=is_distributed,
             size=[dict_dim, emb_dim],
             param_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(value=0.01),
+                initializer=paddle.nn.initializer.ConstantInitializer(
+                    value=0.01
+                ),
                 name="__emb__",
                 learning_rate=emb_lr,
             ),
@@ -125,7 +131,9 @@ class TestPSPassWithBow(unittest.TestCase):
             input=pt_ss,
             size=hid_dim,
             param_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(value=0.01),
+                initializer=paddle.nn.initializer.ConstantInitializer(
+                    value=0.01
+                ),
                 name="__fc__",
                 learning_rate=base_lr,
             ),
@@ -141,7 +149,9 @@ class TestPSPassWithBow(unittest.TestCase):
             is_distributed=is_distributed,
             size=[dict_dim, emb_dim],
             param_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(value=0.01),
+                initializer=paddle.nn.initializer.ConstantInitializer(
+                    value=0.01
+                ),
                 name="__emb__",
                 learning_rate=emb_lr,
             ),
@@ -156,7 +166,9 @@ class TestPSPassWithBow(unittest.TestCase):
             input=nt_ss,
             size=hid_dim,
             param_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(value=0.01),
+                initializer=paddle.nn.initializer.ConstantInitializer(
+                    value=0.01
+                ),
                 name="__fc__",
                 learning_rate=base_lr,
             ),

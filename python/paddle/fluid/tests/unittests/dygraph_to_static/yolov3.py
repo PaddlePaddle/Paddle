@@ -256,7 +256,9 @@ class YOLOv3(fluid.dygraph.Layer):
                         initializer=fluid.initializer.Normal(0.0, 0.02)
                     ),
                     bias_attr=ParamAttr(
-                        initializer=fluid.initializer.Constant(0.0),
+                        initializer=paddle.nn.initializer.ConstantInitializer(
+                            0.0
+                        ),
                         regularizer=L2Decay(0.0),
                     ),
                 ),

@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .initializer import Initializer, Xavier, Constant
+from .initializer import Initializer, Xavier
 from .regularizer import WeightDecayRegularizer
 from paddle.fluid.data_feeder import check_type
 
@@ -151,7 +151,9 @@ class ParamAttr:
         Returns:
             None.
         """
-        self._set_default_initializer(Constant(0.0))
+        self._set_default_initializer(
+            paddle.nn.initializer.ConstantInitializer(0.0)
+        )
 
     @staticmethod
     def _to_attr(arg):

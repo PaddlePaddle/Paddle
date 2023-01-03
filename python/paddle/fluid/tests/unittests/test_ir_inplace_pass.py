@@ -34,7 +34,7 @@ def fc_with_batchnorm(use_feed):
             size=200,
             act='tanh',
             bias_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(value=1.0)
+                initializer=paddle.nn.initializer.ConstantInitializer(value=1.0)
             ),
         )
 

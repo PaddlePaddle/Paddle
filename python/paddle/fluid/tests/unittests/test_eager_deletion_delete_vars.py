@@ -41,7 +41,7 @@ def simple_fc_net():
             size=200,
             act='tanh',
             bias_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(value=1.0)
+                initializer=paddle.nn.initializer.ConstantInitializer(value=1.0)
             ),
         )
     prediction = fluid.layers.fc(hidden, size=10, act='softmax')

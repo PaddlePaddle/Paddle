@@ -53,7 +53,7 @@ class ConvBNLayer(fluid.dygraph.Layer):
                 regularizer=L2Decay(0.0),
             ),
             bias_attr=ParamAttr(
-                initializer=fluid.initializer.Constant(0.0),
+                initializer=paddle.nn.initializer.ConstantInitializer(0.0),
                 regularizer=L2Decay(0.0),
             ),
         )

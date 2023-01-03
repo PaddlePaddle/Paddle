@@ -194,7 +194,7 @@ class ListenAndServ:
                         dtype='float32',
                         name="X",
                         append_batch_size=False)
-                    fluid.initializer.Constant(value=1.0)(x, main.global_block())
+                    paddle.nn.initializer.ConstantInitializer(value=1.0)(x, main.global_block())
                     paddle.scale(x=x, scale=10.0, out=out_var)
 
             exe = fluid.Executor(place)

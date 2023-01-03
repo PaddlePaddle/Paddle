@@ -29,7 +29,7 @@ alpha = 0.6
 uniform_initializer = lambda x: paddle.nn.initializer.UniformInitializer(
     low=-x, high=x
 )
-zero_constant = fluid.initializer.Constant(0.0)
+zero_constant = paddle.nn.initializer.ConstantInitializer(0.0)
 
 
 class BasicLSTMUnit(Layer):

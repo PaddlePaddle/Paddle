@@ -28,9 +28,10 @@ from paddle.common_ops_import import (
 from paddle.fluid import core
 from paddle.fluid.data_feeder import check_dtype
 from paddle.fluid.framework import Variable, _non_static_mode, static_only
-from paddle.fluid.initializer import Constant, Normal
+from paddle.fluid.initializer import Normal
 from paddle.fluid.layers.layer_function_generator import templatedoc
 from paddle.fluid.param_attr import ParamAttr
+from paddle.nn.initializer import ConstantInitializer
 
 __all__ = []
 
@@ -281,14 +282,14 @@ def instance_norm(
             attr=helper.param_attr,
             shape=param_shape,
             dtype=dtype,
-            default_initializer=Constant(1.0),
+            default_initializer=ConstantInitializer(1.0),
         )
         bias = helper.create_parameter(
             attr=helper.bias_attr,
             shape=param_shape,
             dtype=dtype,
             is_bias=True,
-            default_initializer=Constant(0.0),
+            default_initializer=ConstantInitializer(0.0),
         )
 
     # create output
@@ -488,7 +489,7 @@ def data_norm(
         scale_w = helper.create_parameter(
             attr=ParamAttr(
                 name=name + '.scale_w',
-                initializer=Constant(value=float(scale_w_default)),
+                initializer=ConstantInitializer(value=float(scale_w_default)),
                 trainable=True,
             ),
             shape=param_shape,
@@ -497,7 +498,7 @@ def data_norm(
         bias = helper.create_parameter(
             attr=ParamAttr(
                 name=name + '.bias',
-                initializer=Constant(value=float(bias_default)),
+                initializer=ConstantInitializer(value=float(bias_default)),
                 trainable=True,
             ),
             shape=param_shape,
@@ -507,7 +508,7 @@ def data_norm(
     batch_size = helper.create_parameter(
         attr=ParamAttr(
             name=name + '.batch_size',
-            initializer=Constant(value=float(batch_size_default)),
+            initializer=ConstantInitializer(value=float(batch_size_default)),
             trainable=True,
         ),
         shape=param_shape,
@@ -517,7 +518,7 @@ def data_norm(
     batch_sum = helper.create_parameter(
         attr=ParamAttr(
             name=name + '.batch_sum',
-            initializer=Constant(value=float(batch_sum_default)),
+            initializer=ConstantInitializer(value=float(batch_sum_default)),
             trainable=True,
         ),
         shape=param_shape,
@@ -527,7 +528,9 @@ def data_norm(
     batch_square_sum = helper.create_parameter(
         attr=ParamAttr(
             name=name + '.batch_square_sum',
-            initializer=Constant(value=float(batch_square_sum_default)),
+            initializer=ConstantInitializer(
+                value=float(batch_square_sum_default)
+            ),
             trainable=True,
         ),
         shape=param_shape,
@@ -652,7 +655,7 @@ def group_norm(
             attr=helper.param_attr,
             shape=param_shape,
             dtype=dtype,
-            default_initializer=Constant(1.0),
+            default_initializer=ConstantInitializer(1.0),
         )
         inputs['Scale'] = scale
     if bias_attr:
@@ -2684,7 +2687,7 @@ def batch_norm(
         attr=helper.param_attr,
         shape=param_shape,
         dtype=dtype,
-        default_initializer=paddle.fluid.initializer.Constant(1.0),
+        default_initializer=paddle.nn.initializer.Constant(1.0),
     )
     bias = helper.create_parameter(
         attr=helper.bias_attr, shape=param_shape, dtype=dtype, is_bias=True
@@ -2693,7 +2696,7 @@ def batch_norm(
     mean = helper.create_parameter(
         attr=paddle.ParamAttr(
             name=moving_mean_name,
-            initializer=paddle.fluid.initializer.Constant(0.0),
+            initializer=paddle.nn.initializer.Constant(0.0),
             trainable=False,
             do_model_average=do_model_average_for_mean_and_var,
         ),
@@ -2705,7 +2708,7 @@ def batch_norm(
     variance = helper.create_parameter(
         attr=paddle.ParamAttr(
             name=moving_variance_name,
-            initializer=paddle.fluid.initializer.Constant(1.0),
+            initializer=paddle.nn.initializer.Constant(1.0),
             trainable=False,
             do_model_average=do_model_average_for_mean_and_var,
         ),
@@ -3507,7 +3510,7 @@ def layer_norm(
             attr=helper.param_attr,
             shape=param_shape,
             dtype=dtype,
-            default_initializer=Constant(1.0),
+            default_initializer=ConstantInitializer(1.0),
         )
         inputs['Scale'] = scale
     else:

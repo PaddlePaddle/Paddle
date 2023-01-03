@@ -26,7 +26,7 @@ def simple_fc_net_with_inputs(img, label, class_num=10):
             size=100,
             act='relu',
             bias_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(value=1.0)
+                initializer=paddle.nn.initializer.ConstantInitializer(value=1.0)
             ),
         )
     prediction = fluid.layers.fc(hidden, size=class_num, act='softmax')
@@ -51,7 +51,7 @@ def batchnorm_fc_with_inputs(img, label, class_num=10):
             size=200,
             act='relu',
             bias_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(value=1.0)
+                initializer=paddle.nn.initializer.ConstantInitializer(value=1.0)
             ),
         )
 

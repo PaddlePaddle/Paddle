@@ -132,7 +132,9 @@ class SqueezeExcitation(fluid.dygraph.Layer):
             num_channels,
             num_channels // reduction_ratio,
             weight_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Uniform(-stdv, stdv)
+                initializer=paddle.nn.initializer.UniformInitializer(
+                    -stdv, stdv
+                )
             ),
         )
         stdv = 1.0 / math.sqrt(num_channels / 16.0 * 1.0)
@@ -140,7 +142,9 @@ class SqueezeExcitation(fluid.dygraph.Layer):
             num_channels // reduction_ratio,
             num_channels,
             weight_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Uniform(-stdv, stdv)
+                initializer=paddle.nn.initializer.UniformInitializer(
+                    -stdv, stdv
+                )
             ),
         )
 
@@ -317,7 +321,9 @@ class SeResNeXt(fluid.dygraph.Layer):
             self.pool2d_avg_output,
             class_dim,
             weight_attr=fluid.param_attr.ParamAttr(
-                initializer=fluid.initializer.Uniform(-stdv, stdv)
+                initializer=paddle.nn.initializer.UniformInitializer(
+                    -stdv, stdv
+                )
             ),
         )
 

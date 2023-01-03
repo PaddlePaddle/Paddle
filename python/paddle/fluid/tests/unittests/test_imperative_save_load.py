@@ -66,7 +66,9 @@ class SimpleLSTMRNN(fluid.Layer):
                 ),
                 shape=[self._hidden_size * 4],
                 dtype="float32",
-                default_initializer=fluid.initializer.Constant(0.0),
+                default_initializer=paddle.nn.initializer.ConstantInitializer(
+                    0.0
+                ),
             )
             self.bias_arr.append(self.add_parameter('b_%d' % i, bias_1))
 

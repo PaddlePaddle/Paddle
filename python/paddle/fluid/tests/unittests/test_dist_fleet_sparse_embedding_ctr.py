@@ -235,7 +235,9 @@ class TestDistMnistAsync2x2WithGauss(TestFleetBase):
                     size=dim,
                     act="relu",
                     param_attr=fluid.ParamAttr(
-                        initializer=fluid.initializer.Constant(value=0.01)
+                        initializer=paddle.nn.initializer.ConstantInitializer(
+                            value=0.01
+                        )
                     ),
                     name='dnn-fc-%d' % i,
                 )
@@ -248,7 +250,9 @@ class TestDistMnistAsync2x2WithGauss(TestFleetBase):
                 is_test=inference,
                 param_attr=fluid.ParamAttr(
                     name="wide_embedding",
-                    initializer=fluid.initializer.Constant(value=0.01),
+                    initializer=paddle.nn.initializer.ConstantInitializer(
+                        value=0.01
+                    ),
                 ),
             )
 

@@ -358,7 +358,9 @@ class TestFakeInit(TranspilerTest):
             size=[dict_size, embedding_size],
             param_attr=fluid.ParamAttr(
                 name='emb',
-                initializer=fluid.initializer.Uniform(-init_width, init_width),
+                initializer=paddle.nn.initializer.UniformInitializer(
+                    -init_width, init_width
+                ),
             ),
         )
 
@@ -367,7 +369,10 @@ class TestFakeInit(TranspilerTest):
             is_sparse=True,
             size=[dict_size, embedding_size],
             param_attr=fluid.ParamAttr(
-                name='emb_w', initializer=fluid.initializer.Constant(value=0.0)
+                name='emb_w',
+                initializer=paddle.nn.initializer.ConstantInitializer(
+                    value=0.0
+                ),
             ),
         )
 
@@ -376,7 +381,10 @@ class TestFakeInit(TranspilerTest):
             is_sparse=True,
             size=[dict_size, 1],
             param_attr=fluid.ParamAttr(
-                name='emb_b', initializer=fluid.initializer.Constant(value=0.0)
+                name='emb_b',
+                initializer=paddle.nn.initializer.ConstantInitializer(
+                    value=0.0
+                ),
             ),
         )
 
