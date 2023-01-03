@@ -187,9 +187,14 @@ class TestPaddingValueTensor3(unittest.TestCase):
             x = paddle.assign(np_x).astype('float32')
             pad_value = paddle.assign([0.0]).astype('float64')
             y = paddle.nn.functional.pad(x, [0, 1, 2, 3], value=pad_value)
+            loss = y.sum()
+            optimize_ops, params_grads = paddle.optimizer.SGD(0.01).minimize(
+                loss
+            )
 
         exe = paddle.static.Executor(paddle.CPUPlace())
-        [pd_out] = exe.run(main_prog, fetch_list=[y])
+        res = exe.run(main_prog, fetch_list=[y] + [g for p, g in params_grads])
+        pd_out = res[0]
         np_out = np.pad(np_x, [(0, 1), (2, 3)], constant_values=0.0)
         np.testing.assert_allclose(pd_out, np_out)
 
