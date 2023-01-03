@@ -1077,6 +1077,16 @@ void FlattenWithXShapeInferMeta(const MetaTensor& x,
   int in_dims_size = x_dims.size();
 
   if (in_dims_size == 0) {
+    PADDLE_ENFORCE_EQ(
+        start_axis == 0 || start_axis == -1,
+        true,
+        phi::errors::InvalidArgument("The start_axis should be 0 or -1 when "
+                                     "the input tensor is a 0D-Tensor"));
+    PADDLE_ENFORCE_EQ(
+        stop_axis == 0 || stop_axis == -1,
+        true,
+        phi::errors::InvalidArgument("The stop_axis should be 0 or -1 when the "
+                                     "input tensor is a 0D-Tensor"));
     // this can ensure out shape {1}
     start_axis = 0;
     stop_axis = -1;
