@@ -14,7 +14,8 @@
 
 #pragma once
 
-#include "paddle/fluid/memory/memory.h"
+#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/kernels/funcs/fast_divmod.h"
 
 namespace phi {
 namespace funcs {
@@ -116,7 +117,7 @@ struct ArraySetterBase {
     return allocation->ptr();
   }
 
-  paddle::memory::AllocationPtr allocation{nullptr};
+  phi::Allocator::AllocationPtr allocation{nullptr};
 };
 
 template <typename Context,
