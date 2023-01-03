@@ -894,7 +894,7 @@ void CrossEntropyWithSoftmaxInferMeta(const MetaTensor& logits,
 
   PADDLE_ENFORCE_EQ(
       (logits_rank - 1 != labels_rank) && (logits_rank != labels_rank),
-      true,
+      false,
       phi::errors::InvalidArgument("Expected input_dims - 1 == label_dims "
                                    "or input_dims == label_dims."));
 
