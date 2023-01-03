@@ -126,7 +126,6 @@ PDNode* TrtFlashMultiHeadMatmulPattern::operator()() {
       pattern->NewNode(reshape2_qkv_repr())->assert_is_op("reshape2");
   auto* reshape2_qkv_out_var = pattern->NewNode(reshape2_qkv_out_repr())
                                    ->assert_is_op_output("reshape2");
-  //   reshape2_qkv_out_var->assert_is_ops_input(mul_ops);
 
   // Second path to matmul
   auto* mul1 = pattern->NewNode(mul1_repr())->assert_is_ops(mul_ops);
@@ -362,9 +361,9 @@ int TrtFlashMultiHeadMatmulFusePass::BuildFlashFusion(
     // check the scale
     int hidden_out = wq_tensor->dims()[1];
     int head_size = hidden_out / head_number;
-    if (abs(scale_attr - 1 / sqrt(static_cast<float>(head_size))) > 1e-5) {
+    if (abs(scale_attr - 1.0f / sqrt(static_cast<float>(head_size))) > 1e-5) {
       VLOG(3) << "scale of muilthead matmul do not fit the requirement of "
-                 "flash attention plugin, disable fusing.";
+                 "flash attention plugin, Stop fusing.";
       return;
     }
 
@@ -420,7 +419,6 @@ int TrtFlashMultiHeadMatmulFusePass::BuildFlashFusion(
   int fusion_count{0};
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
-    // GET_IR_NODE_FROM_SUBGRAPH(dropout_out, dropout_out, multihead_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(input0, input0, multihead_pattern);
 
     GET_IR_NODE_FROM_SUBGRAPH(mul0, mul0, multihead_pattern);

@@ -38,13 +38,14 @@ class FlashMultiheadMatMulOpConverter : public OpConverter {
 
     framework::OpDesc op_desc(op, nullptr);
     auto* input = engine_->GetITensor(op_desc.Input("Input").front());
-    // auto input_dims = input->getDimensions();
+
     auto weight_name = op_desc.Input("W").front();
     auto* weight_v = scope.FindVar(weight_name);
     auto* weight_t = weight_v->GetMutable<phi::DenseTensor>();
     float* weight_data = nullptr;
     weight_data = const_cast<float*>(static_cast<const float*>(
         engine_->GetFp32TrtWeight(weight_name, *weight_t).get().values));
+
     // (hidden_in, 3, hidden_out)
     const auto& weight_dims = weight_t->dims();
 
@@ -54,7 +55,6 @@ class FlashMultiheadMatMulOpConverter : public OpConverter {
     int head_number = PADDLE_GET_CONST(int, op_desc.GetAttr("head_number"));
     int head_size = hidden_out / head_number;
 
-    // float scale = PADDLE_GET_CONST(float, op_desc.GetAttr("alpha"));
     int n = three * hidden_out;
     nvinfer1::ILayer* layer = nullptr;
     auto output_name = op_desc.Output("Out")[0];
