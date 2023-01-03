@@ -163,11 +163,8 @@ __global__ void bias_relu_v4_half2(const int num,
 #if __CUDA_ARCH__ >= 800
         data_vec[unroll_idx] = __hmax2(__half2(0, 0), data_vec[unroll_idx]);
 #elif __CUDA_ARCH__ >= 530
-        half zero = 0.0f;
-        data_vec[unroll_idx].x =
-            __hmul(data_vec[unroll_idx].x > zero, data_vec[unroll_idx].x);
-        data_vec[unroll_idx].y =
-            __hmul(data_vec[unroll_idx].y > zero, data_vec[unroll_idx].y);
+        data_vec[unroll_idx] = __hmul2(
+            __hgt2(data_vec[unroll_idx], __half2(0, 0)), data_vec[unroll_idx]);
 #else
         data_vec[unroll_idx].x =
             static_cast<int>(static_cast<float>(data_vec[unroll_idx].x) > 0) *
