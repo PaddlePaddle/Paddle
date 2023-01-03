@@ -182,11 +182,21 @@ class MultiheadMatMulRoformerOpConverter : public OpConverter {
         roformerplugin_inputs.push_back(fc_layer->getOutput(0));
         roformerplugin_inputs.push_back(input_cos);
         roformerplugin_inputs.push_back(input_sin);
+        if (engine_->Has("ernie_pos_name")) {
+          roformerplugin_inputs.push_back(engine_->GetITensor(
+              engine_->Get<std::string>("ernie_pos_name")));
+        } else {
+          plugin_inputs.push_back(engine_->GetITensor(
+              engine_->network()
+                  ->getInput(2)
+                  ->getName()));  // cu_seqlens, eval_placeholder_2
+        }
+
         plugin::DynamicPluginTensorRT* roformerplugin =
             new plugin::RoformerPlugin(
                 "roformerplugin", head_number, head_size);
         auto roformerlayer = engine_->AddDynamicPlugin(
-            roformerplugin_inputs.data(), 3, roformerplugin);
+            roformerplugin_inputs.data(), 4, roformerplugin);
         roformerlayer->setName(
             ("roformerlayer(Output: " + output_name + ")").c_str());
         roformerlayer->setPrecision(nvinfer1::DataType::kFLOAT);

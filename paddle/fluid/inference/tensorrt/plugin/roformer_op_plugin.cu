@@ -25,8 +25,9 @@ template <typename T>
 __global__ void RoformerKernel(const T *inputact,
                              const T *input1, //cos 1,1,max_seq, headsize
                              const T *input2, //sin
+                             const T *input3, //cu_seqlen
                              T *output,
-                             int s, //seqlen len
+                             int b, //batchsize
                              int n, //head num
                              int h, //hidden dim
                              const int nElement) {
@@ -35,7 +36,18 @@ __global__ void RoformerKernel(const T *inputact,
   const int tnh = 3*n*h;
   const int _index = blockIdx.x * tnh + threadIdx.x;
   int right_index = blockIdx.x * tnh + tnh;
-  const int seq_index = blockIdx.x % s;
+  //intput3[0~b];
+  int base = input3[0];
+  int cu_index = 0;
+  for (int i = 1; i <= b; i++) {
+    if (blockIdx.x < input3[i]) {
+      cu_index = i;
+      break;
+    }
+    base = input3[i];
+  }
+  //const int seq_index = blockIdx.x % s;
+  const int seq_index = input3[cu_index] - base;
   for (int index = _index; index < right_index; index += blockDim.x) {
     if (index >= nElement) return;
     float qkv_index = (index /  h) % 3;
@@ -129,7 +141,10 @@ bool RoformerPlugin::supportsFormatCombination(
       return inOut[2].type == inOut[0].type &&
              inOut[2].format == inOut[0].format;
     case 3:
-      return inOut[3].type == inOut[0].type;
+      return inOut[3].type == inOut[0].type &&
+             inOut[3].format == inOut[0].format;
+    case 4:
+      return inOut[4].type == inOut[0].type;
     default:  // should NOT be here!
       return false;
   }
@@ -162,25 +177,26 @@ int32_t RoformerPlugin::enqueue(const nvinfer1::PluginTensorDesc *inputDesc,
   WHERE_AM_I()
 
   // input[0], (B, S, 3 *N*H)
-  // varlen: (S,3*N*H,1,1)
+  // varlen: (total_S,3*N*H,1,1)
   int nElement = 1;
   for (int i = 0; i < inputDesc[0].dims.nbDims; i++) {
     nElement *= inputDesc[0].dims.d[i];
   }
 
-  int B = inputDesc[0].dims.d[0];
-  int S = inputDesc[0].dims.d[1];
+  int b = inputDesc[3].dims.d[0] - 1;
+  int tot_s = inputDesc[0].dims.d[0];
   int offset = 0;
 
-  int grid = B*S;
+  int grid = tot_s;
   int block = 512;
   if (inputDesc[0].type == nvinfer1::DataType::kFLOAT) {
     (RoformerKernel<float>)<<<grid, block, 0, stream>>>(
         reinterpret_cast<const float *>(inputs[0]),
         reinterpret_cast<const float *>(inputs[1]),
         reinterpret_cast<const float *>(inputs[2]),
+        reinterpret_cast<const float *>(inputs[3]),
         reinterpret_cast<float *>(outputs[0]),
-	S,
+	b,
         head_num_,
         head_size_,
         nElement);
@@ -188,9 +204,9 @@ int32_t RoformerPlugin::enqueue(const nvinfer1::PluginTensorDesc *inputDesc,
     (RoformerKernel<half>)<<<grid, block, 0, stream>>>(
         reinterpret_cast<const half *>(inputs[0]),
         reinterpret_cast<const half *>(inputs[1]),
-        reinterpret_cast<const half *>(inputs[2]),
+        reinterpret_cast<const half *>(inputs[3]),
         reinterpret_cast<half *>(outputs[0]),
-	S,
+	b,
         head_num_,
         head_size_,
         nElement);
