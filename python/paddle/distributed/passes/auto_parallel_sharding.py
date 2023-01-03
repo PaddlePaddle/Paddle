@@ -921,7 +921,44 @@ class ShardingPass(PassBase):
         main_block._sync_with_cpp()
 
     def _fuse_overlap_parameter_comm_stage_three(self, sharding_info):
-        pass
+
+        main_block = default_main_program().global_block()
+
+        # add deps for broadcast param init empty ops
+        dep_map = {}
+        for i, op in enumerate(main_block.ops):
+            if is_sharding_param_init_op(op):
+                init_varname = op.output("Out")[0]
+                init_var = main_block.vars[init_varname]
+                prior_op = main_block.ops[i - 1]
+                assert len(prior_op.output_arg_names) > 0
+                prior_var = main_block.vars[prior_op.output_arg_names[0]]
+
+                # init order dependencies
+                dep_map[i] = [(i, [prior_var], [init_var], None)]
+
+        # insert deps
+        indice = sorted(list(dep_map.keys()), reverse=True)
+        for i in indice:
+            for idx, prior_vars, post_vars, stream in dep_map[i][::-1]:
+                target_op = main_block.ops[idx]
+                op_role = target_op.attr('op_role')
+                depend_op = insert_dependencies_for_vars(
+                    main_block,
+                    idx,
+                    prior_vars,
+                    post_vars,
+                    self._dist_context,
+                    op_role,
+                    process_mesh=[
+                        -1
+                    ],  # hack to avoid initialize the dist attr for coalesce var
+                    is_recompute=False,
+                    sync=False,
+                    op_namescope="sharding_stage3_param_init_dep",
+                )
+                print("Add deps: ", str(depend_op))
+        main_block._sync_with_cpp()
 
     def _group_grads(
         self,
@@ -1443,6 +1480,7 @@ def _insert_init_and_broadcast_op(
                 OP_ROLE_KEY: op_role,
             },
         )
+        new_op._set_attr('op_namescope', str('/') + ParallelMode.DataParallel)
         naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
             new_op,
             broadcast_var_dist_attr.process_mesh,
@@ -1603,6 +1641,15 @@ def is_sharding_param_broadcast_op(op):
     return (
         op.type == "c_broadcast"
         and op.desc.has_attr("op_namescope")
+        and ParallelMode.DataParallel in op.desc.attr("op_namescope")
+    )
+
+
+def is_sharding_param_init_op(op):
+    return (
+        op.type == "empty"
+        and op.desc.has_attr("op_namescope")
+        # FIXME better semantic for namescope
         and ParallelMode.DataParallel in op.desc.attr("op_namescope")
     )
 
