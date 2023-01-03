@@ -321,16 +321,16 @@ class FusedMultiHeadAttention(Layer):
 
         # tensor model parallel
         assert num_heads % nranks == 0
-        num_heads = num_heads // nranks
+        self.num_heads = num_heads // nranks
 
         self.transpose_qkv_wb = transpose_qkv_wb
         if self.transpose_qkv_wb:
             # For tensor model parallel, use num_head * head_dim to compute the real shape.
-            qkv_wight_shape = [embed_dim, 3 * num_heads * self.head_dim]
-            qkv_bias_shape = [3 * num_heads * self.head_dim]
+            qkv_wight_shape = [embed_dim, 3 * self.num_heads * self.head_dim]
+            qkv_bias_shape = [3 * self.num_heads * self.head_dim]
         else:
-            qkv_wight_shape = [3, num_heads, self.head_dim, embed_dim]
-            qkv_bias_shape = [3, num_heads, self.head_dim]
+            qkv_wight_shape = [3, self.num_heads, self.head_dim, embed_dim]
+            qkv_bias_shape = [3, self.num_heads, self.head_dim]
 
         self.qkv_weight = self.create_parameter(
             shape=qkv_wight_shape,
@@ -345,7 +345,7 @@ class FusedMultiHeadAttention(Layer):
             is_bias=True,
         )
         self.linear_weight = self.create_parameter(
-            shape=[num_heads * self.head_dim, embed_dim],
+            shape=[self.num_heads * self.head_dim, embed_dim],
             attr=linear_weight_attr,
             dtype=self._dtype,
             is_bias=False,
