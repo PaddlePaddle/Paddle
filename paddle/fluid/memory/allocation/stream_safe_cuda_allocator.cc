@@ -89,6 +89,7 @@ bool StreamSafeCUDAAllocation::CanBeFreed() {
       auto res = hipGetLastError();
       VLOG(9) << "Event " << event << " for " << ptr()
               << " is not completed with error code " << res;
+              
       // Erase the completded event before "it"
       outstanding_event_map_.erase(outstanding_event_map_.begin(), it);
       return false;
