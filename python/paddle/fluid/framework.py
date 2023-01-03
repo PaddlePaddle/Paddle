@@ -114,6 +114,10 @@ def _update_monkey_methods(is_eager):
     Update monkey methods of VarBase or eager.Tensor while
     switching eager mode and legacy mode.
     """
+    if is_eager:
+        warnings.warn("is_eager just can be set False")
+        is_eager = False
+
     from paddle import _C_ops, _legacy_C_ops
     from .dygraph.varbase_patch_methods import monkey_patch_varbase
     from .dygraph import monkey_patch_math_varbase
@@ -122,22 +126,11 @@ def _update_monkey_methods(is_eager):
     global _already_patch_varbase
 
     assert isinstance(is_eager, bool)
-    # switch into eager mode
-    if is_eager:
-        _legacy_C_ops.switch_to_eager_ops()
-        if not _already_patch_eager_tensor:
-            monkey_patch_varbase()
-            monkey_patch_math_varbase()
+    if not _already_patch_varbase:
+        monkey_patch_varbase()
+        monkey_patch_math_varbase()
 
-            _already_patch_eager_tensor = True
-    # switch back into legacy mode
-    else:
-        _legacy_C_ops.switch_to_core_ops()
-        if not _already_patch_varbase:
-            monkey_patch_varbase()
-            monkey_patch_math_varbase()
-
-            _already_patch_varbase = True
+        _already_patch_varbase = True
 
     # switch Paddle.Tensor bind type
     _switch_tensor_bind_type(is_eager)
@@ -7760,3 +7753,4 @@ def _get_paddle_place_list(places):
         ret.append(p)
 
     return ret
+
