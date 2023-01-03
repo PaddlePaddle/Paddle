@@ -135,10 +135,10 @@ class TestElementwiseDivNet(unittest.TestCase):
             f.stop_gradient = True
             g = paddle.divide(e, f)
 
-            fc_1 = fluid.layers.fc(input=g, size=128)
-            prediction = fluid.layers.fc(input=fc_1, size=2, act='softmax')
+            fc_1 = paddle.static.nn.fc(x=g, size=128)
+            prediction = paddle.static.nn.fc(x=fc_1, size=2, activation='softmax')
 
-            cost = fluid.layers.cross_entropy(input=prediction, label=label)
+            cost = paddle.nn.functional.cross_entropy(input=prediction, label=label, reduction='none', use_softmax=False)
             loss = paddle.mean(cost)
             sgd = fluid.optimizer.SGD(learning_rate=0.01)
             sgd.minimize(loss)

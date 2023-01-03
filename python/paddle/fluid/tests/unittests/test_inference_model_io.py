@@ -26,6 +26,7 @@ import paddle.fluid.core as core
 import paddle.fluid.executor as executor
 import paddle.fluid.layers as layers
 import paddle.fluid.optimizer as optimizer
+from paddle.distributed.io import load_inference_model_distributed
 from paddle.fluid.compiler import CompiledProgram
 from paddle.fluid.framework import Program, program_guard
 from paddle.fluid.io import (
@@ -57,9 +58,11 @@ class TestBook(unittest.TestCase):
             x = layers.data(name='x', shape=[2], dtype='float32')
             y = layers.data(name='y', shape=[1], dtype='float32')
 
-            y_predict = layers.fc(input=x, size=1, act=None)
+            y_predict = paddle.static.nn.fc(x=x, size=1, activation=None)
 
-            cost = layers.square_error_cost(input=y_predict, label=y)
+            cost = paddle.nn.functional.square_error_cost(
+                input=y_predict, label=y
+            )
             avg_cost = paddle.mean(cost)
 
             sgd_optimizer = optimizer.SGDOptimizer(learning_rate=0.001)
@@ -110,8 +113,12 @@ class TestBook(unittest.TestCase):
         model_1 = InferModel(
             load_inference_model(None, exe, model_str, params_str)
         )
+        model_2 = InferModel(load_inference_model_distributed(MODEL_DIR, exe))
+        model_3 = InferModel(
+            load_inference_model_distributed(None, exe, model_str, params_str)
+        )
 
-        for model in [model_0, model_1]:
+        for model in [model_0, model_1, model_2, model_3]:
             outs = exe.run(
                 model.program,
                 feed={
@@ -137,6 +144,14 @@ class TestBook(unittest.TestCase):
             model_str,
             None,
         )
+        self.assertRaises(
+            ValueError,
+            load_inference_model_distributed,
+            None,
+            exe,
+            model_str,
+            None,
+        )
 
 
 class TestSaveInferenceModel(unittest.TestCase):
@@ -151,9 +166,11 @@ class TestSaveInferenceModel(unittest.TestCase):
             x = layers.data(name='x', shape=[2], dtype='float32')
             y = layers.data(name='y', shape=[1], dtype='float32')
 
-            y_predict = layers.fc(input=x, size=1, act=None)
+            y_predict = paddle.static.nn.fc(x, size=1, activation=None)
 
-            cost = layers.square_error_cost(input=y_predict, label=y)
+            cost = paddle.nn.functional.square_error_cost(
+                input=y_predict, label=y
+            )
             avg_cost = paddle.mean(cost)
 
         place = core.CPUPlace()
@@ -173,12 +190,14 @@ class TestSaveInferenceModel(unittest.TestCase):
         with program_guard(program, init_program):
             x = layers.data(name='x', shape=[2], dtype='float32')
             y = layers.data(name='y', shape=[1], dtype='int32')
-            predict = fluid.layers.fc(input=x, size=2, act='softmax')
+            predict = paddle.static.nn.fc(x, size=2, activation='softmax')
             acc = paddle.static.accuracy(input=predict, label=y)
             auc_var, batch_auc_var, auc_states = paddle.static.auc(
                 input=predict, label=y
             )
-            cost = fluid.layers.cross_entropy(input=predict, label=y)
+            cost = paddle.nn.functional.cross_entropy(
+                input=predict, label=y, reduction='none', use_softmax=False
+            )
             avg_cost = paddle.mean(x=cost)
 
         place = core.CPUPlace()
@@ -207,9 +226,11 @@ class TestInstance(unittest.TestCase):
             x = layers.data(name='x', shape=[2], dtype='float32')
             y = layers.data(name='y', shape=[1], dtype='float32')
 
-            y_predict = layers.fc(input=x, size=1, act=None)
+            y_predict = paddle.static.nn.fc(x, size=1, activation=None)
 
-            cost = layers.square_error_cost(input=y_predict, label=y)
+            cost = paddle.nn.functional.square_error_cost(
+                input=y_predict, label=y
+            )
             avg_cost = paddle.mean(cost)
 
         place = core.CPUPlace()
@@ -243,9 +264,11 @@ class TestSaveInferenceModelNew(unittest.TestCase):
             x = layers.data(name='x', shape=[2], dtype='float32')
             y = layers.data(name='y', shape=[1], dtype='float32')
 
-            y_predict = layers.fc(input=x, size=1, act=None)
+            y_predict = paddle.static.nn.fc(x, size=1, activation=None)
 
-            cost = layers.square_error_cost(input=y_predict, label=y)
+            cost = paddle.nn.functional.square_error_cost(
+                input=y_predict, label=y
+            )
             avg_cost = paddle.mean(cost)
 
             sgd_optimizer = optimizer.SGDOptimizer(learning_rate=0.001)
@@ -420,9 +443,11 @@ class TestSaveInferenceModelNew(unittest.TestCase):
             x = layers.data(name='x', shape=[2], dtype='float32')
             y = layers.data(name='y', shape=[1], dtype='float32')
 
-            y_predict = layers.fc(input=x, size=1, act=None)
+            y_predict = paddle.static.nn.fc(x, size=1, activation=None)
 
-            cost = layers.square_error_cost(input=y_predict, label=y)
+            cost = paddle.nn.functional.square_error_cost(
+                input=y_predict, label=y
+            )
             avg_cost = paddle.mean(cost)
 
             sgd_optimizer = optimizer.SGDOptimizer(learning_rate=0.001)
@@ -467,9 +492,11 @@ class TestSaveInferenceModelNew(unittest.TestCase):
             x = layers.data(name='x', shape=[2], dtype='float32')
             y = layers.data(name='y', shape=[1], dtype='float32')
 
-            y_predict = layers.fc(input=x, size=1, act=None)
+            y_predict = paddle.static.nn.fc(x, size=1, activation=None)
 
-            cost = layers.square_error_cost(input=y_predict, label=y)
+            cost = paddle.nn.functional.square_error_cost(
+                input=y_predict, label=y
+            )
             avg_cost = paddle.mean(cost)
 
             sgd_optimizer = optimizer.SGDOptimizer(learning_rate=0.001)
@@ -515,6 +542,12 @@ class TestLoadInferenceModelError(unittest.TestCase):
         exe = executor.Executor(place)
         self.assertRaises(
             ValueError, load_inference_model, './test_not_exist_dir', exe
+        )
+        self.assertRaises(
+            ValueError,
+            load_inference_model_distributed,
+            './test_not_exist_dir',
+            exe,
         )
 
 

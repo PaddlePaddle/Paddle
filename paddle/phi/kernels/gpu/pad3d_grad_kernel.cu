@@ -14,7 +14,6 @@
 
 #include "paddle/phi/kernels/pad3d_grad_kernel.h"
 
-#include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/core/kernel_registry.h"

@@ -14,8 +14,10 @@
 
 import os
 
-import paddle.fluid as fluid
 from paddle.device import get_available_custom_device
+
+# (TODO: GhostScreaming) It will be removed later.
+from paddle.fluid import core
 
 
 class DeviceType:
@@ -148,25 +150,25 @@ class Device:
             )
             if visible_devices_str in os.environ:
                 visible_devices = os.getenv(visible_devices_str)
-        elif fluid.core.is_compiled_with_cuda():
+        elif core.is_compiled_with_cuda():
             dev._dtype = DeviceType.GPU
-            num = fluid.core.get_cuda_device_count()
+            num = core.get_cuda_device_count()
             visible_devices = os.getenv("CUDA_VISIBLE_DEVICES")
-        elif fluid.core.is_compiled_with_xpu():
+        elif core.is_compiled_with_xpu():
             dev._dtype = DeviceType.XPU
-            num = fluid.core.get_xpu_device_count()
+            num = core.get_xpu_device_count()
             visible_devices = os.getenv("XPU_VISIBLE_DEVICES")
-        elif fluid.core.is_compiled_with_npu():
+        elif core.is_compiled_with_npu():
             dev._dtype = DeviceType.NPU
-            num = fluid.core.get_npu_device_count()
+            num = core.get_npu_device_count()
             visible_devices = os.getenv("ASCEND_VISIBLE_DEVICES")
-        elif fluid.core.is_compiled_with_mlu():
+        elif core.is_compiled_with_mlu():
             dev._dtype = DeviceType.MLU
-            num = fluid.core.get_mlu_device_count()
+            num = core.get_mlu_device_count()
             visible_devices = os.getenv("MLU_VISIBLE_DEVICES")
-        elif fluid.core.is_compiled_with_ipu():
+        elif core.is_compiled_with_ipu():
             dev._dtype = DeviceType.IPU
-            num = fluid.core.get_ipu_device_count()
+            num = core.get_ipu_device_count()
             # For IPUs, 'labels' is a list which contains the available numbers of IPU devices.
             dev._labels = [str(x) for x in range(0, num + 1)]
             return dev

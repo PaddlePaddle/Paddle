@@ -53,7 +53,7 @@ class TestMathOpPatches(unittest.TestCase):
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
         a_np = np.random.random(size=[10, 1]).astype('float32')
-        b_np = exe.run(
+        (b_np,) = exe.run(
             fluid.default_main_program(), feed={"a": a_np}, fetch_list=[b]
         )
         np.testing.assert_allclose(a_np + 10, b_np, rtol=1e-05)
@@ -71,7 +71,7 @@ class TestMathOpPatches(unittest.TestCase):
         np.testing.assert_allclose(a_np - 10, b_np, rtol=1e-05)
 
     @prog_scope()
-    def test_radd_scalar(self):
+    def test_rsub_scalar(self):
         a = fluid.layers.data(name="a", shape=[1])
         b = 10 - a
         place = fluid.CPUPlace()
@@ -237,7 +237,7 @@ class TestMathOpPatches(unittest.TestCase):
         one = paddle.ones(shape=[1], dtype='int32')
         zero = fluid.layers.zeros(shape=[1], dtype='int32')
         cond = one == zero
-        c = fluid.layers.cond(cond, lambda: a + b, lambda: a - b)
+        c = paddle.static.nn.cond(cond, lambda: a + b, lambda: a - b)
 
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)

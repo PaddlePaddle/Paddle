@@ -505,12 +505,12 @@ class TestAllOpError(unittest.TestCase):
         with program_guard(Program(), Program()):
             # The input type of reduce_all_op must be Variable.
             input1 = 12
-            self.assertRaises(TypeError, fluid.layers.reduce_all, input1)
+            self.assertRaises(TypeError, paddle.all, input1)
             # The input dtype of reduce_all_op must be bool.
             input2 = fluid.layers.data(
                 name='input2', shape=[12, 10], dtype="int32"
             )
-            self.assertRaises(TypeError, fluid.layers.reduce_all, input2)
+            self.assertRaises(TypeError, paddle.all, input2)
 
 
 class TestAnyOp(OpTest):
@@ -622,12 +622,12 @@ class TestAnyOpError(unittest.TestCase):
         with program_guard(Program(), Program()):
             # The input type of reduce_any_op must be Variable.
             input1 = 12
-            self.assertRaises(TypeError, fluid.layers.reduce_any, input1)
+            self.assertRaises(TypeError, paddle.any, input1)
             # The input dtype of reduce_any_op must be bool.
             input2 = fluid.layers.data(
                 name='input2', shape=[12, 10], dtype="int32"
             )
-            self.assertRaises(TypeError, fluid.layers.reduce_any, input2)
+            self.assertRaises(TypeError, paddle.any, input2)
 
 
 class Test1DReduce(OpTest):
@@ -1114,7 +1114,5 @@ class TestAnyAPI(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    import paddle
-
     paddle.enable_static()
     unittest.main()

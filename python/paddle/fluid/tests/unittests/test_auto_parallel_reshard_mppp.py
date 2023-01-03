@@ -79,11 +79,9 @@ class MLPLayer(nn.Layer):
         auto.shard_tensor(self.linear2.weight, PP_MESH_1, ["x", None])
         w_out = self.word_embeddings(input)
         out = self.linear0(w_out)
-        param = paddle.fluid.layers.create_parameter(
-            [4096, 4096], paddle.float32
-        )
+        param = paddle.create_parameter([4096, 4096], paddle.float32)
         auto.shard_tensor(param, PP_MESH_0, ["x", None])
-        out = paddle.fluid.layers.mul(out, param)
+        out = paddle.matmul(out, param)
         gelu_out = F.gelu(out, approximate=True)
         out = self.linear1(gelu_out)
         out1 = self.linear2(gelu_out)

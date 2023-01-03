@@ -21,7 +21,6 @@ from op_test import OpTest
 
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.framework import _test_eager_guard
 from paddle.framework import core
 
 
@@ -209,13 +208,13 @@ class TestAdamWOp(unittest.TestCase):
         with fluid.program_guard(train_prog, startup):
             with fluid.unique_name.guard():
                 data = fluid.data(name="data", shape=shape)
-                conv = fluid.layers.conv2d(data, 8, 3)
+                conv = paddle.static.nn.conv2d(data, 8, 3)
                 loss = paddle.mean(conv)
 
-                beta1 = fluid.layers.create_global_var(
+                beta1 = paddle.static.create_global_var(
                     shape=[1], value=0.85, dtype='float32', persistable=True
                 )
-                beta2 = fluid.layers.create_global_var(
+                beta2 = paddle.static.create_global_var(
                     shape=[1], value=0.95, dtype='float32', persistable=True
                 )
                 betas = [beta1, beta2]
@@ -249,11 +248,6 @@ class TestAdamWOp(unittest.TestCase):
             adam = paddle.optimizer.AdamW(
                 0.1, epsilon=-1, parameters=linear.parameters()
             )
-
-    def test_api_eager_dygraph(self):
-        with _test_eager_guard():
-            self.test_adamw_op_dygraph()
-            self.test_adamw_op_invalid_input()
 
 
 class TestAdamWOpGroup(TestAdamWOp):
@@ -621,7 +615,9 @@ class TestAdamWOpLayerwiseLR(TestAdamWOp):
                 fc2_b_mon1 = np.zeros((linear2.bias.shape)).astype("float32")
                 fc2_b_mon2 = np.zeros((linear2.bias.shape)).astype("float32")
 
-                cost = fluid.layers.square_error_cost(input=out, label=y)
+                cost = paddle.nn.functional.square_error_cost(
+                    input=out, label=y
+                )
                 avg_cost = paddle.mean(cost)
 
                 simple_lr_fun = partial(

@@ -36,7 +36,6 @@
 namespace paddle {
 namespace operators {
 namespace math {
-using Tensor = phi::DenseTensor;
 using InTensors = std::vector<const phi::DenseTensor*>;
 using OutTensors = std::vector<phi::DenseTensor*>;
 using OpName = std::string;
@@ -274,8 +273,8 @@ template <typename DeviceContext, typename T, typename ValueType = T>
 struct DeviceIndependenceTensorOperations {
   // 1. Device indenpendence, for kernel reuse.
   // 2. Input and output is always tensor type.
-  // 3. output Tensor is alway allocated
-  // 4. Basic Tensor operator is supported
+  // 3. output phi::DenseTensor is alway allocated
+  // 4. Basic phi::DenseTensor operator is supported
   // 5. The Reused Operator Kernel should only be considered as
   //    a wrap function
   using NameInTensorMap =
@@ -382,8 +381,8 @@ struct DeviceIndependenceTensorOperations {
   }
 
   // batch_diag for CPU only
-  Tensor BatchDiag(const phi::DenseTensor& x, int batch) {
-    Tensor out;
+  phi::DenseTensor BatchDiag(const phi::DenseTensor& x, int batch) {
+    phi::DenseTensor out;
     auto* x_data = x.data<phi::dtype::Real<T>>();
     auto numel = x.numel();
     auto* out_data = out.mutable_data<phi::dtype::Real<T>>(
@@ -411,7 +410,8 @@ struct DeviceIndependenceTensorOperations {
   }
 
   // a complex number x times a real number y, which is represented as (a+0j)
-  Tensor RealMulComplex(const phi::DenseTensor& x, const phi::DenseTensor& y) {
+  phi::DenseTensor RealMulComplex(const phi::DenseTensor& x,
+                                  const phi::DenseTensor& y) {
     phi::DenseTensor ret;
     std::vector<int> out_shape = GetBroadcastShape({&x, &y});
     ret.Resize(phi::make_ddim(out_shape));
@@ -650,8 +650,8 @@ struct DeviceIndependenceTensorOperations {
     return CreateOpRunAndReturnTensor("concat", inputs, attrs, out_shape);
   }
 
-  Tensor Conj(const phi::DenseTensor& x) {
-    Tensor out;
+  phi::DenseTensor Conj(const phi::DenseTensor& x) {
+    phi::DenseTensor out;
     auto* out_data = out.mutable_data<T>(x.dims(), context.GetPlace());
     auto* x_data = x.data<T>();
     auto for_range = GetForRange(x.numel());
@@ -660,8 +660,8 @@ struct DeviceIndependenceTensorOperations {
     return out;
   }
 
-  Tensor Real(const phi::DenseTensor& x) {
-    Tensor out;
+  phi::DenseTensor Real(const phi::DenseTensor& x) {
+    phi::DenseTensor out;
     auto numel = x.numel();
     auto* out_data = out.mutable_data<phi::dtype::Real<T>>(
         x.dims(),
@@ -674,13 +674,13 @@ struct DeviceIndependenceTensorOperations {
     return out;
   }
 
-  Tensor DiagFill(const int m,
-                  const int n,
-                  const int num_lower_diags,
-                  const int num_upper_diags,
-                  const phi::DenseTensor& scale,
-                  const phi::DenseTensor& input) {
-    Tensor out;
+  phi::DenseTensor DiagFill(const int m,
+                            const int n,
+                            const int num_lower_diags,
+                            const int num_upper_diags,
+                            const phi::DenseTensor& scale,
+                            const phi::DenseTensor& input) {
+    phi::DenseTensor out;
     auto& dev_ctx = context.template device_context<DeviceContext>();
     platform::ForRange<DeviceContext> for_range(dev_ctx, input.numel());
     DiagAndFillFunctor<T, ValueType> diag_and_copy_functor(
@@ -709,7 +709,7 @@ struct DeviceIndependenceTensorOperations {
                          const std::vector<int>& start,
                          const std::vector<int>& end,
                          phi::DenseTensor* out) {
-    // Slice by call Eigen Tensor Function `.slice()`
+    // Slice by call Eigen phi::DenseTensor Function `.slice()`
     size_t rank = in->dims().size();
     PADDLE_ENFORCE_EQ(start.size(),
                       rank,
@@ -752,7 +752,7 @@ struct DeviceIndependenceTensorOperations {
       op_outputs[out_name].emplace_back("tmp_" + out_name);
     }
     auto out_var = local_scope.Var("tmp_Out");  // return the Out
-    // create Out Tensor and allocat memory
+    // create Out phi::DenseTensor and allocat memory
     out_var->GetMutable<phi::DenseTensor>()->mutable_data<T>(
         phi::make_ddim(out_shape), context.GetPlace());
     // phi::make_ddim(out_shape)

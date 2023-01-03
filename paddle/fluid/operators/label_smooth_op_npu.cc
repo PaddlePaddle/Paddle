@@ -18,8 +18,6 @@
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
-
 template <typename T>
 void LabelSmoothMuls(const platform::Place& place,
                      const aclrtStream& stream,
@@ -70,15 +68,15 @@ class LabelSmoothNPUKernel : public framework::OpKernel<T> {
             .stream();
 
     if (dist_t) {
-      Tensor tmp;
-      Tensor dist;
-      Tensor tmp2;
+      phi::DenseTensor tmp;
+      phi::DenseTensor dist;
+      phi::DenseTensor tmp2;
       LabelSmoothMuls<T>(place, stream, in_t, (1 - epsilon), &tmp);
       LabelSmoothMuls<T>(place, stream, dist_t, epsilon, &tmp2);
       tmp2.Resize({1, label_dim});
       LabelSmoothAddBroadCast<T>(place, stream, &tmp, &tmp2, out_t);
     } else {
-      Tensor tmp;
+      phi::DenseTensor tmp;
       LabelSmoothMuls<T>(place, stream, in_t, (1 - epsilon), &tmp);
       LabelSmoothAdds<T>(place, stream, &tmp, (epsilon / label_dim), out_t);
     }

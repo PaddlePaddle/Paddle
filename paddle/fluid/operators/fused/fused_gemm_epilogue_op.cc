@@ -20,7 +20,6 @@ limitations under the License. */
 
 namespace paddle {
 namespace operators {
-using Tensor = phi::DenseTensor;
 
 class FusedGemmEpilogueOp : public framework::OperatorWithKernel {
  public:
@@ -139,9 +138,8 @@ class FusedGemmEpilogueOp : public framework::OperatorWithKernel {
     }
 
     ctx->SetOutputDim("Out", phi::make_ddim(out_dims));
-    // Note (Ming Huang): Reserve space of relu is a bit-mask,
-    // which cannot pass nan_and_inf checking if shape is set.
-    if (activation == "gelu" && ctx->HasOutput("ReserveSpace")) {
+
+    if (ctx->HasOutput("ReserveSpace")) {
       ctx->SetOutputDim("ReserveSpace", phi::make_ddim(out_dims));
     }
   }

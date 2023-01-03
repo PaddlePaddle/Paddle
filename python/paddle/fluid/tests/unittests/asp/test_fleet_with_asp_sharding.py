@@ -21,8 +21,8 @@ import numpy as np
 import paddle
 import paddle.distributed.fleet as fleet
 import paddle.fluid as fluid
-from paddle.fluid.contrib.sparsity.asp import ASPHelper
-from paddle.static import sparsity
+from paddle.incubate import asp as sparsity
+from paddle.incubate.asp import ASPHelper
 
 cuda_visible_devices = os.getenv('CUDA_VISIBLE_DEVICES')
 if cuda_visible_devices is None or cuda_visible_devices == "":
@@ -55,12 +55,19 @@ class TestFleetWithASPSharding(unittest.TestCase):
             )
             input_y = paddle.static.data(name="y", shape=[-1, 1], dtype='int64')
 
-            fc_1 = fluid.layers.fc(input=input_x, size=64, act='tanh')
-            fc_2 = fluid.layers.fc(input=fc_1, size=64, act='tanh')
-            fc_3 = fluid.layers.fc(input=fc_2, size=64, act='tanh')
-            fc_4 = fluid.layers.fc(input=fc_3, size=64, act='tanh')
-            prediction = fluid.layers.fc(input=fc_4, size=2, act='softmax')
-            cost = fluid.layers.cross_entropy(input=prediction, label=input_y)
+            fc_1 = paddle.static.nn.fc(x=input_x, size=64, activation='tanh')
+            fc_2 = paddle.static.nn.fc(x=fc_1, size=64, activation='tanh')
+            fc_3 = paddle.static.nn.fc(x=fc_2, size=64, activation='tanh')
+            fc_4 = paddle.static.nn.fc(x=fc_3, size=64, activation='tanh')
+            prediction = paddle.static.nn.fc(
+                x=fc_4, size=2, activation='softmax'
+            )
+            cost = paddle.nn.functional.cross_entropy(
+                input=prediction,
+                label=input_y,
+                reduction='none',
+                use_softmax=False,
+            )
             avg_cost = paddle.mean(x=cost)
 
             dist_strategy = paddle.distributed.fleet.DistributedStrategy()
@@ -117,15 +124,11 @@ class TestFleetWithASPSharding(unittest.TestCase):
                     len(param.shape) == 2 and param.shape[0] < 4
                 ):
                     self.assertFalse(
-                        paddle.fluid.contrib.sparsity.check_sparsity(
-                            mat.T, n=2, m=4
-                        )
+                        paddle.incubate.asp.check_sparsity(mat.T, n=2, m=4)
                     )
                 else:
                     self.assertTrue(
-                        paddle.fluid.contrib.sparsity.check_sparsity(
-                            mat.T, n=2, m=4
-                        )
+                        paddle.incubate.asp.check_sparsity(mat.T, n=2, m=4)
                     )
 
 

@@ -16,6 +16,8 @@
 import os
 import unittest
 
+import paddle
+
 
 class TestCloudRoleMaker(unittest.TestCase):
     """
@@ -61,7 +63,7 @@ class TestCloudRoleMaker(unittest.TestCase):
                 lod_level=1,
                 append_batch_size=False,
             )
-            fc = fluid.layers.fc(input=show, size=1, act=None)
+            fc = paddle.static.nn.fc(x=show, size=1, activation=None)
             label = fluid.layers.data(
                 name="click",
                 shape=[-1, 1],
@@ -70,7 +72,7 @@ class TestCloudRoleMaker(unittest.TestCase):
                 append_batch_size=False,
             )
             label_cast = fluid.layers.cast(label, dtype='float32')
-            cost = fluid.layers.log_loss(fc, label_cast)
+            cost = paddle.nn.functional.log_loss(fc, label_cast)
         try:
             adam = fluid.optimizer.Adam(learning_rate=0.000005)
             adam = fleet.distributed_optimizer(adam)

@@ -67,7 +67,7 @@ class DistributedElementwiseImpl0(DistributedOperatorImpl):
         desc_mapping = build_comp_desc_from_dist_op(
             dist_op=dist_op, dist_context=ctx
         )
-        processes = dist_op.dist_attr.process_mesh.processes
+        processes = dist_op.dist_attr.process_mesh.process_ids
         op_type = dist_op.serial_op.type
         cost_mapping = build_comp_costs_from_descs(
             _g_op_cost_factory[op_type], ctx, processes, desc_mapping, cluster
@@ -84,7 +84,7 @@ class DistributedElementwiseImpl0(DistributedOperatorImpl):
         )
         dist_attr = dist_op.dist_attr
         process_mesh = dist_attr.process_mesh
-        processes = process_mesh.processes
+        processes = process_mesh.process_ids
         backward_op = dist_op.serial_op
         op_type = backward_op.type
         cost_mapping = build_comp_costs_from_descs(
@@ -100,7 +100,7 @@ class DistributedElementwiseImpl0(DistributedOperatorImpl):
                     varname, main_block
                 ):
                     var_dim_mapping = dist_attr.get_input_dims_mapping(varname)
-                    mesh_shape = process_mesh.topology
+                    mesh_shape = process_mesh.shape
                     batch_size_axis = var_dim_mapping[0]
                     if batch_size_axis > -1 and mesh_shape[batch_size_axis] > 1:
                         need_gradient_allreduce = True
@@ -115,7 +115,7 @@ class DistributedElementwiseImpl0(DistributedOperatorImpl):
                         var_dim_mapping = dist_attr.get_input_dims_mapping(
                             varname
                         )
-                        mesh_shape = process_mesh.topology
+                        mesh_shape = process_mesh.shape
                         batch_size_axis = var_dim_mapping[0]
                         parallel_axis = batch_size_axis
                         attrs = {"use_calc_stream": True}

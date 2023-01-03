@@ -28,8 +28,9 @@ class PrelnResidualBiasOpConverter : public OpConverter {
                   bool test_mode) override {
     VLOG(4) << "convert fused preln_residual_bias op to tensorrt layer";
     if (!engine_->with_dynamic_shape()) {
-      PADDLE_THROW(platform::errors::Fatal(
-          "Unsupported static mode. Please set dynamic shape of inputs."));
+      PADDLE_THROW(
+          platform::errors::Fatal("Unsupported static graph mode. Please set "
+                                  "dynamic shape of inputs."));
     }
     framework::OpDesc op_desc(op, nullptr);
     // Declare inputs

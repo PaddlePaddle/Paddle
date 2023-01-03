@@ -88,7 +88,7 @@ class Conll05st(Dataset):
 
                 model = SimpleNet()
                 pred_idx, mark, label= model(pred_idx, mark, label)
-                print(pred_idx.numpy(), mark.numpy(), label.numpy())
+                print(pred_idx, mark, label)
 
     """
 

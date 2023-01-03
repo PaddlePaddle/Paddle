@@ -20,8 +20,6 @@ limitations under the Licnse. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
-
 template <typename T>
 class KLDivLossNPUKernel : public framework::OpKernel<T> {
  public:
@@ -114,7 +112,7 @@ class KLDivLossGradNPUKernel : public framework::OpKernel<T> {
     auto& dev_ctx = ctx.template device_context<platform::NPUDeviceContext>();
     auto stream = dev_ctx.stream();
 
-    Tensor loss_grad_transformed;
+    phi::DenseTensor loss_grad_transformed;
     if ("none" == reduction) {
       loss_grad_transformed.ShareDataWith(*loss_grad);
     } else {

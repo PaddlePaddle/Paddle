@@ -21,8 +21,6 @@
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
-
 class ResnetBasicBlockAttr {
  public:
   explicit ResnetBasicBlockAttr(const framework::ExecutionContext& ctx) {

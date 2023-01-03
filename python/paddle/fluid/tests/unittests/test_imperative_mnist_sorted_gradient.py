@@ -22,12 +22,11 @@ import paddle
 import paddle.fluid as fluid
 from paddle.fluid import core
 from paddle.fluid.dygraph.base import to_variable
-from paddle.fluid.framework import _test_eager_guard
 from paddle.fluid.optimizer import SGDOptimizer
 
 
 class TestImperativeMnistSortGradient(unittest.TestCase):
-    def func_test_mnist_sort_gradient_float32(self):
+    def test_mnist_sort_gradient_float32(self):
         seed = 90
         epoch_num = 1
 
@@ -62,7 +61,9 @@ class TestImperativeMnistSortGradient(unittest.TestCase):
                     label2.stop_gradient = True
 
                     cost2 = mnist2(img2)
-                    loss2 = fluid.layers.cross_entropy(cost2, label2)
+                    loss2 = paddle.nn.functional.cross_entropy(
+                        cost2, label2, reduction='none', use_softmax=False
+                    )
                     avg_loss2 = paddle.mean(loss2)
 
                     dy_out2 = avg_loss2.numpy()
@@ -102,7 +103,9 @@ class TestImperativeMnistSortGradient(unittest.TestCase):
             )
             label = fluid.layers.data(name='label', shape=[1], dtype='int64')
             cost = mnist(img)
-            loss = fluid.layers.cross_entropy(cost, label)
+            loss = paddle.nn.functional.cross_entropy(
+                cost, label, reduction='none', use_softmax=False
+            )
             avg_loss = paddle.mean(loss)
             sgd.minimize(avg_loss)
 
@@ -163,11 +166,6 @@ class TestImperativeMnistSortGradient(unittest.TestCase):
             np.testing.assert_allclose(
                 value, dy_param_value2[key], rtol=1e-05, atol=1e-05
             )
-
-    def test_mnist_sort_gradient_float32(self):
-        with _test_eager_guard():
-            self.func_test_mnist_sort_gradient_float32()
-        self.func_test_mnist_sort_gradient_float32()
 
 
 if __name__ == '__main__':

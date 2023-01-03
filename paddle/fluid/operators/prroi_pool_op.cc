@@ -19,8 +19,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
-
 class PRROIPoolOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {

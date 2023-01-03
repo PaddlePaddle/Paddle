@@ -115,7 +115,7 @@ class TestWhereRaiseError(unittest.TestCase):
         def test_type():
             paddle.nonzero([10])
 
-        self.assertRaises(TypeError, test_type)
+        self.assertRaises(AttributeError, test_type)
 
 
 if __name__ == "__main__":

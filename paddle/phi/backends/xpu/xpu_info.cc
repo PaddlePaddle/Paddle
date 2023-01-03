@@ -21,7 +21,7 @@ limitations under the License. */
 
 // TODO(wilber): The phi computing library requires a component to manage
 // flags.
-#include "paddle/fluid/platform/flags.h"
+#include "paddle/phi/core/flags.h"
 
 PADDLE_DEFINE_EXPORTED_string(
     selected_xpus,
@@ -169,19 +169,12 @@ void MemcpySyncD2D(void* dst,
                    const phi::XPUContext& dev_ctx) {
   int dev_id = GetXPUCurrentDeviceId();
   if (dst_place.device == dev_id && src_place.device == dev_id) {
-    dev_ctx.Wait();
-    char* tmp = new char[count];
-    PADDLE_ENFORCE_XPU_SUCCESS(
-        xpu_memcpy(tmp, src, count, XPUMemcpyKind::XPU_DEVICE_TO_HOST));
-    PADDLE_ENFORCE_XPU_SUCCESS(
-        xpu_memcpy(dst, tmp, count, XPUMemcpyKind::XPU_HOST_TO_DEVICE));
-    delete[] tmp;
-    // PADDLE_ENFORCE_XDNN_SUCCESS(
-    //    baidu::xpu::api::copy(dev_ctx.x_context(),
-    //                          static_cast<const int8_t*>(src),
-    //                          static_cast<int8_t*>(dst),
-    //                          count),
-    //    "copy ");
+    PADDLE_ENFORCE_XDNN_SUCCESS(
+        baidu::xpu::api::copy(dev_ctx.x_context(),
+                              static_cast<const int8_t*>(src),
+                              static_cast<int8_t*>(dst),
+                              count),
+        "copy ");
   } else {
     PADDLE_ENFORCE_XPU_SUCCESS(
         xpu_memcpy_peer(dst_place.device, dst, src_place.device, src, count));

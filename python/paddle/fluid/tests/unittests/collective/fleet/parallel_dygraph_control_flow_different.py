@@ -18,7 +18,6 @@ from test_dist_base import TestParallelDyGraphRunnerBase, runtime_main
 import paddle
 import paddle.fluid as fluid
 import paddle.nn.functional as F
-from paddle.fluid.dygraph.nn import Embedding
 
 paddle.seed(123)
 np.random.seed(2021)
@@ -29,10 +28,10 @@ class SimpleNet(fluid.Layer):
         super().__init__()
         self.hidden_size = hidden_size
         self.vocab_size = vocab_size
-        self.embedding = Embedding(
-            size=[self.vocab_size, self.hidden_size],
-            dtype='float32',
-            is_sparse=is_sparse,
+        self.embedding = paddle.nn.Embedding(
+            self.vocab_size,
+            self.hidden_size,
+            sparse=is_sparse,
         )
 
         self.lin_a = paddle.nn.Linear(self.hidden_size, self.vocab_size)

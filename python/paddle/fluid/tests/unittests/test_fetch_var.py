@@ -16,6 +16,7 @@ import unittest
 
 import numpy as np
 
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
 
@@ -26,7 +27,9 @@ class TestFetchVar(unittest.TestCase):
 
     def test_fetch_var(self):
         self.set_input()
-        x = layers.create_tensor(dtype="int32", persistable=True, name="x")
+        x = paddle.tensor.create_tensor(
+            dtype="int32", persistable=True, name="x"
+        )
         layers.assign(input=self.val, output=x)
         exe = fluid.Executor(fluid.CPUPlace())
         exe.run(fluid.default_main_program(), feed={}, fetch_list=[])

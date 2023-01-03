@@ -20,7 +20,6 @@ from op_test import OpTest
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-from paddle.fluid.framework import _test_eager_guard
 from paddle.nn.functional import interpolate
 
 np.random.seed(123)
@@ -739,100 +738,6 @@ class TestTrilinearInterp_attr_tensor_Case3(TestTrilinearInterpOp_attr_tensor):
         self.align_corners = True
         self.align_mode = 1
         self.scale_by_1Dtensor = True
-
-
-class TestTrilinearInterpAPI(unittest.TestCase):
-    def test_imperative_case(self):
-        with _test_eager_guard():
-            self.func_case()
-        self.func_case()
-
-    def func_case(self):
-        x = fluid.data(name="x", shape=[2, 3, 6, 9, 4], dtype="float32")
-        y = fluid.data(name="y", shape=[2, 6, 9, 4, 3], dtype="float32")
-
-        dim = fluid.data(name="dim", shape=[1], dtype="int32")
-        shape_tensor = fluid.data(name="shape_tensor", shape=[3], dtype="int32")
-        actual_size = fluid.data(name="actual_size", shape=[3], dtype="int32")
-        scale_tensor = fluid.data(
-            name="scale_tensor", shape=[1], dtype="float32"
-        )
-
-        out1 = fluid.layers.resize_trilinear(
-            y, out_shape=[12, 18, 8], data_format='NDHWC'
-        )
-        out2 = fluid.layers.resize_trilinear(x, out_shape=[12, dim, 8])
-        out3 = fluid.layers.resize_trilinear(x, out_shape=shape_tensor)
-        out4 = fluid.layers.resize_trilinear(
-            x, out_shape=[4, 4, 8], actual_shape=actual_size
-        )
-        out5 = fluid.layers.resize_trilinear(x, scale=scale_tensor)
-        out6 = interpolate(
-            x, scale_factor=scale_tensor, mode='trilinear', data_format="NCDHW"
-        )
-        out7 = interpolate(
-            x, size=[4, 4, 8], mode='trilinear', data_format="NCDHW"
-        )
-        out8 = interpolate(
-            x, size=shape_tensor, mode='trilinear', data_format="NCDHW"
-        )
-
-        x_data = np.random.random((2, 3, 6, 9, 4)).astype("float32")
-        dim_data = np.array([18]).astype("int32")
-        shape_data = np.array([12, 18, 8]).astype("int32")
-        actual_size_data = np.array([12, 18, 8]).astype("int32")
-        scale_data = np.array([2.0]).astype("float32")
-
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
-        else:
-            place = core.CPUPlace()
-        exe = fluid.Executor(place)
-        exe.run(fluid.default_startup_program())
-        results = exe.run(
-            fluid.default_main_program(),
-            feed={
-                "x": x_data,
-                "y": np.transpose(x_data, (0, 2, 3, 4, 1)),
-                "dim": dim_data,
-                "shape_tensor": shape_data,
-                "actual_size": actual_size_data,
-                "scale_tensor": scale_data,
-            },
-            fetch_list=[out1, out2, out3, out4, out5],
-            return_numpy=True,
-        )
-
-        expect_res = trilinear_interp_np(
-            x_data, out_d=12, out_h=18, out_w=8, align_mode=1
-        )
-        np.testing.assert_allclose(
-            results[0], np.transpose(expect_res, (0, 2, 3, 4, 1)), rtol=1e-05
-        )
-        for i in range(len(results) - 1):
-            np.testing.assert_allclose(results[i + 1], expect_res, rtol=1e-05)
-
-        # Follow the calculation of preceding out6, out7, out8.
-        # To pass CI-coverage, calculate out9 without verifying accuracy.
-        # Preceding PR link: https://github.com/PaddlePaddle/Paddle/pull/26520/files#diff-ee0c2b73d08659e90a8f3ac48451a6588d35e1613742f864f9aad4394e12c290
-        with fluid.dygraph.guard():
-            x = fluid.dygraph.to_variable(x_data)
-            out9 = interpolate(
-                x, size=[12, 18, 8], mode='trilinear', data_format="NCDHW"
-            )
-
-
-class TestTrilinearInterpOpException(unittest.TestCase):
-    def test_exception(self):
-        input = fluid.data(name="input", shape=[2, 3, 6, 9, 4], dtype="float32")
-
-        def attr_data_format():
-            # for 5-D input, data_format only can be NCDHW or NDHWC
-            out = fluid.layers.resize_trilinear(
-                input, out_shape=[4, 8, 4], data_format='NHWC'
-            )
-
-        self.assertRaises(ValueError, attr_data_format)
 
 
 @unittest.skipIf(

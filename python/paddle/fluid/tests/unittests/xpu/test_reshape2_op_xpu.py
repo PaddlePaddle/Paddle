@@ -41,6 +41,7 @@ class XPUTestReshapeOp(XPUOpTestWrapper):
         def setUp(self):
             self.init_data()
             self.op_type = "reshape2"
+            self.dtype = self.in_type
             self.init_test_input()
             self.init_test_output()
             self.init_attrs()

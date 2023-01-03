@@ -17,6 +17,7 @@ import unittest
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
+from paddle.static.nn.control_flow import Assert
 
 
 class TestAssertOp(unittest.TestCase):
@@ -33,7 +34,7 @@ class TestAssertOp(unittest.TestCase):
             condition = layers.fill_constant(
                 shape=[1], dtype='bool', value=True
             )
-            layers.Assert(condition, [])
+            Assert(condition, [])
 
         self.run_network(net_func)
 
@@ -42,7 +43,7 @@ class TestAssertOp(unittest.TestCase):
             condition = layers.fill_constant(
                 shape=[1], dtype='bool', value=False
             )
-            layers.Assert(condition)
+            Assert(condition)
 
         with self.assertRaises(ValueError):
             self.run_network(net_func)
@@ -52,7 +53,7 @@ class TestAssertOp(unittest.TestCase):
             condition = layers.fill_constant(
                 shape=[1, 2], dtype='bool', value=True
             )
-            layers.Assert(condition, [])
+            Assert(condition, [])
 
         with self.assertRaises(ValueError):
             self.run_network(net_func)
@@ -61,8 +62,8 @@ class TestAssertOp(unittest.TestCase):
         def net_func():
             zero = layers.fill_constant(shape=[1], dtype='int64', value=0)
             one = layers.fill_constant(shape=[1], dtype='int64', value=1)
-            condition = layers.less_than(one, zero)  # False
-            layers.Assert(condition, [zero, one])
+            condition = paddle.less_than(one, zero)  # False
+            Assert(condition, [zero, one])
 
         print("test_assert_print_data")
         with self.assertRaises(ValueError):
@@ -72,7 +73,7 @@ class TestAssertOp(unittest.TestCase):
         def net_func():
             x = layers.fill_constant(shape=[10], dtype='float32', value=2.0)
             condition = paddle.max(x) < 1.0
-            layers.Assert(condition, (x,), 5)
+            Assert(condition, (x,), 5)
 
         print("test_assert_summary")
         with self.assertRaises(ValueError):
@@ -82,7 +83,7 @@ class TestAssertOp(unittest.TestCase):
         def net_func():
             x = layers.fill_constant(shape=[2, 3], dtype='float32', value=2.0)
             condition = paddle.max(x) < 1.0
-            layers.Assert(condition, [x], 10, name="test")
+            Assert(condition, [x], 10, name="test")
 
         print("test_assert_summary_greater_than_size")
         with self.assertRaises(ValueError):

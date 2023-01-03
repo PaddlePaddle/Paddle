@@ -24,7 +24,6 @@ limitations under the License. */
 
 namespace paddle {
 namespace operators {
-using Tensor = phi::DenseTensor;
 using LoD = framework::LoD;
 
 void MatchMatrixTensorOP::InferShape(framework::InferShapeContext* ctx) const {
@@ -353,7 +352,7 @@ class CPUMatchMatrixTensorOPGradKernel : public framework::OpKernel<T> {
     auto* d_x = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
     auto* d_y = ctx.Output<phi::DenseTensor>(framework::GradVarName("Y"));
 
-    Tensor tmp_grad;
+    phi::DenseTensor tmp_grad;
     tmp_grad.Resize(tmp->dims());
     auto* d_tmp_data = tmp_grad.mutable_data<T>(ctx.GetPlace());
     auto* top_diff = d_out->data<T>();

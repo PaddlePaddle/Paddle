@@ -22,12 +22,7 @@ import paddle.fluid.core as core
 import paddle.fluid.io as io
 from paddle.fluid.dygraph import guard
 from paddle.fluid.executor import Executor
-from paddle.fluid.framework import (
-    ParamBase,
-    Variable,
-    _test_eager_guard,
-    default_main_program,
-)
+from paddle.fluid.framework import ParamBase, Variable, default_main_program
 from paddle.fluid.initializer import ConstantInitializer
 
 paddle.enable_static()
@@ -59,7 +54,7 @@ class ParameterChecks(unittest.TestCase):
         zero_dim_param = b.create_parameter(name='x', shape=[], dtype='float32')
         self.assertEqual(zero_dim_param.shape, ())
 
-    def func_parambase(self):
+    def test_parambase(self):
         with guard():
             linear = paddle.nn.Linear(10, 10)
             param = linear.weight
@@ -85,11 +80,6 @@ class ParameterChecks(unittest.TestCase):
             zero_dim_param = ParamBase(shape=[], dtype='float32')
             self.assertEqual(zero_dim_param.shape, [])
 
-    def test_parambase(self):
-        with _test_eager_guard():
-            self.func_parambase()
-        self.func_parambase()
-
     def func_exception(self):
         b = main_program.global_block()
         with self.assertRaises(ValueError):
@@ -109,7 +99,7 @@ class ParameterChecks(unittest.TestCase):
                 name='test', shape=[-1], dtype='float32', initializer=None
             )
 
-    def func_parambase_to_vector(self):
+    def test_parambase_to_vector(self):
         with guard():
             initializer = paddle.ParamAttr(
                 initializer=paddle.nn.initializer.Constant(3.0)
@@ -134,11 +124,6 @@ class ParameterChecks(unittest.TestCase):
             )
             self.assertTrue(linear2.weight.is_leaf, True)
             self.assertTrue(linear2.bias.is_leaf, True)
-
-    def test_parambase_to_vector(self):
-        with _test_eager_guard():
-            self.func_parambase_to_vector()
-        self.func_parambase_to_vector()
 
 
 if __name__ == '__main__':

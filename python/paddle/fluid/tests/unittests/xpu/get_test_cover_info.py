@@ -94,6 +94,8 @@ xpu_test_op_type_white_list = [
     "c_embedding_float32",  # unittests of collective ops do not using xpu testing framework
     "c_sync_comm_stream_float32",
     "c_sync_calc_stream_float32",
+    "reshape2_bool",
+    "reshape2_grad_bool",
 ]
 xpu_test_device_op_white_list = []
 xpu_test_device_op_type_white_list = []

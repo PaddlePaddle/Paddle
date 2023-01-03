@@ -29,8 +29,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
-
 // Base convolution operator definations for other conv
 // like operators to reuse the implementation.
 inline int ConvOutputSize(

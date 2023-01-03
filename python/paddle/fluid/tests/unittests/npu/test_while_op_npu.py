@@ -41,12 +41,12 @@ class TestWhileOp(unittest.TestCase):
         i = layers.cast(i, 'int64')
         i.stop_gradient = True
         init = layers.zeros(shape=[10], dtype='float32')
-        mem_array = layers.array_write(x=init, i=i)
-        data_array = layers.array_write(x=d0, i=i)
-        i = layers.increment(i)
-        layers.array_write(d1, i, array=data_array)
-        i = layers.increment(i)
-        layers.array_write(d2, i, array=data_array)
+        mem_array = paddle.tensor.array_write(x=init, i=i)
+        data_array = paddle.tensor.array_write(x=d0, i=i)
+        i = paddle.increment(i)
+        paddle.tensor.array_write(d1, i, array=data_array)
+        i = paddle.increment(i)
+        paddle.tensor.array_write(d2, i, array=data_array)
         i = layers.zeros(shape=[1], dtype='int32')
         i = layers.cast(i, 'int64')
         i.stop_gradient = True
@@ -64,26 +64,26 @@ class TestWhileOp(unittest.TestCase):
         cond2 = paddle.logical_or(x=j, y=array_len2)
         cond2 = paddle.ones(shape=[1], dtype='int32')
         cond2 = layers.cast(cond2, 'bool')
-        while_op = layers.While(cond=cond)
-        while_op2 = layers.While(cond=cond2)
+        while_op = paddle.static.nn.control_flow.While(cond=cond)
+        while_op2 = paddle.static.nn.control_flow.While(cond=cond2)
         with while_op.block():
-            d = layers.array_read(array=data_array, i=i)
-            prev = layers.array_read(array=mem_array, i=i)
+            d = paddle.tensor.array_read(array=data_array, i=i)
+            prev = paddle.tensor.array_read(array=mem_array, i=i)
             result = layers.sums(input=[d, prev])
 
-            i = layers.increment(x=i, in_place=True)
-            layers.array_write(result, i=i, array=mem_array)
-            layers.less_than(x=i, y=array_len, cond=cond)
+            i = paddle.increment(x=i)
+            paddle.tensor.array_write(result, i=i, array=mem_array)
+            paddle.assign(paddle.less_than(x=i, y=array_len), cond)
 
             with while_op2.block():
-                d2 = layers.array_read(array=data_array, i=j)
-                prev2 = layers.array_read(array=mem_array, i=j)
+                d2 = paddle.tensor.array_read(array=data_array, i=j)
+                prev2 = paddle.tensor.array_read(array=mem_array, i=j)
                 result2 = layers.sums(input=[d2, prev2])
 
-                j = layers.increment(x=j, in_place=True)
-                layers.array_write(result2, i=j, array=mem_array)
-                layers.less_than(x=j, y=array_len2, cond=cond2)
-        sum_result = layers.array_read(array=mem_array, i=j)
+                j = paddle.increment(x=j)
+                paddle.tensor.array_write(result2, i=j, array=mem_array)
+                paddle.assign(paddle.less_than(x=j, y=array_len2), cond2)
+        sum_result = paddle.tensor.array_read(array=mem_array, i=j)
         loss = paddle.mean(sum_result)
         return loss, sum_result
 

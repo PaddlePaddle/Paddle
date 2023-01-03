@@ -298,19 +298,19 @@ class RecurrentOpTest2(RecurrentOpTest1):
             h_pre = rnn.memory(init=h_boot)
             x_t = rnn.step_input(x)
 
-            temp_l = layers.fc(
-                input=x_t,
+            temp_l = paddle.static.nn.fc(
+                x=x_t,
                 size=self.input_dim,
-                param_attr=ParamAttr(
+                weight_attr=ParamAttr(
                     name='W',
                     initializer=fluid.initializer.ConstantInitializer(1.0),
                 ),
                 bias_attr=False,
             )
-            temp_r = layers.fc(
-                input=h_pre,
+            temp_r = paddle.static.nn.fc(
+                x=h_pre,
                 size=self.input_dim,
-                param_attr=ParamAttr(
+                weight_attr=ParamAttr(
                     name='U',
                     initializer=fluid.initializer.ConstantInitializer(0.0),
                 ),
@@ -616,13 +616,13 @@ class RecurrentOpSubBlockTest(RecurrentOpTest1):
         rnn = layers.StaticRNN()
 
         def dot_attention(query, memory):
-            attn = layers.matmul(query, memory, transpose_y=True)
-            weight = layers.softmax(attn)
-            weight_memory = layers.matmul(weight, memory)
+            attn = paddle.matmul(query, memory, transpose_y=True)
+            weight = paddle.nn.functional.softmax(attn)
+            weight_memory = paddle.matmul(weight, memory)
 
             return weight_memory, weight
 
-        y = layers.matmul(emb, w1)
+        y = paddle.matmul(emb, w1)
         with rnn.step():
             pre_h = rnn.memory(
                 shape=(self.sent_len, self.input_dim),
@@ -631,8 +631,8 @@ class RecurrentOpSubBlockTest(RecurrentOpTest1):
             )
             step_in = rnn.step_input(x)
             concat_in = layers.concat([step_in, pre_h], 1)
-            new_h = layers.matmul(concat_in, w2)
-            new_h = layers.unsqueeze(new_h, [1])
+            new_h = paddle.matmul(concat_in, w2)
+            new_h = paddle.unsqueeze(new_h, [1])
             new_h, _ = dot_attention(new_h, y)
             new_h = paddle.squeeze(new_h, [1])
 
@@ -692,19 +692,19 @@ class RecurrentOpStopGradientTest(RecurrentOpTest1):
             h_pre = rnn.memory(init=h_boot)  # init doesn't have gradient
             x_t = rnn.step_input(x)
 
-            temp_l = layers.fc(
-                input=x_t,
+            temp_l = paddle.static.nn.fc(
+                x=x_t,
                 size=self.input_dim,
-                param_attr=ParamAttr(
+                weight_attr=ParamAttr(
                     name="W",
                     initializer=fluid.initializer.ConstantInitializer(1.0),
                 ),
                 bias_attr=False,
             )
-            temp_r = layers.fc(
-                input=h_pre,
+            temp_r = paddle.static.nn.fc(
+                x=h_pre,
                 size=self.input_dim,
-                param_attr=ParamAttr(
+                weight_attr=ParamAttr(
                     name="U",
                     initializer=fluid.initializer.ConstantInitializer(0.0),
                 ),

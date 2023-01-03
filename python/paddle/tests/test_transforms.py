@@ -652,7 +652,7 @@ class TestTransformsTensor(TestTransformsCV2):
             transform = transforms.RandomResizedCrop(64)
             transform(1)
 
-    test_color_jitter = None
+    test_color_jitter = None  # noqa: F811
 
 
 class TestFunctional(unittest.TestCase):

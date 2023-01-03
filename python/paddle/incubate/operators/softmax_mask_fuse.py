@@ -28,7 +28,7 @@ def softmax_mask_fuse(x, mask, name=None):
     .. math::
         out = softmax(x + mask)
 
-    **Note**:
+    Note:
         This API only supports GPU.
 
     Args:

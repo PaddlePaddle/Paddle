@@ -16,9 +16,9 @@ import unittest
 
 import numpy as np
 
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-import paddle.fluid.layers as layers
 
 
 class TestQueue(unittest.TestCase):
@@ -31,14 +31,14 @@ class TestQueue(unittest.TestCase):
         startup_program = fluid.Program()
         value = np.random.rand(1)
         with fluid.program_guard(main_program, startup_program):
-            data_in = layers.create_global_var(
+            data_in = paddle.static.create_global_var(
                 shape=[2, 3],
                 value=value,
                 dtype="float32",
                 persistable=True,
                 name='var_in',
             )
-            data_out = layers.create_global_var(
+            data_out = paddle.static.create_global_var(
                 shape=[2, 3],
                 value=value - 1.0,
                 dtype="float32",

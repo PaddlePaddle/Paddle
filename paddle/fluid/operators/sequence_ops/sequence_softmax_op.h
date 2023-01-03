@@ -19,33 +19,30 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
-using LoDTensor = phi::DenseTensor;
-
 template <typename DeviceContext, typename T>
 struct SequenceSoftmaxFunctor {
   void operator()(
       const DeviceContext &ctx,
-      const LoDTensor &x,
+      const phi::DenseTensor &x,
       const framework::Vector<size_t> &ref_lod, /*expand referenced lod*/
-      LoDTensor *out);
+      phi::DenseTensor *out);
 };
 
 template <typename DeviceContext, typename T>
 struct SequenceSoftmaxGradFunctor {
   void operator()(const DeviceContext &ctx,
-                  const LoDTensor &dout,
-                  const LoDTensor &out,
+                  const phi::DenseTensor &dout,
+                  const phi::DenseTensor &out,
                   const framework::Vector<size_t> &ref_lod, /*referenced lod*/
-                  LoDTensor *dx);
+                  phi::DenseTensor *dx);
 };
 
 template <typename T>
 struct SequenceSoftmaxFunctor<phi::CPUContext, T> {
   void operator()(const phi::CPUContext &ctx,
-                  const LoDTensor &x,
+                  const phi::DenseTensor &x,
                   const framework::Vector<size_t> &ref_lod, /*referenced lod*/
-                  LoDTensor *out) {
+                  phi::DenseTensor *out) {
     size_t height = ref_lod.size() - 1;
     const T *in_data = x.data<T>();
     T *out_data = out->mutable_data<T>(ctx.GetPlace());
@@ -65,10 +62,10 @@ struct SequenceSoftmaxFunctor<phi::CPUContext, T> {
 template <typename T>
 struct SequenceSoftmaxGradFunctor<phi::CPUContext, T> {
   void operator()(const phi::CPUContext &ctx,
-                  const LoDTensor &dout,
-                  const LoDTensor &out,
+                  const phi::DenseTensor &dout,
+                  const phi::DenseTensor &out,
                   const framework::Vector<size_t> &ref_lod, /*referenced lod*/
-                  LoDTensor *dx) {
+                  phi::DenseTensor *dx) {
     size_t height = ref_lod.size() - 1;
 
     const T *softmax_grad_data = dout.data<T>();
@@ -94,17 +91,17 @@ template <typename DeviceContext, typename T>
 class SequenceSoftmaxKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-    auto *x = ctx.Input<LoDTensor>("X");
-    auto *out = ctx.Output<LoDTensor>("Out");
+    auto *x = ctx.Input<phi::DenseTensor>("X");
+    auto *out = ctx.Output<phi::DenseTensor>("Out");
 
     auto lod = x->lod();
     auto dims = x->dims();
-    PADDLE_ENFORCE_EQ(
-        lod.empty(),
-        false,
-        platform::errors::InvalidArgument(
-            "Input(X) Tensor of SequenceSoftmax operator does not contain "
-            "LoD information."));
+    PADDLE_ENFORCE_EQ(lod.empty(),
+                      false,
+                      platform::errors::InvalidArgument(
+                          "Input(X) phi::DenseTensor of SequenceSoftmax "
+                          "operator does not contain "
+                          "LoD information."));
 
     const size_t level = lod.size() - 1;
     PADDLE_ENFORCE_EQ(
@@ -138,10 +135,10 @@ template <typename DeviceContext, typename T>
 class SequenceSoftmaxGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-    auto *out = ctx.Input<LoDTensor>("Out");
-    auto *out_grad = ctx.Input<LoDTensor>(framework::GradVarName("Out"));
-    auto *x = ctx.Input<LoDTensor>("X");
-    auto *x_grad = ctx.Output<LoDTensor>(framework::GradVarName("X"));
+    auto *out = ctx.Input<phi::DenseTensor>("Out");
+    auto *out_grad = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+    auto *x = ctx.Input<phi::DenseTensor>("X");
+    auto *x_grad = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
     if (!x_grad) {
       return;
     }

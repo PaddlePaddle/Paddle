@@ -91,8 +91,11 @@ class TestArgsortOpCPU(unittest.TestCase):
             label = fluid.layers.data(
                 name="label", shape=self.input_shape, dtype=self.dtype
             )
-            self.sorted_x, self.index = fluid.layers.argsort(
-                input=x, axis=self.axis, descending=self.descending
+            self.index = paddle.argsort(
+                x=x, axis=self.axis, descending=self.descending
+            )
+            self.sorted_x = paddle.sort(
+                x=x, axis=self.axis, descending=self.descending
             )
             self.sorted_x.stop_gradient = False
             loss = paddle.multiply(self.sorted_x, label)
@@ -350,13 +353,13 @@ class TestArgsortErrorOnCPU(unittest.TestCase):
         def test_fluid_var_type():
             with fluid.program_guard(fluid.Program()):
                 x = [1]
-                output = fluid.layers.argsort(input=x)
+                output = paddle.argsort(x=x)
             self.assertRaises(TypeError, test_fluid_var_type)
 
         def test_paddle_var_type():
             with fluid.program_guard(fluid.Program()):
                 x = [1]
-                output = paddle.argsort(input=x)
+                output = paddle.argsort(x=x)
             self.assertRaises(TypeError, test_paddle_var_type)
 
 

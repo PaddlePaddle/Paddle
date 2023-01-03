@@ -21,7 +21,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 using phi::PADDLE_CUDA_NUM_THREADS;
-using LoDTensor = phi::DenseTensor;
 
 template <typename T>
 __global__ void LabelErasedIdx(const T* in_dat,
@@ -67,8 +66,8 @@ template <typename T>
 class SequenceEraseOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* in = ctx.Input<LoDTensor>("X");
-    auto* out = ctx.Output<LoDTensor>("Out");
+    auto* in = ctx.Input<phi::DenseTensor>("X");
+    auto* out = ctx.Output<phi::DenseTensor>("Out");
 
     auto lod = in->lod();
     PADDLE_ENFORCE_EQ(

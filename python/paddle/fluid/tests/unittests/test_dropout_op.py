@@ -23,7 +23,6 @@ import paddle.fluid.core as core
 import paddle.static as static
 from paddle import _C_ops
 from paddle.fluid import Program, program_guard
-from paddle.fluid.framework import _enable_legacy_dygraph, _test_eager_guard
 
 
 class TestDropoutOp(OpTest):
@@ -343,7 +342,7 @@ class TestDropoutOpError(unittest.TestCase):
                 x1 = fluid.create_lod_tensor(
                     np.array([-1, 3, 5, 5]), [[1, 1, 1, 1]], fluid.CPUPlace()
                 )
-                fluid.layers.dropout(x1, dropout_prob=0.5)
+                paddle.nn.functional.dropout(x1, p=0.5)
 
             self.assertRaises(TypeError, test_Variable)
 
@@ -353,7 +352,7 @@ class TestDropoutOpError(unittest.TestCase):
                 x2 = fluid.layers.data(
                     name='x2', shape=[3, 4, 5, 6], dtype="int32"
                 )
-                fluid.layers.dropout(x2, dropout_prob=0.5)
+                paddle.nn.functional.dropout(x2, p=0.5)
 
             self.assertRaises(TypeError, test_dtype)
 
@@ -414,7 +413,7 @@ class TestDropoutFAPI(unittest.TestCase):
                 mode='downscale_in_infer',
             )
             res10 = paddle.nn.functional.dropout(x=input, p=1.0, training=True)
-            res11 = paddle.fluid.layers.dropout(x=input, dropout_prob=0.0)
+            res11 = paddle.nn.functional.dropout(x=input, p=0.0)
             res12 = paddle.nn.functional.dropout(
                 x=input,
                 p=0.0,
@@ -538,7 +537,7 @@ class TestDropoutFAPI(unittest.TestCase):
                 res10 = paddle.nn.functional.dropout(
                     x=input, p=1.0, training=True
                 )
-                dropout = paddle.fluid.dygraph.Dropout(
+                dropout = paddle.nn.Dropout(
                     p=0,
                 )
                 res11 = dropout(input)
@@ -1046,13 +1045,14 @@ class TestDropoutBackward(unittest.TestCase):
         return mask.astype("float32")
 
     def test_backward_downscale_in_infer(self):
-        _enable_legacy_dygraph()
         for place in self.places:
             with fluid.dygraph.guard(place):
 
                 input = paddle.uniform([40, 40], dtype="float32")
                 input.stop_gradient = False
-                out, mask = core.ops.dropout(input, 'dropout_prob', 0.5)
+                out, mask = _C_ops.dropout(
+                    input, None, 0.5, False, "downgrade_in_infer", 0, False
+                )
                 out.backward()
 
                 np.testing.assert_array_equal(
@@ -1060,35 +1060,15 @@ class TestDropoutBackward(unittest.TestCase):
                     self.cal_grad_downscale_in_infer(mask.numpy()),
                 )
 
-    def test_backward_downscale_in_infer_eager(self):
-        for place in self.places:
-            with fluid.dygraph.guard(place):
-                with _test_eager_guard():
-                    input = paddle.uniform([40, 40], dtype="float32")
-                    input.stop_gradient = False
-                    out, mask = _C_ops.dropout(
-                        input, None, 0.5, False, "downgrade_in_infer", 0, False
-                    )
-                    out.backward()
-                    np.testing.assert_array_equal(
-                        input.gradient(),
-                        self.cal_grad_downscale_in_infer(mask.numpy()),
-                    )
-
     def test_backward_upscale_train(self):
-        _enable_legacy_dygraph()
         for place in self.places:
             with fluid.dygraph.guard(place):
 
                 prob = 0.5
                 input = paddle.uniform([40, 40], dtype="float32")
                 input.stop_gradient = False
-                out, mask = core.ops.dropout(
-                    input,
-                    'dropout_prob',
-                    prob,
-                    "dropout_implementation",
-                    "upscale_in_train",
+                out, mask = _C_ops.dropout(
+                    input, None, 0.5, False, "upscale_in_train", 0, False
                 )
                 out.backward()
 
@@ -1098,38 +1078,15 @@ class TestDropoutBackward(unittest.TestCase):
                     rtol=1e-05,
                 )
 
-    def test_backward_upscale_train_eager(self):
-        for place in self.places:
-            with fluid.dygraph.guard(place):
-                with _test_eager_guard():
-                    prob = 0.5
-                    input = paddle.uniform([40, 40], dtype="float32")
-                    input.stop_gradient = False
-                    out, mask = _C_ops.dropout(
-                        input, None, 0.5, False, "upscale_in_train", 0, False
-                    )
-                    out.backward()
-
-                    np.testing.assert_allclose(
-                        input.gradient(),
-                        self.cal_grad_upscale_train(mask.numpy(), prob),
-                        rtol=1e-05,
-                    )
-
     def test_backward_upscale_train_2(self):
-        _enable_legacy_dygraph()
         for place in self.places:
             with fluid.dygraph.guard(place):
 
                 prob = 0.3
                 input = paddle.uniform([40, 40], dtype="float32")
                 input.stop_gradient = False
-                out, mask = core.ops.dropout(
-                    input,
-                    'dropout_prob',
-                    prob,
-                    "dropout_implementation",
-                    "upscale_in_train",
+                out, mask = _C_ops.dropout(
+                    input, None, 0.3, False, "upscale_in_train", 0, False
                 )
                 out.backward()
 
@@ -1138,26 +1095,6 @@ class TestDropoutBackward(unittest.TestCase):
                     self.cal_grad_upscale_train(mask.numpy(), prob),
                     rtol=1e-05,
                 )
-
-    def test_backward_upscale_train_2_eager(self):
-        for place in self.places:
-            with fluid.dygraph.guard(place):
-                with _test_eager_guard():
-
-                    prob = 0.3
-                    input = paddle.uniform([40, 40], dtype="float32")
-                    input.stop_gradient = False
-                    out, mask = _C_ops.dropout(
-                        input, None, 0.3, False, "upscale_in_train", 0, False
-                    )
-
-                    out.backward()
-
-                    np.testing.assert_allclose(
-                        input.gradient(),
-                        self.cal_grad_upscale_train(mask.numpy(), prob),
-                        rtol=1e-05,
-                    )
 
 
 class TestDropOutWithProbTensor(unittest.TestCase):

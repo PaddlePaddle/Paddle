@@ -17,7 +17,6 @@ import unittest
 import numpy as np
 from op_test import OpTest
 
-import paddle.fluid as fluid
 import paddle.fluid.core as core
 
 
@@ -457,85 +456,6 @@ class TestNearestInterp_attr_tensor_Case3(TestNearestInterpOp_attr_tensor):
         self.out_size = None
         self.align_corners = True
         self.scale_by_1Dtensor = True
-
-
-class TestNearestAPI(unittest.TestCase):
-    def test_case(self):
-        x = fluid.data(name="x", shape=[2, 3, 6, 6], dtype="float32")
-        y = fluid.data(name="y", shape=[2, 6, 6, 3], dtype="float32")
-
-        dim = fluid.data(name="dim", shape=[1], dtype="int32")
-        shape_tensor = fluid.data(name="shape_tensor", shape=[2], dtype="int32")
-        actual_size = fluid.data(name="actual_size", shape=[2], dtype="int32")
-        scale_tensor = fluid.data(
-            name="scale_tensor", shape=[1], dtype="float32"
-        )
-
-        out1 = fluid.layers.resize_nearest(
-            y, out_shape=[12, 12], data_format='NHWC'
-        )
-        out2 = fluid.layers.resize_nearest(x, out_shape=[12, dim])
-        out3 = fluid.layers.resize_nearest(x, out_shape=shape_tensor)
-        out4 = fluid.layers.resize_nearest(
-            x, out_shape=[4, 4], actual_shape=actual_size
-        )
-        out5 = fluid.layers.resize_nearest(x, scale=scale_tensor)
-
-        x_data = np.random.random((2, 3, 6, 6)).astype("float32")
-        dim_data = np.array([12]).astype("int32")
-        shape_data = np.array([12, 12]).astype("int32")
-        actual_size_data = np.array([12, 12]).astype("int32")
-        scale_data = np.array([2.0]).astype("float32")
-
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
-        else:
-            place = core.CPUPlace()
-        exe = fluid.Executor(place)
-        exe.run(fluid.default_startup_program())
-        results = exe.run(
-            fluid.default_main_program(),
-            feed={
-                "x": x_data,
-                "y": np.transpose(x_data, (0, 2, 3, 1)),
-                "dim": dim_data,
-                "shape_tensor": shape_data,
-                "actual_size": actual_size_data,
-                "scale_tensor": scale_data,
-            },
-            fetch_list=[out1, out2, out3, out4, out5],
-            return_numpy=True,
-        )
-
-        expect_res = nearest_neighbor_interp_np(
-            x_data, out_h=12, out_w=12, align_corners=True
-        )
-        np.testing.assert_allclose(
-            results[0], np.transpose(expect_res, (0, 2, 3, 1)), rtol=1e-05
-        )
-        for i in range(len(results) - 1):
-            np.testing.assert_allclose(results[i + 1], expect_res, rtol=1e-05)
-
-
-class TestNearestInterpException(unittest.TestCase):
-    def test_exception(self):
-        input = fluid.data(name="input", shape=[1, 3, 6, 6], dtype="float32")
-
-        def attr_data_format():
-            # for 4-D input, data_format can only be NCHW or NHWC
-            out = fluid.layers.resize_nearest(
-                input, out_shape=[4, 8], data_format='NDHWC'
-            )
-
-        def attr_scale_type():
-            out = fluid.layers.resize_nearest(input, scale='scale')
-
-        def attr_scale_value():
-            out = fluid.layers.resize_nearest(input, scale=-0.3)
-
-        self.assertRaises(ValueError, attr_data_format)
-        self.assertRaises(TypeError, attr_scale_type)
-        self.assertRaises(ValueError, attr_scale_value)
 
 
 if __name__ == "__main__":

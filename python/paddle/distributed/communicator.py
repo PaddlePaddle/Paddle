@@ -34,7 +34,7 @@ import paddle
 from paddle.distributed.ps.utils.public import DistributedMode
 from paddle.framework import core
 
-__all__ = ['Communicator', 'FLCommunicator', 'LargeScaleKV']
+__all__ = []
 
 
 class Communicator:

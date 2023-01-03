@@ -17,7 +17,7 @@
 #include <limits>
 
 #include "paddle/fluid/operators/jit/registry.h"
-#include "paddle/fluid/platform/cpu_info.h"
+#include "paddle/phi/backends/cpu/cpu_info.h"
 
 namespace paddle {
 namespace operators {
@@ -179,7 +179,8 @@ void LayerNorm(float* x,
 }
 
 bool LayerNormKernel::CanBeUsed(const int& d) const {
-  return platform::MayIUse(platform::avx) && d >= YMM_FLOAT_BLOCK;
+  return phi::backends::cpu::MayIUse(phi::backends::cpu::avx) &&
+         d >= YMM_FLOAT_BLOCK;
 }
 
 }  // namespace intrinsic

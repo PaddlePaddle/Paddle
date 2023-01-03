@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import paddle
-from paddle.fluid import framework, layers, unique_name
+from paddle.fluid import framework, unique_name
 from paddle.fluid.dygraph import base as imperative_base
 from paddle.fluid.framework import Variable
 from paddle.fluid.layer_helper import LayerHelper
@@ -192,7 +192,7 @@ class LookAhead(Optimizer):
 
     def _increment_global_var(self):
         if self._global_step_var is None:
-            self._global_step_var = layers.create_global_var(
+            self._global_step_var = paddle.static.create_global_var(
                 name=unique_name.generate("lookahead_step"),
                 shape=[1],
                 value=0,
@@ -212,7 +212,7 @@ class LookAhead(Optimizer):
         zero_var = paddle.zeros(
             shape=[1], dtype='int32', name='lookahead_zeros'
         )
-        k_var = layers.create_global_var(
+        k_var = paddle.static.create_global_var(
             name=unique_name.generate("lookahead_k"),
             shape=[1],
             value=self.k,

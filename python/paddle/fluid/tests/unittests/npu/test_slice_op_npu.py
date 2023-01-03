@@ -275,7 +275,7 @@ class TestSliceNet(unittest.TestCase):
 
             prediction = paddle.static.nn.fc(z, size=2, activation='softmax')
 
-            cost = paddle.fluid.layers.softmax_with_cross_entropy(
+            cost = paddle.paddle.nn.functional.softmax_with_cross_entropy(
                 logits=prediction, label=label
             )
             loss = paddle.mean(cost)

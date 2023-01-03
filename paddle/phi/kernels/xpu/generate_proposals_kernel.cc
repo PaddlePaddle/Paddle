@@ -372,16 +372,16 @@ void GenerateProposalsKernel(const Context& dev_ctx,
     DenseTensor& proposals = tensor_pair.first;
     DenseTensor& nscores = tensor_pair.second;
 
-    paddle::memory::Copy(place,
-                         rpn_rois->data<T>() + num_proposals * 4,
-                         place,
-                         proposals.data<T>(),
-                         sizeof(T) * proposals.numel());
-    paddle::memory::Copy(place,
-                         rpn_roi_probs->data<T>() + num_proposals,
-                         place,
-                         nscores.data<T>(),
-                         sizeof(T) * scores.numel());
+    r = xpu::copy(dev_ctx.x_context(),
+                  proposals.data<T>(),
+                  rpn_rois->data<T>() + num_proposals * 4,
+                  proposals.numel());
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "copy");
+    r = xpu::copy(dev_ctx.x_context(),
+                  nscores.data<T>(),
+                  rpn_roi_probs->data<T>() + num_proposals,
+                  nscores.numel());
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "copy");
 
     if (dev_ctx.x_context()->xpu_stream) {
       dev_ctx.Wait();

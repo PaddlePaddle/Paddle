@@ -19,8 +19,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
-
 template <typename T>
 void CvmComputeKernel(const bool use_cvm,
                       const int64_t item_width,

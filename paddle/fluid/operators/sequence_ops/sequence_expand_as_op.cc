@@ -20,8 +20,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using LoDTensor = phi::DenseTensor;
-
 class SequenceExpandAsOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -49,8 +47,8 @@ class SequenceExpandAsOp : public framework::OperatorWithKernel {
       framework::Variable* y_var =
           PADDLE_GET(framework::Variable*, ctx->GetInputVarPtrs("Y")[0]);
 
-      auto& x_dim = x_var->Get<LoDTensor>().dims();
-      auto& y_lod = y_var->Get<LoDTensor>().lod();
+      auto& x_dim = x_var->Get<phi::DenseTensor>().dims();
+      auto& y_lod = y_var->Get<phi::DenseTensor>().lod();
 
       PADDLE_ENFORCE_EQ(y_lod.size(),
                         1,
@@ -96,13 +94,16 @@ class SequenceExpandAsOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("X",
-             "(LoDTensor, default LoDTensor<float>) A 2-D LoDTensor whose lod "
+             "(phi::DenseTensor, default phi::DenseTensor<float>) A 2-D "
+             "phi::DenseTensor whose lod "
              "level is at most 1.");
     AddInput("Y",
-             "(LoDTensor, default LoDTensor<float>) Referred LoDTensor whose "
+             "(phi::DenseTensor, default phi::DenseTensor<float>) Referred "
+             "phi::DenseTensor whose "
              "lod (specified level) is referred by Input(X).");
     AddOutput("Out",
-              "(LodTensor, default LoDTensor<float>) Output LoDTensor which is "
+              "(phi::DenseTensor, default phi::DenseTensor<float>) Output "
+              "phi::DenseTensor which is "
               "generated from Input(X) by referring lod of Input(Y).");
     AddComment(R"DOC(
 Sequence Expand As Operator.
@@ -116,26 +117,26 @@ Following are cases to better explain how this works:
 
 Case 1:
 
-Given a 1-level LoDTensor input(X)
+Given a 1-level phi::DenseTensor input(X)
     X.data = [[a], [b], [c], [d]]
     X.dims = [4, 1]
 and input(Y)
     Y.lod = [[0, 3, 6, 7, 8]]
 ref_level: 0
-then we get 1-level LoDTensor
+then we get 1-level phi::DenseTensor
     Out.lod =  [[0,            3,              6,  7,  8]]
     Out.data = [[a], [a], [a], [b], [b], [b], [c], [d]]
     Out.dims = [8, 1]
 
 Case 2:
 
-Given a common Tensor input(X)
+Given a common phi::DenseTensor input(X)
     X.data = [[a, b], [c, d], [e, f]]
     X.dims = [3, 2]
 and input(Y)
     Y.lod = [[0, 2, 3, 6]]
 ref_level: 0
-then we get a common LoDTensor
+then we get a common phi::DenseTensor
     Out.lod =  [[0,             2,     3,                    6]]
     Out.data = [[a, b], [a, b] [c, d], [e, f], [e, f], [e, f]]
     Out.dims = [6, 2]

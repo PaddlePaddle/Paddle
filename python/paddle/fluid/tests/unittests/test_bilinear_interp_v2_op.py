@@ -638,57 +638,6 @@ class TestBilinearInterp_attr_tensor_Case3(TestBilinearInterpOp_attr_tensor):
         self.scale_by_1Dtensor = True
 
 
-class TestBilinearInterpOpAPI(unittest.TestCase):
-    def test_case(self):
-        x = fluid.data(name="x", shape=[2, 3, 6, 6], dtype="float32")
-
-        dim = fluid.data(name="dim", shape=[1], dtype="int32")
-        shape_tensor = fluid.data(name="shape_tensor", shape=[2], dtype="int32")
-        actual_size = fluid.data(name="actual_size", shape=[2], dtype="int32")
-        scale_tensor = fluid.data(
-            name="scale_tensor", shape=[1], dtype="float32"
-        )
-
-        out1 = fluid.layers.resize_bilinear(x, out_shape=[12, 12])
-        out2 = fluid.layers.resize_bilinear(x, out_shape=[12, dim])
-        out3 = fluid.layers.resize_bilinear(x, out_shape=shape_tensor)
-        out4 = fluid.layers.resize_bilinear(
-            x, out_shape=[4, 4], actual_shape=actual_size
-        )
-        out5 = fluid.layers.resize_bilinear(x, scale=scale_tensor)
-
-        x_data = np.random.random((2, 3, 6, 6)).astype("float32")
-        dim_data = np.array([12]).astype("int32")
-        shape_data = np.array([12, 12]).astype("int32")
-        actual_size_data = np.array([12, 12]).astype("int32")
-        scale_data = np.array([2.0]).astype("float32")
-
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
-        else:
-            place = core.CPUPlace()
-        exe = fluid.Executor(place)
-        exe.run(fluid.default_startup_program())
-        results = exe.run(
-            fluid.default_main_program(),
-            feed={
-                "x": x_data,
-                "dim": dim_data,
-                "shape_tensor": shape_data,
-                "actual_size": actual_size_data,
-                "scale_tensor": scale_data,
-            },
-            fetch_list=[out1, out2, out3, out4, out5],
-            return_numpy=True,
-        )
-
-        expect_res = bilinear_interp_np(
-            x_data, out_h=12, out_w=12, align_corners=True
-        )
-        for res in results:
-            np.testing.assert_allclose(res, expect_res, rtol=1e-05)
-
-
 class TestBilinearInterpOpAPI_dy(unittest.TestCase):
     def test_case(self):
         import paddle
@@ -784,7 +733,7 @@ class TestBilinearInterpOpAPI_dy4(unittest.TestCase):
 @unittest.skipIf(
     not fluid.core.is_compiled_with_cuda(), "core is not compiled with CUDA"
 )
-class TestBilinearInterpOpForFloat16(unittest.TestCase):
+class TestBilinearInterpOpZoomOutForFloat16(unittest.TestCase):
     def init_test_case(self):
         self.interp_method = 'bilinear'
         self.input_shape = [2, 3, 5, 5]
@@ -819,8 +768,52 @@ class TestBilinearInterpOpForFloat16(unittest.TestCase):
         y_np_1, x_g_np_1 = self.check_main(x_np, 'float16')
         y_np_2, x_g_np_2 = self.check_main(x_np, 'float32')
 
-        np.testing.assert_allclose(y_np_1, y_np_2)
-        np.testing.assert_allclose(x_g_np_1, x_g_np_2)
+        np.testing.assert_allclose(y_np_1, y_np_2, atol=1e-3, rtol=1e-3)
+        # Since atomicAdd half will bring some diff, here we relax tolerance to 1e-2.
+        np.testing.assert_allclose(x_g_np_1, x_g_np_2, atol=1e-2, rtol=1e-2)
+
+
+@unittest.skipIf(
+    not fluid.core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
+class TestBilinearInterpOpZoomInForFloat16(unittest.TestCase):
+    def init_test_case(self):
+        self.interp_method = 'bilinear'
+        self.input_shape = [2, 3, 5, 5]
+        self.out_size = np.array([10, 10]).astype("int32")
+        self.align_corners = True
+        self.align_mode = 1
+        self.data_layout = 'NCHW'
+
+    def check_main(self, x_np, dtype):
+        paddle.disable_static()
+        x_np = x_np.astype(dtype)
+        x = paddle.to_tensor(x_np)
+        x.stop_gradient = False
+        y = interpolate(
+            x,
+            size=self.out_size.tolist(),
+            mode=self.interp_method,
+            align_mode=self.align_mode,
+            align_corners=self.align_corners,
+            data_format=self.data_layout,
+        )
+        x_g = paddle.grad(y, x)
+        y_np = y[0].numpy().astype('float32')
+        x_g_np = x_g[0].numpy().astype('float32')
+        paddle.enable_static()
+        return y_np, x_g_np
+
+    def test_main(self):
+        self.init_test_case()
+        x_np = np.random.random(self.input_shape).astype("float16")
+
+        y_np_1, x_g_np_1 = self.check_main(x_np, 'float16')
+        y_np_2, x_g_np_2 = self.check_main(x_np, 'float32')
+
+        np.testing.assert_allclose(y_np_1, y_np_2, atol=1e-3, rtol=1e-3)
+        # Since atomicAdd half will bring some diff, here we relax tolerance to 1e-2.
+        np.testing.assert_allclose(x_g_np_1, x_g_np_2, atol=1e-2, rtol=1e-2)
 
 
 if __name__ == "__main__":
