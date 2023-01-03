@@ -2246,8 +2246,10 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
             grad_function_call_str = f"""
   if (paddle::prim::PrimCommonUtils::IsPrimEnabled()) {{
   {indent}{composite_grad_api_namespace}{composite_backward_api_name}{composite_template_name}({composite_grad_api_args_str});
+  VLOG(4) << paddle::string::Sprintf("composite api %s is called" , "{composite_backward_api_name}");
   }}else{{
   {indent}{grad_api_namespace}{backward_api_name}({grad_api_args_str});
+  VLOG(4) << paddle::string::Sprintf("origin api %s is called" , "{backward_api_name}");
   }}
   """
         else:
