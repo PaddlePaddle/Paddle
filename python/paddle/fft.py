@@ -1577,7 +1577,7 @@ def fftn_c2c(x, s, axes, norm, forward, name):
     if in_dygraph_mode():
         out = _C_ops.fft_c2c(x, axes, norm, forward)
     else:
-        op_type = 'fft_c2r'
+        op_type = 'fft_c2c'
         check_variable_and_dtype(x, 'x', ['complex64', 'complex128'], op_type)
         inputs = {
             'X': [x],
