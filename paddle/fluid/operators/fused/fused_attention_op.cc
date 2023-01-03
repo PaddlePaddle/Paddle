@@ -315,6 +315,11 @@ class FusedAttentionOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("CacheKVOut", "The udpated cache KV.");
     AddOutput("Y", "Result after attention.");
 
+    AddAttr<int>("num_heads", "The number head for multi_head_attention.")
+        .SetDefault(-1);
+    AddAttr<bool>("transpose_qkv_wb",
+                  "The qkv_w shape is (h, 3h), do transpose to it.")
+        .SetDefault(false);
     AddAttr<bool>("pre_layer_norm",
                   "if true, the attention op uses pre_layer_norm architecure, "
                   "else, uses post_layer_norm architecuture. "
