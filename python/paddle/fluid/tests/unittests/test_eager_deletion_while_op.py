@@ -110,7 +110,7 @@ class TestEagerDeletionWhileOpBase(unittest.TestCase):
             prev = paddle.tensor.array_read(array=mem_array, i=i)
             d = paddle.reshape(d, shape=[10])
             prev = paddle.reshape(prev, shape=[10])
-            result = layers.sums(input=[d, prev])
+            result = paddle.sum(input=[d, prev])
 
             i = paddle.increment(x=i)
             paddle.tensor.array_write(result, i=i, array=mem_array)
@@ -120,7 +120,7 @@ class TestEagerDeletionWhileOpBase(unittest.TestCase):
                 prev2 = paddle.tensor.array_read(array=mem_array, i=j)
                 d2 = paddle.reshape(d2, shape=[10])
                 prev2 = paddle.reshape(prev2, shape=[10])
-                result2 = layers.sums(input=[d2, prev2])
+                result2 = paddle.sum(input=[d2, prev2])
 
                 j = paddle.increment(x=j)
                 paddle.tensor.array_write(result2, i=j, array=mem_array)

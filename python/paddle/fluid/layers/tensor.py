@@ -92,10 +92,10 @@ def sums(input, out=None):
             x3 = fluid.layers.fill_constant(shape=[16, 32], dtype='int64', value=0)
 
             # Sum of multiple Tensors, the result is stored to a new Variable sum0 (sum0=x0+x1+x2, the value is [[6, ..., 6], ..., [6, ..., 6]])
-            sum0 = fluid.layers.sums(input=[x0, x1, x2])
+            sum0 = paddle.sum(input=[x0, x1, x2])
 
             # Sum of multiple Tensors, sum1 and x3 represents the same Variable (x3=x0+x1+x2, the value is [[6, ..., 6], ..., [6, ..., 6]])
-            sum1 = fluid.layers.sums(input=[x0, x1, x2], out=x3)
+            sum1 = paddle.sum(input=[x0, x1, x2], out=x3)
     """
     check_type(input, 'input', (Variable, tuple, list), 'sums')
     if isinstance(input, list) or isinstance(input, tuple):
