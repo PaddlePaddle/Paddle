@@ -5,4 +5,4 @@ cc_test(
 cc_test(
   test_eager_prim
   SRCS test_eager_prim.cc
-  DEPS ${eager_deps} ${generated_deps})
+  DEPS ${eager_deps} ${generated_deps} eager_utils eager_prim_api)
