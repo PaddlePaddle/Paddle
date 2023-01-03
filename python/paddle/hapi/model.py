@@ -305,7 +305,7 @@ class StaticGraphAdapter:
         self.mode = 'train'
         assert (
             update is True
-        ), "Does not support `update == False` in static mode by now."
+        ), "Does not support `update == False` in static graph mode by now."
         return self._run(inputs, labels)
 
     def eval_batch(self, inputs, labels=None):
@@ -1012,7 +1012,7 @@ class Model:
     must be required for static graph.
 
     When training on GPU, auto mixed precision (AMP O1) and pure float16
-    (AMP O2) training are both supported in static mode and dynamic mode.
+    (AMP O2) training are both supported in static graph mode and dynamic mode.
     In static graph mode, before training with pure float16 (AMP O2),
     `multi_precision` could be set to True when creating optimizer, which can
     avoid poor accuracy or slow convergence in a way, and inputs of dtype float
@@ -1535,7 +1535,7 @@ class Model:
                 assert isinstance(
                     self._optimizer._grad_clip,
                     (paddle.nn.ClipGradByGlobalNorm, paddle.nn.ClipGradByNorm),
-                ), "Only GradientClipByNorm and GradientClipByGlobalNorm are supported in amp training with level=O2 currently."
+                ), "Only ClipGradByNorm and ClipGradByGlobalNorm are supported in amp training with level=O2 currently."
 
         self._adapter._amp_custom_lists = {}
         self._adapter._amp_configs = {}
@@ -1605,7 +1605,7 @@ class Model:
             if 'use_fp16_guard' in amp_config_key_set:
                 if _non_static_mode():
                     raise ValueError(
-                        "'use_fp16_guard' is supported in static mode only."
+                        "'use_fp16_guard' is supported in static graph mode only."
                     )
                 self._adapter._use_fp16_guard = amp_configs['use_fp16_guard']
                 amp_config_key_set.remove('use_fp16_guard')
@@ -1643,7 +1643,7 @@ class Model:
                 'incr_every_n_steps', 'decr_every_n_nan_or_inf',
                 'use_dynamic_loss_scaling', 'custom_white_list',
                 'custom_black_list', and 'custom_black_varnames'or
-                'use_fp16_guard' is only supported in static mode. Mixed
+                'use_fp16_guard' is only supported in static graph mode. Mixed
                 precision API documentations  :ref:`api_paddle_amp_auto_cast`
                 and  :ref:`api_paddle_amp_GradScaler` could be referenced
                 for details. For convenience, 'amp_configs' could be set to

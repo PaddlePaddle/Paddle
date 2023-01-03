@@ -185,7 +185,7 @@ class FleetUtil:
 
               # below is part of model
               emb = my_slot_net(slots, label) # emb can be fc layer of size 1
-              similarity_norm = fluid.layers.sigmoid(fluid.layers.clip(\
+              similarity_norm = fluid.layers.sigmoid(paddle.clip(\
                   emb, min=-15.0, max=15.0), name="similarity_norm")\
               binary_predict = fluid.layers.concat(input=[\
                   paddle.subtract(\
@@ -1374,7 +1374,7 @@ class FleetUtil:
               label = fluid.layers.data(name="click", shape=[-1, 1],\
                   dtype="int64", lod_level=0, append_batch_size=False)
               emb = my_slot_net(slots, label) # emb can be fc layer of size 1
-              similarity_norm = fluid.layers.sigmoid(fluid.layers.clip(\
+              similarity_norm = fluid.layers.sigmoid(paddle.clip(\
                   emb, min=-15.0, max=15.0), name="similarity_norm")\
               binary_predict = fluid.layers.concat(input=[\
                   paddle.subtract(\
@@ -1574,7 +1574,7 @@ class FleetUtil:
               label = fluid.layers.data(name="click", shape=[-1, 1],\
                   dtype="int64", lod_level=0, append_batch_size=False)
               emb = my_slot_net(slots, label) # emb can be fc layer of size 1
-              similarity_norm = fluid.layers.sigmoid(fluid.layers.clip(\
+              similarity_norm = fluid.layers.sigmoid(paddle.clip(\
                   emb, min=-15.0, max=15.0), name="similarity_norm")\
               binary_predict = fluid.layers.concat(input=[\
                   paddle.subtract(\

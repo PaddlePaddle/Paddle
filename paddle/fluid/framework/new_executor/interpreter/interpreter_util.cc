@@ -760,7 +760,7 @@ bool BuildOpFuncList(const platform::Place& place,
                   new phi::Kernel(phi::KernelFactory::Instance().SelectKernel(
                       phi_kernel_name, phi_cpu_kernel_key)));
               if (op_with_kernel->PhiKernel()->IsValid()) {
-                VLOG(6) << "Static mode PrepareImpl - kernel name: "
+                VLOG(6) << "Static graph mode PrepareImpl - kernel name: "
                         << phi_kernel_name
                         << " | kernel key: " << phi_cpu_kernel_key
                         << " | kernel: " << *(op_with_kernel->PhiKernel());

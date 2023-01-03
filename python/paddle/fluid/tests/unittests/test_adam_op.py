@@ -686,7 +686,7 @@ class TestAdamOpV2(unittest.TestCase):
         value = np.arange(26).reshape(2, 13).astype("float32")
         a = fluid.dygraph.to_variable(value)
         linear = paddle.nn.Linear(13, 5)
-        clip = fluid.clip.GradientClipByGlobalNorm(clip_norm=1.0)
+        clip = paddle.nn.ClipGradByGlobalNorm(clip_norm=1.0)
         adam = paddle.optimizer.Adam(
             0.1, parameters=linear.parameters(), grad_clip=clip
         )
@@ -1212,7 +1212,7 @@ class TestMultiTensorAdam(unittest.TestCase):
             np.testing.assert_allclose(
                 params_dygraph1[idx], params_dygraph2[idx], rtol=1e-05
             )
-        # test static mode
+        # test static graph mode
         output_static1 = self._adam_optimize_static(
             place=place, use_amp=use_amp, use_multi_tensor=True
         )

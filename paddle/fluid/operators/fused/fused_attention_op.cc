@@ -520,31 +520,50 @@ class FusedAttentionGradOp : public framework::OperatorWithKernel {
       ctx->SetOutputDim(framework::GradVarName("OutLinearBias"),
                         ctx->GetInputDim("OutLinearBias"));
     }
-    ctx->SetOutputDim(framework::GradVarName("OutLinearW"),
-                      ctx->GetInputDim("OutLinearW"));
-    ctx->SetOutputDim(framework::GradVarName("QKVW"), ctx->GetInputDim("QKVW"));
+    if (ctx->HasOutput(framework::GradVarName("OutLinearW"))) {
+      ctx->SetOutputDim(framework::GradVarName("OutLinearW"),
+                        ctx->GetInputDim("OutLinearW"));
+    }
+    if (ctx->HasOutput(framework::GradVarName("QKVW"))) {
+      ctx->SetOutputDim(framework::GradVarName("QKVW"),
+                        ctx->GetInputDim("QKVW"));
+    }
     if (ctx->HasOutput(framework::GradVarName("QKVBias"))) {
       ctx->SetOutputDim(framework::GradVarName("QKVBias"),
                         ctx->GetInputDim("QKVBias"));
     }
 
     if (ctx->Attrs().Get<bool>("pre_layer_norm") == true) {
-      ctx->SetOutputDim(framework::GradVarName("LnOut"),
-                        ctx->GetInputDim("LnOut"));
+      if (ctx->HasOutput(framework::GradVarName("LnOut"))) {
+        ctx->SetOutputDim(framework::GradVarName("LnOut"),
+                          ctx->GetInputDim("LnOut"));
+      }
     } else {
-      ctx->SetOutputDim(framework::GradVarName("BiasDropoutResidualOut"),
-                        ctx->GetInputDim("BiasDropoutResidualOut"));
+      if (ctx->HasOutput(framework::GradVarName("BiasDropoutResidualOut"))) {
+        ctx->SetOutputDim(framework::GradVarName("BiasDropoutResidualOut"),
+                          ctx->GetInputDim("BiasDropoutResidualOut"));
+      }
     }
-    ctx->SetOutputDim(framework::GradVarName("FMHAOut"),
-                      ctx->GetInputDim("FMHAOut"));
-    ctx->SetOutputDim(framework::GradVarName("QKTVOut"),
-                      ctx->GetInputDim("QKTVOut"));
-    ctx->SetOutputDim(framework::GradVarName("TransposeOut2"),
-                      ctx->GetInputDim("TransposeOut2"));
-    ctx->SetOutputDim(framework::GradVarName("QKOut"),
-                      ctx->GetInputDim("QKOut"));
-    ctx->SetOutputDim(framework::GradVarName("SoftmaxOut"),
-                      ctx->GetInputDim("SoftmaxOut"));
+    if (ctx->HasOutput(framework::GradVarName("FMHAOut"))) {
+      ctx->SetOutputDim(framework::GradVarName("FMHAOut"),
+                        ctx->GetInputDim("FMHAOut"));
+    }
+    if (ctx->HasOutput(framework::GradVarName("QKTVOut"))) {
+      ctx->SetOutputDim(framework::GradVarName("QKTVOut"),
+                        ctx->GetInputDim("QKTVOut"));
+    }
+    if (ctx->HasOutput(framework::GradVarName("TransposeOut2"))) {
+      ctx->SetOutputDim(framework::GradVarName("TransposeOut2"),
+                        ctx->GetInputDim("TransposeOut2"));
+    }
+    if (ctx->HasOutput(framework::GradVarName("QKOut"))) {
+      ctx->SetOutputDim(framework::GradVarName("QKOut"),
+                        ctx->GetInputDim("QKOut"));
+    }
+    if (ctx->HasOutput(framework::GradVarName("SoftmaxOut"))) {
+      ctx->SetOutputDim(framework::GradVarName("SoftmaxOut"),
+                        ctx->GetInputDim("SoftmaxOut"));
+    }
     if (ctx->HasOutput(framework::GradVarName("AttnDropoutOut"))) {
       ctx->SetOutputDim(framework::GradVarName("AttnDropoutOut"),
                         ctx->GetInputDim("AttnDropoutOut"));
@@ -554,14 +573,18 @@ class FusedAttentionGradOp : public framework::OperatorWithKernel {
       ctx->SetOutputDim(framework::GradVarName("SrcMaskOut"),
                         ctx->GetInputDim("SrcMaskOut"));
     }
-    ctx->SetOutputDim(framework::GradVarName("QKVOut"),
-                      ctx->GetInputDim("QKVOut"));
+    if (ctx->HasOutput(framework::GradVarName("QKVOut"))) {
+      ctx->SetOutputDim(framework::GradVarName("QKVOut"),
+                        ctx->GetInputDim("QKVOut"));
+    }
     if (ctx->HasOutput(framework::GradVarName("QKVBiasOut"))) {
       ctx->SetOutputDim(framework::GradVarName("QKVBiasOut"),
                         ctx->GetInputDim("QKVBiasOut"));
     }
-    ctx->SetOutputDim(framework::GradVarName("OutLinearOut"),
-                      ctx->GetInputDim("OutLinearOut"));
+    if (ctx->HasOutput(framework::GradVarName("OutLinearOut"))) {
+      ctx->SetOutputDim(framework::GradVarName("OutLinearOut"),
+                        ctx->GetInputDim("OutLinearOut"));
+    }
   }
 
  protected:

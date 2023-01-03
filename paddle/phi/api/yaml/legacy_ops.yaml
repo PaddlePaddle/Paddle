@@ -1777,18 +1777,6 @@
     func : squared_l2_norm
   backward : squared_l2_norm_grad
 
-- op : squeeze
-  args : (Tensor x, IntArray axis)
-  output : Tensor(out), Tensor(xshape)
-  infer_meta :
-    func : SqueezeWithXShapeInferMeta
-  kernel :
-    func : squeeze_with_xshape
-  inplace : (x -> out)
-  view: (x -> out)
-  intermediate : xshape
-  backward : squeeze_grad
-
 - op : stack
   args : (Tensor[] x, int axis)
   output : Tensor
@@ -2021,18 +2009,6 @@
     func: unpool3d
     data_type: x
   backward: unpool3d_grad
-
-- op : unsqueeze
-  args : (Tensor x, IntArray axis)
-  output : Tensor(out), Tensor(xshape)
-  infer_meta :
-    func : UnsqueezeWithXShapeInferMeta
-  kernel :
-    func : unsqueeze_with_xshape
-  inplace : (x -> out)
-  view: (x -> out)
-  intermediate : xshape
-  backward : unsqueeze_grad
 
 - op : update_loss_scaling_
   args : (Tensor[] x, Tensor found_infinite, Tensor prev_loss_scaling, Tensor in_good_steps, Tensor in_bad_steps, int incr_every_n_steps, int decr_every_n_nan_or_inf, float incr_ratio, float decr_ratio, Scalar stop_update)

@@ -54,6 +54,10 @@ AddOutput({{name | to_opmaker_name}}, "({{typename}}), output {{i}} of {{op_name
 
     .AsIntermediate()
   {%- endif %}
+  {%- if "is_extra" in output and output["is_extra"] %}
+
+    .AsExtra()
+  {%- endif %}
 {%- endmacro %}
 
 {# add attribute, and process default value if needed #}
@@ -115,7 +119,7 @@ KernelSignature {{op["op_name"] | to_pascal_case }}OpArgumentMapping(const Argum
   paddle::small_vector<const char*> attrs;
   {% for attr in op["attrs"]%}
   {% filter indent(2)%}
-  {{get_an_attr(attr)}}
+  {{get_an_attr(attr, kernel_args)}}
   {% endfilter %}
   {% endfor %}
   {{get_output_list(op["outputs"], kernel_args)}};
@@ -170,7 +174,7 @@ KernelSignature {{op["op_name"] | to_pascal_case }}OpArgumentMapping(const Argum
   paddle::small_vector<const char*> attrs;
   {% for attr in op["attrs"]%}
   {% filter indent(2)%}
-  {{get_an_attr(attr)}}
+  {{get_an_attr(attr, kernel_args)}}
   {% endfilter %}
   {% endfor %}
   {{get_output_list(op["outputs"], kernel_args)}};
@@ -209,8 +213,9 @@ paddle::small_vector<const char*> inputs {
 }
 {%- endmacro %}
 
-{% macro get_an_attr(attr) %}{# inline #}
+{% macro get_an_attr(attr, kernel_args) %}{# inline #}
 {% set typename = attr["typename"] %}
+{%- if attr["name"] in kernel_args %}
 {% set name = attr["name"] %}
 {% if typename is scalar %}{# scalar correspond to a dispensable input and an attr in opmaker #}
 attrs.emplace_back(ctx.HasInput("{{attr | to_scalar_tensor_name}}") ? "{{attr | to_scalar_tensor_name}}" : "{{name}}");
@@ -235,6 +240,7 @@ attrs.emplace_back(
   {%- endif %}
 {%- else %}
 attrs.emplace_back("{{name}}");
+{%- endif %}
 {%- endif %}
 {%- endmacro %}
 
@@ -502,10 +508,9 @@ OutputGrad({{name_in_forward_orig | to_opmaker_name}})
     {% set name_in_forward = name[:-5] %}
     {% set name_in_forward_orig = input_orig_names[input_names.index(name_in_forward)]%}
 InputGrad({{name_in_forward_orig | to_opmaker_name}})
-  {%- elif (name | to_input_name) in input_names %}
-    {% set name_in_forward = name | to_input_name %}
-    {% set name_in_forward_orig = input_orig_names[input_names.index(name_in_forward)]%}
-InputGrad({{name | to_input_name | to_opmaker_name}})
+  {%- elif (name) in input_names %}
+    {% set name_in_forward_orig = input_orig_names[input_names.index(name)]%}
+Input({{name  | to_opmaker_name}})
   {%- endif %}
 {%- endmacro %}
 
