@@ -312,9 +312,9 @@ class ResNetHelper:
                         if to_static:
                             paddle.jit.save(resnet, self.model_save_prefix)
                         else:
-                            fluid.dygraph.save_dygraph(
+                            paddle.save(
                                 resnet.state_dict(),
-                                self.dy_state_dict_save_path,
+                                self.dy_state_dict_save_path + '.pdparams',
                             )
                         # avoid dataloader throw abort signaal
                         data_loader._reset()
@@ -327,9 +327,7 @@ class ResNetHelper:
         with fluid.dygraph.guard(place):
             resnet = ResNet()
 
-            model_dict, _ = fluid.dygraph.load_dygraph(
-                self.dy_state_dict_save_path
-            )
+            model_dict = paddle.load(self.dy_state_dict_save_path + '.pdparams')
             resnet.set_dict(model_dict)
             resnet.eval()
 
