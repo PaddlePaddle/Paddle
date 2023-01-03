@@ -167,42 +167,6 @@ class FusedAttentionOpKernel : public framework::OpKernel<T> {
       dim_head = dim_embed / num_head;
     }
 
-    // Create two tmp tensor for weight and bias for reshape.
-    // These two new tensors' holders are same with the ref.
-    // So, no extra mem will declare.
-    // Necessary for removing const qualifier.
-    phi::DenseTensor qkv_weight_tmp;
-    phi::DenseTensor qkv_bias_tmp;
-    // Create a tensor for qkvw transpose out. To save peak memory,
-    // won't save the result for backward. Will recompute this.
-    phi::DenseTensor qkvw_transpose_out;
-    if (transpose_qkv_wb) {
-      // do reshape the qkv weight and bias
-      qkv_weight_tmp = *qkv_weight;
-      qkv_weight_tmp.ShareDataWith(*qkv_weight);
-      qkv_weight_tmp.Resize({dim_embed, 3, num_head, dim_head});
-      auto *qkv_weight_tmp_data = qkv_weight_tmp.data<T>();
-      if (qkv_bias != nullptr) {
-        qkv_bias_tmp = *qkv_bias;
-        qkv_bias_tmp.ShareDataWith(*qkv_bias);
-        qkv_bias_tmp.Resize({3, num_head, dim_head});
-        auto *qkv_bias_tmp_data = qkv_bias_tmp.data<T>();
-      }
-      // declare memory for qkv weight transpose tensor
-      qkvw_transpose_out.set_meta(qkv_weight->meta());
-      qkvw_transpose_out.Resize({3, num_head, dim_head, dim_embed});
-      auto *qkvw_transpose_out_data = dev_ctx.template Alloc<T>(
-          &qkvw_transpose_out, qkvw_transpose_out.numel() * sizeof(T));
-      // do transpose to qkv weight
-      std::vector<int> perm = {1, 2, 3, 0};
-      phi::funcs::TransposeGPUKernelDriver<T>(
-          ctx.cuda_device_context(), qkv_weight_tmp, perm, &qkvw_transpose_out);
-    }
-    const phi::DenseTensor *qkv_weight_real_ptr =
-        transpose_qkv_wb ? &qkvw_transpose_out : qkv_weight;
-    const phi::DenseTensor *qkv_bias_real_ptr =
-        transpose_qkv_wb ? &qkv_bias_tmp : qkv_bias;
-
     auto *x_data = input_x->data<T>();
     auto *qkv_weight_data = qkv_weight->data<T>();
     auto *qkv_bias_data = (qkv_bias == nullptr) ? nullptr : qkv_bias->data<T>();
@@ -275,9 +239,10 @@ class FusedAttentionOpKernel : public framework::OpKernel<T> {
       compute_bias = false;
     }
     // (transA, transB, compute_bias) = (false, true, true)
+    bool transB = transpose_qkv_wb ? false : true;
     auto qkv_compute = AttnMatMul<T>(ctx.cuda_device_context(),
                                      false,
-                                     true,
+                                     transB,
                                      bsz_seq,
                                      output_size,
                                      input_size,
@@ -335,17 +300,15 @@ class FusedAttentionOpKernel : public framework::OpKernel<T> {
                                         ln_out_data,
                                         ln_mean_data,
                                         ln_var_data);
-      qkv_compute.ComputeForward(qkv_weight_real_ptr,
-                                 ln_out,
-                                 qkv_bias_real_ptr,
-                                 qkv_out,
-                                 qkv_bias_out);
+      qkv_compute.ComputeForward(
+          qkv_weight, ln_out, qkv_bias, qkv_out, qkv_bias_out);
     } else {
-      qkv_compute.ComputeForward(qkv_weight_real_ptr,
-                                 input_x,
-                                 qkv_bias_real_ptr,
-                                 qkv_out,
-                                 qkv_bias_out);
+      qkv_compute.ComputeForward(
+          qkv_weight, input_x, qkv_bias, qkv_out, qkv_bias_out);
+    }
+    if (transpose_qkv_wb) {
+      qkv_out->Resize({batch_size, max_seq_len, 3, num_head, dim_head});
+      qkv_bias_out->Resize({batch_size, max_seq_len, 3, num_head, dim_head});
     }
     if (qkv_bias == nullptr) {
       fmha_ref_compute.ComputeForward(*qkv_out,
@@ -629,42 +592,8 @@ class FusedAttentionGradKernel : public framework::OpKernel<T> {
           &d_residual, d_residual.numel() * sizeof(T));
     }
 
-    // create three new Tensors:
-    // one for reshape weight
-    // one for transpose weight
-    // one for the transpose weight grad
-    phi::DenseTensor qkv_weight_tmp;
-    phi::DenseTensor qkvw_transpose_out;
-    phi::DenseTensor d_qkvw_transpose_out;
-    if (transpose_qkv_wb) {
-      if (d_qkv_weight != nullptr) {
-        // reshape the weight
-        qkv_weight_tmp = *qkv_weight;
-        qkv_weight_tmp.ShareDataWith(*qkv_weight);
-        qkv_weight_tmp.Resize({dim_embed, 3, num_head, dim_head});
-        auto *qkv_weight_tmp_data = qkv_weight_tmp.data<T>();
-
-        // transpose the weight
-        qkvw_transpose_out.set_meta(qkv_weight->meta());
-        qkvw_transpose_out.Resize({3, num_head, dim_head, dim_embed});
-        auto *qkvw_transpose_out_data = dev_ctx.template Alloc<T>(
-            &qkvw_transpose_out, qkvw_transpose_out.numel() * sizeof(T));
-        std::vector<int> perm = {1, 2, 3, 0};
-        phi::funcs::TransposeGPUKernelDriver<T>(ctx.cuda_device_context(),
-                                                qkv_weight_tmp,
-                                                perm,
-                                                &qkvw_transpose_out);
-
-        // declare memory for qkvw transpose grad
-        d_qkvw_transpose_out.set_meta(qkv_weight->meta());
-        d_qkvw_transpose_out.Resize({3, num_head, dim_head, dim_embed});
-        auto *d_qkvw_transpose_out_data = dev_ctx.template Alloc<T>(
-            &d_qkvw_transpose_out, d_qkvw_transpose_out.numel() * sizeof(T));
-      }
-    }
-
     bool transA = false;
-    bool transB = true;
+    bool transB = transpose_qkv_wb ? false : true;
     bool compute_qkv_bias = qkv_bias ? true : false;
     auto layer_norm_compute = AttnLayerNorm<T>(
         ctx.cuda_device_context(), epsilon, bsz_seq, dim_embed);
@@ -793,16 +722,13 @@ class FusedAttentionGradKernel : public framework::OpKernel<T> {
                                        d_qkv_out);
     }
 
-    if (transpose_qkv_wb && d_qkv_weight != nullptr) {
-      d_qkv_weight->Resize({dim_embed, 3, num_head, dim_head});
+    if (transpose_qkv_wb) {
+      if (compute_bias) {
+        d_qkv_bias_out->Resize({batch_size, max_seq_len, 3 * hidden_size});
+      } else {
+        d_qkv_out->resize({batch_size, max_seq_len, 3 * hidden_size});
+      }
     }
-    if (transpose_qkv_wb && d_qkv_bias != nullptr) {
-      d_qkv_bias->Resize({3, num_head, dim_head});
-    }
-    const phi::DenseTensor *qkv_weight_real_ptr =
-        transpose_qkv_wb ? &qkvw_transpose_out : qkv_weight;
-    phi::DenseTensor *d_qkv_weight_real_ptr =
-        transpose_qkv_wb ? &d_qkvw_transpose_out : d_qkv_weight;
 
     if (pre_layer_norm) {
       auto *ln_mean = ctx.Input<phi::DenseTensor>("LnMean");
@@ -832,18 +758,14 @@ class FusedAttentionGradKernel : public framework::OpKernel<T> {
                                            d_ln_bias->numel() * sizeof(U)));
       if (qkv_bias != nullptr) {
         qkv_compute.ComputeBackward(ln_out,
-                                    qkv_weight_real_ptr,
+                                    qkv_weight,
                                     d_qkv_bias_out,
                                     d_ln_out,
-                                    d_qkv_weight_real_ptr,
+                                    d_qkv_weight,
                                     d_qkv_bias);
       } else {
-        qkv_compute.ComputeBackward(ln_out,
-                                    qkv_weight_real_ptr,
-                                    d_qkv_out,
-                                    d_ln_out,
-                                    d_qkv_weight_real_ptr,
-                                    d_qkv_bias);
+        qkv_compute.ComputeBackward(
+            ln_out, qkv_weight, d_qkv_out, d_ln_out, d_qkv_weight, d_qkv_bias);
       }
       // tensor model parallel
       AllReduce<T>(*d_ln_out, ring_id, ctx.cuda_device_context());
@@ -857,32 +779,14 @@ class FusedAttentionGradKernel : public framework::OpKernel<T> {
                                          d_ln_bias_data);
     } else {
       if (qkv_bias != nullptr) {
-        qkv_compute.ComputeBackward(input_x,
-                                    qkv_weight_real_ptr,
-                                    d_qkv_bias_out,
-                                    d_x,
-                                    d_qkv_weight_real_ptr,
-                                    d_qkv_bias);
+        qkv_compute.ComputeBackward(
+            input_x, qkv_weight, d_qkv_bias_out, d_x, d_qkv_weight, d_qkv_bias);
       } else {
-        qkv_compute.ComputeBackward(input_x,
-                                    qkv_weight_real_ptr,
-                                    d_qkv_out,
-                                    d_x,
-                                    d_qkv_weight_real_ptr,
-                                    d_qkv_bias);
+        qkv_compute.ComputeBackward(
+            input_x, qkv_weight, d_qkv_out, d_x, d_qkv_weight, d_qkv_bias);
       }
       // tensor model parallel
       AllReduce<T>(*d_x, ring_id, ctx.cuda_device_context());
-    }
-
-    if (transpose_qkv_wb && d_qkv_weight != nullptr) {
-      std::vector<int> perm = {3, 0, 1, 2};
-      phi::funcs::TransposeGPUKernelDriver<T>(
-          ctx.cuda_device_context(), d_qkvw_transpose_out, perm, d_qkv_weight);
-      d_qkv_weight->Resize({dim_embed, 3 * dim_embed});
-    }
-    if (transpose_qkv_wb && d_qkv_bias != nullptr) {
-      d_qkv_bias->Resize({3 * dim_embed});
     }
 
     if (add_residual) {

@@ -211,12 +211,13 @@ class FusedAttentionOp : public framework::OperatorWithKernel {
       ctx->SetOutputDim("TransposeOut2",
                         {y_dim[0], x_dim[0], y_dim[1], x_dim[1], y_dim[2]});
     } else {
-      // [batch_size, seq_len, 3, num_head, head_size]
-      ctx->SetOutputDim("QKVOut", {x_dim[0], x_dim[1], 3, num_heads, dim_head});
+      // [batch_size, seq_len, 3 * hidden_size]
+      ctx->SetOutputDim("QKVOut",
+                        {x_dim[0], x_dim[1], 3 * num_heads * dim_head});
 
       if (ctx->HasInput("QKVBias")) {
         ctx->SetOutputDim("QKVBiasOut",
-                          {x_dim[0], x_dim[1], 3, num_heads, dim_head});
+                          {x_dim[0], x_dim[1], 3 * num_heads * dim_head});
       }
       // [3, batch_size, num_head, seq_len, head_size]
       ctx->SetOutputDim("TransposeOut2",
