@@ -700,18 +700,9 @@ void SearchAllSubgraphs(Graph* graph, bool is_inference_stage) {
     if (graph->Has(kSkipGcVarNames)) {
       const auto& all_skip_gc_vars =
           graph->Get<std::unordered_set<std::string>>(kSkipGcVarNames);
-      const auto& sub_input_vars =
-          subgraph->Get<std::vector<std::string>>(kInputVars);
-      const auto& sub_output_vars =
-          subgraph->Get<std::vector<std::string>>(kOutputVars);
       auto& sub_skip_gc_vars =
           subgraph->GetOrInit<std::unordered_set<std::string>>(kSkipGcVarNames);
-      for (auto&& var_name : sub_input_vars) {
-        if (all_skip_gc_vars.count(var_name)) sub_skip_gc_vars.insert(var_name);
-      }
-      for (auto&& var_name : sub_output_vars) {
-        if (all_skip_gc_vars.count(var_name)) sub_skip_gc_vars.insert(var_name);
-      }
+      sub_skip_gc_vars = all_skip_gc_vars;
     }
     auto compilation_key = cinn_compiler->AddGraph(std::move(subgraph));
     VLOG(4) << "Compilation Key:\n"
