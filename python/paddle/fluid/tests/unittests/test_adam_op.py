@@ -788,9 +788,14 @@ class TestAdamOptimizer(unittest.TestCase):
                 sum = paddle.add(a, b)
                 z = paddle.pow(sum, 2.0)
 
-                fc_1 = fluid.layers.fc(input=z, size=2, param_attr=weight_attr1)
-                prediction = fluid.layers.fc(
-                    input=fc_1, size=2, param_attr=weight_attr2, act='softmax'
+                fc_1 = paddle.static.nn.fc(
+                    x=z, size=2, weight_attr=weight_attr1
+                )
+                prediction = paddle.static.nn.fc(
+                    x=fc_1,
+                    size=2,
+                    weight_attr=weight_attr2,
+                    activation='softmax',
                 )
 
                 cost = paddle.nn.functional.cross_entropy(
@@ -930,9 +935,7 @@ class TestAdamOptimizer(unittest.TestCase):
         with fluid.program_guard(main):
             x = fluid.data(name='x', shape=[None, 13], dtype='float32')
             y = fluid.data(name='y', shape=[None, 1], dtype='float32')
-            y_predict = fluid.layers.fc(
-                input=x, size=1, act=None, param_attr=weight_attr
-            )
+            y_predict = paddle.static.nn.fc(x, size=1, weight_attr=weight_attr)
             cost = paddle.nn.functional.square_error_cost(
                 input=y_predict, label=y
             )
@@ -955,8 +958,8 @@ class TestAdamOptimizer(unittest.TestCase):
         sum = paddle.add(a, b)
         z = paddle.pow(sum, 2.0)
 
-        fc_1 = fluid.layers.fc(input=z, size=128)
-        prediction = fluid.layers.fc(input=fc_1, size=2, act='softmax')
+        fc_1 = paddle.static.nn.fc(x=z, size=128)
+        prediction = paddle.static.nn.fc(x=fc_1, size=2, activation='softmax')
 
         cost = paddle.nn.functional.cross_entropy(
             input=prediction, label=label, reduction='none', use_softmax=False

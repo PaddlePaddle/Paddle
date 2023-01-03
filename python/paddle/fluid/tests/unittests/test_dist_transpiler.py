@@ -39,11 +39,10 @@ class TranspilerTest(unittest.TestCase):
 
     def net_conf(self):
         x = fluid.layers.data(name='x', shape=[1000], dtype='float32')
-        y_predict = fluid.layers.fc(
-            input=x,
+        y_predict = paddle.static.nn.fc(
+            x,
             size=1000,
-            act=None,
-            param_attr=fluid.ParamAttr(name='fc_w'),
+            weight_attr=fluid.ParamAttr(name='fc_w'),
             bias_attr=fluid.ParamAttr(name='fc_b'),
         )
         y = fluid.layers.data(name='y', shape=[1], dtype='float32')
@@ -294,11 +293,10 @@ class TestNoSliceVar(TranspilerTest):
 class TestLRDecay(TranspilerTest):
     def net_conf(self):
         x = fluid.layers.data(name='x', shape=[1000], dtype='float32')
-        y_predict = fluid.layers.fc(
-            input=x,
+        y_predict = paddle.static.nn.fc(
+            x,
             size=1000,
-            act=None,
-            param_attr=fluid.ParamAttr(name='fc_w'),
+            weight_attr=fluid.ParamAttr(name='fc_w'),
             bias_attr=fluid.ParamAttr(name='fc_b'),
         )
         y = fluid.layers.data(name='y', shape=[1], dtype='float32')
@@ -469,11 +467,10 @@ class TestFakeInit(TranspilerTest):
 class TestDecayedAdagrad(TranspilerTest):
     def net_conf(self):
         x = fluid.layers.data(name='x', shape=[1000], dtype='float32')
-        y_predict = fluid.layers.fc(
-            input=x,
+        y_predict = paddle.static.nn.fc(
+            x,
             size=1000,
-            act=None,
-            param_attr=fluid.ParamAttr(name='fc_w'),
+            weight_attr=fluid.ParamAttr(name='fc_w'),
             bias_attr=fluid.ParamAttr(name='fc_b'),
         )
         y = fluid.layers.data(name='y', shape=[1], dtype='float32')
@@ -490,11 +487,10 @@ class TestDecayedAdagrad(TranspilerTest):
 class TestFtrl(TranspilerTest):
     def net_conf(self):
         x = fluid.layers.data(name='x', shape=[1000], dtype='float32')
-        y_predict = fluid.layers.fc(
-            input=x,
+        y_predict = paddle.static.nn.fc(
+            x,
             size=1000,
-            act=None,
-            param_attr=fluid.ParamAttr(name='fc_w'),
+            weight_attr=fluid.ParamAttr(name='fc_w'),
             bias_attr=fluid.ParamAttr(name='fc_b'),
         )
         y = fluid.layers.data(name='y', shape=[1], dtype='float32')
@@ -511,11 +507,10 @@ class TestFtrl(TranspilerTest):
 class TestLRDecayConditional(TranspilerTest):
     def net_conf(self):
         x = fluid.layers.data(name='x', shape=[1000], dtype='float32')
-        y_predict = fluid.layers.fc(
-            input=x,
+        y_predict = paddle.static.nn.fc(
+            x,
             size=1000,
-            act=None,
-            param_attr=fluid.ParamAttr(name='fc_w'),
+            weight_attr=fluid.ParamAttr(name='fc_w'),
             bias_attr=fluid.ParamAttr(name='fc_b'),
         )
         y = fluid.layers.data(name='y', shape=[1], dtype='float32')
@@ -575,11 +570,10 @@ class TestLRDecayConditional(TranspilerTest):
 class TestL2Decay(TranspilerTest):
     def net_conf(self):
         x = fluid.layers.data(name='x', shape=[1000], dtype='float32')
-        y_predict = fluid.layers.fc(
-            input=x,
+        y_predict = paddle.static.nn.fc(
+            x,
             size=1000,
-            act=None,
-            param_attr=fluid.ParamAttr(
+            weight_attr=fluid.ParamAttr(
                 name='fc_w', regularizer=fluid.regularizer.L2Decay()
             ),
             bias_attr=fluid.ParamAttr(name='fc_b'),
@@ -614,11 +608,10 @@ class TestL2Decay(TranspilerTest):
 class TestL2DecayWithPiecewise(TranspilerTest):
     def net_conf(self):
         x = fluid.layers.data(name='x', shape=[1000], dtype='float32')
-        y_predict = fluid.layers.fc(
-            input=x,
+        y_predict = paddle.static.nn.fc(
+            x,
             size=1000,
-            act=None,
-            param_attr=fluid.ParamAttr(name='fc_w'),
+            weight_attr=fluid.ParamAttr(name='fc_w'),
             bias_attr=fluid.ParamAttr(name='fc_b'),
         )
         y = fluid.layers.data(name='y', shape=[1], dtype='float32')
@@ -690,11 +683,10 @@ class TestEmptyPserverOptimizeBlocks(TranspilerTest):
     def net_conf(self):
         x = fluid.layers.data(name='x', shape=[1000], dtype='float32')
         # only one parameter
-        y_predict = fluid.layers.fc(
-            input=x,
+        y_predict = paddle.static.nn.fc(
+            x,
             size=1000,
-            act=None,
-            param_attr=fluid.ParamAttr(name='fc_w'),
+            weight_attr=fluid.ParamAttr(name='fc_w'),
             bias_attr=False,
         )
         y = fluid.layers.data(name='y', shape=[1], dtype='float32')
@@ -746,11 +738,10 @@ class TestDistLookupTableBase(TranspilerTest):
         fc0 = fluid.layers.concat(
             input=[title_emb, brand_emb, profile_emb], axis=1
         )
-        predict = fluid.layers.fc(
-            input=fc0,
+        predict = paddle.static.nn.fc(
+            x=fc0,
             size=2,
-            act=None,
-            param_attr=fluid.ParamAttr(name='fc_w'),
+            weight_attr=fluid.ParamAttr(name='fc_w'),
             bias_attr=fluid.ParamAttr(name='fc_b'),
         )
 
@@ -1134,11 +1125,10 @@ class TestDistArgsInProgram(TestDistLookupTableBase):
 class TestRMSPropOptimizer(TranspilerTest):
     def net_conf(self):
         x = fluid.layers.data(name='x', shape=[1000], dtype='float32')
-        y_predict = fluid.layers.fc(
-            input=x,
+        y_predict = paddle.static.nn.fc(
+            x,
             size=1000,
-            act=None,
-            param_attr=fluid.ParamAttr(name='fc_w'),
+            weight_attr=fluid.ParamAttr(name='fc_w'),
             bias_attr=fluid.ParamAttr(name='fc_b'),
         )
         y = fluid.layers.data(name='y', shape=[1], dtype='float32')
@@ -1167,11 +1157,10 @@ class TestRMSPropOptimizer(TranspilerTest):
 class TestLoadSliceVar(TranspilerTest):
     def net_conf(self):
         x = fluid.layers.data(name='x', shape=[1000], dtype='float32')
-        y_predict = fluid.layers.fc(
-            input=x,
+        y_predict = paddle.static.nn.fc(
+            x,
             size=1000,
-            act=None,
-            param_attr=fluid.ParamAttr(name='fc_w'),
+            weight_attr=fluid.ParamAttr(name='fc_w'),
             bias_attr=fluid.ParamAttr(name='fc_b'),
         )
         y = fluid.layers.data(name='y', shape=[1], dtype='float32')

@@ -75,7 +75,7 @@ def cross_entropy_grad(logits, labels, bwd_dout):
 def simple_fc_net(img, label, use_py_func_op):
     hidden = img
     for idx in range(4):
-        hidden = fluid.layers.fc(
+        hidden = paddle.static.nn.fc(
             hidden,
             size=200,
             bias_attr=fluid.ParamAttr(
@@ -102,7 +102,7 @@ def simple_fc_net(img, label, use_py_func_op):
                 skip_vars_in_backward_input=hidden,
             )
 
-    prediction = fluid.layers.fc(hidden, size=10, act='softmax')
+    prediction = paddle.static.nn.fc(hidden, size=10, activation='softmax')
     if not use_py_func_op:
         loss = paddle.nn.functional.cross_entropy(
             input=prediction, label=label, reduction='none', use_softmax=False
