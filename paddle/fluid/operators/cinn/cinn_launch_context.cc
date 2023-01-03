@@ -41,6 +41,7 @@
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/string/printf.h"
 #include "paddle/phi/core/ddim.h"
+#include "paddle/utils/string/string_helper.h"
 
 namespace paddle {
 namespace operators::details {
@@ -100,6 +101,8 @@ CinnLaunchContext::CinnLaunchContext(const framework::ir::Graph& graph,
     const auto& skip_gc_vars =
         graph.Get<std::unordered_set<std::string>>(kSkipGcVarNames);
     skip_gc_vars_.insert(skip_gc_vars.begin(), skip_gc_vars.end());
+    VLOG(4) << "Append skip_gc_vars:["
+            << string::join_strings(skip_gc_vars, ',') << "]";
   }
 
   // collect variables name list to be skipped in GC
@@ -110,6 +113,7 @@ CinnLaunchContext::CinnLaunchContext(const framework::ir::Graph& graph,
     if (!outer_varinfo.count(var_name)) {
       skip_eager_vars_.emplace_back(var_name);
       skip_gc_vars_.insert(var_name);
+      VLOG(4) << "Append a skip_gc_var:" << var_name;
     }
   };
   std::for_each(
