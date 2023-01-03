@@ -36,17 +36,14 @@ __global__ void RoformerKernel(const T *inputact,
   const int tnh = 3*n*h;
   const int _index = blockIdx.x * tnh + threadIdx.x;
   int right_index = blockIdx.x * tnh + tnh;
-  //intput3[0~b];
-  int base = input3[0];
-  int cu_index = 0;
+  //intput3[0,b];
+  int base = 0;
   for (int i = 1; i <= b; i++) {
     if (blockIdx.x < input3[i]) {
-      cu_index = i;
       break;
     }
     base = input3[i];
   }
-  //const int seq_index = blockIdx.x % s;
   const int seq_index = blockIdx.x - base;
   for (int index = _index; index < right_index; index += blockDim.x) {
     if (index >= nElement) return;
@@ -184,7 +181,6 @@ int32_t RoformerPlugin::enqueue(const nvinfer1::PluginTensorDesc *inputDesc,
 
   int b = inputDesc[3].dims.d[0] - 1;
   int tot_s = inputDesc[0].dims.d[0];
-  int offset = 0;
 
   int grid = tot_s;
   int block = 512;
