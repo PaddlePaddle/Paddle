@@ -84,7 +84,7 @@ def gen_empty_input():
 class API_TestStaticCond(unittest.TestCase):
     def test_out(self):
         paddle.enable_static()
-        # test calling results of 'cond' in static mode
+        # test calling results of 'cond' in static graph mode
         x_list_n_n, x_list_m_n = gen_input()
         test_static_assert_true(self, x_list_n_n, p_list_n_n + p_list_m_n)
         test_static_assert_true(self, x_list_m_n, p_list_m_n)
@@ -117,7 +117,7 @@ class TestCondAPIError(unittest.TestCase):
 
     def test_static_api_error(self):
         paddle.enable_static()
-        # test raising errors when 'cond' is called in static mode
+        # test raising errors when 'cond' is called in static graph mode
         p_list_error = ('f ro', 'fre', 'NUC', -1.6, 0, 5)
         x_list_n_n, x_list_m_n = gen_input()
         for p in p_list_error:
@@ -132,7 +132,7 @@ class TestCondAPIError(unittest.TestCase):
                     x_data = static.data("X", shape=x.shape, dtype=x.dtype)
                     self.assertRaises(ValueError, paddle.linalg.cond, x_data, p)
 
-    # it's not supported when input is an empty tensor in static mode
+    # it's not supported when input is an empty tensor in static graph mode
     def test_static_empty_input_error(self):
         paddle.enable_static()
 

@@ -17,6 +17,7 @@
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/funcs/embedding_util.h"
 
 namespace phi {
 
@@ -80,15 +81,18 @@ void EmbeddingSparseGradKernel(const Context& ctx,
                                int64_t padding_idx,
                                SelectedRows* weight_grad) {
   DDim table_dim = weight.dims();
+  auto xpu_place = ctx.GetPlace();
 
   xpu::ctx_guard RAII_GUARD(ctx.x_context());
-  std::vector<int64_t> ids(input.numel());
+  std::vector<int64_t> ids;
+  DenseTensor ids_cpu;
+  ids_cpu.Resize(input.dims());
+  ctx.template HostAlloc(
+      &ids_cpu, input.dtype(), input.numel() * sizeof(int64_t));
   if (input.dtype() == phi::DataType::INT64) {
-    paddle::memory::Copy(CPUPlace(),
-                         ids.data(),
-                         input.place(),
-                         input.data<int64_t>(),
-                         sizeof(int64_t) * input.numel());
+    phi::Copy(ctx, input, CPUPlace(), false, &ids_cpu);
+
+    ids = CopyIdsToVector<int64_t, int64_t>(ids_cpu);
 
   } else if (input.dtype() == phi::DataType::INT32) {
     int64_t* id_t = RAII_GUARD.alloc_l3_or_gm<int64_t>(input.numel());
@@ -96,10 +100,11 @@ void EmbeddingSparseGradKernel(const Context& ctx,
         ctx.x_context(), input.data<int>(), id_t, input.numel());
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
     paddle::memory::Copy(CPUPlace(),
-                         ids.data(),
+                         ids_cpu.data(),
                          input.place(),
                          id_t,
                          sizeof(int64_t) * input.numel());
+    ids = CopyIdsToVector<int, int64_t>(ids_cpu);
   } else {
     PADDLE_THROW(phi::errors::Unimplemented(
         "emebdding input only support int32 and int64"));
@@ -115,7 +120,7 @@ void EmbeddingSparseGradKernel(const Context& ctx,
   auto* d_table_value = d_table->mutable_value();
   d_table_value->Resize({ids_num, table_dim[1]});
 
-  ctx.template Alloc<T>(d_table_value);
+  ctx.template HostAlloc<T>(d_table_value);
 
   d_table->set_height(table_dim[0]);
 
@@ -134,9 +139,12 @@ void EmbeddingSparseGradKernel(const Context& ctx,
                         "output@Grad's shape = [%s].",
                         d_table_value->dims(),
                         d_output_dims_2d));
-  int r = xpu::copy<T>(
-      ctx.x_context(), d_output_data, d_table_data, d_output->numel());
-  PADDLE_ENFORCE_XDNN_SUCCESS(r, "copy");
+
+  paddle::memory::Copy(CPUPlace(),
+                       d_table_data,
+                       xpu_place,
+                       d_output_data,
+                       d_output->numel() * sizeof(T));
 }
 }  // namespace phi
 

@@ -12,9 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
 import paddle.distributed.communication.stream as stream
-import paddle.fluid.framework as framework
 
 
 def send(tensor, dst=0, group=None, sync_op=True):
@@ -48,27 +46,8 @@ def send(tensor, dst=0, group=None, sync_op=True):
             print(data)
             # [7, 8, 9] (2 GPUs)
     """
-    if not framework._in_legacy_dygraph():
-        return stream.send(
-            tensor, dst=dst, group=group, sync_op=sync_op, use_calc_stream=False
-        )
-
-    # code below will be removed after we remove the old dygraph
-    if group is not None and not group.is_member():
-        return
-    use_calc_stream = sync_op
-    gdst = dst if group is None else group.get_group_rank(dst)
-    assert gdst >= 0, "dst rank out of group, need global rank"
-    ring_id = 0 if group is None else group.id
-
-    return paddle._legacy_C_ops.send_v2(
-        tensor,
-        'use_calc_stream',
-        use_calc_stream,
-        'ring_id',
-        ring_id,
-        'peer',
-        gdst,
+    return stream.send(
+        tensor, dst=dst, group=group, sync_op=sync_op, use_calc_stream=False
     )
 
 

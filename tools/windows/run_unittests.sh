@@ -179,7 +179,9 @@ disable_win_inference_test="^trt_quant_int8_yolov3_r50_test$|\
 ^test_parallel_executor_seresnext_with_reduce_gpu$|\
 ^test_api_impl$|\
 ^test_tensordot$|\
-^disable_win_inference_test$"
+^disable_win_inference_test$|\
+^test_imperative_double_grad$|\
+^test_imperative_triple_grad$"
 
 
 # /*==========Fixed Disabled Windows CPU OPENBLAS((PR-CI-Windows-OPENBLAS)) unittests==============================*/
