@@ -1958,7 +1958,8 @@ def set_recompute_segments(model, losses, strategy, program):
         ):
             ckpts = model.gpt.checkpoints
             # last recompute segment is not need to recompute
-            ckpts.pop()
+            if len(ckpts) > 2:
+                ckpts.pop()
         else:
             ckpts = recompute.checkpoints
     else:
