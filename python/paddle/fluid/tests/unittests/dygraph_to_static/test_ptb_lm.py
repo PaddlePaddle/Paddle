@@ -52,20 +52,20 @@ class SimpleLSTMRNN(fluid.Layer):
         for i in range(self._num_layers):
             weight_1 = self.create_parameter(
                 attr=fluid.ParamAttr(
-                    initializer=fluid.initializer.UniformInitializer(
+                    initializer=paddle.nn.initializer.UniformInitializer(
                         low=-self._init_scale, high=self._init_scale
                     )
                 ),
                 shape=[self._hidden_size * 2, self._hidden_size * 4],
                 dtype="float32",
-                default_initializer=fluid.initializer.UniformInitializer(
+                default_initializer=paddle.nn.initializer.UniformInitializer(
                     low=-self._init_scale, high=self._init_scale
                 ),
             )
             self.weight_1_arr.append(self.add_parameter('w_%d' % i, weight_1))
             bias_1 = self.create_parameter(
                 attr=fluid.ParamAttr(
-                    initializer=fluid.initializer.UniformInitializer(
+                    initializer=paddle.nn.initializer.UniformInitializer(
                         low=-self._init_scale, high=self._init_scale
                     )
                 ),
@@ -161,7 +161,7 @@ class PtbModel(fluid.Layer):
             sparse=False,
             weight_attr=fluid.ParamAttr(
                 name='embedding_para',
-                initializer=fluid.initializer.UniformInitializer(
+                initializer=paddle.nn.initializer.UniformInitializer(
                     low=-init_scale, high=init_scale
                 ),
             ),
@@ -170,7 +170,7 @@ class PtbModel(fluid.Layer):
             attr=fluid.ParamAttr(),
             shape=[self.hidden_size, self.vocab_size],
             dtype="float32",
-            default_initializer=fluid.initializer.UniformInitializer(
+            default_initializer=paddle.nn.initializer.UniformInitializer(
                 low=-self.init_scale, high=self.init_scale
             ),
         )
@@ -178,7 +178,7 @@ class PtbModel(fluid.Layer):
             attr=fluid.ParamAttr(),
             shape=[self.vocab_size],
             dtype="float32",
-            default_initializer=fluid.initializer.UniformInitializer(
+            default_initializer=paddle.nn.initializer.UniformInitializer(
                 low=-self.init_scale, high=self.init_scale
             ),
         )

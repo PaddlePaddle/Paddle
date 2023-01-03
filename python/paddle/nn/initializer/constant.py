@@ -13,7 +13,7 @@
 # limitations under the License.
 
 # TODO: define the initializers of Constant in neural network
-from ...fluid.initializer import ConstantInitializer
+from .common import ConstantInitializer
 
 __all__ = []
 

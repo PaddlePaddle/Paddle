@@ -142,7 +142,9 @@ class TestLayer(LayerTest):
                 append_batch_size=False,
             )
             linear = paddle.nn.Linear(
-                32, 4, bias_attr=fluid.initializer.ConstantInitializer(value=1)
+                32,
+                4,
+                bias_attr=paddle.nn.initializer.ConstantInitializer(value=1),
             )
             ret = linear(t)
             static_ret = self.get_static_graph_result(
@@ -151,7 +153,9 @@ class TestLayer(LayerTest):
         with self.dynamic_graph():
             t = base.to_variable(inp)
             linear = paddle.nn.Linear(
-                32, 4, bias_attr=fluid.initializer.ConstantInitializer(value=1)
+                32,
+                4,
+                bias_attr=paddle.nn.initializer.ConstantInitializer(value=1),
             )
             dy_ret = linear(t)
             dy_ret_value = dy_ret.numpy()
@@ -166,7 +170,9 @@ class TestLayer(LayerTest):
                 linear = paddle.nn.Linear(
                     32,
                     4,
-                    bias_attr=fluid.initializer.ConstantInitializer(value=1),
+                    bias_attr=paddle.nn.initializer.ConstantInitializer(
+                        value=1
+                    ),
                 )
                 linear_ret1 = linear(inp)
 
@@ -179,7 +185,9 @@ class TestLayer(LayerTest):
                 linear = paddle.nn.Linear(
                     32,
                     4,
-                    bias_attr=fluid.initializer.ConstantInitializer(value=1),
+                    bias_attr=paddle.nn.initializer.ConstantInitializer(
+                        value=1
+                    ),
                 )
                 linear_ret2 = linear(inp)
 
@@ -255,7 +263,9 @@ class TestLayer(LayerTest):
                 linear = paddle.nn.Linear(
                     32,
                     4,
-                    bias_attr=fluid.initializer.ConstantInitializer(value=1),
+                    bias_attr=paddle.nn.initializer.ConstantInitializer(
+                        value=1
+                    ),
                 )
                 linear_ret1 = linear(inp)
 
@@ -268,7 +278,9 @@ class TestLayer(LayerTest):
                 linear = paddle.nn.Linear(
                     32,
                     4,
-                    bias_attr=fluid.initializer.ConstantInitializer(value=1),
+                    bias_attr=paddle.nn.initializer.ConstantInitializer(
+                        value=1
+                    ),
                 )
                 linear_ret2 = linear(inp)
 
@@ -387,7 +399,7 @@ class TestLayer(LayerTest):
                 num_filters=10,
                 filter_size=27,
                 act='sigmoid',
-                bias_attr=fluid.initializer.ConstantInitializer(value=1),
+                bias_attr=paddle.nn.initializer.ConstantInitializer(value=1),
             )
             static_rlt = self.get_static_graph_result(
                 feed={'pixel': inp_np}, fetch_list=[out]
@@ -398,7 +410,7 @@ class TestLayer(LayerTest):
                 3,
                 10,
                 27,
-                bias_attr=fluid.initializer.ConstantInitializer(value=1),
+                bias_attr=paddle.nn.initializer.ConstantInitializer(value=1),
             )
             out = conv2d_transpose(img)
             out = paddle.nn.functional.sigmoid(out)
@@ -410,7 +422,7 @@ class TestLayer(LayerTest):
                 3,
                 10,
                 27,
-                bias_attr=fluid.initializer.ConstantInitializer(value=1),
+                bias_attr=paddle.nn.initializer.ConstantInitializer(value=1),
             )
             dy_rlt = conv2d_transpose(base.to_variable(inp_np))
             dy_rlt = paddle.nn.functional.sigmoid(dy_rlt)
@@ -496,7 +508,7 @@ class TestLayer(LayerTest):
                 data_x,
                 data_y,
                 6,
-                bias_attr=fluid.initializer.ConstantInitializer(value=1),
+                bias_attr=paddle.nn.initializer.ConstantInitializer(value=1),
                 act='sigmoid',
             )
 
@@ -515,7 +527,7 @@ class TestLayer(LayerTest):
                 3,
                 3,
                 6,
-                bias_attr=fluid.initializer.ConstantInitializer(value=1),
+                bias_attr=paddle.nn.initializer.ConstantInitializer(value=1),
             )
             out = btp(data_x, data_y)
             out = paddle.nn.functional.sigmoid(out)
@@ -527,7 +539,7 @@ class TestLayer(LayerTest):
                 3,
                 3,
                 6,
-                bias_attr=fluid.initializer.ConstantInitializer(value=1),
+                bias_attr=paddle.nn.initializer.ConstantInitializer(value=1),
             )
             dy_rlt = btp(base.to_variable(inp_np_x), base.to_variable(inp_np_y))
             dy_rlt = paddle.nn.functional.sigmoid(dy_rlt)
@@ -794,7 +806,7 @@ class TestLayer(LayerTest):
                 input=X,
                 groups=2,
                 param_attr=fluid.initializer.Uniform(low=-0.5, high=0.5),
-                bias_attr=fluid.initializer.ConstantInitializer(value=1),
+                bias_attr=paddle.nn.initializer.ConstantInitializer(value=1),
             )
             static_ret = self.get_static_graph_result(
                 feed={
@@ -818,7 +830,7 @@ class TestLayer(LayerTest):
                 num_channels=shape[1],
                 num_groups=2,
                 weight_attr=fluid.initializer.Uniform(low=-0.5, high=0.5),
-                bias_attr=fluid.initializer.ConstantInitializer(value=1),
+                bias_attr=paddle.nn.initializer.ConstantInitializer(value=1),
             )
             ret = groupNorm(X)
             static_ret2 = self.get_static_graph_result(
@@ -836,7 +848,7 @@ class TestLayer(LayerTest):
                 num_channels=shape[1],
                 num_groups=2,
                 weight_attr=fluid.initializer.Uniform(low=-0.5, high=0.5),
-                bias_attr=fluid.initializer.ConstantInitializer(value=1),
+                bias_attr=paddle.nn.initializer.ConstantInitializer(value=1),
             )
             dy_ret = groupNorm(base.to_variable(input))
             dy_rlt_value = dy_ret.numpy()

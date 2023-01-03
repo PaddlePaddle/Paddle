@@ -67,7 +67,7 @@ class TestConstantInitializer(unittest.TestCase):
                 shape=[5, 10],
                 lod_level=0,
                 name="param",
-                initializer=initializer.ConstantInitializer(),
+                initializer=paddle.nn.initializer.ConstantInitializer(),
             )
         num_ops = 1
         self.assertEqual(len(block.ops), num_ops)
@@ -86,7 +86,7 @@ class TestConstantInitializer(unittest.TestCase):
                 shape=[5, 10],
                 lod_level=0,
                 name="param",
-                initializer=initializer.ConstantInitializer(2.3),
+                initializer=paddle.nn.initializer.ConstantInitializer(2.3),
             )
         num_ops = 1
         self.assertEqual(len(block.ops), num_ops)
@@ -119,7 +119,7 @@ class TestUniformInitializer(unittest.TestCase):
                 shape=[5, 10],
                 lod_level=0,
                 name="param",
-                initializer=initializer.UniformInitializer(),
+                initializer=paddle.nn.initializer.UniformInitializer(),
             )
         num_ops = 2 if dtype == "float16" else 1
         self.assertEqual(len(block.ops), num_ops)
@@ -141,14 +141,14 @@ class TestUniformInitializer(unittest.TestCase):
                 shape=[5, 10],
                 lod_level=0,
                 name="param1",
-                initializer=initializer.UniformInitializer(),
+                initializer=paddle.nn.initializer.UniformInitializer(),
             )
             block.create_parameter(
                 dtype="float32",
                 shape=[5, 10],
                 lod_level=0,
                 name="param2",
-                initializer=initializer.UniformInitializer(seed=456),
+                initializer=paddle.nn.initializer.UniformInitializer(seed=456),
             )
         init_op = block.ops[1]
         self.assertEqual(init_op.attr("seed"), 456)
@@ -165,7 +165,9 @@ class TestUniformInitializer(unittest.TestCase):
                 shape=[5, 10],
                 lod_level=0,
                 name="param",
-                initializer=initializer.UniformInitializer(-4.2, 3.1, 123),
+                initializer=paddle.nn.initializer.UniformInitializer(
+                    -4.2, 3.1, 123
+                ),
             )
         num_ops = 2 if dtype == "float16" else 1
         self.assertEqual(len(block.ops), num_ops)
@@ -186,7 +188,9 @@ class TestUniformInitializer(unittest.TestCase):
                 shape=[5, 10],
                 lod_level=0,
                 name="param",
-                initializer=initializer.UniformInitializer(-4.2, float(i), 123),
+                initializer=paddle.nn.initializer.UniformInitializer(
+                    -4.2, float(i), 123
+                ),
             )
         num_ops = 2 if dtype == "float16" else 1
         self.assertEqual(len(block.ops), num_ops)

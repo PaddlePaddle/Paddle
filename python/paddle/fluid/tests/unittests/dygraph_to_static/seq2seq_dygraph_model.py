@@ -26,7 +26,7 @@ from paddle.nn import Embedding
 
 INF = 1.0 * 1e5
 alpha = 0.6
-uniform_initializer = lambda x: fluid.initializer.UniformInitializer(
+uniform_initializer = lambda x: paddle.nn.initializer.UniformInitializer(
     low=-x, high=x
 )
 zero_constant = fluid.initializer.Constant(0.0)

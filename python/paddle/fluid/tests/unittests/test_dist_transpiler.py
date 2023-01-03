@@ -1336,7 +1336,7 @@ class TestRemoteNce(TestDistLookupTableBase):
                 shape=[num_total_classes, 10],
                 dtype='float32',
                 name='nce_w',
-                initializer=fluid.initializer.ConstantInitializer(),
+                initializer=paddle.nn.initializer.ConstantInitializer(),
             )
         )
         b_param = (
@@ -1346,7 +1346,7 @@ class TestRemoteNce(TestDistLookupTableBase):
                 shape=[num_total_classes, 1],
                 dtype='float32',
                 name='nce_b',
-                initializer=fluid.initializer.ConstantInitializer(),
+                initializer=paddle.nn.initializer.ConstantInitializer(),
             )
         )
 
@@ -1414,7 +1414,7 @@ class TestRemoteHsigmoid(TestDistLookupTableBase):
                 shape=[num_total_classes, 10],
                 dtype='float32',
                 name='hs_w',
-                initializer=fluid.initializer.ConstantInitializer(),
+                initializer=paddle.nn.initializer.ConstantInitializer(),
             )
         )
         b_param = (
@@ -1424,7 +1424,7 @@ class TestRemoteHsigmoid(TestDistLookupTableBase):
                 shape=[3, 1],
                 dtype='float32',
                 name='hs_b',
-                initializer=fluid.initializer.ConstantInitializer(),
+                initializer=paddle.nn.initializer.ConstantInitializer(),
             )
         )
 

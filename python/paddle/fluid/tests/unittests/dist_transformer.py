@@ -1288,7 +1288,7 @@ def prepare_encoder(
             size=[src_vocab_size, src_emb_dim],
             param_attr=fluid.ParamAttr(
                 name=word_emb_param_name,
-                initializer=fluid.initializer.ConstantInitializer(0.001),
+                initializer=paddle.nn.initializer.ConstantInitializer(0.001),
             ),
         )
     else:
@@ -1308,7 +1308,7 @@ def prepare_encoder(
         param_attr=fluid.ParamAttr(
             name=pos_enc_param_name,
             trainable=False,
-            initializer=fluid.initializer.ConstantInitializer(0.001),
+            initializer=paddle.nn.initializer.ConstantInitializer(0.001),
         ),
     )
     src_pos_enc.stop_gradient = True
