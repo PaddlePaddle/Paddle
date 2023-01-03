@@ -391,33 +391,6 @@ if(WITH_PYTHON)
            ${CMAKE_CURRENT_BINARY_DIR}/onnxruntime.dll)
     endif()
 
-    add_custom_command(
-      OUTPUT op_function
-      COMMAND ${CMAKE_COMMAND} -E copy_if_different ${tmp_impl_file1}
-              ${impl_file1}
-      COMMENT "copy_if_different ${tmp_impl_file1} to ${impl_file1}"
-      COMMAND ${CMAKE_COMMAND} -E copy_if_different ${tmp_impl_file2}
-              ${impl_file2}
-      COMMENT "copy_if_different ${tmp_impl_file2} to ${impl_file2}"
-      COMMAND ${CMAKE_COMMAND} -E copy_if_different ${tmp_impl_file3}
-              ${impl_file3}
-      COMMENT "copy_if_different ${tmp_impl_file3} to ${impl_file3}"
-      COMMAND ${CMAKE_COMMAND} -E copy_if_different ${tmp_impl_file4}
-              ${impl_file4}
-      COMMENT "copy_if_different ${tmp_impl_file4} to ${impl_file4}"
-      COMMAND ${CMAKE_COMMAND} -E copy_if_different ${tmp_impl_file5}
-              ${impl_file5}
-      COMMENT "copy_if_different ${tmp_impl_file5} to ${impl_file5}"
-      COMMAND ${CMAKE_COMMAND} -E copy_if_different ${tmp_impl_file6}
-              ${impl_file6}
-      COMMENT "copy_if_different ${tmp_impl_file6} to ${impl_file6}"
-      COMMAND ${CMAKE_COMMAND} -E copy_if_different ${tmp_impl_file7}
-              ${impl_file7}
-      COMMENT "copy_if_different ${tmp_impl_file7} to ${impl_file7}"
-      COMMAND ${CMAKE_COMMAND} -E copy_if_different ${tmp_impl_file8}
-              ${impl_file8}
-      COMMENT "copy_if_different ${tmp_impl_file8} to ${impl_file8}"
-      DEPENDS ${OP_IMPL_DEPS})
     if(NOT ((NOT WITH_PYTHON) AND ON_INFER))
       add_custom_command(
         OUTPUT ${eager_impl_file}
@@ -474,34 +447,6 @@ if(WITH_PYTHON)
       list(APPEND OP_IMPL_DEPS ${CMAKE_CURRENT_BINARY_DIR}/libdnnl.so.0)
       list(APPEND EAGER_OP_IMPL_DEPS ${CMAKE_CURRENT_BINARY_DIR}/libdnnl.so.0)
     endif()
-    add_custom_command(
-      OUTPUT op_function
-      COMMAND ${CMAKE_COMMAND} -E copy_if_different ${tmp_impl_file1}
-              ${impl_file1}
-      COMMENT "copy_if_different ${tmp_impl_file1} to ${impl_file1}"
-      COMMAND ${CMAKE_COMMAND} -E copy_if_different ${tmp_impl_file2}
-              ${impl_file2}
-      COMMENT "copy_if_different ${tmp_impl_file2} to ${impl_file2}"
-      COMMAND ${CMAKE_COMMAND} -E copy_if_different ${tmp_impl_file3}
-              ${impl_file3}
-      COMMENT "copy_if_different ${tmp_impl_file3} to ${impl_file3}"
-      COMMAND ${CMAKE_COMMAND} -E copy_if_different ${tmp_impl_file4}
-              ${impl_file4}
-      COMMENT "copy_if_different ${tmp_impl_file4} to ${impl_file4}"
-      COMMAND ${CMAKE_COMMAND} -E copy_if_different ${tmp_impl_file5}
-              ${impl_file5}
-      COMMENT "copy_if_different ${tmp_impl_file5} to ${impl_file5}"
-      COMMAND ${CMAKE_COMMAND} -E copy_if_different ${tmp_impl_file6}
-              ${impl_file6}
-      COMMENT "copy_if_different ${tmp_impl_file6} to ${impl_file6}"
-      COMMAND ${CMAKE_COMMAND} -E copy_if_different ${tmp_impl_file7}
-              ${impl_file7}
-      COMMENT "copy_if_different ${tmp_impl_file7} to ${impl_file7}"
-      COMMAND ${CMAKE_COMMAND} -E copy_if_different ${tmp_impl_file8}
-              ${impl_file8}
-      COMMENT "copy_if_different ${tmp_impl_file8} to ${impl_file8}"
-      DEPENDS ${OP_IMPL_DEPS}
-      VERBATIM)
     if(NOT ((NOT WITH_PYTHON) AND ON_INFER))
       add_custom_command(
         OUTPUT ${eager_impl_file}
