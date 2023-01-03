@@ -14,4 +14,4 @@
 
 __all__ = []
 
-_already_switch_to_eager_ = False
+_already_switch_to_eager_ = True
