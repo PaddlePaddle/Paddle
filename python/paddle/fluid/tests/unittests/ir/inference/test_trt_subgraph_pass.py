@@ -31,7 +31,7 @@ class TensorRTSubgraphPassFcTest(InferencePassTest):
             data = fluid.data(
                 name="data", shape=[-1, 6, 64, 64], dtype="float32"
             )
-            fc_out = fluid.layers.fc(input=[data], act=None, size=1000)
+            fc_out = paddle.static.nn.fc(x=[data], activation=None, size=1000)
             reshape_out = paddle.reshape(x=fc_out, shape=[1, 1000])
         self.feeds = {
             "data": np.random.random([1, 6, 64, 64]).astype("float32"),

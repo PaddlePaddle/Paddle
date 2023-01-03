@@ -116,11 +116,11 @@ class SE_ResNeXt:
         drop = paddle.nn.functional.dropout(x=pool, p=0.2)
 
         stdv = 1.0 / math.sqrt(drop.shape[1] * 1.0)
-        out = fluid.layers.fc(
-            input=drop,
+        out = paddle.static.nn.fc(
+            x=drop,
             size=class_dim,
-            act='softmax',
-            param_attr=fluid.ParamAttr(
+            activation='softmax',
+            weight_attr=fluid.ParamAttr(
                 initializer=fluid.initializer.Constant(value=0.05)
             ),
         )
@@ -183,22 +183,22 @@ class SE_ResNeXt:
     def squeeze_excitation(self, input, num_channels, reduction_ratio):
         pool = paddle.nn.functional.adaptive_avg_pool2d(x=input, output_size=1)
         stdv = 1.0 / math.sqrt(pool.shape[1] * 1.0)
-        squeeze = fluid.layers.fc(
-            input=pool,
+        squeeze = paddle.static.nn.fc(
+            x=pool,
             size=num_channels // reduction_ratio,
-            param_attr=fluid.ParamAttr(
+            weight_attr=fluid.ParamAttr(
                 initializer=fluid.initializer.Constant(value=0.05)
             ),
-            act='relu',
+            activation='relu',
         )
         stdv = 1.0 / math.sqrt(squeeze.shape[1] * 1.0)
-        excitation = fluid.layers.fc(
-            input=squeeze,
+        excitation = paddle.static.nn.fc(
+            x=squeeze,
             size=num_channels,
-            param_attr=fluid.ParamAttr(
+            weight_attr=fluid.ParamAttr(
                 initializer=fluid.initializer.Constant(value=0.05)
             ),
-            act='sigmoid',
+            activation='sigmoid',
         )
         scale = paddle.tensor.math._multiply_with_axis(
             x=input, y=excitation, axis=0
