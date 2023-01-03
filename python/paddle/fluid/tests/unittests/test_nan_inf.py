@@ -161,6 +161,14 @@ class TestNanInfCheckResult(unittest.TestCase):
         if paddle.fluid.core.is_compiled_with_cuda():
             self.check_nan_inf_level(use_cuda=True, dtype="float16")
 
+    def test_check_nan_inf_to_file(self):
+        paddle.fluid.core.set_nan_inf_debug_path("nan_inf_log_dir")
+        paddle.set_flags(
+            {"FLAGS_check_nan_inf": 1, "FLAGS_check_nan_inf_level": 3}
+        )
+        if paddle.fluid.core.is_compiled_with_cuda():
+            self.check_nan_inf_level(use_cuda=True, dtype="float16")
+
 
 if __name__ == '__main__':
     unittest.main()
