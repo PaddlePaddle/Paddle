@@ -12,12 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.fluid import core
-
 __all__ = []
 
 _already_switch_to_eager_ = False
-
-for name in dir(core.ops):
-    globals()[name] = getattr(core.ops, name)
-    __all__.append(name)
