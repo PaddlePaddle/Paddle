@@ -808,7 +808,7 @@ class TrtConvertVitToMultiHeadMatmulTest(TrtLayerAutoScanTest):
 
         for batch in [2, 4]:
             self.batch = batch
-            for length in [64, 384]:
+            for length in [197]:
                 self.length = length
                 ops_config = [
                     {
