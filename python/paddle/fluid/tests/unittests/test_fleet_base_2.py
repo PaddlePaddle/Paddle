@@ -51,9 +51,9 @@ class TestFleetBase(unittest.TestCase):
             input=input_slot, size=[10, 9], is_sparse=True
         )
         input_x = paddle.concat(x=[input_x, emb], axis=1)
-        fc_1 = paddle.fluid.layers.fc(input=input_x, size=64, act='tanh')
-        fc_2 = paddle.fluid.layers.fc(input=fc_1, size=64, act='tanh')
-        prediction = paddle.fluid.layers.fc(input=[fc_2], size=2, act='softmax')
+        fc_1 = paddle.static.nn.fc(x=input_x, size=64, activation='tanh')
+        fc_2 = paddle.static.nn.fc(x=fc_1, size=64, activation='tanh')
+        prediction = paddle.static.nn.fc(x=[fc_2], size=2, activation='softmax')
         cost = paddle.nn.functional.cross_entropy(
             input=prediction, label=input_y, reduction='none', use_softmax=False
         )
