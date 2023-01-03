@@ -189,7 +189,7 @@ class MultiheadMatMulRoformerOpConverter : public OpConverter {
             roformerplugin_inputs.data(), 3, roformerplugin);
         roformerlayer->setName(
             ("roformerlayer(Output: " + output_name + ")").c_str());
-        roformerlayer->setPrecision(nvinfer1::DataType::kFLOAT32);
+        roformerlayer->setPrecision(nvinfer1::DataType::kFLOAT);
 
         auto mask_tensor = engine_->GetITensor("qkv_plugin_mask");
         auto creator = GetPluginRegistry()->getPluginCreator(
