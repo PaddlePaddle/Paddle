@@ -21,4 +21,3 @@ _already_switch_to_eager_ = False
 for name in dir(core.ops):
     globals()[name] = getattr(core.ops, name)
     __all__.append(name)
-
