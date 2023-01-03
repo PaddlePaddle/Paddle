@@ -1054,6 +1054,19 @@
            square_sr {selected_rows -> selected_rows}
   backward : square_grad
 
+- op : squeeze
+  args : (Tensor x, IntArray axis={})
+  output : Tensor(out), Tensor(xshape)
+  infer_meta :
+    func : SqueezeWithXShapeInferMeta
+  kernel :
+    func : squeeze_with_xshape
+    data_type : x
+  inplace : (x -> out)
+  view: (x -> out)
+  intermediate : xshape
+  backward : squeeze_grad
+
 - op : svd
   args : (Tensor x, bool full_matrices = false)
   output : Tensor(u), Tensor(s), Tensor(vh)
@@ -1148,6 +1161,19 @@
   kernel :
     func : unfold
   backward : unfold_grad
+
+- op : unsqueeze
+  args : (Tensor x, IntArray axis = {})
+  output : Tensor(out), Tensor(xshape)
+  infer_meta :
+    func : UnsqueezeWithXShapeInferMeta
+  kernel :
+    func : unsqueeze_with_xshape
+    data_type : x
+  inplace : (x -> out)
+  view: (x -> out)
+  intermediate : xshape
+  backward : unsqueeze_grad
 
 - op : unstack
   args : (Tensor x, int axis=0, int num=0)

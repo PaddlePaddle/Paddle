@@ -20,10 +20,10 @@ import paddle
 
 from .. import _C_ops
 from ..fluid import core, framework, unique_name
-from ..fluid.clip import GradientClipBase
 from ..fluid.dygraph import base as imperative_base
 from ..fluid.framework import Parameter, Variable
 from ..fluid.layer_helper import LayerHelper
+from ..nn.clip import GradientClipBase
 from .lr import LRScheduler
 from .optimizer import Optimizer
 
@@ -58,7 +58,7 @@ class AdamW(Optimizer):
             different parameter groups such as the learning rate, weight decay, etc,
             then the parameters are list of dict. Note that the learning_rate in paramter groups
             represents the scale of base learning_rate.
-            The default value is None in static mode, at this time all parameters will be updated.
+            The default value is None in static graph mode, at this time all parameters will be updated.
         beta1 (float|Tensor, optional): The exponential decay rate for the 1st moment estimates.
             It should be a float number or a Tensor with shape [1] and data type as float32.
             The default value is 0.9.
