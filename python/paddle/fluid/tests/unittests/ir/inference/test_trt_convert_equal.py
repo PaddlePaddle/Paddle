@@ -53,6 +53,7 @@ class TrtConvertElementwiseTest_one_input_corner_case(TrtLayerAutoScanTest):
                             },
                             "op_outputs": {"Out": ["compare_output_data"]},
                             "op_attrs": dics[0],
+                            "outputs_dtype": {"compare_output_data": np.bool_},
                         },
                         {
                             "op_type": "cast",
