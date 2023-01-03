@@ -80,8 +80,7 @@ class TestGradientClipByGlobalNorm(unittest.TestCase):
         reset_prog()
 
         strategy = apply_pass(use_sharding)
-        clip = paddle.nn.ClipGradByNorm(self.clip_norm)
-        paddle.fluid.clip.ClipGradByGlobalNorm()
+        clip = paddle.nn.ClipGradByGlobalNorm(self.clip_norm)
         opt = paddle.optimizer.AdamW(learning_rate=0.00001, grad_clip=clip)
         model, loss = generate_model("dp")
         engine = auto.Engine(model, loss, opt, strategy=strategy)
