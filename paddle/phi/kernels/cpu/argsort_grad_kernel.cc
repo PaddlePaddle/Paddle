@@ -18,6 +18,7 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/transpose_kernel.h"
 
 namespace phi {
@@ -58,12 +59,18 @@ void ArgsortGradKernel(const Context& dev_ctx,
                        bool descending,
                        DenseTensor* in_grad) {
   auto in_dims = indices.dims();
+  auto rank = input.dims().size();
   axis = (axis < 0) ? (in_dims.size() + axis) : axis;
   dev_ctx.template Alloc<T>(in_grad);
   auto dxt = EigenVector<T>::Flatten(*in_grad);
   auto& place = *dev_ctx.eigen_device();
   dxt.device(place) = dxt.constant(static_cast<T>(0));
   if (out_grad.numel() == 0) return;
+
+  if (rank == 0) {
+    phi::funcs::set_constant(dev_ctx, in_grad, 1.0);
+    return;
+  }
 
   // Do full assign
   if (axis == -1 || axis + 1 == in_dims.size()) {
