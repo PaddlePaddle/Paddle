@@ -892,13 +892,11 @@ void CrossEntropyWithSoftmaxInferMeta(const MetaTensor& logits,
                                      "when not in numeric_stable_mode."));
   }
 
-  if (logits_rank - 1 != labels_rank) {
-    PADDLE_ENFORCE_EQ(
-        logits_rank,
-        labels_rank,
-        phi::errors::InvalidArgument("Expected input_dims - 1 = label_dims "
-                                     "or input_dims = label_dims."));
-  }
+  PADDLE_ENFORCE_EQ(
+      (logits_rank - 1 != labels_rank) && (logits_rank == labels_rank),
+      true,
+      phi::errors::InvalidArgument("Expected input_dims - 1 == label_dims "
+                                   "or input_dims == label_dims."));
 
   if (soft_label) {
     if (config.is_runtime || (logits_dims[axis] > 0 && labels_dims[axis] > 0)) {
