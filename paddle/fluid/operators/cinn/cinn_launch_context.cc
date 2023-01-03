@@ -50,6 +50,7 @@ using framework::Scope;
 using CinnInstruction = ::cinn::hlir::framework::Instruction;
 using CinnRuntimeProgram = ::cinn::hlir::framework::Program;
 using framework::paddle2cinn::kMemOptVarInfoFromMainGraph;
+using framework::paddle2cinn::kSkipGcVarNames;
 using framework::paddle2cinn::Name2VarInfoMap;
 
 CinnLaunchContext::CinnLaunchContext(const framework::ir::Graph& graph,
