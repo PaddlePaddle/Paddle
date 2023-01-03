@@ -923,8 +923,6 @@ class ShardingPass(PassBase):
         main_block._sync_with_cpp()
 
     def _fuse_overlap_parameter_comm_stage_three(self, sharding_info):
-        print("_fuse_overlap_parameter_comm_stage_three: ")
-
         main_block = default_main_program().global_block()
 
         # add deps for broadcast param init empty ops
@@ -939,7 +937,6 @@ class ShardingPass(PassBase):
 
                 # init order dependencies
                 dep_map[i] = [(i, [prior_var], [init_var], None)]
-                print("Analyze deps: ", str(op))
 
         # insert deps
         indice = sorted(list(dep_map.keys()), reverse=True)
@@ -961,7 +958,6 @@ class ShardingPass(PassBase):
                     sync=False,
                     op_namescope="sharding_stage3_param_init_dep",
                 )
-                print("Add deps: ", str(depend_op))
         main_block._sync_with_cpp()
 
     def _group_grads(
