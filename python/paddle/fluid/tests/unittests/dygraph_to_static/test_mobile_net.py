@@ -25,7 +25,7 @@ import paddle.fluid as fluid
 from paddle.fluid.initializer import MSRA
 from paddle.fluid.param_attr import ParamAttr
 from paddle.jit import ProgramTranslator
-from paddle.jit.api import declarative
+from paddle.jit.api import to_static
 from paddle.jit.translated_layer import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 from paddle.nn import BatchNorm, Linear
 
@@ -266,7 +266,7 @@ class MobileNetV1(fluid.dygraph.Layer):
             bias_attr=ParamAttr(name="fc7_offset"),
         )
 
-    @declarative
+    @to_static
     def forward(self, inputs):
         y = self.conv1(inputs)
         for dws in self.dwsl:
@@ -432,7 +432,7 @@ class MobileNetV2(fluid.dygraph.Layer):
             bias_attr=ParamAttr(name="fc10_offset"),
         )
 
-    @declarative
+    @to_static
     def forward(self, inputs):
         y = self._conv1(inputs, if_act=True)
         for inv in self._invl:

@@ -1520,7 +1520,12 @@ class RandomRotation(BaseTransform):
         self.fill = fill
 
     def _get_param(self, degrees):
-        angle = random.uniform(degrees[0], degrees[1])
+        if paddle.in_dynamic_mode():
+            angle = random.uniform(degrees[0], degrees[1])
+        else:
+            angle = paddle.uniform(
+                [1], dtype="float32", min=degrees[0], max=degrees[1]
+            )
 
         return angle
 

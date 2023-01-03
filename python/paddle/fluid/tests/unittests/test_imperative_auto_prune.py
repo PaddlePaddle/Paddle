@@ -45,7 +45,7 @@ class AutoPruneLayer0(fluid.Layer):
     def forward(self, x, y):
         a = self.linear1(x)
         b = self.linear2(y)
-        c = fluid.layers.mul(a, b)
+        c = paddle.matmul(a, b)
         d = paddle.mean(c)
         return d
 
@@ -74,7 +74,7 @@ class AutoPruneLayer1(fluid.Layer):
         a = self.linear1(x)
         b = self.linear2(y)
         b.stop_gradient = True
-        c = fluid.layers.mul(a, b)
+        c = paddle.matmul(a, b)
         d = paddle.mean(c)
         return d
 
@@ -361,7 +361,7 @@ class TestImperativeAutoPrune(unittest.TestCase):
         place = fluid.CPUPlace()
         with fluid.dygraph.guard(place):
             model = MyLayer(size, vocab_size, size)
-            grad_clip = fluid.clip.GradientClipByGlobalNorm(0.001)
+            grad_clip = paddle.nn.ClipGradByGlobalNorm(0.001)
             optimizer = fluid.optimizer.AdamOptimizer(
                 0.001, parameter_list=model.parameters(), grad_clip=grad_clip
             )
@@ -380,7 +380,7 @@ class TestImperativeAutoPrune(unittest.TestCase):
 
         with fluid.dygraph.guard(place):
             model = MyLayer2(size, vocab_size, size)
-            grad_clip = fluid.clip.GradientClipByGlobalNorm(0.001)
+            grad_clip = paddle.nn.ClipGradByGlobalNorm(0.001)
             optimizer = fluid.optimizer.AdamOptimizer(
                 0.001, parameter_list=model.parameters(), grad_clip=grad_clip
             )
@@ -418,7 +418,7 @@ class TestImperativeAutoPrune(unittest.TestCase):
             label = linear(label)
             label = fluid.layers.cast(label, dtype="float32")
             label = fluid.layers.cast(label, dtype='int64')
-            out = fluid.layers.one_hot(input=label, depth=100)
+            out = paddle.nn.functional.one_hot(label, 100)
             loss = paddle.mean(out)
             loss.backward()
             self.assertIsNone(linear.weight._grad_ivar())

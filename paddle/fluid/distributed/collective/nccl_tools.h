@@ -23,7 +23,7 @@
 
 #include <string>
 
-#include "paddle/fluid/distributed/collective/Types.h"
+#include "paddle/fluid/distributed/collective/types.h"
 
 #ifdef PADDLE_WITH_RCCL
 #include "paddle/phi/backends/dynload/rccl.h"

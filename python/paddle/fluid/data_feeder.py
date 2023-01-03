@@ -116,7 +116,7 @@ def check_type(input, input_name, expected_type, op_name, extra_message=''):
         return
 
     # NOTE: `in_declarative_mode` is used to determined whether this op is called under
-    # @declarative in transformation from dygrah to static layer. We add VarBase in
+    # @to_static in transformation from dygrah to static layer. We add VarBase in
     # expected_type to skip checking because varBase may be created and used in unusual way.
     from .dygraph.base import in_declarative_mode
 

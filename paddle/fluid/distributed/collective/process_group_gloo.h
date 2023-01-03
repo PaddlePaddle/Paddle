@@ -18,7 +18,7 @@
 #include <memory>
 #include <mutex>
 
-#include "paddle/fluid/distributed/collective/ProcessGroup.h"
+#include "paddle/fluid/distributed/collective/process_group.h"
 
 #ifdef PADDLE_WITH_GLOO
 #include "paddle/fluid/framework/fleet/gloo_wrapper.h"

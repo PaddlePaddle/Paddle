@@ -20,7 +20,7 @@
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/platform/enforce.h"
 
-#include "paddle/fluid/distributed/collective/Types.h"
+#include "paddle/fluid/distributed/collective/types.h"
 
 #ifdef HOST
 #undef HOST

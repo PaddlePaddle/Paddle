@@ -28,7 +28,7 @@ class RecurrentTest(fluid.Layer):
         super().__init__(name_scope)
 
     def forward(self, in1, in2):
-        out = fluid.layers.mul(in1, in2)
+        out = paddle.matmul(in1, in2)
         sum_out = paddle.sum(out)
         return sum_out, out
 

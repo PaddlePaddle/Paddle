@@ -21,9 +21,7 @@ from ..framework import (
     Program,
     Variable,
     Operator,
-    _non_static_mode,
     static_only,
-    _in_legacy_dygraph,
     in_dygraph_mode,
 )
 from ..layer_helper import LayerHelper, unique_name
@@ -141,130 +139,6 @@ def select_input(inputs, mask):
         type='select_input',
         inputs={'X': inputs, 'Mask': mask},
         outputs={'Out': out},
-    )
-    return out
-
-
-def split_lod_tensor(input, mask, level=0):
-    """
-    This function takes in an input that contains the complete lod information,
-    and takes in a mask which is used to mask certain parts of the input.
-    The output is the true branch and the false branch with the mask applied to
-    the input at a certain level in the tensor. Mainly used in IfElse to split
-    data into two parts.
-
-    Args:
-        input(Variable|tuple|list|None): The input tensor that contains complete
-                                lod information needed to construct the output.
-        mask(Variable|list): A bool column vector which masks the input.
-        level(int): The specific lod level to split.
-
-    Returns:
-        tuple(Variable, Variable):
-        The true branch of tensor as per the mask applied to input.
-
-        The false branch of tensor as per the mask applied to input.
-
-    Examples:
-        .. code-block:: python
-
-          import paddle.fluid as fluid
-          x = fluid.layers.data(name='x', shape=[1])
-          x.persistable = True
-
-          y = fluid.layers.data(name='y', shape=[1])
-          y.persistable = True
-
-          out_true, out_false = fluid.layers.split_lod_tensor(
-                input=x, mask=y, level=level)
-
-    """
-    check_type(
-        input,
-        'input',
-        (Variable, list, tuple, type(None)),
-        'fluid.layers.split_lod_tensor',
-    )
-    check_type(mask, 'mask', (Variable, list), 'fluid.layers.split_lod_tensor')
-    check_type(level, 'level', int, 'fluid.layers.split_lod_tensor')
-    helper = LayerHelper('split_lod_tensor', **locals())
-    out_true = helper.create_variable_for_type_inference(dtype=input.dtype)
-    out_false = helper.create_variable_for_type_inference(dtype=input.dtype)
-    helper.append_op(
-        type='split_lod_tensor',
-        inputs={
-            'X': input,
-            'Mask': mask,
-        },
-        outputs={'OutTrue': out_true, 'OutFalse': out_false},
-        attrs={'level': level},
-    )
-    return out_true, out_false
-
-
-def merge_lod_tensor(in_true, in_false, x, mask, level=0):
-    """
-    **merge_lod_tensor**
-
-    This function takes in an input :math:`x`, the True branch, the False
-    branch and a binary :math:`mask`. Using this information, this function
-    merges the True and False branches of the tensor into a single tensor as
-    output at a certain lod level indicated by :math:`level`. Used in IfElse
-    to merge the output if True block and False Block.
-
-    Args:
-        in_true(Variable|tuple|list|None): The True branch to be merged.
-        in_false(Variable|tuple|list|None): The False branch to be merged.
-        x(Variable|tuple|list|None): The input tensor that contains complete
-                            lod information needed to construct the output.
-        mask(Variable|list): A bool column vector which masks the input.
-        level(int): The specific lod level to merge.
-
-    Returns:
-        Variable: The merged output tensor.
-
-    Examples:
-        .. code-block:: python
-
-          import paddle.fluid as fluid
-          x = layers.data(
-                      name='x', shape=[1], dtype='float32', stop_gradient=False)
-          y = layers.data(
-                name='y', shape=[1], dtype='bool', stop_gradient=False)
-
-          level = 0
-
-          out_true, out_false = layers.split_lod_tensor(
-                input=x, mask=y, level=level)
-          out = layers.merge_lod_tensor(
-                in_true=out_true, in_false=out_false, mask=y, x=x, level=level)
-    """
-    helper = LayerHelper('merge_lod_tensor', **locals())
-    check_type(
-        x,
-        'x',
-        (Variable, list, tuple, type(None)),
-        'fluid.layers.merge_lod_tensor',
-    )
-    check_type(mask, 'mask', (Variable, list), 'fluid.layers.merge_lod_tensor')
-    check_type(
-        in_true,
-        'in_true',
-        (Variable, list, tuple, type(None)),
-        'fluid.layers.merge_lod_tensor',
-    )
-    check_type(
-        in_false,
-        'in_false',
-        (Variable, list, tuple, type(None)),
-        'fluid.layers.merge_lod_tensor',
-    )
-    out = helper.create_variable_for_type_inference(dtype=in_true.dtype)
-    helper.append_op(
-        type='merge_lod_tensor',
-        inputs={'X': x, 'Mask': mask, 'InTrue': in_true, 'InFalse': in_false},
-        outputs={'Out': out},
-        attrs={'level': level},
     )
     return out
 
@@ -1278,7 +1152,7 @@ def while_loop(cond, body, loop_vars, is_test=False, name=None):
             "but given shape as {0}.".format(list(pre_cond.shape))
         )
 
-    if _non_static_mode():
+    if in_dygraph_mode():
         now_cond = pre_cond.numpy()[0]
         while now_cond:
             output_vars = body(*loop_vars)
@@ -1292,33 +1166,33 @@ def while_loop(cond, body, loop_vars, is_test=False, name=None):
             now_cond = cond(*output_vars).numpy()[0]
             map_structure(assign_skip_lod_tensor_array, output_vars, loop_vars)
         return loop_vars
-
-    while_loop_block = While(pre_cond, is_test, name)
-    has_mutable_vars_in_loop = hold_mutable_vars(loop_vars)
-    with while_loop_block.block():
-        # If a variable with mutable type is included in loop_vars, like `dict/list`,
-        # modifying it in the body function will cause origin variable to be modified
-        # synchronously. This will raise an assignment error out of while block.
-        # Here we make a copy of the mutable vars to avoid this problem.
-        if has_mutable_vars_in_loop:
-            new_loop_vars = copy_mutable_vars(loop_vars)
-            output_vars = body(*new_loop_vars)
-        else:
-            output_vars = body(*loop_vars)
-        if not isinstance(output_vars, (list, tuple)):
-            output_vars = [output_vars]
-        try:
-            loop_vars = _deal_with_undefined_var(output_vars, loop_vars)
-            assert_same_structure(output_vars, loop_vars, check_types=False)
-        except ValueError as e:
-            raise ValueError(
-                "body in while_loop should return the same arity "
-                "(length and structure) as loop_vars: {0}".format(e)
-            )
-        now_cond = cond(*output_vars)
-        map_structure(assign_skip_lod_tensor_array, output_vars, loop_vars)
-        assign(now_cond, pre_cond)
-    return loop_vars
+    else:
+        while_loop_block = While(pre_cond, is_test, name)
+        has_mutable_vars_in_loop = hold_mutable_vars(loop_vars)
+        with while_loop_block.block():
+            # If a variable with mutable type is included in loop_vars, like `dict/list`,
+            # modifying it in the body function will cause origin variable to be modified
+            # synchronously. This will raise an assignment error out of while block.
+            # Here we make a copy of the mutable vars to avoid this problem.
+            if has_mutable_vars_in_loop:
+                new_loop_vars = copy_mutable_vars(loop_vars)
+                output_vars = body(*new_loop_vars)
+            else:
+                output_vars = body(*loop_vars)
+            if not isinstance(output_vars, (list, tuple)):
+                output_vars = [output_vars]
+            try:
+                loop_vars = _deal_with_undefined_var(output_vars, loop_vars)
+                assert_same_structure(output_vars, loop_vars, check_types=False)
+            except ValueError as e:
+                raise ValueError(
+                    "body in while_loop should return the same arity "
+                    "(length and structure) as loop_vars: {0}".format(e)
+                )
+            now_cond = cond(*output_vars)
+            map_structure(assign_skip_lod_tensor_array, output_vars, loop_vars)
+            assign(now_cond, pre_cond)
+        return loop_vars
 
 
 # (TODO: Mine) There exists dependency. It will be removed later.

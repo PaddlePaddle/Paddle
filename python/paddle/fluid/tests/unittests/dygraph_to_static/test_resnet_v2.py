@@ -12,10 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
-
-os.environ["FLAGS_enable_eager_mode"] = "0"
 import math
+import os
 import tempfile
 import time
 import unittest
@@ -245,7 +243,7 @@ class TestResnet(unittest.TestCase):
 
     def do_train(self, to_static):
         """
-        Tests model decorated by `dygraph_to_static_output` in static mode. For users, the model is defined in dygraph mode and trained in static mode.
+        Tests model decorated by `dygraph_to_static_output` in static graph mode. For users, the model is defined in dygraph mode and trained in static graph mode.
         """
         paddle.disable_static(place)
         np.random.seed(SEED)

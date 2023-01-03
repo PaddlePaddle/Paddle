@@ -1248,7 +1248,7 @@ def pre_post_process_layer(prev_out, out, process_cmd, dropout_rate=0.0):
         if cmd == "a":  # add residual connection
             out = out + prev_out if prev_out else out
         elif cmd == "n":  # add layer normalization
-            out = layers.layer_norm(
+            out = paddle.static.nn.layer_norm(
                 out,
                 begin_norm_axis=len(out.shape) - 1,
                 param_attr=fluid.initializer.Constant(1.0),
@@ -1575,7 +1575,7 @@ def transformer(
     label, weights = make_all_inputs(label_data_input_fields)
     if label_smooth_eps:
         label = F.label_smooth(
-            label=layers.one_hot(input=label, depth=trg_vocab_size),
+            label=paddle.nn.functional.one_hot(label, trg_vocab_size),
             epsilon=label_smooth_eps,
         )
 

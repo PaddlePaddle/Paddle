@@ -12,10 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
-
-os.environ['FLAGS_enable_eager_mode'] = '1'
-
 import unittest
 
 from test_parallel_dygraph_dataparallel import TestMultipleGpus
