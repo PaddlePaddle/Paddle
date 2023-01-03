@@ -45,7 +45,6 @@ __all__ = [
     'assign',
     'fill_constant_batch_size_like',
     'fill_constant',
-    'argmax',
     'zeros',
 ]
 
@@ -691,73 +690,6 @@ def fill_constant_batch_size_like(
         )
         out.stop_gradient = True
         return out
-
-
-def argmax(x, axis=0):
-    """
-    **argmax**
-
-    This OP computes the indices of the max elements of the input tensor's
-    element along the provided axis.
-
-    Args:
-        x(Variable): An input N-D Tensor with type float32, float64, int16,
-            int32, int64, uint8.
-        axis(int, optional): Axis to compute indices along. The effective range
-            is [-R, R), where R is Rank(x). when axis<0, it works the same way
-            as axis+R. Default is 0.
-
-    Returns:
-        Variable: A Tensor with data type int64.
-
-    Examples:
-        .. code-block:: python
-
-            import paddle.fluid as fluid
-            import numpy as np
-
-            in1 = np.array([[[5,8,9,5],
-                            [0,0,1,7],
-                            [6,9,2,4]],
-                            [[5,2,4,2],
-                            [4,7,7,9],
-                            [1,7,0,6]]])
-            with fluid.dygraph.guard():
-                x = fluid.dygraph.to_variable(in1)
-                out1 = fluid.layers.argmax(x=x, axis=-1)
-                out2 = fluid.layers.argmax(x=x, axis=0)
-                out3 = fluid.layers.argmax(x=x, axis=1)
-                out4 = fluid.layers.argmax(x=x, axis=2)
-                print(out1.numpy())
-                # [[2 3 1]
-                #  [0 3 1]]
-                print(out2.numpy())
-                # [[0 0 0 0]
-                #  [1 1 1 1]
-                #  [0 0 0 1]]
-                print(out3.numpy())
-                # [[2 2 0 1]
-                #  [0 1 1 1]]
-                print(out4.numpy())
-                # [[2 3 1]
-                #  [0 3 1]]
-    """
-    check_variable_and_dtype(
-        x,
-        'x',
-        ['float32', 'float64', 'uint8', 'int16', 'int32', 'int64'],
-        'argmax',
-    )
-    helper = LayerHelper("arg_max", **locals())
-    out = helper.create_variable_for_type_inference(VarDesc.VarType.INT64)
-    helper.append_op(
-        type='arg_max',
-        inputs={'X': x},
-        outputs={'Out': [out]},
-        attrs={'axis': axis},
-    )
-    out.stop_gradient = True
-    return out
 
 
 def zeros(shape, dtype, force_cpu=False, name=None):
