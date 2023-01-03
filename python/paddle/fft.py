@@ -1627,8 +1627,10 @@ def fftn_r2c(x, s, axes, norm, forward, onesided, name):
     if in_dygraph_mode():
         out = _C_ops.fft_r2c(x, axes, norm, forward, onesided)
     else:
-        op_type = 'fft_c2r'
-        check_variable_and_dtype(x, 'x', ['complex64', 'complex128'], op_type)
+        op_type = 'fft_r2c'
+        check_variable_and_dtype(
+            x, 'x', ['float16', 'float32', 'float64'], op_type
+        )
         inputs = {
             'X': [x],
         }
