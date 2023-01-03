@@ -1224,34 +1224,51 @@ All parameter, weight, gradient are variables in Paddle.
           std::unordered_map<std::string, std::string> grad_to_var;
 
           auto op_info = framework::OpInfoMap::Instance().Get(op_desc.Type());
-          std::vector<std::unique_ptr<OpDesc>> grad_op_descs;
+          auto grad_op_maker = op_info.GradCompOpMaker();
+          auto grad_comp_op_maker = op_info.GradCompOpMaker();
+
+          if ((grad_op_maker == nullptr) && (grad_comp_op_maker == nullptr)) {
+            // Normally, proto_ should not be null, except some special
+            // operators, such as LeaklyReluDoubleGrad op.
+            std::string type =
+                op_info.proto_ ? op_info.proto_->type() : "unknown";
+            platform::errors::NotFound(
+                "Neither operator %s's GradOpMaker nor GradCompOpMaker has "
+                "been registered.\nPlease check whether (%s) operator has "
+                "gradient operator.\nIf not, please set stop_gradient to be "
+                "True for its input and output variables using "
+                "var.stop_gradient=True.",
+                type.c_str(),
+                type.c_str());
+          }
 
           // In PrimEnabled mode, the priority of GradCompOpMaker is grater than
           // GradCompMaker as we need split first-order grad operator into
           // primitive operators for compiler. In PrimDisabled mode, the
           // priority of GradCompOpMaker is less than GradCompMaker for better
           // performance.
+          std::vector<std::unique_ptr<OpDesc>> grad_op_descs;
           if (paddle::prim::PrimCommonUtils::IsPrimEnabled()) {
-            if (op_info.GradCompOpMaker() != nullptr) {
-              grad_op_descs = op_info.GradCompOpMaker()(op_desc,
-                                                        no_grad_set,
-                                                        &grad_to_var,
-                                                        op_desc.Block(),
-                                                        grad_sub_block);
+            if (grad_comp_op_maker != nullptr) {
+              grad_op_descs = grad_comp_op_maker(op_desc,
+                                                 no_grad_set,
+                                                 &grad_to_var,
+                                                 op_desc.Block(),
+                                                 grad_sub_block);
             } else {
-              grad_op_descs = op_info.GradOpMaker()(
+              grad_op_descs = grad_op_maker(
                   op_desc, no_grad_set, &grad_to_var, grad_sub_block);
             }
           } else {
-            if (op_info.GradOpMaker() != nullptr) {
-              grad_op_descs = op_info.GradOpMaker()(
+            if (grad_op_maker != nullptr) {
+              grad_op_descs = grad_op_maker(
                   op_desc, no_grad_set, &grad_to_var, grad_sub_block);
             } else {
-              grad_op_descs = op_info.GradCompOpMaker()(op_desc,
-                                                        no_grad_set,
-                                                        &grad_to_var,
-                                                        op_desc.Block(),
-                                                        grad_sub_block);
+              grad_op_descs = grad_comp_op_maker(op_desc,
+                                                 no_grad_set,
+                                                 &grad_to_var,
+                                                 op_desc.Block(),
+                                                 grad_sub_block);
             }
           }
 
