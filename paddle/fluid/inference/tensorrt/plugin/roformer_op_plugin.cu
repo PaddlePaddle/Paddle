@@ -204,6 +204,7 @@ int32_t RoformerPlugin::enqueue(const nvinfer1::PluginTensorDesc *inputDesc,
     (RoformerKernel<half>)<<<grid, block, 0, stream>>>(
         reinterpret_cast<const half *>(inputs[0]),
         reinterpret_cast<const half *>(inputs[1]),
+        reinterpret_cast<const half *>(inputs[2]),
         reinterpret_cast<const half *>(inputs[3]),
         reinterpret_cast<half *>(outputs[0]),
 	b,
