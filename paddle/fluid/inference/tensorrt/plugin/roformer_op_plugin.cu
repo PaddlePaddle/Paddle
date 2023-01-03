@@ -141,8 +141,7 @@ bool RoformerPlugin::supportsFormatCombination(
       return inOut[2].type == inOut[0].type &&
              inOut[2].format == inOut[0].format;
     case 3:
-      return inOut[3].type == inOut[0].type &&
-             inOut[3].format == inOut[0].format;
+      return inOut[3].type == nvinfer1::DataType::kINT32;
     case 4:
       return inOut[4].type == inOut[0].type;
     default:  // should NOT be here!
