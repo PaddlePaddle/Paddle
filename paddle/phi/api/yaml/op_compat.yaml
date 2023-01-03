@@ -646,6 +646,13 @@
   outputs :
     out : Out
 
+- op : imag
+  backward : imag_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
+
 - op : index_sample
   inputs :
     {x : X, index : Index}
@@ -996,6 +1003,13 @@
 - op : quantize_linear
   extra :
     attrs : [float moving_rate = 0.9]
+
+- op : real
+  backward : real_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
 
 - op : reciprocal
   backward : reciprocal_grad

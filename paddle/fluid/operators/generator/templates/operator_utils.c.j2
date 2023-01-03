@@ -262,6 +262,9 @@ framework::OpKernelType GetExpectedKernelType(
     {% set inputs = op["inputs"] | map(attribute="name") | list %}
     {% if data_type_arg in inputs %}
   auto data_type = framework::OperatorWithKernel::IndicateVarDataType(ctx, {{data_type_arg | to_opmaker_name}});
+      {% if kernel["data_type"]["to_complex_flag"][0] %}
+  data_type = framework::ToComplexType(data_type);
+      {% endif %}
     {% else %}{# it is an attribute and probably named dtype#}
   auto data_type = framework::proto::VarType::Type(ctx.Attr<int>("{{data_type_arg}}"));
     {% endif %}
