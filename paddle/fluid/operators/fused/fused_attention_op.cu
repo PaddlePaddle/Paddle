@@ -196,7 +196,7 @@ class FusedAttentionOpKernel : public framework::OpKernel<T> {
       // do transpose to qkv weight
       std::vector<int> perm = {1, 2, 3, 0};
       phi::funcs::TransposeGPUKernelDriver<T>(
-          ctx.cuda_device_context(), *qkv_weight, perm, &qkvw_transpose_out);
+          ctx.cuda_device_context(), qkv_weight_tmp, perm, &qkvw_transpose_out);
     }
     const phi::DenseTensor *qkv_weight_real_ptr =
         transpose_qkv_wb ? &qkvw_transpose_out : qkv_weight;
@@ -801,7 +801,7 @@ class FusedAttentionGradKernel : public framework::OpKernel<T> {
     }
     const phi::DenseTensor *qkv_weight_real_ptr =
         transpose_qkv_wb ? &qkvw_transpose_out : qkv_weight;
-    const phi::Densetensor *d_qkv_weight_real_ptr =
+    phi::DenseTensor *d_qkv_weight_real_ptr =
         transpose_qkv_wb ? &d_qkvw_transpose_out : d_qkv_weight;
 
     if (pre_layer_norm) {
@@ -878,7 +878,7 @@ class FusedAttentionGradKernel : public framework::OpKernel<T> {
     if (transpose_qkv_wb && d_qkv_weight != nullptr) {
       std::vector<int> perm = {3, 0, 1, 2};
       phi::funcs::TransposeGPUKernelDriver<T>(
-          ctx.cuda_device_context(), *d_qkvw_transpose_out, perm, d_qkv_weight);
+          ctx.cuda_device_context(), d_qkvw_transpose_out, perm, d_qkv_weight);
       d_qkv_weight->Resize({dim_embed, 3 * dim_embed});
     }
     if (transpose_qkv_wb && d_qkv_bias != nullptr) {
