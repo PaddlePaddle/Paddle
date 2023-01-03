@@ -38,4 +38,3 @@ from paddle.fluid.layers.layer_function_generator import (  # noqa: F401
     templatedoc,
 )
 from paddle.fluid.param_attr import ParamAttr  # noqa: F401
-from paddle.nn.initializer import ConstantInitializer  # noqa: F401
