@@ -84,7 +84,7 @@ void MatmulTransposeReshapeMKLDNNPass::Fuse(
     }
 
     OpDesc *matmul_desc = matmul_op->Op();
-    matmul_desc->SetType("fused_matmul");
+
     if (matmul_type == "matmul") {
       matmul_desc->SetAttr("trans_x", matmul_desc->GetAttr("transpose_X"));
       matmul_desc->SetAttr("trans_y", matmul_desc->GetAttr("transpose_Y"));
@@ -93,6 +93,8 @@ void MatmulTransposeReshapeMKLDNNPass::Fuse(
         matmul_desc->SetAttr("alpha", matmul_alpha);
       }
     }
+
+    matmul_desc->SetType("fused_matmul");
     matmul_desc->SetOutput("Out", {reshape_out->Name()});
     matmul_desc->SetAttr("fused_reshape_Out", reshape_shape);
     matmul_desc->SetAttr("fused_transpose_Out", transpose_axis);

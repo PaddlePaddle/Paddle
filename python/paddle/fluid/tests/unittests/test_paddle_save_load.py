@@ -374,7 +374,7 @@ class TestSaveLoadAny(unittest.TestCase):
         np.testing.assert_array_equal(tensor.numpy(), np.array(lod_static))
 
     def test_single_pickle_var_static(self):
-        # enable static mode
+        # enable static graph mode
         paddle.enable_static()
         with new_program_scope():
             # create network
@@ -547,7 +547,7 @@ class TestSaveLoadAny(unittest.TestCase):
 
         np.testing.assert_array_equal(load_array4[0], obj4[0])
 
-        # static mode
+        # static graph mode
         paddle.enable_static()
 
         load_tensor1 = paddle.load(path1, return_numpy=False)
@@ -1012,7 +1012,7 @@ class TestSaveLoad(unittest.TestCase):
         self.check_load_state_dict(layer_state_dict, load_layer_state_dict)
         self.check_load_state_dict(opt_state_dict, load_opt_state_dict)
 
-        # test save load in static mode
+        # test save load in static graph mode
         paddle.enable_static()
         static_save_path = os.path.join(
             self.temp_dir.name,

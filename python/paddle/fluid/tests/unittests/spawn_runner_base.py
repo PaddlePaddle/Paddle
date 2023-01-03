@@ -20,7 +20,6 @@ import numpy as np
 from test_dist_base import RUN_STEP
 
 import paddle
-from paddle.fluid.framework import _test_eager_guard
 
 
 # NOTE: compatible TestParallelDyGraphRunnerBase args
@@ -54,10 +53,6 @@ class TestDistSpawnRunner(unittest.TestCase):
         return result_list
 
     def check_dist_result_with_spawn(self, test_class, delta=1e-3):
-        with _test_eager_guard():
-            self.check_dist_result_with_spawn_func(
-                test_class=test_class, delta=delta
-            )
         self.check_dist_result_with_spawn_func(
             test_class=test_class, delta=delta
         )

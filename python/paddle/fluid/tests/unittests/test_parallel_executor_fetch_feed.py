@@ -32,8 +32,8 @@ def Lenet(data, class_dim):
     bn2 = paddle.static.nn.batch_norm(conv2, act='relu')
     pool2 = paddle.nn.functional.max_pool2d(bn2, 2, 2)
 
-    fc1 = fluid.layers.fc(pool2, size=50, act='relu')
-    fc2 = fluid.layers.fc(fc1, size=class_dim, act='softmax')
+    fc1 = paddle.static.nn.fc(pool2, size=50, activation='relu')
+    fc2 = paddle.static.nn.fc(fc1, size=class_dim, activation='softmax')
 
     return fc2
 

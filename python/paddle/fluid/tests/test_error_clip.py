@@ -25,9 +25,9 @@ prog = fluid.framework.Program()
 with fluid.program_guard(main_program=prog):
     image = fluid.layers.data(name='x', shape=[784], dtype='float32')
 
-    hidden1 = fluid.layers.fc(input=image, size=128, act='relu')
-    hidden2 = fluid.layers.fc(input=hidden1, size=64, act='relu')
-    predict = fluid.layers.fc(input=hidden2, size=10, act='softmax')
+    hidden1 = paddle.static.nn.fc(x=image, size=128, activation='relu')
+    hidden2 = paddle.static.nn.fc(x=hidden1, size=64, activation='relu')
+    predict = paddle.static.nn.fc(x=hidden2, size=10, activation='softmax')
 
     label = fluid.layers.data(name='y', shape=[1], dtype='int64')
 
@@ -38,13 +38,13 @@ with fluid.program_guard(main_program=prog):
 
 prog_clip = prog.clone()
 prog_clip.block(0).var(hidden1.name)._set_error_clip(
-    fluid.clip.ErrorClipByValue(max=CLIP_MAX, min=CLIP_MIN)
+    paddle.nn.clip.ErrorClipByValue(max=CLIP_MAX, min=CLIP_MIN)
 )
 
 avg_cost_clip = prog_clip.block(0).var(avg_cost.name)
 fluid.backward.append_backward(loss=avg_cost)
 fluid.backward.append_backward(
-    loss=avg_cost_clip, callbacks=[fluid.clip.error_clip_callback]
+    loss=avg_cost_clip, callbacks=[paddle.nn.clip.error_clip_callback]
 )
 
 hidden1_grad = prog.block(0).var(hidden1.name + "@GRAD")
