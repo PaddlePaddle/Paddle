@@ -56,6 +56,7 @@ class StackOpConverter : public OpConverter {
 
     int axis = PADDLE_GET_CONST(int, op_desc.GetAttr("axis"));
     VLOG(4) << "58 ok" << axis;
+    VLOG(4) << "inputs size:" << inputs.size();
     int output_rank = inputs[0]->getDimensions().nbDims + 1;
     VLOG(4) << "60 ok" << output_rank;
     if (axis < 0) {

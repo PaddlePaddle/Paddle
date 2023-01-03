@@ -150,10 +150,6 @@ size_t RoformerPlugin::getWorkspaceSize(
     const nvinfer1::PluginTensorDesc *outputs,
     int32_t nbOutputs) const noexcept {
   WHERE_AM_I()
-  int tElement = 1;
-  for (int i = 0; i < inputs[0].dims.nbDims; i++) {
-    tElement *= inputs[0].dims.d[i];
-  }
   return 0;
 }
 
