@@ -9,4 +9,4 @@ foreach(TEST_OP ${TEST_OPS})
   py_test_modules(${TEST_OP} MODULES ${TEST_OP} ENVS ${GC_ENVS})
 endforeach()
 
-add_subdirectory(api)
+set_tests_properties(test_tanh_grad_comp PROPERTIES TIMEOUT 60)

@@ -1224,7 +1224,7 @@ All parameter, weight, gradient are variables in Paddle.
           std::unordered_map<std::string, std::string> grad_to_var;
 
           auto op_info = framework::OpInfoMap::Instance().Get(op_desc.Type());
-          auto grad_op_maker = op_info.GradCompOpMaker();
+          auto grad_op_maker = op_info.GradOpMaker();
           auto grad_comp_op_maker = op_info.GradCompOpMaker();
 
           if ((grad_op_maker == nullptr) && (grad_comp_op_maker == nullptr)) {
