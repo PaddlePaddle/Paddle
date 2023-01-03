@@ -290,7 +290,7 @@ struct TestFusedLayernormResidualDropoutBias {
     framework::TensorToVector(layernorm_out, *ctx, &_layernorm_out);
     framework::TensorToVector(means, *ctx, &_means);
     framework::TensorToVector(vars, *ctx, &_vars);
-    if (!is_test) {
+    if (!is_test && dropout_prob != 0.0f) {
       framework::TensorToVector(mask, *ctx, &_mask);
     }
     ctx->Wait();
@@ -298,7 +298,9 @@ struct TestFusedLayernormResidualDropoutBias {
     for (int i = 0; i < n; i++) {
       EXPECT_LT(std::abs(_out[i] - correct_out[i]), diff);
       EXPECT_LT(std::abs(_layernorm_out[i] - correct_layernorm_out[i]), diff);
-      if (!is_test) EXPECT_EQ(_mask[i], correct_mask[i]);
+      if (!is_test && dropout_prob != 0.0f) {
+        EXPECT_EQ(_mask[i], correct_mask[i]);
+      }
     }
     for (int i = 0; i < rows; i++) {
       EXPECT_LT(std::abs(_means[i] - correct_means[i]), static_cast<U>(diff));

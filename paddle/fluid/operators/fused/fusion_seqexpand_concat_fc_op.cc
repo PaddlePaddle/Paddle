@@ -16,7 +16,7 @@ limitations under the License. */
 
 #include <string>
 
-#include "paddle/fluid/platform/cpu_info.h"
+#include "paddle/phi/backends/cpu/cpu_info.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/cpu_vec.h"
 #include "paddle/phi/kernels/funcs/fc_functor.h"
@@ -225,11 +225,11 @@ class FusionSeqExpandConcatFCOpKernel : public framework::OpKernel<T> {
 
     std::function<void(const int, const T*, T*)> fc_act;
     auto& fc_act_str = ctx.Attr<std::string>("fc_activation");
-    if (platform::MayIUse(platform::avx)) {
-      phi::funcs::VecActivations<T, platform::avx> act_functor;
+    if (phi::backends::cpu::MayIUse(phi::backends::cpu::avx)) {
+      phi::funcs::VecActivations<T, phi::backends::cpu::avx> act_functor;
       fc_act = act_functor(fc_act_str);
     } else {
-      phi::funcs::VecActivations<T, platform::isa_any> act_functor;
+      phi::funcs::VecActivations<T, phi::backends::cpu::isa_any> act_functor;
       fc_act = act_functor(fc_act_str);
     }
 

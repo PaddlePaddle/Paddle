@@ -22,6 +22,7 @@ from inference_pass_test import InferencePassTest
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
+import paddle.nn.functional as F
 import paddle.static.nn as nn
 from paddle.fluid.core import AnalysisConfig, PassVersionChecker
 
@@ -47,7 +48,7 @@ class TensorRTSubgraphPassActivationTest(InferencePassTest):
         self.fetch_list = [out]
 
     def append_act(self, x):
-        return fluid.layers.relu(x)
+        return F.relu(x)
 
     def test_check_output(self):
         if core.is_compiled_with_cuda():

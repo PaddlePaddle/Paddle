@@ -12,18 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from paddle.fluid import unique_name
 from paddle.utils import gast
 
-from paddle.fluid import unique_name
-from .utils import (
-    index_in_list,
-    ast_to_source_code,
-    Dygraph2StaticException,
-    ORIGI_INFO,
-)
+from .base_transformer import BaseTransformer
 from .break_continue_transformer import ForToWhileTransformer
-from .base_transformer import (
-    BaseTransformer,
+from .utils import (
+    ORIGI_INFO,
+    Dygraph2StaticException,
+    ast_to_source_code,
+    index_in_list,
 )
 
 __all__ = []

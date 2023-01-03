@@ -394,6 +394,10 @@ class TestDistCTR2x2(FleetDistRunnerBase):
             fleet.save_persistables(exe, patch_dirname, None, 5)
             fleet.check_save_pre_patch_done()
 
+        # add for gpugrahp
+        fleet.save_cache_table(0, 0)
+        fleet.shrink()
+
 
 if __name__ == "__main__":
     runtime_main(TestDistCTR2x2)

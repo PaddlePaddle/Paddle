@@ -19,6 +19,7 @@ from inference_pass_test import InferencePassTest
 
 import paddle
 import paddle.fluid as fluid
+import paddle.nn.functional as F
 from paddle.fluid.core import PassVersionChecker
 
 
@@ -69,7 +70,7 @@ class ElementwiseActivationMkldnnFusePassTest_Add_Relu(
 ):
     def set_params(self):
         self.operand = paddle.add
-        self.act = fluid.layers.relu
+        self.act = F.relu
 
 
 class ElementwiseActivationMkldnnFusePassTest_Add_Tanh(
@@ -169,7 +170,7 @@ class ElementwiseActivationMkldnnFusePassTest_Sub_Relu(
 ):
     def set_params(self):
         self.operand = paddle.subtract
-        self.act = fluid.layers.relu
+        self.act = F.relu
 
 
 class ElementwiseActivationMkldnnFusePassTest_Sub_Tanh(
@@ -261,7 +262,7 @@ class ElementwiseActivationMkldnnFusePassTest_Mul_Relu(
 ):
     def set_params(self):
         self.operand = paddle.multiply
-        self.act = fluid.layers.relu
+        self.act = F.relu
 
 
 class ElementwiseActivationMkldnnFusePassTest_Mul_Tanh(

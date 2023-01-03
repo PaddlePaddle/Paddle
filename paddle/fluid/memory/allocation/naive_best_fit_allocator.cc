@@ -78,8 +78,8 @@ BuddyAllocator *GetCPUBuddyAllocator() {
   std::call_once(init_flag, []() {
     a = new detail::BuddyAllocator(
         std::unique_ptr<detail::SystemAllocator>(new detail::CPUAllocator),
-        platform::CpuMinChunkSize(),
-        platform::CpuMaxChunkSize());
+        phi::backends::cpu::CpuMinChunkSize(),
+        phi::backends::cpu::CpuMaxChunkSize());
   });
 
   return a;
@@ -290,8 +290,8 @@ BuddyAllocator *GetNPUPinnedBuddyAllocator() {
   std::call_once(init_flag, []() {
     ba = new BuddyAllocator(std::unique_ptr<detail::SystemAllocator>(
                                 new detail::NPUPinnedAllocator),
-                            platform::NPUPinnedMinChunkSize(),
-                            platform::NPUPinnedMaxChunkSize());
+                            phi::backends::cpu::NPUPinnedMinChunkSize(),
+                            phi::backends::cpu::NPUPinnedMaxChunkSize());
   });
 
   return ba;
@@ -562,8 +562,8 @@ BuddyAllocator *GetCUDAPinnedBuddyAllocator() {
   std::call_once(init_flag, []() {
     ba = new BuddyAllocator(std::unique_ptr<detail::SystemAllocator>(
                                 new detail::CUDAPinnedAllocator),
-                            platform::CUDAPinnedMinChunkSize(),
-                            platform::CUDAPinnedMaxChunkSize());
+                            phi::backends::cpu::CUDAPinnedMinChunkSize(),
+                            phi::backends::cpu::CUDAPinnedMaxChunkSize());
   });
 
   return ba;

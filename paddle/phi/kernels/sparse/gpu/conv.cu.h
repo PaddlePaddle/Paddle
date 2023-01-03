@@ -15,8 +15,14 @@ limitations under the License. */
 #pragma once
 
 #include <thrust/remove.h>
-#include <thrust/sort.h>
 #include <thrust/unique.h>
+#ifdef __NVCC__
+#include <cub/block/block_scan.cuh>
+#endif
+#ifdef __HIPCC__
+#include <hipcub/hipcub.hpp>
+namespace cub = hipcub;
+#endif
 #include "paddle/phi/kernels/sparse/conv_kernel.h"
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
@@ -196,6 +202,88 @@ __global__ void UniqueKernel(const IntT* in_indexs,
   __syncthreads();
   for (int i = threadIdx.x; i < count; i += blockDim.x) {
     out_indexs[start + i] = cache[i];
+  }
+}
+
+inline __device__ uint32_t BitCount(const uint32_t data) {
+  uint32_t count = data;
+  count = (count & 0x55555555) + ((count >> 1) & 0x55555555);
+  count = (count & 0x33333333) + ((count >> 2) & 0x33333333);
+  count = (count & 0x0f0f0f0f) + ((count >> 4) & 0x0f0f0f0f);
+  count = (count & 0x00ff00ff) + ((count >> 8) & 0x00ff00ff);
+  count = (count & 0x0000ffff) + ((count >> 16) & 0x0000ffff);
+  return count;
+}
+
+static __global__ void GetOutIndexsCounter(const int* flags,
+                                           const int n,
+                                           int* out) {
+  int tid = threadIdx.x + blockDim.x * blockIdx.x;
+  __shared__ int block_count;
+  if (threadIdx.x == 0) {
+    block_count = 0;
+  }
+  __syncthreads();
+
+  if (tid < n) {
+    // get the count of 1 in flags[tid]
+    uint32_t count = BitCount(static_cast<uint32_t>(flags[tid]));
+    // add to block_count
+    // TODO(zhangkaihuo): replace with block reduce_sum
+    atomicAdd(&block_count, static_cast<int>(count));
+  }
+  __syncthreads();
+  // write to out
+  if (threadIdx.x == 0) {
+    out[blockIdx.x] = block_count;
+  }
+}
+
+template <int BS>
+__global__ void GetOutIndexs(const int* flags,
+                             const int n,
+                             const int* offsets,
+                             const int out_nnz,
+                             int* out) {
+  int tid = threadIdx.x + blockDim.x * blockIdx.x;
+  __shared__ int block_counts[BS];
+  __shared__ int block_outs[BS * 32];
+
+  int count = 0;
+
+  if (tid < n) {
+    // get the count of 1 in flags[tid]
+    int flag = flags[tid];
+    count = BitCount(static_cast<uint32_t>(flag));
+  }
+
+  // call block prefix_sum
+  // using namespace cub;
+  typedef cub::BlockScan<int, BS> BlockScan;
+  __shared__ typename BlockScan::TempStorage temp_storage;
+  BlockScan(temp_storage).ExclusiveSum(count, count);
+  __syncthreads();
+
+  // write index to out
+  if (tid < n) {
+    // get the count of 1 in flags[tid]
+    int flag = flags[tid];
+    // int j = block_counts[threadIdx.x];
+    int j = count;
+    // TODO(zhangkaihuo): opt the loop
+    for (int i = 0; i < 32; ++i) {
+      if ((1 & (flag >> i)) == 1) {
+        block_outs[j++] = (tid << 5) + i;
+      }
+    }
+  }
+
+  __syncthreads();
+  // write to block_outs
+  int start = offsets[blockIdx.x];
+  int end = blockIdx.x == gridDim.x - 1 ? out_nnz : offsets[blockIdx.x + 1];
+  for (int i = threadIdx.x; i < end - start; i += blockDim.x) {
+    out[start + i] = block_outs[i];
   }
 }
 
@@ -725,13 +813,25 @@ int ProductRuleBook(const Context& dev_ctx,
                                        gpuMemcpyDeviceToHost,
                                        dev_ctx.stream());
     dev_ctx.Wait();
+
+    const int threads = 256;
+    const int blocks = (index_flags.numel() + threads - 1) / threads;
+    GetOutIndexsCounter<<<blocks, threads, 0, dev_ctx.stream()>>>(
+        index_flags_ptr, index_flags.numel(), out_index_table_ptr);
 #ifdef PADDLE_WITH_HIP
-    thrust::sort(thrust::hip::par.on(dev_ctx.stream()),
+    thrust::exclusive_scan(thrust::hip::par.on(dev_ctx.stream()),
 #else
-    thrust::sort(thrust::cuda::par.on(dev_ctx.stream()),
+    thrust::exclusive_scan(thrust::cuda::par.on(dev_ctx.stream()),
 #endif
-                 out_index_ptr,
-                 out_index_ptr + out_nnz);
+                           out_index_table_ptr,
+                           out_index_table_ptr + blocks,
+                           out_index_table_ptr);
+    GetOutIndexs<threads>
+        <<<blocks, threads, 0, dev_ctx.stream()>>>(index_flags_ptr,
+                                                   index_flags.numel(),
+                                                   out_index_table_ptr,
+                                                   out_nnz,
+                                                   out_index_ptr);
 
     const int64_t sparse_dim = 4;
     phi::DenseTensor out_indices =

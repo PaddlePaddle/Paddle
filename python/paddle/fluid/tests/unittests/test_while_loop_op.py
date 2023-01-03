@@ -20,6 +20,7 @@ import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 import paddle.fluid.layers as layers
+import paddle.nn.functional as F
 from paddle.fluid.backward import append_backward
 from paddle.fluid.framework import Program, program_guard
 
@@ -96,7 +97,7 @@ class TestApiWhileLoop(unittest.TestCase):
             test_list[0] = paddle.reshape(test_list[0], [2, -1]) + 1
 
             test_list_dict[0]["test_key"] += 1
-            test_list_dict[0]["test_key"] = fluid.layers.relu(
+            test_list_dict[0]["test_key"] = F.relu(
                 test_list_dict[0]["test_key"]
             )
 
@@ -320,20 +321,20 @@ class TestApiWhileLoop_NestedWithBackwardAndLoDTensorArray(unittest.TestCase):
                 return paddle.less_than(j, array_len2)
 
             def internal_body(j, x, mem_array):
-                inner_data = layers.array_read(array=data_array, i=j)
-                inner_prev = layers.array_read(array=mem_array, i=j)
+                inner_data = paddle.tensor.array_read(array=data_array, i=j)
+                inner_prev = paddle.tensor.array_read(array=mem_array, i=j)
                 inner_sum_0 = paddle.add(x=inner_data, y=inner_prev)
                 inner_sum_1 = paddle.add(x=x, y=inner_sum_0)
                 j = paddle.increment(x=j)
-                layers.array_write(inner_sum_1, i=j, array=mem_array)
+                paddle.tensor.array_write(inner_sum_1, i=j, array=mem_array)
                 return [j, x, mem_array]
 
-            outer_data = layers.array_read(array=data_array, i=i)
-            outer_prev = layers.array_read(array=mem_array, i=i)
+            outer_data = paddle.tensor.array_read(array=data_array, i=i)
+            outer_prev = paddle.tensor.array_read(array=mem_array, i=i)
             outer_sum_0 = paddle.add(x=outer_data, y=outer_prev)
             outer_sum_1 = paddle.add(x=x, y=outer_sum_0)
             i = paddle.increment(x=i)
-            layers.array_write(outer_sum_1, i=i, array=mem_array)
+            paddle.tensor.array_write(outer_sum_1, i=i, array=mem_array)
             j, x, mem_array = paddle.static.nn.while_loop(
                 internal_cond, internal_body, [j, x, mem_array]
             )
@@ -350,12 +351,12 @@ class TestApiWhileLoop_NestedWithBackwardAndLoDTensorArray(unittest.TestCase):
             i = layers.zeros(shape=[1], dtype='int64')
             i.stop_gradient = True
             init = layers.zeros(shape=[10], dtype='float32')
-            mem_array = layers.array_write(x=init, i=i)
-            data_array = layers.array_write(x=d0, i=i)
+            mem_array = paddle.tensor.array_write(x=init, i=i)
+            data_array = paddle.tensor.array_write(x=d0, i=i)
             i = paddle.increment(i)
-            layers.array_write(d1, i, array=data_array)
+            paddle.tensor.array_write(d1, i, array=data_array)
             i = paddle.increment(i)
-            layers.array_write(d2, i, array=data_array)
+            paddle.tensor.array_write(d2, i, array=data_array)
             i = layers.zeros(shape=[1], dtype='int64')
             i.stop_gradient = True
             array_len = layers.fill_constant(shape=[1], dtype='int64', value=1)
@@ -367,7 +368,7 @@ class TestApiWhileLoop_NestedWithBackwardAndLoDTensorArray(unittest.TestCase):
                 external_cond, external_body, [i, j, x, mem_array]
             )
 
-            sum_result = layers.array_read(array=mem_array, i=j)
+            sum_result = paddle.tensor.array_read(array=mem_array, i=j)
             mean = paddle.mean(sum_result)
             append_backward(mean)
 

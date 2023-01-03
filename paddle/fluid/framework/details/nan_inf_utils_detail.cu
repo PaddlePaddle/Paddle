@@ -428,13 +428,12 @@ void TensorCheckerVisitor<phi::GPUContext>::apply(
   phi::DenseTensor block_num_nan_inf;
   block_num_nan_inf.Resize({static_cast<int64_t>(2 * numel_max_min)});
   int64_t* block_num_nan_ptr =
-      block_num_nan_inf.mutable_data<int64_t>(tensor.place());
+      dev_ctx->template Alloc<int64_t>(&block_num_nan_inf);
   int64_t* block_num_inf_ptr = block_num_nan_ptr + numel_max_min;
 
   phi::DenseTensor tensor_block_max_min;
   tensor_block_max_min.Resize({static_cast<int64_t>(3 * numel_max_min)});
-  MT* tensor_block_max_ptr =
-      tensor_block_max_min.mutable_data<MT>(tensor.place());
+  MT* tensor_block_max_ptr = dev_ctx->template Alloc<MT>(&tensor_block_max_min);
   MT* tensor_block_min_ptr = tensor_block_max_ptr + numel_max_min;
   MT* tensor_block_mean_ptr = tensor_block_max_ptr + 2 * numel_max_min;
 

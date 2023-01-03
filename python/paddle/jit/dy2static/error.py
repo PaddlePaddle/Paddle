@@ -12,21 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import linecache
 import os
+import re
 import sys
 import traceback
-import linecache
-import re
+
 import numpy as np  # noqa: F401
 
-from .origin_info import (
-    Location,
-    OriginInfo,
-    global_origin_info_map,
-)
+from .origin_info import Location, OriginInfo, global_origin_info_map
 from .utils import _is_api_in_module_helper  # noqa: F401
 from .utils import RE_PYMODULE
-
 
 __all__ = []
 

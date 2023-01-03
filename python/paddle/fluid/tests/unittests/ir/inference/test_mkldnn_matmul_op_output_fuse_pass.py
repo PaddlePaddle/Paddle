@@ -19,6 +19,7 @@ from inference_pass_test import InferencePassTest
 
 import paddle
 import paddle.fluid as fluid
+import paddle.nn.functional as F
 
 
 class TestMKLDNNMatmulFuseOp(InferencePassTest):
@@ -41,7 +42,7 @@ class TestMKLDNNMatmulFuseOp(InferencePassTest):
             out = paddle.transpose(out, perm=[0, 2, 1, 3])
             out = paddle.reshape(out, [0, 0, self.shape_y[0] * self.shape_y[2]])
 
-            out = fluid.layers.relu(out)
+            out = F.relu(out)
         return out
 
     def setUp(self):
@@ -107,7 +108,7 @@ class TestMKLDNNMatmulOpNotFusedBreakPattern(TestMKLDNNMatmulFuseOp):
             out = paddle.transpose(out, perm=[0, 1, 2, 3])  # breaks pattern
             out = paddle.reshape(out, [0, 0, self.shape_y[0] * self.shape_y[2]])
 
-            out = fluid.layers.relu(out)
+            out = F.relu(out)
         return out
 
 

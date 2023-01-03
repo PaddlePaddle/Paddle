@@ -111,7 +111,7 @@ TEST_F(MkldnnQuantizerTest, histogram_inverted_min_max) {
   var_tensor.Resize(phi::make_dim(values.size()));
   std::copy(begin(values),
             end(values),
-            var_tensor.mutable_data<float>(platform::CPUPlace()));
+            var_tensor.mutable_data<float>(phi::CPUPlace()));
 
   ASSERT_THROW(Histogram(var_tensor, max_val, min_val, 3),
                platform::EnforceNotMet);
@@ -127,7 +127,7 @@ TEST_F(MkldnnQuantizerTest, histogram_non_negative_to_3) {
   var_tensor.Resize(phi::make_dim(values.size()));
   std::copy(begin(values),
             end(values),
-            var_tensor.mutable_data<float>(platform::CPUPlace()));
+            var_tensor.mutable_data<float>(phi::CPUPlace()));
 
   std::vector<int> histogram;
   float bin_width;
@@ -151,7 +151,7 @@ TEST_F(MkldnnQuantizerTest, histogram_positive_and_negative_to_3) {
   var_tensor.Resize(phi::make_dim(values.size()));
   std::copy(begin(values),
             end(values),
-            var_tensor.mutable_data<float>(platform::CPUPlace()));
+            var_tensor.mutable_data<float>(phi::CPUPlace()));
 
   std::vector<int> histogram;
   float bin_width;
@@ -175,7 +175,7 @@ TEST_F(MkldnnQuantizerTest, histogram_zero_bins) {
   var_tensor.Resize(phi::make_dim(values.size()));
   std::copy(begin(values),
             end(values),
-            var_tensor.mutable_data<float>(platform::CPUPlace()));
+            var_tensor.mutable_data<float>(phi::CPUPlace()));
 
   ASSERT_THROW(Histogram(var_tensor, min_val, max_val, 0),
                platform::EnforceNotMet);
@@ -188,7 +188,7 @@ TEST_F(MkldnnQuantizerTest, histogram_empty) {
   // zero tensor
   phi::DenseTensor var_tensor;
   var_tensor.Resize({0});
-  var_tensor.mutable_data<double>(platform::CPUPlace());
+  var_tensor.mutable_data<double>(phi::CPUPlace());
 
   ASSERT_THROW(Histogram(var_tensor, -1, 1, 1), platform::EnforceNotMet);
 }
@@ -200,7 +200,7 @@ TEST_F(MkldnnQuantizerTest, kl_scaling_factor_signed) {
   var_tensor.Resize(phi::make_dim(values.size()));
   std::copy(begin(values),
             end(values),
-            var_tensor.mutable_data<float>(platform::CPUPlace()));
+            var_tensor.mutable_data<float>(phi::CPUPlace()));
 
   bool is_unsigned;
   phi::DenseTensor lod_tensor;
@@ -220,7 +220,7 @@ TEST_F(MkldnnQuantizerTest, max_scaling_factor_signed) {
   var_tensor.Resize(phi::make_dim(values.size()));
   std::copy(begin(values),
             end(values),
-            var_tensor.mutable_data<float>(platform::CPUPlace()));
+            var_tensor.mutable_data<float>(phi::CPUPlace()));
 
   bool is_unsigned;
   phi::DenseTensor lod_tensor;
@@ -240,7 +240,7 @@ TEST_F(MkldnnQuantizerTest, max_scaling_factor_unsigned) {
   var_tensor.Resize(phi::make_dim(values.size()));
   std::copy(begin(values),
             end(values),
-            var_tensor.mutable_data<float>(platform::CPUPlace()));
+            var_tensor.mutable_data<float>(phi::CPUPlace()));
 
   bool is_unsigned;
   phi::DenseTensor lod_tensor;
@@ -260,10 +260,10 @@ TEST_F(MkldnnQuantizerTest, max_scaling_factor_chwise_unsigned) {
   phi::DenseTensor var_tensor;
   var_tensor.Resize(phi::make_dim(channels, 1, 1, values.size()));
   for (int i = 0; i < channels; i++)
-    std::copy(begin(values),
-              end(values),
-              var_tensor.mutable_data<float>(platform::CPUPlace()) +
-                  i * values.size());
+    std::copy(
+        begin(values),
+        end(values),
+        var_tensor.mutable_data<float>(phi::CPUPlace()) + i * values.size());
 
   bool is_unsigned;
   phi::DenseTensor lod_tensor;
@@ -284,7 +284,7 @@ TEST_F(MkldnnQuantizerTest, kl_scaling_factor_unsigned) {
   var_tensor.Resize(phi::make_dim(values.size()));
   std::copy(begin(values),
             end(values),
-            var_tensor.mutable_data<float>(platform::CPUPlace()));
+            var_tensor.mutable_data<float>(phi::CPUPlace()));
 
   bool is_unsigned;
   phi::DenseTensor lod_tensor;
@@ -312,14 +312,14 @@ TEST_F(MkldnnQuantizerTest, max_ch_gru_scaling_factor) {
     std::copy(
         begin(wx[i]),
         end(wx[i]),
-        wx_tensor.mutable_data<float>(platform::CPUPlace()) + i * wx[0].size());
+        wx_tensor.mutable_data<float>(phi::CPUPlace()) + i * wx[0].size());
 
   wh_tensor.Resize(phi::make_dim(wh.size(), wh[0].size()));
   for (size_t i = 0; i < wh.size(); i++)
     std::copy(
         begin(wh[i]),
         end(wh[i]),
-        wh_tensor.mutable_data<float>(platform::CPUPlace()) + i * wh[0].size());
+        wh_tensor.mutable_data<float>(phi::CPUPlace()) + i * wh[0].size());
 
   bool is_unsigned;
   std::tie(is_unsigned, lod_tensor) =
@@ -342,14 +342,14 @@ TEST_F(MkldnnQuantizerTest, max_ch_lstm_scaling_factor) {
     std::copy(
         begin(wx[i]),
         end(wx[i]),
-        wx_tensor.mutable_data<float>(platform::CPUPlace()) + i * wx[0].size());
+        wx_tensor.mutable_data<float>(phi::CPUPlace()) + i * wx[0].size());
 
   wh_tensor.Resize(phi::make_dim(wh.size(), wh[0].size()));
   for (size_t i = 0; i < wh.size(); i++)
     std::copy(
         begin(wh[i]),
         end(wh[i]),
-        wh_tensor.mutable_data<float>(platform::CPUPlace()) + i * wh[0].size());
+        wh_tensor.mutable_data<float>(phi::CPUPlace()) + i * wh[0].size());
 
   bool is_unsigned;
   std::tie(is_unsigned, lod_tensor) =

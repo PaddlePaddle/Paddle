@@ -12,9 +12,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/flatten_op.h"
 #include "paddle/fluid/operators/squeeze_op.h"
-#include "paddle/fluid/platform/mkldnn_reuse.h"
+#include "paddle/phi/backends/onednn/onednn_reuse.h"
 
 namespace {
 enum class ReshapeKernelOpName {
@@ -357,7 +358,7 @@ namespace ops = paddle::operators;
 REGISTER_OP_KERNEL(
     squeeze,
     MKLDNN,
-    paddle::platform::CPUPlace,
+    phi::CPUPlace,
     ops::ReshapeMKLDNNKernel<float, ReshapeKernelOpName::squeeze>,
     ops::ReshapeMKLDNNKernel<paddle::platform::bfloat16,
                              ReshapeKernelOpName::squeeze>);
@@ -365,7 +366,7 @@ REGISTER_OP_KERNEL(
 REGISTER_OP_KERNEL(
     squeeze_grad,
     MKLDNN,
-    paddle::platform::CPUPlace,
+    phi::CPUPlace,
     ops::ReshapeGradMKLDNNKernel<float, ReshapeKernelOpName::squeeze>,
     ops::ReshapeGradMKLDNNKernel<paddle::platform::bfloat16,
                                  ReshapeKernelOpName::squeeze>);
@@ -373,7 +374,7 @@ REGISTER_OP_KERNEL(
 REGISTER_OP_KERNEL(
     reshape,
     MKLDNN,
-    paddle::platform::CPUPlace,
+    phi::CPUPlace,
     ops::ReshapeMKLDNNKernel<float, ReshapeKernelOpName::reshape>,
     ops::ReshapeMKLDNNKernel<paddle::platform::bfloat16,
                              ReshapeKernelOpName::reshape>);
@@ -381,7 +382,7 @@ REGISTER_OP_KERNEL(
 REGISTER_OP_KERNEL(
     reshape_grad,
     MKLDNN,
-    paddle::platform::CPUPlace,
+    phi::CPUPlace,
     ops::ReshapeGradMKLDNNKernel<float, ReshapeKernelOpName::reshape>,
     ops::ReshapeGradMKLDNNKernel<paddle::platform::bfloat16,
                                  ReshapeKernelOpName::reshape>);
@@ -389,7 +390,7 @@ REGISTER_OP_KERNEL(
 REGISTER_OP_KERNEL(
     reshape2_grad,
     MKLDNN,
-    paddle::platform::CPUPlace,
+    phi::CPUPlace,
     ops::ReshapeGradMKLDNNKernel<float, ReshapeKernelOpName::reshape2>,
     ops::ReshapeGradMKLDNNKernel<paddle::platform::bfloat16,
                                  ReshapeKernelOpName::reshape2>);
@@ -397,7 +398,7 @@ REGISTER_OP_KERNEL(
 REGISTER_OP_KERNEL(
     flatten,
     MKLDNN,
-    paddle::platform::CPUPlace,
+    phi::CPUPlace,
     ops::ReshapeMKLDNNKernel<float, ReshapeKernelOpName::flatten>,
     ops::ReshapeMKLDNNKernel<paddle::platform::bfloat16,
                              ReshapeKernelOpName::flatten>);
@@ -405,7 +406,7 @@ REGISTER_OP_KERNEL(
 REGISTER_OP_KERNEL(
     flatten_grad,
     MKLDNN,
-    paddle::platform::CPUPlace,
+    phi::CPUPlace,
     ops::ReshapeGradMKLDNNKernel<float, ReshapeKernelOpName::flatten>,
     ops::ReshapeGradMKLDNNKernel<paddle::platform::bfloat16,
                                  ReshapeKernelOpName::flatten>);
@@ -413,7 +414,7 @@ REGISTER_OP_KERNEL(
 REGISTER_OP_KERNEL(
     flatten2,
     MKLDNN,
-    paddle::platform::CPUPlace,
+    phi::CPUPlace,
     ops::ReshapeMKLDNNKernel<float, ReshapeKernelOpName::flatten2>,
     ops::ReshapeMKLDNNKernel<paddle::platform::bfloat16,
                              ReshapeKernelOpName::flatten2>);
@@ -421,7 +422,7 @@ REGISTER_OP_KERNEL(
 REGISTER_OP_KERNEL(
     flatten2_grad,
     MKLDNN,
-    paddle::platform::CPUPlace,
+    phi::CPUPlace,
     ops::ReshapeGradMKLDNNKernel<float, ReshapeKernelOpName::flatten2>,
     ops::ReshapeGradMKLDNNKernel<paddle::platform::bfloat16,
                                  ReshapeKernelOpName::flatten2>);

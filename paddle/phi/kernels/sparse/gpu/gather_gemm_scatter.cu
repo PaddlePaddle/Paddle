@@ -72,7 +72,13 @@ fp16_gather_gemm_scatter getBestFp16Kernel(const int M,
 }
 fp32_gather_gemm_scatter getBestFp32Kernel(const int M,
                                            const int N,
-                                           const int K) {
+                                           const int K,
+                                           const int SM) {
+  if (SM == 75) {
+    return launchKernel<
+        float,
+        cutlass_tensorop_s1688gemm_f16_64x64_32x2_nn_align4::Gemm>;
+  }
   if (K == 4 && N == 16) {
     return launchKernel<
         float,

@@ -119,7 +119,7 @@ def simple_img_conv_pool(
                                                         pool_stride=2,
                                                         act="relu")
     """
-    conv_out = layers.conv2d(
+    conv_out = paddle.static.nn.conv2d(
         input=input,
         num_filters=num_filters,
         filter_size=filter_size,
@@ -246,7 +246,7 @@ def img_conv_group(
         if conv_with_batchnorm[i]:
             local_conv_act = None
 
-        tmp = layers.conv2d(
+        tmp = paddle.static.nn.conv2d(
             input=tmp,
             num_filters=conv_num_filter[i],
             filter_size=conv_filter_size[i],
@@ -260,7 +260,7 @@ def img_conv_group(
             tmp = paddle.static.nn.batch_norm(input=tmp, act=conv_act)
             drop_rate = conv_batchnorm_drop_rate[i]
             if abs(drop_rate) > 1e-5:
-                tmp = layers.dropout(x=tmp, dropout_prob=drop_rate)
+                tmp = paddle.nn.functional.dropout(x=tmp, p=drop_rate)
 
     if pool_type == 'max':
         pool_out = paddle.nn.functional.max_pool2d(
@@ -397,7 +397,7 @@ def glu(input, dim=-1):
     check_variable_and_dtype(
         input, 'input', ['float16', 'float32', 'float64'], "glu"
     )
-    a, b = layers.split(input, num_or_sections=2, dim=dim)
+    a, b = paddle.split(input, num_or_sections=2, axis=dim)
     act_b = paddle.nn.functional.sigmoid(x=b)
     out = paddle.multiply(x=a, y=act_b)
     return out
@@ -637,8 +637,6 @@ def scaled_dot_product_attention(
     weights = paddle.reshape(x=x, shape=product.shape)
 
     if dropout_rate:
-        weights = layers.dropout(
-            weights, dropout_prob=dropout_rate, is_test=False
-        )
+        weights = paddle.nn.functional.dropout(weights, p=dropout_rate)
     ctx_multiheads = paddle.matmul(weights, v)
     return __combine_heads(ctx_multiheads)

@@ -31,15 +31,16 @@ import unittest
 import numpy as np
 from PIL import Image, ImageOps
 
+import paddle.fluid as fluid
+
 # Use GPU:0 to elimate the influence of other tasks.
 os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 
 import paddle
-import paddle.fluid as fluid
 from paddle.fluid.dygraph import to_variable
-from paddle.fluid.dygraph.nn import BatchNorm
 from paddle.jit import ProgramTranslator
-from paddle.jit.api import declarative
+from paddle.jit.api import to_static
+from paddle.nn import BatchNorm
 
 # Note: Set True to eliminate randomness.
 #     1. For one operation, cuDNN has several algorithms,
@@ -81,7 +82,7 @@ class Cycle_Gan(fluid.dygraph.Layer):
                 input_channel
             )
 
-    @declarative
+    @to_static
     def forward(self, input_A, input_B):
         """
         Generator of GAN model.
@@ -132,7 +133,7 @@ class Cycle_Gan(fluid.dygraph.Layer):
             g_loss,
         )
 
-    @declarative
+    @to_static
     def discriminatorA(self, input_A, input_B):
         """
         Discriminator A of GAN model.
@@ -142,7 +143,7 @@ class Cycle_Gan(fluid.dygraph.Layer):
 
         return rec_B, fake_pool_rec_B
 
-    @declarative
+    @to_static
     def discriminatorB(self, input_A, input_B):
         """
         Discriminator B of GAN model.

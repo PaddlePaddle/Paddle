@@ -20,7 +20,6 @@ from op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
 import paddle
 from paddle import fluid
 from paddle.fluid import core
-from paddle.fluid.framework import _test_eager_guard
 
 
 class ElementwiseDivOp(OpTest):
@@ -440,7 +439,7 @@ class TestRealComplexElementwiseDivOp(TestComplexElementwiseDivOp):
 
 
 class TestElementwiseDivop(unittest.TestCase):
-    def func_dygraph_div(self):
+    def test_dygraph_div(self):
         paddle.disable_static()
 
         np_a = np.random.random((2, 3, 4)).astype(np.float32)
@@ -461,10 +460,6 @@ class TestElementwiseDivop(unittest.TestCase):
         np.testing.assert_allclose(actual_out, expect_out)
 
         paddle.enable_static()
-
-    def test_dygraph_div(self):
-        with _test_eager_guard():
-            self.func_dygraph_div()
 
 
 if __name__ == '__main__':

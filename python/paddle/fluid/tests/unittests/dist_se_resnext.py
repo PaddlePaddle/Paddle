@@ -113,7 +113,8 @@ class SE_ResNeXt:
                 )
 
         pool = paddle.nn.functional.adaptive_avg_pool2d(x=conv, output_size=1)
-        drop = fluid.layers.dropout(x=pool, dropout_prob=0.2)
+        drop = paddle.nn.functional.dropout(x=pool, p=0.2)
+
         stdv = 1.0 / math.sqrt(drop.shape[1] * 1.0)
         out = fluid.layers.fc(
             input=drop,
@@ -163,7 +164,7 @@ class SE_ResNeXt:
     def conv_bn_layer(
         self, input, num_filters, filter_size, stride=1, groups=1, act=None
     ):
-        conv = fluid.layers.conv2d(
+        conv = paddle.static.nn.conv2d(
             input=input,
             num_filters=num_filters,
             filter_size=filter_size,

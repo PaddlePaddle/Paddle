@@ -44,16 +44,16 @@ class TestProfiler(unittest.TestCase):
                 shape=[1], dtype='int64', force_cpu=True
             )
             until = layers.fill_constant([1], dtype='int64', value=10)
-            data_arr = layers.array_write(hidden1, i)
+            data_arr = paddle.tensor.array_write(hidden1, i)
             cond = paddle.less_than(x=counter, y=until)
             while_op = paddle.static.nn.control_flow.While(cond=cond)
             with while_op.block():
                 hidden_n = fluid.layers.fc(input=hidden1, size=64, act='relu')
-                layers.array_write(hidden_n, i, data_arr)
+                paddle.tensor.array_write(hidden_n, i, data_arr)
                 paddle.increment(x=counter, value=1)
                 paddle.assign(paddle.less_than(x=counter, y=until), cond)
 
-            hidden_n = layers.array_read(data_arr, i)
+            hidden_n = paddle.tensor.array_read(data_arr, i)
             hidden2 = fluid.layers.fc(input=hidden_n, size=64, act='relu')
             predict = fluid.layers.fc(input=hidden2, size=10, act='softmax')
             label = fluid.layers.data(name='y', shape=[1], dtype='int64')
@@ -294,14 +294,61 @@ class TestFLOPSAPI(unittest.TestCase):
             == 3 * 12 * 12 * 12 * 2 * 8
         )
         self.assertTrue(
-            flops('relu', {'X': [[12, 12, 12]]}, {}) == 12 * 12 * 12
-        )
-        self.assertTrue(
             flops('softmax', {'X': [[12, 12, 12]]}, {}) == 3 * 12 * 12 * 12
         )
         self.assertTrue(
             flops('c_embedding', {'Ids': [[12, 12]], 'W': [[12, 12, 3]]}, {})
             == 0
+        )
+        self.assertTrue(
+            flops(
+                'elu',
+                {
+                    'X': [[12, 12]],
+                },
+                {},
+            )
+            == 144
+        )
+        self.assertTrue(
+            flops(
+                'leaky_relu',
+                {
+                    'X': [[12, 12]],
+                },
+                {},
+            )
+            == 144
+        )
+        self.assertTrue(
+            flops(
+                'prelu',
+                {
+                    'X': [[12, 12]],
+                },
+                {},
+            )
+            == 144
+        )
+        self.assertTrue(
+            flops(
+                'relu6',
+                {
+                    'X': [[12, 12]],
+                },
+                {},
+            )
+            == 144
+        )
+        self.assertTrue(
+            flops(
+                'silu',
+                {
+                    'X': [[12, 12]],
+                },
+                {},
+            )
+            == 144
         )
 
 

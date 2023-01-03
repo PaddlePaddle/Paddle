@@ -476,7 +476,7 @@ class fused_attentionGradNodeCompat : public egr::GradNodeBase {
     SoftmaxOut_ = egr::TensorWrapper(SoftmaxOut, false);
   }
   void SetTensorWrapperSrcMask(const paddle::experimental::Tensor& SrcMask) {
-    SrcMask_ = egr::TensorWrapper(SrcMask, false);
+    SrcMask_ = egr::TensorWrapper(SrcMask, true);
   }
   void SetTensorWrapperSrcMaskOut(
       const paddle::experimental::Tensor& SrcMaskOut) {

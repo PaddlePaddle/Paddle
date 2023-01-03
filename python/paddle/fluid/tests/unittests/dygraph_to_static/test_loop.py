@@ -19,7 +19,7 @@ import numpy as np
 
 import paddle
 import paddle.fluid as fluid
-from paddle.jit.api import declarative
+import paddle.nn.functional as F
 from paddle.jit.dy2static.loop_transformer import NameVisitor
 from paddle.utils import gast
 
@@ -51,7 +51,7 @@ def while_loop_dyfun_with_conflict_var(x):
 
     def relu(y):
         # 'y' is not visible outside the scope.
-        return fluid.layers.relu(y)
+        return F.relu(y)
 
     while x < 10:
         # If a tmp variable is created which has same name
@@ -323,7 +323,7 @@ class TestTransformWhileLoop(unittest.TestCase):
             # Set the input of dyfunc to VarBase
             tensor_x = fluid.dygraph.to_variable(self.x, zero_copy=False)
             if to_static:
-                ret = declarative(self.dyfunc)(tensor_x)
+                ret = paddle.jit.to_static(self.dyfunc)(tensor_x)
             else:
                 ret = self.dyfunc(tensor_x)
             if hasattr(ret, "numpy"):
@@ -400,7 +400,7 @@ class TestTransformForLoop(unittest.TestCase):
     def _run(self, to_static):
         with fluid.dygraph.guard(self.place):
             if to_static:
-                ret = declarative(self.dyfunc)(self.len)
+                ret = paddle.jit.to_static(self.dyfunc)(self.len)
             else:
                 ret = self.dyfunc(self.len)
             return ret.numpy()
@@ -439,6 +439,40 @@ class TestVarCreateInForLoop(TestTransformForLoop):
 class TestErrorInForLoop(TestTransformForLoop):
     def _init_dyfunc(self):
         self.dyfunc = for_loop_dyfunc_not_support
+
+
+class Net(paddle.nn.Layer):
+    def __init__(self):
+        super().__init__()
+
+        self.layer_dict = paddle.nn.LayerDict(
+            {
+                "conv1": paddle.nn.Conv2D(3, 3, 1),
+                "conv2": paddle.nn.Conv2D(3, 3, 1),
+                "conv3": paddle.nn.Conv2D(3, 3, 1),
+            }
+        )
+
+    def forward(self, x):
+        out = 0
+        for layer_name in self.layer_dict:
+            out += self.layer_dict[layer_name](x)
+        return out
+
+
+class TestForLoopMeetDict(unittest.TestCase):
+    def test_start(self):
+
+        net = Net()
+        model = paddle.jit.to_static(
+            net,
+            input_spec=[
+                paddle.static.InputSpec(
+                    shape=[None, 3, 224, 224], dtype='float32'
+                )
+            ],
+        )
+        paddle.jit.save(model, "./inference/inference")
 
 
 if __name__ == '__main__':

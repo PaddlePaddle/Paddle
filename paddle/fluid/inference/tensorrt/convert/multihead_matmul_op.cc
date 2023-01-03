@@ -88,11 +88,10 @@ class MultiheadMatMulOpConverter : public OpConverter {
                           engine_->tensorrt_transformer_posid() != "" &&
                           engine_->tensorrt_transformer_maskid() != "";
     if (engine_->with_dynamic_shape()) {
-      if (engine_->tensorrt_transformer_maskid() != "") {
-        if (engine_->precision() == AnalysisConfig::Precision::kFloat32) {
-          PADDLE_THROW(platform::errors::Fatal(
-              "use use_varseqlen must be int8 or half, not float32."));
-        }
+      if (engine_->tensorrt_transformer_maskid() != "" &&
+          engine_->precision() != AnalysisConfig::Precision::kFloat32 &&
+          platform::GetGPUComputeCapability(platform::GetCurrentDeviceId()) >=
+              75) {
         nvinfer1::Weights weight{nvinfer1::DataType::kFLOAT,
                                  static_cast<void*>(weight_data),
                                  static_cast<int32_t>(weight_t->numel())};
@@ -258,7 +257,8 @@ class MultiheadMatMulOpConverter : public OpConverter {
               max_seqlen_tensor);  // max_seqlen, eval_placeholder_3
           auto plugin_layer = engine_->network()->addPluginV2(
               plugin_inputs.data(), plugin_inputs.size(), *plugin);
-          layer = plugin_layer;
+          RreplenishLayerAndOutput(
+              plugin_layer, "multihead_matmul", {output_name}, test_mode);
         } else {
           int head_size = hidden_out / head_number;
           // [3, head_number, head_size, hidden_in] -> [head_number, 3,
@@ -382,7 +382,8 @@ class MultiheadMatMulOpConverter : public OpConverter {
 
           auto plugin_layer = engine_->network()->addPluginV2(
               plugin_inputs.data(), plugin_inputs.size(), *plugin);
-
+          plugin_layer->setName(
+              ("CustomQKVToContextPluginDynamic: " + output_name).c_str());
           // recover no_varlen output
           if (!flag_varseqlen) {
             std::vector<nvinfer1::ITensor*> output_transformer;
@@ -395,13 +396,17 @@ class MultiheadMatMulOpConverter : public OpConverter {
                 engine_->AddDynamicPlugin(output_transformer.data(),
                                           output_transformer.size(),
                                           plugin);
-            layer = transformer_output_layer;
+            engine_->SetITensor(output_name,
+                                transformer_output_layer->getOutput(0));
+          } else {
+            engine_->SetITensor(output_name, plugin_layer->getOutput(0));
           }
         }
       } else {
         if (input_dims.d[1] <= 384 && !bias_qk_attr &&
             engine_->precision() != AnalysisConfig::Precision::kFloat32 &&
-            platform::GetGPUComputeCapability(0) >= 75) {
+            platform::GetGPUComputeCapability(platform::GetCurrentDeviceId()) >=
+                75) {
           /*
             * input_dims.d[0]: batch(-1)
             * input_dims.d[1]: length:256
@@ -776,6 +781,8 @@ class MultiheadMatMulOpConverter : public OpConverter {
               new plugin::QkvToContextPluginDynamic(
                   hidden_in, head_number, head_size, scale, with_fp16);
           layer = engine_->AddDynamicPlugin(plugin_inputs.data(), 2, plugin);
+          RreplenishLayerAndOutput(
+              layer, "multihead_matmul", {output_name}, test_mode);
         }
       }
     } else {
@@ -785,8 +792,6 @@ class MultiheadMatMulOpConverter : public OpConverter {
           "You can use the config.SetTRTDynamicShapeInfo(...) interface to set "
           "the shape information to run the dynamic shape mode."));
     }
-    RreplenishLayerAndOutput(
-        layer, "multihead_matmul", {output_name}, test_mode);
   }
 };
 

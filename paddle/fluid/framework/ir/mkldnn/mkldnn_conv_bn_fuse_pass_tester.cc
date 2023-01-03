@@ -23,7 +23,7 @@
 #include "paddle/fluid/framework/ir/pass_tester_helper.h"
 #include "paddle/fluid/framework/naive_executor.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/platform/place.h"
+#include "paddle/phi/common/place.h"
 #include "paddle/phi/core/kernel_registry.h"
 
 PD_DECLARE_KERNEL(conv2d_transpose, CPU, ALL_LAYOUT);
@@ -195,7 +195,7 @@ class MKLDNNConvBatchNormPassTest {
   void FillTensorWithRandomData(phi::DenseTensor* tnsr,
                                 float lowb,
                                 float upb,
-                                platform::CPUPlace place) {
+                                phi::CPUPlace place) {
     float* ptr = tnsr->mutable_data<float>(place);
     // Initialize input data
     std::uniform_real_distribution<float> dist(static_cast<float>(lowb),
@@ -219,7 +219,7 @@ class MKLDNNConvBatchNormPassTest {
 
     std::unique_ptr<ir::Graph> graph(new ir::Graph(base_prog));
     Scope scope;
-    auto place = paddle::platform::CPUPlace();
+    auto place = phi::CPUPlace();
     NaiveExecutor exe{place};
 
     auto pass = PassRegistry::Instance().Get(

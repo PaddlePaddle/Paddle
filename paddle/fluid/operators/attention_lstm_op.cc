@@ -16,7 +16,7 @@ limitations under the License. */
 
 #include <string>
 
-#include "paddle/fluid/platform/cpu_info.h"
+#include "paddle/phi/backends/cpu/cpu_info.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/cpu_vec.h"
 #include "paddle/phi/kernels/funcs/fc_functor.h"
@@ -315,10 +315,10 @@ use lstm_x_t as input and compute as standard LSTM.
 template <typename T>
 inline void bias_relu(const int n, const T* x, const T* bias, T* y) {
   if (bias) {
-    phi::funcs::vec_add_bias<T, platform::avx>(n, *bias, x, y);
-    phi::funcs::vec_relu<T, platform::avx>(n, y, y);
+    phi::funcs::vec_add_bias<T, phi::backends::cpu::avx>(n, *bias, x, y);
+    phi::funcs::vec_relu<T, phi::backends::cpu::avx>(n, y, y);
   } else {
-    phi::funcs::vec_relu<T, platform::avx>(n, x, y);
+    phi::funcs::vec_relu<T, phi::backends::cpu::avx>(n, x, y);
   }
 }
 
@@ -329,8 +329,9 @@ inline void vec_softmax(const int n, const T* x, T* y) {
   for (int i = 1; i < n; ++i) {
     scalar = scalar < x[i] ? x[i] : scalar;
   }
-  phi::funcs::vec_add_bias<T, platform::avx>(n, -scalar, x, y);  // sub
-  phi::funcs::vec_exp<T>(n, y, y);                               // exp
+  phi::funcs::vec_add_bias<T, phi::backends::cpu::avx>(
+      n, -scalar, x, y);            // sub
+  phi::funcs::vec_exp<T>(n, y, y);  // exp
   // sum
   scalar = T(0);
   for (int i = 0; i < n; ++i) {
@@ -393,13 +394,13 @@ class AttentionLSTMKernel : public framework::OpKernel<T> {
     auto& act_gate_str = ctx.Attr<std::string>("gate_activation");
     auto& act_cell_str = ctx.Attr<std::string>("cell_activation");
     auto& act_cand_str = ctx.Attr<std::string>("candidate_activation");
-    if (platform::MayIUse(platform::avx)) {
-      phi::funcs::VecActivations<T, platform::avx> act_functor;
+    if (phi::backends::cpu::MayIUse(phi::backends::cpu::avx)) {
+      phi::funcs::VecActivations<T, phi::backends::cpu::avx> act_functor;
       act_gate = act_functor(act_gate_str);
       act_cell = act_functor(act_cell_str);
       act_cand = act_functor(act_cand_str);
     } else {
-      phi::funcs::VecActivations<T, platform::isa_any> act_functor;
+      phi::funcs::VecActivations<T, phi::backends::cpu::isa_any> act_functor;
       act_gate = act_functor(act_gate_str);
       act_cell = act_functor(act_cell_str);
       act_cand = act_functor(act_cand_str);

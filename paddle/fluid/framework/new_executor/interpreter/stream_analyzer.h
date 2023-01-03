@@ -64,7 +64,8 @@ class StreamAnalyzer {
       const std::vector<std::vector<std::vector<size_t>>>& run_type_info,
       const size_t cur_instr_id,
       const size_t next_instr_id,
-      std::set<size_t>* waiter_instr_ids) const;
+      std::set<size_t>* waiter_instr_ids,
+      std::set<size_t>* visited_next_instr_id) const;
 
   void ShrinkEventInfo(
       const DependencyBuilder& dependency_builder,

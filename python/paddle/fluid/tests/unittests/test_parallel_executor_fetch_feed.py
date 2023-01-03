@@ -25,10 +25,10 @@ from paddle.fluid import compiler
 
 
 def Lenet(data, class_dim):
-    conv1 = fluid.layers.conv2d(data, 4, 5, 1, act=None)
+    conv1 = paddle.static.nn.conv2d(data, 4, 5, 1, act=None)
     bn1 = paddle.static.nn.batch_norm(conv1, act='relu')
     pool1 = paddle.nn.functional.max_pool2d(bn1, 2, 2)
-    conv2 = fluid.layers.conv2d(pool1, 16, 5, 1, act=None)
+    conv2 = paddle.static.nn.conv2d(pool1, 16, 5, 1, act=None)
     bn2 = paddle.static.nn.batch_norm(conv2, act='relu')
     pool2 = paddle.nn.functional.max_pool2d(bn2, 2, 2)
 
