@@ -13,8 +13,8 @@
 // limitations under the License.
 
 #include "gtest/gtest.h"
-#include "paddle/phi/core/flags.h"
 #include "paddle/fluid/framework/trainer.h"
+#include "paddle/phi/core/flags.h"
 #ifdef PADDLE_WITH_GLOO
 #include "paddle/fluid/framework/fleet/gloo_wrapper.h"
 #endif
@@ -96,7 +96,9 @@ TEST(DisMultiTrainerTest, test2) {
   m->set_program_id("123");
   std::string str;
   // str += "name: \"MultiSlotDataFeed\"\nbatch_size: 2\nmulti_slot_desc {\n";
-  str += "name: \"SlotRecordInMemoryDataFeed\"\nbatch_size: 2\nmulti_slot_desc {\n";
+  str +=
+      "name: \"SlotRecordInMemoryDataFeed\"\nbatch_size: 2\nmulti_slot_desc "
+      "{\n";
   str += "slots {\nname: \"words\"\ntype: \"uint64\"\nis_dense: false\n";
   str += "is_used: true\n}\nslots {\nname: \"label\"\ntype: \"uint64\"\n";
   str += "is_dense: false\nis_used: true\n}\n}\n";
@@ -105,8 +107,8 @@ TEST(DisMultiTrainerTest, test2) {
   // std::shared_ptr<MultiSlotDataset> dataset =
   //     std::make_shared<MultiSlotDataset>();
   std::shared_ptr<SlotRecordDataset> dataset =
-       std::make_shared<SlotRecordDataset>();
-  
+      std::make_shared<SlotRecordDataset>();
+
   dataset->SetFileList(std::vector<std::string>());
   dataset->SetThreadNum(1);
   dataset->SetTrainerNum(1);
@@ -136,7 +138,9 @@ TEST(DisMultiTrainerTest, test3) {
   m->set_program_id("123");
   std::string str;
   // str += "name: \"MultiSlotDataFeed\"\nbatch_size: 2\nmulti_slot_desc {\n";
-  str += "name: \"SlotRecordInMemoryDataFeed\"\nbatch_size: 2\nmulti_slot_desc {\n";
+  str +=
+      "name: \"SlotRecordInMemoryDataFeed\"\nbatch_size: 2\nmulti_slot_desc "
+      "{\n";
   str += "slots {\nname: \"words\"\ntype: \"uint64\"\nis_dense: false\n";
   str += "is_used: true\n}\nslots {\nname: \"label\"\ntype: \"uint64\"\n";
   str += "is_dense: false\nis_used: true\n}\n}\n";
@@ -145,8 +149,8 @@ TEST(DisMultiTrainerTest, test3) {
   // std::shared_ptr<MultiSlotDataset> dataset =
   //     std::make_shared<MultiSlotDataset>();
   std::shared_ptr<SlotRecordDataset> dataset =
-       std::make_shared<SlotRecordDataset>();
-  
+      std::make_shared<SlotRecordDataset>();
+
   dataset->SetFileList(std::vector<std::string>());
   dataset->SetThreadNum(1);
   dataset->SetTrainerNum(1);
