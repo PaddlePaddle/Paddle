@@ -79,7 +79,7 @@ class XPUTestRollOp(XPUOpTestWrapper):
             self.shifts = [8, -1]
             self.axis = [-1, -2]
 
-    class TestRollOpCase4(TestXPURollOp):
+    class TestRollOpCase5(TestXPURollOp):
         def init_shapes(self):
             self.x_shape = (100, 10, 5, 10)
             self.shifts = [20, -1]

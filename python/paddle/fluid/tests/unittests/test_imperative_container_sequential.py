@@ -18,12 +18,11 @@ import numpy as np
 
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.framework import _test_eager_guard
 from paddle.nn import Linear
 
 
 class TestImperativeContainerSequential(unittest.TestCase):
-    def func_sequential(self):
+    def test_sequential(self):
         data = np.random.uniform(-1, 1, [5, 10]).astype('float32')
         with fluid.dygraph.guard():
             data = fluid.dygraph.to_variable(data)
@@ -57,12 +56,7 @@ class TestImperativeContainerSequential(unittest.TestCase):
             loss2 = paddle.mean(res2)
             loss2.backward()
 
-    def test_sequential(self):
-        with _test_eager_guard():
-            self.func_sequential()
-        self.func_sequential()
-
-    def func_sequential_list_params(self):
+    def test_sequential_list_params(self):
         data = np.random.uniform(-1, 1, [5, 10]).astype('float32')
         with fluid.dygraph.guard():
             data = fluid.dygraph.to_variable(data)
@@ -95,11 +89,6 @@ class TestImperativeContainerSequential(unittest.TestCase):
 
             loss2 = paddle.mean(res2)
             loss2.backward()
-
-    def test_sequential_list_params(self):
-        with _test_eager_guard():
-            self.func_sequential_list_params()
-        self.func_sequential_list_params()
 
 
 if __name__ == '__main__':

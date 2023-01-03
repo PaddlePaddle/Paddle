@@ -25,7 +25,6 @@ from op_test import OpTest
 from paddle.fluid import compiler, Program, program_guard
 from paddle.fluid.op import Operator
 from paddle.fluid.backward import append_backward
-from paddle.fluid.framework import _test_eager_guard
 
 paddle.enable_static()
 

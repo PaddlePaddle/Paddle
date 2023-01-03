@@ -414,9 +414,7 @@ class TestFakeInit(TranspilerTest):
 
         input_emb_re = paddle.reshape(input_emb, shape=[-1, 1, embedding_size])
 
-        neg_matmul = fluid.layers.matmul(
-            input_emb_re, neg_emb_w_re, transpose_y=True
-        )
+        neg_matmul = paddle.matmul(input_emb_re, neg_emb_w_re, transpose_y=True)
         neg_matmul_re = paddle.reshape(neg_matmul, shape=[-1, neg_num])
         neg_logits = paddle.add(neg_matmul_re, neg_emb_b_vec)
         # nce loss
@@ -586,7 +584,7 @@ class TestL2Decay(TranspilerTest):
         def filter(param):
             return param.name == "fc_w"
 
-        clip = fluid.clip.GradientClipByValue(0.1, need_clip=filter)
+        clip = paddle.nn.ClipGradByValue(0.1, need_clip=filter)
         sgd_optimizer.minimize(avg_cost, grad_clip=clip)
 
     def transpiler_test_impl(self):
@@ -749,7 +747,9 @@ class TestDistLookupTableBase(TranspilerTest):
         )
 
         label = fluid.layers.data(name='label', shape=[1], dtype='int64')
-        cost = fluid.layers.cross_entropy(input=predict, label=label)
+        cost = paddle.nn.functional.cross_entropy(
+            input=predict, label=label, reduction='none', use_softmax=False
+        )
         avg_cost = paddle.mean(cost)
         optimizer = fluid.optimizer.Adam(learning_rate=0.003)
         optimizer.minimize(avg_cost)

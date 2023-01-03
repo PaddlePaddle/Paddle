@@ -612,8 +612,9 @@ class OperatorWithKernel : public OperatorBase {
   OperatorWithKernel(const std::string& type,
                      const VariableNameMap& inputs,
                      const VariableNameMap& outputs,
-                     const AttributeMap& attrs)
-      : OperatorBase(type, inputs, outputs, attrs) {}
+                     const AttributeMap& attrs);
+
+  virtual ~OperatorWithKernel();
 
   static paddle::flat_hash_map<std::string /* op_type */, OpKernelMap>&
   AllOpKernels() {
@@ -785,8 +786,9 @@ class OperatorWithKernel : public OperatorBase {
   mutable std::unique_ptr<phi::Kernel> phi_kernel_;
   mutable std::unique_ptr<phi::ArgumentMappingFn> arg_map_fn_;
 
+ private:
   struct CacheImpl;
-  mutable CacheImpl* impl_{nullptr};
+  mutable std::unique_ptr<CacheImpl> impl_;
 };
 
 extern bool OpSupportGPU(const std::string& op_type);

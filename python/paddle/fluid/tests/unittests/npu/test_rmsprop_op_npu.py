@@ -52,7 +52,7 @@ class TestNet(unittest.TestCase):
             fc_1 = fluid.layers.fc(input=z, size=128)
             prediction = fluid.layers.fc(input=fc_1, size=2, act='softmax')
 
-            cost = fluid.layers.cross_entropy(input=prediction, label=label)
+            cost = paddle.nn.functional.cross_entropy(input=prediction, label=label, reduction='none', use_softmax=False)
             loss = paddle.mean(cost)
             rmsprop = fluid.optimizer.RMSProp(learning_rate=0.01)
             rmsprop.minimize(loss)
@@ -115,7 +115,7 @@ class TestCenteredNet(unittest.TestCase):
             fc_1 = fluid.layers.fc(input=z, size=128)
             prediction = fluid.layers.fc(input=fc_1, size=2, act='softmax')
 
-            cost = fluid.layers.cross_entropy(input=prediction, label=label)
+            cost = paddle.nn.functional.cross_entropy(input=prediction, label=label, reduction='none', use_softmax=False)
             loss = paddle.mean(cost)
             rmsprop = fluid.optimizer.RMSProp(learning_rate=0.01, centered=True)
             rmsprop.minimize(loss)

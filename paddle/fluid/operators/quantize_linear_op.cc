@@ -25,6 +25,22 @@ namespace paddle {
 namespace operators {
 
 template <typename T>
+struct DequantizeFunctor<phi::CPUContext, T> {
+  void operator()(const phi::CPUContext &dev_ctx,
+                  const phi::DenseTensor *in,
+                  const phi::DenseTensor *scale,
+                  T max_range,
+                  phi::DenseTensor *out) {
+    auto in_e = framework::EigenVector<T>::Flatten(*in);
+    const T *scale_factor = scale->data<T>();
+    auto out_e = framework::EigenVector<T>::Flatten(*out);
+
+    auto &dev = *dev_ctx.eigen_device();
+    out_e.device(dev) = in_e * scale_factor[0] / max_range;
+  }
+};
+
+template <typename T>
 struct ChannelDequantizeFunctorV2<phi::CPUContext, T> {
   void operator()(const phi::CPUContext &dev_ctx,
                   const phi::DenseTensor *in,
@@ -55,7 +71,7 @@ struct ChannelDequantizeFunctorV2<phi::CPUContext, T> {
       int64_t step_i = in->numel() / out_iter;
       int64_t step_j = in->numel() / (out_iter * channel);
       auto *in_data = in->data<T>();
-      auto *out_data = out->mutable_data<T>(dev_ctx.GetPlace());
+      auto *out_data = dev_ctx.Alloc<T>(out, out->numel() * sizeof(T));
       for (int64_t i = 0; i < out_iter; i++) {
         for (int64_t j = 0; j < channel; j++) {
           auto *cur_in = in_data + i * step_i + j * step_j;
@@ -72,6 +88,11 @@ struct ChannelDequantizeFunctorV2<phi::CPUContext, T> {
   }
 };
 
+template struct DequantizeFunctor<phi::CPUContext, phi::dtype::float16>;
+template struct DequantizeFunctor<phi::CPUContext, float>;
+template struct DequantizeFunctor<phi::CPUContext, double>;
+template struct ChannelDequantizeFunctorV2<phi::CPUContext,
+                                           phi::dtype::float16>;
 template struct ChannelDequantizeFunctorV2<phi::CPUContext, float>;
 template struct ChannelDequantizeFunctorV2<phi::CPUContext, double>;
 
@@ -214,6 +235,6 @@ REGISTER_OPERATOR(
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 
 REGISTER_OP_CPU_KERNEL(dequantize_linear,
-                       ops::DeQuantizeLinearKernel<CPU, float, float>,
-                       ops::DeQuantizeLinearKernel<CPU, int8_t, float>,
-                       ops::DeQuantizeLinearKernel<CPU, double, double>);
+                       ops::DeQuantizeLinearKernel<CPU, float>,
+                       ops::DeQuantizeLinearKernel<CPU, int8_t>,
+                       ops::DeQuantizeLinearKernel<CPU, double>);

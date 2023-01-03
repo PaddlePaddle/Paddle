@@ -38,13 +38,6 @@ from .backward import (
     _append_grad_suffix_,
     _get_no_grad_set_name,
 )
-from .clip import (
-    GradientClipBase,
-    GradientClipByNorm,
-    error_clip_callback,
-    append_gradient_clip_ops,
-    ClipGradByGlobalNorm,
-)
 from .framework import program_guard
 from .initializer import Constant
 from .layer_helper import LayerHelper
@@ -62,7 +55,6 @@ from .wrapped_decorator import signature_safe_contextmanager
 import warnings
 from paddle import _C_ops, _legacy_C_ops
 from ..fluid.framework import (
-    _in_legacy_dygraph,
     in_dygraph_mode,
     _current_expected_place,
 )
@@ -130,7 +122,7 @@ class Optimizer:
             list(parameter_list) if parameter_list is not None else None
         )
         self._name = name
-        if framework._non_static_mode():
+        if in_dygraph_mode():
             if not isinstance(
                 learning_rate, (float, LearningRateDecay, LRScheduler)
             ):
@@ -161,7 +153,7 @@ class Optimizer:
                 )
 
         if grad_clip is not None:
-            if not isinstance(grad_clip, GradientClipBase):
+            if not isinstance(grad_clip, paddle.nn.clip.GradientClipBase):
                 raise TypeError(
                     "'grad_clip' should be an instance of GradientClipBase's derived class"
                 )
@@ -214,9 +206,10 @@ class Optimizer:
             .. code-block:: python
 
                 import paddle.fluid as fluid
+                import paddle
 
                 with fluid.dygraph.guard():
-                    emb = fluid.dygraph.Embedding([10, 10])
+                    emb = paddle.nn.Embedding(10, 10)
 
                     adam = fluid.optimizer.Adam(0.001, parameter_list=emb.parameters())
                     state_dict = adam.state_dict()
@@ -418,7 +411,7 @@ class Optimizer:
                 else:
                     self._learning_rate_map[
                         framework.default_main_program()
-                    ] = layers.create_global_var(
+                    ] = paddle.static.create_global_var(
                         name=unique_name.generate("learning_rate"),
                         shape=[1],
                         value=float(self._learning_rate),
@@ -449,7 +442,7 @@ class Optimizer:
             # create learning rate in the current main program
             self._learning_rate_map[
                 framework.default_main_program()
-            ] = layers.create_global_var(
+            ] = paddle.static.create_global_var(
                 name=unique_name.generate("learning_rate"),
                 shape=[1],
                 value=float(self._learning_rate),
@@ -474,10 +467,12 @@ class Optimizer:
         Examples:
             .. code-block:: python
 
+                import paddle
                 import paddle.fluid as fluid
+                import paddle
 
                 with fluid.dygraph.guard():
-                    linear = fluid.dygraph.nn.Linear(10, 10)
+                    linear = paddle.nn.Linear(10, 10)
 
                     adam = fluid.optimizer.Adam(0.1, parameter_list=linear.parameters())
 
@@ -496,7 +491,7 @@ class Optimizer:
 
 
                     # set learning rate manually by framework Variable
-                    lr_var = fluid.layers.create_global_var(
+                    lr_var = paddle.static.create_global_var(
                         shape=[1], value=0.7, dtype='float32')
                     adam.set_lr(lr_var)
                     lr = adam.current_step_lr()
@@ -528,17 +523,6 @@ class Optimizer:
                         float(value),
                         current_lr.dtype,
                         place,
-                    )
-
-                elif _in_legacy_dygraph():
-                    _legacy_C_ops.fill_constant(
-                        current_lr,
-                        'value',
-                        float(value),
-                        'dtype',
-                        current_lr.dtype,
-                        'shape',
-                        list(current_lr.shape),
                     )
                 else:
                     global_block = (
@@ -576,10 +560,11 @@ class Optimizer:
 
                 import paddle.fluid as fluid
                 import numpy as np
+                import paddle
 
                 # example1: LearningRateDecay is not used, return value is all the same
                 with fluid.dygraph.guard():
-                    emb = fluid.dygraph.Embedding([10, 10])
+                    emb = paddle.nn.Embedding(10, 10)
                     adam = fluid.optimizer.Adam(0.001, parameter_list = emb.parameters())
                     lr = adam.current_step_lr()
                     print(lr) # 0.001
@@ -587,10 +572,10 @@ class Optimizer:
                 # example2: PiecewiseDecay is used, return the step learning rate
                 with fluid.dygraph.guard():
                     inp = np.random.uniform(-0.1, 0.1, [10, 10]).astype("float32")
-                    linear = fluid.dygraph.nn.Linear(10, 10)
+                    linear = paddle.nn.Linear(10, 10)
                     inp = fluid.dygraph.to_variable(inp)
                     out = linear(inp)
-                    loss = fluid.layers.reduce_mean(out)
+                    loss = paddle.mean(out)
 
                     bd = [2, 4, 6, 8]
                     value = [0.2, 0.4, 0.6, 0.8, 1.0]
@@ -699,7 +684,7 @@ class Optimizer:
             name in self._accumulators
             and param.name in self._accumulators[name]
         ):
-            if framework._non_static_mode():
+            if in_dygraph_mode():
                 return self._accumulators[name][param.name]
             raise Exception(
                 "Accumulator {} already exists for parameter {}".format(
@@ -719,7 +704,7 @@ class Optimizer:
             persistable=True,
             dtype=dtype or param.dtype,
             type=core.VarDesc.VarType.LOD_TENSOR
-            if framework._non_static_mode()
+            if in_dygraph_mode()
             else (param.type if type is None else type),
             shape=shape,
             belong_to_optimizer=True,
@@ -731,7 +716,7 @@ class Optimizer:
                 var, initializer=Constant(value=float(fill_value))
             )
 
-        if framework._non_static_mode():
+        if in_dygraph_mode():
             if len(self._accumulators_holder) > 0:
                 assert (
                     var_name in self._accumulators_holder
@@ -766,7 +751,7 @@ class Optimizer:
         if self._name is not None:
             name = self._name + "_" + name
         if name in self._global_accumulators:
-            if framework._non_static_mode():
+            if in_dygraph_mode():
                 return self._global_accumulators[name]
             raise Exception("Global accumulator {} already exists".format(name))
         if shape is None:
@@ -792,7 +777,7 @@ class Optimizer:
                 var, initializer=Constant(value=float(fill_value))
             )
 
-        if framework._non_static_mode():
+        if in_dygraph_mode():
             if len(self._accumulators_holder) > 0:
                 assert (
                     var_name in self._accumulators_holder
@@ -907,7 +892,7 @@ class Optimizer:
         )
         self._create_global_learning_rate()
 
-        if framework._non_static_mode():
+        if in_dygraph_mode():
             for param_and_grad in parameters_and_grads:
                 if param_and_grad[1] is None:
                     continue
@@ -1014,7 +999,7 @@ class Optimizer:
             See examples in ``apply_gradients``.
         """
         act_no_grad_set = None
-        if framework._non_static_mode():
+        if in_dygraph_mode():
             pass
         else:
             act_no_grad_set = self._get_no_grad_set(loss, no_grad_set)
@@ -1023,7 +1008,7 @@ class Optimizer:
         if self._dtype is None:
             self._dtype = loss.dtype
 
-        if framework._non_static_mode():
+        if in_dygraph_mode():
             parameter_list = (
                 parameter_list if parameter_list else self._parameter_list
             )
@@ -1038,7 +1023,7 @@ class Optimizer:
                     params_grads.append((param, grad_var))
         else:
             if callbacks is None:
-                callbacks = [error_clip_callback]
+                callbacks = [paddle.nn.clip.error_clip_callback]
             else:
                 assert isinstance(callbacks, list)
             program = loss.block.program
@@ -1080,7 +1065,7 @@ class Optimizer:
 
         assert regularization_term is not None
 
-        if framework._non_static_mode():
+        if in_dygraph_mode():
             return _legacy_C_ops.sum([grad, regularization_term])
 
         new_grad = grad
@@ -1127,7 +1112,7 @@ class Optimizer:
             Exception: Unknown regularization type
         """
         params_and_grads = []
-        if framework._non_static_mode():
+        if in_dygraph_mode():
             for param, grad in parameters_and_grads:
                 new_grad = self._create_regularization_of_grad(
                     param, grad, regularization
@@ -1268,7 +1253,7 @@ class Optimizer:
         # NOTE(zhiqiu): currently, only support ClipGradByGlobalNorm and without regularization.
         if self._flatten_param_grads and self.regularization is None:
             if self._grad_clip is None or isinstance(
-                self._grad_clip, ClipGradByGlobalNorm
+                self._grad_clip, paddle.nn.ClipGradByGlobalNorm
             ):
                 params_grads = self.flatten_param_grads(params_grads)
 
@@ -1276,7 +1261,7 @@ class Optimizer:
         if self._grad_clip is not None:
             params_grads = self._grad_clip(params_grads)
         else:
-            params_grads = append_gradient_clip_ops(params_grads)
+            params_grads = paddle.nn.clip.append_gradient_clip_ops(params_grads)
 
         # Add regularization if any
         params_grads = self.append_regularization_ops(
@@ -1298,7 +1283,7 @@ class Optimizer:
         Returns:
             list: A list of operators appended to the current program.
         """
-        if framework._non_static_mode():
+        if in_dygraph_mode():
             with program_guard(
                 framework.default_main_program(),
                 framework.default_startup_program(),
@@ -1340,12 +1325,13 @@ class Optimizer:
             .. code-block:: python
 
                 import paddle.fluid as fluid
+                import paddle
                 import numpy as np
 
                 with fluid.dygraph.guard():
                     value = np.arange(26).reshape(2, 13).astype("float32")
                     a = fluid.dygraph.to_variable(value)
-                    linear = fluid.Linear(13, 5, dtype="float32")
+                    linear = paddle.nn.Linear(13, 5)
                     # This can be any optimizer supported by dygraph.
                     adam = fluid.optimizer.Adam(learning_rate = 0.01,
                                                 parameter_list = linear.parameters())
@@ -1421,7 +1407,7 @@ class SGDOptimizer(Optimizer):
             Can be a float value or a Variable with one float value as data element.
         parameter_list (Iterable, optional):  Iterable of ``Variable`` names to update to minimize ``loss``. \
             This parameter is required in dygraph mode. \
-            The default value is None in static mode, at this time all parameters will be updated.
+            The default value is None in static graph mode, at this time all parameters will be updated.
         regularization (WeightDecayRegularizer, optional): The strategy of regularization. There are two method: \
              :ref:`api_fluid_regularizer_L1Decay` , :ref:`api_fluid_regularizer_L2Decay` . If a parameter has set \
             regularizer using :ref:`api_fluid_ParamAttr` already, the regularization setting here in optimizer will be \
@@ -1449,7 +1435,7 @@ class SGDOptimizer(Optimizer):
                 y = fluid.layers.data(name='y', shape=[1], dtype='float32')
                 y_predict = fluid.layers.fc(input=x, size=1, act=None)
                 cost = paddle.nn.functional.square_error_cost(input=y_predict, label=y)
-                avg_cost = fluid.layers.mean(cost)
+                avg_cost = paddle.mean(cost)
 
                 sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.001)
                 sgd_optimizer.minimize(avg_cost)
@@ -1495,7 +1481,7 @@ class SGDOptimizer(Optimizer):
 
             var_name = param.name + "_fp32_master"
             var_name = unique_name.generate(var_name)
-            var = layers.create_global_var(
+            var = paddle.static.create_global_var(
                 name=var_name,
                 shape=param.shape,
                 value=0,
@@ -1557,42 +1543,32 @@ class SGDOptimizer(Optimizer):
                 find_master,
             )
             return None
-        if _in_legacy_dygraph():
-            _legacy_C_ops.sgd(
-                param_and_grad[0],
-                lr,
-                param_and_grad[1],
-                master_weight,
-                param_and_grad[0],
-                master_weight,
+        else:
+            assert isinstance(block, framework.Block)
+            # create the optimize op
+            inputs = {
+                "Param": param_and_grad[0],
+                "Grad": param_and_grad[1],
+                "LearningRate": lr,
+            }
+
+            outputs = {"ParamOut": param_and_grad[0]}
+
+            attrs = {"multi_precision": find_master}
+
+            if find_master:
+                inputs["MasterParam"] = master_weight
+                outputs["MasterParamOut"] = master_weight
+
+            sgd_op = block.append_op(
+                type=self.type,
+                inputs=inputs,
+                outputs=outputs,
+                attrs=attrs,
+                stop_gradient=True,
             )
-            return None
 
-        assert isinstance(block, framework.Block)
-        # create the optimize op
-        inputs = {
-            "Param": param_and_grad[0],
-            "Grad": param_and_grad[1],
-            "LearningRate": lr,
-        }
-
-        outputs = {"ParamOut": param_and_grad[0]}
-
-        attrs = {"multi_precision": find_master}
-
-        if find_master:
-            inputs["MasterParam"] = master_weight
-            outputs["MasterParamOut"] = master_weight
-
-        sgd_op = block.append_op(
-            type=self.type,
-            inputs=inputs,
-            outputs=outputs,
-            attrs=attrs,
-            stop_gradient=True,
-        )
-
-        return sgd_op
+            return sgd_op
 
 
 class MomentumOptimizer(Optimizer):
@@ -1622,7 +1598,7 @@ class MomentumOptimizer(Optimizer):
         momentum (float): Momentum factor
         parameter_list (Iterable, optional):  Iterable of ``Variable`` names to update to minimize ``loss``. \
             This parameter is required in dygraph mode. \
-            The default value is None in static mode, at this time all parameters will be updated.
+            The default value is None in static graph mode, at this time all parameters will be updated.
         use_nesterov (bool, optional): Enables Nesterov momentum, default is false.
         regularization (WeightDecayRegularizer, optional): The strategy of regularization. There are two method: \
              :ref:`api_fluid_regularizer_L1Decay` , :ref:`api_fluid_regularizer_L2Decay` . If a parameter has set \
@@ -1651,7 +1627,7 @@ class MomentumOptimizer(Optimizer):
                 y = fluid.layers.data(name='y', shape=[1], dtype='float32')
                 y_predict = fluid.layers.fc(input=x, size=1, act=None)
                 cost = paddle.nn.functional.square_error_cost(input=y_predict, label=y)
-                avg_cost = fluid.layers.mean(cost)
+                avg_cost = paddle.mean(cost)
 
                 moment_optimizer = fluid.optimizer.MomentumOptimizer(learning_rate=0.001, momentum=0.9)
                 moment_optimizer.minimize(avg_cost)
@@ -1705,7 +1681,7 @@ class MomentumOptimizer(Optimizer):
         )
         lr = self._create_param_lr(param_and_grad)
         master_weight = None
-        if framework._non_static_mode():
+        if in_dygraph_mode():
             _, _, _ = _legacy_C_ops.momentum(
                 param_and_grad[0],
                 param_and_grad[1],
@@ -1721,29 +1697,29 @@ class MomentumOptimizer(Optimizer):
                 self._use_nesterov,
             )
             return None
+        else:
+            attrs = {"mu": self._momentum, "use_nesterov": self._use_nesterov}
+            inputs = {
+                "Param": [param_and_grad[0]],
+                "Grad": [param_and_grad[1]],
+                "Velocity": [velocity_acc],
+                "LearningRate": [lr],
+            }
 
-        attrs = {"mu": self._momentum, "use_nesterov": self._use_nesterov}
-        inputs = {
-            "Param": [param_and_grad[0]],
-            "Grad": [param_and_grad[1]],
-            "Velocity": [velocity_acc],
-            "LearningRate": [lr],
-        }
+            outputs = {
+                "ParamOut": [param_and_grad[0]],
+                "VelocityOut": [velocity_acc],
+            }
+            # create the momentum optimize op
+            momentum_op = block.append_op(
+                type=self.type,
+                inputs=inputs,
+                outputs=outputs,
+                attrs=attrs,
+                stop_gradient=True,
+            )
 
-        outputs = {
-            "ParamOut": [param_and_grad[0]],
-            "VelocityOut": [velocity_acc],
-        }
-        # create the momentum optimize op
-        momentum_op = block.append_op(
-            type=self.type,
-            inputs=inputs,
-            outputs=outputs,
-            attrs=attrs,
-            stop_gradient=True,
-        )
-
-        return momentum_op
+            return momentum_op
 
 
 class LarsMomentumOptimizer(Optimizer):
@@ -1769,7 +1745,7 @@ class LarsMomentumOptimizer(Optimizer):
         lars_weight_decay (float): Weight decay coefficient for decaying using LARS.
         parameter_list (Iterable, optional):  Iterable of ``Variable`` names to update to minimize ``loss``. \
             This parameter is required in dygraph mode. \
-            The default value is None in static mode, at this time all parameters will be updated.
+            The default value is None in static graph mode, at this time all parameters will be updated.
         regularization (WeightDecayRegularizer, optional): The strategy of regularization. There are two method: \
              :ref:`api_fluid_regularizer_L1Decay` , :ref:`api_fluid_regularizer_L2Decay` . If a parameter has set \
             regularizer using :ref:`api_fluid_ParamAttr` already, the regularization setting here in optimizer will be \
@@ -1856,7 +1832,7 @@ class LarsMomentumOptimizer(Optimizer):
 
             var_name = param.name + '_fp32_master'
             var_name = unique_name.generate(var_name)
-            var = layers.create_global_var(
+            var = paddle.static.create_global_var(
                 name=var_name,
                 shape=param.shape,
                 value=0,
@@ -1969,7 +1945,7 @@ class LarsMomentumOptimizer(Optimizer):
             inputs["MasterParam"] = master_weight
             outputs["MasterParamOut"] = master_weight
 
-        if framework._non_static_mode():
+        if in_dygraph_mode():
             tmp, tmp2 = _legacy_C_ops.lars_momentum(
                 [param_and_grad[0]],
                 [param_and_grad[1]],
@@ -2031,7 +2007,7 @@ class AdagradOptimizer(Optimizer):
             The default value is 1e-06.
         parameter_list (Iterable, optional):  Iterable of ``Variable`` names to update to minimize ``loss``. \
             This parameter is required in dygraph mode. \
-            The default value is None in static mode, at this time all parameters will be updated.
+            The default value is None in static graph mode, at this time all parameters will be updated.
         regularization (WeightDecayRegularizer, optional): The strategy of regularization. There are two method: \
              :ref:`api_fluid_regularizer_L1Decay` , :ref:`api_fluid_regularizer_L2Decay` . If a parameter has set \
             regularizer using :ref:`api_fluid_ParamAttr` already, the regularization setting here in optimizer will be \
@@ -2118,18 +2094,6 @@ class AdagradOptimizer(Optimizer):
                 self._epsilon,
             )
             return None
-        elif _in_legacy_dygraph():
-            _legacy_C_ops.adagrad(
-                param_and_grad[0],
-                param_and_grad[1],
-                moment_acc,
-                self._create_param_lr(param_and_grad),
-                param_and_grad[0],
-                moment_acc,
-                "epsilon",
-                self._epsilon,
-            )
-            return None
         else:
             # Create the adagrad optimizer op
             adagrad_op = block.append_op(
@@ -2189,7 +2153,7 @@ class AdamOptimizer(Optimizer):
             The default value is 1e-08.
         parameter_list (Iterable, optional):  Iterable of ``Variable`` names to update to minimize ``loss``. \
             This parameter is required in dygraph mode. \
-            The default value is None in static mode, at this time all parameters will be updated.
+            The default value is None in static graph mode, at this time all parameters will be updated.
         regularization (WeightDecayRegularizer, optional): The strategy of regularization. There are two method: \
              :ref:`api_fluid_regularizer_L1Decay` , :ref:`api_fluid_regularizer_L2Decay` . If a parameter has set \
             regularizer using :ref:`api_fluid_ParamAttr` already, the regularization setting here in optimizer will be \
@@ -2229,7 +2193,7 @@ class AdamOptimizer(Optimizer):
                 y = fluid.data(name='y', shape=[None, 1], dtype='float32')
                 y_predict = fluid.layers.fc(input=x, size=1, act=None)
                 cost = paddle.nn.functional.square_error_cost(input=y_predict, label=y)
-                avg_cost = fluid.layers.mean(cost)
+                avg_cost = paddle.mean(cost)
 
                 adam_optimizer = fluid.optimizer.AdamOptimizer(0.01)
                 adam_optimizer.minimize(avg_cost)
@@ -2258,27 +2222,27 @@ class AdamOptimizer(Optimizer):
                 y = fluid.data(name='y', shape=[None, 1], dtype='float32')
                 y_predict = fluid.layers.fc(input=x, size=1, act=None)
                 cost = paddle.nn.functional.square_error_cost(input=y_predict, label=y)
-                avg_cost = fluid.layers.mean(cost)
+                avg_cost = paddle.mean(cost)
 
                 # define beta decay variable
                 def get_decayed_betas(beta1_init, beta2_init, decay_steps, decay_rate, epsilon_init):
                     global_step = lr_scheduler._decay_step_counter()
 
-                    beta1 = fluid.layers.create_global_var(
+                    beta1 = paddle.static.create_global_var(
                         shape=[1],
                         value=float(beta1_init),
                         dtype='float32',
                         # set persistable for save checkpoints and resume
                         persistable=True,
                         name="beta1")
-                    beta2 = fluid.layers.create_global_var(
+                    beta2 = paddle.static.create_global_var(
                         shape=[1],
                         value=float(beta2_init),
                         dtype='float32',
                         # set persistable for save checkpoints and resume
                         persistable=True,
                         name="beta2")
-                    epsilon = fluid.layers.create_global_var(
+                    epsilon = paddle.static.create_global_var(
                         shape=[1],
                         value=float(epsilon_init),
                         dtype='float32',
@@ -2425,7 +2389,7 @@ class AdamOptimizer(Optimizer):
         lr = self._create_param_lr(param_and_grad)
         # create the adam optimize op
 
-        if framework._non_static_mode():
+        if in_dygraph_mode():
             _beta1 = (
                 self._beta1
                 if not isinstance(self._beta1, Variable)
@@ -2616,7 +2580,7 @@ class AdamaxOptimizer(Optimizer):
             The default value is 1e-08.
         parameter_list (Iterable, optional):  Iterable of ``Variable`` names to update to minimize ``loss``. \
             This parameter is required in dygraph mode. \
-            The default value is None in static mode, at this time all parameters will be updated.
+            The default value is None in static graph mode, at this time all parameters will be updated.
         regularization (WeightDecayRegularizer, optional): The strategy of regularization. There are two method: \
              :ref:`api_fluid_regularizer_L1Decay` , :ref:`api_fluid_regularizer_L2Decay` . If a parameter has set \
             regularizer using :ref:`api_fluid_ParamAttr` already, the regularization setting here in optimizer will be \
@@ -2638,6 +2602,8 @@ class AdamaxOptimizer(Optimizer):
 
           import paddle.fluid as fluid
           import numpy
+          import paddle
+          paddle.enable_static()
 
           # First create the Executor.
           place = fluid.CPUPlace() # fluid.CUDAPlace(0)
@@ -2648,7 +2614,7 @@ class AdamaxOptimizer(Optimizer):
           with fluid.program_guard(train_program, startup_program):
               data = fluid.data(name='X', shape=[None, 1], dtype='float32')
               hidden = fluid.layers.fc(input=data, size=10)
-              loss = fluid.layers.mean(hidden)
+              loss = paddle.mean(hidden)
               adam = fluid.optimizer.AdamaxOptimizer(learning_rate=0.2)
               adam.minimize(loss)
 
@@ -2714,7 +2680,7 @@ class AdamaxOptimizer(Optimizer):
             self._beta1_pow_acc_str, param_and_grad[0]
         )
 
-        if framework.in_dygraph_mode():
+        if in_dygraph_mode():
             _C_ops.adamax_(
                 param_and_grad[0],
                 param_and_grad[1],
@@ -2724,24 +2690,6 @@ class AdamaxOptimizer(Optimizer):
                 beta1_pow_acc,
                 self._beta1,
                 self._beta2,
-                self._epsilon,
-            )
-        elif framework._in_legacy_dygraph():
-            _legacy_C_ops.adamax(
-                param_and_grad[0],
-                param_and_grad[1],
-                self._create_param_lr(param_and_grad),
-                moment,
-                inf_norm,
-                beta1_pow_acc,
-                param_and_grad[0],
-                moment,
-                inf_norm,
-                "beta1",
-                self._beta1,
-                "beta2",
-                self._beta2,
-                "epsilon",
                 self._epsilon,
             )
         else:
@@ -2783,15 +2731,8 @@ class AdamaxOptimizer(Optimizer):
                 beta1_pow_acc = self._get_accumulator(
                     self._beta1_pow_acc_str, param
                 )
-                if framework._non_static_mode():
-                    if framework.in_dygraph_mode():
-                        tmp = _C_ops.scale(
-                            beta1_pow_acc, self._beta1, 0.0, True
-                        )
-                    else:
-                        tmp = _legacy_C_ops.scale(
-                            beta1_pow_acc, "scale", self._beta1
-                        )
+                if in_dygraph_mode():
+                    tmp = _C_ops.scale(beta1_pow_acc, self._beta1, 0.0, True)
                     beta1_pow_acc.copy_(tmp, False)
                 else:
                     block.append_op(
@@ -2813,6 +2754,8 @@ class DpsgdOptimizer(Optimizer):
 
           import paddle.fluid as fluid
           import numpy
+          import paddle
+          paddle.enable_static()
 
           # First create the Executor.
           place = fluid.CPUPlace() # fluid.CUDAPlace(0)
@@ -2823,7 +2766,7 @@ class DpsgdOptimizer(Optimizer):
           with fluid.program_guard(train_program, startup_program):
               data = fluid.layers.data(name='X', shape=[1], dtype='float32')
               hidden = fluid.layers.fc(input=data, size=10)
-              loss = fluid.layers.mean(hidden)
+              loss = paddle.mean(hidden)
               optimizer = fluid.optimizer.Dpsgd(learning_rate=0.01, clip=10.0, batch_size=16.0, sigma=1.0)
               optimizer.minimize(loss)
 
@@ -2843,7 +2786,7 @@ class DpsgdOptimizer(Optimizer):
         sigma (float): for gaussian noise.
         parameter_list (Iterable, optional):  Iterable of ``Variable`` names to update to minimize ``loss``. \
             This parameter is required in dygraph mode. \
-            The default value is None in static mode, at this time all parameters will be updated.
+            The default value is None in static graph mode, at this time all parameters will be updated.
     Notes:
        Currently, DpsgdOptimizer doesn't support sparse parameter optimization.
     """
@@ -2882,7 +2825,7 @@ class DpsgdOptimizer(Optimizer):
         if self._seed is None:
             self._seed = 0
 
-        if framework._non_static_mode():
+        if in_dygraph_mode():
             _legacy_C_ops.dpsgd(
                 param_and_grad[0],
                 param_and_grad[1],
@@ -2946,7 +2889,7 @@ class DecayedAdagradOptimizer(Optimizer):
             The default value is 1e-06.
         parameter_list (Iterable, optional):  Iterable of ``Variable`` names to update to minimize ``loss``. \
             This parameter is required in dygraph mode. \
-            The default value is None in static mode, at this time all parameters will be updated.
+            The default value is None in static graph mode, at this time all parameters will be updated.
         regularization (WeightDecayRegularizer, optional): The strategy of regularization. There are two method: \
              :ref:`api_fluid_regularizer_L1Decay` , :ref:`api_fluid_regularizer_L2Decay` . If a parameter has set \
             regularizer using :ref:`api_fluid_ParamAttr` already, the regularization setting here in optimizer will be \
@@ -3014,7 +2957,7 @@ class DecayedAdagradOptimizer(Optimizer):
             self._moment_acc_str, param_and_grad[0]
         )
 
-        if framework._non_static_mode():
+        if in_dygraph_mode():
             _legacy_C_ops.decayed_adagrad(
                 param_and_grad[0],
                 param_and_grad[1],
@@ -3071,7 +3014,7 @@ class AdadeltaOptimizer(Optimizer):
         rho (float): a floating point value indicating the decay rate. Default 0.95.
         parameter_list (Iterable, optional):  Iterable of ``Variable`` names to update to minimize ``loss``. \
             This parameter is required in dygraph mode. \
-            The default value is None in static mode, at this time all parameters will be updated.
+            The default value is None in static graph mode, at this time all parameters will be updated.
         regularization (WeightDecayRegularizer, optional): The strategy of regularization. There are two method: \
              :ref:`api_fluid_regularizer_L1Decay` , :ref:`api_fluid_regularizer_L2Decay` . If a parameter has set \
             regularizer using :ref:`api_fluid_ParamAttr` already, the regularization setting here in optimizer will be \
@@ -3151,7 +3094,7 @@ class AdadeltaOptimizer(Optimizer):
             self._avg_squared_update_acc_str, param_and_grad[0]
         )
 
-        if framework.in_dygraph_mode():
+        if in_dygraph_mode():
             _C_ops.adadelta_(
                 param_and_grad[0],
                 param_and_grad[1],
@@ -3159,20 +3102,6 @@ class AdadeltaOptimizer(Optimizer):
                 avg_squared_update_acc,
                 self._rho,
                 self._epsilon,
-            )
-        elif framework._in_legacy_dygraph():
-            _legacy_C_ops.adadelta(
-                param_and_grad[0],
-                param_and_grad[1],
-                avg_squared_grad_acc,
-                avg_squared_update_acc,
-                param_and_grad[0],
-                avg_squared_grad_acc,
-                avg_squared_update_acc,
-                "epsilon",
-                self._epsilon,
-                "rho",
-                self._rho,
             )
         else:
             # Create the adadelta optimizer op
@@ -3257,7 +3186,7 @@ class RMSPropOptimizer(Optimizer):
             computation and memory. Defaults to False.
         parameter_list (Iterable, optional):  Iterable of ``Variable`` names to update to minimize ``loss``. \
             This parameter is required in dygraph mode. \
-            The default value is None in static mode, at this time all parameters will be updated.
+            The default value is None in static graph mode, at this time all parameters will be updated.
         regularization (WeightDecayRegularizer, optional): The strategy of regularization. There are two method: \
              :ref:`api_fluid_regularizer_L1Decay` , :ref:`api_fluid_regularizer_L2Decay` . If a parameter has set \
             regularizer using :ref:`api_fluid_ParamAttr` already, the regularization setting here in optimizer will be \
@@ -3288,7 +3217,7 @@ class RMSPropOptimizer(Optimizer):
                 y = fluid.layers.data(name='y', shape=[1], dtype='float32')
                 y_predict = fluid.layers.fc(input=x, size=1, act=None)
                 cost = paddle.nn.functional.square_error_cost(input=y_predict, label=y)
-                avg_cost = fluid.layers.mean(cost)
+                avg_cost = paddle.mean(cost)
 
                 rms_optimizer = fluid.optimizer.RMSProp(learning_rate=0.1)
                 rms_optimizer.minimize(avg_cost)
@@ -3378,27 +3307,6 @@ class RMSPropOptimizer(Optimizer):
                 self._centered,
             )
             return None
-        elif _in_legacy_dygraph():
-            _legacy_C_ops.rmsprop(
-                param_and_grad[0],
-                mean_square_acc,
-                self._create_param_lr(param_and_grad),
-                param_and_grad[1],
-                momentum_acc,
-                param_and_grad[0],
-                momentum_acc,
-                mean_square_acc,
-                mean_grad_acc,
-                "epsilon",
-                self._epsilon,
-                "decay",
-                self._rho,
-                "momentum",
-                self._momentum,
-                "centered",
-                self._centered,
-            )
-            return None
         else:
             rmsprop_op = block.append_op(
                 type=self.type,
@@ -3475,7 +3383,7 @@ class FtrlOptimizer(Optimizer):
         lr_power (float): Learning Rate Power, default is -0.5.
         parameter_list (Iterable, optional):  Iterable of ``Variable`` names to update to minimize ``loss``. \
             This parameter is required in dygraph mode. \
-            The default value is None in static mode, at this time all parameters will be updated.
+            The default value is None in static graph mode, at this time all parameters will be updated.
         regularization (WeightDecayRegularizer, optional): The strategy of regularization. There are two method: \
              :ref:`api_fluid_regularizer_L1Decay` , :ref:`api_fluid_regularizer_L2Decay` . If a parameter has set \
             regularizer using :ref:`api_fluid_ParamAttr` already, the regularization setting here in optimizer will be \
@@ -3507,7 +3415,7 @@ class FtrlOptimizer(Optimizer):
                 y = fluid.layers.data(name='y', shape=[1], dtype='float32')
                 y_predict = fluid.layers.fc(input=x, size=1, act=None)
                 cost = paddle.nn.functional.square_error_cost(input=y_predict, label=y)
-                avg_cost = fluid.layers.mean(cost)
+                avg_cost = paddle.mean(cost)
 
                 ftrl_optimizer = fluid.optimizer.Ftrl(learning_rate=0.1)
                 ftrl_optimizer.minimize(avg_cost)
@@ -3572,7 +3480,7 @@ class FtrlOptimizer(Optimizer):
         linear_acc = self._get_accumulator(
             self._linear_acc_str, param_and_grad[0]
         )
-        if framework._non_static_mode():
+        if in_dygraph_mode():
             _legacy_C_ops.ftrl(
                 param_and_grad[0],
                 squared_acc,
@@ -3656,7 +3564,7 @@ class LambOptimizer(AdamOptimizer):
         epsilon (float, optional): A small float value for numerical stability. Default 1e-6.
         parameter_list (Iterable, optional):  Iterable of ``Variable`` names to update to minimize ``loss``. \
             This parameter is required in dygraph mode. \
-            The default value is None in static mode, at this time all parameters will be updated.
+            The default value is None in static graph mode, at this time all parameters will be updated.
         regularization (WeightDecayRegularizer, optional): The strategy of regularization. There are two method: \
              :ref:`api_fluid_regularizer_L1Decay` , :ref:`api_fluid_regularizer_L2Decay` . If a parameter has set \
             regularizer using :ref:`api_fluid_ParamAttr` already, the regularization setting here in optimizer will be \
@@ -3676,11 +3584,13 @@ class LambOptimizer(AdamOptimizer):
     Examples:
         .. code-block:: python
 
+            import paddle
             import paddle.fluid as fluid
+            paddle.enable_static()
 
             data = fluid.data(name='x', shape=[-1, 5], dtype='float32')
             hidden = fluid.layers.fc(input=data, size=10)
-            cost = fluid.layers.mean(hidden)
+            cost = paddle.mean(hidden)
 
             def exclude_fn(param):
                 return param.name.endswith('.b_0')
@@ -3752,7 +3662,7 @@ class LambOptimizer(AdamOptimizer):
             weight_decay = self._weight_decay
         lr = self._create_param_lr(param_and_grad)
         master_weight = None
-        if framework._non_static_mode():
+        if in_dygraph_mode():
             _legacy_C_ops.lamb(
                 param_and_grad[0],
                 param_and_grad[1],
@@ -3882,8 +3792,10 @@ class ModelAverage(Optimizer):
 
       .. code-block:: python
 
+        import paddle
         import paddle.fluid as fluid
         import numpy
+        paddle.enable_static()
 
         # First create the Executor.
         place = fluid.CPUPlace()  # fluid.CUDAPlace(0)
@@ -3895,7 +3807,7 @@ class ModelAverage(Optimizer):
             # build net
             data = fluid.data(name='X', shape=[None, 1], dtype='float32')
             hidden = fluid.layers.fc(input=data, size=10)
-            loss = fluid.layers.mean(hidden)
+            loss = paddle.mean(hidden)
             optimizer = fluid.optimizer.Momentum(learning_rate=0.2, momentum=0.1)
             optimizer.minimize(loss)
 
@@ -3927,7 +3839,7 @@ class ModelAverage(Optimizer):
         regularization=None,
         name=None,
     ):
-        if framework._non_static_mode():
+        if in_dygraph_mode():
             raise Exception("In dygraph, don't support ModelAverage.")
         super().__init__(0.0, regularization=regularization, name=name)
         self.average_window = average_window_rate
@@ -4061,6 +3973,8 @@ class ModelAverage(Optimizer):
 
             import paddle.fluid as fluid
             import numpy
+            import paddle
+            paddle.enable_static()
 
             # First create the Executor.
             place = fluid.CPUPlace()  # fluid.CUDAPlace(0)
@@ -4072,7 +3986,7 @@ class ModelAverage(Optimizer):
                 # build net
                 data = fluid.data(name='X', shape=[None, 1], dtype='float32')
                 hidden = fluid.layers.fc(input=data, size=10)
-                loss = fluid.layers.mean(hidden)
+                loss = paddle.mean(hidden)
                 optimizer = fluid.optimizer.Momentum(learning_rate=0.2, momentum=0.1)
                 optimizer.minimize(loss)
 
@@ -4115,6 +4029,8 @@ class ModelAverage(Optimizer):
 
             import paddle.fluid as fluid
             import numpy
+            import paddle
+            paddle.enable_static()
 
             # First create the Executor.
             place = fluid.CPUPlace()  # fluid.CUDAPlace(0)
@@ -4126,7 +4042,7 @@ class ModelAverage(Optimizer):
                 # build net
                 data = fluid.data(name='X', shape=[None, 1], dtype='float32')
                 hidden = fluid.layers.fc(input=data, size=10)
-                loss = fluid.layers.mean(hidden)
+                loss = paddle.mean(hidden)
                 optimizer = fluid.optimizer.Momentum(learning_rate=0.2, momentum=0.1)
                 optimizer.minimize(loss)
 
@@ -4157,7 +4073,6 @@ class ModelAverage(Optimizer):
 
 class ExponentialMovingAverage:
     r"""
-        :api_attr: Static Graph
 
     Compute the moving average of parameters with exponential decay.
     Given a parameter :math:`\\theta`, its exponential moving average (EMA)
@@ -4165,9 +4080,9 @@ class ExponentialMovingAverage:
 
     ..  math::
 
-        \\text{EMA}_0 & = 0
+        \text{EMA}_0 & = 0
 
-        \\text{EMA}_t & = \\text{decay} * \\text{EMA}_{t-1} + (1 - \\text{decay}) * \\theta_t
+        \text{EMA}_t & = \text{decay} * \text{EMA}_{t-1} + (1 - \text{decay}) * \theta_t
 
     The average results calculated by **update()** method will be saved in
     temporary variables which are created and maintained by the object, and can
@@ -4176,12 +4091,12 @@ class ExponentialMovingAverage:
 
     **Bias correction**. All EMAs are initialized to :math:`0` and hence they will be
     zero biased, which can be corrected by divided by a factor
-    :math:`(1 - \\text{decay}^t)` , i.e., the actual EMAs applied to parameters
+    :math:`(1 - \text{decay}^t)` , i.e., the actual EMAs applied to parameters
     when calling **apply()** method would be
 
     ..  math::
 
-        \\widehat{\\text{EMA}}_t = \\frac{\\text{EMA}_t}{1 - \\text{decay}^t}
+        \widehat{\text{EMA}}_t = \frac{\text{EMA}_t}{1 - \text{decay}^t}
 
     **Decay rate scheduling**. A large decay rate very close to 1 would result
     in that the averages move very slowly. And a better strategy is to set a
@@ -4191,7 +4106,7 @@ class ExponentialMovingAverage:
 
     ..  math::
 
-        \\min(\\text{decay}, \\frac{1 + \\text{thres_steps}}{10 + \\text{thres_steps}})
+        \min(\text{decay}, \frac{1 + \text{thres_steps}}{10 + \text{thres_steps}})
 
     Usually **thres_steps** can be the global training steps.
 
@@ -4253,7 +4168,7 @@ class ExponentialMovingAverage:
     """
 
     def __init__(self, decay=0.999, thres_steps=None, name=None):
-        if framework._non_static_mode():
+        if in_dygraph_mode():
             raise Exception(
                 "In dygraph, don't support ExponentialMovingAverage."
             )
@@ -4311,7 +4226,7 @@ class ExponentialMovingAverage:
 
     def _get_ema_decay(self):
         with default_main_program()._lr_schedule_guard():
-            decay_var = layers.tensor.create_global_var(
+            decay_var = paddle.static.create_global_var(
                 shape=[1],
                 value=self._decay,
                 dtype='float32',
@@ -4331,7 +4246,7 @@ class ExponentialMovingAverage:
         return decay_var
 
     def _get_decay_pow(self, block):
-        global_step = layers.create_global_var(
+        global_step = paddle.static.create_global_var(
             name=self._step_counter_name,
             shape=[1],
             value=0,
@@ -4344,7 +4259,7 @@ class ExponentialMovingAverage:
         return decay_pow_acc, global_step
 
     def _create_ema_vars(self, param):
-        param_ema = layers.create_global_var(
+        param_ema = paddle.static.create_global_var(
             name=unique_name.generate(self._name + param.name + '_ema'),
             shape=param.shape,
             value=0.0,
@@ -4478,7 +4393,7 @@ class PipelineOptimizer:
             self._device = "npu"
         elif core.is_compiled_with_cuda():
             self._device = "gpu"
-        if framework._non_static_mode():
+        if in_dygraph_mode():
             raise Exception("In dygraph, don't support PipelineOptimizer.")
         valid_optimizers = (
             Optimizer,
@@ -6392,8 +6307,12 @@ class RecomputeOptimizer(Optimizer):
     Examples:
         .. code-block:: python
 
+            import paddle
             import paddle.fluid as fluid
             import numpy as np
+
+            paddle.enable_static()
+
             def gen_data():
                 return {"x": np.random.random(size=(32, 32)).astype('float32'),
                 "y": np.random.randint(2, size=(32, 1)).astype('int64')}
@@ -6401,8 +6320,11 @@ class RecomputeOptimizer(Optimizer):
                 print(input_x)
                 fc_1 = fluid.layers.fc(input=input_x, size=hid_dim)
                 prediction = fluid.layers.fc(input=[fc_1], size=label_dim, act='softmax')
-                cost = fluid.layers.cross_entropy(input=prediction, label=input_y)
-                sum_cost = fluid.layers.reduce_mean(cost)
+                cost = paddle.nn.functional.cross_entropy(
+                    input=prediction, label=input_y,
+                    reduction='none', use_softmax=False
+                )
+                sum_cost = paddle.mean(cost)
                 return sum_cost, fc_1, prediction
             input_x = fluid.layers.data(name="x", shape=[32], dtype='float32')
             input_y = fluid.layers.data(name="y", shape=[1], dtype='int64')
@@ -6428,7 +6350,7 @@ class RecomputeOptimizer(Optimizer):
     """
 
     def __init__(self, optimizer):
-        if framework._non_static_mode():
+        if in_dygraph_mode():
             raise Exception("In dygraph, don't support RecomputeOptimizer.")
         self._optimizer = optimizer
         self._checkpoints = None
@@ -6475,8 +6397,11 @@ class RecomputeOptimizer(Optimizer):
                 def mlp(input_x, input_y, hid_dim=128, label_dim=2):
                     fc_1 = fluid.layers.fc(input=input_x, size=hid_dim)
                     prediction = fluid.layers.fc(input=[fc_1], size=label_dim, act='softmax')
-                    cost = fluid.layers.cross_entropy(input=prediction, label=input_y)
-                    sum_cost = fluid.layers.reduce_mean(cost)
+                    cost = paddle.nn.functional.cross_entropy(
+                        input=prediction, label=input_y,
+                        reduction='none', use_softmax=False
+                    )
+                    sum_cost = paddle.mean(cost)
                     return sum_cost, fc_1, prediction
 
                 input_x = fluid.layers.data(name="x", shape=[32], dtype='float32')
@@ -6510,14 +6435,20 @@ class RecomputeOptimizer(Optimizer):
         Examples:
             .. code-block:: python
 
+                import paddle
                 import paddle.fluid as fluid
                 import paddle.fluid.framework as framework
+
+                paddle.enable_static()
 
                 def mlp(input_x, input_y, hid_dim=128, label_dim=2):
                     fc_1 = fluid.layers.fc(input=input_x, size=hid_dim)
                     prediction = fluid.layers.fc(input=[fc_1], size=label_dim, act='softmax')
-                    cost = fluid.layers.cross_entropy(input=prediction, label=input_y)
-                    sum_cost = fluid.layers.reduce_mean(cost)
+                    cost = paddle.nn.functional.cross_entropy(
+                        input=prediction, label=input_y,
+                        reduction='none', use_softmax=False
+                    )
+                    sum_cost = paddle.mean(cost)
                     return sum_cost, fc_1, prediction
 
 
@@ -6999,13 +6930,19 @@ class RecomputeOptimizer(Optimizer):
         Examples:
             .. code-block:: python
 
+                import paddle
                 import paddle.fluid as fluid
+
+                paddle.enable_static()
 
                 def mlp(input_x, input_y, hid_dim=128, label_dim=2):
                     fc_1 = fluid.layers.fc(input=input_x, size=hid_dim)
                     prediction = fluid.layers.fc(input=[fc_1], size=label_dim, act='softmax')
-                    cost = fluid.layers.cross_entropy(input=prediction, label=input_y)
-                    sum_cost = fluid.layers.reduce_mean(cost)
+                    cost = paddle.nn.functional.cross_entropy(
+                        input=prediction, label=input_y,
+                        reduction='none', use_softmax=False
+                    )
+                    sum_cost = paddle.mean(cost)
                     return sum_cost, fc_1, prediction
 
 
@@ -7028,7 +6965,7 @@ class RecomputeOptimizer(Optimizer):
             self._checkpoints is not None
         ), "You should call _set_checkpoints first"
 
-        if framework._non_static_mode():
+        if in_dygraph_mode():
             raise NotImplementedError(
                 "DyGraph current does not support recompute"
             )
@@ -7075,13 +7012,19 @@ class RecomputeOptimizer(Optimizer):
             params_grads (list): list of (param, grad) pair to do optimization.
         Examples:
             .. code-block:: python
+                import paddle
                 import paddle.fluid as fluid
+
+                paddle.enable_static()
 
                 def mlp(input_x, input_y, hid_dim=128, label_dim=2):
                     fc_1 = fluid.layers.fc(input=input_x, size=hid_dim)
                     prediction = fluid.layers.fc(input=[fc_1], size=label_dim, act='softmax')
-                    cost = fluid.layers.cross_entropy(input=prediction, label=input_y)
-                    sum_cost = fluid.layers.reduce_mean(cost)
+                    cost = paddle.nn.functional.cross_entropy(
+                        input=prediction, label=input_y,
+                        reduction='none', use_softmax=False
+                    )
+                    sum_cost = paddle.mean(cost)
                     return sum_cost, fc_1, prediction
 
                 input_x = fluid.layers.data(name="x", shape=[32], dtype='float32')
@@ -7120,7 +7063,7 @@ class RecomputeOptimizer(Optimizer):
         assert (
             self._checkpoints is not None
         ), "You should call _set_checkpoints first"
-        if framework._non_static_mode():
+        if in_dygraph_mode():
             raise NotImplementedError(
                 "DyGraph current does not support recompute"
             )
@@ -7174,7 +7117,10 @@ class LookaheadOptimizer:
             x = fluid.layers.data(name='x', shape=[2], dtype='float32')
             label = fluid.layers.data(name="label", shape=[1], dtype="int64")
             y = fluid.layers.fc(input=[x], size=2, act="softmax")
-            loss = fluid.layers.cross_entropy(input=y, label=label)
+            loss = paddle.nn.functional.cross_entropy(
+                input=y, label=label,
+                reduction='none', use_softmax=False
+            )
             loss = paddle.mean(x=loss)
             sgd = fluid.optimizer.SGD(learning_rate=0.01)
             optimizer = fluid.optimizer.LookaheadOptimizer(sgd,
@@ -7201,7 +7147,7 @@ class LookaheadOptimizer:
 
     def __init__(self, inner_optimizer, alpha=0.5, k=5):
 
-        if framework._non_static_mode():
+        if in_dygraph_mode():
             raise Exception("In dygraph, don't support LookaheadOptimizer.")
         assert inner_optimizer is not None, "inner optimizer can not be None"
         assert (
@@ -7258,7 +7204,7 @@ class LookaheadOptimizer:
 
         with framework.program_guard(main_block.program, startup_program):
             # Add Var k to main prog and startup prog
-            k = layers.create_global_var(
+            k = paddle.static.create_global_var(
                 name="lookahead_k",
                 shape=[1],
                 value=int(self.k),
@@ -7267,7 +7213,7 @@ class LookaheadOptimizer:
             )
 
             # Add Var alpha to main prog and startup prog
-            alpha = layers.create_global_var(
+            alpha = paddle.static.create_global_var(
                 name="lookahead_alpha",
                 shape=[1],
                 value=float(self.alpha),
@@ -7276,14 +7222,14 @@ class LookaheadOptimizer:
             )
 
             # Add Var step
-            step = layers.create_global_var(
+            step = paddle.static.create_global_var(
                 name="lookahead_step",
                 shape=[1],
                 value=int(0),
                 dtype='int32',
                 persistable=True,
             )
-            layers.increment(x=step, value=1.0, in_place=True)
+            paddle.increment(x=step, value=1.0)
 
             # lookahead
             zero_var = layers.fill_constant(
@@ -7341,6 +7287,7 @@ class GradientMergeOptimizer:
     Examples:
         .. code-block:: python
 
+        import paddle
         import paddle.fluid as fluid
         import numpy as np
 
@@ -7351,8 +7298,11 @@ class GradientMergeOptimizer:
         def mlp(input_x, input_y, hid_dim=128, label_dim=2):
             fc_1 = fluid.layers.fc(input=input_x, size=hid_dim)
             prediction = fluid.layers.fc(input=[fc_1], size=label_dim, act='softmax')
-            cost = fluid.layers.cross_entropy(input=prediction, label=input_y)
-            sum_cost = fluid.layers.reduce_mean(cost)
+            cost = paddle.nn.functional.cross_entropy(
+                input=prediction, label=input_y,
+                reduction='none', use_softmax=False
+            )
+            sum_cost = paddle.mean(cost)
             return sum_cost, fc_1, prediction
 
         input_x = fluid.layers.data(name="x", shape=[32], dtype='float32')
@@ -7376,7 +7326,7 @@ class GradientMergeOptimizer:
     GRAD_MERGE_COND_NAME = "grad_merge_cond_name"
 
     def __init__(self, inner_optimizer, k_steps=1, avg=True):
-        if framework._non_static_mode():
+        if in_dygraph_mode():
             raise Exception(
                 "In dygraph, we don't support GradientMergeOptimizer."
                 "You can do Gradient merge by yourself with k-times forward + backward, "
@@ -7483,7 +7433,7 @@ class GradientMergeOptimizer:
 
     def _get_gm_cond_var(self, main_block):
         # Add const var
-        k_step_var = layers.create_global_var(
+        k_step_var = paddle.static.create_global_var(
             name="gradient_merge_k",
             shape=[1],
             value=int(self.k_steps),
@@ -7492,7 +7442,7 @@ class GradientMergeOptimizer:
             force_cpu=True,
         )
 
-        zero_var = layers.create_global_var(
+        zero_var = paddle.static.create_global_var(
             name="gradient_merge_zero",
             shape=[1],
             value=int(0),
@@ -7502,7 +7452,7 @@ class GradientMergeOptimizer:
         )
 
         # Add step var & cond var
-        step_var = layers.create_global_var(
+        step_var = paddle.static.create_global_var(
             name="gradient_merge_step",
             shape=[1],
             value=int(0),
@@ -7517,7 +7467,7 @@ class GradientMergeOptimizer:
 
         with device_guard("cpu"):
             # step_var = (step_var + 1) % k_step
-            layers.increment(x=step_var, value=1.0, in_place=True)
+            paddle.increment(x=step_var, value=1.0)
             main_block.append_op(
                 type='elementwise_mod',
                 inputs={'X': step_var, 'Y': k_step_var},
@@ -7647,7 +7597,7 @@ class GradientMergeOptimizer:
                 )
 
         # step3. apply gradient
-        layers.cond(cond, true_fn=true_apply_gradient, false_fn=None)
+        paddle.static.nn.cond(cond, true_fn=true_apply_gradient, false_fn=None)
 
         return self._optimize_ops
 

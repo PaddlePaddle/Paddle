@@ -18,7 +18,7 @@ import numpy as np
 
 import paddle
 import paddle.fluid as fluid
-from paddle.jit.api import declarative
+import paddle.nn.functional as F
 
 
 def call_lambda_as_func(x):
@@ -48,7 +48,7 @@ def call_lambda_in_func(x):
 
     add_func = lambda x: x + 1
 
-    y = paddle.mean((lambda x: fluid.layers.relu(x))(x))
+    y = paddle.mean((lambda x: F.relu(x))(x))
     out = add_func(y) if y > 1 and y < 2 else (lambda x: x**2)(y)
 
     return out
@@ -107,7 +107,7 @@ class TestLambda(unittest.TestCase):
         with fluid.dygraph.guard(self.place):
             x_v = fluid.dygraph.to_variable(self.x)
             if to_static:
-                ret = declarative(func)(x_v)
+                ret = paddle.jit.to_static(func)(x_v)
             else:
                 ret = func(x_v)
             return ret.numpy()

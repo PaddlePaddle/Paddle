@@ -30,7 +30,7 @@ class TestSwitch(unittest.TestCase):
         two_var = layers.fill_constant(shape=[1], dtype='float32', value=2.0)
         three_var = layers.fill_constant(shape=[1], dtype='float32', value=3.0)
 
-        result = layers.create_global_var(
+        result = paddle.static.create_global_var(
             shape=[1], value=-1.0, dtype='float32', persistable=True
         )
 
@@ -71,7 +71,7 @@ class TestSwitchCaseError(unittest.TestCase):
                 shape=[1], dtype='float32', value=0.0
             )
 
-            result = layers.create_global_var(
+            result = paddle.static.create_global_var(
                 shape=[1], value=-1.0, dtype='float32', persistable=True
             )
 

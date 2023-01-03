@@ -134,7 +134,7 @@ class XPUTestDropoutOp(XPUOpTestWrapper):
                         [[1, 1, 1, 1]],
                         fluid.CPUPlace(),
                     )
-                    fluid.layers.dropout(x1, dropout_prob=0.5)
+                    paddle.nn.functional.dropout(x1, p=0.5)
 
                 self.assertRaises(TypeError, test_Variable)
 
@@ -144,7 +144,7 @@ class XPUTestDropoutOp(XPUOpTestWrapper):
                     x2 = fluid.layers.data(
                         name='x2', shape=[3, 4, 5, 6], dtype="int32"
                     )
-                    fluid.layers.dropout(x2, dropout_prob=0.5)
+                    paddle.nn.functional.dropout(x2, p=0.5)
 
                 self.assertRaises(TypeError, test_dtype)
 

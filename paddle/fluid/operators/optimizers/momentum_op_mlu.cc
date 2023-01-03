@@ -50,7 +50,7 @@ class MLUMomentumOpKernel : public framework::OpKernel<T> {
     auto* grad_var = ctx.InputVar("Grad");
     if (grad_var->IsType<phi::DenseTensor>()) {
       auto grad = ctx.Input<phi::DenseTensor>("Grad");
-      Tensor mu_tensor =
+      phi::DenseTensor mu_tensor =
           ctx.AllocateTmpTensor<T, MLUDeviceContext>({1}, dev_ctx);
       MLUCnnlTensorDesc mu_tensor_desc(mu_tensor);
       MLUCnnl::Fill(ctx,
@@ -59,7 +59,7 @@ class MLUMomentumOpKernel : public framework::OpKernel<T> {
                     mu_tensor_desc.get(),
                     GetBasePtr(&mu_tensor));
 
-      Tensor regularized_grad;
+      phi::DenseTensor regularized_grad;
       MLUCnnlTensorDesc param_desc(*param);
       if (regularization_flag == phi::RegularizationType::kL2DECAY) {
         regularized_grad =

@@ -87,7 +87,7 @@ class TestInstanceNormDoubleGradEagerCheck(unittest.TestCase):
             x = paddle.create_parameter(dtype=dtype, shape=shape, name='x')
             z = paddle.nn.functional.instance_norm(x)
             x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
-            # check for static mode
+            # check for static graph mode
             gradient_checker.double_grad_check(
                 [x], z, x_init=x_arr, atol=atol, place=place, eps=eps
             )
@@ -129,7 +129,7 @@ class TestInstanceNormDoubleGradEagerCheckWithParams(
             x = paddle.create_parameter(dtype=dtype, shape=shape, name='x')
             z = paddle.nn.InstanceNorm2D(3)(x)
             x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
-            # check for static mode
+            # check for static graph mode
             gradient_checker.double_grad_check(
                 [x], z, x_init=x_arr, atol=atol, place=place, eps=eps
             )
@@ -171,7 +171,7 @@ class TestBatchNormDoubleGradCheck(unittest.TestCase):
             eps = 0.005
             atol = 1e-4
             x = paddle.create_parameter(dtype=dtype, shape=self.shape, name='x')
-            z = fluid.layers.batch_norm(
+            z = paddle.static.nn.batch_norm(
                 input=x,
                 data_layout=self.data_layout,
                 use_global_stats=self.use_global_stats,
@@ -251,7 +251,7 @@ class TestBatchNormDoubleGradCheckCase5(TestBatchNormDoubleGradCheck):
                 self.shape[1] if self.data_layout == 'NCHW' else self.shape[-1]
             )
             x = paddle.create_parameter(dtype=dtype, shape=self.shape, name='x')
-            z = fluid.layers.batch_norm(
+            z = paddle.static.nn.batch_norm(
                 input=x,
                 data_layout=self.data_layout,
                 use_global_stats=self.use_global_stats,

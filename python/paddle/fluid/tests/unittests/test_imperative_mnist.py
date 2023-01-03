@@ -21,7 +21,6 @@ from utils import DyGraphProgramDescTracerTestHelper
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid import core
-from paddle.fluid.framework import _in_legacy_dygraph, _test_eager_guard
 from paddle.fluid.optimizer import SGDOptimizer
 from paddle.nn import Linear
 
@@ -59,13 +58,10 @@ class SimpleImgConvPool(fluid.dygraph.Layer):
             weight_attr=None,
             bias_attr=None,
         )
-        self._pool2d = paddle.fluid.dygraph.nn.Pool2D(
-            pool_size=pool_size,
-            pool_type=pool_type,
-            pool_stride=pool_stride,
-            pool_padding=pool_padding,
-            global_pooling=global_pooling,
-            use_cudnn=use_cudnn,
+        self._pool2d = paddle.nn.MaxPool2D(
+            kernel_size=pool_size,
+            stride=pool_stride,
+            padding=pool_padding,
         )
 
     def forward(self, inputs):
@@ -116,7 +112,7 @@ class TestImperativeMnist(unittest.TestCase):
 
         return _reader_imple
 
-    def func_test_mnist_float32(self):
+    def test_mnist_float32(self):
         seed = 90
         epoch_num = 1
         batch_size = 128
@@ -156,25 +152,15 @@ class TestImperativeMnist(unittest.TestCase):
                     dy_x_data = img.numpy()
                     label = data[1]
                     label.stop_gradient = True
-
-                    if batch_id % 10 == 0 and _in_legacy_dygraph():
-                        cost, traced_layer = paddle.jit.TracedLayer.trace(
-                            mnist, inputs=img
-                        )
-                        if program is not None:
-                            self.assertTrue(program, traced_layer.program)
-                        program = traced_layer.program
-                        traced_layer.save_inference_model(
-                            './infer_imperative_mnist'
-                        )
-                    else:
-                        cost = mnist(img)
+                    cost = mnist(img)
 
                     if traced_layer is not None:
                         cost_static = traced_layer([img])
                         helper.assertEachVar(cost, cost_static)
 
-                    loss = fluid.layers.cross_entropy(cost, label)
+                    loss = paddle.nn.functional.cross_entropy(
+                        cost, label, reduction='none', use_softmax=False
+                    )
                     avg_loss = paddle.mean(loss)
 
                     dy_out = avg_loss.numpy()
@@ -214,7 +200,9 @@ class TestImperativeMnist(unittest.TestCase):
             )
             label = fluid.layers.data(name='label', shape=[1], dtype='int64')
             cost = mnist(img)
-            loss = fluid.layers.cross_entropy(cost, label)
+            loss = paddle.nn.functional.cross_entropy(
+                cost, label, reduction='none', use_softmax=False
+            )
             avg_loss = paddle.mean(loss)
             sgd.minimize(avg_loss)
 
@@ -279,11 +267,6 @@ class TestImperativeMnist(unittest.TestCase):
             np.testing.assert_allclose(
                 value, dy_param_value[key], rtol=1e-05, atol=1e-05
             )
-
-    def test_mnist_float32(self):
-        with _test_eager_guard():
-            self.func_test_mnist_float32()
-        self.func_test_mnist_float32()
 
 
 if __name__ == '__main__':

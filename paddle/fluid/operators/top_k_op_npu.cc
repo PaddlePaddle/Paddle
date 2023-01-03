@@ -65,7 +65,7 @@ class TopkNPUKernel : public framework::OpKernel<T> {
                                              {"dim", -1},
                                              {"largest", true}};
 
-    Tensor tmp_indices(experimental::DataType::INT32);
+    phi::DenseTensor tmp_indices(experimental::DataType::INT32);
     tmp_indices.Resize(indices->dims());
     tmp_indices.mutable_data<int>(ctx.GetPlace());
 

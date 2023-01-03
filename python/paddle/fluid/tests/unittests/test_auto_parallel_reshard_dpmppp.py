@@ -71,7 +71,7 @@ class MLPLayer(nn.Layer):
         out = self.linear1(out)
         param = paddle.create_parameter([1024, 4096], paddle.float32)
         auto.shard_tensor(param, PP_MESH_1, [None, "y"])
-        out = paddle.fluid.layers.mul(out, param)
+        out = paddle.matmul(out, param)
 
         return out
 

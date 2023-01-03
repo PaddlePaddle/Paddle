@@ -21,8 +21,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
-
 class PReluOp : public framework::OperatorWithKernel {
  public:
   PReluOp(const std::string &type,

@@ -43,7 +43,6 @@ namespace cg = cooperative_groups;
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
 using SelectedRows = phi::SelectedRows;
 
 template <typename T>

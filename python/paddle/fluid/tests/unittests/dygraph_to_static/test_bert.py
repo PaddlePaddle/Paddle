@@ -24,8 +24,8 @@ from predictor_utils import PredictorTools
 
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 from paddle.jit import ProgramTranslator
+from paddle.jit.translated_layer import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 
 program_translator = ProgramTranslator()
 place = (
@@ -281,5 +281,4 @@ class TestBert(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    with fluid.framework._test_eager_guard():
-        unittest.main()
+    unittest.main()

@@ -33,8 +33,6 @@
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
-
 template <typename T>
 T bilinear_interp(
     const T* data, const T x, const T y, const int width, const int height) {
@@ -518,7 +516,7 @@ class DeformablePSROIPoolGradCPUKernel : public framework::OpKernel<T> {
     const int num_classes = no_trans ? 1 : channels_trans / 2;
     const int channels_each_class =
         no_trans ? output_dim : output_dim / num_classes;
-    Tensor roi_batch_id_list;
+    phi::DenseTensor roi_batch_id_list;
     roi_batch_id_list.Resize({num_rois});
     int* roi_batch_id_data =
         roi_batch_id_list.mutable_data<int>(ctx.GetPlace());

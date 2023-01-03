@@ -19,7 +19,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
 using DataLayout = phi::DataLayout;
 using DDim = framework::DDim;
 using fp16 = paddle::platform::float16;
@@ -104,7 +103,7 @@ struct InterpolateFunction {
     auto yt = y_new_shape[axis];
     y_new_shape[axis] = y_new_shape[0];
     y_new_shape[0] = yt;
-    Tensor gy_t;
+    phi::DenseTensor gy_t;
     gy_t.mutable_data<T>(y_new_shape, place);
     Transpose(gy, &gy_t, axis_swap);
     //  2  scatter
@@ -112,7 +111,7 @@ struct InterpolateFunction {
     auto xt = x_new_shape[axis];
     x_new_shape[axis] = x_new_shape[0];
     x_new_shape[0] = xt;
-    Tensor gx_zero, gx_t;
+    phi::DenseTensor gx_zero, gx_t;
     gx_zero.mutable_data<T>(x_new_shape, place);
     gx_t.mutable_data<T>(x_new_shape, place);
     FillNpuTensorWithConstant<T>(&gx_zero, static_cast<T>(0));
@@ -161,14 +160,14 @@ struct InterpolateFunction {
   platform::Place place;
   aclrtStream stream;
   const framework::ExecutionContext& ctx;
-  Tensor t0;
-  Tensor t1;
-  Tensor tn;
+  phi::DenseTensor t0;
+  phi::DenseTensor t1;
+  phi::DenseTensor tn;
 };
 
 template <>
 void InterpolateFunction<fp16>::Arange(int n, phi::DenseTensor* x) {
-  Tensor x_fp32(experimental::DataType::FLOAT32);
+  phi::DenseTensor x_fp32(experimental::DataType::FLOAT32);
   x_fp32.mutable_data<float>(x->dims(), place);
   FillNpuTensorWithConstant<float>(&tn, static_cast<float>(n));
   const auto& runner = NpuOpRunner("Range", {t0, tn, t1}, {x_fp32}, {});
@@ -238,7 +237,7 @@ void BilinearParamTensorCompute(const framework::ExecutionContext& ctx,
                                 phi::DenseTensor* coef_w1) {
   InterpolateFunction<T> F(ctx);
   auto place = ctx.GetPlace();
-  Tensor _h0, _w0;
+  phi::DenseTensor _h0, _w0;
   _h0.mutable_data<T>({out_h}, place);
   _w0.mutable_data<T>({out_w}, place);
   F.Arange(out_h, &_h0);
@@ -255,8 +254,8 @@ void BilinearParamTensorCompute(const framework::ExecutionContext& ctx,
     F.Muls(&_w0, ratio_w, &_w0);
   }
 
-  Tensor zero_t;
-  Tensor one_t;
+  phi::DenseTensor zero_t;
+  phi::DenseTensor one_t;
   zero_t.mutable_data<T>({1}, place);
   one_t.mutable_data<T>({1}, place);
   FillNpuTensorWithConstant<T>(&zero_t, static_cast<T>(0));
@@ -264,7 +263,7 @@ void BilinearParamTensorCompute(const framework::ExecutionContext& ctx,
   F.Maximum(&_h0, &zero_t, &_h0);
   F.Maximum(&_w0, &zero_t, &_w0);
 
-  Tensor _h0_floor, _w0_floor;
+  phi::DenseTensor _h0_floor, _w0_floor;
   _h0_floor.mutable_data<T>({out_h}, place);
   _w0_floor.mutable_data<T>({out_w}, place);
   F.Floor(&_h0, &_h0_floor);
@@ -272,12 +271,12 @@ void BilinearParamTensorCompute(const framework::ExecutionContext& ctx,
   F.Cast(&_h0_floor, h0);
   F.Cast(&_w0_floor, w0);
 
-  Tensor one_int;
+  phi::DenseTensor one_int;
   one_int.mutable_data<int>({1}, place);
   FillNpuTensorWithConstant<int>(&one_int, static_cast<int>(1));
   F.Add(h0, &one_int, h1);
   F.Add(w0, &one_int, w1);
-  Tensor t_max_h, t_max_w;
+  phi::DenseTensor t_max_h, t_max_w;
   t_max_h.mutable_data<int>({1}, place);
   t_max_w.mutable_data<int>({1}, place);
   FillNpuTensorWithConstant<int>(&t_max_h, static_cast<int>(in_h - 1));
@@ -334,12 +333,12 @@ void BilinearFwdNpu(const framework::ExecutionContext& ctx,
                           &ratio_h,
                           &ratio_w);
 
-  Tensor h0, h1, w0, w1;
+  phi::DenseTensor h0, h1, w0, w1;
   h0.mutable_data<int>({out_h}, place);
   h1.mutable_data<int>({out_h}, place);
   w0.mutable_data<int>({out_w}, place);
   w1.mutable_data<int>({out_w}, place);
-  Tensor coef_h0, coef_h1, coef_w0, coef_w1;
+  phi::DenseTensor coef_h0, coef_h1, coef_w0, coef_w1;
   coef_h0.mutable_data<T>({out_h}, place);
   coef_h1.mutable_data<T>({out_h}, place);
   coef_w0.mutable_data<T>({out_w}, place);
@@ -363,7 +362,7 @@ void BilinearFwdNpu(const framework::ExecutionContext& ctx,
                                 &coef_w0,
                                 &coef_w1);
 
-  Tensor input_gather_h0, input_gather_h1;
+  phi::DenseTensor input_gather_h0, input_gather_h1;
   auto dim_gather_h = indim;
   dim_gather_h[axis_h] = out_h;
   input_gather_h0.mutable_data<T>(dim_gather_h, place);
@@ -374,13 +373,13 @@ void BilinearFwdNpu(const framework::ExecutionContext& ctx,
 
   F.Mul(&input_gather_h0, &coef_h0, &input_gather_h0);
   F.Mul(&input_gather_h1, &coef_h1, &input_gather_h1);
-  Tensor out_x4;
+  phi::DenseTensor out_x4;
   out_x4.mutable_data<T>({4, outdim[0], outdim[1], outdim[2], outdim[3]},
                          place);
-  Tensor input_gather_h0_w0 = out_x4.Slice(0, 1);
-  Tensor input_gather_h0_w1 = out_x4.Slice(1, 2);
-  Tensor input_gather_h1_w0 = out_x4.Slice(2, 3);
-  Tensor input_gather_h1_w1 = out_x4.Slice(3, 4);
+  phi::DenseTensor input_gather_h0_w0 = out_x4.Slice(0, 1);
+  phi::DenseTensor input_gather_h0_w1 = out_x4.Slice(1, 2);
+  phi::DenseTensor input_gather_h1_w0 = out_x4.Slice(2, 3);
+  phi::DenseTensor input_gather_h1_w1 = out_x4.Slice(3, 4);
   F.Gather(&input_gather_h0, &w0, axis_w, &input_gather_h0_w0);
   F.Gather(&input_gather_h0, &w1, axis_w, &input_gather_h0_w1);
   F.Gather(&input_gather_h1, &w0, axis_w, &input_gather_h1_w0);
@@ -425,12 +424,12 @@ void BilinearBwdNpu(const framework::ExecutionContext& ctx,
                           &ratio_h,
                           &ratio_w);
 
-  Tensor h0, h1, w0, w1;
+  phi::DenseTensor h0, h1, w0, w1;
   h0.mutable_data<int>({out_h}, place);
   h1.mutable_data<int>({out_h}, place);
   w0.mutable_data<int>({out_w}, place);
   w1.mutable_data<int>({out_w}, place);
-  Tensor coef_h0, coef_h1, coef_w0, coef_w1;
+  phi::DenseTensor coef_h0, coef_h1, coef_w0, coef_w1;
   coef_h0.mutable_data<T>({out_h}, place);
   coef_h1.mutable_data<T>({out_h}, place);
   coef_w0.mutable_data<T>({out_w}, place);
@@ -454,7 +453,7 @@ void BilinearBwdNpu(const framework::ExecutionContext& ctx,
                                 &coef_w0,
                                 &coef_w1);
 
-  Tensor gy_w0, gy_w1;
+  phi::DenseTensor gy_w0, gy_w1;
   gy_w0.mutable_data<T>(outdim, place);
   gy_w1.mutable_data<T>(outdim, place);
   F.Mul(gout, &coef_w0, &gy_w0);
@@ -462,7 +461,7 @@ void BilinearBwdNpu(const framework::ExecutionContext& ctx,
 
   auto dim_gather_h = indim;
   dim_gather_h[axis_h] = out_h;
-  Tensor g_gather_w0, g_gather_w1;
+  phi::DenseTensor g_gather_w0, g_gather_w1;
   g_gather_w0.mutable_data<T>(dim_gather_h, place);
   g_gather_w1.mutable_data<T>(dim_gather_h, place);
   w0.Resize({out_w, 1});
@@ -474,7 +473,7 @@ void BilinearBwdNpu(const framework::ExecutionContext& ctx,
   F.Mul(&g_gather_w0, &coef_h1, &g_gather_w1);
   F.Mul(&g_gather_w0, &coef_h0, &g_gather_w0);
 
-  Tensor gx_0, gx_1;
+  phi::DenseTensor gx_0, gx_1;
   gx_0.mutable_data<T>(indim, place);
   gx_1.mutable_data<T>(indim, place);
   h0.Resize({out_h, 1});
@@ -493,10 +492,11 @@ class InterpolateV2NPUKernel : public framework::OpKernel<T> {
     auto* output = ctx.Output<phi::DenseTensor>("Out");
 
     auto input_dims = input->dims();
-    PADDLE_ENFORCE_EQ(input_dims.size(),
-                      4UL,
-                      platform::errors::External(
-                          "NPU Interpolate Kernel only support 4-D Tensor."));
+    PADDLE_ENFORCE_EQ(
+        input_dims.size(),
+        4UL,
+        platform::errors::External(
+            "NPU Interpolate Kernel only support 4-D phi::DenseTensor."));
 
     const std::string data_layout_str = ctx.Attr<std::string>("data_layout");
     const DataLayout data_layout = phi::StringToDataLayout(data_layout_str);
@@ -552,14 +552,16 @@ class InterpolateV2NPUKernel : public framework::OpKernel<T> {
             scale_w > 0,
             true,
             platform::errors::InvalidArgument(
-                "The scale_w in input 'Scale' Tensor of Operator(interpolate) "
+                "The scale_w in input 'Scale' phi::DenseTensor of "
+                "Operator(interpolate) "
                 "should be greater than 0, but received value is %d.",
                 scale_w));
         PADDLE_ENFORCE_EQ(
             scale_h > 0,
             true,
             platform::errors::InvalidArgument(
-                "The scale_h in input 'Scale' Tensor of Operator(interpolate) "
+                "The scale_h in input 'Scale' phi::DenseTensor of "
+                "Operator(interpolate) "
                 "should be greater than 0, but received value is %d.",
                 scale_h));
       } else {
@@ -704,14 +706,16 @@ class InterpolateV2NPUGradKernel : public framework::OpKernel<T> {
             scale_w > 0,
             true,
             platform::errors::InvalidArgument(
-                "The scale_w in input 'Scale' Tensor of Operator(interpolate) "
+                "The scale_w in input 'Scale' phi::DenseTensor of "
+                "Operator(interpolate) "
                 "should be greater than 0, but received value is %d.",
                 scale_w));
         PADDLE_ENFORCE_EQ(
             scale_h > 0,
             true,
             platform::errors::InvalidArgument(
-                "The scale_h in input 'Scale' Tensor of Operator(interpolate) "
+                "The scale_h in input 'Scale' phi::DenseTensor of "
+                "Operator(interpolate) "
                 "should be greater than 0, but received value is %d.",
                 scale_h));
       } else {

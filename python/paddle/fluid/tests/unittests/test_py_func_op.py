@@ -104,7 +104,9 @@ def simple_fc_net(img, label, use_py_func_op):
 
     prediction = fluid.layers.fc(hidden, size=10, act='softmax')
     if not use_py_func_op:
-        loss = fluid.layers.cross_entropy(input=prediction, label=label)
+        loss = paddle.nn.functional.cross_entropy(
+            input=prediction, label=label, reduction='none', use_softmax=False
+        )
     else:
         loss = (
             fluid.default_main_program()

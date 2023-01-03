@@ -14,13 +14,15 @@
 
 import paddle
 from paddle import framework
+
+# (TODO: GhostScreaming) It will be removed later.
 from paddle.fluid import core
-from paddle.fluid.dygraph.parallel import (
+from paddle.framework import (
     _split_tensors,
     build_groups,
+    in_dygraph_mode,
     sync_params_buffers,
 )
-from paddle.fluid.framework import _in_legacy_dygraph, in_dygraph_mode
 
 from .log_util import logger
 
@@ -212,39 +214,12 @@ def sharding_reduce_gradients(parameter_list, hcg):
         sharding_nrank = hcg.get_sharding_parallel_group().nranks
         for param in parameter_list:
             if param.trainable and (param._grad_ivar() is not None):
-                if in_dygraph_mode():
-                    param.grad.scale_(1.0 / sharding_nrank)
-                    paddle.distributed.all_reduce(
-                        param.grad,
-                        group=hcg.get_sharding_parallel_group(),
-                        sync_op=True,
-                    )
-
-                elif _in_legacy_dygraph():
-                    g_var = param._grad_ivar()
-                    # need use trace_op to allreduce
-                    # paddle.distributed.all_reduce(
-                    #     g_var, group=hcg.get_sharding_parallel_group(), use_calc_stream=True)
-                    paddle.fluid.framework._dygraph_tracer().trace_op(
-                        type="c_allreduce_sum",
-                        inputs={'X': g_var},
-                        outputs={'Out': g_var},
-                        attrs={
-                            'ring_id': hcg.get_sharding_parallel_group().id,
-                            'use_calc_stream': True,
-                        },
-                    )
-
-                    # grad / sharding_rank
-                    div_factor = paddle.to_tensor(
-                        sharding_nrank, dtype=g_var.dtype
-                    )
-                    paddle.fluid.framework._dygraph_tracer().trace_op(
-                        type="elementwise_div",
-                        inputs={'X': g_var, 'Y': div_factor},
-                        outputs={'Out': g_var},
-                        attrs={'axis': -1},
-                    )
+                param.grad.scale_(1.0 / sharding_nrank)
+                paddle.distributed.all_reduce(
+                    param.grad,
+                    group=hcg.get_sharding_parallel_group(),
+                    sync_op=True,
+                )
 
 
 def broadcast_sharding_parameters(model, hcg):

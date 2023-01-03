@@ -19,28 +19,21 @@ from collections import defaultdict
 import numpy as np
 
 import paddle
-from paddle import _C_ops, _legacy_C_ops
+import paddle.autograd as imperative_base
+from paddle import _C_ops
 from paddle.fluid import core
 from paddle.fluid.framework import (
     Variable,
     _current_expected_place,
     _in_eager_without_dygraph_check,
-    _in_legacy_dygraph,
     default_main_program,
     device_guard,
     in_dygraph_mode,
     name_scope,
 )
 
-from ..fluid import framework, layers, unique_name
+from ..fluid import framework, unique_name
 from ..fluid.backward import _get_no_grad_set_name, append_backward
-from ..fluid.clip import (
-    ClipGradByGlobalNorm,
-    GradientClipBase,
-    append_gradient_clip_ops,
-    error_clip_callback,
-)
-from ..fluid.dygraph import base as imperative_base
 from ..fluid.framework import Parameter, program_guard
 from ..fluid.initializer import Constant
 from ..fluid.layer_helper import LayerHelper
@@ -112,7 +105,7 @@ class Optimizer:
             different parameter groups such as the learning rate, weight decay, etc, \
             then the parameters are list of dict. Note that the learning_rate in paramter groups \
             represents the scale of base learning_rate. \
-            The default value is None in static mode, at this time all parameters will be updated.
+            The default value is None in static graph mode, at this time all parameters will be updated.
         weight_decay (float|WeightDecayRegularizer, optional): The strategy of regularization. \
             It canbe a float value as coeff of L2 regularization or \
             :ref:`api_fluid_regularizer_L1Decay`, :ref:`api_fluid_regularizer_L2Decay`.
@@ -176,7 +169,7 @@ class Optimizer:
 
     """
 
-    @imperative_base.no_grad
+    @imperative_base.no_grad()
     def __init__(
         self,
         learning_rate,
@@ -235,7 +228,7 @@ class Optimizer:
                 % type(learning_rate)
             )
         if grad_clip is not None:
-            if not isinstance(grad_clip, GradientClipBase):
+            if not isinstance(grad_clip, paddle.nn.clip.GradientClipBase):
                 raise TypeError(
                     "'grad_clip' should be an instance of GradientClipBase's derived class"
                 )
@@ -480,7 +473,7 @@ class Optimizer:
             else:
                 self._learning_rate_map[
                     framework.default_main_program()
-                ] = layers.create_global_var(
+                ] = paddle.static.create_global_var(
                     name=unique_name.generate("learning_rate"),
                     shape=[1],
                     value=float(self._learning_rate),
@@ -544,17 +537,6 @@ class Optimizer:
                     float(value),
                     current_lr.dtype,
                     place,
-                )
-
-            elif _in_legacy_dygraph():
-                _legacy_C_ops.fill_constant(
-                    current_lr,
-                    'value',
-                    float(value),
-                    'dtype',
-                    current_lr.dtype,
-                    'shape',
-                    list(current_lr.shape),
                 )
             else:
                 global_block = framework.default_main_program().global_block()
@@ -1053,31 +1035,19 @@ class Optimizer:
         if self._dtype is None:
             self._dtype = loss.dtype
 
-        if framework._non_static_mode():
+        if framework.in_dygraph_mode():
             parameter_list = parameters if parameters else self._parameter_list
 
-            if framework.in_dygraph_mode():
-                # It is very time-consuming to call c++ functions in a loop on the python side.
-                # We put this part of the code on the c++ side to improve the speed in eager mode.
-                params_grads = []
-                grads = core.eager.get_all_grads(parameter_list)
-                for index, grad in enumerate(grads):
-                    if grad is not None:
-                        params_grads.append((parameter_list[index], grad))
-            else:
-                # Keep the original code to support legacy mode.
-                # Delete the else branch when the legacy mode exits.
-                params_grads = []
-                for param in parameter_list:
-                    if param.stop_gradient:
-                        continue
-                    if param._grad_ivar() is not None:
-                        # create gradient tensor
-                        grad_var = param._grad_ivar()
-                        params_grads.append((param, grad_var))
+            # It is very time-consuming to call c++ functions in a loop on the python side.
+            # We put this part of the code on the c++ side to improve the speed in eager mode.
+            params_grads = []
+            grads = core.eager.get_all_grads(parameter_list)
+            for index, grad in enumerate(grads):
+                if grad is not None:
+                    params_grads.append((parameter_list[index], grad))
         else:
             if callbacks is None:
-                callbacks = [error_clip_callback]
+                callbacks = [paddle.nn.clip.error_clip_callback]
             else:
                 assert isinstance(callbacks, list)
             program = loss.block.program
@@ -1146,7 +1116,13 @@ class Optimizer:
 
         if framework._non_static_mode():
             flatten_param.stop_gradient = False
-            _legacy_C_ops.coalesce_tensor(
+            # In the final state of the dynamic graph, the `coalesce_tensor` op
+            # does not support passing the output as an input into the op in
+            # temporary, so _legacy_C_ops is temporarily used here.
+            # `use_align` is set to false, which is different from the behavior
+            # under static graphs. `use_align` can be set to true after calling
+            # the coalesce_tensor op of the final state (_C_ops).
+            paddle._legacy_C_ops.coalesce_tensor(
                 need_flatten_params,
                 need_flatten_params,
                 flatten_param,
@@ -1158,7 +1134,7 @@ class Optimizer:
                 need_flatten_params[0].dtype,
             )
 
-            _legacy_C_ops.coalesce_tensor(
+            paddle._legacy_C_ops.coalesce_tensor(
                 need_flatten_grads,
                 need_flatten_grads,
                 flatten_grad,
@@ -1250,7 +1226,7 @@ class Optimizer:
         # NOTE(zhiqiu): currently, only support ClipGradByGlobalNorm and without regularization.
         if self._flatten_param_grads and self.regularization is None:
             if self._grad_clip is None or isinstance(
-                self._grad_clip, ClipGradByGlobalNorm
+                self._grad_clip, paddle.nn.ClipGradByGlobalNorm
             ):
                 params_grads = self.flatten_param_grads(params_grads)
 
@@ -1259,7 +1235,7 @@ class Optimizer:
             params_grads = self._grad_clip(params_grads)
         else:
 
-            params_grads = append_gradient_clip_ops(params_grads)
+            params_grads = paddle.nn.clip.append_gradient_clip_ops(params_grads)
 
         # Add regularization if any
         params_grads = self.append_regularization_ops(
@@ -1295,7 +1271,7 @@ class Optimizer:
                     and self.regularization is None
                 ):
                     if self._grad_clip is None or isinstance(
-                        self._grad_clip, ClipGradByGlobalNorm
+                        self._grad_clip, paddle.nn.ClipGradByGlobalNorm
                     ):
                         params_grads = self.flatten_param_grads(params_grads)
 
@@ -1350,28 +1326,26 @@ class Optimizer:
 
         if framework.in_dygraph_mode():
             return _C_ops.add_n([grad, regularization_term])
-        elif framework._in_legacy_dygraph():
-            return _legacy_C_ops.sum([grad, regularization_term])
+        else:
+            new_grad = grad
+            if grad.type == core.VarDesc.VarType.SELECTED_ROWS:
+                # FIXME(zcd): If the grad is SELECTED_ROWS, after regularization,
+                # the grad's type and name will be changed. But the gradient's name
+                # is used in ParallelExecutor Reduce mode, so I add a flag for
+                # the new_grad here.
+                new_grad = grad.block.create_var(
+                    name=grad.name + core.kNewGradSuffix(),
+                    dtype=param.dtype,
+                    shape=param.shape,
+                    lod_level=param.lod_level,
+                    type=core.VarDesc.VarType.LOD_TENSOR,
+                )
 
-        new_grad = grad
-        if grad.type == core.VarDesc.VarType.SELECTED_ROWS:
-            # FIXME(zcd): If the grad is SELECTED_ROWS, after regularization,
-            # the grad's type and name will be changed. But the gradient's name
-            # is used in ParallelExecutor Reduce mode, so I add a flag for
-            # the new_grad here.
-            new_grad = grad.block.create_var(
-                name=grad.name + core.kNewGradSuffix(),
-                dtype=param.dtype,
-                shape=param.shape,
-                lod_level=param.lod_level,
-                type=core.VarDesc.VarType.LOD_TENSOR,
-            )
+            inputs = {"X": [grad, regularization_term]}
+            outputs = {"Out": [new_grad]}
+            grad.block.append_op(type='sum', inputs=inputs, outputs=outputs)
 
-        inputs = {"X": [grad, regularization_term]}
-        outputs = {"Out": [new_grad]}
-        grad.block.append_op(type='sum', inputs=inputs, outputs=outputs)
-
-        return new_grad
+            return new_grad
 
     def append_regularization_ops(
         self, parameters_and_grads, regularization=None
@@ -1486,7 +1460,7 @@ class Optimizer:
         else:
             core.clear_gradients(param_list, set_to_zero)
 
-    @imperative_base.no_grad
+    @imperative_base.no_grad()
     def minimize(
         self, loss, startup_program=None, parameters=None, no_grad_set=None
     ):
@@ -1549,7 +1523,7 @@ class Optimizer:
 
         return optimize_ops, params_grads
 
-    @imperative_base.no_grad
+    @imperative_base.no_grad()
     @framework.dygraph_only
     def step(self):
         """

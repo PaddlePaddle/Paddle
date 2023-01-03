@@ -17,10 +17,13 @@ from functools import partial
 
 import numpy as np
 
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 import paddle.fluid.layers as layers
 from paddle.fluid.framework import Program, program_guard
+
+paddle.enable_static()
 
 
 class TestAPISwitchCase(unittest.TestCase):
@@ -42,29 +45,29 @@ class TestAPISwitchCase(unittest.TestCase):
             index_5 = layers.fill_constant(shape=[1], dtype='int32', value=5)
 
             # call fn_1
-            out_0 = layers.switch_case(
+            out_0 = paddle.static.nn.switch_case(
                 branch_index=index_1, branch_fns={1: fn_1, 2: fn_2, 3: fn_3}
             )
 
             # call fn_2 : branch_fns={0: fn_1, 1:fn_2, 2:fn_3}
-            out_1 = layers.switch_case(
+            out_1 = paddle.static.nn.switch_case(
                 branch_index=index_1, branch_fns=(fn_1, fn_2, fn_3)
             )
 
             # call default fn_3
-            out_2 = layers.switch_case(
+            out_2 = paddle.static.nn.switch_case(
                 branch_index=index_5,
                 branch_fns=((1, fn_1), (2, fn_2)),
                 default=fn_3,
             )
 
             # no default, call fn_2
-            out_3 = layers.switch_case(
+            out_3 = paddle.static.nn.switch_case(
                 branch_index=index_2, branch_fns=[(1, fn_1), (2, fn_2)]
             )
 
             # no default, call fn_2 but branch_index is 5
-            out_4 = layers.switch_case(
+            out_4 = paddle.static.nn.switch_case(
                 branch_index=index_5,
                 branch_fns=[(1, fn_1), (3, fn_2), (2, fn_3)],
             )
@@ -132,7 +135,9 @@ class TestAPISwitchCase(unittest.TestCase):
         with program_guard(main_program, startup_program):
             index_1 = layers.fill_constant(shape=[1], dtype='int32', value=1)
 
-            out = layers.switch_case(index_1, ((1, fn_1), (2, fn_2)), fn_3)
+            out = paddle.static.nn.switch_case(
+                index_1, ((1, fn_1), (2, fn_2)), fn_3
+            )
 
             place = (
                 fluid.CUDAPlace(0)
@@ -153,7 +158,7 @@ class TestAPISwitchCase(unittest.TestCase):
 class TestAPISwitchCase_Nested(unittest.TestCase):
     def test_nested_switch_case(self):
         def fn_1(x=1):
-            out = layers.switch_case(
+            out = paddle.static.nn.switch_case(
                 branch_index=layers.fill_constant(
                     shape=[1], dtype='int32', value=x
                 ),
@@ -169,7 +174,7 @@ class TestAPISwitchCase_Nested(unittest.TestCase):
             return out
 
         def fn_2(x=2):
-            out = layers.switch_case(
+            out = paddle.static.nn.switch_case(
                 branch_index=layers.fill_constant(
                     shape=[1], dtype='int32', value=2
                 ),
@@ -186,7 +191,7 @@ class TestAPISwitchCase_Nested(unittest.TestCase):
             return out
 
         def fn_3():
-            out = layers.switch_case(
+            out = paddle.static.nn.switch_case(
                 branch_index=layers.fill_constant(
                     shape=[1], dtype='int32', value=3
                 ),
@@ -209,14 +214,14 @@ class TestAPISwitchCase_Nested(unittest.TestCase):
             index_2 = layers.fill_constant(shape=[1], dtype='int32', value=2)
             index_3 = layers.fill_constant(shape=[1], dtype='int64', value=3)
 
-            out_1 = layers.switch_case(
+            out_1 = paddle.static.nn.switch_case(
                 branch_index=index_1, branch_fns={1: fn_1, 2: fn_2, 3: fn_3}
             )
-            out_2 = layers.switch_case(
+            out_2 = paddle.static.nn.switch_case(
                 branch_index=index_2, branch_fns={1: fn_1, 2: fn_2, 3: fn_3}
             )
 
-            out_3 = layers.switch_case(
+            out_3 = paddle.static.nn.switch_case(
                 branch_index=index_3, branch_fns={1: fn_1, 2: fn_2, 3: fn_3}
             )
 
@@ -277,7 +282,7 @@ class TestAPISwitchCase_Error(unittest.TestCase):
 
             # The type of 'branch_index' in Op(switch_case) must be Variable
             def type_error_branch_index():
-                layers.switch_case(
+                paddle.static.nn.switch_case(
                     branch_index=1, branch_fns=[(1, fn_1)], default=fn_3
                 )
 
@@ -285,7 +290,7 @@ class TestAPISwitchCase_Error(unittest.TestCase):
 
             # The data type of 'branch_index' in Op(switch_case) must be int32, int64 or uint8
             def dtype_error_branch_index():
-                layers.switch_case(
+                paddle.static.nn.switch_case(
                     branch_index=key_float32,
                     branch_fns=[(1, fn_1)],
                     default=fn_3,
@@ -295,7 +300,7 @@ class TestAPISwitchCase_Error(unittest.TestCase):
 
             # The type of 'branch_fns' in Op(switch_case) must be list, tuple or dict
             def type_error_branch_fns():
-                layers.switch_case(
+                paddle.static.nn.switch_case(
                     branch_index=key_int32, branch_fns=1, default=fn_3
                 )
 
@@ -303,7 +308,7 @@ class TestAPISwitchCase_Error(unittest.TestCase):
 
             # The elements' type of 'branch_fns' in Op(switch_case) must be tuple
             def type_error_index_fn_pair_1():
-                layers.switch_case(
+                paddle.static.nn.switch_case(
                     branch_index=key_int32, branch_fns=[1], default=fn_3
                 )
 
@@ -311,7 +316,7 @@ class TestAPISwitchCase_Error(unittest.TestCase):
 
             # The tuple's size of 'branch_fns' in Op(switch_case) must be 2
             def type_error_index_fn_pair_2():
-                layers.switch_case(
+                paddle.static.nn.switch_case(
                     branch_index=key_int32, branch_fns=[(1, 2, 3)], default=fn_3
                 )
 
@@ -319,7 +324,7 @@ class TestAPISwitchCase_Error(unittest.TestCase):
 
             # The key's type of 'branch_fns' in Op(switch_case) must be int
             def type_error_key():
-                layers.switch_case(
+                paddle.static.nn.switch_case(
                     branch_index=key_int32, branch_fns=[(2.3, 2)], default=fn_3
                 )
 
@@ -327,7 +332,7 @@ class TestAPISwitchCase_Error(unittest.TestCase):
 
             # The key in 'branch_fns' must be unique
             def value_error_key():
-                layers.switch_case(
+                paddle.static.nn.switch_case(
                     branch_index=key_int32,
                     branch_fns=[(2, fn_1), (2, fn_2)],
                     default=fn_3,
@@ -337,7 +342,7 @@ class TestAPISwitchCase_Error(unittest.TestCase):
 
             # The type of function in 'branch_fns' must be callable
             def type_error_fn():
-                layers.switch_case(
+                paddle.static.nn.switch_case(
                     branch_index=key_int32,
                     branch_fns=[(1, 1), (2, fn_2)],
                     default=fn_3,
@@ -347,7 +352,7 @@ class TestAPISwitchCase_Error(unittest.TestCase):
 
             # The default in Op(case) must be callable
             def type_error_default():
-                layers.switch_case(
+                paddle.static.nn.switch_case(
                     branch_index=key_int32,
                     branch_fns=[(1, fn_1), (2, fn_2)],
                     default=1,

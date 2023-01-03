@@ -29,7 +29,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
 using platform::Transform;
 
 template <typename T,
@@ -135,9 +134,9 @@ class LSTMPKernel : public framework::OpKernel<T> {
     framework::DDim proj_dims({in_dims[0], proj_weight->dims()[1]});
 
     if (bias) {
-      Tensor b = *bias;
+      phi::DenseTensor b = *bias;
       b.Resize({bias->numel(), 1});
-      Tensor gate_bias = b.Slice(0, 4 * frame_size);
+      phi::DenseTensor gate_bias = b.Slice(0, 4 * frame_size);
       phi::funcs::RowwiseAdd<DeviceContext, T> add_bias;
       add_bias(device_ctx, *batch_gate, gate_bias, batch_gate);
     }
@@ -156,8 +155,8 @@ class LSTMPKernel : public framework::OpKernel<T> {
       lstmp_value.check_og = nullptr;
     }
     lstmp_value.prev_state_value = nullptr;
-    Tensor ordered_c0;
-    Tensor ordered_h0;
+    phi::DenseTensor ordered_c0;
+    phi::DenseTensor ordered_h0;
 
     framework::Vector<size_t> order(batch_gate->lod()[2]);
 
@@ -195,11 +194,11 @@ class LSTMPKernel : public framework::OpKernel<T> {
       int bstart = static_cast<int>(batch_starts[n]);
       int bend = static_cast<int>(batch_starts[n + 1]);
 
-      Tensor gate_t = batch_gate->Slice(bstart, bend);
-      Tensor hidden_t = batch_hidden->Slice(bstart, bend);
-      Tensor proj_t = batch_proj.Slice(bstart, bend);
-      Tensor cell_t = batch_cell.Slice(bstart, bend);
-      Tensor cell_pre_act_t = batch_cell_pre_act->Slice(bstart, bend);
+      phi::DenseTensor gate_t = batch_gate->Slice(bstart, bend);
+      phi::DenseTensor hidden_t = batch_hidden->Slice(bstart, bend);
+      phi::DenseTensor proj_t = batch_proj.Slice(bstart, bend);
+      phi::DenseTensor cell_t = batch_cell.Slice(bstart, bend);
+      phi::DenseTensor cell_pre_act_t = batch_cell_pre_act->Slice(bstart, bend);
 
       int cur_batch_size = bend - bstart;
 
@@ -349,7 +348,7 @@ class LSTMPGradKernel : public framework::OpKernel<T> {
     // ordered_h0/c0 is the reordered hidden/cell initialization.
     // ordered_h0_g/c0_g is the reordered gradient of hidden/cell
     // initialization.
-    Tensor ordered_h0, ordered_c0, ordered_h0_g, ordered_c0_g;
+    phi::DenseTensor ordered_h0, ordered_c0, ordered_h0_g, ordered_c0_g;
 
     framework::Vector<size_t> order(batch_gate->lod()[2]);
 
@@ -445,8 +444,8 @@ class LSTMPGradKernel : public framework::OpKernel<T> {
       int bstart = static_cast<int>(batch_starts[n]);
       int bend = static_cast<int>(batch_starts[n + 1]);
 
-      Tensor cur_proj = batch_proj.Slice(bstart, bend);
-      Tensor proj_g = batch_proj_g.Slice(bstart, bend);
+      phi::DenseTensor cur_proj = batch_proj.Slice(bstart, bend);
+      phi::DenseTensor proj_g = batch_proj_g.Slice(bstart, bend);
 
       if (proj_clip && proj_clip > 0.0) {
         T* dx_data = proj_g.data<T>();
@@ -472,7 +471,7 @@ class LSTMPGradKernel : public framework::OpKernel<T> {
                        proj_g_dev);
       }
       /* hidden state backwarad */
-      Tensor out_g = batch_hidden_g.Slice(bstart, bend);
+      phi::DenseTensor out_g = batch_hidden_g.Slice(bstart, bend);
       blas.MatMul(proj_g,
                   false,
                   *proj_weight,
@@ -482,7 +481,7 @@ class LSTMPGradKernel : public framework::OpKernel<T> {
                   static_cast<T>(0.0));
       /* projection weight backward*/
       if (proj_weight_g) {
-        Tensor hidden_t = batch_hidden->Slice(bstart, bend);
+        phi::DenseTensor hidden_t = batch_hidden->Slice(bstart, bend);
         blas.MatMul(hidden_t,
                     true,
                     proj_g,
@@ -492,23 +491,23 @@ class LSTMPGradKernel : public framework::OpKernel<T> {
                     static_cast<T>(1.0));
       }
 
-      Tensor gate = batch_gate->Slice(bstart, bend);
-      Tensor cell = batch_cell.Slice(bstart, bend);
-      Tensor cell_pre_act = batch_cell_pre_act->Slice(bstart, bend);
+      phi::DenseTensor gate = batch_gate->Slice(bstart, bend);
+      phi::DenseTensor cell = batch_cell.Slice(bstart, bend);
+      phi::DenseTensor cell_pre_act = batch_cell_pre_act->Slice(bstart, bend);
       lstmp_value.gate_value = gate.data<T>();
       lstmp_value.state_value = cell.data<T>();
       lstmp_value.state_active_value = cell_pre_act.data<T>();
 
-      Tensor gate_g = batch_gate_g.Slice(bstart, bend);
-      Tensor cell_g = batch_cell_g.Slice(bstart, bend);
+      phi::DenseTensor gate_g = batch_gate_g.Slice(bstart, bend);
+      phi::DenseTensor cell_g = batch_cell_g.Slice(bstart, bend);
       lstmp_grad.state_grad = cell_g.data<T>();
       lstmp_grad.gate_grad = gate_g.data<T>();
       lstmp_grad.output_grad = out_g.data<T>();
 
       if (n > 0) {
         int bstart_pre = static_cast<int>(batch_starts[n - 1]);
-        Tensor cell_pre = batch_cell.Slice(bstart_pre, bstart);
-        Tensor cell_pre_g = batch_cell_g.Slice(bstart_pre, bstart);
+        phi::DenseTensor cell_pre = batch_cell.Slice(bstart_pre, bstart);
+        phi::DenseTensor cell_pre_g = batch_cell_g.Slice(bstart_pre, bstart);
         lstmp_value.prev_state_value = cell_pre.data<T>();
         lstmp_grad.prev_state_grad = cell_pre_g.data<T>();
       } else {
@@ -589,9 +588,9 @@ class LSTMPGradKernel : public framework::OpKernel<T> {
     }
     if (bias && bias_g) {
       /* backward bias */
-      Tensor b_g = *bias_g;
+      phi::DenseTensor b_g = *bias_g;
       b_g.Resize({bias_g->numel(), 1});
-      Tensor gate_bias_g = b_g.Slice(0, 4 * frame_size);
+      phi::DenseTensor gate_bias_g = b_g.Slice(0, 4 * frame_size);
       phi::funcs::ColwiseSum<DeviceContext, T> col_sum;
       col_sum(device_ctx, batch_gate_g, &gate_bias_g);
     }

@@ -26,7 +26,6 @@ from test_dist_base import (
 import paddle
 import paddle.distributed as dist
 import paddle.fluid as fluid
-from paddle.fluid.dygraph.nn import Linear
 from paddle.nn import Linear
 
 seed = 90

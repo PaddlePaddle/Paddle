@@ -30,8 +30,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
-
 #define FIXED_BLOCK_DIM_BASE(dim, ...) \
   case (dim): {                        \
     constexpr auto kBlockDim = (dim);  \
@@ -74,7 +72,7 @@ class TopkOpCUDAKernel : public framework::OpKernel<T> {
 
     auto* k_t = ctx.Input<phi::DenseTensor>("K");
     if (k_t) {
-      Tensor k_host;
+      phi::DenseTensor k_host;
       framework::TensorCopySync(*k_t, platform::CPUPlace(), &k_host);
       k = k_host.data<int>()[0];
       framework::DDim output_dims = output->dims();

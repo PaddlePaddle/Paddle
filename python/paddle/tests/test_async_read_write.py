@@ -19,7 +19,6 @@ import numpy as np
 import paddle
 from paddle.device import cuda
 from paddle.fluid import core
-from paddle.fluid.framework import _in_legacy_dygraph, _test_eager_guard
 
 
 class TestAsyncRead(unittest.TestCase):
@@ -40,24 +39,14 @@ class TestAsyncRead(unittest.TestCase):
 
     def func_test_async_read_empty_offset_and_count(self):
         with cuda.stream_guard(self.stream):
-            if _in_legacy_dygraph():
-                core.async_read(
-                    self.src,
-                    self.dst,
-                    self.index,
-                    self.buffer,
-                    self.empty,
-                    self.empty,
-                )
-            else:
-                core.eager.async_read(
-                    self.src,
-                    self.dst,
-                    self.index,
-                    self.buffer,
-                    self.empty,
-                    self.empty,
-                )
+            core.eager.async_read(
+                self.src,
+                self.dst,
+                self.index,
+                self.buffer,
+                self.empty,
+                self.empty,
+            )
         array1 = paddle.gather(self.src, self.index)
         array2 = self.dst[: len(self.index)]
 
@@ -71,14 +60,9 @@ class TestAsyncRead(unittest.TestCase):
             np.array([5, 10], dtype="int64"), place=paddle.CPUPlace()
         )
         with cuda.stream_guard(self.stream):
-            if _in_legacy_dygraph():
-                core.async_read(
-                    self.src, self.dst, self.index, self.buffer, offset, count
-                )
-            else:
-                core.eager.async_read(
-                    self.src, self.dst, self.index, self.buffer, offset, count
-                )
+            core.eager.async_read(
+                self.src, self.dst, self.index, self.buffer, offset, count
+            )
         # index data
         index_array1 = paddle.gather(self.src, self.index)
         count_numel = paddle.sum(count).numpy()[0]
@@ -101,26 +85,14 @@ class TestAsyncRead(unittest.TestCase):
         dst = paddle.empty([40], dtype="float32")
         buffer_ = paddle.empty([20]).pin_memory()
         with cuda.stream_guard(self.stream):
-            if _in_legacy_dygraph():
-                core.async_read(
-                    src, dst, self.index, buffer_, self.empty, self.empty
-                )
-            else:
-                core.eager.async_read(
-                    src, dst, self.index, buffer_, self.empty, self.empty
-                )
+            core.eager.async_read(
+                src, dst, self.index, buffer_, self.empty, self.empty
+            )
         array1 = paddle.gather(src, self.index)
         array2 = dst[: len(self.index)]
         np.testing.assert_allclose(array1.numpy(), array2.numpy(), rtol=1e-05)
 
     def test_main(self):
-        with _test_eager_guard():
-            self.func_setUp()
-            self.func_test_async_read_empty_offset_and_count()
-            self.func_setUp()
-            self.func_test_async_read_success()
-            self.func_setUp()
-            self.func_test_async_read_only_1dim()
         self.func_setUp()
         self.func_test_async_read_empty_offset_and_count()
         self.func_setUp()
@@ -145,10 +117,7 @@ class TestAsyncWrite(unittest.TestCase):
             np.array([40, 60], dtype="int64"), place=paddle.CPUPlace()
         )
         with cuda.stream_guard(self.stream):
-            if _in_legacy_dygraph():
-                core.async_write(self.src, self.dst, offset, count)
-            else:
-                core.eager.async_write(self.src, self.dst, offset, count)
+            core.eager.async_write(self.src, self.dst, offset, count)
 
         offset_a = paddle.gather(self.dst, paddle.to_tensor(np.arange(0, 40)))
         offset_b = paddle.gather(self.dst, paddle.to_tensor(np.arange(60, 120)))
@@ -158,9 +127,6 @@ class TestAsyncWrite(unittest.TestCase):
         )
 
     def test_async_write_success(self):
-        with _test_eager_guard():
-            self.func_setUp()
-            self.func_test_async_write_success()
         self.func_setUp()
         self.func_test_async_write_success()
 

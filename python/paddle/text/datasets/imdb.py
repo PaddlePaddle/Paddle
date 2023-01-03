@@ -67,7 +67,7 @@ class Imdb(Dataset):
 
                 model = SimpleNet()
                 image, label = model(doc, label)
-                print(doc.numpy().shape, label.numpy().shape)
+                print(doc.shape, label.shape)
 
     """
 

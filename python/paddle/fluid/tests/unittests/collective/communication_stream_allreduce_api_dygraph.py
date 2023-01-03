@@ -58,7 +58,7 @@ class StreamAllReduceTestCase:
         for i in range(1, len(test_data_list)):
             result += test_data_list[i]
 
-        assert np.allclose(tensor, result, rtol=1e-05, atol=1e-05)
+        np.testing.assert_allclose(tensor, result, rtol=1e-05, atol=1e-05)
 
 
 if __name__ == "__main__":

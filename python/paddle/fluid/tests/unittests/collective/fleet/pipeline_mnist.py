@@ -100,7 +100,9 @@ class TestDistMnist2x2(TestDistRunnerBase):
             # Train program
             predict = cnn_model(images)
         with fluid.device_guard("gpu:1"):
-            cost = fluid.layers.cross_entropy(input=predict, label=label)
+            cost = paddle.nn.functional.cross_entropy(
+                input=predict, label=label, reduction='none', use_softmax=False
+            )
             avg_cost = paddle.mean(x=cost)
 
         # Evaluator
@@ -120,7 +122,7 @@ class TestDistMnist2x2(TestDistRunnerBase):
 
         opt = paddle.optimizer.AdamW(
             learning_rate=lr_val,
-            grad_clip=fluid.clip.GradientClipByGlobalNorm(clip_norm=1.0),
+            grad_clip=paddle.nn.ClipGradByGlobalNorm(clip_norm=1.0),
         )
 
         acc_steps = 2  # accumulated steps for pipeline

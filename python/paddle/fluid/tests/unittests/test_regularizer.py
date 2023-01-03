@@ -141,7 +141,9 @@ def bow_net(
     fc_1 = fluid.layers.fc(input=bow_tanh, size=hid_dim, act="tanh")
     fc_2 = fluid.layers.fc(input=fc_1, size=hid_dim2, act="tanh")
     prediction = fluid.layers.fc(input=[fc_2], size=class_dim, act="softmax")
-    cost = fluid.layers.cross_entropy(input=prediction, label=label)
+    cost = paddle.nn.functional.cross_entropy(
+        input=prediction, label=label, reduction='none', use_softmax=False
+    )
     avg_cost = paddle.mean(x=cost)
     return avg_cost
 
@@ -263,7 +265,7 @@ class TestRegularizer(unittest.TestCase):
             regularizer=paddle.regularizer.L1Decay()
         )
         with fluid.program_guard(fluid.Program(), fluid.Program()):
-            x = fluid.layers.uniform_random([2, 2, 3])
+            x = paddle.uniform([2, 2, 3])
             out = fluid.layers.fc(x, 5, param_attr=fc_param_attr)
             loss = paddle.sum(out)
             sgd = fluid.optimizer.SGD(learning_rate=0.1, regularization=l2)

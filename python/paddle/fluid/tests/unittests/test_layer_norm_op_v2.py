@@ -20,7 +20,6 @@ import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid import Program, program_guard
-from paddle.fluid.framework import _test_eager_guard
 
 
 class TestDygraphLayerNormv2(unittest.TestCase):
@@ -66,12 +65,11 @@ class TestDygraphLayerNormv2(unittest.TestCase):
 
             def compute_v2(x):
                 with fluid.dygraph.guard(p):
-                    with _test_eager_guard():
-                        ln = paddle.nn.LayerNorm(shape[1:])
-                        x1 = paddle.to_tensor(x)
-                        x1.stop_gradient = False
-                        y = ln(x1)
-                        y.backward()
+                    ln = paddle.nn.LayerNorm(shape[1:])
+                    x1 = paddle.to_tensor(x)
+                    x1.stop_gradient = False
+                    y = ln(x1)
+                    y.backward()
                     return y.numpy(), x1.gradient()
 
             x = np.random.randn(*shape).astype("float32")

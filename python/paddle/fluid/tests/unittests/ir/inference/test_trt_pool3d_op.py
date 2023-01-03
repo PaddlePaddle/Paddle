@@ -80,7 +80,7 @@ class TensorRTPool3dTest(InferencePassTest):
                     ceil_mode=self.ceil_mode,
                     exclusive=self.exclusive,
                 )
-            # out = fluid.layers.batch_norm(pool_out, is_test=True)
+            # out = paddle.static.nn.batch_norm(pool_out, is_test=True)
             self.fetch_list = [pool_out]
 
     def check_output(self):
@@ -198,7 +198,7 @@ class TensorRTAdaptiveAvgPool3DTest(InferencePassTest):
             pool_out = paddle.nn.functional.adaptive_avg_pool3d(
                 x=data, output_size=[3, 3, 3]
             )
-            # out = fluid.layers.batch_norm(pool_out, is_test=True)
+            # out = paddle.static.nn.batch_norm(pool_out, is_test=True)
             self.fetch_list = [pool_out]
 
     def check_output(self):
@@ -298,7 +298,7 @@ class TensorRTAdaptiveMaxPool3DTest(InferencePassTest):
             pool_out = paddle.nn.functional.adaptive_max_pool3d(
                 x=data, output_size=[3, 3, 3]
             )
-            # out = fluid.layers.batch_norm(pool_out, is_test=True)
+            # out = paddle.static.nn.batch_norm(pool_out, is_test=True)
             self.fetch_list = [pool_out]
 
     def check_output(self):

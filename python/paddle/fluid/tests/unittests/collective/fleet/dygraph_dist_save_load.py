@@ -31,7 +31,6 @@ from paddle.distributed.fleet.meta_parallel.sharding.group_sharded_optimizer_sta
 from paddle.distributed.fleet.meta_parallel.sharding.group_sharded_stage2 import (
     GroupShardedStage2,
 )
-from paddle.fluid.dygraph.nn import Linear
 from paddle.incubate.distributed.utils.io import load, save
 from paddle.nn import Linear
 

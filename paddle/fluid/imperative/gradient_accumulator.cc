@@ -644,11 +644,11 @@ void GradientAccumulator::CallGradientHooks() {
       true,
       platform::errors::PreconditionNotMet(
           "Only can call gradient hooks after sum gradient completed."));
-  PADDLE_ENFORCE_EQ(
-      HasInnerVar(),
-      true,
-      platform::errors::PreconditionNotMet(
-          "Leaf Tensor's inner var is nullptr when call gradient hook."));
+  PADDLE_ENFORCE_EQ(HasInnerVar(),
+                    true,
+                    platform::errors::PreconditionNotMet(
+                        "Leaf Tensor's inner var is nullptr when "
+                        "call gradient hook."));
   PADDLE_ENFORCE_EQ(
       inner_var_->Var().IsInitialized(),
       true,

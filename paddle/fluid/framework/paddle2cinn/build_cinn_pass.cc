@@ -484,7 +484,8 @@ void AnalyseClusterVariables(
     const std::unordered_set<std::string>& deny_var_set,
     GraphNodeSet* cluster_inputs,
     GraphNodeSet* cluster_outputs,
-    GraphNodeSet* cluster_internals) {
+    GraphNodeSet* cluster_internals,
+    bool is_inference_stage) {
   // collecting all input and output of op
   for (auto* op_node : cluster) {
     const auto& op_name = op_node->Name();
@@ -522,6 +523,18 @@ void AnalyseClusterVariables(
   // if a output node also exists in internal list, remove.
   for (auto* var_node : *cluster_internals) {
     cluster_outputs->erase(var_node);
+  }
+
+  if (is_inference_stage) {
+    // If part of the output of the Op is not used by other operators, change it
+    // to internal. such as transpose2 op's XShape out.
+    auto outs = *cluster_outputs;
+    for (auto* node : outs) {
+      if (node->outputs.empty()) {
+        cluster_outputs->erase(node);
+        cluster_internals->insert(node);
+      }
+    }
   }
 }
 
@@ -611,7 +624,7 @@ void ReplaceSubGraphWithCinnOpNode(
 // Here we using SubgraphDetector to detecte the subgraph that
 // all of op node supported by CINN. We using OpMapperRegistry
 // to check whether the op node supported by CINN.
-void SearchAllSubgraphs(Graph* graph) {
+void SearchAllSubgraphs(Graph* graph, bool is_inference_stage) {
   auto allow_ops = StringSplit(FLAGS_allow_cinn_ops, kDelim);
   auto deny_ops = StringSplit(FLAGS_deny_cinn_ops, kDelim);
   OpTransInfo trans_info;
@@ -671,7 +684,8 @@ void SearchAllSubgraphs(Graph* graph) {
                             deny_var_set,
                             &cluster_inputs,
                             &cluster_outputs,
-                            &cluster_internals);
+                            &cluster_internals,
+                            is_inference_stage);
 
     VLOG(4) << "Cluster Ops: " << cluster_debug_info(cluster_set);
     VLOG(4) << "Cluster input vars: " << cluster_debug_info(cluster_inputs);
@@ -698,7 +712,13 @@ void SearchAllSubgraphs(Graph* graph) {
 }
 }  // namespace
 
-void BuildCinnPass::ApplyImpl(Graph* graph) const { SearchAllSubgraphs(graph); }
+void BuildCinnPass::ApplyImpl(Graph* graph) const {
+  bool is_inference_stage{false};
+  if (Has("is_inference_stage")) {
+    is_inference_stage = Get<bool>("is_inference_stage");
+  }
+  SearchAllSubgraphs(graph, is_inference_stage);
+}
 
 }  // namespace paddle2cinn
 }  // namespace framework

@@ -31,7 +31,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
 using SelectedRows = phi::SelectedRows;
 using Sampler = math::Sampler;
 using DDim = framework::DDim;
@@ -44,7 +43,7 @@ using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
 template <typename DeviceContext, typename T>
 void PrepareSamples(const framework::ExecutionContext &context,
                     Sampler *sampler,
-                    Tensor *sample_labels) {
+                    phi::DenseTensor *sample_labels) {
   auto label = context.Input<phi::DenseTensor>("Label");
   const int64_t *label_data = label->data<int64_t>();
   auto label_dims = label->dims();
@@ -154,9 +153,9 @@ class NCEKernel : public framework::OpKernel<T> {
 
     std::vector<int64_t> sample_out_dims;
     auto label = context.Input<phi::DenseTensor>("Label");
-    Tensor *sample_labels;
-    Tensor *sample_out;
-    Tensor sample_labels_tmp, sample_out_tmp;
+    phi::DenseTensor *sample_labels;
+    phi::DenseTensor *sample_out;
+    phi::DenseTensor sample_labels_tmp, sample_out_tmp;
     if (is_test) {
       // set dims of output(SampleOut)
       int num_true_classes = label->dims().size() == 2 ? label->dims()[1] : 1;
@@ -339,7 +338,7 @@ class NCEGradKernel : public framework::OpKernel<T> {
     }
 
     //    T b = 1. / num_total_classes * num_neg_samples;
-    Tensor sample_grad;  // tmp tensor
+    phi::DenseTensor sample_grad;  // tmp tensor
     T *sample_grad_data =
         sample_grad.mutable_data<T>(sample_labels->dims(), context.GetPlace());
     // backward cost

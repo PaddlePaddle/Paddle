@@ -14,6 +14,7 @@
 
 import os
 import pickle
+import socket
 import subprocess
 import sys
 import tempfile
@@ -163,10 +164,6 @@ def runtime_main(test_class, col_type, sub_type):
     args["col_type"] = col_type
     args["data_type"] = os.getenv("DATA_TYPE")
     model.run_trainer(args)
-
-
-import socket
-from contextlib import closing
 
 
 class TestDistBase(unittest.TestCase):

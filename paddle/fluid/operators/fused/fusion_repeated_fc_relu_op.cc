@@ -107,10 +107,12 @@ framework::OpKernelType FusionRepeatedFCReluOp::GetExpectedKernelType(
 
 void FusionRepeatedFCReluOpMaker::Make() {
   AddInput("X", "(phi::DenseTensor) Input tensors of this operator.");
-  AddInput("W", "(Tensor) The weight tensors of this operator.").AsDuplicable();
-  AddInput("Bias", "(Tensor) The bias tensors of this operator.")
+  AddInput("W", "(phi::DenseTensor) The weight tensors of this operator.")
       .AsDuplicable();
-  AddOutput("ReluOut", "(Tensor) The output tensor of each relu operator.")
+  AddInput("Bias", "(phi::DenseTensor) The bias tensors of this operator.")
+      .AsDuplicable();
+  AddOutput("ReluOut",
+            "(phi::DenseTensor) The output tensor of each relu operator.")
       .AsDuplicable()
       .AsIntermediate();
   AddOutput("Out", "(phi::DenseTensor) Output tensor of this operator.");
