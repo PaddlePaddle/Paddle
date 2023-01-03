@@ -20,27 +20,13 @@ from program_config import OpConfig, ProgramConfig, TensorConfig
 
 
 class TestConvActOneDNNFusePass(PassAutoScanTest):
-    r'''
-    x_var   f_var(persistable)
-      \       /
-        conv2d
-          |
-      conv2d_var
-          |
-         act
-          |
-        act_var
-    '''
-
     def sample_predictor_configs(self, program_config):
-        # MKLDNN
         config = self.create_inference_config(use_gpu=False)
         config.enable_mkldnn()
         yield config, ['fused_conv2d'], (1e-4, 1e-5)
 
     def is_program_valid(self, prog_config):
         paddings = prog_config.ops[0].attrs['paddings']
-        strides = prog_config.ops[0].attrs['strides']
         groups = prog_config.ops[0].attrs['groups']
         padding_algorithm = prog_config.ops[0].attrs['padding_algorithm']
         dilations = prog_config.ops[0].attrs['dilations']
@@ -52,35 +38,23 @@ class TestConvActOneDNNFusePass(PassAutoScanTest):
         width = input_shape[data_format.index('W')]
         if padding_algorithm == 'VALID':
             if (
-                (height - (dilations[0] * (filter_shape[2] - 1) + 1))
-                / strides[0]
-                + 1
-            ) <= 1 or (
-                (width - (dilations[1] * (filter_shape[3] - 1) + 1))
-                / strides[1]
-                + 1
-            ) <= 1:
+                height - (dilations[0] * (filter_shape[2] - 1) + 1) <= 0
+                or width - (dilations[1] * (filter_shape[3] - 1) + 1) <= 0
+            ):
                 return False
         if padding_algorithm == 'EXPLICIT':
             if (
-                (
-                    height
-                    + paddings[0]
-                    + paddings[1]
-                    - (dilations[0] * (filter_shape[2] - 1) + 1)
-                )
-                / strides[0]
-                + 1
-            ) <= 1 or (
-                (
-                    width
-                    + paddings[2]
-                    + paddings[3]
-                    - (dilations[1] * (filter_shape[3] - 1) + 1)
-                )
-                / strides[1]
-                + 1
-            ) <= 1:
+                height
+                + paddings[0]
+                + paddings[1]
+                - (dilations[0] * (filter_shape[2] - 1) + 1)
+                <= 0
+                or width
+                + paddings[2]
+                + paddings[3]
+                - (dilations[1] * (filter_shape[3] - 1) + 1)
+                <= 0
+            ):
                 return False
 
         if data_format == 'NCHW':
@@ -161,7 +135,6 @@ class TestConvActOneDNNFusePass(PassAutoScanTest):
         conv_bias_shape = []
         inputs = dict()
         weights = dict()
-        use_mkldnn = None
         if draw(st.booleans()):
             conv_bias_shape = [f_shape[0]]
             inputs = {
@@ -174,7 +147,6 @@ class TestConvActOneDNNFusePass(PassAutoScanTest):
                 'filter': TensorConfig(shape=f_shape),
                 'conv_bias': TensorConfig(shape=conv_bias_shape),
             }
-            use_mkldnn = True
         else:
             inputs = {
                 'Input': ['input_x'],
@@ -182,37 +154,28 @@ class TestConvActOneDNNFusePass(PassAutoScanTest):
                 'ResidualData': ['residualdata'],
             }
             weights = {'filter': TensorConfig(shape=f_shape)}
-            use_mkldnn = False
 
         # 11. Generate legal act type of conv2d
         act_type = draw(
             st.sampled_from(
                 [
-                    'relu',
-                    'leaky_relu',
-                    'relu6',
-                    'swish',
-                    'mish',
+                    'abs',
+                    'clip',
+                    'gelu',
                     'hard_sigmoid',
                     'hard_swish',
+                    'leaky_relu',
+                    'mish',
+                    'relu',
+                    'relu6',
+                    'sigmoid',
+                    'swish',
+                    'tanh',
                 ]
             )
         )
 
-        conv2d_op = OpConfig(
-            'conv2d',
-            inputs=inputs,
-            outputs={'Output': ['conv2d_out']},
-            strides=strides,
-            padding_algorithm=padding_algorithm,
-            paddings=padding,
-            groups=groups,
-            dilations=dilations,
-            data_format=data_format,
-            use_mkldnn=True,
-        )
-
-        # 11. Generate legal attr of act
+        # 12. Generate legal attr of act
         act_op = None
         self.passes = ['conv_activation_mkldnn_fuse_pass']
         if act_type == 'relu6':
@@ -236,12 +199,35 @@ class TestConvActOneDNNFusePass(PassAutoScanTest):
                 outputs={'Out': ['swish_out']},
                 beta=draw(st.floats(min_value=0.1, max_value=1.0)),
             )
+        elif act_type == 'clip':
+            act_op = OpConfig(
+                'clip',
+                inputs={'X': ['conv2d_out']},
+                outputs={'Out': ['clip_out']},
+                min=draw(st.floats(min_value=0.1, max_value=0.49)),
+                max=draw(st.floats(min_value=0.5, max_value=1.0)),
+            )
         else:
             act_op = OpConfig(
                 act_type,
                 inputs={'X': ['conv2d_out']},
                 outputs={'Out': ['activation_output']},
             )
+
+        # 13. Create conv2d op
+        conv2d_op = OpConfig(
+            'conv2d',
+            inputs=inputs,
+            outputs={'Output': ['conv2d_out']},
+            strides=strides,
+            padding_algorithm=padding_algorithm,
+            paddings=padding,
+            groups=groups,
+            dilations=dilations,
+            data_format=data_format,
+            use_mkldnn=True,
+        )
+
         ops = [conv2d_op, act_op]
 
         program_config = ProgramConfig(
