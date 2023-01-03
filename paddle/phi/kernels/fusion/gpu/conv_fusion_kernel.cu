@@ -1,4 +1,4 @@
-// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -199,11 +199,6 @@ class CudnnConvDescManager {
     if (!conv_attr_cache_.count(hash_key)) {
       std::lock_guard<std::mutex> lock(attr_mutex_);
       if (!conv_attr_cache_.count(hash_key)) {
-        auto printVec = [](const std::vector<int>& vec) {
-          std::ostringstream os;
-          for (size_t i = 0; i < vec.size(); ++i) os << vec[i] << ", ";
-          return os.str();
-        };
         ConvAttrCacheInfo cache;
         auto paddings = paddings_t;
         auto dilations = dilations_t;
