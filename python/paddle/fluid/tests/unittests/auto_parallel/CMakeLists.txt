@@ -128,5 +128,6 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   py_test_modules(test_cluster_partition MODULES test_cluster_partition)
   py_test_modules(test_convert_to_process_meshes MODULES
                   test_convert_to_process_meshes)
+  py_test_modules(test_pass_bf16 MODULES test_pass_bf16)
   py_test_modules(test_dist_saver MODULES test_dist_saver)
 endif()

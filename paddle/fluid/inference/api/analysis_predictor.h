@@ -105,7 +105,14 @@ class AnalysisPredictor : public PaddlePredictor {
     }
     auto trt_identifier = config_.trt_engine_memory_sharing_identifier_;
     if (trt_identifier > 0) {
+      // NOTE(liuyuanle): For convenience, we set the id of the predictor to
+      // negative sharing_identifier directly. In the future, this may affect
+      // the meaning of negative predictor id.
       predictor_id_ = -trt_identifier;
+      LOG(WARNING)
+          << "Since the engine context memory of multiple predictors "
+             "is enabled in Paddle-TRT, we set the id of current predictor to "
+             "negative sharing_identifier you specified.";
     } else {
       predictor_id_ = inference::GetUniqueId();
     }

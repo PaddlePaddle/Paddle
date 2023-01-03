@@ -587,6 +587,7 @@ XPUOpMap& get_kl2_ops() {
       {"top_k_v2", XPUKernelSet({phi::DataType::FLOAT32})},
       {"update_loss_scaling",
        XPUKernelSet({phi::DataType::FLOAT32, phi::DataType::FLOAT16})},
+      {"unbind", XPUKernelSet({phi::DataType::FLOAT32})},
       {"uniform_random", XPUKernelSet({phi::DataType::FLOAT32})},
       {"unsqueeze2_grad",
        XPUKernelSet({phi::DataType::FLOAT64,
