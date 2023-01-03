@@ -97,10 +97,10 @@ class TestModelCastBF16(unittest.TestCase):
 
         with self.static_graph():
             t_bf16 = paddle.static.data(
-                name='t_bf16', shape=[-1, size, size], dtype=np.int32
+                name='t_bf16', shape=[-1, size, size], dtype='int32'
             )
             tt_bf16 = paddle.static.data(
-                name='tt_bf16', shape=[-1, size, size], dtype=np.int32
+                name='tt_bf16', shape=[-1, size, size], dtype='int32'
             )
             t = paddle.static.data(
                 name='t', shape=[-1, size, size], dtype='float32'

@@ -90,12 +90,14 @@ class TestCorrelationOp(unittest.TestCase):
             shape=x_shape,
             dtype=x_type,
         )
+        x1.desc.set_need_check_feed(False)
         x1.stop_gradient = False
         x2 = paddle.static.data(
             name='x2',
             shape=x_shape,
             dtype=x_type,
         )
+        x2.desc.set_need_check_feed(False)
         x2.stop_gradient = False
 
         x1_np = np.random.randn(2, 3, 4, 5).astype(x_type)

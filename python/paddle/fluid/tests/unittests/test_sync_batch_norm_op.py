@@ -72,6 +72,7 @@ class TestSyncBatchNormOpTraining(unittest.TestCase):
                     shape=self.dshape,
                     dtype=self.dtype,
                 )
+                data.desc.set_need_check_feed(False)
                 conv = paddle.static.nn.conv2d(
                     input=data,
                     num_filters=32,
@@ -250,6 +251,7 @@ class TestDygraphSyncBatchNormAPIError(unittest.TestCase):
             x2 = paddle.static.data(
                 name='x2', shape=[-1, 3, 4, 5, 6], dtype="int32"
             )
+            x2.desc.set_need_check_feed(False)
             self.assertRaises(TypeError, my_sync_batch_norm, x2)
 
 

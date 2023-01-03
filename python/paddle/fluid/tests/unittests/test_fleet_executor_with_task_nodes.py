@@ -29,10 +29,10 @@ class TestFleetExecutor(unittest.TestCase):
         empty_program = paddle.static.Program()
         with fluid.program_guard(empty_program, empty_program):
             x = paddle.static.data(
-                name='x', shape=[-1] + x_data.shape, dtype=x_data.dtype
+                name='x', shape=[-1] + list(x_data.shape), dtype=x_data.dtype
             )
             y = paddle.static.data(
-                name='y', shape=[-1] + y_data.shape, dtype=y_data.dtype
+                name='y', shape=[-1] + list(y_data.shape), dtype=y_data.dtype
             )
             z = x + y
             a = 2 * x + 3 * y
