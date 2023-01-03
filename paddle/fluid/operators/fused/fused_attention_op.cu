@@ -726,7 +726,7 @@ class FusedAttentionGradKernel : public framework::OpKernel<T> {
       if (compute_bias) {
         d_qkv_bias_out->Resize({batch_size, max_seq_len, 3 * hidden_size});
       } else {
-        d_qkv_out->resize({batch_size, max_seq_len, 3 * hidden_size});
+        d_qkv_out->Resize({batch_size, max_seq_len, 3 * hidden_size});
       }
     }
 
