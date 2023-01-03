@@ -153,7 +153,7 @@ class TestIgnoreVarNameInWhile(unittest.TestCase):
 
         x = fluid.layers.data(name='x', shape=[-1, 1, 4])
         y = fluid.layers.data(name='y', shape=[-1, 1, 1])
-        temp = layers.concat(input=[x, y], axis=-1)
+        temp = paddle.concat(input=[x, y], axis=-1)
         i = layers.fill_constant(shape=[1], value=0, dtype='int32')
         num = layers.fill_constant(shape=[1], value=5, dtype='int32')
 

@@ -95,7 +95,7 @@ class TestDistFleetHeterProgram(unittest.TestCase):
 
         sparse_embed_seq = list(map(embedding_layer, inputs[1:-1]))
 
-        concated = fluid.layers.concat(sparse_embed_seq + inputs[0:1], axis=1)
+        concated = paddle.concat(sparse_embed_seq + inputs[0:1], axis=1)
 
         with fluid.device_guard("gpu"):
             fc1 = fluid.layers.fc(

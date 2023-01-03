@@ -31,7 +31,7 @@ class TestCollectiveAllgatherAPI(test_base.TestCollectiveAPIRunnerBase):
                 tindata = paddle.to_tensor(indata, "float32").cast("uint16")
                 dist.all_gather(tensor_list, tindata)
                 return [
-                    tensor.cast("float32").numpy() for tensor in tensor_list
+                    paddle.cast("float32").numpy() for tensor in tensor_list
                 ]
             else:
                 tindata = paddle.to_tensor(indata)

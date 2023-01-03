@@ -61,7 +61,7 @@ class TensorRTSubgraphPassConcatTest(InferencePassTest):
             data2 = fluid.data(
                 name="data2", shape=[-1, 3, 64, 64], dtype="float32"
             )
-            concat_out = fluid.layers.concat([data1, data2], axis=2)
+            concat_out = paddle.concat([data1, data2], axis=2)
             out = nn.batch_norm(concat_out, is_test=True)
         self.feeds = {
             "data1": np.random.random([1, 3, 64, 64]).astype("float32"),

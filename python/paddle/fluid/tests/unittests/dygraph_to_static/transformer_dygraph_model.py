@@ -146,8 +146,8 @@ class MultiHeadAttention(Layer):
 
         if cache is not None:
             cache_k, cache_v = cache["k"], cache["v"]
-            k = layers.concat([cache_k, k], axis=2)
-            v = layers.concat([cache_v, v], axis=2)
+            k = paddle.concat([cache_k, k], axis=2)
+            v = paddle.concat([cache_v, v], axis=2)
             cache["k"], cache["v"] = k, v
         # scale dot product attention
         product = paddle.matmul(x=q, y=k, transpose_y=True)

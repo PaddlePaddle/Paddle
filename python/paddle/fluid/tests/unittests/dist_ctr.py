@@ -98,7 +98,7 @@ class TestDistCTR2x2(TestDistRunnerBase):
             input=lr_embbding, pool_type="sum"
         )
 
-        merge_layer = fluid.layers.concat(input=[dnn_out, lr_pool], axis=1)
+        merge_layer = paddle.concat(input=[dnn_out, lr_pool], axis=1)
 
         predict = fluid.layers.fc(input=merge_layer, size=2, act='softmax')
         acc = paddle.static.accuracy(input=predict, label=label)

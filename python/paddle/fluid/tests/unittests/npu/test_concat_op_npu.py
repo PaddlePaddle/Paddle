@@ -178,7 +178,7 @@ class TestConcatAPIWithLoDTensorArray(unittest.TestCase):
                 for i in range(self.iter_num):
                     paddle.tensor.array_write(input, zero + i, tensor_array)
 
-                self.out_var = fluid.layers.concat(tensor_array, axis=self.axis)
+                self.out_var = paddle.concat(tensor_array, axis=self.axis)
         else:
             self.program = paddle.static.Program()
             with paddle.static.program_guard(self.program):

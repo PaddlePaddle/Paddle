@@ -1189,8 +1189,8 @@ def multi_head_attention(
     q, k, v = __compute_qkv(queries, keys, values, n_head, d_key, d_value)
 
     if cache is not None:  # use cache and concat time steps
-        k = cache["k"] = layers.concat([cache["k"], k], axis=1)
-        v = cache["v"] = layers.concat([cache["v"], v], axis=1)
+        k = cache["k"] = paddle.concat([cache["k"], k], axis=1)
+        v = cache["v"] = paddle.concat([cache["v"], v], axis=1)
 
     q = __split_heads(q, n_head)
     k = __split_heads(k, n_head)

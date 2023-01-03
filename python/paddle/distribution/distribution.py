@@ -235,7 +235,7 @@ class Distribution:
             warnings.warn(
                 "dtype of input 'value' needs to be the same as parameters of distribution class. dtype of 'value' will be converted."
             )
-            return tensor.cast(value, dtype=param.dtype)
+            return paddle.cast(value, dtype=param.dtype)
         return value
 
     def _probs_to_logits(self, probs, is_binary=False):

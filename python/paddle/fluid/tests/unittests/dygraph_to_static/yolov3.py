@@ -295,7 +295,7 @@ class YOLOv3(fluid.dygraph.Layer):
         blocks = self.block(inputs)
         for i, block in enumerate(blocks):
             if i > 0:
-                block = fluid.layers.concat(
+                block = paddle.concat(
                     input=[route, block], axis=1  # noqa: F821
                 )
             route, tip = self.yolo_blocks[i](block)
@@ -349,8 +349,8 @@ class YOLOv3(fluid.dygraph.Layer):
 
         if not self.is_train:
             # get pred
-            yolo_boxes = fluid.layers.concat(self.boxes, axis=1)
-            yolo_scores = fluid.layers.concat(self.scores, axis=2)
+            yolo_boxes = paddle.concat(self.boxes, axis=1)
+            yolo_scores = paddle.concat(self.scores, axis=2)
 
             pred = _legacy_C_ops.multiclass_nms(
                 bboxes=yolo_boxes,
