@@ -351,8 +351,13 @@ class TestFLOPSAPI(unittest.TestCase):
             == 144
         )
         self.assertTrue(
-            flops('pool', {'X': [[12, 12]]}, {}) == 12 * 12
-        )        
+            flops(
+                'pool',
+                {'X': [[12, 12]]},
+                {},
+            )
+            == 12 * 12
+        )
 
 
 if __name__ == '__main__':
