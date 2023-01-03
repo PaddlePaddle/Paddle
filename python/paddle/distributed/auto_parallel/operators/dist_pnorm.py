@@ -140,6 +140,7 @@ class DistributedPNormImpl0(DistributedOperatorImpl):
                 dims_mapping = op_dist_attr.get_output_dims_mapping(arg_name)
                 if len(dims_mapping) >= 1 and dims_mapping[0] != -1:
                     dims_mapping[0] = -1
+                    op_dist_attr.set_output_dims_mapping(arg_name, dims_mapping)
                     changed = True
         else:
             for arg_name in op_desc.output_arg_names():
@@ -149,6 +150,7 @@ class DistributedPNormImpl0(DistributedOperatorImpl):
                     and compatible_dim_mapping != dims_mapping[0]
                 ):
                     dims_mapping[0] = compatible_dim_mapping
+                    op_dist_attr.set_output_dims_mapping(arg_name, dims_mapping)
                     changed = True
 
         return changed
@@ -262,6 +264,8 @@ class DistributedPNormImpl0(DistributedOperatorImpl):
         op_dist_attr.set_input_dims_mapping(
             allgather_out.name, allgather_out_dist_attr.dims_mapping
         )
+        # Remove the unrelated dist attr
+        op_dist_attr.del_input_dist_attr(X_var.name)
         ctx.set_op_dist_attr_for_program(pnorm_op, op_dist_attr)
         # TODO: should we add a new dist attr for the new op here?
 
@@ -325,9 +329,17 @@ class DistributedPNormImpl0(DistributedOperatorImpl):
         op_dist_attr.set_input_dims_mapping(
             new_X_var.name, new_X_var_dist_attr.dims_mapping
         )
+        # Store X_grad_var dims_mapping for later use
+        X_grad_var_dims_mapping = op_dist_attr.get_output_dims_mapping(
+            X_grad_var.name
+        )
+        # Remove the unrelated dist attr
+        op_dist_attr.del_input_dist_attr(X_var.name)
         op_dist_attr.set_output_dims_mapping(
             new_X_grad.name, new_X_var_dist_attr.dims_mapping
         )
+        # Remove the unrelated dist attr
+        op_dist_attr.del_output_dist_attr(X_grad_var.name)
         ctx.set_op_dist_attr_for_program(p_norm_grad_op, op_dist_attr)
         # TODO: should we add a new dist attr for the new op here?
 
@@ -365,9 +377,6 @@ class DistributedPNormImpl0(DistributedOperatorImpl):
             inputs={'Input': [new_X_grad]},
             outputs={'Out': [X_grad_var]},
             attrs=attrs,
-        )
-        X_grad_var_dims_mapping = op_dist_attr.get_output_dims_mapping(
-            X_grad_var.name
         )
         slice_op_dist_attr = OperatorDistAttr()
         slice_op_dist_attr.process_mesh = op_dist_attr.process_mesh

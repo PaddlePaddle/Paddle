@@ -276,9 +276,6 @@ void BindAutoParallel(py::module *m) {
       .def_property("process_mesh",
                     &get_operator_process_mesh,
                     &set_operator_process_mesh)
-      .def_property("impl_idx",
-                    &OperatorDistAttr::impl_idx,
-                    &OperatorDistAttr::set_impl_idx)
       .def_property("impl_type",
                     &OperatorDistAttr::impl_type,
                     &OperatorDistAttr::set_impl_type)
@@ -319,6 +316,14 @@ void BindAutoParallel(py::module *m) {
            py::return_value_policy::reference)
       .def("set_input_dist_attr", &OperatorDistAttr::set_input_dist_attr)
       .def("set_output_dist_attr", &OperatorDistAttr::set_output_dist_attr)
+      .def("del_input_dist_attr",  // TODO(aoyulong): move into dist_attr.cc
+           [](OperatorDistAttr &self, const std::string &name) {
+             self.input_dist_attrs().erase(name);
+           })
+      .def("del_output_dist_attr",  // TODO(aoyulong): move into dist_attr.cc
+           [](OperatorDistAttr &self, const std::string &name) {
+             self.output_dist_attrs().erase(name);
+           })
       .def("is_annotated", &OperatorDistAttr::is_annotated)
       .def("mark_annotated", &OperatorDistAttr::mark_annotated)
       .def("clear_annotated", &OperatorDistAttr::clear_annotated)

@@ -525,7 +525,8 @@ class Engine:
                 self._labels_spec,
             )
             # build forward main program
-            self.program_helper.build_program(mode)
+            with utils.unique_name.guard():
+                self.program_helper.build_program(mode)
 
             self.concrete_program = self.program_helper.concrete_program
             serial_main_prog = self.program_helper.main_program

@@ -26,7 +26,7 @@ from paddle.distributed.auto_parallel.dist_context import (
     DistributedContext,
     set_default_distributed_context,
 )
-from paddle.distributed.auto_parallel.process_mesh_v2 import ProcessMesh
+from paddle.distributed.auto_parallel.process_mesh import ProcessMesh
 from paddle.distributed.auto_parallel.utils import (
     _copy_dist_attr_from_cpp,
     _copy_dist_attr_from_cpp_for_graph,

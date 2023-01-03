@@ -268,4 +268,4 @@ def fetch(tensor, name=None, logging=False):
         )
     add_to_collection(CollectionNames.FETCHES, tensor, name)
     if logging:
-        add_to_collection(CollectionNames.LOGGING, tensor.name, name)
+        add_to_collection(CollectionNames.LOGGING, tensor, name)

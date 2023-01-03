@@ -158,9 +158,9 @@ def train_high_level(fetch):
     eval_dataset2 = MyDataset(batch_size)
     engine.evaluate(eval_dataset2, batch_size=batch_size)
 
-    # predict
-    test_dataset = MyDataset(batch_size)
-    outputs = engine.predict(test_dataset, batch_size=batch_size)
+    # # predict
+    # test_dataset = MyDataset(batch_size)
+    # outputs = engine.predict(test_dataset, batch_size=batch_size)
 
     # save
     temp_dir = tempfile.TemporaryDirectory()

@@ -38,6 +38,7 @@ from paddle.fluid.data_feeder import check_type, check_variable_and_dtype
 from paddle.fluid.framework import default_main_program, default_startup_program
 from paddle.framework import core
 
+from ..auto_parallel.process_mesh import ProcessMesh
 from .auto_parallel_amp import AMPPass
 from .pass_base import register_pass
 
@@ -581,7 +582,7 @@ def _check_and_update_gradient(grads, loss_scaling, name, dist_context):
     )
 
     new_op_dist_attr = OperatorDistAttr()
-    new_op_dist_attr.process_mesh = world_process_group.ranks
+    new_op_dist_attr.process_mesh = ProcessMesh(world_process_group.ranks)
     new_op_dist_attr.impl_idx = 0
     if len(world_process_group.ranks) > 1:
         new_op_dist_attr.impl_type = "check_finite_and_unscale"
@@ -610,7 +611,7 @@ def _split_grads(params_grads):
 
 def _set_op_dist_attr_with_ranks(new_op, ranks, block, dist_context):
     new_op_dist_attr = OperatorDistAttr()
-    new_op_dist_attr.process_mesh = ranks
+    new_op_dist_attr.process_mesh = ProcessMesh(ranks)
     new_op_dist_attr.impl_idx = 0
     for var_name in new_op.input_arg_names:
         var = block.var(var_name)
