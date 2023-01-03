@@ -25,9 +25,12 @@ limitations under the License. */
 #include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/backends/gpu/gpu_device_function.h"
+#include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/funcs/broadcast_function.h"
 #include "paddle/phi/kernels/funcs/elementwise_functor.h"
+#include "paddle/phi/kernels/funcs/functors.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/transpose_function.cu.h"
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/fluid/distributed/collective/process_group_nccl.h"
@@ -87,8 +90,14 @@ class FusedAttentionOpKernel : public framework::OpKernel<T> {
     auto *ln_var = ctx.Output<phi::DenseTensor>("LnVariance");
     auto *ln_out = ctx.Output<phi::DenseTensor>("LnOut");
 
+    const auto num_heads = ctx.Attr<int>("num_heads");
+    const auto transpose_qkv_wb = ctx.Attr<bool>("transpose_qkv_wb");
+
     // x: qkv's input [batch_size, seq_len, dim_embed]
+    // if transpose_qkv_wb is False
     // y: qkv's weight: [3, num_head, dim_head, dim_embed]
+    // if transpose_qkv_wb is True
+    // y: qkv's weight: [dim_embed, 3 * dim_embed]
     auto *qkv_weight = ctx.Input<phi::DenseTensor>("QKVW");
     auto *qkv_bias = ctx.Input<phi::DenseTensor>("QKVBias");
     auto *qkv_out = ctx.Output<phi::DenseTensor>("QKVOut");
@@ -142,6 +151,55 @@ class FusedAttentionOpKernel : public framework::OpKernel<T> {
     // get data ptr for qkv part.
     const auto input_x_dims = input_x->dims();
     const auto qkv_w_dims = qkv_weight->dims();
+
+    int batch_size = input_x_dims[0];
+    int max_seq_len = input_x_dims[1];
+    int dim_embed = input_x_dims[2];
+
+    int num_head;
+    int dim_head;
+    // get num_head and dim_head in two different ways
+    if (!transpose_qkv_wb) {
+      num_head = qkv_w_dims[1];
+      dim_head = qkv_w_dims[2];
+    } else {
+      num_head = num_heads;
+      dim_head = dim_embed / num_head;
+    }
+
+    // Create two tmp tensor for weight and bias for reshape.
+    // These two new tensors' holders are same with the ref.
+    // So, no extra mem will declare.
+    // Necessary for removing const qualifier.
+    phi::DenseTensor qkv_weight_tmp;
+    phi::DenseTensor qkv_bias_tmp;
+    // Create a tensor for qkvw transpose out. To save peak memory,
+    // won't save the result for backward. Will recompute this.
+    phi::DenseTensor qkvw_transpose_out;
+    if (transpose_qkv_wb) {
+      // do reshape the qkv weight and bias
+      qkv_weight_tmp = *qkv_weight;
+      qkv_weight_tmp.ShareDataWith(*qkv_weight);
+      qkv_weight_tmp.Resize({dim_embed, 3, num_head, dim_head});
+      auto *qkv_weight_tmp_data = qkv_weight_tmp.data<T>();
+      if (qkv_bias != nullptr) {
+        qkv_bias_tmp = *qkv_bias;
+        qkv_bias_tmp.ShareDataWith(*qkv_bias);
+        qkv_bias_tmp.Resize({3, num_head, dim_head});
+        auto *qkv_bias_tmp_data = qkv_bias_tmp.data<T>();
+      }
+      // declare memory for qkv weight transpose tensor
+      qkvw_transpose_out.set_meta(qkv_weight->meta());
+      qkvw_transpose_out.Resize({3, num_head, dim_head, dim_embed});
+      auto *qkvw_transpose_out_data = dev_ctx.template Alloc<T>(
+          &qkvw_transpose_out, qkvw_transpose_out.numel() * sizeof(T));
+      // do transpose to qkv weight
+      std::vector<int> perm = {1, 2, 3, 0};
+      phi::funcs::TransposeGPUKernelDriver<T>(
+          ctx.cuda_device_context(), *qkv_weight, perm, &qkvw_transpose_out);
+    }
+    const phi::DenseTensor *qkv_weight_real_ptr =
+        transpose_qkv_wb ? &qkvw_transpose_out : qkv_weight;
 
     auto *x_data = input_x->data<T>();
     auto *qkv_weight_data = qkv_weight->data<T>();
@@ -201,13 +259,6 @@ class FusedAttentionOpKernel : public framework::OpKernel<T> {
             : nullptr;
     auto *final_out_data =
         dev_ctx.template Alloc<T>(out, out->numel() * sizeof(T));
-
-    int batch_size = input_x_dims[0];
-    int max_seq_len = input_x_dims[1];
-    int dim_embed = input_x_dims[2];
-
-    int num_head = qkv_w_dims[1];
-    int dim_head = qkv_w_dims[2];
 
     int bsz_seq = batch_size * max_seq_len;
     int hidden_size = num_head * dim_head;
@@ -283,10 +334,10 @@ class FusedAttentionOpKernel : public framework::OpKernel<T> {
                                         ln_mean_data,
                                         ln_var_data);
       qkv_compute.ComputeForward(
-          qkv_weight, ln_out, qkv_bias, qkv_out, qkv_bias_out);
+          qkv_weight_real_ptr, ln_out, qkv_bias, qkv_out, qkv_bias_out);
     } else {
       qkv_compute.ComputeForward(
-          qkv_weight, input_x, qkv_bias, qkv_out, qkv_bias_out);
+          qkv_weight_real_ptr, input_x, qkv_bias, qkv_out, qkv_bias_out);
     }
     if (qkv_bias == nullptr) {
       fmha_ref_compute.ComputeForward(*qkv_out,
