@@ -21,8 +21,9 @@
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/prim/api/manual/utils/utils.h"
 #include "paddle/fluid/prim/utils/static/desc_tensor.h"
+#include "paddle/fluid/prim/utils/utils.h"
 #include "paddle/phi/core/enforce.h"
-
+DECLARE_bool(prim_enabled);
 namespace paddle {
 namespace prim {
 
@@ -160,6 +161,13 @@ TEST(StaticPrim, TanhBackwardComposite) {
   ASSERT_EQ(grad_ops[2]->Inputs().at("X")[0], "b@GRAD");
   ASSERT_EQ(grad_ops[2]->Outputs().at("Out").size(),
             static_cast<std::size_t>(1));
+}
+
+TEST(StaticPrim, TestFlags) {
+  FLAGS_prim_enabled = true;
+  ASSERT_TRUE(PrimCommonUtils::IsPrimEnabled());
+  FLAGS_prim_enabled = false;
+  ASSERT_FALSE(PrimCommonUtils::IsPrimEnabled());
 }
 }  // namespace prim
 }  // namespace paddle

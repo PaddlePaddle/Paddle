@@ -1,4 +1,4 @@
-// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -22,7 +22,6 @@
 #include "paddle/fluid/prim/api/manual/backward/composite_backward_api.h"
 #include "paddle/fluid/prim/utils/static/composite_grad_desc_maker.h"
 #include "paddle/fluid/prim/utils/static/desc_tensor.h"
-#include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/phi/infermeta/backward.h"
 #include "paddle/phi/infermeta/binary.h"
@@ -35,6 +34,21 @@ namespace paddle {
 namespace operators {
 
 using paddle::framework::GradVarName;
+
+class TanhCompositeGradOpMaker : public prim::GradCompositeOpMakerBase {
+ public:
+  using prim::GradCompositeOpMakerBase::GradCompositeOpMakerBase;
+
+  void Apply() override {
+    paddle::experimental::Tensor out = paddle::experimental::Tensor(
+        std::make_shared<prim::DescTensor>(this->SingleForwardOutput("Out")));
+    paddle::experimental::Tensor grad_out = paddle::experimental::Tensor(
+        std::make_shared<prim::DescTensor>(this->SingleOutputGrad("Out")));
+    paddle::experimental::Tensor grad_x = paddle::experimental::Tensor(
+        std::make_shared<prim::DescTensor>(this->SingleInputGrad("X")));
+    prim::tanh_grad<prim::DescTensor>(out, grad_out, &grad_x);
+  }
+};
 
 class AcosOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
@@ -2739,6 +2753,42 @@ DECLARE_INFER_SHAPE_FUNCTOR(square,
                             SquareInferShapeFunctor,
                             PD_INFER_META(phi::UnchangedInferMeta));
 
+class Squeeze2OpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  void Make() override {
+    AddInput("X", "(Tensor), input 0 of squeeze2 op.");
+    AddOutput("Out", "(Tensor), output 0 of squeeze2 op.");
+    AddOutput("XShape", "(Tensor), output 1 of squeeze2 op.")
+        .AsIntermediate()
+        .AsExtra();
+    AddAttr<std::vector<int>>(
+        "axes", "(std::vector<int>), attribute 0 for squeeze2 op.")
+        .SetDefault({})
+        .SupportTensor();
+    AddComment(R"DOC(
+TODO: Documentation of squeeze2 op.
+)DOC");
+  }
+};
+
+class Squeeze2Op : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    auto data_type =
+        framework::OperatorWithKernel::IndicateVarDataType(ctx, "X");
+    return framework::OpKernelType(data_type, ctx.GetPlace());
+  }
+};
+
+DECLARE_INFER_SHAPE_FUNCTOR(squeeze2,
+                            Squeeze2InferShapeFunctor,
+                            PD_INFER_META(phi::SqueezeWithXShapeInferMeta));
+DECLARE_INPLACE_OP_INFERER(Squeeze2InplaceInferer, {"X", "Out"});
+
 class SvdOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
@@ -2983,6 +3033,48 @@ class UnfoldOp : public framework::OperatorWithKernel {
 DECLARE_INFER_SHAPE_FUNCTOR(unfold,
                             UnfoldInferShapeFunctor,
                             PD_INFER_META(phi::UnfoldInferMeta));
+
+class Unsqueeze2OpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  void Make() override {
+    AddInput("X", "(Tensor), input 0 of unsqueeze2 op.");
+    AddOutput("Out", "(Tensor), output 0 of unsqueeze2 op.");
+    AddOutput("XShape", "(Tensor), output 1 of unsqueeze2 op.")
+        .AsIntermediate()
+        .AsExtra();
+    AddInput("AxesTensor",
+             "attribute 0 for unsqueeze2 op from 1D integer Tensor.")
+        .AsDispensable();
+    AddInput("AxesTensorList",
+             "attribute 0 for unsqueeze2 op from list fo 0D integer Tensors.")
+        .AsDuplicable()
+        .AsDispensable();
+    AddAttr<std::vector<int>>(
+        "axes", "(std::vector<int>), attribute 0 for unsqueeze2 op.")
+        .SetDefault({});
+    AddComment(R"DOC(
+TODO: Documentation of unsqueeze2 op.
+)DOC");
+  }
+};
+
+class Unsqueeze2Op : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    auto data_type =
+        framework::OperatorWithKernel::IndicateVarDataType(ctx, "X");
+    return framework::OpKernelType(data_type, ctx.GetPlace());
+  }
+};
+
+DECLARE_INFER_SHAPE_FUNCTOR(unsqueeze2,
+                            Unsqueeze2InferShapeFunctor,
+                            PD_INFER_META(phi::UnsqueezeWithXShapeInferMeta));
+DECLARE_INPLACE_OP_INFERER(Unsqueeze2InplaceInferer, {"X", "Out"});
 
 class UnstackOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
@@ -3501,12 +3593,12 @@ class CeluGradGradOpMaker : public framework::SingleGradOpMaker<T> {
   void Apply(GradOpPtr<T> grad_op) const override {
     grad_op->SetType("celu_grad_grad");
 
-    grad_op->SetInput("x", this->Input("X"));
+    grad_op->SetInput("X", this->Input("X"));
     grad_op->SetInput("grad_out", this->Input(GradVarName("Out")));
     grad_op->SetInput(GradVarName("grad_x"),
                       this->OutputGrad(GradVarName("X")));
 
-    grad_op->SetOutput(GradVarName("x"), this->InputGrad("X"));
+    grad_op->SetOutput(GradVarName("X"), this->InputGrad("X"));
     grad_op->SetOutput(GradVarName("grad_out"),
                        this->InputGrad(GradVarName("Out")));
 
@@ -3672,12 +3764,12 @@ class CosDoubleGradOpMaker : public framework::SingleGradOpMaker<T> {
   void Apply(GradOpPtr<T> grad_op) const override {
     grad_op->SetType("cos_double_grad");
 
-    grad_op->SetInput("x", this->Input("X"));
+    grad_op->SetInput("X", this->Input("X"));
     grad_op->SetInput("grad_out", this->Input(GradVarName("Out")));
     grad_op->SetInput(GradVarName("grad_x"),
                       this->OutputGrad(GradVarName("X")));
 
-    grad_op->SetOutput(GradVarName("x"), this->InputGrad("X"));
+    grad_op->SetOutput(GradVarName("X"), this->InputGrad("X"));
     grad_op->SetOutput(GradVarName("grad_out"),
                        this->InputGrad(GradVarName("Out")));
 
@@ -3734,16 +3826,16 @@ class CosTripleGradOpMaker : public framework::SingleGradOpMaker<T> {
   void Apply(GradOpPtr<T> grad_op) const override {
     grad_op->SetType("cos_triple_grad");
 
-    grad_op->SetInput("x", this->Input("x"));
+    grad_op->SetInput("X", this->Input("X"));
     grad_op->SetInput("grad_out_forward", this->Input("grad_out"));
     grad_op->SetInput("grad_x_grad_forward",
                       this->Input(GradVarName("grad_x")));
     grad_op->SetInput(GradVarName("grad_x"),
-                      this->OutputGrad(GradVarName("x")));
+                      this->OutputGrad(GradVarName("X")));
     grad_op->SetInput(GradVarName("grad_out_grad"),
                       this->OutputGrad(GradVarName("grad_out")));
 
-    grad_op->SetOutput(GradVarName("x"), this->InputGrad("x"));
+    grad_op->SetOutput(GradVarName("X"), this->InputGrad("X"));
     grad_op->SetOutput(GradVarName("grad_out_forward"),
                        this->InputGrad("grad_out"));
     grad_op->SetOutput(GradVarName("grad_x_grad_forward"),
@@ -4164,12 +4256,12 @@ class EluGradGradOpMaker : public framework::SingleGradOpMaker<T> {
   void Apply(GradOpPtr<T> grad_op) const override {
     grad_op->SetType("elu_grad_grad");
 
-    grad_op->SetInput("x", this->Input("X"));
+    grad_op->SetInput("X", this->Input("X"));
     grad_op->SetInput("grad_out", this->Input(GradVarName("Out")));
     grad_op->SetInput(GradVarName("grad_x"),
                       this->OutputGrad(GradVarName("X")));
 
-    grad_op->SetOutput(GradVarName("x"), this->InputGrad("X"));
+    grad_op->SetOutput(GradVarName("X"), this->InputGrad("X"));
     grad_op->SetOutput(GradVarName("grad_out"),
                        this->InputGrad(GradVarName("Out")));
 
@@ -4926,7 +5018,7 @@ class LeakyReluGradGradOpMaker : public framework::SingleGradOpMaker<T> {
   void Apply(GradOpPtr<T> grad_op) const override {
     grad_op->SetType("leaky_relu_grad_grad");
 
-    grad_op->SetInput("x", this->Input("X"));
+    grad_op->SetInput("X", this->Input("X"));
     grad_op->SetInput(GradVarName("grad_x"),
                       this->OutputGrad(GradVarName("X")));
 
@@ -5131,12 +5223,12 @@ class LogGradGradOpMaker : public framework::SingleGradOpMaker<T> {
   void Apply(GradOpPtr<T> grad_op) const override {
     grad_op->SetType("log_grad_grad");
 
-    grad_op->SetInput("x", this->Input("X"));
+    grad_op->SetInput("X", this->Input("X"));
     grad_op->SetInput("grad_out", this->Input(GradVarName("Out")));
     grad_op->SetInput(GradVarName("grad_x"),
                       this->OutputGrad(GradVarName("X")));
 
-    grad_op->SetOutput(GradVarName("x"), this->InputGrad("X"));
+    grad_op->SetOutput(GradVarName("X"), this->InputGrad("X"));
     grad_op->SetOutput(GradVarName("grad_out"),
                        this->InputGrad(GradVarName("Out")));
 
@@ -5674,7 +5766,7 @@ class ReluGradGradOpMaker : public framework::SingleGradOpMaker<T> {
   void Apply(GradOpPtr<T> grad_op) const override {
     grad_op->SetType("relu_grad_grad");
 
-    grad_op->SetInput("out", this->Input("Out"));
+    grad_op->SetInput("Out", this->Input("Out"));
     grad_op->SetInput(GradVarName("grad_x"),
                       this->OutputGrad(GradVarName("X")));
 
@@ -5829,12 +5921,12 @@ class RsqrtGradGradOpMaker : public framework::SingleGradOpMaker<T> {
   void Apply(GradOpPtr<T> grad_op) const override {
     grad_op->SetType("rsqrt_grad_grad");
 
-    grad_op->SetInput("out", this->Input("Out"));
+    grad_op->SetInput("Out", this->Input("Out"));
     grad_op->SetInput("grad_x", this->Output(GradVarName("X")));
     grad_op->SetInput(GradVarName("grad_x"),
                       this->OutputGrad(GradVarName("X")));
 
-    grad_op->SetOutput(GradVarName("out"), this->InputGrad("Out"));
+    grad_op->SetOutput(GradVarName("Out"), this->InputGrad("Out"));
     grad_op->SetOutput(GradVarName("grad_out"),
                        this->InputGrad(GradVarName("Out")));
 
@@ -6029,12 +6121,12 @@ class SigmoidGradGradOpMaker : public framework::SingleGradOpMaker<T> {
   void Apply(GradOpPtr<T> grad_op) const override {
     grad_op->SetType("sigmoid_grad_grad");
 
-    grad_op->SetInput("out", this->Input("Out"));
+    grad_op->SetInput("Out", this->Input("Out"));
     grad_op->SetInput("fwd_grad_out", this->Input(GradVarName("Out")));
     grad_op->SetInput(GradVarName("grad_x"),
                       this->OutputGrad(GradVarName("X")));
 
-    grad_op->SetOutput(GradVarName("out"), this->InputGrad("Out"));
+    grad_op->SetOutput(GradVarName("Out"), this->InputGrad("Out"));
     grad_op->SetOutput(GradVarName("fwd_grad_out"),
                        this->InputGrad(GradVarName("Out")));
 
@@ -6092,15 +6184,15 @@ class SigmoidTripleGradOpMaker : public framework::SingleGradOpMaker<T> {
   void Apply(GradOpPtr<T> grad_op) const override {
     grad_op->SetType("sigmoid_triple_grad");
 
-    grad_op->SetInput("out", this->Input("out"));
+    grad_op->SetInput("Out", this->Input("Out"));
     grad_op->SetInput("fwd_grad_out", this->Input("fwd_grad_out"));
     grad_op->SetInput("grad_grad_x", this->Input(GradVarName("grad_x")));
     grad_op->SetInput(GradVarName("grad_out"),
-                      this->OutputGrad(GradVarName("out")));
+                      this->OutputGrad(GradVarName("Out")));
     grad_op->SetInput(GradVarName("grad_grad_out"),
                       this->OutputGrad(GradVarName("fwd_grad_out")));
 
-    grad_op->SetOutput(GradVarName("out"), this->InputGrad("out"));
+    grad_op->SetOutput(GradVarName("Out"), this->InputGrad("Out"));
     grad_op->SetOutput(GradVarName("fwd_grad_out"),
                        this->InputGrad("fwd_grad_out"));
     grad_op->SetOutput(GradVarName("grad_grad_x"),
@@ -6159,12 +6251,12 @@ class SinDoubleGradOpMaker : public framework::SingleGradOpMaker<T> {
   void Apply(GradOpPtr<T> grad_op) const override {
     grad_op->SetType("sin_double_grad");
 
-    grad_op->SetInput("x", this->Input("X"));
+    grad_op->SetInput("X", this->Input("X"));
     grad_op->SetInput("grad_out", this->Input(GradVarName("Out")));
     grad_op->SetInput(GradVarName("grad_x"),
                       this->OutputGrad(GradVarName("X")));
 
-    grad_op->SetOutput(GradVarName("x"), this->InputGrad("X"));
+    grad_op->SetOutput(GradVarName("X"), this->InputGrad("X"));
     grad_op->SetOutput(GradVarName("grad_out"),
                        this->InputGrad(GradVarName("Out")));
 
@@ -6221,16 +6313,16 @@ class SinTripleGradOpMaker : public framework::SingleGradOpMaker<T> {
   void Apply(GradOpPtr<T> grad_op) const override {
     grad_op->SetType("sin_triple_grad");
 
-    grad_op->SetInput("x", this->Input("x"));
+    grad_op->SetInput("X", this->Input("X"));
     grad_op->SetInput("grad_out_forward", this->Input("grad_out"));
     grad_op->SetInput("grad_x_grad_forward",
                       this->Input(GradVarName("grad_x")));
     grad_op->SetInput(GradVarName("grad_x"),
-                      this->OutputGrad(GradVarName("x")));
+                      this->OutputGrad(GradVarName("X")));
     grad_op->SetInput(GradVarName("grad_out_grad"),
                       this->OutputGrad(GradVarName("grad_out")));
 
-    grad_op->SetOutput(GradVarName("x"), this->InputGrad("x"));
+    grad_op->SetOutput(GradVarName("X"), this->InputGrad("X"));
     grad_op->SetOutput(GradVarName("grad_out_forward"),
                        this->InputGrad("grad_out"));
     grad_op->SetOutput(GradVarName("grad_x_grad_forward"),
@@ -6407,12 +6499,12 @@ class SqrtGradGradOpMaker : public framework::SingleGradOpMaker<T> {
   void Apply(GradOpPtr<T> grad_op) const override {
     grad_op->SetType("sqrt_grad_grad");
 
-    grad_op->SetInput("out", this->Input("Out"));
+    grad_op->SetInput("Out", this->Input("Out"));
     grad_op->SetInput("grad_x", this->Output(GradVarName("X")));
     grad_op->SetInput(GradVarName("grad_x"),
                       this->OutputGrad(GradVarName("X")));
 
-    grad_op->SetOutput(GradVarName("out"), this->InputGrad("Out"));
+    grad_op->SetOutput(GradVarName("Out"), this->InputGrad("Out"));
     grad_op->SetOutput(GradVarName("grad_out"),
                        this->InputGrad(GradVarName("Out")));
 
@@ -6469,12 +6561,12 @@ class SquareGradGradOpMaker : public framework::SingleGradOpMaker<T> {
   void Apply(GradOpPtr<T> grad_op) const override {
     grad_op->SetType("square_grad_grad");
 
-    grad_op->SetInput("x", this->Input("X"));
+    grad_op->SetInput("X", this->Input("X"));
     grad_op->SetInput("grad_out", this->Input(GradVarName("Out")));
     grad_op->SetInput(GradVarName("grad_x"),
                       this->OutputGrad(GradVarName("X")));
 
-    grad_op->SetOutput(GradVarName("x"), this->InputGrad("X"));
+    grad_op->SetOutput(GradVarName("X"), this->InputGrad("X"));
     grad_op->SetOutput(GradVarName("grad_out"),
                        this->InputGrad(GradVarName("Out")));
 
@@ -6520,6 +6612,61 @@ DECLARE_INFER_SHAPE_FUNCTOR(square_grad,
                             SquareGradInferShapeFunctor,
                             PD_INFER_META(phi::UnchangedInferMeta));
 DECLARE_INPLACE_OP_INFERER(SquareGradInplaceInferer,
+                           {GradVarName("Out"), GradVarName("X")});
+
+template <typename T>
+class Squeeze2DoubleGradOpMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  void Apply(GradOpPtr<T> grad_op) const override {
+    grad_op->SetType("squeeze2");
+
+    grad_op->SetInput("X", this->OutputGrad(GradVarName("X")));
+
+    grad_op->SetOutput("Out", this->InputGrad(GradVarName("Out")));
+    grad_op->SetOutput("XShape", this->Input("XShape"));
+
+    grad_op->SetAttr("axes", this->GetAttr("axes"));
+  }
+};
+
+template <typename T>
+class Squeeze2GradOpMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  void Apply(GradOpPtr<T> grad_op) const override {
+    grad_op->SetType("squeeze2_grad");
+
+    grad_op->SetInput("XShape", this->Output("XShape"));
+    grad_op->SetInput(GradVarName("Out"), this->OutputGrad("Out"));
+
+    grad_op->SetOutput(GradVarName("X"), this->InputGrad("X"));
+
+    grad_op->SetAttrMap(this->Attrs());
+  }
+};
+
+class Squeeze2GradOp : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    auto data_type = framework::OperatorWithKernel::IndicateVarDataType(
+        ctx, GradVarName("Out"));
+    return framework::OpKernelType(data_type, ctx.GetPlace());
+  }
+};
+
+DECLARE_INFER_SHAPE_FUNCTOR(squeeze2_grad,
+                            Squeeze2GradInferShapeFunctor,
+                            PD_INFER_META(phi::KernelWithXShapeInferMeta));
+DECLARE_INPLACE_OP_INFERER(Squeeze2GradInplaceInferer,
                            {GradVarName("Out"), GradVarName("X")});
 
 template <typename T>
@@ -6620,12 +6767,12 @@ class TanhGradGradOpMaker : public framework::SingleGradOpMaker<T> {
   void Apply(GradOpPtr<T> grad_op) const override {
     grad_op->SetType("tanh_grad_grad");
 
-    grad_op->SetInput("out", this->Input("Out"));
+    grad_op->SetInput("Out", this->Input("Out"));
     grad_op->SetInput("grad_out", this->Input(GradVarName("Out")));
     grad_op->SetInput(GradVarName("grad_x"),
                       this->OutputGrad(GradVarName("X")));
 
-    grad_op->SetOutput(GradVarName("out"), this->InputGrad("Out"));
+    grad_op->SetOutput(GradVarName("Out"), this->InputGrad("Out"));
     grad_op->SetOutput(GradVarName("grad_out"),
                        this->InputGrad(GradVarName("Out")));
 
@@ -6659,21 +6806,6 @@ class TanhGradOpMaker : public framework::SingleGradOpMaker<T> {
     grad_op->SetOutput(GradVarName("X"), this->InputGrad("X"));
 
     grad_op->SetAttrMap(this->Attrs());
-  }
-};
-
-class TanhCompositeGradOpMaker : public prim::GradCompositeOpMakerBase {
- public:
-  using prim::GradCompositeOpMakerBase::GradCompositeOpMakerBase;
-
-  void Apply() override {
-    paddle::experimental::Tensor out = paddle::experimental::Tensor(
-        std::make_shared<prim::DescTensor>(this->SingleForwardOutput("Out")));
-    paddle::experimental::Tensor grad_out = paddle::experimental::Tensor(
-        std::make_shared<prim::DescTensor>(this->SingleOutputGrad("Out")));
-    paddle::experimental::Tensor grad_x = paddle::experimental::Tensor(
-        std::make_shared<prim::DescTensor>(this->SingleInputGrad("X")));
-    prim::tanh_grad<prim::DescTensor>(out, grad_out, &grad_x);
   }
 };
 
@@ -6726,16 +6858,16 @@ class TanhTripleGradOpMaker : public framework::SingleGradOpMaker<T> {
   void Apply(GradOpPtr<T> grad_op) const override {
     grad_op->SetType("tanh_triple_grad");
 
-    grad_op->SetInput("out", this->Input("out"));
+    grad_op->SetInput("Out", this->Input("Out"));
     grad_op->SetInput("grad_out_forward", this->Input("grad_out"));
     grad_op->SetInput("grad_x_grad_forward",
                       this->Input(GradVarName("grad_x")));
     grad_op->SetInput(GradVarName("grad_out_new"),
-                      this->OutputGrad(GradVarName("out")));
+                      this->OutputGrad(GradVarName("Out")));
     grad_op->SetInput(GradVarName("grad_out_grad"),
                       this->OutputGrad(GradVarName("grad_out")));
 
-    grad_op->SetOutput(GradVarName("out"), this->InputGrad("out"));
+    grad_op->SetOutput(GradVarName("Out"), this->InputGrad("Out"));
     grad_op->SetOutput(GradVarName("grad_out_forward"),
                        this->InputGrad("grad_out"));
     grad_op->SetOutput(GradVarName("grad_x_grad_forward"),
@@ -6924,6 +7056,67 @@ DECLARE_INFER_SHAPE_FUNCTOR(unfold_grad,
                             PD_INFER_META(phi::UnchangedInferMeta));
 
 DECLARE_NO_NEED_BUFFER_VARS_INFERER(UnfoldGradNoNeedBufferVarInferer, "X");
+
+template <typename T>
+class Unsqueeze2DoubleGradOpMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  void Apply(GradOpPtr<T> grad_op) const override {
+    grad_op->SetType("unsqueeze2");
+
+    grad_op->SetInput("X", this->OutputGrad(GradVarName("X")));
+
+    grad_op->SetOutput("Out", this->InputGrad(GradVarName("Out")));
+    grad_op->SetOutput("XShape", this->Input("XShape"));
+
+    grad_op->SetAttr("axes", this->GetAttr("axes"));
+  }
+};
+
+template <typename T>
+class Unsqueeze2GradOpMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  void Apply(GradOpPtr<T> grad_op) const override {
+    grad_op->SetType("unsqueeze2_grad");
+
+    grad_op->SetInput("XShape", this->Output("XShape"));
+    grad_op->SetInput(GradVarName("Out"), this->OutputGrad("Out"));
+
+    grad_op->SetOutput(GradVarName("X"), this->InputGrad("X"));
+
+    grad_op->SetAttrMap(this->Attrs());
+    if (this->HasInput("AxesTensor")) {
+      grad_op->SetInput("AxesTensor", this->Input("AxesTensor"));
+    }
+    if (this->HasInput("AxesTensorList")) {
+      grad_op->SetInput("AxesTensorList", this->Input("AxesTensorList"));
+    }
+  }
+};
+
+class Unsqueeze2GradOp : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    auto data_type = framework::OperatorWithKernel::IndicateVarDataType(
+        ctx, GradVarName("Out"));
+    return framework::OpKernelType(data_type, ctx.GetPlace());
+  }
+};
+
+DECLARE_INFER_SHAPE_FUNCTOR(unsqueeze2_grad,
+                            Unsqueeze2GradInferShapeFunctor,
+                            PD_INFER_META(phi::KernelWithXShapeInferMeta));
+DECLARE_INPLACE_OP_INFERER(Unsqueeze2GradInplaceInferer,
+                           {GradVarName("Out"), GradVarName("X")});
 
 template <typename T>
 class UnstackGradOpMaker : public framework::SingleGradOpMaker<T> {
@@ -7872,6 +8065,14 @@ REGISTER_OPERATOR(square,
                   ops::SquareGradOpMaker<paddle::imperative::OpBase>,
                   ops::SquareInferShapeFunctor);
 
+REGISTER_OPERATOR(squeeze2,
+                  ops::Squeeze2Op,
+                  ops::Squeeze2OpMaker,
+                  ops::Squeeze2GradOpMaker<paddle::framework::OpDesc>,
+                  ops::Squeeze2GradOpMaker<paddle::imperative::OpBase>,
+                  ops::Squeeze2InplaceInferer,
+                  ops::Squeeze2InferShapeFunctor);
+
 REGISTER_OPERATOR(svd,
                   ops::SvdOp,
                   ops::SvdOpMaker,
@@ -7959,6 +8160,14 @@ REGISTER_OPERATOR(unfold,
                   ops::UnfoldGradOpMaker<paddle::framework::OpDesc>,
                   ops::UnfoldGradOpMaker<paddle::imperative::OpBase>,
                   ops::UnfoldInferShapeFunctor);
+
+REGISTER_OPERATOR(unsqueeze2,
+                  ops::Unsqueeze2Op,
+                  ops::Unsqueeze2OpMaker,
+                  ops::Unsqueeze2GradOpMaker<paddle::framework::OpDesc>,
+                  ops::Unsqueeze2GradOpMaker<paddle::imperative::OpBase>,
+                  ops::Unsqueeze2InplaceInferer,
+                  ops::Unsqueeze2InferShapeFunctor);
 
 REGISTER_OPERATOR(unstack,
                   ops::UnstackOp,
@@ -8786,6 +8995,13 @@ REGISTER_OPERATOR(square_grad,
                   ops::SquareGradInplaceInferer,
                   ops::SquareGradInferShapeFunctor);
 
+REGISTER_OPERATOR(squeeze2_grad,
+                  ops::Squeeze2GradOp,
+                  ops::Squeeze2DoubleGradOpMaker<paddle::framework::OpDesc>,
+                  ops::Squeeze2DoubleGradOpMaker<paddle::imperative::OpBase>,
+                  ops::Squeeze2GradInplaceInferer,
+                  ops::Squeeze2GradInferShapeFunctor);
+
 REGISTER_OPERATOR(
     svd_grad,
     ops::SvdGradOp,
@@ -8875,6 +9091,13 @@ REGISTER_OPERATOR(
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
     ops::UnfoldGradNoNeedBufferVarInferer,
     ops::UnfoldGradInferShapeFunctor);
+
+REGISTER_OPERATOR(unsqueeze2_grad,
+                  ops::Unsqueeze2GradOp,
+                  ops::Unsqueeze2DoubleGradOpMaker<paddle::framework::OpDesc>,
+                  ops::Unsqueeze2DoubleGradOpMaker<paddle::imperative::OpBase>,
+                  ops::Unsqueeze2GradInplaceInferer,
+                  ops::Unsqueeze2GradInferShapeFunctor);
 
 REGISTER_OPERATOR(
     unstack_grad,

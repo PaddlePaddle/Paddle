@@ -52,7 +52,7 @@ class TestSimpleNet(unittest.TestCase):
                     fluid.set_flags(
                         {'FLAGS_sort_sum_gradient': sort_sum_gradient}
                     )
-                    # grad_clip = fluid.clip.GradientClipByGlobalNorm(5.0)
+                    # grad_clip = paddle.nn.ClipGradByGlobalNorm(5.0)
 
                     input_word = np.array([[1, 2], [2, 1]]).astype('int64')
                     input = paddle.to_tensor(input_word)
@@ -91,7 +91,7 @@ class TestSimpleNet(unittest.TestCase):
                     fluid.set_flags(
                         {'FLAGS_sort_sum_gradient': sort_sum_gradient}
                     )
-                    grad_clip = fluid.clip.GradientClipByGlobalNorm(5.0)
+                    grad_clip = paddle.nn.ClipGradByGlobalNorm(5.0)
 
                     input_word = np.array([[1, 2], [2, 1]]).astype('int64')
                     input = to_variable(input_word)

@@ -15,7 +15,7 @@
 #include "paddle/fluid/prim/utils/utils.h"
 #include "paddle/phi/core/flags.h"
 
-PADDLE_DEFINE_EXPORTED_bool(prim_enabled, false, "retain grad for all tensor");
+PADDLE_DEFINE_EXPORTED_bool(prim_enabled, false, "enable_prim or not");
 namespace paddle {
 namespace prim {
 bool PrimCommonUtils::IsPrimEnabled() {

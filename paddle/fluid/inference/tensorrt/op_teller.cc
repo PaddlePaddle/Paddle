@@ -2341,7 +2341,7 @@ struct SimpleOpTypeSetTeller : public Teller {
     }
 #endif
 
-    if (op_type == "equal") {
+    if (op_type == "equal" || op_type == "not_equal") {
 #if !IS_TRT_VERSION_GE(8000)
       VLOG(3) << "compare is not supported when TensorRT < 8.0";
       return false;
@@ -2493,6 +2493,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "elementwise_max",
       "elementwise_floordiv",
       "equal",
+      "not_equal",
       "less_than",
       "greater_than",
       "logical_or",
@@ -2639,6 +2640,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "elementwise_max",
       "elementwise_floordiv",
       "equal",
+      "not_equal",
       "less_than",
       "greater_than",
       "logical_or",
