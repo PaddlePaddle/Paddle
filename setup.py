@@ -50,6 +50,21 @@ assert (
     CMAKE
 ), 'The "cmake" executable is not found. Please check if Cmake is installed.'
 
+# CMAKE: full path to python library
+if platform.system() == "Windows":
+    cmake_python_library = "{}/libs/python{}.lib".format(
+        sysconfig.get_config_var("prefix"), sysconfig.get_config_var("VERSION")
+    )
+    # Fix virtualenv builds
+    if not os.path.exists(cmake_python_library):
+        cmake_python_library = "{}/libs/python{}.lib".format(
+            sys.base_prefix, sysconfig.get_config_var("VERSION")
+        )
+else:
+    cmake_python_library = "{}/{}".format(
+        sysconfig.get_config_var("LIBDIR"),
+        sysconfig.get_config_var("INSTSONAME"),
+    )
 
 TOP_DIR = os.path.dirname(os.path.realpath(__file__))
 
@@ -565,6 +580,8 @@ def options_process(args, build_options):
                 'PYTHON_INCLUDE_DIR', sysconfig.get_path("include")
             )
         )
+    if 'PYTHON_LIBRARY:FILEPATH' not in build_options.keys():
+        args.append('-D{}={}'.format('PYTHON_LIBRARY', cmake_python_library))
 
 
 def get_cmake_generator():
@@ -700,10 +717,6 @@ def build_steps():
             "You have finished running cmake, the program exited,run 'ccmake build' to adjust build options and 'python setup.py install to build'"
         )
         sys.exit()
-    if os.getenv("MAKE_CLEAN") == 'ON':
-        os.system('cd %s && make clean' % build_path)
-        print("make clean finished")
-
     run_cmake_build(build_path)
 
 
