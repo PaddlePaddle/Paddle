@@ -21,7 +21,8 @@ import paddle
 from paddle.distribution import distribution
 from paddle.fluid.data_feeder import check_type, convert_dtype
 from paddle.fluid.framework import _non_static_mode
-from paddle.fluid.layers import nn, tensor
+from paddle.fluid.layers import tensor
+from paddle.tensor import random
 
 
 class Normal(distribution.Distribution):
@@ -180,8 +181,9 @@ class Normal(distribution.Distribution):
                 self.loc + self.scale, batch_shape + shape, self.dtype, 0.0
             )
             zero_tmp_reshape = paddle.reshape(zero_tmp, output_shape)
-            zero_tmp_shape = nn.shape(zero_tmp_reshape)
-            normal_random_tmp = nn.gaussian_random(
+
+            zero_tmp_shape = paddle.shape(zero_tmp_reshape)
+            normal_random_tmp = random.gaussian(
                 zero_tmp_shape, mean=0.0, std=1.0, seed=seed, dtype=self.dtype
             )
             output = normal_random_tmp * (zero_tmp_reshape + self.scale)
@@ -189,7 +191,7 @@ class Normal(distribution.Distribution):
             return output
         else:
             output_shape = shape + batch_shape
-            output = nn.gaussian_random(
+            output = random.gaussian(
                 output_shape, mean=0.0, std=1.0, seed=seed, dtype=self.dtype
             ) * (tensor.zeros(output_shape, dtype=self.dtype) + self.scale)
             output = paddle.add(output, self.loc, name=name)

@@ -21,7 +21,6 @@ import paddle
 import paddle.fluid.core as core
 
 paddle.enable_static()
-from op_test import OpTest
 
 
 class TestSearchSorted(OpTest):

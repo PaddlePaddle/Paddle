@@ -61,6 +61,15 @@ if [ "$api_doc_spec_diff" != "" ]; then
     check_approval 1 29231 79295425 23093488 39876205 65896652 54695910
 fi
 
+api_yaml_diff=`python ${PADDLE_ROOT}/tools/check_api_yaml_same.py ${PADDLE_ROOT}/paddle/fluid/API_DEV.spec  ${PADDLE_ROOT}/paddle/fluid/API_PR.spec ${BRANCH} ${PADDLE_ROOT}` 
+if [ "$api_yaml_diff" != "" ]; then
+    echo_line="API's name and params should be consistent with op's name and params in yaml.
+                The API or Yaml file you changed may cause inconsistent.\n"
+    echo_line="${echo_line} please request one of the RD (YuanRisheng, zyfncg, chenwhql, phlrain) review and approve.\n"
+    echo_line="${echo_line}\r\n ${api_yaml_diff}\n"
+    check_approval 1 YuanRisheng zyfncg chenwhql phlrain
+fi
+
 api_src_spec_diff=`python ${PADDLE_ROOT}/tools/check_api_source_without_core_ops.py ${PADDLE_ROOT}/paddle/fluid/API_DEV.source.md5  ${PADDLE_ROOT}/paddle/fluid/API_PR.source.md5` 
 if [ "$api_src_spec_diff" != "" ]; then
     echo_line="APIs without core.ops: \n${api_src_spec_diff}\n"

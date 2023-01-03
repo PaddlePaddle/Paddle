@@ -26,7 +26,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
 using DataLayout = phi::DataLayout;
 using phi::PADDLE_CUDA_NUM_THREADS;
 
@@ -166,7 +165,7 @@ class DataNormGradKernel<phi::GPUContext, T> : public framework::OpKernel<T> {
     const int C = x_dims[1];
 
     // init output
-    Tensor *d_x = nullptr;
+    phi::DenseTensor *d_x = nullptr;
     if (ctx.HasOutput(framework::GradVarName("X"))) {
       d_x = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
     }

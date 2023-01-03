@@ -19,7 +19,6 @@ import numpy as np
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-import paddle.fluid.layers as layers
 from paddle.fluid.executor import Executor
 
 
@@ -31,8 +30,8 @@ class TestSquareErrorCost(unittest.TestCase):
         sub = input_val - label_val
         np_result = sub * sub
 
-        input_var = layers.create_tensor(dtype="float32", name="input")
-        label_var = layers.create_tensor(dtype="float32", name="label")
+        input_var = paddle.tensor.create_tensor(dtype="float32", name="input")
+        label_var = paddle.tensor.create_tensor(dtype="float32", name="label")
         output = paddle.nn.functional.square_error_cost(
             input=input_var, label=label_var
         )

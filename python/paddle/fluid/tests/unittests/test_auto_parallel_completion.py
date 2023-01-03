@@ -24,7 +24,6 @@ import paddle.utils as utils
 from paddle.distributed.auto_parallel.completion import Completer
 from paddle.distributed.auto_parallel.dist_context import DistributedContext
 from paddle.distributed.fleet import auto
-from paddle.fluid import layers
 
 paddle.enable_static()
 _global_parallel_strategy = None
@@ -301,9 +300,8 @@ class AttentionLayer(nn.Layer):
         v = tensor.transpose(x=v, perm=[0, 2, 1, 3])
 
         # scale dot product attention
-        product = layers.matmul(
-            x=q, y=k, transpose_y=True, alpha=self.head_dim**-0.5
-        )
+        product = tensor.matmul(x=q, y=k, transpose_y=True)
+        product = tensor.scale(product, scale=self.head_dim**-0.5)
 
         if self.attn_mask is not None:
             product = product + self.attn_mask
@@ -568,9 +566,8 @@ class DecoderLayer(nn.Layer):
         v = tensor.transpose(x=v, perm=[0, 2, 1, 3])
 
         # scale dot product attention
-        product = layers.matmul(
-            x=q, y=k, transpose_y=True, alpha=self.head_dim**-0.5
-        )
+        product = tensor.matmul(x=q, y=k, transpose_y=True)
+        product = tensor.scale(product, scale=self.head_dim**-0.5)
 
         if self.attn_mask is not None:
             product = product + self.attn_mask

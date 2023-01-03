@@ -21,7 +21,7 @@
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/funcs/transpose_functor.cu.h"
+#include "paddle/phi/kernels/funcs/transpose_function.cu.h"
 #include "paddle/phi/kernels/impl/transpose_grad_kernel_impl.h"
 
 namespace phi {

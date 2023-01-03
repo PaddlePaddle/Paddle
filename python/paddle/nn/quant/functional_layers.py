@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ...tensor import manipulation, math
+from ...tensor import linalg, manipulation, math
 from .. import Layer
 
 __all__ = []
@@ -85,3 +85,11 @@ class flatten(FloatFunctionalLayer):
 
     def forward(self, x, start_axis=0, stop_axis=-1, name=None):
         return manipulation.flatten(x, start_axis, stop_axis, name)
+
+
+class matmul(FloatFunctionalLayer):
+    def __init__(self):
+        super().__init__()
+
+    def forward(self, x, y, transpose_x=False, transpose_y=False, name=None):
+        return linalg.matmul(x, y, transpose_x, transpose_y, name)

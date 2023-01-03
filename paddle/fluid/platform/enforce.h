@@ -101,7 +101,7 @@ limitations under the License. */
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/fluid/platform/device/gpu/gpu_types.h"
 #endif
-#include "paddle/fluid/platform/flags.h"
+#include "paddle/phi/core/flags.h"
 
 namespace phi {
 class ErrorSummary;

@@ -33,9 +33,9 @@ class ConditionalBlockTest(unittest.TestCase):
             data = layers.data(name='X', shape=[1], dtype='float32')
             data.stop_gradient = False
             cond = ConditionalBlock(inputs=[data])
-            out = layers.create_tensor(dtype='float32')
+            out = paddle.tensor.create_tensor(dtype='float32')
             with cond.block():
-                hidden = layers.fc(input=data, size=10)
+                hidden = paddle.static.nn.fc(x=data, size=10)
                 layers.assign(hidden, out)
 
             cpu = core.CPUPlace()

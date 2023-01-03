@@ -23,7 +23,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
 using SelectedRows = phi::SelectedRows;
 
 template <typename DeviceContext, typename T>
@@ -106,7 +105,7 @@ class SumNPUKernel : public framework::OpKernel<T> {
       }
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
-          "Expected type of Output(out) must be Tensor or "
+          "Expected type of Output(out) must be phi::DenseTensor or "
           "LoDTensorArray. But got "
           "unsupport type: %s.",
           framework::ToTypeName(out_var->Type())));

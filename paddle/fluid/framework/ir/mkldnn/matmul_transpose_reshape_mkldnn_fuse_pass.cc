@@ -13,9 +13,9 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ir/mkldnn/matmul_transpose_reshape_mkldnn_fuse_pass.h"
-#include <paddle/fluid/string/pretty_log.h>
 #include "paddle/fluid/framework/op_version_registry.h"
-#include "paddle/fluid/platform/enforce.h"
+#include "paddle/phi/core/enforce.h"
+#include "paddle/utils/string/pretty_log.h"
 
 namespace paddle {
 namespace framework {
@@ -84,6 +84,15 @@ void MatmulTransposeReshapeMKLDNNPass::Fuse(
     }
 
     OpDesc *matmul_desc = matmul_op->Op();
+    if (matmul_type == "matmul") {
+      matmul_desc->SetType("matmul_v2");
+      matmul_desc->SetAttr("trans_x", matmul_desc->GetAttr("transpose_X"));
+      matmul_desc->SetAttr("trans_y", matmul_desc->GetAttr("transpose_Y"));
+      auto matmul_alpha = matmul_desc->GetAttrIfExists<float>("alpha");
+      if (matmul_alpha != 1.0f) {
+        matmul_desc->SetAttr("alpha", matmul_alpha);
+      }
+    }
     matmul_desc->SetOutput("Out", {reshape_out->Name()});
     matmul_desc->SetAttr("fused_reshape_Out", reshape_shape);
     matmul_desc->SetAttr("fused_transpose_Out", transpose_axis);

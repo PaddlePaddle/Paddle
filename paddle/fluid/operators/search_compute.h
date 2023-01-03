@@ -28,7 +28,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
 using LoD = framework::LoD;
 
 template <typename DeviceContext, typename T>

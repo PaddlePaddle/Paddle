@@ -109,12 +109,12 @@ framework::OpKernelType PoolOpGrad::GetKernelTypeForVar(
 void Pool2dOpMaker::Make() {
   AddInput(
       "X",
-      "(Tensor) The input tensor of pooling operator. "
+      "(phi::DenseTensor) The input tensor of pooling operator. "
       "The format of input tensor is NCHW, where N is batch size, C is the "
       "number of channels, H is the height of the feature, "
       "and W is the width of the feature.");
   AddOutput("Out",
-            "(Tensor) The output tensor of pooling operator. "
+            "(phi::DenseTensor) The output tensor of pooling operator. "
             "The format of output tensor is also NCHW, "
             "where N is batch size, C is the number of channels, "
             "H is the height of the feature, "
@@ -301,14 +301,14 @@ class PoolOpInferVarType : public framework::PassInDtypeAndVarTypeToOutput {
 
 void Pool3dOpMaker::Make() {
   AddInput("X",
-           "(Tensor) The input tensor of pooling operator. "
+           "(phi::DenseTensor) The input tensor of pooling operator. "
            "The format of input tensor is NCDHW or NDHWC, where N is batch "
            "size, C is "
            "the number of channels, and D, H and W is the depth, height and "
            "width of "
            "the feature, respectively.");
   AddOutput("Out",
-            "(Tensor) The output tensor of pooling operator."
+            "(phi::DenseTensor) The output tensor of pooling operator."
             "The format of output tensor is also NCDHW or NDHWC, "
             "where N is batch size, C is "
             "the number of channels, and D, H and W is the depth, height and "

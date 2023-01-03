@@ -18,7 +18,6 @@ import numpy as np
 from op_test import OpTest
 
 import paddle
-import paddle.fluid as fluid
 import paddle.fluid.core as core
 
 paddle.enable_static()
@@ -527,57 +526,6 @@ class TestBilinearInterp_attr_tensor_Case3(TestBilinearInterpOp_attr_tensor):
         self.out_size = None
         self.align_corners = True
         self.scale_by_1Dtensor = True
-
-
-class TestBilinearInterpOpAPI(unittest.TestCase):
-    def test_case(self):
-        x = fluid.data(name="x", shape=[2, 3, 6, 6], dtype="float32")
-
-        dim = fluid.data(name="dim", shape=[1], dtype="int32")
-        shape_tensor = fluid.data(name="shape_tensor", shape=[2], dtype="int32")
-        actual_size = fluid.data(name="actual_size", shape=[2], dtype="int32")
-        scale_tensor = fluid.data(
-            name="scale_tensor", shape=[1], dtype="float32"
-        )
-
-        out1 = fluid.layers.resize_bilinear(x, out_shape=[12, 12])
-        out2 = fluid.layers.resize_bilinear(x, out_shape=[12, dim])
-        out3 = fluid.layers.resize_bilinear(x, out_shape=shape_tensor)
-        out4 = fluid.layers.resize_bilinear(
-            x, out_shape=[4, 4], actual_shape=actual_size
-        )
-        out5 = fluid.layers.resize_bilinear(x, scale=scale_tensor)
-
-        x_data = np.random.random((2, 3, 6, 6)).astype("float32")
-        dim_data = np.array([12]).astype("int32")
-        shape_data = np.array([12, 12]).astype("int32")
-        actual_size_data = np.array([12, 12]).astype("int32")
-        scale_data = np.array([2.0]).astype("float32")
-
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
-        else:
-            place = core.CPUPlace()
-        exe = fluid.Executor(place)
-        exe.run(fluid.default_startup_program())
-        results = exe.run(
-            fluid.default_main_program(),
-            feed={
-                "x": x_data,
-                "dim": dim_data,
-                "shape_tensor": shape_data,
-                "actual_size": actual_size_data,
-                "scale_tensor": scale_data,
-            },
-            fetch_list=[out1, out2, out3, out4, out5],
-            return_numpy=True,
-        )
-
-        expect_res = bilinear_interp_np(
-            x_data, out_h=12, out_w=12, align_corners=True
-        )
-        for res in results:
-            np.testing.assert_allclose(res, expect_res, rtol=1e-05)
 
 
 if __name__ == "__main__":

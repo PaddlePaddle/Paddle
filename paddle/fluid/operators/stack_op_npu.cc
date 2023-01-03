@@ -18,8 +18,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
-
 template <typename T>
 class StackNPUKernel : public framework::OpKernel<T> {
  public:
@@ -30,10 +28,10 @@ class StackNPUKernel : public framework::OpKernel<T> {
     if (axis < 0) axis += (x[0]->dims().size() + 1);
     int num = static_cast<int>(x.size());
 
-    PADDLE_ENFORCE_GT(
-        num,
-        0,
-        platform::errors::InvalidArgument("number of input Tensor <= 0"));
+    PADDLE_ENFORCE_GT(num,
+                      0,
+                      platform::errors::InvalidArgument(
+                          "number of input phi::DenseTensor <= 0"));
 
     auto stream =
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
@@ -61,10 +59,10 @@ class StackGradNPUKernel : public framework::OpKernel<T> {
     if (axis < 0) axis += dy->dims().size();
     int num = dy->dims()[axis];
 
-    PADDLE_ENFORCE_GT(
-        num,
-        0,
-        platform::errors::InvalidArgument("number of input Tensor <= 0"));
+    PADDLE_ENFORCE_GT(num,
+                      0,
+                      platform::errors::InvalidArgument(
+                          "number of input phi::DenseTensor <= 0"));
 
     auto stream =
         ctx.template device_context<paddle::platform::NPUDeviceContext>()

@@ -89,7 +89,7 @@ class NPUBatchNormOpKernel : public framework::OpKernel<T> {
       // is only used in this training branch
       if (ctx.HasInput("MomentumTensor")) {
         const auto *mom_tensor = ctx.Input<phi::DenseTensor>("MomentumTensor");
-        Tensor mom_cpu;
+        phi::DenseTensor mom_cpu;
         paddle::framework::TensorCopySync(
             *mom_tensor, platform::CPUPlace(), &mom_cpu);
         momentum = mom_cpu.data<float>()[0];

@@ -46,8 +46,6 @@ struct LRNFunctor {
 template <typename DeviceContext, typename T>
 class LRNKernel : public framework::OpKernel<T> {
  public:
-  using Tensor = phi::DenseTensor;
-
   // f(x) = x * ( k + alpha * SUM((x)^2) )^(-beta)
   // x represents inputs
   // f(x) represents outputs
@@ -141,7 +139,6 @@ struct LRNGradFunctor {
 template <typename DeviceContext, typename T>
 class LRNGradKernel : public framework::OpKernel<T> {
  public:
-  using Tensor = phi::DenseTensor;
   void Compute(const framework::ExecutionContext& ctx) const override {
     const phi::DenseTensor& x = *ctx.Input<phi::DenseTensor>("X");
     const phi::DenseTensor& out = *ctx.Input<phi::DenseTensor>("Out");

@@ -24,7 +24,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
 using LoD = framework::LoD;
 
 void VarConv2dOpMaker::Make() {
@@ -36,7 +35,7 @@ void VarConv2dOpMaker::Make() {
            "(phi::DenseTensor) the row variable provides lod information");
   AddInput("COLUMN",
            "(phi::DenseTensor) the column variable provides lod information");
-  AddInput("W", "W (Tensor), the filter.");
+  AddInput("W", "W (phi::DenseTensor), the filter.");
   AddAttr<int>("InputChannel", "the input filter num").SetDefault(1);
   AddAttr<int>("OutputChannel", "the output filter num").SetDefault(1);
   AddAttr<int>("StrideH", "the height of Stride").SetDefault(1);
@@ -130,11 +129,11 @@ void VarConv2dOP::InferShape(framework::InferShapeContext* ctx) const {
     framework::Variable* x_var =
         PADDLE_GET(framework::Variable*, ctx->GetInputVarPtrs("X")[0]);
     const auto& x_lod = x_var->Get<phi::DenseTensor>().lod();
-    PADDLE_ENFORCE_EQ(
-        !x_lod.empty(),
-        true,
-        platform::errors::InvalidArgument("The Input(X) Tensor of VarConv2dOP "
-                                          "does not contain LoD information."));
+    PADDLE_ENFORCE_EQ(!x_lod.empty(),
+                      true,
+                      platform::errors::InvalidArgument(
+                          "The Input(X) phi::DenseTensor of VarConv2dOP "
+                          "does not contain LoD information."));
 
     PADDLE_ENFORCE_GE(x_lod.size(),
                       1,
@@ -151,20 +150,22 @@ void VarConv2dOP::InferShape(framework::InferShapeContext* ctx) const {
     framework::Variable* row_var =
         PADDLE_GET(framework::Variable*, ctx->GetInputVarPtrs("ROW")[0]);
     const auto& row_lod = row_var->Get<phi::DenseTensor>().lod();
-    PADDLE_ENFORCE_EQ(!row_lod.empty(),
-                      true,
-                      platform::errors::InvalidArgument(
-                          "The Input(ROW) Tensor of VarConv2dOP does not "
-                          "contain LoD information."));
+    PADDLE_ENFORCE_EQ(
+        !row_lod.empty(),
+        true,
+        platform::errors::InvalidArgument(
+            "The Input(ROW) phi::DenseTensor of VarConv2dOP does not "
+            "contain LoD information."));
 
     framework::Variable* col_var =
         PADDLE_GET(framework::Variable*, ctx->GetInputVarPtrs("COLUMN")[0]);
     const auto& col_lod = col_var->Get<phi::DenseTensor>().lod();
-    PADDLE_ENFORCE_EQ(!col_lod.empty(),
-                      true,
-                      platform::errors::InvalidArgument(
-                          "The Input(COLUMN) Tensor of VarConv2dOP does not "
-                          "contain LoD information."));
+    PADDLE_ENFORCE_EQ(
+        !col_lod.empty(),
+        true,
+        platform::errors::InvalidArgument(
+            "The Input(COLUMN) phi::DenseTensor of VarConv2dOP does not "
+            "contain LoD information."));
   } else {
     std::vector<int64_t> out_dims_vec{-1};
     out_dims_vec.push_back(1);
@@ -468,7 +469,7 @@ class CPUVarConv2dOPGradKernel : public framework::OpKernel<T> {
     auto* dx = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
     auto* d_w = ctx.Output<phi::DenseTensor>(framework::GradVarName("W"));
 
-    Tensor col_grad;
+    phi::DenseTensor col_grad;
     col_grad.Resize(col->dims());
     auto* col_diff = col_grad.mutable_data<T>(ctx.GetPlace());
     auto* dx_data = dx->mutable_data<T>(ctx.GetPlace());

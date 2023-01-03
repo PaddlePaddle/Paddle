@@ -24,8 +24,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
-
 template <typename DeviceContext, typename T>
 class FusedGemmEpilogueKernel : public framework::OpKernel<T> {
  public:
@@ -108,15 +106,21 @@ class FusedGemmEpilogueKernel : public framework::OpKernel<T> {
             sizeof(bias_data)));
 
     if (enable_auxiliary && activation != "none") {
-      size_t reserve_space_size = 0;
+      // Note (Ming Huang): The initialization of ReseveSpace is happened in the
+      // dev_ctx.Alloc. Therefore, we set real date type up here.
       if (activation == "relu") {
-        // Count in bits.
-        reserve_space_size = phi::product(out->dims()) / 8;
+        paddle::experimental::DataType rs_type =
+            paddle::experimental::DataType::BOOL;
+        size_t reserve_space_size =
+            phi::product(reserve_space->dims()) * SizeOf(rs_type);
+        dev_ctx.Alloc(reserve_space, rs_type, reserve_space_size);
       } else {
-        reserve_space_size = phi::product(out->dims()) * sizeof(T);
+        size_t reserve_space_size =
+            phi::product(reserve_space->dims()) * sizeof(T);
+        dev_ctx.Alloc<T>(reserve_space, reserve_space_size);
       }
-      dev_ctx.Alloc(reserve_space, out->type(), reserve_space_size);
-      void* aux_data = reinterpret_cast<void*>(reserve_space->data<T>());
+
+      void* aux_data = reserve_space->data();
 
       PADDLE_ENFORCE_GPU_SUCCESS(
           platform::dynload::cublasLtMatmulDescSetAttribute(
@@ -186,7 +190,6 @@ class FusedGemmEpilogueKernel : public framework::OpKernel<T> {
                                                               stream,
                                                               workspace->ptr(),
                                                               workspace_size);
-
     PADDLE_ENFORCE_GPU_SUCCESS(
         platform::dynload::cublasLtMatmul(lt_handle,
                                           operation_desc,
@@ -480,7 +483,7 @@ class FusedGemmEpilogueGradKernel : public framework::OpKernel<T> {
               sizeof(epiloque_func_for_dx)));
 
       if (activation_grad != "none") {
-        auto* aux_data = reserve_space->data<T>();
+        auto* aux_data = reserve_space->data();
         PADDLE_ENFORCE_GPU_SUCCESS(
             platform::dynload::cublasLtMatmulDescSetAttribute(
                 dx_operation_desc,

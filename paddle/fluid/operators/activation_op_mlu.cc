@@ -21,8 +21,6 @@ limitations under the Licnse. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
-
 template <cnnlActivationMode_t act_mode, typename T>
 class ActivationMLUKernel : public framework::OpKernel<T> {
  public:
@@ -442,7 +440,7 @@ class ReciprocalGradMLUKernel : public framework::OpKernel<T> {
     auto* dx = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
     auto place = ctx.GetPlace();
     dx->mutable_data<T>(place);
-    Tensor square_out;
+    phi::DenseTensor square_out;
     square_out.Resize(out->dims());
     square_out.mutable_data<T>(place);
     MLUCnnlTensorDesc out_desc(*out);

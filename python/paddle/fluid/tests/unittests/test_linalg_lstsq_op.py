@@ -73,28 +73,6 @@ class LinalgLstsqTestCase(unittest.TestCase):
 
     def test_eager_dygraph(self):
         paddle.disable_static()
-        paddle.fluid.framework._disable_legacy_dygraph()
-        for dev in self.devices:
-            paddle.set_device(dev)
-            place = paddle.CPUPlace() if dev == "cpu" else paddle.CUDAPlace(0)
-            x = paddle.to_tensor(
-                self._input_data_1, place=place, dtype=self.dtype
-            )
-            y = paddle.to_tensor(
-                self._input_data_2, place=place, dtype=self.dtype
-            )
-            results = paddle.linalg.lstsq(
-                x, y, rcond=self.rcond, driver=self.driver
-            )
-            self._result_solution = results[0].numpy()
-            self._result_residuals = results[1].numpy()
-            self._result_rank = results[2].numpy()
-            self._result_sg_values = results[3].numpy()
-            self.assert_np_close()
-
-    def test_legacy_dygraph(self):
-        paddle.disable_static()
-        paddle.fluid.framework._enable_legacy_dygraph()
         for dev in self.devices:
             paddle.set_device(dev)
             place = paddle.CPUPlace() if dev == "cpu" else paddle.CUDAPlace(0)

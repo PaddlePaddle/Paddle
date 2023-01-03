@@ -18,6 +18,7 @@ import numpy as np
 
 import paddle
 import paddle.fluid as fluid
+from paddle.tensor import random
 
 
 class TestManualSeed(unittest.TestCase):
@@ -25,13 +26,13 @@ class TestManualSeed(unittest.TestCase):
         fluid.enable_dygraph()
 
         gen = paddle.seed(12312321111)
-        x = fluid.layers.gaussian_random([10], dtype="float32")
+        x = random.gaussian([10], dtype="float32")
         st1 = gen.get_state()
-        x1 = fluid.layers.gaussian_random([10], dtype="float32")
+        x1 = random.gaussian([10], dtype="float32")
         gen.set_state(st1)
-        x2 = fluid.layers.gaussian_random([10], dtype="float32")
+        x2 = random.gaussian([10], dtype="float32")
         gen.manual_seed(12312321111)
-        x3 = fluid.layers.gaussian_random([10], dtype="float32")
+        x3 = random.gaussian([10], dtype="float32")
         x_np = x.numpy()
         x1_np = x1.numpy()
         x2_np = x2.numpy()

@@ -186,7 +186,7 @@ class TestReluDoubleGradCheck(unittest.TestCase):
 
         x = layers.data('x', shape, False, dtype)
         x.persistable = True
-        y = layers.relu(x)
+        y = F.relu(x)
         x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
         x_arr[np.abs(x_arr) < 0.005] = 0.02
 
@@ -397,36 +397,6 @@ class TestSquareDoubleGradCheck(unittest.TestCase):
             self.square_wrapper, [x], y, x_init=x_arr, place=place
         )
         fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
-
-    def test_grad(self):
-        paddle.enable_static()
-        places = [fluid.CPUPlace()]
-        if core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
-        for p in places:
-            self.func(p)
-
-
-class TestAbsDoubleGradCheck(unittest.TestCase):
-    @prog_scope()
-    def func(self, place):
-        # the shape of input variable should be clearly specified, not inlcude -1.
-        shape = [2, 3, 7, 9]
-        eps = 1e-6
-        dtype = np.float64
-
-        x = layers.data('x', shape, False, dtype)
-        x.persistable = True
-        y = paddle.abs(x)
-        x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
-        # Because we set delta = 0.005 in calculating numeric gradient,
-        # if x is too small, the numeric gradient is inaccurate.
-        # we should avoid this
-        x_arr[np.abs(x_arr) < 0.005] = 0.02
-
-        gradient_checker.double_grad_check(
-            [x], y, x_init=x_arr, place=place, eps=eps
-        )
 
     def test_grad(self):
         paddle.enable_static()

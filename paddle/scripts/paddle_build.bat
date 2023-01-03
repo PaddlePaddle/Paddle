@@ -99,6 +99,10 @@ set PYTHON_VENV_ROOT=%cache_dir%\python_venv
 set PYTHON_EXECUTABLE=!PYTHON_VENV_ROOT!\Scripts\python.exe
 %PYTHON_ROOT%\python.exe -m venv --clear !PYTHON_VENV_ROOT!
 call !PYTHON_VENV_ROOT!\Scripts\activate.bat
+if %ERRORLEVEL% NEQ 0 (
+    echo activate python virtual environment failed!
+    exit /b 5
+)
 
 if "%WITH_PYTHON%" == "ON" (
     where python
@@ -640,7 +644,6 @@ pip uninstall -y paddlepaddle
 pip uninstall -y paddlepaddle-gpu
 pip install %PADDLE_WHL_FILE_WIN%
 if %ERRORLEVEL% NEQ 0 (
-    call paddle_winci\Scripts\deactivate.bat 2>NUL
     echo pip install whl package failed!
     exit /b 1
 )

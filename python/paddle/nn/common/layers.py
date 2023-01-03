@@ -35,11 +35,7 @@ from paddle.fluid.dygraph.base import (
 from paddle.fluid.executor import Executor, global_scope
 from paddle.fluid.framework import Program
 from paddle.fluid.framework import _current_expected_place as _get_device
-from paddle.fluid.framework import (
-    _non_static_mode,
-    convert_np_dtype_to_dtype_,
-    in_dygraph_mode,
-)
+from paddle.fluid.framework import convert_np_dtype_to_dtype_, in_dygraph_mode
 from paddle.profiler.utils import in_profiler_mode
 
 from .layer_hooks import (
@@ -146,7 +142,7 @@ class Layer:
         self._helper = LayerObjectHelper(self._full_name)
         self._built = False
         self._dtype = dtype
-        self._init_in_dynamic_mode = framework._non_static_mode()
+        self._init_in_dynamic_mode = in_dygraph_mode()
 
         self._parameters = collections.OrderedDict()
         # Buffers the variable (not parameter) created in layer
@@ -204,7 +200,7 @@ class Layer:
         # global setting in dygraph
         # NOTE(chenweihang): nn.Layer also can be used in static mode,
         # but _dygraph_tracer() can not be called in static mode
-        if _non_static_mode():
+        if in_dygraph_mode():
             framework._dygraph_tracer().train_mode()
         # Layer-level setting
         self.training = True
@@ -245,7 +241,7 @@ class Layer:
         # global setting in dygraph
         # NOTE(chenweihang): nn.Layer also can be used in static mode,
         # but _dygraph_tracer() can not be called in static mode
-        if _non_static_mode():
+        if in_dygraph_mode():
             framework._dygraph_tracer().eval_mode()
         # Layer-level setting
         self.training = False
@@ -1660,7 +1656,7 @@ class Layer:
         for key in state_dict.keys():
             if key not in match_keys:
                 unexpected_keys.append(key)
-        if _non_static_mode():
+        if in_dygraph_mode():
             for param, state in matched_param_state:
                 param.set_value(state)
         else:

@@ -562,7 +562,7 @@ class TestDygraphBatchNormTrainableStats(unittest.TestCase):
 
             def compute(x, is_test, trainable_statistics):
                 with fluid.dygraph.guard(p):
-                    bn = fluid.dygraph.BatchNorm(
+                    bn = paddle.nn.BatchNorm(
                         shape[1],
                         is_test=is_test,
                         trainable_statistics=trainable_statistics,
@@ -583,7 +583,7 @@ class TestDygraphBatchNormTrainableStats(unittest.TestCase):
 
             def compute(x_np, is_test, trainable_statistics):
                 with program_guard(Program(), Program()):
-                    bn = fluid.dygraph.BatchNorm(
+                    bn = paddle.nn.BatchNorm(
                         shape[1],
                         is_test=is_test,
                         trainable_statistics=trainable_statistics,

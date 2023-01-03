@@ -20,6 +20,7 @@ from inference_pass_test import InferencePassTest
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
+import paddle.static.nn as nn
 from paddle.fluid.core import AnalysisConfig, PassVersionChecker
 
 
@@ -30,7 +31,7 @@ class TRTFlattenTest(InferencePassTest):
                 name="data", shape=[-1, 6, 64, 64], dtype="float32"
             )
             flatten_out = self.append_flatten(data)
-            out = fluid.layers.batch_norm(flatten_out, is_test=True)
+            out = nn.batch_norm(flatten_out, is_test=True)
         self.feeds = {
             "data": np.random.random([1, 6, 64, 64]).astype("float32"),
         }
@@ -59,7 +60,7 @@ class TRTFlattenDynamicTest(InferencePassTest):
                 name="data", shape=[-1, 6, 64, 64], dtype="float32"
             )
             flatten_out = self.append_flatten(data)
-            out = fluid.layers.batch_norm(flatten_out, is_test=True)
+            out = nn.batch_norm(flatten_out, is_test=True)
         self.feeds = {
             "data": np.random.random([2, 6, 64, 64]).astype("float32"),
         }

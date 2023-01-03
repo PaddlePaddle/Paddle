@@ -24,9 +24,7 @@ import paddle.fluid as fluid
 class TestDygraphBilinearTensorProductAPIError(unittest.TestCase):
     def test_errors(self):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
-            layer = fluid.dygraph.nn.BilinearTensorProduct(
-                input1_dim=5, input2_dim=4, output_dim=1000
-            )
+            layer = paddle.nn.Bilinear(5, 4, 1000)
             # the input must be Variable.
             x0 = fluid.create_lod_tensor(
                 np.array([-1, 3, 5, 5]), [[1, 1, 1, 1]], fluid.CPUPlace()

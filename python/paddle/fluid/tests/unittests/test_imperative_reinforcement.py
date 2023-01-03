@@ -19,8 +19,8 @@ from test_imperative_base import new_program_scope
 
 import paddle
 import paddle.fluid as fluid
+import paddle.nn.functional as F
 from paddle.fluid import core
-from paddle.fluid.framework import _test_eager_guard
 from paddle.fluid.optimizer import SGDOptimizer
 
 
@@ -38,8 +38,8 @@ class Policy(fluid.dygraph.Layer):
     def forward(self, inputs):
         x = paddle.reshape(inputs, shape=[-1, 4])
         x = self.affine1(x)
-        x = fluid.layers.dropout(x, self.dropout_ratio)
-        x = fluid.layers.relu(x)
+        x = paddle.nn.functional.dropout(x, self.dropout_ratio)
+        x = F.relu(x)
         action_scores = self.affine2(x)
         return paddle.nn.functional.softmax(action_scores, axis=1)
 
@@ -106,12 +106,11 @@ class TestImperativeMnist(unittest.TestCase):
             dy_out, dy_param_init_value, dy_param_value = run_dygraph()
 
         with fluid.dygraph.guard():
-            with _test_eager_guard():
-                (
-                    eager_out,
-                    eager_param_init_value,
-                    eager_param_value,
-                ) = run_dygraph()
+            (
+                eager_out,
+                eager_param_init_value,
+                eager_param_value,
+            ) = run_dygraph()
 
         with new_program_scope():
             paddle.seed(seed)

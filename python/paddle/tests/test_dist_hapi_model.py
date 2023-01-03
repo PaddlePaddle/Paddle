@@ -78,9 +78,6 @@ def start_local_trainers(
             "PADDLE_TRAINER_ENDPOINTS": ",".join(cluster.trainers_endpoints()),
         }
 
-        if not eager_mode:
-            proc_env["FLAGS_enable_eager_mode"] = "%d" % 0
-
         current_env.update(proc_env)
 
         print("trainer proc env:{}".format(current_env))
@@ -136,17 +133,13 @@ class TestMultipleGpus(unittest.TestCase):
 
     def test_hapi_multiple_gpus_static(self):
         self.run_mnist_2gpu('dist_hapi_mnist_static.py')
-        self.run_mnist_2gpu('dist_hapi_mnist_static.py', eager_mode=False)
 
     def test_hapi_multiple_gpus_dynamic(self):
         self.run_mnist_2gpu('dist_hapi_mnist_dynamic.py')
-        self.run_mnist_2gpu('dist_hapi_mnist_dynamic.py', eager_mode=False)
 
     def test_hapi_amp_static(self):
         self.run_mnist_2gpu('dist_hapi_pure_fp16_static.py')
-        self.run_mnist_2gpu('dist_hapi_pure_fp16_static.py', eager_mode=False)
 
 
 if __name__ == "__main__":
-    os.environ["FLAGS_enable_eager_mode"] = "1"
     unittest.main()

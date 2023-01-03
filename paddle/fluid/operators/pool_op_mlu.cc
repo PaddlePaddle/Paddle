@@ -46,8 +46,8 @@ class MLUPoolOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
     auto &dev_ctx = ctx.template device_context<platform::MLUDeviceContext>();
-    const Tensor *in_x = ctx.Input<phi::DenseTensor>("X");
-    Tensor *out = ctx.Output<phi::DenseTensor>("Out");
+    const phi::DenseTensor *in_x = ctx.Input<phi::DenseTensor>("X");
+    phi::DenseTensor *out = ctx.Output<phi::DenseTensor>("Out");
     out->mutable_data<T>(ctx.GetPlace());
 
     std::string pooling_type = ctx.Attr<std::string>("pooling_type");
@@ -212,11 +212,11 @@ class MLUPoolGradOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
     auto &dev_ctx = ctx.template device_context<platform::MLUDeviceContext>();
-    const Tensor *in_x = ctx.Input<phi::DenseTensor>("X");
-    const Tensor *out = ctx.Input<phi::DenseTensor>("Out");
-    const Tensor *out_grad =
+    const phi::DenseTensor *in_x = ctx.Input<phi::DenseTensor>("X");
+    const phi::DenseTensor *out = ctx.Input<phi::DenseTensor>("Out");
+    const phi::DenseTensor *out_grad =
         ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
-    Tensor *in_x_grad =
+    phi::DenseTensor *in_x_grad =
         ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
     in_x_grad->mutable_data<T>(ctx.GetPlace());
 

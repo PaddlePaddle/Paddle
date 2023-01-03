@@ -17,8 +17,8 @@
 #include <fstream>
 
 #include "paddle/fluid/memory/allocation/cpu_allocator.h"  // for posix_memalign
-#include "paddle/fluid/platform/cpu_info.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/phi/backends/cpu/cpu_info.h"
 
 #ifndef _WIN32
 #define posix_memalign_free free
@@ -66,7 +66,7 @@ void GenBase::operator delete(void* ptr) { posix_memalign_free(ptr); }
 std::vector<int> packed_groups(int n, int k, int* block_out, int* rest_out) {
   int block;
   int max_num_regs;
-  if (platform::MayIUse(platform::avx512f)) {
+  if (phi::backends::cpu::MayIUse(phi::backends::cpu::avx512f)) {
     block = ZMM_FLOAT_BLOCK;
     max_num_regs = 32;
   } else {

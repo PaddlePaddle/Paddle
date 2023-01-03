@@ -23,7 +23,7 @@
 #include "paddle/fluid/framework/ir/pass_tester_helper.h"
 #include "paddle/fluid/framework/naive_executor.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/platform/place.h"
+#include "paddle/phi/common/place.h"
 #include "paddle/phi/core/kernel_registry.h"
 
 PD_DECLARE_KERNEL(conv2d_transpose, CPU, ALL_LAYOUT);
@@ -36,7 +36,7 @@ PD_DECLARE_KERNEL(batch_norm, OneDNN, ONEDNN);
 USE_OP_ITSELF(conv2d_transpose);
 PD_DECLARE_KERNEL(conv2d_transpose, OneDNN, ONEDNN);
 USE_OP_ITSELF(elementwise_add);
-USE_OP_DEVICE_KERNEL(elementwise_add, MKLDNN);
+PD_DECLARE_KERNEL(add_raw, OneDNN, ONEDNN);
 USE_OP_ITSELF(gelu);
 PD_DECLARE_KERNEL(gelu, OneDNN, ONEDNN);
 PD_DECLARE_ARG_MAPPING_FN(gelu);
@@ -195,7 +195,7 @@ class MKLDNNConvBatchNormPassTest {
   void FillTensorWithRandomData(phi::DenseTensor* tnsr,
                                 float lowb,
                                 float upb,
-                                platform::CPUPlace place) {
+                                phi::CPUPlace place) {
     float* ptr = tnsr->mutable_data<float>(place);
     // Initialize input data
     std::uniform_real_distribution<float> dist(static_cast<float>(lowb),
@@ -219,7 +219,7 @@ class MKLDNNConvBatchNormPassTest {
 
     std::unique_ptr<ir::Graph> graph(new ir::Graph(base_prog));
     Scope scope;
-    auto place = paddle::platform::CPUPlace();
+    auto place = phi::CPUPlace();
     NaiveExecutor exe{place};
 
     auto pass = PassRegistry::Instance().Get(

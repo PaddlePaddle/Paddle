@@ -22,7 +22,6 @@ from op_test import OpTest, skip_check_grad_ci
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-import paddle.fluid.layers as layers
 
 
 @skip_check_grad_ci(
@@ -77,7 +76,7 @@ class TestCholeskyOp(OpTest):
                 dtype=root_data.dtype, shape=root_data.shape
             )
             root_t = paddle.transpose(root, self.trans_dims)
-            x = layers.matmul(x=root, y=root_t) + 1e-05
+            x = paddle.matmul(x=root, y=root_t) + 1e-05
             out = paddle.cholesky(x, upper=self.attrs["upper"])
             grad_check(root, out, x_init=root_data, place=place)
 

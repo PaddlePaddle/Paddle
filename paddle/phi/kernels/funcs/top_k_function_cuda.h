@@ -941,8 +941,7 @@ bool SortTopk(const phi::GPUContext& ctx,
   const std::vector<int64_t> dims = {num_rows, num_cols};
   auto dim = phi::make_ddim(dims);
   input_indices.Resize(dim);
-  // input_indices.Resize(num_rows*num_cols);
-  input_indices.mutable_data<int64_t>(ctx.GetPlace());
+  ctx.template Alloc<int64_t>(&input_indices);
   size_t temp_storage_bytes = -1;
 
   auto ComputeBlockSize = [](int col) {
@@ -984,7 +983,7 @@ bool SortTopk(const phi::GPUContext& ctx,
 
   const T* input = input_tensor->data<T>();
   T* values = out_tensor->data<T>();
-  int64_t* indices = indices_tensor->mutable_data<int64_t>(ctx.GetPlace());
+  int64_t* indices = ctx.template Alloc<int64_t>(indices_tensor);
 
   if (k == num_cols) {
     // Doing a full sort.
@@ -993,8 +992,8 @@ bool SortTopk(const phi::GPUContext& ctx,
   } else {
     temp_values.Resize(dim);
     temp_indices.Resize(dim);
-    sorted_values_ptr = temp_values.mutable_data<T>(ctx.GetPlace());
-    sorted_indices_ptr = temp_indices.mutable_data<int64_t>(ctx.GetPlace());
+    sorted_values_ptr = ctx.template Alloc<T>(&temp_values);
+    sorted_indices_ptr = ctx.template Alloc<int64_t>(&temp_indices);
   }
 
   // Get temp storage buffer size, maybe can allocate a fixed buffer to save
@@ -1067,7 +1066,7 @@ bool SortTopk(const phi::GPUContext& ctx,
 #endif
   }
   Tensor temp_storage;
-  temp_storage.mutable_data<uint8_t>(ctx.GetPlace(), temp_storage_bytes);
+  ctx.template Alloc<uint8_t>(&temp_storage, temp_storage_bytes);
 
   if (largest) {
     auto err = cub::DeviceSegmentedRadixSort::SortPairsDescending(

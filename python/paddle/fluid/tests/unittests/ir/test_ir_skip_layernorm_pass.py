@@ -32,7 +32,7 @@ class SkipLayerNormFusePassTest(PassTest):
                 name="y", shape=[128, 768], dtype="float32", lod_level=0
             )
             elementwise_out = paddle.add(x=x, y=y)
-            out = fluid.layers.layer_norm(input=elementwise_out)
+            out = paddle.static.nn.layer_norm(input=elementwise_out)
 
         self.fetch_list = [out]
         self.pass_names = "skip_layernorm_fuse_pass"

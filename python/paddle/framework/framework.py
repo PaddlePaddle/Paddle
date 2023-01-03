@@ -93,6 +93,9 @@ def set_grad_enabled(mode):
     Args:
         mode(bool): whether to enable (`True`), or disable (`False`) grad.
 
+    Returns:
+        None.
+
     Examples:
         .. code-block:: python
 

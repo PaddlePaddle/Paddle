@@ -13,7 +13,8 @@
 # limitations under the License.
 
 import signal
-import os, sys
+import os
+import sys
 
 from .manager import ElasticManager
 from .manager import ElasticStatus

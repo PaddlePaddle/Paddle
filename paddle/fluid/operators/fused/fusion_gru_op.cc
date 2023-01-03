@@ -160,26 +160,29 @@ void FusionGRUOpMaker::Make() {
       "variable-time length input sequence. The underlying tensor in "
       "this phi::DenseTensor is a matrix with shape (T X M), where T is the "
       "total time steps in this mini-batch, M is the dim size of x.");
-  AddInput("H0",
-           "(Tensor, optional) The initial hidden state is an optional "
-           "input. This is a tensor with shape (N x D), where N is the "
-           "batch size, D is the hidden size.")
+  AddInput(
+      "H0",
+      "(phi::DenseTensor, optional) The initial hidden state is an optional "
+      "input. This is a tensor with shape (N x D), where N is the "
+      "batch size, D is the hidden size.")
       .AsDispensable();
   AddInput("WeightX",
-           "(Tensor) The FC weight with shape (M x 3D),"
+           "(phi::DenseTensor) The FC weight with shape (M x 3D),"
            "where M is the dim size of x, D is the hidden size. ");
-  AddInput("WeightH",
-           "(Tensor) (D x 3D) Same as GRUOp, where D is the hidden size. "
-           "This weight is not exactly D x 3D as: {W_update, W_reset, W_state}"
-           "Acutally they are D x 2D and D x D two part weights."
-           "{W_update, W_reset; W_state}"
-           "{D x (D + D); D x D}");
+  AddInput(
+      "WeightH",
+      "(phi::DenseTensor) (D x 3D) Same as GRUOp, where D is the hidden size. "
+      "This weight is not exactly D x 3D as: {W_update, W_reset, W_state}"
+      "Acutally they are D x 2D and D x D two part weights."
+      "{W_update, W_reset; W_state}"
+      "{D x (D + D); D x D}");
   AddInput("Bias",
-           "(Tensor, optional) (1 x 3D)."
+           "(phi::DenseTensor, optional) (1 x 3D)."
            "Almost same as GRUOp."
            "Note: if have FC bias it should be added on this bias.")
       .AsDispensable();
-  AddOutput("ReorderedH0", "(Tensor) (N x D), which N is the min-batch size.")
+  AddOutput("ReorderedH0",
+            "(phi::DenseTensor) (N x D), which N is the min-batch size.")
       .AsIntermediate();
   AddOutput("XX",
             "(phi::DenseTensor) the result after X * WeightX (size is T x 3D)"

@@ -102,6 +102,11 @@ cc_test(
   SRCS api_tester.cc
   DEPS paddle_inference_api)
 
+cc_test(
+  inference_api_helper_test
+  SRCS helper_test.cc
+  DEPS paddle_inference_api)
+
 if(WITH_ONNXRUNTIME AND WIN32)
   # Copy onnxruntime for some c++ test in Windows, since the test will
   # be build only in CI, so suppose the generator in Windows is Ninja.

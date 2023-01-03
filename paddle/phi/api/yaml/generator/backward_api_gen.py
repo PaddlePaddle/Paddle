@@ -351,7 +351,7 @@ def main():
         '--backward_yaml_path',
         help='path to backward yaml file',
         nargs='+',
-        default='paddle/phi/api/yaml/backward.yaml',
+        default=['paddle/phi/api/yaml/backward.yaml'],
     )
     parser.add_argument(
         '--backward_header_path',

@@ -18,7 +18,6 @@ import unittest
 
 import paddle
 import paddle.vision.transforms as T
-from paddle.fluid.framework import _test_eager_guard
 from paddle.static import InputSpec
 from paddle.vision.datasets import MNIST
 
@@ -35,7 +34,7 @@ class TestCallbacks(unittest.TestCase):
     def tearDown(self):
         shutil.rmtree(self.save_dir)
 
-    def func_visualdl_callback(self):
+    def test_visualdl_callback(self):
         inputs = [InputSpec([-1, 1, 28, 28], 'float32', 'image')]
         labels = [InputSpec([None, 1], 'int64', 'label')]
 
@@ -57,11 +56,6 @@ class TestCallbacks(unittest.TestCase):
         model.fit(
             train_dataset, eval_dataset, batch_size=64, callbacks=callback
         )
-
-    def test_visualdl_callback(self):
-        with _test_eager_guard():
-            self.func_visualdl_callback()
-        self.func_visualdl_callback()
 
 
 if __name__ == '__main__':

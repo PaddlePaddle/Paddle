@@ -16,10 +16,12 @@ limitations under the License. */
 
 #include <string>
 
+#include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/phi/common/bfloat16.h"
+#include "paddle/phi/core/kernel_registry.h"
+
 namespace paddle {
 namespace operators {
-
-using Tensor = phi::DenseTensor;
 
 class SaveCombineOp : public framework::OperatorWithKernel {
  public:
@@ -102,10 +104,22 @@ REGISTER_OPERATOR(save_combine,
                   ops::SaveCombineOpProtoMaker,
                   ops::SaveCombineOpInferVarType);
 
-REGISTER_OP_CPU_KERNEL(
-    save_combine,
-    ops::SaveCombineOpKernel<phi::CPUContext, float>,
-    ops::SaveCombineOpKernel<phi::CPUContext, double>,
-    ops::SaveCombineOpKernel<phi::CPUContext, paddle::platform::bfloat16>,
-    ops::SaveCombineOpKernel<phi::CPUContext, int>,
-    ops::SaveCombineOpKernel<phi::CPUContext, int64_t>);
+PD_REGISTER_KERNEL(save_combine_tensor,
+                   CPU,
+                   ALL_LAYOUT,
+                   paddle::operators::SaveCombineTensorKernel,
+                   int,
+                   int64_t,
+                   float,
+                   double,
+                   phi::dtype::bfloat16) {}
+
+PD_REGISTER_KERNEL(save_combine_vocab,
+                   CPU,
+                   ALL_LAYOUT,
+                   paddle::operators::SaveCombineVocabKernel,
+                   int,
+                   int64_t,
+                   float,
+                   double,
+                   phi::dtype::bfloat16) {}
