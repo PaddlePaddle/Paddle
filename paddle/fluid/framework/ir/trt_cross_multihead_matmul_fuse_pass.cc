@@ -128,7 +128,6 @@ PDNode* TrtCrossMultiHeadMatmulPattern::operator()() {
       pattern->NewNode(reshape2_qkv_repr())->assert_is_op("reshape2");
   auto* reshape2_qkv_out_var = pattern->NewNode(reshape2_qkv_out_repr())
                                    ->assert_is_op_output("reshape2");
-  //   reshape2_qkv_out_var->assert_is_ops_input(mul_ops);
 
   // Second path to matmul
   auto* mul1 = pattern->NewNode(mul1_repr())->assert_is_ops(mul_ops);
@@ -365,16 +364,15 @@ int TrtCrossMultiHeadMatmulFusePass::BuildCrossFusion(
 
     int hidden_out = wq_tensor->dims()[1];
     int head_size = hidden_out / head_number;
-    if (abs(scale_attr - 1 / sqrt(static_cast<float>(head_size))) > 1e-5) {
+    if (abs(scale_attr - 1.0f / sqrt(static_cast<float>(head_size))) > 1e-5) {
       VLOG(3) << "scale of muilthead matmul do not fit the requirement of "
-                 "flash attention plugin, disable fusing.";
+                 "flash attention plugin, Stop fusing.";
       return;
     }
     VLOG(5) << "trt cross attention get wq_tensor name = " << mul0_w->Name()
             << "trt cross attention wk_tensor name = " << mul1_w->Name()
             << "trt cross attention wv_tensor name = " << mul2_w->Name();
 
-    // auto* wq_data = wq_tensor->mutable_data<float>(platform::CPUPlace());
     auto* wk_data = wk_tensor->mutable_data<float>(platform::CPUPlace());
     auto* wv_data = wv_tensor->mutable_data<float>(platform::CPUPlace());
     // combined_w_dims =
