@@ -95,25 +95,23 @@ CinnLaunchContext::CinnLaunchContext(const framework::ir::Graph& graph,
   auto& outer_varinfo = graph.Get<Name2VarInfoMap>(kMemOptVarInfoFromMainGraph);
   runtime_graph_->SetNotOwned<Name2VarInfoMap>(kMemOptVarInfoFromMainGraph,
                                                &outer_varinfo);
-  std::unordered_set<std::string>* skip_gc_vars =
-      graph.Has(kSkipGcVarNames)
-          ? &graph.Get<std::unordered_set<std::string>>(kSkipGcVarNames)
-          : nullptr;
+  // use kSkipGcVarNames attr of graph to initialize skip_gc_vars_
+  if (graph.Has(kSkipGcVarNames)) {
+    const auto& skip_gc_vars =
+        graph.Get<std::unordered_set<std::string>>(kSkipGcVarNames);
+    skip_gc_vars_.insert(skip_gc_vars.begin(), skip_gc_vars.end());
+  }
+
   // collect variables name list to be skipped in GC
   skip_eager_vars_.reserve(input_var_names.size() + output_var_names.size());
-  auto add_skip_var_fn =
-      [&outer_varinfo, &skip_gc_vars, this](const std::string& var_name) {
-        // if a var exists at the outer_varinfo map, that means it will be
-        // erased by the following eager_deletion_op of current cinn_launch op
-        if (!outer_varinfo.count(var_name)) {
-          skip_eager_vars_.emplace_back(var_name);
-        }
-        // collect skip_gc_vars_ for the runtime_graph_ by intersecting
-        // external(in/out) variables with the kSkipGcVarNames
-        if (skip_gc_vars && skip_gc_vars->count(var_name)) {
-          skip_gc_vars_.insert(var_name);
-        }
-      };
+  auto add_skip_var_fn = [&outer_varinfo, this](const std::string& var_name) {
+    // if a var exists at the outer_varinfo map, that means it will be
+    // erased by the following eager_deletion_op of current cinn_launch op
+    if (!outer_varinfo.count(var_name)) {
+      skip_eager_vars_.emplace_back(var_name);
+      skip_gc_vars_.insert(var_name);
+    }
+  };
   std::for_each(
       input_var_names.begin(), input_var_names.end(), add_skip_var_fn);
   std::for_each(
