@@ -639,7 +639,7 @@ def cmake_run(build_path):
                 key = option_key + ":FILEPATH"
                 print(key)
             elif option_key == 'PYTHON_INCLUDE_DIR':
-                key = key = option_key + ':PATH'
+                key = option_key + ':PATH'
                 print(key)
             else:
                 key = other_options[option_key]
@@ -703,7 +703,7 @@ def build_steps():
         os.remove(cmake_cache_file_path)
 
     CMAKE_GENERATOR = get_cmake_generator()
-    bool_ninja = CMAKE_GENERATOR == "Ninja"
+    bool_ninja = (CMAKE_GENERATOR == "Ninja")
     build_ninja_file_path = os.path.join(build_path, "build.ninja")
     if os.path.exists(cmake_cache_file_path) and not (
         bool_ninja and not os.path.exists(build_ninja_file_path)
