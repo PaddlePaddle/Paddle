@@ -29,20 +29,9 @@ class TrtConvertCastTest(TrtLayerAutoScanTest):
         attrs = [
             program_config.ops[i].attrs for i in range(len(program_config.ops))
         ]
-        if attrs[0]['in_dtype'] == 0:
-            return False
-        if attrs[0]['in_dtype'] in [4, 5] and attrs[0]['out_dtype'] == 4:
-            return False
-
-        out_dtype = [2, 4, 5]
-        ver = paddle_infer.get_trt_compile_version()
-        if ver[0] * 1000 + ver[1] * 100 + ver[2] * 10 > 8400:
-            out_dtype.insert(3, 0)
-
-        if (
-            attrs[0]['in_dtype'] not in [2, 4, 5]
-            or attrs[0]['out_dtype'] not in out_dtype
-        ):
+        if attrs[0]['in_dtype'] not in [0, 1, 2, 4, 5] or attrs[0][
+            'out_dtype'
+        ] not in [0, 1, 2, 4, 5]:
             return False
         return True
 
@@ -52,7 +41,9 @@ class TrtConvertCastTest(TrtLayerAutoScanTest):
 
         for in_dtype in [np.bool_, np.int32, np.float32, np.float64]:
             for out_dtype in [np.bool_, np.int32, np.float32, np.float64]:
-                self.out_dtype = out_dtype
+                self.has_bool_dtype = (in_dtype == np.bool_) or (
+                    out_dtype == np.bool_
+                )
                 dics = [
                     {
                         "in_dtype": convert_np_dtype_to_dtype_(in_dtype),
@@ -110,7 +101,7 @@ class TrtConvertCastTest(TrtLayerAutoScanTest):
             self.dynamic_shape.opt_input_shape = {}
 
         def generate_trt_nodes_num(attrs, dynamic_shape):
-            if not dynamic_shape and self.out_dtype == 0:
+            if not dynamic_shape and self.has_bool_dtype:
                 return 0, 4
             return 1, 2
 

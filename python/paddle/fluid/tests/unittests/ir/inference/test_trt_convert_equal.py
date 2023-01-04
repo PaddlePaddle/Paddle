@@ -107,8 +107,8 @@ class TrtConvertElementwiseTest_one_input_corner_case(TrtLayerAutoScanTest):
                     "input_data2": [1, 1, 4],
                 }
                 self.dynamic_shape.max_input_shape = {
-                    "input_data1": [4, 1, 256],
-                    "input_data2": [1, 1, 256],
+                    "input_data1": [4, 1, 32],
+                    "input_data2": [4, 1, 32],
                 }
                 self.dynamic_shape.opt_input_shape = {
                     "input_data1": [2, 1, 16],
@@ -120,8 +120,8 @@ class TrtConvertElementwiseTest_one_input_corner_case(TrtLayerAutoScanTest):
                     "input_data2": [1, 1, 4, 4],
                 }
                 self.dynamic_shape.max_input_shape = {
-                    "input_data1": [4, 1, 128, 256],
-                    "input_data2": [4, 1, 128, 256],
+                    "input_data1": [4, 1, 64, 32],
+                    "input_data2": [4, 1, 64, 32],
                 }
                 self.dynamic_shape.opt_input_shape = {
                     "input_data1": [2, 1, 32, 16],
@@ -138,7 +138,7 @@ class TrtConvertElementwiseTest_one_input_corner_case(TrtLayerAutoScanTest):
                 return 0, 5
             if self.dims == 1:
                 return 0, 3
-            return 1, 2
+            return 1, 3
 
         attrs = [
             program_config.ops[i].attrs for i in range(len(program_config.ops))
@@ -167,6 +167,7 @@ class TrtConvertElementwiseTest_one_input_corner_case(TrtLayerAutoScanTest):
         ), 1e-3
 
     def test(self):
+        self.trt_param.workspace_size = 1 << 20
         self.run_test()
 
 
