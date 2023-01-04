@@ -70,6 +70,12 @@ class TestMatmulTransposeReshapeMkldnnFusePass(PassAutoScanTest):
                 "transpose_X": transpose_X,
                 "transpose_Y": transpose_Y,
                 "alpha": alpha,
+                "fused_reshape_X": [],
+                "fused_reshape_Y": [],
+                "fused_transpose_X": [],
+                "fused_transpose_Y": [],
+                "fused_reshape_Out": [],
+                "fused_transpose_Out": [],
             },
         )
 
@@ -110,7 +116,7 @@ class TestMatmulTransposeReshapeMkldnnFusePass(PassAutoScanTest):
 
     def sample_predictor_configs(self, program_config):
         config = self.create_inference_config(use_mkldnn=True)
-        yield config, ["fused_matmul"], (1e-5, 1e-5)
+        yield config, ["matmul"], (1e-5, 1e-5)
 
     def test(self):
         self.run_and_statis(

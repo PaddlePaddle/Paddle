@@ -52,6 +52,12 @@ class TrtConvertMatmulTest_static(TrtLayerAutoScanTest):
                                 "transpose_X": trans_x,
                                 "transpose_Y": trans_y,
                                 "alpha": alpha,
+                                "fused_reshape_X": [],
+                                "fused_reshape_Y": [],
+                                "fused_transpose_X": [],
+                                "fused_transpose_Y": [],
+                                "fused_reshape_Out": [],
+                                "fused_transpose_Out": [],
                             }
                         ]
                         ops_config = [
@@ -137,6 +143,12 @@ class TrtConvertMatmulTest_dynamic(TrtLayerAutoScanTest):
                             "transpose_X": trans_x,
                             "transpose_Y": trans_y,
                             "alpha": alpha,
+                            "fused_reshape_X": [],
+                            "fused_reshape_Y": [],
+                            "fused_transpose_X": [],
+                            "fused_transpose_Y": [],
+                            "fused_reshape_Out": [],
+                            "fused_transpose_Out": [],
                         }
                     ]
                     ops_config = [
