@@ -513,8 +513,9 @@ void AnalyseClusterVariables(
       // but not any input node of out-graph.
       // And should not in skip gc var
       bool is_only_used_internal = !skip_gc_var_names.count(var_node->Name());
-      for (auto* next_op_node : var_node->outputs) {
-        is_only_used_internal &= (cluster.count(next_op_node) > 0);
+      for (size_t i = 0; i < var_node->outputs.size() && is_only_used_internal;
+           ++i) {
+        is_only_used_internal &= (cluster.count(var_node->outputs[i]) > 0);
       }
       if (is_only_used_internal) {
         cluster_internals->insert(var_node);
