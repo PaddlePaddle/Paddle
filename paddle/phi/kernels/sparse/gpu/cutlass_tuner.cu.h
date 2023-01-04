@@ -25,6 +25,7 @@
 #include "paddle/phi/core/kernel_factory.h"
 #include "paddle/phi/kernels/autotune/auto_tune_base.h"
 #include "paddle/phi/kernels/autotune/cache_base.h"
+#include "paddle/phi/kernels/sparse/gpu/gather_gemm_scatter.h"
 namespace phi {
 namespace sparse {
 struct CutlassCacheKey {
@@ -123,53 +124,6 @@ class CutlassAutoTuner
     });
     return instance_.get();
   }
-
-  template <typename Context, typename... Args>
-  void Run(const Context& ctx, const size_t key, Args&&... args) {
-    PADDLE_ENFORCE_GT(
-        kernels_.size(),
-        0,
-        phi::errors::InvalidArgument(
-            "kernel num must be greater than 0, now is %d", kernels_.size()));
-    is_init_ = true;
-
-    auto& cache = autotune::AutoTuneCache::Instance().Get(
-        autotune::AlgorithmType::kCutlass);
-    if (cache.Find(key)) {
-      auto best_idx = cache.Get(key);
-      kernels_[best_idx].Run(args...);
-    } else {
-      bool use_autotune = autotune::AutoTuneStatus::Instance().UseAutoTune();
-      // All avaliable kernels have ran while picking the best kernel,
-      // so there may be no need for another kernel run.
-      auto best_idx = PickBestKernel(ctx, args...);
-      cache.Set(key, best_idx);
-    }
-  }
-  template <typename Context, typename... Args>
-  size_t PickBestKernel(const Context& ctx, Args&&... args) {
-    std::lock_guard<std::mutex> lock(mutex_);
-    PADDLE_ENFORCE_GT(
-        kernels_.size(),
-        0,
-        phi::errors::InvalidArgument(
-            "kernel num must be greater than 0, now is %d", kernels_.size()));
-    size_t best_idx = 0;
-    float min_time = std::numeric_limits<float>::max();
-
-    // Time cost test estabulished in default stream.
-    for (int i = 0; i < kernels_.size(); ++i) {
-      auto time = RunAndMeasureKernel<Context>(ctx, i, args...);
-      if (time < min_time) {
-        min_time = time;
-        best_idx = i;
-      }
-    }
-    VLOG(3) << "best kernel idx is " << best_idx;
-    return best_idx;
-  }
-
- private:
 };
 size_t Conv3DKey(const int m, const int n, const int k) {
   return autotune::GetKey(m, n, k);
@@ -267,7 +221,7 @@ struct GatherGemmScatterSimple {
                   const int32_t* c_d_indices,
                   T const alpha,
                   T const beta) {
-      return false;
+    return false;
   }
 };
 
@@ -277,48 +231,80 @@ void GatherGemmScatterGPUKernelDriver(const phi::GPUContext& ctx,
                                       const T* const b,
                                       const T* const c,
                                       T* const d,
-                                      const int m,
-                                      const int n,
-                                      const int k,
+                                      const int& m,
+                                      const int& n,
+                                      const int& k,
                                       const int32_t* a_indices,
                                       const int32_t* b_indices,
                                       const int32_t* c_d_indices,
-                                      T const alpha,
-                                      T const beta) {
+                                      T alpha,
+                                      T beta) {
   bool ret = GatherGemmScatterSimple<T>::Impl(
       ctx, a, b, c, d, m, n, k, a_indices, b_indices, c_d_indices, alpha, beta);
 
   if (!ret) {
-      // we add two kernel for shape (M,N,K) = (*,32,32) here
-      auto* tuner = MakeCutlassTuner<T>(
-          launchKernel < float,
-          cutlass_tensorop_s1688gemm_64x64_16x3_nn_align4<GatherA,
-                                                          GatherB,
-                                                          ScatterD>);
-      tuner->AddCallBack(
-          launchKernel < float,
-          cutlass_tensorop_s1688f16gemm_64x64_16x10_nn_align4<GatherA,
-                                                              GatherB,
-                                                              ScatterD>);
+    // we add two kernel for shape (M,N,K) = (*,32,32) here
+#if 0
+    auto* tuner = MakeCutlassTuner<T>(
+        launchKernel<float, cutlass_tensorop_s1688gemm_64x64_16x3_nn_align4<>>);
+    tuner->AddCallBack(
+        launchKernel<float,
+                     cutlass_tensorop_s1688f16gemm_64x64_16x10_nn_align4<>>);
+#endif
+    auto* tuner = MakeCutlassTuner<T>(fp32_kernels[0]);
+    for (auto i = 1; i < fp32_kernels.size(); i++)
+      tuner->AddCallBack(fp32_kernels[i]);
 
-      size_t key = Conv3DKey(m, n, k);
+    size_t key = Conv3DKey(m, n, k);
 
-      tuner->Run(ctx,
-                 key,
-                 a,
-                 b,
-                 c,
-                 d,
-                 m,
-                 n,
-                 k,
-                 a_indices,
-                 b_indices,
-                 c_d_indices,
-                 alpha,
-                 beta);
+    tuner->CutlassRun(ctx,
+                      key,
+                      const_cast<const float*>(a),
+                      const_cast<const float*>(b),
+                      const_cast<const float*>(c),
+                      const_cast<float*>(d),
+                      const_cast<int&>(m),
+                      const_cast<int&>(n),
+                      const_cast<int&>(k),
+                      const_cast<const int32_t*>(a_indices),
+                      const_cast<const int32_t*>(b_indices),
+                      const_cast<const int32_t*>(c_d_indices),
+                      alpha,
+                      beta);
   }
 }
+
+#if 0
+void fuck(const phi::GPUContext&,
+          const float*,
+          const float*,
+          const float*,
+          float*,
+          int,
+          int,
+          int,
+          const signed int*,
+          const signed int*,
+          const signed int*,
+          float,
+          float);
+void fuck(const phi::GPUContext,
+          size_t,
+          const phi::GPUContext,
+          const float*,
+          const float*,
+          const float*,
+          float*,
+          int,
+          int,
+          int,
+          const int32_t*,
+          const int32_t*,
+          const int32_t*,
+          float,
+          float);
+#endif
+//            object type is: phi::autotune::AutoTuneBase<float, phi::autotune::KernelCallback<float, void, const phi::GPUContext &, const float *, const float *, const float *, float *, int, int, int, const signed int *, const signed int *, const signed int *, float, float>>
 
 }  // namespace sparse
 }  // namespace phi

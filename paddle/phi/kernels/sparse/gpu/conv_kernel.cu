@@ -155,7 +155,8 @@ void Conv3dCooGPUKernel(const GPUContext& dev_ctx,
       if constexpr (std::is_same<T, phi::dtype::float16>::value &&
                     std::is_same<IntT, int32_t>::value) {
         fp16_gather_gemm_scatter gather_gemm_scatter =
-            getBestFp16Kernel<true, false, true>(M, N, K);
+            // getBestFp16Kernel<true, false, true>(M, N, K);
+            getBestFp16Kernel(M, N, K);
         gather_gemm_scatter(
             dev_ctx,
             reinterpret_cast<const cutlass::half_t*>(
@@ -208,7 +209,8 @@ void Conv3dCooGPUKernel(const GPUContext& dev_ctx,
       if constexpr (std::is_same<T, double>::value &&
                     std::is_same<IntT, int32_t>::value) {
         fp64_gather_gemm_scatter gather_gemm_scatter =
-            getBestFp64Kernel<true, false, true>(M, N, K);
+            // getBestFp64Kernel<true, false, true>(M, N, K);
+            getBestFp64Kernel(M, N, K);
         gather_gemm_scatter(dev_ctx,
                             x.non_zero_elements().data<T>(),
                             tmp_kernel_ptr,

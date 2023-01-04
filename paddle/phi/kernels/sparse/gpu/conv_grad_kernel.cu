@@ -201,8 +201,11 @@ void Conv3dCooGradGPUKernel(const GPUContext& dev_ctx,
       if constexpr (std::is_same<T, float>::value &&
                     std::is_same<IntT, int32_t>::value) {
         fp32_gather_gemm_scatter d_kernel_fusion =
-            getBestFp32Kernel<true, true, false>(
-                in_channels, out_channels, counter_ptr[i], true, false);
+            // getBestFp32Kernel<true, true, false>(
+            getBestFp32Kernel(in_channels,
+                              out_channels,
+                              counter_ptr[i],
+                              dev_ctx.GetComputeCapability());
         d_kernel_fusion(dev_ctx,
                         x.values().data<T>(),
                         out_grad.values().data<T>(),
@@ -220,8 +223,11 @@ void Conv3dCooGradGPUKernel(const GPUContext& dev_ctx,
         // call gemm: d_x = out_grad * transpose(kernel)
         // (n, out_channels) * (out_channels, in_channels)
         fp32_gather_gemm_scatter d_x_fusion =
-            getBestFp32Kernel<true, false, true>(
-                counter_ptr[i], in_channels, out_channels, false, true);
+            // getBestFp32Kernel<true, false, true>(
+            getBestFp32Kernel(counter_ptr[i],
+                              in_channels,
+                              out_channels,
+                              dev_ctx.GetComputeCapability());
         d_x_fusion(dev_ctx,
                    out_grad.values().data<T>(),
                    tmp_kernel_ptr,

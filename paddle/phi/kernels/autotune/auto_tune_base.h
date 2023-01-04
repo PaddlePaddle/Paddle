@@ -16,6 +16,7 @@
 
 #include <type_traits>
 #include "glog/logging.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/kernels/autotune/gpu_timer.h"
 #include "paddle/phi/kernels/autotune/switch_autotune.h"
 
@@ -88,6 +89,68 @@ class AutoTuneBase {
       } else {
         kernels_[0].Run(args...);
       }
+    }
+  }
+
+  // template <typename Context, typename... Args>
+  template <typename Context>
+  void CutlassRun(const Context& ctx,
+                  const size_t key,
+                  const T* const a,
+                  const T* const b,
+                  const T* const c,
+                  T* const d,
+                  const int& m,
+                  const int& n,
+                  const int& k,
+                  const int32_t* a_indices,
+                  const int32_t* b_indices,
+                  const int32_t* c_d_indices,
+                  T alpha,
+                  T beta) {
+    PADDLE_ENFORCE_GT(
+        kernels_.size(),
+        0,
+        phi::errors::InvalidArgument(
+            "kernel num must be greater than 0, now is %d", kernels_.size()));
+    is_init_ = true;
+
+    auto& cache = autotune::AutoTuneCache::Instance().Get(
+        autotune::AlgorithmType::kCutlass);
+    if (cache.Find(key)) {
+      auto best_idx = cache.Get(key);
+      kernels_[best_idx].Run(ctx,
+                             a,
+                             b,
+                             c,
+                             d,
+                             m,
+                             n,
+                             k,
+                             a_indices,
+                             b_indices,
+                             c_d_indices,
+                             alpha,
+                             beta);
+    } else {
+      // All avaliable kernels have ran while picking the best kernel,
+      // so there may be no need for another kernel run.
+      auto best_idx = PickBestKernel(
+          ctx, ctx, a, b, c, d, m, n, k, a_indices, b_indices, c_d_indices, 0, 1);
+      cache.Set(key, best_idx);
+      kernels_[best_idx].Run(ctx,
+                             a,
+                             b,
+                             c,
+                             d,
+                             m,
+                             n,
+                             k,
+                             a_indices,
+                             b_indices,
+                             c_d_indices,
+                             alpha,
+                             beta);
     }
   }
 

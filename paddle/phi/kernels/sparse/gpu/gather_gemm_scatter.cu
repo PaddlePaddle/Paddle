@@ -21,172 +21,174 @@ fp16_gather_gemm_scatter getBestFp16Kernel(const int M,
                                            const int K) {
   if (K == 4 && N == 16) {
     return launchKernel<cutlass::half_t,
-                        cutlass_tensorop_h1688gemm_64x64_32x2_nn_align4::Gemm>;
+                        cutlass_tensorop_h1688gemm_64x64_32x2_nn_align4<>>;
   }
   if (K == 16 && N == 16) {
     return launchKernel<cutlass::half_t,
-                        cutlass_tensorop_h1688gemm_64x64_32x2_nn_align8::Gemm>;
+                        cutlass_tensorop_h1688gemm_64x64_32x2_nn_align8<>>;
   }
   if (K == 16 && N == 32) {
     return launchKernel<cutlass::half_t,
-                        cutlass_tensorop_h1688gemm_64x64_32x2_nn_align8::Gemm>;
+                        cutlass_tensorop_h1688gemm_64x64_32x2_nn_align8<>>;
   }
   if (K == 32 && N == 32) {
     return launchKernel<cutlass::half_t,
-                        cutlass_tensorop_h1688gemm_64x64_32x2_nn_align8::Gemm>;
+                        cutlass_tensorop_h1688gemm_64x64_32x2_nn_align8<>>;
   }
   if (K == 32 && N == 64) {
     return launchKernel<cutlass::half_t,
-                        cutlass_tensorop_h1688gemm_64x64_32x2_nn_align8::Gemm>;
+                        cutlass_tensorop_h1688gemm_64x64_32x2_nn_align8<>>;
   }
   if (K == 64 && N == 64) {
     if (M > 100000)
       launchKernel<
           cutlass::half_t,
-          cutlass_tensorop_f16_s1688gemm_f16_64x128_32x2_nn_align8::Gemm>;
+          cutlass_tensorop_f16_s1688gemm_f16_64x128_32x2_nn_align8<>>;
     if (M > 20000)
       launchKernel<
           cutlass::half_t,
-          cutlass_tensorop_f16_s1688gemm_f16_64x64_32x2_nn_align8::Gemm>;
+          cutlass_tensorop_f16_s1688gemm_f16_64x64_32x2_nn_align8<>>;
     if (M > 15000)
       return launchKernel<
           cutlass::half_t,
-          cutlass_tensorop_h1688gemm_128x64_32x2_nn_align8::Gemm>;
+          cutlass_tensorop_h1688gemm_128x64_32x2_nn_align8<>>;
     return launchKernel<cutlass::half_t,
-                        cutlass_tensorop_h1688gemm_64x64_32x2_nn_align8::Gemm>;
+                        cutlass_tensorop_h1688gemm_64x64_32x2_nn_align8<>>;
   }
   if (K == 128) {
     if (M >= 5000)
       return launchKernel<
           cutlass::half_t,
-          cutlass_tensorop_h1688gemm_64x64_32x2_nn_align8::Gemm>;
+          cutlass_tensorop_h1688gemm_64x64_32x2_nn_align8<>>;
     return launchKernel<cutlass::half_t,
-                        cutlass_tensorop_h16816gemm_64x64_64x5_nn_align8::Gemm>;
+                        cutlass_tensorop_h16816gemm_64x64_64x5_nn_align8<>>;
   }
   if (N == 128) {
     return launchKernel<cutlass::half_t,
-                        cutlass_tensorop_h1688gemm_64x64_32x2_nn_align8::Gemm>;
+                        cutlass_tensorop_h1688gemm_64x64_32x2_nn_align8<>>;
   }
   return launchKernel<cutlass::half_t,
-                      cutlass_tensorop_h1688gemm_64x64_32x2_nn_align4::Gemm>;
+                      cutlass_tensorop_h1688gemm_64x64_32x2_nn_align4<>>;
 }
 fp32_gather_gemm_scatter getBestFp32Kernel(const int M,
                                            const int N,
                                            const int K,
                                            const int SM) {
+#if 0
   if (SM == 75) {
     return launchKernel<
         float,
-        cutlass_tensorop_s1688gemm_f16_64x64_32x2_nn_align4::Gemm>;
+        cutlass_tensorop_s1688gemm_f16_64x64_32x2_nn_align4>;
   }
+#endif
   if (K == 4 && N == 16) {
     return launchKernel<
         float,
-        cutlass_tensorop_s1688f16gemm_64x64_16x10_nn_align4::Gemm>;
+        cutlass_tensorop_s1688f16gemm_64x64_16x10_nn_align4<>>;
   }
   if (K == 16 && N == 16) {
     return launchKernel<
         float,
-        cutlass_tensorop_s1688f16gemm_64x64_16x10_nn_align4::Gemm>;
+        cutlass_tensorop_s1688f16gemm_64x64_16x10_nn_align4<>>;
   }
   if (K == 16 && N == 32) {
     if (M >= 10000)
       return launchKernel<
           float,
-          cutlass_tensorop_s1688gemm_64x64_16x3_nn_align4::Gemm>;
+          cutlass_tensorop_s1688gemm_64x64_16x3_nn_align4<>>;
     return launchKernel<
         float,
-        cutlass_tensorop_s1688f16gemm_64x64_16x10_nn_align4::Gemm>;
+        cutlass_tensorop_s1688f16gemm_64x64_16x10_nn_align4<>>;
   }
   if (K == 32 && N == 32) {
     if (M >= 10000)
       return launchKernel<
           float,
-          cutlass_tensorop_s1688gemm_64x64_16x3_nn_align4::Gemm>;
+          cutlass_tensorop_s1688gemm_64x64_16x3_nn_align4<>>;
     return launchKernel<
         float,
-        cutlass_tensorop_s1688f16gemm_64x64_16x10_nn_align4::Gemm>;
+        cutlass_tensorop_s1688f16gemm_64x64_16x10_nn_align4<>>;
   }
   if (K == 32 && N == 64) {
     if (M >= 10000)
       return launchKernel<
           float,
-          cutlass_tensorop_s1688gemm_64x64_16x3_nn_align4::Gemm>;
+          cutlass_tensorop_s1688gemm_64x64_16x3_nn_align4<>>;
     return launchKernel<
         float,
-        cutlass_tensorop_s1688f16gemm_64x64_16x10_nn_align4::Gemm>;
+        cutlass_tensorop_s1688f16gemm_64x64_16x10_nn_align4<>>;
   }
   if (K == 64 && N == 64) {
     if (M >= 15000)
       return launchKernel<
           float,
-          cutlass_tensorop_s1688gemm_64x64_16x3_nn_align4::Gemm>;
+          cutlass_tensorop_s1688gemm_64x64_16x3_nn_align4<>>;
     return launchKernel<
         float,
-        cutlass_tensorop_s1688f16gemm_64x64_16x10_nn_align4::Gemm>;
+        cutlass_tensorop_s1688f16gemm_64x64_16x10_nn_align4<>>;
   }
   if (K == 128) {
     if (M >= 100000)
       return launchKernel<
           float,
-          cutlass_tensorop_s1688f16gemm_128x128_16x3_nn_align4::Gemm>;
+          cutlass_tensorop_s1688f16gemm_128x128_16x3_nn_align4<>>;
     if (M >= 5000)
       return launchKernel<
           float,
-          cutlass_tensorop_s1688f16gemm_256x64_16x4_nn_align4::Gemm>;
+          cutlass_tensorop_s1688f16gemm_256x64_16x4_nn_align4<>>;
     return launchKernel<
         float,
-        cutlass_tensorop_s1688tf32gemm_256x128_16x3_nn_align4::Gemm>;
+        cutlass_tensorop_s1688tf32gemm_256x128_16x3_nn_align4<>>;
   }
   if (N == 128) {
     if (M >= 100000)
       return launchKernel<
           float,
-          cutlass_tensorop_s1688tf32gemm_256x128_16x3_nn_align4::Gemm>;
+          cutlass_tensorop_s1688tf32gemm_256x128_16x3_nn_align4<>>;
     if (M >= 5000)
       return launchKernel<
           float,
-          cutlass_tensorop_s1688f16gemm_128x128_16x3_nn_align4::Gemm>;
+          cutlass_tensorop_s1688f16gemm_128x128_16x3_nn_align4<>>;
     return launchKernel<
         float,
-        cutlass_tensorop_s1688f16gemm_64x128_16x6_nn_align4::Gemm>;
+        cutlass_tensorop_s1688f16gemm_64x128_16x6_nn_align4<>>;
   }
   return launchKernel<
       float,
-      cutlass_tensorop_s1688f16gemm_64x64_16x10_nn_align4::Gemm>;
+      cutlass_tensorop_s1688f16gemm_64x64_16x10_nn_align4<>>;
 }
 fp64_gather_gemm_scatter getBestFp64Kernel(const int M,
                                            const int N,
                                            const int K) {
   if (K == 4 && N == 16) {
     return launchKernel<double,
-                        cutlass_tensorop_d884gemm_16x32_16x5_nn_align1::Gemm>;
+                        cutlass_tensorop_d884gemm_16x32_16x5_nn_align1<>>;
   }
   if (K == 16 && N == 16) {
     if (M >= 10000)
       return launchKernel<double,
-                          cutlass_tensorop_d884gemm_32x16_16x5_nn_align1::Gemm>;
+                          cutlass_tensorop_d884gemm_32x16_16x5_nn_align1<>>;
     return launchKernel<double,
-                        cutlass_tensorop_d884gemm_16x32_16x5_nn_align1::Gemm>;
+                        cutlass_tensorop_d884gemm_16x32_16x5_nn_align1<>>;
   }
   if (K == 16 && N == 32) {
     return launchKernel<double,
-                        cutlass_tensorop_d884gemm_32x16_16x5_nn_align1::Gemm>;
+                        cutlass_tensorop_d884gemm_32x16_16x5_nn_align1<>>;
   }
   if (K == 32 && N == 32) {
     return launchKernel<double,
-                        cutlass_tensorop_d884gemm_16x32_16x5_nn_align1::Gemm>;
+                        cutlass_tensorop_d884gemm_16x32_16x5_nn_align1<>>;
   }
   if (K == 32 && N == 64) {
     return launchKernel<double,
-                        cutlass_tensorop_d884gemm_32x16_16x5_nn_align1::Gemm>;
+                        cutlass_tensorop_d884gemm_32x16_16x5_nn_align1<>>;
   }
   if (K == 64 && N == 64) {
     return launchKernel<double,
-                        cutlass_tensorop_d884gemm_32x16_16x5_nn_align1::Gemm>;
+                        cutlass_tensorop_d884gemm_32x16_16x5_nn_align1<>>;
   }
   return launchKernel<double,
-                      cutlass_tensorop_d884gemm_32x16_16x5_nn_align1::Gemm>;
+                      cutlass_tensorop_d884gemm_32x16_16x5_nn_align1<>>;
 }
 
 }  // namespace sparse
