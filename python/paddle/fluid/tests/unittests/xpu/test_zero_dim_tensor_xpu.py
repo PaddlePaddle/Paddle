@@ -659,10 +659,14 @@ class TestSundryAPI(unittest.TestCase):
 
         self.assertEqual(out1.shape, [])
         self.assertEqual(out2.shape, [])
+        self.assertEqual(out1.numpy(), x1.numpy())
+        self.assertEqual(out2.numpy(), x2.numpy())
         self.assertEqual(out1.grad.shape, [])
         self.assertEqual(out2.grad.shape, [])
         self.assertEqual(x1.grad.shape, [])
         self.assertEqual(x2.grad.shape, [])
+        self.assertEqual(x1.grad.numpy(), 1)
+        self.assertEqual(x2.grad.numpy(), 1)
 
     def test_argsort(self):
         x1 = paddle.rand([])
@@ -677,10 +681,14 @@ class TestSundryAPI(unittest.TestCase):
 
         self.assertEqual(out1.shape, [])
         self.assertEqual(out2.shape, [])
+        self.assertEqual(out1.numpy(), 0)
+        self.assertEqual(out2.numpy(), 0)
         self.assertEqual(out1.grad.shape, [])
         self.assertEqual(out2.grad.shape, [])
         self.assertEqual(x1.grad.shape, [])
         self.assertEqual(x2.grad.shape, [])
+        self.assertEqual(x1.grad.numpy(), 0)
+        self.assertEqual(x2.grad.numpy(), 0)
 
 
 # Use to test API whose zero-dim input tensors don't have grad and not need to test backward in OpTest.

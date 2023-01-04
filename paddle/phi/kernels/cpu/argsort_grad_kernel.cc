@@ -18,7 +18,6 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
-#include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/transpose_kernel.h"
 
 namespace phi {
@@ -68,7 +67,7 @@ void ArgsortGradKernel(const Context& dev_ctx,
   if (out_grad.numel() == 0) return;
 
   if (rank == 0) {
-    phi::funcs::set_constant(dev_ctx, in_grad, 1.0);
+    phi::Copy<Context>(dev_ctx, out_grad, dev_ctx.GetPlace(), false, in_grad);
     return;
   }
 

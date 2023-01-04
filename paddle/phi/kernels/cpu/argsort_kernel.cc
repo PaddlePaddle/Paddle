@@ -83,6 +83,7 @@ void ArgsortKernel(const Context& dev_ctx,
   // For 0D Tensor
   if (rank == 0) {
     phi::Copy<Context>(dev_ctx, input, dev_ctx.GetPlace(), false, output);
+    dev_ctx.template Alloc<int64_t>(indices);
     phi::funcs::set_constant(dev_ctx, indices, 0);
     return;
   }
