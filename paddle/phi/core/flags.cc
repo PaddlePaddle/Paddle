@@ -1165,3 +1165,16 @@ PADDLE_DEFINE_EXPORTED_bool(enable_cudnn_frontend, false, "");
  */
 PADDLE_DEFINE_EXPORTED_int32(cudnn_cache_saturation_count, 1, "");
 #endif  // PADDLE_WITH_CUDNN_FRONTEND
+
+/**
+ * CI related FLAG
+ * Name: trt_ibuilder_cache
+ * Since Version: 2.5.0
+ * Value Range: bool, default=false
+ * Example:
+ * Note: If True, a persistent IBuilder is added to avoid TensorRT unload/reload
+ * kernels.
+ */
+PADDLE_DEFINE_EXPORTED_bool(trt_ibuilder_cache,
+                            false,
+                            "Add a persistent ibuilder.");
