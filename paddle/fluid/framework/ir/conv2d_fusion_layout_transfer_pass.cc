@@ -143,10 +143,16 @@ void Conv2dFusionLayoutTransferPass::ApplyImpl(ir::Graph *graph) const {
       static_cast<phi::DataType>(Get<int>("model_precision")) ==
           phi::DataType::FLOAT16 ||
       Get<bool>("enable_gpu_mixed");
-  bool cutlass_enable = false;
+  bool cutlass_enable = Get<bool>("use_cutlass");
 
 #ifdef PADDLE_WITH_CUTLASS
-  cutlass_enable = true;
+  const auto &prop = platform::GetDeviceProperties(Get<int>("gpu_device_id"));
+  int sm_version = prop.major * 10 + prop.minor;
+  // Now we only implement cutlass kernel on SM75.
+  if (sm_version == 75) {
+  } else {
+    cutlass_enable = false;
+  }
 #endif
 
   if (!(is_fp16_precision && cutlass_enable)) return;
@@ -184,10 +190,21 @@ void Conv2dFusionLayoutTransferPass::ApplyImpl(ir::Graph *graph) const {
     auto filter_names = op_node->Op()->Input("Filter");
     auto act_type = op_node->Op()->GetAttrIfExists<std::string>("activation");
     constexpr int CUTLASS_NHWC_ALIGNMENT = 8;
-    std::unordered_set<std::string> cutlass_act_set = {
+    // conv2d_fusion has two forms: conv + bias + act, conv + bias +
+    // elmentwise_add + act.
+    std::unordered_set<std::string> cutlass_cba_act_set = {
         "relu", "swish", "identity", "leaky_relu"};
-    if (!cutlass_act_set.count(act_type)) {
-      return false;
+    std::unordered_set<std::string> cutlass_cbaa_act_set = {"relu"};
+    bool is_residual = op_node->Op()->Input("ResidualData").size() >= 1UL;
+
+    if (is_residual) {
+      if (!cutlass_cbaa_act_set.count(act_type)) {
+        return false;
+      }
+    } else {
+      if (!cutlass_cba_act_set.count(act_type)) {
+        return false;
+      }
     }
 
     // If filter's channel is not multiple of 8, conv2d_fusion not run at nhwc.

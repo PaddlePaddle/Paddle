@@ -68,11 +68,10 @@ class DequantizeMaxAbsOp : public framework::OperatorWithKernel {
     ctx->ShareLoD("X", /*->*/ "Out");
   }
 
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
-    auto type = framework::OpKernelType(data_type, ctx.device_context());
-    return type;
+    return phi::KernelKey(data_type, ctx.device_context().GetPlace());
   }
 };
 
