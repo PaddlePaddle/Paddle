@@ -145,13 +145,13 @@ int32_t GraphBrpcService::add_graph_node(Table *table,
 
   int idx_ = std::stoi(request.params(0).c_str());
   size_t node_num = request.params(1).size() / sizeof(int64_t);
-  uint64_t *node_data =
+  const uint64_t *node_data =
       reinterpret_cast<const uint64_t *>(request.params(1).c_str());
   std::vector<uint64_t> node_ids(node_data, node_data + node_num);
   std::vector<bool> is_weighted_list;
   if (request.params_size() == 3) {
     size_t weight_list_size = request.params(2).size() / sizeof(bool);
-    bool *is_weighted_buffer =
+    const bool *is_weighted_buffer =
         reinterpret_cast<const bool *>(request.params(2).c_str());
     is_weighted_list = std::vector<bool>(is_weighted_buffer,
                                          is_weighted_buffer + weight_list_size);
@@ -182,7 +182,7 @@ int32_t GraphBrpcService::remove_graph_node(Table *table,
   }
   int idx_ = std::stoi(request.params(0).c_str());
   size_t node_num = request.params(1).size() / sizeof(uint64_t);
-  uint64_t *node_data =
+  const uint64_t *node_data =
       reinterpret_cast<const uint64_t *>(request.params(1).c_str());
   std::vector<uint64_t> node_ids(node_data, node_data + node_num);
 
@@ -408,7 +408,7 @@ int32_t GraphBrpcService::graph_random_sample_neighbors(
   }
   int idx_ = std::stoi(request.params(0).c_str());
   size_t node_num = request.params(1).size() / sizeof(uint64_t);
-  uint64_t *node_data =
+  const uint64_t *node_data =
       reinterpret_cast<const uint64_t *>(request.params(1).c_str());
   int sample_size = std::stoi(request.params(2).c_str());
   bool need_weight = std::stoi(request.params(3).c_str());
@@ -461,7 +461,7 @@ int32_t GraphBrpcService::graph_get_node_feat(Table *table,
   }
   int idx_ = std::stoi(request.params(0).c_str());
   size_t node_num = request.params(1).size() / sizeof(uint64_t);
-  uint64_t *node_data =
+  const uint64_t *node_data =
       reinterpret_cast<const uint64_t *>(request.params(1).c_str());
   std::vector<uint64_t> node_ids(node_data, node_data + node_num);
 
@@ -502,7 +502,7 @@ int32_t GraphBrpcService::sample_neighbors_across_multi_servers(
 
   int idx_ = std::stoi(request.params(0).c_str());
   size_t node_num = request.params(1).size() / sizeof(uint64_t);
-  uint64_t *node_data =
+  const uint64_t *node_data =
       reinterpret_cast<const uint64_t *>(request.params(1).c_str());
   int sample_size = std::stoi(request.params(2).c_str());
   bool need_weight = std::stoi(request.params(3).c_str());
@@ -523,9 +523,9 @@ int32_t GraphBrpcService::sample_neighbors_across_multi_servers(
   if (server2request[rank] != -1) {
     auto pos = server2request[rank];
     std::swap(request2server[pos],
-              request2server[reinterpret_cast<int>(request2server.size()) - 1]);
+              request2server[static_cast<int>(request2server.size()) - 1]);
     server2request[request2server[pos]] = pos;
-    server2request[request2server[reinterpret_cast<int>(request2server.size()) -
+    server2request[request2server[static_cast<int>(request2server.size()) -
                                   1]] = request2server.size() - 1;
   }
   size_t request_call_num = request2server.size();
