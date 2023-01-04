@@ -3825,9 +3825,6 @@ function main() {
       test_cicheck_py37)
         run_linux_cpu_test ${PYTHON_ABI:-""} ${PROC_RUN:-1}
         ;;
-      gpu_cicheck_py35)
-        parallel_test
-        ;;
       build_gpubox)
         run_setup ${PYTHON_ABI:-""} install
         ;;
@@ -3859,10 +3856,6 @@ function main() {
         cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
         parallel_test
         check_coverage
-        ;;
-      reuse_so_cicheck_py35)
-        reuse_so_cache
-        parallel_test
         ;;
       cmake_gen)
         cmake_gen ${PYTHON_ABI:-""}
