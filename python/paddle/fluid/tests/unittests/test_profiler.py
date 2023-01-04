@@ -312,7 +312,7 @@ class TestFLOPSAPI(unittest.TestCase):
                 {
                     'X': [[12, 12, 12]],
                 },
-                {'dim': [[]]},
+                {'dim': []},
             )
             == 12 * 12 * 12
         )
