@@ -107,7 +107,7 @@ XPUOpMap& get_kl2_ops() {
                      phi::DataType::INT32})},
       {"check_finite_and_unscale",
        XPUKernelSet({phi::DataType::FLOAT32, phi::DataType::FLOAT16})},
-      {"clip", XPUKernelSet({phi::DataType::FLOAT32})},
+      {"clip", XPUKernelSet({phi::DataType::FLOAT32, phi::DataType::INT32})},
       {"clip_by_norm", XPUKernelSet({phi::DataType::FLOAT32})},
       {"coalesce_tensor",
        XPUKernelSet({phi::DataType::FLOAT32, phi::DataType::FLOAT16})},
