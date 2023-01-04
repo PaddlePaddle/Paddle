@@ -32,7 +32,7 @@ paddle.enable_static()
 def run_pserver(use_cuda, sync_mode, ip, port, trainers, trainer_id):
     remove_ps_flag(os.getpid())
     x = fluid.layers.data(name='x', shape=[1], dtype='float32')
-    y_predict = fluid.layers.fc(input=x, size=1, act=None)
+    y_predict = paddle.static.nn.fc(x, size=1, activation=None)
     y = fluid.layers.data(name='y', shape=[1], dtype='float32')
 
     # loss function
@@ -69,7 +69,7 @@ def run_pserver_with_empty_block(
 ):
     remove_ps_flag(os.getpid())
     x = fluid.layers.data(name='x', shape=[1], dtype='float32')
-    y_predict = fluid.layers.fc(input=x, size=1, act=None, bias_attr=False)
+    y_predict = paddle.static.nn.fc(x, size=1, bias_attr=False)
     y = fluid.layers.data(name='y', shape=[1], dtype='float32')
 
     # loss function

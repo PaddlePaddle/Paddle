@@ -170,10 +170,10 @@ void FusionLSTMOp::InferShape(framework::InferShapeContext* ctx) const {
   ctx->ShareLoD("X", "XX");
 }
 
-framework::OpKernelType FusionLSTMOp::GetExpectedKernelType(
+phi::KernelKey FusionLSTMOp::GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const {
   auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
-  return framework::OpKernelType(data_type, ctx.GetPlace());
+  return phi::KernelKey(data_type, ctx.GetPlace());
 }
 
 void FusionLSTMOpMaker::Make() {

@@ -788,9 +788,14 @@ class TestAdamOptimizer(unittest.TestCase):
                 sum = paddle.add(a, b)
                 z = paddle.pow(sum, 2.0)
 
-                fc_1 = fluid.layers.fc(input=z, size=2, param_attr=weight_attr1)
-                prediction = fluid.layers.fc(
-                    input=fc_1, size=2, param_attr=weight_attr2, act='softmax'
+                fc_1 = paddle.static.nn.fc(
+                    x=z, size=2, weight_attr=weight_attr1
+                )
+                prediction = paddle.static.nn.fc(
+                    x=fc_1,
+                    size=2,
+                    weight_attr=weight_attr2,
+                    activation='softmax',
                 )
 
                 cost = paddle.nn.functional.cross_entropy(
@@ -936,9 +941,7 @@ class TestAdamOptimizer(unittest.TestCase):
         with fluid.program_guard(main):
             x = fluid.data(name='x', shape=[None, 13], dtype='float32')
             y = fluid.data(name='y', shape=[None, 1], dtype='float32')
-            y_predict = fluid.layers.fc(
-                input=x, size=1, act=None, param_attr=weight_attr
-            )
+            y_predict = paddle.static.nn.fc(x, size=1, weight_attr=weight_attr)
             cost = paddle.nn.functional.square_error_cost(
                 input=y_predict, label=y
             )
@@ -970,8 +973,8 @@ class TestAdamOptimizer(unittest.TestCase):
         sum = paddle.add(a, b)
         z = paddle.pow(sum, 2.0)
 
-        fc_1 = fluid.layers.fc(input=z, size=128)
-        prediction = fluid.layers.fc(input=fc_1, size=2, act='softmax')
+        fc_1 = paddle.static.nn.fc(x=z, size=128)
+        prediction = paddle.static.nn.fc(x=fc_1, size=2, activation='softmax')
 
         cost = paddle.nn.functional.cross_entropy(
             input=prediction, label=label, reduction='none', use_softmax=False
@@ -998,7 +1001,7 @@ class TestAdamOptimizer(unittest.TestCase):
         linear = paddle.nn.Linear(10, 10)
         b = linear(a)
         state_dict = linear.state_dict()
-        fluid.save_dygraph(state_dict, "paddle_dy")
+        paddle.save(state_dict, "paddle_dy.pdparams")
 
         scheduler = paddle.optimizer.lr.NoamDecay(
             d_model=0.01, warmup_steps=100, verbose=True
@@ -1010,8 +1013,9 @@ class TestAdamOptimizer(unittest.TestCase):
         )
         adam.minimize(b)
         state_dict = adam.state_dict()
-        fluid.save_dygraph(state_dict, "paddle_dy")
-        para_state_dict, opt_state_dict = fluid.load_dygraph("paddle_dy")
+        paddle.save(state_dict, "paddle_dy.pdopt")
+        para_state_dict = paddle.load("paddle_dy.pdparams")
+        opt_state_dict = paddle.load("paddle_dy.pdopt")
         adam.set_state_dict(opt_state_dict)
 
         paddle.enable_static()
@@ -1026,7 +1030,7 @@ class TestAdamOptimizer(unittest.TestCase):
                 linear = paddle.nn.Linear(10, 10)
                 b = linear(a)
                 state_dict = linear.state_dict()
-                fluid.save_dygraph(state_dict, "paddle_dy")
+                paddle.save(state_dict, "paddle_dy.pdparams")
 
                 scheduler = paddle.optimizer.lr.NoamDecay(
                     d_model=0.01, warmup_steps=100, verbose=True
@@ -1042,8 +1046,9 @@ class TestAdamOptimizer(unittest.TestCase):
         adam = get_opt('float32', [10, 10])
 
         state_dict = adam.state_dict()
-        fluid.save_dygraph(state_dict, "paddle_dy")
-        para_state_dict, opt_state_dict = fluid.load_dygraph("paddle_dy")
+        paddle.save(state_dict, "paddle_dy.pdopt")
+        para_state_dict = paddle.load("paddle_dy.pdparams")
+        opt_state_dict = paddle.load("paddle_dy.pdopt")
         adam.set_state_dict(opt_state_dict)
 
         adam2 = get_opt('float64', [10, 10])  # dtype not match

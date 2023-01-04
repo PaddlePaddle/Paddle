@@ -106,8 +106,7 @@ file(
   "fusion/gpu/*.cu")
 
 if(WITH_CUTLASS)
-  file(GLOB cutlass_cu "fusion/cutlass/default_moe_fc_traits.h"
-       "fusion/cutlass/linear_combination_ft_gelu.h" "fusion/cutlass/moe*")
+  file(GLOB cutlass_cu "fusion/cutlass/conv2d/*.cu" "fusion/cutlass/*.cu")
   list(APPEND kernel_cu ${cutlass_cu})
 endif()
 
