@@ -545,6 +545,10 @@ int MultiHeadMatmulRoformerFusePass::BuildFusion(Graph* graph,
                           Node* reshape2_qkv_out,
                           Node* scale,
                           Node* scale_out,
+			  Node* softmax_qk,
+                          Node* eltadd0,
+                          Node* eltadd1,
+                          Node* eltadd2,
                           Node* matmul_qk,
 			  Node* reshape2_qkv) {
     auto scale_attr = PADDLE_GET_CONST(float, scale->Op()->GetAttr("scale"));
@@ -870,6 +874,10 @@ int MultiHeadMatmulRoformerFusePass::BuildFusion(Graph* graph,
                  reshape2_qkv_out,
                  scale,
                  scale_out,
+		 Node* softmax_qk,
+                 Node* eltadd0,
+                 Node* eltadd1,
+                 Node* eltadd2,
                  matmul_qk,
 		 reshape2_qkv);
 
