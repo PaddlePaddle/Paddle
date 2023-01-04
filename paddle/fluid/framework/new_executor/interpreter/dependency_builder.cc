@@ -77,6 +77,8 @@ const std::map<size_t, std::set<size_t>>& DependencyBuilder::Build(
     AddDependencyForSequentialRun();
   }
 
+  AddDependencyForCoalesceTensorOp();
+
   if (FLAGS_add_dependency_for_communication_op) {
     AddDependencyForCommunicationOp();
   }
