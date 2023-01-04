@@ -129,7 +129,7 @@ TEST(DDim, Hash) {
   std::size_t h;
   phi::DDim ddim = phi::make_ddim({2, 3, 4});
   h = std::hash<phi::DDim>()(ddim);
-  EXPECT_EQ(h, 0xa16fb2b2967);
+  EXPECT_EQ(h, 0xa16fb2b2967ul);
 }
 
 }  // namespace tests
