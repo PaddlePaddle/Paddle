@@ -202,6 +202,15 @@ class FusedAttentionOpKernel : public framework::OpKernel<T> {
     auto *out_linear_out_data = dev_ctx.template Alloc<T>(
         out_linear_out, out_linear_out->numel() * sizeof(T));
 
+    // get data ptr for bias+dropout+residual+layernorm
+    auto *dropout_mask_out_data =
+        has_dropout
+            ? dev_ctx.template Alloc<uint8_t>(
+                  dropout_mask_out, dropout_mask_out->numel() * sizeof(uint8_t))
+            : nullptr;
+    auto *final_out_data =
+        dev_ctx.template Alloc<T>(out, out->numel() * sizeof(T));
+
     int batch_size = input_x_dims[0];
     int max_seq_len = input_x_dims[1];
     int dim_embed = input_x_dims[2];
@@ -216,15 +225,6 @@ class FusedAttentionOpKernel : public framework::OpKernel<T> {
       num_head = num_heads;
       dim_head = dim_embed / num_head;
     }
-
-    // get data ptr for bias+dropout+residual+layernorm
-    auto *dropout_mask_out_data =
-        has_dropout
-            ? dev_ctx.template Alloc<uint8_t>(
-                  dropout_mask_out, dropout_mask_out->numel() * sizeof(uint8_t))
-            : nullptr;
-    auto *final_out_data =
-        dev_ctx.template Alloc<T>(out, out->numel() * sizeof(T));
 
     int bsz_seq = batch_size * max_seq_len;
     int hidden_size = num_head * dim_head;
@@ -306,10 +306,13 @@ class FusedAttentionOpKernel : public framework::OpKernel<T> {
       qkv_compute.ComputeForward(
           qkv_weight, input_x, qkv_bias, qkv_out, qkv_bias_out);
     }
+
     if (transpose_qkv_wb) {
+      // resize the output for fmha compute
       qkv_out->Resize({batch_size, max_seq_len, 3, num_head, dim_head});
       qkv_bias_out->Resize({batch_size, max_seq_len, 3, num_head, dim_head});
     }
+
     if (qkv_bias == nullptr) {
       fmha_ref_compute.ComputeForward(*qkv_out,
                                       cache_kv,
@@ -336,6 +339,12 @@ class FusedAttentionOpKernel : public framework::OpKernel<T> {
                                       attn_dropout_out,
                                       qktv_out,
                                       fmha_out);
+    }
+
+    if (transpose_qkv_wb) {
+      // resize the output back to make the shape compatible with infer shape
+      qkv_out->Resize({batch_size, max_seq_len, 3 * hidden_size});
+      qkv_bias_out->Resize({batch_size, max_seq_len, 3 * hidden_size});
     }
 
     // fmha_out: [batch_size, seq_len, num_head, head_dim]
@@ -685,6 +694,15 @@ class FusedAttentionGradKernel : public framework::OpKernel<T> {
                                        d_fmha_out,
                                        d_out_linear_weight,
                                        nullptr);
+
+    if (transpose_qkv_wb) {
+      if (compute_qkv_bias) {
+        d_qkv_bias_out->Resize(
+            {batch_size, max_seq_len, 3, num_head, dim_head});
+      } else {
+        d_qkv_out->Resize({batch_size, max_seq_len, 3, num_head, dim_head});
+      }
+    }
 
     if (qkv_bias != nullptr) {
       fmha_ref_compute.ComputeBackward(*transpose_out_2,
