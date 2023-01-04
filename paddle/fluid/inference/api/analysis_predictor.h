@@ -109,7 +109,7 @@ class AnalysisPredictor : public PaddlePredictor {
       // negative sharing_identifier directly. In the future, this may affect
       // the meaning of negative predictor id.
       predictor_id_ = -trt_identifier;
-      LOG(WARNING)
+      LOG_FIRST_N(WARNING, 1)
           << "Since the engine context memory of multiple predictors "
              "is enabled in Paddle-TRT, we set the id of current predictor to "
              "negative sharing_identifier you specified.";
