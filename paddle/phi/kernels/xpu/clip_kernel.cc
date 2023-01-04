@@ -29,12 +29,12 @@ void ClipKernel(const Context& dev_ctx,
   using XPUDataType = typename XPUTypeTrait<T>::Type;
   auto x_data = reinterpret_cast<const XPUDataType*>(x.data<T>());
   auto out_data = reinterpret_cast<XPUDataType*>(out->data<T>());
-  int r = xpu::clip_v2(dev_ctx.x_context(),
-                       x_data,
-                       out_data,
-                       x.numel(),
-                       min.to<float>(),
-                       max.to<float>());
+  int r = xpu::clip(dev_ctx.x_context(),
+                    x_data,
+                    out_data,
+                    x.numel(),
+                    min.to<T>(),
+                    max.to<T>());
 
   PADDLE_ENFORCE_EQ(r,
                     XPU_SUCCESS,
