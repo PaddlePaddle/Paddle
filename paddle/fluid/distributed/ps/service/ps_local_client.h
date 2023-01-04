@@ -33,18 +33,18 @@ class PsLocalClient : public PSClient {
   }
 
   ::std::future<int32_t> Shrink(uint32_t table_id,
-                                        const std::string threshold) override;
+                                const std::string threshold) override;
   ::std::future<int32_t> Load(const std::string& epoch,
-                                      const std::string& mode) override;
+                              const std::string& mode) override;
   ::std::future<int32_t> Load(uint32_t table_id,
-                                      const std::string& epoch,
-                                      const std::string& mode) override;
+                              const std::string& epoch,
+                              const std::string& mode) override;
 
   ::std::future<int32_t> Save(const std::string& epoch,
-                                      const std::string& mode) override;
+                              const std::string& mode) override;
   ::std::future<int32_t> Save(uint32_t table_id,
-                                      const std::string& epoch,
-                                      const std::string& mode) override;
+                              const std::string& epoch,
+                              const std::string& mode) override;
 
   ::std::future<int32_t> Clear() override;
   ::std::future<int32_t> Clear(uint32_t table_id) override;
@@ -147,8 +147,9 @@ class PsLocalClient : public PSClient {
     return 0;
   }
 
-  ::std::future<int32_t> SendClient2ClientMsg(
-      int msg_type, int to_client_id, const std::string& msg) override {
+  ::std::future<int32_t> SendClient2ClientMsg(int msg_type,
+                                              int to_client_id,
+                                              const std::string& msg) override {
     std::promise<int32_t> prom;
     std::future<int32_t> fut = prom.get_future();
     prom.set_value(0);
@@ -158,24 +159,22 @@ class PsLocalClient : public PSClient {
   virtual size_t GetServerNums() { return 1; }
 
   std::future<int32_t> PushDenseRawGradient(int table_id,
-                                                    float* total_send_data,
-                                                    size_t total_send_data_size,
-                                                    void* callback) override;
+                                            float* total_send_data,
+                                            size_t total_send_data_size,
+                                            void* callback) override;
 
-  std::future<int32_t> PushSparseRawGradient(
-      size_t table_id,
-      const uint64_t* keys,
-      const float** update_values,
-      size_t num,
-      void* callback) override;
+  std::future<int32_t> PushSparseRawGradient(size_t table_id,
+                                             const uint64_t* keys,
+                                             const float** update_values,
+                                             size_t num,
+                                             void* callback) override;
 
-  std::future<int32_t> PushSparseRawGradientPartial(
-      size_t table_id,
-      const uint64_t* keys,
-      const float** update_values,
-      uint32_t num,
-      void* done,
-      int pserver_idx) override {
+  std::future<int32_t> PushSparseRawGradientPartial(size_t table_id,
+                                                    const uint64_t* keys,
+                                                    const float** update_values,
+                                                    uint32_t num,
+                                                    void* done,
+                                                    int pserver_idx) override {
     std::promise<int32_t> prom;
     std::future<int32_t> fut = prom.get_future();
     prom.set_value(0);
@@ -184,10 +183,10 @@ class PsLocalClient : public PSClient {
   }
 
   std::future<int32_t> PushSparseParam(size_t table_id,
-                                               const uint64_t* keys,
-                                               const float** update_values,
-                                               size_t num,
-                                               void* done) override {
+                                       const uint64_t* keys,
+                                       const float** update_values,
+                                       size_t num,
+                                       void* done) override {
     std::promise<int32_t> prom;
     std::future<int32_t> fut = prom.get_future();
     prom.set_value(0);

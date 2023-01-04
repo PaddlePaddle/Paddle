@@ -127,7 +127,8 @@ int32_t PsLocalClient::Initialize() {
     if (region.size - region_data_idx >= shard_buffer_remain) {
       memcpy(reinterpret_cast<void*>(region.data + region_data_idx),
              reinterpret_cast<uint8_t*>(
-              reinterpret_cast<void*>(region_buffer.data())) + index,
+                 reinterpret_cast<void*>(region_buffer.data())) +
+                 index,
              shard_buffer_remain);
       region_data_idx += shard_buffer_remain;
       shard_buffer_remain = 0;
@@ -137,7 +138,8 @@ int32_t PsLocalClient::Initialize() {
     } else {
       memcpy(reinterpret_cast<void*>(region.data + region_data_idx),
              reinterpret_cast<uint8_t*>(
-              reinterpret_cast<void*>(region_buffer.data())) + index,
+                 reinterpret_cast<void*>(region_buffer.data())) +
+                 index,
              region.size - region_data_idx);
       shard_buffer_remain -= (region.size - region_data_idx);
       index += (region.size - region_data_idx);

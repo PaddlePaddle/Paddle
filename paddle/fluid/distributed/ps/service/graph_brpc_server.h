@@ -71,9 +71,9 @@ class GraphBrpcService : public PsBaseService {
   int32_t Initialize() override;
 
   void service(::google::protobuf::RpcController *controller,
-                       const PsRequestMessage *request,
-                       PsResponseMessage *response,
-                       ::google::protobuf::Closure *done) override;
+               const PsRequestMessage *request,
+               PsResponseMessage *response,
+               ::google::protobuf::Closure *done) override;
 
  protected:
   std::unordered_map<int32_t, serviceFunc> _service_handler_map;
