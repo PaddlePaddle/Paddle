@@ -124,6 +124,20 @@ class TestFlattenOp_5(TestFlattenOp):
         }
 
 
+class TestFlattenOp_6(TestFlattenOp):
+    def init_test_case(self):
+        self.in_shape = tuple()
+        self.start_axis = 0
+        self.stop_axis = -1
+        self.new_shape = (1,)
+
+    def init_attrs(self):
+        self.attrs = {
+            "start_axis": self.start_axis,
+            "stop_axis": self.stop_axis,
+        }
+
+
 class TestFlattenOpSixDims(TestFlattenOp):
     def init_test_case(self):
         self.in_shape = (3, 2, 3, 2, 4, 4)
