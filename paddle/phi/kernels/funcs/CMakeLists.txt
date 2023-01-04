@@ -5,6 +5,8 @@ add_subdirectory(detail)
 
 math_library(deformable_conv_functor DEPS dense_tensor)
 math_library(concat_and_split_functor DEPS dense_tensor)
+target_compile_definitions(concat_and_split_functor
+                           PRIVATE "_ENABLE_EXTENDED_ALIGNED_STORAGE")
 math_library(fc_functor DEPS blas jit_kernel_helper)
 math_library(gpc DEPS phi_enforce)
 math_library(gru_compute DEPS activation_functions math_function)
