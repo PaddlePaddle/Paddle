@@ -3825,10 +3825,6 @@ function main() {
       test_cicheck_py37)
         run_linux_cpu_test ${PYTHON_ABI:-""} ${PROC_RUN:-1}
         ;;
-#      TODO(gsq7474741): 这里几个没看到py35对应的py37命令，应该怎么改？
-      cpu_cicheck_py35)
-        cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
-        ;;
       gpu_cicheck_py35)
         parallel_test
         ;;
