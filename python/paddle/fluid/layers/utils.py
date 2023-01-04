@@ -364,7 +364,8 @@ def _contain_var(list_or_tuple):
 
 
 def get_shape_tensor_inputs(inputs, attrs, shape, op_type):
-    from .tensor import fill_constant, cast
+    from .tensor import fill_constant
+    import paddle
 
     def _get_attr_shape(list_shape):
         attr_shape = []
@@ -388,7 +389,7 @@ def get_shape_tensor_inputs(inputs, attrs, shape, op_type):
                     '(When type of shape in' + op_type + 'is list or tuple.)',
                 )
                 if convert_dtype(dim.dtype) == 'int64':
-                    dim = cast(x=dim, dtype='int32')
+                    dim = paddle.cast(x=dim, dtype='int32')
                 shape_tensor_list.append(dim)
             else:
                 temp_out = fill_constant([1], 'int32', dim, force_cpu=True)
@@ -405,7 +406,7 @@ def get_shape_tensor_inputs(inputs, attrs, shape, op_type):
             '(When type of shape in' + op_type + ' is Variable.)',
         )
         if convert_dtype(shape.dtype) == 'int64':
-            shape = cast(shape, 'int32')
+            shape = paddle.cast(shape, 'int32')
         inputs["ShapeTensor"] = shape
     elif isinstance(shape, (list, tuple)):
         attrs["shape"] = _get_attr_shape(shape)
