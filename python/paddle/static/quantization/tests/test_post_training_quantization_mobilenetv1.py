@@ -277,6 +277,7 @@ class TestPostTrainingQuantization(unittest.TestCase):
         is_optimize_model=False,
         batch_nums=10,
         onnx_format=False,
+        deploy_backend=None,
     ):
         try:
             os.system("mkdir " + self.int8_model)
@@ -305,6 +306,7 @@ class TestPostTrainingQuantization(unittest.TestCase):
             optimize_model=is_optimize_model,
             onnx_format=onnx_format,
             is_use_cache_file=is_use_cache_file,
+            deploy_backend=deploy_backend,
         )
         ptq.quantize()
         ptq.save_quantized_model(
@@ -329,6 +331,7 @@ class TestPostTrainingQuantization(unittest.TestCase):
         diff_threshold,
         onnx_format=False,
         batch_nums=10,
+        deploy_backend=None,
     ):
         infer_iterations = self.infer_iterations
         batch_size = self.batch_size
@@ -361,6 +364,7 @@ class TestPostTrainingQuantization(unittest.TestCase):
             is_optimize_model,
             batch_nums,
             onnx_format,
+            deploy_backend,
         )
 
         print(
