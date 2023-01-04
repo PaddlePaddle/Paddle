@@ -93,11 +93,13 @@ about:
         self.python37 = r"    - python>=3.7, <3.8"
         self.python38 = r"    - python>=3.8, <3.9"
         self.python39 = r"    - python>=3.9, <3.10"
+        self.python310 = r"   - python>=3.10, <3.11"
 
         self.python_version = [
             self.python37,
             self.python38,
             self.python39,
+            self.python310
         ]
 
         self.cuda101 = r"""
@@ -118,7 +120,7 @@ about:
             (self.cuda102, "cuda10.2", ""),
             (self.cuda112, "cuda11.2", ".post112"),
         ]
-        self.py_str = ["py37", "py38", "py39"]
+        self.py_str = ["py37", "py38", "py39", "py310"]
         self.pip_end = ".whl --no-deps"
         self.pip_prefix_linux = "pip install /package/paddlepaddle"
         self.pip_prefix_windows = r"pip install C:\package\paddlepaddle"
@@ -128,16 +130,19 @@ about:
             "-cp37-cp37m-macosx_10_6_intel",
             "-cp38-cp38-macosx_10_14_x86_64",
             "-cp39-cp39-macosx_10_14_x86_64",
+            "-cp310-cp310-macosx_10_14_x86_64",
         ]
         self.linux_pip = [
             "-cp37-cp37m-linux_x86_64",
             "-cp38-cp38-linux_x86_64",
             "-cp39-cp39-linux_x86_64",
+            "-cp310-cp310-linux_x86_64",
         ]
         self.windows_pip = [
             "-cp37-cp37m-win_amd64",
             "-cp38-cp38-win_amd64",
             "-cp39-cp39-win_amd64",
+            "-cp310-cp310-win_amd64",
         ]
 
 
