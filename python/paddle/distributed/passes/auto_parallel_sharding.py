@@ -1739,7 +1739,9 @@ def partition_parameters(params, group_size, algor="greedy_even"):
                 k, sum([get_var_size(var) for var in v])
             )
         )
-        _logger.info("Params in this rank: {}.".format([var.name for var in v]))
+        _logger.debug(
+            "Params in this rank: {}.".format([var.name for var in v])
+        )
 
     return rank_to_params
 
