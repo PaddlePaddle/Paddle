@@ -675,18 +675,18 @@ void SearchAllSubgraphs(Graph* graph, bool is_inference_stage) {
     return res;
   };
 
+  std::unordered_set<std::string> skip_gc_var_names;
+  if (graph->Has(kSkipGcVarNames)) {
+    skip_gc_var_names =
+        graph->Get<std::unordered_set<std::string>>(kSkipGcVarNames);
+  }
+
   auto* cinn_compiler = CinnCompiler::GetInstance();
   for (const auto& node_vec : clusters) {
     // Classify var node to inputs, outputs, and internals.
     GraphNodeSet cluster_set(node_vec.begin(), node_vec.end());
 
     auto deny_var_set = trans_info.GetDenyVarNames(cluster_set);
-
-    std::unordered_set<std::string> skip_gc_var_names;
-    if (graph->Has(kSkipGcVarNames)) {
-      skip_gc_var_names =
-          graph->Get<std::unordered_set<std::string>>(kSkipGcVarNames);
-    }
 
     GraphNodeSet cluster_inputs, cluster_outputs, cluster_internals;
     AnalyseClusterVariables(cluster_set,
