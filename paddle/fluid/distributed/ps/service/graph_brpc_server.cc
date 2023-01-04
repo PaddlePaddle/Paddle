@@ -408,7 +408,7 @@ int32_t GraphBrpcService::graph_random_sample_neighbors(
   }
   int idx_ = std::stoi(request.params(0).c_str());
   size_t node_num = request.params(1).size() / sizeof(uint64_t);
-  uint64_t *node_data =
+  const uint64_t *node_data =
       reinterpret_cast<const uint64_t *>(request.params(1).c_str());
   const int sample_size =
       *reinterpret_cast<const int *>(request.params(2).c_str());
