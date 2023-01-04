@@ -146,6 +146,20 @@ void CumsumKernel(const Context& dev_ctx,
       dev_ctx, x, axis.to<int>(), flatten, exclusive, reverse, reducer, out);
 }
 
+template <typename T, typename Context>
+void CummaxKernel(const Context& dev_ctx,
+                  const DenseTensor& x,
+                  int axis,
+                  bool flatten,
+                  bool exclusive,
+                  bool reverse,
+                  DenseTensor* out) {
+  using Reducer = Eigen::internal::MaxReducer<T>;
+  auto reducer = Reducer();
+  ScanKernel<T, Context, Reducer>(
+      dev_ctx, x, axis, flatten, exclusive, reverse, reducer, out);
+}
+
 template <typename T>
 struct LogSumExp {
   EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE T operator()(const T& a,
@@ -261,6 +275,16 @@ PD_REGISTER_KERNEL(cumsum,
                    CPU,
                    ALL_LAYOUT,
                    phi::CumsumKernel,
+                   float,
+                   double,
+                   int16_t,
+                   int,
+                   int64_t) {}
+
+PD_REGISTER_KERNEL(cummax,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::CummaxKernel,
                    float,
                    double,
                    int16_t,

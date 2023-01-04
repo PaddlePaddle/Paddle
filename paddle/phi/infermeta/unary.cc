@@ -473,6 +473,24 @@ void CropInferMeta(const MetaTensor& x,
   out->set_dtype(x.dtype());
 }
 
+void CummaxInferMeta(const MetaTensor& x,
+                     int axis,
+                     bool flatten,
+                     bool exclusive,
+                     bool reverse,
+                    //  MetaTensor* out_values,
+                    //  MetaTensor* out_indices
+                     MetaTensor* out) {
+  auto x_dims = x.dims();
+  if (flatten) {
+    out->set_dims(phi::make_ddim({phi::product(x_dims)}));
+  } else {
+    out->set_dims(x_dims);
+  }
+  out->set_dtype(x.dtype());
+  out->share_lod(x);
+}
+
 void DecodeJpegInferMeta(const MetaTensor& x,
                          const std::string& mode,
                          MetaTensor* out) {

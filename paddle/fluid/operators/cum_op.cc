@@ -78,6 +78,62 @@ class CumsumGradMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
+class CummaxOp : public framekwork::OperatorWithKenerl {
+  public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+};
+
+class CummaxOpMaker : public framekwork::OpProtoAndCheckerMaker {
+  public:
+  void Make() override {
+    AddInput("X", "Input of cummax operator");
+    AddOutput("Out", "Output values of cummax operator");
+    AddAttr<int>("axis",
+                 "The dimension to accumulate along. -1 means the last "
+                 "dimension [default -1].")
+        .SetDefault(-1);
+    AddAttr<bool>(
+        "flatten",
+        "Whether to compute the logcumsumexp over the flattened array. "
+        "[default false].")
+        .SetDefault(false);
+    AddAttr<bool>("exclusive",
+                  "Whether to perform exclusive logcumsumexp. [default false].")
+        .SetDefault(false);
+    AddAttr<bool>(
+        "reverse",
+        "If true, the logcumsumexp is performed in the reversed direction. "
+        "[default false].")
+        .SetDefault(false);
+    AddComment(R"DOC(
+The cumulative maximum and corresponding index of the elements along a given axis.
+By default, the first element of the out_values is the same as the first element of
+the input. If exclusive is true, the first element of the result is 0.
+)DOC");
+  }
+};
+
+template <typename T>
+class CummaxGradOpMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  void Apply(GradOpPtr<T> grad_op) const override {
+    grad_op->SetType("cummax");
+    // grad_op->SetInput("X", this->OutputGrad("Out_values"));
+    grad_op->SetInput("X", this->OutputGrad("Out"));
+    grad_op->SetOutput("Out", this->InputGrad("X"));
+    grad_op->SetAttr("axis", PADDLE_GET_CONST(int, this->GetAttr("axis")));
+    grad_op->SetAttr("flatten",
+                     PADDLE_GET_CONST(bool, this->GetAttr("flatten")));
+    grad_op->SetAttr("reverse",
+                     !PADDLE_GET_CONST(bool, this->GetAttr("reverse")));
+    grad_op->SetAttr("exclusive",
+                     PADDLE_GET_CONST(bool, this->GetAttr("exclusive")));
+  }
+};
+
 class LogcumsumexpOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
@@ -153,6 +209,9 @@ using CPU = phi::CPUContext;
 DECLARE_INFER_SHAPE_FUNCTOR(cumsum,
                             CumsumInferShapeFunctor,
                             PD_INFER_META(phi::CumScalarAxisInferMeta));
+DECLARE_INFER_SHAPE_FUNCTOR(cummax,
+                            CummaxInferShapeFunctor,
+                            PD_INFER_META(phi::CummaxInferMeta));   
 DECLARE_INFER_SHAPE_FUNCTOR(logcumsumexp,
                             LogcumsumexpInferShapeFunctor,
                             PD_INFER_META(phi::CumInferMeta));
@@ -162,6 +221,12 @@ REGISTER_OPERATOR(cumsum,
                   ops::CumsumGradMaker<paddle::framework::OpDesc>,
                   ops::CumsumGradMaker<paddle::imperative::OpBase>,
                   CumsumInferShapeFunctor);
+REGISTER_OPERATOR(cummax,
+                  ops::CummaxOp,
+                  ops::CummaxOpMaker,
+                  ops::CummaxGradOpMaker<paddle::framework::OpDesc>,
+                  ops::CummaxGradOpMaker<paddle::imperative::OpBase>,
+                  CummaxInferShapeFunctor);
 REGISTER_OPERATOR(logcumsumexp,
                   ops::CumOp,
                   ops::LogcumsumexpOpMaker,

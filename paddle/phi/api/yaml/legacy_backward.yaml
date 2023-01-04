@@ -332,6 +332,15 @@
   output : Tensor(x_grad)
   invoke : cumsum(out_grad, axis, flatten, exclusive, !reverse)
 
+- backward_op : cummax_grad
+  forward : cummax(Tensor x, int axis, bool flatten, bool exclusive, bool reverse) -> Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  args : (Tensor out_grad, int axis, bool flatten, bool exclusive, bool reverse)
+  output : Tensor(x_grad)
+  invoke : cummax(out_grad, axis, flatten, exclusive, !reverse)
+
 - backward_op : deformable_conv_grad
   forward : deformable_conv(Tensor x, Tensor offset, Tensor filter, Tensor mask, int[] strides, int[] paddings, int[] dilations, int deformable_groups, int groups, int im2col_step) -> Tensor(out)
   args : (Tensor x, Tensor offset, Tensor filter, Tensor mask, Tensor out_grad, int[] strides, int[] paddings, int[] dilations, int deformable_groups, int groups, int im2col_step)
