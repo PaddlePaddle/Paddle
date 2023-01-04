@@ -26,6 +26,7 @@ from paddle.fluid.backward import (
 
 from ..auto_parallel.dist_attribute import OperatorDistributedAttribute
 from ..auto_parallel.utils import (
+    get_logger,
     get_loss_op,
     insert_dependencies_for_two_ops,
     is_backward_op,
@@ -35,6 +36,8 @@ from ..auto_parallel.utils import (
     set_var_dist_attr,
 )
 from .pass_base import PassBase, register_pass
+
+_logger = get_logger(logging.INFO)
 
 
 class RecomputeState(ProgramStats):
@@ -290,17 +293,17 @@ class RecomputePass(PassBase):
             return
 
         for i, (idx1, idx2) in enumerate(segments):
-            logging.info(
+            _logger.info(
                 "recompute segment[{}/{}]".format(i + 1, len(segments))
             )
-            logging.info(
+            _logger.debug(
                 "segment start op: [{}]: [{}] [{}]".format(
                     rc_state.ops[idx1].type,
                     rc_state.ops[idx1].input_arg_names,
                     rc_state.ops[idx1].output_arg_names,
                 )
             )
-            logging.info(
+            _logger.debug(
                 "segment end op: [{}]: [{}] [{}]".format(
                     rc_state.ops[idx2 - 1].type,
                     rc_state.ops[idx2 - 1].input_arg_names,
@@ -315,7 +318,7 @@ class RecomputePass(PassBase):
                 rc_state.get_out_of_subgraph_vars(segment[0], segment[1])
             )
         cross_vars = set(vars_should_be_hold) - set(rc_state.checkpoints)
-        logging.info(
+        _logger.info(
             "found [{}] vars which cross recompute segment: [{}],"
             "better checkpoints might be set to reduce those vars".format(
                 len(cross_vars), cross_vars

@@ -1796,7 +1796,7 @@ def re_order_program(block, param_grads, dist_context):
         assert len(block.ops) == num_ops
 
     # TODO reorder gradient clip order
-    _logger.info(
+    _logger.debug(
         "Sharding the Order of param being used: {}.".format(use_order)
     )
     return [pname_to_pg_pairs[p] for p in use_order]
