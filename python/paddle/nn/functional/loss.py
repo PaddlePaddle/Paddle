@@ -2540,13 +2540,7 @@ def cross_entropy(
         raise ValueError('The dimention of input should be larger than zero!')
 
     label_dims = len(list(label.shape))
-    if input_dims - 1 != label_dims and input_dims != label_dims:
-        raise ValueError(
-            'Expected input_dims - 1 = label_dims or input_dims == label_dims\
-             (got input_dims{}, label_dims{})'.format(
-                input_dims, label_dims
-            )
-        )
+
     if input_dims - 1 == label_dims:
         label = paddle.unsqueeze(label, axis=axis)
 
