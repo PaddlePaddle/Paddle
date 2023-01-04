@@ -1,23 +1,24 @@
 # Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.device import cuda
-import paddle
 import ctypes
-
 import unittest
+
 import numpy as np
+
+import paddle
+from paddle.device import cuda
 
 
 class TestCurrentStream(unittest.TestCase):
@@ -108,8 +109,8 @@ class TestCUDAEvent(unittest.TestCase):
 
 class TestStreamGuard(unittest.TestCase):
     '''
-    Note: 
-        The asynchronous execution property of CUDA Stream can only be tested offline. 
+    Note:
+        The asynchronous execution property of CUDA Stream can only be tested offline.
     '''
 
     def test_stream_guard_normal(self):
@@ -120,8 +121,11 @@ class TestStreamGuard(unittest.TestCase):
             c = a + b
             with paddle.device.cuda.stream_guard(s):
                 d = a + b
+                # NOTE(zhiqiu): it is strange that cudaMemcpy d2h not waits all
+                # kernels to be completed on windows.
+                s.synchronize()
 
-            self.assertTrue(np.array_equal(np.array(c), np.array(d)))
+            np.testing.assert_array_equal(np.array(c), np.array(d))
 
     def test_stream_guard_default_stream(self):
         if paddle.is_compiled_with_cuda():
@@ -151,10 +155,12 @@ class TestStreamGuard(unittest.TestCase):
 
     def test_set_current_stream_raise_error(self):
         if paddle.is_compiled_with_cuda():
-            self.assertRaises(TypeError, paddle.device.cuda._set_current_stream,
-                              np.zeros(5))
-            self.assertRaises(TypeError, paddle.device.cuda._set_current_stream,
-                              None)
+            self.assertRaises(
+                TypeError, paddle.device.cuda._set_current_stream, np.zeros(5)
+            )
+            self.assertRaises(
+                TypeError, paddle.device.cuda._set_current_stream, None
+            )
 
 
 class TestRawStream(unittest.TestCase):

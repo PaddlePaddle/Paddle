@@ -12,11 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
-import unittest
-import numpy as np
 import sys
+import unittest
+
+import numpy as np
+
 sys.path.append("../")
 from op_test import OpTest
 
@@ -38,7 +38,7 @@ class TestSequenceExpand(OpTest):
         else:
             ref_level = len(y_lod) - 1
 
-        out = np.zeros(shape=((0, ) + x_data.shape[1:]), dtype=x_data.dtype)
+        out = np.zeros(shape=((0,) + x_data.shape[1:]), dtype=x_data.dtype)
 
         if x_lod is None:
             # x_idx = [i for i in xrange(x_data.shape[0] + 1)]
@@ -53,7 +53,7 @@ class TestSequenceExpand(OpTest):
             x_len = x_idx[i]
 
             if repeat_num > 0:
-                x_sub = x_data[offset:(offset + x_len), :]
+                x_sub = x_data[offset : (offset + x_len), :]
                 stacked_x_sub = x_sub
                 for r in range(repeat_num - 1):
                     stacked_x_sub = np.vstack((stacked_x_sub, x_sub))

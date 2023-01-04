@@ -12,11 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 
-from paddle.fluid.tests.unittests.test_gaussian_random_op import TestGaussianRandomOp
+from paddle.fluid.tests.unittests.test_gaussian_random_op import (
+    TestGaussianRandomOp,
+)
 
 
 class TestMKLDNNGaussianRandomOpSeed10(TestGaussianRandomOp):
@@ -33,7 +33,7 @@ class TestMKLDNNGaussianRandomOpSeed0(TestGaussianRandomOp):
             "mean": 1.0,
             "std": 2.0,
             "seed": 10,
-            "use_mkldnn": self.use_mkldnn
+            "use_mkldnn": self.use_mkldnn,
         }
 
 

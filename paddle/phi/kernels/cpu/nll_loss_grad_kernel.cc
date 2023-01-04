@@ -16,9 +16,10 @@
 
 #include <memory>
 #include <string>
-#include "paddle/fluid/operators/math.h"
+
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/funcs/math.h"
 
 namespace phi {
 template <typename T>
@@ -121,7 +122,7 @@ template <typename T, typename Context>
 void NllLossGradKernel(const Context& dev_ctx,
                        const DenseTensor& x,
                        const DenseTensor& labels,
-                       paddle::optional<const DenseTensor&> weight,
+                       const paddle::optional<DenseTensor>& weight,
                        const DenseTensor& total_weight,
                        const DenseTensor& d_out,
                        int64_t ignore_index,

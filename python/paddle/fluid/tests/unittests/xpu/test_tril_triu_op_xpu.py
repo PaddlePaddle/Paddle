@@ -10,21 +10,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import sys
+
 sys.path.append("..")
 
+import unittest
+
+import numpy as np
+from op_test_xpu import XPUOpTest
+from xpu.get_test_cover_info import (
+    XPUOpTestWrapper,
+    create_test_class,
+    get_xpu_op_support_types,
+)
+
 import paddle
-import paddle.fluid.core as core
 import paddle.fluid as fluid
 import paddle.tensor as tensor
-import unittest
-import numpy as np
-from op_test import OpTest
-from op_test_xpu import XPUOpTest
-from paddle.fluid.framework import Program, program_guard
-from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper
 
 paddle.enable_static()
 
@@ -45,8 +47,8 @@ class XPUTestTrilTriuOp(XPUOpTestWrapper):
             self.place = paddle.XPUPlace(0)
             if self.dtype == np.int32:
                 self.X = np.arange(
-                    1, self.get_Xshape_prod() + 1,
-                    dtype=self.dtype).reshape(self.Xshape)
+                    1, self.get_Xshape_prod() + 1, dtype=self.dtype
+                ).reshape(self.Xshape)
             else:
                 self.X = np.random.random(self.Xshape).astype(dtype=self.dtype)
             self.inputs = {'X': self.X}
@@ -56,7 +58,8 @@ class XPUTestTrilTriuOp(XPUOpTestWrapper):
             }
             self.outputs = {
                 'Out': self.real_np_op(self.X, self.diagonal)
-                if self.diagonal else self.real_np_op(self.X)
+                if self.diagonal
+                else self.real_np_op(self.X)
             }
 
         def init_dtype(self):
@@ -79,11 +82,14 @@ class XPUTestTrilTriuOp(XPUOpTestWrapper):
         def test_check_grad_normal(self):
             if self.dtype == np.int32:
                 user_defined_grad_outputs = np.random.random(
-                    self.Xshape).astype('float32')
+                    self.Xshape
+                ).astype('float32')
                 self.check_grad_with_place(
-                    self.place, ['X'],
+                    self.place,
+                    ['X'],
                     'Out',
-                    user_defined_grad_outputs=user_defined_grad_outputs)
+                    user_defined_grad_outputs=user_defined_grad_outputs,
+                )
             else:
                 self.check_grad_with_place(self.place, ['X'], 'Out')
 
@@ -133,25 +139,29 @@ class TestTrilTriuOpError(unittest.TestCase):
         data = fluid.data(shape=(20, 22), dtype='float32', name="data1")
         op_type = np.random.choice(['triu', 'tril'])
         errmsg = {
-            "diagonal: TypeError":
-            "diagonal in {} must be a python Int".format(op_type),
+            "diagonal: TypeError": "diagonal in {} must be a python Int".format(
+                op_type
+            ),
         }
         expected = list(errmsg.keys())[0]
         with self.assertRaisesRegex(
-                eval(expected.split(':')[-1]), errmsg[expected]):
+            eval(expected.split(':')[-1]), errmsg[expected]
+        ):
             getattr(tensor, op_type)(x=data, diagonal='2022')
 
     def test_errors2(self):
         paddle.enable_static()
-        data = fluid.data(shape=(200, ), dtype='float32', name="data2")
+        data = fluid.data(shape=(200,), dtype='float32', name="data2")
         op_type = np.random.choice(['triu', 'tril'])
         errmsg = {
-            "input: ValueError":
-            "x shape in {} must be at least 2-D".format(op_type),
+            "input: ValueError": "x shape in {} must be at least 2-D".format(
+                op_type
+            ),
         }
         expected = list(errmsg.keys())[0]
         with self.assertRaisesRegex(
-                eval(expected.split(':')[-1]), errmsg[expected]):
+            eval(expected.split(':')[-1]), errmsg[expected]
+        ):
             getattr(tensor, op_type)(x=data, diagonal=[None])
 
 

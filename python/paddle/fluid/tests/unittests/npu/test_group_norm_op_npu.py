@@ -12,11 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 import unittest
 import numpy as np
 
 import sys
+
 sys.path.append("..")
 
 from operator import mul
@@ -52,15 +52,16 @@ class TestGroupNormOpError(unittest.TestCase):
             def test_x_type():
                 input = np.random.random(2, 100, 3, 5).astype('float32')
                 groups = 2
-                fluid.layers.group_norm(input, groups)
+                paddle.static.nn.group_norm(input, groups)
 
             self.assertRaises(TypeError, test_x_type)
 
             def test_x_dtype():
                 x2 = fluid.layers.data(
-                    name='x2', shape=[2, 100, 3, 5], dtype='int32')
+                    name='x2', shape=[2, 100, 3, 5], dtype='int32'
+                )
                 groups = 2
-                fluid.layers.group_norm(x2, groups)
+                paddle.static.nn.group_norm(x2, groups)
 
             self.assertRaises(TypeError, test_x_dtype)
 
@@ -87,13 +88,18 @@ class TestGroupNormOp(OpTest):
         scale = np.random.random([self.shape[1]]).astype(self.dtype)
         bias = np.random.random([self.shape[1]]).astype(self.dtype)
         output, mean, var = group_norm_naive(
-            input, scale, bias, self.attrs['epsilon'], self.attrs['groups'],
-            self.data_format)
+            input,
+            scale,
+            bias,
+            self.attrs['epsilon'],
+            self.attrs['groups'],
+            self.data_format,
+        )
 
         self.inputs = {
             'X': OpTest.np_dtype_to_fluid_dtype(input),
             'Scale': OpTest.np_dtype_to_fluid_dtype(scale),
-            'Bias': OpTest.np_dtype_to_fluid_dtype(bias)
+            'Bias': OpTest.np_dtype_to_fluid_dtype(bias),
         }
         self.outputs = {'Y': output, 'Mean': mean, 'Variance': var}
         self.attrs['data_layout'] = self.data_format
@@ -116,14 +122,20 @@ class TestGroupNormOp(OpTest):
         output_names = 'Y'
         no_grad_set = set()
         cpu_place = fluid.CPUPlace()
-        cpu_grads = self._get_gradient(inputs_to_check, cpu_place, output_names,
-                                       no_grad_set)
-        npu_grads = self._get_gradient(inputs_to_check, self.place,
-                                       output_names, no_grad_set)
+        cpu_grads = self._get_gradient(
+            inputs_to_check, cpu_place, output_names, no_grad_set
+        )
+        npu_grads = self._get_gradient(
+            inputs_to_check, self.place, output_names, no_grad_set
+        )
 
-        self._assert_is_close(cpu_grads, npu_grads, inputs_to_check,
-                              self.max_relative_error,
-                              "Gradient Check between places")
+        self._assert_is_close(
+            cpu_grads,
+            npu_grads,
+            inputs_to_check,
+            self.max_relative_error,
+            "Gradient Check between places",
+        )
 
     def init_test_case(self):
         pass
@@ -207,8 +219,9 @@ class TestGroupNormException(unittest.TestCase):
         data = fluid.data(name='data', shape=[None, 3, 3, 4], dtype="float64")
 
         def attr_data_format():
-            out = fluid.layers.group_norm(
-                input=data, groups=2, data_layout="NDHW")
+            out = paddle.static.nn.group_norm(
+                input=data, groups=2, data_layout="NDHW"
+            )
 
         self.assertRaises(ValueError, attr_data_format)
 

@@ -16,6 +16,7 @@
 
 #include <cmath>
 
+#include "glog/logging.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/kernel_registry.h"
 

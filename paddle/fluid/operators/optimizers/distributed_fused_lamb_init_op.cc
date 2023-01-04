@@ -24,10 +24,10 @@ class DistributedFusedLambInitOp : public framework::OperatorWithKernel {
  protected:
   void InferShape(framework::InferShapeContext *ctx) const override {}
 
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     auto dtype = framework::proto::VarType::FP32;  // dtype is not important
-    return framework::OpKernelType(dtype, ctx.GetPlace());
+    return phi::KernelKey(dtype, ctx.GetPlace());
   }
 };
 
@@ -120,4 +120,4 @@ REGISTER_OP_WITHOUT_GRADIENT(distributed_fused_lamb_init,
 
 REGISTER_OP_CPU_KERNEL(
     distributed_fused_lamb_init,
-    ops::DistributedFusedLambInitOpKernel<plat::CPUDeviceContext, float>);
+    ops::DistributedFusedLambInitOpKernel<phi::CPUContext, float>);

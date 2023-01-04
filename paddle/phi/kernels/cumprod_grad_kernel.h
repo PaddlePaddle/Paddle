@@ -25,4 +25,4 @@ void CumprodGradKernel(const Context& dev_ctx,
                        const DenseTensor& dout,
                        int dim,
                        DenseTensor* dx);
-}  // phi
+}  // namespace phi

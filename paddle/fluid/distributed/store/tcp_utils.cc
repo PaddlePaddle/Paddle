@@ -13,9 +13,11 @@
 // limitations under the License.
 
 #include "paddle/fluid/distributed/store/tcp_utils.h"
+
 #include <cerrno>
 #include <cstring>
 #include <thread>
+
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
@@ -38,8 +40,10 @@ void close_socket(SocketType socket) {
 #endif
 }
 
-::addrinfo* get_addr_info(const std::string host, const std::string port,
-                          int ai_flags, int family) {
+::addrinfo* get_addr_info(const std::string host,
+                          const std::string port,
+                          int ai_flags,
+                          int family) {
   ::addrinfo hints{}, *res;
   hints.ai_flags = ai_flags;
   hints.ai_family = family;
@@ -51,25 +55,33 @@ void close_socket(SocketType socket) {
   int n;
   n = ::getaddrinfo(node, port_cstr, &hints, &res);
   const char* gai_err = ::gai_strerror(n);
-  const char* proto =
-      (family == AF_INET ? "IPv4" : family == AF_INET6 ? "IPv6" : "");
-  PADDLE_ENFORCE_EQ(
-      n, 0, platform::errors::InvalidArgument(
-                "%s network %s:%s cannot be obtained. Details: %s.", proto,
-                host, port, gai_err));
+  const char* proto = (family == AF_INET    ? "IPv4"
+                       : family == AF_INET6 ? "IPv6"
+                                            : "");
+  PADDLE_ENFORCE_EQ(n,
+                    0,
+                    platform::errors::InvalidArgument(
+                        "%s network %s:%s cannot be obtained. Details: %s.",
+                        proto,
+                        host,
+                        port,
+                        gai_err));
 
   return res;
 }
 
 void free_addr_info(::addrinfo* hint) {
   PADDLE_ENFORCE_NOT_NULL(
-      hint, platform::errors::InvalidArgument(
-                "The parameter for free_addr_info cannot be null."));
+      hint,
+      platform::errors::InvalidArgument(
+          "The parameter for free_addr_info cannot be null."));
   ::freeaddrinfo(hint);
 }
 
-SocketType tcp_connect(const std::string host, const std::string port,
-                       int family, std::chrono::seconds timeout) {
+SocketType tcp_connect(const std::string host,
+                       const std::string port,
+                       int family,
+                       std::chrono::seconds timeout) {
   int ai_flags = AI_NUMERICSERV | AI_V4MAPPED | AI_ALL;
   ::addrinfo* res = get_addr_info(host, port, ai_flags, family);
 
@@ -79,10 +91,14 @@ SocketType tcp_connect(const std::string host, const std::string port,
   do {
     for (::addrinfo* cur = res; cur != nullptr; cur = cur->ai_next) {
       sockfd = ::socket(cur->ai_family, cur->ai_socktype, cur->ai_protocol);
-      PADDLE_ENFORCE_GT(sockfd, 0, platform::errors::InvalidArgument(
-                                       "Create socket to connect %s:%s failed. "
-                                       "Details: %s. ",
-                                       host, port, socket_error().message()));
+      PADDLE_ENFORCE_GT(sockfd,
+                        0,
+                        platform::errors::InvalidArgument(
+                            "Create socket to connect %s:%s failed. "
+                            "Details: %s. ",
+                            host,
+                            port,
+                            socket_error().message()));
 
       if (::connect(sockfd, cur->ai_addr, cur->ai_addrlen) == 0) {
         retry = false;
@@ -107,7 +123,8 @@ SocketType tcp_connect(const std::string host, const std::string port,
 
   free_addr_info(res);
 
-  PADDLE_ENFORCE_GT(sockfd, 0,
+  PADDLE_ENFORCE_GT(sockfd,
+                    0,
                     platform::errors::InvalidArgument(
                         "Network %s:%s cannot be connected.", host, port));
   VLOG(0) << "Successfully connected to " << host << ":" << port;
@@ -115,7 +132,8 @@ SocketType tcp_connect(const std::string host, const std::string port,
   return sockfd;
 }
 
-SocketType tcp_listen(const std::string host, const std::string port,
+SocketType tcp_listen(const std::string host,
+                      const std::string port,
                       int family) {
   int ai_flags = AI_PASSIVE | AI_NUMERICSERV;
   ::addrinfo* res = get_addr_info(host, port, ai_flags, family);
@@ -134,8 +152,11 @@ SocketType tcp_listen(const std::string host, const std::string port,
 
     int on = 1;
 #ifdef _WIN32
-    int ret = ::setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR,
-                           reinterpret_cast<char*>(&on), sizeof(on));
+    int ret = ::setsockopt(sockfd,
+                           SOL_SOCKET,
+                           SO_REUSEADDR,
+                           reinterpret_cast<char*>(&on),
+                           sizeof(on));
 #else
     int ret = ::setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on));
 #endif
@@ -150,7 +171,8 @@ SocketType tcp_listen(const std::string host, const std::string port,
     cur = cur->ai_next;
   }
 
-  PADDLE_ENFORCE_GT(sockfd, 0,
+  PADDLE_ENFORCE_GT(sockfd,
+                    0,
                     platform::errors::InvalidArgument(
                         "Bind network on %s:%s failedd.", node, port));
 
@@ -166,7 +188,8 @@ SocketType tcp_accept(SocketType socket) {
   SocketType new_socket =
       ::accept(socket, reinterpret_cast<::sockaddr*>(&addr_s), &addr_len);
   PADDLE_ENFORCE_GT(
-      new_socket, 0,
+      new_socket,
+      0,
       platform::errors::InvalidArgument(
           "The server failed to accept a new connection. Details: %s.",
           socket_error().message()));
@@ -175,8 +198,11 @@ SocketType tcp_accept(SocketType socket) {
 #endif
   auto value = 1;
 #ifdef _WIN32
-  ::setsockopt(new_socket, IPPROTO_TCP, TCP_NODELAY,
-               reinterpret_cast<const char*>(&value), sizeof(value));
+  ::setsockopt(new_socket,
+               IPPROTO_TCP,
+               TCP_NODELAY,
+               reinterpret_cast<const char*>(&value),
+               sizeof(value));
 #else
   ::setsockopt(new_socket, IPPROTO_TCP, TCP_NODELAY, &value, sizeof(value));
 #endif

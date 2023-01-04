@@ -172,20 +172,54 @@ const Type& UI1();
 template <typename T>
 Type type_of();
 
-// clang-format off
-template <> inline Type type_of<float>() { return F32(); }
-template <> inline Type type_of<double>() { return F64(); }
-template <> inline Type type_of<unsigned char>() { return UI8(); }
-template <> inline Type type_of<int16_t>() { return UI16(); }
-template <> inline Type type_of<int32_t>() { return I32(); }
-template <> inline Type type_of<uint32_t>() { return UI32(); }
-template <> inline Type type_of<bool>() { return UI1(); }
-template <> inline Type type_of<char>() { return I8(); }
-template <> inline Type type_of<int64_t>() { return I64(); }
-template <> inline Type type_of<uint64_t>() { return UI64(); }
-template <> inline Type type_of<signed char>() { return I8(); }
-template <> inline Type type_of<void>() { return Void(); }
-// clang-format on
+template <>
+inline Type type_of<float>() {
+  return F32();
+}
+template <>
+inline Type type_of<double>() {
+  return F64();
+}
+template <>
+inline Type type_of<unsigned char>() {
+  return UI8();
+}
+template <>
+inline Type type_of<int16_t>() {
+  return UI16();
+}
+template <>
+inline Type type_of<int32_t>() {
+  return I32();
+}
+template <>
+inline Type type_of<uint32_t>() {
+  return UI32();
+}
+template <>
+inline Type type_of<bool>() {
+  return UI1();
+}
+template <>
+inline Type type_of<char>() {
+  return I8();
+}
+template <>
+inline Type type_of<int64_t>() {
+  return I64();
+}
+template <>
+inline Type type_of<uint64_t>() {
+  return UI64();
+}
+template <>
+inline Type type_of<signed char>() {
+  return I8();
+}
+template <>
+inline Type type_of<void>() {
+  return Void();
+}
 template <>
 inline Type type_of<int8_t*>() {
   Type x = Int(8);

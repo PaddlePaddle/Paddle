@@ -14,10 +14,9 @@
 
 #pragma once
 
-#include "paddle/phi/kernels/tril_triu_kernel.h"
-
 #include "paddle/phi/kernels/funcs/for_range.h"
 #include "paddle/phi/kernels/funcs/tril_triu_compute.h"
+#include "paddle/phi/kernels/tril_triu_kernel.h"
 
 namespace phi {
 
@@ -38,6 +37,22 @@ void TrilTriuKernel(const Context& ctx,
   phi::funcs::TrilTriuCompute<T> tril_triu_computer(
       x_data, diagonal, lower, H, W, out_data);
   for_range(tril_triu_computer);
+}
+
+template <typename T, typename Context>
+void TrilKernel(const Context& ctx,
+                const DenseTensor& x,
+                int diagonal,
+                DenseTensor* out) {
+  TrilTriuKernel<T, Context>(ctx, x, diagonal, true, out);
+}
+
+template <typename T, typename Context>
+void TriuKernel(const Context& ctx,
+                const DenseTensor& x,
+                int diagonal,
+                DenseTensor* out) {
+  TrilTriuKernel<T, Context>(ctx, x, diagonal, false, out);
 }
 
 }  // namespace phi

@@ -59,9 +59,19 @@ class Scope;
 namespace paddle {
 namespace framework {
 
-std::string PrintLodTensor(Tensor* tensor, int64_t start, int64_t end);
-std::pair<int64_t, int64_t> GetTensorBound(LoDTensor* tensor, int index);
-bool CheckValidOutput(LoDTensor* tensor, size_t batch_size);
+std::string PrintLodTensor(phi::DenseTensor* tensor,
+                           int64_t start,
+                           int64_t end,
+                           char separator = ',',
+                           bool need_leading_separator = false);
+void PrintLodTensor(phi::DenseTensor* tensor,
+                    int64_t start,
+                    int64_t end,
+                    std::string& output_str,  // NOLINT
+                    char separator = ',',
+                    bool need_leading_separator = false);
+std::pair<int64_t, int64_t> GetTensorBound(phi::DenseTensor* tensor, int index);
+bool CheckValidOutput(phi::DenseTensor* tensor, size_t batch_size);
 
 class FleetWrapper;
 
@@ -207,7 +217,8 @@ class DeviceWorker {
 
  protected:
   virtual void DumpParam(const Scope& scope, const int batch_id);
-  virtual void DumpField(const Scope& scope, int dump_mode,
+  virtual void DumpField(const Scope& scope,
+                         int dump_mode,
                          int dump_interval = 10000);
   Scope* root_scope_ = nullptr;
   Scope* thread_scope_;
@@ -229,7 +240,9 @@ class DeviceWorker {
   int dump_mode_ = 0;
   int dump_interval_ = 10000;
   ChannelWriter<std::string> writer_;
+  const size_t tensor_iterator_thread_num = 16;
   platform::DeviceContext* dev_ctx_ = nullptr;
+  int thread_num_;
 };
 
 class CPUWorkerBase : public DeviceWorker {
@@ -262,7 +275,9 @@ class HogwildWorker : public CPUWorkerBase {
   virtual void CreateDeviceResource(const ProgramDesc& main_prog);
   virtual void BindingDataFeedMemory();
   template <typename T>
-  void SetZero(LoDTensor* tensor, LoDTensor* root_tensor, int tensor_dim);
+  void SetZero(phi::DenseTensor* tensor,
+               phi::DenseTensor* root_tensor,
+               int tensor_dim);
 
  protected:
   void CreateThreadOperators(const ProgramDesc& program);
@@ -275,6 +290,7 @@ class HogwildWorker : public CPUWorkerBase {
   HogwildWorkerParameter param_;
   std::vector<std::string> skip_ops_;
   std::map<std::string, int> stat_var_name_map_;
+  static std::atomic<uint64_t> worker_num_stat_;
 };
 
 class DownpourWorker : public HogwildWorker {
@@ -522,7 +538,8 @@ class HeterCpuWorker : public HogwildWorker {
 };
 #endif
 
-#if (defined PADDLE_WITH_NCCL || defined PADDLE_WITH_RCCL) && \
+#if (defined PADDLE_WITH_NCCL || defined PADDLE_WITH_RCCL || \
+     defined PADDLE_WITH_XPU_BKCL) &&                        \
     (defined PADDLE_WITH_PSLIB)
 class PSGPUWorker : public HogwildWorker {
  public:
@@ -537,8 +554,10 @@ class PSGPUWorker : public HogwildWorker {
     new (&program_) ProgramDesc(main_program);
   }
   void ProduceTasks() override;
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   virtual void SetStream(const gpuStream_t stream) { copy_stream_ = stream; }
   virtual void SetEvent(const gpuEvent_t event) { event_ = event; }
+#endif
   void ResetStat();
 
  protected:
@@ -588,8 +607,10 @@ class PSGPUWorker : public HogwildWorker {
   std::unordered_map<uint64_t, std::unordered_set<uint64_t>> feasign_set_;
   paddle::framework::Channel<std::shared_ptr<HeterTask>> pull_queue_;
   paddle::framework::Channel<std::shared_ptr<HeterTask>> push_queue_;
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   gpuEvent_t event_;
   gpuStream_t copy_stream_;
+#endif
   int batch_cnt_{0};
   std::atomic<int> done_cnt_{0};
 
@@ -644,10 +665,12 @@ class SectionWorker : public DeviceWorker {
     skip_vars_ = skip_vars;
   }
   void RunBackward(
-      int micro_id, std::unique_ptr<GarbageCollector>&,
+      int micro_id,
+      std::unique_ptr<GarbageCollector>&,
       std::unordered_map<const OperatorBase*, std::vector<std::string>>&);
   void RunForward(
-      int micro_id, std::unique_ptr<GarbageCollector>&,
+      int micro_id,
+      std::unique_ptr<GarbageCollector>&,
       std::unordered_map<const OperatorBase*, std::vector<std::string>>&);
   void RunUpdate(
       std::unique_ptr<GarbageCollector>&,
@@ -719,7 +742,8 @@ class HeterSectionWorker : public DeviceWorker {
   void SetThreadQueue(SHARED_THREAD_QUEUE thread_queue) {
     thread_queue_ = thread_queue;
   }
-  void CopyParameters(int microbatch_id, const ProgramDesc& program,
+  void CopyParameters(int microbatch_id,
+                      const ProgramDesc& program,
                       const platform::Place& place);
   void SetMinibatchScope(Scope* scope) { minibatch_scope_ = scope; }
   void SetTrainerId(int trainer_id) { this->trainer_id_ = trainer_id; }
@@ -763,7 +787,6 @@ class HeterSectionWorker : public DeviceWorker {
   static uint64_t batch_id_;
   uint64_t total_ins_num_ = 0;
   platform::DeviceContext* dev_ctx_ = nullptr;
-
   bool debug_ = false;
   std::vector<double> op_total_time_;
   std::vector<std::string> op_name_;

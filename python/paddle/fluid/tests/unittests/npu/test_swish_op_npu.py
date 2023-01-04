@@ -12,11 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import numpy as np
 import unittest
 import sys
+
 sys.path.append("..")
 from paddle.fluid.tests.unittests.op_test import OpTest
 import paddle
@@ -50,10 +49,12 @@ class TestSwishOp(OpTest):
         dx = dx / x.size
 
         self.check_grad_with_place(
-            self.place, ['X'],
+            self.place,
+            ['X'],
             'Out',
             max_relative_error=0.01,
-            user_defined_grads=[dx])
+            user_defined_grads=[dx],
+        )
 
     def set_npu(self):
         self.__class__.use_npu = True

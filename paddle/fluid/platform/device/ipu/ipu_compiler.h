@@ -17,15 +17,14 @@
 #include <popart/builder.hpp>
 #include <popart/graphtransformer.hpp>
 #include <popart/optimizer.hpp>
-#include "paddle/fluid/framework/ir/graph.h"
-#include "paddle/fluid/framework/scope.h"
-#include "paddle/fluid/platform/device/ipu/ipu_names.h"
-#include "paddle/fluid/platform/device/ipu/ipu_strategy.h"
+
 #include "paddle/fluid/platform/device/ipu/ipu_utils.h"
 
 namespace paddle {
 namespace platform {
 namespace ipu {
+
+class IpuStrategy;
 
 struct CompilerResources {
   // popart input tensor_ids
@@ -70,7 +69,7 @@ struct CompilerResources {
   std::unique_ptr<popart::Optimizer> optimizer;
 };
 
-// helper for lowering graph
+// Helper for lowering graph
 struct GraphHelper {
   explicit GraphHelper(const Graph *);
 
@@ -114,23 +113,9 @@ class Compiler {
   const std::vector<std::string> &GetOpOutputs(const OpDesc *op);
   const std::string GetNameScope(const OpDesc *op);
   popart::DebugContext BuildDebugContext(const OpDesc *op);
-
-  void InsertTensors(const std::vector<std::string> &output_names,
-                     const std::vector<std::string> &tensor_ids);
-  void InsertTensors(const std::vector<std::string> &output_names,
-                     const std::string &tensor_id);
-  void SetIpuIndexStage(const std::vector<std::string> &tensor_ids,
-                        const OpDesc *op_desc);
-  void SetIpuIndexStage(const std::string &tensor_id, const OpDesc *op_desc);
-  void SetAMPAttributes(const std::vector<std::string> &tensor_ids,
-                        const OpDesc *op_desc);
-  void SetAMPAttributes(const std::string &tensor_id, const OpDesc *op_desc);
-  void SetSerializeAttributes(const std::vector<std::string> &tensor_ids,
-                              const OpDesc *op_desc);
-  void SetSerializeAttributes(const std::string &tensor_id,
-                              const OpDesc *op_desc);
-  void PushNameScope(const OpDesc *op);
-  void PopNameScope(const OpDesc *op);
+  void PostLower(const std::vector<std::string> &, const OpDesc *);
+  void PostLower(const std::string &, const OpDesc *);
+  void PostLower(const std::string &, const OpDesc *, bool);
 
  private:
   std::unique_ptr<popart::Builder> builder_;

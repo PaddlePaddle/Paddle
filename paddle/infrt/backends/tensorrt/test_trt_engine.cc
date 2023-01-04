@@ -12,13 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <math.h>
-
 #include <NvInfer.h>
 #include <NvInferRuntime.h>
 #include <NvInferRuntimeCommon.h>
 #include <glog/logging.h>
 #include <gtest/gtest.h>
+#include <math.h>
+
 #include "paddle/fluid/inference/tensorrt/plugin/split_op_plugin.h"
 #include "paddle/fluid/inference/tensorrt/plugin/trt_plugin.h"
 #include "paddle/fluid/memory/allocation/allocator_facade.h"

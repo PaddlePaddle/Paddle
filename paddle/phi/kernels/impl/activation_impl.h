@@ -14,11 +14,10 @@
 
 #pragma once
 
+#include "paddle/fluid/platform/device_context.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/funcs/activation_functor.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
-
-#include "paddle/fluid/platform/device_context.h"
 
 namespace phi {
 

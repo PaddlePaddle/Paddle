@@ -13,7 +13,9 @@
 // limitations under the License.
 
 #include "paddle/phi/backends/device_base.h"
+
 #include "gflags/gflags.h"
+#include "glog/logging.h"
 #include "paddle/phi/core/enforce.h"
 
 DECLARE_double(fraction_of_gpu_memory_to_use);
@@ -213,8 +215,9 @@ size_t DeviceInterface::AllocSize(size_t dev_id, bool realloc) {
   size_t flag_mb = realloc ? FLAGS_reallocate_gpu_memory_in_mb
                            : FLAGS_initial_gpu_memory_in_mb;
   size_t alloc_bytes =
-      (flag_mb > 0ul ? flag_mb << 20 : available_to_alloc *
-                                           FLAGS_fraction_of_gpu_memory_to_use);
+      (flag_mb > 0ul
+           ? flag_mb << 20
+           : available_to_alloc * FLAGS_fraction_of_gpu_memory_to_use);
   PADDLE_ENFORCE_GE(available_to_alloc,
                     alloc_bytes,
                     phi::errors::ResourceExhausted(
@@ -266,5 +269,138 @@ size_t DeviceInterface::GetExtraPaddingSize(size_t dev_id) {
   VLOG(10) << Type() << " extra padding size " << 0;
   return 0;
 }
+
+void DeviceInterface::CCLDestroyComm(ccl::CCLComm ccl_comm) {
+  INTERFACE_UNIMPLEMENT;
+}
+
+void DeviceInterface::CCLCommInitRank(size_t num_ranks,
+                                      ccl::CCLRootId* root_id,
+                                      size_t rank_id,
+                                      ccl::CCLComm* ccl_comm) {
+  INTERFACE_UNIMPLEMENT;
+}
+
+void DeviceInterface::CCLGetUniqueId(ccl::CCLRootId* root_id) {
+  INTERFACE_UNIMPLEMENT;
+}
+
+void DeviceInterface::CCLBroadcast(void* data,
+                                   size_t num,
+                                   ccl::CCLDataType data_type,
+                                   size_t root,
+                                   const ccl::CCLComm& ccl_comm,
+                                   const stream::Stream& stream) {
+  INTERFACE_UNIMPLEMENT;
+}
+
+void DeviceInterface::CCLAllReduce(void* in_data,
+                                   void* out_data,
+                                   size_t num,
+                                   ccl::CCLDataType data_type,
+                                   ccl::CCLReduceOp reduce_op,
+                                   const ccl::CCLComm& ccl_comm,
+                                   const stream::Stream& stream) {
+  INTERFACE_UNIMPLEMENT;
+}
+
+void DeviceInterface::CCLReduce(void* in_data,
+                                void* out_data,
+                                size_t num,
+                                ccl::CCLDataType data_type,
+                                ccl::CCLReduceOp reduce_op,
+                                size_t root_id,
+                                const ccl::CCLComm& ccl_comm,
+                                const stream::Stream& stream) {
+  INTERFACE_UNIMPLEMENT;
+}
+
+void DeviceInterface::CCLAllGather(void* in_data,
+                                   void* out_data,
+                                   size_t num,
+                                   ccl::CCLDataType data_type,
+                                   const ccl::CCLComm& ccl_comm,
+                                   const stream::Stream& stream) {
+  INTERFACE_UNIMPLEMENT;
+}
+
+void DeviceInterface::CCLReduceScatter(void* in_data,
+                                       void* out_data,
+                                       size_t num,
+                                       ccl::CCLDataType data_type,
+                                       ccl::CCLReduceOp op,
+                                       const ccl::CCLComm& ccl_comm,
+                                       const stream::Stream& stream) {
+  INTERFACE_UNIMPLEMENT;
+}
+
+void DeviceInterface::CCLGroupStart() { INTERFACE_UNIMPLEMENT; }
+
+void DeviceInterface::CCLGroupEnd() { INTERFACE_UNIMPLEMENT; }
+
+void DeviceInterface::CCLSend(void* sendbuf,
+                              size_t num,
+                              ccl::CCLDataType data_type,
+                              size_t dst_rank,
+                              const ccl::CCLComm& ccl_comm,
+                              const stream::Stream& stream) {
+  INTERFACE_UNIMPLEMENT;
+}
+
+void DeviceInterface::CCLRecv(void* recvbuf,
+                              size_t num,
+                              ccl::CCLDataType data_type,
+                              size_t src_rank,
+                              const ccl::CCLComm& ccl_comm,
+                              const stream::Stream& stream) {
+  INTERFACE_UNIMPLEMENT;
+}
+
+// blas
+void DeviceInterface::BlasAXPBY(size_t dev_id,
+                                const stream::Stream& stream,
+                                paddle::experimental::DataType dtype,
+                                size_t numel,
+                                float alpha,
+                                void* x,
+                                float beta,
+                                void* y) {
+  INTERFACE_UNIMPLEMENT;
+}
+
+// profiler
+void DeviceInterface::ProfilerInitialize(
+    paddle::platform::TraceEventCollector* collector, void** user_data) {
+  INTERFACE_UNIMPLEMENT;
+}
+
+void DeviceInterface::ProfilerFinalize(
+    paddle::platform::TraceEventCollector* collector, void* user_data) {
+  INTERFACE_UNIMPLEMENT;
+}
+
+void DeviceInterface::ProfilerPrepareTracing(
+    paddle::platform::TraceEventCollector* collector, void* user_data) {
+  INTERFACE_UNIMPLEMENT;
+}
+
+void DeviceInterface::ProfilerStartTracing(
+    paddle::platform::TraceEventCollector* collector, void* user_data) {
+  INTERFACE_UNIMPLEMENT;
+}
+
+void DeviceInterface::ProfilerStopTracing(
+    paddle::platform::TraceEventCollector* collector, void* user_data) {
+  INTERFACE_UNIMPLEMENT;
+}
+
+void DeviceInterface::ProfilerCollectTraceData(
+    paddle::platform::TraceEventCollector* collector,
+    uint64_t start_ns,
+    void* user_data) {
+  INTERFACE_UNIMPLEMENT;
+}
+
+#undef INTERFACE_UNIMPLEMENT
 
 }  // namespace phi

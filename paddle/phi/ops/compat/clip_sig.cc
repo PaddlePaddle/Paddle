@@ -18,7 +18,7 @@
 namespace phi {
 
 KernelSignature ClipOpArgumentMapping(const ArgumentMappingContext& ctx) {
-  paddle::SmallVector<std::string, kAttrSmallVectorSize> attr_names;
+  paddle::small_vector<std::string, kAttrSmallVectorSize> attr_names;
   attr_names.emplace_back(ctx.HasInput("Min") ? "Min" : "min");
   attr_names.emplace_back(ctx.HasInput("Max") ? "Max" : "max");
   if (ctx.IsDenseTensorInput("X")) {

@@ -70,14 +70,6 @@ extra {
     type: BOOLEAN
   }
   attrs {
-    name: "fuse_brelu"
-    type: BOOLEAN
-  }
-  attrs {
-    name: "fuse_brelu_threshold"
-    type: FLOAT
-  }
-  attrs {
     name: "fuse_activation"
     type: STRING
   }
@@ -126,4 +118,3 @@ extra {
     type: BOOLEAN
   }
 }
-

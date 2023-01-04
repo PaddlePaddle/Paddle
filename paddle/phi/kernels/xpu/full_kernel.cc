@@ -45,7 +45,7 @@ void TensorSetConstantXPU(phi::DenseTensor* tensor,
 
 template <typename T, typename Context, typename VType>
 void FullValueXPU(const Context& dev_ctx, DenseTensor* tensor, VType val) {
-  tensor->mutable_data<T>(dev_ctx.GetPlace());
+  dev_ctx.template Alloc<T>(tensor);
 
   PD_VISIT_ALL_TYPES(tensor->dtype(), "FullValueXPU", ([&] {
                        TensorSetConstantXPU<VType, data_t>(
@@ -70,7 +70,7 @@ void FullLikeKernel(const Context& dev_ctx,
                     DataType dtype,
                     DenseTensor* out) {
   dev_ctx.template Alloc<T>(out);
-  auto value = val.to<float>();
+  auto value = val.to<double>();
   using XPUInTDType = typename XPUTypeTrait<T>::Type;
   using CommonType = typename std::common_type<
       float,

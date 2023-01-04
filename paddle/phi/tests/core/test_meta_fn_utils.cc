@@ -60,32 +60,6 @@ TEST(MetaFnFactory, InferMetaFnExists) {
   EXPECT_EQ(dense_out1.dims()[1], dense_out2.dims()[1]);
 }
 
-TEST(MetaFnFactory, CopyInferMetaFn) {
-  phi::DenseTensor dense_x;
-  dense_x.Resize({3, 4});
-
-  phi::MetaTensor meta_x(&dense_x);
-  phi::DenseTensor dense_out1;
-  phi::MetaTensor meta_out(&dense_out1);
-  phi::UnchangedInferMeta(meta_x, &meta_out);
-
-  auto shared_meat_x = phi::MetaTensor(&dense_x);
-  phi::DenseTensor dense_out2;
-  auto shared_meta_out = phi::MetaTensor(&dense_out2);
-
-  phi::InferMetaContext ctx;
-  ctx.EmplaceBackInput(shared_meat_x);
-  ctx.EmplaceBackAttr(Backend::CPU);
-  ctx.EmplaceBackAttr(false);
-  ctx.EmplaceBackOutput(shared_meta_out);
-  ctx.SetMetaConfig({/*is_runtime =*/true, /*is_run_mkldnn_kernel=*/false});
-  phi::MetaFnFactory::Instance().Get("copy_to")(&ctx);
-
-  EXPECT_EQ(dense_out1.dims().size(), dense_out2.dims().size());
-  EXPECT_EQ(dense_out1.dims()[0], dense_out2.dims()[0]);
-  EXPECT_EQ(dense_out1.dims()[1], dense_out2.dims()[1]);
-}
-
 TEST(MetaFnFactory, SplitInferMetaFn) {
   phi::DenseTensor dense_x;
   dense_x.Resize({4, 10});
@@ -94,7 +68,7 @@ TEST(MetaFnFactory, SplitInferMetaFn) {
 
   phi::DenseTensor dense_out1;
   phi::DenseTensor dense_out2;
-  paddle::SmallVector<phi::MetaTensor, kOutputSmallVectorSize> out;
+  paddle::small_vector<phi::MetaTensor, kOutputSmallVectorSize> out;
   out.emplace_back(phi::MetaTensor(&dense_out1));
   out.emplace_back(phi::MetaTensor(&dense_out2));
 
@@ -115,6 +89,20 @@ TEST(MetaFnFactory, SplitInferMetaFn) {
   ASSERT_EQ(dense_out2.dims().size(), 2);
   ASSERT_EQ(dense_out2.dims()[0], 2);
   ASSERT_EQ(dense_out2.dims()[1], 10);
+}
+
+void TestEmptyVectorInputInferMeta(const std::vector<const MetaTensor*>& inputs,
+                                   std::vector<MetaTensor*> outputs) {
+  ASSERT_EQ(inputs.size(), 0UL);
+  ASSERT_EQ(outputs.size(), 0UL);
+}
+
+TEST(MetaFnFactory, EmptyVectorInputInferMetaFn) {
+  phi::InferMetaContext ctx;
+  ctx.EmplaceBackInput(MetaTensor());
+  ctx.EmplaceBackOutput(MetaTensor());
+
+  PD_INFER_META(TestEmptyVectorInputInferMeta)(&ctx);
 }
 
 }  // namespace tests

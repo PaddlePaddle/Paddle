@@ -12,18 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from auto_scan_test import PassAutoScanTest, SkipReasons
-from program_config import TensorConfig, ProgramConfig, OpConfig
-import numpy as np
-import paddle.inference as paddle_infer
-from functools import partial
-from typing import Optional, List, Callable, Dict, Any, Set
 import unittest
+from functools import partial
 
-import hypothesis
-from hypothesis import given, settings, seed, example, assume
 import hypothesis.strategies as st
-from functools import reduce
+import numpy as np
+from auto_scan_test import PassAutoScanTest
+from program_config import OpConfig, ProgramConfig, TensorConfig
 
 
 class TestSeqconvEltaddReluFusePass(PassAutoScanTest):
@@ -53,61 +48,72 @@ class TestSeqconvEltaddReluFusePass(PassAutoScanTest):
                 "kernels": [6, 1],
                 "out_stride": [1, 1],
                 "paddings": [0, 0, 0, 0],
-                "strides": [1, 1]
-            })
+                "strides": [1, 1],
+            },
+        )
 
         sequence_conv_op = OpConfig(
             type="sequence_conv",
-            inputs={"X": ["seq_out"],
-                    "Filter": ["conv_weight"]},
+            inputs={"X": ["seq_out"], "Filter": ["conv_weight"]},
             outputs={"Out": ["conv_out"]},
             attrs={
                 "contextLength": contextLength,
                 "contextStart": contextStart,
                 "contextStride": contextStride,
-                "paddingTrainable": paddingTrainable
-            })
+                "paddingTrainable": paddingTrainable,
+            },
+        )
 
         elementwise_add_op = OpConfig(
             type="elementwise_add",
-            inputs={"X": ["conv_out"],
-                    "Y": ["elt_weight"]},
+            inputs={"X": ["conv_out"], "Y": ["elt_weight"]},
             outputs={"Out": ["elt_output"]},
-            attrs={'axis': axis})
+            attrs={'axis': axis},
+        )
 
         relu_op = OpConfig(
             type="relu",
             inputs={"X": ["elt_output"]},
             outputs={"Out": ["relu_output"]},
-            attrs={})
+            attrs={},
+        )
 
         model_net = [
-            im2sequence_op, sequence_conv_op, elementwise_add_op, relu_op
+            im2sequence_op,
+            sequence_conv_op,
+            elementwise_add_op,
+            relu_op,
         ]
 
         program_config = ProgramConfig(
             ops=model_net,
             weights={
-                "conv_weight": TensorConfig(data_gen=partial(
-                    generate_weight, [768 * contextLength, 16])),
-                "elt_weight":
-                TensorConfig(data_gen=partial(generate_weight, [16]))
+                "conv_weight": TensorConfig(
+                    data_gen=partial(generate_weight, [768 * contextLength, 16])
+                ),
+                "elt_weight": TensorConfig(
+                    data_gen=partial(generate_weight, [16])
+                ),
             },
             inputs={
                 "input_data": TensorConfig(data_gen=partial(generate_input))
             },
-            outputs=["relu_output"])
+            outputs=["relu_output"],
+        )
 
         return program_config
 
     def sample_predictor_configs(self, program_config):
         config = self.create_inference_config()
-        yield config, ["im2sequence", "fusion_seqconv_eltadd_relu"], (1e-5,
-                                                                      1e-5)
+        yield config, ["im2sequence", "fusion_seqconv_eltadd_relu"], (
+            1e-5,
+            1e-5,
+        )
 
     def test(self):
         self.run_and_statis(
-            quant=False, passes=["seqconv_eltadd_relu_fuse_pass"])
+            quant=False, passes=["seqconv_eltadd_relu_fuse_pass"]
+        )
 
 
 if __name__ == "__main__":

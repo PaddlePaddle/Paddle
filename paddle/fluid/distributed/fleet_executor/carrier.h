@@ -35,7 +35,7 @@ namespace paddle {
 namespace framework {
 class Scope;
 class ProgramDesc;
-}
+}  // namespace framework
 
 namespace distributed {
 
@@ -56,12 +56,15 @@ class Carrier final {
       int64_t rank,
       const std::unordered_map<int64_t, int64_t>& interceptor_id_to_rank,
       const std::unordered_map<int64_t, TaskNode*>& interceptor_id_to_node,
-      const framework::ProgramDesc& program, framework::Scope* scope,
-      int64_t num_micro_batches, const platform::Place& place,
+      const framework::ProgramDesc& program,
+      framework::Scope* scope,
+      int64_t num_micro_batches,
+      const platform::Place& place,
       const std::vector<std::string>& inference_root_scope_vars = {});
 
   void CopyParameters(
-      int microbatch_id, const framework::ProgramDesc& program,
+      int microbatch_id,
+      const framework::ProgramDesc& program,
       const std::vector<std::string>& inference_root_scope_vars);
 
   void Release();

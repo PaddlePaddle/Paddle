@@ -12,12 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <string>
-
 #include "paddle/fluid/operators/optimizers/sgd_op.h"
-#ifdef PADDLE_WITH_MKLDNN
-#include "paddle/fluid/platform/mkldnn_helper.h"
-#endif
+
+#include <string>
 
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/phi/core/infermeta_utils.h"
@@ -31,42 +28,36 @@ class SGDOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "Param");
 
-#ifdef PADDLE_WITH_MKLDNN
-    using dnnl::memory;
-    if (this->CanMKLDNNBeUsed(ctx, data_type)) {
-      const auto *param_var = ctx.InputVar("Param");
-      const auto *grad_var = ctx.InputVar("Grad");
+    // NOTE(jiahongyu): Below codes originally enclosed by PADDLE_WITH_MKLDNN
+    const auto *param_var = ctx.InputVar("Param");
+    const auto *grad_var = ctx.InputVar("Grad");
 
-      // supported cases
-      bool dense_param_sparse_grad =
-          param_var->IsType<framework::LoDTensor>() &&
-          grad_var->IsType<phi::SelectedRows>();
-      bool dense_param_and_grad = param_var->IsType<framework::LoDTensor>() &&
-                                  grad_var->IsType<framework::LoDTensor>();
-
-      if (dense_param_sparse_grad || dense_param_and_grad)
-        return framework::OpKernelType(data_type, ctx.GetPlace(),
-                                       framework::DataLayout::kMKLDNN,
-                                       framework::LibraryType::kMKLDNN);
+    // supported cases
+    bool dense_param_sparse_grad = param_var->IsType<phi::DenseTensor>() &&
+                                   grad_var->IsType<phi::SelectedRows>();
+    bool dense_param_and_grad = param_var->IsType<phi::DenseTensor>() &&
+                                grad_var->IsType<phi::DenseTensor>();
+    if (!(dense_param_sparse_grad || dense_param_and_grad)) {
+      this->SetDnnFallback(true);
     }
-#endif
-    return framework::OpKernelType(data_type, ctx.device_context());
+    // NOTE(jiahongyu): Above codes originally enclosed by PADDLE_WITH_MKLDNN
+
+    return phi::KernelKey(data_type, ctx.GetPlace());
   }
 
-  framework::OpKernelType GetKernelTypeForVar(
-      const std::string &var_name, const framework::Tensor &tensor,
-      const framework::OpKernelType &expected_kernel_type) const {
+  phi::KernelKey GetKernelTypeForVar(
+      const std::string &var_name,
+      const phi::DenseTensor &tensor,
+      const phi::KernelKey &expected_kernel_type) const override {
     if (var_name == "LearningRate") {
-      return framework::OpKernelType(
-          framework::TransToProtoVarType(tensor.dtype()), tensor.place(),
-          tensor.layout());
+      return phi::KernelKey(tensor.place(), tensor.layout(), tensor.dtype());
     }
-    return framework::OpKernelType(expected_kernel_type.data_type_,
-                                   tensor.place(), tensor.layout());
+    return phi::KernelKey(
+        tensor.place(), tensor.layout(), expected_kernel_type.dtype());
   }
 };
 
@@ -76,10 +67,11 @@ class SGDOpInferVarType : public framework::VarTypeInference {
     auto in_var_type = ctx->GetInputType("Param");
     PADDLE_ENFORCE_EQ(in_var_type == framework::proto::VarType::SELECTED_ROWS ||
                           in_var_type == framework::proto::VarType::LOD_TENSOR,
-                      true, platform::errors::InvalidArgument(
-                                "The input Var's type should be LoDtensor or "
-                                "SelectedRows, but the received type is %s",
-                                in_var_type));
+                      true,
+                      platform::errors::InvalidArgument(
+                          "The input Var's type should be LoDtensor or "
+                          "SelectedRows, but the received type is %s",
+                          in_var_type));
 
     ctx->SetOutputType("ParamOut", in_var_type, framework::ALL_ELEMENTS);
   }
@@ -125,10 +117,14 @@ $$param\_out = param - learning\_rate * grad$$
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-DECLARE_INFER_SHAPE_FUNCTOR(sgd, SGDInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(sgd,
+                            SGDInferShapeFunctor,
                             PD_INFER_META(phi::SgdInferMeta));
 REGISTER_OPERATOR(
-    sgd, ops::SGDOp, ops::SGDOpMaker,
+    sgd,
+    ops::SGDOp,
+    ops::SGDOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
-    ops::SGDOpInferVarType, SGDInferShapeFunctor);
+    ops::SGDOpInferVarType,
+    SGDInferShapeFunctor);

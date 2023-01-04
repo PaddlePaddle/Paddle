@@ -21,7 +21,6 @@
 #include <utility>
 #include <vector>
 
-#include "boost/optional.hpp"
 #include "paddle/fluid/framework/ir/pass_builder.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
@@ -62,8 +61,8 @@ struct BuildStrategy {
   // separately, if you choose kReduce, every thread is to optimize 25
   // parameters.
   // Of particular note is, if you use kReduce when using CPU training,
-  // all the parameters are shared between different threads. This feature will
-  // save memory.
+  // all the parameters are shared between different threads. This
+  // feature will save memory.
   // FIXME(zcd): The result of the two modes(kAllReduce and kReduce) maybe not
   // equal for GPU. Because, the result of the different order of summing maybe
   // different, for example, the result of `a+b+c+d` may be different with the
@@ -89,8 +88,8 @@ struct BuildStrategy {
   std::string debug_graphviz_path_{""};
 
   // Add dependency between backward ops and optimization ops, make sure that
-  // all the backward ops are finished before running the optimization ops.
-  // It might make the training speed of data parallelism faster.
+  // all the backward ops are finished before running the optimization
+  // ops. It might make the training speed of data parallelism faster.
   bool enable_backward_optimizer_op_deps_{true};
   // TODO(dev-paddle): enable_sequential_execution depends on
   // kStaleProgramOpDescs, it is not appropriate, because kStaleProgramOpDescs
@@ -148,6 +147,15 @@ struct BuildStrategy {
 
   bool allow_cuda_graph_capture_{false};
 
+  // Inference pass
+  bool enable_inference_pass_{false};  // switch for infernce pass
+  bool delete_dropout_{true};          // delte dropout op
+#ifdef PADDLE_WITH_MKLDNN
+  bool use_mkldnn_{true};  // use mkdnn to do inference
+#else
+  bool use_mkldnn_{false};  // use mkdnn to do inference
+#endif
+
   // FIXME(zcd): is_distribution_ is a temporary field, because in pserver mode,
   // num_trainers is 1, so the current fields of build_strategy doesn't tell if
   // it's distributed model.
@@ -194,7 +202,8 @@ struct BuildStrategy {
 
   // Apply the passes built by the pass_builder_. The passes will be
   // applied to the Program and output an ir::Graph.
-  ir::Graph *Apply(ir::Graph *graph, const std::vector<platform::Place> &places,
+  ir::Graph *Apply(ir::Graph *graph,
+                   const std::vector<platform::Place> &places,
                    const std::string &loss_var_name,
                    const std::vector<Scope *> &local_scopes,
                    const size_t &nranks,
@@ -219,6 +228,68 @@ struct BuildStrategy {
   mutable bool is_finalized_ = false;
   mutable std::shared_ptr<ir::PassBuilder> pass_builder_;
 };
+
+inline std::ostream &operator<<(std::ostream &os,
+                                const BuildStrategy &strategy) {
+  os << "BuildStrategy: " << &strategy << std::endl;
+  os << "reduce_: " << static_cast<int>(strategy.reduce_) << std::endl;
+  os << "gradient_scale_: " << static_cast<int>(strategy.gradient_scale_)
+     << std::endl;
+  os << "debug_graphviz_path_: " << strategy.debug_graphviz_path_ << std::endl;
+  os << "enable_backward_optimizer_op_deps_: "
+     << strategy.enable_backward_optimizer_op_deps_ << std::endl;
+  os << "enable_sequential_execution_: "
+     << strategy.enable_sequential_execution_ << std::endl;
+  os << "remove_unnecessary_lock_: " << strategy.remove_unnecessary_lock_
+     << std::endl;
+  os << "cache_runtime_context_: " << strategy.cache_runtime_context_
+     << std::endl;
+  os << "fix_op_run_order_: " << strategy.fix_op_run_order_ << std::endl;
+  os << "fuse_bn_act_ops_: " << strategy.fuse_bn_act_ops_ << std::endl;
+  os << "fuse_bn_add_act_ops_: " << strategy.fuse_bn_add_act_ops_ << std::endl;
+  os << "fuse_elewise_add_act_ops_: " << strategy.fuse_elewise_add_act_ops_
+     << std::endl;
+  os << "enable_auto_fusion_: " << strategy.enable_auto_fusion_ << std::endl;
+  os << "fuse_all_optimizer_ops_: " << strategy.fuse_all_optimizer_ops_
+     << std::endl;
+  os << "fuse_all_reduce_ops_: " << strategy.fuse_all_reduce_ops_ << std::endl;
+  os << "fuse_relu_depthwise_conv_: " << strategy.fuse_relu_depthwise_conv_
+     << std::endl;
+  os << "fuse_broadcast_ops_: " << strategy.fuse_broadcast_ops_ << std::endl;
+  os << "sync_batch_norm_: " << strategy.sync_batch_norm_ << std::endl;
+  os << "fuse_gemm_epilogue_: " << strategy.fuse_gemm_epilogue_ << std::endl;
+  os << "mkldnn_enabled_op_types_: ";
+  for (auto str : strategy.mkldnn_enabled_op_types_) {
+    os << str << ", ";
+  }
+  os << std::endl;
+  os << "memory_optimize_: " << strategy.memory_optimize_ << std::endl;
+  os << "enable_inplace_: " << strategy.enable_inplace_ << std::endl;
+  os << "allow_cuda_graph_capture_: " << strategy.allow_cuda_graph_capture_
+     << std::endl;
+  os << "enable_inference_pass_: " << strategy.enable_inference_pass_
+     << std::endl;
+  os << "delete_dropout_: " << strategy.delete_dropout_ << std::endl;
+  os << "use_mkldnn_: " << strategy.use_mkldnn_ << std::endl;
+  os << "is_distribution_: " << strategy.is_distribution_ << std::endl;
+  os << "async_mode_: " << strategy.async_mode_ << std::endl;
+  os << "num_trainers_: " << strategy.num_trainers_ << std::endl;
+  os << "trainer_id_: " << strategy.trainer_id_ << std::endl;
+  os << "trainers_endpoints_: ";
+  for (auto str : strategy.trainers_endpoints_) {
+    os << str << ", ";
+  }
+  os << std::endl;
+  os << "nccl_comm_num_: " << strategy.nccl_comm_num_ << std::endl;
+  os << "bkcl_comm_num_: " << strategy.bkcl_comm_num_ << std::endl;
+  os << "use_hierarchical_allreduce_: " << strategy.use_hierarchical_allreduce_
+     << std::endl;
+  os << "hierarchical_allreduce_inter_nranks_: "
+     << strategy.hierarchical_allreduce_inter_nranks_ << std::endl;
+  os << "enable_parallel_graph_: " << strategy.enable_parallel_graph_
+     << std::endl;
+  return os;
+}
 
 }  // namespace details
 }  // namespace framework

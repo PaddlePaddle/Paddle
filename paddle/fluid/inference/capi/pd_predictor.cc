@@ -19,6 +19,7 @@
 #include <memory>
 #include <numeric>
 #include <vector>
+
 #include "paddle/fluid/inference/api/paddle_api.h"
 #include "paddle/fluid/inference/capi/c_api_internal.h"
 #include "paddle/fluid/inference/capi/paddle_c_api.h"
@@ -65,13 +66,15 @@ struct PD_ZeroCopyFunctor {
   template <typename OutT>
   void apply() {
     std::vector<OutT> out_data;
-    int out_num =
-        std::accumulate(output_i->shape, output_i->shape + output_i->shape_size,
-                        1, std::multiplies<int>());
+    int out_num = std::accumulate(output_i->shape,
+                                  output_i->shape + output_i->shape_size,
+                                  1,
+                                  std::multiplies<int>());
     out_data.resize(out_num);
     output_t->copy_to_cpu(out_data.data());
     output_i->data = reinterpret_cast<void*>(malloc(out_num * sizeof(OutT)));
-    memmove(static_cast<OutT*>(output_i->data), out_data.data(),
+    memmove(static_cast<OutT*>(output_i->data),
+            out_data.data(),
             out_num * sizeof(OutT));
   }
 };
@@ -79,8 +82,11 @@ struct PD_ZeroCopyFunctor {
 }  // namespace
 
 extern "C" {
-bool PD_PredictorRun(const PD_AnalysisConfig* config, PD_Tensor* inputs,
-                     int in_size, PD_Tensor** output_data, int* out_size,
+bool PD_PredictorRun(const PD_AnalysisConfig* config,
+                     PD_Tensor* inputs,
+                     int in_size,
+                     PD_Tensor** output_data,
+                     int* out_size,
                      int batch_size) {
   PADDLE_ENFORCE_NOT_NULL(
       config,
@@ -113,8 +119,10 @@ bool PD_PredictorRun(const PD_AnalysisConfig* config, PD_Tensor* inputs,
 }
 
 bool PD_PredictorZeroCopyRun(const PD_AnalysisConfig* config,
-                             PD_ZeroCopyData* inputs, int in_size,
-                             PD_ZeroCopyData** output, int* out_size) {
+                             PD_ZeroCopyData* inputs,
+                             int in_size,
+                             PD_ZeroCopyData** output,
+                             int* out_size) {
   PADDLE_ENFORCE_NOT_NULL(
       config,
       paddle::platform::errors::InvalidArgument(
@@ -129,11 +137,13 @@ bool PD_PredictorZeroCopyRun(const PD_AnalysisConfig* config,
   auto input_names = predictor->GetInputNames();
   VLOG(3) << "The inputs' size is " << input_names.size();
   PADDLE_ENFORCE_EQ(
-      input_names.size(), in_size,
+      input_names.size(),
+      in_size,
       paddle::platform::errors::InvalidArgument(
           "The number of input and the number of model's input must match. The "
           "number of input is %d, the number of model's input is %d.",
-          input_names.size(), in_size));
+          input_names.size(),
+          in_size));
   for (int i = 0; i < in_size; ++i) {
     auto input_t = predictor->GetInputTensor(inputs[i].name);
     std::vector<int> tensor_shape;
@@ -169,15 +179,17 @@ bool PD_PredictorZeroCopyRun(const PD_AnalysisConfig* config,
   for (int i = 0; i < *out_size; ++i) {
     auto& output_i = (*output)[i];
     output_i.name = new char[output_names[i].length() + 1];
-    snprintf(output_i.name, output_names[i].length() + 1, "%s",
+    snprintf(output_i.name,
+             output_names[i].length() + 1,
+             "%s",
              output_names[i].c_str());
     auto output_t = predictor->GetOutputTensor(output_names[i]);
     output_i.dtype =
         ConvertToPDDataType(framework::TransToProtoVarType(output_t->dtype()));
     std::vector<int> output_shape = output_t->shape();
     output_i.shape = new int[output_shape.size()];
-    memmove(output_i.shape, output_shape.data(),
-            output_shape.size() * sizeof(int));
+    memmove(
+        output_i.shape, output_shape.data(), output_shape.size() * sizeof(int));
     output_i.shape_size = output_shape.size();
     VisitDataType(output_i.dtype,
                   PD_ZeroCopyFunctor(&output_i, std::move(output_t.get())));
@@ -295,7 +307,8 @@ void PD_GetZeroCopyOutput(PD_Predictor* predictor, PD_ZeroCopyTensor* tensor) {
       tensor->lod.data = std::malloc(lod.front().size() * sizeof(size_t));
       tensor->lod.capacity = lod.front().size() * sizeof(size_t);
     }
-    std::copy(lod.front().begin(), lod.front().end(),
+    std::copy(lod.front().begin(),
+              lod.front().end(),
               reinterpret_cast<size_t*>(tensor->lod.data));
   }
   switch (tensor->dtype) {

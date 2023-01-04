@@ -12,13 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
+
 import numpy as np
+
 import paddle.fluid.core as core
-from paddle.fluid.tests.unittests.op_test import OpTest, convert_float_to_uint16
 from paddle import enable_static
+from paddle.fluid.tests.unittests.op_test import OpTest, convert_float_to_uint16
 
 
 def fully_connected_naive(input, weights, bias_data):
@@ -32,8 +32,9 @@ class MatrixGenerate:
         self.weights = np.random.random((ic * h * w, oc)).astype(np.float32)
 
 
-@unittest.skipIf(not core.supports_bfloat16(),
-                 "place does not support BF16 evaluation")
+@unittest.skipIf(
+    not core.supports_bfloat16(), "place does not support BF16 evaluation"
+)
 class TestFcBf16MklDNNOp(OpTest):
     def generate_data(self):
         self.matrix = MatrixGenerate(1, 10, 15, 3, 3)
@@ -46,20 +47,21 @@ class TestFcBf16MklDNNOp(OpTest):
         self.force_fp32_output = False
         self.generate_data()
 
-        self.output = fully_connected_naive(self.matrix.input,
-                                            self.matrix.weights, self.bias)
+        self.output = fully_connected_naive(
+            self.matrix.input, self.matrix.weights, self.bias
+        )
         if not self.force_fp32_output:
             self.output = convert_float_to_uint16(self.output)
 
         self.inputs = {
             'Input': convert_float_to_uint16(self.matrix.input),
             'W': self.matrix.weights,
-            'Bias': self.bias
+            'Bias': self.bias,
         }
 
         self.attrs = {
             'use_mkldnn': self.use_mkldnn,
-            'force_fp32_output': self.force_fp32_output
+            'force_fp32_output': self.force_fp32_output,
         }
 
         self.outputs = {'Out': self.output}

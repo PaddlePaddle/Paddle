@@ -17,6 +17,7 @@
 #include <vector>
 
 #include "paddle/fluid/framework/tensor_util.h"
+#include "paddle/fluid/operators/jit/kernels.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -34,8 +35,8 @@ void AdamwDenseKernel(const Context& dev_ctx,
                       const DenseTensor& moment2,
                       const DenseTensor& beta1_pow,
                       const DenseTensor& beta2_pow,
-                      paddle::optional<const DenseTensor&> master_param,
-                      paddle::optional<const DenseTensor&> skip_update,
+                      const paddle::optional<DenseTensor>& master_param,
+                      const paddle::optional<DenseTensor>& skip_update,
                       const Scalar& beta1,
                       const Scalar& beta2,
                       const Scalar& epsilon,
@@ -92,41 +93,101 @@ void AdamwDenseKernel(const Context& dev_ctx,
     return;
   }
 
-  auto* param_ =
-      master_param.is_initialized() ? master_param.get_ptr() : &param;
+  T beta1_ = beta1.to<T>();
+  T beta2_ = beta2.to<T>();
+  T epsilon_ = epsilon.to<T>();
   T coeff_ = static_cast<T>(coeff);
   T lr_ratio_ = static_cast<T>(lr_ratio);
 
-  funcs::AdamWFunctor<T, funcs::CPUAdamW> functor(
-      coeff_,
-      lr_ratio_,
-      learning_rate.data<T>(),
-      const_cast<T*>(param_->data<T>()));
-  functor(param_->numel());
+  VLOG(3) << "beta1_pow.numel() : " << beta1_pow.numel();
+  VLOG(3) << "beta2_pow.numel() : " << beta2_pow.numel();
+  VLOG(3) << "param.numel(): " << param.numel();
 
-  AdamDenseKernel<T, Context>(dev_ctx,
-                              param,
-                              grad,
-                              learning_rate,
-                              moment1,
-                              moment2,
-                              beta1_pow,
-                              beta2_pow,
-                              master_param,
-                              skip_update,
-                              beta1,
-                              beta2,
-                              epsilon,
-                              lazy_mode,
-                              min_row_size_to_use_multithread,
-                              multi_precision,
-                              use_global_beta_pow,
-                              param_out,
-                              moment1_out,
-                              moment2_out,
-                              beta1_pow_out,
-                              beta2_pow_out,
-                              master_param_outs);
+  PADDLE_ENFORCE_EQ(
+      beta1_pow_out->numel(),
+      1,
+      errors::InvalidArgument("beta1 pow output size should be 1, but received "
+                              "value is:%d.",
+                              beta1_pow_out->numel()));
+
+  PADDLE_ENFORCE_EQ(
+      beta2_pow_out->numel(),
+      1,
+      errors::InvalidArgument("beta2 pow output size should be 1, but received "
+                              "value is:%d.",
+                              beta2_pow_out->numel()));
+
+  T beta1_p = beta1_pow.data<T>()[0];
+  T beta2_p = beta2_pow.data<T>()[0];
+
+  if (!use_global_beta_pow) {
+    dev_ctx.template Alloc<T>(beta1_pow_out)[0] = beta1_ * beta1_p;
+    dev_ctx.template Alloc<T>(beta2_pow_out)[0] = beta2_ * beta2_p;
+  }
+
+  T* param_out_ptr = dev_ctx.template Alloc<T>(param_out);
+  T* mom1_out_ptr = dev_ctx.template Alloc<T>(moment1_out);
+  T* mom2_out_ptr = dev_ctx.template Alloc<T>(moment2_out);
+  T old_lr = learning_rate.data<T>()[0];
+  T learning_rate_ =
+      learning_rate.data<T>()[0] * (sqrt(1 - beta2_p) / (1 - beta1_p));
+  T eps = epsilon_ * sqrt(1 - beta2_p);
+
+  int64_t numel = param.numel();
+
+  const T* param_ptr = param.data<T>();
+  const T* mom1_ptr = moment1.data<T>();
+  const T* mom2_ptr = moment2.data<T>();
+  const T* grad_ptr = grad.data<T>();
+
+  auto adamw =
+      paddle::operators::jit::KernelFuncs<paddle::operators::jit::AdamWTuple<T>,
+                                          phi::CPUPlace>::Cache()
+          .At(1);
+
+  static constexpr int64_t chunk_size = 512;
+
+#ifdef PADDLE_WITH_MKLML
+#pragma omp parallel for
+#endif
+  for (int64_t i = 0; i < numel / chunk_size; ++i) {
+    const int64_t offset = i * chunk_size;
+    adamw(beta1_,
+          beta2_,
+          -learning_rate_,
+          eps,
+          old_lr,
+          lr_ratio_,
+          coeff_,
+          chunk_size,
+          grad_ptr + offset,
+          mom1_ptr + offset,
+          mom2_ptr + offset,
+          param_ptr + offset,
+          mom1_out_ptr + offset,
+          mom2_out_ptr + offset,
+          param_out_ptr + offset);
+  }
+
+  if (numel % chunk_size != 0) {
+    const int64_t offset = (numel / chunk_size) * chunk_size;
+    const int64_t tail_numel = numel % chunk_size;
+    adamw(beta1_,
+          beta2_,
+          -learning_rate_,
+          eps,
+          old_lr,
+          lr_ratio_,
+          coeff_,
+          tail_numel,
+          grad_ptr + offset,
+          mom1_ptr + offset,
+          mom2_ptr + offset,
+          param_ptr + offset,
+          mom1_out_ptr + offset,
+          mom2_out_ptr + offset,
+          param_out_ptr + offset);
+  }
 }
 
 }  // namespace phi

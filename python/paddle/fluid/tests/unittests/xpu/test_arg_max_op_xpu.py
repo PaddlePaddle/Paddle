@@ -12,17 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
-import unittest
-import numpy as np
 import sys
+import unittest
+
+import numpy as np
+
 sys.path.append("..")
 
-import paddle
-from op_test import OpTest
 from op_test_xpu import XPUOpTest
-from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper
+from xpu.get_test_cover_info import (
+    XPUOpTestWrapper,
+    create_test_class,
+    get_xpu_op_support_types,
+)
+
+import paddle
 
 paddle.enable_static()
 
@@ -88,17 +92,17 @@ class XPUTestArgMax(XPUOpTestWrapper):
 
     class TestArgMaxCase8(XPUBaseTestCase):
         def initTestCase(self):
-            self.dims = (1, )
+            self.dims = (1,)
             self.axis = 0
 
     class TestArgMaxCase9(XPUBaseTestCase):
         def initTestCase(self):
-            self.dims = (2, )
+            self.dims = (2,)
             self.axis = 0
 
     class TestArgMaxCase10(XPUBaseTestCase):
         def initTestCase(self):
-            self.dims = (3, )
+            self.dims = (3,)
             self.axis = 0
 
 
@@ -126,8 +130,9 @@ class TestArgMaxAPI(unittest.TestCase):
             tensor_input = paddle.to_tensor(numpy_input)
             numpy_output = np.argmax(numpy_input, axis=self.axis)
             paddle_output = paddle.argmax(tensor_input, axis=self.axis)
-            self.assertEqual(
-                np.allclose(numpy_output, paddle_output.numpy()), True)
+            np.testing.assert_allclose(
+                numpy_output, paddle_output.numpy(), rtol=1e-05
+            )
             paddle.enable_static()
 
         for place in self.place:
@@ -152,12 +157,15 @@ class TestArgMaxAPI_2(unittest.TestCase):
             np.random.seed(2021)
             numpy_input = (np.random.random(self.dims)).astype(self.dtype)
             tensor_input = paddle.to_tensor(numpy_input)
-            numpy_output = np.argmax(
-                numpy_input, axis=self.axis).reshape(1, 4, 5)
+            numpy_output = np.argmax(numpy_input, axis=self.axis).reshape(
+                1, 4, 5
+            )
             paddle_output = paddle.argmax(
-                tensor_input, axis=self.axis, keepdim=self.keep_dims)
-            self.assertEqual(
-                np.allclose(numpy_output, paddle_output.numpy()), True)
+                tensor_input, axis=self.axis, keepdim=self.keep_dims
+            )
+            np.testing.assert_allclose(
+                numpy_output, paddle_output.numpy(), rtol=1e-05
+            )
             self.assertEqual(numpy_output.shape, paddle_output.numpy().shape)
             paddle.enable_static()
 

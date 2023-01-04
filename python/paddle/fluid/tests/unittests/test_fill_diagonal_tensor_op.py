@@ -12,14 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle.fluid as fluid
-import paddle.nn.functional as F
 import unittest
+
 import numpy as np
-import six
-import paddle
 from op_test import OpTest
-from paddle.fluid.layers import core
+
+import paddle
 
 
 def fill_diagonal_ndarray(x, value, offset=0, dim1=0, dim2=1):
@@ -38,13 +36,15 @@ def fill_diagonal_ndarray(x, value, offset=0, dim1=0, dim2=1):
         diagonal = np.lib.stride_tricks.as_strided(
             x[:, offset:] if dim_sum == 1 else x[:, :, offset:],
             shape=(shape[dim3], diagdim),
-            strides=(strides[dim3], strides[dim1] + strides[dim2]))
+            strides=(strides[dim3], strides[dim1] + strides[dim2]),
+        )
     else:
         diagdim = min(shape[dim2], shape[dim1] + offset)
         diagonal = np.lib.stride_tricks.as_strided(
             x[-offset:, :] if dim_sum in [1, 2] else x[:, -offset:],
             shape=(shape[dim3], diagdim),
-            strides=(strides[dim3], strides[dim1] + strides[dim2]))
+            strides=(strides[dim3], strides[dim1] + strides[dim2]),
+        )
 
     diagonal[...] = value
     return x
@@ -85,9 +85,10 @@ def fill_gt(x, y, offset, dim1, dim2):
 class TensorFillDiagTensor_Test(OpTest):
     def setUp(self):
         self.op_type = "fill_diagonal_tensor"
+        self.python_api = paddle.tensor.manipulation.fill_diagonal_tensor
         self.init_kernel_type()
         x = np.random.random((10, 10)).astype(self.dtype)
-        y = np.random.random((10, )).astype(self.dtype)
+        y = np.random.random((10,)).astype(self.dtype)
         dim1 = 0
         dim2 = 1
         offset = 0
@@ -95,21 +96,22 @@ class TensorFillDiagTensor_Test(OpTest):
 
         self.inputs = {"X": x, "Y": y}
         self.outputs = {'Out': out}
-        self.attrs = {"dim1": dim1, "dim2": dim2, "offset": offset}
+        self.attrs = {"offset": offset, "dim1": dim1, "dim2": dim2}
 
     def init_kernel_type(self):
         self.dtype = np.float64
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_eager=True)
 
 
 class TensorFillDiagTensor_Test2(TensorFillDiagTensor_Test):
     def setUp(self):
         self.op_type = "fill_diagonal_tensor"
+        self.python_api = paddle.tensor.manipulation.fill_diagonal_tensor
         self.init_kernel_type()
         x = np.random.random((2, 20, 25)).astype(self.dtype)
         y = np.random.random((2, 20)).astype(self.dtype)
@@ -120,7 +122,7 @@ class TensorFillDiagTensor_Test2(TensorFillDiagTensor_Test):
 
         self.inputs = {"X": x, "Y": y}
         self.outputs = {'Out': out}
-        self.attrs = {"dim1": dim1, "dim2": dim2, "offset": offset}
+        self.attrs = {"offset": offset, "dim1": dim1, "dim2": dim2}
 
     def init_kernel_type(self):
         self.dtype = np.float32
@@ -129,6 +131,7 @@ class TensorFillDiagTensor_Test2(TensorFillDiagTensor_Test):
 class TensorFillDiagTensor_Test3(TensorFillDiagTensor_Test):
     def setUp(self):
         self.op_type = "fill_diagonal_tensor"
+        self.python_api = paddle.tensor.manipulation.fill_diagonal_tensor
         self.init_kernel_type()
         x = np.random.random((2, 20, 20, 3)).astype(self.dtype)
         y = np.random.random((2, 3, 18)).astype(self.dtype)
@@ -139,11 +142,12 @@ class TensorFillDiagTensor_Test3(TensorFillDiagTensor_Test):
 
         self.inputs = {"X": x, "Y": y}
         self.outputs = {'Out': out}
-        self.attrs = {"dim1": dim1, "dim2": dim2, "offset": offset}
+        self.attrs = {"offset": offset, "dim1": dim1, "dim2": dim2}
 
     def init_kernel_type(self):
         self.dtype = np.float16
 
 
 if __name__ == '__main__':
+    paddle.enable_static()
     unittest.main()

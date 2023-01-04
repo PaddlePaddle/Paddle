@@ -14,22 +14,21 @@
 
 #include "paddle/phi/kernels/one_hot_kernel.h"
 
-#include "paddle/fluid/platform/device/gpu/gpu_info.h"
-#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
+#include "paddle/phi/backends/gpu/gpu_launch_config.h"
+#include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace phi {
 
-using paddle::platform::PADDLE_CUDA_NUM_THREADS;
+using phi::PADDLE_CUDA_NUM_THREADS;
 
 template <typename InT, typename OutT>
 __global__ void FillOutputKernel(const InT* p_in_data,
                                  OutT* p_out_data,
                                  const int64_t numel,
                                  const int depth) {
-  int idx = blockIdx.x * blockDim.x + threadIdx.x;
-  if (idx < numel) {
+  CUDA_KERNEL_LOOP_TYPE(idx, numel, int64_t) {
     PADDLE_ENFORCE(p_in_data[idx] >= 0 && p_in_data[idx] < depth,
                    "Illegal index value, Input(input) value should be "
                    "greater than or equal to 0, and less than depth [%d], "
@@ -62,9 +61,10 @@ struct OneHotV2OpCUDAFunctor {
     auto stream = ctx_.stream();
     funcs::set_constant(ctx_, out_, 0.0);
 
-    FillOutputKernel<<<(numel + PADDLE_CUDA_NUM_THREADS - 1) /
-                           PADDLE_CUDA_NUM_THREADS,
-                       PADDLE_CUDA_NUM_THREADS,
+    auto config = phi::backends::gpu::GetGpuLaunchConfig1D(ctx_, numel);
+
+    FillOutputKernel<<<config.block_per_grid,
+                       config.thread_per_block,
                        0,
                        stream>>>(p_in_data, p_out_data, numel, depth_);
   }
@@ -73,18 +73,19 @@ struct OneHotV2OpCUDAFunctor {
 template <typename T, typename Context>
 void OneHotRawKernel(const Context& dev_ctx,
                      const DenseTensor& x,
-                     int32_t depth,
+                     const Scalar& depth,
                      DataType dtype,
                      bool allow_out_of_range,
                      DenseTensor* out) {
+  auto depth_v = depth.to<int>();
   auto out_dims = out->dims();
   if (out_dims[out_dims.size() - 1] == -1) {
-    out_dims[out_dims.size() - 1] = depth;
+    out_dims[out_dims.size() - 1] = depth_v;
     out->Resize(out_dims);
   }
 
   phi::VisitDataType(
-      dtype, OneHotV2OpCUDAFunctor<Context, T>(&x, out, depth, dev_ctx));
+      dtype, OneHotV2OpCUDAFunctor<Context, T>(&x, out, depth_v, dev_ctx));
 }
 
 }  // namespace phi

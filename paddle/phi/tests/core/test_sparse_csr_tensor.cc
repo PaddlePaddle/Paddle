@@ -13,7 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "gtest/gtest.h"
-
 #include "paddle/phi/api/lib/utils/allocator.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/sparse_csr_tensor.h"
@@ -63,7 +62,6 @@ TEST(sparse_csr_tensor, construct) {
   CHECK_EQ(sparse.numel(), 9);
   CHECK(sparse.dims() == dense_dims);
   CHECK(sparse.dtype() == DataType::FLOAT32);
-  CHECK(sparse.layout() == DataLayout::SPARSE_CSR);
   CHECK(sparse.place() == paddle::platform::CPUPlace());
   CHECK(sparse.initialized() == true);
 }

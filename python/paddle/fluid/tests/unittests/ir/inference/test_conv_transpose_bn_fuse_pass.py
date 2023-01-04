@@ -1,36 +1,30 @@
 # Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from auto_scan_test import PassAutoScanTest, IgnoreReasons
-from program_config import TensorConfig, ProgramConfig, OpConfig
-import numpy as np
 import copy as cp
-import paddle.inference as paddle_infer
-from functools import partial
-from typing import Optional, List, Callable, Dict, Any, Set
-import unittest
 
-import hypothesis
-from hypothesis import given, settings, seed, example, assume, reproduce_failure
 import hypothesis.strategies as st
+import numpy as np
+from auto_scan_test import IgnoreReasons, PassAutoScanTest
+from program_config import OpConfig, ProgramConfig, TensorConfig
 
 
 class TestConvTransposeBnFusePass(PassAutoScanTest):
-    '''
+    r'''
     conv_input   conv_weight_var(persistable)
       \       /
-         conv_op     
+         conv_op
           |
       conv_out_var  (bn_scale_var, bn_bias_var, bn_mean_var,bn_variance_var)
                 |            /
@@ -44,7 +38,8 @@ class TestConvTransposeBnFusePass(PassAutoScanTest):
             quant=False,
             max_examples=150,
             max_duration=250,
-            passes=["conv_transpose_bn_fuse_pass"])
+            passes=["conv_transpose_bn_fuse_pass"],
+        )
 
     def sample_program_config(self, draw):
         # generate random number
@@ -55,25 +50,30 @@ class TestConvTransposeBnFusePass(PassAutoScanTest):
         random_groups = draw(st.integers(min_value=1, max_value=2))
         random_dilations = draw(
             st.lists(
-                st.integers(
-                    min_value=1, max_value=3), min_size=2, max_size=2))
+                st.integers(min_value=1, max_value=3), min_size=2, max_size=2
+            )
+        )
         random_strides = draw(
             st.lists(
-                st.integers(
-                    min_value=1, max_value=4), min_size=2, max_size=2))
+                st.integers(min_value=1, max_value=4), min_size=2, max_size=2
+            )
+        )
         random_paddings = draw(
             st.lists(
-                st.integers(
-                    min_value=0, max_value=4), min_size=2, max_size=2))
+                st.integers(min_value=0, max_value=4), min_size=2, max_size=2
+            )
+        )
         random_padding_algorithm = draw(
-            st.sampled_from(["EXPLICIT", "SAME", "VALID"]))
+            st.sampled_from(["EXPLICIT", "SAME", "VALID"])
+        )
         random_data_layout = draw(st.sampled_from(["NCHW", "NHWC"]))
         random_use_mkldnn = draw(st.booleans())
         random_output_size = []
         random_filter = draw(
             st.lists(
-                st.integers(
-                    min_value=1, max_value=4), min_size=2, max_size=2))
+                st.integers(min_value=1, max_value=4), min_size=2, max_size=2
+            )
+        )
         random_out_channel = draw(st.integers(min_value=10, max_value=25))
         random_epsilon = draw(st.floats(min_value=0.0, max_value=0.001))
 
@@ -95,23 +95,23 @@ class TestConvTransposeBnFusePass(PassAutoScanTest):
 
         def generate_batch_norm_Scale():
             return np.random.random(
-                [random_out_channel * random_groups * random_groups]).astype(
-                    np.float32)
+                [random_out_channel * random_groups * random_groups]
+            ).astype(np.float32)
 
         def generate_batch_norm_Bias():
             return np.random.random(
-                [random_out_channel * random_groups * random_groups]).astype(
-                    np.float32)
+                [random_out_channel * random_groups * random_groups]
+            ).astype(np.float32)
 
         def generate_batch_norm_Mean():
             return np.random.random(
-                [random_out_channel * random_groups * random_groups]).astype(
-                    np.float32)
+                [random_out_channel * random_groups * random_groups]
+            ).astype(np.float32)
 
         def generate_batch_norm_Variance():
             return np.random.random(
-                [random_out_channel * random_groups * random_groups]).astype(
-                    np.float32)
+                [random_out_channel * random_groups * random_groups]
+            ).astype(np.float32)
 
         # define op
         conv2d_op = OpConfig(
@@ -119,9 +119,11 @@ class TestConvTransposeBnFusePass(PassAutoScanTest):
             inputs={
                 "Input": ["conv2d_Input"],
                 "Filter": ["conv2d_Filter"],
-                #"Bias": ["conv2d_Bias"],
+                # "Bias": ["conv2d_Bias"],
             },
-            outputs={"Output": ["conv2d_Out"], },
+            outputs={
+                "Output": ["conv2d_Out"],
+            },
             attrs={
                 'groups': random_groups,
                 'dilations': random_dilations,
@@ -133,7 +135,8 @@ class TestConvTransposeBnFusePass(PassAutoScanTest):
                 'output_padding': random_output_size,
                 'use_mkldnn': random_use_mkldnn,
                 'is_test': True,
-            })
+            },
+        )
 
         batch_norm_op = OpConfig(
             type="batch_norm",
@@ -158,7 +161,8 @@ class TestConvTransposeBnFusePass(PassAutoScanTest):
                 'trainable_statistics': False,
                 'data_layout': random_data_layout,
                 'use_mkldnn': random_use_mkldnn,
-            })
+            },
+        )
 
         # define model_net
         model_net = [conv2d_op, batch_norm_op]
@@ -170,16 +174,21 @@ class TestConvTransposeBnFusePass(PassAutoScanTest):
             },
             weights={
                 "conv2d_Filter": TensorConfig(data_gen=generate_conv2d_Filter),
-                "batch_norm_Scale":
-                TensorConfig(data_gen=generate_batch_norm_Scale),
-                "batch_norm_Bias":
-                TensorConfig(data_gen=generate_batch_norm_Bias),
-                "batch_norm_Mean":
-                TensorConfig(data_gen=generate_batch_norm_Mean),
-                "batch_norm_Variance":
-                TensorConfig(data_gen=generate_batch_norm_Variance),
+                "batch_norm_Scale": TensorConfig(
+                    data_gen=generate_batch_norm_Scale
+                ),
+                "batch_norm_Bias": TensorConfig(
+                    data_gen=generate_batch_norm_Bias
+                ),
+                "batch_norm_Mean": TensorConfig(
+                    data_gen=generate_batch_norm_Mean
+                ),
+                "batch_norm_Variance": TensorConfig(
+                    data_gen=generate_batch_norm_Variance
+                ),
             },
-            outputs=["batch_norm_Y"])
+            outputs=["batch_norm_Y"],
+        )
 
         return program_config
 
@@ -195,8 +204,7 @@ class TestConvTransposeBnFusePass(PassAutoScanTest):
 
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         attrs = [
-            program_config.ops[i].attrs
-            for i in range(len(program_config.ops))
+            program_config.ops[i].attrs for i in range(len(program_config.ops))
         ]
 
         if attrs[0]['data_format'] == "NHWC":
@@ -216,9 +224,13 @@ class TestConvTransposeBnFusePass(PassAutoScanTest):
             return False
 
         self.add_ignore_check_case(
-            teller1, IgnoreReasons.PASS_ACCURACY_ERROR,
-            "The output format of conv2d_transpose is wrong when data_format attribute is NHWC"
+            teller1,
+            IgnoreReasons.PASS_ACCURACY_ERROR,
+            "The output format of conv2d_transpose is wrong when data_format attribute is NHWC",
         )
 
-        self.add_ignore_check_case(teller2, IgnoreReasons.PASS_ACCURACY_ERROR,
-                                   "there is diff when group >1 in this pass")
+        self.add_ignore_check_case(
+            teller2,
+            IgnoreReasons.PASS_ACCURACY_ERROR,
+            "there is diff when group >1 in this pass",
+        )

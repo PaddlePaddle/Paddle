@@ -12,12 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 import unittest
-import numpy as np
-import paddle
 
 from test_collective_base import TestDistBase
+
+import paddle
 
 paddle.enable_static()
 

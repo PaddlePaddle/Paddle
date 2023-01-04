@@ -25,12 +25,35 @@ template <typename T, typename Context>
 void ReduceSumGradKernel(const Context& dev_ctx,
                          const DenseTensor& x,
                          const DenseTensor& out_grad,
-                         const std::vector<int64_t>& dims,
+                         const IntArray& dims,
                          bool keep_dim,
                          bool reduce_all,
                          DenseTensor* x_grad) {
-  ReduceGradKernel<T, Context, kps::IdentityFunctor>(
-      dev_ctx, x, out_grad, dims, keep_dim, reduce_all, x_grad);
+  reduce_all = recompute_reduce_all(x, dims, reduce_all);
+  // get reduce_dim for reduce_mean_grad
+  int dim_size = x.dims().size();
+  std::vector<int> reduce_dims =
+      funcs::details::GetReduceDim(dims.GetData(), dim_size, reduce_all);
+
+  auto update_dims = vectorize(x.dims());
+  for (auto i : reduce_dims) {
+    update_dims[i] = 1;
+  }
+
+  // make new tensor
+  DenseTensor new_out_grad(out_grad.dtype());
+  new_out_grad.ShareDataWith(out_grad);
+  new_out_grad.Resize(phi::make_ddim(update_dims));
+
+  // call ReduceGrad
+  dev_ctx.Alloc(x_grad, x.dtype());
+  using MPType = typename kps::details::MPTypeTrait<T>::Type;
+  phi::ReduceGrad<T, kps::IdentityFunctor<T, MPType>>(
+      dev_ctx,
+      &new_out_grad,
+      x_grad,
+      x.dtype(),
+      kps::IdentityFunctor<T, MPType>());
 }
 
 }  // namespace phi
@@ -48,4 +71,3 @@ PD_REGISTER_KERNEL(sum_grad,
                    int64_t,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>) {}
-

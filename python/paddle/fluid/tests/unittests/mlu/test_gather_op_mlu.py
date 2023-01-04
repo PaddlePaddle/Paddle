@@ -12,11 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 import sys
+
 sys.path.append('..')
 from op_test import OpTest, convert_float_to_uint16
 import paddle
@@ -44,7 +43,7 @@ class TestGatherOp(OpTest):
         xnp = np.random.random(self.x_shape).astype(self.x_type)
         self.inputs = {
             'X': xnp,
-            'Index': np.array(self.index).astype(self.index_type)
+            'Index': np.array(self.index).astype(self.index_type),
         }
         self.outputs = {'Out': self.inputs["X"][self.inputs["Index"]]}
 
@@ -69,7 +68,7 @@ class TestCase1(TestGatherOp):
         """
         For one dimension input
         """
-        self.x_shape = (100)
+        self.x_shape = 100
         self.x_type = "float32"
         self.index = [1, 3, 5]
         self.index_type = "int32"
@@ -80,7 +79,7 @@ class TestCase2(TestGatherOp):
         """
         For int64_t index type
         """
-        self.x_shape = (100)
+        self.x_shape = 100
         self.x_type = "float32"
         self.index = [1, 3, 5]
         self.index_type = "int64"
@@ -93,10 +92,10 @@ class API_TestDygraphGather(unittest.TestCase):
         index_1 = np.array([1, 2])
         input = paddle.to_tensor(input_1)
         index = paddle.to_tensor(index_1)
-        output = paddle.fluid.layers.gather(input, index)
+        output = paddle.gather(input, index)
         output_np = output.numpy()
         expected_output = np.array([[3, 4], [5, 6]]).astype('int32')
-        self.assertTrue(np.allclose(output_np, expected_output))
+        np.testing.assert_allclose(output_np, expected_output)
         paddle.enable_static()
 
     def test_out12(self):
@@ -108,7 +107,7 @@ class API_TestDygraphGather(unittest.TestCase):
         output = paddle.gather(x, index, axis=0)
         output_np = output.numpy()
         expected_output = gather_numpy(input_1, index_1, axis=0)
-        self.assertTrue(np.allclose(output_np, expected_output))
+        np.testing.assert_allclose(output_np, expected_output)
         paddle.enable_static()
 
     def test_zero_index(self):
@@ -125,15 +124,17 @@ class API_TestDygraphGather(unittest.TestCase):
 
 class TestGathertError(unittest.TestCase):
     def test_error1(self):
-        with paddle.static.program_guard(paddle.static.Program(),
-                                         paddle.static.Program()):
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
 
             shape = [8, 9, 6]
             x = paddle.fluid.data(shape=shape, dtype='int8', name='x')
             axis = paddle.fluid.data(shape=[1], dtype='float32', name='axis')
             index = paddle.fluid.data(shape=shape, dtype='int32', name='index')
             index_float = paddle.fluid.data(
-                shape=shape, dtype='float32', name='index_float')
+                shape=shape, dtype='float32', name='index_float'
+            )
 
             def test_x_type():
                 paddle.gather(x, index)
@@ -162,15 +163,16 @@ class TestGathertError(unittest.TestCase):
             x = fluid.data(shape=shape, dtype='int8', name='x')
             index = fluid.data(shape=shape, dtype='int32', name='mask')
             index_float = fluid.data(
-                shape=shape, dtype='float32', name='index_float')
+                shape=shape, dtype='float32', name='index_float'
+            )
 
             def test_x_type():
-                paddle.fluid.layers.gather(x, index)
+                paddle.gather(x, index)
 
             self.assertRaises(TypeError, test_x_type)
 
             def test_index_type():
-                paddle.fluid.layers.gather(x, index_float)
+                paddle.gather(x, index_float)
 
             self.assertRaises(TypeError, test_index_type)
 

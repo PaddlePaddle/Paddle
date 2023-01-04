@@ -16,26 +16,23 @@
 #include <string>
 #include <vector>
 
+#include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
-
-#include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/phi/infermeta/multiary.h"
 
 namespace paddle {
 namespace operators {
 
-using framework::Tensor;
-
 class MeshgridOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    auto inputs = ctx.MultiInput<Tensor>("X");
+    auto inputs = ctx.MultiInput<phi::DenseTensor>("X");
     auto input_data_type = framework::proto::VarType::Type(0);
     bool flag = 0;
     for (auto* input : inputs) {
@@ -50,7 +47,7 @@ class MeshgridOp : public framework::OperatorWithKernel {
           "All Inputs of Meshgrid OP are Empty!"));
     }
 
-    return framework::OpKernelType(input_data_type, ctx.GetPlace());
+    return phi::KernelKey(input_data_type, ctx.GetPlace());
   }
 };
 
@@ -66,7 +63,7 @@ Take: N tensors, each of which can be either scalr or 1-dimensional vector, and 
 N-dimensional grids.
 
 Args:
-  tensors (list of tensor): if the input k tensors has (N1,), (N2,),..., (Nk,), then 
+  tensors (list of tensor): if the input k tensors has (N1,), (N2,),..., (Nk,), then
   the output tensors are all of size (N1, N2, ...., Nk).
 
 Example::
@@ -87,7 +84,8 @@ class MeshgridGradOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_GT(ctx->Inputs(framework::GradVarName("Out")).size(), 1,
+    PADDLE_ENFORCE_GT(ctx->Inputs(framework::GradVarName("Out")).size(),
+                      1,
                       platform::errors::InvalidArgument(
                           "Number of Inputs(Out@Grad) should be larger than 1."
                           "But received Inputs(Out@Grad)' size = %d .",
@@ -96,11 +94,11 @@ class MeshgridGradOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
-                                       ctx, framework::GradVarName("Out")),
-                                   ctx.device_context());
+    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(
+                              ctx, framework::GradVarName("Out")),
+                          ctx.device_context().GetPlace());
   }
 };
 
@@ -122,9 +120,12 @@ class MeshgridGradOpMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-DECLARE_INFER_SHAPE_FUNCTOR(meshgrid, MeshgridInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(meshgrid,
+                            MeshgridInferShapeFunctor,
                             PD_INFER_META(phi::MeshgridInferMeta));
-REGISTER_OPERATOR(meshgrid, ops::MeshgridOp, ops::MeshgridOpMaker,
+REGISTER_OPERATOR(meshgrid,
+                  ops::MeshgridOp,
+                  ops::MeshgridOpMaker,
                   ops::MeshgridGradOpMaker<paddle::framework::OpDesc>,
                   ops::MeshgridGradOpMaker<paddle::imperative::OpBase>,
                   MeshgridInferShapeFunctor);

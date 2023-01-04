@@ -13,19 +13,19 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <gtest/gtest.h>
+
 #include <algorithm>
 #include <memory>
 #include <string>
 
 #include "paddle/phi/api/lib/utils/allocator.h"
+#include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/pstring.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/string_tensor.h"
 #include "paddle/phi/kernels/strings/strings_empty_kernel.h"
 #include "paddle/phi/kernels/strings/strings_lower_upper_kernel.h"
-
-#include "paddle/phi/backends/all_context.h"
 namespace phi {
 namespace tests {
 

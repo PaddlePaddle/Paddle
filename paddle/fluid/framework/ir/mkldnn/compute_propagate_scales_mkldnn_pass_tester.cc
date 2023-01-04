@@ -13,18 +13,26 @@
 // limitations under the License.
 
 #include <gtest/gtest.h>
+#include <unordered_map>
 
 #include "paddle/fluid/framework/ir/mkldnn/compute_propagate_scales_mkldnn_pass.h"
 #include "paddle/fluid/framework/naive_executor.h"
-#include "paddle/fluid/platform/place.h"
+#include "paddle/phi/common/place.h"
 
 namespace paddle {
 namespace framework {
 namespace ir {
 
-const std::array<float, 10> positive_and_negative_values = {
-    -0.0482659, -0.0102493, -0.00794221, -0.00387115, -0.00674586,
-    -0.0495346, 0.0629528,  -0.00531285, -0.0230353,  0.0269089};
+const std::array<float, 10> positive_and_negative_values = {-0.0482659,
+                                                            -0.0102493,
+                                                            -0.00794221,
+                                                            -0.00387115,
+                                                            -0.00674586,
+                                                            -0.0495346,
+                                                            0.0629528,
+                                                            -0.00531285,
+                                                            -0.0230353,
+                                                            0.0269089};
 
 const std::vector<std::vector<float>> wx = {
     {0.04347931, -0.5643393, 0.7551297, 0.26713502, 0.8055306, 0.91144973},
@@ -34,11 +42,11 @@ const std::vector<std::vector<float>> wh = {
     {0.42484227, -0.9025513, 0.17087583, 0.8403284, 0.03325734, 0.92331886},
     {0.32630175, 0.41691914, 0.99848574, 0.3504407, 0.06707559, 0.62239844}};
 
-const std::vector<double> gru_scales = {2.35381475, 1.08304947, 1.32427582,
-                                        1.19001095, 1.00151656, 1.01785819};
+const std::vector<double> gru_scales = {
+    2.35381475, 1.08304947, 1.32427582, 1.19001095, 1.00151656, 1.01785819};
 
-const std::vector<double> lstm_scales = {2.35381475, 1.10797026, 1.00151656,
-                                         1.19001095, 1.09045166, 1.01785819};
+const std::vector<double> lstm_scales = {
+    2.35381475, 1.10797026, 1.00151656, 1.19001095, 1.09045166, 1.01785819};
 
 static const std::initializer_list<std::string> conv_variable_names{
     "conv_in", "filter", "bias", "conv_out"};
@@ -52,37 +60,48 @@ class ComputePropagateScalesMkldnnPassTest : public testing::Test {
     pass.reset(new ComputePropagateScalesMkldnnPass());
   }
 
-  std::vector<float> GetScales(Tensor* tensor, int axis) const {
+  std::vector<float> GetScales(phi::DenseTensor* tensor, int axis) const {
     return pass->GetScales(tensor, axis);
   }
 
-  void ComputeVarScales(ir::Graph* graph, Scope* scope,
+  void ComputeVarScales(ir::Graph* graph,
+                        Scope* scope,
                         const std::unordered_set<std::string> ops,
-                        const std::string& weight_name, const int axis,
+                        const std::string& weight_name,
+                        const int axis,
                         StringPairMap* var_quant_scales) const {
-    pass->ComputeVarScales(graph, scope, ops, weight_name, axis,
-                           var_quant_scales);
+    pass->ComputeVarScales(
+        graph, scope, ops, weight_name, axis, var_quant_scales);
   }
 
-  void ComputeGruWeightScales(ir::Graph* graph, Scope* scope,
+  void ComputeGruWeightScales(ir::Graph* graph,
+                              Scope* scope,
                               const std::string& wx_name,
                               const std::string& wh_name,
                               StringPairMap* var_quant_scales) const {
-    pass->ComputeGruWeightScales(graph, scope, wx_name, wh_name,
-                                 var_quant_scales);
+    pass->ComputeGruWeightScales(
+        graph, scope, wx_name, wh_name, var_quant_scales);
   }
 
-  void ComputeLstmWeightScales(ir::Graph* graph, Scope* scope,
-                               std::string wx_name, std::string wh_name,
+  void ComputeLstmWeightScales(ir::Graph* graph,
+                               Scope* scope,
+                               std::string wx_name,
+                               std::string wh_name,
                                StringPairMap* var_quant_scales) const {
-    pass->ComputeLstmWeightScales(graph, scope, wx_name, wh_name,
-                                  var_quant_scales);
+    pass->ComputeLstmWeightScales(
+        graph, scope, wx_name, wh_name, var_quant_scales);
   }
 
-  void InitTensorHolder(Scope* scope, const paddle::platform::Place& place,
+  void UpdateReluOutputScales(ir::Graph* graph,
+                              StringPairMap* var_quant_scales) const {
+    pass->UpdateReluOutputScales(graph, var_quant_scales);
+  }
+
+  void InitTensorHolder(Scope* scope,
+                        const paddle::platform::Place& place,
                         const std::string& var_name) {
     auto x = scope->Var(var_name);
-    auto tensor = x->GetMutable<LoDTensor>();
+    auto tensor = x->GetMutable<phi::DenseTensor>();
     auto tensor_size = 1;
     if (var_name == "filter") {
       tensor_size = positive_and_negative_values.size();
@@ -96,9 +115,11 @@ class ComputePropagateScalesMkldnnPassTest : public testing::Test {
                          tensor_size);
   }
 
-  void PrepareGraph(ir::Graph* graph, const ProgramDesc& prog, Scope* scope,
+  void PrepareGraph(ir::Graph* graph,
+                    const ProgramDesc& prog,
+                    Scope* scope,
                     const std::initializer_list<std::string>& variable_names) {
-    auto place = paddle::platform::CPUPlace();
+    auto place = phi::CPUPlace();
     NaiveExecutor exe{place};
     exe.CreateVariables(prog, 0, true, scope);
 
@@ -109,7 +130,6 @@ class ComputePropagateScalesMkldnnPassTest : public testing::Test {
   }
 
   void ComputeRnnWeightScalesTest(const std::string& type,
-                                  const std::initializer_list<std::string>& ops,
                                   const framework::ProgramDesc& prog,
                                   std::vector<double> scales) {
     ir::Graph* graph(new ir::Graph(prog));
@@ -125,29 +145,31 @@ class ComputePropagateScalesMkldnnPassTest : public testing::Test {
     StringPairMap var_quant_scales;
 
     auto* wx_var = scope.FindVar(wx_var_names);
-    auto* wx_tensor = wx_var->GetMutable<LoDTensor>();
+    auto* wx_tensor = wx_var->GetMutable<phi::DenseTensor>();
     wx_tensor->Resize(phi::make_dim(wx.size(), wx[0].size()));
     for (size_t i = 0; i < wx.size(); i++)
-      std::copy(begin(wx[i]), end(wx[i]),
-                wx_tensor->mutable_data<float>(platform::CPUPlace()) +
-                    i * wx[0].size());
+      std::copy(
+          begin(wx[i]),
+          end(wx[i]),
+          wx_tensor->mutable_data<float>(phi::CPUPlace()) + i * wx[0].size());
 
     auto* wh_var = scope.FindVar(wh_var_names);
-    auto* wh_tensor = wh_var->GetMutable<LoDTensor>();
+    auto* wh_tensor = wh_var->GetMutable<phi::DenseTensor>();
     wh_tensor->Resize(phi::make_dim(wh.size(), wh[0].size()));
     for (size_t i = 0; i < wh.size(); i++)
-      std::copy(begin(wh[i]), end(wh[i]),
-                wh_tensor->mutable_data<float>(platform::CPUPlace()) +
-                    i * wh[0].size());
+      std::copy(
+          begin(wh[i]),
+          end(wh[i]),
+          wh_tensor->mutable_data<float>(phi::CPUPlace()) + i * wh[0].size());
     if (type == "gru") {
-      ComputeGruWeightScales(graph, &scope, wx_name, wh_name,
-                             &var_quant_scales);
+      ComputeGruWeightScales(
+          graph, &scope, wx_name, wh_name, &var_quant_scales);
     } else {
-      ComputeLstmWeightScales(graph, &scope, wx_name, wh_name,
-                              &var_quant_scales);
+      ComputeLstmWeightScales(
+          graph, &scope, wx_name, wh_name, &var_quant_scales);
     }
     bool is_unsigned;
-    framework::Tensor wx_result_tensor;
+    phi::DenseTensor wx_result_tensor;
 
     std::tie(is_unsigned, wx_result_tensor) = var_quant_scales[wx_var_names];
     ASSERT_EQ(is_unsigned, false);
@@ -157,17 +179,41 @@ class ComputePropagateScalesMkldnnPassTest : public testing::Test {
     }
   }
 
+  void UpdateReluOutputScaleTest(
+      const framework::ProgramDesc& prog,
+      StringPairMap* var_quant_scales,
+      const std::initializer_list<std::string>& variable_names) {
+    ir::Graph* graph(new ir::Graph(prog));
+    Scope scope;
+
+    PrepareGraph(graph, prog, &scope, conv_variable_names);
+
+    UpdateReluOutputScales(graph, var_quant_scales);
+
+    for (auto& var_name : variable_names) {
+      auto iter = var_quant_scales->find(var_name);
+      ASSERT_NE(iter, var_quant_scales->end());
+      ASSERT_EQ((*var_quant_scales)[var_name].first, true);
+    }
+  }
+
  private:
   std::unique_ptr<ComputePropagateScalesMkldnnPass> pass;
 };
 
-void SetOp(ProgramDesc* prog, const std::string& type, const std::string& name,
+void SetOp(ProgramDesc* prog,
+           const std::string& type,
+           const std::string& name,
            const std::vector<std::string>& inputs,
-           const std::vector<std::string>& outputs) {
+           const std::vector<std::string>& outputs,
+           const std::unordered_map<std::string, std::string>& attrs = {}) {
   auto* op = prog->MutableBlock(0)->AppendOp();
   op->SetType(type);
   op->SetAttr("use_mkldnn", true);
   op->SetAttr("name", name);
+  if (!attrs.empty())
+    for (auto& attr : attrs) op->SetAttr(attr.first, attr.second);
+
   if (type == "conv2d") {
     op->SetInput("Input", {inputs[0]});
     if (inputs.size() > 1) op->SetInput("Filter", {inputs[1]});
@@ -188,6 +234,23 @@ ProgramDesc BuildConv2dProgramDesc() {
     prog.MutableBlock(0)->Var(v);
   }
   SetOp(&prog, "conv2d", "Conv2d", {"conv_in", "filter", "bias"}, {"conv_out"});
+
+  return prog;
+}
+
+ProgramDesc BuildConv2dReluProgramDesc() {
+  ProgramDesc prog;
+  for (auto& v : conv_variable_names) {
+    prog.MutableBlock(0)->Var(v);
+  }
+  std::unordered_map<std::string, std::string> attrs = {
+      {"fuse_activation", "relu"}};
+  SetOp(&prog,
+        "conv2d",
+        "Conv2d",
+        {"conv_in", "filter", "bias"},
+        {"conv_out"},
+        attrs);
 
   return prog;
 }
@@ -216,10 +279,11 @@ TEST_F(ComputePropagateScalesMkldnnPassTest, get_scales_function) {
   const auto& values = positive_and_negative_values;
   float max_val = *std::max_element(values.begin(), values.end());
 
-  framework::Tensor var_tensor;
+  phi::DenseTensor var_tensor;
   var_tensor.Resize(phi::make_dim(values.size(), 1));
-  std::copy(begin(values), end(values),
-            var_tensor.mutable_data<float>(platform::CPUPlace()));
+  std::copy(begin(values),
+            end(values),
+            var_tensor.mutable_data<float>(phi::CPUPlace()));
   std::vector<float> results = GetScales(&var_tensor, 0);
 
   ASSERT_EQ(results.size(), std::size_t(1));
@@ -242,17 +306,18 @@ TEST_F(ComputePropagateScalesMkldnnPassTest, compute_var_scales) {
   StringPairMap var_quant_scales;
 
   auto* var = scope.FindVar(weight_var_name);
-  auto* weight_tensor = var->GetMutable<LoDTensor>();
+  auto* weight_tensor = var->GetMutable<phi::DenseTensor>();
   weight_tensor->Resize(phi::make_dim(1, values.size()));
-  std::copy(begin(values), end(values),
-            weight_tensor->mutable_data<float>(platform::CPUPlace()));
+  std::copy(begin(values),
+            end(values),
+            weight_tensor->mutable_data<float>(phi::CPUPlace()));
 
   auto max_val = *std::max_element(values.begin(), values.end());
 
   ComputeVarScales(graph, &scope, ops, weight_name, axis, &var_quant_scales);
 
   bool is_unsigned;
-  framework::Tensor result_tensor;
+  phi::DenseTensor result_tensor;
 
   std::tie(is_unsigned, result_tensor) = var_quant_scales[weight_var_name];
 
@@ -262,13 +327,24 @@ TEST_F(ComputePropagateScalesMkldnnPassTest, compute_var_scales) {
 }
 
 TEST_F(ComputePropagateScalesMkldnnPassTest, compute_gru_weight_scales) {
-  ComputeRnnWeightScalesTest("gru", {"fusion_gru", "multi_gru"},
-                             BuildFusionGruProgramDesc(), gru_scales);
+  ComputeRnnWeightScalesTest("gru", BuildFusionGruProgramDesc(), gru_scales);
 }
 
 TEST_F(ComputePropagateScalesMkldnnPassTest, compute_lstm_weight_scales) {
-  ComputeRnnWeightScalesTest("lstm", {"fusion_lstm"},
-                             BuildFusionLstmProgramDesc(), lstm_scales);
+  ComputeRnnWeightScalesTest("lstm", BuildFusionLstmProgramDesc(), lstm_scales);
+}
+
+TEST_F(ComputePropagateScalesMkldnnPassTest, update_relu_output_scales) {
+  StringPairMap var_quant_scales;
+  for (auto& var_name : conv_variable_names) {
+    phi::DenseTensor tensor;
+    auto* data = tensor.mutable_data<float>({1}, phi::CPUPlace());
+    data[0] = 10;
+    auto pair = std::make_pair(false, tensor);
+    var_quant_scales.insert(std::make_pair(var_name, pair));
+  }
+  UpdateReluOutputScaleTest(
+      BuildConv2dReluProgramDesc(), &var_quant_scales, {"conv_out"});
 }
 
 }  // namespace ir

@@ -12,11 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
+
 import numpy as np
 from op_test import OpTest
+
 import paddle
 import paddle.fluid as fluid
 
@@ -35,8 +35,11 @@ def crop(data, offsets, crop_shape):
         selected = True
         if len(index) == len(offsets):
             for j, offset in enumerate(offsets):
-                selected = selected and index[j] >= offset and index[
-                    j] < crop_shape[j] + offset
+                selected = (
+                    selected
+                    and index[j] >= offset
+                    and index[j] < crop_shape[j] + offset
+                )
             if selected:
                 result.append(value)
     return np.array(result).reshape(crop_shape)
@@ -49,12 +52,13 @@ class TestCropTensorOp(OpTest):
         self.offset_by_input = False
         self.unk_dim_idx = -1
         self.attrs = {}
+        self.python_api = paddle.crop
         self.initTestCase()
 
         if self.shape_by_input:
             self.inputs = {
                 'X': np.random.random(self.x_shape).astype("float64"),
-                'Shape': np.array(self.crop_shape).astype("int32")
+                'Shape': np.array(self.crop_shape).astype("int32"),
             }
         else:
             self.attrs['shape'] = self.crop_shape
@@ -86,7 +90,7 @@ class TestCropTensorOp(OpTest):
 
 class TestCase1(TestCropTensorOp):
     def initTestCase(self):
-        self.x_shape = (100)
+        self.x_shape = 100
         self.crop_shape = [64]
         self.offsets = [13]
 
@@ -137,27 +141,30 @@ class TestCropTensorOpTensorAttr(OpTest):
         self.OffsetsTensor = False
         self.ShapeTensor = True
         self.attrs = {}
+        self.python_api = paddle.crop
         self.initTestCase()
 
         if self.ShapeTensor:
             shape_tensor = []
             for index, ele in enumerate(self.crop_shape):
-                shape_tensor.append(("x" + str(index), np.ones(
-                    (1)).astype('int32') * ele))
+                shape_tensor.append(
+                    ("x" + str(index), np.ones((1)).astype('int32') * ele)
+                )
             self.inputs = {
                 'X': np.random.random(self.x_shape).astype("float64"),
-                'ShapeTensor': shape_tensor
+                'ShapeTensor': shape_tensor,
             }
             self.attrs['shape'] = self.shape_attr
 
         if self.OffsetsTensor:
             offsets_tensor = []
             for index, ele in enumerate(self.offsets):
-                offsets_tensor.append(("x" + str(index), np.ones(
-                    (1)).astype('int32') * ele))
+                offsets_tensor.append(
+                    ("x" + str(index), np.ones((1)).astype('int32') * ele)
+                )
             self.inputs = {
                 'X': np.random.random(self.x_shape).astype("float64"),
-                'OffsetsTensor': offsets_tensor
+                'OffsetsTensor': offsets_tensor,
             }
             self.attrs['offsets'] = self.offsets_attr
 
@@ -242,11 +249,13 @@ class TestCropTensorException(unittest.TestCase):
 
         def attr_offsets_dtype():
             out = paddle.crop(
-                input1, shape=[2, 2, 3, 3], offsets=[0, 1.0, 0, 0])
+                input1, shape=[2, 2, 3, 3], offsets=[0, 1.0, 0, 0]
+            )
 
         def attr_offsets_value():
             out = paddle.crop(
-                input1, shape=[2, 2, 3, 3], offsets=[0, -1, offset, 0])
+                input1, shape=[2, 2, 3, 3], offsets=[0, -1, offset, 0]
+            )
 
         def input_dtype():
             out = paddle.crop(input2, shape=[2, 2, 3, 3])
@@ -262,6 +271,5 @@ class TestCropTensorException(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    import paddle
     paddle.enable_static()
     unittest.main()

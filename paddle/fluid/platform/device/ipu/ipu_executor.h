@@ -14,24 +14,32 @@ limitations under the License. */
 
 #pragma once
 
+#include <mutex>
+
+#include <model_runtime/ModelRunner.hpp>
+#include <model_runtime/Tensor.hpp>
 #include <popart/dataflow.hpp>
 #include <popart/half.hpp>
 #include <popart/names.hpp>
 #include <popart/patterns/patterns.hpp>
 #include <popart/session.hpp>
+#include <popart/stepio.hpp>
 #include <popart/tensorinfo.hpp>
-#include <popdist/popdist_poplar.hpp>
 
-#include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/framework/scope.h"
-#include "paddle/fluid/platform/device/ipu/ipu_compiler.h"
-#include "paddle/fluid/platform/device/ipu/ipu_names.h"
-#include "paddle/fluid/platform/device/ipu/ipu_strategy.h"
 #include "paddle/fluid/platform/device/ipu/ipu_utils.h"
+
+namespace paddle {
+namespace framework {
+class ExecutionContext;
+}  // namespace framework
+}  // namespace paddle
 
 namespace paddle {
 namespace platform {
 namespace ipu {
+
+struct CompilerResources;
+class IpuStrategy;
 
 struct ExecutorResources {
   // map<tensor_id, paddle_var_ptr>
@@ -45,19 +53,27 @@ class Executor {
   Executor() = default;
   ~Executor();
 
-  // build popart session
+  // Build popart session
   void Prepare(const std::string &proto);
 
-  // run popart session
+  // Run popart session
   void Run(const std::vector<const Tensor *> &inputs,
            const std::vector<Tensor *> &outputs,
            const framework::ExecutionContext &ctx);
 
-  // sync weights from popart to paddle
+  // Run popef session
+  void RunPopef(const std::vector<const Tensor *> &inputs,
+                const std::vector<Tensor *> &outputs,
+                const framework::ExecutionContext &ctx);
+
+  // Sync weights from popart to paddle
   void WeightsToHost();
 
-  // detach IPU
+  // Detach IPU
   void Detach();
+
+  // Reset session
+  void Reset();
 
   // Scope
   void SetScope(const Scope *scope) { scope_ = scope; }
@@ -81,19 +97,36 @@ class Executor {
   void ConvertWeights(bool);
   void WeightsFromPaddle();
   void WeightsToPaddle();
+  void PreparePopefSession();
+  void ResetPopef();
 
  private:
-  // not own
+  // Not own
   const Scope *scope_ = nullptr;
   const IpuStrategy *ipu_strategy_ = nullptr;
   CompilerResources *compiler_resources_ = nullptr;
+  model_runtime::QueueManager *queue_manager_ = nullptr;
 
-  // deviceinfo for popart session
+  // Deviceinfo for popart session
   std::shared_ptr<popart::DeviceInfo> device_;
-  // popart session, where graph running
+  // Popart session, where graph running
   std::unique_ptr<popart::Session> session_;
-  // one OneSession means a graph
+  // A ExecutorResources corresponds to a graph
   std::unique_ptr<ExecutorResources> executor_resources_;
+  // mutex to lock session run.
+  mutable std::mutex mutex_;
+  // popef session
+  std::unique_ptr<model_runtime::Session> popef_session_;
+  // popef execution threads
+  std::thread main_program_;
+  // mutex to lock popef queue
+  std::mutex queue_mutex_;
+
+  bool compile_only_ = false;
+  // indicate if popart/popef is used. Do not use the ipu_strategy which may
+  // deconstruct before executor and cause undefined behavior.
+  bool enable_model_runtime_executor_ = false;
+  std::atomic_bool stop_ = {false};
 };
 
 }  // namespace ipu

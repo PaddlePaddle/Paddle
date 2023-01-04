@@ -13,7 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/collective/partial_recv_op.h"
-
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/device/npu/hccl_helper.h"
 
@@ -25,7 +24,7 @@ class PartialRecvOpASCENDKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
 #if defined(PADDLE_WITH_ASCEND_CL)
-    auto out = ctx.Output<framework::LoDTensor>("Out");
+    auto out = ctx.Output<phi::DenseTensor>("Out");
     out->mutable_data<T>(out->dims(), ctx.GetPlace());
     int num = ctx.Attr<int>("num");
     int id = ctx.Attr<int>("id");
@@ -55,8 +54,10 @@ class PartialRecvOpASCENDKernel : public framework::OpKernel<T> {
     int nranks = comm->nranks();
     int peer = ctx.Attr<int>("peer");
 
-    PADDLE_ENFORCE_EQ(nranks, 2, platform::errors::InvalidArgument(
-                                     "The nranks must be 2, but (%d)", nranks));
+    PADDLE_ENFORCE_EQ(nranks,
+                      2,
+                      platform::errors::InvalidArgument(
+                          "The nranks must be 2, but (%d)", nranks));
 
     int root = peer;
 
@@ -82,7 +83,8 @@ class PartialRecvOpASCENDKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_NPU_KERNEL(partial_recv, ops::PartialRecvOpASCENDKernel<int>,
+REGISTER_OP_NPU_KERNEL(partial_recv,
+                       ops::PartialRecvOpASCENDKernel<int>,
                        ops::PartialRecvOpASCENDKernel<int8_t>,
                        ops::PartialRecvOpASCENDKernel<float>,
                        ops::PartialRecvOpASCENDKernel<plat::float16>);

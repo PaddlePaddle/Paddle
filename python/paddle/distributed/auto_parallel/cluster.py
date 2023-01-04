@@ -12,10 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import json
-from enum import IntEnum
-from enum import unique
+import os
+from enum import IntEnum, unique
+
+import paddle
 
 
 @unique
@@ -50,14 +51,14 @@ class Device:
         self._local_id = local_id
         self._machine = machine
         self._type = None
-        # Different device have different models, such as 
+        # Different device have different models, such as
         # "Tesla V100-SXM2-32GB" and "A100-SXM4-40GB" etc.
         self._model = None
         # Double precision GFLOPS
         self._dp_gflops = None
         # Single precision GFLOPS
         self._sp_gflops = None
-        # Memory is stored by GB 
+        # Memory is stored by GB
         self._memory = None
 
     @property
@@ -127,8 +128,15 @@ class Device:
     def __str__(self):
         str = ""
         str += "global_id: {}, local_id: {}, machine_id: {}, type: {}, model: {}, dp_flops: {}, sp_flops: {}, memory: {}".format(
-            self.global_id, self.local_id, self.machine.id, self.type.name,
-            self.model, self.dp_gflops, self.sp_gflops, self.memory)
+            self.global_id,
+            self.local_id,
+            self.machine.id,
+            self.type.name,
+            self.model,
+            self.dp_gflops,
+            self.sp_gflops,
+            self.memory,
+        )
         return str
 
     def __repr__(self):
@@ -138,15 +146,15 @@ class Device:
 class Link:
 
     default_hop = 1
-    default_nic_bandwith = 24
+    default_nic_bandwidth = 24
 
     def __init__(self, source, target):
         self._src = source
         self._tgt = target
         self._type = None
-        # bandwidth is stored by GB/s 
+        # bandwidth is stored by GB/s
         self._bandwidth = None
-        # latency is stored by millisecond 
+        # latency is stored by millisecond
         self._latency = None
         self._hop = None
 
@@ -201,8 +209,12 @@ class Link:
     def __str__(self):
         str = ""
         str += "source_global_id: {}, target_global_id: {}, type: {}, bandwidth: {}, latency: {}".format(
-            self.source.global_id, self.target.global_id, self.type,
-            self.bandwidth, self.latency)
+            self.source.global_id,
+            self.target.global_id,
+            self.type,
+            self.bandwidth,
+            self.latency,
+        )
         return str
 
     def __repr__(self):
@@ -301,12 +313,15 @@ class AlphaLatency:
                 self._switch = float(self._switch)
             except:
                 raise TypeError("The switch latency must be float")
-        self._base_ring = self._base.get(
-            "ring", None) if self._base is not None else None
-        self._base_tree = self._base.get(
-            "tree", None) if self._base is not None else None
-        self._base_inter = self._base.get(
-            "inter", None) if self._base is not None else None
+        self._base_ring = (
+            self._base.get("ring", None) if self._base is not None else None
+        )
+        self._base_tree = (
+            self._base.get("tree", None) if self._base is not None else None
+        )
+        self._base_inter = (
+            self._base.get("inter", None) if self._base is not None else None
+        )
         if self._base_ring is not None:
             try:
                 self._base_ring = float(self._base_ring)
@@ -409,6 +424,176 @@ class Cluster:
         self._alpha_latency = None
         self._rank_to_device_id = {}
         self._device_id_to_rank = {}
+        # This property only be valid when the cluster consists of machines,
+        # which have the same number accelerators.
+        self._num_devices_per_machine = None
+
+    def gen_default_config_cluster(
+        self,
+        gpu_model="V100",
+        cpu_model="6271C",
+        node_count=1,
+        device_count=1,
+        gpu_memory=32,
+        cpu_memory=503,
+        inter_bandwidth=24,
+        intra_bandwidth=235,
+        gpu_dp_gflops=7800,
+        gpu_sp_gflops=15700,
+        cpu_dp_gflops=75,
+        cpu_sp_gflops=150,
+    ):
+        """Generate cluster by default config."""
+        gpu_models = ["V100", "A100", "H100", "A2", "A10", "A16", "A30", "A40"]
+        xpu_models = ["XPU"]
+        npu_models = ["NPU"]
+        dcu_models = ["DCU"]
+        all_gpu_models = gpu_models + xpu_models + npu_models + dcu_models
+        assert gpu_model in all_gpu_models
+        self._num_devices_per_machine = device_count
+
+        def _convert_to_type(gpu_model):
+            type = None
+            if gpu_model in gpu_models:
+                type = "GPU"
+            elif gpu_model in xpu_models:
+                type = "XPU"
+            elif gpu_model in npu_models:
+                type = "NPU"
+            elif gpu_model in dcu_models:
+                type = "DCU"
+            assert type is not None
+
+            return type
+
+        def _convert_to_model(gpu_model, gpu_memory):
+            model = None
+            if gpu_model == "V100":
+                model = "Tesla V100-SXM2-" + str(gpu_memory) + "GB"
+            assert model is not None
+
+            return model
+
+        def _convert_to_cpu_info(cpu_model):
+            arch, vendor, model = None, None, None
+            if cpu_model == "6271C":
+                arch = "x86_64"
+                vendor = "GenuineIntel"
+                model = "Intel(R) Xeon(R) Gold 6271C CPU @ 2.60G"
+            elif cpu_model == "6148":
+                arch = "x86_64"
+                vendor = "GenuineIntel"
+                model = "Intel(R) Xeon(R) Gold 6148 CPU @ 2.40G"
+            assert arch is not None
+            assert vendor is not None
+            assert model is not None
+
+            return arch, vendor, model
+
+        cluster_info = {}
+        cluster_info["machines"] = []
+        global_id = 0
+        global_id_to_device_type = {}
+        global_id_to_node = {}
+        # NOTE: It will support NPU, XPU, DCU models in the future, it is just a fake value now
+        for i in range(node_count):
+            machine = {}
+            # NOTE: The hostname is host_0, host_1, ...
+            machine["hostname"] = "host_" + str(i)
+            # NOTE: The addr is localhost, if need actual addr, it should be reset manually
+            machine["addr"] = "127.0.0.1"
+            # NOTE: The port is a default value
+            machine["port"] = 60009
+            machine["links"] = []
+
+            devices = []
+            local_id = 0
+
+            for j in range(device_count):
+                device = {}
+                global_id = global_id if i == 0 and j == 0 else global_id + 1
+
+                local_id += 1
+                type = _convert_to_type(gpu_model)
+                model = _convert_to_model(gpu_model, gpu_memory)
+                dp_gflops = gpu_dp_gflops
+                sp_gflops = gpu_dp_gflops
+                memory = gpu_memory
+
+                device["global_id"] = global_id
+                device["local_id"] = local_id
+                device["type"] = type
+                device["model"] = model
+                device["memory"] = memory
+                device["sp_gflops"] = sp_gflops
+                device["dp_gflops"] = dp_gflops
+                global_id_to_device_type[global_id] = type
+                global_id_to_node[global_id] = i
+                devices.append(device)
+
+            # add cpu device and nic device, just one cpu
+            cpu_device = {}
+            arch, vendor, model = _convert_to_cpu_info(cpu_model)
+            sp_gflops = cpu_sp_gflops
+            dp_gflops = cpu_dp_gflops
+            global_id += 1
+            local_id = 0
+            memory = cpu_memory
+            type = "CPU"
+            cpu_device["arch"] = arch
+            cpu_device["vendor"] = vendor
+            cpu_device["model"] = model
+            cpu_device["sp_gflops"] = sp_gflops
+            cpu_device["dp_gflops"] = dp_gflops
+            cpu_device["global_id"] = global_id
+            cpu_device["local_id"] = local_id
+            cpu_device["memory"] = memory
+            cpu_device["type"] = type
+            global_id_to_node[global_id] = i
+            global_id_to_device_type[global_id] = type
+            devices.append(cpu_device)
+
+            nic_device = {}
+            global_id += 1
+
+            # add NIC
+            type = "NIC"
+            width = 12.5
+            ip = "127.0.0.1"
+            local_id = 0
+            nic_device["type"] = type
+            nic_device["local_id"] = type
+            nic_device["global_id"] = global_id
+            global_id_to_device_type[global_id] = type
+            global_id_to_node[global_id] = i
+            devices.append(nic_device)
+            machine["devices"] = devices
+            cluster_info["machines"].append(machine)
+
+        # build link
+        for i in range(0, global_id + 1):
+            for j in range(0, global_id + 1):
+                if i == j:
+                    continue
+                node_id_i = global_id_to_node[i]
+                node_id_j = global_id_to_node[j]
+                device_type_i = global_id_to_device_type[i]
+                device_type_j = global_id_to_device_type[j]
+                link = {}
+                source_global_id = i
+                target_global_id = j
+                link["source_global_id"] = source_global_id
+                link["target_global_id"] = target_global_id
+                # the same node and device_type, set intra_bandwidth, NVL
+                if node_id_i == node_id_j and device_type_i == device_type_j:
+                    link["type"] = "NVL"
+                    link["bandwidth"] = intra_bandwidth
+                else:
+                    link["type"] = "PHB"
+                    link["bandwidth"] = inter_bandwidth
+                cluster_info["machines"][node_id_i]["links"].append(link)
+
+        self._build_from_dict(cluster_info)
 
     @property
     def rank_to_device_id(self):
@@ -431,25 +616,31 @@ class Cluster:
             prev_machine = self._machines[machine.id - 1]
             offset = prev_machine._non_accelerator_cumulative_count
             for global_id in machine.devices:
-                if machine.devices[
-                        global_id].type not in Device.NON_ACCELERATOR_TYPE:
+                if (
+                    machine.devices[global_id].type
+                    not in Device.NON_ACCELERATOR_TYPE
+                ):
                     rank_id = global_id - offset
                     self._rank_to_device_id[rank_id] = global_id
                     self._device_id_to_rank[global_id] = rank_id
-            machine._non_accelerator_cumulative_count = len(
-                machine.devices) - len(
-                    machine.accelerators
-                ) + prev_machine._non_accelerator_cumulative_count
+            machine._non_accelerator_cumulative_count = (
+                len(machine.devices)
+                - len(machine.accelerators)
+                + prev_machine._non_accelerator_cumulative_count
+            )
         else:
             for global_id in machine.devices:
-                if machine.devices[
-                        global_id].type not in Device.NON_ACCELERATOR_TYPE:
+                if (
+                    machine.devices[global_id].type
+                    not in Device.NON_ACCELERATOR_TYPE
+                ):
                     rank_id = global_id
                     self._rank_to_device_id[rank_id] = global_id
                     self._device_id_to_rank[global_id] = rank_id
                     machine.accelerators[global_id] = machine.devices[global_id]
             machine._non_accelerator_cumulative_count = len(
-                machine.devices) - len(machine.accelerators)
+                machine.devices
+            ) - len(machine.accelerators)
 
     @property
     def alpha_latency(self):
@@ -471,9 +662,7 @@ class Cluster:
                 device = machine.devices[device_global_id]
         return device
 
-    def build_from_file(self, json_file_path):
-        with open(json_file_path) as json_file:
-            cluster_info = json.load(json_file)
+    def _build_from_dict(self, cluster_info):
         machines_info = cluster_info["machines"]
         for machine_info in machines_info:
             machine_id = self._generate_machine_id()
@@ -527,9 +716,15 @@ class Cluster:
 
         if "alpha_latency" in cluster_info:
             self._alpha_latency = AlphaLatency(
-                cluster_info.get("alpha_latency"))
+                cluster_info.get("alpha_latency")
+            )
         else:
             self._alpha_latecy = None
+
+    def build_from_file(self, json_file_path):
+        with open(json_file_path) as json_file:
+            cluster_info = json.load(json_file)
+        self._build_from_dict(cluster_info)
 
     def _generate_machine_id(self):
         cur_machine_id = self._num_machines
@@ -554,11 +749,11 @@ class Cluster:
         bandwidth = None
         # None means the source and target are not connected directly, set NIC in default
         if link is None:
-            bandwidth = Link.default_nic_bandwith
+            bandwidth = Link.default_nic_bandwidth
         else:
             bandwidth = link.bandwidth
 
-        if bandwidth == 0.:
+        if bandwidth == 0.0:
             beta = 0
         else:
             beta = 1 / (bandwidth * (convert_base**3 / 10**6))
@@ -606,6 +801,15 @@ class Cluster:
         assert count > 0
         return count
 
+    def get_num_machines(self):
+        return len(self._machines)
+
+    def get_num_devices_per_machine(self):
+        # Only return the number of accelerators of each machine.
+        # All machines must has the same number of devices and same type of devices.
+        assert self._num_devices_per_machine
+        return self._num_devices_per_machine
+
     def __str__(self):
         str = ""
         for machine in self.machines.values():
@@ -614,3 +818,32 @@ class Cluster:
 
     def __repr__(self):
         return self.__str__()
+
+
+def get_default_cluster():
+    cluster = Cluster()
+    local_device_count = os.getenv("PADDLE_LOCAL_SIZE")
+    if local_device_count is None:
+        local_device_count = 1
+    else:
+        local_device_count = int(local_device_count)
+    global_device_count = os.getenv("PADDLE_GLOBAL_SIZE")
+    if global_device_count is None:
+        node_count = 1
+    else:
+        global_device_count = int(global_device_count)
+        assert global_device_count % local_device_count == 0
+        node_count = int(global_device_count) // local_device_count
+    print(
+        "Node Count: ",
+        node_count,
+        "Local Device Size: ",
+        local_device_count,
+        "World size: ",
+        paddle.distributed.get_world_size(),
+        flush=True,
+    )
+    cluster.gen_default_config_cluster(
+        node_count=node_count, device_count=local_device_count
+    )
+    return cluster

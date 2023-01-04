@@ -52,15 +52,17 @@ if [ $7 == ON ]; then
   mkdir -p MobileNetV2
   cd MobileNetV2
   if [[ -e "MobileNetV2.inference.model.tar.gz" ]]; then
-    echo "MobileNetV2.inference.model.tar.gz has been downloaded."
-  else
+    rm -rf MobileNetV2.inference.model.tar.gz
+  fi
+    # echo "MobileNetV2.inference.model.tar.gz has been downloaded."
+  # else
     if [ $WIN_DETECT != "" ]; then
       wget -q -Y off http://paddle-inference-dist.bj.bcebos.com/MobileNetV2.inference.model.tar.gz
     else
       wget -q --no-proxy http://paddle-inference-dist.bj.bcebos.com/MobileNetV2.inference.model.tar.gz
     fi
     tar xzf *.tar.gz
-  fi
+  # fi
   cd ..
 fi
 
@@ -106,6 +108,9 @@ mkdir -p build
 cd build
 rm -rf *
 
+# run all test cases before exit
+EXIT_CODE=0
+
 for WITH_STATIC_LIB in ON OFF; do
   if [ $(echo `uname` | grep "Win") != "" ]; then
     # TODO(wilber, T8T9): Do we still need to support windows gpu static library
@@ -128,8 +133,8 @@ for WITH_STATIC_LIB in ON OFF; do
         --dirname=$DATA_DIR/word2vec/word2vec.inference.model \
         --use_gpu=$use_gpu
       if [ $? -ne 0 ]; then
-        echo "simple_on_word2vec demo runs fail."
-        exit 1
+        echo "simple_on_word2vec use_gpu:${use_gpu} runs failed " > ${current_dir}/test_summary.txt
+        EXIT_CODE=1
       fi
     done
 
@@ -153,8 +158,8 @@ for WITH_STATIC_LIB in ON OFF; do
           --refer=$DATA_DIR/$vis_demo_name/result.txt \
           --use_gpu=$use_gpu
         if [ $? -ne 0 ]; then
-          echo "vis demo $vis_demo_name runs fail."
-          exit 1
+          echo "vis demo $vis_demo_name use_gpu:${use_gpu} runs failed " >> ${current_dir}/test_summary.txt
+          EXIT_CODE=1
         fi
       done
     done
@@ -179,8 +184,8 @@ for WITH_STATIC_LIB in ON OFF; do
         --data=$DATA_DIR/mobilenet/data.txt \
         --refer=$DATA_DIR/mobilenet/result.txt 
       if [ $? -ne 0 ]; then
-        echo "trt demo trt_mobilenet_demo runs fail."
-        exit 1
+        echo "trt_mobilenet_demo runs failed." >> ${current_dir}/test_summary.txt
+        EXIT_CODE=1
       fi
     fi
   else
@@ -200,8 +205,8 @@ for WITH_STATIC_LIB in ON OFF; do
           --dirname=$DATA_DIR/word2vec/word2vec.inference.model \
           --use_gpu=$use_gpu
         if [ $? -ne 0 ]; then
-          echo "simple_on_word2vec demo runs fail."
-          exit 1
+          echo "simple_on_word2vec use_gpu:${use_gpu} runs failed " >> ${current_dir}/test_summary.txt
+          EXIT_CODE=1
         fi
       done
     fi
@@ -222,8 +227,8 @@ for WITH_STATIC_LIB in ON OFF; do
           --refer=$DATA_DIR/$vis_demo_name/result.txt \
           --use_gpu=$use_gpu
         if [ $? -ne 0 ]; then
-          echo "vis demo $vis_demo_name runs fail."
-          exit 1
+          echo "vis demo $vis_demo_name use_gpu:${use_gpu} runs failed " >> ${current_dir}/test_summary.txt
+          EXIT_CODE=1
         fi
       done
     done
@@ -244,8 +249,8 @@ for WITH_STATIC_LIB in ON OFF; do
         --data=$DATA_DIR/mobilenet/data.txt \
         --refer=$DATA_DIR/mobilenet/result.txt 
       if [ $? -ne 0 ]; then
-        echo "trt demo trt_mobilenet_demo runs fail."
-        exit 1
+        echo "trt_mobilenet_demo runs failed " >> ${current_dir}/test_summary.txt
+        EXIT_CODE=1
       fi
     fi
 
@@ -262,12 +267,28 @@ for WITH_STATIC_LIB in ON OFF; do
         -DWITH_ONNXRUNTIME=$WITH_ONNXRUNTIME
       make -j$(nproc)
       ./onnxruntime_mobilenet_demo \
-        --modeldir=$DATA_DIR/MobileNetV2/MobileNetV2
+        --modeldir=$DATA_DIR/MobileNetV2/MobileNetV2 \
+        --data=$DATA_DIR/MobileNetV2/MobileNetV2/data.txt
       if [ $? -ne 0 ]; then
-        echo "onnxruntime demo onnxruntime_mobilenet_demo runs fail."
-        exit 1
+        echo "onnxruntime_mobilenet_demo runs failed " >> ${current_dir}/test_summary.txt
+        EXIT_CODE=1
       fi
     fi
   fi
 done
+
 set +x
+
+if [[ -f ${current_dir}/test_summary.txt ]];then
+  echo " "
+  echo "Summary demo_ci Failed Tests ..."
+  echo "=====================test summary======================"
+  echo "The following tests Failed: "
+  cat ${current_dir}/test_summary.txt
+  echo "========================================================"
+  echo " "
+fi
+
+set -x
+
+exit ${EXIT_CODE}

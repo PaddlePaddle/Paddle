@@ -12,10 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import numpy as np
 import sys
+
 sys.path.append("..")
 from op_test import OpTest
 import unittest

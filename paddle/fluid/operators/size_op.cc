@@ -23,6 +23,22 @@ namespace operators {
 class SizeOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
+
+ protected:
+  phi::KernelKey GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    auto dtype = framework::proto::VarType::FP32;  // dtype is not important
+    return phi::KernelKey(dtype, ctx.GetPlace());
+  }
+
+  phi::KernelKey GetKernelTypeForVar(
+      const std::string& var_name,
+      const phi::DenseTensor& tensor,
+      const phi::KernelKey& expected_kernel_type) const override {
+    return phi::KernelKey(phi::Backend::ALL_BACKEND,
+                          expected_kernel_type.layout(),
+                          expected_kernel_type.dtype());
+  }
 };
 
 class SizeOpMaker : public framework::OpProtoAndCheckerMaker {
@@ -40,14 +56,20 @@ Return the number of elements in the input.
   }
 };
 
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(SizeOpNoNeedBufferVarInferer, "Input");
+
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-DECLARE_INFER_SHAPE_FUNCTOR(size, SizeInferShapeFunctor,
-                            PD_INFER_META(phi::SizeInferMeta));
+DECLARE_INFER_SHAPE_FUNCTOR(size,
+                            SizeInferShapeFunctor,
+                            PD_INFER_META(phi::NumelInferMeta));
 REGISTER_OPERATOR(
-    size, ops::SizeOp, ops::SizeOpMaker,
+    size,
+    ops::SizeOp,
+    ops::SizeOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
-    SizeInferShapeFunctor);
+    SizeInferShapeFunctor,
+    ops::SizeOpNoNeedBufferVarInferer);

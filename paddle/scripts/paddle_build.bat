@@ -43,21 +43,20 @@ taskkill /f /im cicc.exe /t 2>NUL
 taskkill /f /im ptxas.exe /t 2>NUL
 taskkill /f /im op_function_generator.exe /t 2>NUL
 taskkill /f /im eager_generator.exe /t 2>NUL
-taskkill /f /im eager_op_function_generator.exe /t 2>NUL
+taskkill /f /im eager_legacy_op_function_generator.exe /t 2>NUL
 wmic process where name="op_function_generator.exe" call terminate 2>NUL
 wmic process where name="eager_generator.exe" call terminate 2>NUL
-wmic process where name="eager_op_function_generator.exe" call terminate 2>NUL
+wmic process where name="eager_legacy_op_function_generator.exe" call terminate 2>NUL
 wmic process where name="cvtres.exe" call terminate 2>NUL
 wmic process where name="rc.exe" call terminate 2>NUL
 wmic process where name="cl.exe" call terminate 2>NUL
 wmic process where name="lib.exe" call terminate 2>NUL
 wmic process where name="python.exe" call terminate 2>NUL
 
-rem ------initialize common variable------
+rem variable to control building process
 if not defined GENERATOR set GENERATOR="Visual Studio 15 2017 Win64"
 if not defined WITH_TENSORRT set WITH_TENSORRT=ON
 if not defined TENSORRT_ROOT set TENSORRT_ROOT=D:/TensorRT
-if not defined CUDA_ARCH_NAME set CUDA_ARCH_NAME=Auto
 if not defined WITH_GPU set WITH_GPU=ON
 if not defined WITH_MKL set WITH_MKL=ON
 if not defined WITH_AVX set WITH_AVX=ON
@@ -68,10 +67,15 @@ if not defined ON_INFER set ON_INFER=ON
 if not defined WITH_ONNXRUNTIME set WITH_ONNXRUNTIME=OFF
 if not defined WITH_INFERENCE_API_TEST set WITH_INFERENCE_API_TEST=ON
 if not defined WITH_STATIC_LIB set WITH_STATIC_LIB=ON
+if not defined WITH_UNITY_BUILD set WITH_UNITY_BUILD=OFF
+if not defined NEW_RELEASE_ALL set NEW_RELEASE_ALL=ON
+if not defined NEW_RELEASE_PYPI set NEW_RELEASE_PYPI=OFF
+if not defined NEW_RELEASE_JIT set NEW_RELEASE_JIT=OFF
+
+rem variable to control pipeline process
 if not defined WITH_TPCACHE set WITH_TPCACHE=OFF
 if not defined WITH_CACHE set WITH_CACHE=OFF
 if not defined WITH_SCCACHE set WITH_SCCACHE=OFF
-if not defined WITH_UNITY_BUILD set WITH_UNITY_BUILD=OFF
 if not defined INFERENCE_DEMO_INSTALL_DIR set INFERENCE_DEMO_INSTALL_DIR=%cache_dir:\=/%/inference_demo
 if not defined LOG_LEVEL set LOG_LEVEL=normal
 if not defined PRECISION_TEST set PRECISION_TEST=OFF
@@ -79,23 +83,34 @@ if not defined NIGHTLY_MODE set NIGHTLY_MODE=OFF
 if not defined retry_times set retry_times=1
 if not defined PYTHON_ROOT set PYTHON_ROOT=C:\Python37
 if not defined BUILD_DIR set BUILD_DIR=build
-if not defined NEW_RELEASE_ALL set NEW_RELEASE_ALL=ON
-if not defined NEW_RELEASE_PYPI set NEW_RELEASE_PYPI=OFF
-if not defined NEW_RELEASE_JIT set NEW_RELEASE_JIT=OFF
+if not defined TEST_INFERENCE set TEST_INFERENCE=ON
 
 set task_name=%1
 set UPLOAD_TP_FILE=OFF
 
+set error_code=0
+type %cache_dir%\error_code.txt
+
+rem ------initialize set git config------
+git config --global core.longpaths true
+
 rem ------initialize the python environment------
-set PYTHON_EXECUTABLE=%PYTHON_ROOT%\python.exe
-set PATH=%PYTHON_ROOT%\Scripts;%PYTHON_ROOT%;%PATH%
+set PYTHON_VENV_ROOT=%cache_dir%\python_venv
+set PYTHON_EXECUTABLE=!PYTHON_VENV_ROOT!\Scripts\python.exe
+%PYTHON_ROOT%\python.exe -m venv --clear !PYTHON_VENV_ROOT!
+call !PYTHON_VENV_ROOT!\Scripts\activate.bat
+if %ERRORLEVEL% NEQ 0 (
+    echo activate python virtual environment failed!
+    exit /b 5
+)
+
 if "%WITH_PYTHON%" == "ON" (
     where python
     where pip
-    pip install wheel --user
-    pip install pyyaml --user
-    pip install wget --user
-    pip install -r %work_dir%\python\requirements.txt --user
+    pip install wheel
+    pip install pyyaml
+    pip install wget
+    pip install -r %work_dir%\python\requirements.txt
     if !ERRORLEVEL! NEQ 0 (
         echo pip install requirements.txt failed!
         exit /b 5
@@ -103,21 +118,17 @@ if "%WITH_PYTHON%" == "ON" (
 )
 
 rem -------Caching strategy 1: keep build directory for incremental compilation-----------
-rmdir %BUILD_DIR%\python /s/q
-rmdir %BUILD_DIR%\paddle\third_party\externalError /s/q
-rem rmdir %BUILD_DIR%\paddle\fluid\pybind /s/q
-rmdir %BUILD_DIR%\paddle_install_dir /s/q
-rmdir %BUILD_DIR%\paddle_inference_install_dir /s/q
-rmdir %BUILD_DIR%\paddle_inference_c_install_dir /s/q
-del %BUILD_DIR%\CMakeCache.txt
-
 if "%WITH_CACHE%"=="OFF" (
     rmdir %BUILD_DIR% /s/q
     goto :mkbuild
 )
 
-set error_code=0
-type %cache_dir%\error_code.txt
+rmdir %BUILD_DIR%\python /s/q
+rmdir %BUILD_DIR%\paddle_install_dir /s/q
+rmdir %BUILD_DIR%\paddle_inference_install_dir /s/q
+rmdir %BUILD_DIR%\paddle_inference_c_install_dir /s/q
+del %BUILD_DIR%\CMakeCache.txt
+
 : set /p error_code=< %cache_dir%\error_code.txt
 if %error_code% NEQ 0 (
     rmdir %BUILD_DIR% /s/q
@@ -163,14 +174,15 @@ echo ipipe_log_param_Windows_Build_Cache: %Windows_Build_Cache%
 cd /d %BUILD_DIR%
 dir .
 dir %cache_dir%
-dir paddle\fluid\pybind\Release
 rem -------Caching strategy 1: End --------------------------------
 
 
 rem -------Caching strategy 2: sccache decorate compiler-----------
 if not defined SCCACHE_ROOT set SCCACHE_ROOT=D:\sccache
+set PATH=%SCCACHE_ROOT%;%PATH%
 if "%WITH_SCCACHE%"=="ON" (
     cmd /C sccache -V || call :install_sccache
+
     sccache --stop-server 2> NUL
     del %SCCACHE_ROOT%\sccache_log.txt
 
@@ -194,7 +206,7 @@ if "%WITH_SCCACHE%"=="ON" (
     sccache -z
     goto :CASE_%1
 ) else (
-    del %PYTHON_ROOT%\sccache.exe 2> NUL
+    del %SCCACHE_ROOT%\sccache.exe 2> NUL
     goto :CASE_%1
 )
 
@@ -202,7 +214,7 @@ if "%WITH_SCCACHE%"=="ON" (
 echo There is not sccache in this PC, will install sccache.
 echo Download package from https://paddle-ci.gz.bcebos.com/window_requirement/sccache.exe
 %PYTHON_ROOT%\python.exe -c "import wget;wget.download('https://paddle-ci.gz.bcebos.com/window_requirement/sccache.exe')"
-xcopy sccache.exe %PYTHON_ROOT%\ /Y
+xcopy sccache.exe %SCCACHE_ROOT%\ /Y
 del sccache.exe
 goto:eof
 rem -------Caching strategy 2: End --------------------------------
@@ -222,14 +234,16 @@ set WITH_MKL=ON
 set WITH_GPU=ON
 set WITH_AVX=ON
 set MSVC_STATIC_CRT=OFF
-set ON_INFER=OFF
+set ON_INFER=ON
 set WITH_TENSORRT=ON
 set WITH_INFERENCE_API_TEST=OFF
+if not defined CUDA_ARCH_NAME set CUDA_ARCH_NAME=Auto
 
 call :cmake || goto cmake_error
 call :build || goto build_error
 call :test_whl_pacakage || goto test_whl_pacakage_error
 call :test_unit || goto test_unit_error
+call :test_inference || goto test_inference_error
 goto:success
 
 rem ------PR CI windows check for OPENBLAS/CPU------
@@ -238,7 +252,8 @@ set WITH_MKL=OFF
 set WITH_GPU=OFF
 set WITH_AVX=OFF
 set MSVC_STATIC_CRT=ON
-set ON_INFER=OFF
+set ON_INFER=ON
+if not defined CUDA_ARCH_NAME set CUDA_ARCH_NAME=Auto
 
 call :cmake || goto cmake_error
 call :build || goto build_error
@@ -255,6 +270,8 @@ set MSVC_STATIC_CRT=ON
 set ON_INFER=ON
 set WITH_TENSORRT=ON
 set WITH_INFERENCE_API_TEST=ON
+set WITH_ONNXRUNTIME=ON
+if not defined CUDA_ARCH_NAME set CUDA_ARCH_NAME=Auto
 
 call :cmake || goto cmake_error
 call :build || goto build_error
@@ -268,8 +285,8 @@ goto:success
 rem ------Build windows avx whl package------
 :CASE_build_avx_whl
 set WITH_AVX=ON
-set ON_INFER=OFF
-set CUDA_ARCH_NAME=All
+set ON_INFER=ON
+if not defined CUDA_ARCH_NAME set CUDA_ARCH_NAME=All
 
 call :cmake || goto cmake_error
 call :build || goto build_error
@@ -279,8 +296,8 @@ goto:success
 rem ------Build windows no-avx whl package------
 :CASE_build_no_avx_whl
 set WITH_AVX=OFF
-set ON_INFER=OFF
-set CUDA_ARCH_NAME=All
+set ON_INFER=ON
+if not defined CUDA_ARCH_NAME set CUDA_ARCH_NAME=All
 
 call :cmake || goto cmake_error
 call :build || goto build_error
@@ -291,16 +308,21 @@ rem ------Build windows inference library------
 :CASE_build_inference_lib
 set ON_INFER=ON
 set WITH_PYTHON=OFF
-set CUDA_ARCH_NAME=All
+if not defined CUDA_ARCH_NAME set CUDA_ARCH_NAME=All
+
 python %work_dir%\tools\remove_grad_op_and_kernel.py
 if %errorlevel% NEQ 0 exit /b 1
 
 call :cmake || goto cmake_error
 call :build || goto build_error
-call :test_inference || goto test_inference_error
-call :test_inference_ut || goto test_inference_ut_error
+if "%TEST_INFERENCE%"=="ON" call :test_inference
+if %errorlevel% NEQ 0 set error_code=%errorlevel%
+if "%TEST_INFERENCE%"=="ON" call :test_inference_ut
+if %errorlevel% NEQ 0 set error_code=%errorlevel%
+
 call :zip_cc_file || goto zip_cc_file_error
 call :zip_c_file || goto zip_c_file_error
+if %error_code% NEQ 0 goto test_inference_error
 goto:success
 
 rem "Other configurations are added here"
@@ -513,10 +535,10 @@ taskkill /f /im cicc.exe /t 2>NUL
 taskkill /f /im ptxas.exe /t 2>NUL
 taskkill /f /im op_function_generator.exe /t 2>NUL
 taskkill /f /im eager_generator.exe /t 2>NUL
-taskkill /f /im eager_op_function_generator.exe /t 2>NUL
+taskkill /f /im eager_legacy_op_function_generator.exe /t 2>NUL
 wmic process where name="op_function_generator.exe" call terminate 2>NUL
 wmic process where name="eager_generator.exe" call terminate 2>NUL
-wmic process where name="eager_op_function_generator.exe" call terminate 2>NUL
+wmic process where name="eager_legacy_op_function_generator.exe" call terminate 2>NUL
 wmic process where name="cmake.exe" call terminate 2>NUL
 wmic process where name="cvtres.exe" call terminate 2>NUL
 wmic process where name="rc.exe" call terminate 2>NUL
@@ -620,9 +642,8 @@ set /p PADDLE_WHL_FILE_WIN=< whl_file.txt
 @ECHO ON
 pip uninstall -y paddlepaddle
 pip uninstall -y paddlepaddle-gpu
-pip install %PADDLE_WHL_FILE_WIN% --user
+pip install %PADDLE_WHL_FILE_WIN%
 if %ERRORLEVEL% NEQ 0 (
-    call paddle_winci\Scripts\deactivate.bat 2>NUL
     echo pip install whl package failed!
     exit /b 1
 )
@@ -644,10 +665,8 @@ echo    ========================================
 echo    Step 4. Running unit tests ...
 echo    ========================================
 
-: set CI_SKIP_CPP_TEST if only *.py changed
-git diff --name-only %BRANCH% | findstr /V "\.py" || set CI_SKIP_CPP_TEST=ON
-
-pip install -r %work_dir%\python\unittest_py\requirements.txt --user
+pip install requests
+pip install -r %work_dir%\python\unittest_py\requirements.txt
 if %ERRORLEVEL% NEQ 0 (
     echo pip install unittest requirements.txt failed!
     exit /b 5
@@ -663,12 +682,19 @@ dir %THIRD_PARTY_PATH:/=\%\install\zlib\bin
 dir %THIRD_PARTY_PATH:/=\%\install\mklml\lib
 dir %THIRD_PARTY_PATH:/=\%\install\mkldnn\bin
 dir %THIRD_PARTY_PATH:/=\%\install\warpctc\bin
-
-pip install requests
+dir %THIRD_PARTY_PATH:/=\%\install\onnxruntime\lib
 
 set PATH=%THIRD_PARTY_PATH:/=\%\install\openblas\lib;%THIRD_PARTY_PATH:/=\%\install\openblas\bin;^
 %THIRD_PARTY_PATH:/=\%\install\zlib\bin;%THIRD_PARTY_PATH:/=\%\install\mklml\lib;^
-%THIRD_PARTY_PATH:/=\%\install\mkldnn\bin;%THIRD_PARTY_PATH:/=\%\install\warpctc\bin;%PATH%
+%THIRD_PARTY_PATH:/=\%\install\mkldnn\bin;%THIRD_PARTY_PATH:/=\%\install\warpctc\bin;^
+%THIRD_PARTY_PATH:/=\%\install\onnxruntime\lib;%THIRD_PARTY_PATH:/=\%\install\paddle2onnx\lib;^
+%work_dir%\%BUILD_DIR%\paddle\fluid\inference;%work_dir%\%BUILD_DIR%\paddle\fluid\inference\capi_exp;^
+%PATH%
+
+REM TODO: make ut find .dll in install\onnxruntime\lib
+if "%WITH_ONNXRUNTIME%"=="ON" (
+    xcopy %THIRD_PARTY_PATH:/=\%\install\onnxruntime\lib\onnxruntime.dll %work_dir%\%BUILD_DIR%\paddle\fluid\inference\tests\api\ /Y
+)
 
 if "%WITH_GPU%"=="ON" (
     call:parallel_test_base_gpu
@@ -752,12 +778,15 @@ for /F %%i in ("%libsize%") do (
 
 cd /d %work_dir%\paddle\fluid\inference\api\demo_ci
 %cache_dir%\tools\busybox64.exe bash run.sh %work_dir:\=/% %WITH_MKL% %WITH_GPU% %cache_dir:\=/%/inference_demo %WITH_TENSORRT% %TENSORRT_ROOT% %WITH_ONNXRUNTIME% %MSVC_STATIC_CRT% "%CUDA_TOOLKIT_ROOT_DIR%"
+
 goto:eof
 
 :test_inference_error
 ::echo 1 > %cache_dir%\error_code.txt
 ::type %cache_dir%\error_code.txt
-echo Testing fluid library for inference failed!
+echo    ==========================================
+echo    Testing inference library failed!
+echo    ==========================================
 exit /b 1
 
 rem ---------------------------------------------------------------------------------------------
@@ -909,10 +938,10 @@ taskkill /f /im cicc.exe /t 2>NUL
 taskkill /f /im ptxas.exe /t 2>NUL
 taskkill /f /im op_function_generator.exe /t 2>NUL
 taskkill /f /im eager_generator.exe /t 2>NUL
-taskkill /f /im eager_op_function_generator.exe /t 2>NUL
+taskkill /f /im eager_legacy_op_function_generator.exe /t 2>NUL
 wmic process where name="op_function_generator.exe" call terminate 2>NUL
 wmic process where name="eager_generator.exe" call terminate 2>NUL
-wmic process where name="eager_op_function_generator.exe" call terminate 2>NUL
+wmic process where name="eager_legacy_op_function_generator.exe" call terminate 2>NUL
 wmic process where name="cvtres.exe" call terminate 2>NUL
 wmic process where name="rc.exe" call terminate 2>NUL
 wmic process where name="cl.exe" call terminate 2>NUL

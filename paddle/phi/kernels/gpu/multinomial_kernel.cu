@@ -128,16 +128,16 @@ __global__ void sampleMultinomialWithReplacement(
 template <typename T, typename Context>
 void MultinomialKernel(const Context& dev_ctx,
                        const DenseTensor& x,
-                       int num_samples,
+                       const Scalar& num_samples,
                        bool replacement,
                        DenseTensor* out) {
+  auto int_num_samples = num_samples.to<int>();
   auto* in_data = x.data<T>();
   int64_t* out_data = dev_ctx.template Alloc<int64_t>(out);
-
   auto in_dims = x.dims();
-  int64_t in_rank = in_dims.size();
-  const int64_t num_categories = in_dims[in_rank - 1];
-  const int64_t num_distributions = in_rank > 1 ? in_dims[in_rank - 2] : 1;
+  int64_t dim_size = in_dims.size();
+  const int64_t num_categories = in_dims[dim_size - 1];
+  const int64_t num_distributions = dim_size > 1 ? in_dims[dim_size - 2] : 1;
 
   // If replacement is False, it's not a replaceable sample. Every category
   // can be used only once.
@@ -145,8 +145,8 @@ void MultinomialKernel(const Context& dev_ctx,
     int64_t in_data_numel = x.numel();
     int64_t out_data_numel = out->numel();
 
+    // Just use to PADDLE_ENFORCE error message
     T* cpu_in_data = new T[in_data_numel];
-    int64_t* cpu_out_data = new int64_t[out_data_numel];
 
 #ifdef PADDLE_WITH_HIP
     hipMemcpy(
@@ -160,7 +160,7 @@ void MultinomialKernel(const Context& dev_ctx,
     for (size_t i = 0; i < num_distributions; ++i) {
       int zero_num = 0;
       for (size_t j = 0; j < num_categories; ++j) {
-        T weight = cpu_in_data[i * num_distributions + j];
+        T weight = cpu_in_data[i * num_categories + j];
         PADDLE_ENFORCE_GE(
             weight,
             0,
@@ -173,7 +173,7 @@ void MultinomialKernel(const Context& dev_ctx,
       }
       int valid_samples = num_categories - zero_num;
       PADDLE_ENFORCE_LE(
-          num_samples,
+          int_num_samples,
           valid_samples,
           errors::InvalidArgument("When replacement=False, 'num_samples' "
                                   "must less than or eaqual to the number of "
@@ -192,14 +192,14 @@ void MultinomialKernel(const Context& dev_ctx,
       rand_data[idx] = in_data[idx] / rand_data[idx];
     });
 
-    if (num_samples == 1) {
+    if (int_num_samples == 1) {
       ArgMaxKernel<T, Context>(
           dev_ctx, rand, -1, true, false, 3 /*proto::VarType::INT64*/, out);
     } else {
       std::vector<int64_t> out_dim_vec = vectorize<int64_t>(out->dims());
       DenseTensor value = Empty<T, Context>(dev_ctx, IntArray(out_dim_vec));
       TopkKernel<T, Context>(
-          dev_ctx, rand, Scalar(num_samples), -1, true, true, &value, out);
+          dev_ctx, rand, num_samples, -1, true, true, &value, out);
     }
     return;
   }
@@ -237,12 +237,12 @@ void MultinomialKernel(const Context& dev_ctx,
   int block_size = num_categories < 512 ? num_categories : 512;
   dim3 block_norm(block_size);
   dim3 grid_norm((num_distributions * num_categories - 1) / block_norm.x + 1);
-  NormalizeProbability<T><<<grid_norm, block_norm, 0, dev_ctx.stream()>>>(
-      norm_probs_data,
-      in_data,
-      sum_rows_data,
-      num_distributions,
-      num_categories);
+  NormalizeProbability<T>
+      <<<grid_norm, block_norm, 0, dev_ctx.stream()>>>(norm_probs_data,
+                                                       in_data,
+                                                       sum_rows_data,
+                                                       num_distributions,
+                                                       num_categories);
 
   // Get cumulative probability of each distribution. It's the same function
   // of ``cumsum`` op.
@@ -269,7 +269,7 @@ void MultinomialKernel(const Context& dev_ctx,
   int64_t device_id = dev_ctx.GetPlace().GetDeviceId();
   const auto& prop = phi::backends::gpu::GetDeviceProperties(device_id);
   int grid_y = std::min<int64_t>(num_distributions, prop.maxGridSize[1]);
-  dim3 grid((num_samples - 1) / block.x + 1, grid_y);
+  dim3 grid((int_num_samples - 1) / block.x + 1, grid_y);
 
   auto gen_cuda = dev_ctx.GetGenerator();
   size_t curand4_loop_times =
@@ -278,15 +278,15 @@ void MultinomialKernel(const Context& dev_ctx,
   uint64_t increment = curand4_loop_times * 4;
   auto seed_offset = gen_cuda->IncrementOffset(increment);
 
-  sampleMultinomialWithReplacement<T><<<grid, block, 0, dev_ctx.stream()>>>(
-      num_samples,
-      out_data,
-      num_distributions,
-      num_categories,
-      cumulative_probs_data,
-      norm_probs_data,
-      seed_offset.first,
-      seed_offset.second);
+  sampleMultinomialWithReplacement<T>
+      <<<grid, block, 0, dev_ctx.stream()>>>(int_num_samples,
+                                             out_data,
+                                             num_distributions,
+                                             num_categories,
+                                             cumulative_probs_data,
+                                             norm_probs_data,
+                                             seed_offset.first,
+                                             seed_offset.second);
 }
 
 }  // namespace phi

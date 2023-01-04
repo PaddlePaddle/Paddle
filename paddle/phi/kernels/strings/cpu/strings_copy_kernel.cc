@@ -13,6 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/phi/kernels/strings/strings_copy_kernel.h"
+
+#include "glog/logging.h"
+#include "paddle/phi/common/pstring.h"
 #include "paddle/phi/core/kernel_registry.h"
 
 namespace phi {

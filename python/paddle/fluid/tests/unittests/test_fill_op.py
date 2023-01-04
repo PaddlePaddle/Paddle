@@ -12,11 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
+
 import numpy as np
 from op_test import OpTest
+
 import paddle.fluid.core as core
 from paddle.fluid.op import Operator
 
@@ -30,7 +30,7 @@ class TestFillOp1(OpTest):
             'value': val.flatten().tolist(),
             'shape': [100, 200],
             'dtype': int(core.VarDesc.VarType.FP64),
-            'force_cpu': False
+            'force_cpu': False,
         }
         self.outputs = {'Out': val.astype('float64')}
 
@@ -47,7 +47,7 @@ class TestFillOp2(OpTest):
             'value': val.flatten().tolist(),
             'shape': [100, 200],
             'dtype': int(core.VarDesc.VarType.FP64),
-            'force_cpu': True
+            'force_cpu': True,
         }
         self.outputs = {'Out': val.astype('float64')}
 
@@ -69,14 +69,15 @@ class TestFillOp3(unittest.TestCase):
             shape=[300, 200],
             dtype=int(core.VarDesc.VarType.FP32),
             force_cpu=f_cpu,
-            Out='Out')
+            Out='Out',
+        )
         fill_op.run(scope, place)
 
         # get result from Out
         result_array = np.array(out)
         full_array = np.array(val, 'float32')
 
-        self.assertTrue(np.array_equal(result_array, full_array))
+        np.testing.assert_array_equal(result_array, full_array)
 
     def test_fill_op(self):
         places = [core.CPUPlace()]

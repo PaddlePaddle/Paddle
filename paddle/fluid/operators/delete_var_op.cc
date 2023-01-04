@@ -29,7 +29,8 @@ namespace paddle {
 namespace operators {
 class DeleteVarOp : public framework::OperatorBase {
  public:
-  DeleteVarOp(const std::string &type, const framework::VariableNameMap &inputs,
+  DeleteVarOp(const std::string &type,
+              const framework::VariableNameMap &inputs,
               const framework::VariableNameMap &outputs,
               const framework::AttributeMap &attrs)
       : OperatorBase(type, inputs, outputs, attrs) {}
@@ -65,7 +66,8 @@ It should not be configured by users directly.
 }  // namespace paddle
 
 REGISTER_OPERATOR(
-    delete_var, paddle::operators::DeleteVarOp,
+    delete_var,
+    paddle::operators::DeleteVarOp,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
     paddle::operators::DeleteVarOpInfoMaker,

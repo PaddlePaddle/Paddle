@@ -16,11 +16,8 @@ limitations under the License. */
 
 #include <memory>
 
-#include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/variable.h"
-
 #include "paddle/phi/api/lib/utils/allocator.h"
-#include "paddle/phi/api/lib/utils/storage.h"
 #include "paddle/phi/common/int_array.h"
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/compat/convert_utils.h"
@@ -31,9 +28,9 @@ namespace paddle {
 namespace experimental {
 
 std::unique_ptr<phi::DenseTensor> MakePhiDenseTensor(
-    const paddle::framework::Tensor& src);
+    const phi::DenseTensor& src);
 
-phi::IntArray MakePhiIntArray(const paddle::framework::Tensor& src);
+phi::IntArray MakePhiIntArray(const phi::DenseTensor& src);
 
 phi::Scalar MakePhiScalarFromVar(const framework::Variable& variable);
 

@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 from paddle.fluid.tests.unittests.op_test import OpTest, skip_check_grad_ci
@@ -121,8 +119,9 @@ class TestNPUReduceProdWithOutDtype_bool(TestNPUReduceProd):
         self.inputs = {'X': np.random.random((5, 6, 10)).astype(self.dtype)}
         self.attrs = {'dim': [0], 'out_dtype': int(core.VarDesc.VarType.BOOL)}
         self.outputs = {
-            'Out':
-            self.inputs['X'].prod(axis=tuple(self.attrs['dim'])).astype(np.bool)
+            'Out': self.inputs['X']
+            .prod(axis=tuple(self.attrs['dim']))
+            .astype(np.bool_)
         }
 
 
@@ -135,8 +134,9 @@ class TestNPUReduceProdWithOutDtype_int16(TestNPUReduceProd):
         self.inputs = {'X': np.random.random((5, 6, 10)).astype(self.dtype)}
         self.attrs = {'dim': [0], 'out_dtype': int(core.VarDesc.VarType.INT16)}
         self.outputs = {
-            'Out': self.inputs['X'].prod(
-                axis=tuple(self.attrs['dim'])).astype(np.int16)
+            'Out': self.inputs['X']
+            .prod(axis=tuple(self.attrs['dim']))
+            .astype(np.int16)
         }
 
 
@@ -149,8 +149,9 @@ class TestNPUReduceProdWithOutDtype_int32(TestNPUReduceProd):
         self.inputs = {'X': np.random.random((5, 6, 10)).astype(self.dtype)}
         self.attrs = {'dim': [0], 'out_dtype': int(core.VarDesc.VarType.INT32)}
         self.outputs = {
-            'Out': self.inputs['X'].prod(
-                axis=tuple(self.attrs['dim'])).astype(np.int32)
+            'Out': self.inputs['X']
+            .prod(axis=tuple(self.attrs['dim']))
+            .astype(np.int32)
         }
 
 
@@ -163,8 +164,9 @@ class TestNPUReduceProdWithOutDtype_int64(TestNPUReduceProd):
         self.inputs = {'X': np.random.random((5, 6, 10)).astype(self.dtype)}
         self.attrs = {'dim': [0], 'out_dtype': int(core.VarDesc.VarType.INT64)}
         self.outputs = {
-            'Out': self.inputs['X'].prod(
-                axis=tuple(self.attrs['dim'])).astype(np.int64)
+            'Out': self.inputs['X']
+            .prod(axis=tuple(self.attrs['dim']))
+            .astype(np.int64)
         }
 
 
@@ -177,8 +179,9 @@ class TestNPUReduceProdWithOutDtype_fp16(TestNPUReduceProd):
         self.inputs = {'X': np.random.random((5, 6, 10)).astype(self.dtype)}
         self.attrs = {'dim': [0], 'out_dtype': int(core.VarDesc.VarType.FP16)}
         self.outputs = {
-            'Out': self.inputs['X'].prod(
-                axis=tuple(self.attrs['dim'])).astype(np.float16)
+            'Out': self.inputs['X']
+            .prod(axis=tuple(self.attrs['dim']))
+            .astype(np.float16)
         }
 
     def test_check_output(self):
@@ -194,8 +197,9 @@ class TestNPUReduceProdWithOutDtype_fp32(TestNPUReduceProd):
         self.inputs = {'X': np.random.random((5, 6, 10)).astype(self.dtype)}
         self.attrs = {'dim': [0], 'out_dtype': int(core.VarDesc.VarType.FP32)}
         self.outputs = {
-            'Out': self.inputs['X'].prod(
-                axis=tuple(self.attrs['dim'])).astype(np.float32)
+            'Out': self.inputs['X']
+            .prod(axis=tuple(self.attrs['dim']))
+            .astype(np.float32)
         }
 
 
@@ -208,8 +212,9 @@ class TestNPUReduceProdWithOutDtype_fp64(TestNPUReduceProd):
         self.inputs = {'X': np.random.random((5, 6, 10)).astype(self.dtype)}
         self.attrs = {'dim': [0], 'out_dtype': int(core.VarDesc.VarType.FP64)}
         self.outputs = {
-            'Out': self.inputs['X'].prod(
-                axis=tuple(self.attrs['dim'])).astype(np.float64)
+            'Out': self.inputs['X']
+            .prod(axis=tuple(self.attrs['dim']))
+            .astype(np.float64)
         }
 
 
@@ -223,8 +228,9 @@ class TestNPUReduceProdWithOutDtype_fp32_2(TestNPUReduceProd):
         self.inputs = {'X': np.random.random((5, 6, 10)).astype(self.dtype)}
         self.attrs = {'dim': [0], 'out_dtype': int(core.VarDesc.VarType.FP32)}
         self.outputs = {
-            'Out': self.inputs['X'].prod(
-                axis=tuple(self.attrs['dim'])).astype(np.float32)
+            'Out': self.inputs['X']
+            .prod(axis=tuple(self.attrs['dim']))
+            .astype(np.float32)
         }
 
     def init_dtype(self):

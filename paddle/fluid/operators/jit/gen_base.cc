@@ -15,9 +15,10 @@
 #include "paddle/fluid/operators/jit/gen_base.h"
 
 #include <fstream>
+
 #include "paddle/fluid/memory/allocation/cpu_allocator.h"  // for posix_memalign
-#include "paddle/fluid/platform/cpu_info.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/phi/backends/cpu/cpu_info.h"
 
 #ifndef _WIN32
 #define posix_memalign_free free
@@ -48,13 +49,15 @@ void* GenBase::operator new(size_t size) {
   void* ptr;
   constexpr size_t alignment = 32ul;
   PADDLE_ENFORCE_EQ(
-      posix_memalign(&ptr, alignment, size), 0,
+      posix_memalign(&ptr, alignment, size),
+      0,
       platform::errors::InvalidArgument(
           "Jitcode generator (GenBase) allocate %ld memory error!", size));
-  PADDLE_ENFORCE_NOT_NULL(ptr, platform::errors::InvalidArgument(
-                                   "Fail to allocate jitcode generator "
-                                   "(GenBase) CPU memory: size = %d .",
-                                   size));
+  PADDLE_ENFORCE_NOT_NULL(
+      ptr,
+      platform::errors::InvalidArgument("Fail to allocate jitcode generator "
+                                        "(GenBase) CPU memory: size = %d .",
+                                        size));
   return ptr;
 }
 
@@ -63,7 +66,7 @@ void GenBase::operator delete(void* ptr) { posix_memalign_free(ptr); }
 std::vector<int> packed_groups(int n, int k, int* block_out, int* rest_out) {
   int block;
   int max_num_regs;
-  if (platform::MayIUse(platform::avx512f)) {
+  if (phi::backends::cpu::MayIUse(phi::backends::cpu::avx512f)) {
     block = ZMM_FLOAT_BLOCK;
     max_num_regs = 32;
   } else {

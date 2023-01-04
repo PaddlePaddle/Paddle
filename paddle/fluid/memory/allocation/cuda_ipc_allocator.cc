@@ -15,15 +15,16 @@
 #ifndef _WIN32
 
 #include "paddle/fluid/memory/allocation/cuda_ipc_allocator.h"
-#include "paddle/fluid/platform/cuda_device_guard.h"
 
 #include <fcntl.h>
 #include <stdlib.h>
 #include <sys/mman.h>
+
 #include <random>
 #include <string>
 
 #include "glog/logging.h"
+#include "paddle/fluid/platform/cuda_device_guard.h"
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {

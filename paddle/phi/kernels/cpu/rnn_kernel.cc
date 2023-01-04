@@ -16,7 +16,7 @@
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/copy_kernel.h"
+#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/cpu/rnn_functor.h"
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/full_kernel.h"
@@ -49,7 +49,8 @@ struct Cell {
 };
 
 template <typename T,
-          template <typename> class EigenActivationFunctor,
+          template <typename>
+          class EigenActivationFunctor,
           funcs::detail::ActivationType act_type>
 struct SimpleRNNCell : Cell<T> {
   void operator()(const CPUContext* dev_ctx,
@@ -808,7 +809,7 @@ struct BidirLayer : public Layer<T, CellType> {
                   mode,
                   is_test);
 
-    // concat the the output result
+    // concat the output result
     funcs::ConcatFunctor<CPUContext, T> concat_functor;
     concat_functor(dev_ctx, output_vec, static_cast<int>(2), output);
   }
@@ -819,7 +820,7 @@ void RnnKernel(const Context& dev_ctx,
                const DenseTensor& x,
                const std::vector<const DenseTensor*>& pre_state,
                const std::vector<const DenseTensor*>& weight_list,
-               paddle::optional<const DenseTensor&> sequence_length,
+               const paddle::optional<DenseTensor>& sequence_length,
                float dropout_prob,
                bool is_bidirec,
                int input_size,

@@ -22,27 +22,26 @@ namespace phi {
 template <typename T, typename Context>
 void LayerNormKernel(const Context& ctx,
                      const DenseTensor& x,
-                     paddle::optional<const DenseTensor&> scale,
-                     paddle::optional<const DenseTensor&> bias,
+                     const paddle::optional<DenseTensor>& scale,
+                     const paddle::optional<DenseTensor>& bias,
                      float epsilon,
                      int begin_norm_axis,
-                     bool is_test,
                      DenseTensor* out,
                      DenseTensor* mean,
                      DenseTensor* variance);
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-template <typename T>
+template <typename T, typename U>
 class LayerNormDirectCUDAFunctor {
  public:
   void operator()(gpuStream_t stream,
                   const T* input,
                   std::vector<int> input_shape,
-                  const T* bias,
-                  const T* scale,
+                  const U* bias,
+                  const U* scale,
                   T* output,
-                  T* mean,
-                  T* variance,
+                  U* mean,
+                  U* variance,
                   int begin_norm_axis,
                   float eps);
 };

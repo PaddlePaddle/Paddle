@@ -30,6 +30,7 @@
 #include "paddle/infrt/dialect/dense_tensor.h"
 #include "paddle/infrt/dialect/infrt/ir/infrt_dialect.h"
 #include "paddle/infrt/dialect/infrt/pass/infrt_op_fuse_pass.h"
+#include "paddle/infrt/dialect/infrt/pass/infrt_weights_unfold_pass.h"
 #include "paddle/infrt/dialect/mlir_loader.h"
 #include "paddle/infrt/dialect/phi/ir/phi_base.h"
 #include "paddle/infrt/dialect/phi/pass/phi_op_convert_pass.h"
@@ -50,16 +51,13 @@
 #include "paddle/infrt/kernel/test_kernels.h"
 #include "paddle/infrt/tensor/tensor_map.h"
 
-#include "paddle/infrt/dialect/infrt/pass/infrt_weights_unfold_pass.h"
-
 #if defined(INFRT_WITH_GPU) && defined(INFRT_WITH_TRT)
-#include "paddle/infrt/kernel/tensorrt/registry.h"
-
 #include "paddle/infrt/dialect/tensorrt/trt_graph_fuse_pass.h"
 #include "paddle/infrt/dialect/tensorrt/trt_graph_split_pass.h"
 #include "paddle/infrt/dialect/tensorrt/trt_op_converter_pass.h"
 #include "paddle/infrt/dialect/tensorrt/trt_op_teller_pass.h"
 #include "paddle/infrt/dialect/tensorrt/trt_type_convert_pass.h"
+#include "paddle/infrt/kernel/tensorrt/registry.h"
 #endif
 
 using namespace infrt::host_context;  // NOLINT
@@ -123,11 +121,11 @@ class PredictExecutor : public MlirToRuntimeTranslator {
 
   int GetInputNum() { return inputs_.size(); }
 
-  ::phi::DenseTensor* GetInput(int i) { return inputs_[i]; }
+  ::Tensor* GetInput(int i) { return inputs_[i]; }
 
   int GetOutputNum() { return outputs_.size(); }
 
-  ::phi::DenseTensor* GetOutput(int i) { return outputs_[i]; }
+  ::Tensor* GetOutput(int i) { return outputs_[i]; }
 
  private:
   void Init(::infrt::phi::DenseTensorMap&& map) {
@@ -160,10 +158,10 @@ class PredictExecutor : public MlirToRuntimeTranslator {
         AddValue(predict_func.getArgument(i), value);
       } else if (type.isa<::infrt::DenseTensorType>()) {
         // this param is an input Tensor
-        auto dht = ::phi::DenseTensor();
+        auto dht = ::Tensor();
         auto* value = new host_context::Value(std::move(dht));
         arguments_.push_back(value);
-        inputs_.push_back(&(value->get<::phi::DenseTensor>()));
+        inputs_.push_back(&(value->get<::Tensor>()));
       } else {
         llvm_unreachable("The input type has not been supported by predictor.");
       }
@@ -176,12 +174,12 @@ class PredictExecutor : public MlirToRuntimeTranslator {
         auto operand = last_op.getOperand(i);
         if (operand.getType().isa<::infrt::DenseTensorType>()) {
           auto r = impl_->value_map.try_emplace(
-              operand, ValueRef(new host_context::Value(::phi::DenseTensor())));
+              operand, ValueRef(new host_context::Value(::Tensor())));
           CHECK(r.second) << "Duplicate add mlir value ["
                           << DumpToString(operand) << "]";
           auto* value = r.first->second.get();
           results_.push_back(ValueRef(value));
-          outputs_.push_back(&(value->get<::phi::DenseTensor>()));
+          outputs_.push_back(&(value->get<::Tensor>()));
         } else {
           llvm_unreachable("infrt.return only supports DenseTensor now.");
         }
@@ -202,9 +200,9 @@ class PredictExecutor : public MlirToRuntimeTranslator {
  private:
   KernelRegistry* registry_{};
   MlirFunctionExecutable* function_executable_;
-  llvm::SmallVector<::phi::DenseTensor*, 1> inputs_;
+  llvm::SmallVector<::Tensor*, 1> inputs_;
   llvm::SmallVector<host_context::Value*, 2> arguments_;
-  llvm::SmallVector<::phi::DenseTensor*, 1> outputs_;
+  llvm::SmallVector<::Tensor*, 1> outputs_;
   llvm::SmallVector<ValueRef, 1> results_;
 };
 
@@ -324,13 +322,13 @@ int InfRtPredictor::Init(const InfRtConfig& config) {
 
 int InfRtPredictor::GetInputNum() { return impl_->executor->GetInputNum(); }
 
-::phi::DenseTensor* InfRtPredictor::GetInput(int i) {
+::Tensor* InfRtPredictor::GetInput(int i) {
   return impl_->executor->GetInput(i);
 }
 
 int InfRtPredictor::GetOutputNum() { return impl_->executor->GetOutputNum(); }
 
-::phi::DenseTensor* InfRtPredictor::GetOutput(int i) {
+::Tensor* InfRtPredictor::GetOutput(int i) {
   return impl_->executor->GetOutput(i);
 }
 

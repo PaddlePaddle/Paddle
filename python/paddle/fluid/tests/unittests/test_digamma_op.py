@@ -1,11 +1,11 @@
 # Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -13,14 +13,14 @@
 # limitations under the License.
 
 import unittest
-import math
+
 import numpy as np
+from op_test import OpTest
 from scipy.special import psi
+
 import paddle
 import paddle.fluid as fluid
 import paddle.static as static
-from op_test import OpTest
-from paddle.fluid.framework import _test_eager_guard
 
 
 class TestDigammaOp(OpTest):
@@ -81,9 +81,7 @@ class TestDigammaAPI(unittest.TestCase):
 
                     exe = static.Executor(place)
                     out_value = exe.run(feed=input_dict, fetch_list=[out.name])
-                    self.assertEqual(
-                        np.allclose(
-                            out_value[0], sc_res, rtol=1e-5), True)
+                    np.testing.assert_allclose(out_value[0], sc_res, rtol=1e-05)
 
     def test_in_dynamic_mode(self):
         for dtype in self.dtypes:
@@ -94,11 +92,7 @@ class TestDigammaAPI(unittest.TestCase):
                 with fluid.dygraph.guard(place):
                     input_t = paddle.to_tensor(input)
                     res = paddle.digamma(input_t).numpy()
-                    self.assertEqual(np.allclose(res, sc_res, rtol=1e-05), True)
-
-    def test_in_eager_dynamic_mode(self):
-        with _test_eager_guard():
-            self.test_in_dynamic_mode()
+                    np.testing.assert_allclose(res, sc_res, rtol=1e-05)
 
     def test_name_argument(self):
         with static.program_guard(static.Program()):
@@ -107,7 +101,7 @@ class TestDigammaAPI(unittest.TestCase):
             self.assertTrue("digamma_res" in out.name)
 
     def test_dtype_error(self):
-        # in static mode
+        # in static graph mode
         with self.assertRaises(TypeError):
             with static.program_guard(static.Program()):
                 x = static.data(name="x", shape=self._shape, dtype="int32")
@@ -119,13 +113,6 @@ class TestDigammaAPI(unittest.TestCase):
                 input = np.random.random(self._shape).astype("int32")
                 input_t = paddle.to_tensor(input)
                 res = paddle.digamma(input_t)
-
-        with self.assertRaises(RuntimeError):
-            with fluid.dygraph.guard():
-                with _test_eager_guard():
-                    input = np.random.random(self._shape).astype("int32")
-                    input_t = paddle.to_tensor(input)
-                    res = paddle.digamma(input_t)
 
 
 if __name__ == "__main__":

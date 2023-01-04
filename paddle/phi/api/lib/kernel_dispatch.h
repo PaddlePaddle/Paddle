@@ -36,7 +36,7 @@ namespace experimental {
 
 namespace detail {
 BackendSet GetTensorBackendSet(const phi::TensorBase& t);
-std::size_t CountLeadingZeros(uint64_t val);
+std::size_t CountLeadingZeros(uint32_t val);
 }  // namespace detail
 
 phi::DeviceContext* GetDeviceContextByBackend(phi::Backend backend);
@@ -56,7 +56,7 @@ struct KernelKeySet {
 
   // TODO(chenweihang): iterate all kernelkey for kernel selection
   phi::KernelKey GetHighestPriorityKernelKey() {
-    return phi::KernelKey(static_cast<Backend>(64 - detail::CountLeadingZeros(
+    return phi::KernelKey(static_cast<Backend>(32 - detail::CountLeadingZeros(
                                                         backend_set.bitset())),
                           layout,
                           dtype);
@@ -90,18 +90,27 @@ struct ArgsIterator {
 
 struct KernelKeyParser : ArgsIterator<KernelKeyParser> {
   KernelKeySet key_set;
+  bool disable_gpudnn = false;
   // this dtype_set is used for cache multi-inputs dtype and used for
   // data_promote
   DataTypeSet dtype_set{DataType::UNDEFINED};
 
   // TODO(chenweihang): deal with multiple diff input Tensors
   // TODO(chenweihang): add global device guard method to set backend
-  void operator()(const Tensor& x) {
-    const phi::TensorBase& tensor = *x.impl();
-    key_set.backend_set =
-        key_set.backend_set | detail::GetTensorBackendSet(tensor);
-    // TODO(chenweihang): select multi layout and dtype
-    key_set.layout = tensor.layout();
+  inline void AssignKernelKeySet(const phi::TensorBase& tensor) {
+    // assign Backend
+    BackendSet tensor_backend_set = detail::GetTensorBackendSet(tensor);
+    key_set.backend_set = key_set.backend_set | tensor_backend_set;
+    // tensor's attribute use_gpudnn=False, explicitly disable gpudnn kernel
+    if (tensor_backend_set == BackendSet(Backend::GPU) || disable_gpudnn) {
+      disable_gpudnn = true;
+      key_set.backend_set = key_set.backend_set - BackendSet(Backend::GPUDNN);
+    }
+    // assign DataLayout
+    phi::DataLayout tensor_layout = tensor.layout();
+    key_set.layout =
+        tensor_layout > key_set.layout ? tensor_layout : key_set.layout;
+    // assign DataType
     key_set.dtype = tensor.dtype();
     dtype_set = dtype_set | DataTypeSet(key_set.dtype);
     auto promote_result = PromoteTypes(dtype_set);
@@ -110,13 +119,25 @@ struct KernelKeyParser : ArgsIterator<KernelKeyParser> {
     }
   }
 
+  void operator()(const Tensor& x) {
+    const auto* tensor = x.impl().get();
+    if (tensor) {
+      AssignKernelKeySet(*tensor);
+    }
+  }
+
   void operator()(const std::vector<Tensor>& x) {
-    const phi::TensorBase& tensor = *x.at(0).impl();
-    key_set.backend_set =
-        key_set.backend_set | detail::GetTensorBackendSet(tensor);
-    // TODO(chenweihang): select multi layout and dtype
-    key_set.layout = tensor.layout();
-    key_set.dtype = tensor.dtype();
+    if (!x.empty()) {
+      const phi::TensorBase& tensor = *x.at(0).impl();
+      AssignKernelKeySet(tensor);
+    }
+  }
+
+  void operator()(const paddle::optional<Tensor>& x) {
+    if (x) {
+      const phi::TensorBase& tensor = *(x.get_ptr()->impl());
+      AssignKernelKeySet(tensor);
+    }
   }
 
   // skip other type args, these args don't used in kernel selection
@@ -171,7 +192,7 @@ template <typename T, typename... Args>
 Backend ParseBackend(T t, Args... args) {
   auto backend_set =
       BackendSet(ParseBackend(t)) | BackendSet(ParseBackend(args...));
-  return static_cast<Backend>(64 -
+  return static_cast<Backend>(32 -
                               detail::CountLeadingZeros(backend_set.bitset()));
 }
 Backend ParseBackendWithInputOrder(const Place& place, const Tensor& tensor);

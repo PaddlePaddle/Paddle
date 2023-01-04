@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/infrt/kernel/phi/infershaped/infershaped_kernel_launcher.h"
+
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/meta_tensor.h"
 
@@ -24,9 +25,9 @@ void InferShapedKernelLauncher::CreateKernelFrameForInferShape(
   for (host_context::Value* value :
        frame->GetValues(1, frame->GetNumElements() - 1)) {
     // TODO(Superjomn) To extend this.
-    if (value->is_type<::phi::DenseTensor>()) {
-      values.emplace_back(new host_context::Value{
-          ::phi::MetaTensor{&value->get<::phi::DenseTensor>()}});
+    if (value->is_type<::Tensor>()) {
+      values.emplace_back(
+          new host_context::Value{::phi::MetaTensor{&value->get<::Tensor>()}});
       infershape_kernel_frame_builder.AddArgument(values.back().get());
     } else {
       infershape_kernel_frame_builder.AddArgument(value);

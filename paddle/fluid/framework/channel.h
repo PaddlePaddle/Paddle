@@ -20,6 +20,7 @@
 #endif
 
 #include <glog/logging.h>
+
 #include <algorithm>
 #include <condition_variable>  // NOLINT
 #include <deque>
@@ -28,7 +29,8 @@
 #include <mutex>  // NOLINT
 #include <utility>
 #include <vector>
-#include "paddle/fluid/framework/expect.h"
+
+#include "paddle/phi/core/expect.h"
 
 namespace paddle {
 namespace framework {
@@ -253,8 +255,10 @@ class ChannelObject {
     return !closed_;
   }
 
-  size_t Read(size_t n, T* p, std::unique_lock<std::mutex>& lock,  // NOLINT
-              bool once = false) {                                 // NOLINT
+  size_t Read(size_t n,
+              T* p,
+              std::unique_lock<std::mutex>& lock,  // NOLINT
+              bool once = false) {                 // NOLINT
     size_t finished = 0;
     CHECK(n <= MaxCapacity() - reading_count_);
     reading_count_ += n;
@@ -349,7 +353,7 @@ class ChannelReader {
     }
     if (cursor_ >= buffer_.size()) {
       cursor_ = 0;
-      if (channel_->read(buffer_) == 0) {
+      if (channel_->Read(buffer_) == 0) {
         failed_ = true;
         return *this;
       }

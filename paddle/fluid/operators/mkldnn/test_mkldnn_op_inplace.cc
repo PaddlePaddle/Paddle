@@ -16,23 +16,22 @@
 #include <cstdlib>
 #include <memory>
 #include <random>
+
 #include "gtest/gtest.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/scope.h"
-#include "paddle/fluid/platform/device_context.h"
-#include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/place.h"
+#include "paddle/phi/common/place.h"
+#include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/kernel_registry.h"
 
 USE_OP_ITSELF(elementwise_add);
-USE_OP_DEVICE_KERNEL(elementwise_add, MKLDNN);
+PD_DECLARE_KERNEL(add_raw, OneDNN, ONEDNN);
 USE_OP_ITSELF(relu);
-USE_OP_DEVICE_KERNEL(relu, MKLDNN);
+PD_DECLARE_KERNEL(relu, OneDNN, ONEDNN);
 USE_OP_ITSELF(softmax);
-USE_OP_DEVICE_KERNEL(softmax, MKLDNN);
-
+PD_DECLARE_KERNEL(softmax, OneDNN, ONEDNN);
 PD_DECLARE_KERNEL(softmax, CPU, ALL_LAYOUT);
 
 namespace paddle {
@@ -40,29 +39,31 @@ namespace operators {
 
 struct InputVars {
   std::string name;
-  framework::LoDTensor *tensor;
+  phi::DenseTensor *tensor;
 };
 
 template <typename T>
-bool TestMain(const platform::Place &place, const std::string &op_type,
-              const framework::DDim &dims, const int num_inputs) {
+bool TestMain(const platform::Place &place,
+              const std::string &op_type,
+              const framework::DDim &dims,
+              const int num_inputs) {
   framework::Scope scope;
 
   std::vector<InputVars> input_names = {
-      {"x", scope.Var("x")->GetMutable<framework::LoDTensor>()},
-      {"x1", num_inputs > 1
-                 ? scope.Var("x1")->GetMutable<framework::LoDTensor>()
-                 : nullptr},
-      {"x2", num_inputs > 2
-                 ? scope.Var("x2")->GetMutable<framework::LoDTensor>()
-                 : nullptr},
-      {"x3", num_inputs > 3
-                 ? scope.Var("x3")->GetMutable<framework::LoDTensor>()
-                 : nullptr},
-      {"x4", num_inputs > 4
-                 ? scope.Var("x4")->GetMutable<framework::LoDTensor>()
-                 : nullptr}};
-  auto *y = scope.Var("y")->GetMutable<framework::LoDTensor>();
+      {"x", scope.Var("x")->GetMutable<phi::DenseTensor>()},
+      {"x1",
+       num_inputs > 1 ? scope.Var("x1")->GetMutable<phi::DenseTensor>()
+                      : nullptr},
+      {"x2",
+       num_inputs > 2 ? scope.Var("x2")->GetMutable<phi::DenseTensor>()
+                      : nullptr},
+      {"x3",
+       num_inputs > 3 ? scope.Var("x3")->GetMutable<phi::DenseTensor>()
+                      : nullptr},
+      {"x4",
+       num_inputs > 4 ? scope.Var("x4")->GetMutable<phi::DenseTensor>()
+                      : nullptr}};
+  auto *y = scope.Var("y")->GetMutable<phi::DenseTensor>();
 
   // Initialize input data
   std::uniform_real_distribution<T> dist(static_cast<T>(10.0),
@@ -87,34 +88,42 @@ bool TestMain(const platform::Place &place, const std::string &op_type,
   auto &pool = platform::DeviceContextPool::Instance();
 
   // Out of place (reference) computation
-  auto op_ref = num_inputs > 1 ? framework::OpRegistry::CreateOp(
-                                     op_type, {{"X", {"x"}}, {"Y", {"x1"}}},
-                                     {{"Out", {"y"}}}, {{"use_mkldnn", {true}}})
-                               : framework::OpRegistry::CreateOp(
-                                     op_type, {{"X", {"x"}}}, {{"Out", {"y"}}},
-                                     {{"use_mkldnn", {true}}});
+  auto op_ref =
+      num_inputs > 1
+          ? framework::OpRegistry::CreateOp(op_type,
+                                            {{"X", {"x"}}, {"Y", {"x1"}}},
+                                            {{"Out", {"y"}}},
+                                            {{"use_mkldnn", {true}}})
+          : framework::OpRegistry::CreateOp(op_type,
+                                            {{"X", {"x"}}},
+                                            {{"Out", {"y"}}},
+                                            {{"use_mkldnn", {true}}});
 
   op_ref->Run(scope, place);
   pool.Get(place)->Wait();
 
   // Get reference (out of place) result
-  auto &ref_tensor = scope.FindVar("y")->Get<framework::LoDTensor>();
+  auto &ref_tensor = scope.FindVar("y")->Get<phi::DenseTensor>();
 
   // In-place (to be tested) computation
-  auto op = num_inputs > 1 ? framework::OpRegistry::CreateOp(
-                                 op_type, {{"X", {"x"}}, {"Y", {"x1"}}},
-                                 {{"Out", {"x"}}}, {{"use_mkldnn", {true}}})
-                           : framework::OpRegistry::CreateOp(
-                                 op_type, {{"X", {"x"}}}, {{"Out", {"x"}}},
-                                 {{"use_mkldnn", {true}}});
+  auto op = num_inputs > 1
+                ? framework::OpRegistry::CreateOp(op_type,
+                                                  {{"X", {"x"}}, {"Y", {"x1"}}},
+                                                  {{"Out", {"x"}}},
+                                                  {{"use_mkldnn", {true}}})
+                : framework::OpRegistry::CreateOp(op_type,
+                                                  {{"X", {"x"}}},
+                                                  {{"Out", {"x"}}},
+                                                  {{"use_mkldnn", {true}}});
 
   op->Run(scope, place);
   platform::DeviceContextPool::Instance().Get(place)->Wait();
 
   // Get in-place result
-  auto &out_tensor = scope.FindVar("x")->Get<framework::LoDTensor>();
+  auto &out_tensor = scope.FindVar("x")->Get<phi::DenseTensor>();
   PADDLE_ENFORCE_EQ(
-      &out_tensor, input_names[0].tensor,
+      &out_tensor,
+      input_names[0].tensor,
       platform::errors::InvalidArgument(
           "Input and output vars should share tensor for In-place test"));
 
@@ -127,13 +136,13 @@ bool TestMain(const platform::Place &place, const std::string &op_type,
 
 TEST(test_softmax_inplace, cpu_place) {
   framework::DDim dims({32, 64});
-  platform::CPUPlace p;
+  phi::CPUPlace p;
   ASSERT_TRUE(TestMain<float>(p, "softmax", dims, 1));
 }
 
 TEST(test_relu_inplace, cpu_place) {
   framework::DDim dims({1, 12, 20, 20});
-  platform::CPUPlace p;
+  phi::CPUPlace p;
   ASSERT_TRUE(TestMain<float>(p, "relu", dims, 1));
 }
 

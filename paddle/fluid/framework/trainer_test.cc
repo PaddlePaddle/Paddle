@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/trainer.h"
+
 #include <gtest/gtest.h>
 
 namespace paddle {
@@ -23,5 +24,5 @@ TEST() {
   // create dataset
   // train for a while
 }
-}
-}
+}  // namespace framework
+}  // namespace paddle

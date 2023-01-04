@@ -15,6 +15,7 @@
 #pragma once
 
 #include <memory>
+
 #include "paddle/fluid/platform/profiler/event_node.h"
 
 namespace paddle {

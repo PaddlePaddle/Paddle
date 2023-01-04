@@ -13,6 +13,11 @@
 // limitations under the License.
 
 #include "paddle/phi/core/device_context.h"
+
+#ifdef PADDLE_WITH_CUDA
+#include "paddle/phi/backends/gpu/cuda/cuda_graph.h"
+#endif
+
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/selected_rows.h"
@@ -49,6 +54,14 @@ struct DeviceContext::Impl {
     zero_allocator_ = allocator;
   }
 
+  void SetHostZeroAllocator(const Allocator* allocator) {
+    PADDLE_ENFORCE_NOT_NULL(
+        allocator,
+        phi::errors::InvalidArgument(
+            "Required allocator shall not be nullptr, but received nullptr."));
+    host_zero_allocator_ = allocator;
+  }
+
   void SetPinnedAllocator(const Allocator* allocator) {
     PADDLE_ENFORCE_NOT_NULL(
         allocator,
@@ -56,6 +69,26 @@ struct DeviceContext::Impl {
             "Required allocator shall not be nullptr, but received nullptr."));
     pinned_allocator_ = allocator;
   }
+
+#ifdef PADDLE_WITH_CUDA
+  void SetCUDAGraphAllocator(const Allocator* allocator) {
+    // NOTE (Yuang): cuda graph allocator can be set to nullptr, so don't check
+    // validation of the allocator here
+    cuda_graph_allocator_ = allocator;
+  }
+
+  const Allocator& GetCUDAGraphAllocator() const {
+    PADDLE_ENFORCE_NOT_NULL(cuda_graph_allocator_,
+                            phi::errors::InvalidArgument(
+                                "Required cuda_graph_allocator_ shall not be "
+                                "nullptr, but received nullptr."));
+    return *cuda_graph_allocator_;
+  }
+
+  bool IsCUDAGraphAllocatorValid() const {
+    return cuda_graph_allocator_ != nullptr;
+  }
+#endif
 
   const Allocator& GetAllocator() const {
     PADDLE_ENFORCE_NOT_NULL(
@@ -81,6 +114,14 @@ struct DeviceContext::Impl {
     return *zero_allocator_;
   }
 
+  const Allocator& GetHostZeroAllocator() const {
+    PADDLE_ENFORCE_NOT_NULL(
+        host_zero_allocator_,
+        phi::errors::InvalidArgument("Required zero_allocator_ shall not be "
+                                     "nullptr, but received nullptr."));
+    return *host_zero_allocator_;
+  }
+
   const Allocator& GetPinnedAllocator() const {
     PADDLE_ENFORCE_NOT_NULL(
         pinned_allocator_,
@@ -93,7 +134,8 @@ struct DeviceContext::Impl {
               const Place& place,
               DataType dtype = DataType::UNDEFINED,
               size_t requested_size = 0,
-              bool pinned = false) const {
+              bool pinned = false,
+              bool fake_alloc = false) const {
     PADDLE_ENFORCE_NOT_NULL(
         tensor,
         phi::errors::InvalidArgument(
@@ -107,11 +149,24 @@ struct DeviceContext::Impl {
     if (tensor->initialized() && tensor->place() != place) {
       ClearHolder(tensor);
     }
-    auto* allocator = tensor->numel() == 0
-                          ? zero_allocator_
-                          : (pinned ? pinned_allocator_ : device_allocator_);
+    auto* allocator =
+        (tensor->numel() == 0 || fake_alloc) && requested_size == 0
+            ? zero_allocator_
+            : (pinned ? pinned_allocator_ : device_allocator_);
+#ifdef PADDLE_WITH_CUDA
+    bool must_cuda_graph_allocator = (tensor->numel() != 0) && !pinned;
+    if (must_cuda_graph_allocator &&
+        place.GetType() == phi::AllocationType::GPU &&
+        phi::backends::gpu::CUDAGraph::IsThisThreadCapturing()) {
+      PADDLE_ENFORCE_NOT_NULL(cuda_graph_allocator_,
+                              phi::errors::InvalidArgument(
+                                  "Required cuda_graph_allocator_ shall not be "
+                                  "nullptr, but received nullptr."));
+      allocator = cuda_graph_allocator_;
+    }
+#endif
     return tensor->AllocateFrom(
-        const_cast<Allocator*>(allocator), dtype, requested_size);
+        const_cast<Allocator*>(allocator), dtype, requested_size, fake_alloc);
   }
 
   template <typename T>
@@ -125,7 +180,8 @@ struct DeviceContext::Impl {
 
   void* HostAlloc(TensorBase* tensor,
                   DataType dtype = DataType::UNDEFINED,
-                  size_t requested_size = 0) const {
+                  size_t requested_size = 0,
+                  bool fake_alloc = false) const {
     PADDLE_ENFORCE_NOT_NULL(
         tensor,
         phi::errors::InvalidArgument(
@@ -136,9 +192,12 @@ struct DeviceContext::Impl {
     if (tensor->initialized() && tensor->place() != CPUPlace()) {
       ClearHolder(tensor);
     }
-    auto* allocator = tensor->numel() == 0 ? zero_allocator_ : host_allocator_;
+    auto* allocator =
+        (tensor->numel() == 0 || fake_alloc) && requested_size == 0
+            ? host_zero_allocator_
+            : host_allocator_;
     return tensor->AllocateFrom(
-        const_cast<Allocator*>(allocator), dtype, requested_size);
+        const_cast<Allocator*>(allocator), dtype, requested_size, fake_alloc);
   }
 
   template <typename T>
@@ -198,7 +257,11 @@ struct DeviceContext::Impl {
   const Allocator* device_allocator_{nullptr};
   const Allocator* host_allocator_{nullptr};
   const Allocator* zero_allocator_{nullptr};
+  const Allocator* host_zero_allocator_{nullptr};
   const Allocator* pinned_allocator_{nullptr};
+#ifdef PADDLE_WITH_CUDA
+  const Allocator* cuda_graph_allocator_{nullptr};
+#endif
   Generator* device_generator_{nullptr};
   Generator* host_generator_{nullptr};
 };
@@ -209,9 +272,15 @@ DeviceContext::DeviceContext(const DeviceContext& other) {
   impl_->SetHostAllocator(&other.GetHostAllocator());
   impl_->SetAllocator(&other.GetAllocator());
   impl_->SetZeroAllocator(&other.GetZeroAllocator());
+  impl_->SetHostZeroAllocator(&other.GetHostZeroAllocator());
   impl_->SetPinnedAllocator(&other.GetPinnedAllocator());
   impl_->SetHostGenerator(other.GetHostGenerator());
   impl_->SetGenerator(other.GetGenerator());
+#ifdef PADDLE_WITH_CUDA
+  if (other.IsCUDAGraphAllocatorValid()) {
+    impl_->SetCUDAGraphAllocator(&other.GetCUDAGraphAllocator());
+  }
+#endif
 }
 
 DeviceContext::DeviceContext(DeviceContext&& other) {
@@ -238,12 +307,34 @@ const Allocator& DeviceContext::GetHostAllocator() const {
   return impl_->GetHostAllocator();
 }
 
+#ifdef PADDLE_WITH_CUDA
+void DeviceContext::SetCUDAGraphAllocator(const Allocator* allocator) {
+  impl_->SetCUDAGraphAllocator(allocator);
+}
+
+const Allocator& DeviceContext::GetCUDAGraphAllocator() const {
+  return impl_->GetCUDAGraphAllocator();
+}
+
+bool DeviceContext::IsCUDAGraphAllocatorValid() const {
+  return impl_->IsCUDAGraphAllocatorValid();
+}
+#endif
+
 void DeviceContext::SetZeroAllocator(const Allocator* allocator) {
   impl_->SetZeroAllocator(allocator);
 }
 
+void DeviceContext::SetHostZeroAllocator(const Allocator* allocator) {
+  impl_->SetHostZeroAllocator(allocator);
+}
+
 const Allocator& DeviceContext::GetZeroAllocator() const {
   return impl_->GetZeroAllocator();
+}
+
+const Allocator& DeviceContext::GetHostZeroAllocator() const {
+  return impl_->GetHostZeroAllocator();
 }
 
 void DeviceContext::SetPinnedAllocator(const Allocator* allocator) {
@@ -256,21 +347,36 @@ const Allocator& DeviceContext::GetPinnedAllocator() const {
 void* DeviceContext::Alloc(TensorBase* tensor,
                            DataType dtype,
                            size_t requested_size,
-                           bool pinned) const {
-  return impl_->Alloc(tensor, GetPlace(), dtype, requested_size, pinned);
+                           bool pinned,
+                           bool fake_alloc) const {
+  if (pinned) {
+    return impl_->Alloc(tensor,
+                        GetPinnedPlace(GetPlace()),
+                        dtype,
+                        requested_size,
+                        pinned,
+                        fake_alloc);
+  }
+  return impl_->Alloc(
+      tensor, GetPlace(), dtype, requested_size, pinned, fake_alloc);
 }
 
 template <typename T>
 T* DeviceContext::Alloc(TensorBase* tensor,
                         size_t requested_size,
                         bool pinned) const {
+  if (pinned) {
+    return impl_->Alloc<T>(
+        tensor, GetPinnedPlace(GetPlace()), requested_size, pinned);
+  }
   return impl_->Alloc<T>(tensor, GetPlace(), requested_size, pinned);
 }
 
 void* DeviceContext::HostAlloc(TensorBase* tensor,
                                DataType dtype,
-                               size_t requested_size) const {
-  return impl_->HostAlloc(tensor, dtype, requested_size);
+                               size_t requested_size,
+                               bool fake_alloc) const {
+  return impl_->HostAlloc(tensor, dtype, requested_size, fake_alloc);
 }
 
 template <typename T>

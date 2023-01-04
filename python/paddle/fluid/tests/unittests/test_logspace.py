@@ -12,11 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
+
 import numpy as np
 from op_test import OpTest
+
 import paddle
 
 
@@ -46,7 +46,7 @@ class TestLogspaceOpReverseCase(OpTest):
             'Start': np.array([10]).astype(dtype),
             'Stop': np.array([0]).astype(dtype),
             'Num': np.array([11]).astype('int32'),
-            'Base': np.array([2]).astype(dtype)
+            'Base': np.array([2]).astype(dtype),
         }
         self.attrs = {'dtype': int(paddle.float32)}
 
@@ -64,7 +64,7 @@ class TestLogspaceOpNumOneCase(OpTest):
             'Start': np.array([10]).astype(dtype),
             'Stop': np.array([0]).astype(dtype),
             'Num': np.array([1]).astype('int32'),
-            'Base': np.array([2]).astype(dtype)
+            'Base': np.array([2]).astype(dtype),
         }
         self.attrs = {'dtype': int(paddle.float32)}
 
@@ -153,7 +153,8 @@ class TestLogspaceAPI(unittest.TestCase):
     def test_name(self):
         with paddle.static.program_guard(paddle.static.Program()):
             out = paddle.logspace(
-                0, 10, 5, 2, dtype='float32', name='logspace_res')
+                0, 10, 5, 2, dtype='float32', name='logspace_res'
+            )
             assert 'logspace_res' in out.name
 
     def test_imperative(self):
@@ -201,7 +202,8 @@ class TestLogspaceOpError(unittest.TestCase):
 
             def test_start_dtype():
                 start = paddle.static.data(
-                    shape=[1], dtype="float64", name="start")
+                    shape=[1], dtype="float64", name="start"
+                )
                 paddle.logspace(start, 10, 1, 2, dtype="float32")
 
             self.assertRaises(ValueError, test_start_dtype)
@@ -214,14 +216,16 @@ class TestLogspaceOpError(unittest.TestCase):
 
             def test_num_dtype():
                 num = paddle.static.data(
-                    shape=[1], dtype="float32", name="step")
+                    shape=[1], dtype="float32", name="step"
+                )
                 paddle.logspace(0, 10, num, 2, dtype="float32")
 
             self.assertRaises(TypeError, test_num_dtype)
 
             def test_base_dtype():
                 base = paddle.static.data(
-                    shape=[1], dtype="float64", name="end")
+                    shape=[1], dtype="float64", name="end"
+                )
                 paddle.logspace(0, 10, 1, base, dtype="float32")
 
             self.assertRaises(ValueError, test_base_dtype)

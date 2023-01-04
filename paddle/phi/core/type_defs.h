@@ -15,6 +15,8 @@
 #pragma once
 
 #include <functional>
+#include <string>
+#include <vector>
 
 namespace phi {
 
@@ -36,8 +38,8 @@ using ArgumentMappingFn =
 using InferMetaFn = void (*)(InferMetaContext* ctx);
 
 // Global SmallVector size setting
-constexpr size_t kInputSmallVectorSize = 10U;
-constexpr size_t kAttrSmallVectorSize = 10U;
-constexpr size_t kOutputSmallVectorSize = 5U;
+constexpr size_t kInputSmallVectorSize = 15U;
+constexpr size_t kAttrSmallVectorSize = 15U;
+constexpr size_t kOutputSmallVectorSize = 15U;
 
 }  // namespace phi

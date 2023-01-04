@@ -12,30 +12,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from auto_scan_test import PassAutoScanTest, IgnoreReasons
-from program_config import TensorConfig, ProgramConfig, OpConfig
-import numpy as np
-import paddle.inference as paddle_infer
-from functools import partial
-from typing import Optional, List, Callable, Dict, Any, Set
 import unittest
 
-import hypothesis
-from hypothesis import given, settings, seed, example, assume, reproduce_failure
 import hypothesis.strategies as st
+from auto_scan_test import PassAutoScanTest
+from program_config import OpConfig, ProgramConfig, TensorConfig
 
 
 class TestFlatten2MatmulFusePass(PassAutoScanTest):
-    """
-        x_var  
-          |          
-       flatten2 
+    r"""
+        x_var
+          |
+       flatten2
           \
     flatten2_out_var    y_var
              \           /
                  matmul      bias_var
                     \          /
-                   elementwise_add  
+                   elementwise_add
     """
 
     def sample_predictor_configs(self, program_config):
@@ -51,8 +45,9 @@ class TestFlatten2MatmulFusePass(PassAutoScanTest):
         # 1. Generate shape and attr of flatten2
         x_shape = draw(
             st.lists(
-                st.integers(
-                    min_value=1, max_value=10), min_size=4, max_size=4))
+                st.integers(min_value=1, max_value=10), min_size=4, max_size=4
+            )
+        )
         # [a, b, c, d] => [a, b*c*d]
         flatten_axis = 1
         flatten_shape = [x_shape[0], x_shape[1] * x_shape[2] * x_shape[3]]
@@ -65,14 +60,17 @@ class TestFlatten2MatmulFusePass(PassAutoScanTest):
         # 3. Generate legal shape of input:Y of matmul
         y_shape = draw(
             st.lists(
-                st.integers(
-                    min_value=1, max_value=8), min_size=2, max_size=2))
+                st.integers(min_value=1, max_value=8), min_size=2, max_size=2
+            )
+        )
         y_shape[0] = flatten_shape[1]
 
         # 4. Generate legal attr:axis of elementwise_add
         axis = draw(st.integers(min_value=-1, max_value=1))
         if axis == 0:
-            bias_shape = [flatten_shape[0], ]
+            bias_shape = [
+                flatten_shape[0],
+            ]
         elif axis == 1:
             bias_shape = [y_shape[1]]
         else:
@@ -82,14 +80,15 @@ class TestFlatten2MatmulFusePass(PassAutoScanTest):
 
         flatten2_op = OpConfig(
             "flatten2",
-            inputs={"X": ["flatten2_x"], },
+            inputs={
+                "X": ["flatten2_x"],
+            },
             axis=flatten_axis,
-            outputs={"Out": ["flatten2_out"],
-                     "XShape": ["xshape"]}, )
+            outputs={"Out": ["flatten2_out"], "XShape": ["xshape"]},
+        )
         matmul_op = OpConfig(
             "matmul",
-            inputs={"X": ["flatten2_out"],
-                    "Y": ["matmul_y"]},
+            inputs={"X": ["flatten2_out"], "Y": ["matmul_y"]},
             outputs={"Out": ["matmul_out"]},
             alpha=alpha,
             transpose_X=transpose_X,
@@ -99,14 +98,15 @@ class TestFlatten2MatmulFusePass(PassAutoScanTest):
             fused_transpose_X=[],
             fused_transpose_Y=[],
             fused_reshape_Out=[],
-            fused_transpose_Out=[], )
+            fused_transpose_Out=[],
+        )
 
         add_op = OpConfig(
             "elementwise_add",
-            inputs={"X": ["matmul_out"],
-                    "Y": ["bias"]},
+            inputs={"X": ["matmul_out"], "Y": ["bias"]},
             outputs={"Out": ["add_out"]},
-            axis=axis, )
+            axis=axis,
+        )
 
         ops = [flatten2_op, matmul_op, add_op]
 
@@ -117,8 +117,11 @@ class TestFlatten2MatmulFusePass(PassAutoScanTest):
                     "matmul_y": TensorConfig(shape=y_shape),
                     "bias": TensorConfig(shape=bias_shape),
                 },
-                inputs={"flatten2_x": TensorConfig(shape=x_shape), },
-                outputs=ops[-1].outputs["Out"], )
+                inputs={
+                    "flatten2_x": TensorConfig(shape=x_shape),
+                },
+                outputs=ops[-1].outputs["Out"],
+            )
         else:
             program_config = ProgramConfig(
                 ops=ops,
@@ -128,7 +131,8 @@ class TestFlatten2MatmulFusePass(PassAutoScanTest):
                     "matmul_y": TensorConfig(shape=y_shape),
                     "bias": TensorConfig(shape=bias_shape),
                 },
-                outputs=ops[-1].outputs["Out"], )
+                outputs=ops[-1].outputs["Out"],
+            )
         return program_config
 
     def test(self):
@@ -136,7 +140,8 @@ class TestFlatten2MatmulFusePass(PassAutoScanTest):
             quant=False,
             max_examples=50,
             max_duration=1000,
-            passes=["gpu_cpu_flatten2_matmul_fuse_pass"])
+            passes=["gpu_cpu_flatten2_matmul_fuse_pass"],
+        )
 
 
 if __name__ == "__main__":

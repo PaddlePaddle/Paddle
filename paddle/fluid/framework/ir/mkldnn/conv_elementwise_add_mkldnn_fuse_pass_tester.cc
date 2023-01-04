@@ -26,7 +26,8 @@ namespace ir {
 constexpr int nodes_removed = 3;
 constexpr int nodes_added = 1;
 
-OpDesc* Create_Op_con2d(ProgramDesc* prog, const std::string& op_type_name,
+OpDesc* Create_Op_con2d(ProgramDesc* prog,
+                        const std::string& op_type_name,
                         const std::vector<test::InOutVarNamePair>& inputs,
                         const std::vector<test::InOutVarNamePair>& outputs,
                         const bool use_mkldnn = true) {
@@ -56,7 +57,8 @@ OpDesc* Create_Op_con2d(ProgramDesc* prog, const std::string& op_type_name,
 }
 
 OpDesc* Create_Op_elemntwise_add(
-    ProgramDesc* prog, const std::string& op_type_name,
+    ProgramDesc* prog,
+    const std::string& op_type_name,
     const std::vector<test::InOutVarNamePair>& inputs,
     const std::vector<test::InOutVarNamePair>& outputs,
     bool use_mkldnn = true) {
@@ -82,20 +84,24 @@ TEST(ConvElementwiseAddMKLDNNFusePass, ConvolutionAsYWithElementwiseAddRelu) {
       test::BuildProgramDesc({"a", "b", "c", "d", "e"}, {"bias", "weights"});
 
   test::CreateOp(&prog, "sigmoid", {{"X", "a"}}, {{"Out", "b"}});
-  Create_Op_con2d(&prog, "conv2d",
+  Create_Op_con2d(&prog,
+                  "conv2d",
                   {{"Input", "b"}, {"Bias", "bias"}, {"Filter", "weights"}},
                   {{"Output", "c"}});
-  Create_Op_elemntwise_add(&prog, "elementwise_add", {{"X", "a"}, {"Y", "c"}},
-                           {{"Out", "d"}});
+  Create_Op_elemntwise_add(
+      &prog, "elementwise_add", {{"X", "a"}, {"Y", "c"}}, {{"Out", "d"}});
   test::CreateOp(&prog, "relu", {{"X", "d"}}, {{"Out", "e"}});
 
   Graph graph(prog);
 
   EXPECT_TRUE(test::RunPassAndAssert(&graph,
                                      "conv_elementwise_add_mkldnn_fuse_pass",
-                                     "a", "relu", nodes_removed, nodes_added));
-  EXPECT_TRUE(
-      test::AssertOpsCount(graph, {{"conv2d", 1}, {"elementwise_add", 0}}));
+                                     "a",
+                                     "relu",
+                                     nodes_removed,
+                                     nodes_added));
+  EXPECT_TRUE(test::AssertOpsCount(
+      graph, {{"fused_conv2d", 1}, {"elementwise_add", 0}}));
 }
 
 TEST(ConvElementwiseAddMKLDNNFusePass,
@@ -105,26 +111,31 @@ TEST(ConvElementwiseAddMKLDNNFusePass,
 
   test::CreateOp(&prog, "sigmoid", {{"X", "a"}}, {{"Out", "b"}});
   // right branch
-  Create_Op_con2d(&prog, "conv2d",
+  Create_Op_con2d(&prog,
+                  "conv2d",
                   {{"Input", "b"}, {"Bias", "bias"}, {"Filter", "weights"}},
                   {{"Output", "c"}});
 
   // left branch
-  Create_Op_con2d(&prog, "conv2d",
+  Create_Op_con2d(&prog,
+                  "conv2d",
                   {{"Input", "a"}, {"Bias", "bias2"}, {"Filter", "weights2"}},
                   {{"Output", "f"}});
 
-  Create_Op_elemntwise_add(&prog, "elementwise_add", {{"X", "f"}, {"Y", "c"}},
-                           {{"Out", "d"}});
+  Create_Op_elemntwise_add(
+      &prog, "elementwise_add", {{"X", "f"}, {"Y", "c"}}, {{"Out", "d"}});
   test::CreateOp(&prog, "relu", {{"X", "d"}}, {{"Out", "e"}});
 
   Graph graph(prog);
 
   EXPECT_TRUE(test::RunPassAndAssert(&graph,
                                      "conv_elementwise_add_mkldnn_fuse_pass",
-                                     "a", "relu", nodes_removed, nodes_added));
-  EXPECT_TRUE(
-      test::AssertOpsCount(graph, {{"conv2d", 2}, {"elementwise_add", 0}}));
+                                     "a",
+                                     "relu",
+                                     nodes_removed,
+                                     nodes_added));
+  EXPECT_TRUE(test::AssertOpsCount(
+      graph, {{"conv2d", 1}, {"fused_conv2d", 1}, {"elementwise_add", 0}}));
 }
 
 TEST(ConvElementwiseAddMKLDNNFusePass,
@@ -132,19 +143,24 @@ TEST(ConvElementwiseAddMKLDNNFusePass,
   auto prog = test::BuildProgramDesc({"a", "b", "c", "d", "e"}, {"weights"});
 
   test::CreateOp(&prog, "sigmoid", {{"X", "a"}}, {{"Out", "b"}});
-  Create_Op_con2d(&prog, "conv2d", {{"Input", "b"}, {"Filter", "weights"}},
+  Create_Op_con2d(&prog,
+                  "conv2d",
+                  {{"Input", "b"}, {"Filter", "weights"}},
                   {{"Output", "c"}});
-  Create_Op_elemntwise_add(&prog, "elementwise_add", {{"X", "a"}, {"Y", "c"}},
-                           {{"Out", "d"}});
+  Create_Op_elemntwise_add(
+      &prog, "elementwise_add", {{"X", "a"}, {"Y", "c"}}, {{"Out", "d"}});
   test::CreateOp(&prog, "relu", {{"X", "d"}}, {{"Out", "e"}});
 
   Graph graph(prog);
 
   EXPECT_TRUE(test::RunPassAndAssert(&graph,
                                      "conv_elementwise_add_mkldnn_fuse_pass",
-                                     "a", "relu", nodes_removed, nodes_added));
-  EXPECT_TRUE(
-      test::AssertOpsCount(graph, {{"conv2d", 1}, {"elementwise_add", 0}}));
+                                     "a",
+                                     "relu",
+                                     nodes_removed,
+                                     nodes_added));
+  EXPECT_TRUE(test::AssertOpsCount(
+      graph, {{"fused_conv2d", 1}, {"elementwise_add", 0}}));
 }
 
 TEST(ConvElementwiseAddMKLDNNFusePass, ConvolutionAsXWithElementwiseAddRelu) {
@@ -152,21 +168,25 @@ TEST(ConvElementwiseAddMKLDNNFusePass, ConvolutionAsXWithElementwiseAddRelu) {
       test::BuildProgramDesc({"a", "b", "c", "d", "e"}, {"bias", "weights"});
 
   test::CreateOp(&prog, "sigmoid", {{"X", "a"}}, {{"Out", "b"}});
-  Create_Op_con2d(&prog, "conv2d",
+  Create_Op_con2d(&prog,
+                  "conv2d",
                   {{"Input", "b"}, {"Bias", "bias"}, {"Filter", "weights"}},
                   {{"Output", "c"}});
 
-  Create_Op_elemntwise_add(&prog, "elementwise_add", {{"X", "c"}, {"Y", "a"}},
-                           {{"Out", "d"}});
+  Create_Op_elemntwise_add(
+      &prog, "elementwise_add", {{"X", "c"}, {"Y", "a"}}, {{"Out", "d"}});
   test::CreateOp(&prog, "relu", {{"X", "d"}}, {{"Out", "e"}});
 
   Graph graph(prog);
 
   EXPECT_TRUE(test::RunPassAndAssert(&graph,
                                      "conv_elementwise_add_mkldnn_fuse_pass",
-                                     "a", "relu", nodes_removed, nodes_added));
-  EXPECT_TRUE(
-      test::AssertOpsCount(graph, {{"conv2d", 1}, {"elementwise_add", 0}}));
+                                     "a",
+                                     "relu",
+                                     nodes_removed,
+                                     nodes_added));
+  EXPECT_TRUE(test::AssertOpsCount(
+      graph, {{"fused_conv2d", 1}, {"elementwise_add", 0}}));
 }
 
 TEST(ConvElementwiseAddMKLDNNFusePass,
@@ -174,19 +194,24 @@ TEST(ConvElementwiseAddMKLDNNFusePass,
   auto prog = test::BuildProgramDesc({"a", "b", "c", "d", "e"}, {"weights"});
 
   test::CreateOp(&prog, "sigmoid", {{"X", "a"}}, {{"Out", "b"}});
-  Create_Op_con2d(&prog, "conv2d", {{"Input", "b"}, {"Filter", "weights"}},
+  Create_Op_con2d(&prog,
+                  "conv2d",
+                  {{"Input", "b"}, {"Filter", "weights"}},
                   {{"Output", "c"}});
-  Create_Op_elemntwise_add(&prog, "elementwise_add", {{"X", "c"}, {"Y", "a"}},
-                           {{"Out", "d"}});
+  Create_Op_elemntwise_add(
+      &prog, "elementwise_add", {{"X", "c"}, {"Y", "a"}}, {{"Out", "d"}});
   test::CreateOp(&prog, "relu", {{"X", "d"}}, {{"Out", "e"}});
 
   Graph graph(prog);
 
   EXPECT_TRUE(test::RunPassAndAssert(&graph,
                                      "conv_elementwise_add_mkldnn_fuse_pass",
-                                     "a", "relu", nodes_removed, nodes_added));
-  EXPECT_TRUE(
-      test::AssertOpsCount(graph, {{"conv2d", 1}, {"elementwise_add", 0}}));
+                                     "a",
+                                     "relu",
+                                     nodes_removed,
+                                     nodes_added));
+  EXPECT_TRUE(test::AssertOpsCount(
+      graph, {{"fused_conv2d", 1}, {"elementwise_add", 0}}));
 }
 
 TEST(ConvElementwiseAddMKLDNNFusePass, NoFusion) {
@@ -194,14 +219,18 @@ TEST(ConvElementwiseAddMKLDNNFusePass, NoFusion) {
       test::BuildProgramDesc({"a", "b", "c", "d", "e", "f", "g"}, {"weights"});
 
   test::CreateOp(&prog, "sigmoid", {{"X", "a"}}, {{"Out", "b"}});
-  Create_Op_con2d(&prog, "conv2d", {{"Input", "b"}, {"Filter", "weights"}},
+  Create_Op_con2d(&prog,
+                  "conv2d",
+                  {{"Input", "b"}, {"Filter", "weights"}},
                   {{"Output", "c"}});
 
-  Create_Op_con2d(&prog, "conv2d", {{"Input", "d"}, {"Filter", "weights"}},
+  Create_Op_con2d(&prog,
+                  "conv2d",
+                  {{"Input", "d"}, {"Filter", "weights"}},
                   {{"Output", "e"}});
 
-  Create_Op_elemntwise_add(&prog, "elementwise_add", {{"X", "c"}, {"Y", "e"}},
-                           {{"Out", "f"}});
+  Create_Op_elemntwise_add(
+      &prog, "elementwise_add", {{"X", "c"}, {"Y", "e"}}, {{"Out", "f"}});
   test::CreateOp(&prog, "relu", {{"X", "f"}}, {{"Out", "g"}});
 
   Graph graph(prog);

@@ -17,6 +17,7 @@
 #ifndef _WIN32
 
 #include <unistd.h>
+
 #include <cstdint>
 #include <set>
 

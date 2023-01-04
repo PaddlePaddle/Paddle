@@ -15,6 +15,7 @@
 import unittest
 
 import paddle
+
 paddle.enable_static()
 
 from paddle.distributed.fleet.runtime.the_one_ps import Table

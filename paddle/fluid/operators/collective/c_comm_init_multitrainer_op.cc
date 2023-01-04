@@ -18,6 +18,7 @@ limitations under the License. */
 #include <rccl.h>
 #endif
 #include <stdint.h>
+
 #include <ostream>
 #include <string>
 
@@ -102,6 +103,7 @@ Initialize collective communicatoin context within this trainer
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(c_comm_init_multitrainer, ops::CCommInitMultiTrainerOp,
+REGISTER_OPERATOR(c_comm_init_multitrainer,
+                  ops::CCommInitMultiTrainerOp,
                   ops::CCommInitMultiTrainerInferShape,
                   ops::CCommInitMultiTrainerOpMaker);

@@ -1,11 +1,11 @@
 # Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -13,10 +13,12 @@
 # limitations under the License.
 
 import os
+
+from utils import extra_compile_args, paddle_includes
+
 import paddle
 import paddle.fluid.core as core
 from paddle.utils.cpp_extension import CppExtension, CUDAExtension, setup
-from utils import paddle_includes, extra_compile_args
 
 if paddle.is_compiled_with_cuda():
     sources = ['custom_raw_op_kernel_op.cc', 'custom_raw_op_kernel_op.cu']
@@ -38,6 +40,7 @@ if core.is_compiled_with_mkldnn():
     macros.append(("PADDLE_WITH_MKLDNN", None))
 if core.is_compiled_with_nccl():
     macros.append(("PADDLE_WITH_NCCL", None))
+macros.append(("THRUST_IGNORE_CUB_VERSION_CHECK", None))
 
 include_dirs = list(paddle_includes) + [cwd]
 setup(
@@ -47,4 +50,6 @@ setup(
         include_dirs=include_dirs,
         extra_compile_args=extra_compile_args,
         _compile_dir=compile_dir,
-        define_macros=macros))
+        define_macros=macros,
+    ),
+)

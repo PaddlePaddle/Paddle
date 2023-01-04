@@ -13,14 +13,12 @@
 # limitations under the License.
 """DocstringChecker is used to check python doc string's style."""
 
-import six
-import astroid
-
-from pylint.checkers import BaseChecker, utils
-from pylint.interfaces import IAstroidChecker
-
-from collections import defaultdict
 import re
+from collections import defaultdict
+
+import astroid
+from pylint.checkers import BaseChecker
+from pylint.interfaces import IAstroidChecker
 
 
 def register(linter):
@@ -28,12 +26,11 @@ def register(linter):
     linter.register_checker(DocstringChecker(linter))
 
 
-class Docstring(object):
-    """Docstring class holds the parsed doc string elements.
-    """
+class Docstring:
+    """Docstring class holds the parsed doc string elements."""
 
     def __init__(self):
-        self.d = defaultdict(list)  #name->[]
+        self.d = defaultdict(list)  # name->[]
         self.clear()
 
     def clear(self):
@@ -41,7 +38,7 @@ class Docstring(object):
         self.d['Examples'] = []
         self.d['Returns'] = []
         self.d['Raises'] = []
-        self.args = {}  #arg_name->arg_type
+        self.args = {}  # arg_name->arg_type
 
     def get_level(self, string, indent='    '):
         level = 0
@@ -112,7 +109,8 @@ class DocstringChecker(BaseChecker):
     """DosstringChecker is pylint checker to
     check docstring style.
     """
-    __implements__ = (IAstroidChecker, )
+
+    __implements__ = (IAstroidChecker,)
 
     POSITIONAL_MESSAGE_ID = 'str-used-on-positional-format-argument'
     KEYWORD_MESSAGE_ID = 'str-used-on-keyword-format-argument'
@@ -121,25 +119,41 @@ class DocstringChecker(BaseChecker):
     symbol = "doc-string"
     priority = -1
     msgs = {
-        'W9001': ('One line doc string on > 1 lines', symbol + "-one-line",
-                  'Used when a short doc string is on multiple lines'),
-        'W9002':
-        ('Doc string does not end with "." period', symbol + "-end-with",
-         'Used when a doc string does not end with a period'),
-        'W9003':
-        ('All args with their types must be mentioned in doc string %s',
-         symbol + "-with-all-args",
-         'Used when not all arguments are in the doc string '),
-        'W9005': ('Missing docstring or docstring is too short',
-                  symbol + "-missing", 'Add docstring longer >=10'),
-        'W9006': ('Docstring indent error, use 4 space for indent',
-                  symbol + "-indent-error", 'Use 4 space for indent'),
-        'W9007': ('You should add `Returns` in comments',
-                  symbol + "-with-returns",
-                  'There should be a `Returns` section in comments'),
-        'W9008': ('You should add `Raises` section in comments',
-                  symbol + "-with-raises",
-                  'There should be a `Raises` section in comments'),
+        'W9001': (
+            'One line doc string on > 1 lines',
+            symbol + "-one-line",
+            'Used when a short doc string is on multiple lines',
+        ),
+        'W9002': (
+            'Doc string does not end with "." period',
+            symbol + "-end-with",
+            'Used when a doc string does not end with a period',
+        ),
+        'W9003': (
+            'All args with their types must be mentioned in doc string %s',
+            symbol + "-with-all-args",
+            'Used when not all arguments are in the doc string ',
+        ),
+        'W9005': (
+            'Missing docstring or docstring is too short',
+            symbol + "-missing",
+            'Add docstring longer >=10',
+        ),
+        'W9006': (
+            'Docstring indent error, use 4 space for indent',
+            symbol + "-indent-error",
+            'Use 4 space for indent',
+        ),
+        'W9007': (
+            'You should add `Returns` in comments',
+            symbol + "-with-returns",
+            'There should be a `Returns` section in comments',
+        ),
+        'W9008': (
+            'You should add `Raises` section in comments',
+            symbol + "-with-raises",
+            'There should be a `Raises` section in comments',
+        ),
     }
     options = ()
 
@@ -322,8 +336,7 @@ class DocstringChecker(BaseChecker):
             return True
         args = []
         for arg in node.args.get_children():
-            if (not isinstance(arg, astroid.AssignName)) \
-                or arg.name == "self":
+            if (not isinstance(arg, astroid.AssignName)) or arg.name == "self":
                 continue
             args.append(arg.name)
 
@@ -337,13 +350,20 @@ class DocstringChecker(BaseChecker):
                 'W9003',
                 node=node,
                 line=node.fromlineno,
-                args=list(args_not_documented))
+                args=list(args_not_documented),
+            )
             return False
 
         for t in args:
             if t not in parsed_args:
                 self.add_message(
-                    'W9003', node=node, line=node.fromlineno, args=[t, ])
+                    'W9003',
+                    node=node,
+                    line=node.fromlineno,
+                    args=[
+                        t,
+                    ],
+                )
                 return False
 
         return True

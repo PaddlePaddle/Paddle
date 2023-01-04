@@ -12,11 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import numpy as np
 import unittest
 import sys
+
 sys.path.append("..")
 from op_test import OpTest
 import paddle
@@ -58,7 +57,7 @@ class TestFillConstantInt(OpTest):
         self.attrs = {
             'shape': [123, 92],
             'value': 1,
-            'dtype': core.VarDesc.VarType.INT32
+            'dtype': core.VarDesc.VarType.INT32,
         }
         self.outputs = {'Out': np.full((123, 92), 1).astype(self.dtype)}
 
@@ -82,7 +81,7 @@ class TestFillConstantInt64(OpTest):
         self.attrs = {
             'shape': [123, 92],
             'value': 1,
-            'dtype': core.VarDesc.VarType.INT64
+            'dtype': core.VarDesc.VarType.INT64,
         }
         self.outputs = {'Out': np.full((123, 92), 1).astype(self.dtype)}
 
@@ -106,7 +105,7 @@ class TestFillConstantFP16(OpTest):
         self.attrs = {
             'shape': [123, 92],
             'value': 1.0,
-            'dtype': core.VarDesc.VarType.FP16
+            'dtype': core.VarDesc.VarType.FP16,
         }
         self.outputs = {'Out': np.full((123, 92), 1.0).astype(self.dtype)}
 
@@ -130,7 +129,7 @@ class TestFillConstantBool(OpTest):
         self.attrs = {
             'shape': [123, 92],
             'value': True,
-            'dtype': core.VarDesc.VarType.BOOL
+            'dtype': core.VarDesc.VarType.BOOL,
         }
         self.outputs = {'Out': np.full((123, 92), True).astype(self.dtype)}
 

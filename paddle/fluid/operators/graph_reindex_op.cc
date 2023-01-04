@@ -25,11 +25,10 @@ class GraphReindexOP : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
-        ctx.device_context());
+    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+                          ctx.device_context().GetPlace());
   }
 };
 
@@ -67,11 +66,14 @@ Graph Reindex operator.
 
 namespace ops = paddle::operators;
 
-DECLARE_INFER_SHAPE_FUNCTOR(graph_reindex, GraphReindexInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(graph_reindex,
+                            GraphReindexInferShapeFunctor,
                             PD_INFER_META(phi::GraphReindexInferMeta));
 
 REGISTER_OPERATOR(
-    graph_reindex, ops::GraphReindexOP, ops::GraphReindexOpMaker,
+    graph_reindex,
+    ops::GraphReindexOP,
+    ops::GraphReindexOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
     GraphReindexInferShapeFunctor);

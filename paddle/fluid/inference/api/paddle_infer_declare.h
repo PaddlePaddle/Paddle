@@ -23,5 +23,7 @@
 #endif  // PADDLE_DLL_INFERENCE
 #endif  // PD_INFER_DECL
 #else
+#ifndef PD_INFER_DECL
 #define PD_INFER_DECL __attribute__((visibility("default")))
+#endif  // PD_INFER_DECL
 #endif  // _WIN32

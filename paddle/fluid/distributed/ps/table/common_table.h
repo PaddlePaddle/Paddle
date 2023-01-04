@@ -19,9 +19,8 @@
 #include <mutex>               // NOLINT
 #include <set>
 
-#include "paddle/fluid/distributed/ps/table/table.h"
-
 #include "paddle/fluid/distributed/common/utils.h"
+#include "paddle/fluid/distributed/ps/table/table.h"
 
 namespace paddle {
 namespace distributed {

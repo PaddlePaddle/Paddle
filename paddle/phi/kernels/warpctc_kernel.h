@@ -23,11 +23,11 @@ template <typename T, typename Context>
 void WarpctcKernel(const Context& dev_ctx,
                    const DenseTensor& logits,
                    const DenseTensor& label,
-                   paddle::optional<const DenseTensor&> logits_length,
-                   paddle::optional<const DenseTensor&> labels_length,
+                   const paddle::optional<DenseTensor>& logits_length,
+                   const paddle::optional<DenseTensor>& labels_length,
                    int blank,
                    bool norm_by_times,
-                   DenseTensor* warpctc_grad,
-                   DenseTensor* loss);
+                   DenseTensor* loss,
+                   DenseTensor* warpctcgrad);
 
 }  // namespace phi

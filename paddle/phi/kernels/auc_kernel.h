@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include <string>
+
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/dense_tensor.h"
 
@@ -26,6 +27,7 @@ void AucKernel(const Context& dev_ctx,
                const DenseTensor& label,
                const DenseTensor& stat_pos,
                const DenseTensor& stat_neg,
+               const paddle::optional<DenseTensor>& ins_tag_weight,
                const std::string& curve,
                int num_thresholds,
                int slide_steps,

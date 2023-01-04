@@ -12,13 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 
+import paddle
 import paddle.fluid.core as core
-import paddle.fluid.layers as layers
 import paddle.fluid.framework as framework
+import paddle.fluid.layers as layers
 from paddle.fluid.executor import Executor
 from paddle.fluid.framework import default_startup_program
 
@@ -31,15 +30,16 @@ class TestSwitch(unittest.TestCase):
         two_var = layers.fill_constant(shape=[1], dtype='float32', value=2.0)
         three_var = layers.fill_constant(shape=[1], dtype='float32', value=3.0)
 
-        result = layers.create_global_var(
-            shape=[1], value=-1.0, dtype='float32', persistable=True)
+        result = paddle.static.create_global_var(
+            shape=[1], value=-1.0, dtype='float32', persistable=True
+        )
 
         with layers.Switch() as switch:
-            with switch.case(layers.less_than(x, zero_var)):
+            with switch.case(paddle.less_than(x, zero_var)):
                 layers.assign(zero_var, result)
-            with switch.case(layers.less_than(x, one_var)):
+            with switch.case(paddle.less_than(x, one_var)):
                 layers.assign(one_var, result)
-            with switch.case(layers.less_than(x, two_var)):
+            with switch.case(paddle.less_than(x, two_var)):
                 layers.assign(two_var, result)
             with switch.default():
                 layers.assign(three_var, result)
@@ -68,10 +68,12 @@ class TestSwitchCaseError(unittest.TestCase):
         with framework.program_guard(main_program, startup_program):
             cond = layers.fill_constant(shape=[1], dtype='float32', value=0.0)
             zero_var = layers.fill_constant(
-                shape=[1], dtype='float32', value=0.0)
+                shape=[1], dtype='float32', value=0.0
+            )
 
-            result = layers.create_global_var(
-                shape=[1], value=-1.0, dtype='float32', persistable=True)
+            result = paddle.static.create_global_var(
+                shape=[1], value=-1.0, dtype='float32', persistable=True
+            )
 
             # 1. The type of 'condition' in case must be Variable.
             def test_condition_type():

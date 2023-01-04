@@ -12,11 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import os
 import sys
 import unittest
+
 sys.path.append("..")
 
 from test_dist_base import TestDistBase
@@ -47,10 +46,12 @@ rank_table_file = b"""{
 }"""
 
 need_envs = {
-    "ASCEND_AICPU_PATH":
-    os.getenv("ASCEND_AICPU_PATH", "/usr/local/Ascend/nnae/latest"),
-    "ASCEND_OPP_PATH":
-    os.getenv("ASCEND_OPP_PATH", "/usr/local/Ascend/nnae/latest/opp"),
+    "ASCEND_AICPU_PATH": os.getenv(
+        "ASCEND_AICPU_PATH", "/usr/local/Ascend/nnae/latest"
+    ),
+    "ASCEND_OPP_PATH": os.getenv(
+        "ASCEND_OPP_PATH", "/usr/local/Ascend/nnae/latest/opp"
+    ),
     "HCCL_CONNECT_TIMEOUT": "7200",
     "HCCL_WHITELIST_DISABLE": "1",
     "HCCL_SECURITY_MODE": "1",
@@ -74,7 +75,8 @@ class TestParallelDygraphMnistNPU(TestDistBase):
                 delta=1e-3,
                 check_error_log=True,
                 need_envs=need_envs,
-                log_name=flag_name)
+                log_name=flag_name,
+            )
 
 
 class TestFleetDygraphMnistNPU(TestParallelDygraphMnistNPU):

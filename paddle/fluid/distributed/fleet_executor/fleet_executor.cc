@@ -11,9 +11,10 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+#include "paddle/fluid/distributed/fleet_executor/fleet_executor.h"
+
 #include <algorithm>
 
-#include "paddle/fluid/distributed/fleet_executor/fleet_executor.h"
 #include "paddle/fluid/distributed/fleet_executor/global.h"
 #include "paddle/fluid/distributed/fleet_executor/message_bus.h"
 #include "paddle/fluid/distributed/fleet_executor/runtime_graph.h"
@@ -29,8 +30,9 @@ namespace distributed {
 
 FleetExecutor::FleetExecutor(const std::string& exe_desc_str) {
   bool parse_flag = exe_desc_.ParseFromString(exe_desc_str);
-  PADDLE_ENFORCE(parse_flag, platform::errors::PreconditionNotMet(
-                                 "Error occurs while parsing string to proto"));
+  PADDLE_ENFORCE(parse_flag,
+                 platform::errors::PreconditionNotMet(
+                     "Error occurs while parsing string to proto"));
   // Message bus will be created and inited only once
   GlobalVal<MessageBus>::Create();
   InitMessageBus();
@@ -50,12 +52,16 @@ FleetExecutor::~FleetExecutor() {
 }
 
 void FleetExecutor::Init(
-    const std::string& carrier_id, const framework::ProgramDesc& program_desc,
-    framework::Scope* scope, const platform::Place& place,
-    int64_t num_micro_batches, const std::vector<TaskNode*>& task_nodes,
+    const std::string& carrier_id,
+    const framework::ProgramDesc& program_desc,
+    framework::Scope* scope,
+    const platform::Place& place,
+    int64_t num_micro_batches,
+    const std::vector<TaskNode*>& task_nodes,
     const std::unordered_map<int64_t, int64_t>& task_id_to_rank,
     const std::vector<std::string>& inference_root_scope_vars) {
-  PADDLE_ENFORCE_GT(task_nodes.size(), 0,
+  PADDLE_ENFORCE_GT(task_nodes.size(),
+                    0,
                     platform::errors::InvalidArgument(
                         "Fleet executor is inited with empty task node"));
   // TODO(fleet_exe devs): the unused_vars should be got from run time graph
@@ -115,18 +121,30 @@ void FleetExecutor::Init(
   carrier_ids_.insert(carrier_id);
   // Set current running carrier
   GlobalVal<std::string>::Set(new std::string(carrier_id));
-  InitCarrier(carrier, scope, place, num_micro_batches, program_desc,
+  InitCarrier(carrier,
+              scope,
+              place,
+              num_micro_batches,
+              program_desc,
               inference_root_scope_vars);
   GlobalVal<MessageBus>::Get()->Barrier();
 }
 
 void FleetExecutor::InitCarrier(
-    Carrier* carrier, framework::Scope* scope, const platform::Place& place,
-    int64_t num_micro_batches, const framework::ProgramDesc& program_desc,
+    Carrier* carrier,
+    framework::Scope* scope,
+    const platform::Place& place,
+    int64_t num_micro_batches,
+    const framework::ProgramDesc& program_desc,
     const std::vector<std::string>& inference_root_scope_vars) {
-  carrier->Init(exe_desc_.cur_rank(), runtime_graph_->interceptor_id_to_rank(),
-                runtime_graph_->interceptor_id_to_node(), program_desc, scope,
-                num_micro_batches, place, inference_root_scope_vars);
+  carrier->Init(exe_desc_.cur_rank(),
+                runtime_graph_->interceptor_id_to_rank(),
+                runtime_graph_->interceptor_id_to_node(),
+                program_desc,
+                scope,
+                num_micro_batches,
+                place,
+                inference_root_scope_vars);
 }
 
 void FleetExecutor::InitMessageBus() {
@@ -147,11 +165,13 @@ void FleetExecutor::InitMessageBus() {
   }
   if (addr == "") {
     PADDLE_ENFORCE_EQ(
-        rank_to_addr.size(), 1,
+        rank_to_addr.size(),
+        1,
         platform::errors::NotFound("Empty address is not valid for "
                                    "paddle.distributed.launch method."));
     PADDLE_ENFORCE_EQ(
-        cur_rank, 0,
+        cur_rank,
+        0,
         platform::errors::NotFound("Address is empty but cur rank is not 0."));
   }
   VLOG(3) << "Current rank is " << cur_rank << " and the ip_port is "

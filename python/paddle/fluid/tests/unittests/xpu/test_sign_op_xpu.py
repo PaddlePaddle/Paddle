@@ -12,18 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
-import unittest
-import numpy as np
 import sys
+import unittest
+
+import numpy as np
+
 sys.path.append("..")
 
-import paddle
-
-from op_test import OpTest
 from op_test_xpu import XPUOpTest
-from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper
+from xpu.get_test_cover_info import (
+    XPUOpTestWrapper,
+    create_test_class,
+    get_xpu_op_support_types,
+)
+
+import paddle
 
 paddle.enable_static()
 
@@ -43,8 +46,9 @@ class XPUTestSignOP(XPUOpTestWrapper):
             self.op_type = 'sign'
             self.dtype = self.in_type
             self.init_config()
-            self.x = np.random.uniform(-10, 10,
-                                       self.input_shape).astype(self.dtype)
+            self.x = np.random.uniform(-10, 10, self.input_shape).astype(
+                self.dtype
+            )
             self.inputs = {'X': self.x}
             self.outputs = {'Out': np.sign(self.x)}
             self.attrs = {'use_xpu': True}

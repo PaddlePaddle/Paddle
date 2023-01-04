@@ -22,11 +22,11 @@ namespace phi {
 template <typename T, typename Context>
 void SumKernel(const Context& dev_ctx,
                const DenseTensor& x,
-               const std::vector<int64_t>& dims,
+               const IntArray& dims,
                DataType out_dtype,
                bool keep_dim,
                DenseTensor* out) {
-  bool reduce_all = false;
+  bool reduce_all = recompute_reduce_all(x, dims);
   SumRawKernel<T>(dev_ctx, x, dims, keep_dim, reduce_all, out_dtype, out);
 }
 
@@ -68,4 +68,19 @@ PD_REGISTER_KERNEL(sum,
                    complex128) {
   kernel->OutputAt(0).SetDataType(paddle::experimental::DataType::UNDEFINED);
 }
+#endif
+
+#if defined(PADDLE_WITH_XPU_KP) && !defined(PADDLE_WITH_XPU)
+PD_REGISTER_KERNEL(sum, KPS, ALL_LAYOUT, phi::SumKernel, float) {
+  kernel->OutputAt(0).SetDataType(paddle::experimental::DataType::UNDEFINED);
+}
+#endif
+
+#if defined(PADDLE_WITH_MKLDNN)
+PD_REGISTER_KERNEL(
+    sum, OneDNN, ONEDNN, phi::SumKernel, float, phi::dtype::bfloat16) {}
+#endif
+
+#if defined(PADDLE_WITH_XPU)
+PD_REGISTER_KERNEL(sum, XPU, ALL_LAYOUT, phi::SumKernel, float) {}
 #endif

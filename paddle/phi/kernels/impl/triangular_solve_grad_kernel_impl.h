@@ -14,9 +14,7 @@
 
 #pragma once
 
-#include "paddle/phi/kernels/triangular_solve_grad_kernel.h"
-
-#include "paddle/phi/kernels/copy_kernel.h"
+#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/common_shape.h"
@@ -24,6 +22,7 @@
 #include "paddle/phi/kernels/funcs/for_range.h"
 #include "paddle/phi/kernels/funcs/matrix_reduce.h"
 #include "paddle/phi/kernels/funcs/tril_triu_compute.h"
+#include "paddle/phi/kernels/triangular_solve_grad_kernel.h"
 #include "paddle/phi/kernels/triangular_solve_kernel.h"
 
 namespace phi {

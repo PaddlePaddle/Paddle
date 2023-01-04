@@ -15,6 +15,7 @@
 #pragma once
 
 #include <string>
+
 #include "paddle/fluid/inference/analysis/analysis_pass.h"
 
 namespace paddle {
@@ -27,7 +28,7 @@ class IrGraphToProgramPass : public AnalysisPass {
  public:
   void RunImpl(Argument *argument) override;
 
-  std::string repr() const override { return "ir-graph-to-param-pass"; }
+  std::string repr() const override { return "ir_graph_to_param_pass"; }
 };
 
 }  // namespace analysis

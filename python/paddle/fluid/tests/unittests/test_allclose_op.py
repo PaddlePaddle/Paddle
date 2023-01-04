@@ -13,14 +13,16 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
 from op_test import OpTest
+
 import paddle
 
 
 class TestAllcloseOp(OpTest):
     def set_args(self):
-        self.input = np.array([10000., 1e-07]).astype("float32")
+        self.input = np.array([10000.0, 1e-07]).astype("float32")
         self.other = np.array([10000.1, 1e-08]).astype("float32")
         self.rtol = np.array([1e-05]).astype("float64")
         self.atol = np.array([1e-08]).astype("float64")
@@ -34,18 +36,21 @@ class TestAllcloseOp(OpTest):
             'Input': self.input,
             'Other': self.other,
             "Rtol": self.rtol,
-            "Atol": self.atol
+            "Atol": self.atol,
         }
         self.attrs = {'equal_nan': self.equal_nan}
         self.outputs = {
-            'Out': np.array([
-                np.allclose(
-                    self.inputs['Input'],
-                    self.inputs['Other'],
-                    rtol=self.rtol,
-                    atol=self.atol,
-                    equal_nan=self.equal_nan)
-            ])
+            'Out': np.array(
+                [
+                    np.allclose(
+                        self.inputs['Input'],
+                        self.inputs['Other'],
+                        rtol=self.rtol,
+                        atol=self.atol,
+                        equal_nan=self.equal_nan,
+                    )
+                ]
+            )
         }
 
     def test_check_output(self):
@@ -85,7 +90,7 @@ class TestAllcloseOpException(TestAllcloseOp):
 
 class TestAllcloseOpSmallNum(TestAllcloseOp):
     def set_args(self):
-        self.input = np.array([10000., 1e-08]).astype("float32")
+        self.input = np.array([10000.0, 1e-08]).astype("float32")
         self.other = np.array([10000.1, 1e-09]).astype("float32")
         self.rtol = np.array([1e-05]).astype("float64")
         self.atol = np.array([1e-08]).astype("float64")
@@ -126,8 +131,9 @@ class TestAllcloseDygraph(unittest.TestCase):
 class TestAllcloseError(unittest.TestCase):
     def test_input_dtype(self):
         def test_x_dtype():
-            with paddle.static.program_guard(paddle.static.Program(),
-                                             paddle.static.Program()):
+            with paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
                 x = paddle.fluid.data(name='x', shape=[10, 10], dtype='float16')
                 y = paddle.fluid.data(name='y', shape=[10, 10], dtype='float64')
                 result = paddle.allclose(x, y)
@@ -135,8 +141,9 @@ class TestAllcloseError(unittest.TestCase):
         self.assertRaises(TypeError, test_x_dtype)
 
         def test_y_dtype():
-            with paddle.static.program_guard(paddle.static.Program(),
-                                             paddle.static.Program()):
+            with paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
                 x = paddle.fluid.data(name='x', shape=[10, 10], dtype='float64')
                 y = paddle.fluid.data(name='y', shape=[10, 10], dtype='int32')
                 result = paddle.allclose(x, y)

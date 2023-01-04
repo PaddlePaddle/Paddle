@@ -12,14 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/elementwise_grad_kernel.h"
-
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/complex.h"
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/copy_kernel.h"
+#include "paddle/phi/core/tensor_utils.h"
+#include "paddle/phi/kernels/elementwise_grad_kernel.h"
 #include "paddle/phi/kernels/funcs/elementwise_functor.h"
 #include "paddle/phi/kernels/gpu/elementwise_grad.h"
 #include "paddle/phi/kernels/impl/elementwise_grad_kernel_impl.h"
@@ -46,9 +45,9 @@ void SubtractGradKernel(const Context& dev_ctx,
 template <typename T, typename Context>
 void SubtractDoubleGradKernel(const Context& dev_ctx,
                               const DenseTensor& y,
-                              paddle::optional<const DenseTensor&> ddx,
-                              paddle::optional<const DenseTensor&> ddy,
                               const DenseTensor& dout,
+                              const paddle::optional<DenseTensor>& ddx,
+                              const paddle::optional<DenseTensor>& ddy,
                               int axis,
                               DenseTensor* ddout) {
   phi::SubtractDoubleGradImpl<T>(dev_ctx, y, ddx, ddy, dout, axis, ddout);

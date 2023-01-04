@@ -23,7 +23,7 @@ template <typename T, typename Context>
 void NllLossGradKernel(const Context& dev_ctx,
                        const DenseTensor& x,
                        const DenseTensor& labels,
-                       paddle::optional<const DenseTensor&> weight,
+                       const paddle::optional<DenseTensor>& weight,
                        const DenseTensor& total_weight,
                        const DenseTensor& dout,
                        int64_t ignore_index,
@@ -49,25 +49,25 @@ void NllLossGradKernel(const Context& dev_ctx,
     int blocks = NumBlocks(batch_size);
     int threads = kNumCUDAThreads;
     if (reduction == "none") {
-      GPUNLLLossBackward1D_no_reduce<
-          T><<<blocks, threads, 0, dev_ctx.stream()>>>(dx_data,
-                                                       label_data,
-                                                       weight_data,
-                                                       dout_data,
-                                                       batch_size,
-                                                       n_classes,
-                                                       ignore_index);
+      GPUNLLLossBackward1D_no_reduce<T>
+          <<<blocks, threads, 0, dev_ctx.stream()>>>(dx_data,
+                                                     label_data,
+                                                     weight_data,
+                                                     dout_data,
+                                                     batch_size,
+                                                     n_classes,
+                                                     ignore_index);
     } else {
-      GPUNLLLossBackward1D_with_reduce<T><<<1, NTHREADS, 0, dev_ctx.stream()>>>(
-          dx_data,
-          total_weight_data,
-          label_data,
-          weight_data,
-          dout_data,
-          batch_size,
-          n_classes,
-          size_average,
-          ignore_index);
+      GPUNLLLossBackward1D_with_reduce<T>
+          <<<1, NTHREADS, 0, dev_ctx.stream()>>>(dx_data,
+                                                 total_weight_data,
+                                                 label_data,
+                                                 weight_data,
+                                                 dout_data,
+                                                 batch_size,
+                                                 n_classes,
+                                                 size_average,
+                                                 ignore_index);
     }
   } else if (x_dims.size() == 4) {
     const auto in_dim2 = x_dims[2];
@@ -78,32 +78,32 @@ void NllLossGradKernel(const Context& dev_ctx,
     int blocks = NumBlocks(out_numel);
     int threads = kNumCUDAThreads;
     if (reduction == "none") {
-      GPUNLLLossBackward2D_no_reduce<
-          T><<<blocks, threads, 0, dev_ctx.stream()>>>(dx_data,
-                                                       label_data,
-                                                       weight_data,
-                                                       dout_data,
-                                                       batch_size,
-                                                       n_classes,
-                                                       in_dim2,
-                                                       in_dim3,
-                                                       ignore_index);
+      GPUNLLLossBackward2D_no_reduce<T>
+          <<<blocks, threads, 0, dev_ctx.stream()>>>(dx_data,
+                                                     label_data,
+                                                     weight_data,
+                                                     dout_data,
+                                                     batch_size,
+                                                     n_classes,
+                                                     in_dim2,
+                                                     in_dim3,
+                                                     ignore_index);
     } else {
       int blocks_per_sample = NumBlocks(map_size) / 128;
       blocks_per_sample = (blocks_per_sample == 0) ? 1 : blocks_per_sample;
       int total_blocks = blocks_per_sample * batch_size;
-      GPUNLLLossBackward2D_with_reduce<
-          T><<<total_blocks, threads, 0, dev_ctx.stream()>>>(dx_data,
-                                                             total_weight_data,
-                                                             label_data,
-                                                             weight_data,
-                                                             dout_data,
-                                                             batch_size,
-                                                             n_classes,
-                                                             map_size,
-                                                             blocks_per_sample,
-                                                             size_average,
-                                                             ignore_index);
+      GPUNLLLossBackward2D_with_reduce<T>
+          <<<total_blocks, threads, 0, dev_ctx.stream()>>>(dx_data,
+                                                           total_weight_data,
+                                                           label_data,
+                                                           weight_data,
+                                                           dout_data,
+                                                           batch_size,
+                                                           n_classes,
+                                                           map_size,
+                                                           blocks_per_sample,
+                                                           size_average,
+                                                           ignore_index);
     }
   }
 }

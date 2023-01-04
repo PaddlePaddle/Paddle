@@ -13,9 +13,10 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ir/mkldnn/fc_elementwise_add_mkldnn_fuse_pass.h"
+
 #include "paddle/fluid/framework/ir/graph_traits.h"
 #include "paddle/fluid/framework/op_version_registry.h"
-#include "paddle/fluid/string/pretty_log.h"
+#include "paddle/utils/string/pretty_log.h"
 
 namespace paddle {
 namespace framework {
@@ -55,43 +56,62 @@ FCResidualConnectionMKLDNNFusePass::FCResidualConnectionMKLDNNFusePass() {
 }
 
 GraphWithStats FCResidualConnectionMKLDNNFusePass::FuseFC(
-    const std::string& name_scope, const GraphWithStats& graph_with_stats,
+    const std::string& name_scope,
+    const GraphWithStats& graph_with_stats,
     bool fc_as_x) const {
   GraphPatternDetector gpd;
   auto pattern = gpd.mutable_pattern();
   patterns::FCMKLDNN fc_pattern{pattern, name_scope};
-  bool fc_has_bias = true;
-  auto fc_output = fc_pattern(
-      gpd.mutable_pattern()->NewNode("fc")->AsInput()->assert_is_op_input(
-          "fc", "Input"),
-      fc_has_bias);
+  auto fc_output = fc_pattern(false /* with residual */);
 
-  patterns::ResidualElementwise elementwise_pattern{pattern, name_scope,
-                                                    fc_as_x};
+  patterns::ResidualElementwise elementwise_pattern{
+      pattern, name_scope, fc_as_x};
   elementwise_pattern(
-      fc_output, pattern->NewNode(elementwise_pattern.residual_data_repr()),
-      "elementwise_add", fc_as_x);
+      fc_output,
+      pattern->NewNode(elementwise_pattern.residual_data_repr()),
+      "elementwise_add",
+      fc_as_x);
   fc_output->AsIntermediate();
 
   int found_fc_count = 0;
 
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
+    VLOG(4) << "Fuse fc + elementwise_add as residual";
     GET_IR_NODE_FROM_SUBGRAPH(fc_op, fc, fc_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(fc_input, input, fc_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(fc_weights, weights, fc_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(fc_output, output, fc_pattern);
 
-    GET_IR_NODE_FROM_SUBGRAPH(elementwise_op, elementwise_op,
-                              elementwise_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(residual_data, residual_data,
-                              elementwise_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(elementwise_out, elementwise_out,
-                              elementwise_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        elementwise_op, elementwise_op, elementwise_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        residual_data, residual_data, elementwise_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        elementwise_out, elementwise_out, elementwise_pattern);
 
-    if (FindFuseOption(*fc_op, *elementwise_op) != FUSE_MKLDNN) return;
-    if (!IsReachable(g, residual_data, fc_output)) return;
-    if (HasFusedActivation(fc_op)) return;
+    if (FindFuseOption(*fc_op, *elementwise_op) != FUSE_MKLDNN) {
+      VLOG(4) << "Skipping fusion for " << fc_op->Name() << "(" << fc_op->id()
+              << ") with " << elementwise_op->Name() << "("
+              << elementwise_op->id()
+              << ") because not both ops have use_mkldnn";
+      return;
+    }
+    if (!IsReachable(g, residual_data, fc_output)) {
+      VLOG(4) << "Skipping fusion for " << fc_op->Name() << "(" << fc_op->id()
+              << ") with " << elementwise_op->Name() << "("
+              << elementwise_op->id() << ") because residual input "
+              << residual_data->Name() << "(" << residual_data->id()
+              << ") is not "
+                 "reachable";
+      return;
+    }
+    if (HasFusedActivation(fc_op)) {
+      VLOG(4) << "Skipping fusion for " << fc_op->Name() << "(" << fc_op->id()
+              << ") with " << elementwise_op->Name() << "("
+              << elementwise_op->id() << ") because fc has activation fused";
+      return;
+    }
 
     if (!IsCompat(subgraph, g)) {
       LOG(WARNING)
@@ -99,7 +119,7 @@ GraphWithStats FCResidualConnectionMKLDNNFusePass::FuseFC(
       return;
     }
 
-    fc_op->Op()->SetOutput("ResidualData", {residual_data->Name()});
+    fc_op->Op()->SetInput("ResidualData", {residual_data->Name()});
     fc_op->Op()->SetOutput("Out", {elementwise_out->Name()});
     fc_op->Op()->SetAttr("fuse_residual_connection", true);
 
@@ -112,7 +132,8 @@ GraphWithStats FCResidualConnectionMKLDNNFusePass::FuseFC(
   };
 
   gpd(graph_with_stats.first, handler);
-  if (!Has("disable_logs") || !Get<bool>("disable_logs")) {
+  if ((!Has("disable_logs") || !Get<bool>("disable_logs")) &&
+      (found_fc_count > 0)) {
     std::stringstream msg_ss;
     std::string fusionMode = fc_as_x ? "x" : "y";
     msg_ss << "---    Fused " << found_fc_count << " fc (as " << fusionMode

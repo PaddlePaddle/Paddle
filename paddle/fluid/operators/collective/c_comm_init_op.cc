@@ -43,7 +43,8 @@ namespace operators {
 
 class CCommInitOp : public framework::OperatorBase {
  public:
-  CCommInitOp(const std::string& type, const framework::VariableNameMap& inputs,
+  CCommInitOp(const std::string& type,
+              const framework::VariableNameMap& inputs,
               const framework::VariableNameMap& outputs,
               const framework::AttributeMap& attrs)
       : OperatorBase(type, inputs, outputs, attrs) {}
@@ -53,15 +54,12 @@ class CCommInitOp : public framework::OperatorBase {
 // TODO(wangxi): Put this in the unified header file
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
     using UniqueId = ncclUniqueId;
-    using Place = platform::CUDAPlace;
     using CommContext = platform::NCCLCommContext;
 #elif defined(PADDLE_WITH_XPU_BKCL)
     using UniqueId = BKCLUniqueId;
-    using Place = platform::XPUPlace;
     using CommContext = platform::BKCLCommContext;
 #elif defined(PADDLE_WITH_CNCL)
     using UniqueId = cnclCliqueId;
-    using Place = platform::MLUPlace;
     using CommContext = platform::CNCLCommContext;
 #else
     PADDLE_THROW(platform::errors::PreconditionNotMet(
@@ -71,8 +69,9 @@ class CCommInitOp : public framework::OperatorBase {
     PADDLE_ENFORCE_EQ(
         platform::is_gpu_place(place) || platform::is_xpu_place(place) ||
             platform::is_mlu_place(place),
-        true, platform::errors::PreconditionNotMet(
-                  "CCommInitOp can run on gpu or xpu or mlu place only."));
+        true,
+        platform::errors::PreconditionNotMet(
+            "CCommInitOp can run on gpu or xpu or mlu place only."));
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
     defined(PADDLE_WITH_XPU_BKCL) || defined(PADDLE_WITH_CNCL)
@@ -83,12 +82,12 @@ class CCommInitOp : public framework::OperatorBase {
     UniqueId* comm_id = var->GetMutable<UniqueId>();
 
     int nranks = Attr<int>("nranks");
-    int rank_id = Attr<int>("rank");
     int rid = Attr<int>("ring_id");
 
 #if defined(PADDLE_WITH_XPU_BKCL)
     PADDLE_ENFORCE_EQ(
-        rid, 0,
+        rid,
+        0,
         platform::errors::OutOfRange(
             "Ring id must equal 0 in multi Kunlun cards training, but got %d",
             rid));
@@ -98,8 +97,9 @@ class CCommInitOp : public framework::OperatorBase {
     if (Attr<int>("device_id") >= 0) {
       device_id = Attr<int>("device_id");
     }
-    CommContext::Instance().CreateComm(comm_id, nranks, rank_id, device_id,
-                                       rid);
+    int rank_id = Attr<int>("rank");
+    CommContext::Instance().CreateComm(
+        comm_id, nranks, rank_id, device_id, rid);
 #endif
   }
 };

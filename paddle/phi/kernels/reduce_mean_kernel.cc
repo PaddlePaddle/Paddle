@@ -22,10 +22,10 @@ namespace phi {
 template <typename T, typename Context>
 void MeanKernel(const Context& dev_ctx,
                 const DenseTensor& x,
-                const std::vector<int64_t>& dims,
+                const IntArray& dims,
                 bool keep_dim,
                 DenseTensor* out) {
-  bool reduce_all = false;
+  bool reduce_all = recompute_reduce_all(x, dims);
   MeanRawKernel<T>(dev_ctx, x, dims, keep_dim, reduce_all, out);
 }
 
@@ -45,4 +45,17 @@ PD_REGISTER_KERNEL(mean,
                    int,
                    int64_t,
                    phi::dtype::float16) {}
+#endif
+
+#if defined(PADDLE_WITH_XPU_KP) && !defined(PADDLE_WITH_XPU)
+PD_REGISTER_KERNEL(mean, KPS, ALL_LAYOUT, phi::MeanKernel, float) {}
+#endif
+
+#if defined(PADDLE_WITH_MKLDNN)
+PD_REGISTER_KERNEL(
+    mean, OneDNN, ONEDNN, phi::MeanKernel, float, phi::dtype::bfloat16) {}
+#endif
+
+#if defined(PADDLE_WITH_XPU)
+PD_REGISTER_KERNEL(mean, XPU, ALL_LAYOUT, phi::MeanKernel, float) {}
 #endif

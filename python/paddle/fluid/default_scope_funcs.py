@@ -26,8 +26,6 @@ A `scoped_function` will take a `function` as input. That function will be
 invoked in a new local scope.
 """
 
-from __future__ import print_function
-
 import paddle.fluid.core
 import threading
 

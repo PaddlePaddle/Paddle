@@ -55,21 +55,21 @@ struct DivideFunctor {
   inline DivideFunctor() { n_inv = static_cast<Tx>(1.0f); }
 
   explicit inline DivideFunctor(int n)
-      : n_inv(static_cast<Tx>(((float)1.0) / (static_cast<float>(n)))) {}
+      : n_inv(static_cast<Tx>(1.0f / (static_cast<float>(n)))) {}
 
   inline Ty operator()(const Tx& x) const { return static_cast<Ty>(x * n_inv); }
 
   __device__ inline DivideFunctor() { n_inv = static_cast<Tx>(1.0f); }
 
   __device__ inline DivideFunctor(int n)
-      : n_inv(static_cast<Tx>(((float)1.0) / (static_cast<float>(n)))) {}
+      : n_inv(static_cast<Tx>(1.0f / (static_cast<float>(n)))) {}
 
   __device__ inline Ty operator()(const Tx& x) const {
     return static_cast<Ty>(x * n_inv);
   }
 
   __device__ inline void SetDiv(int n) {
-    n_inv = static_cast<Tx>(((float)1.0) / (static_cast<float>(n)));
+    n_inv = static_cast<Tx>(1.0f / (static_cast<float>(n)));
   }
 
  private:
@@ -97,8 +97,7 @@ struct SquareFunctor {
  */
 template <typename T>
 struct MinFunctor {
-  inline T initial() { /*return static_cast<T>(std::numeric_limits<T>::max());*/
-  }
+  inline T initial() { return static_cast<T>(std::numeric_limits<T>::max()); }
 
   __device__ T operator()(const T& a, const T& b) const {
     return (b < a) ? b : a;
@@ -111,7 +110,7 @@ struct MinFunctor {
 template <typename T>
 struct MaxFunctor {
   inline T initial() {
-    // return static_cast<T>(std::numeric_limits<T>::lowest());
+    return static_cast<T>(std::numeric_limits<T>::lowest());
   }
 
   __device__ T operator()(const T& a, const T& b) const {

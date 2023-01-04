@@ -15,6 +15,7 @@
 #include "paddle/phi/kernels/psroi_pool_kernel.h"
 
 #include <algorithm>
+
 #include "paddle/phi/core/kernel_registry.h"
 
 namespace phi {
@@ -23,7 +24,7 @@ template <typename T, typename Context>
 void PsroiPoolKernel(const Context& ctx,
                      const DenseTensor& x,
                      const DenseTensor& rois,
-                     paddle::optional<const DenseTensor&> rois_num,
+                     const paddle::optional<DenseTensor>& rois_num,
                      int pooled_height,
                      int pooled_width,
                      int output_channels,

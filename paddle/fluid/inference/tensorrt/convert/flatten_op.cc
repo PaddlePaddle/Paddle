@@ -30,7 +30,8 @@ namespace tensorrt {
 class FlattenOpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
-                  const framework::Scope& scope, bool test_mode) override {
+                  const framework::Scope& scope,
+                  bool test_mode) override {
     framework::OpDesc op_desc(op, nullptr);
     // Declare inputs
     auto* input = engine_->GetITensor(op_desc.Input("X")[0]);
@@ -41,7 +42,8 @@ class FlattenOpConverter : public OpConverter {
       for (int i = 0; i < dims; i++) {
         int dim_i = input->getDimensions().d[i];
         PADDLE_ENFORCE_GT(
-            dim_i, 0,
+            dim_i,
+            0,
             platform::errors::InvalidArgument(
                 "flatten input dim should be > 0, but got %d.", dim_i));
         dim_prod *= dim_i;
@@ -60,17 +62,25 @@ class FlattenOpConverter : public OpConverter {
       start_dim.d[0] = 1;
       size_dim.d[0] = dims - 1;
       stride_dim.d[0] = 1;
-      auto* slice_layer =
-          TRT_ENGINE_ADD_LAYER(engine_, Slice, *(shape_layer->getOutput(0)),
-                               start_dim, size_dim, stride_dim);
+      auto* slice_layer = TRT_ENGINE_ADD_LAYER(engine_,
+                                               Slice,
+                                               *(shape_layer->getOutput(0)),
+                                               start_dim,
+                                               size_dim,
+                                               stride_dim);
       uint32_t reduce_dim = 1;
-      auto* reduce_prod_layer = TRT_ENGINE_ADD_LAYER(
-          engine_, Reduce, *(slice_layer->getOutput(0)),
-          nvinfer1::ReduceOperation::kPROD, reduce_dim, true);
+      auto* reduce_prod_layer =
+          TRT_ENGINE_ADD_LAYER(engine_,
+                               Reduce,
+                               *(slice_layer->getOutput(0)),
+                               nvinfer1::ReduceOperation::kPROD,
+                               reduce_dim,
+                               true);
       int32_t* constant_weight_data = new int32_t[1];
       constant_weight_data[0] = -1;
       TensorRTEngine::Weight constant_weight{
-          nvinfer1::DataType::kINT32, static_cast<void*>(constant_weight_data),
+          nvinfer1::DataType::kINT32,
+          static_cast<void*>(constant_weight_data),
           1};
       nvinfer1::Dims constant_dims;
       constant_dims.nbDims = 1;

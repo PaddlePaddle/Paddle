@@ -20,7 +20,9 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
+
 #include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/fluid/framework/new_executor/interpretercore.h"
 #include "paddle/fluid/framework/parallel_executor.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/phi/core/ddim.h"
@@ -73,6 +75,9 @@ class CinnLaunchContext {
   framework::ParallelExecutor* InitializePE(const platform::Place& place,
                                             framework::Scope* scope);
 
+  framework::InterpreterCore* InitializeInterpreterCore(
+      const platform::Place& place, framework::Scope* scope);
+
   // explicitly update several environment variables captured
   // by callback of execution arguments
   void UpdateCapturedEnv(const framework::Scope& scope,
@@ -84,7 +89,7 @@ class CinnLaunchContext {
   // Check the equiality in type and dimension between the tensor
   // in Paddle and the compiled tensor returned by CINN of a same variable
   void CheckTensorEquivalent(const std::string& var_name,
-                             const framework::LoDTensor& paddle_tensor);
+                             const phi::DenseTensor& paddle_tensor);
 
   // Return the name list of variables skipped eager deletion
   const std::vector<std::string>& GetSkipEagerVars() const {
@@ -131,7 +136,7 @@ class CinnLaunchContext {
 
   // Construct a Paddle ProgramDesc with the CINN runtime
   // instructions included in the compiled CINN Program
-  framework::ProgramDesc BuildCompiledProgram(
+  std::unique_ptr<framework::ProgramDesc> BuildCompiledProgram(
       const framework::ir::Graph& graph,
       const CinnCompiledObject& compiled_obj);
 
@@ -153,6 +158,10 @@ class CinnLaunchContext {
   std::vector<std::string> initialized_beforehand_vars_;
   // the variable scope compiled from cinn
   const std::shared_ptr<CinnScope> cinn_scope_;
+
+  std::unique_ptr<framework::ProgramDesc> runtime_program_desc_;
+  std::unique_ptr<framework::InterpreterCore> interpreter_core_;
+  std::set<std::string> skip_gc_vars_;
 
   // the ir::Graph object converted from the program compiled by CINN
   std::unique_ptr<framework::ir::Graph> runtime_graph_;

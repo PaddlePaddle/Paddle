@@ -1,0 +1,96 @@
+diff --git a/paddle/fluid/memory/allocation/thread_local_allocator.cc b/paddle/fluid/memory/allocation/thread_local_allocator.cc
+index 875e57cfd4..b111ada3ab 100644
+--- a/paddle/fluid/memory/allocation/thread_local_allocator.cc
++++ b/paddle/fluid/memory/allocation/thread_local_allocator.cc
+@@ -13,19 +13,62 @@
+ // limitations under the License.
+ 
+ #include "paddle/fluid/memory/allocation/thread_local_allocator.h"
++#include "paddle/fluid/platform/cuda_device_guard.h"
+ 
+ namespace paddle {
+ namespace memory {
+ namespace allocation {
+ 
++const int MALLOC_ALIGN = 64;
++
++#define CUDA_CALL(func)                                      \
++  {                                                          \
++    auto e = (func);                                         \
++    CHECK(e == cudaSuccess || e == cudaErrorCudartUnloading) \
++        << "CUDA: " << cudaGetErrorString(e);                \
++  }
++
++void* DirectAllocator::Alloc(size_t unaligned_size) {
++  if (platform::is_cpu_place(place_)) {
++    size_t offset = sizeof(void*) + MALLOC_ALIGN - 1;
++    char* p = static_cast<char*>(std::malloc(offset + unaligned_size));
++    // Memory checking
++    CHECK(p) << "Error occurred in malloc period: available space is not enough "
++                "for mallocing "
++            << unaligned_size << " bytes.";
++    // Byte alignment
++    void* r = reinterpret_cast<void*>(reinterpret_cast<size_t>(p + offset) &
++                                      (~(MALLOC_ALIGN - 1)));
++    static_cast<void**>(r)[-1] = p;
++    return r;
++  } else if (platform::is_gpu_place(place_)) {
++    int dev_id = place_.GetDeviceId();
++    platform::CUDADeviceGuard guard(dev_id);
++    void* ptr{};
++    CUDA_CALL(cudaMalloc(&ptr, unaligned_size));
++    return ptr;
++  }
++  return nullptr;
++}
++
++void DirectAllocator::Free(void* ptr) {
++  if (platform::is_cpu_place(place_)) {
++    if (ptr) {
++      std::free(static_cast<void**>(ptr)[-1]);
++    } 
++  } else if (platform::is_gpu_place(place_)) {
++    int dev_id = place_.GetDeviceId();
++    platform::CUDADeviceGuard guard(dev_id);
++    CUDA_CALL(cudaFree(ptr));
++  }
++}
++
++
++
+ ThreadLocalAllocatorImpl::ThreadLocalAllocatorImpl(const platform::Place& p)
+     : place_(p) {
+   if (platform::is_gpu_place(place_)) {
+-    buddy_allocator_.reset(new memory::detail::BuddyAllocator(
+-        std::unique_ptr<memory::detail::SystemAllocator>(
+-            new memory::detail::GPUAllocator(place_.device)),
+-        platform::GpuMinChunkSize(),
+-        platform::GpuMaxChunkSize()));
++    direct_allocator_.reset(new DirectAllocator{place_});
+   } else {
+     PADDLE_THROW(platform::errors::Unavailable(
+         "Thread local allocator only supports CUDAPlace now."));
+@@ -61,7 +104,7 @@ ThreadLocalCUDAAllocatorPool::ThreadLocalCUDAAllocatorPool()
+ 
+ ThreadLocalAllocation* ThreadLocalAllocatorImpl::AllocateImpl(size_t size) {
+   VLOG(10) << "ThreadLocalAllocatorImpl::AllocateImpl " << size;
+-  void* ptr = buddy_allocator_->Alloc(size);
++  void* ptr = direct_allocator_->Alloc(size);
+   auto* tl_allocation = new ThreadLocalAllocation(ptr, size, place_);
+   tl_allocation->SetThreadLocalAllocatorImpl(shared_from_this());
+   return tl_allocation;
+@@ -69,12 +112,12 @@ ThreadLocalAllocation* ThreadLocalAllocatorImpl::AllocateImpl(size_t size) {
+ 
+ void ThreadLocalAllocatorImpl::FreeImpl(ThreadLocalAllocation* allocation) {
+   VLOG(10) << "ThreadLocalAllocatorImpl::FreeImpl " << allocation;
+-  buddy_allocator_->Free(allocation->ptr());
++  direct_allocator_->Free(allocation->ptr());
+   delete allocation;
+ }
+ 
+ uint64_t ThreadLocalAllocatorImpl::ReleaseImpl() {
+-  return buddy_allocator_->Release();
++  return direct_allocator_->Release();
+ }
+ 
+ }  // namespace allocation

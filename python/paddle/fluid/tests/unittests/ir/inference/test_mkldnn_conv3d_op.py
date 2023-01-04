@@ -12,17 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from auto_scan_test import MkldnnAutoScanTest, SkipReasons
-from program_config import TensorConfig, ProgramConfig, OpConfig
-import numpy as np
-import paddle.inference as paddle_infer
-from functools import partial
-from typing import Optional, List, Callable, Dict, Any, Set
 import unittest
+from functools import partial
 
-import hypothesis
-from hypothesis import given, settings, seed, example, assume
 import hypothesis.strategies as st
+import numpy as np
+from auto_scan_test import MkldnnAutoScanTest
+from hypothesis import given
+from program_config import OpConfig, ProgramConfig, TensorConfig
 
 
 class TestMkldnnConv3dOp(MkldnnAutoScanTest):
@@ -33,19 +30,21 @@ class TestMkldnnConv3dOp(MkldnnAutoScanTest):
         def generate_input(*args, **kwargs):
             if kwargs["data_format"] == "NCDHW":
                 return np.random.random(
-                    [kwargs["batch_size"], 48, 64, 32, 64]).astype(np.float32)
+                    [kwargs["batch_size"], 48, 64, 32, 64]
+                ).astype(np.float32)
             else:
                 return np.random.random(
-                    [kwargs["batch_size"], 64, 32, 64, 48]).astype(np.float32)
+                    [kwargs["batch_size"], 64, 32, 64, 48]
+                ).astype(np.float32)
 
         def generate_weight(*args, **kwargs):
             return np.random.random(
-                [16, int(48 / kwargs["groups"]), 3, 3, 3]).astype(np.float32)
+                [16, int(48 / kwargs["groups"]), 3, 3, 3]
+            ).astype(np.float32)
 
         conv3d_op = OpConfig(
             type="conv3d",
-            inputs={"Input": ["input_data"],
-                    "Filter": ["conv_weight"]},
+            inputs={"Input": ["input_data"], "Filter": ["conv_weight"]},
             outputs={"Output": ["conv_output"]},
             attrs={
                 "data_format": kwargs["data_format"],
@@ -54,20 +53,24 @@ class TestMkldnnConv3dOp(MkldnnAutoScanTest):
                 "groups": kwargs["groups"],
                 "paddings": kwargs["paddings"],
                 "strides": kwargs["strides"],
-                "is_test": True
-            })
+                "is_test": True,
+            },
+        )
 
         program_config = ProgramConfig(
             ops=[conv3d_op],
             weights={
-                "conv_weight":
-                TensorConfig(data_gen=partial(generate_weight, *args, **kwargs))
+                "conv_weight": TensorConfig(
+                    data_gen=partial(generate_weight, *args, **kwargs)
+                )
             },
             inputs={
-                "input_data":
-                TensorConfig(data_gen=partial(generate_input, *args, **kwargs))
+                "input_data": TensorConfig(
+                    data_gen=partial(generate_input, *args, **kwargs)
+                )
             },
-            outputs=["conv_output"])
+            outputs=["conv_output"],
+        )
 
         yield program_config
 
@@ -82,8 +85,8 @@ class TestMkldnnConv3dOp(MkldnnAutoScanTest):
         groups=st.sampled_from([2]),
         paddings=st.sampled_from([[0, 3, 2]]),
         strides=st.sampled_from([[1, 2, 1]]),
-        batch_size=st.integers(
-            min_value=1, max_value=4), )
+        batch_size=st.integers(min_value=1, max_value=4),
+    )
     def test(self, *args, **kwargs):
         self.run_test(*args, **kwargs)
 

@@ -115,7 +115,8 @@ struct nonesuch {
 
 template <class Default,
           class AlwaysVoid,
-          template <class...> class Op,
+          template <class...>
+          class Op,
           class... Args>
 struct detector : std::false_type {
   using value_t = std::false_type;

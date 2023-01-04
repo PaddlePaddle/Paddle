@@ -13,17 +13,46 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/slice_kernel.h"
-#include "paddle/phi/kernels/impl/slice_kernel_impl.h"
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/impl/slice_kernel_impl.h"
 
 PD_REGISTER_KERNEL(slice,
                    CPU,
                    ALL_LAYOUT,
                    phi::SliceRawKernel,
                    bool,
+                   uint8_t,
                    int,
+                   int64_t,
+                   float,
+                   double,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>,
+                   phi::dtype::bfloat16) {}
+
+PD_REGISTER_KERNEL(slice_array,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::SliceArrayKernel,
+                   bool,
+                   int,
+                   uint8_t,
+                   int64_t,
+                   float,
+                   double,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>,
+                   phi::dtype::bfloat16) {}
+
+PD_REGISTER_KERNEL(slice_array_dense,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::SliceArrayDenseKernel,
+                   bool,
+                   int,
+                   uint8_t,
                    int64_t,
                    float,
                    double,

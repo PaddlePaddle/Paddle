@@ -13,13 +13,15 @@
 // limitations under the License.
 
 #include "paddle/infrt/tensor/phi/tensor_map.h"
+
+#include "glog/logging.h"
 #include "llvm/Support/ErrorHandling.h"
 
 namespace infrt {
 namespace phi {
 
-void DenseTensorMap::SetDenseTensor(
-    const std::string& name, std::unique_ptr<::phi::DenseTensor>&& tensor) {
+void DenseTensorMap::SetDenseTensor(const std::string& name,
+                                    std::unique_ptr<::Tensor>&& tensor) {
   std::lock_guard<std::mutex> lock(mu_);
   auto it = map_.emplace(std::make_pair(name, std::move(tensor)));
   if (!it.second) {
@@ -27,8 +29,7 @@ void DenseTensorMap::SetDenseTensor(
   }
 }
 
-::phi::DenseTensor* DenseTensorMap::GetDenseTensor(
-    const std::string& name) const {
+::Tensor* DenseTensorMap::GetDenseTensor(const std::string& name) const {
   std::lock_guard<std::mutex> lock(mu_);
   auto it = map_.find(name);
   if (it != map_.end()) {

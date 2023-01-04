@@ -14,6 +14,7 @@
 #pragma once
 
 #include <llvm/ADT/SmallVector.h>
+
 #include <iostream>
 
 #include "paddle/infrt/backends/host/phi_context.h"

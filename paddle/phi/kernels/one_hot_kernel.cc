@@ -24,9 +24,8 @@ void OneHotKernel(const Context& dev_ctx,
                   const DenseTensor& x,
                   const Scalar& num_classes_s,
                   DenseTensor* out) {
-  int num_classes = num_classes_s.to<int>();
   OneHotRawKernel<T>(
-      dev_ctx, x, num_classes, phi::DataType::FLOAT32, false, out);
+      dev_ctx, x, num_classes_s, phi::DataType::FLOAT32, false, out);
 }
 
 }  // namespace phi
@@ -35,4 +34,8 @@ PD_REGISTER_KERNEL(one_hot, CPU, ALL_LAYOUT, phi::OneHotKernel, int, int64_t) {}
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 PD_REGISTER_KERNEL(one_hot, GPU, ALL_LAYOUT, phi::OneHotKernel, int, int64_t) {}
+#endif
+
+#ifdef PADDLE_WITH_XPU
+PD_REGISTER_KERNEL(one_hot, XPU, ALL_LAYOUT, phi::OneHotKernel, int, int64_t) {}
 #endif

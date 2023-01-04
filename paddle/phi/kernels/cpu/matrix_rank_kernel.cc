@@ -13,10 +13,10 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/matrix_rank_kernel.h"
-#include "paddle/phi/kernels/matrix_rank_tol_kernel.h"
 
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/full_kernel.h"
+#include "paddle/phi/kernels/matrix_rank_tol_kernel.h"
 
 namespace phi {
 
@@ -24,8 +24,8 @@ template <typename T, typename Context>
 void MatrixRankKernel(const Context& dev_ctx,
                       const DenseTensor& x,
                       float tol,
-                      bool use_default_tol,
                       bool hermitian,
+                      bool use_default_tol,
                       DenseTensor* out) {
   DenseTensor atol_tensor;
   if (use_default_tol) {

@@ -16,6 +16,7 @@ limitations under the License. */
 #include <ctime>
 #include <string>
 #include <vector>
+
 #include "io/fs.h"
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/data_feed_factory.h"
@@ -132,10 +133,10 @@ void HeterXpuTrainer::CreateThreadParam(const ProgramDesc& program, int num) {
     if (var->Persistable()) {
       auto name = var->Name();
       Variable* root_var = root_scope_->FindVar(name);
-      LoDTensor* root_tensor = root_var->GetMutable<LoDTensor>();
+      phi::DenseTensor* root_tensor = root_var->GetMutable<phi::DenseTensor>();
       auto* ptr = scope->Var(name);
       InitializeVariable(ptr, proto::VarType::LOD_TENSOR);
-      LoDTensor* thread_tensor = ptr->GetMutable<LoDTensor>();
+      phi::DenseTensor* thread_tensor = ptr->GetMutable<phi::DenseTensor>();
 
 #define HeterMemcpyFunc(cpp_type, proto_type)                                 \
   do {                                                                        \
@@ -166,36 +167,50 @@ void HeterXpuTrainer::CreateThreadParam(const ProgramDesc& program, int num) {
 
 #ifdef PADDLE_WITH_CUDA
 template <typename T>
-void HeterXpuTrainer::HeterMemCpy(LoDTensor* thread_tensor,
-                                  LoDTensor* root_tensor,
+void HeterXpuTrainer::HeterMemCpy(phi::DenseTensor* thread_tensor,
+                                  phi::DenseTensor* root_tensor,
                                   const paddle::platform::Place& thread_place,
                                   cudaStream_t stream) {
   T* thread_ptr =
       thread_tensor->mutable_data<T>(root_tensor->dims(), thread_place);
   T* root_ptr = root_tensor->data<T>();
   if (platform::is_cpu_place(root_tensor->place())) {
-    memory::Copy(thread_place, thread_ptr, platform::CPUPlace(), root_ptr,
-                 sizeof(T) * root_tensor->numel(), stream);
+    memory::Copy(thread_place,
+                 thread_ptr,
+                 platform::CPUPlace(),
+                 root_ptr,
+                 sizeof(T) * root_tensor->numel(),
+                 stream);
   } else {
-    memory::Copy(thread_place, thread_ptr, root_tensor->place(), root_ptr,
-                 sizeof(T) * root_tensor->numel(), stream);
+    memory::Copy(thread_place,
+                 thread_ptr,
+                 root_tensor->place(),
+                 root_ptr,
+                 sizeof(T) * root_tensor->numel(),
+                 stream);
   }
 }
 #endif
 
 #ifdef PADDLE_WITH_XPU
 template <typename T>
-void HeterXpuTrainer::HeterMemCpy(LoDTensor* thread_tensor,
-                                  LoDTensor* root_tensor,
+void HeterXpuTrainer::HeterMemCpy(phi::DenseTensor* thread_tensor,
+                                  phi::DenseTensor* root_tensor,
                                   const paddle::platform::Place& thread_place) {
   T* thread_ptr =
       thread_tensor->mutable_data<T>(root_tensor->dims(), thread_place);
   T* root_ptr = root_tensor->data<T>();
   if (platform::is_cpu_place(root_tensor->place())) {
-    memory::Copy(thread_place, thread_ptr, platform::CPUPlace(), root_ptr,
+    memory::Copy(thread_place,
+                 thread_ptr,
+                 platform::CPUPlace(),
+                 root_ptr,
                  sizeof(T) * root_tensor->numel());
   } else {
-    memory::Copy(thread_place, thread_ptr, root_tensor->place(), root_ptr,
+    memory::Copy(thread_place,
+                 thread_ptr,
+                 root_tensor->place(),
+                 root_ptr,
                  sizeof(T) * root_tensor->numel());
   }
 }
@@ -304,7 +319,7 @@ int HeterXpuTrainer::EndPass(const HeterRequest* request,
     if (root_var == nullptr) {
       continue;
     }
-    LoDTensor* root_tensor = root_var->GetMutable<LoDTensor>();
+    phi::DenseTensor* root_tensor = root_var->GetMutable<phi::DenseTensor>();
 
     for (size_t j = 0; j < place_scopes_.size(); j++) {
       Scope* cur_thread_scope = place_scopes_[j];
@@ -313,7 +328,8 @@ int HeterXpuTrainer::EndPass(const HeterRequest* request,
       if (thread_var == nullptr) {
         continue;
       }
-      LoDTensor* thread_tensor = thread_var->GetMutable<LoDTensor>();
+      phi::DenseTensor* thread_tensor =
+          thread_var->GetMutable<phi::DenseTensor>();
 //      if (root_tensor->numel() != thread_tensor->numel()) {
 //        continue;
 //      }
@@ -337,7 +353,8 @@ int HeterXpuTrainer::EndPass(const HeterRequest* request,
         auto dev_id = thread_tensor->place().device;
         platform::CUDADeviceGuard guard(dev_id);
         cudaMemset(
-            thread_tensor->data(), 0,
+            thread_tensor->data(),
+            0,
             thread_tensor->numel() * SizeOfType(framework::TransToProtoVarType(
                                          thread_tensor->dtype())));
 #endif
@@ -351,26 +368,30 @@ int HeterXpuTrainer::EndPass(const HeterRequest* request,
         const platform::XPUDeviceContext* xpu_ctx =
             reinterpret_cast<const platform::XPUDeviceContext*>(dev_ctx);
         xpu::memset(
-            xpu_ctx->x_context(), thread_tensor->data(), 0,
+            xpu_ctx->x_context(),
+            thread_tensor->data(),
+            0,
             thread_tensor->numel() * SizeOfType(framework::TransToProtoVarType(
                                          thread_tensor->dtype())));
 #endif
       } else {
-        memset(thread_tensor->data(), 0,
+        memset(thread_tensor->data(),
+               0,
                thread_tensor->numel() *
                    SizeOfType(
                        framework::TransToProtoVarType(thread_tensor->dtype())));
       }
     }
     auto* merge_var = response->add_vars();
-    heter_ptr_->SerializeToReq(need_merge_var_names_[i], root_scope_,
-                               merge_var);
+    heter_ptr_->SerializeToReq(
+        need_merge_var_names_[i], root_scope_, merge_var);
     if (!platform::is_cpu_place(root_tensor->place())) {
 #ifdef PADDLE_WITH_CUDA
       auto dev_id = root_tensor->place().device;
       platform::CUDADeviceGuard guard(dev_id);
       cudaMemset(
-          root_tensor->data(), 0,
+          root_tensor->data(),
+          0,
           root_tensor->numel() *
               SizeOfType(framework::TransToProtoVarType(root_tensor->dtype())));
 #endif
@@ -384,12 +405,15 @@ int HeterXpuTrainer::EndPass(const HeterRequest* request,
       const platform::XPUDeviceContext* xpu_ctx =
           reinterpret_cast<const platform::XPUDeviceContext*>(dev_ctx);
       xpu::memset(
-          xpu_ctx->x_context(), root_tensor->data(), 0,
+          xpu_ctx->x_context(),
+          root_tensor->data(),
+          0,
           root_tensor->numel() *
               SizeOfType(framework::TransToProtoVarType(root_tensor->dtype())));
 #endif
     } else {
-      memset(root_tensor->data(), 0,
+      memset(root_tensor->data(),
+             0,
              root_tensor->numel() * SizeOfType(framework::TransToProtoVarType(
                                         root_tensor->dtype())));
     }
@@ -398,12 +422,12 @@ int HeterXpuTrainer::EndPass(const HeterRequest* request,
 }
 
 template <typename T>
-void HeterXpuTrainer::MergeToRootScope(LoDTensor* root_tensor,
-                                       LoDTensor* tensor) {
-  LoDTensor tmp_root;
+void HeterXpuTrainer::MergeToRootScope(phi::DenseTensor* root_tensor,
+                                       phi::DenseTensor* tensor) {
+  phi::DenseTensor tmp_root;
   TensorCopy(*root_tensor, platform::CPUPlace(), &tmp_root);
   T* tmp_root_data = tmp_root.data<T>();
-  LoDTensor tmp_tensor;
+  phi::DenseTensor tmp_tensor;
   TensorCopy(*tensor, platform::CPUPlace(), &tmp_tensor);
   T* data = tmp_tensor.data<T>();
   for (int i = 0; i < tmp_tensor.numel(); i++) {
@@ -463,7 +487,9 @@ int HeterXpuTrainer::RunTask(const HeterRequest* request,
         std::make_shared<paddle::ps::CostTimer>("xpu_service_deserial");
     for (int i = 0; i < request->vars_size(); ++i) {
 #ifdef PADDLE_WITH_CUDA
-      heter_ptr_->DeSerializeToTensor(context->scope_, request->vars(i), place,
+      heter_ptr_->DeSerializeToTensor(context->scope_,
+                                      request->vars(i),
+                                      place,
                                       copy_streams_[context->place_num_]);
 #endif
 #ifdef PADDLE_WITH_XPU
@@ -489,7 +515,7 @@ int HeterXpuTrainer::RunTask(const HeterRequest* request,
     }
   }
 #ifdef PADDLE_WITH_CUDA
-  auto* dev_ctx = static_cast<platform::CUDADeviceContext*>(
+  auto* dev_ctx = static_cast<phi::GPUContext*>(
       platform::DeviceContextPool::Instance().Get(place));
   PADDLE_ENFORCE_GPU_SUCCESS(
       cudaEventRecord(context->event_, dev_ctx->stream()));
@@ -523,17 +549,24 @@ int HeterXpuTrainer::RunTask(const HeterRequest* request,
     uint64_t tid =
         static_cast<uint64_t>(param_.program_config(0).push_dense_table_id(i));
 #ifdef PADDLE_WITH_CUDA
-    fleet_ptr_->PushDenseVarsAsync(
-        *(context->scope_), tid, dense_grad_names_[tid],
-        &(context->push_dense_status_), scale_datanorm_, request->cur_batch(),
-        places_[context->place_num_], copy_streams_[context->place_num_],
-        context->event_);
+    fleet_ptr_->PushDenseVarsAsync(*(context->scope_),
+                                   tid,
+                                   dense_grad_names_[tid],
+                                   &(context->push_dense_status_),
+                                   scale_datanorm_,
+                                   request->cur_batch(),
+                                   places_[context->place_num_],
+                                   copy_streams_[context->place_num_],
+                                   context->event_);
 #endif
 #ifdef PADDLE_WITH_XPU
-    fleet_ptr_->PushDenseVarsAsync(
-        *(context->scope_), tid, dense_grad_names_[tid],
-        &(context->push_dense_status_), scale_datanorm_, request->cur_batch(),
-        places_[context->place_num_]);
+    fleet_ptr_->PushDenseVarsAsync(*(context->scope_),
+                                   tid,
+                                   dense_grad_names_[tid],
+                                   &(context->push_dense_status_),
+                                   scale_datanorm_,
+                                   request->cur_batch(),
+                                   places_[context->place_num_]);
 #endif
   }
   for (int i = 0; i < param_.program_config(0).push_dense_table_id_size();

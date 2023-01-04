@@ -16,6 +16,7 @@ import unittest
 import numpy as np
 import sys
 import os
+
 sys.path.append("..")
 from op_test import OpTest
 import paddle
@@ -35,7 +36,7 @@ class TestUpdateLossScalingOpMinLossScalingBad(TestUpdateLossScalingOpBad):
 
         self.init()
         fluid.core.globals()['FLAGS_min_loss_scaling'] = 1639
-        found_inf = np.array([True], dtype=np.bool)
+        found_inf = np.array([True], dtype=np.bool_)
         x = np.random.random((1024, 1024)).astype(self.dtype)
         i = np.random.randint(0, 1024, 1)
         j = np.random.randint(0, 1024, 1)
@@ -46,14 +47,14 @@ class TestUpdateLossScalingOpMinLossScalingBad(TestUpdateLossScalingOpBad):
             'FoundInfinite': found_inf,
             'PrevLossScaling': self.prev_loss_scaling,
             'InGoodSteps': self.num_good_steps,
-            'InBadSteps': self.num_bad_steps
+            'InBadSteps': self.num_bad_steps,
         }
 
         self.outputs = {
             'Out': [('out0', np.zeros_like(x))],
             'LossScaling': np.array([1639.0]).astype(self.dtype),
             'OutGoodSteps': self.zero_steps,
-            'OutBadSteps': self.zero_steps
+            'OutBadSteps': self.zero_steps,
         }
 
     def init(self):

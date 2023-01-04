@@ -15,6 +15,7 @@
 import unittest
 import numpy as np
 import sys
+
 sys.path.append("..")
 from op_test import OpTest
 import paddle
@@ -32,7 +33,7 @@ class TestUpdateLossScalingOp(OpTest):
         self.place = paddle.NPUPlace(0)
 
         self.init()
-        found_inf = np.array([False], dtype=np.bool)
+        found_inf = np.array([False], dtype=np.bool_)
         x = np.random.random((1024, 1024)).astype(self.dtype)
 
         self.inputs = {
@@ -40,14 +41,14 @@ class TestUpdateLossScalingOp(OpTest):
             'FoundInfinite': found_inf,
             'PrevLossScaling': self.prev_loss_scaling,
             'InGoodSteps': self.num_good_steps,
-            'InBadSteps': self.num_bad_steps
+            'InBadSteps': self.num_bad_steps,
         }
 
         self.outputs = {
             'Out': [('out0', x)],
             'LossScaling': self.prev_loss_scaling * self.incr_ratio,
             'OutGoodSteps': self.zero_steps,
-            'OutBadSteps': self.zero_steps
+            'OutBadSteps': self.zero_steps,
         }
 
     def set_npu(self):
@@ -79,7 +80,7 @@ class TestUpdateLossScalingOpBad(TestUpdateLossScalingOp):
         self.place = paddle.NPUPlace(0)
 
         self.init()
-        found_inf = np.array([True], dtype=np.bool)
+        found_inf = np.array([True], dtype=np.bool_)
         x = np.random.random((1024, 1024)).astype(self.dtype)
         i = np.random.randint(0, 1024, 1)
         j = np.random.randint(0, 1024, 1)
@@ -90,14 +91,14 @@ class TestUpdateLossScalingOpBad(TestUpdateLossScalingOp):
             'FoundInfinite': found_inf,
             'PrevLossScaling': self.prev_loss_scaling,
             'InGoodSteps': self.num_good_steps,
-            'InBadSteps': self.num_bad_steps
+            'InBadSteps': self.num_bad_steps,
         }
 
         self.outputs = {
             'Out': [('out0', np.zeros_like(x))],
             'LossScaling': self.prev_loss_scaling * self.decr_ratio,
             'OutGoodSteps': self.zero_steps,
-            'OutBadSteps': self.zero_steps
+            'OutBadSteps': self.zero_steps,
         }
 
 
@@ -108,11 +109,14 @@ class TestUpdateLossScalingLayer(unittest.TestCase):
         x = [a, b]
         found_inf = fluid.data(name="found_inf", shape=[1], dtype='bool')
         prev_loss_scaling = fluid.data(
-            name="prev_loss_scaling", shape=[1], dtype='float32')
+            name="prev_loss_scaling", shape=[1], dtype='float32'
+        )
         num_good_steps = fluid.data(
-            name="num_good_steps", shape=[1], dtype='int32')
+            name="num_good_steps", shape=[1], dtype='int32'
+        )
         num_bad_steps = fluid.data(
-            name="num_bad_steps", shape=[1], dtype='int32')
+            name="num_bad_steps", shape=[1], dtype='int32'
+        )
 
         a_v = np.random.random([1024, 1024]).astype('float32')
         b_v = np.random.random([512, 128]).astype('float32')
@@ -136,24 +140,31 @@ class TestUpdateLossScalingLayer(unittest.TestCase):
             decr_every_n_nan_or_inf,
             incr_ratio,
             decr_ratio,
-            name="update_loss_scaling")
+            name="update_loss_scaling",
+        )
 
         place = paddle.NPUPlace(0) if use_npu else fluid.CPUPlace()
         exe = fluid.Executor(place)
         with fluid.scope_guard(scope):
             exe.run(fluid.default_startup_program())
-            result_v = exe.run(feed={
-                'a': a_v,
-                'b': b_v,
-                'found_inf': found_inf_v,
-                'prev_loss_scaling': prev_loss_scaling_v,
-                'num_good_steps': num_good_steps_v,
-                'num_bad_steps': num_bad_steps_v
-            },
-                               fetch_list=[
-                                   result, x, found_inf, prev_loss_scaling,
-                                   num_good_steps, num_bad_steps
-                               ])
+            result_v = exe.run(
+                feed={
+                    'a': a_v,
+                    'b': b_v,
+                    'found_inf': found_inf_v,
+                    'prev_loss_scaling': prev_loss_scaling_v,
+                    'num_good_steps': num_good_steps_v,
+                    'num_bad_steps': num_bad_steps_v,
+                },
+                fetch_list=[
+                    result,
+                    x,
+                    found_inf,
+                    prev_loss_scaling,
+                    num_good_steps,
+                    num_bad_steps,
+                ],
+            )
         assert np.array_equal(result_v[0], a_v)
         assert np.array_equal(result_v[1], b_v)
         assert np.array_equal(result_v[0], result_v[2])
@@ -169,11 +180,14 @@ class TestUpdateLossScalingLayer(unittest.TestCase):
         x = [a, b]
         found_inf = fluid.data(name="found_inf", shape=[1], dtype='bool')
         prev_loss_scaling = fluid.data(
-            name="prev_loss_scaling", shape=[1], dtype='float32')
+            name="prev_loss_scaling", shape=[1], dtype='float32'
+        )
         num_good_steps = fluid.data(
-            name="num_good_steps", shape=[1], dtype='int32')
+            name="num_good_steps", shape=[1], dtype='int32'
+        )
         num_bad_steps = fluid.data(
-            name="num_bad_steps", shape=[1], dtype='int32')
+            name="num_bad_steps", shape=[1], dtype='int32'
+        )
 
         a_v = np.random.random([1024, 1024]).astype('float32')
         b_v = np.random.random([512, 128]).astype('float32')
@@ -200,24 +214,31 @@ class TestUpdateLossScalingLayer(unittest.TestCase):
             decr_every_n_nan_or_inf,
             incr_ratio,
             decr_ratio,
-            name="update_loss_scaling")
+            name="update_loss_scaling",
+        )
 
         place = paddle.NPUPlace(0) if use_npu else fluid.CPUPlace()
         exe = fluid.Executor(place)
         with fluid.scope_guard(scope):
             exe.run(fluid.default_startup_program())
-            result_v = exe.run(feed={
-                'a': a_v,
-                'b': b_v,
-                'found_inf': found_inf_v,
-                'prev_loss_scaling': prev_loss_scaling_v,
-                'num_good_steps': num_good_steps_v,
-                'num_bad_steps': num_bad_steps_v
-            },
-                               fetch_list=[
-                                   result, x, found_inf, prev_loss_scaling,
-                                   num_good_steps, num_bad_steps
-                               ])
+            result_v = exe.run(
+                feed={
+                    'a': a_v,
+                    'b': b_v,
+                    'found_inf': found_inf_v,
+                    'prev_loss_scaling': prev_loss_scaling_v,
+                    'num_good_steps': num_good_steps_v,
+                    'num_bad_steps': num_bad_steps_v,
+                },
+                fetch_list=[
+                    result,
+                    x,
+                    found_inf,
+                    prev_loss_scaling,
+                    num_good_steps,
+                    num_bad_steps,
+                ],
+            )
         assert np.array_equal(result_v[0], np.zeros_like(a_v))
         assert np.array_equal(result_v[1], np.zeros_like(b_v))
         assert np.array_equal(result_v[2], np.zeros_like(a_v))

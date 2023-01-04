@@ -28,27 +28,28 @@ namespace phi {
 
 Backend TransToPhiBackend(const phi::Place& place) {
   auto allocation_type = place.GetType();
-  if (allocation_type == phi::AllocationType::CPU) {
-    return Backend::CPU;
-  } else if (allocation_type == phi::AllocationType::GPU) {
-    return Backend::GPU;
-  } else if (allocation_type == phi::AllocationType::GPUPINNED) {
-    return Backend::GPU;
-  } else if (allocation_type == phi::AllocationType::XPU) {
-    return Backend::XPU;
-  } else if (allocation_type == phi::AllocationType::NPU) {
-    return Backend::NPU;
-  } else if (allocation_type == phi::AllocationType::IPU) {
-    return Backend::IPU;
-  } else if (allocation_type == phi::AllocationType::MLU) {
-    return Backend::MLU;
-  } else if (allocation_type == phi::AllocationType::CUSTOM) {
-    return static_cast<Backend>(
-        static_cast<size_t>(Backend::NUM_BACKENDS) +
-        GetOrRegisterGlobalDeviceTypeId(place.GetDeviceType()));
-  } else {
-    PADDLE_THROW(phi::errors::InvalidArgument(
-        "Unsupported transform %s to phi Backend.", place));
+  switch (allocation_type) {
+    case phi::AllocationType::GPU:
+      return Backend::GPU;
+    case AllocationType::CPU:
+      return Backend::CPU;
+    case AllocationType::GPUPINNED:
+      return Backend::GPU;
+    case AllocationType::XPU:
+      return Backend::XPU;
+    case AllocationType::NPU:
+      return Backend::NPU;
+    case AllocationType::IPU:
+      return Backend::IPU;
+    case AllocationType::MLU:
+      return Backend::MLU;
+    case AllocationType::CUSTOM:
+      return static_cast<Backend>(
+          static_cast<size_t>(Backend::NUM_BACKENDS) +
+          GetOrRegisterGlobalDeviceTypeId(place.GetDeviceType()));
+    default:
+      PADDLE_THROW(phi::errors::InvalidArgument(
+          "Unsupported transform %s to phi Backend.", place));
   }
 }
 
@@ -65,7 +66,7 @@ phi::Place TransToPhiPlace(const Backend& backend, bool set_device_id) {
           set_device_id ? phi::backends::gpu::GetCurrentDeviceId() : 0);
 #endif
 #ifdef PADDLE_WITH_MKLDNN
-    case phi::Backend::MKLDNN:
+    case phi::Backend::ONEDNN:
       return phi::CPUPlace();
 #endif
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -109,20 +110,17 @@ const std::string& TransToPhiKernelName(const std::string& fluid_op_name) {
 }
 
 const std::string& TransToFluidOpName(const std::string& phi_kernel_name) {
-  auto& base_kernel_name_map = OpUtilsMap::Instance().base_kernel_name_map();
-  auto it = std::find_if(base_kernel_name_map.begin(),
-                         base_kernel_name_map.end(),
-                         [&phi_kernel_name](const auto& pair) {
-                           return pair.second == phi_kernel_name;
-                         });
-  if (it != base_kernel_name_map.end()) {
-    return it->first;
+  const auto& phi_kernel_to_fluid_op =
+      OpUtilsMap::Instance().phi_kernel_to_fluid_op();
+  auto it = phi_kernel_to_fluid_op.find(phi_kernel_name);
+  if (it != phi_kernel_to_fluid_op.end()) {
+    return it->second;
   }
   return phi_kernel_name;
 }
 
 #ifdef PADDLE_WITH_MKLDNN
-dnnl::memory::data_type TransToMKLDNNDataType(
+dnnl::memory::data_type TransToOneDNNDataType(
     const paddle::experimental::DataType& dtype) {
   switch (dtype) {
     case DataType::FLOAT32:

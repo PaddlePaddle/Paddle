@@ -1,4 +1,4 @@
-/* Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,14 +12,11 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <cuda_runtime.h>
 #include <glog/logging.h>
 #include <gtest/gtest.h>
-#include <cstring>
-#include <numeric>
-#include "gflags/gflags.h"
 
-#include "paddle/fluid/inference/tests/api/trt_test_helper.h"
+#include "gflags/gflags.h"
+#include "paddle/fluid/inference/tests/api/tester_helper.h"
 
 namespace paddle_infer {
 
@@ -35,8 +32,10 @@ TEST(Predictor, use_gpu) {
   auto pred_clone = predictor->Clone();
 
   std::vector<int> in_shape = {1, 3, 318, 318};
-  int in_num = std::accumulate(in_shape.begin(), in_shape.end(), 1,
-                               [](int &a, int &b) { return a * b; });
+  int in_num =
+      std::accumulate(in_shape.begin(), in_shape.end(), 1, [](int &a, int &b) {
+        return a * b;
+      });
 
   std::vector<float> input(in_num, 0);
 
@@ -50,8 +49,8 @@ TEST(Predictor, use_gpu) {
   auto output_names = predictor->GetOutputNames();
   auto output_t = predictor->GetOutputHandle(output_names[0]);
   std::vector<int> output_shape = output_t->shape();
-  int out_num = std::accumulate(output_shape.begin(), output_shape.end(), 1,
-                                std::multiplies<int>());
+  int out_num = std::accumulate(
+      output_shape.begin(), output_shape.end(), 1, std::multiplies<int>());
 
   std::vector<float> out_data;
   out_data.resize(out_num);
@@ -71,8 +70,10 @@ TEST(PredictorPool, basic) {
   auto pred = pred_pool.Retrive(2);
 
   std::vector<int> in_shape = {1, 3, 318, 318};
-  int in_num = std::accumulate(in_shape.begin(), in_shape.end(), 1,
-                               [](int &a, int &b) { return a * b; });
+  int in_num =
+      std::accumulate(in_shape.begin(), in_shape.end(), 1, [](int &a, int &b) {
+        return a * b;
+      });
   std::vector<float> input(in_num, 0);
 
   auto in_names = pred->GetInputNames();

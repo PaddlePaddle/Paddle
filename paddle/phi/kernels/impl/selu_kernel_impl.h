@@ -14,9 +14,10 @@
 
 #pragma once
 #include <string>
-#include "paddle/fluid/operators/math.h"
-#include "paddle/fluid/platform/for_range.h"
+
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/kernels/funcs/for_range.h"
+#include "paddle/phi/kernels/funcs/math.h"
 
 namespace phi {
 
@@ -31,7 +32,7 @@ struct SeluFunctor {
   HOSTDEVICE void operator()(size_t idx) const {
     T x_ele = x_data_ptr_[idx];
     if (x_ele <= 0) {
-      x_ele = alpha_ * paddle::operators::real_exp(x_ele) - alpha_;
+      x_ele = alpha_ * phi::funcs::real_exp(x_ele) - alpha_;
     }
     y_data_ptr_[idx] = scale_ * x_ele;
   }
@@ -56,14 +57,17 @@ struct SeluGradFunctor {
         dx_data_ptr_(dx_data_ptr) {}
 
   HOSTDEVICE void operator()(size_t idx) const {
-    T y_ele = y_data_ptr_[idx];
-    T dy_ele = dy_data_ptr_[idx];
+    using MT =
+        typename std::conditional<(sizeof(T) > sizeof(float)), T, float>::type;
 
-    float tmp = scale_;
+    auto y_ele = static_cast<MT>(y_data_ptr_[idx]);
+    auto dy_ele = static_cast<MT>(dy_data_ptr_[idx]);
+
+    auto tmp = static_cast<MT>(scale_);
     if (y_ele <= 0) {
-      tmp = y_ele + la_;
+      tmp = y_ele + static_cast<MT>(la_);
     }
-    dx_data_ptr_[idx] = dy_ele * tmp;
+    dx_data_ptr_[idx] = static_cast<T>(dy_ele * tmp);
   }
   const T* y_data_ptr_;
   const T* dy_data_ptr_;
@@ -82,7 +86,7 @@ void SeluKernel(const Context& dev_ctx,
   auto out_ptr = dev_ctx.template Alloc<T>(out);
   SeluFunctor<T> functor(x.data<T>(), alpha, scale, out_ptr);
   size_t limit = static_cast<size_t>(x.numel());
-  paddle::platform::ForRange<Context> for_range(dev_ctx, limit);
+  phi::funcs::ForRange<Context> for_range(dev_ctx, limit);
   for_range(functor);
 }
 }  // namespace phi

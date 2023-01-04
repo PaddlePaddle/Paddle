@@ -14,7 +14,12 @@
 
 macro(find_popart_version popart_version_file)
   file(READ ${popart_version_file} popart_version_file_content)
-  string(REGEX MATCH "(POPART_VERSION_STRING)[ \t\r\n](\")([0-9]+\.[0-9]+\.[0-9]+)(\\+)([A-Za-z0-9_]*)(\")" POPART_VERSION ${popart_version_file_content})
+  string(
+    REGEX
+      MATCH
+      "(POPART_VERSION_STRING)[ \t\r\n](\")([0-9]+\.[0-9]+\.[0-9]+)(\\+)([A-Za-z0-9_]*)(\")"
+      POPART_VERSION
+      ${popart_version_file_content})
   string(REPLACE "POPART_VERSION_STRING" "" POPART_VERSION "${POPART_VERSION}")
   string(REPLACE "\"" "" POPART_VERSION "${POPART_VERSION}")
   string(REPLACE " " "" POPART_VERSION "${POPART_VERSION}")
@@ -28,7 +33,11 @@ endmacro()
 if(WITH_IPU)
   set(POPLAR_DIR CACHE PATH "Path to a Poplar install")
   set(POPART_DIR CACHE PATH "Path to a Popart install")
-  set(POPLAR_SDK_DIR CACHE PATH "Path to an extracted SDK archive or to a Poplar & Popart install directory (Will populate POPLAR_DIR and POPART_DIR)")
+  set(POPLAR_SDK_DIR
+      CACHE
+        PATH
+        "Path to an extracted SDK archive or to a Poplar & Popart install directory (Will populate POPLAR_DIR and POPART_DIR)"
+  )
 
   # support setting SDK both from environment variable or command line arguments
 
@@ -36,10 +45,15 @@ if(WITH_IPU)
     set(POPLAR_SDK_DIR $ENV{POPLAR_SDK_DIR})
   endif()
   if(EXISTS ${POPLAR_SDK_DIR})
-    execute_process(COMMAND find ${POPLAR_SDK_DIR}/ -maxdepth 1 -type d -name "popart*"
-      OUTPUT_VARIABLE POPART_DIR OUTPUT_STRIP_TRAILING_WHITESPACE)
-    execute_process(COMMAND find ${POPLAR_SDK_DIR}/ -maxdepth 1 -type d -name "poplar-*" -o -name "poplar"
-      OUTPUT_VARIABLE POPLAR_DIR OUTPUT_STRIP_TRAILING_WHITESPACE)
+    execute_process(
+      COMMAND find ${POPLAR_SDK_DIR}/ -maxdepth 1 -type d -name "popart*"
+      OUTPUT_VARIABLE POPART_DIR
+      OUTPUT_STRIP_TRAILING_WHITESPACE)
+    execute_process(
+      COMMAND find ${POPLAR_SDK_DIR}/ -maxdepth 1 -type d -name "poplar-*" -o
+              -name "poplar"
+      OUTPUT_VARIABLE POPLAR_DIR
+      OUTPUT_STRIP_TRAILING_WHITESPACE)
   endif()
   if(DEFINED ENV{POPLAR_DIR})
     set(POPLAR_DIR $ENV{POPLAR_DIR})
@@ -51,7 +65,10 @@ if(WITH_IPU)
   if(EXISTS ${POPLAR_DIR})
     message("POPLAR_DIR is ${POPLAR_DIR}")
     if(NOT IS_DIRECTORY "${POPLAR_DIR}")
-      message(FATAL_ERROR "Couldn't find a \"poplar\" or \"poplar-*\" folder in '${POPLAR_SDK_DIR}'")
+      message(
+        FATAL_ERROR
+          "Couldn't find a \"poplar\" or \"poplar-*\" folder in '${POPLAR_SDK_DIR}'"
+      )
     endif()
     list(APPEND CMAKE_PREFIX_PATH ${POPLAR_DIR})
     set(ENABLE_POPLAR_CMD "source ${POPLAR_DIR}/enable.sh")
@@ -60,12 +77,16 @@ if(WITH_IPU)
     link_directories("${POPLAR_DIR}/lib")
   endif()
   if(NOT poplar_FOUND)
-      message(FATAL_ERROR "You must provide a path to a Poplar install using -DPOPLAR_DIR=/path/to/popart/build/install")
+    message(
+      FATAL_ERROR
+        "You must provide a path to a Poplar install using -DPOPLAR_DIR=/path/to/popart/build/install"
+    )
   endif()
   if(EXISTS ${POPART_DIR})
     message("POPART_DIR is ${POPART_DIR}")
     if(NOT IS_DIRECTORY "${POPART_DIR}")
-      message(FATAL_ERROR "Couldn't find a \"popart*\" folder in '${POPLAR_SDK_DIR}'")
+      message(
+        FATAL_ERROR "Couldn't find a \"popart*\" folder in '${POPLAR_SDK_DIR}'")
     endif()
     list(APPEND CMAKE_PREFIX_PATH ${POPART_DIR})
     set(ENABLE_POPART_CMD "source ${POPART_DIR}/enable.sh")
@@ -74,7 +95,10 @@ if(WITH_IPU)
     link_directories("${POPART_DIR}/lib")
   endif()
   if(NOT popart_FOUND)
-    message(FATAL_ERROR "You must provide a path to a Popart build using -DPOPART_DIR=/path/to/popart/build")
+    message(
+      FATAL_ERROR
+        "You must provide a path to a Popart build using -DPOPART_DIR=/path/to/popart/build"
+    )
   endif()
 
   find_popart_version("${POPART_DIR}/include/popart/version.hpp")

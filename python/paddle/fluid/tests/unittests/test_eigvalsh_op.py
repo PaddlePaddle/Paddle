@@ -12,13 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
+
 import numpy as np
-import paddle
 from op_test import OpTest
-from gradient_checker import grad_check
+
+import paddle
 
 
 def compare_result(actual, expected):
@@ -37,7 +36,11 @@ def valid_eigenvalues(actual, expected):
     FP32_MAX_RELATIVE_ERR = 5e-5
     FP64_MAX_RELATIVE_ERR = 1e-14
 
-    rtol = FP32_MAX_RELATIVE_ERR if actual.dtype == np.single else FP64_MAX_RELATIVE_ERR
+    rtol = (
+        FP32_MAX_RELATIVE_ERR
+        if actual.dtype == np.single
+        else FP64_MAX_RELATIVE_ERR
+    )
 
     diff = np.abs(expected - actual)
     max_diff = np.max(diff)
@@ -50,6 +53,8 @@ class TestEigvalshOp(OpTest):
     def setUp(self):
         paddle.enable_static()
         self.op_type = "eigvalsh"
+        self.python_api = paddle.linalg.eigvalsh
+        self.python_out_sig = ['Eigenvalues']
         self.init_input()
         self.init_config()
         np.random.seed(123)
@@ -68,10 +73,10 @@ class TestEigvalshOp(OpTest):
 
     def test_check_output(self):
         # Vectors in posetive or negative is equivalent
-        self.check_output(no_check_set=['Eigenvectors'])
+        self.check_output(no_check_set=['Eigenvectors'], check_eager=True)
 
     def test_grad(self):
-        self.check_grad(["X"], ["Eigenvalues"])
+        self.check_grad(["X"], ["Eigenvalues"], check_eager=True)
 
 
 class TestEigvalshUPLOCase(TestEigvalshOp):
@@ -101,8 +106,11 @@ class TestEigvalshAPI(unittest.TestCase):
         self.UPLO = 'L'
         self.rtol = 1e-5  # test_eigvalsh_grad
         self.atol = 1e-5  # test_eigvalsh_grad
-        self.place = paddle.CUDAPlace(0) if paddle.is_compiled_with_cuda() \
+        self.place = (
+            paddle.CUDAPlace(0)
+            if paddle.is_compiled_with_cuda()
             else paddle.CPUPlace()
+        )
         np.random.seed(123)
         self.init_input_shape()
         self.init_input_data()
@@ -113,24 +121,30 @@ class TestEigvalshAPI(unittest.TestCase):
     def init_input_data(self):
         self.real_data = np.random.random(self.x_shape).astype(self.dtype)
         complex_data = np.random.random(self.x_shape).astype(
-            self.dtype) + 1J * np.random.random(self.x_shape).astype(self.dtype)
+            self.dtype
+        ) + 1j * np.random.random(self.x_shape).astype(self.dtype)
         self.trans_dims = list(range(len(self.x_shape) - 2)) + [
-            len(self.x_shape) - 1, len(self.x_shape) - 2
+            len(self.x_shape) - 1,
+            len(self.x_shape) - 2,
         ]
         self.complex_symm = np.divide(
-            complex_data + np.conj(complex_data.transpose(self.trans_dims)), 2)
+            complex_data + np.conj(complex_data.transpose(self.trans_dims)), 2
+        )
 
     def check_static_float_result(self):
         main_prog = paddle.static.Program()
         startup_prog = paddle.static.Program()
         with paddle.static.program_guard(main_prog, startup_prog):
             input_x = paddle.static.data(
-                'input_x', shape=self.x_shape, dtype=self.dtype)
+                'input_x', shape=self.x_shape, dtype=self.dtype
+            )
             output_w = paddle.linalg.eigvalsh(input_x)
             exe = paddle.static.Executor(self.place)
-            actual_w = exe.run(main_prog,
-                               feed={"input_x": self.real_data},
-                               fetch_list=[output_w])
+            actual_w = exe.run(
+                main_prog,
+                feed={"input_x": self.real_data},
+                fetch_list=[output_w],
+            )
 
             expected_w = np.linalg.eigvalsh(self.real_data)
             compare_result(actual_w[0], expected_w)
@@ -141,12 +155,15 @@ class TestEigvalshAPI(unittest.TestCase):
         with paddle.static.program_guard(main_prog, startup_prog):
             x_dtype = np.complex64 if self.dtype == "float32" else np.complex128
             input_x = paddle.static.data(
-                'input_x', shape=self.x_shape, dtype=x_dtype)
+                'input_x', shape=self.x_shape, dtype=x_dtype
+            )
             output_w = paddle.linalg.eigvalsh(input_x)
             exe = paddle.static.Executor(self.place)
-            actual_w = exe.run(main_prog,
-                               feed={"input_x": self.complex_symm},
-                               fetch_list=[output_w])
+            actual_w = exe.run(
+                main_prog,
+                feed={"input_x": self.complex_symm},
+                fetch_list=[output_w],
+            )
             expected_w = np.linalg.eigvalsh(self.complex_symm)
             compare_result(actual_w[0], expected_w)
 
@@ -176,7 +193,8 @@ class TestEigvalshAPI(unittest.TestCase):
             abs(x.grad.numpy()),
             abs(x.grad.numpy().conj().transpose(self.trans_dims)),
             rtol=self.rtol,
-            atol=self.atol)
+            atol=self.atol,
+        )
 
 
 class TestEigvalshBatchAPI(TestEigvalshAPI):
@@ -189,25 +207,29 @@ class TestEigvalshAPIError(unittest.TestCase):
         main_prog = paddle.static.Program()
         startup_prog = paddle.static.Program()
         with paddle.static.program_guard(main_prog, startup_prog):
-            #input maxtrix must greater than 2 dimensions
+            # input maxtrix must greater than 2 dimensions
             input_x = paddle.static.data(
-                name='x_1', shape=[12], dtype='float32')
+                name='x_1', shape=[12], dtype='float32'
+            )
             self.assertRaises(ValueError, paddle.linalg.eigvalsh, input_x)
 
-            #input matrix must be square matrix
+            # input matrix must be square matrix
             input_x = paddle.static.data(
-                name='x_2', shape=[12, 32], dtype='float32')
+                name='x_2', shape=[12, 32], dtype='float32'
+            )
             self.assertRaises(ValueError, paddle.linalg.eigvalsh, input_x)
 
-            #uplo must be in 'L' or 'U'
+            # uplo must be in 'L' or 'U'
             input_x = paddle.static.data(
-                name='x_3', shape=[4, 4], dtype="float32")
+                name='x_3', shape=[4, 4], dtype="float32"
+            )
             uplo = 'R'
             self.assertRaises(ValueError, paddle.linalg.eigvalsh, input_x, uplo)
 
-            #x_data cannot be integer
+            # x_data cannot be integer
             input_x = paddle.static.data(
-                name='x_4', shape=[4, 4], dtype="int32")
+                name='x_4', shape=[4, 4], dtype="int32"
+            )
             self.assertRaises(TypeError, paddle.linalg.eigvalsh, input_x)
 
 

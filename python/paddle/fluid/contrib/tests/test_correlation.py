@@ -21,22 +21,28 @@ import paddle
 paddle.enable_static()
 
 
-def corr(x_1,
-         x_2,
-         pad_size=4,
-         kernel_size=1,
-         max_displacement=4,
-         stride1=1,
-         stride2=1,
-         corr_multiply=1):
+def corr(
+    x_1,
+    x_2,
+    pad_size=4,
+    kernel_size=1,
+    max_displacement=4,
+    stride1=1,
+    stride2=1,
+    corr_multiply=1,
+):
     K = kernel_size
 
-    rinput1 = np.pad(x_1, ((0, 0), (0, 0), (pad_size, pad_size),
-                           (pad_size, pad_size)),
-                     mode='constant')
-    rinput2 = np.pad(x_2, ((0, 0), (0, 0), (pad_size, pad_size),
-                           (pad_size, pad_size)),
-                     mode='constant')
+    rinput1 = np.pad(
+        x_1,
+        ((0, 0), (0, 0), (pad_size, pad_size), (pad_size, pad_size)),
+        mode='constant',
+    )
+    rinput2 = np.pad(
+        x_2,
+        ((0, 0), (0, 0), (pad_size, pad_size), (pad_size, pad_size)),
+        mode='constant',
+    )
     rinput1 = np.transpose(rinput1, (0, 2, 3, 1))
     rinput2 = np.transpose(rinput2, (0, 2, 3, 1))
     B = int(rinput1.shape[0])
@@ -56,9 +62,17 @@ def corr(x_1,
                         x2_index = x1_index + k
                         y2_index = y1_index + l
                         output[b, l + d + D * (k + d), i, j] = np.mean(
-                            rinput1[b, x1_index:x1_index + K, y1_index:y1_index
-                                    + K] * rinput2[b, x2_index:x2_index + K,
-                                                   y2_index:y2_index + K])
+                            rinput1[
+                                b,
+                                x1_index : x1_index + K,
+                                y1_index : y1_index + K,
+                            ]
+                            * rinput2[
+                                b,
+                                x2_index : x2_index + K,
+                                y2_index : y2_index + K,
+                            ]
+                        )
 
     return output
 
@@ -76,13 +90,15 @@ class TestCorrelationOp(unittest.TestCase):
             shape=x_shape,
             dtype=x_type,
             append_batch_size=False,
-            stop_gradient=False)
+            stop_gradient=False,
+        )
         x2 = fluid.layers.data(
             name='x2',
             shape=x_shape,
             dtype=x_type,
             append_batch_size=False,
-            stop_gradient=False)
+            stop_gradient=False,
+        )
 
         x1_np = np.random.randn(2, 3, 4, 5).astype(x_type)
         x2_np = np.random.randn(2, 3, 4, 5).astype(x_type)
@@ -93,7 +109,8 @@ class TestCorrelationOp(unittest.TestCase):
             kernel_size=1,
             max_displacement=4,
             stride1=1,
-            stride2=1)
+            stride2=1,
+        )
 
         out = fluid.contrib.correlation(
             x1,
@@ -102,24 +119,25 @@ class TestCorrelationOp(unittest.TestCase):
             kernel_size=1,
             max_displacement=4,
             stride1=1,
-            stride2=1)
+            stride2=1,
+        )
 
-        loss = fluid.layers.reduce_mean(out)
+        loss = paddle.mean(out)
         optimizer = fluid.optimizer.Momentum(0.0001, 0.9)
         optimizer.minimize(loss)
 
         place = fluid.CUDAPlace(0)
         exe = fluid.Executor(place)
-        res = exe.run(feed={'x1': x1_np,
-                            'x2': x2_np},
-                      fetch_list=[out.name, loss.name])
+        res = exe.run(
+            feed={'x1': x1_np, 'x2': x2_np}, fetch_list=[out.name, loss.name]
+        )
 
-        self.assertTrue(np.allclose(res[0], out_np))
+        np.testing.assert_allclose(res[0], out_np, rtol=1e-05, atol=1e-8)
 
 
 class Net(fluid.dygraph.Layer):
     def __init__(self, name_scope):
-        super(Net, self).__init__(name_scope)
+        super().__init__(name_scope)
 
     def forward(self, x1, x2):
         y = fluid.contrib.correlation(
@@ -129,7 +147,8 @@ class Net(fluid.dygraph.Layer):
             kernel_size=1,
             max_displacement=4,
             stride1=1,
-            stride2=1)
+            stride2=1,
+        )
         return y
 
 
@@ -152,14 +171,15 @@ class TestCorrelationOpDyGraph(unittest.TestCase):
                 kernel_size=1,
                 max_displacement=4,
                 stride1=1,
-                stride2=1)
+                stride2=1,
+            )
 
             x1 = to_variable(x1_np)
             x2 = to_variable(x2_np)
             corr_pd = Net('corr_pd')
             y = corr_pd(x1, x2)
             out = y.numpy()
-            self.assertTrue(np.allclose(out, out_np))
+            np.testing.assert_allclose(out, out_np, rtol=1e-05, atol=1e-8)
 
 
 if __name__ == '__main__':

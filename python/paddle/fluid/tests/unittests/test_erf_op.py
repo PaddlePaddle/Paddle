@@ -12,12 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
+
 import numpy as np
-from scipy.special import erf
 from op_test import OpTest
+from scipy.special import erf
 
 import paddle
 import paddle.fluid as fluid
@@ -50,9 +49,9 @@ class TestErfLayer(unittest.TestCase):
         y_ref = erf(x)
         with dg.guard(place) as g:
             x_var = dg.to_variable(x)
-            y_var = fluid.layers.erf(x_var)
+            y_var = paddle.erf(x_var)
             y_test = y_var.numpy()
-        self.assertTrue(np.allclose(y_ref, y_test))
+        np.testing.assert_allclose(y_ref, y_test, rtol=1e-05)
 
     def test_case(self):
         self._test_case(fluid.CPUPlace())

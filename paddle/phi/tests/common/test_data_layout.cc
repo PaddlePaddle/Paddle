@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <gtest/gtest.h>
+
 #include <iostream>
 #include <sstream>
 
@@ -36,7 +37,7 @@ TEST(DataLayout, OStream) {
   oss << phi::DataLayout::NCHW;
   EXPECT_EQ(oss.str(), "NCHW");
   oss.str("");
-  oss << phi::DataLayout::MKLDNN;
+  oss << phi::DataLayout::ONEDNN;
   EXPECT_EQ(oss.str(), "MKLDNN");
   oss.str("");
   try {

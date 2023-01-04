@@ -12,14 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
+
 import numpy as np
-from numpy.matrixlib import defmatrix
+
 import paddle
 import paddle.fluid.core as core
-from paddle.fluid.tests.unittests.op_test import OpTest, convert_float_to_uint16, OpTestTool
+from paddle.fluid.tests.unittests.op_test import (
+    OpTest,
+    OpTestTool,
+    convert_float_to_uint16,
+)
 
 
 @OpTestTool.skip_if_not_cpu_bf16()
@@ -41,7 +44,8 @@ class TestMulOneDNNOp(OpTest):
 
         output = np.dot(
             np.reshape(self.x_fp32, self.np_x_shape),
-            np.reshape(self.y_fp32, self.np_y_shape))
+            np.reshape(self.y_fp32, self.np_y_shape),
+        )
         self.outputs = {'Out': np.reshape(output, self.out_shape)}
 
     def init_shapes_and_attrs(self):
@@ -130,28 +134,34 @@ class TestMulBF16OneDNNOp(TestMulOneDNNOp):
     def test_check_grad(self):
         self.calculate_grads()
         self.check_grad_with_place(
-            core.CPUPlace(), ['X', 'Y'],
+            core.CPUPlace(),
+            ['X', 'Y'],
             'Out',
             user_defined_grads=[self.dx, self.dy],
-            user_defined_grad_outputs=[convert_float_to_uint16(self.dout)])
+            user_defined_grad_outputs=[convert_float_to_uint16(self.dout)],
+        )
 
     def test_check_grad_ingore_x(self):
         self.calculate_grads()
         self.check_grad_with_place(
-            core.CPUPlace(), ['Y'],
+            core.CPUPlace(),
+            ['Y'],
             'Out',
             set('X'),
             user_defined_grads=[self.dy],
-            user_defined_grad_outputs=[convert_float_to_uint16(self.dout)])
+            user_defined_grad_outputs=[convert_float_to_uint16(self.dout)],
+        )
 
     def test_check_grad_ingore_y(self):
         self.calculate_grads()
         self.check_grad_with_place(
-            core.CPUPlace(), ['X'],
+            core.CPUPlace(),
+            ['X'],
             'Out',
             set('Y'),
             user_defined_grads=[self.dx],
-            user_defined_grad_outputs=[convert_float_to_uint16(self.dout)])
+            user_defined_grad_outputs=[convert_float_to_uint16(self.dout)],
+        )
 
 
 if __name__ == "__main__":

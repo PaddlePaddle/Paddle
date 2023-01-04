@@ -12,11 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 import sys
+
 sys.path.append("..")
 import paddle
 import paddle.fluid.core as core
@@ -96,7 +95,7 @@ class TestConv2DOp(OpTest):
         conv2d_param = {
             'stride': self.stride,
             'pad': self.pad,
-            'dilation': self.dilations
+            'dilation': self.dilations,
         }
 
         input = np.random.random(self.input_size).astype(self.dtype)
@@ -107,12 +106,13 @@ class TestConv2DOp(OpTest):
             filter,
             self.groups,
             conv2d_param,
-            data_format=self.data_format)
+            data_format=self.data_format,
+        )
         output = output.astype(self.dtype)
 
         self.inputs = {
             'Input': OpTest.np_dtype_to_fluid_dtype(input),
-            'Filter': OpTest.np_dtype_to_fluid_dtype(filter)
+            'Filter': OpTest.np_dtype_to_fluid_dtype(filter),
         }
         self.attrs = {
             'strides': self.stride,
@@ -128,26 +128,32 @@ class TestConv2DOp(OpTest):
 
     def test_check_grad(self):
         self.check_grad_with_place(
-            fluid.NPUPlace(0), {'Input', 'Filter'},
+            fluid.NPUPlace(0),
+            {'Input', 'Filter'},
             'Output',
             max_relative_error=0.03,
-            numeric_place=paddle.CPUPlace())
+            numeric_place=paddle.CPUPlace(),
+        )
 
     def test_check_grad_no_filter(self):
         self.check_grad_with_place(
-            fluid.NPUPlace(0), ['Input'],
+            fluid.NPUPlace(0),
+            ['Input'],
             'Output',
             max_relative_error=0.03,
             no_grad_set=set(['Filter']),
-            numeric_place=paddle.CPUPlace())
+            numeric_place=paddle.CPUPlace(),
+        )
 
     def test_check_grad_no_input(self):
         self.check_grad_with_place(
-            fluid.NPUPlace(0), ['Filter'],
+            fluid.NPUPlace(0),
+            ['Filter'],
             'Output',
             max_relative_error=0.03,
             no_grad_set=set(['Input']),
-            numeric_place=paddle.CPUPlace())
+            numeric_place=paddle.CPUPlace(),
+        )
 
     def init_test_case(self):
         self.pad = [0, 0]
@@ -206,7 +212,7 @@ class TestWith1x1(TestConv2DOp):
 
     def init_group(self):
         # FIXME: Supporting group = 3 in this case.
-        # NOTE(wangran16): There is an unknown error (acl error code is : 507015) 
+        # NOTE(wangran16): There is an unknown error (acl error code is : 507015)
         # when group = 3, which needs to be fixed.
         self.groups = 1
 
@@ -288,19 +294,24 @@ class TestConv2DOp_v2(OpTest):
         conv2d_param = {
             'stride': self.stride,
             'pad': self.pad,
-            'dilation': self.dilations
+            'dilation': self.dilations,
         }
 
         input = np.random.random(self.input_size).astype(self.dtype)
         filter = np.random.uniform(-1, 1, self.filter_size).astype(self.dtype)
         output, _, _, _, _ = conv2d_forward_naive(
-            input, filter, self.groups, conv2d_param, self.padding_algorithm,
-            self.data_format)
+            input,
+            filter,
+            self.groups,
+            conv2d_param,
+            self.padding_algorithm,
+            self.data_format,
+        )
         output = output.astype(self.dtype)
 
         self.inputs = {
             'Input': OpTest.np_dtype_to_fluid_dtype(input),
-            'Filter': OpTest.np_dtype_to_fluid_dtype(filter)
+            'Filter': OpTest.np_dtype_to_fluid_dtype(filter),
         }
         self.attrs = {
             'strides': self.stride,
@@ -318,44 +329,56 @@ class TestConv2DOp_v2(OpTest):
     def test_check_grad(self):
         if self.dtype == np.float16:
             self.check_grad_with_place(
-                paddle.NPUPlace(0), {'Input', 'Filter'},
+                paddle.NPUPlace(0),
+                {'Input', 'Filter'},
                 'Output',
-                max_relative_error=1.1)
+                max_relative_error=1.1,
+            )
         else:
             self.check_grad_with_place(
-                paddle.NPUPlace(0), {'Input', 'Filter'},
+                paddle.NPUPlace(0),
+                {'Input', 'Filter'},
                 'Output',
                 max_relative_error=0.02,
-                numeric_place=paddle.CPUPlace())
+                numeric_place=paddle.CPUPlace(),
+            )
 
     def test_check_grad_no_filter(self):
         if self.dtype == np.float16:
             self.check_grad_with_place(
-                paddle.NPUPlace(0), ['Input'],
+                paddle.NPUPlace(0),
+                ['Input'],
                 'Output',
                 max_relative_error=0.99,
-                no_grad_set=set(['Filter']))
+                no_grad_set=set(['Filter']),
+            )
         else:
             self.check_grad_with_place(
-                paddle.NPUPlace(0), ['Input'],
+                paddle.NPUPlace(0),
+                ['Input'],
                 'Output',
                 max_relative_error=0.02,
                 no_grad_set=set(['Filter']),
-                numeric_place=paddle.CPUPlace())
+                numeric_place=paddle.CPUPlace(),
+            )
 
     def test_check_grad_no_input(self):
         if self.dtype == np.float16:
             self.check_grad_with_place(
-                paddle.NPUPlace(0), ['Filter'],
+                paddle.NPUPlace(0),
+                ['Filter'],
                 'Output',
                 max_relative_error=0.99,
-                no_grad_set=set(['Input']))
+                no_grad_set=set(['Input']),
+            )
         else:
             self.check_grad_with_place(
-                paddle.NPUPlace(0), ['Filter'],
+                paddle.NPUPlace(0),
+                ['Filter'],
                 'Output',
                 no_grad_set=set(['Input']),
-                numeric_place=paddle.CPUPlace())
+                numeric_place=paddle.CPUPlace(),
+            )
 
     def init_test_case(self):
         self.pad = [0, 0]

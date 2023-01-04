@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
 
 from paddle.distributed.auto_parallel.tuner import recorder as rd
@@ -35,7 +36,8 @@ class TestRecorder(unittest.TestCase):
         recorder.update("metric", 4, 1000)
         self.assertEqual(recorder.records["metric"].direction, "min")
         self.assertEqual(
-            recorder.get_records("metric"), [rd.MetricRecord(4, 1000)])
+            recorder.get_records("metric"), [rd.MetricRecord(4, 1000)]
+        )
 
     def test_get_records(self):
         recorder = rd.MetricsRecorder()
@@ -44,12 +46,14 @@ class TestRecorder(unittest.TestCase):
         recorder.update("metric", 3, step=2)
         recorder.update("metric", 4, step=3)
         self.assertEqual(
-            recorder.get_records("metric"), [
+            recorder.get_records("metric"),
+            [
                 rd.MetricRecord(1, 0),
                 rd.MetricRecord(2, 1),
                 rd.MetricRecord(3, 2),
                 rd.MetricRecord(4, 3),
-            ])
+            ],
+        )
 
     def test_set_records(self):
         recorder = rd.MetricsRecorder()
@@ -60,14 +64,17 @@ class TestRecorder(unittest.TestCase):
                 rd.MetricRecord(2, 1),
                 rd.MetricRecord(3, 2),
                 rd.MetricRecord(4, 3),
-            ], )
+            ],
+        )
         self.assertEqual(
-            recorder.get_records("metric"), [
+            recorder.get_records("metric"),
+            [
                 rd.MetricRecord(1, 0),
                 rd.MetricRecord(2, 1),
                 rd.MetricRecord(3, 2),
                 rd.MetricRecord(4, 3),
-            ])
+            ],
+        )
 
     def test_get_best_value(self):
         recorder = rd.MetricsRecorder()
@@ -81,7 +88,8 @@ class TestRecorder(unittest.TestCase):
                 rd.MetricRecord(2, 1),
                 rd.MetricRecord(3, 2),
                 rd.MetricRecord(4, 3),
-            ], )
+            ],
+        )
         self.assertEqual(recorder.get_best_value("metric_min"), 1)
 
         recorder.set_records(
@@ -91,7 +99,8 @@ class TestRecorder(unittest.TestCase):
                 rd.MetricRecord(2, 1),
                 rd.MetricRecord(3, 2),
                 rd.MetricRecord(4, 3),
-            ], )
+            ],
+        )
         self.assertEqual(recorder.get_best_value("metric_max"), 4)
 
     def test_get_best_step(self):
@@ -105,7 +114,8 @@ class TestRecorder(unittest.TestCase):
                 rd.MetricRecord(2, 1),
                 rd.MetricRecord(3, 2),
                 rd.MetricRecord(4, 3),
-            ], )
+            ],
+        )
         self.assertEqual(recorder.get_best_step("metric_min"), 0)
 
         recorder.register("metric_max", "max")
@@ -116,7 +126,8 @@ class TestRecorder(unittest.TestCase):
                 rd.MetricRecord(2, 1),
                 rd.MetricRecord(3, 2),
                 rd.MetricRecord(4, 3),
-            ], )
+            ],
+        )
         self.assertEqual(recorder.get_best_step("metric_max"), 3)
 
     def test_get_statistics(self):
@@ -142,7 +153,8 @@ class TestRecorder(unittest.TestCase):
                 rd.MetricRecord(2, 1),
                 rd.MetricRecord(3, 2),
                 rd.MetricRecord(4, 3),
-            ], )
+            ],
+        )
         print(recorder.get_state())
         new_recorder = rd.MetricsRecorder.from_state(recorder.get_state())
         self.assertEqual(new_recorder.records.keys(), recorder.records.keys())

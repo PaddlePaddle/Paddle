@@ -199,8 +199,8 @@ bool PoolPlugin::isOutputBroadcastAcrossBatch(int32_t outputIndex,
   return false;
 }
 
-bool PoolPlugin::canBroadcastInputAcrossBatch(int32_t inputIndex) const
-    noexcept {
+bool PoolPlugin::canBroadcastInputAcrossBatch(
+    int32_t inputIndex) const noexcept {
   return false;
 }
 

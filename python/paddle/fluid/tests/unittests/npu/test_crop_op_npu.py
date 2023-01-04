@@ -12,11 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import numpy as np
 import unittest
 import sys
+
 sys.path.append("..")
 from op_test import OpTest
 import paddle
@@ -41,7 +40,7 @@ class TestCropOp(OpTest):
         if self.crop_by_input:
             self.inputs = {
                 'X': np.random.random(self.x_shape).astype(self.dtype),
-                'Y': np.random.random(self.crop_shape).astype(self.dtype)
+                'Y': np.random.random(self.crop_shape).astype(self.dtype),
             }
         else:
             self.attrs['shape'] = self.crop_shape

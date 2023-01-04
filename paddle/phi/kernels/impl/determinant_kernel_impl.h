@@ -14,17 +14,15 @@
 
 #pragma once
 
-#include "paddle/phi/kernels/determinant_kernel.h"
-
 #include <Eigen/Dense>
 #include <Eigen/LU>
 #include <algorithm>
 #include <cmath>
 #include <vector>
 
-#include "paddle/phi/core/enforce.h"
-
 #include "paddle/fluid/framework/tensor_util.h"
+#include "paddle/phi/core/enforce.h"
+#include "paddle/phi/kernels/determinant_kernel.h"
 
 namespace phi {
 namespace detail {

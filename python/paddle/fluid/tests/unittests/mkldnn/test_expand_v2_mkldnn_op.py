@@ -12,17 +12,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 import unittest
+
 import numpy as np
+
 import paddle
-import paddle.fluid as fluid
-from paddle.fluid import compiler, Program, program_guard, core
-from paddle.fluid.tests.unittests.op_test import OpTest, OpTestTool, convert_float_to_uint16
+from paddle.fluid import core
+from paddle.fluid.tests.unittests.op_test import (
+    OpTest,
+    OpTestTool,
+    convert_float_to_uint16,
+)
 
 
-@OpTestTool.skip_if(core.is_compiled_with_cuda(),
-                    "CUDA required dygraph so oneDNN UT must be skipped")
+@OpTestTool.skip_if(
+    core.is_compiled_with_cuda(),
+    "CUDA required dygraph so oneDNN UT must be skipped",
+)
 class TestExpandV2OneDNNOp(OpTest):
     def setUp(self):
         self.op_type = "expand_v2"
@@ -83,8 +89,9 @@ class TestExpandV2ExpandShapesTensor1OneDNNOp(TestExpandV2OneDNNOp):
     def calc_expand_shapes_tensor(self):
         self.expand_shapes_tensor = []
         for index, ele in enumerate(self.expand_shape):
-            self.expand_shapes_tensor.append(("x" + str(index), np.ones(
-                (1)).astype('int32') * ele))
+            self.expand_shapes_tensor.append(
+                ("x" + str(index), np.ones((1)).astype('int32') * ele)
+            )
 
     def set_additional_inputs(self):
         self.calc_expand_shapes_tensor()
@@ -92,7 +99,8 @@ class TestExpandV2ExpandShapesTensor1OneDNNOp(TestExpandV2OneDNNOp):
 
 
 class TestExpandV2ExpandShapesTensor2OneDNNOp(
-        TestExpandV2ExpandShapesTensor1OneDNNOp):
+    TestExpandV2ExpandShapesTensor1OneDNNOp
+):
     def init_data(self):
         self.ori_shape = [12, 14]
         self.expand_times = [1, 1]
@@ -130,10 +138,12 @@ def create_expand_v2_bf16_test_class(parent):
         def test_check_grad(self):
             self.calculate_grads()
             self.check_grad_with_place(
-                core.CPUPlace(), ["X"],
+                core.CPUPlace(),
+                ["X"],
                 "Out",
                 user_defined_grads=[convert_float_to_uint16(self.dx)],
-                user_defined_grad_outputs=[self.dout])
+                user_defined_grad_outputs=[self.dout],
+            )
 
     cls_name = "{0}_{1}".format(parent.__name__, "Expand_v2_BF16")
     TestExpandV2BF16OneDNNOp.__name__ = cls_name

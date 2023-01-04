@@ -12,12 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 import unittest
 import numpy as np
 import paddle
 import os
 import sys
+
 sys.path.append("..")
 
 import paddle
@@ -26,7 +26,10 @@ import paddle.fluid as fluid
 import paddle.nn as nn
 from paddle.fluid import Program, program_guard
 
-from paddle.fluid.tests.unittests.op_test import OpTest, _set_use_system_allocator
+from paddle.fluid.tests.unittests.op_test import (
+    OpTest,
+    _set_use_system_allocator,
+)
 
 # _set_use_system_allocator(False)
 paddle.enable_static()
@@ -37,10 +40,11 @@ class TestDygraphSyncBatchNormAPIError(unittest.TestCase):
         with program_guard(Program(), Program()):
             my_sync_batch_norm = paddle.nn.SyncBatchNorm(10)
             x1 = fluid.create_lod_tensor(
-                np.array([-1, 3, 5, 5]), [[1, 1, 1, 1]], fluid.NPUPlace(0))
+                np.array([-1, 3, 5, 5]), [[1, 1, 1, 1]], fluid.NPUPlace(0)
+            )
             self.assertRaises(TypeError, my_sync_batch_norm, x1)
 
-            # the input dtype of SyncBatchNorm must be float16 or float32 
+            # the input dtype of SyncBatchNorm must be float16 or float32
             # float16 only can be set on GPU place and NPU place
             x2 = fluid.layers.data(name='x2', shape=[3, 4, 5, 6], dtype="int32")
             self.assertRaises(TypeError, my_sync_batch_norm, x2)
@@ -51,26 +55,31 @@ class TestConvertSyncBatchNorm(unittest.TestCase):
         with program_guard(Program(), Program()):
             compare_model = paddle.nn.Sequential(
                 paddle.nn.Conv2D(3, 5, 3),
-                paddle.nn.BatchNorm2D(5), paddle.nn.BatchNorm2D(5))
+                paddle.nn.BatchNorm2D(5),
+                paddle.nn.BatchNorm2D(5),
+            )
             model = paddle.nn.Sequential(
                 paddle.nn.Conv2D(3, 5, 3),
                 paddle.nn.BatchNorm2D(5),
                 paddle.nn.BatchNorm2D(
                     5,
                     weight_attr=fluid.ParamAttr(name='bn.scale'),
-                    bias_attr=fluid.ParamAttr(name='bn.bias')))
+                    bias_attr=fluid.ParamAttr(name='bn.bias'),
+                ),
+            )
             model = paddle.nn.SyncBatchNorm.convert_sync_batchnorm(model)
             for idx, sublayer in enumerate(compare_model.sublayers()):
                 if isinstance(sublayer, paddle.nn.BatchNorm2D):
                     self.assertEqual(
-                        isinstance(model[idx], paddle.nn.SyncBatchNorm), True)
+                        isinstance(model[idx], paddle.nn.SyncBatchNorm), True
+                    )
 
 
 class TestConvertSyncBatchNormCast1(unittest.TestCase):
     def test_convert(self):
         class Net(nn.Layer):
             def __init__(self):
-                super(Net, self).__init__()
+                super().__init__()
                 self.conv1 = nn.Conv2D(3, 5, 3)
                 self.bn = []
                 bn = self.add_sublayer('bn', nn.BatchNorm2D(5))

@@ -17,25 +17,21 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
-
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/phi/infermeta/multiary.h"
 
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
-
 class MultiplexOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
-        ctx.device_context());
+    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+                          ctx.device_context().GetPlace());
   }
 };
 
@@ -93,22 +89,25 @@ class MultiplexGradOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     auto dxs = ctx->Outputs(framework::GradVarName("X"));
-    PADDLE_ENFORCE_NE(dxs.empty(), true,
+    PADDLE_ENFORCE_NE(dxs.empty(),
+                      true,
                       platform::errors::InvalidArgument(
                           "Output(X@Grad) should not be null."));
-    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
-                   framework::GradVarName("Out"), "MultiplexGrad");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")),
+                   "Input",
+                   framework::GradVarName("Out"),
+                   "MultiplexGrad");
     auto dout_dim = ctx->GetInputDim(framework::GradVarName("Out"));
     ctx->SetOutputsDim(framework::GradVarName("X"),
                        std::vector<framework::DDim>(dxs.size(), dout_dim));
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
-                                       ctx, framework::GradVarName("Out")),
-                                   ctx.device_context());
+    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(
+                              ctx, framework::GradVarName("Out")),
+                          ctx.device_context().GetPlace());
   }
 };
 
@@ -131,10 +130,13 @@ class MultiplexGradMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-DECLARE_INFER_SHAPE_FUNCTOR(multiplex, MultiplexInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(multiplex,
+                            MultiplexInferShapeFunctor,
                             PD_INFER_META(phi::MultiplexInferMeta));
 
-REGISTER_OPERATOR(multiplex, ops::MultiplexOp, ops::MultiplexOpMaker,
+REGISTER_OPERATOR(multiplex,
+                  ops::MultiplexOp,
+                  ops::MultiplexOpMaker,
                   ops::MultiplexGradMaker<paddle::framework::OpDesc>,
                   ops::MultiplexGradMaker<paddle::imperative::OpBase>,
                   MultiplexInferShapeFunctor);

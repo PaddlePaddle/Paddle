@@ -20,6 +20,7 @@ limitations under the License. */
 #if defined(__NVCC__) || defined(__HIPCC__)
 #include <thrust/device_vector.h>
 #include <thrust/execution_policy.h>
+
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #endif
 

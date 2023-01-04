@@ -16,7 +16,6 @@ limitations under the License. */
 #include <unordered_map>
 
 #include "gtest/gtest.h"
-
 #include "paddle/fluid/distributed/fleet_executor/carrier.h"
 #include "paddle/fluid/distributed/fleet_executor/global.h"
 #include "paddle/fluid/distributed/fleet_executor/interceptor.h"
@@ -28,7 +27,8 @@ namespace distributed {
 
 int64_t GetBuffSize(
     const std::map<std::pair<TaskNode*, TaskNode*>, int64_t> buffs,
-    TaskNode* from, TaskNode* to) {
+    TaskNode* from,
+    TaskNode* to) {
   if (buffs.find({from, to}) != buffs.end()) {
     return buffs.at({from, to});
   }

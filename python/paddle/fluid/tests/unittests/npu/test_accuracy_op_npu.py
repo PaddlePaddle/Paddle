@@ -12,11 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import numpy as np
 import unittest
 import sys
+
 sys.path.append("..")
 from op_test import OpTest
 import paddle
@@ -47,7 +46,7 @@ class TestAccuracy(OpTest):
         self.outputs = {
             'Accuracy': np.array([num_correct / float(n)]).astype(self.dtype),
             'Correct': np.array([num_correct]).astype("int32"),
-            'Total': np.array([n]).astype("int32")
+            'Total': np.array([n]).astype("int32"),
         }
 
     def set_npu(self):
@@ -81,7 +80,7 @@ class TestAccuracy2(TestAccuracy):
         self.outputs = {
             'Accuracy': np.array([num_correct / float(n)]).astype(self.dtype),
             'Correct': np.array([num_correct]).astype("int32"),
-            'Total': np.array([n]).astype("int32")
+            'Total': np.array([n]).astype("int32"),
         }
 
 
@@ -105,7 +104,7 @@ class TestAccuracyType(TestAccuracy):
         self.outputs = {
             'Accuracy': np.array([num_correct / float(n)]).astype(self.dtype),
             'Correct': np.array([num_correct]).astype("int32"),
-            'Total': np.array([n]).astype("int32")
+            'Total': np.array([n]).astype("int32"),
         }
 
 
@@ -129,7 +128,7 @@ class TestAccuracyType2(TestAccuracy):
         self.outputs = {
             'Accuracy': np.array([num_correct / float(n)]).astype(self.dtype),
             'Correct': np.array([num_correct]).astype("int32"),
-            'Total': np.array([n]).astype("int32")
+            'Total': np.array([n]).astype("int32"),
         }
 
 

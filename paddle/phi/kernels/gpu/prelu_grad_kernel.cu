@@ -82,18 +82,18 @@ class PreluOpGradFunctor {
     size_t channel =
         mode == ChannelLast ? input_dims[input_dims.size() - 1] : input_dims[1];
 
-    PReluOpGradKernel<
-        T><<<PADDLE_GET_BLOCKS(numel), CUDA_NUM_THREADS, 0, stream>>>(
-        x,
-        alpha,
-        out_grad,
-        x_grad,
-        alpha_grad,
-        channel,
-        plane_size,
-        spatial_size,
-        numel,
-        mode);
+    PReluOpGradKernel<T>
+        <<<PADDLE_GET_BLOCKS(numel), CUDA_NUM_THREADS, 0, stream>>>(
+            x,
+            alpha,
+            out_grad,
+            x_grad,
+            alpha_grad,
+            channel,
+            plane_size,
+            spatial_size,
+            numel,
+            mode);
   }
 };
 

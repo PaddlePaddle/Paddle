@@ -12,11 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
+
 import numpy as np
 from op_test import OpTest
+
 import paddle
 import paddle.fluid as fluid
 
@@ -42,7 +42,7 @@ def cal_mode(a, axis, keepdim=False):
     if axis < 0:
         axis = len(a.shape) + axis
     in_dims = list(range(a.ndim))
-    a_view = np.transpose(a, in_dims[:axis] + in_dims[axis + 1:] + [axis])
+    a_view = np.transpose(a, in_dims[:axis] + in_dims[axis + 1 :] + [axis])
     inds = np.ndindex(a_view.shape[:-1])
     modes = np.empty(a_view.shape[:-1], dtype=a.dtype)
     indexes = np.empty(a_view.shape[:-1], dtype=np.int64)
@@ -119,12 +119,13 @@ class TestModeOpKernels(unittest.TestCase):
             for axis in self.axises:
                 value_expect, indice_expect = cal_mode(self.inputs, axis)
                 v, inds = paddle.mode(tensor, axis)
-                self.assertTrue(np.allclose(v.numpy(), value_expect))
+                np.testing.assert_allclose(v.numpy(), value_expect, rtol=1e-05)
 
                 value_expect, indice_expect = cal_mode(
-                    self.inputs, axis, keepdim=True)
+                    self.inputs, axis, keepdim=True
+                )
                 v, inds = paddle.mode(tensor, axis, keepdim=True)
-                self.assertTrue(np.allclose(v.numpy(), value_expect))
+                np.testing.assert_allclose(v.numpy(), value_expect, rtol=1e-05)
 
         def test_gpu_kernel():
             paddle.set_device('gpu')
@@ -132,12 +133,13 @@ class TestModeOpKernels(unittest.TestCase):
             for axis in self.axises:
                 value_expect, indice_expect = cal_mode(self.inputs, axis)
                 v, inds = paddle.mode(tensor, axis)
-                self.assertTrue(np.allclose(v.numpy(), value_expect))
+                np.testing.assert_allclose(v.numpy(), value_expect, rtol=1e-05)
 
                 value_expect, indice_expect = cal_mode(
-                    self.inputs, axis, keepdim=True)
+                    self.inputs, axis, keepdim=True
+                )
                 v, inds = paddle.mode(tensor, axis, keepdim=True)
-                self.assertTrue(np.allclose(v.numpy(), value_expect))
+                np.testing.assert_allclose(v.numpy(), value_expect, rtol=1e-05)
 
         paddle.disable_static()
         test_cpu_kernel()
@@ -159,21 +161,25 @@ class TestModeOpInStatic(unittest.TestCase):
     def setUp(self):
         np.random.seed(666)
         self.input_data = np.ceil(
-            np.random.random((2, 10, 10)) * 1000, dtype=np.float64)
+            np.random.random((2, 10, 10)) * 1000, dtype=np.float64
+        )
 
     def test_run_static(self):
         paddle.enable_static()
-        with paddle.static.program_guard(paddle.static.Program(),
-                                         paddle.static.Program()):
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
             input_tensor = paddle.static.data(
-                name="x", shape=[2, 10, 10], dtype="float64")
+                name="x", shape=[2, 10, 10], dtype="float64"
+            )
 
             result = paddle.mode(input_tensor, axis=1)
             expect_value = cal_mode(self.input_data, axis=1)[0]
             exe = paddle.static.Executor(paddle.CPUPlace())
-            paddle_result = exe.run(feed={"x": self.input_data},
-                                    fetch_list=[result])[0]
-            self.assertTrue(np.allclose(paddle_result, expect_value))
+            paddle_result = exe.run(
+                feed={"x": self.input_data}, fetch_list=[result]
+            )[0]
+            np.testing.assert_allclose(paddle_result, expect_value, rtol=1e-05)
 
 
 if __name__ == '__main__':

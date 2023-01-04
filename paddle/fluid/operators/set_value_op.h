@@ -31,7 +31,6 @@
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
 using DDim = framework::DDim;
 
 inline std::string GetValueName(framework::proto::VarType::Type data_type) {
@@ -100,7 +99,8 @@ inline void CheckIsDimsMatch(const framework::DDim first,
   PADDLE_THROW(platform::errors::InvalidArgument(
       "The shape of tensor assigned value must match the shape "
       "of target shape: %d, but now shape is %d.",
-      second.to_str(), first.to_str()));
+      second.to_str(),
+      first.to_str()));
 }
 
 }  // namespace operators

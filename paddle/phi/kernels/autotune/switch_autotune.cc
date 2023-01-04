@@ -29,6 +29,7 @@ void AutoTuneStatus::EnableAutoTune() {
 
 void AutoTuneStatus::DisableAutoTune() {
   FLAGS_use_autotune = false;
+  use_autotune_ = false;
   Init();
 }
 

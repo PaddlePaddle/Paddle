@@ -13,12 +13,14 @@
 // limitations under the License.
 
 #include "paddle/fluid/pybind/ir.h"
+
 #include <algorithm>
 #include <memory>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
 #include <utility>
+
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
@@ -31,35 +33,41 @@
 #include "pybind11/stl.h"
 
 namespace py = pybind11;
-using paddle::framework::ir::Graph;
-using paddle::framework::ir::Node;
-using paddle::framework::ir::NodeComp;
-using paddle::framework::ir::GraphSafeRemoveNodes;
-using paddle::framework::ir::HasCircle;
-using paddle::framework::ir::GraphNum;
-using paddle::framework::ir::TopologySortOperations;
-using paddle::framework::ir::BuildOperationAdjList;
 using paddle::framework::OpDesc;
 using paddle::framework::ProgramDesc;
 using paddle::framework::Scope;
 using paddle::framework::VarDesc;
+using paddle::framework::ir::BuildOperationAdjList;
+using paddle::framework::ir::Graph;
+using paddle::framework::ir::GraphNum;
+using paddle::framework::ir::GraphSafeRemoveNodes;
+using paddle::framework::ir::HasCircle;
+using paddle::framework::ir::Node;
+using paddle::framework::ir::NodeComp;
+using paddle::framework::ir::TopologySortOperations;
 using pybind11::return_value_policy;
 
 namespace paddle {
 namespace pybind {
 void BindGraph(py::module *m) {
-  m->def("graph_safe_remove_nodes", GraphSafeRemoveNodes);
+  m->def("graph_safe_remove_nodes",
+         [](Graph *graph, const std::unordered_set<const Node *> &nodes) {
+           return GraphSafeRemoveNodes(graph, nodes);
+         });
   m->def("has_circle", HasCircle);
   m->def("graph_num", GraphNum);
-  m->def("topology_sort", TopologySortOperations,
-         return_value_policy::reference);
-  m->def("build_adjacency_list", BuildOperationAdjList<NodeComp>,
+  m->def(
+      "topology_sort", TopologySortOperations, return_value_policy::reference);
+  m->def("build_adjacency_list",
+         BuildOperationAdjList<NodeComp>,
          return_value_policy::reference);
   py::class_<Graph, std::shared_ptr<Graph>>(
-      *m, "Graph",
+      *m,
+      "Graph",
       "The graph is a Directed Acyclic Single Static Assignment Graph, see "
       "`paddle::ir::Graph` for details.")
       .def(py::init<const ProgramDesc &>())
+      .def(py::init<const ProgramDesc &, int64_t, int64_t>())
       .def("clone", &Graph::Clone)
       .def("has", &Graph::Has)
       .def("get_bool", &Graph::Get<bool>)
@@ -67,14 +75,20 @@ void BindGraph(py::module *m) {
       .def("get_float", &Graph::Get<float>)
       .def("get_double", &Graph::Get<double>)
       .def("get_string", &Graph::Get<std::string>)
-      .def("get_marked_nodes", &Graph::Get<std::unordered_set<const Node *>>,
+      .def("get_marked_nodes",
+           &Graph::Get<std::unordered_set<const Node *>>,
            return_value_policy::reference)
-      .def("set", [](Graph &self, const std::string &attr_name,
-                     bool attr) { return self.Set(attr_name, new bool(attr)); })
-      .def("set", [](Graph &self, const std::string &attr_name,
-                     int attr) { return self.Set(attr_name, new int(attr)); })
       .def("set",
-           [](Graph &self, const std::string &attr_name,
+           [](Graph &self, const std::string &attr_name, bool attr) {
+             return self.Set(attr_name, new bool(attr));
+           })
+      .def("set",
+           [](Graph &self, const std::string &attr_name, int attr) {
+             return self.Set(attr_name, new int(attr));
+           })
+      .def("set",
+           [](Graph &self,
+              const std::string &attr_name,
               const std::string &attr) {
              return self.Set(attr_name, new std::string(attr));
            })
@@ -87,13 +101,15 @@ void BindGraph(py::module *m) {
              return self.Set(attr_name, new double(attr));
            })
       .def("set",
-           [](Graph &self, const std::string &attr_name,
+           [](Graph &self,
+              const std::string &attr_name,
               const std::unordered_set<const Node *> &attr) {
              return self.Set(attr_name,
                              new std::unordered_set<const Node *>(attr));
            })
       .def("set",
-           [](Graph &self, const std::string &attr_name,
+           [](Graph &self,
+              const std::string &attr_name,
               const std::unordered_set<std::string> &attr) {
              return self.Set(attr_name,
                              new std::unordered_set<std::string>(attr));
@@ -104,27 +120,32 @@ void BindGraph(py::module *m) {
            })
       .def("erase", &Graph::Erase)
       .def("nodes", &Graph::Nodes, return_value_policy::reference)
-      .def("create_var_node",
-           [](Graph &self, VarDesc &var_desc) {
-             return self.CreateVarNode(&var_desc);
-           },
+      .def(
+          "create_var_node",
+          [](Graph &self, VarDesc &var_desc) {
+            return self.CreateVarNode(&var_desc);
+          },
+          return_value_policy::reference)
+      .def(
+          "create_op_node",
+          [](Graph &self, OpDesc &op_desc) {
+            return self.CreateOpNode(&op_desc);
+          },
+          return_value_policy::reference)
+      .def("create_control_dep_var",
+           &Graph::CreateControlDepVar,
            return_value_policy::reference)
-      .def("create_op_node",
-           [](Graph &self, OpDesc &op_desc) {
-             return self.CreateOpNode(&op_desc);
-           },
-           return_value_policy::reference)
-      .def("create_control_dep_var", &Graph::CreateControlDepVar,
-           return_value_policy::reference)
-      .def("create_empty_node", &Graph::CreateEmptyNode,
+      .def("create_empty_node",
+           &Graph::CreateEmptyNode,
            return_value_policy::reference)
       .def("release_nodes", &Graph::ReleaseNodes)
       .def("remove_node",
            [](Graph &self, Node &node) { return self.RemoveNode(&node); })
-      .def("retrieve_node", &Graph::RetrieveNode,
-           return_value_policy::reference)
+      .def(
+          "retrieve_node", &Graph::RetrieveNode, return_value_policy::reference)
       .def("resolve_hazard", &Graph::ResolveHazard)
-      .def("origin_program_desc", &Graph::OriginProgram,
+      .def("origin_program_desc",
+           &Graph::OriginProgram,
            return_value_policy::reference)
       .def("sub_graph_size", &Graph::SubGraphsSize)
       .def("get_sub_graph", [](Graph &self, int i) {
@@ -152,7 +173,8 @@ void BindNode(py::module *m) {
       .def("remove_input",
            [](Node &self, int node_id) {
              auto pos = std::find_if(
-                 self.inputs.begin(), self.inputs.end(),
+                 self.inputs.begin(),
+                 self.inputs.end(),
                  [&node_id](const Node *n) { return n->id() == node_id; });
              if (pos != self.inputs.end()) {
                self.inputs.erase(pos);
@@ -172,7 +194,8 @@ void BindNode(py::module *m) {
       .def("remove_output",
            [](Node &self, int node_id) {
              auto pos = std::find_if(
-                 self.outputs.begin(), self.outputs.end(),
+                 self.outputs.begin(),
+                 self.outputs.end(),
                  [&node_id](const Node *n) { return n->id() == node_id; });
              if (pos != self.outputs.end()) {
                self.outputs.erase(pos);
@@ -228,38 +251,46 @@ class PYBIND11_HIDDEN PassAttrGetterSetterRegistry {
 
   void Register(const std::string &attr_type, Getter getter, Setter setter) {
     PADDLE_ENFORCE_NOT_NULL(
-        getter, platform::errors::InvalidArgument(
-                    "getter of %s should not be nullptr", attr_type));
+        getter,
+        platform::errors::InvalidArgument("getter of %s should not be nullptr",
+                                          attr_type));
     PADDLE_ENFORCE_NOT_NULL(
-        setter, platform::errors::InvalidArgument(
-                    "setter of %s should not be nullptr", attr_type));
+        setter,
+        platform::errors::InvalidArgument("setter of %s should not be nullptr",
+                                          attr_type));
     GetterSetter getter_setter;
     getter_setter.getter = std::move(getter);
     getter_setter.setter = std::move(setter);
     PADDLE_ENFORCE_EQ(
-        getter_setter_map_.emplace(attr_type, getter_setter).second, true,
+        getter_setter_map_.emplace(attr_type, getter_setter).second,
+        true,
         platform::errors::InvalidArgument(
             "getter and setter of %s have been set before", attr_type));
   }
 
-  py::object Get(const framework::ir::Pass &pass, const std::string &attr_name,
+  py::object Get(const framework::ir::Pass &pass,
+                 const std::string &attr_name,
                  const std::string &attr_type) const {
     auto iter = getter_setter_map_.find(attr_type);
     PADDLE_ENFORCE_EQ(
-        iter != getter_setter_map_.end(), true,
-        platform::errors::InvalidArgument("unsupported attribute type %s of %s",
-                                          attr_type, attr_name));
+        iter != getter_setter_map_.end(),
+        true,
+        platform::errors::InvalidArgument(
+            "unsupported attribute type %s of %s", attr_type, attr_name));
     const auto &getter = iter->second.getter;
     return getter(pass, attr_name);
   }
 
-  void Set(const std::string &attr_name, const std::string &attr_type,
-           const py::object &attr_value, framework::ir::Pass *pass) const {
+  void Set(const std::string &attr_name,
+           const std::string &attr_type,
+           const py::object &attr_value,
+           framework::ir::Pass *pass) const {
     auto iter = getter_setter_map_.find(attr_type);
     PADDLE_ENFORCE_EQ(
-        iter != getter_setter_map_.end(), true,
-        platform::errors::InvalidArgument("unsupported attribute type %s of %s",
-                                          attr_type, attr_name));
+        iter != getter_setter_map_.end(),
+        true,
+        platform::errors::InvalidArgument(
+            "unsupported attribute type %s of %s", attr_type, attr_name));
     const auto &setter = iter->second.setter;
     setter(attr_name, attr_value, pass);
   }
@@ -285,12 +316,13 @@ class PYBIND11_HIDDEN PassAttrGetterSetterRegistry {
         pass->Set(attr_name, new cpp_type(cpp_attr_value));                    \
       } catch (py::cast_error &) {                                             \
         PADDLE_THROW(platform::errors::InvalidArgument(                        \
-            "type error of attribute %s, expected to be %s", attr_name,        \
+            "type error of attribute %s, expected to be %s",                   \
+            attr_name,                                                         \
             attr_type_name));                                                  \
       }                                                                        \
     };                                                                         \
-    PassAttrGetterSetterRegistry::Instance().Register(attr_type_name, getter,  \
-                                                      setter);                 \
+    PassAttrGetterSetterRegistry::Instance().Register(                         \
+        attr_type_name, getter, setter);                                       \
   } while (0)
 
 // NOTE: attr_types may be changed
@@ -305,8 +337,8 @@ static void SetAttrsToPass(
     if (attr_type.empty()) {
       attr_type = py::cast<std::string>(attr_value.get_type().attr("__name__"));
     }
-    PassAttrGetterSetterRegistry::Instance().Set(attr_name, attr_type,
-                                                 attr_value, pass);
+    PassAttrGetterSetterRegistry::Instance().Set(
+        attr_name, attr_type, attr_value, pass);
   }
 }
 

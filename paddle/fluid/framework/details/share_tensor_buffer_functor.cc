@@ -39,9 +39,12 @@ namespace framework {
 namespace details {
 
 ShareTensorBufferFunctor::ShareTensorBufferFunctor(
-    Scope *scope, size_t scope_idx, const std::string &op_type,
+    Scope *scope,
+    size_t scope_idx,
+    const std::string &op_type,
     const std::vector<const ir::MemOptVarInfo *> &in_var_infos,
-    const std::vector<std::string> &out_var_names, const bool &is_variant_scope,
+    const std::vector<std::string> &out_var_names,
+    const bool &is_variant_scope,
     bool share_dims_and_dtype)
     : scope_(scope),
       scope_idx_(scope_idx),
@@ -50,12 +53,14 @@ ShareTensorBufferFunctor::ShareTensorBufferFunctor(
       out_var_names_(out_var_names),
       is_variant_scope_(is_variant_scope),
       share_dims_and_dtype_(share_dims_and_dtype) {
-  PADDLE_ENFORCE_EQ(in_var_infos_.size(), out_var_names_.size(),
+  PADDLE_ENFORCE_EQ(in_var_infos_.size(),
+                    out_var_names_.size(),
                     platform::errors::PreconditionNotMet(
                         "The number of input variables and output variables "
                         "should be equal, but got number of input variables is "
                         "%d and number of output variables is %d.",
-                        in_var_infos_.size(), out_var_names_.size()));
+                        in_var_infos_.size(),
+                        out_var_names_.size()));
   for (size_t i = 0; i < in_var_infos_.size(); ++i) {
     AddReuseVarPair(in_var_infos_[i], out_var_names_[i]);
   }
@@ -76,7 +81,8 @@ void ShareTensorBufferFunctor::AddReuseVarPair(
       in_var_info,
       platform::errors::InvalidArgument(
           "The input variables to be inplaced should not be NULL."));
-  PADDLE_ENFORCE_NE(in_var_info->Name(), out_var_name,
+  PADDLE_ENFORCE_NE(in_var_info->Name(),
+                    out_var_name,
                     platform::errors::InvalidArgument(
                         "The input variable and output variable to be inplaced "
                         "cannot have the same name: %s.",
@@ -94,15 +100,18 @@ void ShareTensorBufferFunctor::CallOnce() {
     auto *in_var = exec_scope_->FindVar(in_var_infos_[i]->Name());
     auto *out_var = exec_scope_->FindVar(out_var_names_[i]);
     PADDLE_ENFORCE_NOT_NULL(
-        in_var, platform::errors::NotFound(
-                    "The variable(%s) to be inplaced is not found in scope.",
-                    in_var_infos_[i]->Name()));
+        in_var,
+        platform::errors::NotFound(
+            "The variable(%s) to be inplaced is not found in scope.",
+            in_var_infos_[i]->Name()));
     PADDLE_ENFORCE_NOT_NULL(
-        out_var, platform::errors::NotFound(
-                     "The variable(%s) to be inplaced is not found in scope.",
-                     out_var_names_[i]));
+        out_var,
+        platform::errors::NotFound(
+            "The variable(%s) to be inplaced is not found in scope.",
+            out_var_names_[i]));
     PADDLE_ENFORCE_NE(
-        in_var, out_var,
+        in_var,
+        out_var,
         platform::errors::PreconditionNotMet(
             "The input variable and output variable to be inplaced "
             "cannot be the same variable(%s).",
@@ -121,7 +130,8 @@ void ShareTensorBufferFunctor::operator()(Scope *exec_scope) {
     in_out_vars_.clear();
     CallOnce();
   } else {
-    PADDLE_ENFORCE_EQ(exec_scope_, exec_scope,
+    PADDLE_ENFORCE_EQ(exec_scope_,
+                      exec_scope,
                       platform::errors::InvalidArgument(
                           "The given execution scope and the cached execution "
                           "scope should be the same."));

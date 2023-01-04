@@ -12,14 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import unicode_literals
-from __future__ import print_function
-
-import unittest
 import os
-import sys
-import subprocess
 import re
+import subprocess
+import sys
+import unittest
 
 
 class TestFlagsUseMkldnn(unittest.TestCase):
@@ -51,7 +48,8 @@ class TestFlagsUseMkldnn(unittest.TestCase):
             cmd.split(" "),
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
-            env=self.env)
+            env=self.env,
+        )
 
         out, err = proc.communicate()
         returncode = proc.returncode

@@ -33,19 +33,18 @@ KernelSignature BatchNormOpArgumentMapping(const ArgumentMappingContext& ctx) {
   if (is_test && !use_global_stats && !trainable_statistics &&
       !fuse_with_relu) {
     return KernelSignature("batch_norm_infer",
-                           {"X", "Scale", "Bias", "Mean", "Variance"},
+                           {"X", "Mean", "Variance", "Scale", "Bias"},
                            {"momentum", "epsilon", "data_layout"},
                            {"Y", "MeanOut", "VarianceOut"});
   } else {
     return KernelSignature("batch_norm",
-                           {"X", "Scale", "Bias", "Mean", "Variance"},
-                           {"momentum",
+                           {"X", "Mean", "Variance", "Scale", "Bias"},
+                           {"is_test",
+                            "momentum",
                             "epsilon",
                             "data_layout",
-                            "is_test",
                             "use_global_stats",
-                            "trainable_statistics",
-                            "fuse_with_relu"},
+                            "trainable_statistics"},
                            {"Y",
                             "MeanOut",
                             "VarianceOut",
@@ -74,31 +73,29 @@ KernelSignature BatchNormGradOpArgumentMapping(
                           "data_layout",
                           "is_test",
                           "use_global_stats",
-                          "trainable_statistics",
-                          "fuse_with_relu"},
+                          "trainable_statistics"},
                          {"X@GRAD", "Scale@GRAD", "Bias@GRAD"});
 }
 
 KernelSignature BatchNormGradGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
   return KernelSignature("batch_norm_grad_grad",
-                         {"DDX",
-                          "DDScale",
-                          "DDBias",
-                          "DY",
-                          "X",
+                         {"X",
                           "Scale",
+                          "Mean",
+                          "Variance",
                           "SavedMean",
                           "SavedVariance",
-                          "Mean",
-                          "Variance"},
+                          "DY",
+                          "DDX",
+                          "DDScale",
+                          "DDBias"},
                          {"momentum",
                           "epsilon",
                           "data_layout",
                           "is_test",
                           "use_global_stats",
-                          "trainable_statistics",
-                          "fuse_with_relu"},
+                          "trainable_statistics"},
                          {"DX", "DScale", "DDY"});
 }
 

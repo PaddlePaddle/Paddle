@@ -15,6 +15,7 @@
 #pragma once
 
 #include <unsupported/Eigen/SpecialFunctions>
+
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/funcs/for_range.h"
 
@@ -37,7 +38,7 @@ struct DigammaFunctor {
 
 template <typename T, typename Context>
 void DigammaKernel(const Context& ctx, const DenseTensor& x, DenseTensor* out) {
-  out->mutable_data<T>(ctx.GetPlace());
+  ctx.template Alloc<T>(out);
   auto* x_data = x.data<T>();
   auto* out_data = out->data<T>();
   auto numel = x.numel();

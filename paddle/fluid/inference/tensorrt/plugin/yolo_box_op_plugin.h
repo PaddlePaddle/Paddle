@@ -28,31 +28,45 @@ namespace plugin {
 class YoloBoxPlugin : public nvinfer1::IPluginV2Ext {
  public:
   explicit YoloBoxPlugin(const nvinfer1::DataType data_type,
-                         const std::vector<int>& anchors, const int class_num,
-                         const float conf_thresh, const int downsample_ratio,
-                         const bool clip_bbox, const float scale_x_y,
-                         const bool iou_aware, const float iou_aware_factor,
-                         const int input_h, const int input_w);
+                         const std::vector<int>& anchors,
+                         const int class_num,
+                         const float conf_thresh,
+                         const int downsample_ratio,
+                         const bool clip_bbox,
+                         const float scale_x_y,
+                         const bool iou_aware,
+                         const float iou_aware_factor,
+                         const int input_h,
+                         const int input_w);
   YoloBoxPlugin(const void* data, size_t length);
   ~YoloBoxPlugin() override;
 
   const char* getPluginType() const TRT_NOEXCEPT override;
   const char* getPluginVersion() const TRT_NOEXCEPT override;
   int getNbOutputs() const TRT_NOEXCEPT override;
-  nvinfer1::Dims getOutputDimensions(int index, const nvinfer1::Dims* inputs,
+  nvinfer1::Dims getOutputDimensions(int index,
+                                     const nvinfer1::Dims* inputs,
                                      int nb_input_dims) TRT_NOEXCEPT override;
   bool supportsFormat(nvinfer1::DataType type, nvinfer1::TensorFormat format)
       const TRT_NOEXCEPT override;
   size_t getWorkspaceSize(int max_batch_size) const TRT_NOEXCEPT override;
 #if IS_TRT_VERSION_LT(8000)
-  int enqueue(int batch_size, const void* const* inputs, void** outputs,
+  int enqueue(int batch_size,
+              const void* const* inputs,
+              void** outputs,
 #else
-  int enqueue(int batch_size, const void* const* inputs, void* const* outputs,
+  int enqueue(int batch_size,
+              const void* const* inputs,
+              void* const* outputs,
 #endif
-              void* workspace, cudaStream_t stream) TRT_NOEXCEPT override;
+              void* workspace,
+              cudaStream_t stream) TRT_NOEXCEPT override;
   template <typename T>
-  int enqueue_impl(int batch_size, const void* const* inputs,
-                   void* const* outputs, void* workspace, cudaStream_t stream);
+  int enqueue_impl(int batch_size,
+                   const void* const* inputs,
+                   void* const* outputs,
+                   void* workspace,
+                   cudaStream_t stream);
   int initialize() TRT_NOEXCEPT override;
   void terminate() TRT_NOEXCEPT override;
   size_t getSerializationSize() const TRT_NOEXCEPT override;
@@ -61,16 +75,19 @@ class YoloBoxPlugin : public nvinfer1::IPluginV2Ext {
   void setPluginNamespace(const char* lib_namespace) TRT_NOEXCEPT override;
   const char* getPluginNamespace() const TRT_NOEXCEPT override;
 
-  nvinfer1::DataType getOutputDataType(
-      int index, const nvinfer1::DataType* input_type,
-      int nb_inputs) const TRT_NOEXCEPT override;
+  nvinfer1::DataType getOutputDataType(int index,
+                                       const nvinfer1::DataType* input_type,
+                                       int nb_inputs) const
+      TRT_NOEXCEPT override;
   bool isOutputBroadcastAcrossBatch(int output_index,
                                     const bool* input_is_broadcast,
                                     int nb_inputs) const TRT_NOEXCEPT override;
   bool canBroadcastInputAcrossBatch(int input_index) const
       TRT_NOEXCEPT override;
-  void configurePlugin(const nvinfer1::Dims* input_dims, int nb_inputs,
-                       const nvinfer1::Dims* output_dims, int nb_outputs,
+  void configurePlugin(const nvinfer1::Dims* input_dims,
+                       int nb_inputs,
+                       const nvinfer1::Dims* output_dims,
+                       int nb_outputs,
                        const nvinfer1::DataType* input_types,
                        const nvinfer1::DataType* output_types,
                        const bool* input_is_broadcast,
@@ -109,9 +126,10 @@ class YoloBoxPluginCreator : public nvinfer1::IPluginCreator {
   nvinfer1::IPluginV2Ext* createPlugin(
       const char* name,
       const nvinfer1::PluginFieldCollection* fc) TRT_NOEXCEPT override;
-  nvinfer1::IPluginV2Ext* deserializePlugin(
-      const char* name, const void* serial_data,
-      size_t serial_length) TRT_NOEXCEPT override;
+  nvinfer1::IPluginV2Ext* deserializePlugin(const char* name,
+                                            const void* serial_data,
+                                            size_t serial_length)
+      TRT_NOEXCEPT override;
 
  private:
   std::string namespace_;

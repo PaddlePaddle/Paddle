@@ -19,10 +19,10 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
-#include "paddle/fluid/distributed/ps.pb.h"
 #include "paddle/fluid/distributed/ps/service/ps_client.h"
 #include "paddle/fluid/distributed/ps/service/sendrecv.pb.h"
 #include "paddle/fluid/distributed/ps/service/server.h"
+#include "paddle/fluid/distributed/the_one_ps.pb.h"
 
 namespace paddle {
 namespace distributed {
@@ -44,14 +44,18 @@ class PSCore {
 
   virtual int InitServer(
       const std::string& dist_desc,
-      const std::vector<std::string>* host_sign_list, int node_num, int index,
+      const std::vector<std::string>* host_sign_list,
+      int node_num,
+      int index,
       int trainers,
       const std::vector<framework::ProgramDesc>& server_sub_program = {});
   virtual int InitWorker(
       const std::string& dist_desc,
       const std::map<uint64_t, std::vector<paddle::distributed::Region>>&
           regions,
-      const std::vector<std::string>* host_sign_list, int node_num, int index);
+      const std::vector<std::string>* host_sign_list,
+      int node_num,
+      int index);
   virtual uint64_t RunServer(const std::string& ip, uint32_t port);
   virtual int StopServer();
   virtual int FinalizeWorker();

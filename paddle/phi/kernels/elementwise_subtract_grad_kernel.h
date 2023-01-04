@@ -30,9 +30,9 @@ void SubtractGradKernel(const Context& dev_ctx,
 template <typename T, typename Context>
 void SubtractDoubleGradKernel(const Context& dev_ctx,
                               const DenseTensor& y,
-                              paddle::optional<const DenseTensor&> ddx,
-                              paddle::optional<const DenseTensor&> ddy,
                               const DenseTensor& dout,
+                              const paddle::optional<DenseTensor>& ddx,
+                              const paddle::optional<DenseTensor>& ddy,
                               int axis,
                               DenseTensor* ddout);
 

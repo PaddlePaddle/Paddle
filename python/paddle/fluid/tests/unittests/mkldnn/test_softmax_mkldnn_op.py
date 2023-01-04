@@ -12,19 +12,26 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
+
 import numpy as np
-from paddle.fluid.tests.unittests.op_test import OpTest
-import paddle.fluid.core as core
-from paddle.fluid.tests.unittests.test_softmax_op import TestSoftmaxOp, TestSoftmaxOp2, TestSoftmaxOp3, TestSoftmaxOp4, TestSoftmaxOp5, TestSoftmaxOp6
 from mkldnn_op_test import check_if_mkldnn_primitives_exist_in_bwd
+
+import paddle.fluid.core as core
+from paddle.fluid.tests.unittests.op_test import OpTest
+from paddle.fluid.tests.unittests.test_softmax_op import (
+    TestSoftmaxOp,
+    TestSoftmaxOp2,
+    TestSoftmaxOp3,
+    TestSoftmaxOp4,
+    TestSoftmaxOp5,
+    TestSoftmaxOp6,
+)
 
 
 def stable_softmax(x):
     """Compute the softmax of vector x in a numerically stable way."""
-    shiftx = x - np.max(x).clip(-64.)
+    shiftx = x - np.max(x).clip(-64.0)
     exps = np.exp(shiftx)
     return exps / np.sum(exps)
 
@@ -53,7 +60,7 @@ class TestSoftmaxMKLDNNOp(TestSoftmaxOp):
         self.attrs = {
             'axis': self.axis,
             'use_cudnn': self.use_cudnn,
-            'use_mkldnn': self.use_mkldnn
+            'use_mkldnn': self.use_mkldnn,
         }
 
     def test_check_output(self):
@@ -70,13 +77,16 @@ class TestSoftmaxMKLDNNOp(TestSoftmaxOp):
             place = core.CUDAPlace(0)
             if core.is_float16_supported(place):
                 self.check_grad_with_place(
-                    place, ["X"],
+                    place,
+                    ["X"],
                     "Out",
                     max_relative_error=0.01,
-                    check_dygraph=False)
+                    check_dygraph=False,
+                )
         else:
             self.check_grad(
-                ["X"], "Out", max_relative_error=0.01, check_dygraph=False)
+                ["X"], "Out", max_relative_error=0.01, check_dygraph=False
+            )
 
     def init_kernel_type(self):
         self.use_mkldnn = True
@@ -110,7 +120,7 @@ class TestSoftmaxMKLDNNOp6(TestSoftmaxOp6):
 # Check if primitives already exist in backward
 class TestSoftmaxMKLDNNPrimitivesAlreadyExist(unittest.TestCase):
     def setUp(self):
-        super(TestSoftmaxMKLDNNPrimitivesAlreadyExist, self).setUp()
+        super().setUp()
 
         np.random.seed(123)
         self.op_type = 'softmax'
@@ -125,10 +135,12 @@ class TestSoftmaxMKLDNNPrimitivesAlreadyExist(unittest.TestCase):
 
     def test_check(self):
         check_if_mkldnn_primitives_exist_in_bwd(
-            self, self.op_type, self.x, self.out, self.out_grad, self.x_grad)
+            self, self.op_type, self.x, self.out, self.out_grad, self.x_grad
+        )
 
 
 if __name__ == '__main__':
     from paddle import enable_static
+
     enable_static()
     unittest.main()

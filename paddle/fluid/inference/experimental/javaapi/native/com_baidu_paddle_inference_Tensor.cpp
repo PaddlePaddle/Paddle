@@ -13,7 +13,9 @@
 // limitations under the License.
 
 #include "com_baidu_paddle_inference_Tensor.h"
+
 #include <jni.h>
+
 #include "pd_inference_api.h"  // NOLINT
 
 JNIEXPORT void JNICALL Java_com_baidu_paddle_inference_Tensor_cppTensorDestroy(
@@ -25,12 +27,14 @@ JNIEXPORT void JNICALL Java_com_baidu_paddle_inference_Tensor_cppTensorReshape(
     JNIEnv *env, jobject, jlong tensorPointer, jint dim, jintArray array) {
   int32_t *input_shape = env->GetIntArrayElements(array, nullptr);
   PD_TensorReshape(reinterpret_cast<PD_Tensor *>(tensorPointer),
-                   static_cast<int>(dim), input_shape);
+                   static_cast<int>(dim),
+                   input_shape);
   env->ReleaseIntArrayElements(array, input_shape, JNI_ABORT);
 }
 
 JNIEXPORT jintArray JNICALL
-Java_com_baidu_paddle_inference_Tensor_cppTensorGetShape(JNIEnv *env, jobject,
+Java_com_baidu_paddle_inference_Tensor_cppTensorGetShape(JNIEnv *env,
+                                                         jobject,
                                                          jlong tensorPointer) {
   PD_Tensor *tensor = reinterpret_cast<PD_Tensor *>(tensorPointer);
   PD_OneDimArrayInt32 *output_shape = PD_TensorGetShape(tensor);
@@ -40,7 +44,8 @@ Java_com_baidu_paddle_inference_Tensor_cppTensorGetShape(JNIEnv *env, jobject,
 }
 
 JNIEXPORT jstring JNICALL
-Java_com_baidu_paddle_inference_Tensor_cppTensorGetName(JNIEnv *env, jobject,
+Java_com_baidu_paddle_inference_Tensor_cppTensorGetName(JNIEnv *env,
+                                                        jobject,
                                                         jlong tensorPointer) {
   const char *c_str =
       PD_TensorGetName(reinterpret_cast<PD_Tensor *>(tensorPointer));

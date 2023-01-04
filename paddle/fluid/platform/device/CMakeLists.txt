@@ -1,27 +1,30 @@
-
 set(DEV_LIBS custom_device)
 
 # GPU
-IF(WITH_GPU OR WITH_ROCM)
+if(WITH_GPU OR WITH_ROCM)
   add_subdirectory(gpu)
-ENDIF()
+endif()
 
 # XPU
-IF(WITH_XPU)
+if(WITH_XPU)
   add_subdirectory(xpu)
-ENDIF()
+endif()
 
 # NPU
-IF(WITH_ASCEND OR WITH_ASCEND_CL)
+if(WITH_ASCEND OR WITH_ASCEND_CL)
   add_subdirectory(npu)
-ENDIF()
+endif()
 
 # IPU
-IF(WITH_IPU)
+if(WITH_IPU)
   add_subdirectory(ipu)
-ENDIF()
+endif()
 
 # MLU
-IF(WITH_MLU)
+if(WITH_MLU)
   add_subdirectory(mlu)
-ENDIF()
+endif()
+
+if(WITH_CUSTOM_DEVICE)
+  add_subdirectory(custom)
+endif()

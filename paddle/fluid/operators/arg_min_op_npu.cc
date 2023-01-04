@@ -17,17 +17,16 @@ limitations under the License. */
 
 namespace paddle {
 namespace operators {
-using Tensor = framework::Tensor;
 
 template <typename DeviceContext, typename T>
 class ArgMinNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x = ctx.Input<framework::Tensor>("X");
+    auto* x = ctx.Input<phi::DenseTensor>("X");
     int64_t axis = ctx.Attr<int64_t>("axis");
     auto dtype = ctx.Attr<int>("dtype");
 
-    auto* out = ctx.Output<framework::Tensor>("Out");
+    auto* out = ctx.Output<phi::DenseTensor>("Out");
     out->mutable_data<int32_t>(ctx.GetPlace());
 
     NpuOpRunner runner;
@@ -49,6 +48,7 @@ class ArgMinNPUKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 REGISTER_OP_NPU_KERNEL(
-    arg_min, ops::ArgMinNPUKernel<paddle::platform::NPUDeviceContext, float>,
+    arg_min,
+    ops::ArgMinNPUKernel<paddle::platform::NPUDeviceContext, float>,
     ops::ArgMinNPUKernel<paddle::platform::NPUDeviceContext,
                          paddle::platform::float16>);

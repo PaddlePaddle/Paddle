@@ -12,9 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <vector>
-
 #include "paddle/phi/kernels/graph_sample_neighbors_kernel.h"
+
+#include <vector>
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -167,8 +167,8 @@ void GraphSampleNeighborsKernel(
     const DenseTensor& row,
     const DenseTensor& col_ptr,
     const DenseTensor& x,
-    paddle::optional<const DenseTensor&> eids,
-    paddle::optional<const DenseTensor&> perm_buffer,
+    const paddle::optional<DenseTensor>& eids,
+    const paddle::optional<DenseTensor>& perm_buffer,
     int sample_size,
     bool return_eids,
     bool flag_perm_buffer,

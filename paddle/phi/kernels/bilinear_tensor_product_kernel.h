@@ -24,7 +24,7 @@ void BilinearTensorProductKernel(const Context& dev_ctx,
                                  const DenseTensor& x,
                                  const DenseTensor& y,
                                  const DenseTensor& weight,
-                                 paddle::optional<const DenseTensor&> bias,
+                                 const paddle::optional<DenseTensor>& bias,
                                  DenseTensor* out);
 
 }  // namespace phi

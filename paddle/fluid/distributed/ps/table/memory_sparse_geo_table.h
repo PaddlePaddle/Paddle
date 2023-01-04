@@ -17,6 +17,7 @@
 #include <assert.h>
 // #include <pthread.h>
 #include <stdint.h>
+
 #include <memory>
 #include <mutex>  // NOLINT
 #include <string>
@@ -56,10 +57,12 @@ class MemorySparseGeoTable : public Table {
 
   int32_t PullSparse(float* values, const PullSparseValue& pull_value);
 
-  int32_t PushSparseParam(const uint64_t* keys, const float* values,
+  int32_t PushSparseParam(const uint64_t* keys,
+                          const float* values,
                           size_t num);
 
-  int32_t PullGeoParam(const uint32_t trainer_id, std::vector<float>* values,
+  int32_t PullGeoParam(const uint32_t trainer_id,
+                       std::vector<float>* values,
                        std::vector<uint64_t>* keys);
 
   int32_t PushSparse(const uint64_t* keys, const float* values, size_t num);

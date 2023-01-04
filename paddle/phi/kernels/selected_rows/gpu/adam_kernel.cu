@@ -15,14 +15,14 @@
 #include "paddle/phi/kernels/selected_rows/adam_kernel.h"
 
 #include "paddle/fluid/framework/tensor_util.h"
-#include "paddle/fluid/operators/math/selected_rows_functor.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/copy_kernel.h"
+#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/adam_functors.h"
 #include "paddle/phi/kernels/funcs/for_range.h"
+#include "paddle/phi/kernels/funcs/selected_rows_functor.h"
 
 namespace phi {
 namespace sr {
@@ -102,8 +102,8 @@ void AdamDenseParamSparseGradKernel(
     const DenseTensor& moment2,
     const DenseTensor& beta1_pow,
     const DenseTensor& beta2_pow,
-    paddle::optional<const DenseTensor&> master_param,
-    paddle::optional<const DenseTensor&> skip_update,
+    const paddle::optional<DenseTensor>& master_param,
+    const paddle::optional<DenseTensor>& skip_update,
     const Scalar& beta1,
     const Scalar& beta2,
     const Scalar& epsilon,
@@ -191,7 +191,7 @@ void AdamDenseParamSparseGradKernel(
   } else {
     // merge duplicated rows if any.
     // The rows of grad_merge have been sorted inside MergeAdd functor
-    paddle::operators::math::scatter::MergeAdd<Context, T> merge_func;
+    phi::funcs::scatter::MergeAdd<Context, T> merge_func;
     merge_func(dev_ctx, grad, &tmp_grad_merge, true);
     grad_merge_ptr = &tmp_grad_merge;
   }
@@ -208,28 +208,28 @@ void AdamDenseParamSparseGradKernel(
     int ndim = param.numel();
     int blocks = (ndim + threads - 1) / threads;
 
-    SparseAdamCUDAKernelREG<T,
-                            MPDType><<<blocks, threads, 0, dev_ctx.stream()>>>(
-        beta1_,
-        beta2_,
-        epsilon_,
-        *beta1_pow.data<MPDType>(),
-        *beta2_pow.data<MPDType>(),
-        moment1.data<MPDType>(),
-        dev_ctx.template Alloc<MPDType>(moment1_out),
-        moment2.data<MPDType>(),
-        dev_ctx.template Alloc<MPDType>(moment2_out),
-        learning_rate.data<MPDType>(),
-        grad_data,
-        param.data<T>(),
-        dev_ctx.template Alloc<T>(param_out),
-        master_in_data,
-        master_out_data,
-        rows,
-        row_numel,
-        grad_merge.rows().size(),
-        lazy_mode,
-        ndim);
+    SparseAdamCUDAKernelREG<T, MPDType>
+        <<<blocks, threads, 0, dev_ctx.stream()>>>(
+            beta1_,
+            beta2_,
+            epsilon_,
+            *beta1_pow.data<MPDType>(),
+            *beta2_pow.data<MPDType>(),
+            moment1.data<MPDType>(),
+            dev_ctx.template Alloc<MPDType>(moment1_out),
+            moment2.data<MPDType>(),
+            dev_ctx.template Alloc<MPDType>(moment2_out),
+            learning_rate.data<MPDType>(),
+            grad_data,
+            param.data<T>(),
+            dev_ctx.template Alloc<T>(param_out),
+            master_in_data,
+            master_out_data,
+            rows,
+            row_numel,
+            grad_merge.rows().size(),
+            lazy_mode,
+            ndim);
     if (!use_global_beta_pow) {
       // Update with cpu
       dev_ctx.template HostAlloc<MPDType>(beta1_pow_out)[0] =

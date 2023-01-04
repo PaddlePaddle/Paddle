@@ -17,6 +17,7 @@
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/ddim.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/core/utils/data_type.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
@@ -135,29 +136,28 @@ struct VisitDataArgMinMaxFunctor {
 template <typename Context, typename T, ArgMinMaxType EnumArgMinMaxValue>
 void ArgMinMaxKernel(const Context& dev_ctx,
                      const DenseTensor& x,
-                     int64_t axis,
+                     const Scalar& axis,
                      bool keepdims,
                      bool flatten,
                      int dtype,
                      DenseTensor* out) {
   if (dtype < 0) {
-    paddle::framework::VisitDataTypeTiny(
-        static_cast<paddle::framework::proto::VarType::Type>(
-            paddle::framework::proto::VarType::INT64),
+    phi::VisitDataTypeTiny(
+        phi::DataType::INT64,
         VisitDataArgMinMaxFunctor<Context, T, EnumArgMinMaxValue>(
-            dev_ctx, x, axis, keepdims, flatten, out));
+            dev_ctx, x, axis.to<int64_t>(), keepdims, flatten, out));
     return;
   }
-  paddle::framework::VisitDataTypeTiny(
-      static_cast<paddle::framework::proto::VarType::Type>(dtype),
+  phi::VisitDataTypeTiny(
+      phi::TransToPhiDataType(dtype),
       VisitDataArgMinMaxFunctor<Context, T, EnumArgMinMaxValue>(
-          dev_ctx, x, axis, keepdims, flatten, out));
+          dev_ctx, x, axis.to<int64_t>(), keepdims, flatten, out));
 }
 
 template <typename T, typename Context>
 void ArgMinKernel(const Context& dev_ctx,
                   const DenseTensor& x,
-                  int64_t axis,
+                  const Scalar& axis,
                   bool keepdims,
                   bool flatten,
                   int dtype,
@@ -169,7 +169,7 @@ void ArgMinKernel(const Context& dev_ctx,
 template <typename T, typename Context>
 void ArgMaxKernel(const Context& dev_ctx,
                   const DenseTensor& x,
-                  int64_t axis,
+                  const Scalar& axis,
                   bool keepdims,
                   bool flatten,
                   int dtype,
@@ -180,7 +180,7 @@ void ArgMaxKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(arg_min,
+PD_REGISTER_KERNEL(argmin,
                    CPU,
                    ALL_LAYOUT,
                    phi::ArgMinKernel,
@@ -191,7 +191,7 @@ PD_REGISTER_KERNEL(arg_min,
                    int16_t,
                    uint8_t) {}
 
-PD_REGISTER_KERNEL(arg_max,
+PD_REGISTER_KERNEL(argmax,
                    CPU,
                    ALL_LAYOUT,
                    phi::ArgMaxKernel,

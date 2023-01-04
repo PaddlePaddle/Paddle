@@ -12,10 +12,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/framework/ir/unsqueeze2_eltwise_fuse_pass.h"
-
 #include <gtest/gtest.h>
+
 #include "paddle/fluid/framework/ir/pass_tester_helper.h"
+#include "paddle/fluid/framework/ir/unsqueeze2_eltwise_fuse_pass.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 
 namespace paddle {
@@ -42,12 +42,14 @@ TEST(UnsqueezeEltwiseFusePass, basic) {
   int num_fused_nodes_after = GetNumOpNodes(graph, "elementwise_mul");
   VLOG(3) << DebugString(graph);
 
-  PADDLE_ENFORCE_EQ(num_nodes_before, num_nodes_after + 2,
+  PADDLE_ENFORCE_EQ(num_nodes_before,
+                    num_nodes_after + 2,
                     platform::errors::PreconditionNotMet(
                         "The number of nodes before and after the fuse does "
                         "not meet expectations"));
   PADDLE_ENFORCE_EQ(
-      num_fused_nodes_after, 1,
+      num_fused_nodes_after,
+      1,
       platform::errors::PreconditionNotMet(
           "The number of fusion nodes does not meet expectations after fuse"));
 }
