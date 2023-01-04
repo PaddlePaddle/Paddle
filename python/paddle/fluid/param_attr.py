@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import paddle
 from .initializer import Initializer, Xavier
 from .regularizer import WeightDecayRegularizer
 from paddle.fluid.data_feeder import check_type
