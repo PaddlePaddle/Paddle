@@ -61,11 +61,16 @@ if platform.system() == "Windows":
             sys.base_prefix, sysconfig.get_config_var("VERSION")
         )
 else:
-    libname = sysconfig.get_config_var("INSTSONAME")
-    libdir = sysconfig.get_config_var('LIBDIR') + (
-        sysconfig.get_config_var("multiarchsubdir") or ""
+    cmake_python_library = "{}/{}".format(
+        sysconfig.get_config_var("LIBDIR"),
+        sysconfig.get_config_var("INSTSONAME"),
     )
-    cmake_python_library = os.path.join(libdir, libname)
+    if not os.path.exists(cmake_python_library):
+        libname = sysconfig.get_config_var("INSTSONAME")
+        libdir = sysconfig.get_config_var('LIBDIR') + (
+            sysconfig.get_config_var("multiarchsubdir") or ""
+        )
+        cmake_python_library = os.path.join(libdir, libname)
 
 TOP_DIR = os.path.dirname(os.path.realpath(__file__))
 
@@ -1341,7 +1346,7 @@ def main():
         env_dict_path = TOP_DIR + '/' + build_dir + '/python'
     else:
         env_dict_path = TOP_DIR + "/build/python/"
-    sys.path.append(env_dict_path)
+    sys.path.insert(1, env_dict_path)
     from env_dict import env_dict as env_dict
 
     global env_dict
