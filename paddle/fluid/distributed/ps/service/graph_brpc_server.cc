@@ -410,8 +410,10 @@ int32_t GraphBrpcService::graph_random_sample_neighbors(
   size_t node_num = request.params(1).size() / sizeof(uint64_t);
   const uint64_t *node_data =
       reinterpret_cast<const uint64_t *>(request.params(1).c_str());
-  const int sample_size = std::stoi(request.params(2).c_str());
-  const bool need_weight = std::stoi(request.params(3).c_str());
+  const int sample_size =
+      *reinterpret_cast<const int *>(request.params(2).c_str());
+  const bool need_weight =
+      *reinterpret_cast<const bool *>(request.params(3).c_str());
   std::vector<std::shared_ptr<char>> buffers(node_num);
   std::vector<int> actual_sizes(node_num, 0);
   (reinterpret_cast<GraphTable *>(table))
