@@ -13,7 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-
 #ifdef PADDLE_WITH_CUDA
 
 #include <cuda_runtime_api.h>
@@ -192,8 +191,8 @@ class MatmulAlgoCache {
       }
     }
 
-    VLOG(3) <<  "Found Best Algo : " << best_algo_idx;
-    VLOG(3) <<  "best_algo_time : " << best_algo_time;
+    VLOG(3) << "Found Best Algo : " << best_algo_idx;
+    VLOG(3) << "best_algo_time : " << best_algo_time;
     PADDLE_ENFORCE_GPU_SUCCESS(cudaEventDestroy(start_event));
     PADDLE_ENFORCE_GPU_SUCCESS(cudaEventDestroy(stop_event));
 
@@ -242,7 +241,6 @@ class MatmulAlgoCache {
         sizeof(trans_b),
         &size_to_write));
     HashValue_(seed, hash_fn, static_cast<int64_t>(trans_b));
-
   }
 
   void HashMatrixLayoutDesc_(cublasLtMatrixLayout_t desc,
@@ -341,30 +339,29 @@ struct CublasLtBatchedGEMM {
                   bool* isCublasLt) {}
 };
 
-
 template <typename T>
-struct TypeTrait{
+struct TypeTrait {
   cudaDataType_t mat_type = CUDA_R_32F;
   cudaDataType_t scale_type = CUDA_R_32F;
   cublasComputeType_t compute_type = CUBLAS_COMPUTE_32F;
 };
 
 template <>
-struct TypeTrait<phi::dtype::float16>{
+struct TypeTrait<phi::dtype::float16> {
   cudaDataType_t mat_type = CUDA_R_16F;
   cudaDataType_t scale_type = CUDA_R_32F;
   cublasComputeType_t compute_type = CUBLAS_COMPUTE_32F;
 };
 
 template <>
-struct TypeTrait<phi::dtype::bfloat16>{
+struct TypeTrait<phi::dtype::bfloat16> {
   cudaDataType_t mat_type = CUDA_R_16BF;
   cudaDataType_t scale_type = CUDA_R_32F;
   cublasComputeType_t compute_type = CUBLAS_COMPUTE_32F;
 };
 
 template <>
-struct TypeTrait<double>{
+struct TypeTrait<double> {
   cudaDataType_t mat_type = CUDA_R_64F;
   cudaDataType_t scale_type = CUDA_R_64F;
   cublasComputeType_t compute_type = CUBLAS_COMPUTE_64F;

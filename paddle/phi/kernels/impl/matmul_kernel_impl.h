@@ -121,10 +121,11 @@ void MatMulFunction(const Context& dev_ctx,
             N));
     // To count MatMul's case from 0 rather than 1 can be consisant with
     // op-benchmark's config.
-    VLOG(3) << "MatMul's case 0";
     // MatMul's case 0  =>  vector * vector
     Out->Resize({1});
     dev_ctx.template Alloc<T>(Out);
+    VLOG(3) << "MatMul's case 0";
+#if CUDA_VERSION >= 11060
     CublasLtGEMM<T, Context>()(dev_ctx,
                                y_data,
                                x_data,
@@ -136,6 +137,7 @@ void MatMulFunction(const Context& dev_ctx,
                                true,  //
                                &isCublasLt);
     if (isCublasLt) return;
+#endif
     blas.GEMM(CblasNoTrans,
               CblasTrans,
               1,
@@ -186,6 +188,7 @@ void MatMulFunction(const Context& dev_ctx,
     if (trans_y) {
       const int M = Y.numel() / N;
       VLOG(3) << "MatMul's case 1";
+#if CUDA_VERSION >= 11060
       CublasLtGEMM<T, Context>()(dev_ctx,
                                  y_data,
                                  x_data,
@@ -198,6 +201,7 @@ void MatMulFunction(const Context& dev_ctx,
                                  &isCublasLt);
 
       if (isCublasLt) return;
+#endif
       blas.GEMV(false,
                 M,
                 N,
@@ -211,6 +215,7 @@ void MatMulFunction(const Context& dev_ctx,
       const int batch_size = Y.numel() / (M * N);
       if (batch_size == 1) {
         VLOG(3) << "MatMul's case 2";
+#if CUDA_VERSION >= 11060
         CublasLtGEMM<T, Context>()(dev_ctx,
                                    y_data,
                                    x_data,
@@ -222,6 +227,7 @@ void MatMulFunction(const Context& dev_ctx,
                                    false,
                                    &isCublasLt);
         if (isCublasLt) return;
+#endif
         blas.GEMV(true,
                   N,
                   M,
@@ -232,6 +238,7 @@ void MatMulFunction(const Context& dev_ctx,
                   dev_ctx.template Alloc<T>(Out));
       } else {
         VLOG(3) << "MatMul's case 3";
+#if CUDA_VERSION >= 11060
         CublasLtBatchedGEMM<T, Context>()(dev_ctx,
                                           y_data,
                                           x_data,
@@ -248,6 +255,7 @@ void MatMulFunction(const Context& dev_ctx,
                                           &isCublasLt);
 
         if (isCublasLt) return;
+#endif
         blas.BatchedGEMM(CblasTrans,
                          CblasNoTrans,
                          M,
@@ -306,6 +314,7 @@ void MatMulFunction(const Context& dev_ctx,
       const int batch_size = X.numel() / (M * N);
       if (batch_size == 1) {
         VLOG(3) << "MatMul's case 4";
+#if CUDA_VERSION >= 11060
         CublasLtGEMM<T, Context>()(dev_ctx,
                                    x_data,
                                    y_data,
@@ -317,6 +326,7 @@ void MatMulFunction(const Context& dev_ctx,
                                    false,
                                    &isCublasLt);
         if (isCublasLt) return;
+#endif
         blas.GEMV(true,
                   N,
                   M,
@@ -327,6 +337,7 @@ void MatMulFunction(const Context& dev_ctx,
                   dev_ctx.template Alloc<T>(Out));
       } else {
         VLOG(3) << "MatMul's case 5";
+#if CUDA_VERSION >= 11060
         CublasLtBatchedGEMM<T, Context>()(dev_ctx,
                                           x_data,
                                           y_data,
@@ -342,6 +353,7 @@ void MatMulFunction(const Context& dev_ctx,
                                           M,
                                           &isCublasLt);
         if (isCublasLt) return;
+#endif
         blas.BatchedGEMM(CblasTrans,
                          CblasNoTrans,
                          M,
@@ -359,6 +371,7 @@ void MatMulFunction(const Context& dev_ctx,
     } else {
       const int M = X.numel() / N;
       VLOG(3) << "MatMul's case 6";
+#if CUDA_VERSION >= 11060
       CublasLtGEMM<T, Context>()(dev_ctx,
                                  x_data,
                                  y_data,
@@ -370,6 +383,7 @@ void MatMulFunction(const Context& dev_ctx,
                                  false,
                                  &isCublasLt);
       if (isCublasLt) return;
+#endif
       blas.GEMV(false,
                 M,
                 N,
@@ -451,6 +465,7 @@ void MatMulFunction(const Context& dev_ctx,
   if (out_batch_size == 0) return;
   if (x_batch_size == 1 && y_batch_size == 1) {
     VLOG(3) << "MatMul's case 7";
+#if CUDA_VERSION >= 11060
     CublasLtGEMM<T, Context>()(dev_ctx,
                                x_data,
                                y_data,
@@ -462,6 +477,7 @@ void MatMulFunction(const Context& dev_ctx,
                                trans_y,
                                &isCublasLt);
     if (isCublasLt) return;
+#endif
     blas.GEMM(trans_x ? CblasTrans : CblasNoTrans,
               trans_y ? CblasTrans : CblasNoTrans,
               M,
@@ -475,6 +491,7 @@ void MatMulFunction(const Context& dev_ctx,
   } else if (x_batch_size == 1) {
     if (M == 1 && trans_y) {
       VLOG(3) << "MatMul's case 8";
+#if CUDA_VERSION >= 11060
       CublasLtGEMM<T, Context>()(dev_ctx,
                                  y_data,
                                  x_data,
@@ -486,6 +503,7 @@ void MatMulFunction(const Context& dev_ctx,
                                  false,
                                  &isCublasLt);
       if (isCublasLt) return;
+#endif
       blas.GEMV(false,
                 y_batch_size * N,
                 K,
@@ -496,6 +514,7 @@ void MatMulFunction(const Context& dev_ctx,
                 dev_ctx.template Alloc<T>(Out));
     } else {
       VLOG(3) << "MatMul's case 9";
+#if CUDA_VERSION >= 11060
       CublasLtBatchedGEMM<T, Context>()(dev_ctx,
                                         x_data,
                                         y_data,
@@ -511,6 +530,7 @@ void MatMulFunction(const Context& dev_ctx,
                                         M * N,
                                         &isCublasLt);
       if (isCublasLt) return;
+#endif
       blas.BatchedGEMM(trans_x ? CblasTrans : CblasNoTrans,
                        trans_y ? CblasTrans : CblasNoTrans,
                        M,
@@ -528,6 +548,7 @@ void MatMulFunction(const Context& dev_ctx,
   } else if (y_batch_size == 1) {
     if (!trans_x) {
       VLOG(3) << "MatMul's case 10";
+#if CUDA_VERSION >= 11060
       CublasLtGEMM<T, Context>()(dev_ctx,
                                  x_data,
                                  y_data,
@@ -539,6 +560,7 @@ void MatMulFunction(const Context& dev_ctx,
                                  trans_y,
                                  &isCublasLt);
       if (isCublasLt) return;
+#endif
       blas.GEMM(CblasNoTrans,
                 trans_y ? CblasTrans : CblasNoTrans,
                 x_batch_size * M,
@@ -551,6 +573,7 @@ void MatMulFunction(const Context& dev_ctx,
                 dev_ctx.template Alloc<T>(Out));
     } else {
       VLOG(3) << "MatMul's case 11";
+#if CUDA_VERSION >= 11060
       CublasLtBatchedGEMM<T, Context>()(dev_ctx,
                                         x_data,
                                         y_data,
@@ -566,6 +589,7 @@ void MatMulFunction(const Context& dev_ctx,
                                         M * N,
                                         &isCublasLt);
       if (isCublasLt) return;
+#endif
       blas.BatchedGEMM(CblasTrans,
                        trans_y ? CblasTrans : CblasNoTrans,
                        M,
@@ -582,6 +606,7 @@ void MatMulFunction(const Context& dev_ctx,
     }
   } else if (!is_broadcast_dims) {
     VLOG(3) << "MatMul's case 12";
+#if CUDA_VERSION >= 11060
     CublasLtBatchedGEMM<T, Context>()(dev_ctx,
                                       x_data,
                                       y_data,
@@ -597,6 +622,7 @@ void MatMulFunction(const Context& dev_ctx,
                                       M * N,
                                       &isCublasLt);
     if (isCublasLt) return;
+#endif
     blas.BatchedGEMM(trans_x ? CblasTrans : CblasNoTrans,
                      trans_y ? CblasTrans : CblasNoTrans,
                      M,
@@ -629,6 +655,7 @@ void MatMulFunction(const Context& dev_ctx,
       IndexIncreaseFromDims(batch_dim, out_broadcast_dims.data(), index.data());
     }
     VLOG(3) << "MatMul's case 13";
+#if CUDA_VERSION >= 11060
     CublasLtBatchedGEMM<T, Context>()(dev_ctx,
                                       x_ptr.data(),
                                       y_ptr.data(),
@@ -641,6 +668,7 @@ void MatMulFunction(const Context& dev_ctx,
                                       out_batch_size,
                                       &isCublasLt);
     if (isCublasLt) return;
+#endif
     blas.BatchedGEMM(trans_x ? CblasTrans : CblasNoTrans,
                      trans_y ? CblasTrans : CblasNoTrans,
                      M,
