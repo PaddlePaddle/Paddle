@@ -135,10 +135,7 @@ void ReshapeTransposeMatmulMkldnnFusePass::Fuse(
     if (matmul_type == "matmul") {
       matmul_desc->SetAttr("trans_x", matmul_desc->GetAttr("transpose_X"));
       matmul_desc->SetAttr("trans_y", matmul_desc->GetAttr("transpose_Y"));
-      auto matmul_alpha = matmul_desc->GetAttrIfExists<float>("alpha");
-      if (matmul_alpha != 1.0f) {
-        matmul_desc->SetAttr("alpha", matmul_alpha);
-      }
+      matmul_desc->SetAttr("matmul_alpha", matmul_desc->GetAttr("alpha"));
     }
     matmul_desc->SetInput(matmul_input_name, {(reshape_in)->Name()});
     matmul_desc->SetAttr("fused_reshape_" + matmul_input_name, reshape_shape);
