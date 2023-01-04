@@ -25,7 +25,6 @@ namespace autotune {
 template <typename T, typename ReturnType, typename... Args>
 class KernelCallback {
  public:
-  using ReturnT = ReturnType;
   using FuncType = ReturnType (*)(Args...);
 
   KernelCallback() {}

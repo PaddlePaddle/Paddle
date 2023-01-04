@@ -72,10 +72,8 @@ class MatmulAlgoCache {
     HashMatrixLayoutDesc_(c_desc, &seed, hash_fn);
 
     cublasLtMatmulAlgo_t ret;
-    // FIXME: this code block:
     // std::lock_guard will call cache_mutex_.unlock() when it is destructed.
     // The purpose of the braces is to precisely control when it is destructed.
-    // but why does it affect the Nsys of the cublasLtMatmul call.
     {
       std::lock_guard<std::mutex> lock(cache_mutex_);
       auto it = map_.find(seed);
@@ -194,8 +192,8 @@ class MatmulAlgoCache {
       }
     }
 
-    // std::cout <<  "Found Best Algo : " << best_algo_idx << std::endl;
-    // std::cout <<  "best_algo_time : " << best_algo_time << std::endl;
+    VLOG(3) <<  "Found Best Algo : " << best_algo_idx;
+    VLOG(3) <<  "best_algo_time : " << best_algo_time;
     PADDLE_ENFORCE_GPU_SUCCESS(cudaEventDestroy(start_event));
     PADDLE_ENFORCE_GPU_SUCCESS(cudaEventDestroy(stop_event));
 
@@ -228,7 +226,6 @@ class MatmulAlgoCache {
                        const std::hash<int64_t>& hash_fn) {
     size_t size_to_write;
     int trans_a, trans_b;
-    uint32_t epilogue;
 
     PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cublasLtMatmulDescGetAttribute(
         desc,
@@ -246,13 +243,6 @@ class MatmulAlgoCache {
         &size_to_write));
     HashValue_(seed, hash_fn, static_cast<int64_t>(trans_b));
 
-    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cublasLtMatmulDescGetAttribute(
-        desc,
-        CUBLASLT_MATMUL_DESC_EPILOGUE,
-        &epilogue,
-        sizeof(epilogue),
-        &size_to_write));
-    HashValue_(seed, hash_fn, static_cast<int64_t>(epilogue));
   }
 
   void HashMatrixLayoutDesc_(cublasLtMatrixLayout_t desc,
@@ -351,6 +341,35 @@ struct CublasLtBatchedGEMM {
                   bool* isCublasLt) {}
 };
 
+
+template <typename T>
+struct TypeTrait{
+  cudaDataType_t mat_type = CUDA_R_32F;
+  cudaDataType_t scale_type = CUDA_R_32F;
+  cublasComputeType_t compute_type = CUBLAS_COMPUTE_32F;
+};
+
+template <>
+struct TypeTrait<phi::dtype::float16>{
+  cudaDataType_t mat_type = CUDA_R_16F;
+  cudaDataType_t scale_type = CUDA_R_32F;
+  cublasComputeType_t compute_type = CUBLAS_COMPUTE_32F;
+};
+
+template <>
+struct TypeTrait<phi::dtype::bfloat16>{
+  cudaDataType_t mat_type = CUDA_R_16BF;
+  cudaDataType_t scale_type = CUDA_R_32F;
+  cublasComputeType_t compute_type = CUBLAS_COMPUTE_32F;
+};
+
+template <>
+struct TypeTrait<double>{
+  cudaDataType_t mat_type = CUDA_R_64F;
+  cudaDataType_t scale_type = CUDA_R_64F;
+  cublasComputeType_t compute_type = CUBLAS_COMPUTE_64F;
+};
+
 template <typename T>
 struct CublasLtGEMM<T, phi::GPUContext> {
   void operator()(const phi::GPUContext& dev_ctx,
@@ -372,21 +391,10 @@ struct CublasLtGEMM<T, phi::GPUContext> {
     cublasOperation_t transx = trans_x ? CUBLAS_OP_T : CUBLAS_OP_N;
     cublasOperation_t transy = trans_y ? CUBLAS_OP_T : CUBLAS_OP_N;
 
-    cudaDataType_t mat_type = CUDA_R_32F;
-    cudaDataType_t scale_type = CUDA_R_32F;
-    cublasComputeType_t compute_type = CUBLAS_COMPUTE_32F;
-
-    if (std::is_same<T, phi::dtype::float16>::value) {
-      mat_type = CUDA_R_16F;
-    }
-    if (std::is_same<T, phi::dtype::bfloat16>::value) {
-      mat_type = CUDA_R_16BF;
-    }
-    if (std::is_same<T, double>::value) {
-      mat_type = CUDA_R_64F;
-      scale_type = CUDA_R_64F;
-      compute_type = CUBLAS_COMPUTE_64F;
-    }
+    TypeTrait<T> MT;
+    cudaDataType_t mat_type = MT.mat_type;
+    cudaDataType_t scale_type = MT.scale_type;
+    cublasComputeType_t compute_type = MT.compute_type;
 
     // Create operation desciriptor; see cublasLtMatmulDescAttributes_t for
     // details about defaults; This OP we just need to set the transforms for A
@@ -510,21 +518,10 @@ struct CublasLtBatchedGEMM<T, phi::GPUContext> {
     cublasOperation_t transx = trans_x ? CUBLAS_OP_T : CUBLAS_OP_N;
     cublasOperation_t transy = trans_y ? CUBLAS_OP_T : CUBLAS_OP_N;
 
-    cudaDataType_t mat_type = CUDA_R_32F;
-    cudaDataType_t scale_type = CUDA_R_32F;
-    cublasComputeType_t compute_type = CUBLAS_COMPUTE_32F;
-
-    if (std::is_same<T, phi::dtype::float16>::value) {
-      mat_type = CUDA_R_16F;
-    }
-    if (std::is_same<T, phi::dtype::bfloat16>::value) {
-      mat_type = CUDA_R_16BF;
-    }
-    if (std::is_same<T, double>::value) {
-      mat_type = CUDA_R_64F;
-      scale_type = CUDA_R_64F;
-      compute_type = CUBLAS_COMPUTE_64F;
-    }
+    TypeTrait<T> MT;
+    cudaDataType_t mat_type = MT.mat_type;
+    cudaDataType_t scale_type = MT.scale_type;
+    cublasComputeType_t compute_type = MT.compute_type;
 
     // Create operation desciriptor; see cublasLtMatmulDescAttributes_t for
     // details about defaults; This OP we just need to set the transforms for A
