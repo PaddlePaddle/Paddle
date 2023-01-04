@@ -19,13 +19,17 @@ import numpy as np
 import paddle
 from paddle.distributed.fleet.meta_optimizers.common import OP_ROLE_KEY, OpRole
 
-from ..auto_parallel.dist_attribute import OperatorDistAttr, TensorDistAttr
+from ..auto_parallel.dist_attribute import (
+    OperatorDistAttr,
+    TensorDistAttr,
+)
+from ..auto_parallel.operators.common import SyncMode
 from ..auto_parallel.process_group import get_world_process_group
 from ..auto_parallel.process_mesh import ProcessMesh
 from ..auto_parallel.reshard import Resharder
 from ..auto_parallel.utils import (
     _get_comm_group,
-    insert_dependencies_for_two_vars,
+    insert_dependencies_for_vars,
     is_gradient_clip_op,
     is_optimize_op,
     use_standalone_executor,
@@ -370,8 +374,9 @@ class ClipGradByGloblNormPass(PassBase):
                             OP_ROLE_KEY: OpRole.Optimize,
                         },
                     )
+                    # TODO better regular the usage of op namescope
                     allreduce_op._set_attr(
-                        'op_namescope', "/gradient_clip_pass"
+                        'op_namescope', str('/') + SyncMode.GlobalNormSync
                     )
                     self.clip_helper._init_dist_attr(allreduce_op)
 
@@ -394,12 +399,12 @@ class ClipGradByGloblNormPass(PassBase):
                             j -= 1
                         assert (
                             prior_op is not None
-                        ), "Unexception: ClipByGlobalNorm could not find priory depend op"
+                        ), "Unexpected: ClipByGlobalNorm could not find priory depend op"
                         prior_var = block.vars[prior_op.output_arg_names[0]]
                         assert (
                             prior_var is not None
-                        ), "Unexception: ClipByGlobalNorm could not find priory depend var"
-                        insert_dependencies_for_two_vars(
+                        ), "Unexpected: ClipByGlobalNorm could not find priory depend var"
+                        insert_dependencies_for_vars(
                             block,
                             idx,
                             prior_var,
@@ -411,6 +416,7 @@ class ClipGradByGloblNormPass(PassBase):
                             ],  # hack to avoid initialize the dist attr for coalesc var
                             is_recompute=False,
                             sync=False,
+                            op_namescope="grad_clip_fill_constant_dep",
                         )
 
         for varname in removed_tmp_var:

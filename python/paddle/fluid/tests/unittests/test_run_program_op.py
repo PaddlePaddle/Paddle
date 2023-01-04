@@ -262,6 +262,15 @@ class RunProgramOpTest(unittest.TestCase):
                     )
                 )
 
+            self.attrs.extend(
+                (
+                    'param_grad_names',
+                    [p.name + '@GRAD' for p in inputs['Params']],
+                    'out_grad_names',
+                    [out.name + '@GRAD' for out in outputs['Out']],
+                )
+            )
+
             _legacy_C_ops.run_program(
                 inputs['X'],
                 inputs['Params'],
@@ -304,6 +313,15 @@ class RunProgramOpTest(unittest.TestCase):
                         backward_program_desc.block(0),
                     )
                 )
+
+            self.attrs.extend(
+                (
+                    'param_grad_names',
+                    [p.name + '@GRAD' for p in inputs['Params']],
+                    'out_grad_names',
+                    [out.name + '@GRAD' for out in outputs['Out']],
+                )
+            )
 
             _legacy_C_ops.run_program(
                 inputs['X'],
@@ -398,12 +416,12 @@ class TestRunProgramOpWithFC(RunProgramOpTest):
             ),
             trainable=True,
         )
-        pred = fluid.layers.fc(
-            input=img,
+        pred = paddle.static.nn.fc(
+            x=img,
             size=10,
-            param_attr=weight_attr,
+            weight_attr=weight_attr,
             bias_attr=bias_attr,
-            act='relu',
+            activation='relu',
         )
         # 2. get forward op num
         fwd_op_num = fluid.default_main_program().global_block().desc.op_size()

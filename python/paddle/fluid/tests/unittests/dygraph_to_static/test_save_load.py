@@ -19,6 +19,7 @@ import unittest
 import numpy as np
 from test_fetch_feed import Linear
 
+import paddle
 import paddle.fluid as fluid
 from paddle.fluid.optimizer import AdamOptimizer
 from paddle.jit import ProgramTranslator
@@ -62,7 +63,7 @@ class TestDyToStaticSaveLoad(unittest.TestCase):
                 net.clear_gradients()
             # Save parameters
 
-            fluid.save_dygraph(net.state_dict(), self.model_path)
+            paddle.save(net.state_dict(), self.model_path + '.pdparams')
             # minimize() will update parameter, call net() to get output and avg_loss.
             # Switch into eval mode.
             net.eval()
@@ -73,7 +74,7 @@ class TestDyToStaticSaveLoad(unittest.TestCase):
             dygraph_net = Linear(32, 64)
 
             # Load parameters
-            model_dict, _ = fluid.load_dygraph(self.model_path)
+            model_dict = paddle.load(self.model_path + '.pdparams')
             dygraph_net.set_dict(model_dict)
             # Switch into eval mode.
             dygraph_net.eval()

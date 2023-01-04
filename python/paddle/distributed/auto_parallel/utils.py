@@ -1182,6 +1182,8 @@ def _get_split_indices(
 
 
 def set_grad_var_shape(program, dist_context):
+    from paddle.distributed.fleet.meta_optimizers.common import OpRole
+
     from .operators.common import infer_shape
 
     block = program.global_block()
@@ -1962,6 +1964,9 @@ def set_recompute_segments(model, losses, strategy, program):
             and hasattr(model.gpt, "checkpoints")
         ):
             ckpts = model.gpt.checkpoints
+            # last recompute segment is not need to recompute
+            if len(ckpts) > 2:
+                ckpts.pop()
         else:
             ckpts = recompute.checkpoints
     else:
@@ -2197,6 +2202,7 @@ def insert_dependencies_for_two_ops(
     dist_context,
     is_recompute=False,
     sync=False,
+    op_namescope=None,
 ):
     """
     dependency: prior_op should be run before posterior_op
@@ -2241,49 +2247,74 @@ def insert_dependencies_for_two_ops(
         [block.var(name) for name in posterior_op.input_arg_names]
     )
 
-    return insert_dependencies_for_two_vars(
+    return insert_dependencies_for_vars(
         block,
         idx,
         first_var,
         second_var,
         dist_context,
         OpRole.Backward,
-        prior_op_mesh,
-        is_recompute,
-        sync,
+        process_mesh=prior_op_mesh,
+        is_recompute=is_recompute,
+        sync=sync,
+        op_namescope=op_namescope,
+        use_nop=False,
     )
 
 
-def insert_dependencies_for_two_vars(
+def insert_dependencies_for_vars(
     block,
     idx,
-    prior_var,
-    post_var,
+    prior_vars,
+    post_vars,
     dist_context,
     oprole,
     process_mesh=None,
     is_recompute=False,
     sync=False,
+    op_namescope=None,
+    use_nop=False,
 ):
     """
-    dependency: op that generates prior_var should be run before op that generates post_var
+    dependency: op that generates prior_vars should be run before op that generates post_vars
     """
-    assert block.has_var(prior_var.name)
-    assert block.has_var(post_var.name)
+
+    if isinstance(prior_vars, Variable):
+        prior_vars = [prior_vars]
+    if isinstance(post_vars, Variable):
+        post_vars = [post_vars]
+    for prior_var in prior_vars:
+        assert block.has_var(prior_var.name)
+    for post_var in post_vars:
+        assert block.has_var(post_var.name)
+
     if process_mesh is None:
         process_mesh = dist_context.get_tensor_dist_attr_for_program(
-            post_var
+            post_vars[0]
         ).process_mesh
     assert process_mesh is not None
 
-    depend_op = block._insert_op_without_sync(
-        idx,
-        type='nop',
-        inputs={
-            "X": prior_var,
-        },
-        outputs={"Out": post_var},
-    )
+    use_nop = True
+    if use_nop:
+        depend_op = block._insert_op_without_sync(
+            idx,
+            type='nop',
+            inputs={
+                "X": prior_vars,
+            },
+            outputs={"Out": post_vars},
+        )
+    else:
+        depend_op = block._insert_op_without_sync(
+            idx,
+            type='depend',
+            inputs={
+                "X": post_vars,
+                "Dep": prior_vars,
+            },
+            outputs={"Out": post_vars},
+        )
+
     # depend_op.desc.set_type("depend")
     depend_op._set_attr(OP_ROLE_KEY, oprole)
     # depend_op.desc.set_input("Dep", [first_var.name])
@@ -2292,11 +2323,20 @@ def insert_dependencies_for_two_vars(
     naive_set_dist_op_attr_for_program_by_mesh(
         depend_op, process_mesh, dist_context, is_recompute
     )
+    if op_namescope is not None:
+        depend_op._set_attr('op_namescope', "/{}".format(op_namescope))
 
     if sync:
         block._sync_with_cpp()
 
     return depend_op
+
+
+def is_dep_skip_op(op):
+    if "c_" in op.type:
+        return True
+
+    return False
 
 
 def use_standalone_executor():
