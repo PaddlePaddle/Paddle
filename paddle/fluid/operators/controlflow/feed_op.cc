@@ -75,7 +75,7 @@ void FeedDenseTensorKernel(const Context& dev_ctx,
     out->ShareDataWith(in_tensor);
 #endif
   } else {
-    framework::TensorCopy(in_tensor, place, dev_ctx, out);
+    phi::Copy(dev_ctx, in_tensor, place, false, out);
   }
 
   out->set_lod(in_tensor.lod());
@@ -97,8 +97,8 @@ void FeedSparseCooTensorKernel(const Context& dev_ctx,
     *out = in_tensor;
   } else {
     phi::DenseTensor indices, values;
-    framework::TensorCopy(in_tensor.indices(), place, dev_ctx, &indices);
-    framework::TensorCopy(in_tensor.values(), place, dev_ctx, &values);
+    phi::Copy(dev_ctx, in_tensor.indices(), place, false, &indices);
+    phi::Copy(dev_ctx, in_tensor.values(), place, false, &values);
     out->SetMember(indices, values, in_tensor.meta());
   }
 }
