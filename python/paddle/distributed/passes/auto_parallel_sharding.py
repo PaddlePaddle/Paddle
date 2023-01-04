@@ -928,7 +928,7 @@ class ShardingPass(PassBase):
         # add deps for broadcast param init empty ops
         dep_map = {}
         for i, op in enumerate(main_block.ops):
-            if is_sharding_param_init_op(op):
+            if is_sharding_param_init_op(op) and i > 0:
                 init_varname = op.output("Out")[0]
                 init_var = main_block.vars[init_varname]
                 prior_op = main_block.ops[i - 1]
