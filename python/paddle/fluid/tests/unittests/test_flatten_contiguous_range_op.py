@@ -309,5 +309,19 @@ class TestDygraphInplaceFlattenPython(unittest.TestCase):
         paddle.enable_static()
 
 
+class TestFlatten0DTensorOpError(unittest.TestCase):
+    def test_errors(self):
+        image_shape = tuple()
+        x = np.random.uniform(-1.0, 1.0, []).astype('float32')
+
+        def test_ValueError1():
+            x_var = paddle.static.data(
+                name="x", shape=image_shape, dtype='float32'
+            )
+            out = paddle.flatten(x_var, start_axis=2, stop_axis=2)
+
+        self.assertRaises(ValueError, test_ValueError1)
+
+
 if __name__ == "__main__":
     unittest.main()
