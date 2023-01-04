@@ -644,10 +644,11 @@ int MultiHeadMatmulRoformerFusePass::BuildFusion(Graph* graph,
         PADDLE_GET_CONST(std::vector<int>, reshape_desc->GetAttr("shape"))
             .at(2);
 
-    auto* input_cos_tensor =
+    /*auto* input_cos_tensor =
         scope->FindVar(input_cos_q->Name())->GetMutable<phi::DenseTensor>();
     auto* input_sin_tensor =
         scope->FindVar(input_sin_q->Name())->GetMutable<phi::DenseTensor>();
+    */
     auto* input_cos_q_desc = input_cos_q->Var();
     input_cos_q_desc->SetPersistable(true);
     auto* input_sin_q_desc = input_sin_q->Var();
@@ -874,10 +875,10 @@ int MultiHeadMatmulRoformerFusePass::BuildFusion(Graph* graph,
                  reshape2_qkv_out,
                  scale,
                  scale_out,
-		 Node* softmax_qk,
-                 Node* eltadd0,
-                 Node* eltadd1,
-                 Node* eltadd2,
+		 softmax_qk,
+                 eltadd0,
+                 eltadd1,
+                 eltadd2,
                  matmul_qk,
 		 reshape2_qkv);
 
