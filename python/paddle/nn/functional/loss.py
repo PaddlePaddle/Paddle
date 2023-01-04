@@ -263,7 +263,7 @@ def fluid_softmax_with_cross_entropy(
             print(out)
     """
     if _non_static_mode():
-        if core.is_compiled_with_npu():
+        if core.is_compiled_with_npu() or core.is_compiled_with_mlu():
             softmax, backprop, loss = _legacy_C_ops.softmax_with_cross_entropy(
                 logits,
                 label,
