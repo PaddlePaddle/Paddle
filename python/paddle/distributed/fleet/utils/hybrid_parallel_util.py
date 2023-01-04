@@ -144,13 +144,16 @@ def broadcast_input_data(hcg, *inputs, **kwargs):
         "gpu",
         "npu",
     ], f"Only support xpu, gpu and npu now, but this is {dev}"
-
-    place = eval(f"paddle.{dev.upper()}Place(int(cur_device.split(':')[1]))")
+    dev_idx = int(cur_device.split(':')[1])
+    if dev == "gpu":
+        place = paddle.CUDAPlace(dev_idx)
+    else:
+        place = eval(f"paddle.{dev.upper()}Place")(dev_idx)
 
     for v in inputs:
         if isinstance(v, (core.VarBase, core.eager.Tensor)):
             with framework.no_grad():
-                if in_dygraph_mode() and not eval(f"v.place.is_{dev}_place()"):
+                if in_dygraph_mode() and not eval(f"v.place.is_{dev}_place")():
                     v_gpu = v._copy_to(place, True)
                     v._clear_data()
                     v_gpu._share_buffer_to(v)
@@ -161,7 +164,7 @@ def broadcast_input_data(hcg, *inputs, **kwargs):
     for k, v in kwargs.items():
         if isinstance(v, (core.VarBase, core.eager.Tensor)):
             with framework.no_grad():
-                if in_dygraph_mode() and not eval(f"v.place.is_{dev}_place()"):
+                if in_dygraph_mode() and not eval(f"v.place.is_{dev}_place")():
                     v_gpu = v._copy_to(place, True)
                     v._clear_data()
                     v_gpu._share_buffer_to(v)
