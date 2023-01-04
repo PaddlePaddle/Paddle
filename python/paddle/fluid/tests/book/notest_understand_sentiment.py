@@ -44,8 +44,8 @@ def convolution_net(
         act="tanh",
         pool_type="sqrt",
     )
-    prediction = fluid.layers.fc(
-        input=[conv_3, conv_4], size=class_dim, act="softmax"
+    prediction = paddle.static.nn.fc(
+        x=[conv_3, conv_4], size=class_dim, activation="softmax"
     )
     cost = paddle.nn.functional.cross_entropy(
         input=prediction, label=label, reduction='none', use_softmax=False

@@ -178,6 +178,8 @@ DataType Tensor::type() const {
     return DataType::UINT8;
   } else if (type == paddle::framework::proto::VarType::INT8) {
     return DataType::INT8;
+  } else if (type == paddle::framework::proto::VarType::BOOL) {
+    return DataType::BOOL;
   }
   return DataType::FLOAT32;
 }
@@ -280,6 +282,11 @@ void Tensor::CopyFromCpu(const T *data) {
 
 template <typename T>
 struct DataTypeInfo;
+
+template <>
+struct DataTypeInfo<bool> {
+  paddle::experimental::DataType TYPE = paddle::experimental::DataType::BOOL;
+};
 
 template <>
 struct DataTypeInfo<float> {
@@ -515,6 +522,7 @@ template PD_INFER_DECL void Tensor::CopyFromCpu<int32_t>(const int32_t *data);
 template PD_INFER_DECL void Tensor::CopyFromCpu<uint8_t>(const uint8_t *data);
 template PD_INFER_DECL void Tensor::CopyFromCpu<int8_t>(const int8_t *data);
 template PD_INFER_DECL void Tensor::CopyFromCpu<float16>(const float16 *data);
+template PD_INFER_DECL void Tensor::CopyFromCpu<bool>(const bool *data);
 
 template PD_INFER_DECL void Tensor::ShareExternalData<float>(
     const float *data,
@@ -546,6 +554,11 @@ template PD_INFER_DECL void Tensor::ShareExternalData<float16>(
     const std::vector<int> &shape,
     PlaceType place,
     DataLayout layout);
+template PD_INFER_DECL void Tensor::ShareExternalData<bool>(
+    const bool *data,
+    const std::vector<int> &shape,
+    PlaceType place,
+    DataLayout layout);
 
 template PD_INFER_DECL void Tensor::CopyToCpu<float>(float *data) const;
 template PD_INFER_DECL void Tensor::CopyToCpu<int64_t>(int64_t *data) const;
@@ -553,6 +566,7 @@ template PD_INFER_DECL void Tensor::CopyToCpu<int32_t>(int32_t *data) const;
 template PD_INFER_DECL void Tensor::CopyToCpu<uint8_t>(uint8_t *data) const;
 template PD_INFER_DECL void Tensor::CopyToCpu<int8_t>(int8_t *data) const;
 template PD_INFER_DECL void Tensor::CopyToCpu<float16>(float16 *data) const;
+template PD_INFER_DECL void Tensor::CopyToCpu<bool>(bool *data) const;
 
 template PD_INFER_DECL void Tensor::CopyToCpuImpl<float>(float *data,
                                                          void *exec_stream,
@@ -568,6 +582,10 @@ template PD_INFER_DECL void Tensor::CopyToCpuImpl<int8_t>(
     int8_t *data, void *exec_stream, CallbackFunc cb, void *cb_params) const;
 template PD_INFER_DECL void Tensor::CopyToCpuImpl<float16>(
     float16 *data, void *exec_stream, CallbackFunc cb, void *cb_params) const;
+template PD_INFER_DECL void Tensor::CopyToCpuImpl<bool>(bool *data,
+                                                        void *exec_stream,
+                                                        CallbackFunc cb,
+                                                        void *cb_params) const;
 
 template PD_INFER_DECL void Tensor::CopyToCpuAsync<float>(
     float *data, void *exec_stream) const;
@@ -581,6 +599,8 @@ template PD_INFER_DECL void Tensor::CopyToCpuAsync<int8_t>(
     int8_t *data, void *exec_stream) const;
 template PD_INFER_DECL void Tensor::CopyToCpuAsync<float16>(
     float16 *data, void *exec_stream) const;
+template PD_INFER_DECL void Tensor::CopyToCpuAsync<bool>(
+    bool *data, void *exec_stream) const;
 
 template PD_INFER_DECL void Tensor::CopyToCpuAsync<float>(
     float *data, CallbackFunc cb, void *cb_params) const;
@@ -594,6 +614,9 @@ template PD_INFER_DECL void Tensor::CopyToCpuAsync<int8_t>(
     int8_t *data, CallbackFunc cb, void *cb_params) const;
 template PD_INFER_DECL void Tensor::CopyToCpuAsync<float16>(
     float16 *data, CallbackFunc cb, void *cb_params) const;
+template PD_INFER_DECL void Tensor::CopyToCpuAsync<bool>(bool *data,
+                                                         CallbackFunc cb,
+                                                         void *cb_params) const;
 
 template PD_INFER_DECL float *Tensor::data<float>(PlaceType *place,
                                                   int *size) const;
@@ -607,6 +630,8 @@ template PD_INFER_DECL int8_t *Tensor::data<int8_t>(PlaceType *place,
                                                     int *size) const;
 template PD_INFER_DECL float16 *Tensor::data<float16>(PlaceType *place,
                                                       int *size) const;
+template PD_INFER_DECL bool *Tensor::data<bool>(PlaceType *place,
+                                                int *size) const;
 
 template PD_INFER_DECL float *Tensor::mutable_data<float>(PlaceType place);
 template PD_INFER_DECL int64_t *Tensor::mutable_data<int64_t>(PlaceType place);
@@ -614,6 +639,7 @@ template PD_INFER_DECL int32_t *Tensor::mutable_data<int32_t>(PlaceType place);
 template PD_INFER_DECL uint8_t *Tensor::mutable_data<uint8_t>(PlaceType place);
 template PD_INFER_DECL int8_t *Tensor::mutable_data<int8_t>(PlaceType place);
 template PD_INFER_DECL float16 *Tensor::mutable_data<float16>(PlaceType place);
+template PD_INFER_DECL bool *Tensor::mutable_data<bool>(PlaceType place);
 
 Tensor::Tensor(void *scope, const void *device_contexts)
     : scope_{scope}, device_contexs_(device_contexts) {}
@@ -897,6 +923,8 @@ template void InternalUtils::CopyFromCpuWithIoStream<int8_t>(
     paddle_infer::Tensor *t, const int8_t *data, cudaStream_t stream);
 template void InternalUtils::CopyFromCpuWithIoStream<float16>(
     paddle_infer::Tensor *t, const float16 *data, cudaStream_t stream);
+template void InternalUtils::CopyFromCpuWithIoStream<bool>(
+    paddle_infer::Tensor *t, const bool *data, cudaStream_t stream);
 
 template void InternalUtils::CopyToCpuWithIoStream<float>(
     paddle_infer::Tensor *t, float *data, cudaStream_t stream);
@@ -910,6 +938,8 @@ template void InternalUtils::CopyToCpuWithIoStream<int8_t>(
     paddle_infer::Tensor *t, int8_t *data, cudaStream_t stream);
 template void InternalUtils::CopyToCpuWithIoStream<float16>(
     paddle_infer::Tensor *t, float16 *data, cudaStream_t stream);
+template void InternalUtils::CopyToCpuWithIoStream<bool>(
+    paddle_infer::Tensor *t, bool *data, cudaStream_t stream);
 
 }  // namespace experimental
 

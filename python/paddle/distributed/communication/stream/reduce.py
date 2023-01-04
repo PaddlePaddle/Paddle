@@ -139,7 +139,9 @@ def reduce(
             tensor, dst_rank_in_group, op, group, sync_op, use_calc_stream
         )
     else:
-        assert group is None, "Group can not be used in static mode for now."
+        assert (
+            group is None
+        ), "Group can not be used in static graph mode for now."
         return _reduce_in_static_mode(
             tensor, dst, op, group, sync_op, use_calc_stream
         )

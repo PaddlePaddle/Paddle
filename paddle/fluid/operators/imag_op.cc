@@ -58,12 +58,12 @@ class ImagGradOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto dtype = OperatorWithKernel::IndicateVarDataType(
         ctx, framework::GradVarName("Out"));
     auto complex_dtype = framework::ToComplexType(dtype);
-    return framework::OpKernelType(complex_dtype, ctx.GetPlace());
+    return phi::KernelKey(complex_dtype, ctx.GetPlace());
   }
 };
 

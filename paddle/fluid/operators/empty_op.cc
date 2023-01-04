@@ -53,21 +53,23 @@ class EmptyOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  framework::OpKernelType GetKernelTypeForVar(
+  phi::KernelKey GetKernelTypeForVar(
       const std::string& var_name,
       const phi::DenseTensor& tensor,
-      const framework::OpKernelType& expected_kernel_type) const override {
+      const phi::KernelKey& expected_kernel_type) const override {
     if (var_name == "ShapeTensor" || var_name == "ShapeTensorList") {
-      return expected_kernel_type;
+      return phi::KernelKey(phi::Backend::ALL_BACKEND,
+                            expected_kernel_type.layout(),
+                            expected_kernel_type.dtype());
     } else {
-      return framework::OpKernelType(
-          expected_kernel_type.data_type_, tensor.place(), tensor.layout());
+      return phi::KernelKey(
+          tensor.place(), tensor.layout(), expected_kernel_type.dtype());
     }
   }
 
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& context) const override {
-    return framework::OpKernelType(
+    return phi::KernelKey(
         framework::proto::VarType::Type(context.Attr<int>("dtype")),
         context.GetPlace());
   }

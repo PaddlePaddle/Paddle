@@ -484,7 +484,7 @@ def try_set_static_shape_tensor(tensor, shape):
 
     """
     if not _non_static_mode():
-        # static mode, and shape is not all inferred (contains -1)
+        # static graph mode, and shape is not all inferred (contains -1)
         if -1 in tensor.shape:
             if isinstance(shape, Variable):
                 shape = try_get_constant_shape_from_tensor(shape)

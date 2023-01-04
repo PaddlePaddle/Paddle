@@ -45,6 +45,15 @@ class ParallelMode:
     MoEParallel = "auto_parallel/moe_parallel"
 
 
+class SyncMode:
+    """
+    the synchorization mode for communication or auxiliary operator
+    """
+
+    AmpFlagSync = "auto_parallel/amp_flag_synchorization"
+    GlobalNormSync = "auto_parallel/global_norm_synchorization"
+
+
 def is_elementwise_op(op_type):
     if op_type in _g_elementwise_ops:
         return True
@@ -266,8 +275,12 @@ def is_parameter_related(varname, block):
         varname = varname[: varname.index(".subprog_")]
     if ".cast_fp" in varname:
         varname = varname[: varname.index(".cast_fp")]
+    if ".cast_bf" in varname:
+        varname = varname[: varname.index(".cast_bf")]
     if ".quantized" in varname:
         varname = varname[: varname.index(".quantized")]
+    # if "@RESHARD" in varname:
+    #     varname = varname[: varname.index("@RESHARD")]
     assert block._find_var_recursive(varname)
     var = block._var_recursive(varname)
     return var.is_parameter
@@ -437,7 +450,7 @@ def sync_and_scale_gradients(dist_ctx, op, dp_group, allreduce_var_names):
         dims_mapping = op_dist_attr.get_output_dims_mapping(grad_var.name)
         assert (
             dims_mapping is not None
-        ), "Unexception: dims_mapping of output [{}] of op [{}] is None".format(
+        ), "Unexpected: dims_mapping of output [{}] of op [{}] is None".format(
             grad_var.name, op_dist_attr.op_type
         )
         # NOTE auxiliary op's dist attr should follow dist_op not dist_tensor
@@ -495,6 +508,22 @@ def is_data_parallel_reduce_op(op):
         op.type in ["c_reduce_sum", "c_allreduce_sum"]
         and op.desc.has_attr("op_namescope")
         and ParallelMode.DataParallel in op.desc.attr("op_namescope")
+    )
+
+
+def is_amp_flag_sync_op(op):
+    return (
+        op.type == "c_allreduce_max"
+        and op.desc.has_attr("op_namescope")
+        and SyncMode.AmpFlagSync in op.desc.attr("op_namescope")
+    )
+
+
+def is_global_norm_sync_op(op):
+    return (
+        op.type == "c_allreduce_sum"
+        and op.desc.has_attr("op_namescope")
+        and SyncMode.GlobalNormSync in op.desc.attr("op_namescope")
     )
 
 
