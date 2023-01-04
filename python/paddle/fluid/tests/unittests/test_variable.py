@@ -169,7 +169,7 @@ class TestVariable(unittest.TestCase):
             var15 = var[::-1, ::-1, ::-1]
 
             x = fluid.layers.data(name='x', shape=[13], dtype='float32')
-            y = fluid.layers.fc(input=x, size=1, act=None)
+            y = paddle.static.nn.fc(x, size=1, activation=None)
             y_1 = y[:, 0]
             feeder = fluid.DataFeeder(place=place, feed_list=[x])
             data = []

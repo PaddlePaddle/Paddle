@@ -791,13 +791,15 @@ class GradNodeRunProgram : public egr::GradNodeBase {
       }
     }
 
+    auto out_grad_names =
+        PADDLE_GET_CONST(std::vector<std::string>, attrs_.at("out_grad_names"));
     PADDLE_ENFORCE_EQ(hooked_grads[0].size(),
-                      fwd_out_names_.size(),
+                      out_grad_names.size(),
                       paddle::platform::errors::InvalidArgument(
                           "The hooked_grads[0].size() and "
-                          "fwd_out_names_.size() should be equal."));
-    for (size_t i = 0; i < fwd_out_names_.size(); ++i) {
-      hooked_grads[0][i].set_name(fwd_out_names_[i] + "@GRAD");
+                          "out_grad_names.size() should be equal."));
+    for (size_t i = 0; i < out_grad_names.size(); ++i) {
+      hooked_grads[0][i].set_name(out_grad_names[i]);
     }
     RunProgramGradAPI(x_,
                       params_,
@@ -829,10 +831,6 @@ class GradNodeRunProgram : public egr::GradNodeBase {
     step_scope_ = scopes;
   }
 
-  void SetFwdOutNames(std::vector<std::string> out_names) {
-    fwd_out_names_ = out_names;
-  }
-
  protected:
   void ConstructXGradTensors(
       const std::vector<paddle::experimental::Tensor> &x,
@@ -850,21 +848,30 @@ class GradNodeRunProgram : public egr::GradNodeBase {
   }
 
   void ConstructParamGradTensors(
-      const std::vector<paddle::experimental::Tensor> &param,
-      std::vector<paddle::experimental::Tensor> *param_grad) {
-    for (auto &t : param) {
-      auto t_grad = egr::EagerUtils::unsafe_autograd_meta(t)->Grad();
+      const std::vector<paddle::experimental::Tensor> &params,
+      std::vector<paddle::experimental::Tensor> *param_grads) {
+    auto param_grad_names = PADDLE_GET_CONST(std::vector<std::string>,
+                                             attrs_.at("param_grad_names"));
+    PADDLE_ENFORCE_EQ(params.size(),
+                      param_grad_names.size(),
+                      paddle::platform::errors::InvalidArgument(
+                          "The param.size() and "
+                          "param_grad_names.size() should be equal."));
+
+    for (size_t i = 0; i < params.size(); ++i) {
+      auto &p = params[i];
+      auto &p_grad = egr::EagerUtils::unsafe_autograd_meta(p)->Grad();
       // In eager mode, the number of param_grad should be the same as
       // param, so here an empty Tensor is added for the param with
       // stop_gradient=True
-      if (!t_grad.defined()) {
-        param_grad->emplace_back();
-      } else if (t_grad.is_dense_tensor()) {
-        param_grad->emplace_back(std::make_shared<phi::DenseTensor>());
-      } else if (t_grad.is_selected_rows()) {
-        param_grad->emplace_back(std::make_shared<phi::SelectedRows>());
+      if (!p_grad.defined()) {
+        param_grads->emplace_back();
+      } else if (p_grad.is_dense_tensor()) {
+        param_grads->emplace_back(std::make_shared<phi::DenseTensor>());
+      } else if (p_grad.is_selected_rows()) {
+        param_grads->emplace_back(std::make_shared<phi::SelectedRows>());
       }
-      param_grad->back().set_name(t.name() + "@GRAD");
+      param_grads->back().set_name(param_grad_names[i]);
     }
   }
 
@@ -879,8 +886,6 @@ class GradNodeRunProgram : public egr::GradNodeBase {
   std::vector<paddle::experimental::Tensor> x_;
   std::vector<paddle::experimental::Tensor> params_;
   std::vector<paddle::framework::Scope *> step_scope_;
-
-  std::vector<std::string> fwd_out_names_;
 
   // Attribute Map
   paddle::framework::AttributeMap attrs_;

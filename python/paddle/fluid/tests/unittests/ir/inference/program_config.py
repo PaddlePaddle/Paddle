@@ -20,10 +20,6 @@ import numpy as np
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-from paddle.fluid.contrib.slim.quantization import (
-    QuantizationFreezePass,
-    QuantizationTransformPass,
-)
 from paddle.fluid.executor import global_scope
 from paddle.fluid.framework import (
     IrGraph,
@@ -32,6 +28,10 @@ from paddle.fluid.framework import (
     convert_np_dtype_to_dtype_,
 )
 from paddle.fluid.initializer import NumpyArrayInitializer
+from paddle.static.quantization import (
+    QuantizationFreezePass,
+    QuantizationTransformPass,
+)
 
 
 class TensorConfig:
