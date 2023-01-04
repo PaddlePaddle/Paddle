@@ -119,24 +119,21 @@ struct SimpleOpTypeSetTeller : public Teller {
 #endif
     }
 
-    // In static shape mode in TRT, we can't allow that op's input is a
-    // 1D-tensor So we filter it here. Some op like elementwise having "Y" too,
-    // but that is dealt with in the specified op, here just the common case
+    // In static shape in Paddle-TRT, we can't allow that one op has a
+    // 1D intermediate tensor as input.
     if (!with_dynamic_shape) {
-      std::string X_name;
       auto inputs = desc.Inputs();
-      if (inputs.count("X") && !desc.Input("X").empty()) {
-        X_name = desc.Input("X")[0];
-      } else if (inputs.count("Input") && !desc.Input("Input").empty()) {
-        X_name = desc.Input("Input")[0];
-      }
-      auto* block = desc.Block();
-      if (block) {
-        auto* x_var_desc = block->FindVar(X_name);
-        // Can't get feed op's TensorDesc
-        if (op_type != "feed" && x_var_desc && !x_var_desc->Persistable()) {
-          const auto x_shape = x_var_desc->GetShape();
-          if (x_shape.size() == 1) return false;
+      for (auto iter : inputs) {
+        for (auto var_name : iter.second) {
+          auto* block = desc.Block();
+          if (block) {
+            auto* var_desc = block->FindVar(var_name);
+            // Can't get feed op's TensorDesc
+            if (op_type != "feed" && var_desc && !var_desc->Persistable()) {
+              const auto shape = var_desc->GetShape();
+              if (shape.size() == 1) return false;
+            }
+          }
         }
       }
     }
@@ -2341,7 +2338,7 @@ struct SimpleOpTypeSetTeller : public Teller {
     }
 #endif
 
-    if (op_type == "equal") {
+    if (op_type == "equal" || op_type == "not_equal") {
 #if !IS_TRT_VERSION_GE(8000)
       VLOG(3) << "compare is not supported when TensorRT < 8.0";
       return false;
@@ -2493,6 +2490,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "elementwise_max",
       "elementwise_floordiv",
       "equal",
+      "not_equal",
       "less_than",
       "greater_than",
       "logical_or",
@@ -2639,6 +2637,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "elementwise_max",
       "elementwise_floordiv",
       "equal",
+      "not_equal",
       "less_than",
       "greater_than",
       "logical_or",

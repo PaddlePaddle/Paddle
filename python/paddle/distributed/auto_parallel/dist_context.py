@@ -870,8 +870,8 @@ class DistributedContext:
             else:
                 tensor_shape = serial_tensor.shape
             dims_mapping = dist_attr.dims_mapping
-            process_mesh_shape = dist_attr.process_mesh.topology
-            process_mesh_processes = dist_attr.process_mesh.processes
+            process_mesh_shape = dist_attr.process_mesh.shape
+            process_mesh_processes = dist_attr.process_mesh.process_ids
             # If the dimension of tensor is less than the sharding dimension of process mesh,
             # we just amend the dimension mapping to -1. (Is this really OK?)
             for i in range(len(tensor_shape)):
@@ -887,8 +887,8 @@ class DistributedContext:
         for dist_op in self._dist_ops_for_program.values():
             serial_op = dist_op.serial_op
             dist_attr = dist_op.dist_attr
-            process_mesh_shape = dist_attr.process_mesh.topology
-            process_mesh_processes = dist_attr.process_mesh.processes
+            process_mesh_shape = dist_attr.process_mesh.shape
+            process_mesh_processes = dist_attr.process_mesh.process_ids
             for arg_name in serial_op.input_arg_names:
                 if dist_op.get_serial_input(arg_name) is None:
                     tensor_shape = []

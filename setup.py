@@ -859,6 +859,14 @@ def get_package_data_and_package_dir():
         )
         package_data['paddle.libs'] += ['libcinnapi.so']
         package_data['paddle.libs'] += ['cinn_cuda_runtime_source.cuh']
+
+        cinn_fp16_file = (
+            env_dict.get("CINN_INCLUDE_DIR") + '/cinn/runtime/cuda/float16.h'
+        )
+        if os.path.exists(cinn_fp16_file):
+            shutil.copy(cinn_fp16_file, libs_path)
+            package_data['paddle.libs'] += ['float16.h']
+
         if env_dict.get("CMAKE_BUILD_TYPE") == 'Release' and os.name != 'nt':
             command = (
                 "patchelf --set-rpath '$ORIGIN/' %s/" % libs_path
@@ -1201,10 +1209,6 @@ def get_setup_parameters():
         'paddle.fluid.layers',
         'paddle.fluid.dataloader',
         'paddle.fluid.contrib',
-        'paddle.fluid.contrib.quantize',
-        'paddle.fluid.contrib.slim',
-        'paddle.fluid.contrib.slim.quantization',
-        'paddle.fluid.contrib.slim.quantization.imperative',
         'paddle.fluid.contrib.extend_optimizer',
         'paddle.fluid.contrib.mixed_precision',
         'paddle.fluid.contrib.mixed_precision.bf16',
@@ -1268,6 +1272,9 @@ def get_setup_parameters():
         'paddle.static',
         'paddle.static.nn',
         'paddle.static.amp',
+        'paddle.static.quantization',
+        'paddle.quantization',
+        'paddle.quantization.imperative',
         'paddle.tensor',
         'paddle.onnx',
         'paddle.autograd',
@@ -1348,7 +1355,7 @@ def main():
 
     # Log for PYPI, get long_description of setup()
     with open(
-        paddle_source_dir + '/python/paddle/README.rst', "r", encoding='UTF-8'
+        paddle_source_dir + '/python/paddle/README.md', "r", encoding='UTF-8'
     ) as f:
         long_description = f.read()
 

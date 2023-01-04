@@ -55,11 +55,13 @@ class TestFleetWithASPSharding(unittest.TestCase):
             )
             input_y = paddle.static.data(name="y", shape=[-1, 1], dtype='int64')
 
-            fc_1 = fluid.layers.fc(input=input_x, size=64, act='tanh')
-            fc_2 = fluid.layers.fc(input=fc_1, size=64, act='tanh')
-            fc_3 = fluid.layers.fc(input=fc_2, size=64, act='tanh')
-            fc_4 = fluid.layers.fc(input=fc_3, size=64, act='tanh')
-            prediction = fluid.layers.fc(input=fc_4, size=2, act='softmax')
+            fc_1 = paddle.static.nn.fc(x=input_x, size=64, activation='tanh')
+            fc_2 = paddle.static.nn.fc(x=fc_1, size=64, activation='tanh')
+            fc_3 = paddle.static.nn.fc(x=fc_2, size=64, activation='tanh')
+            fc_4 = paddle.static.nn.fc(x=fc_3, size=64, activation='tanh')
+            prediction = paddle.static.nn.fc(
+                x=fc_4, size=2, activation='softmax'
+            )
             cost = paddle.nn.functional.cross_entropy(
                 input=prediction,
                 label=input_y,
