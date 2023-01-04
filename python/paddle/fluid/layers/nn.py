@@ -42,7 +42,7 @@ from .layer_function_generator import (
     templatedoc,
     _generate_doc_string_,
 )
-from .tensor import concat, assign, fill_constant, zeros
+from .tensor import concat, assign, zeros
 from paddle.tensor import fill_constant
 from . import utils
 from .. import unique_name
