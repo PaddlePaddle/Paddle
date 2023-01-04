@@ -554,6 +554,16 @@ class TestSundryAPI(unittest.TestCase):
         self.assertEqual(out.grad.shape, [])
         self.assertEqual(x.grad.shape, [])
 
+    def test_cumprod(self):
+        x = paddle.full([], 1.0, 'float32')
+        x.stop_gradient = False
+        out = paddle.cumprod(x, 0)
+        out.backward()
+
+        self.assertEqual(out.shape, [])
+        self.assertEqual(out.grad.shape, [])
+        self.assertEqual(x.grad.shape, [])
+
     def test_clip(self):
         x = paddle.uniform([], None, -10, 10)
         x.stop_gradient = False

@@ -36,6 +36,10 @@ void CumprodKernel(const Context& dev_ctx,
   size_t outer_dim = 1;
   size_t mid_dim = 1;
   size_t inner_dim = 1;
+  if (shape.size() == 0) {
+    phi::Copy<Context>(dev_ctx, input, dev_ctx.GetPlace(), false, out);
+    return;
+  }
   GetCumprodDimInfo(shape, dim, &outer_dim, &mid_dim, &inner_dim);
 
   for (size_t i = 0; i < outer_dim; i++) {
