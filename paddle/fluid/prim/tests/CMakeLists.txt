@@ -15,13 +15,30 @@ set(prim_eager_deps
     grad_tensor_holder
     custom_operator_node)
 
-set(prim_generated_deps final_dygraph_function final_dygraph_node dygraph_function
-    dygraph_node)
-cc_test(
+set(prim_generated_deps final_dygraph_function final_dygraph_node
+                        dygraph_function dygraph_node)
+
+cc_test_old(
   test_static_prim
-  SRCS test_static_prim.cc
-  DEPS static_utils static_prim_api generated_op prim_utils)
+  SRCS
+  test_static_prim.cc
+  DEPS
+  static_utils
+  static_prim_api
+  generated_op
+  prim_utils
+  operator
+  elementwise_mul_op
+  scale_op
+  activation_op
+  phi_api
+  phi_dygraph_api)
+
 cc_test_old(
   test_eager_prim
-  SRCS test_eager_prim.cc
-  DEPS ${prim_eager_deps} ${prim_generated_deps} prim_utils)
+  SRCS
+  test_eager_prim.cc
+  DEPS
+  ${prim_eager_deps}
+  ${prim_generated_deps}
+  prim_utils)
