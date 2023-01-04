@@ -98,11 +98,10 @@ _dy2st_enable_standalone_executor_ = os.environ.get(
 # 2. dygraph_mode():
 # This flags inidicates we are now running in dygraph mode which called eager mode before.
 # 3. _in_legacy_dygraph():
-# This flags inidicates we are now running in legacy dygraph mode
+# This flags has been deprecated
 #
 # They have a relation ship as below:
-# Both dygraph_mode and _in_legacy_dygraph are _non_static_mode, but if you are running in
-# dygraph mode means you are not in _in_legacy_dygraph.
+# Since _in_legacy_graph is deprecated, so dygraph_mode is _non_static_mode
 #
 # Why we have to make different of _in_legacy_dygraph and dygraph_mode?
 # In some performance issue, we find that python if statement cause server performance problem
@@ -228,17 +227,13 @@ def in_dygraph_mode():
             print(paddle.in_dynamic_mode())  # True, dynamic mode is turn ON by default since paddle 2.0.0
 
             paddle.enable_static()
-            print(paddle.in_dynamic_mode())  # False, Now we are in static mode
+            print(paddle.in_dynamic_mode())  # False, Now we are in static graph mode
 
             paddle.disable_static()
             print(paddle.in_dynamic_mode())  # True, Now we are in dynamic mode
 
     """
     return (_dygraph_tracer_ is not None) and _in_eager_mode_
-
-
-def _in_legacy_dygraph():
-    return (not _in_eager_mode_) and (_dygraph_tracer_ is not None)
 
 
 def _non_static_mode():
@@ -1334,8 +1329,6 @@ class VariableMetaClass(type):
         if in_dygraph_mode():
             return issubclass(t, core.eager.Tensor)
         else:
-            if _in_legacy_dygraph():
-                return issubclass(t, core.VarBase)
             return issubclass(t, Variable)
 
 
@@ -1346,8 +1339,6 @@ class ParameterMetaClass(VariableMetaClass):
         if in_dygraph_mode():
             return issubclass(t, EagerParamBase)
         else:
-            if _in_legacy_dygraph():
-                return issubclass(t, ParamBase)
             return issubclass(t, Parameter)
 
 
@@ -2842,7 +2833,7 @@ class Operator:
                 op_attrs = dict()
             del attrs
 
-            # attr for static mode cuda graph
+            # attr for static graph mode cuda graph
             self._cuda_graph_attr = _current_cuda_graph_mode
 
             op_maker = core.op_proto_and_checker_maker
@@ -2988,7 +2979,7 @@ class Operator:
                             out_arg_names.append(arg)
                         else:
                             out_arg_names.append(arg.name)
-                        # TODO(minqiyang): could we remove variable's op in static mode?
+                        # TODO(minqiyang): could we remove variable's op in static graph mode?
                         if not _non_static_mode():
                             if isinstance(arg, str):
                                 block.var(arg).op = self
@@ -3893,31 +3884,18 @@ class Block:
                     error_clip=error_clip,
                 )
             else:
-                if _in_legacy_dygraph():
-                    var = ParamBase(
-                        d.shape(),
-                        d.dtype(),
-                        type=orig_var_type,
-                        name=new_name,
-                        stop_gradient=stop_gradient,
-                        trainable=trainable,
-                        optimize_attr=optimize_attr,
-                        regularizer=regularizer,
-                        error_clip=error_clip,
-                    )
-                else:
-                    var = Parameter(
-                        self,
-                        d.shape(),
-                        d.dtype(),
-                        type=orig_var_type,
-                        name=new_name,
-                        stop_gradient=stop_gradient,
-                        trainable=trainable,
-                        optimize_attr=optimize_attr,
-                        regularizer=regularizer,
-                        error_clip=error_clip,
-                    )
+                var = Parameter(
+                    self,
+                    d.shape(),
+                    d.dtype(),
+                    type=orig_var_type,
+                    name=new_name,
+                    stop_gradient=stop_gradient,
+                    trainable=trainable,
+                    optimize_attr=optimize_attr,
+                    regularizer=regularizer,
+                    error_clip=error_clip,
+                )
         elif var_type == "Variable":
             var = Variable(
                 self,
@@ -3946,10 +3924,7 @@ class Block:
         if in_dygraph_mode():
             param = EagerParamBase(*args, **kwargs)
         else:
-            if _in_legacy_dygraph():
-                param = ParamBase(*args, **kwargs)
-            else:
-                param = Parameter(global_block, *args, **kwargs)
+            param = Parameter(global_block, *args, **kwargs)
 
         if 'initializer' in kwargs:
 
@@ -4015,7 +3990,7 @@ class Block:
 
             # record ops in tracer rather than blocks
             #
-            # TODO(minqiyang): add op stop_gradient support in static mode too.
+            # TODO(minqiyang): add op stop_gradient support in static graph mode too.
             # currently, we only support stop_gradient in dygraph mode.
 
             _dygraph_tracer().trace_op(
@@ -4262,35 +4237,21 @@ class Block:
                     name=v.name,
                 )
             else:
-                if _in_legacy_dygraph():
-                    new_p = ParamBase(
-                        shape=v.shape,
-                        dtype=v.dtype,
-                        type=v.type,
-                        lod_level=v.lod_level,
-                        stop_gradient=p.stop_gradient,
-                        trainable=p.trainable,
-                        optimize_attr=p.optimize_attr,
-                        regularizer=p.regularizer,
-                        error_clip=p.error_clip,
-                        name=v.name,
-                    )
-                else:
-                    new_p = Parameter(
-                        block=self,
-                        shape=v.shape,
-                        dtype=v.dtype,
-                        type=v.type,
-                        lod_level=v.lod_level
-                        if v.type == core.VarDesc.VarType.LOD_TENSOR
-                        else None,
-                        stop_gradient=p.stop_gradient,
-                        trainable=p.trainable,
-                        optimize_attr=p.optimize_attr,
-                        regularizer=p.regularizer,
-                        error_clip=p.error_clip,
-                        name=v.name,
-                    )
+                new_p = Parameter(
+                    block=self,
+                    shape=v.shape,
+                    dtype=v.dtype,
+                    type=v.type,
+                    lod_level=v.lod_level
+                    if v.type == core.VarDesc.VarType.LOD_TENSOR
+                    else None,
+                    stop_gradient=p.stop_gradient,
+                    trainable=p.trainable,
+                    optimize_attr=p.optimize_attr,
+                    regularizer=p.regularizer,
+                    error_clip=p.error_clip,
+                    name=v.name,
+                )
             self.vars[new_p.name] = new_p
 
     def _clone_variable(self, var, force_persistable=True):
@@ -7512,7 +7473,7 @@ def device_guard(device=None):
     """
 
     Note:
-        The API only supports static mode.
+        The API only supports static graph mode.
 
     A context manager that specifies the device on which the OP will be placed.
 
@@ -7586,9 +7547,9 @@ def _cuda_graph_guard(cuda_graph_attr=None):
     """
 
     Note:
-        The API only supports static mode.
+        The API only supports static graph mode.
 
-    A context manager that specifies the cuda_graph_mode which indicating the cuda graph capture under static mode.
+    A context manager that specifies the cuda_graph_mode which indicating the cuda graph capture under static graph mode.
 
     Args:
         cuda_graph_attr(str|None): The cuda graph attr with the format of:
@@ -7596,7 +7557,7 @@ def _cuda_graph_guard(cuda_graph_attr=None):
     """
     assert (
         not _non_static_mode()
-    ), "cuda_graph_guard only works under static mode"
+    ), "cuda_graph_guard only works under static graph mode"
     assert (
         core.is_compiled_with_cuda()
     ), "cuda_graph_guard context can be only used when Paddle is compiled with cuda"

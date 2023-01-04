@@ -353,7 +353,7 @@ class StaticRNN:
                 word = rnn.step_input(x_emb)
                 # create prev memory parameter, batch size comes from word
                 prev = rnn.memory(shape=[-1, hidden_size], batch_ref = word)
-                hidden = fluid.layers.fc(input=[word, prev], size=hidden_size, act='relu')
+                hidden = paddle.static.nn.fc(x=[word, prev], size=hidden_size, activation='relu')
                 # use hidden to update prev
                 rnn.update_memory(prev, hidden)
                 # mark hidden as output
@@ -444,7 +444,7 @@ class StaticRNN:
                         word = rnn.step_input(x_emb)
                         # create prev memory parameter, batch size comes from word
                         prev = rnn.memory(shape=[-1, hidden_size], batch_ref = word)
-                        hidden = fluid.layers.fc(input=[word, prev], size=hidden_size, act='relu')
+                        hidden = paddle.static.nn.fc(x=[word, prev], size=hidden_size, activation='relu')
                         # use hidden to update prev
                         rnn.update_memory(prev, hidden)
 
@@ -473,7 +473,7 @@ class StaticRNN:
                         word = rnn.step_input(x_emb)
                         # init memory
                         prev = rnn.memory(init=boot_memory)
-                        hidden = fluid.layers.fc(input=[word, prev], size=hidden_size, act='relu')
+                        hidden = paddle.static.nn.fc(x=[word, prev], size=hidden_size, activation='relu')
                         # update hidden with prev
                         rnn.update_memory(prev, hidden)
 
@@ -576,7 +576,7 @@ class StaticRNN:
                         word = rnn.step_input(x_emb)
                         # create prev memory parameter, batch size comes from word
                         prev = rnn.memory(shape=[-1, hidden_size], batch_ref = word)
-                        hidden = fluid.layers.fc(input=[word, prev], size=hidden_size, act='relu')
+                        hidden = paddle.static.nn.fc(x=[word, prev], size=hidden_size, activation='relu')
                         # use hidden to update prev
                         rnn.update_memory(prev, hidden)
 
@@ -629,7 +629,7 @@ class StaticRNN:
                         word = rnn.step_input(x_emb)
                         # create prev memory parameter, batch size comes from word
                         prev = rnn.memory(shape=[-1, hidden_size], batch_ref = word)
-                        hidden = fluid.layers.fc(input=[word, prev], size=hidden_size, act='relu')
+                        hidden = paddle.static.nn.fc(x=[word, prev], size=hidden_size, activation='relu')
                         # use hidden to update prev
                         rnn.update_memory(prev, hidden)
                         rnn.step_output(hidden)
@@ -691,7 +691,7 @@ class StaticRNN:
                         word = rnn.step_input(x_emb)
                         # create prev memory parameter, batch size comes from word
                         prev = rnn.memory(shape=[-1, hidden_size], batch_ref = word)
-                        hidden = fluid.layers.fc(input=[word, prev], size=hidden_size, act='relu')
+                        hidden = paddle.static.nn.fc(x=[word, prev], size=hidden_size, activation='relu')
                         # use hidden to update prev
                         rnn.update_memory(prev, hidden)
                         # mark each step's hidden and word as output
