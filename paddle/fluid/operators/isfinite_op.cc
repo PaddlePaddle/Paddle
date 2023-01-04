@@ -47,7 +47,7 @@ class OverflowOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     int dtype = -1;
     auto *x_var = ctx.InputVar("X");
@@ -65,8 +65,8 @@ class OverflowOp : public framework::OperatorWithKernel {
               "The input type mismatch, the type of Input(X) must be Tensor or "
               "SelectedRows, please check your input."));
     }
-    return framework::OpKernelType(framework::proto::VarType::Type(dtype),
-                                   ctx.GetPlace());
+    return phi::KernelKey(framework::proto::VarType::Type(dtype),
+                          ctx.GetPlace());
   }
 };
 

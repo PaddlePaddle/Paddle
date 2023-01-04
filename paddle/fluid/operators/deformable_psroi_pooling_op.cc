@@ -290,11 +290,10 @@ class DeformablePSROIPoolOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "Input"),
-        ctx.device_context());
+    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "Input"),
+                          ctx.device_context().GetPlace());
   }
 };
 
@@ -338,11 +337,10 @@ class DeformablePSROIPoolGradOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "Trans"),
-        ctx.device_context());
+    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "Trans"),
+                          ctx.device_context().GetPlace());
   }
 };
 
