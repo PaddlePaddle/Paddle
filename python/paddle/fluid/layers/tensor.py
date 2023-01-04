@@ -732,4 +732,6 @@ def zeros(shape, dtype, force_cpu=False, name=None):
     # TODO: remove zeros
     from paddle.tensor import fill_constant
 
-    return fill_constant(value=0.0, **locals())
+    return fill_constant(
+        value=0.0, shape=shape, dtype=dtype, force_cpu=force_cpu, name=name
+    )
