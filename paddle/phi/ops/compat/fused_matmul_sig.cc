@@ -22,6 +22,7 @@ KernelSignature FusedMatmulOpArgumentMapping(
                          {"X", "Y", "ResidualData"},
                          {"trans_x",
                           "trans_y",
+                          "matmul_alpha",
                           "fuse_activation",
                           "fuse_alpha",
                           "fuse_beta",
