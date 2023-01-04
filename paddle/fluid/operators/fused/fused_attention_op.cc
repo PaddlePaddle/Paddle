@@ -135,6 +135,13 @@ class FusedAttentionOp : public framework::OperatorWithKernel {
                             "dim of qkv_w is %d and num_heads is %d.",
                             y_dim[0],
                             num_heads));
+      if (ctx->Attrs().Get<int>("ring_id") == -1) {
+        PADDLE_ENFORCE_EQ(y_dim[0] * 3,
+                          y_dim[1],
+                          platform::errors::InvalidArgument(
+                              "The dimensions of qkv_weight must be 2"
+                              "(dim_embed, 3 * dim_embed)."));
+      }
       dim_head = y_dim[0] / num_heads;
       hidden_size = y_dim[0];
     } else {
@@ -144,6 +151,15 @@ class FusedAttentionOp : public framework::OperatorWithKernel {
                             "First dim of qkv_w must be 3 if disable "
                             "transpose_qkv_wb, but we got %d.",
                             y_dim[0]));
+      if (ctx->Attrs().Get<int>("ring_id") == -1) {
+        PADDLE_ENFORCE_EQ(y_dim[1] * y_dim[2],
+                          y_dim[3],
+                          platform::errors::InvalidArgument(
+                              "The dimensions of qkv_weight must be 4"
+                              "(3, num_head, dim_head, dim_embed),"
+                              "and must satisfy the limitations: "
+                              "(num_head * dim_head == dim_embed)"));
+      }
       num_heads = y_dim[1];
       dim_head = y_dim[2];
       hidden_size = y_dim[3];
@@ -186,18 +202,6 @@ class FusedAttentionOp : public framework::OperatorWithKernel {
                           x_dim,
                           y_dim));
 
-    if (ctx->Attrs().Get<int>("ring_id") == -1) {
-      PADDLE_ENFORCE_EQ(num_heads * dim_head,
-                        hidden_size,
-                        platform::errors::InvalidArgument(
-                            "The dimensions of qkv_weight must be 4 "
-                            "(3, num_head, dim_head, dim_embed) if disable "
-                            "transpose_qkv_w and must satisfy the limitations: "
-                            "(num_head * dim_head == dim_embed). Or must be "
-                            "2 (dim_embed, 3 * embed) if enable "
-                            "transpose_qkv_w"));
-    }
-
     if (ctx->Attrs().Get<bool>("pre_layer_norm") == true) {
       ctx->SetOutputDim("LnMean", {x_dim[0] * x_dim[1]});
       ctx->SetOutputDim("LnVariance", {x_dim[0] * x_dim[1]});
@@ -218,12 +222,10 @@ class FusedAttentionOp : public framework::OperatorWithKernel {
       }
     } else {
       // [batch_size, seq_len, 3 * hidden_size]
-      ctx->SetOutputDim("QKVOut",
-                        {x_dim[0], x_dim[1], 3 * num_heads * dim_head});
+      ctx->SetOutputDim("QKVOut", {x_dim[0], x_dim[1], 3 * hidden_size});
 
       if (ctx->HasInput("QKVBias")) {
-        ctx->SetOutputDim("QKVBiasOut",
-                          {x_dim[0], x_dim[1], 3 * num_heads * dim_head});
+        ctx->SetOutputDim("QKVBiasOut", {x_dim[0], x_dim[1], 3 * hidden_size});
       }
     }
 
