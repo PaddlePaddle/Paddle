@@ -15,6 +15,7 @@
 #pragma once
 
 #include <type_traits>
+
 #include "paddle/infrt/tensor/dense_host_tensor.h"
 #include "paddle/phi/core/dense_tensor.h"
 
@@ -22,7 +23,7 @@ namespace infrt {
 namespace kernel {
 namespace infershaped {
 
-using KeyType = const ::phi::DenseTensor&;
+using KeyType = const ::Tensor&;
 using CountType = uint8_t;
 
 constexpr CountType value(std::true_type) { return 1; }

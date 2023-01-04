@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/platform/device/mlu/mlu_stream.h"
+
 #include "paddle/fluid/platform/device/mlu/device_context.h"
 
 namespace paddle {
@@ -20,7 +21,8 @@ namespace platform {
 namespace stream {
 
 bool MLUStream::Init(const MLUPlace& place, const int priority) {
-  PADDLE_ENFORCE_EQ(is_mlu_place(place), true,
+  PADDLE_ENFORCE_EQ(is_mlu_place(place),
+                    true,
                     platform::errors::InvalidArgument(
                         "MLU stream must be created using mlu place."));
   place_ = place;

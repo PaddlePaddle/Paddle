@@ -14,11 +14,11 @@
 
 #pragma once
 
-#include "paddle/phi/kernels/broadcast_tensors_kernel.h"
-
 #include <vector>
+
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/enforce.h"
+#include "paddle/phi/kernels/broadcast_tensors_kernel.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
@@ -106,10 +106,11 @@ void BroadcastTensorsKernel(const Context& ctx,
       SWITCH_OUT_RANK_CASE(3)
       SWITCH_OUT_RANK_CASE(4)
       SWITCH_OUT_RANK_CASE(5)
+      SWITCH_OUT_RANK_CASE(6)
       default: {
-        PADDLE_THROW(paddle::platform::errors::InvalidArgument(
+        PADDLE_THROW(phi::errors::InvalidArgument(
             "Target tensor rank out of range"
-            "Maximum supported rank for broadcast is: 5"));
+            "Maximum supported rank for broadcast is: 6"));
       }
     }
   }

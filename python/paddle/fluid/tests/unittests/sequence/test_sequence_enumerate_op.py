@@ -12,11 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
-import unittest
-import numpy as np
 import sys
+import unittest
+
+import numpy as np
+
 sys.path.append("../")
 from op_test import OpTest
 
@@ -31,8 +31,9 @@ def sequence_enumerate(input_seq, in_lod, win_size, pad_value):
             single_seq = []
             for word_idx in range(win_size):
                 word_pos = idx + word_idx
-                dat = input_seq[word_pos] if word_pos < lod0[i+1] \
-                    else pad_value
+                dat = (
+                    input_seq[word_pos] if word_pos < lod0[i + 1] else pad_value
+                )
                 single_seq.append(dat)
             out_seq.append(single_seq)
     return out_seq
@@ -54,8 +55,9 @@ class TestSequenceEnumerateOp(OpTest):
         self.lod = [[9, 4, 11, 6]]
         self.win_size = 2
         self.pad_value = 0
-        out_seq = sequence_enumerate(self.in_seq, self.lod, self.win_size,
-                                     self.pad_value)
+        out_seq = sequence_enumerate(
+            self.in_seq, self.lod, self.win_size, self.pad_value
+        )
         self.out_seq = np.array(out_seq).astype("int32")
 
 
@@ -65,8 +67,9 @@ class TesSequenceEnumerateOpInt64(TestSequenceEnumerateOp):
         self.lod = [[9, 4, 11, 6]]
         self.win_size = 2
         self.pad_value = 0
-        out_seq = sequence_enumerate(self.in_seq, self.lod, self.win_size,
-                                     self.pad_value)
+        out_seq = sequence_enumerate(
+            self.in_seq, self.lod, self.win_size, self.pad_value
+        )
         self.out_seq = np.array(out_seq).astype("int64")
 
 
@@ -76,8 +79,9 @@ class TestSequenceEnumerateOpLargeWinSize(TestSequenceEnumerateOp):
         self.lod = [[9, 4, 11, 6]]
         self.win_size = 5
         self.pad_value = 0
-        out_seq = sequence_enumerate(self.in_seq, self.lod, self.win_size,
-                                     self.pad_value)
+        out_seq = sequence_enumerate(
+            self.in_seq, self.lod, self.win_size, self.pad_value
+        )
         self.out_seq = np.array(out_seq).astype("int32")
 
 
@@ -87,8 +91,9 @@ class TestSequenceEnumerateOpMaxWinSize(TestSequenceEnumerateOp):
         self.lod = [[9, 4, 11, 6]]
         self.win_size = 30
         self.pad_value = 0
-        out_seq = sequence_enumerate(self.in_seq, self.lod, self.win_size,
-                                     self.pad_value)
+        out_seq = sequence_enumerate(
+            self.in_seq, self.lod, self.win_size, self.pad_value
+        )
         self.out_seq = np.array(out_seq).astype("int32")
 
 
@@ -98,8 +103,9 @@ class TestSequenceEnumerateOpLargePadValue(TestSequenceEnumerateOp):
         self.lod = [[9, 4, 11, 6]]
         self.win_size = 5
         self.pad_value = 5
-        out_seq = sequence_enumerate(self.in_seq, self.lod, self.win_size,
-                                     self.pad_value)
+        out_seq = sequence_enumerate(
+            self.in_seq, self.lod, self.win_size, self.pad_value
+        )
         self.out_seq = np.array(out_seq).astype("int32")
 
 
@@ -109,8 +115,9 @@ class TestSequenceEnumerateOpLargePadValueSeqLen0(TestSequenceEnumerateOp):
         self.lod = [[0, 14, 0, 16, 0]]
         self.win_size = 5
         self.pad_value = 5
-        out_seq = sequence_enumerate(self.in_seq, self.lod, self.win_size,
-                                     self.pad_value)
+        out_seq = sequence_enumerate(
+            self.in_seq, self.lod, self.win_size, self.pad_value
+        )
         self.out_seq = np.array(out_seq).astype("int32")
 
 

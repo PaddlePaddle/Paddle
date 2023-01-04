@@ -15,18 +15,19 @@ limitations under the License. */
 #pragma once
 
 #include <string>
-#include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
+
+#include "paddle/phi/backends/gpu/gpu_dnn.h"
 
 namespace phi {
 
-using GPUDNNDataLayout = paddle::platform::DataLayout;
-using PoolingMode = paddle::platform::PoolingMode;
-using ScopedPoolingDescriptor = paddle::platform::ScopedPoolingDescriptor;
-using ScopedTensorDescriptor = paddle::platform::ScopedTensorDescriptor;
+using GPUDNNDataLayout = phi::backends::gpu::DataLayout;
+using PoolingMode = phi::backends::gpu::PoolingMode;
+using ScopedPoolingDescriptor = phi::backends::gpu::ScopedPoolingDescriptor;
+using ScopedTensorDescriptor = phi::backends::gpu::ScopedTensorDescriptor;
 
 template <typename T>
 using ScalingParamType =
-    typename paddle::platform::CudnnDataType<T>::ScalingParamType;
+    typename phi::backends::gpu::CudnnDataType<T>::ScalingParamType;
 
 inline GPUDNNDataLayout GetLayoutFromStr(std::string data_format) {
   if (data_format == "NHWC") {

@@ -1,29 +1,25 @@
 # Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import numpy as np
-
-from op_test import OpTest
 import random
-import paddle
+import unittest
 
-import paddle.nn as nn
-import paddle.nn.functional as F
-import paddle.fluid as fluid
+import numpy as np
+from op_test import OpTest
+
+import paddle
 import paddle.fluid.core as core
-from paddle.fluid import compiler, Program, program_guard
 
 np.random.seed(0)
 
@@ -51,8 +47,9 @@ def cumprod_grad(x, y, dy, dx, shape, dim):
                     else:
                         elem = dy[pos] * y[index - inner_dim]
                     if pos > index:
-                        for m in range(index + inner_dim, pos + inner_dim,
-                                       inner_dim):
+                        for m in range(
+                            index + inner_dim, pos + inner_dim, inner_dim
+                        ):
                             elem *= x[m]
                     elif pos < index:
                         elem = 0
@@ -73,6 +70,7 @@ class TestCumprod(OpTest):
         self.init_params()
         self.init_dtype()
         self.op_type = "cumprod"
+        self.python_api = paddle.cumprod
         self.inputs = {'X': None}
         self.outputs = {'Out': None}
         self.attrs = {'dim': None}
@@ -100,8 +98,9 @@ class TestCumprod(OpTest):
         if self.dtype == np.complex128 or self.dtype == np.complex64:
             reshape_x = np.conj(reshape_x)
             out_data = np.conj(out_data)
-        cumprod_grad(reshape_x, out_data, self.grad_out, self.grad_x,
-                     self.shape, dim)
+        cumprod_grad(
+            reshape_x, out_data, self.grad_out, self.grad_x, self.shape, dim
+        )
         self.grad_x = self.grad_x.reshape(self.shape)
         self.grad_out = self.grad_out.reshape(self.shape)
 
@@ -110,7 +109,7 @@ class TestCumprod(OpTest):
         for dim in range(-len(self.shape), len(self.shape)):
             for zero_num in self.zero_nums:
                 self.prepare_inputs_outputs_attrs(dim, zero_num)
-                self.check_output()
+                self.check_output(check_eager=True)
 
     # test backward.
     def test_check_grad(self):
@@ -119,13 +118,15 @@ class TestCumprod(OpTest):
                 self.prepare_inputs_outputs_attrs(dim, zero_num)
                 self.init_grad_input_output(dim)
                 if self.dtype == np.float64:
-                    self.check_grad(['X'], 'Out')
+                    self.check_grad(['X'], 'Out', check_eager=True)
                 else:
                     self.check_grad(
                         ['X'],
                         'Out',
                         user_defined_grads=[self.grad_x],
-                        user_defined_grad_outputs=[self.grad_out])
+                        user_defined_grad_outputs=[self.grad_out],
+                        check_eager=True,
+                    )
 
 
 # test float32 case.
@@ -173,7 +174,7 @@ class TestCumprodAPI(unittest.TestCase):
             out_ref = np.cumprod(self.x, -2)
 
             for r in res:
-                self.assertEqual(np.allclose(out_ref, r), True)
+                np.testing.assert_allclose(out_ref, r, rtol=1e-05)
 
         for place in self.place:
             run(place)
@@ -185,7 +186,7 @@ class TestCumprodAPI(unittest.TestCase):
             x = paddle.to_tensor(self.x)
             out = paddle.cumprod(x, 1)
             out_ref = np.cumprod(self.x, 1)
-            self.assertEqual(np.allclose(out_ref, out.numpy()), True)
+            np.testing.assert_allclose(out_ref, out.numpy(), rtol=1e-05)
             paddle.enable_static()
 
         for place in self.place:

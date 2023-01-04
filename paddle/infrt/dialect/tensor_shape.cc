@@ -66,5 +66,4 @@ void TensorShapeDialect::printType(mlir::Type type,
 
 #define GET_OP_CLASSES
 #include "paddle/infrt/dialect/tensor_shape.cpp.inc"  // NOLINT
-
 #include "paddle/infrt/dialect/tensor_shape_dialect.cpp.inc"

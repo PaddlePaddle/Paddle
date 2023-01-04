@@ -12,26 +12,26 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/fluid/eager/grad_tensor_holder.h"
+
 #include <sstream>
 
 #include "gtest/gtest.h"
-
 #include "paddle/fluid/eager/eager_tensor.h"
 #include "paddle/fluid/eager/grad_node_info.h"
-#include "paddle/fluid/eager/grad_tensor_holder.h"
+#include "paddle/fluid/eager/utils.h"
 #include "paddle/phi/api/lib/utils/allocator.h"
+#include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/selected_rows.h"
 
-#include "paddle/phi/core/kernel_registry.h"
-
 PD_DECLARE_KERNEL(full_like, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(add, CPU, ALL_LAYOUT);
 
 // TODO(jiabin): remove nolint here!!!
 using namespace egr;  // NOLINT
 
 TEST(GradTensorHolder, Constructor) {
-  GradSlotMeta slot_meta;
-  slot_meta.Init(1);
+  std::vector<GradSlotMeta> slot_meta(1);
   GradTensorHolder grad_tensor_holder = GradTensorHolder({slot_meta});
   GradTensorHolder grad_tensor_holder2 = GradTensorHolder(grad_tensor_holder);
 
@@ -45,7 +45,9 @@ TEST(GradTensorHolder, Constructor) {
       meta);
   paddle::experimental::Tensor et = paddle::experimental::Tensor(dt);
 
-  std::vector<std::vector<paddle::experimental::Tensor>> inputs;
+  paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                       kSlotSmallVectorSize>
+      inputs;
   inputs.push_back({et});
 
   GradTensorHolder grad_tensor_holder4 = GradTensorHolder(std::move(inputs));
@@ -72,18 +74,17 @@ TEST(GradTensorHolder, Interfaces) {
   paddle::experimental::Tensor et1 = paddle::experimental::Tensor(dt1);
 
   // Constructor empty GradTensorHolder
-  GradSlotMeta slot_meta;
-  slot_meta.Init(1);
+  std::vector<GradSlotMeta> slot_meta(1);
   GradTensorHolder grad_tensor_holder =
       GradTensorHolder({slot_meta, slot_meta});
-
+  egr::EagerUtils::autograd_meta(&et0);
   // add():
   // fill one
-  grad_tensor_holder.add(0, 0, et0, true);
+  grad_tensor_holder.CopyValueFromTensor(0, 0, et0, true);
 
   // accumulation
-  grad_tensor_holder.add(1, 0, et0, false);
-  grad_tensor_holder.add(1, 0, et1, false);
+  grad_tensor_holder.add(1, 0, et0);
+  grad_tensor_holder.add(1, 0, et1);
 
   // Buffers()
   const auto& buffers = grad_tensor_holder.Buffers();
@@ -138,14 +139,13 @@ TEST(GradTensorHolder, SelectedRowsMergeAdd) {
   paddle::experimental::Tensor t2(sr2);
 
   // Constructor empty GradTensorHolder
-  GradSlotMeta slot_meta;
-  slot_meta.Init(1);
+  std::vector<GradSlotMeta> slot_meta(1);
   GradTensorHolder grad_tensor_holder =
       GradTensorHolder({slot_meta, slot_meta});
 
   // accumulation
-  grad_tensor_holder.add(0, 0, t1, false);
-  grad_tensor_holder.add(0, 0, t2, false);
+  grad_tensor_holder.add(0, 0, t1);
+  grad_tensor_holder.add(0, 0, t2);
 
   // Buffers()
   const auto& buffers = grad_tensor_holder.Buffers();

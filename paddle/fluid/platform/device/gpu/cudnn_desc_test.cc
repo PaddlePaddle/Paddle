@@ -12,28 +12,30 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
-
 #include <gtest/gtest.h>
+
+#include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
 
 namespace paddle {
 namespace platform {
 
 TEST(TensorDescriptor, Empty) {
-  ActivationDescriptor a;
-  TensorDescriptor t;
-  TensorDescriptor t1;
-  TensorDescriptor *t11 = new TensorDescriptor();
+  phi::backends::gpu::ActivationDescriptor a;
+  phi::backends::gpu::TensorDescriptor t;
+  phi::backends::gpu::TensorDescriptor t1;
+  phi::backends::gpu::TensorDescriptor *t11 =
+      new phi::backends::gpu::TensorDescriptor();
   delete t11;
-  std::unique_ptr<TensorDescriptor> tt(new TensorDescriptor());
+  std::unique_ptr<phi::backends::gpu::TensorDescriptor> tt(
+      new phi::backends::gpu::TensorDescriptor());
 }
 
 TEST(TensorDescriptor, Normal) {
-  framework::Tensor tt;
+  phi::DenseTensor tt;
   tt.Resize({2, 3, 4});
-  tt.mutable_data<float>(platform::CPUPlace());
+  tt.mutable_data<float>(phi::CPUPlace());
 
-  TensorDescriptor desc;
+  phi::backends::gpu::TensorDescriptor desc;
   desc.set(tt);
   EXPECT_TRUE(desc.desc() != nullptr);
 }

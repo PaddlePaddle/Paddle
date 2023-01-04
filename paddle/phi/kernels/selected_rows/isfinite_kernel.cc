@@ -19,19 +19,7 @@
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #endif
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/selected_rows/isfinite_kernel_impl.h"
-
-namespace phi {
-
-template <typename T, typename Context, typename Functor>
-inline void IsfiniteSRImpl(const Context& dev_ctx,
-                           const SelectedRows& x,
-                           SelectedRows* out) {
-  dev_ctx.template Alloc<T>(out);
-  Functor functor;
-  functor(x.value(), out->mutable_value());
-}
-}  // namespace phi
+#include "paddle/phi/kernels/selected_rows/impl/isfinite_kernel_impl.h"
 
 PD_REGISTER_KERNEL(isinf_sr,
                    CPU,

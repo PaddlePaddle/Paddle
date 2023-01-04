@@ -12,15 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import sys
+
 sys.path.append("..")
 import numpy as np
 import paddle
 import paddle.fluid as fluid
 from op_test import OpTest
+
 paddle.enable_static()
 
 
@@ -34,7 +34,7 @@ class TestFlatten2Op(OpTest):
         self.init_attrs()
         self.outputs = {
             "Out": self.inputs["X"].reshape(self.new_shape),
-            "XShape": np.random.random(self.in_shape).astype("float32")
+            "XShape": np.random.random(self.in_shape).astype("float32"),
         }
 
     def set_npu(self):

@@ -14,6 +14,10 @@
 
 #include "paddle/fluid/operators/reduce_ops/reduce_prod_op.h"
 
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/unary.h"
+
 namespace paddle {
 namespace framework {
 class OpDesc;
@@ -21,19 +25,26 @@ class OpDesc;
 namespace imperative {
 class OpBase;
 }  // namespace imperative
-namespace platform {
-class CPUDeviceContext;
-}  // namespace platform
 }  // namespace paddle
 
-REGISTER_REDUCE_OP(reduce_prod);
+namespace ops = paddle::operators;
 
-REGISTER_OP_CPU_KERNEL(reduce_prod_grad,
-                       ops::ReduceGradKernel<paddle::platform::CPUDeviceContext,
-                                             float, ops::ProdGradFunctor>,
-                       ops::ReduceGradKernel<paddle::platform::CPUDeviceContext,
-                                             double, ops::ProdGradFunctor>,
-                       ops::ReduceGradKernel<paddle::platform::CPUDeviceContext,
-                                             int, ops::ProdGradFunctor>,
-                       ops::ReduceGradKernel<paddle::platform::CPUDeviceContext,
-                                             int64_t, ops::ProdGradFunctor>);
+class ReduceProdOpMaker : public ops::ReduceOpMaker {
+ protected:
+  virtual std::string GetName() const { return "reduce_prod"; }
+  virtual std::string GetOpType() const { return "Reduce reduce_prod"; }
+};
+
+DECLARE_INFER_SHAPE_FUNCTOR(
+    reduce_prod,
+    ReduceProdInferShapeFunctor,
+    PD_INFER_META(phi::ReduceIntArrayAxisInferMetaBase));
+
+REGISTER_OPERATOR(
+    reduce_prod,
+    ops::ReduceOp,
+    ReduceProdOpMaker,
+    paddle::framework::DefaultGradOpMaker<paddle::framework::OpDesc, true>,
+    paddle::framework::DefaultGradOpMaker<paddle::imperative::OpBase, true>,
+    ReduceProdInferShapeFunctor);
+REGISTER_OPERATOR(reduce_prod_grad, ops::ReduceGradOp);

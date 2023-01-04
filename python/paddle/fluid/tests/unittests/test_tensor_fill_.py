@@ -12,11 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle.fluid as fluid
 import unittest
+
 import numpy as np
-import six
+
 import paddle
+import paddle.fluid as fluid
 
 
 class TensorFill_Test(unittest.TestCase):
@@ -36,17 +37,19 @@ class TensorFill_Test(unittest.TestCase):
             else:
                 paddle.set_device('gpu')
             np_arr = np.reshape(
-                np.array(six.moves.range(np.prod(self.shape))), self.shape)
+                np.array(range(np.prod(self.shape))), self.shape
+            )
             for dtype in typelist:
-                var = 1.
+                var = 1.0
                 tensor = paddle.to_tensor(np_arr, place=p, dtype=dtype)
                 target = tensor.numpy()
                 target[...] = var
 
-                tensor.fill_(var)  #var type is basic type in typelist
+                tensor.fill_(var)  # var type is basic type in typelist
                 self.assertEqual((tensor.numpy() == target).all(), True)
 
     def test_tensor_fill_backward(self):
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         typelist = ['float32']
         places = [fluid.CPUPlace()]
         if fluid.core.is_compiled_with_cuda():
@@ -59,7 +62,8 @@ class TensorFill_Test(unittest.TestCase):
             else:
                 paddle.set_device('gpu')
             np_arr = np.reshape(
-                np.array(six.moves.range(np.prod(self.shape))), self.shape)
+                np.array(range(np.prod(self.shape))), self.shape
+            )
             for dtype in typelist:
                 var = int(1)
                 tensor = paddle.to_tensor(np_arr, place=p, dtype=dtype)
@@ -70,6 +74,7 @@ class TensorFill_Test(unittest.TestCase):
                 loss.backward()
 
                 self.assertEqual((y.grad.numpy() == 0).all().item(), True)
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
     def test_errors(self):
         def test_list():

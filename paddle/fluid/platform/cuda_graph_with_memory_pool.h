@@ -14,68 +14,38 @@
 
 #pragma once
 
-#include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/place.h"
-#ifdef PADDLE_WITH_CUDA
-#include "paddle/fluid/platform/device/gpu/cuda/cuda_graph.h"
-#endif
+#include "paddle/phi/backends/gpu/cuda/cuda_graph_with_memory_pool.h"
+#include "paddle/phi/common/place.h"
+#include "paddle/phi/core/enforce.h"
+#include "paddle/phi/core/macros.h"
 
 namespace paddle {
 namespace platform {
 
 // NOTE: These APIs are not thread-safe.
 #ifdef PADDLE_WITH_CUDA
-void BeginCUDAGraphCapture(platform::CUDAPlace place,
-                           cudaStreamCaptureMode mode);
+using CUDAGraph = phi::backends::gpu::CUDAGraph;
+
+void BeginCUDAGraphCapture(phi::GPUPlace place,
+                           cudaStreamCaptureMode mode,
+                           int64_t pool_id = CUDAGraph::kInvalidPoolID);
 std::unique_ptr<CUDAGraph> EndCUDAGraphCapture();
 #endif
 
-inline bool IsCUDAGraphCapturing() {
-#ifdef PADDLE_WITH_CUDA
-  return CUDAGraph::IsCapturing();
-#else
-  return false;
-#endif
-}
-
-inline platform::CUDAPlace CUDAGraphCapturingPlace() {
+inline phi::GPUPlace CUDAGraphCapturingPlace() {
 #ifdef PADDLE_WITH_CUDA
   return CUDAGraph::CapturingPlace();
 #else
-  PADDLE_THROW(platform::errors::Unimplemented(
+  PADDLE_THROW(phi::errors::Unimplemented(
       "CUDA Graph is only supported on NVIDIA GPU device."));
 #endif
 }
 
-// Add reset callback if CUDA Graph is capturing.
-// Otherwise, invoke callback directly.
-template <typename Callback>
-inline void AddResetCallbackIfCapturingCUDAGraph(Callback &&callback) {
-#ifdef PADDLE_WITH_CUDA
-  if (UNLIKELY(IsCUDAGraphCapturing())) {
-    return CUDAGraph::AddResetCallbackDuringCapturing(
-        std::forward<Callback>(callback));
-  }
-#endif
-  callback();
-}
+using phi::backends::gpu::IsCUDAGraphCapturing;
 
-template <typename T>
-inline T *RestoreHostMemIfCapturingCUDAGraph(T *host_mem, size_t size) {
-  static_assert(std::is_trivial<T>::value, "T must be trivial type");
-  static_assert(!std::is_same<T, void>::value, "T cannot be void");
-#ifdef PADDLE_WITH_CUDA
-  if (UNLIKELY(IsCUDAGraphCapturing())) {
-    size_t nbytes = size * sizeof(T);
-    void *new_host_mem = new uint8_t[nbytes];
-    std::memcpy(new_host_mem, host_mem, nbytes);
-    AddResetCallbackIfCapturingCUDAGraph(
-        [new_host_mem] { delete[] reinterpret_cast<uint8_t *>(new_host_mem); });
-    return reinterpret_cast<T *>(new_host_mem);
-  }
-#endif
-  return host_mem;
-}
+using phi::backends::gpu::AddResetCallbackIfCapturingCUDAGraph;
+
+using phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph;
 
 class SkipCUDAGraphCaptureGuard {
   DISABLE_COPY_AND_ASSIGN(SkipCUDAGraphCaptureGuard);

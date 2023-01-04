@@ -19,6 +19,14 @@
 
 namespace phi {
 
+/**
+ * @brief This Kernel returns a Tensor filled with random binary(0 or 1) number
+ * from a Bernoulli distribution.
+ * @param  ctx   device context
+ * @param  x     A tensor with probabilities for generating the random binary
+ * number
+ * @param  out   A Tensor filled with random binary number
+ */
 template <typename T, typename Context>
 void BernoulliKernel(const Context& ctx,
                      const DenseTensor& x,

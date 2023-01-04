@@ -14,6 +14,7 @@
 
 #pragma once
 #include <memory>
+
 #include "paddle/fluid/memory/allocation/allocator.h"
 #ifdef PADDLE_WITH_ASCEND_CL
 #include "paddle/fluid/memory/allocation/npu_pinned_allocator.h"
@@ -55,11 +56,6 @@ class AllocatorFacade {
 
   void* GetBasePtr(const std::shared_ptr<Allocation>& allocation);
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  const std::shared_ptr<Allocator>& GetAllocator(const platform::Place& place,
-                                                 const gpuStream_t& stream);
-#endif
-
   const std::shared_ptr<Allocator>& GetZeroAllocator(
       const platform::Place& place);
 
@@ -75,24 +71,28 @@ class AllocatorFacade {
                                           size_t size,
                                           const phi::Stream& stream);
 
-  AllocationPtr Alloc(const platform::Place& place, size_t size,
+  AllocationPtr Alloc(const platform::Place& place,
+                      size_t size,
                       const phi::Stream& stream);
 
   bool InSameStream(const std::shared_ptr<Allocation>& allocation,
                     const phi::Stream& stream);
 
+  bool IsStreamSafeCUDAAllocatorUsed();
+
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   // TODO(zhiqiu): change gpuStream_t to phi::Stream if needed.
-  uint64_t Release(const platform::CUDAPlace& place, const gpuStream_t& stream);
-  void RecordStream(std::shared_ptr<Allocation> allocation,
-                    const gpuStream_t& stream);
-  const gpuStream_t& GetStream(
-      const std::shared_ptr<Allocation>& allocation) const;
+  uint64_t Release(const platform::CUDAPlace& place, gpuStream_t stream);
+  void RecordStream(std::shared_ptr<Allocation> allocation, gpuStream_t stream);
+  const std::shared_ptr<Allocator>& GetAllocator(const platform::Place& place,
+                                                 gpuStream_t stream);
+  gpuStream_t GetStream(const std::shared_ptr<Allocation>& allocation) const;
+  void SetDefaultStream(const platform::CUDAPlace& place, gpuStream_t stream);
 #endif
 
 #ifdef PADDLE_WITH_CUDA
-  void PrepareMemoryPoolForCUDAGraph(CUDAGraphID id);
-  void RemoveMemoryPoolOfCUDAGraph(CUDAGraphID id);
+  void PrepareMemoryPoolForCUDAGraph(int64_t id);
+  void RemoveMemoryPoolOfCUDAGraph(int64_t id);
 #endif
 
   // TODO(yy): Allocate a Copy-On-Write allocation?
@@ -100,8 +100,9 @@ class AllocatorFacade {
   AllocatorFacade();
   AllocatorFacadePrivate* m_;
 #ifdef PADDLE_WITH_CUDA
-  std::unordered_map<CUDAGraphID, std::unique_ptr<AllocatorFacadePrivate>>
+  std::unordered_map<int64_t, std::unique_ptr<AllocatorFacadePrivate>>
       cuda_graph_map_;
+  std::unordered_map<int64_t, int64_t> cuda_graph_ref_cnt_;
 #endif
 };
 

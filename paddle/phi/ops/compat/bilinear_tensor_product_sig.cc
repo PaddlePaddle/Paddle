@@ -25,12 +25,9 @@ KernelSignature BilinearTensorProductOpArgumentMapping(
 KernelSignature BilinearTensorProductGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
   return KernelSignature("bilinear_tensor_product_grad",
-                         {"X", "Y", "Weight", GradVarName("Out")},
+                         {"X", "Y", "Weight", "Out@GRAD"},
                          {},
-                         {GradVarName("X"),
-                          GradVarName("Y"),
-                          GradVarName("Weight"),
-                          GradVarName("Bias")});
+                         {"X@GRAD", "Y@GRAD", "Weight@GRAD", "Bias@GRAD"});
 }
 
 }  // namespace phi

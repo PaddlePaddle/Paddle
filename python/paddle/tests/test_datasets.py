@@ -12,16 +12,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
 import os
-import numpy as np
-import tempfile
 import shutil
+import tempfile
+import unittest
+
 import cv2
+import numpy as np
 
 import paddle.vision.transforms as T
-from paddle.vision.datasets import DatasetFolder, ImageFolder, MNIST, FashionMNIST, Flowers
 from paddle.dataset.common import _check_exists_and_download
+from paddle.vision.datasets import (
+    MNIST,
+    DatasetFolder,
+    FashionMNIST,
+    Flowers,
+    ImageFolder,
+)
 
 
 class TestFolderDatasets(unittest.TestCase):

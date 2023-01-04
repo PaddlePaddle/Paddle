@@ -12,11 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import numpy as np
 import unittest
 import sys
+
 sys.path.append("..")
 from op_test import OpTest
 import paddle
@@ -124,21 +123,24 @@ class TestExpandAsV2API(unittest.TestCase):
         input1 = np.random.random([12, 14]).astype("float32")
         input2 = np.random.random([2, 12, 14]).astype("float32")
         x = fluid.layers.data(
-            name='x', shape=[12, 14], append_batch_size=False, dtype="float32")
+            name='x', shape=[12, 14], append_batch_size=False, dtype="float32"
+        )
 
         y = fluid.layers.data(
             name='target_tensor',
             shape=[2, 12, 14],
             append_batch_size=False,
-            dtype="float32")
+            dtype="float32",
+        )
 
         out_1 = paddle.expand_as(x, y=y)
 
         exe = fluid.Executor(place=fluid.NPUPlace(0))
-        res_1 = exe.run(fluid.default_main_program(),
-                        feed={"x": input1,
-                              "target_tensor": input2},
-                        fetch_list=[out_1])
+        res_1 = exe.run(
+            fluid.default_main_program(),
+            feed={"x": input1, "target_tensor": input2},
+            fetch_list=[out_1],
+        )
         assert np.array_equal(res_1[0], np.tile(input1, (2, 1, 1)))
 
 

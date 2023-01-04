@@ -42,8 +42,7 @@ class LoDArrayLengthOp : public framework::OperatorBase {
   void RunImpl(const framework::Scope &scope,
                const platform::Place &place) const override {
     auto &x = scope.FindVar(Input("X"))->Get<framework::LoDTensorArray>();
-    auto &out =
-        *scope.FindVar(Output("Out"))->GetMutable<framework::LoDTensor>();
+    auto &out = *scope.FindVar(Output("Out"))->GetMutable<phi::DenseTensor>();
     out.Resize({1});
     auto cpu = platform::CPUPlace();
     *out.mutable_data<int64_t>(cpu) = static_cast<int64_t>(x.size());
@@ -73,8 +72,8 @@ class LoDArrayLengthInferShape : public framework::InferShapeBase {
  public:
   void operator()(framework::InferShapeContext *context) const override {
     OP_INOUT_CHECK(context->HasInput("X"), "Input", "X", "LDArrayLength");
-    OP_INOUT_CHECK(context->HasOutput("Out"), "Output", "Out",
-                   "LoDArrayLength");
+    OP_INOUT_CHECK(
+        context->HasOutput("Out"), "Output", "Out", "LoDArrayLength");
     context->SetOutputDim("Out", {1});
   }
 };
@@ -84,7 +83,9 @@ class LoDArrayLengthInferShape : public framework::InferShapeBase {
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(
-    lod_array_length, ops::LoDArrayLengthOp, ops::LoDArrayLengthInferShape,
+    lod_array_length,
+    ops::LoDArrayLengthOp,
+    ops::LoDArrayLengthInferShape,
     ops::LoDArrayLengthProtoMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);

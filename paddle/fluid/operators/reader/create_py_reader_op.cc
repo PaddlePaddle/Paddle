@@ -109,7 +109,7 @@ class CreatePyReaderOpMaker : public FileReaderMakerBase {
         .SetDefault(1);
 
     AddComment(R"DOC(
-      Create PyReader to support LoDTensor data feeding in Python side.
+      Create PyReader to support phi::DenseTensor data feeding in Python side.
       )DOC");
   }
 };
@@ -120,5 +120,6 @@ class CreatePyReaderOpMaker : public FileReaderMakerBase {
 
 namespace reader = ::paddle::operators::reader;
 
-REGISTER_FILE_READER_OPERATOR(create_py_reader, reader::CreatePyReaderOp,
+REGISTER_FILE_READER_OPERATOR(create_py_reader,
+                              reader::CreatePyReaderOp,
                               reader::CreatePyReaderOpMaker);

@@ -13,7 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "gtest/gtest.h"
-
 #include "paddle/phi/core/utils/type_registry.h"
 
 namespace phi {

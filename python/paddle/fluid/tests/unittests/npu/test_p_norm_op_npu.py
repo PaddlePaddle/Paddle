@@ -15,6 +15,7 @@
 import sys
 import unittest
 import numpy as np
+
 sys.path.append("..")
 
 import paddle
@@ -39,7 +40,7 @@ class TestPnormOp(OpTest):
             'epsilon': self.epsilon,
             'axis': self.axis,
             'keepdim': self.keepdim,
-            'porder': float(self.porder)
+            'porder': float(self.porder),
         }
         self.outputs = {'Out': norm}
         self.gradient = self.calc_gradient()
@@ -51,10 +52,9 @@ class TestPnormOp(OpTest):
             self.check_output_with_place(paddle.NPUPlace(0))
 
     def test_check_grad(self):
-        if self.dtype == "float16":
-            return
         self.check_grad_with_place(
-            paddle.NPUPlace(0), ['X'], 'Out', user_defined_grads=self.gradient)
+            paddle.NPUPlace(0), ['X'], 'Out', user_defined_grads=self.gradient
+        )
 
     def init_test_case(self):
         self.shape = [2, 3, 4, 5]
@@ -72,7 +72,7 @@ class TestPnormOp(OpTest):
             'epsilon': self.epsilon,
             'axis': self.axis,
             'keepdim': self.keepdim,
-            'porder': float(self.porder)
+            'porder': float(self.porder),
         }
         x = self.inputs["X"]
         porder = self.attrs["porder"]
@@ -86,8 +86,11 @@ class TestPnormOp(OpTest):
             grad[x_abs != norm] = 0.0
         else:
             norm = p_norm(x, axis=axis, porder=porder, keepdims=True)
-            grad = np.power(norm, 1 - porder) * np.power(
-                np.abs(x), porder - 1) * np.sign(x)
+            grad = (
+                np.power(norm, 1 - porder)
+                * np.power(np.abs(x), porder - 1)
+                * np.sign(x)
+            )
 
         numel = 1
         for s in x.shape:

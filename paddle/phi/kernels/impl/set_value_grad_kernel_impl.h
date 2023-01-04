@@ -14,16 +14,14 @@
 
 #pragma once
 
-#include "paddle/phi/common/scalar_array.h"
+#include "paddle/phi/common/int_array.h"
 #include "paddle/phi/core/dense_tensor.h"
-
-#include "paddle/phi/kernels/copy_kernel.h"
+#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
-
-#include "paddle/fluid/operators/strided_slice_op.h"
+#include "paddle/phi/kernels/funcs/strided_slice.h"
 
 namespace phi {
 
@@ -49,9 +47,9 @@ inline void GetOffsets(const DDim& big_dim,
 template <typename T, typename Context, size_t RANK>
 void SetValueGradImpl(const Context& dev_ctx,
                       const DenseTensor& out_grad,
-                      const ScalarArray& starts,
-                      const ScalarArray& ends,
-                      const ScalarArray& steps,
+                      const IntArray& starts,
+                      const IntArray& ends,
+                      const IntArray& steps,
                       const std::vector<int64_t>& axes,
                       const std::vector<int64_t>& decrease_axes,
                       const std::vector<int64_t>& none_axes,
@@ -73,29 +71,29 @@ void SetValueGradImpl(const Context& dev_ctx,
   std::vector<int64_t> starts_local = starts.GetData();
   std::vector<int64_t> ends_local = ends.GetData();
   std::vector<int64_t> steps_local = steps.GetData();
-  paddle::operators::StridedSliceOutDims(starts_local,
-                                         ends_local,
-                                         steps_local,
-                                         axes_int32,
-                                         infer_flags,
-                                         in_dims,
-                                         decrease_axis_int32,
-                                         out_dims_vector.data(),
-                                         axes.size(),
-                                         false);
+  funcs::StridedSliceOutDims(starts_local,
+                             ends_local,
+                             steps_local,
+                             axes_int32,
+                             infer_flags,
+                             in_dims,
+                             decrease_axis_int32,
+                             out_dims_vector.data(),
+                             axes.size(),
+                             false);
 
   DDim out_dims(phi::make_ddim(out_dims_vector));
 
   std::vector<int> reverse_vector(starts_local.size(), 0);
-  paddle::operators::StridedSliceFunctor(starts_local.data(),
-                                         ends_local.data(),
-                                         steps_local.data(),
-                                         axes_int32.data(),
-                                         reverse_vector.data(),
-                                         in_dims,
-                                         infer_flags,
-                                         decrease_axis_int32,
-                                         starts_local.size());
+  funcs::StridedSliceFunctor(starts_local.data(),
+                             ends_local.data(),
+                             steps_local.data(),
+                             axes_int32.data(),
+                             reverse_vector.data(),
+                             in_dims,
+                             infer_flags,
+                             decrease_axis_int32,
+                             starts_local.size());
 
   auto starts_indices = Eigen::DSizes<Eigen::DenseIndex, RANK>();
   auto ends_indices = Eigen::DSizes<Eigen::DenseIndex, RANK>();
@@ -250,9 +248,9 @@ void SetValueGradImpl(const Context& dev_ctx,
 template <typename T, typename Context>
 void SetValueGradKernel(const Context& dev_ctx,
                         const DenseTensor& out_grad,
-                        const ScalarArray& starts,
-                        const ScalarArray& ends,
-                        const ScalarArray& steps,
+                        const IntArray& starts,
+                        const IntArray& ends,
+                        const IntArray& steps,
                         const std::vector<int64_t>& axes,
                         const std::vector<int64_t>& decrease_axes,
                         const std::vector<int64_t>& none_axes,

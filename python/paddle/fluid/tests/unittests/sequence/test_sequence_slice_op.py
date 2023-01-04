@@ -12,11 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
-import unittest
-import numpy as np
 import sys
+import unittest
+
+import numpy as np
+
 sys.path.append("../")
 from op_test import OpTest
 
@@ -31,12 +31,17 @@ class TestSequenceSliceOp(OpTest):
         length = np.array(self.length).astype("int64")
 
         self.inputs = {'X': (x, lod), 'Offset': offset, 'Length': length}
-        outs = []  #np.zeros((100, 3, 2)).astype('float32')
+        outs = []  # np.zeros((100, 3, 2)).astype('float32')
         out_lod = [[]]
         lod_offset = 0
         for i in range(len(offset)):
-            sub_x = x[lod_offset + offset[i, 0]:lod_offset + offset[i, 0] +
-                      length[i, 0], :]
+            sub_x = x[
+                lod_offset
+                + offset[i, 0] : lod_offset
+                + offset[i, 0]
+                + length[i, 0],
+                :,
+            ]
             outs.append(sub_x)
             out_lod[0].append(len(sub_x))
             lod_offset += lod[0][i]

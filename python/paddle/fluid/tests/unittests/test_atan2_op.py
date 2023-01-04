@@ -12,16 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
 import unittest
 
+import numpy as np
 from op_test import OpTest
+
 import paddle
-import paddle.nn as nn
-import paddle.nn.functional as F
-import paddle.fluid as fluid
 import paddle.fluid.core as core
-from paddle.fluid import compiler, Program, program_guard
 
 paddle.enable_static()
 np.random.seed(0)
@@ -36,6 +33,7 @@ def atan2_grad(x1, x2, dout):
 class TestAtan2(OpTest):
     def setUp(self):
         self.op_type = "atan2"
+        self.python_api = paddle.atan2
         self.init_dtype()
 
         x1 = np.random.uniform(-1, -0.1, [15, 17]).astype(self.dtype)
@@ -46,10 +44,10 @@ class TestAtan2(OpTest):
         self.outputs = {'Out': out}
 
     def test_check_grad(self):
-        self.check_grad(['X1', 'X2'], 'Out')
+        self.check_grad(['X1', 'X2'], 'Out', check_eager=True)
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def init_dtype(self):
         self.dtype = np.float64
@@ -64,9 +62,13 @@ class TestAtan2_float(TestAtan2):
             self.check_grad(
                 ['X1', 'X2'],
                 'Out',
-                user_defined_grads=atan2_grad(self.inputs['X1'],
-                                              self.inputs['X2'],
-                                              1 / self.inputs['X1'].size))
+                user_defined_grads=atan2_grad(
+                    self.inputs['X1'],
+                    self.inputs['X2'],
+                    1 / self.inputs['X1'].size,
+                ),
+                check_eager=True,
+            )
 
 
 class TestAtan2_float16(TestAtan2_float):
@@ -109,7 +111,7 @@ class TestAtan2API(unittest.TestCase):
                 res = exe.run(feed={'X1': self.x1, 'X2': self.x2})
             out_ref = np.arctan2(self.x1, self.x2)
             for r in res:
-                self.assertEqual(np.allclose(out_ref, r), True)
+                np.testing.assert_allclose(out_ref, r, rtol=1e-05)
 
         for place in self.place:
             run(place)
@@ -121,7 +123,7 @@ class TestAtan2API(unittest.TestCase):
             X2 = paddle.to_tensor(self.x2)
             out = paddle.atan2(X1, X2)
             out_ref = np.arctan2(self.x1, self.x2)
-            self.assertEqual(np.allclose(out_ref, out.numpy()), True)
+            np.testing.assert_allclose(out_ref, out.numpy(), rtol=1e-05)
             paddle.enable_static()
 
         for place in self.place:
@@ -129,4 +131,5 @@ class TestAtan2API(unittest.TestCase):
 
 
 if __name__ == '__main__':
+    paddle.enable_static()
     unittest.main()

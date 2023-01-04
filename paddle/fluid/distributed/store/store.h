@@ -25,8 +25,8 @@ namespace distributed {
 
 class Store {
  public:
-  Store() : _timeout(tcputils::kNoTimeout) {}
-  explicit Store(const std::chrono::seconds& timeout) : _timeout(timeout) {}
+  Store() : _timeout(900) {}
+  explicit Store(const int timeout) : _timeout(timeout) {}
   virtual ~Store() = default;
 
   virtual int64_t add(const std::string& key, int64_t value) {
@@ -46,10 +46,10 @@ class Store {
         "Implement the add method in the subclass."));
   }
 
-  virtual const std::chrono::seconds& timeout() const { return _timeout; }
+  virtual int timeout() { return _timeout; }
 
- private:
-  std::chrono::seconds _timeout;
+ protected:
+  int _timeout;
 };
 
 }  // namespace distributed

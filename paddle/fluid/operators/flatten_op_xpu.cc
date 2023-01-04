@@ -20,7 +20,8 @@ namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
 REGISTER_OP_XPU_KERNEL(
-    flatten, ops::FlattenKernel<paddle::platform::XPUDeviceContext, float>,
+    flatten,
+    ops::FlattenKernel<paddle::platform::XPUDeviceContext, float>,
     ops::FlattenKernel<paddle::platform::XPUDeviceContext, int>,
     ops::FlattenKernel<paddle::platform::XPUDeviceContext, int8_t>,
     ops::FlattenKernel<paddle::platform::XPUDeviceContext, int64_t>);
@@ -31,7 +32,8 @@ REGISTER_OP_XPU_KERNEL(
     ops::FlattenGradKernel<paddle::platform::XPUDeviceContext, int8_t>,
     ops::FlattenGradKernel<paddle::platform::XPUDeviceContext, int64_t>);
 REGISTER_OP_XPU_KERNEL(
-    flatten2, ops::Flatten2Kernel<paddle::platform::XPUDeviceContext, float>,
+    flatten2,
+    ops::Flatten2Kernel<paddle::platform::XPUDeviceContext, float>,
     ops::Flatten2Kernel<paddle::platform::XPUDeviceContext, int>,
     ops::Flatten2Kernel<paddle::platform::XPUDeviceContext, int8_t>,
     ops::Flatten2Kernel<paddle::platform::XPUDeviceContext, int64_t>);
@@ -41,27 +43,4 @@ REGISTER_OP_XPU_KERNEL(
     ops::Flatten2GradKernel<paddle::platform::XPUDeviceContext, int>,
     ops::Flatten2GradKernel<paddle::platform::XPUDeviceContext, int8_t>,
     ops::Flatten2GradKernel<paddle::platform::XPUDeviceContext, int64_t>);
-REGISTER_OP_XPU_KERNEL(
-    flatten_contiguous_range,
-    ops::FlattenContiguousRangeKernel<paddle::platform::XPUDeviceContext,
-                                      float>,
-    ops::FlattenContiguousRangeKernel<paddle::platform::XPUDeviceContext,
-                                      plat::float16>,
-    ops::FlattenContiguousRangeKernel<paddle::platform::XPUDeviceContext, int>,
-    ops::FlattenContiguousRangeKernel<paddle::platform::XPUDeviceContext,
-                                      int8_t>,
-    ops::FlattenContiguousRangeKernel<paddle::platform::XPUDeviceContext,
-                                      int64_t>);
-REGISTER_OP_XPU_KERNEL(
-    flatten_contiguous_range_grad,
-    ops::FlattenContiguousRangeGradKernel<paddle::platform::XPUDeviceContext,
-                                          float>,
-    ops::FlattenContiguousRangeGradKernel<paddle::platform::XPUDeviceContext,
-                                          plat::float16>,
-    ops::FlattenContiguousRangeGradKernel<paddle::platform::XPUDeviceContext,
-                                          int>,
-    ops::FlattenContiguousRangeGradKernel<paddle::platform::XPUDeviceContext,
-                                          int8_t>,
-    ops::FlattenContiguousRangeGradKernel<paddle::platform::XPUDeviceContext,
-                                          int64_t>);
 #endif

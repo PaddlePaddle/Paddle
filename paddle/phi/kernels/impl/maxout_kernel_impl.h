@@ -14,9 +14,8 @@
 
 #pragma once
 
+#include "paddle/phi/kernels/funcs/maxouting.h"
 #include "paddle/phi/kernels/maxout_kernel.h"
-
-#include "paddle/fluid/operators/math/maxouting.h"
 
 namespace phi {
 
@@ -30,7 +29,7 @@ void MaxOutKernel(const Context& dev_ctx,
     axis += x.dims().size();
   }
 
-  paddle::operators::math::MaxOutFunctor<Context, T> maxout_forward;
+  phi::funcs::MaxOutFunctor<Context, T> maxout_forward;
   maxout_forward(dev_ctx, x, out, groups, axis);
 }
 

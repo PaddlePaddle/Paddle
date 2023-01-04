@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <string>
 #include <vector>
+
 #include "paddle/fluid/inference/tensorrt/plugin/trt_plugin.h"
 
 namespace paddle {
@@ -25,8 +26,10 @@ namespace plugin {
 
 class ElementWisePlugin : public PluginTensorRT {
  public:
-  ElementWisePlugin(std::string type, nvinfer1::Dims const& dims_x,
-                    nvinfer1::Dims const& dims_y, int axis)
+  ElementWisePlugin(std::string type,
+                    nvinfer1::Dims const& dims_x,
+                    nvinfer1::Dims const& dims_y,
+                    int axis)
       : type_(type),
         dims_x_(dims_x),
         dims_y_(dims_y),
@@ -63,11 +66,16 @@ class ElementWisePlugin : public PluginTensorRT {
   int initialize() TRT_NOEXCEPT override;
 
 #if IS_TRT_VERSION_LT(8000)
-  int enqueue(int batch_size, const void* const* inputs, void** outputs,
+  int enqueue(int batch_size,
+              const void* const* inputs,
+              void** outputs,
 #else
-  int enqueue(int batch_size, const void* const* inputs, void* const* outputs,
+  int enqueue(int batch_size,
+              const void* const* inputs,
+              void* const* outputs,
 #endif
-              void* workspace, cudaStream_t stream) TRT_NOEXCEPT;
+              void* workspace,
+              cudaStream_t stream) TRT_NOEXCEPT;
 
   size_t getSerializationSize() const TRT_NOEXCEPT override {
     return getBaseSerializationSize() + SerializedSize(type_.c_str()) +
@@ -105,9 +113,10 @@ class ElementWisePluginCreator : public TensorRTPluginCreator {
 
   const char* getPluginVersion() const TRT_NOEXCEPT override { return "1"; }
 
-  nvinfer1::IPluginV2* deserializePlugin(
-      const char* name, const void* serial_data,
-      size_t serial_length) TRT_NOEXCEPT override {
+  nvinfer1::IPluginV2* deserializePlugin(const char* name,
+                                         const void* serial_data,
+                                         size_t serial_length)
+      TRT_NOEXCEPT override {
     return new ElementWisePlugin(serial_data, serial_length);
   }
 };
@@ -137,9 +146,11 @@ class ElementwisePluginDynamic : public DynamicPluginTensorRT {
   size_t getSerializationSize() const TRT_NOEXCEPT override;
   void serialize(void* buffer) const TRT_NOEXCEPT override;
 
-  nvinfer1::DimsExprs getOutputDimensions(
-      int output_index, const nvinfer1::DimsExprs* inputs, int nb_inputs,
-      nvinfer1::IExprBuilder& expr_builder) TRT_NOEXCEPT override;
+  nvinfer1::DimsExprs getOutputDimensions(int output_index,
+                                          const nvinfer1::DimsExprs* inputs,
+                                          int nb_inputs,
+                                          nvinfer1::IExprBuilder& expr_builder)
+      TRT_NOEXCEPT override;
 
   bool supportsFormatCombination(int pos,
                                  const nvinfer1::PluginTensorDesc* inOut,
@@ -160,11 +171,14 @@ class ElementwisePluginDynamic : public DynamicPluginTensorRT {
 
   int enqueue(const nvinfer1::PluginTensorDesc* inputDesc,
               const nvinfer1::PluginTensorDesc* outputDesc,
-              const void* const* inputs, void* const* outputs, void* workspace,
+              const void* const* inputs,
+              void* const* outputs,
+              void* workspace,
               cudaStream_t stream) TRT_NOEXCEPT override;
-  nvinfer1::DataType getOutputDataType(
-      int index, const nvinfer1::DataType* inputTypes,
-      int nbInputs) const TRT_NOEXCEPT override;
+  nvinfer1::DataType getOutputDataType(int index,
+                                       const nvinfer1::DataType* inputTypes,
+                                       int nbInputs) const
+      TRT_NOEXCEPT override;
 
   void destroy() TRT_NOEXCEPT override { delete this; }
 
@@ -192,9 +206,10 @@ class ElementwisePluginDynamicCreator : public nvinfer1::IPluginCreator {
     return nullptr;
   }
 
-  nvinfer1::IPluginV2* deserializePlugin(
-      const char* name, const void* serial_data,
-      size_t serial_length) TRT_NOEXCEPT override {
+  nvinfer1::IPluginV2* deserializePlugin(const char* name,
+                                         const void* serial_data,
+                                         size_t serial_length)
+      TRT_NOEXCEPT override {
     auto plugin = new ElementwisePluginDynamic(serial_data, serial_length);
     return plugin;
   }

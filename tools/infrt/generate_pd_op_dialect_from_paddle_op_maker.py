@@ -14,9 +14,6 @@
 
 import paddle.fluid.framework as framework
 from paddle.fluid import core
-from paddle import compat as cpt
-
-ops_having_canonicalization = {"elementwise_add", }
 
 
 # collect original ops: op which has both inference and grid defination
@@ -61,7 +58,7 @@ QUANT = "quant"
 
 
 def get_attr_default_value(op_name):
-    return core.get_op_attrs_default_value(cpt.to_bytes(op_name))
+    return core.get_op_attrs_default_value(op_name.encode())
 
 
 def get_vars_info(op_vars_proto):
@@ -85,8 +82,11 @@ def get_attrs_info(op_proto, op_attrs_proto):
         attrs_info[attr_name] = {}
         attrs_info[attr_name][TYPE] = attr_proto.type
         attrs_info[attr_name][GENERATED] = attr_proto.generated
-        attrs_info[attr_name][DEFAULT_VALUE] = attrs_default_values[
-            attr_name] if attr_name in attrs_default_values else None
+        attrs_info[attr_name][DEFAULT_VALUE] = (
+            attrs_default_values[attr_name]
+            if attr_name in attrs_default_values
+            else None
+        )
         attrs_info[attr_name][EXTRA] = attr_proto.extra
         attrs_info[attr_name][QUANT] = attr_proto.quant
     return attrs_info
@@ -121,20 +121,26 @@ def generate_all_ops_inputs_outputs_map(op_descs):
         inputs = list()
         outpus = list()
         for input_ in op_proto[INPUTS]:
-            if op_proto[INPUTS][input_][EXTRA] != True and op_proto[INPUTS][
-                    input_][INTERMEDIATE] != True:
+            if (
+                not op_proto[INPUTS][input_][EXTRA]
+                and not op_proto[INPUTS][input_][INTERMEDIATE]
+            ):
                 inputs.append(input_)
         for output_ in op_proto[OUTPUTS]:
-            if op_proto[OUTPUTS][output_][EXTRA] != True and op_proto[OUTPUTS][
-                    output_][INTERMEDIATE] != True:
+            if (
+                not op_proto[OUTPUTS][output_][EXTRA]
+                and not op_proto[OUTPUTS][output_][INTERMEDIATE]
+            ):
                 outpus.append(output_)
         ops_inputs_map[op_type] = inputs
         ops_outputs_map[op_type] = outpus
 
     # 2. Generate Cpp style map str
     cpp_style_ops_inputs_map_str = ""
-    start_ = "#include <unordered_map>\n#include <vector>\n#include <string>\n" + \
-            "const std::unordered_map<std::string, std::unordered_map<std::string, uint8_t>> pd_dialect_inputs_info_map_  = {\n"
+    start_ = (
+        "#include <unordered_map>\n#include <vector>\n#include <string>\n"
+        + "const std::unordered_map<std::string, std::unordered_map<std::string, uint8_t>> pd_dialect_inputs_info_map_  = {\n"
+    )
     ops_inputs_str = ""
     for ele in ops_inputs_map.items():
         op_name = ele[0]
@@ -142,11 +148,14 @@ def generate_all_ops_inputs_outputs_map(op_descs):
         op_inputs_str = "{"
         input_idx = 0
         for op_input in op_inputs:
-            op_input_str = '{left_brace}"{op_input}", {input_idx}{right_brace}, '.format(
-                left_brace="{",
-                op_input=op_input,
-                input_idx=input_idx,
-                right_brace="}")
+            op_input_str = (
+                '{left_brace}"{op_input}", {input_idx}{right_brace}, '.format(
+                    left_brace="{",
+                    op_input=op_input,
+                    input_idx=input_idx,
+                    right_brace="}",
+                )
+            )
             input_idx = input_idx + 1
             op_inputs_str = op_inputs_str + op_input_str
         op_inputs_str = op_inputs_str[:-2] + "}"
@@ -154,7 +163,8 @@ def generate_all_ops_inputs_outputs_map(op_descs):
             left_brace="{",
             op_name=op_name,
             op_inputs=op_inputs_str,
-            right_brace="}")
+            right_brace="}",
+        )
         ops_inputs_str = ops_inputs_str + "    " + pair
     ops_inputs_str = ops_inputs_str[:-2]
     cpp_style_ops_inputs_map_str = start_ + ops_inputs_str + "\n};"
@@ -168,11 +178,14 @@ def generate_all_ops_inputs_outputs_map(op_descs):
         op_outputs_str = "{"
         output_idx = 0
         for op_output in op_outputs:
-            op_output_str = '{left_brace}"{op_output}", {output_idx}{right_brace}, '.format(
-                left_brace="{",
-                op_output=op_output,
-                output_idx=output_idx,
-                right_brace="}")
+            op_output_str = (
+                '{left_brace}"{op_output}", {output_idx}{right_brace}, '.format(
+                    left_brace="{",
+                    op_output=op_output,
+                    output_idx=output_idx,
+                    right_brace="}",
+                )
+            )
             output_idx = output_idx + 1
             op_outputs_str = op_outputs_str + op_output_str
         op_outputs_str = op_outputs_str[:-2] + "}"
@@ -180,23 +193,40 @@ def generate_all_ops_inputs_outputs_map(op_descs):
             left_brace="{",
             op_name=op_name,
             op_outputs=op_outputs_str,
-            right_brace="}")
+            right_brace="}",
+        )
         ops_outputs_str = ops_outputs_str + "    " + pair
     ops_outputs_str = ops_outputs_str[:-2]
     cpp_style_ops_outputs_map_str = start_ + ops_outputs_str + "\n};"
 
     # 3. Write to header file
-    dst_head_file = "../../paddle/infrt/dialect/pd_ops_info.h"
+    dst_head_file = "../../paddle/infrt/dialect/pd/common/pd_ops_info.h"
     with open(dst_head_file, 'w') as ops_inputs_outputs_head_file:
         ops_inputs_outputs_head_file.write(cpp_style_ops_inputs_map_str)
         ops_inputs_outputs_head_file.write("\n\n")
         ops_inputs_outputs_head_file.write(cpp_style_ops_outputs_map_str)
 
 
+def get_constraint(op_type, op_proto):
+    # 2.3.1 inputs
+    constraint = "NoSideEffect"
+
+    optional_input_num_ = 0
+    for input_ in op_proto[INPUTS]:
+        if (
+            not op_proto[INPUTS][input_][EXTRA]
+            and not op_proto[INPUTS][input_][INTERMEDIATE]
+            and op_proto[INPUTS][input_][DISPENSABLE]
+        ):
+            optional_input_num_ += 1
+    if optional_input_num_ > 1:
+        constraint += ", AttrSizedOperandSegments"
+    return constraint
+
+
 # funtion to generate paddle op dialect file
 def convert_op_proto_into_mlir(op_descs):
-    dst_dialect_file = "../../paddle/infrt/dialect/pd_ops.td"
-    custom_dialect_file = "custom_pdop.td"
+    dst_dialect_file = "../../paddle/infrt/dialect/pd/ir/pd_ops.td"
 
     # 1. Head files
     comment_ = "/*===- TableGen'source file -----------------------------------------------===*\\\n\
@@ -206,7 +236,7 @@ def convert_op_proto_into_mlir(op_descs):
 |* Automatically generated file, do not edit!                                 *|\n\
 |* Generated by tools/infrt/generate_pd_op_dialect_from_paddle_op_maker.py    *|\n\
 |*                                                                            *|\n\
-\*===----------------------------------------------------------------------===*/\n"
+\\*===----------------------------------------------------------------------===*/\n"
 
     lines = [
         "#ifndef PD_OPS",
@@ -214,7 +244,7 @@ def convert_op_proto_into_mlir(op_descs):
         "include \"mlir/Interfaces/InferTypeOpInterface.td\"",
         "include \"mlir/Interfaces/LoopLikeInterface.td\"",
         "include \"mlir/IR/OpBase.td\"",
-        "include \"paddle/infrt/dialect/pd_op_base.td\"",
+        "include \"paddle/infrt/dialect/pd/ir/pd_op_base.td\"",
         "",
     ]
 
@@ -226,11 +256,21 @@ def convert_op_proto_into_mlir(op_descs):
     # 2. Op dialect
     # skip list ( ops whose dialect can not be generated automatically will be recorded here)
     skipped_op_list = [
-        "cos_sim", "fused_embedding_seq_pool", "cosh", "kron", "recurrent",
-        "while", "conditional_block", "set_value", "run_program"
+        "cos_sim",
+        "fused_embedding_seq_pool",
+        "cosh",
+        "kron",
+        "recurrent",
+        "while",
+        "conditional_block",
+        "set_value",
+        "run_program",
     ]
     skipped_attr_list = [
-        "trainable_statistics", "use_global_stats", "is_test", "use_quantizer"
+        "trainable_statistics",
+        "use_global_stats",
+        "is_test",
+        "use_quantizer",
     ]
 
     original_ops_ = get_original_ops()
@@ -239,13 +279,15 @@ def convert_op_proto_into_mlir(op_descs):
         if (op_type in skipped_op_list) or (op_type not in original_ops_):
             continue
         automatically_generated_op_dialect.append(op_type)
+        constraint_ = get_constraint(op_type, op_proto)
         # 2.1 OpDef
-        HEAD = 'def PD_{op_type_capitalize}Op : PD_Op<"{op_type}", [NoSideEffect]> {left_brace}\n'.format(
+        HEAD = 'def PD_{op_type_capitalize}Op : PD_Op<"{op_type}", [{constraint}]> {left_brace}\n'.format(
             op_type_capitalize=op_type.capitalize(),
+            constraint=constraint_,
             op_type=op_type,
-            left_brace="{")
+            left_brace="{",
+        )
         SUMMARY = '  let summary = "{} op";\n'.format(op_type)
-        CANONICALIZATION = "let hasCanonicalizer = 1;" if op_type in ops_having_canonicalization else ""
 
         # 2.2 Description
         contents = ""
@@ -253,20 +295,45 @@ def convert_op_proto_into_mlir(op_descs):
         for line_ in origin_contents:
             contents = contents + "    {}\n".format(line_)
         DESCRIPTION = "  let description = [{left_brace}\n{description}  {right_brace}];\n".format(
-            left_brace="{", description=contents, right_brace="}")
+            left_brace="{", description=contents, right_brace="}"
+        )
 
         # 2.3 arguments info
         ARGUMENTS = ""
-        if (len(op_proto[INPUTS]) > 0 or len(op_proto[ATTRS]) > 0):
+        if len(op_proto[INPUTS]) > 0 or len(op_proto[ATTRS]) > 0:
             ARGUMENTS = "  let arguments = (ins "
+
             # 2.3.1 inputs
             for input_ in op_proto[INPUTS]:
-                if op_proto[INPUTS][input_][EXTRA] != True and op_proto[INPUTS][
-                        input_][INTERMEDIATE] != True:
-                    if op_proto[INPUTS][input_][DUPLICABLE] != "true":
-                        ARGUMENTS = ARGUMENTS + " PD_Tensor:$" + input_ + ","
+                if (
+                    not op_proto[INPUTS][input_][EXTRA]
+                    and not op_proto[INPUTS][input_][INTERMEDIATE]
+                ):
+                    if not op_proto[INPUTS][input_][DISPENSABLE]:
+                        if not op_proto[INPUTS][input_][DUPLICABLE]:
+                            ARGUMENTS = (
+                                ARGUMENTS + " PD_Tensor:$" + input_ + ","
+                            )
+                        else:
+                            ARGUMENTS = (
+                                ARGUMENTS + " PD_Tensor_Array:$" + input_ + ","
+                            )
                     else:
-                        ARGUMENTS = ARGUMENTS + " PD_Tensor_Array:$" + input_ + ","
+                        if not op_proto[INPUTS][input_][DUPLICABLE]:
+                            ARGUMENTS = (
+                                ARGUMENTS
+                                + " Optional<PD_Tensor>:$"
+                                + input_
+                                + ","
+                            )
+                        else:
+                            ARGUMENTS = (
+                                ARGUMENTS
+                                + " Optional<PD_Tensor_Array>:$"
+                                + input_
+                                + ","
+                            )
+
             # unsupported:   BLOCK = 8;  BLOCKS = 10;
             attr_mlir_converter = {
                 0: 'SI32Attr',
@@ -278,68 +345,104 @@ def convert_op_proto_into_mlir(op_descs):
                 6: 'BoolAttr',
                 7: 'BoolArrayAttr',
                 9: 'SI64Attr',
-                11: 'I64ArrayAttr'
+                11: 'I64ArrayAttr',
             }
 
             # 2.3.2 attributes
             for attr in op_proto[ATTRS]:
-                if (op_proto[ATTRS][attr][EXTRA] == True) or (
-                        attr in skipped_attr_list):
+                if (op_proto[ATTRS][attr][EXTRA]) or (
+                    attr in skipped_attr_list
+                ):
                     continue
-                if op_proto[ATTRS][attr][DEFAULT_VALUE] != None:
+                if op_proto[ATTRS][attr][DEFAULT_VALUE] is not None:
                     if op_proto[ATTRS][attr][TYPE] in attr_mlir_converter:
-                        default_value = str(op_proto[ATTRS][attr][
-                            DEFAULT_VALUE])
-                        if (attr_mlir_converter[op_proto[ATTRS][attr][TYPE]] in
-                            [
-                                'I32ArrayAttr', 'F32ArrayAttr', 'StrArrayAttr',
-                                'BoolArrayAttr', 'I64ArrayAttr'
-                            ]):
+                        default_value = str(
+                            op_proto[ATTRS][attr][DEFAULT_VALUE]
+                        )
+                        if attr_mlir_converter[op_proto[ATTRS][attr][TYPE]] in [
+                            'I32ArrayAttr',
+                            'F32ArrayAttr',
+                            'StrArrayAttr',
+                            'BoolArrayAttr',
+                            'I64ArrayAttr',
+                        ]:
                             default_value = default_value.replace(
-                                '[', '{').replace(']', '}')
-                        if (attr_mlir_converter[op_proto[ATTRS][attr][TYPE]] in
-                            ['BoolAttr', 'BoolArrayAttr']):
+                                '[', '{'
+                            ).replace(']', '}')
+                        if attr_mlir_converter[op_proto[ATTRS][attr][TYPE]] in [
+                            'BoolAttr',
+                            'BoolArrayAttr',
+                        ]:
                             default_value = default_value.lower()
-                        elif (attr_mlir_converter[op_proto[ATTRS][attr][TYPE]]
-                              in ['StrAttr', 'StrArrayAttr']):
+                        elif attr_mlir_converter[
+                            op_proto[ATTRS][attr][TYPE]
+                        ] in ['StrAttr', 'StrArrayAttr']:
                             default_value = default_value.replace('\'', '\\\"')
-                            if attr_mlir_converter[op_proto[ATTRS][attr][
-                                    TYPE]] == "StrAttr":
+                            if (
+                                attr_mlir_converter[op_proto[ATTRS][attr][TYPE]]
+                                == "StrAttr"
+                            ):
                                 default_value = '\\\"' + default_value + '\\\"'
-                        attr_list = " DefaultValuedAttr<" + attr_mlir_converter[
-                            op_proto[ATTRS][attr]
-                            [TYPE]] + ", \"" + default_value + "\">:$" + attr + ","
+                        attr_list = (
+                            " DefaultValuedAttr<"
+                            + attr_mlir_converter[op_proto[ATTRS][attr][TYPE]]
+                            + ", \""
+                            + default_value
+                            + "\">:$"
+                            + attr
+                            + ","
+                        )
                         ARGUMENTS += attr_list
                     else:
-                        print("Error:" + op_type + ":" + attr + ":" + str(
-                            op_proto[ATTRS][attr][TYPE]))
+                        print(
+                            "Error:"
+                            + op_type
+                            + ":"
+                            + attr
+                            + ":"
+                            + str(op_proto[ATTRS][attr][TYPE])
+                        )
                 else:
                     if op_proto[ATTRS][attr][TYPE] in attr_mlir_converter:
-                        attr_type_ = attr_mlir_converter[op_proto[ATTRS][attr][
-                            TYPE]]
-                        if (attr_type_ in [
-                                'I32ArrayAttr', 'F32ArrayAttr', 'StrArrayAttr',
-                                'BoolArrayAttr', 'I64ArrayAttr'
-                        ]):
+                        attr_type_ = attr_mlir_converter[
+                            op_proto[ATTRS][attr][TYPE]
+                        ]
+                        if attr_type_ in [
+                            'StrAttr',
+                            'I32ArrayAttr',
+                            'F32ArrayAttr',
+                            'StrArrayAttr',
+                            'BoolArrayAttr',
+                            'I64ArrayAttr',
+                        ]:
                             attr_list = attr_type_ + ":$" + attr + ","
                             ARGUMENTS += attr_list
                     else:
-                        print(" ouch Error:" + op_type + ":" + attr + ":" + str(
-                            op_proto[ATTRS][attr][TYPE]))
+                        print(
+                            " ouch Error:"
+                            + op_type
+                            + ":"
+                            + attr
+                            + ":"
+                            + str(op_proto[ATTRS][attr][TYPE])
+                        )
             ARGUMENTS = ARGUMENTS[:-1] + ");\n"
 
         # 2.4 results info
         RESULTS = ""
-        if (len(op_proto[OUTPUTS]) > 0):
+        if len(op_proto[OUTPUTS]) > 0:
             outputs = ""
             for output_ in op_proto[OUTPUTS]:
-                if op_proto[OUTPUTS][output_][EXTRA] != True and op_proto[
-                        OUTPUTS][output_][INTERMEDIATE] != True:
-                    if op_proto[OUTPUTS][output_][DUPLICABLE] != "true":
+                if (
+                    not op_proto[OUTPUTS][output_][EXTRA]
+                    and not op_proto[OUTPUTS][output_][INTERMEDIATE]
+                ):
+                    if not op_proto[OUTPUTS][output_][DUPLICABLE]:
                         outputs = outputs + "PD_Tensor:${},".format(output_)
                     else:
                         outputs = outputs + "PD_Tensor_Array:${},".format(
-                            output_)
+                            output_
+                        )
             RESULTS = "\n  let results = (outs {});\n".format(outputs[:-1])
 
         with open(dst_dialect_file, 'a') as ops_mlir_file:
@@ -348,21 +451,16 @@ def convert_op_proto_into_mlir(op_descs):
             ops_mlir_file.write(DESCRIPTION)
             ops_mlir_file.write(ARGUMENTS)
             ops_mlir_file.write(RESULTS)
-            ops_mlir_file.write(CANONICALIZATION)
             ops_mlir_file.write("}\n")
 
-    print("Skipped ops num: " + str(len(skipped_op_list)))
-    print("Automatically generated op dialects num: " + str(
-        len(automatically_generated_op_dialect)))
-
-    # 3. custom op dialect and end of file
     with open(dst_dialect_file, 'a') as ops_mlir_file:
-        with open(custom_dialect_file, 'r') as custom_ops_file:
-            custom_ops = custom_ops_file.readlines()
-            ops_mlir_file.writelines(custom_ops)
+        ops_mlir_file.write("\n#endif  // PD_OPS")
 
-        end_ = "\n#endif  // PD_OPS"
-        ops_mlir_file.write(end_)
+    print("Skipped ops num: " + str(len(skipped_op_list)))
+    print(
+        "Automatically generated op dialects num: "
+        + str(len(automatically_generated_op_dialect))
+    )
 
 
 if __name__ == "__main__":

@@ -36,6 +36,7 @@ class Event {
     Interprocess = 0x4,
   };
 
+  Event() = default;
   // For compatible
   Event(const Place& place, event_t event);
   ~Event();

@@ -14,6 +14,9 @@
 
 #include "paddle/phi/kernels/where_grad_kernel.h"
 
+#include "paddle/phi/backends/gpu/gpu_launch_config.h"
+#include "paddle/phi/core/kernel_registry.h"
+
 namespace phi {
 
 template <typename T>
@@ -22,10 +25,10 @@ __global__ void WhereGradCUDAKernel(
   int idx = blockDim.x * blockIdx.x + threadIdx.x;
   for (; idx < N; idx += blockDim.x * gridDim.x) {
     if (dx != nullptr) {
-      dx[idx] = cond[idx] ? dout[idx] : 0.;
+      dx[idx] = cond[idx] ? dout[idx] : static_cast<T>(0.);
     }
     if (dy != nullptr) {
-      dy[idx] = cond[idx] ? 0. : dout[idx];
+      dy[idx] = cond[idx] ? static_cast<T>(0.) : dout[idx];
     }
   }
 }
@@ -47,9 +50,9 @@ void WhereGradKernel(const Context& ctx,
 
   auto stream = ctx.stream();
   auto config = backends::gpu::GetGpuLaunchConfig1D(ctx, numel);
-  WhereGradCUDAKernel<
-      T><<<config.block_per_grid.x, config.thread_per_block.x, 0, stream>>>(
-      numel, dout, cond_data, dx, dy);
+  WhereGradCUDAKernel<T>
+      <<<config.block_per_grid.x, config.thread_per_block.x, 0, stream>>>(
+          numel, dout, cond_data, dx, dy);
 }
 
 }  // namespace phi
@@ -58,6 +61,8 @@ PD_REGISTER_KERNEL(where_grad,
                    GPU,
                    ALL_LAYOUT,
                    phi::WhereGradKernel,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16,
                    float,
                    double,
                    int,

@@ -12,11 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 import numpy as np
 import unittest
 
 import sys
+
 sys.path.append("..")
 from op_test import OpTest
 
@@ -41,7 +41,7 @@ class TestElementwiseModOp(OpTest):
 
         self.inputs = {
             'X': OpTest.np_dtype_to_fluid_dtype(self.x),
-            'Y': OpTest.np_dtype_to_fluid_dtype(self.y)
+            'Y': OpTest.np_dtype_to_fluid_dtype(self.y),
         }
         self.attrs = {'axis': self.axis, 'use_mkldnn': self.use_mkldnn}
         self.outputs = {'Out': self.out}
@@ -162,12 +162,12 @@ class TestRemainderOp(unittest.TestCase):
             self.assertEqual((np_z == z_expected).all(), True)
 
             np_x = np.array([-3.3, 11.5, -2, 3.5])
-            np_y = np.array([-1.2, 2., 3.3, -2.3])
+            np_y = np.array([-1.2, 2.0, 3.3, -2.3])
             x = paddle.to_tensor(np_x)
             y = paddle.to_tensor(np_y)
             z = x % y
             z_expected = np.array([-0.9, 1.5, 1.3, -1.1])
-            self.assertEqual(np.allclose(z_expected, z.numpy()), True)
+            np.testing.assert_allclose(z_expected, z.numpy(), rtol=1e-05)
 
             np_x = np.array([-3, 11, -2, 3])
             np_y = np.array([-1, 2, 3, -2])
@@ -175,7 +175,7 @@ class TestRemainderOp(unittest.TestCase):
             y = paddle.to_tensor(np_y, dtype="int64")
             z = x % y
             z_expected = np.array([0, 1, 1, -1])
-            self.assertEqual(np.allclose(z_expected, z.numpy()), True)
+            np.testing.assert_allclose(z_expected, z.numpy(), rtol=1e-05)
 
 
 if __name__ == '__main__':

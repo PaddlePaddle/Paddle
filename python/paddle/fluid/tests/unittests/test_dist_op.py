@@ -13,8 +13,10 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
 from op_test import OpTest
+
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
@@ -23,7 +25,7 @@ paddle.enable_static()
 
 
 def dist(x, y, p):
-    if p == 0.:
+    if p == 0.0:
         out = np.count_nonzero(x - y)
     elif p == float("inf"):
         out = np.max(np.abs(x - y))
@@ -37,12 +39,13 @@ def dist(x, y, p):
 class TestDistOp(OpTest):
     def setUp(self):
         self.op_type = 'dist'
+        self.python_api = paddle.dist
         self.attrs = {}
         self.init_case()
         self.init_data_type()
         self.inputs = {
             "X": np.random.random(self.x_shape).astype(self.data_type),
-            "Y": np.random.random(self.y_shape).astype(self.data_type)
+            "Y": np.random.random(self.y_shape).astype(self.data_type),
         }
 
         self.attrs["p"] = self.p
@@ -52,13 +55,14 @@ class TestDistOp(OpTest):
         self.gradient = self.calc_gradient()
 
     def init_case(self):
-        self.x_shape = (120)
-        self.y_shape = (120)
-        self.p = 0.
+        self.x_shape = 120
+        self.y_shape = 120
+        self.p = 0.0
 
     def init_data_type(self):
-        self.data_type = np.float32 if core.is_compiled_with_rocm(
-        ) else np.float64
+        self.data_type = (
+            np.float32 if core.is_compiled_with_rocm() else np.float64
+        )
 
     def calc_gradient(self):
         x = self.inputs["X"]
@@ -73,8 +77,11 @@ class TestDistOp(OpTest):
             grad[x_minux_y_abs != norm] = 0
         else:
             norm = dist(x, y, p)
-            grad = np.power(norm, 1 - p) * np.power(np.abs(x - y),
-                                                    p - 1) * np.sign(x - y)
+            grad = (
+                np.power(norm, 1 - p)
+                * np.power(np.abs(x - y), p - 1)
+                * np.sign(x - y)
+            )
 
         def get_reduce_dims(x, y):
             x_reduce_dims = []
@@ -106,24 +113,29 @@ class TestDistOp(OpTest):
         return x_grad, y_grad
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(["X", "Y"], "Out", user_defined_grads=self.gradient)
+        self.check_grad(
+            ["X", "Y"],
+            "Out",
+            user_defined_grads=self.gradient,
+            check_eager=True,
+        )
 
 
 class TestDistOpCase1(TestDistOp):
     def init_case(self):
         self.x_shape = (3, 5, 5, 6)
         self.y_shape = (5, 5, 6)
-        self.p = 1.
+        self.p = 1.0
 
 
 class TestDistOpCase2(TestDistOp):
     def init_case(self):
         self.x_shape = (10, 10)
         self.y_shape = (4, 10, 10)
-        self.p = 2.
+        self.p = 2.0
 
 
 class TestDistOpCase3(TestDistOp):
@@ -149,8 +161,9 @@ class TestDistOpCase5(TestDistOp):
 
 class TestDistAPI(unittest.TestCase):
     def init_data_type(self):
-        self.data_type = 'float32' if core.is_compiled_with_rocm(
-        ) else 'float64'
+        self.data_type = (
+            'float32' if core.is_compiled_with_rocm() else 'float64'
+        )
 
     def test_api(self):
         self.init_data_type()
@@ -163,15 +176,20 @@ class TestDistAPI(unittest.TestCase):
             x_i = np.random.random((2, 3, 4, 5)).astype(self.data_type)
             y_i = np.random.random((3, 1, 5)).astype(self.data_type)
             result = paddle.dist(x, y, p)
-            place = fluid.CUDAPlace(0) if core.is_compiled_with_cuda(
-            ) else fluid.CPUPlace()
+            place = (
+                fluid.CUDAPlace(0)
+                if core.is_compiled_with_cuda()
+                else fluid.CPUPlace()
+            )
             exe = fluid.Executor(place)
-            out = exe.run(fluid.default_main_program(),
-                          feed={'x': x_i,
-                                'y': y_i},
-                          fetch_list=[result])
-            self.assertTrue(np.allclose(dist(x_i, y_i, p), out[0]))
+            out = exe.run(
+                fluid.default_main_program(),
+                feed={'x': x_i, 'y': y_i},
+                fetch_list=[result],
+            )
+            np.testing.assert_allclose(dist(x_i, y_i, p), out[0], rtol=1e-05)
 
 
 if __name__ == '__main__':
+    paddle.enable_static()
     unittest.main()

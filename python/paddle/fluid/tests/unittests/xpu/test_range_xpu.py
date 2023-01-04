@@ -12,15 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
-import unittest
-import paddle
-import numpy as np
 import sys
+import unittest
+
+import numpy as np
+
+import paddle
+
 sys.path.append("..")
 from op_test_xpu import XPUOpTest
-from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper
+from xpu.get_test_cover_info import (
+    XPUOpTestWrapper,
+    create_test_class,
+    get_xpu_op_support_types,
+)
 
 paddle.enable_static()
 
@@ -39,12 +44,13 @@ class XPUTestRangeOp(XPUOpTestWrapper):
             self.inputs = {
                 'Start': np.array([self.case[0]]).astype(self.dtype),
                 'End': np.array([self.case[1]]).astype(self.dtype),
-                'Step': np.array([self.case[2]]).astype(self.dtype)
+                'Step': np.array([self.case[2]]).astype(self.dtype),
             }
 
             self.outputs = {
-                'Out': np.arange(self.case[0], self.case[1],
-                                 self.case[2]).astype(self.dtype)
+                'Out': np.arange(
+                    self.case[0], self.case[1], self.case[2]
+                ).astype(self.dtype)
             }
 
         def set_xpu(self):

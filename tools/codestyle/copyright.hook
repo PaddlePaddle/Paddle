@@ -12,12 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import absolute_import
-from __future__ import print_function
-from __future__ import unicode_literals
-
 import argparse
-import io
 import re
 import sys
 import os
@@ -71,7 +66,7 @@ RE_SHEBANG = re.compile(r"^[ \t\v]*#[ \t]?\!")
 def _check_copyright(path):
     head=[]
     try:
-        with open(path) as f:
+        with open(path, 'r', encoding='utf-8') as f:
             head = [next(f) for x in range(4)]
     except StopIteration:
         pass
@@ -83,7 +78,7 @@ def _check_copyright(path):
     return False
 
 def generate_copyright(path, comment_mark):
-    original_contents = io.open(path, encoding="utf-8").readlines()
+    original_contents = open(path, 'r', encoding="utf-8").readlines()
     head = original_contents[0:4]
 
     insert_line_no=0
@@ -106,7 +101,7 @@ def generate_copyright(path, comment_mark):
         new_contents.extend(original_contents[insert_line_no:])
     new_contents="".join(new_contents)
 
-    with io.open(path, 'w') as output_file:
+    with open(path, 'w', encoding='utf-8') as output_file:
         output_file.write(new_contents)
 
 

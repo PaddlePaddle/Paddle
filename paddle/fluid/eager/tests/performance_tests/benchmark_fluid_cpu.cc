@@ -23,7 +23,6 @@
 
 #include "glog/logging.h"
 #include "gtest/gtest.h"
-
 #include "paddle/fluid/eager/tests/performance_tests/benchmark_utils.h"
 #include "paddle/fluid/eager/tests/test_utils.h"
 #include "paddle/fluid/imperative/basic_engine.h"
@@ -59,15 +58,18 @@ TEST(Benchmark, FluidScaleCPU) {
     std::vector<float> src_data(128, 5.0);
     std::vector<int64_t> dims = {2, 4, 4, 4};
 
-    auto* x_tensor = X->MutableVar()->GetMutable<framework::LoDTensor>();
+    auto* x_tensor = X->MutableVar()->GetMutable<phi::DenseTensor>();
     x_tensor->Resize(phi::make_ddim(dims));
     auto* mutable_x = x_tensor->mutable_data<float>(place);
-    paddle::memory::Copy(place, mutable_x, place, src_data.data(),
+    paddle::memory::Copy(place,
+                         mutable_x,
+                         place,
+                         src_data.data(),
                          sizeof(float) * src_data.size());
 
     if (mode == "Accuracy") {
-      benchmark_fluid_scale(X, platform::Place(place),
-                            true /* accuracy_check */);
+      benchmark_fluid_scale(
+          X, platform::Place(place), true /* accuracy_check */);
 
     } else if (mode == "Performance") {
       auto t_start = std::chrono::high_resolution_clock::now();
@@ -105,21 +107,27 @@ TEST(Benchmark, FluidMatmulCPU) {
     std::vector<float> y_src_data(4, 2.0);
     std::vector<int64_t> dims = {2, 2};
 
-    auto* x_tensor = X->MutableVar()->GetMutable<framework::LoDTensor>();
+    auto* x_tensor = X->MutableVar()->GetMutable<phi::DenseTensor>();
     x_tensor->Resize(phi::make_ddim(dims));
     auto* mutable_x = x_tensor->mutable_data<float>(place);
-    paddle::memory::Copy(place, mutable_x, place, x_src_data.data(),
+    paddle::memory::Copy(place,
+                         mutable_x,
+                         place,
+                         x_src_data.data(),
                          sizeof(float) * x_src_data.size());
 
-    auto* y_tensor = Y->MutableVar()->GetMutable<framework::LoDTensor>();
+    auto* y_tensor = Y->MutableVar()->GetMutable<phi::DenseTensor>();
     y_tensor->Resize(phi::make_ddim(dims));
     auto* mutable_y = y_tensor->mutable_data<float>(place);
-    paddle::memory::Copy(place, mutable_y, place, y_src_data.data(),
+    paddle::memory::Copy(place,
+                         mutable_y,
+                         place,
+                         y_src_data.data(),
                          sizeof(float) * y_src_data.size());
 
     if (mode == "Accuracy") {
-      benchmark_fluid_matmul(X, Y, platform::Place(place),
-                             true /* accuracy_check */);
+      benchmark_fluid_matmul(
+          X, Y, platform::Place(place), true /* accuracy_check */);
 
     } else if (mode == "Performance") {
       auto t_start = std::chrono::high_resolution_clock::now();
@@ -160,10 +168,13 @@ TEST(Benchmark, FluidMLPCPU) {
     std::shared_ptr<imperative::VarBase> X(new imperative::VarBase(true, "X"));
     X->SetOverridedStopGradient(false);
 
-    auto* x_tensor = X->MutableVar()->GetMutable<framework::LoDTensor>();
+    auto* x_tensor = X->MutableVar()->GetMutable<phi::DenseTensor>();
     x_tensor->Resize(phi::make_ddim(x_dims));
     auto* mutable_x = x_tensor->mutable_data<float>(place);
-    paddle::memory::Copy(place, mutable_x, place, x_src_data.data(),
+    paddle::memory::Copy(place,
+                         mutable_x,
+                         place,
+                         x_src_data.data(),
                          sizeof(float) * x_src_data.size());
 
     std::vector<std::shared_ptr<imperative::VarBase>> Ws;
@@ -176,16 +187,22 @@ TEST(Benchmark, FluidMLPCPU) {
           new imperative::VarBase(true, "B"));
       B->SetOverridedStopGradient(false);
 
-      auto* w_tensor = W->MutableVar()->GetMutable<framework::LoDTensor>();
+      auto* w_tensor = W->MutableVar()->GetMutable<phi::DenseTensor>();
       w_tensor->Resize(phi::make_ddim(w_dims));
       auto* mutable_w = w_tensor->mutable_data<float>(place);
-      paddle::memory::Copy(place, mutable_w, place, w_src_data.data(),
+      paddle::memory::Copy(place,
+                           mutable_w,
+                           place,
+                           w_src_data.data(),
                            sizeof(float) * w_src_data.size());
 
-      auto* b_tensor = B->MutableVar()->GetMutable<framework::LoDTensor>();
+      auto* b_tensor = B->MutableVar()->GetMutable<phi::DenseTensor>();
       b_tensor->Resize(phi::make_ddim(b_dims));
       auto* mutable_b = b_tensor->mutable_data<float>(place);
-      paddle::memory::Copy(place, mutable_b, place, b_src_data.data(),
+      paddle::memory::Copy(place,
+                           mutable_b,
+                           place,
+                           b_src_data.data(),
                            sizeof(float) * b_src_data.size());
 
       Ws.emplace_back(std::move(W));
@@ -193,8 +210,8 @@ TEST(Benchmark, FluidMLPCPU) {
     }
 
     if (mode == "Accuracy") {
-      benchmark_fluid_mlp(X, Ws, Bs, platform::Place(place),
-                          true /* accuracy_check */);
+      benchmark_fluid_mlp(
+          X, Ws, Bs, platform::Place(place), true /* accuracy_check */);
 
     } else if (mode == "Performance") {
       auto t_start = std::chrono::high_resolution_clock::now();

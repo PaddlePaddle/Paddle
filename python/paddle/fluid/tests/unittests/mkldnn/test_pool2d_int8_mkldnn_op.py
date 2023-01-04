@@ -12,15 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-from __future__ import division
-
 import unittest
+
 import numpy as np
 
 import paddle.fluid.core as core
 from paddle.fluid.tests.unittests.op_test import OpTest
-from paddle.fluid.tests.unittests.test_pool2d_op import TestPool2D_Op, avg_pool2D_forward_naive, max_pool2D_forward_naive
+from paddle.fluid.tests.unittests.test_pool2d_op import (
+    TestPool2D_Op,
+    max_pool2D_forward_naive,
+)
 
 
 class TestPool2DMKLDNNInt8_Op(TestPool2D_Op):
@@ -32,20 +33,32 @@ class TestPool2DMKLDNNInt8_Op(TestPool2D_Op):
 
     def setUp(self):
         TestPool2D_Op.setUp(self)
-        assert self.dtype in [np.int8, np.uint8
-                              ], 'Dtype should be int8 or uint8'
+        assert self.dtype in [
+            np.int8,
+            np.uint8,
+        ], 'Dtype should be int8 or uint8'
         input = np.random.randint(0, 100, self.shape).astype(self.dtype)
-        output = (self.pool2D_forward_naive(
-            input, self.ksize, self.strides, self.paddings, self.global_pool,
-            self.ceil_mode, self.exclusive, self.adaptive,
-            self.dtype)).astype(self.dtype)
+        output = (
+            self.pool2D_forward_naive(
+                input,
+                self.ksize,
+                self.strides,
+                self.paddings,
+                self.global_pool,
+                self.ceil_mode,
+                self.exclusive,
+                self.adaptive,
+                self.dtype,
+            )
+        ).astype(self.dtype)
         self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(input)}
         self.outputs = {'Out': output}
 
     def test_check_output(self):
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
         self.check_output_with_place(
-            core.CPUPlace(), atol=1e-5, check_dygraph=False)
+            core.CPUPlace(), atol=1e-5, check_dygraph=False
+        )
 
     def test_check_grad(self):
         pass

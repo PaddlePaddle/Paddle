@@ -13,8 +13,11 @@
 // limitations under the License.
 
 #include "paddle/infrt/dialect/phi/pass/kernel_op_desc.h"
+
 #include <glog/logging.h>
+
 #include "paddle/infrt/dialect/phi/data_type.h"
+#include "paddle/phi/core/type_defs.h"
 #include "paddle/phi/kernels/declarations.h"
 
 namespace infrt {
@@ -73,7 +76,7 @@ std::string getPhiLayoutSuffix(LayoutType layout) {
   }
 }
 
-std::vector<PhiKernelDesc> getCandidateKernels(
+std::vector<PhiKernelDesc> GetCandidateKernels(
     std::string name, const std::vector<Place>& valid_palces) {
   std::vector<PhiKernelDesc> candidate_kernels;
   PhiKernelDesc phi_kernel_desc;
@@ -88,19 +91,20 @@ std::vector<PhiKernelDesc> getCandidateKernels(
       if (kernel_key_map.find(kernel_key) == kernel_key_map.end()) continue;
       place.layout = LayoutType::ANY;
     }
-    phi_kernel_desc.kernelType = place;
-    phi_kernel_desc.inputsType.clear();
-    phi_kernel_desc.outputsType.clear();
+    phi_kernel_desc.kernel_type = place;
+    phi_kernel_desc.input_types.clear();
+    phi_kernel_desc.output_types.clear();
     phi::KernelArgsDef args_def = kernel_key_map.at(kernel_key).args_def();
-    const paddle::SmallVector<phi::TensorArgDef>& input_arg =
-        args_def.input_defs();
-    const paddle::SmallVector<phi::TensorArgDef>& output_arg =
-        args_def.output_defs();
+    const paddle::small_vector<phi::TensorArgDef, phi::kInputSmallVectorSize>&
+        input_arg = args_def.input_defs();
+    const paddle::small_vector<phi::TensorArgDef, phi::kOutputSmallVectorSize>&
+        output_arg = args_def.output_defs();
     for (auto tensor_arg : input_arg) {
-      phi_kernel_desc.inputsType.emplace_back(ConvertPlaceFromPhi(tensor_arg));
+      phi_kernel_desc.input_types.emplace_back(ConvertPlaceFromPhi(tensor_arg));
     }
     for (auto tensor_arg : output_arg) {
-      phi_kernel_desc.outputsType.emplace_back(ConvertPlaceFromPhi(tensor_arg));
+      phi_kernel_desc.output_types.emplace_back(
+          ConvertPlaceFromPhi(tensor_arg));
     }
     candidate_kernels.emplace_back(phi_kernel_desc);
   }

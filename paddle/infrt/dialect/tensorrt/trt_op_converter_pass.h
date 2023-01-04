@@ -20,12 +20,15 @@
 
 namespace infrt {
 namespace trt {
+
+std::unique_ptr<mlir::Pass> CreateTrtOpConverterPass();
+
 /*
  * trtOpConverterPass.
  *
  * source ir:
  * func @main(%a : tensor<?xf32>) -> tensor<?xf32> {
- *   %d, %f = "pd.graph"(%a) {
+ *   %d, %f = "infrt.graph"(%a) {
  *     %m = "pd.conv2d"(%a)...
  *     %n = "pd.conv3d"(%m)...
  *     %s = "pd.conv2d"(%a)...

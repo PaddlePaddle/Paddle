@@ -16,6 +16,7 @@ limitations under the License. */
 #include <rccl.h>
 
 #include <mutex>  // NOLINT
+
 #include "paddle/phi/backends/dynload/rccl.h"
 
 namespace paddle {

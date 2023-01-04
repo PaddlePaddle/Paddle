@@ -63,13 +63,17 @@ typedef int8_t PD_Bool;
   typedef int32_t type; \
   enum
 
-PD_ENUM(PD_PrecisionType){PD_PRECISION_FLOAT32 = 0, PD_PRECISION_INT8,
-                          PD_PRECISION_HALF};
+PD_ENUM(PD_PrecisionType){
+    PD_PRECISION_FLOAT32 = 0, PD_PRECISION_INT8, PD_PRECISION_HALF};
 
-PD_ENUM(PD_PlaceType){PD_PLACE_UNK = -1, PD_PLACE_CPU, PD_PLACE_GPU,
-                      PD_PLACE_XPU};
+PD_ENUM(PD_PlaceType){
+    PD_PLACE_UNK = -1, PD_PLACE_CPU, PD_PLACE_GPU, PD_PLACE_XPU};
 
 PD_ENUM(PD_DataType){
-    PD_DATA_UNK = -1, PD_DATA_FLOAT32, PD_DATA_INT32,
-    PD_DATA_INT64,    PD_DATA_UINT8,   PD_DATA_INT8,
+    PD_DATA_UNK = -1,
+    PD_DATA_FLOAT32,
+    PD_DATA_INT32,
+    PD_DATA_INT64,
+    PD_DATA_UINT8,
+    PD_DATA_INT8,
 };

@@ -12,25 +12,26 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import numpy as np
-import paddle
+from test_dist_base import TestParallelDyGraphRunnerBase, runtime_main
 
-from test_dist_base import runtime_main, TestParallelDyGraphRunnerBase
-from paddle.nn import Layer, Embedding
+import paddle
+from paddle.nn import Embedding, Layer
+
 paddle.set_default_dtype("float64")
 
 
 class SimpleNet(Layer):
-    def __init__(self,
-                 hidden_size,
-                 vocab_size,
-                 num_steps=20,
-                 init_scale=0.1,
-                 is_sparse=False,
-                 dtype="float64"):
-        super(SimpleNet, self).__init__()
+    def __init__(
+        self,
+        hidden_size,
+        vocab_size,
+        num_steps=20,
+        init_scale=0.1,
+        is_sparse=False,
+        dtype="float64",
+    ):
+        super().__init__()
         self.hidden_size = hidden_size
         self.vocab_size = vocab_size
         self.init_scale = init_scale
@@ -40,27 +41,35 @@ class SimpleNet(Layer):
             self.hidden_size,
             sparse=True,
             weight_attr=paddle.ParamAttr(
-                name='embedding_param',
                 initializer=paddle.nn.initializer.Uniform(
-                    low=-init_scale, high=init_scale)))
+                    low=-init_scale, high=init_scale
+                )
+            ),
+        )
         self.softmax_weight = self.create_parameter(
             attr=paddle.ParamAttr(),
             shape=[self.hidden_size, self.vocab_size],
             dtype=dtype,
             default_initializer=paddle.nn.initializer.Uniform(
-                low=-self.init_scale, high=self.init_scale))
+                low=-self.init_scale, high=self.init_scale
+            ),
+        )
         self.softmax_bias = self.create_parameter(
             attr=paddle.ParamAttr(),
             shape=[self.vocab_size],
             dtype=dtype,
             default_initializer=paddle.nn.initializer.Uniform(
-                low=-self.init_scale, high=self.init_scale))
+                low=-self.init_scale, high=self.init_scale
+            ),
+        )
         self.tmp = self.create_parameter(
             attr=paddle.ParamAttr(),
             shape=[self.hidden_size, self.vocab_size],
             dtype=dtype,
             default_initializer=paddle.nn.initializer.Uniform(
-                low=-self.init_scale, high=self.init_scale))
+                low=-self.init_scale, high=self.init_scale
+            ),
+        )
 
     def forward(self, input, label):
         x_emb = self.embedding(input)
@@ -68,7 +77,8 @@ class SimpleNet(Layer):
         fc = paddle.add(fc, self.softmax_bias)
         projection = paddle.reshape(fc, shape=[-1, self.vocab_size])
         loss = paddle.nn.functional.softmax_with_cross_entropy(
-            logits=projection, label=label, soft_label=False)
+            logits=projection, label=label, soft_label=False
+        )
         loss = paddle.reshape(loss, shape=[-1, self.num_steps])
         loss = paddle.mean(loss, axis=[0])
         loss = paddle.sum(loss)
@@ -102,13 +112,16 @@ class TestSparseEmbeddingFP64(TestParallelDyGraphRunnerBase):
             vocab_size=vocab_size,
             num_steps=num_steps,
             init_scale=init_scale,
-            is_sparse=True)
+            is_sparse=True,
+        )
 
         train_reader = paddle.batch(
-            fake_sample_reader(), batch_size=batch_size, drop_last=True)
+            fake_sample_reader(), batch_size=batch_size, drop_last=True
+        )
 
-        optimizer = paddle.optimizer.SGD(learning_rate=0.001,
-                                         parameters=model.parameters())
+        optimizer = paddle.optimizer.SGD(
+            learning_rate=0.001, parameters=model.parameters()
+        )
 
         return model, train_reader, optimizer
 

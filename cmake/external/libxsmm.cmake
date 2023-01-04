@@ -12,34 +12,38 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-INCLUDE (ExternalProject)
+include(ExternalProject)
 
-SET(LIBXSMM_PREFIX_DIR ${THIRD_PARTY_PATH}/libxsmm)
-SET(LIBXSMM_INSTALL_DIR ${THIRD_PARTY_PATH}/install/libxsmm)
-SET(LIBXSMM_INCLUDE_DIR "${LIBXSMM_INSTALL_DIR}/include" CACHE PATH "LIBXSMM include directory." FORCE)
-SET(LIBXSMM_LIBRARY_DIR "${LIBXSMM_INSTALL_DIR}/lib" CACHE PATH "LIBXSMM library directory." FORCE)
-SET(LIBXSMM_LIB        "${LIBXSMM_LIBRARY_DIR}/libxsmm.a")
-SET(LIBXSMMNOBLAS_LIB  "${LIBXSMM_LIBRARY_DIR}/libxsmmnoblas.a")
+set(LIBXSMM_PREFIX_DIR ${THIRD_PARTY_PATH}/libxsmm)
+set(LIBXSMM_INSTALL_DIR ${THIRD_PARTY_PATH}/install/libxsmm)
+set(LIBXSMM_INCLUDE_DIR
+    "${LIBXSMM_INSTALL_DIR}/include"
+    CACHE PATH "LIBXSMM include directory." FORCE)
+set(LIBXSMM_LIBRARY_DIR
+    "${LIBXSMM_INSTALL_DIR}/lib"
+    CACHE PATH "LIBXSMM library directory." FORCE)
+set(LIBXSMM_LIB "${LIBXSMM_LIBRARY_DIR}/libxsmm.a")
+set(LIBXSMMNOBLAS_LIB "${LIBXSMM_LIBRARY_DIR}/libxsmmnoblas.a")
 
 ExternalProject_Add(
-    extern_libxsmm
-    ${SHALLOW_CLONE}
-    GIT_REPOSITORY  "${GIT_URL}/hfp/libxsmm.git"
-    GIT_TAG         "7cc03b5b342fdbc6b6d990b190671c5dbb8489a2"
-    PREFIX          ${LIBXSMM_PREFIX_DIR}
-    UPDATE_COMMAND  ""
-    CONFIGURE_COMMAND ""
-    BUILD_IN_SOURCE 1
-    BUILD_COMMAND   $(MAKE) --silent PREFIX=${LIBXSMM_INSTALL_DIR} CXX=g++ CC=gcc WARP=0 install
-    INSTALL_COMMAND ""
-    BUILD_BYPRODUCTS ${LIBXSMM_LIB}
-    BUILD_BYPRODUCTS ${LIBXSMMNOBLAS_LIB}
-)
-ADD_LIBRARY(libxsmm STATIC IMPORTED GLOBAL)
-SET_PROPERTY(TARGET libxsmm PROPERTY IMPORTED_LOCATION "${LIBXSMM_LIB}")
-SET_PROPERTY(TARGET libxsmm PROPERTY IMPORTED_LOCATION "${LIBXSMMNOBLAS_LIB}")
+  extern_libxsmm
+  ${SHALLOW_CLONE}
+  GIT_REPOSITORY "${GIT_URL}/hfp/libxsmm.git"
+  GIT_TAG "7cc03b5b342fdbc6b6d990b190671c5dbb8489a2"
+  PREFIX ${LIBXSMM_PREFIX_DIR}
+  UPDATE_COMMAND ""
+  CONFIGURE_COMMAND ""
+  BUILD_IN_SOURCE 1
+  BUILD_COMMAND $(MAKE) --silent PREFIX=${LIBXSMM_INSTALL_DIR} CXX=g++ CC=gcc
+                WARP=0 install
+  INSTALL_COMMAND ""
+  BUILD_BYPRODUCTS ${LIBXSMM_LIB}
+  BUILD_BYPRODUCTS ${LIBXSMMNOBLAS_LIB})
+add_library(libxsmm STATIC IMPORTED GLOBAL)
+set_property(TARGET libxsmm PROPERTY IMPORTED_LOCATION "${LIBXSMM_LIB}")
+set_property(TARGET libxsmm PROPERTY IMPORTED_LOCATION "${LIBXSMMNOBLAS_LIB}")
 
-MESSAGE(STATUS "Libxsmm library: ${LIBXSMM_LIBS}")
+message(STATUS "Libxsmm library: ${LIBXSMM_LIBS}")
 include_directories(${LIBXSMM_INCLUDE_DIR})
-ADD_DEFINITIONS(-DPADDLE_WITH_LIBXSMM)
-ADD_DEPENDENCIES(libxsmm extern_libxsmm)
+add_definitions(-DPADDLE_WITH_LIBXSMM)
+add_dependencies(libxsmm extern_libxsmm)

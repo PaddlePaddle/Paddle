@@ -23,9 +23,9 @@ KernelSignature NormOpArgumentMapping(const ArgumentMappingContext& ctx) {
 
 KernelSignature NormGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
   return KernelSignature("norm_grad",
-                         {"X", "Norm", GradVarName("Out")},
+                         {"X", "Norm", "Out@GRAD"},
                          {"axis", "epsilon", "is_test"},
-                         {GradVarName("X")});
+                         {"X@GRAD"});
 }
 
 }  // namespace phi

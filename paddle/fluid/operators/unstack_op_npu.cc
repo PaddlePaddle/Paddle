@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/unstack_op.h"
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 
 namespace paddle {
@@ -22,8 +22,8 @@ template <typename DeviceContext, typename T>
 class UnStackNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-    auto *dy = ctx.Input<Tensor>("X");
-    auto dx = ctx.MultiOutput<Tensor>("Y");
+    auto *dy = ctx.Input<phi::DenseTensor>("X");
+    auto dx = ctx.MultiOutput<phi::DenseTensor>("Y");
     int axis = ctx.Attr<int>("axis");
     if (axis < 0) axis += dy->dims().size();
     int num = dy->dims()[axis];
@@ -32,7 +32,7 @@ class UnStackNPUKernel : public framework::OpKernel<T> {
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
 
-    std::vector<paddle::framework::Tensor> dx_list;
+    std::vector<phi::DenseTensor> dx_list;
     for (int i = 0; i < num; i++) {
       dx[i]->mutable_data<T>(ctx.GetPlace());
       dx_list.push_back(*dx[i]);
@@ -48,8 +48,8 @@ template <typename DeviceContext, typename T>
 class UnStackGradNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-    auto x = ctx.MultiInput<Tensor>(framework::GradVarName("Y"));
-    auto *y = ctx.Output<Tensor>(framework::GradVarName("X"));
+    auto x = ctx.MultiInput<phi::DenseTensor>(framework::GradVarName("Y"));
+    auto *y = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
     int axis = ctx.Attr<int>("axis");
     if (axis < 0) axis += (x[0]->dims().size() + 1);
     int num = static_cast<int>(x.size());
@@ -58,7 +58,7 @@ class UnStackGradNPUKernel : public framework::OpKernel<T> {
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
 
-    std::vector<paddle::framework::Tensor> x_list;
+    std::vector<phi::DenseTensor> x_list;
     for (int i = 0; i < num; i++) {
       x_list.push_back(*x[i]);
     }
@@ -77,9 +77,11 @@ namespace plat = paddle::platform;
 namespace ops = paddle::operators;
 
 REGISTER_OP_NPU_KERNEL(
-    unstack, ops::UnStackNPUKernel<plat::NPUDeviceContext, float>,
+    unstack,
+    ops::UnStackNPUKernel<plat::NPUDeviceContext, float>,
     ops::UnStackNPUKernel<plat::NPUDeviceContext, plat::float16>);
 
 REGISTER_OP_NPU_KERNEL(
-    unstack_grad, ops::UnStackGradNPUKernel<plat::NPUDeviceContext, float>,
+    unstack_grad,
+    ops::UnStackGradNPUKernel<plat::NPUDeviceContext, float>,
     ops::UnStackGradNPUKernel<plat::NPUDeviceContext, plat::float16>);

@@ -15,6 +15,7 @@
 #pragma once
 
 #include <stdio.h>
+
 #include <atomic>
 #include <memory>
 #include <mutex>  // NOLINT
@@ -24,6 +25,8 @@
 #include <vector>
 
 #include "glog/logging.h"
+
+#include "paddle/phi/core/macros.h"
 
 namespace paddle {
 namespace platform {

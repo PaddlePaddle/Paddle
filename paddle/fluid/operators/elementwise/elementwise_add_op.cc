@@ -12,8 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/elementwise/elementwise_add_op.h"
-
 #include <string>
 
 #include "paddle/fluid/operators/elementwise/elementwise_op.h"
@@ -22,12 +20,6 @@ namespace paddle {
 namespace framework {
 class OpDesc;
 }  // namespace framework
-namespace imperative {
-class OpBase;
-}  // namespace imperative
-namespace platform {
-class CPUDeviceContext;
-}  // namespace platform
 }  // namespace paddle
 
 namespace paddle {
@@ -39,15 +31,17 @@ class ElementwiseAddOpMaker : public ElementwiseOpMaker {
   std::string GetEquation() const override { return "Out = X + Y"; }
 
   void AddInputX() override {
-    AddInput("X",
-             "(Variable), Tensor or LoDTensor of any dimensions. Its dtype "
-             "should be int32, int64, float32, float64.");
+    AddInput(
+        "X",
+        "(Variable), Tensor or phi::DenseTensor of any dimensions. Its dtype "
+        "should be int32, int64, float32, float64.");
   }
 
   void AddInputY() override {
-    AddInput("Y",
-             "(Variable), Tensor or LoDTensor of any dimensions. Its dtype "
-             "should be int32, int64, float32, float64.");
+    AddInput(
+        "Y",
+        "(Variable), Tensor or phi::DenseTensor of any dimensions. Its dtype "
+        "should be int32, int64, float32, float64.");
   }
 
   std::string GetOpFuntionality() const override {
@@ -101,40 +95,34 @@ REGISTER_ELEMWISE_EXPLICIT_OP_WITHOUT_GRAD(elementwise_add, Add);
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(
-    elementwise_add_grad, ops::ElementwiseOpGrad,
-    ops::ElementwiseGradOpInplaceInferer, ops::ElementwiseGradNoBufVarsInferer,
+    elementwise_add_grad,
+    ops::ElementwiseOpGrad,
+    ops::ElementwiseGradOpInplaceInferer,
+    ops::ElementwiseGradNoBufVarsInferer,
     ops::ElementwiseAddDoubleGradMaker<paddle::framework::OpDesc>,
     ops::ElementwiseAddDoubleGradMaker<paddle::imperative::OpBase>);
 
 REGISTER_OPERATOR(
-    elementwise_add_grad_grad, ops::ElementwiseOpDoubleGradWithoutDXDY,
+    elementwise_add_grad_grad,
+    ops::ElementwiseOpDoubleGradWithoutDXDY,
     ops::ElementwiseDoubleGradOpInplaceInferer,
     ops::ElementwiseDoubleGradNoBufVarsInferer,
     ops::ElementwiseAddTripleGradMaker<paddle::framework::OpDesc>,
     ops::ElementwiseAddTripleGradMaker<paddle::imperative::OpBase>);
 
-REGISTER_OPERATOR(elementwise_add_triple_grad, ops::ElementwiseOpTripleGrad,
+REGISTER_OPERATOR(elementwise_add_triple_grad,
+                  ops::ElementwiseOpTripleGrad,
                   ops::ElementwiseTripleGradOpInplaceInferer,
                   ops::ElementwiseTripleGradNoBufVarsInferer);
 
 // A specialization elementwise_add operator, used in gradient accumulation with
 // inplace addto.
 REGISTER_OPERATOR(
-    grad_add, paddle::operators::ElementwiseOp,
+    grad_add,
+    paddle::operators::ElementwiseOp,
     paddle::operators::ElementwiseAddOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
-
-REGISTER_OP_CPU_KERNEL(
-    grad_add,
-    ops::ElementwiseAddKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::ElementwiseAddKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::ElementwiseAddKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::ElementwiseAddKernel<paddle::platform::CPUDeviceContext, int64_t>,
-    ops::ElementwiseAddKernel<paddle::platform::CPUDeviceContext,
-                              paddle::platform::complex<float>>,
-    ops::ElementwiseAddKernel<paddle::platform::CPUDeviceContext,
-                              paddle::platform::complex<double>>);
 
 REGISTER_OP_VERSION(elementwise_add)
     .AddCheckpoint(

@@ -24,16 +24,14 @@ limitations under the License. */
 namespace paddle {
 namespace memory {
 
-using phi::Allocation;
-using allocation::Allocator;
 using allocation::AllocationPtr;
+using allocation::Allocator;
+using phi::Allocation;
 
 extern std::shared_ptr<Allocation> AllocShared(const platform::Place& place,
                                                size_t size);
 
 extern AllocationPtr Alloc(const platform::Place& place, size_t size);
-
-extern AllocationPtr Alloc(const phi::DeviceContext& dev_ctx, size_t size);
 
 extern uint64_t Release(const platform::Place& place);
 
@@ -41,7 +39,8 @@ extern std::shared_ptr<Allocation> AllocShared(const platform::Place& place,
                                                size_t size,
                                                const phi::Stream& stream);
 
-extern AllocationPtr Alloc(const platform::CUDAPlace& place, size_t size,
+extern AllocationPtr Alloc(const platform::CUDAPlace& place,
+                           size_t size,
                            const phi::Stream& stream);
 
 extern bool InSameStream(const std::shared_ptr<Allocation>& allocation,
@@ -50,13 +49,11 @@ extern bool InSameStream(const std::shared_ptr<Allocation>& allocation,
 extern void* GetBasePtr(const std::shared_ptr<Allocation>& allocation);
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-extern uint64_t Release(const platform::CUDAPlace& place,
-                        const gpuStream_t& stream);
+extern uint64_t Release(const platform::CUDAPlace& place, gpuStream_t stream);
 
-void RecordStream(std::shared_ptr<Allocation> allocation,
-                  const gpuStream_t& stream);
+void RecordStream(std::shared_ptr<Allocation> allocation, gpuStream_t stream);
 
-const gpuStream_t& GetStream(const std::shared_ptr<Allocation>& allocation);
+gpuStream_t GetStream(const std::shared_ptr<Allocation>& allocation);
 #endif
 }  // namespace memory
 }  // namespace paddle

@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/sgd_kernel.h"
+
 #include "paddle/fluid/operators/jit/kernels.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -118,7 +119,7 @@ void SGDDenseKernel(const Context& dev_ctx,
                     const DenseTensor& param,
                     const DenseTensor& learning_rate,
                     const DenseTensor& grad,
-                    paddle::optional<const DenseTensor&> master_param,
+                    const paddle::optional<DenseTensor>& master_param,
                     bool multi_precision,
                     DenseTensor* param_out,
                     DenseTensor* master_param_out) {
@@ -132,7 +133,7 @@ void SGDDenseParamSparseGradKernel(
     const DenseTensor& param,
     const DenseTensor& learning_rate,
     const SelectedRows& grad,
-    paddle::optional<const DenseTensor&> master_param,
+    const paddle::optional<DenseTensor>& master_param,
     bool multi_precision,
     DenseTensor* param_out,
     DenseTensor* master_param_out) {
@@ -146,7 +147,7 @@ void SGDSparseParamSparseGradKernel(
     const SelectedRows& param,
     const DenseTensor& learning_rate,
     const SelectedRows& grad,
-    paddle::optional<const SelectedRows&> master_param,
+    const paddle::optional<SelectedRows>& master_param,
     bool multi_precision,
     SelectedRows* param_out,
     SelectedRows* master_param_out) {

@@ -12,9 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import sys
+
 sys.path.append("..")
 import op_test
 import unittest
@@ -25,81 +24,31 @@ from paddle.static import Program, program_guard
 
 SUPPORTED_DTYPES = [bool]
 
-TEST_META_OP_DATA = [{
-    'op_str': 'logical_and',
-    'binary_op': True
-}, {
-    'op_str': 'logical_or',
-    'binary_op': True
-}, {
-    'op_str': 'logical_not',
-    'binary_op': False
-}]
+TEST_META_OP_DATA = [
+    {'op_str': 'logical_and', 'binary_op': True},
+    {'op_str': 'logical_or', 'binary_op': True},
+    {'op_str': 'logical_not', 'binary_op': False},
+]
 
 TEST_META_SHAPE_DATA = {
-    'XDimLargerThanYDim1': {
-        'x_shape': [2, 3, 4, 5],
-        'y_shape': [4, 5]
-    },
-    'XDimLargerThanYDim2': {
-        'x_shape': [2, 3, 4, 5],
-        'y_shape': [4, 1]
-    },
-    'XDimLargerThanYDim3': {
-        'x_shape': [2, 3, 4, 5],
-        'y_shape': [1, 4, 1]
-    },
-    'XDimLargerThanYDim4': {
-        'x_shape': [2, 3, 4, 5],
-        'y_shape': [3, 4, 1]
-    },
-    'XDimLargerThanYDim5': {
-        'x_shape': [2, 3, 1, 5],
-        'y_shape': [3, 1, 1]
-    },
-    'XDimLessThanYDim1': {
-        'x_shape': [4, 1],
-        'y_shape': [2, 3, 4, 5]
-    },
-    'XDimLessThanYDim2': {
-        'x_shape': [1, 4, 1],
-        'y_shape': [2, 3, 4, 5]
-    },
-    'XDimLessThanYDim3': {
-        'x_shape': [3, 4, 1],
-        'y_shape': [2, 3, 4, 5]
-    },
-    'XDimLessThanYDim4': {
-        'x_shape': [3, 1, 1],
-        'y_shape': [2, 3, 1, 5]
-    },
-    'XDimLessThanYDim5': {
-        'x_shape': [4, 5],
-        'y_shape': [2, 3, 4, 5]
-    },
-    'Axis1InLargerDim': {
-        'x_shape': [1, 4, 5],
-        'y_shape': [2, 3, 1, 5]
-    },
-    'EqualDim1': {
-        'x_shape': [10, 7],
-        'y_shape': [10, 7]
-    },
-    'EqualDim2': {
-        'x_shape': [1, 1, 4, 5],
-        'y_shape': [2, 3, 1, 5]
-    }
+    'XDimLargerThanYDim1': {'x_shape': [2, 3, 4, 5], 'y_shape': [4, 5]},
+    'XDimLargerThanYDim2': {'x_shape': [2, 3, 4, 5], 'y_shape': [4, 1]},
+    'XDimLargerThanYDim3': {'x_shape': [2, 3, 4, 5], 'y_shape': [1, 4, 1]},
+    'XDimLargerThanYDim4': {'x_shape': [2, 3, 4, 5], 'y_shape': [3, 4, 1]},
+    'XDimLargerThanYDim5': {'x_shape': [2, 3, 1, 5], 'y_shape': [3, 1, 1]},
+    'XDimLessThanYDim1': {'x_shape': [4, 1], 'y_shape': [2, 3, 4, 5]},
+    'XDimLessThanYDim2': {'x_shape': [1, 4, 1], 'y_shape': [2, 3, 4, 5]},
+    'XDimLessThanYDim3': {'x_shape': [3, 4, 1], 'y_shape': [2, 3, 4, 5]},
+    'XDimLessThanYDim4': {'x_shape': [3, 1, 1], 'y_shape': [2, 3, 1, 5]},
+    'XDimLessThanYDim5': {'x_shape': [4, 5], 'y_shape': [2, 3, 4, 5]},
+    'Axis1InLargerDim': {'x_shape': [1, 4, 5], 'y_shape': [2, 3, 1, 5]},
+    'EqualDim1': {'x_shape': [10, 7], 'y_shape': [10, 7]},
+    'EqualDim2': {'x_shape': [1, 1, 4, 5], 'y_shape': [2, 3, 1, 5]},
 }
 
 TEST_META_WRONG_SHAPE_DATA = {
-    'ErrorDim1': {
-        'x_shape': [2, 3, 4, 5],
-        'y_shape': [3, 4]
-    },
-    'ErrorDim2': {
-        'x_shape': [2, 3, 4, 5],
-        'y_shape': [4, 3]
-    }
+    'ErrorDim1': {'x_shape': [2, 3, 4, 5], 'y_shape': [3, 4]},
+    'ErrorDim2': {'x_shape': [2, 3, 4, 5], 'y_shape': [4, 3]},
 }
 
 
@@ -159,15 +108,19 @@ def test(unit_test, use_npu=False, test_error=False):
         for shape_data in META_DATA.values():
             for data_type in SUPPORTED_DTYPES:
                 meta_data['x_np'] = np_data_generator(
-                    shape_data['x_shape'], dtype=data_type)
+                    shape_data['x_shape'], dtype=data_type
+                )
                 meta_data['y_np'] = np_data_generator(
-                    shape_data['y_shape'], dtype=data_type)
+                    shape_data['y_shape'], dtype=data_type
+                )
                 if meta_data['binary_op'] and test_error:
                     # catch C++ Exception
-                    unit_test.assertRaises(BaseException, run_static,
-                                           **meta_data)
-                    unit_test.assertRaises(BaseException, run_dygraph,
-                                           **meta_data)
+                    unit_test.assertRaises(
+                        BaseException, run_static, **meta_data
+                    )
+                    unit_test.assertRaises(
+                        BaseException, run_dygraph, **meta_data
+                    )
                     continue
                 static_result = run_static(**meta_data)
                 dygraph_result = run_dygraph(**meta_data)
@@ -176,8 +129,9 @@ def test(unit_test, use_npu=False, test_error=False):
                 else:
                     np_result = np_op(meta_data['x_np'])
                 unit_test.assertTrue((static_result == np_result).all())
-                unit_test.assertTrue((dygraph_result.numpy() == np_result).all(
-                ))
+                unit_test.assertTrue(
+                    (dygraph_result.numpy() == np_result).all()
+                )
 
 
 def test_type_error(unit_test, use_npu, type_str_map):
@@ -191,11 +145,11 @@ def test_type_error(unit_test, use_npu, type_str_map):
         if binary_op:
             if type_str_map['x'] != type_str_map['y']:
                 unit_test.assertRaises(error_type, op, x=x, y=y)
-            if not fluid.in_dygraph_mode():
+            if not fluid._non_static_mode():
                 error_type = TypeError
                 unit_test.assertRaises(error_type, op, x=x, y=y, out=1)
         else:
-            if not fluid.in_dygraph_mode():
+            if not fluid._non_static_mode():
                 error_type = TypeError
                 unit_test.assertRaises(error_type, op, x=x, out=1)
 
@@ -216,17 +170,20 @@ def test_type_error(unit_test, use_npu, type_str_map):
         main_program = paddle.static.Program()
         with paddle.static.program_guard(main_program, startup_program):
             x = paddle.static.data(
-                name='x', shape=[10], dtype=type_str_map['x'])
+                name='x', shape=[10], dtype=type_str_map['x']
+            )
             y = paddle.static.data(
-                name='y', shape=[10], dtype=type_str_map['y'])
+                name='y', shape=[10], dtype=type_str_map['y']
+            )
             check_type(meta_data['op_str'], x, y, binary_op)
 
 
 def type_map_factory():
-    return [{
-        'x': x_type,
-        'y': y_type
-    } for x_type in SUPPORTED_DTYPES for y_type in SUPPORTED_DTYPES]
+    return [
+        {'x': x_type, 'y': y_type}
+        for x_type in SUPPORTED_DTYPES
+        for y_type in SUPPORTED_DTYPES
+    ]
 
 
 class TestCPU(unittest.TestCase):

@@ -13,14 +13,17 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/platform/device/ipu/ipu_device.h"
+
+#include <popart/devicemanager.hpp>
+
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace platform {
 namespace ipu {
 
-// TODO(alleng) merge with ipu_utils
-static bool GetBoolEnv(std::string str) {
+namespace {
+const bool GetBoolEnv(const std::string& str) {
   char* str_val = getenv(str.c_str());
   if (str_val == NULL) {
     return false;
@@ -32,30 +35,36 @@ static bool GetBoolEnv(std::string str) {
     return val;
   }
 }
+}  // namespace
 
 int GetNumDevices() {
   bool ipu_model = GetBoolEnv("POPLAR_IPUMODEL");
-  if (ipu_model) {
+  bool compile_only = GetBoolEnv("IPU_COMPILE_ONLY");
+  if (ipu_model || compile_only) {
     return 1;
   }
   int num_devices =
       popart::DeviceManager::createDeviceManager().enumerateDevices().size();
-  PADDLE_ENFORCE_GT(num_devices, 0, platform::errors::Unavailable(
-                                        "Do not found any IPU devices, please "
-                                        "make sure Poplar sdk is enabled"));
+  PADDLE_ENFORCE_GT(
+      num_devices,
+      0,
+      platform::errors::Unavailable("Do not found any IPU devices, please "
+                                    "make sure Poplar sdk is enabled"));
   return num_devices;
 }
 
 std::vector<int> GetDeviceIds() {
   bool ipu_model = GetBoolEnv("POPLAR_IPUMODEL");
-  if (ipu_model) {
+  bool compile_only = GetBoolEnv("IPU_COMPILE_ONLY");
+  if (ipu_model || compile_only) {
     return {0};
   }
   std::vector<int> device_ids;
   auto devices =
       popart::DeviceManager::createDeviceManager().enumerateDevices();
   PADDLE_ENFORCE_GT(
-      devices.size(), 0,
+      devices.size(),
+      0,
       platform::errors::Unavailable("Do not found any IPU devices, please make "
                                     "sure Poplar sdk is enabled."));
   for (auto device : devices) {

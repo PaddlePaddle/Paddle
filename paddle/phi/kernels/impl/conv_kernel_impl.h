@@ -14,37 +14,34 @@
 
 #pragma once
 
-#include "paddle/fluid/operators/math/im2col.h"
-#include "paddle/fluid/operators/math/vol2col.h"
 #include "paddle/phi/kernels/conv_kernel.h"
 #include "paddle/phi/kernels/cpu/conv_util.h"
 #include "paddle/phi/kernels/funcs/batch_norm_utils.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
+#include "paddle/phi/kernels/funcs/im2col.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/vol2col.h"
 
 namespace phi {
 
 template <typename T, typename Context>
-void ConvKernel(const Context& dev_ctx,
-                const DenseTensor& input,
-                const DenseTensor& filter_t,
-                const std::vector<int>& strides,
-                const std::vector<int>& paddings_t,
-                const std::string& padding_algorithm,
-                int groups,
-                const std::vector<int>& dilations_t,
-                const std::string& data_format,
-                bool use_addto,
-                int workspace_size_MB,
-                bool exhaustive_search,
-                DenseTensor* output) {
+void ConvKernelImpl(const Context& dev_ctx,
+                    const DenseTensor& input,
+                    const DenseTensor& filter_t,
+                    const std::vector<int>& strides,
+                    const std::vector<int>& paddings_t,
+                    const std::string& padding_algorithm,
+                    int groups,
+                    const std::vector<int>& dilations_t,
+                    const std::string& data_format,
+                    DenseTensor* output) {
   std::vector<int> paddings = paddings_t;
   std::vector<int> dilations = dilations_t;
   DenseTensor filter = filter_t;
   // The filter will be reshaped in the calculations,
   // so here use an assignment operation,
   // that avoids modifying the variable in the Scope.
-  output->mutable_data<T>(dev_ctx.GetPlace());
+  dev_ctx.template Alloc<T>(output);
 
   const bool channel_last = (data_format == "NHWC" || data_format == "NDHWC");
 
@@ -115,7 +112,7 @@ void ConvKernel(const Context& dev_ctx,
   if (is_expand) {
     // col = context.AllocateTmpTensor<T, DeviceContext>(col_shape, dev_ctx);
     col.Resize(col_shape);
-    col.mutable_data<T>(dev_ctx.GetPlace());
+    dev_ctx.template Alloc<T>(&col);
     col_matrix.ShareDataWith(col);
     col_matrix.Resize(col_matrix_shape);
   }
@@ -136,10 +133,8 @@ void ConvKernel(const Context& dev_ctx,
   int in_step = static_cast<int>(transformed_input.dims()[1]) / groups;
   int out_step = static_cast<int>(transformed_output.dims()[1]) / groups;
 
-  paddle::operators::math::Vol2ColFunctor<Context, T> vol2col;
-  paddle::operators::math::
-      Im2ColFunctor<paddle::operators::math::ColFormat::kCFO, Context, T>
-          im2col;
+  phi::funcs::Im2ColFunctor<phi::funcs::ColFormat::kCFO, Context, T> im2col;
+  phi::funcs::Vol2ColFunctor<Context, T> vol2col;
 
   auto blas = phi::funcs::GetBlas<Context, T>(dev_ctx);
   for (int i = 0; i < batch_size; i++) {

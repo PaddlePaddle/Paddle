@@ -12,13 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
+from dist_mnist import cnn_model
+from test_dist_base import TestDistRunnerBase, runtime_main
 
 import paddle
 import paddle.fluid as fluid
-from paddle.distributed.fleet.meta_optimizers import FP16AllReduceOptimizer as FP16AllReduce
-from test_dist_base import TestDistRunnerBase, runtime_main
-from dist_mnist import cnn_model
+from paddle.distributed.fleet.meta_optimizers import (
+    FP16AllReduceOptimizer as FP16AllReduce,
+)
 
 DTYPE = "float32"
 paddle.dataset.mnist.fetch()
@@ -36,27 +37,40 @@ class TestDistMnist2x2(TestDistRunnerBase):
 
         # Train program
         predict = cnn_model(images)
-        cost = fluid.layers.cross_entropy(input=predict, label=label)
-        avg_cost = fluid.layers.mean(x=cost)
+        cost = paddle.nn.functional.cross_entropy(
+            input=predict, label=label, reduction='none', use_softmax=False
+        )
+        avg_cost = paddle.mean(x=cost)
 
         # Evaluator
-        batch_size_tensor = fluid.layers.create_tensor(dtype='int64')
-        batch_acc = fluid.layers.accuracy(
-            input=predict, label=label, total=batch_size_tensor)
+        batch_size_tensor = paddle.tensor.create_tensor(dtype='int64')
+        batch_acc = paddle.static.accuracy(
+            input=predict, label=label, total=batch_size_tensor
+        )
 
         inference_program = fluid.default_main_program().clone()
         # Optimization
         opt = fluid.optimizer.MomentumOptimizer(
-            learning_rate=0.001, momentum=0.9)
+            learning_rate=0.001, momentum=0.9
+        )
         opt = FP16AllReduce(opt)
 
         # Reader
         train_reader = paddle.batch(
-            paddle.dataset.mnist.test(), batch_size=batch_size)
+            paddle.dataset.mnist.test(), batch_size=batch_size
+        )
         test_reader = paddle.batch(
-            paddle.dataset.mnist.test(), batch_size=batch_size)
+            paddle.dataset.mnist.test(), batch_size=batch_size
+        )
         opt.minimize(avg_cost)
-        return inference_program, avg_cost, train_reader, test_reader, batch_acc, predict
+        return (
+            inference_program,
+            avg_cost,
+            train_reader,
+            test_reader,
+            batch_acc,
+            predict,
+        )
 
 
 if __name__ == "__main__":

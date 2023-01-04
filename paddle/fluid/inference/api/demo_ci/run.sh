@@ -23,6 +23,7 @@ USE_TENSORRT=$5
 TENSORRT_ROOT_DIR=$6 # TensorRT root dir, default to /usr
 WITH_ONNXRUNTIME=$7
 MSVC_STATIC_CRT=$8
+CUDA_LIB=$9/lib/x64
 inference_install_dir=${PADDLE_ROOT}/build/paddle_inference_install_dir
 WIN_DETECT=$(echo `uname` | grep "Win") # detect current platform
 
@@ -51,11 +52,17 @@ if [ $7 == ON ]; then
   mkdir -p MobileNetV2
   cd MobileNetV2
   if [[ -e "MobileNetV2.inference.model.tar.gz" ]]; then
-    echo "MobileNetV2.inference.model.tar.gz has been downloaded."
-  else
-    wget -q --no-proxy http://paddle-inference-dist.bj.bcebos.com/MobileNetV2.inference.model.tar.gz
-    tar xzf *.tar.gz
+    rm -rf MobileNetV2.inference.model.tar.gz
   fi
+    # echo "MobileNetV2.inference.model.tar.gz has been downloaded."
+  # else
+    if [ $WIN_DETECT != "" ]; then
+      wget -q -Y off http://paddle-inference-dist.bj.bcebos.com/MobileNetV2.inference.model.tar.gz
+    else
+      wget -q --no-proxy http://paddle-inference-dist.bj.bcebos.com/MobileNetV2.inference.model.tar.gz
+    fi
+    tar xzf *.tar.gz
+  # fi
   cd ..
 fi
 
@@ -101,6 +108,9 @@ mkdir -p build
 cd build
 rm -rf *
 
+# run all test cases before exit
+EXIT_CODE=0
+
 for WITH_STATIC_LIB in ON OFF; do
   if [ $(echo `uname` | grep "Win") != "" ]; then
     # TODO(wilber, T8T9): Do we still need to support windows gpu static library
@@ -108,52 +118,56 @@ for WITH_STATIC_LIB in ON OFF; do
       continue
     fi
     # -----simple_on_word2vec on windows-----
-    cmake .. -G "Visual Studio 15 2017" -A x64 -T host=x64 -DPADDLE_LIB=${inference_install_dir} \
+    cmake .. -GNinja -DPADDLE_LIB=${inference_install_dir} \
       -DWITH_MKL=$TURN_ON_MKL \
       -DDEMO_NAME=simple_on_word2vec \
       -DWITH_GPU=$TEST_GPU_CPU \
       -DWITH_STATIC_LIB=$WITH_STATIC_LIB \
       -DMSVC_STATIC_CRT=$MSVC_STATIC_CRT \
-      -DWITH_ONNXRUNTIME=$WITH_ONNXRUNTIME
-    msbuild  /maxcpucount /property:Configuration=Release cpp_inference_demo.sln
+      -DWITH_ONNXRUNTIME=$WITH_ONNXRUNTIME \
+      -DCMAKE_BUILD_TYPE=Release \
+      -DCUDA_LIB="$CUDA_LIB"
+    ninja
     for use_gpu in $use_gpu_list; do
-      Release/simple_on_word2vec.exe \
+      ./simple_on_word2vec.exe \
         --dirname=$DATA_DIR/word2vec/word2vec.inference.model \
         --use_gpu=$use_gpu
       if [ $? -ne 0 ]; then
-        echo "simple_on_word2vec demo runs fail."
-        exit 1
+        echo "simple_on_word2vec use_gpu:${use_gpu} runs failed " > ${current_dir}/test_summary.txt
+        EXIT_CODE=1
       fi
     done
 
     # -----vis_demo on windows-----
     rm -rf *
-    cmake .. -G "Visual Studio 15 2017" -A x64 -T host=x64 -DPADDLE_LIB=${inference_install_dir} \
+    cmake .. -GNinja -DPADDLE_LIB=${inference_install_dir} \
       -DWITH_MKL=$TURN_ON_MKL \
       -DDEMO_NAME=vis_demo \
       -DWITH_GPU=$TEST_GPU_CPU \
       -DWITH_STATIC_LIB=$WITH_STATIC_LIB \
       -DMSVC_STATIC_CRT=$MSVC_STATIC_CRT \
-      -DWITH_ONNXRUNTIME=$WITH_ONNXRUNTIME
-    msbuild  /maxcpucount /property:Configuration=Release cpp_inference_demo.sln
+      -DWITH_ONNXRUNTIME=$WITH_ONNXRUNTIME \
+      -DCMAKE_BUILD_TYPE=Release \
+      -DCUDA_LIB="$CUDA_LIB"
+    ninja
     for use_gpu in $use_gpu_list; do
       for vis_demo_name in $vis_demo_list; do
-        Release/vis_demo.exe \
+        ./vis_demo.exe \
           --modeldir=$DATA_DIR/$vis_demo_name/model \
           --data=$DATA_DIR/$vis_demo_name/data.txt \
           --refer=$DATA_DIR/$vis_demo_name/result.txt \
           --use_gpu=$use_gpu
         if [ $? -ne 0 ]; then
-          echo "vis demo $vis_demo_name runs fail."
-          exit 1
+          echo "vis demo $vis_demo_name use_gpu:${use_gpu} runs failed " >> ${current_dir}/test_summary.txt
+          EXIT_CODE=1
         fi
       done
     done
-
+    
     # --------tensorrt mobilenet on windows------
     if [ $USE_TENSORRT == ON -a $TEST_GPU_CPU == ON ]; then
       rm -rf *
-      cmake .. -G "Visual Studio 15 2017" -A x64 -T host=x64 -DPADDLE_LIB=${inference_install_dir} \
+      cmake .. -GNinja -DPADDLE_LIB=${inference_install_dir} \
         -DWITH_MKL=$TURN_ON_MKL \
         -DDEMO_NAME=trt_mobilenet_demo \
         -DWITH_GPU=$TEST_GPU_CPU \
@@ -161,15 +175,17 @@ for WITH_STATIC_LIB in ON OFF; do
         -DMSVC_STATIC_CRT=$MSVC_STATIC_CRT \
         -DUSE_TENSORRT=$USE_TENSORRT \
         -DTENSORRT_ROOT=$TENSORRT_ROOT_DIR \
-        -DWITH_ONNXRUNTIME=$WITH_ONNXRUNTIME
-      msbuild  /maxcpucount /property:Configuration=Release cpp_inference_demo.sln
-      Release/trt_mobilenet_demo.exe \
+        -DWITH_ONNXRUNTIME=$WITH_ONNXRUNTIME \
+        -DCMAKE_BUILD_TYPE=Release \
+        -DCUDA_LIB="$CUDA_LIB"
+      ninja
+      ./trt_mobilenet_demo.exe \
         --modeldir=$DATA_DIR/mobilenet/model \
         --data=$DATA_DIR/mobilenet/data.txt \
         --refer=$DATA_DIR/mobilenet/result.txt 
       if [ $? -ne 0 ]; then
-        echo "trt demo trt_mobilenet_demo runs fail."
-        exit 1
+        echo "trt_mobilenet_demo runs failed." >> ${current_dir}/test_summary.txt
+        EXIT_CODE=1
       fi
     fi
   else
@@ -189,8 +205,8 @@ for WITH_STATIC_LIB in ON OFF; do
           --dirname=$DATA_DIR/word2vec/word2vec.inference.model \
           --use_gpu=$use_gpu
         if [ $? -ne 0 ]; then
-          echo "simple_on_word2vec demo runs fail."
-          exit 1
+          echo "simple_on_word2vec use_gpu:${use_gpu} runs failed " >> ${current_dir}/test_summary.txt
+          EXIT_CODE=1
         fi
       done
     fi
@@ -211,8 +227,8 @@ for WITH_STATIC_LIB in ON OFF; do
           --refer=$DATA_DIR/$vis_demo_name/result.txt \
           --use_gpu=$use_gpu
         if [ $? -ne 0 ]; then
-          echo "vis demo $vis_demo_name runs fail."
-          exit 1
+          echo "vis demo $vis_demo_name use_gpu:${use_gpu} runs failed " >> ${current_dir}/test_summary.txt
+          EXIT_CODE=1
         fi
       done
     done
@@ -233,8 +249,8 @@ for WITH_STATIC_LIB in ON OFF; do
         --data=$DATA_DIR/mobilenet/data.txt \
         --refer=$DATA_DIR/mobilenet/result.txt 
       if [ $? -ne 0 ]; then
-        echo "trt demo trt_mobilenet_demo runs fail."
-        exit 1
+        echo "trt_mobilenet_demo runs failed " >> ${current_dir}/test_summary.txt
+        EXIT_CODE=1
       fi
     fi
 
@@ -251,12 +267,28 @@ for WITH_STATIC_LIB in ON OFF; do
         -DWITH_ONNXRUNTIME=$WITH_ONNXRUNTIME
       make -j$(nproc)
       ./onnxruntime_mobilenet_demo \
-        --modeldir=$DATA_DIR/MobileNetV2/MobileNetV2
+        --modeldir=$DATA_DIR/MobileNetV2/MobileNetV2 \
+        --data=$DATA_DIR/MobileNetV2/MobileNetV2/data.txt
       if [ $? -ne 0 ]; then
-        echo "onnxruntime demo onnxruntime_mobilenet_demo runs fail."
-        exit 1
+        echo "onnxruntime_mobilenet_demo runs failed " >> ${current_dir}/test_summary.txt
+        EXIT_CODE=1
       fi
     fi
   fi
 done
+
 set +x
+
+if [[ -f ${current_dir}/test_summary.txt ]];then
+  echo " "
+  echo "Summary demo_ci Failed Tests ..."
+  echo "=====================test summary======================"
+  echo "The following tests Failed: "
+  cat ${current_dir}/test_summary.txt
+  echo "========================================================"
+  echo " "
+fi
+
+set -x
+
+exit ${EXIT_CODE}

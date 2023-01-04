@@ -12,13 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from auto_scan_test import MkldnnAutoScanTest
-from program_config import TensorConfig, ProgramConfig, OpConfig
-import numpy as np
-from functools import partial
 import unittest
-from hypothesis import given
+from functools import partial
+
 import hypothesis.strategies as st
+import numpy as np
+from auto_scan_test import MkldnnAutoScanTest
+from hypothesis import given
+from program_config import OpConfig, ProgramConfig, TensorConfig
 
 
 class TestMKLDNNLogSoftmaxOp(MkldnnAutoScanTest):
@@ -33,16 +34,19 @@ class TestMKLDNNLogSoftmaxOp(MkldnnAutoScanTest):
             type="log_softmax",
             inputs={"X": ["input_data"]},
             outputs={"Out": ["output_data"]},
-            attrs={"axis": kwargs['axis']})
+            attrs={"axis": kwargs['axis']},
+        )
 
         program_config = ProgramConfig(
             ops=[logsoftmax_op],
             weights={},
             inputs={
-                "input_data": TensorConfig(data_gen=partial(generate_input,
-                                                            *args, **kwargs)),
+                "input_data": TensorConfig(
+                    data_gen=partial(generate_input, *args, **kwargs)
+                ),
             },
-            outputs=["output_data"])
+            outputs=["output_data"],
+        )
 
         yield program_config
 
@@ -53,8 +57,9 @@ class TestMKLDNNLogSoftmaxOp(MkldnnAutoScanTest):
     @given(
         axis=st.sampled_from([-2, -1, 0, 1]),
         in_shape=st.lists(
-            st.integers(
-                min_value=2, max_value=5), min_size=3, max_size=5))
+            st.integers(min_value=2, max_value=5), min_size=3, max_size=5
+        ),
+    )
     def test(self, *args, **kwargs):
         self.run_test(quant=False, *args, **kwargs)
 

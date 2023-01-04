@@ -1,11 +1,11 @@
 # Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -13,6 +13,7 @@
 # limitations under the License.
 
 from ..fluid.core import VarDesc
+from ..fluid.core import iinfo as core_iinfo
 
 dtype = VarDesc.VarType
 dtype.__qualname__ = "dtype"
@@ -34,4 +35,37 @@ complex128 = VarDesc.VarType.COMPLEX128
 
 bool = VarDesc.VarType.BOOL
 
-__all__ = []
+
+def iinfo(dtype):
+    """
+
+    paddle.iinfo is a function that returns an object that represents the numerical properties of
+    an integer paddle.dtype.
+    This is similar to `numpy.iinfo <https://numpy.org/doc/stable/reference/generated/numpy.iinfo.html#numpy-iinfo>`_.
+
+    Args:
+        dtype(paddle.dtype):  One of paddle.uint8, paddle.int8, paddle.int16, paddle.int32, and paddle.int64.
+
+    Returns:
+        An iinfo object, which has the following 4 attributes:
+
+            - min: int, The smallest representable integer number.
+            - max: int, The largest representable integer number.
+            - bits: int, The number of bits occupied by the type.
+            - dtype: str, The string name of the argument dtype.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            iinfo_uint8 = paddle.iinfo(paddle.uint8)
+            print(iinfo_uint8)
+            # paddle.iinfo(min=0, max=255, bits=8, dtype=uint8)
+            print(iinfo_uint8.min) # 0
+            print(iinfo_uint8.max) # 255
+            print(iinfo_uint8.bits) # 8
+            print(iinfo_uint8.dtype) # uint8
+
+    """
+    return core_iinfo(dtype)

@@ -12,9 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import paddle
 import os
+import unittest
 import warnings
 
 import paddle.utils.cpp_extension.extension_utils as utils
@@ -72,7 +71,8 @@ class TestCheckCompiler(TestABIBase):
                 # check Compiler Compatibility WARNING
                 self.assertTrue(len(error) == 1)
                 self.assertTrue(
-                    "Compiler Compatibility WARNING" in str(error[0].message))
+                    "Compiler Compatibility WARNING" in str(error[0].message)
+                )
 
     def test_exception_windows(self):
         # clear environ
@@ -85,8 +85,10 @@ class TestCheckCompiler(TestABIBase):
                 self.assertFalse(flag)
                 # check ABI Compatibility WARNING
                 self.assertTrue(len(error) == 1)
-                self.assertTrue("Failed to check compiler version for" in
-                                str(error[0].message))
+                self.assertTrue(
+                    "Failed to check compiler version for"
+                    in str(error[0].message)
+                )
 
     def test_exception_linux(self):
         # clear environ
@@ -106,8 +108,10 @@ class TestCheckCompiler(TestABIBase):
                 self.assertFalse(flag)
                 # check ABI Compatibility WARNING
                 self.assertTrue(len(error) == 1)
-                self.assertTrue("Failed to check compiler version for" in
-                                str(error[0].message))
+                self.assertTrue(
+                    "Failed to check compiler version for"
+                    in str(error[0].message)
+                )
 
             # restore
             utils._expected_compiler_current_platform = raw_func

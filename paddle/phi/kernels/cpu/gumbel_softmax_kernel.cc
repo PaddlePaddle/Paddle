@@ -13,11 +13,11 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/gumbel_softmax_kernel.h"
-#include "paddle/phi/kernels/impl/gumbel_softmax_kernel_impl.h"
 
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/axis_utils.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/impl/gumbel_softmax_kernel_impl.h"
 
 namespace phi {
 

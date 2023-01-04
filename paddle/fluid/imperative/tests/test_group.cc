@@ -14,8 +14,8 @@
 
 #include <sstream>
 #include <string>
-#include "gtest/gtest.h"
 
+#include "gtest/gtest.h"
 #include "paddle/fluid/imperative/reducer.h"
 
 namespace paddle {
@@ -63,7 +63,7 @@ void GroupConcatSplit(Place place, size_t size) {
   vars.resize(size);
   for (size_t i = 0; i < size; ++i) {
     auto len = i + 1;
-    auto* tensor = vars[i].GetMutable<framework::LoDTensor>();
+    auto* tensor = vars[i].GetMutable<phi::DenseTensor>();
     tensor->Resize({static_cast<int64_t>(len)});
     auto* data = tensor->mutable_data<T>(place);
 
@@ -76,15 +76,15 @@ void GroupConcatSplit(Place place, size_t size) {
         std::is_same<Place, platform::MLUPlace>::value) {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
     defined(PADDLE_WITH_CNCL)
-      paddle::memory::Copy(place, data, cpu_place, value.data(),
-                           sizeof(T) * value.size(), 0);
+      paddle::memory::Copy(
+          place, data, cpu_place, value.data(), sizeof(T) * value.size(), 0);
 #endif
     } else {
-      paddle::memory::Copy(place, data, cpu_place, value.data(),
-                           sizeof(T) * value.size());
+      paddle::memory::Copy(
+          place, data, cpu_place, value.data(), sizeof(T) * value.size());
     }
 
-    framework::Tensor tmp;
+    phi::DenseTensor tmp;
     tmp.ShareDataWith(*tensor).Resize({static_cast<int64_t>(len)});
     group.dense_tensors_.push_back(std::move(tmp));
     group.all_length_ += len;
@@ -96,14 +96,14 @@ void GroupConcatSplit(Place place, size_t size) {
   auto* dev_ctx = pool.Get(place);
 
   {  // concat
-    auto* tensor = group.dense_contents_.GetMutable<framework::LoDTensor>();
+    auto* tensor = group.dense_contents_.GetMutable<phi::DenseTensor>();
     tensor->Resize(phi::make_ddim({group.all_length_}))
         .mutable_data(place, framework::TransToPhiDataType(group.dtype_));
     group.ConcatTensors(*dev_ctx);
 
     group.DivNRanks(*dev_ctx, 1);
 
-    framework::Tensor tmp;
+    phi::DenseTensor tmp;
     framework::TensorCopySync(*tensor, cpu_place, &tmp);
     auto* data = tmp.data<T>();
     size_t offset = 0;
@@ -124,7 +124,7 @@ void GroupConcatSplit(Place place, size_t size) {
     for (size_t i = 0; i < size; ++i) {
       auto len = i + 1;
       auto& tensor = group.dense_tensors_[i];
-      framework::Tensor tmp;
+      phi::DenseTensor tmp;
       framework::TensorCopySync(tensor, cpu_place, &tmp);
       auto* data = tmp.data<T>();
 

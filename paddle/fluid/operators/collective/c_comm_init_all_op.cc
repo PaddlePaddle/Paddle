@@ -15,11 +15,15 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/framework/op_registry.h"
-
 #include "paddle/fluid/framework/threadpool.h"
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/fluid/platform/collective_helper.h"
+
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
+#endif
+
+#if defined(PADDLE_WITH_XPU_BKCL)
+#include "paddle/fluid/platform/device/xpu/bkcl_helper.h"
 #endif
 
 namespace paddle {
@@ -48,9 +52,9 @@ class CCommInitAllOp : public framework::OperatorBase {
 
   void RunImpl(const framework::Scope& scope,
                const platform::Place& place) const override {
-    PADDLE_ENFORCE_EQ(platform::is_gpu_place(place), true,
-                      platform::errors::PreconditionNotMet(
-                          "CCommInitAllOp can run on gpu place only"));
+    // PADDLE_ENFORCE_EQ(platform::is_gpu_place(place), true,
+    //                   platform::errors::PreconditionNotMet(
+    //                       "CCommInitAllOp can run on gpu place only"));
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
     std::vector<int> devices = Attr<std::vector<int>>("devices");
@@ -61,9 +65,55 @@ class CCommInitAllOp : public framework::OperatorBase {
     int rid = Attr<int>("ring_id");
 
     platform::NCCLCommContext::Instance().CreateAllNCCLComms(devices, rid);
+
+#elif defined(PADDLE_WITH_XPU_BKCL)
+    std::vector<int> devices = Attr<std::vector<int>>("devices");
+    int ring_id = Attr<int>("ring_id");
+
+    if (devices.empty()) {
+      int count = platform::GetXPUDeviceCount();
+      for (int i = 0; i < count; ++i) {
+        devices.push_back(i);
+      }
+    }
+
+    if (devices.size() > 1) {
+      std::vector<platform::Place> place_list_;
+      for (size_t i = 0; i < devices.size(); ++i) {
+        auto p = platform::XPUPlace(devices[i]);
+        place_list_.push_back(p);
+      }
+
+      // create pthread to bkcl_init_rank on all devices
+      auto ptr = new platform::BKCLContextMap(place_list_);
+      ptr->init();
+
+      for (size_t i = 0; i < devices.size(); ++i) {
+        platform::BKCLCommContext::Instance().AssignBKCLComm(
+            ptr->contexts_.at(devices[i]).comm_,
+            devices.size(),
+            devices[i],
+            devices[i],
+            ring_id);
+
+        VLOG(0) << "bkcl communicator of rank " << devices[i] << " in ring "
+                << ring_id << " has been created on device " << devices[i];
+
+        // TODO(WorgenZhang): need release comm_map_ when quit
+        // std::call_once(once_flag_, []() {
+        //   std::atexit([]() {
+        //   platform::BKCLCommContext::Instance().ReleaseBKCLComms(); });
+        // });
+      }
+
+      VLOG(0) << "done bkcl_init_rank on all devices";
+    } else {
+      VLOG(0)
+          << "bkcl_init_rank doesn't support on one device, skip init process";
+    }
 #else
     PADDLE_THROW(platform::errors::PreconditionNotMet(
-        "PaddlePaddle should compile with GPU."));
+        "PaddlePaddle should compile with GPU or XPU."));
 #endif
   }
 };
@@ -90,5 +140,7 @@ Initialize all collective communicatoin context
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(c_comm_init_all, ops::CCommInitAllOp,
-                  ops::CCommInitAllInferShape, ops::CCommInitAllOpMaker);
+REGISTER_OPERATOR(c_comm_init_all,
+                  ops::CCommInitAllOp,
+                  ops::CCommInitAllInferShape,
+                  ops::CCommInitAllOpMaker);

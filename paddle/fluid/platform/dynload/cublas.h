@@ -17,6 +17,7 @@ limitations under the License. */
 #include <cublasXt.h>
 #include <cublas_v2.h>
 #include <cuda.h>
+
 #include <mutex>  // NOLINT
 #include <type_traits>
 

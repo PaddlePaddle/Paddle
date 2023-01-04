@@ -64,7 +64,9 @@ void SetRandData(hlir::framework::Tensor tensor, Target target) {
   }
 
 #ifdef PADDLE_WITH_CUDA
-  cudaMemcpy(data, random_data.data(), num_ele * sizeof(float),
+  cudaMemcpy(data,
+             random_data.data(),
+             num_ele * sizeof(float),
              cudaMemcpyHostToDevice);
 #else
   std::copy(random_data.begin(), random_data.end(), data);

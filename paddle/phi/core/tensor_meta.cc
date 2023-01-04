@@ -16,27 +16,55 @@ limitations under the License. */
 
 namespace phi {
 
+DenseTensorMeta::DenseTensorMeta() { use_gpudnn = true; }
+
 DenseTensorMeta::DenseTensorMeta(DataType dtype, const DDim& dims)
-    : dims(dims), dtype(dtype) {}
+    : dims(dims), dtype(dtype) {
+  use_gpudnn = true;
+}
 
 DenseTensorMeta::DenseTensorMeta(DataType dtype,
                                  const DDim& dims,
                                  DataLayout layout,
                                  size_t offset)
-    : dims(dims), dtype(dtype), layout(layout), offset(offset) {}
+    : dims(dims), dtype(dtype), layout(layout), offset(offset) {
+  use_gpudnn = true;
+}
 
 DenseTensorMeta::DenseTensorMeta(DataType dtype,
                                  const DDim& dims,
                                  DataLayout layout,
                                  const LoD& lod,
                                  size_t offset)
-    : dims(dims), dtype(dtype), layout(layout), lod(lod), offset(offset) {}
+    : dims(dims), dtype(dtype), layout(layout), lod(lod), offset(offset) {
+  use_gpudnn = true;
+}
 
 bool DenseTensorMeta::valid() const noexcept {
   bool valid{true};
   valid = valid && (dtype != DataType::UNDEFINED);
   valid = valid && (layout != DataLayout::UNDEFINED);
   valid = valid && (is_scalar || product(dims) >= 0);
+  return valid;
+}
+
+StringTensorMeta::StringTensorMeta(const DDim& dims) : dims(dims) {}
+
+bool StringTensorMeta::valid() const noexcept {
+  bool valid{true};
+  valid = valid && (is_scalar || product(dims) >= 0);
+  return valid;
+}
+
+SparseTensorMeta::SparseTensorMeta(const DDim& dims) : dims(dims) {}
+
+SparseTensorMeta::SparseTensorMeta(const DDim& dims, const DataLayout& layout)
+    : dims(dims), layout(layout) {}
+
+bool SparseTensorMeta::valid() const noexcept {
+  bool valid{true};
+  valid = valid && (layout != DataLayout::UNDEFINED);
+  valid = valid && (product(dims) >= 0);
   return valid;
 }
 

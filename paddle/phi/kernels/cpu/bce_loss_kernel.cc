@@ -15,9 +15,10 @@
 #include "paddle/phi/kernels/bce_loss_kernel.h"
 
 #include <algorithm>  // for max
-#include "paddle/fluid/operators/math.h"
+
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/funcs/math.h"
 
 namespace phi {
 
@@ -46,10 +47,9 @@ void BCELossKernel(const Context& dev_ctx,
             "Illegal input, input must be less than or equal to 1"));
     out_data[i] =
         (label_data[i] - static_cast<T>(1)) *
-            std::max(paddle::operators::real_log(static_cast<T>(1) - x_data[i]),
+            std::max(phi::funcs::real_log(static_cast<T>(1) - x_data[i]),
                      (T)(-100)) -
-        label_data[i] *
-            std::max(paddle::operators::real_log(x_data[i]), (T)(-100));
+        label_data[i] * std::max(phi::funcs::real_log(x_data[i]), (T)(-100));
   }
 }
 

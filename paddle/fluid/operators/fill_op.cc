@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/fill_op.h"
+
 #include "paddle/fluid/framework/op_registry.h"
 
 namespace paddle {
@@ -26,7 +27,7 @@ class FillOpMaker : public framework::OpProtoAndCheckerMaker {
 Fill an tensor with `value` and `shape`. The type of the tensor is specify by
 `dtype`.
 )DOC");
-    AddOutput("Out", "(LoDTensor) The output tensor.");
+    AddOutput("Out", "(phi::DenseTensor) The output tensor.");
     AddAttr<std::vector<float>>(
         "value", "The float values of tensor, which are flatten in row major");
     AddAttr<std::vector<int>>("shape", "The shape of output tensor");
@@ -50,9 +51,9 @@ class FillOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
+    return phi::KernelKey(
         framework::proto::VarType::Type(ctx.Attr<int>("dtype")),
         ctx.GetPlace());
   }
@@ -62,7 +63,7 @@ class FillOpVarTypeInference : public framework::VarTypeInference {
  public:
   void operator()(framework::InferVarTypeContext* ctx) const override {
     auto data_type = static_cast<framework::proto::VarType::Type>(
-        BOOST_GET_CONST(int, ctx->GetAttr("dtype")));
+        PADDLE_GET_CONST(int, ctx->GetAttr("dtype")));
     ctx->SetOutputDataType("Out", data_type);
   }
 };
@@ -71,9 +72,15 @@ class FillOpVarTypeInference : public framework::VarTypeInference {
 }  // namespace paddle
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(
-    fill, ops::FillOp, ops::FillOpMaker, ops::FillOpVarTypeInference,
+    fill,
+    ops::FillOp,
+    ops::FillOpMaker,
+    ops::FillOpVarTypeInference,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OP_CPU_KERNEL(fill, ops::FillKernel<float>, ops::FillKernel<double>,
-                       ops::FillKernel<int64_t>, ops::FillKernel<int>,
+REGISTER_OP_CPU_KERNEL(fill,
+                       ops::FillKernel<float>,
+                       ops::FillKernel<double>,
+                       ops::FillKernel<int64_t>,
+                       ops::FillKernel<int>,
                        ops::FillKernel<paddle::platform::float16>);

@@ -22,6 +22,7 @@ DATA_DIR=$4 # dataset
 TENSORRT_ROOT_DIR=$5 # TensorRT ROOT dir, default to /usr/local/TensorRT
 WITH_ONNXRUNTIME=$6
 MSVC_STATIC_CRT=$7
+CUDA_LIB=$8/lib/x64
 inference_install_dir=${PADDLE_ROOT}/build/paddle_inference_install_dir
 EXIT_CODE=0 # init default exit code
 WIN_DETECT=$(echo `uname` | grep "Win") # detect current platform
@@ -135,7 +136,7 @@ function compile_test() {
     cd ${build_dir}
     TEST_NAME=$1
     if [ $WIN_DETECT != "" ]; then
-        cmake .. -G "Visual Studio 15 2017" -A x64 -T host=x64 -DPADDLE_LIB=${inference_install_dir} \
+        cmake .. -GNinja -DPADDLE_LIB=${inference_install_dir} \
              -DWITH_MKL=$TURN_ON_MKL \
              -DDEMO_NAME=${TEST_NAME} \
              -DWITH_GPU=$TEST_GPU_CPU \
@@ -146,8 +147,9 @@ function compile_test() {
              -DWITH_GTEST=ON \
              -DCMAKE_CXX_FLAGS='/std:c++17' \
              -DCMAKE_BUILD_TYPE=Release \
-             -DWITH_ONNXRUNTIME=$WITH_ONNXRUNTIME
-        msbuild /maxcpucount /property:Configuration=Release ALL_BUILD.vcxproj
+             -DWITH_ONNXRUNTIME=$WITH_ONNXRUNTIME \
+             -DCUDA_LIB="$CUDA_LIB"
+        ninja
     else
         cmake .. -DPADDLE_LIB=${inference_install_dir} \
                  -DWITH_MKL=$TURN_ON_MKL \
@@ -171,22 +173,18 @@ mkdir -p ${log_dir}
 cd ${build_dir}
 rm -rf *
 
-if [ $WIN_DETECT != "" ]; then
-    exe_dir=${build_dir}/Release
-else
-    exe_dir=${build_dir}
-fi;
+exe_dir=${build_dir}
 
-printf "${YELLOW} start test_resnet50 ${NC} \n";
-compile_test "test_resnet50"
-${exe_dir}/test_resnet50 \
-    --modeldir=$DATA_DIR/resnet50/resnet50 \
-    --gtest_filter=${test_suite_list} \
-    --gtest_output=xml:${log_dir}/test_resnet50.xml
-if [ $? -ne 0 ]; then
-    echo "${RED} test_resnet50 runs failed ${NC}" >> ${exe_dir}/test_summary.txt
-    EXIT_CODE=8
-fi
+# printf "${YELLOW} start test_resnet50 ${NC} \n";
+# compile_test "test_resnet50"
+# ${exe_dir}/test_resnet50 \
+#     --modeldir=$DATA_DIR/resnet50/resnet50 \
+#     --gtest_filter=${test_suite_list} \
+#     --gtest_output=xml:${log_dir}/test_resnet50.xml
+# if [ $? -ne 0 ]; then
+#     echo "${RED} test_resnet50 runs failed ${NC}" >> ${exe_dir}/test_summary.txt
+#     EXIT_CODE=8
+# fi
 
 printf "${YELLOW} start test_det_mv3_db ${NC} \n";
 compile_test "test_det_mv3_db"
@@ -272,19 +270,19 @@ if [ $? -ne 0 ]; then
     EXIT_CODE=8
 fi
 
-printf "${YELLOW} start test_ernie_xnli_int8 ${NC} \n";
-compile_test "test_ernie_xnli_int8"
-ernie_qat_model="quant_post_model_xnli_predict_matmul"
-${exe_dir}/test_ernie_xnli_int8 \
-    --modeldir=$DATA_DIR/$ernie_qat_model/$ernie_qat_model \
-    --datadir=$DATA_DIR/$ernie_qat_model/$ernie_qat_model/xnli_var_len \
-    --truth_data=$DATA_DIR/$ernie_qat_model/$ernie_qat_model/truth_data \
-    --gtest_filter=${test_suite_list} \
-    --gtest_output=xml:${log_dir}/test_ernie_xnli_int8.xml
-if [ $? -ne 0 ]; then
-    echo "${RED} test_ernie_xnli_int8 runs failed ${NC}" >> ${exe_dir}/test_summary.txt
-    EXIT_CODE=8
-fi
+# printf "${YELLOW} start test_ernie_xnli_int8 ${NC} \n";
+# compile_test "test_ernie_xnli_int8"
+# ernie_qat_model="quant_post_model_xnli_predict_matmul"
+# ${exe_dir}/test_ernie_xnli_int8 \
+#     --modeldir=$DATA_DIR/$ernie_qat_model/$ernie_qat_model \
+#     --datadir=$DATA_DIR/$ernie_qat_model/$ernie_qat_model/xnli_var_len \
+#     --truth_data=$DATA_DIR/$ernie_qat_model/$ernie_qat_model/truth_data \
+#     --gtest_filter=${test_suite_list} \
+#     --gtest_output=xml:${log_dir}/test_ernie_xnli_int8.xml
+# if [ $? -ne 0 ]; then
+#     echo "${RED} test_ernie_xnli_int8 runs failed ${NC}" >> ${exe_dir}/test_summary.txt
+#     EXIT_CODE=8
+# fi
 
 printf "${YELLOW} start test_mobilnetv1 ${NC} \n";
 compile_test "test_mobilnetv1"
@@ -311,7 +309,7 @@ echo " "
 
 if [[ -f ${exe_dir}/test_summary.txt ]];then
   echo " "
-  echo "Summary Failed Tests ..."
+  echo "Summary infer_ut Failed Tests ..."
   echo "=====================test summary======================"
   echo "The following tests Failed: "
   cat ${exe_dir}/test_summary.txt

@@ -27,7 +27,8 @@ namespace gen {
 
 class AdamJitCode : public JitCode {
  public:
-  explicit AdamJitCode(const adam_attr_t& attr, size_t code_size = 256 * 1024,
+  explicit AdamJitCode(const adam_attr_t& attr,
+                       size_t code_size = 256 * 1024,
                        void* code_ptr = nullptr)
       : JitCode(code_size, code_ptr) {
     this->genCode();

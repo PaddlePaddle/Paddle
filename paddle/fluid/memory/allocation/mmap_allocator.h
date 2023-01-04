@@ -49,8 +49,8 @@ class MemoryMapAllocation : public Allocation {
         ipc_name_(std::move(ipc_name)),
         map_ptr_(ptr),
         map_size_(size) {}
-  explicit MemoryMapAllocation(void *ptr, size_t size, std::string ipc_name,
-                               int flags, int fd)
+  explicit MemoryMapAllocation(
+      void *ptr, size_t size, std::string ipc_name, int flags, int fd)
       : Allocation(ptr, size, platform::CPUPlace()),
         ipc_name_(std::move(ipc_name)),
         fd_(fd),
@@ -75,8 +75,8 @@ class MemoryMapAllocation : public Allocation {
 
 class RefcountedMemoryMapAllocation : public MemoryMapAllocation {
  public:
-  RefcountedMemoryMapAllocation(void *ptr, size_t size, std::string ipc_name,
-                                int flags, int fd);
+  RefcountedMemoryMapAllocation(
+      void *ptr, size_t size, std::string ipc_name, int flags, int fd);
 
   void incref();
   int decref();
@@ -88,16 +88,18 @@ class RefcountedMemoryMapAllocation : public MemoryMapAllocation {
   void resetBaseptr();
 };
 
-void AllocateMemoryMap(std::string filename, int flags, size_t size,
-                       void **base_ptr_, int *fd_);
+void AllocateMemoryMap(
+    std::string filename, int flags, size_t size, void **base_ptr_, int *fd_);
 
 std::shared_ptr<RefcountedMemoryMapAllocation>
-AllocateRefcountedMemoryMapAllocation(std::string filename, int flags,
+AllocateRefcountedMemoryMapAllocation(std::string filename,
+                                      int flags,
                                       size_t size);
 
 class MemoryMapWriterAllocation : public Allocation {
  public:
-  explicit MemoryMapWriterAllocation(void *ptr, size_t size,
+  explicit MemoryMapWriterAllocation(void *ptr,
+                                     size_t size,
                                      std::string ipc_name)
       : Allocation(ptr, size, platform::CPUPlace()),
         ipc_name_(std::move(ipc_name)) {}
@@ -112,7 +114,8 @@ class MemoryMapWriterAllocation : public Allocation {
 
 class MemoryMapReaderAllocation : public Allocation {
  public:
-  explicit MemoryMapReaderAllocation(void *ptr, size_t size,
+  explicit MemoryMapReaderAllocation(void *ptr,
+                                     size_t size,
                                      std::string ipc_name)
       : Allocation(ptr, size, platform::CPUPlace()),
         ipc_name_(std::move(ipc_name)) {}

@@ -12,7 +12,9 @@
    See the License for the specific language governing permissions and
    limitations under the License. */
 #include <gtest/gtest.h>
+
 #include <fstream>
+
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/inference/tensorrt/convert/ut_helper.h"
 
@@ -20,7 +22,8 @@ namespace paddle {
 namespace inference {
 namespace tensorrt {
 
-void test_pool2d(bool global_pooling, bool ceil_mode,
+void test_pool2d(bool global_pooling,
+                 bool ceil_mode,
                  std::string pool_type = "max") {
   framework::Scope scope;
   std::unordered_set<std::string> parameters;

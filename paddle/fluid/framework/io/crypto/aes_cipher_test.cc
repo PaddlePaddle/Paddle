@@ -13,11 +13,14 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/io/crypto/aes_cipher.h"
+
 #include <cryptopp/cryptlib.h>
 #include <glog/logging.h>
 #include <gtest/gtest.h>
+
 #include <fstream>
 #include <string>
+
 #include "paddle/fluid/framework/io/crypto/cipher_utils.h"
 
 namespace paddle {
@@ -38,9 +41,10 @@ void AESTest::GenConfigFile(const std::string& cipher_name) {
 }
 
 TEST_F(AESTest, security_string) {
-  std::vector<std::string> name_list(
-      {"AES_CTR_NoPadding", "AES_CBC_PKCSPadding", "AES_ECB_PKCSPadding",
-       "AES_GCM_NoPadding"});
+  std::vector<std::string> name_list({"AES_CTR_NoPadding",
+                                      "AES_CBC_PKCSPadding",
+                                      "AES_ECB_PKCSPadding",
+                                      "AES_GCM_NoPadding"});
   const std::string plaintext("hello world.");
   bool is_throw = false;
   for (auto& i : name_list) {
@@ -60,9 +64,10 @@ TEST_F(AESTest, security_string) {
 }
 
 TEST_F(AESTest, security_vector) {
-  std::vector<std::string> name_list(
-      {"AES_CTR_NoPadding", "AES_CBC_PKCSPadding", "AES_ECB_PKCSPadding",
-       "AES_GCM_NoPadding"});
+  std::vector<std::string> name_list({"AES_CTR_NoPadding",
+                                      "AES_CBC_PKCSPadding",
+                                      "AES_ECB_PKCSPadding",
+                                      "AES_GCM_NoPadding"});
   std::vector<int> input{1, 2, 3, 4};
   bool is_throw = false;
   for (auto& i : name_list) {
@@ -88,9 +93,10 @@ TEST_F(AESTest, security_vector) {
 }
 
 TEST_F(AESTest, encrypt_to_file) {
-  std::vector<std::string> name_list(
-      {"AES_CTR_NoPadding", "AES_CBC_PKCSPadding", "AES_ECB_PKCSPadding",
-       "AES_GCM_NoPadding"});
+  std::vector<std::string> name_list({"AES_CTR_NoPadding",
+                                      "AES_CBC_PKCSPadding",
+                                      "AES_ECB_PKCSPadding",
+                                      "AES_GCM_NoPadding"});
   const std::string plaintext("hello world.");
   std::string filename("aes_test.ciphertext");
   bool is_throw = false;

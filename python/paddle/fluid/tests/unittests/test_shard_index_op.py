@@ -12,16 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
+
 import numpy as np
-import math
 from op_test import OpTest
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-import paddle.fluid.framework as framework
-from paddle.fluid.framework import Program, program_guard
 
 
 def common_setup(self, index_num, nshards, shard_id, ignore_value):
@@ -44,7 +38,7 @@ def common_setup(self, index_num, nshards, shard_id, ignore_value):
         'index_num': index_num,
         'nshards': nshards,
         'shard_id': shard_id,
-        'ignore_value': ignore_value
+        'ignore_value': ignore_value,
     }
     self.outputs = {'Out': (out, x_lod)}
 

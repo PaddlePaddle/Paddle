@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/phi/kernels/yolo_box_kernel.h"
+
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
@@ -19,7 +21,6 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/yolo_box_util.h"
-#include "paddle/phi/kernels/yolo_box_kernel.h"
 
 namespace phi {
 
@@ -128,9 +129,9 @@ void YoloBoxKernel(const Context& dev_ctx,
   int input_size_w = downsample_ratio * w;
 
   int bytes = sizeof(int) * anchors.size();
-  auto anchors_ptr =
-      paddle::memory::Alloc(dev_ctx, sizeof(int) * anchors.size());
-  int* anchors_data = reinterpret_cast<int*>(anchors_ptr->ptr());
+  DenseTensor tmp_anchors;
+  tmp_anchors.Resize(phi::make_dim(anchors.size()));
+  int* anchors_data = dev_ctx.template Alloc<int>(&tmp_anchors);
   const auto gplace = dev_ctx.GetPlace();
   const auto cplace = phi::CPUPlace();
   paddle::memory::Copy(
@@ -138,9 +139,10 @@ void YoloBoxKernel(const Context& dev_ctx,
 
   const T* input_data = input->data<T>();
   const int* imgsize_data = img_size.data<int>();
-  T* boxes_data = boxes->mutable_data<T>({n, box_num, 4}, dev_ctx.GetPlace());
-  T* scores_data =
-      scores->mutable_data<T>({n, box_num, class_num}, dev_ctx.GetPlace());
+  boxes->Resize({n, box_num, 4});
+  T* boxes_data = dev_ctx.template Alloc<T>(boxes);
+  scores->Resize({n, box_num, class_num});
+  T* scores_data = dev_ctx.template Alloc<T>(scores);
   phi::funcs::SetConstant<phi::GPUContext, T> set_zero;
   set_zero(dev_ctx, boxes, static_cast<T>(0));
   set_zero(dev_ctx, scores, static_cast<T>(0));

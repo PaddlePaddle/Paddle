@@ -25,6 +25,7 @@ void ReshapeGradKernel(const Context& dev_ctx,
 
 template <typename Context>
 void ReshapeDoubleGradKernel(const Context& dev_ctx,
+                             const DenseTensor& out_grad,
                              const DenseTensor& x_grad_grad,
                              DenseTensor* out_grad_grad);
 

@@ -19,7 +19,8 @@
 #include <memory>
 #include <string>
 #include <vector>
-#include "paddle/fluid/distributed/ps.pb.h"
+
+#include "paddle/fluid/distributed/the_one_ps.pb.h"
 #include "paddle/fluid/string/string_helper.h"
 
 namespace paddle {
@@ -63,6 +64,10 @@ class FsReadChannel {
       return -1;
     }
     return 0;
+  }
+
+  inline int read(char* data, size_t size) {
+    return fread(data, 1, size, _file.get());
   }
 
  private:
@@ -113,6 +118,14 @@ class FsWriteChannel {
     return write_line(data.c_str(), data.size());
   }
 
+  inline uint32_t write(const char* data, size_t size) {
+    size_t write_count = fwrite(data, 1, size, _file.get());
+    if (write_count != size) {
+      return -1;
+    }
+    return 0;
+  }
+
  private:
   uint32_t _buffer_size;
   FsChannelConfig _config;
@@ -128,11 +141,15 @@ class AfsClient {
   AfsClient(const AfsClient&) = delete;
 
   int initialize(const FsClientParameter& fs_client_param);
-  int initialize(const std::string& hadoop_bin, const std::string& uri,
-                 const std::string& user, const std::string& passwd,
+  int initialize(const std::string& hadoop_bin,
+                 const std::string& uri,
+                 const std::string& user,
+                 const std::string& passwd,
                  int buffer_size_param = (1L << 25));
-  int initialize(const std::string& hadoop_bin, const std::string& uri,
-                 const std::string& ugi, int buffer_size_param = (1L << 25));
+  int initialize(const std::string& hadoop_bin,
+                 const std::string& uri,
+                 const std::string& ugi,
+                 int buffer_size_param = (1L << 25));
 
   // open file in 'w' or 'r'
   std::shared_ptr<FsReadChannel> open_r(const FsChannelConfig& config,

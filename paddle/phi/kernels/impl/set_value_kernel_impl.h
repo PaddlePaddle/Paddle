@@ -14,18 +14,16 @@
 
 #pragma once
 
+#include "paddle/phi/common/int_array.h"
 #include "paddle/phi/common/scalar.h"
-#include "paddle/phi/common/scalar_array.h"
 #include "paddle/phi/core/dense_tensor.h"
-
-#include "paddle/phi/kernels/copy_kernel.h"
+#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/funcs/broadcast_function.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 #include "paddle/phi/kernels/funcs/elementwise_functor.h"
-
-#include "paddle/fluid/operators/slice_utils.h"
+#include "paddle/phi/kernels/funcs/slice_utils.h"
 
 namespace phi {
 
@@ -74,9 +72,9 @@ template <typename T, typename Context, size_t RANK>
 void SetValueImpl(const Context& dev_ctx,
                   const DenseTensor& in,
                   const DenseTensor& value,
-                  const ScalarArray& starts,
-                  const ScalarArray& ends,
-                  const ScalarArray& steps,
+                  const IntArray& starts,
+                  const IntArray& ends,
+                  const IntArray& steps,
                   const std::vector<int64_t>& axes,
                   const std::vector<int64_t>& decrease_axes,
                   const std::vector<int64_t>& none_axes,
@@ -85,12 +83,12 @@ void SetValueImpl(const Context& dev_ctx,
   std::vector<int64_t> starts_local = starts.GetData();
   std::vector<int64_t> ends_local = ends.GetData();
   std::vector<int64_t> steps_local = steps.GetData();
-  paddle::operators::CheckAndUpdateSliceAttrs(
+  phi::funcs::CheckAndUpdateSliceAttrs(
       in_dims, axes, &starts_local, &ends_local, &steps_local);
-  auto slice_dims = paddle::operators::GetSliceDims(
+  auto slice_dims = phi::funcs::GetSliceDims(
       in_dims, axes, starts_local, ends_local, &steps_local);
   auto decrease_slice_dims =
-      paddle::operators::GetDecreasedDims(slice_dims, decrease_axes);
+      phi::funcs::GetDecreasedDims(slice_dims, decrease_axes);
 
   auto slice_dims_for_assign = decrease_slice_dims;
   if (!none_axes.empty()) {
@@ -135,9 +133,9 @@ void SetValueImpl(const Context& dev_ctx,
   Copy(dev_ctx, in, place, false, out);
 
   DenseTensor slice_tensor =
-      Empty<T>(dev_ctx, ScalarArray{slice_dims.Get(), slice_dims.size()});
+      Empty<T>(dev_ctx, IntArray{slice_dims.Get(), slice_dims.size()});
   DenseTensor pad_tensor =
-      Empty<T>(dev_ctx, ScalarArray{in_dims.Get(), in_dims.size()});
+      Empty<T>(dev_ctx, IntArray{in_dims.Get(), in_dims.size()});
 
   auto pad_e = EigenTensor<T, RANK>::From(pad_tensor, in_dims);
   auto out_e = EigenTensor<T, RANK>::From(*out);
@@ -212,9 +210,9 @@ template <typename T, typename Context>
 void SetTensorValueKernel(const Context& dev_ctx,
                           const DenseTensor& x,
                           const DenseTensor& value,
-                          const ScalarArray& starts,
-                          const ScalarArray& ends,
-                          const ScalarArray& steps,
+                          const IntArray& starts,
+                          const IntArray& ends,
+                          const IntArray& steps,
                           const std::vector<int64_t>& axes,
                           const std::vector<int64_t>& decrease_axes,
                           const std::vector<int64_t>& none_axes,
@@ -303,9 +301,9 @@ void SetTensorValueKernel(const Context& dev_ctx,
 template <typename T, typename Context>
 void SetValueKernel(const Context& dev_ctx,
                     const DenseTensor& x,
-                    const ScalarArray& starts,
-                    const ScalarArray& ends,
-                    const ScalarArray& steps,
+                    const IntArray& starts,
+                    const IntArray& ends,
+                    const IntArray& steps,
                     const std::vector<int64_t>& axes,
                     const std::vector<int64_t>& decrease_axes,
                     const std::vector<int64_t>& none_axes,

@@ -13,8 +13,12 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+#include <algorithm>
 
 #include "paddle/phi/core/hostdevice.h"
+#if defined(__xpu__)
+#define CHAR_BIT 8
+#endif
 
 namespace phi {
 
@@ -42,28 +46,28 @@ HOSTDEVICE inline void Store(const AlignedVector<T, Size>& vec, T* addr) {
 }
 
 /*
-* Only the address of input data is the multiplier of 1,2,4, vectorized load
-* with corresponding multiplier-value is possible. Moreover, the maximum length
-* of vectorized load is 128 bits once. Hence, valid length of vectorized load
-* shall be determined under both former constraints.
-*/
+ * Only the address of input data is the multiplier of 1,2,4, vectorized load
+ * with corresponding multiplier-value is possible. Moreover, the maximum length
+ * of vectorized load is 128 bits once. Hence, valid length of vectorized load
+ * shall be determined under both former constraints.
+ */
 template <typename T>
 int GetVectorizedSize(const T* pointer) {
   constexpr int max_load_bits = 128;
-  int valid_vec_size = max_load_bits / CHAR_BIT / sizeof(T);
+  constexpr int valid_vec_size = max_load_bits / CHAR_BIT / sizeof(T);
   uint64_t address = reinterpret_cast<uint64_t>(pointer);
   constexpr int vec8 = std::alignment_of<AlignedVector<T, 8>>::value;  // NOLINT
   constexpr int vec4 = std::alignment_of<AlignedVector<T, 4>>::value;  // NOLINT
   constexpr int vec2 = std::alignment_of<AlignedVector<T, 2>>::value;  // NOLINT
-  if (address % vec8 == 0) {
-    /*
+  /*
     * Currently, decide to deal with no more than 4 data once while adopting
     * vectorization load/store, if performance test shows that dealing with
-    * 8 data once in vectorization load/store does get optimized, return code
-    * below can be changed into " return std::min(8, valid_vec_size); " .
+    * 8 data once in vectorization load/store does get optimized, code below
+    * can begin with :
+      if (address % vec8 == 0) {
+        return std::min(4, valid_vec_size);
     */
-    return std::min(4, valid_vec_size);
-  } else if (address % vec4 == 0) {
+  if (address % vec4 == 0) {
     return std::min(4, valid_vec_size);
   } else if (address % vec2 == 0) {
     return std::min(2, valid_vec_size);

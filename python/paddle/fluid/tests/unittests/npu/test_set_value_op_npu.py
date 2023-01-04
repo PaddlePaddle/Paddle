@@ -12,11 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import numpy as np
 import unittest
 import sys
+
 sys.path.append("..")
 from op_test import OpTest
 import paddle
@@ -79,13 +78,17 @@ class TestSetValueApi(TestSetValueBase):
         dynamic_out = self._run_dynamic()
         self._get_answer()
 
-        error_msg = "\nIn {} mode: \nExpected res = \n{}, \n\nbut received : \n{}"
+        error_msg = (
+            "\nIn {} mode: \nExpected res = \n{}, \n\nbut received : \n{}"
+        )
         self.assertTrue(
             (self.data == static_out).all(),
-            msg=error_msg.format("static", self.data, static_out))
+            msg=error_msg.format("static", self.data, static_out),
+        )
         self.assertTrue(
             (self.data == dynamic_out).all(),
-            msg=error_msg.format("dynamic", self.data, dynamic_out))
+            msg=error_msg.format("dynamic", self.data, dynamic_out),
+        )
 
 
 # 1. Test different type of item: int, Python slice, Paddle Tensor
@@ -144,7 +147,7 @@ class TestSetValueItemSlice4(TestSetValueApi):
 #             return i, x
 
 #         i = paddle.zeros(shape=(1, ), dtype='int32')
-#         i, x = paddle.fluid.layers.while_loop(cond, body, [i, x])
+#         i, x = paddle.static.nn.while_loop(cond, body, [i, x])
 
 #     def _get_answer(self):
 #         self.data[0] = self.value
@@ -451,12 +454,14 @@ class TestSetValueItemBool4(TestSetValueApi):
 class TestSetValueItemBool5(TestSetValueApi):
     def _call_setitem(self, x):
         idx = paddle.assign(
-            np.array([[False, True, False], [True, True, False]]))
+            np.array([[False, True, False], [True, True, False]])
+        )
         x[idx] = self.value
 
     def _get_answer(self):
-        self.data[np.array([[False, True, False], [True, True, False]
-                            ])] = self.value
+        self.data[
+            np.array([[False, True, False], [True, True, False]])
+        ] = self.value
 
 
 class TestSetValueItemBool6(TestSetValueApi):
@@ -559,7 +564,8 @@ class TestSetValueValueShape2(TestSetValueApi):
 class TestSetValueValueShape3(TestSetValueApi):
     def set_value(self):
         self.value = np.array(
-            [[1, 1, 1, 1], [2, 2, 2, 2], [3, 3, 3, 3]])  # shape is (3,4)
+            [[1, 1, 1, 1], [2, 2, 2, 2], [3, 3, 3, 3]]
+        )  # shape is (3,4)
 
     def _call_setitem(self, x):
         x[0] = self.value
@@ -571,8 +577,10 @@ class TestSetValueValueShape3(TestSetValueApi):
 class TestSetValueValueShape4(TestSetValueApi):
     def set_value(self):
         self.value = np.array(
-            [[1, 1, 1, 1], [2, 2, 2, 2], [3, 3, 3, 3]]).astype(
-                self.dtype)  # shape is (3,4)
+            [[1, 1, 1, 1], [2, 2, 2, 2], [3, 3, 3, 3]]
+        ).astype(
+            self.dtype
+        )  # shape is (3,4)
 
     def _call_setitem(self, x):
         x[0] = paddle.assign(self.value)  # x is Paddle.Tensor

@@ -12,11 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import math
 import unittest
+
 import numpy as np
 from op_test import OpTest
+
 import paddle
-import math
 
 
 class Gsz:
@@ -52,8 +54,9 @@ def d_weight_z(x):
         return d_diff_abs(x)
 
 
-def naive_bilateral_slice_forward(output, grid, guide, input, gsz, has_offset,
-                                  total_count, output_chans):
+def naive_bilateral_slice_forward(
+    output, grid, guide, input, gsz, has_offset, total_count, output_chans
+):
     h = gsz.h
     w = gsz.w
     gd = gsz.gd
@@ -71,7 +74,7 @@ def naive_bilateral_slice_forward(output, grid, guide, input, gsz, has_offset,
         x = idx % w
         y = idx // w % h
         out_c = (idx // (h * w)) % output_chans
-        b = (idx // (output_chans * w * h))
+        b = idx // (output_chans * w * h)
 
         gx = (x + 0.5) * gw / (1.0 * w)
         gy = (y + 0.5) * gh / (1.0 * h)
@@ -98,8 +101,12 @@ def naive_bilateral_slice_forward(output, grid, guide, input, gsz, has_offset,
                         wz = weight_z(zz + 0.5 - gz)
                         c_ = coeff_stride * out_c + in_c
 
-                        coeff_sample += grid[int(b), int(c_), int(z_), int(y_),
-                                             int(x_)] * wx * wy * wz
+                        coeff_sample += (
+                            grid[int(b), int(c_), int(z_), int(y_), int(x_)]
+                            * wx
+                            * wy
+                            * wz
+                        )
 
             if in_c < input_chans:
                 value += coeff_sample * input[int(b), int(in_c), int(y), int(x)]
@@ -128,13 +135,15 @@ def naive_bilateral_slice(x, guide, grid, has_offset):
 
     gsz = Gsz(h, w, gd, gh, gw, input_chans)
     total_count = bs * h * w * output.shape[1]
-    naive_bilateral_slice_forward(output, grid, guide, x, gsz, has_offset,
-                                  total_count, output.shape[1])
+    naive_bilateral_slice_forward(
+        output, grid, guide, x, gsz, has_offset, total_count, output.shape[1]
+    )
     return output
 
 
-@unittest.skipIf(not paddle.fluid.is_compiled_with_cuda(),
-                 'CPU testing is not supported')
+@unittest.skipIf(
+    not paddle.fluid.is_compiled_with_cuda(), 'CPU testing is not supported'
+)
 class TestBilateralSliceOp(OpTest):
     def setUp(self):
         self.initTestCase()
@@ -153,7 +162,9 @@ class TestBilateralSliceOp(OpTest):
         output_np = naive_bilateral_slice(x, guide, grid, self.has_offset)
 
         self.inputs = {'X': x, 'Grid': grid, 'Guide': guide}
-        self.attrs = {'has_offset': self.has_offset, }
+        self.attrs = {
+            'has_offset': self.has_offset,
+        }
         self.outputs = {'Out': output_np}
 
     def test_check_output(self):
@@ -170,8 +181,9 @@ class TestBilateralSliceOp(OpTest):
         self.data_type = 'float64'
 
 
-@unittest.skipIf(not paddle.fluid.is_compiled_with_cuda(),
-                 'CPU testing is not supported')
+@unittest.skipIf(
+    not paddle.fluid.is_compiled_with_cuda(), 'CPU testing is not supported'
+)
 class TestBilateralSliceOp1(TestBilateralSliceOp):
     def initTestCase(self):
         self.has_offset = True
@@ -181,11 +193,14 @@ class TestBilateralSliceOp1(TestBilateralSliceOp):
 class TestBilateralSliceApi(unittest.TestCase):
     def test_api(self):
         x = paddle.fluid.data(
-            name='x', shape=[None, 3, 25, 15], dtype='float32')
+            name='x', shape=[None, 3, 25, 15], dtype='float32'
+        )
         guide = paddle.fluid.data(
-            name='guide', shape=[None, 25, 15], dtype='float32')
+            name='guide', shape=[None, 25, 15], dtype='float32'
+        )
         grid = paddle.fluid.data(
-            name='grid', shape=[None, None, 8, 5, 3], dtype='float32')
+            name='grid', shape=[None, None, 8, 5, 3], dtype='float32'
+        )
         paddle.fluid.contrib.layers.bilateral_slice(x, guide, grid, False)
 
         if not paddle.fluid.is_compiled_with_cuda():

@@ -13,7 +13,9 @@
 // limitations under the License.
 
 #include "paddle/fluid/platform/complex.h"
+
 #include <complex>
+
 #include "paddle/phi/kernels/funcs/eigen/extensions.h"
 
 #define GLOG_NO_ABBREVIATED_SEVERITIES  // msvc conflict logging with windows.h

@@ -29,15 +29,16 @@ limitations under the License. */
 namespace f = paddle::framework;
 namespace p = paddle::platform;
 
-USE_OP(assign);
+USE_OP_ITSELF(assign);
 USE_OP_DEVICE_KERNEL(assign, NPU);
 
 template <typename T>
-void Compare(f::Scope* scope, const p::DeviceContext& ctx,
+void Compare(f::Scope* scope,
+             const p::DeviceContext& ctx,
              std::string op_type) {
   // init
   auto x = scope->Var("X");
-  auto tensor_x = x->GetMutable<f::LoDTensor>();
+  auto tensor_x = x->GetMutable<phi::DenseTensor>();
 
   std::vector<T> init;
   init.push_back(static_cast<T>(1.0));
@@ -52,7 +53,7 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx,
 
   auto place = ctx.GetPlace();
   auto out = scope->Var("Out");
-  auto tensor_out = out->GetMutable<f::LoDTensor>();
+  auto tensor_out = out->GetMutable<phi::DenseTensor>();
 
   auto op =
       f::OpRegistry::CreateOp(op_type, {{"X", {"X"}}}, {{"Out", {"Out"}}}, {});

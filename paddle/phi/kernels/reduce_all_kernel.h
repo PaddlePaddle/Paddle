@@ -32,4 +32,5 @@ void AllKernel(const Context& dev_ctx,
                const std::vector<int64_t>& dims,
                bool keep_dim,
                DenseTensor* out);
+
 }  // namespace phi

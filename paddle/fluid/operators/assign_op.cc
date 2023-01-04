@@ -16,6 +16,9 @@ limitations under the License. */
 
 #include <string>
 
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/unary.h"
 namespace paddle {
 namespace framework {
 class OpDesc;
@@ -31,41 +34,23 @@ namespace operators {
 
 class AssignOp : public framework::OperatorWithKernel {
  public:
-  AssignOp(const std::string &type, const framework::VariableNameMap &inputs,
+  AssignOp(const std::string &type,
+           const framework::VariableNameMap &inputs,
            const framework::VariableNameMap &outputs,
            const framework::AttributeMap &attrs)
       : OperatorWithKernel(type, inputs, outputs, attrs) {}
 
-  void InferShape(framework::InferShapeContext *ctx) const override {
-    if (ctx->HasInput("X")) {
-      auto type = ctx->GetInputsVarType("X")[0];
-      if (type == framework::proto::VarType::SELECTED_ROWS ||
-          type == framework::proto::VarType::LOD_TENSOR) {
-        ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
-        if (type == framework::proto::VarType::LOD_TENSOR) {
-          ctx->ShareLoD("X", /*->*/ "Out");
-        }
-      } else if (type == framework::proto::VarType::LOD_TENSOR_ARRAY) {
-        if (ctx->IsRuntime()) {
-          // The runtime output shape is determined in kernel.
-          return;
-        } else {
-          ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
-        }
-      }
-    }
-  }
-
  protected:
-  framework::OpKernelType GetKernelTypeForVar(
-      const std::string &var_name, const framework::Tensor &tensor,
-      const framework::OpKernelType &expected_kernel_type) const override {
-    return framework::OpKernelType(expected_kernel_type.data_type_,
-                                   expected_kernel_type.place_,
-                                   tensor.layout());
+  phi::KernelKey GetKernelTypeForVar(
+      const std::string &var_name,
+      const phi::DenseTensor &tensor,
+      const phi::KernelKey &expected_kernel_type) const override {
+    return phi::KernelKey(phi::Backend::ALL_BACKEND,
+                          tensor.layout(),
+                          expected_kernel_type.dtype());
   }
 
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     const framework::Variable *var = ctx.InputVar("X");
     if (var->IsType<framework::LoDTensorArray>()) {
@@ -73,14 +58,13 @@ class AssignOp : public framework::OperatorWithKernel {
       // NOTE(liym27): Support an empty tensor array as Input.
       // And set the kernel type is float.
       if (t_arr.size() == 0) {
-        return framework::OpKernelType(framework::proto::VarType::FP32,
-                                       ctx.device_context());
+        return phi::KernelKey(framework::proto::VarType::FP32,
+                              ctx.device_context().GetPlace());
       }
     }
 
-    return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
-        ctx.device_context());
+    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+                          ctx.device_context().GetPlace());
   }
 };
 
@@ -91,37 +75,22 @@ class AssignInferVarType : public framework::VarTypeInference {
   }
 };
 
-class AssignKernel {
- public:
-  void operator()(const framework::ExecutionContext &ctx) const {
-    auto *x = ctx.InputVar("X");
-    if (x == nullptr) {
-      return;
-    }
-    PADDLE_ENFORCE_EQ(
-        ctx.HasOutput("Out"), true,
-        platform::errors::NotFound("Output(Out) of assign_op is not found."));
-    auto *out = ctx.OutputVar("Out");
-    platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
-    auto &dev_ctx = *pool.Get(ctx.GetPlace());
-
-    framework::VisitVarType(*x, AssignFunctor(out, dev_ctx));
-  }
-};
-
 class AssignOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("X",
-             "(LoDTensor, SelectedRows or LoDTensorArray) The input variable "
-             "could be LoDTensor, SelectedRows or LoDTensorArray.")
+    AddInput(
+        "X",
+        "(phi::DenseTensor, SelectedRows or phi::DenseTensorArray) The input "
+        "variable "
+        "could be phi::DenseTensor, SelectedRows or phi::DenseTensorArray.")
         .AsDispensable();
     AddOutput("Out",
-              "(LoDTensor, SelectedRows or LoDTensorArray) The type of output "
+              "(phi::DenseTensor, SelectedRows or phi::DenseTensorArray) The "
+              "type of output "
               "is the same as input X.");
     AddComment(R"DOC(Assign Operator
 
-Out = X,  when type in [LoDTensor/SelectedRows/LoDTensorArray]
+Out = X,  when type in [phi::DenseTensor/SelectedRows/phi::DenseTensorArray]
 raise error if the type is not listed above.
 )DOC");
   }
@@ -147,23 +116,15 @@ DECLARE_INPLACE_OP_INFERER(AssignOpInplaceInferer, {"X", "Out"});
 
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
-REGISTER_OPERATOR(assign, ops::AssignOp,
+
+DECLARE_INFER_SHAPE_FUNCTOR(assign,
+                            AssignInferShapeFunctor,
+                            PD_INFER_META(phi::UnchangedInferMeta));
+REGISTER_OPERATOR(assign,
+                  ops::AssignOp,
                   ops::AssignGradMaker<paddle::framework::OpDesc>,
                   ops::AssignGradMaker<paddle::imperative::OpBase>,
-                  ops::AssignOpProtoMaker, ops::AssignOpInplaceInferer,
-                  ops::AssignInferVarType);
-
-REGISTER_OP_CPU_KERNEL_FUNCTOR(assign, float, ops::AssignKernel, double,
-                               ops::AssignKernel, int, ops::AssignKernel,
-                               int64_t, ops::AssignKernel, uint8_t,
-                               ops::AssignKernel, bool, ops::AssignKernel,
-                               plat::float16, ops::AssignKernel, plat::bfloat16,
-                               ops::AssignKernel);
-
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-REGISTER_OP_CUDA_KERNEL_FUNCTOR(assign, float, ops::AssignKernel, double,
-                                ops::AssignKernel, int, ops::AssignKernel,
-                                int64_t, ops::AssignKernel, uint8_t,
-                                ops::AssignKernel, bool, ops::AssignKernel,
-                                plat::float16, ops::AssignKernel);
-#endif
+                  ops::AssignOpProtoMaker,
+                  ops::AssignOpInplaceInferer,
+                  ops::AssignInferVarType,
+                  AssignInferShapeFunctor);

@@ -12,11 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 import sys
+
 sys.path.append("..")
 from op_test import OpTest, skip_check_grad_ci
 import paddle
@@ -34,8 +33,9 @@ class TestAny8DOp(OpTest):
         self.op_type = "reduce_any"
         self.place = paddle.NPUPlace(0)
         self.inputs = {
-            'X': np.random.randint(0, 2,
-                                   (2, 5, 3, 2, 2, 3, 4, 2)).astype("bool")
+            'X': np.random.randint(0, 2, (2, 5, 3, 2, 2, 3, 4, 2)).astype(
+                "bool"
+            )
         }
         self.attrs = {'dim': (3, 5, 4)}
         self.outputs = {'Out': self.inputs['X'].any(axis=self.attrs['dim'])}
@@ -69,8 +69,9 @@ class TestAny8DOpWithDim(OpTest):
         self.op_type = "reduce_any"
         self.place = paddle.NPUPlace(0)
         self.inputs = {
-            'X': np.random.randint(0, 2,
-                                   (2, 5, 3, 2, 2, 3, 4, 2)).astype("bool")
+            'X': np.random.randint(0, 2, (2, 5, 3, 2, 2, 3, 4, 2)).astype(
+                "bool"
+            )
         }
         self.attrs = {'dim': (3, 6)}
         self.outputs = {'Out': self.inputs['X'].any(axis=self.attrs['dim'])}
@@ -91,7 +92,8 @@ class TestAnyOpWithKeepDim(OpTest):
         self.attrs = {'dim': (1), 'keep_dim': True}
         self.outputs = {
             'Out': np.expand_dims(
-                self.inputs['X'].any(axis=self.attrs['dim']), axis=1)
+                self.inputs['X'].any(axis=self.attrs['dim']), axis=1
+            )
         }
 
     def set_npu(self):
@@ -107,13 +109,15 @@ class TestAny8DOpWithKeepDim(OpTest):
         self.op_type = "reduce_any"
         self.place = paddle.NPUPlace(0)
         self.inputs = {
-            'X': np.random.randint(0, 2,
-                                   (2, 5, 3, 2, 2, 3, 4, 2)).astype("bool")
+            'X': np.random.randint(0, 2, (2, 5, 3, 2, 2, 3, 4, 2)).astype(
+                "bool"
+            )
         }
         self.attrs = {'dim': (1), 'keep_dim': True}
         self.outputs = {
             'Out': np.expand_dims(
-                self.inputs['X'].any(axis=self.attrs['dim']), axis=1)
+                self.inputs['X'].any(axis=self.attrs['dim']), axis=1
+            )
         }
 
     def set_npu(self):

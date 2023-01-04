@@ -79,16 +79,12 @@ std::vector<OffsetsAndRatios<T>> GetIndexesAndRatios(
     for (std::size_t px = 0; px < pooled_width; px++) {
       for (std::size_t iy = 0; iy < roi_bin_grid_h; iy++) {
         // calculate x of sample points
-        auto y =
-            roi_ymin +
-            bin_h * (py +
-                     static_cast<T>(iy + .5f) / static_cast<T>(roi_bin_grid_h));
+        auto y = roi_ymin + bin_h * (py + static_cast<T>(iy + .5f) /
+                                              static_cast<T>(roi_bin_grid_h));
         for (std::size_t ix = 0; ix < roi_bin_grid_w; ix++) {
           // calculate x of sample points
-          auto x = roi_xmin +
-                   bin_w * (px +
-                            static_cast<T>(ix + .5f) /
-                                static_cast<T>(roi_bin_grid_w));
+          auto x = roi_xmin + bin_w * (px + static_cast<T>(ix + .5f) /
+                                                static_cast<T>(roi_bin_grid_w));
 
           // deal with elements out of map
           if (y < -1.0 || y > height || x < -1.0 || x > width) {
@@ -179,10 +175,10 @@ void AvgPool(const std::vector<T>& interpolated_values,
 }
 
 template <typename T, typename Context>
-void ROIAlignKernel(const Context& dev_ctx,
+void RoiAlignKernel(const Context& dev_ctx,
                     const DenseTensor& x,
                     const DenseTensor& boxes,
-                    paddle::optional<const DenseTensor&> boxes_num,
+                    const paddle::optional<DenseTensor>& boxes_num,
                     int pooled_height,
                     int pooled_width,
                     float spatial_scale,
@@ -315,4 +311,4 @@ void ROIAlignKernel(const Context& dev_ctx,
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
-    roi_align, CPU, ALL_LAYOUT, phi::ROIAlignKernel, float, double, int) {}
+    roi_align, CPU, ALL_LAYOUT, phi::RoiAlignKernel, float, double, int) {}

@@ -12,40 +12,38 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-INCLUDE(ExternalProject)
+include(ExternalProject)
 
-SET(UTF8PROC_PREFIX_DIR    ${THIRD_PARTY_PATH}/utf8proc)
-SET(UTF8PROC_INSTALL_DIR   ${THIRD_PARTY_PATH}/install/utf8proc)
+set(UTF8PROC_PREFIX_DIR ${THIRD_PARTY_PATH}/utf8proc)
+set(UTF8PROC_INSTALL_DIR ${THIRD_PARTY_PATH}/install/utf8proc)
 # As we add extra features for utf8proc, we use the non-official repo
-SET(UTF8PROC_REPOSITORY    ${GIT_URL}/JuliaStrings/utf8proc.git)
-SET(UTF8PROC_TAG           v2.6.1)
+set(UTF8PROC_REPOSITORY ${GIT_URL}/JuliaStrings/utf8proc.git)
+set(UTF8PROC_TAG v2.6.1)
 
-IF(WIN32)
-  SET(UTF8PROC_LIBRARIES     "${UTF8PROC_INSTALL_DIR}/lib/utf8proc_static.lib")
+if(WIN32)
+  set(UTF8PROC_LIBRARIES "${UTF8PROC_INSTALL_DIR}/lib/utf8proc_static.lib")
   add_definitions(-DUTF8PROC_STATIC)
-ELSE(WIN32)
-  SET(UTF8PROC_LIBRARIES     "${UTF8PROC_INSTALL_DIR}/lib/libutf8proc.a")
-ENDIF(WIN32)
+else()
+  set(UTF8PROC_LIBRARIES "${UTF8PROC_INSTALL_DIR}/lib/libutf8proc.a")
+endif()
 
-INCLUDE_DIRECTORIES(${UTF8PROC_INSTALL_DIR}/include)
+include_directories(${UTF8PROC_INSTALL_DIR}/include)
 
 ExternalProject_Add(
   extern_utf8proc
-  ${EXTERNAL_PROJECT_LOG_ARGS}
-  ${SHALLOW_CLONE}
-  GIT_REPOSITORY        ${UTF8PROC_REPOSITORY}
-  GIT_TAG               ${UTF8PROC_TAG}
-  PREFIX                ${UTF8PROC_PREFIX_DIR}
-  UPDATE_COMMAND        ""
-  CMAKE_ARGS            -DCMAKE_C_FLAGS=${CMAKE_C_FLAGS}
-                        -DBUILD_SHARED=ON
-                        -DBUILD_STATIC=ON
-                        -DCMAKE_CXX_FLAGS=${CMAKE_CXX_FLAGS}
-                        -DCMAKE_INSTALL_PREFIX:PATH=${UTF8PROC_INSTALL_DIR}
-                        -DCMAKE_BUILD_TYPE:STRING=${CMAKE_BUILD_TYPE}
-  BUILD_BYPRODUCTS     ${UTF8PROC_LIBRARIES}
-)
+  ${EXTERNAL_PROJECT_LOG_ARGS} ${SHALLOW_CLONE}
+  GIT_REPOSITORY ${UTF8PROC_REPOSITORY}
+  GIT_TAG ${UTF8PROC_TAG}
+  PREFIX ${UTF8PROC_PREFIX_DIR}
+  UPDATE_COMMAND ""
+  CMAKE_ARGS -DCMAKE_C_FLAGS=${CMAKE_C_FLAGS}
+             -DBUILD_SHARED=ON
+             -DBUILD_STATIC=ON
+             -DCMAKE_CXX_FLAGS=${CMAKE_CXX_FLAGS}
+             -DCMAKE_INSTALL_PREFIX:PATH=${UTF8PROC_INSTALL_DIR}
+             -DCMAKE_BUILD_TYPE:STRING=${CMAKE_BUILD_TYPE}
+  BUILD_BYPRODUCTS ${UTF8PROC_LIBRARIES})
 
-ADD_LIBRARY(utf8proc STATIC IMPORTED GLOBAL)
-SET_PROPERTY(TARGET utf8proc PROPERTY IMPORTED_LOCATION ${UTF8PROC_LIBRARIES})
-ADD_DEPENDENCIES(utf8proc extern_utf8proc)
+add_library(utf8proc STATIC IMPORTED GLOBAL)
+set_property(TARGET utf8proc PROPERTY IMPORTED_LOCATION ${UTF8PROC_LIBRARIES})
+add_dependencies(utf8proc extern_utf8proc)

@@ -12,18 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from auto_scan_test import PassAutoScanTest, SkipReasons
-from program_config import TensorConfig, ProgramConfig, OpConfig
-import numpy as np
-import paddle.inference as paddle_infer
-from functools import partial
-from typing import Optional, List, Callable, Dict, Any, Set
 import unittest
+from functools import partial
 
-import hypothesis
-from hypothesis import given, settings, seed, example, assume
 import hypothesis.strategies as st
-from functools import reduce
+import numpy as np
+from auto_scan_test import PassAutoScanTest
+from program_config import OpConfig, ProgramConfig, TensorConfig
 
 
 class TestMulGruFusePass(PassAutoScanTest):
@@ -55,16 +50,16 @@ class TestMulGruFusePass(PassAutoScanTest):
                 "kernels": [6, 1],
                 "out_stride": [1, 1],
                 "paddings": [0, 0, 0, 0],
-                "strides": [1, 1]
-            })
+                "strides": [1, 1],
+            },
+        )
 
         mul_op = OpConfig(
             type="mul",
-            inputs={"X": ["seq_out"],
-                    "Y": ["mul_weight"]},
+            inputs={"X": ["seq_out"], "Y": ["mul_weight"]},
             outputs={"Out": ["mul_out"]},
-            attrs={"x_num_col_dims": x_col,
-                   "y_num_col_dims": y_col})
+            attrs={"x_num_col_dims": x_col, "y_num_col_dims": y_col},
+        )
 
         if has_origin_mode:
             gru_op = OpConfig(
@@ -72,58 +67,64 @@ class TestMulGruFusePass(PassAutoScanTest):
                 inputs={
                     "Input": ["mul_out"],
                     "Weight": ["gru_weight"],
-                    "Bias": ["gru_bias"]
+                    "Bias": ["gru_bias"],
                 },
                 outputs={
                     "BatchGate": ["batch_gate"],
                     "BatchHidden": ["batch_hidden"],
                     "BatchResetHiddenPrev": ["batch_reset"],
-                    "Hidden": ["hidden"]
+                    "Hidden": ["hidden"],
                 },
                 attrs={
                     'activation': activation,
                     'is_reverse': is_reverse,
                     'gate_activation': gate_activation,
                     'is_test': True,
-                    'origin_mode': origin_mode
-                })
+                    'origin_mode': origin_mode,
+                },
+            )
         else:
             gru_op = OpConfig(
                 type="gru",
                 inputs={
                     "Input": ["mul_out"],
                     "Weight": ["gru_weight"],
-                    "Bias": ["gru_bias"]
+                    "Bias": ["gru_bias"],
                 },
                 outputs={
                     "BatchGate": ["batch_gate"],
                     "BatchHidden": ["batch_hidden"],
                     "BatchResetHiddenPrev": ["batch_reset"],
-                    "Hidden": ["hidden"]
+                    "Hidden": ["hidden"],
                 },
                 attrs={
                     'activation': activation,
                     'is_reverse': is_reverse,
                     'gate_activation': gate_activation,
-                    'is_test': True
-                })
+                    'is_test': True,
+                },
+            )
 
         model_net = [im2sequence_op, mul_op, gru_op]
 
         program_config = ProgramConfig(
             ops=model_net,
             weights={
-                "mul_weight":
-                TensorConfig(data_gen=partial(generate_weight, [768, 600])),
-                "gru_weight":
-                TensorConfig(data_gen=partial(generate_weight, [200, 600])),
-                "gru_bias":
-                TensorConfig(data_gen=partial(generate_weight, [1, 600]))
+                "mul_weight": TensorConfig(
+                    data_gen=partial(generate_weight, [768, 600])
+                ),
+                "gru_weight": TensorConfig(
+                    data_gen=partial(generate_weight, [200, 600])
+                ),
+                "gru_bias": TensorConfig(
+                    data_gen=partial(generate_weight, [1, 600])
+                ),
             },
             inputs={
                 "input_data": TensorConfig(data_gen=partial(generate_input))
             },
-            outputs=["hidden"])
+            outputs=["hidden"],
+        )
 
         return program_config
 
@@ -133,7 +134,8 @@ class TestMulGruFusePass(PassAutoScanTest):
 
     def test(self):
         self.run_and_statis(
-            quant=False, max_duration=300, passes=["mul_gru_fuse_pass"])
+            quant=False, max_duration=300, passes=["mul_gru_fuse_pass"]
+        )
 
 
 if __name__ == "__main__":

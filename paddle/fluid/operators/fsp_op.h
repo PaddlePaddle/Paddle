@@ -20,15 +20,13 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
-
 template <typename DeviceContext, typename T>
 class FSPOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* x = context.Input<Tensor>("X");
-    auto* y = context.Input<Tensor>("Y");
-    auto* output = context.Output<Tensor>("Out");
+    auto* x = context.Input<phi::DenseTensor>("X");
+    auto* y = context.Input<phi::DenseTensor>("Y");
+    auto* output = context.Output<phi::DenseTensor>("Out");
     output->mutable_data<T>(context.GetPlace());
     auto x_dims = x->dims();
     auto y_dims = y->dims();
@@ -55,8 +53,12 @@ class FSPOpKernel : public framework::OpKernel<T> {
     y_mat_desc.stride_ = y_channel * height * width;
     y_mat_desc.trans_ = true;
 
-    blas.MatMul(*x, x_mat_desc, *y, y_mat_desc,
-                static_cast<T>(1.0 / (height * width)), output,
+    blas.MatMul(*x,
+                x_mat_desc,
+                *y,
+                y_mat_desc,
+                static_cast<T>(1.0 / (height * width)),
+                output,
                 static_cast<T>(0.0));
   }
 };
@@ -65,12 +67,13 @@ template <typename DeviceContext, typename T>
 class FSPGradOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* d_x = context.Output<Tensor>(framework::GradVarName("X"));
-    auto* d_y = context.Output<Tensor>(framework::GradVarName("Y"));
+    auto* d_x = context.Output<phi::DenseTensor>(framework::GradVarName("X"));
+    auto* d_y = context.Output<phi::DenseTensor>(framework::GradVarName("Y"));
     if (d_x == nullptr && d_y == nullptr) {
       return;
     }
-    auto* d_out = context.Input<Tensor>(framework::GradVarName("Out"));
+    auto* d_out =
+        context.Input<phi::DenseTensor>(framework::GradVarName("Out"));
     auto d_out_dims = d_out->dims();
     auto batch_size = d_out_dims[0];
     auto x_channel = d_out_dims[1];
@@ -82,9 +85,10 @@ class FSPGradOpKernel : public framework::OpKernel<T> {
     phi::funcs::SetConstant<DeviceContext, T> set_zero;
     if (d_x != nullptr) {
       d_x->mutable_data<T>(context.GetPlace());
-      set_zero(context.template device_context<DeviceContext>(), d_x,
+      set_zero(context.template device_context<DeviceContext>(),
+               d_x,
                static_cast<T>(0));
-      auto* y = context.Input<Tensor>("Y");
+      auto* y = context.Input<phi::DenseTensor>("Y");
       auto y_dims = y->dims();
       h = y_dims[2];
       w = y_dims[3];
@@ -103,15 +107,21 @@ class FSPGradOpKernel : public framework::OpKernel<T> {
       y_mat_desc.stride_ = y_channel * h * w;
       y_mat_desc.trans_ = false;
 
-      blas.MatMul(*d_out, d_out_mat_desc, *y, y_mat_desc,
-                  static_cast<T>(1.0 / (h * w)), d_x, static_cast<T>(0.0));
+      blas.MatMul(*d_out,
+                  d_out_mat_desc,
+                  *y,
+                  y_mat_desc,
+                  static_cast<T>(1.0 / (h * w)),
+                  d_x,
+                  static_cast<T>(0.0));
     }
 
     if (d_y != nullptr) {
       d_y->mutable_data<T>(context.GetPlace());
-      set_zero(context.template device_context<DeviceContext>(), d_y,
+      set_zero(context.template device_context<DeviceContext>(),
+               d_y,
                static_cast<T>(0));
-      auto* x = context.Input<Tensor>("X");
+      auto* x = context.Input<phi::DenseTensor>("X");
       auto x_dims = x->dims();
       h = x_dims[2];
       w = x_dims[3];
@@ -130,8 +140,13 @@ class FSPGradOpKernel : public framework::OpKernel<T> {
       x_mat_desc.stride_ = x_channel * h * w;
       x_mat_desc.trans_ = false;
 
-      blas.MatMul(*d_out, d_out_mat_desc, *x, x_mat_desc,
-                  static_cast<T>(1.0 / (h * w)), d_y, static_cast<T>(0.0));
+      blas.MatMul(*d_out,
+                  d_out_mat_desc,
+                  *x,
+                  x_mat_desc,
+                  static_cast<T>(1.0 / (h * w)),
+                  d_y,
+                  static_cast<T>(0.0));
     }
   }
 };

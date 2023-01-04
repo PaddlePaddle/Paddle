@@ -25,7 +25,7 @@ template <typename T>
 class Shared;
 /**
  * Object is the basic element in the INFRT, with `Shared` wrapper, the object
- * can be shared accross the system.
+ * can be shared across the system.
  */
 struct Object {
   //! Get the type representation of this object.

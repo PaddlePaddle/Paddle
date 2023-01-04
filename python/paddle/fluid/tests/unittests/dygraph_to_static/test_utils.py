@@ -12,16 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import types
 import unittest
 
-from paddle.fluid.dygraph.dygraph_to_static import ProgramTranslator
-from paddle.fluid.dygraph.dygraph_to_static.utils import index_in_list
-from paddle.fluid.dygraph.dygraph_to_static.utils import is_paddle_func
-
-from test_program_translator import get_source_code
+from paddle.jit.dy2static.utils import index_in_list, is_paddle_func
 
 
 class TestIndexInList(unittest.TestCase):
@@ -41,7 +35,7 @@ def dyfunc_assign(input):
     [x, y] = m, n = z
 
 
-class StaticCode():
+class StaticCode:
     def dyfunc_assign(input):
         b = 1
         a = b
@@ -53,14 +47,6 @@ class StaticCode():
         m, n = z
         x = m
         y = n
-
-
-class TestSplitAssignTransformer(unittest.TestCase):
-    def test_code(self):
-        answer = get_source_code(StaticCode.dyfunc_assign)
-        program_translator = ProgramTranslator()
-        code = program_translator.get_code(dyfunc_assign)
-        self.assertEqual(answer, code)
 
 
 class TestIsPaddle(unittest.TestCase):

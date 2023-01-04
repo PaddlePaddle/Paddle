@@ -35,4 +35,6 @@ no_check_set_white_list = [
     'eigh',
     'eigvalsh',
     'class_center_sample',
+    'einsum',
+    'rmsprop',
 ]

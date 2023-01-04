@@ -12,11 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 import sys
+
 sys.path.append("..")
 from op_test import OpTest
 import paddle
@@ -28,7 +27,7 @@ paddle.enable_static()
 
 
 class TestRandpermOp(OpTest):
-    """ Test randperm op."""
+    """Test randperm op."""
 
     def setUp(self):
         self.set_npu()
@@ -59,7 +58,8 @@ class TestRandpermOp(OpTest):
     def verify_output(self, outs):
         out_np = np.array(outs[0])
         self.assertTrue(
-            check_randperm_out(self.n, out_np), msg=error_msg(out_np))
+            check_randperm_out(self.n, out_np), msg=error_msg(out_np)
+        )
 
 
 class TestRandpermOpN(TestRandpermOp):
@@ -114,7 +114,8 @@ class TestRandpermImperative(unittest.TestCase):
             data_p = paddle.randperm(n, dtype)
             data_np = data_p.numpy()
             self.assertTrue(
-                check_randperm_out(n, data_np), msg=error_msg(data_np))
+                check_randperm_out(n, data_np), msg=error_msg(data_np)
+            )
         paddle.enable_static()
 
 

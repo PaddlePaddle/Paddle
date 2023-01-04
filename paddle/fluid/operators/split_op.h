@@ -18,27 +18,35 @@ limitations under the License. */
 #include <memory>
 #include <string>
 #include <vector>
+
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/utils.h"
 #include "paddle/phi/kernels/split_kernel.h"
 namespace paddle {
 namespace operators {
 static inline std::vector<framework::DDim> UpdateOutsDims(
-    const bool is_runtime, const bool each_section_is_known,
-    const framework::DDim in_dims, const size_t num, std::vector<int> sections,
-    const size_t axis, const int outs_number) {
+    const bool is_runtime,
+    const bool each_section_is_known,
+    const framework::DDim in_dims,
+    const size_t num,
+    std::vector<int> sections,
+    const size_t axis,
+    const int outs_number) {
   std::vector<framework::DDim> outs_dims(outs_number, in_dims);
   int64_t input_axis_dim = in_dims[axis];
   if (num > 0) {
     if (is_runtime || input_axis_dim > 0) {
       PADDLE_ENFORCE_EQ(
-          input_axis_dim % num, 0,
+          input_axis_dim % num,
+          0,
           platform::errors::InvalidArgument(
               "The input's size along the split dimension "
               "must be evenly divisible by Attr(num_or_sections). "
               "But received Attr(num_or_sections) "
               "= %d, input(X)'s shape = [%s], Attr(dim) = %d.",
-              num, in_dims, axis));
+              num,
+              in_dims,
+              axis));
       size_t out_axis_dim = input_axis_dim / num;
 
       for (auto& out_dim : outs_dims) {
@@ -65,7 +73,8 @@ static inline std::vector<framework::DDim> UpdateOutsDims(
 
       if (each_section_is_known) {
         PADDLE_ENFORCE_LE(
-            num_of_unk, 1,
+            num_of_unk,
+            1,
             platform::errors::InvalidArgument(
                 "Only one dimension value of Attr(num_or_sections) "
                 "in SplitOp can be -1. "
@@ -78,26 +87,32 @@ static inline std::vector<framework::DDim> UpdateOutsDims(
         // input_axis_dim = 5, sum_of_sections = 5.
         // the following check will fail.
         PADDLE_ENFORCE_LT(
-            sum_of_section, input_axis_dim,
+            sum_of_section,
+            input_axis_dim,
             platform::errors::InvalidArgument(
                 "Sum of Attr(num_or_sections) other than unknown section "
                 "must be less than the input's "
                 "size "
                 "along the split dimension. But received Attr(num_or_sections) "
                 "= [%s], input(X)'s shape = [%s], Attr(dim) = %d.",
-                phi::make_ddim(sections), in_dims, axis));
+                phi::make_ddim(sections),
+                in_dims,
+                axis));
         if (each_section_is_known) {
           sections[unk_dim_idx] = input_axis_dim - sum_of_section;
         }
       } else {
         PADDLE_ENFORCE_EQ(
-            sum_of_section, input_axis_dim,
+            sum_of_section,
+            input_axis_dim,
             platform::errors::InvalidArgument(
                 "Sum of Attr(num_or_sections) must be equal to the input's "
                 "size "
                 "along the split dimension. But received Attr(num_or_sections)"
                 " = [%s], input(X)'s shape = [%s], Attr(dim) = %d.",
-                phi::make_ddim(sections), in_dims, axis));
+                phi::make_ddim(sections),
+                in_dims,
+                axis));
       }
     }
     for (int i = 0; i < outs_number; ++i) {

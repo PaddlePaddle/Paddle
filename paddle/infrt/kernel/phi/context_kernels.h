@@ -25,6 +25,10 @@ namespace phi {
 
 ::phi::CPUContext CreateCPUContext();
 
+#ifdef INFRT_WITH_GPU
+::phi::GPUContext CreateGPUContext();
+#endif
+
 }  // namespace phi
 }  // namespace kernel
 }  // namespace infrt

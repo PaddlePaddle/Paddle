@@ -13,12 +13,11 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/optimizers/momentum_op.h"
+
 #include "paddle/fluid/framework/op_version_registry.h"
 
 namespace paddle {
 namespace operators {
-
-using Tensor = framework::Tensor;
 
 class MomentumOpInferVarType : public framework::VarTypeInference {
  public:
@@ -37,24 +36,24 @@ class MomentumOpInferVarType : public framework::VarTypeInference {
 
 void MomentumOpMaker::Make() {
   AddInput("Param",
-           "(Tensor, default Tensor<float>) "
+           "(phi::DenseTensor, default phi::DenseTensor<float>) "
            "Input parameter that has to be updated");
   AddInput("Grad",
-           "(Tensor, default Tensor<float>) "
+           "(phi::DenseTensor, default phi::DenseTensor<float>) "
            "Input gradient of the parameter");
   AddInput("Velocity",
-           "(Tensor, default Tensor<float>) "
+           "(phi::DenseTensor, default phi::DenseTensor<float>) "
            "Input velocity (corresponding to the parameter) "
            "that has to be updated");
   AddInput("LearningRate",
-           "(Tensor, default Tensor<float>) "
+           "(phi::DenseTensor, default phi::DenseTensor<float>) "
            "Input learning rate");
   AddInput("MasterParam", "FP32 master weight for AMP.").AsDispensable();
   AddOutput("ParamOut",
-            "(Tensor) This output is updated parameter. "
+            "(phi::DenseTensor) This output is updated parameter. "
             "It shared memory with Input(Param).");
   AddOutput("VelocityOut",
-            "(Tensor) This output is updated velocity. "
+            "(phi::DenseTensor) This output is updated velocity. "
             "It shared memory with Input(Velocity).");
   AddOutput("MasterParamOut",
             "The updated FP32 master weight for AMP. "
@@ -104,36 +103,33 @@ $$
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(
-    momentum, ops::MomentumOp, ops::MomentumOpMaker,
+    momentum,
+    ops::MomentumOp,
+    ops::MomentumOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
     ops::MomentumOpInferVarType);
-REGISTER_OP_CPU_KERNEL(
-    momentum, ops::MomentumOpKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::MomentumOpKernel<paddle::platform::CPUDeviceContext, double>);
 
-REGISTER_OP_VERSION(momentum)
-    .AddCheckpoint(
-        R"ROC(
+REGISTER_OP_VERSION(momentum).AddCheckpoint(
+    R"ROC(
       Upgrade momentum add 4 attributes [regularization_method, regularization_coeff,
       multi_precision, rescale_grad].
     )ROC",
-        paddle::framework::compatible::OpVersionDesc()
-            .NewInput("MasterParam", "FP32 master weight for AMP.")
-            .NewOutput("MasterParamOut",
-                       "The updated FP32 master weight for AMP. "
-                       "It shared memory with Input(MasterParam).")
-            .NewAttr("regularization_method",
-                     "(string) regularization_method, right now only support "
-                     "l2decay or none",
-                     std::string(""))
-            .NewAttr("regularization_coeff", "(float) regularization_coeff",
-                     0.0f)
-            .NewAttr(
-                "multi_precision",
-                "(bool) Whether to use multi-precision during weight updating.",
-                false)
-            .NewAttr("rescale_grad",
-                     "(float) Multiply the gradient with `rescale_grad`"
-                     "before updating. Often choose to be `1.0/batch_size`.",
-                     1.0f));
+    paddle::framework::compatible::OpVersionDesc()
+        .NewInput("MasterParam", "FP32 master weight for AMP.")
+        .NewOutput("MasterParamOut",
+                   "The updated FP32 master weight for AMP. "
+                   "It shared memory with Input(MasterParam).")
+        .NewAttr("regularization_method",
+                 "(string) regularization_method, right now only support "
+                 "l2decay or none",
+                 std::string(""))
+        .NewAttr("regularization_coeff", "(float) regularization_coeff", 0.0f)
+        .NewAttr(
+            "multi_precision",
+            "(bool) Whether to use multi-precision during weight updating.",
+            false)
+        .NewAttr("rescale_grad",
+                 "(float) Multiply the gradient with `rescale_grad`"
+                 "before updating. Often choose to be `1.0/batch_size`.",
+                 1.0f));

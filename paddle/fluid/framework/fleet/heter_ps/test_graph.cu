@@ -13,7 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <gtest/gtest.h>
+
 #include <vector>
+
 #include "paddle/fluid/framework/fleet/heter_ps/feature_value.h"
 #include "paddle/fluid/framework/fleet/heter_ps/graph_gpu_ps_table.h"
 #include "paddle/fluid/framework/fleet/heter_ps/heter_comm.h"
@@ -48,15 +50,16 @@ TEST(TEST_FLEET, graph_comm) {
   }
   std::vector<int> neighbor_offset(gpu_count, 0), node_index(gpu_count, 0);
   for (int i = 0; i < graph_list.size(); i++) {
-    graph_list[i].node_list = new GpuPsGraphNode[graph_list[i].node_size];
+    graph_list[i].node_list = new uint64_t[graph_list[i].node_size];
+    graph_list[i].node_info_list = new GpuPsNodeInfo[graph_list[i].node_size];
     graph_list[i].neighbor_list = new int64_t[graph_list[i].neighbor_size];
   }
   for (int i = 0; i < node_count; i++) {
     ind = i % gpu_count;
-    graph_list[ind].node_list[node_index[ind]].node_id = i;
-    graph_list[ind].node_list[node_index[ind]].neighbor_offset =
+    graph_list[ind].node_list[node_index[ind]] = i;
+    graph_list[ind].node_info_list[node_index[ind]].neighbor_offset =
         neighbor_offset[ind];
-    graph_list[ind].node_list[node_index[ind]].neighbor_size =
+    graph_list[ind].node_info_list[node_index[ind]].neighbor_size =
         neighbors[i].size();
     for (auto x : neighbors[i]) {
       graph_list[ind].neighbor_list[neighbor_offset[ind]++] = x;
@@ -94,19 +97,49 @@ TEST(TEST_FLEET, graph_comm) {
    0 --index--->0
    7 --index-->2
   */
+
   int64_t cpu_key[3] = {7, 0, 6};
   void *key;
   cudaMalloc((void **)&key, 3 * sizeof(int64_t));
   cudaMemcpy(key, cpu_key, 3 * sizeof(int64_t), cudaMemcpyHostToDevice);
   auto neighbor_sample_res = g.graph_neighbor_sample(0, (int64_t *)key, 3, 3);
-  res = new int64_t[9];
-  cudaMemcpy(res, neighbor_sample_res->val, 72, cudaMemcpyDeviceToHost);
-  int64_t expected_sample_val[] = {28, 29, 30, 0, -1, -1, 21, 22, 23};
-  for (int i = 0; i < 9; i++) {
-    if (expected_sample_val[i] != -1) {
-      ASSERT_EQ(res[i], expected_sample_val[i]);
+  res = new int64_t[7];
+  cudaMemcpy(res, neighbor_sample_res->val, 56, cudaMemcpyDeviceToHost);
+  int *actual_sample_size = new int[3];
+  cudaMemcpy(actual_sample_size,
+             neighbor_sample_res->actual_sample_size,
+             12,
+             cudaMemcpyDeviceToHost);  // 3, 1, 3
+  int *cumsum_sample_size = new int[3];
+  cudaMemcpy(cumsum_sample_size,
+             neighbor_sample_res->offset,
+             12,
+             cudaMemcpyDeviceToHost);  // 0, 3, 4
+
+  std::vector<std::vector<int64_t>> neighbors_;
+  std::vector<int64_t> neighbors_7 = {28, 29, 30, 31, 32, 33, 34, 35};
+  std::vector<int64_t> neighbors_0 = {0};
+  std::vector<int64_t> neighbors_6 = {21, 22, 23, 24, 25, 26, 27};
+  neighbors_.push_back(neighbors_7);
+  neighbors_.push_back(neighbors_0);
+  neighbors_.push_back(neighbors_6);
+  for (int i = 0; i < 3; i++) {
+    for (int j = cumsum_sample_size[i];
+         j < cumsum_sample_size[i] + actual_sample_size[i];
+         j++) {
+      bool flag = false;
+      for (int k = 0; k < neighbors_[i].size(); k++) {
+        if (res[j] == neighbors_[i][k]) {
+          flag = true;
+          break;
+        }
+      }
+      ASSERT_EQ(flag, true);
     }
   }
+
   delete[] res;
+  delete[] actual_sample_size;
+  delete[] cumsum_sample_size;
   delete neighbor_sample_res;
 }

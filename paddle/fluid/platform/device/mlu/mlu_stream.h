@@ -40,7 +40,6 @@ class MLUStream final {
 
   template <typename Callback>
   void AddCallback(Callback&& callback) const {
-    // TODO(mlu): mlu not support AddCallback
     callback_manager_->AddCallback(callback);
   }
 

@@ -14,8 +14,6 @@
 
 #pragma once
 
-#include <ThreadPool.h>
-
 #ifdef PADDLE_WITH_CUDA
 #include <cuda.h>
 #include <cuda_runtime.h>
@@ -29,6 +27,8 @@
 #include <future>  // NOLINT
 #include <memory>
 #include <mutex>  // NOLINT
+
+class ThreadPool;
 
 namespace phi {
 
@@ -50,7 +50,7 @@ class CallbackManager {
 
  private:
   stream::Stream* stream_;
-  mutable ::ThreadPool thread_pool_;
+  mutable std::shared_ptr<::ThreadPool> thread_pool_;
   mutable std::mutex mtx_;
   mutable std::future<void> last_future_;
 };

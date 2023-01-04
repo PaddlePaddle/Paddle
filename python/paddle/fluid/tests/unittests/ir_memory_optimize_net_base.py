@@ -12,18 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import math
 import os
 import sys
-import six
-import unittest
 import time
-import math
-import multiprocessing
+import unittest
+
 import numpy as np
 
 import paddle
-import paddle.fluid.core as core
 import paddle.fluid as fluid
+import paddle.fluid.core as core
 from paddle.fluid import compiler
 
 # open eager delete mode
@@ -38,14 +37,17 @@ class BuildIrMemOptBase(unittest.TestCase):
         self.word_dict = paddle.dataset.imdb.word_dict()
         self.train_reader = paddle.batch(
             paddle.dataset.imdb.train(self.word_dict),
-            batch_size=self.batch_size)
+            batch_size=self.batch_size,
+        )
 
-    def check_network_convergence(self,
-                                  network,
-                                  use_cuda=True,
-                                  use_ir_memory_optimize=True,
-                                  enable_inplace=True,
-                                  iter=5):
+    def check_network_convergence(
+        self,
+        network,
+        use_cuda=True,
+        use_ir_memory_optimize=True,
+        enable_inplace=True,
+        iter=5,
+    ):
         if use_cuda and not core.is_compiled_with_cuda():
             print('Skip use_cuda=True because Paddle is not compiled with cuda')
             return
@@ -59,7 +61,8 @@ class BuildIrMemOptBase(unittest.TestCase):
         fluid.default_main_program().random_seed = 100
 
         data = fluid.layers.data(
-            name="words", shape=[1], dtype="int64", lod_level=1)
+            name="words", shape=[1], dtype="int64", lod_level=1
+        )
 
         label = fluid.layers.data(name="label", shape=[1], dtype="int64")
 
@@ -79,14 +82,15 @@ class BuildIrMemOptBase(unittest.TestCase):
 
         train_cp = compiler.CompiledProgram(fluid.default_main_program())
         train_cp = train_cp.with_data_parallel(
-            loss_name=cost.name, build_strategy=build_strategy)
+            loss_name=cost.name, build_strategy=build_strategy
+        )
         fetch_list = [cost.name]
 
         begin = time.time()
         first_loss, last_loss = None, None
         step_id = 0
         custom_iter = getattr(self, "iter", None)
-        if not custom_iter == None:
+        if custom_iter is not None:
             iter = custom_iter
         for data in reader():
             ret = exe.run(train_cp, feed=data, fetch_list=fetch_list)
@@ -99,14 +103,17 @@ class BuildIrMemOptBase(unittest.TestCase):
                 break
         end = time.time()
 
-        print("%.4f Instance per second" % (
-            (self.batch_size * iter) / (end - begin)))
+        print(
+            "%.4f Instance per second"
+            % ((self.batch_size * iter) / (end - begin))
+        )
 
         print(first_loss, last_loss)
         avg_last_loss_val = np.array(last_loss).mean()
         avg_first_loss_val = np.array(first_loss).mean()
         if math.isnan(float(avg_last_loss_val)) or math.isnan(
-                float(avg_first_loss_val)):
+            float(avg_first_loss_val)
+        ):
             sys.exit("got NaN loss, training failed.")
 
         return first_loss, last_loss
@@ -124,17 +131,22 @@ class TestIrMemOptBase(BuildIrMemOptBase):
 
         with fluid.program_guard(fluid.Program(), fluid.Program()):
             with fluid.scope_guard(core.Scope()):
-                baseline_first_loss, baseline_last_loss = self.check_network_convergence(
-                    self.network)
+                (
+                    baseline_first_loss,
+                    baseline_last_loss,
+                ) = self.check_network_convergence(self.network)
 
                 cur_first_loss, cur_last_loss = self.check_network_convergence(
-                    self.network)
+                    self.network
+                )
 
                 self.assertAlmostEquals(
                     np.mean(baseline_last_loss),
                     np.mean(cur_last_loss),
-                    delta=1e-6)
+                    delta=1e-6,
+                )
                 self.assertAlmostEquals(
                     np.mean(baseline_first_loss),
                     np.mean(cur_first_loss),
-                    delta=1e-6)
+                    delta=1e-6,
+                )

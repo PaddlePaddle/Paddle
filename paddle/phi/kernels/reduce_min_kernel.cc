@@ -22,10 +22,10 @@ namespace phi {
 template <typename T, typename Context>
 void MinKernel(const Context& dev_ctx,
                const DenseTensor& x,
-               const std::vector<int64_t>& dims,
+               const IntArray& dims,
                bool keep_dim,
                DenseTensor* out) {
-  bool reduce_all = false;
+  bool reduce_all = recompute_reduce_all(x, dims);
   MinRawKernel<T>(dev_ctx, x, dims, keep_dim, reduce_all, out);
 }
 
@@ -33,7 +33,21 @@ void MinKernel(const Context& dev_ctx,
 
 PD_REGISTER_KERNEL(
     min, CPU, ALL_LAYOUT, phi::MinKernel, float, double, int, int64_t) {}
+
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 PD_REGISTER_KERNEL(
     min, GPU, ALL_LAYOUT, phi::MinKernel, float, double, int, int64_t) {}
+#endif
+
+#if defined(PADDLE_WITH_XPU_KP) && !defined(PADDLE_WITH_XPU)
+PD_REGISTER_KERNEL(min, KPS, ALL_LAYOUT, phi::MinKernel, float) {}
+#endif
+
+#if defined(PADDLE_WITH_MKLDNN)
+PD_REGISTER_KERNEL(
+    min, OneDNN, ONEDNN, phi::MinKernel, float, phi::dtype::bfloat16) {}
+#endif
+
+#if defined(PADDLE_WITH_XPU)
+PD_REGISTER_KERNEL(min, XPU, ALL_LAYOUT, phi::MinKernel, float) {}
 #endif

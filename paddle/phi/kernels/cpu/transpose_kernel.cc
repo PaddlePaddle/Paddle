@@ -13,8 +13,9 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/transpose_kernel.h"
+
 #include <vector>
-#include "paddle/phi/api/ext/dispatch.h"
+
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -34,6 +35,9 @@ void TransposeKernel(const Context& ctx,
   }
   int rank = axis.size();
   switch (rank) {
+    case 0:
+      phi::Copy<Context>(ctx, x, ctx.GetPlace(), false, out);
+      break;
     case 1:
       funcs::Transpose<Context, T, 1> trans1;
       trans1(ctx, x, out, axis);
@@ -75,6 +79,7 @@ PD_REGISTER_KERNEL(transpose,
                    double,
                    int32_t,
                    int64_t,
+                   phi::dtype::float16,
                    phi::dtype::bfloat16,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>) {}

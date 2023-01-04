@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/elementwise/elementwise_div_op.h"
+
 #include <memory>
 #include <string>
 
@@ -28,15 +29,17 @@ class ElementwiseDivOpMaker : public ElementwiseOpMaker {
   std::string GetEquation() const override { return "Out = X / Y"; }
 
   void AddInputX() override {
-    AddInput("X",
-             "(Variable), Tensor or LoDTensor of any dimensions. Its dtype "
-             "should be int32, int64, float32, float64.");
+    AddInput(
+        "X",
+        "(Variable), Tensor or phi::DenseTensor of any dimensions. Its dtype "
+        "should be int32, int64, float32, float64.");
   }
 
   void AddInputY() override {
-    AddInput("Y",
-             "(Variable), Tensor or LoDTensor of any dimensions. Its dtype "
-             "should be int32, int64, float32, float64.");
+    AddInput(
+        "Y",
+        "(Variable), Tensor or phi::DenseTensor of any dimensions. Its dtype "
+        "should be int32, int64, float32, float64.");
   }
 
   std::string GetOpFuntionality() const override {
@@ -89,17 +92,21 @@ class ElementwiseDivDoubleGradMaker : public framework::SingleGradOpMaker<T> {
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(elementwise_div, ops::ElementwiseOp,
-                  ops::ElementwiseDivOpMaker, ops::ElementwiseOpInferVarType,
+REGISTER_OPERATOR(elementwise_div,
+                  ops::ElementwiseOp,
+                  ops::ElementwiseDivOpMaker,
+                  ops::ElementwiseOpInferVarType,
                   ops::ElementwiseDivGradOpMaker<paddle::framework::OpDesc>,
                   ops::ElementwiseDivGradOpMaker<paddle::imperative::OpBase>);
 
 REGISTER_OPERATOR(
-    elementwise_div_grad, ops::ElementwiseOpGrad,
+    elementwise_div_grad,
+    ops::ElementwiseOpGrad,
     ops::ElementwiseDivDoubleGradMaker<paddle::framework::OpDesc>,
     ops::ElementwiseDivDoubleGradMaker<paddle::imperative::OpBase>);
 
-REGISTER_OPERATOR(elementwise_div_grad_grad, ops::ElementwiseDivOpDoubleGrad,
+REGISTER_OPERATOR(elementwise_div_grad_grad,
+                  ops::ElementwiseDivOpDoubleGrad,
                   ops::ElementwiseDoubleGradOpInplaceInferer);
 
 REGISTER_OP_VERSION(elementwise_div)

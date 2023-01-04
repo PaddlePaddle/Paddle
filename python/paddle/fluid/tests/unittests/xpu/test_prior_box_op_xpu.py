@@ -12,18 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import math
-import numpy as np
 import sys
 import unittest
+
+import numpy as np
+
 sys.path.append("..")
 
-import paddle
-
 from op_test_xpu import XPUOpTest
-from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper
+from xpu.get_test_cover_info import (
+    XPUOpTestWrapper,
+    create_test_class,
+    get_xpu_op_support_types,
+)
+
+import paddle
 
 paddle.enable_static()
 
@@ -55,7 +59,7 @@ class XPUTestPriorBoxOp(XPUOpTestWrapper):
                 'min_max_aspect_ratios_order': self.min_max_aspect_ratios_order,
                 'step_w': self.step_w,
                 'step_h': self.step_h,
-                'offset': self.offset
+                'offset': self.offset,
             }
             if len(self.max_sizes) > 0:
                 self.attrs['max_sizes'] = self.max_sizes
@@ -95,9 +99,12 @@ class XPUTestPriorBoxOp(XPUOpTestWrapper):
             self.set_min_max_aspect_ratios_order()
             self.real_aspect_ratios = [1, 2.0, 1.0 / 2.0, 3.0, 1.0 / 3.0]
             self.aspect_ratios = np.array(
-                self.aspect_ratios, dtype=np.float).flatten()
+                self.aspect_ratios, dtype=np.float64
+            ).flatten()
             self.variances = [0.1, 0.1, 0.2, 0.2]
-            self.variances = np.array(self.variances, dtype=np.float).flatten()
+            self.variances = np.array(
+                self.variances, dtype=np.float64
+            ).flatten()
 
             self.clip = True
             self.num_priors = len(self.real_aspect_ratios) * len(self.min_sizes)
@@ -107,12 +114,22 @@ class XPUTestPriorBoxOp(XPUOpTestWrapper):
 
         def init_test_input(self):
             self.image = np.random.random(
-                (self.batch_size, self.image_channels, self.image_w,
-                 self.image_h)).astype(self.dtype)
+                (
+                    self.batch_size,
+                    self.image_channels,
+                    self.image_w,
+                    self.image_h,
+                )
+            ).astype(self.dtype)
 
             self.input = np.random.random(
-                (self.batch_size, self.input_channels, self.layer_w,
-                 self.layer_h)).astype(self.dtype)
+                (
+                    self.batch_size,
+                    self.input_channels,
+                    self.layer_w,
+                    self.layer_h,
+                )
+            ).astype(self.dtype)
 
         def init_test_output(self):
             out_dim = (self.layer_h, self.layer_w, self.num_priors, 4)
@@ -134,9 +151,10 @@ class XPUTestPriorBoxOp(XPUOpTestWrapper):
                                 c_w = min_size * math.sqrt(ar) / 2
                                 c_h = (min_size / math.sqrt(ar)) / 2
                                 out_boxes[h, w, idx, :] = [
-                                    (c_x - c_w) / self.image_w, (c_y - c_h) /
-                                    self.image_h, (c_x + c_w) / self.image_w,
-                                    (c_y + c_h) / self.image_h
+                                    (c_x - c_w) / self.image_w,
+                                    (c_y - c_h) / self.image_h,
+                                    (c_x + c_w) / self.image_w,
+                                    (c_y + c_h) / self.image_h,
                                 ]
                                 idx += 1
 
@@ -145,17 +163,19 @@ class XPUTestPriorBoxOp(XPUOpTestWrapper):
                                 # second prior: aspect_ratio = 1,
                                 c_w = c_h = math.sqrt(min_size * max_size) / 2
                                 out_boxes[h, w, idx, :] = [
-                                    (c_x - c_w) / self.image_w, (c_y - c_h) /
-                                    self.image_h, (c_x + c_w) / self.image_w,
-                                    (c_y + c_h) / self.image_h
+                                    (c_x - c_w) / self.image_w,
+                                    (c_y - c_h) / self.image_h,
+                                    (c_x + c_w) / self.image_w,
+                                    (c_y + c_h) / self.image_h,
                                 ]
                                 idx += 1
                         else:
-                            c_w = c_h = min_size / 2.
+                            c_w = c_h = min_size / 2.0
                             out_boxes[h, w, idx, :] = [
-                                (c_x - c_w) / self.image_w, (c_y - c_h) /
-                                self.image_h, (c_x + c_w) / self.image_w,
-                                (c_y + c_h) / self.image_h
+                                (c_x - c_w) / self.image_w,
+                                (c_y - c_h) / self.image_h,
+                                (c_x + c_w) / self.image_w,
+                                (c_y + c_h) / self.image_h,
                             ]
                             idx += 1
                             if len(self.max_sizes) > 0:
@@ -163,23 +183,25 @@ class XPUTestPriorBoxOp(XPUOpTestWrapper):
                                 # second prior: aspect_ratio = 1,
                                 c_w = c_h = math.sqrt(min_size * max_size) / 2
                                 out_boxes[h, w, idx, :] = [
-                                    (c_x - c_w) / self.image_w, (c_y - c_h) /
-                                    self.image_h, (c_x + c_w) / self.image_w,
-                                    (c_y + c_h) / self.image_h
+                                    (c_x - c_w) / self.image_w,
+                                    (c_y - c_h) / self.image_h,
+                                    (c_x + c_w) / self.image_w,
+                                    (c_y + c_h) / self.image_h,
                                 ]
                                 idx += 1
 
                             # rest of priors
                             for r in range(len(self.real_aspect_ratios)):
                                 ar = self.real_aspect_ratios[r]
-                                if abs(ar - 1.) < 1e-6:
+                                if abs(ar - 1.0) < 1e-6:
                                     continue
                                 c_w = min_size * math.sqrt(ar) / 2
                                 c_h = (min_size / math.sqrt(ar)) / 2
                                 out_boxes[h, w, idx, :] = [
-                                    (c_x - c_w) / self.image_w, (c_y - c_h) /
-                                    self.image_h, (c_x + c_w) / self.image_w,
-                                    (c_y + c_h) / self.image_h
+                                    (c_x - c_w) / self.image_w,
+                                    (c_y - c_h) / self.image_h,
+                                    (c_x + c_w) / self.image_w,
+                                    (c_y + c_h) / self.image_h,
                                 ]
                                 idx += 1
 
@@ -187,8 +209,9 @@ class XPUTestPriorBoxOp(XPUOpTestWrapper):
             if self.clip:
                 out_boxes = np.clip(out_boxes, 0.0, 1.0)
             # set the variance.
-            out_var = np.tile(self.variances, (self.layer_h, self.layer_w,
-                                               self.num_priors, 1))
+            out_var = np.tile(
+                self.variances, (self.layer_h, self.layer_w, self.num_priors, 1)
+            )
             self.out_boxes = out_boxes.astype(self.dtype)
             self.out_var = out_var.astype(self.dtype)
 

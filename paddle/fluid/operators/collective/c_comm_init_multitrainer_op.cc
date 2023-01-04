@@ -14,7 +14,11 @@ limitations under the License. */
 #if defined(PADDLE_WITH_NCCL)
 #include <nccl.h>
 #endif
+#if defined(PADDLE_WITH_RCCL)
+#include <rccl.h>
+#endif
 #include <stdint.h>
+
 #include <ostream>
 #include <string>
 
@@ -24,7 +28,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/threadpool.h"
 // #include "paddle/fluid/operators/distributed/distributed.h"
 // #include "paddle/fluid/operators/distributed/request_handler_impl.h"
-#if defined(PADDLE_WITH_NCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #endif
@@ -51,7 +55,7 @@ class CCommInitMultiTrainerOp : public framework::OperatorBase {
     auto var = scope.FindVar(Input("X"));
     PADDLE_ENFORCE_NOT_NULL(
         var, platform::errors::InvalidArgument("Input X must be provided."));
-#if defined(PADDLE_WITH_NCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
     ncclUniqueId* nccl_id = var->GetMutable<ncclUniqueId>();
 
     int ntrainers = Attr<int>("ntrainers");
@@ -99,6 +103,7 @@ Initialize collective communicatoin context within this trainer
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(c_comm_init_multitrainer, ops::CCommInitMultiTrainerOp,
+REGISTER_OPERATOR(c_comm_init_multitrainer,
+                  ops::CCommInitMultiTrainerOp,
                   ops::CCommInitMultiTrainerInferShape,
                   ops::CCommInitMultiTrainerOpMaker);

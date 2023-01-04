@@ -13,6 +13,7 @@ limitations under the License. */
 #ifdef PADDLE_WITH_IPU
 #include <memory>
 #include <vector>
+
 #include "glog/logging.h"
 
 namespace paddle {

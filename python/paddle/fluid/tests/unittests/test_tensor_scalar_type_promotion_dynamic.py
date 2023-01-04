@@ -12,9 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function, division
-
 import unittest
+
 import numpy as np
 
 import paddle
@@ -23,7 +22,7 @@ import paddle
 # - Related paddle dtypes:
 #  - int type: int64, (no test here: uint8, int8, int16, int32)
 #  - float type: float32, (no test here: float64)
-# - Python scalar dtypes: 
+# - Python scalar dtypes:
 #  - int(64)
 #  - float(64)
 
@@ -48,7 +47,7 @@ class TestTensorScalarTypePromotionDynamic(unittest.TestCase):
             raise ValueError("Unsupported operation.")
 
         self.assertEqual(c_rlt.dtype, c.dtype)
-        self.assertTrue(np.array_equal(c_rlt.numpy(), c.numpy()))
+        np.testing.assert_array_equal(c_rlt.numpy(), c.numpy())
 
     def test_tensor_add_scalar(self):
         # tensor(int64) + scalar(int)
@@ -280,7 +279,7 @@ class TestTensorScalarTypePromotionDynamic(unittest.TestCase):
         c = paddle.full([2, 2, 2], 9, dtype="float32")
         self.check_operation(a, b, c, '**')
 
-    ## TODO: floordiv op kernel doesn't support float
+    # TODO: floordiv op kernel doesn't support float
     def test_tensor_floordiv_scalar(self):
         # tensor(int64) // scalar(int)
         a = paddle.full([2, 2, 2], 3, dtype='int64')

@@ -37,11 +37,12 @@ uint64_t Release(const platform::Place& place) {
 std::shared_ptr<Allocation> AllocShared(const platform::Place& place,
                                         size_t size,
                                         const phi::Stream& stream) {
-  return allocation::AllocatorFacade::Instance().AllocShared(place, size,
-                                                             stream);
+  return allocation::AllocatorFacade::Instance().AllocShared(
+      place, size, stream);
 }
 
-AllocationPtr Alloc(const platform::CUDAPlace& place, size_t size,
+AllocationPtr Alloc(const platform::CUDAPlace& place,
+                    size_t size,
                     const phi::Stream& stream) {
   return allocation::AllocatorFacade::Instance().Alloc(place, size, stream);
 }
@@ -57,17 +58,16 @@ void* GetBasePtr(const std::shared_ptr<Allocation>& allocation) {
 }
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-uint64_t Release(const platform::CUDAPlace& place, const gpuStream_t& stream) {
+uint64_t Release(const platform::CUDAPlace& place, gpuStream_t stream) {
   return allocation::AllocatorFacade::Instance().Release(place, stream);
 }
 
-void RecordStream(std::shared_ptr<Allocation> allocation,
-                  const gpuStream_t& stream) {
+void RecordStream(std::shared_ptr<Allocation> allocation, gpuStream_t stream) {
   return allocation::AllocatorFacade::Instance().RecordStream(allocation,
                                                               stream);
 }
 
-const gpuStream_t& GetStream(const std::shared_ptr<Allocation>& allocation) {
+gpuStream_t GetStream(const std::shared_ptr<Allocation>& allocation) {
   return allocation::AllocatorFacade::Instance().GetStream(allocation);
 }
 

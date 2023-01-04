@@ -14,9 +14,8 @@
 
 #include "paddle/infrt/host_context/core_runtime.h"
 
-#include <unordered_map>
-
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 #include "paddle/infrt/host_context/kernel_registry.h"

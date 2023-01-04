@@ -44,22 +44,26 @@ class ImagGradOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
-                   "Out@Grad", "ImagGrad");
-    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("X")), "Output",
-                   "X@Grad", "ImagGrad");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")),
+                   "Input",
+                   "Out@Grad",
+                   "ImagGrad");
+    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("X")),
+                   "Output",
+                   "X@Grad",
+                   "ImagGrad");
 
     auto dout_dims = ctx->GetInputDim(framework::GradVarName("Out"));
     ctx->SetOutputDim(framework::GradVarName("X"), dout_dims);
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto dtype = OperatorWithKernel::IndicateVarDataType(
         ctx, framework::GradVarName("Out"));
     auto complex_dtype = framework::ToComplexType(dtype);
-    return framework::OpKernelType(complex_dtype, ctx.GetPlace());
+    return phi::KernelKey(complex_dtype, ctx.GetPlace());
   }
 };
 
@@ -82,12 +86,15 @@ DECLARE_INPLACE_OP_INFERER(ImagGradOpInplaceInferer,
 }  // namespace operators
 }  // namespace paddle
 
-DECLARE_INFER_SHAPE_FUNCTOR(imag, ImagInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(imag,
+                            ImagInferShapeFunctor,
                             PD_INFER_META(phi::RealAndImagInferMeta));
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(imag, ops::ImagOp, ops::ImagOpMaker,
+REGISTER_OPERATOR(imag,
+                  ops::ImagOp,
+                  ops::ImagOpMaker,
                   ops::ImagGradOpMaker<paddle::framework::OpDesc>,
                   ops::ImagGradOpMaker<paddle::imperative::OpBase>,
                   ImagInferShapeFunctor);

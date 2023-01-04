@@ -23,7 +23,7 @@ void MvKernel(const Context& dev_ctx,
               const DenseTensor& x,
               const DenseTensor& vec,
               DenseTensor* out) {
-  auto dim_x = x.dims();
+  const auto& dim_x = x.dims();
 
   // get data ptr
   const T* x_data = x.data<T>();

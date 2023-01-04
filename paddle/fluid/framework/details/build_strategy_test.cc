@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/fluid/framework/details/build_strategy.h"
+
 #include <algorithm>
 #include <memory>
 #include <string>
@@ -23,8 +25,6 @@
 #include "gtest/gtest-test-part.h"
 #include "gtest/gtest.h"
 #include "gtest/gtest_pred_impl.h"
-
-#include "paddle/fluid/framework/details/build_strategy.h"
 #include "paddle/fluid/framework/op_proto_maker.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/var_type_inference.h"
@@ -50,16 +50,18 @@ class SumOpWithKernel : public OperatorWithKernel {
 
  protected:
   void InferShape(framework::InferShapeContext *ctx) const override {}
-  OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const ExecutionContext &ctx) const override {
-    return OpKernelType(proto::VarType::FP32, ctx.Input<Tensor>("X")->place());
+    return phi::KernelKey(proto::VarType::FP32,
+                          ctx.Input<phi::DenseTensor>("X")->place());
   }
 };
 
 }  // namespace framework
 }  // namespace paddle
 
-REGISTER_OP_WITHOUT_GRADIENT(sum, paddle::framework::SumOpWithKernel,
+REGISTER_OP_WITHOUT_GRADIENT(fake_sum,
+                             paddle::framework::SumOpWithKernel,
                              paddle::framework::SumOpMaker);
 
 namespace paddle {
@@ -93,11 +95,17 @@ void BuildStrategyApply(BuildStrategy *build_strategy, ir::Graph *graph) {
   platform::BKCLCommunicator ctxs;
 #endif
 
-  build_strategy->Apply(graph, places, loss_name, scopes, 1,
+  build_strategy->Apply(graph,
+                        places,
+                        loss_name,
+                        scopes,
+                        1,
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-                        device, &ctxs);
+                        device,
+                        &ctxs);
 #elif defined(PADDLE_WITH_XPU) && defined(PADDLE_WITH_XPU_BKCL)
-                        device, &ctxs);
+                        device,
+                        &ctxs);
 #else
                         device);
 #endif
@@ -106,7 +114,7 @@ void BuildStrategyApply(BuildStrategy *build_strategy, ir::Graph *graph) {
 std::unique_ptr<ir::Graph> CreateGraph() {
   ProgramDesc prog;
   auto *op = prog.MutableBlock(0)->AppendOp();
-  op->SetType("sum");
+  op->SetType("fake_sum");
   op->SetInput("X", {"a1"});
   op->SetOutput("Out", {"b1"});
   op->SetAttr("op_role", 1);
@@ -125,7 +133,7 @@ std::unique_ptr<ir::Graph> CreateMultiGraph() {
 
   // Set contents in block_0.
   auto *op = prog.MutableBlock(0)->AppendOp();
-  op->SetType("sum");
+  op->SetType("fake_sum");
   op->SetInput("X", {"test_a", "test_b", "test_c"});
   op->SetOutput("Out", {"test_out"});
   op->SetAttr("op_role", 1);
@@ -141,7 +149,7 @@ std::unique_ptr<ir::Graph> CreateMultiGraph() {
 
   // Set contents in block_1.
   op = prog.MutableBlock(1)->AppendOp();
-  op->SetType("sum");
+  op->SetType("fake_sum");
   op->SetInput("X", {"a1"});
   op->SetOutput("Out", {"b1"});
   op->SetAttr("op_role", 1);
@@ -151,7 +159,7 @@ std::unique_ptr<ir::Graph> CreateMultiGraph() {
 
   // Set contents in block_2.
   op = prog.MutableBlock(2)->AppendOp();
-  op->SetType("sum");
+  op->SetType("fake_sum");
   op->SetInput("X", {"a2"});
   op->SetOutput("Out", {"b2"});
   op->SetAttr("op_role", 1);

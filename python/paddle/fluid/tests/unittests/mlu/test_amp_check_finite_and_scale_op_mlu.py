@@ -12,11 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import numpy as np
 import unittest
 import sys
+
 sys.path.append("..")
 from op_test import OpTest
 import paddle
@@ -66,7 +65,7 @@ class TestCheckFiniteAndUnscaleOpWithNan(TestCheckFiniteAndUnscaleOp):
         }
 
     def test_check_output(self):
-        # When input contains nan, do not check the output, 
+        # When input contains nan, do not check the output,
         # since the output may be nondeterministic and will be discarded.
         self.check_output_with_place(self.place, no_check_set=['Out'])
 
@@ -84,7 +83,7 @@ class TestCheckFiniteAndUnscaleOpWithInf(TestCheckFiniteAndUnscaleOp):
         }
 
     def test_check_output(self):
-        # When input contains inf, do not check the output, 
+        # When input contains inf, do not check the output,
         # since the output may be nondeterministic and will be discarded.
         self.check_output_with_place(self.place, no_check_set=['Out'])
 
@@ -116,7 +115,7 @@ class TestCheckFiniteAndUnscaleOpMultiInputWithNan(TestCheckFiniteAndUnscaleOp):
         }
 
     def test_check_output(self):
-        # When input contains inf, do not check the output, 
+        # When input contains inf, do not check the output,
         # since the output may be nondeterministic and will be discarded.
         self.check_output_with_place(self.place, no_check_set=['Out'])
 
@@ -136,7 +135,7 @@ class TestCheckFiniteAndUnscaleOpMultiInputWithInf(TestCheckFiniteAndUnscaleOp):
         }
 
     def test_check_output(self):
-        # When input contains inf, do not check the output, 
+        # When input contains inf, do not check the output,
         # since the output may be nondeterministic and will be discarded.
         self.check_output_with_place(self.place, no_check_set=['Out'])
 

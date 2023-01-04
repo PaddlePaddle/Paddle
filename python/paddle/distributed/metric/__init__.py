@@ -13,4 +13,4 @@
 # limitations under the License.
 
 from .metrics import init_metric  # noqa: F401
-from .metrics import print_auc  # noqa: F401 
+from .metrics import print_auc  # noqa: F401

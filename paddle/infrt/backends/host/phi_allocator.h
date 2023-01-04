@@ -11,7 +11,12 @@ limitations under the License. */
 
 #pragma once
 
+#include "paddle/fluid/memory/malloc.h"
 #include "paddle/phi/core/allocator.h"
+
+#ifdef INFRT_WITH_GPU
+#include <cuda_runtime.h>
+#endif
 
 namespace infrt {
 namespace backends {
@@ -28,6 +33,19 @@ class CpuPhiAllocator : public phi::Allocator {
         deleter);
   }
 };
+
+#ifdef INFRT_WITH_GPU
+// TODO(wilber): Just for demo test. we need a more efficient gpu allocator.
+class GpuPhiAllocator : public phi::Allocator {
+ public:
+  static void deleter(phi::Allocation* ptr) { cudaFree(ptr->ptr()); }
+
+  AllocationPtr Allocate(size_t bytes_size) {
+    return paddle::memory::Alloc(phi::Place(phi::AllocationType::GPU),
+                                 bytes_size);
+  }
+};
+#endif
 
 }  // namespace backends
 }  // namespace infrt

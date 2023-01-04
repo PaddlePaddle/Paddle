@@ -75,7 +75,7 @@ std::vector<paddle::Tensor> ConcatForwardDynamicAxis(
   auto out_shape = ComputeOutShape(in_shapes, axis);
 
   // create output
-  auto out = paddle::Tensor(paddle::PlaceType::kCPU, out_shape);
+  auto out = paddle::empty(out_shape, inputs[0].type(), paddle::CPUPlace());
 
   // calc
   PD_DISPATCH_FLOATING_AND_INTEGRAL_TYPES(
@@ -106,7 +106,7 @@ std::vector<paddle::Tensor> ConcatBackwardDynamicAxis(
   // create outputs
   std::vector<paddle::Tensor> grad_inputs;
   for (auto& t : inputs) {
-    auto grad = paddle::Tensor(paddle::PlaceType::kCPU, t.shape());
+    auto grad = paddle::empty(t.shape(), t.dtype(), t.place());
     grad_inputs.emplace_back(grad);
   }
 
@@ -161,7 +161,7 @@ std::vector<paddle::Tensor> ConcatForwardStaticAxis(
   auto out_shape = ComputeOutShape(in_shapes, final_axis);
 
   // create output
-  auto out = paddle::Tensor(paddle::PlaceType::kCPU, out_shape);
+  auto out = paddle::empty(out_shape, inputs[0].type(), paddle::CPUPlace());
 
   // calc
   PD_DISPATCH_FLOATING_AND_INTEGRAL_TYPES(
@@ -190,7 +190,7 @@ std::vector<paddle::Tensor> ConcatBackwardStaticAxis(
   // create outputs
   std::vector<paddle::Tensor> grad_inputs;
   for (auto& t : inputs) {
-    auto grad = paddle::Tensor(paddle::PlaceType::kCPU, t.shape());
+    auto grad = paddle::empty(t.shape(), t.dtype(), t.place());
     grad_inputs.emplace_back(grad);
   }
 

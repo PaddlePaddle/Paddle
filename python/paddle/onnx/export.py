@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import os
+
 from paddle.utils import try_import
 
 __all__ = []
@@ -26,31 +27,30 @@ def export(layer, path, input_spec=None, opset_version=9, **configs):
     Args:
         layer (Layer): The Layer to be exported.
         path (str): The path prefix to export model. The format is ``dirname/file_prefix`` or ``file_prefix`` ,
-            and the exported ONNX file suffix is ``.onnx`` . 
-        input_spec (list[InputSpec|Tensor], optional): Describes the input of the exported model's forward 
-            method, which can be described by InputSpec or example Tensor. If None, all input variables of 
+            and the exported ONNX file suffix is ``.onnx`` .
+        input_spec (list[InputSpec|Tensor], optional): Describes the input of the exported model's forward
+            method, which can be described by InputSpec or example Tensor. If None, all input variables of
             the original Layer's forward method would be the inputs of the exported ``ONNX`` model. Default: None.
         opset_version(int, optional): Opset version of exported ONNX model.
             Now, stable supported opset version include 9, 10, 11. Default: 9.
-        **configs (dict, optional): Other export configuration options for compatibility. We do not 
-            recommend using these configurations, they may be removed in the future. If not necessary, 
+        **configs (dict, optional): Other export configuration options for compatibility. We do not
+            recommend using these configurations, they may be removed in the future. If not necessary,
             DO NOT use them. Default None.
             The following options are currently supported:
             (1) output_spec (list[Tensor]): Selects the output targets of the exported model.
-            By default, all return variables of original Layer's forward method are kept as the 
-            output of the exported model. If the provided ``output_spec`` list is not all output variables, 
-            the exported model will be pruned according to the given ``output_spec`` list. 
+            By default, all return variables of original Layer's forward method are kept as the
+            output of the exported model. If the provided ``output_spec`` list is not all output variables,
+            the exported model will be pruned according to the given ``output_spec`` list.
     Returns:
         None
     Examples:
         .. code-block:: python
 
             import paddle
-            import numpy as np
 
             class LinearNet(paddle.nn.Layer):
                 def __init__(self):
-                    super(LinearNet, self).__init__()
+                    super().__init__()
                     self._linear = paddle.nn.Linear(128, 10)
 
                 def forward(self, x):
@@ -66,7 +66,7 @@ def export(layer, path, input_spec=None, opset_version=9, **configs):
 
             class Logic(paddle.nn.Layer):
                 def __init__(self):
-                    super(Logic, self).__init__()
+                    super().__init__()
 
                 def forward(self, x, y, z):
                     if z:
@@ -77,8 +77,8 @@ def export(layer, path, input_spec=None, opset_version=9, **configs):
             # Export model with 'Tensor' to support pruned model by set 'output_spec'.
             def export_logic():
                 model = Logic()
-                x = paddle.to_tensor(np.array([1]))
-                y = paddle.to_tensor(np.array([2]))
+                x = paddle.to_tensor([1])
+                y = paddle.to_tensor([2])
                 # Static and run model.
                 paddle.jit.to_static(model)
                 out = model(x, y, z=True)
@@ -91,10 +91,11 @@ def export(layer, path, input_spec=None, opset_version=9, **configs):
 
     file_prefix = os.path.basename(path)
     if file_prefix == "":
-        raise ValueError("The input path MUST be format of dirname/file_prefix "
-                         "[dirname\\file_prefix in Windows system], but "
-                         "the file_prefix is empty in received path: {}".format(
-                             path))
+        raise ValueError(
+            "The input path MUST be format of dirname/file_prefix "
+            "[dirname\\file_prefix in Windows system], but "
+            "the file_prefix is empty in received path: {}".format(path)
+        )
     save_file = path + '.onnx'
 
     p2o.dygraph2onnx(
@@ -102,4 +103,5 @@ def export(layer, path, input_spec=None, opset_version=9, **configs):
         save_file,
         input_spec=input_spec,
         opset_version=opset_version,
-        **configs)
+        **configs
+    )

@@ -12,11 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import numpy as np
 import unittest
 import sys
+
 sys.path.append("..")
 from op_test import OpTest
 import paddle
@@ -153,7 +152,8 @@ class TestKeepDimReduce(Test1DReduce):
         self.attrs = {'dim': [1], 'keep_dim': True}
         self.outputs = {
             'Out': self.inputs['X'].mean(
-                axis=tuple(self.attrs['dim']), keepdims=self.attrs['keep_dim'])
+                axis=tuple(self.attrs['dim']), keepdims=self.attrs['keep_dim']
+            )
         }
 
 
@@ -167,7 +167,8 @@ class TestKeepDim8DReduce(Test1DReduce):
         self.attrs = {'dim': (3, 4, 5), 'keep_dim': True}
         self.outputs = {
             'Out': self.inputs['X'].mean(
-                axis=tuple(self.attrs['dim']), keepdims=self.attrs['keep_dim'])
+                axis=tuple(self.attrs['dim']), keepdims=self.attrs['keep_dim']
+            )
         }
 
 

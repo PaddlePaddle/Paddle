@@ -26,11 +26,11 @@ limitations under the License. */
     return nullptr;                                   \
   }
 
-#define EAGER_CATCH_AND_THROW_RETURN_ZERO             \
+#define EAGER_CATCH_AND_THROW_RETURN_NEG              \
   }                                                   \
   catch (...) {                                       \
     ThrowExceptionToPython(std::current_exception()); \
-    return 0;                                         \
+    return -1;                                        \
   }
 
 namespace paddle {

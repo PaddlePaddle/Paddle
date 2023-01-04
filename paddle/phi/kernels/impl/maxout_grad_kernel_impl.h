@@ -14,10 +14,9 @@
 
 #pragma once
 
-#include "paddle/phi/kernels/maxout_grad_kernel.h"
-
-#include "paddle/fluid/operators/math/maxouting.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/maxouting.h"
+#include "paddle/phi/kernels/maxout_grad_kernel.h"
 
 namespace phi {
 
@@ -37,7 +36,7 @@ void MaxOutGradKernel(const Context& dev_ctx,
   if (x_grad) {
     dev_ctx.template Alloc<T>(x_grad);
     zero(dev_ctx, x_grad, static_cast<T>(0.0));
-    paddle::operators::math::MaxOutGradFunctor<Context, T> maxout_backward;
+    phi::funcs::MaxOutGradFunctor<Context, T> maxout_backward;
     maxout_backward(dev_ctx, x, x_grad, out, out_grad, groups, axis);
   }
 }
