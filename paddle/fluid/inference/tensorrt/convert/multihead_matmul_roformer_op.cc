@@ -114,11 +114,9 @@ class MultiheadMatMulRoformerOpConverter : public OpConverter {
         nvinfer1::ITensor* mask_tensor;
         nvinfer1::ITensor* pos_id_tensor;
         nvinfer1::ITensor* max_seqlen_tensor;
-        VLOG(3) << "before get tensor";
         mask_tensor = engine_->GetITensor("qkv_plugin_mask");
         pos_id_tensor = engine_->GetITensor("pos_id");
         max_seqlen_tensor = engine_->GetITensor("max_seqlen_tensor");
-        VLOG(3) << "get tensor ok";
 
         int head_size = hidden_out / head_number;
         // [3, head_number, head_size, hidden_in] -> [head_number, 3,
@@ -203,7 +201,8 @@ class MultiheadMatMulRoformerOpConverter : public OpConverter {
             roformerplugin_inputs.data(), 4, roformerplugin);
         roformerlayer->setName(
             ("roformerlayer(Output: " + output_name + ")").c_str());
-        roformerlayer->setPrecision(nvinfer1::DataType::kFLOAT);
+        //roformerlayer->setPrecision(nvinfer1::DataType::kFLOAT);
+	//set roformerlayer output tensor or not
 
         // auto mask_tensor = engine_->GetITensor("qkv_plugin_mask");
         auto creator = GetPluginRegistry()->getPluginCreator(

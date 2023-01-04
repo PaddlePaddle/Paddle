@@ -643,41 +643,10 @@ int MultiHeadMatmulRoformerFusePass::BuildFusion(Graph* graph,
         scope->FindVar(input_cos_q->Name())->GetMutable<phi::DenseTensor>();
     auto* input_sin_tensor =
         scope->FindVar(input_sin_q->Name())->GetMutable<phi::DenseTensor>();
-    std::cout << "myflag: " << input_cos_q->Name()
-              << " address:" << input_cos_tensor << std::endl;
-    std::cout << "myflag: " << input_sin_q->Name()
-              << " address:" << input_sin_tensor << std::endl;
     auto* input_cos_q_desc = input_cos_q->Var();
     input_cos_q_desc->SetPersistable(true);
     auto* input_sin_q_desc = input_sin_q->Var();
     input_sin_q_desc->SetPersistable(true);
-
-    /*
-    auto *input_cos_q_var = scope->Var(input_cos_q->Name());
-    auto *input_cos_q_tensor = input_cos_q_var->GetMutable<phi::DenseTensor>();
-
-    auto* input_cos_q_desc = input_cos_q->Var()->GetMutable<phi::DenseTensor>();
-    size_t input_cos_q_size = input_cos_q_desc->numel();
-    input_cos_q_var->SetShape(input_cos_q_desc->dims());
-    input_cos_q_var->SetPersistable(true);
-    memcpy(input_cos_q_desc->mutable_data<float>(platform::CPUPlace(),
-    input_cos_q_var->mutable_data<float>(platform::CPUPlace(), sizeof(float) *
-    input_cos_q_size);
-
-    auto *input_sin_q_var = scope->Var(input_cos_q->Name());
-    auto* input_sin_q_desc = input_sin_q->Var()->GetMutable<phi::DenseTensor>();
-    size_t input_sin_q_size = input_sin_q_desc->numel();
-    input_sin_q_var->SetShape(input_sin_q_desc->dims());
-    input_sin_q_var->SetPersistable(true);
-    memcpy(input_sin_q_desc->mutable_data<float>(platform::CPUPlace(),
-    input_sin_q_var->mutable_data<float>(platform::CPUPlace(), sizeof(float) *
-    input_sin_q_size);
-
-    std::string new_input_cos_q_name = input_cos_q->Name() + "0";
-    std::string new_input_sin_q_name = input_sin_q->Name() + "0";
-    scope->Rename(input_cos_q->Name(), new_input_cos_q_name);
-    scope->Rename(input_sin_q->Name(), new_input_sin_q_name);
-    */
 
     OpDesc multihead_op_desc(mul0->Op()->Block());
     multihead_op_desc.SetType("multihead_matmul_roformer");
@@ -693,6 +662,43 @@ int MultiHeadMatmulRoformerFusePass::BuildFusion(Graph* graph,
     multihead_op_desc.SetOutput("Out", {reshape2_qkv_out->Name()});
     multihead_op_desc.SetAttr("alpha", scale_attr);
     multihead_op_desc.SetAttr("head_number", head_number);
+
+    // begin to process scale
+    // for qkv big fc
+     if (mul0_op_desc->HasAttr("Input_scale")) {
+      multihead_op_desc.SetAttr("Input_scale",
+                                mul0_op_desc->GetAttr("Input_scale"));
+    }
+    auto* add0_op_desc = eltadd0->Op();
+    auto* add1_op_desc = eltadd1->Op();
+    auto* add2_op_desc = eltadd2->Op();
+    if (add0_op_desc->HasAttr("out_threshold")) {
+      auto out_scale0 =
+          PADDLE_GET_CONST(float, add0_op_desc->GetAttr("out_threshold"));
+      auto out_scale1 =
+          PADDLE_GET_CONST(float, add1_op_desc->GetAttr("out_threshold"));
+      auto out_scale2 =
+          PADDLE_GET_CONST(float, add2_op_desc->GetAttr("out_threshold"));
+      auto out_scale_max = std::max(out_scale0, out_scale1);
+      out_scale_max = std::max(out_scale_max, out_scale2);
+      multihead_op_desc.SetAttr("fc_out_threshold", out_scale_max);
+    }
+
+    // for matmul
+    auto* softmax_qk_op_desc = softmax_qk->Op();
+    auto* matmul_qk_op_desc = matmul_qk->Op();
+    if (matmul_qk_op_desc->HasAttr("Input_scale")) {
+      multihead_op_desc.SetAttr("qkv2context_plugin_int8", true);
+      if (softmax_qk_op_desc->HasAttr("out_threshold")) {
+        auto qkv_plugin_scale = PADDLE_GET_CONST(
+            float, softmax_qk_op_desc->GetAttr("out_threshold"));
+        multihead_op_desc.SetAttr("dp_probs", qkv_plugin_scale);
+      }
+    }
+    if (reshape2_qkv->Op()->HasAttr("out_threshold")) {
+      multihead_op_desc.SetAttr("out_threshold",
+                                reshape2_qkv->Op()->GetAttr("out_threshold"));
+    }
 
     auto* multihead = graph->CreateOpNode(&multihead_op_desc);
 
