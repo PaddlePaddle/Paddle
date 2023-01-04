@@ -274,7 +274,7 @@ def _matmul_v2_flops(input_shapes, attrs):
         shape_of_other = [odim1, odim2 ... odim(n-m) ... odim_m_1, dim_m] length:m
         suppose n > m and dim_n = odim_m_1:
         shape_of_output = [dim1, dim2 ... max(dim(n-m), odim(n-m)), max(dim(n-m+1), odim(n-m+1))...dim_n_1, dim_m]
-        equation: flops = 2 * numel(output) * dim_n
+        equation: flops = 2 * numel(outputs) * dim_n
     """
     x_shape = input_shapes.get('X')[0]
     y_shape = input_shapes.get('Y')[0]
