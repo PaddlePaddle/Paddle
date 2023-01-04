@@ -15,7 +15,6 @@
 #pragma once
 
 #include <chrono>
-#include <map>
 #include <memory>
 #include <string>
 #include <unordered_map>
@@ -40,9 +39,9 @@ namespace distributed {
 using Place = phi::Place;
 
 // BKCL funcs use separate communication stream by default
-class ProcessGroupBKCL : public ProcessGroup {
+class ProcessGroupBKCL : public ProcessGroupWithStream {
  public:
-  class BKCLTask final : public ProcessGroup::TaskStream,
+  class BKCLTask final : public ProcessGroupWithStream::TaskStream,
                          public std::enable_shared_from_this<BKCLTask> {
    public:
     BKCLTask(const Place& place,
@@ -162,7 +161,7 @@ class ProcessGroupBKCL : public ProcessGroup {
                                                          bool sync_op,
                                                          bool use_calc_stream);
 
-  void BroadcastUniqueBKCLID(BKCLUniqueId* bkcl_id);  // NOLINT
+  void BroadcastUniqueBKCLID(BKCLUniqueId* bkcl_id);
 
   void CreateBKCLEnvCache(const Place& place, const std::string& place_key);
 

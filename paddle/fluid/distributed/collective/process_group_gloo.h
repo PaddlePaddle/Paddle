@@ -120,11 +120,6 @@ class ProcessGroupGloo : public ProcessGroupWithoutStream {
       int64_t /*numel*/,   // for compatibility, no use now
       bool sync_op) override;
 
-  // std::shared_ptr<ProcessGroup::Task> AllGather(
-  //     phi::DenseTensor* out_tensor,
-  //     const phi::DenseTensor& in_tensor,
-  //     bool sync_op) override;
-
   std::shared_ptr<ProcessGroup::Task> AllReduce(
       phi::DenseTensor* out_tensor,
       const phi::DenseTensor& in_tensor,
