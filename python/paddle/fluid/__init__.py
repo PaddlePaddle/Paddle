@@ -90,7 +90,6 @@ from .transpiler import (
     DistributeTranspilerConfig,
 )
 from .lod_tensor import create_lod_tensor, create_random_int_lodtensor
-from . import clip
 from . import profiler
 from . import unique_name
 from . import parallel_executor
@@ -102,7 +101,6 @@ from . import install_check
 from .dygraph.layers import *
 from .dygraph.base import enable_dygraph, disable_dygraph
 from .io import save, load, load_program_state, set_program_state
-from .dygraph.checkpoint import save_dygraph, load_dygraph
 from .dygraph.varbase_patch_methods import monkey_patch_varbase
 from . import generator
 from .core import _cuda_synchronize
@@ -164,7 +162,6 @@ __all__ = (
         'ParamAttr',
         'WeightNormParamAttr',
         'DataFeeder',
-        'clip',
         'profiler',
         'unique_name',
         'Scope',

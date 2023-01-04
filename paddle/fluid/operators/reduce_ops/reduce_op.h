@@ -455,12 +455,12 @@ class ReduceGradKernel : public framework::OpKernel<T> {
       phi::DenseTensor tmp_tensor;
       auto* pre_input =
           context.Input<phi::DenseTensor>(framework::GradVarName("Out"));
-      auto in_kernel_type = framework::OpKernelType(
-          framework::TransToProtoVarType(pre_input->dtype()),
-          context.GetPlace());
-      auto out_kernel_type = framework::OpKernelType(
-          static_cast<framework::proto::VarType::Type>(in_dtype),
-          context.GetPlace());
+      auto in_kernel_type =
+          phi::KernelKey(framework::TransToProtoVarType(pre_input->dtype()),
+                         context.GetPlace());
+      auto out_kernel_type =
+          phi::KernelKey(static_cast<framework::proto::VarType::Type>(in_dtype),
+                         context.GetPlace());
       framework::TransDataType(
           in_kernel_type, out_kernel_type, *pre_input, &tmp_tensor);
       ComputeFromInput(&tmp_tensor, context);
@@ -584,7 +584,7 @@ class ReduceOp : public framework::OperatorWithKernel {
     return true;
   }
 
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     // choose cudnn kernel if the runtime supported.
     auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
@@ -606,7 +606,7 @@ class ReduceOp : public framework::OperatorWithKernel {
           platform::errors::InvalidArgument(
               "float16 can only be used on GPU or NPU or MLU place"));
     }
-    return framework::OpKernelType(input_data_type, ctx.GetPlace());
+    return phi::KernelKey(input_data_type, ctx.GetPlace());
   }
 };
 
@@ -615,10 +615,11 @@ class ReduceOpUseInputPlace : public ReduceOp {
   using ReduceOp::ReduceOp;
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    framework::OpKernelType kt = OperatorWithKernel::GetExpectedKernelType(ctx);
-    kt.place_ = ctx.Input<phi::DenseTensor>("X")->place();
+    phi::KernelKey kt = OperatorWithKernel::GetExpectedKernelType(ctx);
+    kt.set_backend(
+        phi::TransToPhiBackend(ctx.Input<phi::DenseTensor>("X")->place()));
     return kt;
   }
 };
@@ -663,7 +664,7 @@ class ReduceGradOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     int out_dtype = ctx.Attr<int>("out_dtype");
     auto input_data_type =
@@ -679,7 +680,7 @@ class ReduceGradOp : public framework::OperatorWithKernel {
     }
     // NOTE(jiahongyu): Above codes originally enclosed by PADDLE_WITH_MKLDNN
 
-    return framework::OpKernelType(input_data_type, ctx.GetPlace());
+    return phi::KernelKey(input_data_type, ctx.GetPlace());
   }
 };
 
