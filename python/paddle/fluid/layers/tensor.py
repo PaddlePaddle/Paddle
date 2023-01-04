@@ -729,4 +729,7 @@ def zeros(shape, dtype, force_cpu=False, name=None):
           shape = paddle.tensor.fill_constant(shape=[2], dtype='int32', value=2)
           data1 = fluid.layers.zeros(shape=shape, dtype='int32') #[[0, 0], [0, 0]]
     """
+    # TODO: remove zeros
+    from paddle.tensor import fill_constant
+
     return fill_constant(value=0.0, **locals())
