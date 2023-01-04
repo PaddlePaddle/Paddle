@@ -939,6 +939,7 @@ class Completer:
             self._dist_context._serial_main_program = serial_main_program
 
         if not is_naive_data_parallel(self._dist_context):
+            print("$$$$$$ here 0", flush=True)
             self._dist_context.initialize(with_graph=True)
             self._prepare()
             self._update_process_mesh()
@@ -946,6 +947,7 @@ class Completer:
             # Copy the corresponding distributed attribute from graph to serial_main_program
             self._dist_context.copy_dist_attr_from_graph_to_program()
         else:
+            print("$$$$$$ here 2", flush=True)
             self._logger.info("Default distributed attributed will be set.")
             self._dist_context.initialize(with_graph=False)
             # A fast and special completion for data parallel
@@ -1818,7 +1820,6 @@ class Completer:
                             'Param',
                             'Grad',
                             'LearningRate',
-                            "SkipUpdate",
                             "Beta1Tensor",
                             "Beta2Tensor",
                             "EpsilonTensor",
@@ -1831,7 +1832,11 @@ class Completer:
                         input_var = vars[op.desc.input(input_name)[0]]
                         input_var_attr = TensorDistAttr()
 
-                        if "Beta1Pow" in input_name or "Beta2Pow" in input_name:
+                        if (
+                            "Beta1Pow" in input_name
+                            or "Beta2Pow" in input_name
+                            or "SkipUpdate" in input_name
+                        ):
                             input_var_attr.dims_mapping = [-1]
                             op_dist_attr.set_input_dims_mapping(
                                 input_var.name, [-1]

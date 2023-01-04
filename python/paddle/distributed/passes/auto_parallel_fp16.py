@@ -581,7 +581,9 @@ def _check_and_update_gradient(grads, loss_scaling, name, dist_context):
         attrs=attrs,
     )
 
-    new_op_dist_attr = OperatorDistAttr()
+    # Constructing dist attr from op_desc can
+    # give all inputs and outputs default dist attrs
+    new_op_dist_attr = OperatorDistAttr(new_op.desc)
     new_op_dist_attr.process_mesh = ProcessMesh(world_process_group.ranks)
     new_op_dist_attr.impl_idx = 0
     if len(world_process_group.ranks) > 1:
