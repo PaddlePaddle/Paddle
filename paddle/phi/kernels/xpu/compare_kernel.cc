@@ -45,6 +45,7 @@ void XPUCompareKernelImpl(const Context& dev_ctx,
   PADDLE_ENFORCE_XDNN_SUCCESS(ret, "compare op");
 }
 
+#if 0
 #define DEFINE_XPU_COMPARE_KERNEL(compare_kernel, functor)                  \
   template <typename T, typename Context>                                   \
   void compare_kernel(const Context& dev_ctx,                               \
@@ -54,6 +55,26 @@ void XPUCompareKernelImpl(const Context& dev_ctx,
                       DenseTensor* out) {                                   \
     using XPUType = typename XPUTypeTrait<T>::Type;                         \
     XPUCompareKernelImpl<T, XPUType, Context>(dev_ctx, x, y, out, functor); \
+  }
+#endif
+
+#define DEFINE_XPU_COMPARE_KERNEL(compare_kernel, functor)            \
+  template <typename T, typename Context>                             \
+  void compare_kernel(const Context& dev_ctx,                         \
+                      const DenseTensor& x,                           \
+                      const DenseTensor& y,                           \
+                      int axis,                                       \
+                      DenseTensor* out) {                             \
+    using XPUType = typename XPUTypeTrait<T>::Type;                   \
+    auto f = [](xpu::Context* ctx,                                    \
+                const XPUType* x,                                     \
+                const XPUType* y,                                     \
+                bool* z,                                              \
+                const std::vector<int>& xshape,                       \
+                const std::vector<int>& yshape) {                     \
+      return functor(ctx, x, y, z, xshape, yshape);                   \
+    };                                                                \
+    XPUCompareKernelImpl<T, XPUType, Context>(dev_ctx, x, y, out, f); \
   }
 
 DEFINE_XPU_COMPARE_KERNEL(EqualKernel, xpu::broadcast_equal<XPUType>)
