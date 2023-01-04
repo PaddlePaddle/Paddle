@@ -121,6 +121,14 @@ class FusedAttentionOp : public framework::OperatorWithKernel {
     int dim_head;
     int hidden_size;
     if (transpose_qkv_wb) {
+      PADDLE_ENFORCE_EQ(y_dim.size(),
+                        2,
+                        platform::errors::InvalidArgument(
+                            "The dimensions of qkv_weight must be 2 if enable"
+                            "transpose_qkv_wb: (dim_embed, 3 * dim_embed),"
+                            "but received dimensions of"
+                            "Input is [%d]",
+                            y_dim.size()));
       PADDLE_ENFORCE_GT(num_heads,
                         0,
                         platform::errors::InvalidArgument(
@@ -145,6 +153,13 @@ class FusedAttentionOp : public framework::OperatorWithKernel {
       dim_head = y_dim[0] / num_heads;
       hidden_size = y_dim[0];
     } else {
+      PADDLE_ENFORCE_EQ(y_dim.size(),
+                        4,
+                        platform::errors::InvalidArgument(
+                            "The dimensions of qkv_weight must be 4 if not"
+                            "enable transpose_qkv_wb: (3, num_head, dim_head, "
+                            "dim_embed), but received [%d]",
+                            y_dim.size()));
       PADDLE_ENFORCE_EQ(y_dim[0],
                         3,
                         platform::errors::InvalidArgument(
@@ -172,24 +187,6 @@ class FusedAttentionOp : public framework::OperatorWithKernel {
                                           "but received dimensions of"
                                           "Input is [%d]",
                                           x_dim.size()));
-    if (!transpose_qkv_wb) {
-      PADDLE_ENFORCE_EQ(y_dim.size(),
-                        4,
-                        platform::errors::InvalidArgument(
-                            "The dimensions of qkv_weight must be 4 if not"
-                            "enable transpose_qkv_wb: (3, num_head, dim_head, "
-                            "dim_embed), but received [%d]",
-                            y_dim.size()));
-    } else {
-      PADDLE_ENFORCE_EQ(y_dim.size(),
-                        2,
-                        platform::errors::InvalidArgument(
-                            "The dimensions of qkv_weight must be 2 if enable"
-                            "transpose_qkv_wb: (dim_embed, 3 * dim_embed),"
-                            "but received dimensions of"
-                            "Input is [%d]",
-                            y_dim.size()));
-    }
 
     PADDLE_ENFORCE_EQ(x_dim[2],
                       hidden_size,
@@ -212,20 +209,20 @@ class FusedAttentionOp : public framework::OperatorWithKernel {
       ctx->SetOutputDim("BiasDropoutResidualOut", ctx->GetInputDim("X"));
     }
 
-    if (!transpose_qkv_wb) {
+    if (transpose_qkv_wb) {
+      // [batch_size, seq_len, 3 * hidden_size]
+      ctx->SetOutputDim("QKVOut", {x_dim[0], x_dim[1], 3 * hidden_size});
+
+      if (ctx->HasInput("QKVBias")) {
+        ctx->SetOutputDim("QKVBiasOut", {x_dim[0], x_dim[1], 3 * hidden_size});
+      }
+    } else {
       // [batch_size, seq_len, 3, num_head, head_size]
       ctx->SetOutputDim("QKVOut", {x_dim[0], x_dim[1], 3, num_heads, dim_head});
 
       if (ctx->HasInput("QKVBias")) {
         ctx->SetOutputDim("QKVBiasOut",
                           {x_dim[0], x_dim[1], 3, num_heads, dim_head});
-      }
-    } else {
-      // [batch_size, seq_len, 3 * hidden_size]
-      ctx->SetOutputDim("QKVOut", {x_dim[0], x_dim[1], 3 * hidden_size});
-
-      if (ctx->HasInput("QKVBias")) {
-        ctx->SetOutputDim("QKVBiasOut", {x_dim[0], x_dim[1], 3 * hidden_size});
       }
     }
 
