@@ -43,6 +43,7 @@ limitations under the License. */
 #include "paddle/utils/any.h"
 
 DECLARE_bool(trt_ibuilder_cache);
+
 namespace paddle {
 namespace inference {
 namespace tensorrt {
