@@ -253,7 +253,7 @@ class PartialProgramLayer:
 
     @switch_to_static_graph
     def _create_forward_backward_train_program(self):
-        whole_program = self._create_program()
+        whole_program = self._train_program
         forward_end_op_index = self._infer_program.desc.block(0).op_size()
         return self._get_forward_backward_program_form(
             whole_program, forward_end_op_index
@@ -261,7 +261,7 @@ class PartialProgramLayer:
 
     @switch_to_static_graph
     def _create_forward_backward_train_amp_program(self):
-        whole_program = self._create_amp_program()
+        whole_program = self._train_amp_program
         forward_end_op_index = self._infer_amp_program.desc.block(0).op_size()
         return self._get_forward_backward_program_form(
             whole_program, forward_end_op_index
@@ -269,7 +269,7 @@ class PartialProgramLayer:
 
     @switch_to_static_graph
     def _create_forward_backward_train_pure_fp16_program(self):
-        whole_program = self._create_pure_fp16_program()
+        whole_program = self._train_pure_fp16_program
         forward_end_op_index = self._infer_pure_fp16_program.desc.block(
             0
         ).op_size()
@@ -403,6 +403,43 @@ class PartialProgramLayer:
     @LazyInitialized
     def _infer_pure_fp16_program_id(self):
         return _hash_with_id(self._infer_pure_fp16_program, self)
+
+    @LazyInitialized
+    def _param_grad_names(self):
+        names = []
+        # NOTE: `names` and `self._params` must be in the same order so that
+        # the param grad name can be set correctly in the run_program.
+        for param in self._params:
+            candidate = [
+                var_name
+                for var_name in self.backward_program.block(0).vars.keys()
+                if var_name.endswith(param.name + '@GRAD')
+            ]
+            if candidate:
+                names.append(
+                    max(candidate, key=lambda name: name.count('grad/'))
+                )
+            else:
+                names.append(param.name + '@GRAD')
+        return names
+
+    @LazyInitialized
+    def _out_grad_names(self):
+        names = []
+        fwd_end_op_index = self._get_end_op_index()
+        for i in range(
+            fwd_end_op_index + 1,
+            min(
+                fwd_end_op_index + 2 * len(self._outputs.var_ids),
+                len(self.program.block(0).ops),
+            ),
+            2,
+        ):
+            op = self.program.block(0).ops[i]
+            if op.type == 'fill_constant':
+                var_name = op.output('Out')[0]
+                names.append(var_name)
+        return names
 
     @property
     def whole_program_id(self):
@@ -610,6 +647,18 @@ class PartialProgramLayer:
             'program_id',
             self.program_id,
         ]
+        if self.training:
+            # NOTE: In the case of higher-order gradient, the names of the parameter grads may be like
+            # `grad/grad/grad/linear_0.w_0@GRAD` instead of simply `linear_0.w_0@GRAD`, so we get
+            # the correct names of the parameter grads from program. And out grads are similar to above.
+            attrs.extend(
+                (
+                    'param_grad_names',
+                    self._param_grad_names,
+                    'out_grad_names',
+                    self._out_grad_names,
+                )
+            )
         if self._cuda_graph_capture_mode:
             attrs.extend(
                 (

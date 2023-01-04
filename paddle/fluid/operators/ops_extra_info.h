@@ -99,7 +99,7 @@ const std::unordered_map<std::string, ExtraAttrPropertySet>
         {"fuse_alpha", ExtraAttrProperty::ONEDNN},
         {"fuse_beta", ExtraAttrProperty::ONEDNN},
         {"fuse_relu", ExtraAttrProperty::ONEDNN},
-        {"fused_output_scale", ExtraAttrProperty::ONEDNN},
+        {"alpha", ExtraAttrProperty::ONEDNN},
         {"fuse_residual_connection", ExtraAttrProperty::ONEDNN},
         {"fuse_with_relu", ExtraAttrProperty::ONEDNN},
         {"fused_reshape_Out", ExtraAttrProperty::ONEDNN},
