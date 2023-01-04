@@ -34,11 +34,13 @@ cc_test_old(
   phi_api
   phi_dygraph_api)
 
-cc_test_old(
-  test_eager_prim
-  SRCS
-  test_eager_prim.cc
-  DEPS
-  ${prim_eager_deps}
-  ${prim_generated_deps}
-  prim_utils)
+if(NOT (NOT WITH_PYTHON AND ON_INFER))
+  cc_test_old(
+    test_eager_prim
+    SRCS
+    test_eager_prim.cc
+    DEPS
+    ${prim_eager_deps}
+    ${prim_generated_deps}
+    prim_utils)
+endif()
