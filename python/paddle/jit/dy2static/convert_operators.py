@@ -25,7 +25,6 @@ from paddle.jit.dy2static.utils import (
     GetterSetterHelper,
     UndefinedVar,
 )
-from paddle.tensor import fill_constant
 
 from .return_transformer import RETURN_NO_VALUE_VAR_NAME
 from .variable_trans_func import to_static_variable
@@ -782,6 +781,8 @@ def _run_paddle_pop(array, *args):
     if idx < 0:
         idx = idx + arr_len
     else:
+        from paddle.tensor import fill_constant
+
         idx = fill_constant(shape=[1], dtype="int64", value=idx)
 
     pop_item = paddle.tensor.array_read(array, idx)
