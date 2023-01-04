@@ -953,6 +953,11 @@ def hsigmoid_loss(
             #  [2.11009121]
             #  [1.92374969]]
     """
+    if num_classes < 2:
+        raise ValueError(
+            'Expected num_classes >= 2 (got {})'.format(num_classes)
+        )
+
     if in_dygraph_mode():
         out, _, _ = _C_ops.hsigmoid_loss(
             input,
