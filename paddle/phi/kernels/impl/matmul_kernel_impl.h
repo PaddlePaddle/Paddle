@@ -104,7 +104,6 @@ void MatMulFunction(const Context& dev_ctx,
   const T* x_data = X.data<T>();
   const T* y_data = Y.data<T>();
 
-  bool isCublasLt = false;
   auto blas = phi::funcs::GetBlas<Context, T>(dev_ctx);
 
   if (x_ndim == 1 && y_ndim == 1) {
@@ -126,6 +125,7 @@ void MatMulFunction(const Context& dev_ctx,
     dev_ctx.template Alloc<T>(Out);
     VLOG(3) << "MatMul's case 0";
 #if CUDA_VERSION >= 11060
+    bool isCublasLt = false;
     CublasLtGEMM<T, Context>()(dev_ctx,
                                y_data,
                                x_data,
