@@ -545,7 +545,8 @@ int MultiHeadMatmulRoformerFusePass::BuildFusion(Graph* graph,
                           Node* reshape2_qkv_out,
                           Node* scale,
                           Node* scale_out,
-                          Node* matmul_qk) {
+                          Node* matmul_qk,
+			  Node* reshape2_qkv) {
     auto scale_attr = PADDLE_GET_CONST(float, scale->Op()->GetAttr("scale"));
 
     // mul (B * S * Hidden) x (Hidden * 3 * N * H) = (B * S * 3 * N * H)
@@ -869,7 +870,8 @@ int MultiHeadMatmulRoformerFusePass::BuildFusion(Graph* graph,
                  reshape2_qkv_out,
                  scale,
                  scale_out,
-                 matmul_qk);
+                 matmul_qk,
+		 reshape2_qkv);
 
     std::unordered_set<const Node*> marked_nodes({eltadd0,
                                                   eltadd1,
