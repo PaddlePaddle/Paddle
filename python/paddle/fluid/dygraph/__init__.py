@@ -15,15 +15,11 @@
 from . import base
 from .base import *
 
-from . import layers
-from .layers import *
-
 from . import tracer
 from .tracer import *
 
 from . import parallel
 from .parallel import *
-
 
 from . import learning_rate_scheduler
 from .learning_rate_scheduler import *
