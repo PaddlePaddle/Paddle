@@ -41,16 +41,16 @@ class AssignOp : public framework::OperatorWithKernel {
       : OperatorWithKernel(type, inputs, outputs, attrs) {}
 
  protected:
-  framework::OpKernelType GetKernelTypeForVar(
+  phi::KernelKey GetKernelTypeForVar(
       const std::string &var_name,
       const phi::DenseTensor &tensor,
-      const framework::OpKernelType &expected_kernel_type) const override {
-    return framework::OpKernelType(expected_kernel_type.data_type_,
-                                   expected_kernel_type.place_,
-                                   tensor.layout());
+      const phi::KernelKey &expected_kernel_type) const override {
+    return phi::KernelKey(phi::Backend::ALL_BACKEND,
+                          tensor.layout(),
+                          expected_kernel_type.dtype());
   }
 
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     const framework::Variable *var = ctx.InputVar("X");
     if (var->IsType<framework::LoDTensorArray>()) {
@@ -58,14 +58,13 @@ class AssignOp : public framework::OperatorWithKernel {
       // NOTE(liym27): Support an empty tensor array as Input.
       // And set the kernel type is float.
       if (t_arr.size() == 0) {
-        return framework::OpKernelType(framework::proto::VarType::FP32,
-                                       ctx.device_context());
+        return phi::KernelKey(framework::proto::VarType::FP32,
+                              ctx.device_context().GetPlace());
       }
     }
 
-    return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
-        ctx.device_context());
+    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+                          ctx.device_context().GetPlace());
   }
 };
 

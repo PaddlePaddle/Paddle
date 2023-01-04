@@ -24,6 +24,7 @@ from ..utils import set_dist_op_desc_original_id, set_var_dist_attr
 from .common import (
     DistributedOperatorImpl,
     DistributedOperatorImplContainer,
+    SyncMode,
     register_distributed_operator_impl,
     register_distributed_operator_impl_container,
 )
@@ -166,6 +167,7 @@ class DistributedCheckFiniteAndUnscaleImpl(DistributedOperatorImpl):
                 OP_ROLE_KEY: OpRole.Optimize,
             },
         )
+        allreduce_op._set_attr('op_namescope', str('/') + SyncMode.AmpFlagSync)
         cast_op2 = main_block.append_op(
             type='cast',
             inputs={'X': inf_var_int32},
