@@ -70,8 +70,7 @@ class ProcessGroupBKCL : public ProcessGroupWithStream {
   ProcessGroupBKCL(const std::shared_ptr<Store>& store,
                    int rank,
                    int size,
-                   int gid)
-      : ProcessGroupWithStream(rank, size, gid), store_(store) {}
+                   int gid);
 
   static std::shared_ptr<ProcessGroupBKCL> CreateProcessGroupBKCL(
       const std::shared_ptr<Store>& store, int rank, int size, int gid);
