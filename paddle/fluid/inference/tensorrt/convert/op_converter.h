@@ -366,8 +366,9 @@ class OpConverter {
     ConvertBlock(*block_proto, parameters, scope, engine);
     size_t num_outputs = outputs.size();
     for (size_t i = 0; i < num_outputs; ++i) {
-      auto output_type = static_cast<phi::DataType>(output_dtypes[i]);
-      engine->DeclareOutput(outputs[i], PhiType2NvType(output_type));
+      engine->DeclareOutput(outputs[i], ProtoVarTypeToNvType(output_dtypes[i]));
+      VLOG(6) << "DeclareOutput(name" << outputs[i]
+              << ", dtype: " << output_dtypes[i] << ")";
     }
     engine->FreezeNetwork();
     engine->ClearWeights();

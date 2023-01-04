@@ -70,14 +70,14 @@ class TrtConvertCastTest(TrtLayerAutoScanTest):
                         "op_inputs": {"X": ["input_data"]},
                         "op_outputs": {"Out": ["cast_output_data0"]},
                         "op_attrs": dics[0],
-                        "op_outputs_dtype": {"cast_output_data0": out_dtype},
+                        "outputs_dtype": {"cast_output_data0": out_dtype},
                     },
                     {
                         "op_type": "cast",
                         "op_inputs": {"X": ["cast_output_data0"]},
                         "op_outputs": {"Out": ["cast_output_data1"]},
                         "op_attrs": dics[1],
-                        "op_outputs_dtype": {"cast_output_data1": in_dtype},
+                        "outputs_dtype": {"cast_output_data1": in_dtype},
                     },
                 ]
 

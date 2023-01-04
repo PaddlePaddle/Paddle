@@ -1357,8 +1357,9 @@ struct SimpleOpTypeSetTeller : public Teller {
         op_type == "logical_or" || op_type == "logical_xor" ||
         op_type == "logical_and" || op_type == "less_equal") {
 #if IS_TRT_VERSION_GE(8400)
+      // TRT does not support kEQUAL/kGREATER/kLESS work with implicit batch
       if (!with_dynamic_shape) {
-        VLOG(3) << "these ops do not support static shape yet";
+        VLOG(3) << "Ops(" << op_type << ") do not support static shape yet.";
         return false;
       }
       if (op_type == "logical_or" || op_type == "logical_xor" ||
@@ -2340,9 +2341,15 @@ struct SimpleOpTypeSetTeller : public Teller {
 
     if (op_type == "equal" || op_type == "not_equal") {
 #if !IS_TRT_VERSION_GE(8000)
-      VLOG(3) << "compare is not supported when TensorRT < 8.0";
+      VLOG(3) << "equal is not supported when TensorRT < 8.0";
       return false;
 #else
+      // TRT does not support kEQUAL/kGREATER/kLESS work with implicit batch
+      if (!with_dynamic_shape) {
+        VLOG(3) << "the equal does not support "
+                   "static shape yet";
+        return false;
+      }
       int axis = PADDLE_GET_CONST(int, desc.GetAttr("axis"));
       if (axis == 0) {
         return false;

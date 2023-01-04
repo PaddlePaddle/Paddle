@@ -219,15 +219,16 @@ void TensorRTEngine::FreezeNetwork() {
         input->setType(nvinfer1::DataType::kFLOAT);
         break;
     }
-    input->setAllowedFormats(
-        1U << static_cast<int>(nvinfer1::TensorFormat::kLINEAR));
+    // TODO(zhangjun): optimize setAllowedFormats() usage to avoid reformat
+    // input->setAllowedFormats(
+    //     1U << static_cast<int>(nvinfer1::TensorFormat::kLINEAR));
   }
 
-  for (int i = 0; i < network()->getNbOutputs(); ++i) {
-    auto *output = network()->getOutput(i);
-    output->setAllowedFormats(
-        1U << static_cast<int>(nvinfer1::TensorFormat::kLINEAR));
-  }
+  // for (int i = 0; i < network()->getNbOutputs(); ++i) {
+  //   auto *output = network()->getOutput(i);
+  //   output->setAllowedFormats(
+  //       1U << static_cast<int>(nvinfer1::TensorFormat::kLINEAR));
+  // }
 
   if (use_dla_) {
     if (!enable_int8 && !enable_fp16) {
