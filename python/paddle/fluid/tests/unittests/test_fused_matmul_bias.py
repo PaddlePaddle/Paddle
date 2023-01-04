@@ -17,12 +17,13 @@ import unittest
 import numpy as np
 
 import paddle
+from paddle.fluid import core
 from paddle.incubate.nn import FusedLinear
 from paddle.incubate.nn.functional import fused_linear, fused_matmul_bias
 
 
 def is_fused_matmul_bias_supported():
-    return False
+    return hasattr(core.eager.ops.legacy, 'fused_gemm_epilogue')
 
 
 def matmul(x, y, bias, trans_x, trans_y):

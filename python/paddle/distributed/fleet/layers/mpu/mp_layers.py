@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import paddle
+from paddle.fluid import core
 from paddle.nn import Layer
 from paddle.nn import functional as F
 
@@ -28,7 +29,7 @@ __all__ = []
 
 
 def is_fused_matmul_bias_supported():
-    return False
+    return hasattr(core.eager.ops.legacy, 'fused_gemm_epilogue')
 
 
 class VocabParallelEmbedding(Layer):
