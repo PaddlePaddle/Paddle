@@ -665,7 +665,8 @@ int MultiHeadMatmulRoformerFusePass::BuildFusion(Graph* graph,
 
     // begin to process scale
     // for qkv big fc
-     if (mul0_op_desc->HasAttr("Input_scale")) {
+    auto* mul0_op_desc = mul0->Op();
+    if (mul0_op_desc->HasAttr("Input_scale")) {
       multihead_op_desc.SetAttr("Input_scale",
                                 mul0_op_desc->GetAttr("Input_scale"));
     }
