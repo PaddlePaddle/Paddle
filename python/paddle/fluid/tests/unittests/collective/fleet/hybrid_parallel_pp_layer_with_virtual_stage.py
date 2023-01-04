@@ -23,7 +23,7 @@ from paddle.distributed.fleet.meta_parallel import (
     PipelineLayer,
     PipelineParallelWithInterleave,
 )
-from paddle.fluid.dygraph.layers import Layer
+from paddle.nn import Layer
 
 
 class ReshapeHelp(Layer):

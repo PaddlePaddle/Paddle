@@ -130,7 +130,7 @@ cfg.use_gpu = fluid.is_compiled_with_cuda()
 cfg.class_num = 80
 
 
-class YoloDetectionBlock(fluid.dygraph.Layer):
+class YoloDetectionBlock(paddle.nn.Layer):
     def __init__(self, ch_in, channel, is_test=True):
         super().__init__()
 
@@ -197,7 +197,7 @@ class YoloDetectionBlock(fluid.dygraph.Layer):
         return route, tip
 
 
-class Upsample(fluid.dygraph.Layer):
+class Upsample(paddle.nn.Layer):
     def __init__(self, scale=2):
         super().__init__()
         self.scale = scale
@@ -219,7 +219,7 @@ class Upsample(fluid.dygraph.Layer):
         return out
 
 
-class YOLOv3(fluid.dygraph.Layer):
+class YOLOv3(paddle.nn.Layer):
     def __init__(self, ch_in, is_train=True, use_random=False):
         super().__init__()
 

@@ -13,6 +13,9 @@
 # limitations under the License.
 
 import os
+
+os.environ['FLAGS_enable_eager_mode'] = '0'
+
 import tempfile
 import unittest
 
@@ -21,6 +24,7 @@ from test_imperative_resnet import ResNet, optimizer_setting, train_parameters
 
 import paddle
 import paddle.fluid as fluid
+import paddle.fluid.core as core
 import paddle.nn as nn
 from paddle.autograd import PyLayer
 from paddle.static import InputSpec
@@ -340,7 +344,7 @@ class TestAmpScaler(unittest.TestCase):
             scaled_loss = scaler.scale(loss)
             scaled_loss.backward()
             optimize_ops, params_grads = scaler.minimize(optimizer, scaled_loss)
-            self.assertEqual(scaler._found_inf.numpy() >= 1, True)
+            self.assertEqual(scaler._found_inf.numpy() == 1, True)
 
             for param in model.parameters():
                 # param not update when tensor contains nan or inf
@@ -723,6 +727,15 @@ class TestAmpDecorator(unittest.TestCase):
         model = paddle.amp.decorate(models=model, level='O2')
         for param in model.parameters():
             self.assertEqual((param.dtype == paddle.float32), True)
+
+    def test_floating_only(self):
+        model = paddle.nn.Linear(2, 4)
+        buffer = paddle.to_tensor(np.array([5]).astype("int32"))
+        model.register_buffer("buffer_name", buffer, persistable=True)
+        model = paddle.amp.decorate(models=model, level='O2')
+        self.assertEqual(
+            (model._buffers["buffer_name"].dtype == paddle.int32), True
+        )
 
 
 class TestStateDictHookForAMP(unittest.TestCase):
@@ -1295,9 +1308,7 @@ class TestResnet(unittest.TestCase):
                 ):
                     out = resnet(img)
 
-                loss = paddle.nn.functional.cross_entropy(
-                    input=out, label=label, reduction='none', use_softmax=False
-                )
+                loss = fluid.layers.cross_entropy(input=out, label=label)
                 avg_loss = paddle.mean(x=loss)
 
                 dy_out = avg_loss.numpy()
@@ -1362,6 +1373,11 @@ class TestLayerNormFp16(unittest.TestCase):
         func_isinstance()
 
 
+@unittest.skipIf(
+    paddle.is_compiled_with_cuda()
+    and not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "skip bf16 test if cuda is in use but bf16 is not supported by gpu arch.",
+)
 class TestBf16(unittest.TestCase):
     '''
     test amp for BF16
@@ -1384,19 +1400,15 @@ class TestBf16(unittest.TestCase):
 
     def test_bf16(self):
         def func_isinstance():
-            if (
-                fluid.core.is_compiled_with_cuda()
-                and fluid.core.is_bfloat16_supported(paddle.CUDAPlace(0))
-            ):
-                out_fp32 = self.train(enable_amp=False)
-                out_bf16_O1 = self.train(enable_amp=True, amp_level='O1')
-                out_bf16_O2 = self.train(enable_amp=True, amp_level='O2')
-                np.testing.assert_allclose(
-                    out_fp32, out_bf16_O1, rtol=0.001, atol=0.1
-                )
-                np.testing.assert_allclose(
-                    out_fp32, out_bf16_O2, rtol=0.001, atol=0.1
-                )
+            out_fp32 = self.train(enable_amp=False)
+            out_bf16_O1 = self.train(enable_amp=True, amp_level='O1')
+            out_bf16_O2 = self.train(enable_amp=True, amp_level='O2')
+            np.testing.assert_allclose(
+                out_fp32, out_bf16_O1, rtol=0.001, atol=0.1
+            )
+            np.testing.assert_allclose(
+                out_fp32, out_bf16_O2, rtol=0.001, atol=0.1
+            )
 
         func_isinstance()
 

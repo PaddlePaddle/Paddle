@@ -76,7 +76,7 @@ def optimizer_setting(params, parameter_list=None):
     return optimizer
 
 
-class ConvBNLayer(fluid.dygraph.Layer):
+class ConvBNLayer(paddle.nn.Layer):
     def __init__(
         self,
         num_channels,
@@ -109,7 +109,7 @@ class ConvBNLayer(fluid.dygraph.Layer):
         return y
 
 
-class SqueezeExcitation(fluid.dygraph.Layer):
+class SqueezeExcitation(paddle.nn.Layer):
     def __init__(self, num_channels, reduction_ratio):
 
         super().__init__()
@@ -143,7 +143,7 @@ class SqueezeExcitation(fluid.dygraph.Layer):
         return y
 
 
-class BottleneckBlock(fluid.dygraph.Layer):
+class BottleneckBlock(paddle.nn.Layer):
     def __init__(
         self,
         num_channels,
@@ -207,7 +207,7 @@ class BottleneckBlock(fluid.dygraph.Layer):
         return y
 
 
-class SeResNeXt(fluid.dygraph.Layer):
+class SeResNeXt(paddle.nn.Layer):
     def __init__(self, layers=50, class_dim=102):
         super().__init__()
 

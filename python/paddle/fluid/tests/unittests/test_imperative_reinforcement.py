@@ -24,7 +24,7 @@ from paddle.fluid import core
 from paddle.fluid.optimizer import SGDOptimizer
 
 
-class Policy(fluid.dygraph.Layer):
+class Policy(paddle.nn.Layer):
     def __init__(self, input_size):
         super().__init__()
 

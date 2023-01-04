@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.fluid.dygraph.layers import Layer
+from paddle.nn import Layer
 
 __all__ = []
 

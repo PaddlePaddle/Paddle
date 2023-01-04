@@ -170,7 +170,7 @@ class TestDygraphLoadStatic(unittest.TestCase):
 
         with fluid.dygraph.guard():
 
-            class MyTest(fluid.dygraph.Layer):
+            class MyTest(paddle.nn.Layer):
                 def __init__(self):
                     super().__init__()
 

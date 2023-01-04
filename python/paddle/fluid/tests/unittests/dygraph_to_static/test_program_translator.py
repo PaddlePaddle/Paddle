@@ -338,7 +338,7 @@ class TestEnableDeclarative(unittest.TestCase):
             )
 
 
-class Net(fluid.dygraph.layers.Layer):
+class Net(paddle.nn.Layer):
     def __init__(self):
         super().__init__()
 

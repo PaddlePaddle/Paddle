@@ -21,7 +21,7 @@ import paddle.fluid as fluid
 import paddle.nn as nn
 
 
-class LeNetDygraph(fluid.dygraph.Layer):
+class LeNetDygraph(paddle.nn.Layer):
     def __init__(self):
         super().__init__()
         self.features = nn.Sequential(

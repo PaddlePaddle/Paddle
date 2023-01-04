@@ -12,29 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from . import base
-from .base import *
-
 from . import layers
-from .layers import *
+from .layers import _scope_dist2single
+from .layers import _addindent
+from .layers import _convert_camel_to_snake
+from .layers import Layer
+from .layer_object_helper import LayerObjectHelper
+from .layer_hooks import LayerOpsRecoder
+from .layer_hooks import record_program_ops_pre_hook
+from .layer_hooks import set_op_customized_attrs_post_hook
 
-from . import tracer
-from .tracer import *
-
-from . import parallel
-from .parallel import *
-
-
-from . import learning_rate_scheduler
-from .learning_rate_scheduler import *
-
-from . import amp
-from .amp import *
-
-from .math_op_patch import monkey_patch_math_varbase
-
-__all__ = []
-__all__ += base.__all__
-__all__ += parallel.__all__
-__all__ += learning_rate_scheduler.__all__
-__all__ += amp.__all__
+all = []

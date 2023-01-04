@@ -50,7 +50,7 @@ def parse_args():
     return args
 
 
-class ConvBNLayer(fluid.dygraph.Layer):
+class ConvBNLayer(paddle.nn.Layer):
     def __init__(
         self,
         num_channels,
@@ -87,7 +87,7 @@ class ConvBNLayer(fluid.dygraph.Layer):
         return y
 
 
-class BottleneckBlock(fluid.dygraph.Layer):
+class BottleneckBlock(paddle.nn.Layer):
     def __init__(
         self, num_channels, num_filters, stride, shortcut=True, seg_num=8
     ):
@@ -139,7 +139,7 @@ class BottleneckBlock(fluid.dygraph.Layer):
         return y
 
 
-class TSM_ResNet(fluid.dygraph.Layer):
+class TSM_ResNet(paddle.nn.Layer):
     def __init__(self, name_scope, config, mode):
         super().__init__(name_scope)
 

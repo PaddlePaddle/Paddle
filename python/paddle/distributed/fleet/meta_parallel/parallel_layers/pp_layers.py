@@ -45,9 +45,9 @@ import re
 from functools import partial
 
 import paddle
-from paddle.fluid.dygraph.layers import Layer
 from paddle.fluid.framework import in_dygraph_mode
 from paddle.incubate.distributed.fleet import recompute_hybrid
+from paddle.nn import Layer
 
 from ...utils.log_util import layer_to_str, logger
 
@@ -221,7 +221,7 @@ class PipelineLayer(Layer):
         .. code-block:: python
         import paddle.nn as nn
         from paddle.distributed import fleet
-        from paddle.fluid.dygraph.layers import Layer
+        from paddle.nn import Layer
         import paddle.nn.functional as F
         from paddle.distributed.fleet.meta_parallel import LayerDesc, PipelineLayer
 
