@@ -474,14 +474,14 @@ class TestCondNestedControlFlow(unittest.TestCase):
             a = 2 * i
             if i < 5:
                 if i >= 3:
-                    return a + a
+                    return a + 1
                 else:
-                    return a - a
+                    return 1 - a
             else:
                 if i < 8:
-                    return a * a
+                    return a * 2
                 else:
-                    return a / a
+                    return a / 2
         """
 
         paddle.enable_static()
