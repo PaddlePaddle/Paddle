@@ -203,7 +203,16 @@ class MultiheadMatMulRoformerOpConverter : public OpConverter {
             ("roformerlayer(Output: " + output_name + ")").c_str());
         //roformerlayer->setPrecision(nvinfer1::DataType::kFLOAT);
 	//set roformerlayer output tensor or not
-
+        if (op_desc.HasAttr("fc_out_threshold")) {
+          PADDLE_ENFORCE_EQ(op_desc.HasAttr("fc_out_threshold"),
+                            true,
+                            platform::errors::InvalidArgument(
+                                "must have out threshold in multihead layers "
+                                "in int8 mode"));
+          float out_scale =
+              PADDLE_GET_CONST(float, op_desc.GetAttr("fc_out_threshold"));
+          engine_->SetTensorDynamicRange(roformerlayer->getOutput(0), out_scale);
+	}
         // auto mask_tensor = engine_->GetITensor("qkv_plugin_mask");
         auto creator = GetPluginRegistry()->getPluginCreator(
             "CustomQKVToContextPluginDynamic", "2");
