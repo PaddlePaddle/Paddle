@@ -145,7 +145,7 @@ class TestScaleMatmulMkldnnFusePass(PassAutoScanTest):
         config = self.create_inference_config(
             use_mkldnn=True, passes=['scale_matmul_fuse_pass']
         )
-        yield config, ['fused_matmul'], (1e-5, 1e-5)
+        yield config, ['matmul'], (1e-5, 1e-5)
 
     def test(self):
         self.run_and_statis(quant=False, passes=['scale_matmul_fuse_pass'])

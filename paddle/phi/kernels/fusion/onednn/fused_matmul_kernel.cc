@@ -36,6 +36,7 @@ class FusedMatmulOneDNNHandler
                            const std::vector<int64_t> &y_org_dims,
                            bool trans_x,
                            bool trans_y,
+                           const float matmul_alpha,
                            const std::vector<int64_t> &x_strides_override,
                            const std::vector<int64_t> &y_strides_override,
                            bool is_output_fused,
@@ -116,6 +117,7 @@ class FusedMatmulOneDNNHandler
 
     const auto matmul_attrs = CreateMatmulAttrs(dev_ctx,
                                                 residual_data,
+                                                matmul_alpha,
                                                 fuse_activation,
                                                 fuse_alpha,
                                                 fuse_beta,
@@ -124,11 +126,7 @@ class FusedMatmulOneDNNHandler
     this->AcquireForwardPrimitiveDescriptor(matmul_attrs, x_md, y_md, out_md);
   }
 
-  float ComputeOutputScale(const OneDNNContext &dev_ctx) {
-    float alpha = dev_ctx.HasDnnAttr("alpha")
-                      ? PADDLE_GET_CONST(float, dev_ctx.GetDnnAttr("alpha"))
-                      : 1.0f;
-
+  float ComputeOutputScale(const OneDNNContext &dev_ctx, float matmul_alpha) {
     if (dev_ctx.HasDnnAttr("Scale_x") && dev_ctx.HasDnnAttr("Scale_y") &&
         dev_ctx.HasDnnAttr("Scale_out")) {
       float scale_x = PADDLE_GET_CONST(float, dev_ctx.GetDnnAttr("Scale_x"));
@@ -141,13 +139,14 @@ class FusedMatmulOneDNNHandler
           force_fp32_out
               ? 1.f
               : PADDLE_GET_CONST(float, dev_ctx.GetDnnAttr("Scale_out"));
-      alpha *= scale_out / (scale_x * scale_y);
+      matmul_alpha *= scale_out / (scale_x * scale_y);
     }
-    return alpha;
+    return matmul_alpha;
   }
 
   dnnl::primitive_attr CreateMatmulAttrs(const OneDNNContext &dev_ctx,
                                          const DenseTensor *residual_data,
+                                         const float matmul_alpha,
                                          const std::string &fuse_activation,
                                          const float fuse_alpha,
                                          const float fuse_beta,
@@ -155,7 +154,7 @@ class FusedMatmulOneDNNHandler
     dnnl::primitive_attr matmul_attrs;
     dnnl::post_ops post_operations;
 
-    float scale_out = ComputeOutputScale(dev_ctx);
+    float scale_out = ComputeOutputScale(dev_ctx, matmul_alpha);
     if (scale_out != 1.0f) {
       matmul_attrs.set_output_scales(0, {scale_out});
     }
@@ -308,6 +307,7 @@ void ExecuteFusedMatmul(const OneDNNContext &dev_ctx,
                         const std::vector<int64_t> &y_dims,
                         bool trans_x,
                         bool trans_y,
+                        const float matmul_alpha,
                         const std::vector<int64_t> &x_strides_override,
                         const std::vector<int64_t> &y_strides_override,
                         const bool is_output_fused,
@@ -323,6 +323,7 @@ void ExecuteFusedMatmul(const OneDNNContext &dev_ctx,
                                                 y_dims,
                                                 trans_x,
                                                 trans_y,
+                                                matmul_alpha,
                                                 x_strides_override,
                                                 y_strides_override,
                                                 is_output_fused,
@@ -492,6 +493,7 @@ void FusedMatmulKernel(const Context &dev_ctx,
                                  y_bd_dims,
                                  transpose_x,
                                  transpose_y,
+                                 matmul_alpha,
                                  x_strides_override,
                                  y_strides_override,
                                  is_output_fused,
@@ -510,6 +512,7 @@ void FusedMatmulKernel(const Context &dev_ctx,
                                                       y_bd_dims,
                                                       transpose_x,
                                                       transpose_y,
+                                                      matmul_alpha,
                                                       x_strides_override,
                                                       y_strides_override,
                                                       is_output_fused,
@@ -528,6 +531,7 @@ void FusedMatmulKernel(const Context &dev_ctx,
                                    y_bd_dims,
                                    transpose_x,
                                    transpose_y,
+                                   matmul_alpha,
                                    x_strides_override,
                                    y_strides_override,
                                    is_output_fused,
@@ -546,6 +550,7 @@ void FusedMatmulKernel(const Context &dev_ctx,
                                   y_bd_dims,
                                   transpose_x,
                                   transpose_y,
+                                  matmul_alpha,
                                   x_strides_override,
                                   y_strides_override,
                                   is_output_fused,
