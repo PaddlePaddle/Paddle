@@ -547,6 +547,13 @@
   outputs :
     out : Y
 
+- op : frame
+  backward : frame_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
+
 - op : frobenius_norm
   backward : frobenius_norm_grad
   extra :
@@ -560,6 +567,13 @@
   backward : gather_grad
   extra :
     attrs : [bool overwrite = true]
+
+- op : gather_nd
+  backward : gather_nd_grad
+  inputs :
+    {x : X, index : Index}
+  outputs :
+    out : Out
 
 - op : gather_tree
   inputs :
@@ -662,6 +676,19 @@
     x : X
   outputs :
     out : Out
+
+- op : isclose
+  inputs :
+    {x : Input, y : Other}
+  outputs :
+    out : Out
+  scalar :
+    rtol :
+      data_type : std::string
+      tensor_name : Rtol
+    atol :
+      data_type : std::string
+      tensor_name : Atol
 
 - op : isfinite (isfinite_v2)
   inputs :
@@ -899,6 +926,13 @@
   outputs :
     {out : Out, total_weight : Total_weight}
 
+- op : overlap_add
+  backward : overlap_add_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
+
 - op : pad2d
   backward : pad2d_grad
   extra :
@@ -913,6 +947,13 @@
   backward : partial_sum_grad
   extra :
     attrs : [bool use_mkldnn = false]
+
+- op : pixel_shuffle
+  backward : pixel_shuffle_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
 
 - op : poisson
   inputs :
@@ -1229,9 +1270,20 @@
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
 - op : squeeze (squeeze2)
-  backward : squeeze_grad (squeeze2_grad)
+  backward : squeeze_grad (squeeze2_grad), squeeze_double_grad(squeeze2_double_grad)
+  inputs :
+    x : X
+  attrs :
+   axis : axes
+  outputs :
+    {out : Out, xshape : XShape}
+  int_array:
+    axis :
+      data_type : int
+      support_tensor : true
   extra :
     attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32"]
+    outputs : [xshape]
 
 - op : stack
   backward : stack_grad
@@ -1347,6 +1399,22 @@
     x : X
   outputs :
     out : Y
+
+- op : unsqueeze (unsqueeze2)
+  backward : unsqueeze_grad (unsqueeze2_grad), unsqueeze_double_grad(unsqueeze2_double_grad)
+  inputs :
+    x : X
+  attrs :
+   axis : axes
+  outputs :
+    {out : Out, xshape : XShape}
+  int_array:
+    axis :
+      data_type : int
+      tensor_name : AxesTensor
+      tensors_name : AxesTensorList
+  extra :
+    outputs : [xshape]
 
 - op : unstack
   backward : unstack_grad

@@ -33,7 +33,6 @@ from ..fluid.data_feeder import (
 from ..fluid.framework import (
     Variable,
     _in_eager_without_dygraph_check,
-    _in_legacy_dygraph,
     device_guard,
 )
 from ..fluid.initializer import Constant, Initializer
@@ -43,7 +42,6 @@ from ..framework import (
     LayerHelper,
     _current_expected_place,
     _get_paddle_place,
-    _non_static_mode,
     convert_np_dtype_to_dtype_,
     core,
     in_dygraph_mode,
@@ -272,12 +270,12 @@ def create_tensor(dtype, name=None, persistable=False):
 
 def linspace(start, stop, num, dtype=None, name=None):
     r"""
-    Return fixed number of evenly spaced values within a given interval.
+    Return fixed number of evenly spaced values within a given interval. Note: no gradient calculation is performed.
 
     Args:
         start(int|float|Tensor): The input :attr:`start` is start of range. It is a int, float, \
             or a 0-D Tensor with data type int32, int64, float32 or float64.
-        stop(int|float|Tensor): The input :attr:`stop` is start variable of range. It is a int, float, \
+        stop(int|float|Tensor): The input :attr:`stop` is end of range. It is a int, float, \
             or a 0-D Tensor with data type int32, int64, float32 or float64.
         num(int|Tensor): The input :attr:`num` is given num of the sequence. It is an int, \
             or a 0-D Tensor with data type int32.
@@ -324,65 +322,65 @@ def linspace(start, stop, num, dtype=None, name=None):
             dtype,
             _current_expected_place(),
         )
-    if _in_legacy_dygraph():
-        return _legacy_C_ops.linspace(
-            tensor_start, tensor_stop, tensor_num, 'dtype', dtype
-        )
-
-    helper = LayerHelper("linspace", **locals())
-
-    start_dtype = convert_dtype(tensor_start.dtype)
-    stop_dtype = convert_dtype(tensor_stop.dtype)
-    out_dtype = convert_dtype(dtype)
-    if isinstance(start, Variable):
-        check_dtype(
-            start.dtype,
-            'start',
-            ['float32', 'float64', 'int32', 'int64'],
-            'linspace',
-        )
     else:
-        check_type(start, 'start', (int, float), 'linspace')
+        helper = LayerHelper("linspace", **locals())
 
-    if isinstance(stop, Variable):
-        check_dtype(
-            stop.dtype,
-            'stop',
-            ['float32', 'float64', 'int32', 'int64'],
-            'linspace',
-        )
-    else:
-        check_type(stop, 'stop', (int, float), 'linspace')
-    if isinstance(num, Variable):
-        check_dtype(num.dtype, 'num', ['int32'], 'linspace')
-    check_dtype(
-        dtype, 'dtype', ['int32', 'int64', 'float32', 'float64'], 'linspace'
-    )
-    if (
-        (stop_dtype == "float64" or start_dtype == "float64")
-        and out_dtype in ["float32", "int32"]
-    ) or (
-        (stop_dtype == "int64" or start_dtype == "int64")
-        and out_dtype == "int32"
-    ):
-        raise ValueError(
-            "The dtype of start/stop is {}/{} but the attr(dtype) of linspace is {}, "
-            "which may cause data type overflows. Please reset attr(dtype) of linspace.".format(
-                start_dtype, stop_dtype, dtype
+        start_dtype = convert_dtype(tensor_start.dtype)
+        stop_dtype = convert_dtype(tensor_stop.dtype)
+        out_dtype = convert_dtype(dtype)
+        if isinstance(start, Variable):
+            check_dtype(
+                start.dtype,
+                'start',
+                ['float32', 'float64', 'int32', 'int64'],
+                'linspace',
             )
+        else:
+            check_type(start, 'start', (int, float), 'linspace')
+
+        if isinstance(stop, Variable):
+            check_dtype(
+                stop.dtype,
+                'stop',
+                ['float32', 'float64', 'int32', 'int64'],
+                'linspace',
+            )
+        else:
+            check_type(stop, 'stop', (int, float), 'linspace')
+        if isinstance(num, Variable):
+            check_dtype(num.dtype, 'num', ['int32'], 'linspace')
+        check_dtype(
+            dtype, 'dtype', ['int32', 'int64', 'float32', 'float64'], 'linspace'
         )
+        if (
+            (stop_dtype == "float64" or start_dtype == "float64")
+            and out_dtype in ["float32", "int32"]
+        ) or (
+            (stop_dtype == "int64" or start_dtype == "int64")
+            and out_dtype == "int32"
+        ):
+            raise ValueError(
+                "The dtype of start/stop is {}/{} but the attr(dtype) of linspace is {}, "
+                "which may cause data type overflows. Please reset attr(dtype) of linspace.".format(
+                    start_dtype, stop_dtype, dtype
+                )
+            )
 
-    out = helper.create_variable_for_type_inference(dtype=dtype)
+        out = helper.create_variable_for_type_inference(dtype=dtype)
 
-    helper.append_op(
-        type='linspace',
-        inputs={'Start': tensor_start, 'Stop': tensor_stop, 'Num': tensor_num},
-        attrs={'dtype': dtype},
-        outputs={'Out': [out]},
-    )
-    if isinstance(num, int):
-        out.desc.set_shape((num,))
-    return out
+        helper.append_op(
+            type='linspace',
+            inputs={
+                'Start': tensor_start,
+                'Stop': tensor_stop,
+                'Num': tensor_num,
+            },
+            attrs={'dtype': dtype},
+            outputs={'Out': [out]},
+        )
+        if isinstance(num, int):
+            out.desc.set_shape((num,))
+        return out
 
 
 def logspace(start, stop, num, base=10.0, dtype=None, name=None):
@@ -446,91 +444,91 @@ def logspace(start, stop, num, base=10.0, dtype=None, name=None):
     if not isinstance(base, Variable):
         with device_guard("cpu"):
             tensor_base = fill_constant([1], dtype, base)
-    if _non_static_mode():
+    if in_dygraph_mode():
         return _legacy_C_ops.logspace(
             tensor_start, tensor_stop, tensor_num, tensor_base, 'dtype', dtype
         )
-
-    helper = LayerHelper("logspace", **locals())
-
-    start_dtype = convert_dtype(tensor_start.dtype)
-    stop_dtype = convert_dtype(tensor_stop.dtype)
-    base_dtype = convert_dtype(tensor_base.dtype)
-    out_dtype = convert_dtype(dtype)
-    if isinstance(start, Variable):
-        check_dtype(
-            start.dtype,
-            'start',
-            ['float32', 'float64', 'int32', 'int64'],
-            'logspace',
-        )
     else:
-        check_type(start, 'start', (int, float), 'logspace')
+        helper = LayerHelper("logspace", **locals())
 
-    if isinstance(stop, Variable):
-        check_dtype(
-            stop.dtype,
-            'stop',
-            ['float32', 'float64', 'int32', 'int64'],
-            'logspace',
-        )
-    else:
-        check_type(stop, 'stop', (int, float), 'logspace')
-
-    if isinstance(num, Variable):
-        check_dtype(num.dtype, 'num', ['int32'], 'logspace')
-
-    if isinstance(base, Variable):
-        check_dtype(
-            base.dtype,
-            'base',
-            ['float32', 'float64', 'int32', 'int64'],
-            'logspace',
-        )
-    else:
-        check_type(base, 'base', (int, float), 'logspace')
-
-    check_dtype(
-        dtype, 'dtype', ['int32', 'int64', 'float32', 'float64'], 'logspace'
-    )
-    if (
-        (
-            stop_dtype == "float64"
-            or start_dtype == "float64"
-            or base_dtype == "float64"
-        )
-        and out_dtype in ["float32", "int32"]
-    ) or (
-        (
-            stop_dtype == "int64"
-            or start_dtype == "int64"
-            or base_dtype == "int64"
-        )
-        and out_dtype == "int32"
-    ):
-        raise ValueError(
-            "The dtype of start/stop/base is {}/{}/{} but the attr(dtype) of logspace is {}, "
-            "which may cause data type overflows. Please reset attr(dtype) of logspace.".format(
-                start_dtype, stop_dtype, base_dtype, dtype
+        start_dtype = convert_dtype(tensor_start.dtype)
+        stop_dtype = convert_dtype(tensor_stop.dtype)
+        base_dtype = convert_dtype(tensor_base.dtype)
+        out_dtype = convert_dtype(dtype)
+        if isinstance(start, Variable):
+            check_dtype(
+                start.dtype,
+                'start',
+                ['float32', 'float64', 'int32', 'int64'],
+                'logspace',
             )
+        else:
+            check_type(start, 'start', (int, float), 'logspace')
+
+        if isinstance(stop, Variable):
+            check_dtype(
+                stop.dtype,
+                'stop',
+                ['float32', 'float64', 'int32', 'int64'],
+                'logspace',
+            )
+        else:
+            check_type(stop, 'stop', (int, float), 'logspace')
+
+        if isinstance(num, Variable):
+            check_dtype(num.dtype, 'num', ['int32'], 'logspace')
+
+        if isinstance(base, Variable):
+            check_dtype(
+                base.dtype,
+                'base',
+                ['float32', 'float64', 'int32', 'int64'],
+                'logspace',
+            )
+        else:
+            check_type(base, 'base', (int, float), 'logspace')
+
+        check_dtype(
+            dtype, 'dtype', ['int32', 'int64', 'float32', 'float64'], 'logspace'
         )
+        if (
+            (
+                stop_dtype == "float64"
+                or start_dtype == "float64"
+                or base_dtype == "float64"
+            )
+            and out_dtype in ["float32", "int32"]
+        ) or (
+            (
+                stop_dtype == "int64"
+                or start_dtype == "int64"
+                or base_dtype == "int64"
+            )
+            and out_dtype == "int32"
+        ):
+            raise ValueError(
+                "The dtype of start/stop/base is {}/{}/{} but the attr(dtype) of logspace is {}, "
+                "which may cause data type overflows. Please reset attr(dtype) of logspace.".format(
+                    start_dtype, stop_dtype, base_dtype, dtype
+                )
+            )
 
-    out = helper.create_variable_for_type_inference(dtype=dtype)
+        out = helper.create_variable_for_type_inference(dtype=dtype)
 
-    helper.append_op(
-        type='logspace',
-        inputs={
-            'Start': tensor_start,
-            'Stop': tensor_stop,
-            'Num': tensor_num,
-            'Base': tensor_base,
-        },
-        attrs={'dtype': dtype},
-        outputs={'Out': [out]},
-    )
-    if isinstance(num, int):
-        out.desc.set_shape((num,))
-    return out
+        helper.append_op(
+            type='logspace',
+            inputs={
+                'Start': tensor_start,
+                'Stop': tensor_stop,
+                'Num': tensor_num,
+                'Base': tensor_base,
+            },
+            attrs={'dtype': dtype},
+            outputs={'Out': [out]},
+        )
+        if isinstance(num, int):
+            out.desc.set_shape((num,))
+        return out
 
 
 def _to_tensor_non_static(data, dtype=None, place=None, stop_gradient=True):
@@ -746,7 +744,7 @@ def to_tensor(data, dtype=None, place=None, stop_gradient=True):
     if place is None:
         place = _current_expected_place()
 
-    if _non_static_mode():
+    if paddle.fluid.framework._non_static_mode():
         return _to_tensor_non_static(data, dtype, place, stop_gradient)
 
     # call assign for static graph
@@ -785,44 +783,53 @@ def full_like(x, fill_value, dtype=None, name=None):
           # [[2. 2. 2.]
           #  [2. 2. 2.]]
     """
-
     if dtype is None:
         dtype = x.dtype
     else:
         if not isinstance(dtype, core.VarDesc.VarType):
             dtype = convert_np_dtype_to_dtype_(dtype)
-
     if in_dygraph_mode():
         return _C_ops.full_like(x, fill_value, dtype, x.place)
-
-    if _in_legacy_dygraph():
-        return _legacy_C_ops.fill_any_like(
-            x, 'value', fill_value, 'dtype', dtype
+    else:
+        helper = LayerHelper("full_like", **locals())
+        check_variable_and_dtype(
+            x,
+            'x',
+            [
+                'bool',
+                'float16',
+                'float32',
+                'float64',
+                'int16',
+                'int32',
+                'int64',
+            ],
+            'full_like',
         )
+        check_dtype(
+            dtype,
+            'dtype',
+            [
+                'bool',
+                'float16',
+                'float32',
+                'float64',
+                'int16',
+                'int32',
+                'int64',
+            ],
+            'full_like/zeros_like/ones_like',
+        )
+        out = helper.create_variable_for_type_inference(dtype=dtype)
 
-    helper = LayerHelper("full_like", **locals())
-    check_variable_and_dtype(
-        x,
-        'x',
-        ['bool', 'float16', 'float32', 'float64', 'int16', 'int32', 'int64'],
-        'full_like',
-    )
-    check_dtype(
-        dtype,
-        'dtype',
-        ['bool', 'float16', 'float32', 'float64', 'int16', 'int32', 'int64'],
-        'full_like/zeros_like/ones_like',
-    )
-    out = helper.create_variable_for_type_inference(dtype=dtype)
-
-    helper.append_op(
-        type='fill_any_like',
-        inputs={'X': [x]},
-        attrs={'value': fill_value, "dtype": dtype},
-        outputs={'Out': [out]},
-    )
-    out.stop_gradient = True
-    return out
+        helper.append_op(
+            type='fill_any_like',
+            inputs={'X': [x]},
+            attrs={'value': fill_value, "dtype": dtype},
+            outputs={'Out': [out]},
+        )
+        out.stop_gradient = True
+        return out
 
 
 def ones(shape, dtype=None, name=None):
@@ -1011,7 +1018,7 @@ def eye(num_rows, num_columns=None, dtype=None, name=None):
     """
 
     def _check_attr(attr, message):
-        if isinstance(attr, ((Variable, core.VarBase, core.eager.Tensor))):
+        if isinstance(attr, ((Variable, core.eager.Tensor))):
             assert len(attr.shape) == 1 and attr.shape[0] in [1, -1]
         elif not isinstance(attr, int) or attr < 0:
             raise TypeError("{} should be a non-negative int.".format(message))
@@ -1027,16 +1034,10 @@ def eye(num_rows, num_columns=None, dtype=None, name=None):
     else:
         num_columns = num_rows
 
-    if _non_static_mode():
-        if in_dygraph_mode():
-            out = _C_ops.eye(
-                num_rows, num_columns, dtype, _current_expected_place()
-            )
-        elif _in_legacy_dygraph():
-            out = _legacy_C_ops.eye(
-                'dtype', dtype, 'num_rows', num_rows, 'num_columns', num_columns
-            )
-
+    if in_dygraph_mode():
+        out = _C_ops.eye(
+            num_rows, num_columns, dtype, _current_expected_place()
+        )
     else:
         helper = LayerHelper("eye", **locals())
         check_dtype(
@@ -1211,26 +1212,24 @@ def arange(start=0, end=None, step=1, dtype=None, name=None):
 
     if in_dygraph_mode():
         return _C_ops.arange(start, end, step, dtype, _current_expected_place())
-
-    if _in_legacy_dygraph():
-        out = _legacy_C_ops.range(start, end, step)
+    else:
+        check_dtype(
+            dtype,
+            'dtype',
+            ['float32', 'float64', 'int32', 'int64'],
+            'range/arange',
+        )
+        helper = LayerHelper('range', **locals())
+        out = helper.create_variable_for_type_inference(dtype, shape=out_shape)
+        helper.append_op(
+            type='range',
+            inputs={'Start': start, 'End': end, 'Step': step},
+            outputs={'Out': out},
+        )
         out.stop_gradient = True
+        if out_shape is not None:
+            out.desc.set_shape(out_shape)
         return out
-
-    check_dtype(
-        dtype, 'dtype', ['float32', 'float64', 'int32', 'int64'], 'range/arange'
-    )
-    helper = LayerHelper('range', **locals())
-    out = helper.create_variable_for_type_inference(dtype, shape=out_shape)
-    helper.append_op(
-        type='range',
-        inputs={'Start': start, 'End': end, 'Step': step},
-        outputs={'Out': out},
-    )
-    out.stop_gradient = True
-    if out_shape is not None:
-        out.desc.set_shape(out_shape)
-    return out
 
 
 def _tril_triu_op(helper):
@@ -1328,12 +1327,8 @@ def tril(x, diagonal=0, name=None):
     """
     if in_dygraph_mode():
         return _C_ops.tril(x, diagonal, True)
-
-    if _in_legacy_dygraph():
-        op = getattr(_legacy_C_ops, 'tril_triu')
-        return op(x, 'diagonal', diagonal, "lower", True)
-
-    return _tril_triu_op(LayerHelper('tril', **locals()))
+    else:
+        return _tril_triu_op(LayerHelper('tril', **locals()))
 
 
 def triu(x, diagonal=0, name=None):
@@ -1394,12 +1389,8 @@ def triu(x, diagonal=0, name=None):
     """
     if in_dygraph_mode():
         return _C_ops.triu(x, diagonal, False)
-
-    if _in_legacy_dygraph():
-        op = getattr(_legacy_C_ops, 'tril_triu')
-        return op(x, 'diagonal', diagonal, "lower", False)
-
-    return _tril_triu_op(LayerHelper('triu', **locals()))
+    else:
+        return _tril_triu_op(LayerHelper('triu', **locals()))
 
 
 def meshgrid(*args, **kwargs):
@@ -1437,37 +1428,35 @@ def meshgrid(*args, **kwargs):
 
     if len(args) == 1 and isinstance(args[0], (list, tuple)):
         args = args[0]
-    if _in_legacy_dygraph():
-        num = len(args)
-        out = _legacy_C_ops.meshgrid(list(args), num)
-        return out
     if in_dygraph_mode():
         return _C_ops.meshgrid(list(args))
+    else:
+        name = kwargs.get("name", None)
+        helper = LayerHelper('meshgrid', **locals())
 
-    name = kwargs.get("name", None)
-    helper = LayerHelper('meshgrid', **locals())
+        if not isinstance(args, (list, tuple)):
+            raise TypeError(
+                "The type of input args in meshgrid should be list."
+            )
 
-    if not isinstance(args, (list, tuple)):
-        raise TypeError("The type of input args in meshgrid should be list.")
+        for id, input_ in enumerate(args):
+            check_dtype(
+                input_.dtype,
+                'create data type',
+                ['float16', 'float32', 'float64', 'int32', 'int64'],
+                'meshgrid',
+            )
 
-    for id, input_ in enumerate(args):
-        check_dtype(
-            input_.dtype,
-            'create data type',
-            ['float16', 'float32', 'float64', 'int32', 'int64'],
-            'meshgrid',
+        num = len(args)
+        out = [
+            helper.create_variable_for_type_inference(dtype=args[i].dtype)
+            for i in range(num)
+        ]
+        helper.append_op(
+            type='meshgrid', inputs={'X': list(args)}, outputs={'Out': out}
         )
 
-    num = len(args)
-    out = [
-        helper.create_variable_for_type_inference(dtype=args[i].dtype)
-        for i in range(num)
-    ]
-    helper.append_op(
-        type='meshgrid', inputs={'X': list(args)}, outputs={'Out': out}
-    )
-
-    return out
+        return out
 
 
 def diagflat(x, offset=0, name=None):
@@ -1555,62 +1544,49 @@ def diagflat(x, offset=0, name=None):
             #         [0, 0, 3, 0, 0],
             #         [0, 0, 0, 4, 0]])
     """
-    padding_value = 0
     if in_dygraph_mode():
         if len(x.shape) <= 1:
-            return _C_ops.diag(x, offset, padding_value)
+            return _C_ops.diag(x, offset, 0)
         else:
             y = _C_ops.flatten(x, 0, -1)
-            return _C_ops.diag(y, offset, padding_value)
+            return _C_ops.diag(y, offset, 0)
+    else:
+        padding_value = 0
+        check_type(x, 'x', (Variable), 'diagflat')
+        check_dtype(
+            x.dtype, 'x', ['float32', 'float64', 'int32', 'int64'], 'diagflat'
+        )
+        check_type(offset, 'offset', (int), 'diagflat')
 
-    if _in_legacy_dygraph():
-        if len(x.shape) == 1:
-            return _legacy_C_ops.diag_v2(
-                x, "offset", offset, "padding_value", padding_value
+        helper = LayerHelper("diagflat", **locals())
+        out1 = helper.create_variable_for_type_inference(dtype=x.dtype)
+        out1_shape = helper.create_variable_for_type_inference(x.dtype)
+        out2 = helper.create_variable_for_type_inference(dtype=x.dtype)
+
+        if len(x.shape) <= 1:
+            helper.append_op(
+                type='diag_v2',
+                inputs={'X': x},
+                outputs={'Out': out2},
+                attrs={'offset': offset, 'padding_value': padding_value},
             )
         else:
-            y, _ = _legacy_C_ops.flatten_contiguous_range(
-                x, "start_axis", 0, "stop_axis", -1
+            helper.append_op(
+                type='flatten_contiguous_range',
+                inputs={'X': x},
+                outputs={'Out': out1, 'XShape': out1_shape},
+                attrs={'start_axis': 0, 'stop_axis': -1},
             )
-            return _legacy_C_ops.diag_v2(
-                y, "offset", offset, "padding_value", padding_value
+            out1.stop_gradient = True
+
+            helper.append_op(
+                type='diag_v2',
+                inputs={'X': out1},
+                outputs={'Out': out2},
+                attrs={'offset': offset, 'padding_value': padding_value},
             )
-
-    check_type(x, 'x', (Variable), 'diagflat')
-    check_dtype(
-        x.dtype, 'x', ['float32', 'float64', 'int32', 'int64'], 'diagflat'
-    )
-    check_type(offset, 'offset', (int), 'diagflat')
-
-    helper = LayerHelper("diagflat", **locals())
-    out1 = helper.create_variable_for_type_inference(dtype=x.dtype)
-    out1_shape = helper.create_variable_for_type_inference(x.dtype)
-    out2 = helper.create_variable_for_type_inference(dtype=x.dtype)
-
-    if len(x.shape) <= 1:
-        helper.append_op(
-            type='diag_v2',
-            inputs={'X': x},
-            outputs={'Out': out2},
-            attrs={'offset': offset, 'padding_value': padding_value},
-        )
-    else:
-        helper.append_op(
-            type='flatten_contiguous_range',
-            inputs={'X': x},
-            outputs={'Out': out1, 'XShape': out1_shape},
-            attrs={'start_axis': 0, 'stop_axis': -1},
-        )
-        out1.stop_gradient = True
-
-        helper.append_op(
-            type='diag_v2',
-            inputs={'X': out1},
-            outputs={'Out': out2},
-            attrs={'offset': offset, 'padding_value': padding_value},
-        )
-    out2.stop_gradient = True
-    return out2
+        out2.stop_gradient = True
+        return out2
 
 
 def diag(x, offset=0, padding_value=0, name=None):
@@ -1691,40 +1667,35 @@ def diag(x, offset=0, padding_value=0, name=None):
     if in_dygraph_mode():
         return _C_ops.diag(x, offset, padding_value)
     else:
-        if _in_legacy_dygraph():
-            return _legacy_C_ops.diag_v2(
-                x, "offset", offset, "padding_value", padding_value
-            )
-        else:
-            check_type(x, 'x', (Variable), 'diag_v2')
-            check_dtype(
-                x.dtype,
-                'x',
-                ['float32', 'float64', 'int32', 'int64'],
-                'diag_v2',
-            )
-            check_type(offset, 'offset', (int), 'diag_v2')
-            check_type(padding_value, 'padding_value', (int, float), 'diag_v2')
-            if len(x.shape) != 1 and len(x.shape) != 2:
-                raise ValueError(
-                    "The dimension of input x must be either 1 or 2, but received {}".format(
-                        len(x.shape)
-                    )
+        check_type(x, 'x', (Variable), 'diag_v2')
+        check_dtype(
+            x.dtype,
+            'x',
+            ['float32', 'float64', 'int32', 'int64'],
+            'diag_v2',
+        )
+        check_type(offset, 'offset', (int), 'diag_v2')
+        check_type(padding_value, 'padding_value', (int, float), 'diag_v2')
+        if len(x.shape) != 1 and len(x.shape) != 2:
+            raise ValueError(
+                "The dimension of input x must be either 1 or 2, but received {}".format(
+                    len(x.shape)
                 )
-
-            helper = LayerHelper("diag_v2", **locals())
-
-            out = helper.create_variable_for_type_inference(dtype=x.dtype)
-
-            helper.append_op(
-                type='diag_v2',
-                inputs={'X': x},
-                outputs={'Out': out},
-                attrs={'offset': offset, 'padding_value': padding_value},
             )
 
-            out.stop_gradient = True
-            return out
+        helper = LayerHelper("diag_v2", **locals())
+
+        out = helper.create_variable_for_type_inference(dtype=x.dtype)
+
+        helper.append_op(
+            type='diag_v2',
+            inputs={'X': x},
+            outputs={'Out': out},
+            attrs={'offset': offset, 'padding_value': padding_value},
+        )
+
+        out.stop_gradient = True
+        return out
 
 
 def empty(shape, dtype=None, name=None):
@@ -1782,45 +1753,37 @@ def empty(shape, dtype=None, name=None):
         )
         out.stop_gradient = True
         return out
+    else:
+        helper = LayerHelper("empty", **locals())
+        inputs = {}
 
-    if _in_legacy_dygraph():
-        shape = utils.convert_shape_to_list(shape)
-        out = _legacy_C_ops.empty(
-            'shape', shape, 'dtype', convert_np_dtype_to_dtype_(dtype)
+        check_dtype(
+            dtype,
+            'dtype',
+            ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
+            'empty',
+        )
+        check_type(shape, 'shape', (Variable, list, tuple), 'empty')
+
+        if isinstance(shape, Variable):
+            check_dtype(shape.dtype, 'shape', ['int32', 'int64'], 'empty')
+
+        attrs = {}
+        utils.get_shape_tensor_inputs(
+            inputs=inputs, attrs=attrs, shape=shape, op_type='empty'
+        )
+
+        out = helper.create_variable_for_type_inference(dtype=dtype)
+        attrs['dtype'] = convert_np_dtype_to_dtype_(dtype)
+        helper.append_op(
+            type='empty',
+            inputs=inputs,
+            outputs={'Out': [out]},
+            attrs=attrs,
+            stop_gradient=True,
         )
         out.stop_gradient = True
         return out
-
-    helper = LayerHelper("empty", **locals())
-    inputs = {}
-
-    check_dtype(
-        dtype,
-        'dtype',
-        ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
-        'empty',
-    )
-    check_type(shape, 'shape', (Variable, list, tuple), 'empty')
-
-    if isinstance(shape, Variable):
-        check_dtype(shape.dtype, 'shape', ['int32', 'int64'], 'empty')
-
-    attrs = {}
-    utils.get_shape_tensor_inputs(
-        inputs=inputs, attrs=attrs, shape=shape, op_type='empty'
-    )
-
-    out = helper.create_variable_for_type_inference(dtype=dtype)
-    attrs['dtype'] = convert_np_dtype_to_dtype_(dtype)
-    helper.append_op(
-        type='empty',
-        inputs=inputs,
-        outputs={'Out': [out]},
-        attrs=attrs,
-        stop_gradient=True,
-    )
-    out.stop_gradient = True
-    return out
 
 
 def empty_like(x, dtype=None, name=None):
@@ -1863,46 +1826,39 @@ def empty_like(x, dtype=None, name=None):
         )
         out.stop_gradient = True
         return out
+    else:
+        helper = LayerHelper("empty_like", **locals())
+        check_variable_and_dtype(
+            x,
+            'x',
+            ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
+            'empty_like',
+        )
+        check_dtype(
+            dtype,
+            'dtype',
+            ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
+            'empty_like',
+        )
+        out = helper.create_variable_for_type_inference(dtype=dtype)
 
-    if _in_legacy_dygraph():
-        out = _legacy_C_ops.empty(
-            'shape', x.shape, 'dtype', convert_np_dtype_to_dtype_(dtype)
+        inputs = {}
+        attrs = {}
+        attrs['dtype'] = convert_np_dtype_to_dtype_(dtype)
+        shape = paddle.shape(x)
+        utils.get_shape_tensor_inputs(
+            inputs=inputs, attrs=attrs, shape=shape, op_type='empty_like'
+        )
+
+        helper.append_op(
+            type='empty',
+            inputs=inputs,
+            outputs={'Out': [out]},
+            attrs=attrs,
+            stop_gradient=True,
         )
         out.stop_gradient = True
         return out
-
-    helper = LayerHelper("empty_like", **locals())
-    check_variable_and_dtype(
-        x,
-        'x',
-        ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
-        'empty_like',
-    )
-    check_dtype(
-        dtype,
-        'dtype',
-        ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
-        'empty_like',
-    )
-    out = helper.create_variable_for_type_inference(dtype=dtype)
-
-    inputs = {}
-    attrs = {}
-    attrs['dtype'] = convert_np_dtype_to_dtype_(dtype)
-    shape = paddle.shape(x)
-    utils.get_shape_tensor_inputs(
-        inputs=inputs, attrs=attrs, shape=shape, op_type='empty_like'
-    )
-
-    helper.append_op(
-        type='empty',
-        inputs=inputs,
-        outputs={'Out': [out]},
-        attrs=attrs,
-        stop_gradient=True,
-    )
-    out.stop_gradient = True
-    return out
 
 
 def assign(x, output=None):
@@ -1958,10 +1914,6 @@ def assign(x, output=None):
                 output = _C_ops.assign(input)
             else:
                 _C_ops.assign_out_(input, output)
-        elif _in_legacy_dygraph():
-            if output is None:
-                output = core.VarBase()
-            _legacy_C_ops.assign(input, output)
         else:
             check_dtype(
                 input.dtype,
@@ -2060,18 +2012,6 @@ def assign(x, output=None):
                 values,
                 _current_expected_place(),
             )
-        elif _in_legacy_dygraph():
-            if output is None:
-                output = core.VarBase()
-            _legacy_C_ops.assign_value(
-                output,
-                'shape',
-                list(input.shape),
-                'dtype',
-                dtype,
-                value_name,
-                values,
-            )
         else:
             if output is None:
                 output = helper.create_variable_for_type_inference(
@@ -2086,9 +2026,6 @@ def assign(x, output=None):
                     value_name: values,
                 },
             )
-
-    if is_inplace and _in_legacy_dygraph():
-        output._bump_inplace_version()
 
     return output
 
@@ -2227,23 +2164,26 @@ def complex(real, imag, name=None):
     """
     if in_dygraph_mode():
         return _C_ops.complex(real, imag)
+    else:
+        check_variable_and_dtype(
+            real, 'real', ['float32', 'float64'], 'complex'
+        )
+        check_variable_and_dtype(
+            imag, 'imag', ['float32', 'float64'], 'complex'
+        )
 
-    if paddle.in_dynamic_mode():
-        return paddle._legacy_C_ops.complex(real, imag)
-
-    check_variable_and_dtype(real, 'real', ['float32', 'float64'], 'complex')
-    check_variable_and_dtype(imag, 'imag', ['float32', 'float64'], 'complex')
-
-    op_type = "complex"
-    helper = LayerHelper(op_type, **locals())
-    inputs = {"X": real, "Y": imag}
-    out = helper.create_variable_for_type_inference(
-        dtype=_real_to_complex_dtype(real.dtype)
-    )
-    outputs = {"Out": out}
-    attrs = {}
-    helper.append_op(type=op_type, inputs=inputs, attrs=attrs, outputs=outputs)
-    return out
+        op_type = "complex"
+        helper = LayerHelper(op_type, **locals())
+        inputs = {"X": real, "Y": imag}
+        out = helper.create_variable_for_type_inference(
+            dtype=_real_to_complex_dtype(real.dtype)
+        )
+        outputs = {"Out": out}
+        attrs = {}
+        helper.append_op(
+            type=op_type, inputs=inputs, attrs=attrs, outputs=outputs
+        )
+        return out
 
 
 def tril_indices(row, col, offset=0, dtype='int64'):
@@ -2291,34 +2231,29 @@ def tril_indices(row, col, offset=0, dtype='int64'):
             # [[ 1, 2, 2, 3, 3, 3],
             #  [ 0, 0, 1, 0, 1, 2]]
     """
-    if not isinstance(row, int) or row < 0:
-        raise TypeError("row should be a non-negative int")
-
-    if col is not None:
-        if not isinstance(col, int) or col < 0:
-            raise TypeError("col should be a non-negative int")
-    else:
-        col = row
-
-    if not isinstance(offset, int):
-        raise TypeError("offset should be a  int")
-
     if not isinstance(dtype, core.VarDesc.VarType):
         dtype = convert_np_dtype_to_dtype_(dtype)
 
     if in_dygraph_mode():
+        if col is None:
+            col = row
         out = _C_ops.tril_indices(
             row, col, offset, dtype, _current_expected_place()
         )
         return out
-
-    if _in_legacy_dygraph():
-        out = _legacy_C_ops.tril_indices(
-            'rows', row, 'cols', col, 'offset', offset, "dtype", dtype
-        )
-        return out
-
     else:
+        if not isinstance(row, int) or row < 0:
+            raise TypeError("row should be a non-negative int")
+
+        if col is not None:
+            if not isinstance(col, int) or col < 0:
+                raise TypeError("col should be a non-negative int")
+        else:
+            col = row
+
+        if not isinstance(offset, int):
+            raise TypeError("offset should be a  int")
+
         helper = LayerHelper("tril_indices", **locals())
 
         out = helper.create_variable_for_type_inference(dtype=dtype)
@@ -2375,34 +2310,29 @@ def triu_indices(row, col=None, offset=0, dtype='int64'):
             # [[0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 3, 3],
             #  [0, 1, 2, 3, 0, 1, 2, 3, 1, 2, 3, 2, 3]]
     """
-    if not isinstance(row, int) or row < 0:
-        raise TypeError("row should be a non-negative int")
-
-    if col is not None:
-        if not isinstance(col, int) or col < 0:
-            raise TypeError("col should be a non-negative int")
-    else:
-        col = row
-
-    if not isinstance(offset, int):
-        raise TypeError("offset should be a int")
-
     if not isinstance(dtype, core.VarDesc.VarType):
         dtype = convert_np_dtype_to_dtype_(dtype)
 
     if in_dygraph_mode():
+        if col is None:
+            col = row
         out = _C_ops.triu_indices(
             row, col, offset, dtype, _current_expected_place()
         )
         return out
-
-    if _in_legacy_dygraph():
-        out = _legacy_C_ops.triu_indices(
-            'row', row, 'col', col, 'offset', offset, "dtype", dtype
-        )
-        return out
-
     else:
+        if not isinstance(row, int) or row < 0:
+            raise TypeError("row should be a non-negative int")
+
+        if col is not None:
+            if not isinstance(col, int) or col < 0:
+                raise TypeError("col should be a non-negative int")
+        else:
+            col = row
+
+        if not isinstance(offset, int):
+            raise TypeError("offset should be a int")
+
         helper = LayerHelper("triu_indices", **locals())
 
         out = helper.create_variable_for_type_inference(dtype=dtype)
