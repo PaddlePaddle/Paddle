@@ -1372,6 +1372,22 @@ def nll_loss(
 
     input_shape = list(input.shape)
     input_dims = len(input_shape)
+    label_shape = list(label.shape)
+    label_dims = len(label_shape)
+
+    if input_shape[-1] < 1:
+        raise ValueError(
+            "Expected num classes >= 1 (got num classes{})".format(input_shape[-1])
+        )
+
+    if input_dims - 1 != label_dims and input_dims != label_dims:
+        raise ValueError(
+            "Expected input_dims - 1 = label_dims or input_dims == label_dims\
+             (got input_dims{}, label_dims{})".format(
+                input_dims, label_dims
+            )
+        )
+
     if input_dims < 2:
         raise ValueError(
             'Expected 2 or more dimensions (got {})'.format(input_dims)
