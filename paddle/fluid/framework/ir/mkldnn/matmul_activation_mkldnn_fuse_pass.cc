@@ -362,7 +362,7 @@ REGISTER_PASS(matmul_activation_mkldnn_fuse_pass,
 REGISTER_PASS_CAPABILITY(matmul_activation_mkldnn_fuse_pass)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination()
-            .EQ("matmul", 0)
+            .LE("matmul", 1)
             .EQ("matmul_v2", 0)
             .EQ("abs", 0)
             .LE("clip", 1)

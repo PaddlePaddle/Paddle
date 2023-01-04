@@ -747,6 +747,40 @@ class MatMulOpMaker : public framework::OpProtoAndCheckerMaker {
         "(bool, default false) Indicates if MKL-DNN kernel will be used")
         .SetDefault(false)
         .AsExtra();
+    AddAttr<std::vector<int>>("fused_reshape_X",
+                              R"DOC(Shape of fused reshape of `X` input.)DOC")
+        .SetDefault({})
+        .AsExtra();
+    AddAttr<std::vector<int>>("fused_reshape_Y",
+                              R"DOC(Shape of fused reshape of `Y` input.)DOC")
+        .SetDefault({})
+        .AsExtra();
+    AddAttr<std::vector<int>>("fused_transpose_X",
+                              R"DOC(Axis of fused transpose of `X` input.)DOC")
+        .SetDefault({})
+        .AsExtra();
+    AddAttr<std::vector<int>>("fused_transpose_Y",
+                              R"DOC(Axis of fused transpose of `Y` input.)DOC")
+        .SetDefault({})
+        .AsExtra();
+    AddAttr<std::vector<int>>(
+        "fused_reshape_Out",
+        R"DOC(When MKLDNN MatMul_transpose_reshape fuse activated, "
+              "it's a shape attribute of fused reshape for `Out` output.)DOC")
+        .SetDefault({})
+        .AsExtra();
+    AddAttr<std::vector<int>>(
+        "fused_transpose_Out",
+        R"DOC(When MKLDNN MatMul_transpose_reshape fuse activated, "
+              "it's a axis attribute of fused transpose for `Out` output.)DOC")
+        .SetDefault({})
+        .AsExtra();
+    AddAttr<bool>(
+        "use_quantizer",
+        "(bool, default false) "
+        "This parameter is no longer used. Use 'mkldnn_data_type' instead.")
+        .SetDefault(false)
+        .AsExtra();
     AddAttr<std::string>(
         "mkldnn_data_type",
         "(string, default \"float32\"). Data type of mkldnn kernel")
@@ -956,3 +990,13 @@ REGISTER_OP_CUDA_KERNEL(matmul_grad_grad,
                         ops::MatMulDoubleGradKernel<phi::GPUContext, float>,
                         ops::MatMulDoubleGradKernel<phi::GPUContext, double>);
 #endif
+
+REGISTER_OP_VERSION(matmul).AddCheckpoint(
+    R"ROC(Register matmul for adding the attribute of
+       fused_reshape_Y)ROC",
+    paddle::framework::compatible::OpVersionDesc().NewAttr(
+        "fused_reshape_Y",
+        "In order to support the function of fused the input Y "
+        " and input X into the input X when "
+        "using the operator of matmul, and get raw shape of input Y.",
+        std::vector<int>{}));
