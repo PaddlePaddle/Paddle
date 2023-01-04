@@ -16,7 +16,7 @@
 
 import paddle
 from paddle import _C_ops, _legacy_C_ops
-from paddle.fluid.framework import _in_legacy_dygraph, in_dygraph_mode
+from paddle.fluid.framework import in_dygraph_mode
 
 from ..fluid.data_feeder import check_type, check_variable_and_dtype
 from ..framework import LayerHelper, core
@@ -30,6 +30,7 @@ __all__ = []
 def mean(x, axis=None, keepdim=False, name=None):
     """
     Computes the mean of the input tensor's elements along ``axis``.
+
     Args:
         x (Tensor): The input Tensor with data type float32, float64.
         axis (int|list|tuple, optional): The axis along which to perform mean
@@ -47,12 +48,16 @@ def mean(x, axis=None, keepdim=False, name=None):
             the output Tensor is squeezed in ``axis`` . Default is False.
         name (str, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
+
     Returns:
         Tensor, results of average along ``axis`` of ``x``, with the same data
         type as ``x``.
+
     Examples:
         .. code-block:: python
+
             import paddle
+
             x = paddle.to_tensor([[[1., 2., 3., 4.],
                                    [5., 6., 7., 8.],
                                    [9., 10., 11., 12.]],
@@ -139,7 +144,7 @@ def var(x, axis=None, unbiased=True, keepdim=False, name=None):
             out2 = paddle.var(x, axis=1)
             # [1.         4.33333333]
     """
-    if not paddle.in_dynamic_mode():
+    if not in_dygraph_mode():
         check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'var')
 
     u = mean(x, axis, True, name)
@@ -204,7 +209,7 @@ def std(x, axis=None, unbiased=True, keepdim=False, name=None):
             # [1.       2.081666]
 
     """
-    if not paddle.in_dynamic_mode():
+    if not in_dygraph_mode():
         check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'std')
 
     out = var(**locals())
@@ -236,17 +241,15 @@ def numel(x, name=None):
     """
     if in_dygraph_mode():
         return _C_ops.numel(x)
-    elif _in_legacy_dygraph():
-        return _legacy_C_ops.size(x)
-
-    if not isinstance(x, Variable):
-        raise TypeError("x must be a Tensor in numel")
-    helper = LayerHelper('numel', **locals())
-    out = helper.create_variable_for_type_inference(
-        dtype=core.VarDesc.VarType.INT64
-    )
-    helper.append_op(type='size', inputs={'Input': x}, outputs={'Out': out})
-    return out
+    else:
+        if not isinstance(x, Variable):
+            raise TypeError("x must be a Tensor in numel")
+        helper = LayerHelper('numel', **locals())
+        out = helper.create_variable_for_type_inference(
+            dtype=core.VarDesc.VarType.INT64
+        )
+        helper.append_op(type='size', inputs={'Input': x}, outputs={'Out': out})
+        return out
 
 
 def nanmedian(x, axis=None, keepdim=True, name=None):
@@ -324,27 +327,30 @@ def nanmedian(x, axis=None, keepdim=True, name=None):
     if len(axis) != len(set(axis)):
         raise ValueError("Axis has duplicated elements.")
 
-    if _in_legacy_dygraph():
+    if in_dygraph_mode():
         median_index, out = _legacy_C_ops.nanmedian(
             x, 'axis', axis, 'keepdim', keepdim
         )
         return out
+    else:
+        check_variable_and_dtype(
+            x,
+            'X',
+            ['int32', 'int64', 'float16', 'float32', 'float64'],
+            'nanmedian',
+        )
 
-    check_variable_and_dtype(
-        x, 'X', ['int32', 'int64', 'float16', 'float32', 'float64'], 'nanmedian'
-    )
-
-    helper = LayerHelper('nanmedian', **locals())
-    attrs = {'axis': axis, 'keepdim': keepdim}
-    out = helper.create_variable_for_type_inference(x.dtype)
-    medians = helper.create_variable_for_type_inference(x.dtype)
-    helper.append_op(
-        type='nanmedian',
-        inputs={'X': x},
-        outputs={'Out': out, 'MedianIndex': medians},
-        attrs=attrs,
-    )
-    return out
+        helper = LayerHelper('nanmedian', **locals())
+        attrs = {'axis': axis, 'keepdim': keepdim}
+        out = helper.create_variable_for_type_inference(x.dtype)
+        medians = helper.create_variable_for_type_inference(x.dtype)
+        helper.append_op(
+            type='nanmedian',
+            inputs={'X': x},
+            outputs={'Out': out, 'MedianIndex': medians},
+            attrs=attrs,
+        )
+        return out
 
 
 def median(x, axis=None, keepdim=False, name=None):
@@ -527,7 +533,7 @@ def _compute_quantile(x, q, axis=None, keepdim=False, ignore_nan=False):
     for q_num in q:
         if q_num < 0 or q_num > 1:
             raise ValueError("q should be in range [0, 1]")
-        if paddle.in_dynamic_mode():
+        if in_dygraph_mode():
             q_num = paddle.to_tensor(q_num, dtype='float64')
         if ignore_nan:
             indices.append(q_num * (valid_counts - 1))
