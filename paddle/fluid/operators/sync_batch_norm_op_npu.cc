@@ -344,7 +344,7 @@ class SyncBatchNormNPUKernel : public framework::OpKernel<T> {
                           x_dims.size()));
 
     int N, C, H, W, D;
-    ExtractNCWHD(x_dims, layout, &N, &C, &H, &W, &D);
+    phi::funcs::ExtractNCWHD(x_dims, layout, &N, &C, &H, &W, &D);
 
     int x_numel = x->numel();
     auto place = ctx.GetPlace();
@@ -598,7 +598,7 @@ class SyncBatchNormNPUGradKernel : public framework::OpKernel<T> {
     }
 
     int N, C, H, W, D;
-    ExtractNCWHD(x->dims(), layout, &N, &C, &H, &W, &D);
+    phi::funcs::ExtractNCWHD(x->dims(), layout, &N, &C, &H, &W, &D);
 
     int x_numel = x->numel();
     auto place = ctx.GetPlace();

@@ -30,7 +30,7 @@ import paddle
 import paddle.distributed as dist
 from paddle.distributed import ParallelMode, fleet
 from paddle.fluid import core
-from paddle.fluid.clip import ClipGradByGlobalNorm
+from paddle.nn import ClipGradByGlobalNorm
 from paddle.optimizer import Optimizer
 
 HybridParallelClipGrad = (
@@ -579,6 +579,13 @@ class GroupShardedOptimizerStage2(Optimizer):
                 task.wait()
 
         return __impl__
+
+    def set_lr(self, lr):
+        super().set_lr(lr)
+        self._optim.set_lr(lr)
+
+    def get_lr(self):
+        return self._optim.get_lr()
 
     @paddle.autograd.no_grad()
     def _broadcast_params_overlap_forward(self):

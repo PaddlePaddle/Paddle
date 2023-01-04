@@ -20,7 +20,7 @@ limitations under the License. */
 #include "paddle/phi/api/include/tensor.h"
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-#include "paddle/fluid/distributed/collective/ProcessGroup.h"
+#include "paddle/fluid/distributed/collective/process_group.h"
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #endif
@@ -134,4 +134,7 @@ REGISTER_OP_CUDA_KERNEL(c_concat,
                         ops::CConcatOpCUDAKernel<double>,
                         ops::CConcatOpCUDAKernel<int>,
                         ops::CConcatOpCUDAKernel<int64_t>,
+#if NCCL_VERSION_CODE >= 21000
+                        ops::CConcatOpCUDAKernel<plat::bfloat16>,
+#endif
                         ops::CConcatOpCUDAKernel<plat::float16>);

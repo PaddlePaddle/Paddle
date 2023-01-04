@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import paddle
 from paddle.fluid import (
     core,
     default_main_program,
@@ -68,7 +69,7 @@ class OptimizerWithMixedPrecision:
         if isinstance(self._optimizer._learning_rate, float):
             self._optimizer._learning_rate_map[
                 default_main_program()
-            ] = layers.create_global_var(
+            ] = paddle.static.create_global_var(
                 name=unique_name.generate("learning_rate"),
                 shape=[1],
                 value=float(self._optimizer._learning_rate),

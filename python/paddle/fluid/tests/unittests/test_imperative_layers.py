@@ -15,11 +15,10 @@
 import unittest
 
 import paddle.nn as nn
-from paddle.fluid.framework import _test_eager_guard
 
 
 class TestLayerPrint(unittest.TestCase):
-    def func_test_layer_str(self):
+    def test_layer_str(self):
         module = nn.ELU(0.2)
         self.assertEqual(str(module), 'ELU(alpha=0.2)')
 
@@ -384,11 +383,6 @@ class TestLayerPrint(unittest.TestCase):
             '(5): MaxPool3D(kernel_size=2, stride=2, padding=0)\n  '
             '(6): GELU(approximate=True)\n)',
         )
-
-    def test_layer_str(self):
-        with _test_eager_guard():
-            self.func_test_layer_str()
-        self.func_test_layer_str()
 
 
 if __name__ == '__main__':

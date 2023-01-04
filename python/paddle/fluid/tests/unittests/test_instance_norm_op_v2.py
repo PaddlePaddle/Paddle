@@ -20,7 +20,6 @@ import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid import Program, program_guard
-from paddle.fluid.framework import _test_eager_guard
 
 
 class TestInstanceNorm(unittest.TestCase):
@@ -117,11 +116,6 @@ class TestInstanceNorm(unittest.TestCase):
             y1 = compute_v1(x)
             y2 = compute_v2(x)
             np.testing.assert_allclose(y1, y2, rtol=1e-05)
-
-    def test_eager_api(self):
-        with _test_eager_guard():
-            self.test_dygraph()
-            self.test_error()
 
 
 if __name__ == '__main__':

@@ -89,7 +89,7 @@ def init_process_groups(group_map, rank):
     # TODO should instantiate global group first
     all_process_groups = get_all_process_groups()
     for process_group in all_process_groups:
-        if process_group.id == 0 or rank not in process_group.ranks:
+        if rank not in process_group.ranks:
             continue
         print(process_group)
         process_group.instantiate()
@@ -173,10 +173,11 @@ def init_comm(profile_ctx):
     genv = _get_global_env()
     genv = dist_env
     print(
-        "current process rank: {}, device_id: {}, ip: {}.",
-        genv.rank,
-        genv.device_id,
-        genv.current_endpoint,
+        "current process rank: {}, device_id: {}, ip: {}.".format(
+            genv.rank,
+            genv.device_id,
+            genv.current_endpoint,
+        )
     )
 
     # init nccl comm
@@ -231,13 +232,12 @@ def profiler(args):
 
     exe = get_executor()
 
-    exe.run(startup_program)
-
-    # profile main
-    duration = 0
-    eval_step = 0
-    data_loader._inner_dataloader.start()
     try:
+        exe.run(startup_program)
+        # profile main
+        duration = 0
+        eval_step = 0
+        data_loader._inner_dataloader.start()
         while eval_step < args.profile_end_step:
             start_time = time.time()
 

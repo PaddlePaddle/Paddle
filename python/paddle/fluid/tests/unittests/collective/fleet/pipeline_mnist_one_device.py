@@ -59,11 +59,11 @@ def cnn_model(data):
     param_shape = [reduce(lambda a, b: a * b, input_shape[1:], 1)] + [SIZE]
     scale = (2.0 / (param_shape[0] ** 2 * SIZE)) ** 0.5
 
-    predict = fluid.layers.fc(
-        input=conv_pool_2,
+    predict = paddle.static.nn.fc(
+        x=conv_pool_2,
         size=SIZE,
-        act="softmax",
-        param_attr=fluid.param_attr.ParamAttr(
+        activation="softmax",
+        weight_attr=fluid.param_attr.ParamAttr(
             initializer=fluid.initializer.Constant(value=0.01)
         ),
     )
@@ -92,7 +92,9 @@ class TestDistMnist2x2(TestDistRunnerBase):
             # Train program
             predict = cnn_model(images)
         with fluid.device_guard("gpu:0"):
-            cost = fluid.layers.cross_entropy(input=predict, label=label)
+            cost = paddle.nn.functional.cross_entropy(
+                input=predict, label=label, reduction='none', use_softmax=False
+            )
             avg_cost = paddle.mean(x=cost)
 
         # Evaluator

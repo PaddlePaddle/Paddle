@@ -35,7 +35,7 @@ class TestMul(IPUOpTest):
             return True
 
     def set_test_op(self):
-        self.op = paddle.fluid.layers.elementwise_mul
+        self.op = paddle.tensor.math._multiply_with_axis
 
     def set_feed_attr(self):
         self.feed_shape = [x.shape for x in self.feed_fp32.values()]

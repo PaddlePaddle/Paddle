@@ -120,5 +120,4 @@ class TestPureFP16(TestMNIST):
 
 
 if __name__ == '__main__':
-    with paddle.fluid.framework._test_eager_guard():
-        unittest.main()
+    unittest.main()

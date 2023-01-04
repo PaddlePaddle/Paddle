@@ -12,10 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
-
-os.environ['FLAGS_enable_eager_mode'] = '1'
-
 import unittest
 
 from test_parallel_dygraph_dataparallel import TestMultipleGpus
@@ -28,7 +24,7 @@ class TestDygraphGroupSharded(TestMultipleGpus):
         self.run_mnist_2gpu('dygraph_group_sharded_api_eager.py')
 
     # check stage3 for some functions.
-    def test_dygraph_group_sharded(self):
+    def test_dygraph_group_sharded_stage3(self):
         self.run_mnist_2gpu('dygraph_group_sharded_stage3_eager.py')
 
 

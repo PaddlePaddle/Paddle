@@ -14,8 +14,8 @@
 
 #include "paddle/fluid/framework/ir/mkldnn/reshape_transpose_matmul_mkldnn_fuse_pass.h"
 #include "paddle/fluid/framework/op_version_registry.h"
-#include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/string/pretty_log.h"
+#include "paddle/phi/core/enforce.h"
+#include "paddle/utils/string/pretty_log.h"
 
 namespace paddle {
 namespace framework {
@@ -123,6 +123,15 @@ void ReshapeTransposeMatmulMkldnnFusePass::Fuse(
       return;
     }
 
+    if (matmul_type == "matmul") {
+      matmul_desc->SetType("matmul_v2");
+      matmul_desc->SetAttr("trans_x", matmul_desc->GetAttr("transpose_X"));
+      matmul_desc->SetAttr("trans_y", matmul_desc->GetAttr("transpose_Y"));
+      auto matmul_alpha = matmul_desc->GetAttrIfExists<float>("alpha");
+      if (matmul_alpha != 1.0f) {
+        matmul_desc->SetAttr("alpha", matmul_alpha);
+      }
+    }
     matmul_desc->SetInput(matmul_input_name, {(reshape_in)->Name()});
     matmul_desc->SetAttr("fused_reshape_" + matmul_input_name, reshape_shape);
     matmul_desc->SetAttr("fused_transpose_" + matmul_input_name,

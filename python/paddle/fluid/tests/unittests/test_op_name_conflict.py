@@ -16,37 +16,35 @@ import unittest
 
 import numpy as np
 
+import paddle
 import paddle.fluid as fluid
 
 
 class TestOpNameConflict(unittest.TestCase):
     def test_conflict(self):
+        paddle.enable_static()
         main = fluid.Program()
         startup = fluid.Program()
         with fluid.unique_name.guard():
             with fluid.program_guard(main, startup):
                 x = fluid.data(name="x", shape=[1], dtype='float32')
                 y = fluid.data(name="y", shape=[1], dtype='float32')
-                z = fluid.data(name="z", shape=[1], dtype='float32')
 
-                m = fluid.layers.elementwise_add(x, y, name="add")
-                n = fluid.layers.elementwise_add(y, z, name="add")
-                p = m + n
+                m = paddle.log2(x, name="log2")
+                n = paddle.log2(y, name="log2")
 
                 place = fluid.CPUPlace()
                 exe = fluid.Executor(place)
-                m_v, n_v, p_v = exe.run(
+                m_v, n_v = exe.run(
                     feed={
-                        "x": np.ones((1), "float32") * 2,
-                        "y": np.ones((1), "float32") * 3,
-                        "z": np.ones((1), "float32") * 5,
+                        "x": np.ones((1), "float32") * 1,
+                        "y": np.ones((1), "float32") * 2,
                     },
-                    fetch_list=[m, n, p],
+                    fetch_list=[m, n],
                 )
 
-                self.assertEqual(m_v[0], 5.0)
-                self.assertEqual(n_v[0], 8.0)
-                self.assertEqual(p_v[0], 13.0)
+                self.assertEqual(m_v[0], 0.0)
+                self.assertEqual(n_v[0], 1.0)
 
 
 if __name__ == '__main__':

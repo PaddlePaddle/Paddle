@@ -18,9 +18,9 @@ import numpy as np
 
 import paddle
 
-from . import _C_ops, _legacy_C_ops
+from . import _C_ops
 from .fluid.data_feeder import check_variable_and_dtype
-from .fluid.framework import _in_legacy_dygraph, in_dygraph_mode
+from .fluid.framework import in_dygraph_mode
 from .fluid.layer_helper import LayerHelper
 from .tensor.attribute import is_floating_point, is_integer
 from .tensor.creation import _complex_to_real_dtype, _real_to_complex_dtype
@@ -530,26 +530,27 @@ def fftn(x, s=None, axes=None, norm="backward", name=None):
             x = paddle.meshgrid(arr, arr, arr)[1]
 
             fftn_xp = paddle.fft.fftn(x, axes=(1, 2))
-            print(fftn_xp.numpy())
-            # [[[24.+0.j  0.+0.j  0.+0.j  0.-0.j]
-            #   [-8.+8.j  0.+0.j  0.+0.j  0.-0.j]
-            #   [-8.+0.j  0.+0.j  0.+0.j  0.-0.j]
-            #   [-8.-8.j  0.+0.j  0.+0.j  0.-0.j]]
+            print(fftn_xp)
+            # Tensor(shape=[4, 4, 4], dtype=complex128, place=Place(gpu:0), stop_gradient=True,
+            #        [[[(24+0j),  0j    ,  0j    ,  -0j   ],
+            #          [(-8+8j),  0j    ,  0j    ,  -0j   ],
+            #          [(-8+0j),  0j    ,  0j    ,  -0j   ],
+            #          [(-8-8j),  0j    ,  0j    ,  -0j   ]],
 
-            #  [[24.+0.j  0.+0.j  0.+0.j  0.-0.j]
-            #   [-8.+8.j  0.+0.j  0.+0.j  0.-0.j]
-            #   [-8.+0.j  0.+0.j  0.+0.j  0.-0.j]
-            #   [-8.-8.j  0.+0.j  0.+0.j  0.-0.j]]
+            #         [[(24+0j),  0j    ,  0j    ,  -0j   ],
+            #          [(-8+8j),  0j    ,  0j    ,  -0j   ],
+            #          [(-8+0j),  0j    ,  0j    ,  -0j   ],
+            #          [(-8-8j),  0j    ,  0j    ,  -0j   ]],
 
-            #  [[24.+0.j  0.+0.j  0.+0.j  0.-0.j]
-            #   [-8.+8.j  0.+0.j  0.+0.j  0.-0.j]
-            #   [-8.+0.j  0.+0.j  0.+0.j  0.-0.j]
-            #   [-8.-8.j  0.+0.j  0.+0.j  0.-0.j]]
+            #         [[(24+0j),  0j    ,  0j    ,  -0j   ],
+            #          [(-8+8j),  0j    ,  0j    ,  -0j   ],
+            #          [(-8+0j),  0j    ,  0j    ,  -0j   ],
+            #          [(-8-8j),  0j    ,  0j    ,  -0j   ]],
 
-            #  [[24.+0.j  0.+0.j  0.+0.j  0.-0.j]
-            #   [-8.+8.j  0.+0.j  0.+0.j  0.-0.j]
-            #   [-8.+0.j  0.+0.j  0.+0.j  0.-0.j]
-            #   [-8.-8.j  0.+0.j  0.+0.j  0.-0.j]]]
+            #         [[(24+0j),  0j    ,  0j    ,  -0j   ],
+            #          [(-8+8j),  0j    ,  0j    ,  -0j   ],
+            #          [(-8+0j),  0j    ,  0j    ,  -0j   ],
+            #          [(-8-8j),  0j    ,  0j    ,  -0j   ]]])
     """
     if is_integer(x) or is_floating_point(x):
         return fftn_r2c(
@@ -1444,9 +1445,6 @@ def fft_c2c(x, n, axis, norm, forward, name):
     check_variable_and_dtype(x, 'x', ['complex64', 'complex128'], op_type)
     if in_dygraph_mode():
         out = _C_ops.fft_c2c(x, axes, norm, forward)
-    elif _in_legacy_dygraph():
-        attrs = ('axes', axes, 'normalization', norm, 'forward', forward)
-        out = getattr(_legacy_C_ops, op_type)(x, *attrs)
     else:
         inputs = {
             'X': [x],
@@ -1479,18 +1477,6 @@ def fft_r2c(x, n, axis, norm, forward, onesided, name):
 
     if in_dygraph_mode():
         out = _C_ops.fft_r2c(x, axes, norm, forward, onesided)
-    elif _in_legacy_dygraph():
-        attrs = (
-            'axes',
-            axes,
-            'normalization',
-            norm,
-            'forward',
-            forward,
-            'onesided',
-            onesided,
-        )
-        out = getattr(_legacy_C_ops, op_type)(x, *attrs)
     else:
         inputs = {
             'X': [x],
@@ -1535,21 +1521,6 @@ def fft_c2r(x, n, axis, norm, forward, name):
             out = _C_ops.fft_c2r(x, axes, norm, forward, n)
         else:
             out = _C_ops.fft_c2r(x, axes, norm, forward, 0)
-    elif _in_legacy_dygraph():
-        if n is not None:
-            attrs = (
-                'axes',
-                axes,
-                'normalization',
-                norm,
-                'forward',
-                forward,
-                'last_dim_size',
-                n,
-            )
-        else:
-            attrs = ('axes', axes, 'normalization', norm, 'forward', forward)
-        out = getattr(_legacy_C_ops, op_type)(x, *attrs)
     else:
         inputs = {
             'X': [x],
@@ -1606,9 +1577,6 @@ def fftn_c2c(x, s, axes, norm, forward, name):
 
     if in_dygraph_mode():
         out = _C_ops.fft_c2c(x, axes, norm, forward)
-    elif _in_legacy_dygraph():
-        attrs = ('axes', axes, 'normalization', norm, 'forward', forward)
-        out = getattr(_legacy_C_ops, op_type)(x, *attrs)
     else:
         inputs = {
             'X': [x],
@@ -1660,18 +1628,6 @@ def fftn_r2c(x, s, axes, norm, forward, onesided, name):
 
     if in_dygraph_mode():
         out = _C_ops.fft_r2c(x, axes, norm, forward, onesided)
-    elif _in_legacy_dygraph():
-        attrs = (
-            'axes',
-            axes,
-            'normalization',
-            norm,
-            'forward',
-            forward,
-            'onesided',
-            onesided,
-        )
-        out = getattr(_legacy_C_ops, op_type)(x, *attrs)
     else:
         inputs = {
             'X': [x],
@@ -1738,21 +1694,6 @@ def fftn_c2r(x, s, axes, norm, forward, name):
             out = _C_ops.fft_c2r(x, axes, norm, forward, s[-1])
         else:
             out = _C_ops.fft_c2r(x, axes, norm, forward, 0)
-    elif _in_legacy_dygraph():
-        if s:
-            attrs = (
-                'axes',
-                axes,
-                'normalization',
-                norm,
-                'forward',
-                forward,
-                'last_dim_size',
-                s[-1],
-            )
-        else:
-            attrs = ('axes', axes, 'normalization', norm, 'forward', forward)
-        out = getattr(_legacy_C_ops, op_type)(x, *attrs)
     else:
         inputs = {
             'X': [x],

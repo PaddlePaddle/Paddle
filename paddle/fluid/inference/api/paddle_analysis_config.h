@@ -161,7 +161,7 @@ struct PD_INFER_DECL AnalysisConfig {
   explicit AnalysisConfig(const std::string& prog_file,
                           const std::string& params_file);
   ///
-  /// \brief Precision of inference in TensorRT.
+  /// \brief Precision of inference.
   ///
   enum class Precision {
     kFloat32 = 0,  ///< fp32
@@ -394,6 +394,12 @@ struct PD_INFER_DECL AnalysisConfig {
   /// \return bool Whether the GPU is turned on.
   ///
   bool use_gpu() const { return use_gpu_; }
+  ///
+  /// \brief When running the fp16 model on Nvidia GPU, you can also try running
+  /// your model on cutlass.
+  ///
+  void Exp_EnableUseCutlass();
+  ///
   ///
   /// \brief A boolean state telling whether the XPU is turned on.
   ///
@@ -1009,12 +1015,25 @@ struct PD_INFER_DECL AnalysisConfig {
   /// interface is in the experimental stage and may change in the future. Note
   /// that the blacklist must be the same as the model conversion blacklist.
   ///
-  void Exp_DisableMixedInferOps(
+  void Exp_DisableMixedPrecisionOps(
       const std::unordered_set<std::string>& black_list);
 
   void SetApplyOptim(bool value) { apply_optim_ = value; }
 
   void SetSkipLoadParams(bool value) { skip_load_params_ = value; }
+
+  ///
+  /// \brief Enable use cinn compiler optimization.
+  ///
+  void Exp_EnableCINNCompiler();
+
+  ///
+  /// \brief A boolean state telling whether the CINN compiler optimization is
+  /// turned on.
+  ///
+  /// \return bool Whether the CINN compiler optimization is turned on.
+  ///
+  bool cinn_compiler_enabled() const;
 
  protected:
   // Update the config.
@@ -1034,9 +1053,10 @@ struct PD_INFER_DECL AnalysisConfig {
 
   // GPU related.
   bool use_gpu_{false};
+  bool use_cutlass_{false};
   int gpu_device_id_{0};
   uint64_t memory_pool_init_size_mb_{100};  // initial size is 100MB.
-  bool enable_gpu_half_{false};
+  bool enable_gpu_mixed_{false};
   bool thread_local_stream_{false};
 
   bool use_cudnn_{false};
@@ -1142,6 +1162,9 @@ struct PD_INFER_DECL AnalysisConfig {
   std::vector<std::string> lite_ops_filter_;
   Precision lite_precision_mode_;
   bool lite_zero_copy_;
+
+  // CINN compiler related.
+  bool use_cinn_compiler_{false};
 
   // XPU related.
   bool use_xpu_{false};

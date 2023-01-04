@@ -256,6 +256,16 @@ def add_to_collection(collection_name, value, name=None):
 
 
 def fetch(tensor, name=None, logging=False):
+    if isinstance(tensor, paddle.fluid.framework.Variable):
+        tensor = tensor.name
+    elif isinstance(tensor, str):
+        tensor = tensor
+    else:
+        raise TypeError(
+            "Only support fetch `Variable` or `str`[`Variable`'s name], but got `{}`".format(
+                type(tensor)
+            )
+        )
     add_to_collection(CollectionNames.FETCHES, tensor, name)
     if logging:
         add_to_collection(CollectionNames.LOGGING, tensor, name)

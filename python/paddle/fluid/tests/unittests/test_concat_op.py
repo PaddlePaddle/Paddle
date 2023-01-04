@@ -22,7 +22,6 @@ import paddle
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
 from paddle.fluid import Program, core, program_guard
-from paddle.fluid.framework import _test_eager_guard
 from paddle.fluid.tests.unittests.op_test import (
     OpTest,
     convert_float_to_uint16,
@@ -354,12 +353,6 @@ class TestConcatAPI(unittest.TestCase):
         self.assertEqual((out1.numpy() == np_out1).all(), True)
         self.assertEqual((out2.numpy() == np_out2).all(), True)
 
-    def test_eager(self):
-        with _test_eager_guard():
-            self.test_api()
-            self.test_fluid_api()
-            self.test_imperative()
-
     def test_errors(self):
         with program_guard(Program(), Program()):
             # The item in input must be Variable.
@@ -420,7 +413,7 @@ class TestConcatAPIWithLoDTensorArray(unittest.TestCase):
                 )
 
                 for i in range(self.iter_num):
-                    fluid.layers.array_write(input, zero + i, tensor_array)
+                    paddle.tensor.array_write(input, zero + i, tensor_array)
 
                 self.out_var = fluid.layers.concat(tensor_array, axis=self.axis)
         else:
@@ -434,7 +427,7 @@ class TestConcatAPIWithLoDTensorArray(unittest.TestCase):
 
                 for i in range(self.iter_num):
                     # Api array_write is not supported in paddle 2.0 yet.
-                    fluid.layers.array_write(input, zero + i, tensor_array)
+                    paddle.tensor.array_write(input, zero + i, tensor_array)
 
                 self.out_var = paddle.concat(tensor_array, axis=self.axis)
 

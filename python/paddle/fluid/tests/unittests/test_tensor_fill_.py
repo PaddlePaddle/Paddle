@@ -18,14 +18,13 @@ import numpy as np
 
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.framework import _test_eager_guard
 
 
 class TensorFill_Test(unittest.TestCase):
     def setUp(self):
         self.shape = [32, 32]
 
-    def func_test_tensor_fill_true(self):
+    def test_tensor_fill_true(self):
         typelist = ['float32', 'float64', 'int32', 'int64', 'float16']
         places = [fluid.CPUPlace()]
         if fluid.core.is_compiled_with_cuda():
@@ -49,12 +48,8 @@ class TensorFill_Test(unittest.TestCase):
                 tensor.fill_(var)  # var type is basic type in typelist
                 self.assertEqual((tensor.numpy() == target).all(), True)
 
-    def test_tensor_fill_true(self):
-        with _test_eager_guard():
-            self.func_test_tensor_fill_true()
-        self.func_test_tensor_fill_true()
-
-    def func_test_tensor_fill_backward(self):
+    def test_tensor_fill_backward(self):
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         typelist = ['float32']
         places = [fluid.CPUPlace()]
         if fluid.core.is_compiled_with_cuda():
@@ -79,25 +74,14 @@ class TensorFill_Test(unittest.TestCase):
                 loss.backward()
 
                 self.assertEqual((y.grad.numpy() == 0).all().item(), True)
-
-    def test_tensor_fill_backward(self):
-        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
-        with _test_eager_guard():
-            self.func_test_tensor_fill_backward()
-        self.func_test_tensor_fill_backward()
         fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
-    def func_test_errors(self):
+    def test_errors(self):
         def test_list():
             x = paddle.to_tensor([2, 3, 4])
             x.fill_([1])
 
         self.assertRaises(TypeError, test_list)
-
-    def test_errors(self):
-        with _test_eager_guard():
-            self.func_test_errors()
-        self.func_test_errors()
 
 
 if __name__ == '__main__':

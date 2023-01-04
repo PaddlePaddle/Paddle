@@ -22,7 +22,9 @@ def add_fn(x):
 
 
 def loss_fn(x, lable):
-    loss = fluid.layers.cross_entropy(x, lable)
+    loss = paddle.nn.functional.cross_entropy(
+        x, lable, reduction='none', use_softmax=False
+    )
     return loss
 
 
@@ -45,7 +47,9 @@ def dyfunc_with_if_else(x_v, label=None):
         x_v = x_v + 1
     # plain if in python
     if label is not None:
-        loss = fluid.layers.cross_entropy(x_v, label)
+        loss = paddle.nn.functional.cross_entropy(
+            x_v, label, reduction='none', use_softmax=False
+        )
         return loss
     return x_v
 
@@ -58,7 +62,7 @@ def dyfunc_with_if_else2(x, col=100):
         # col = -1
         col = fluid.layers.fill_constant(shape=[1], value=-1, dtype="int64")
     if paddle.mean(x).numpy()[0] > x.numpy()[row][col]:
-        y = fluid.layers.relu(x)
+        y = paddle.nn.functional.relu(x)
     else:
         x_pow = paddle.pow(x, 2)
         y = paddle.tanh(x_pow)
@@ -85,7 +89,7 @@ def dyfunc_with_if_else3(x):
         m = x + 2
         n = x + 3
         return q, x, y, z
-    q, x, y, z = fluid.layers.cond(paddle.mean(x)[0] < 5, lambda :
+    q, x, y, z = paddle.static.nn.cond(paddle.mean(x)[0] < 5, lambda :
         paddle.jit.dy2static.convert_call(true_fn_0)(q, x, y),
         lambda : paddle.jit.dy2static.convert_call(false_fn_0)(q,
         x, y))
@@ -159,7 +163,7 @@ def nested_if_else(x_v):
         w = fluid.layers.fill_constant([feat_size], dtype='float32', value=10)
         if y.numpy()[0] < 10:
             tmp = y * w
-            y = fluid.layers.relu(tmp)
+            y = paddle.nn.functional.relu(tmp)
             if paddle.mean(y).numpy()[0] < batch_size:
                 y = paddle.abs(y)
             else:
@@ -269,7 +273,7 @@ class NetWithControlFlowIf(fluid.dygraph.Layer):
                 # Create new var, but is not used.
                 x = 10
                 tmp = y * self.constant_vars['w']
-                y = fluid.layers.relu(tmp)
+                y = paddle.nn.functional.relu(tmp)
                 # Nested `if/else`
                 if y.numpy()[-1] < self.alpha:
                     # Modify variable of class
@@ -302,7 +306,9 @@ def if_with_and_or(x_v, label=None):
         x_v = x_v + 1
 
     if label is not None:
-        loss = fluid.layers.cross_entropy(x_v, label)
+        loss = paddle.nn.functional.cross_entropy(
+            x_v, label, reduction='none', use_softmax=False
+        )
         return loss
     return x_v
 

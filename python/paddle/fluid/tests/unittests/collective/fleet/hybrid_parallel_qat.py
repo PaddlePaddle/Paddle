@@ -23,7 +23,7 @@ import paddle.distributed.fleet as fleet
 import paddle.fluid as fluid
 import paddle.nn as nn
 from paddle.distributed.utils.launch_utils import find_free_ports, get_cluster
-from paddle.fluid.contrib.slim.quantization import ImperativeQuantAware
+from paddle.quantization import ImperativeQuantAware
 
 
 def set_random_seed(seed, dp_id, rank_id):

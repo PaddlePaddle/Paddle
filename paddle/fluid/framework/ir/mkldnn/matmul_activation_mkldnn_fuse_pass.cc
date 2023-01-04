@@ -15,8 +15,8 @@
 #include "paddle/fluid/framework/ir/mkldnn/matmul_activation_mkldnn_fuse_pass.h"
 
 #include "paddle/fluid/framework/op_version_registry.h"
-#include "paddle/fluid/platform/mkldnn_reuse.h"
-#include "paddle/fluid/string/pretty_log.h"
+#include "paddle/phi/backends/onednn/onednn_reuse.h"
+#include "paddle/utils/string/pretty_log.h"
 
 namespace paddle {
 namespace framework {
@@ -76,6 +76,16 @@ void MatmulActivationMkldnnFusePass::FuseMatmulAct(
           PADDLE_GET_CONST(bool, activation->Op()->GetAttr("approximate"))
               ? "gelu_tanh"
               : "gelu_erf";
+    }
+
+    if (matmul_type == "matmul") {
+      matmul_op->SetType("matmul_v2");
+      matmul_op->SetAttr("trans_x", matmul_op->GetAttr("transpose_X"));
+      matmul_op->SetAttr("trans_y", matmul_op->GetAttr("transpose_Y"));
+      auto matmul_alpha = matmul_op->GetAttrIfExists<float>("alpha");
+      if (matmul_alpha != 1.0f) {
+        matmul_op->SetAttr("alpha", matmul_alpha);
+      }
     }
     matmul_op->SetAttr("fuse_activation", act_type);
     matmul_op->SetOutput("Out", {activation_out->Name()});

@@ -113,7 +113,7 @@ class XPUTestResNetBasicBlockOp(XPUOpTestWrapper):
                 bias_attr=None,
                 data_format='NCHW',
             )
-            self.bn1 = nn.BatchNorm(
+            self.bn1 = paddle.nn.BatchNorm(
                 self.out_channels,
                 act='relu',
                 param_attr=bn1_weight,
@@ -130,7 +130,7 @@ class XPUTestResNetBasicBlockOp(XPUOpTestWrapper):
                 bias_attr=None,
                 data_format='NCHW',
             )
-            self.bn2 = nn.BatchNorm(
+            self.bn2 = paddle.nn.BatchNorm(
                 self.out_channels,
                 act=None,
                 param_attr=bn2_weight,
@@ -147,7 +147,7 @@ class XPUTestResNetBasicBlockOp(XPUOpTestWrapper):
                 bias_attr=None,
                 data_format='NCHW',
             )
-            self.bn3 = nn.BatchNorm(
+            self.bn3 = paddle.nn.BatchNorm(
                 self.out_channels,
                 act=None,
                 param_attr=bn3_weight,

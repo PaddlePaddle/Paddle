@@ -20,7 +20,7 @@
 
 #include "paddle/fluid/distributed/store/tcp_utils.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/flags.h"
+#include "paddle/phi/core/flags.h"
 
 namespace paddle {
 namespace distributed {
