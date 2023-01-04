@@ -147,7 +147,6 @@ function make_unbuntu18_cu117_dockerfile(){
 function main() {
   make_ubuntu_dockerfile
   make_ubuntu_trt7_dockerfile
-  make_centos_dockerfile
   make_cinn_dockerfile
   make_ce_framework_dockcerfile
   make_unbuntu18_cu117_dockerfile
