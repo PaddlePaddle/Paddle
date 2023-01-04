@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import paddle
-from paddle.fluid import core
 from paddle.nn import Layer
 from paddle.nn import functional as F
 
@@ -29,10 +28,7 @@ __all__ = []
 
 
 def is_fused_matmul_bias_supported():
-    if paddle.is_compiled_with_cuda() and not paddle.is_compiled_with_rocm():
-        return hasattr(core.ops, 'fused_gemm_epilogue')
-    else:
-        return False
+    return False
 
 
 class VocabParallelEmbedding(Layer):
