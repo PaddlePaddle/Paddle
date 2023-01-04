@@ -16,11 +16,10 @@
 import paddle
 from paddle import _C_ops
 
-from ...fluid import unique_name
+from ...fluid import framework, unique_name
 from ...fluid.data_feeder import check_variable_and_dtype
 from ...fluid.framework import _current_expected_place, in_dygraph_mode
 from ...fluid.initializer import Initializer
-from . import framework
 
 __all__ = []
 
