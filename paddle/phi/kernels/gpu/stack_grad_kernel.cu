@@ -50,7 +50,7 @@ __global__ void UnStackHelperCUDAKernel(const T* __restrict__ input,
       return;
     }
     IndexT output_ind = i * each_dim_size * suf_dim_size +
-                         (j % each_dim_size) * suf_dim_size + k;
+                        (j % each_dim_size) * suf_dim_size + k;
     *(output + output_ind) = input[offset];
   }
 }
@@ -59,24 +59,40 @@ template <typename T, typename IndexT>
 __global__ void StackGradKernelForLastDim(const T* __restrict__ in_data,
                                           const IndexT cols,
                                           const IndexT rows,
-                                          const IndexT tile_num_y,
+                                          const IndexT tile_x_num,
                                           T** out_datas) {
   constexpr int buffer_size = 512;
   __shared__ T s_buf[buffer_size];
 
-  for (IndexT tile_y = blockIdx.y; tile_y < tile_num_y; tile_y += gridDim.y) {
-    IndexT row_idx = tile_y * blockDim.y + threadIdx.y;
-    IndexT col_idx = blockIdx.x * blockDim.x + threadIdx.x;
-    
+  for (IndexT tile_x = blockIdx.x; tile_x < tile_x_num; tile_x += gridDim.x) {
+    IndexT row_idx = tile_x * blockDim.x + threadIdx.x;
+    IndexT col_idx = blockIdx.y * blockDim.y + threadIdx.y;
+
     if (col_idx < cols && row_idx < rows) {
-      int s_idx = threadIdx.x * blockDim.y + threadIdx.y;
+      int s_idx = threadIdx.y * blockDim.x + threadIdx.x;
       T data = in_data[row_idx * cols + col_idx];
       s_buf[s_idx] = data;
       __syncthreads();
-      
-      int out_idx = threadIdx.x + blockIdx.x * blockDim.x;
-      if (out_datas[threadIdx.x] == nullptr) {
+
+      IndexT in_idx = row_idx * cols + col_idx;
+      int out_idx = threadIdx.y + blockIdx.y * blockDim.y;
+      if (out_datas[out_idx] != nullptr) {
         out_datas[out_idx][row_idx] = s_buf[s_idx];
+        printf(
+            "cols = %d,\t rows = %d,\t row_idx = %d,\t col_idx = %d,\t in_idx "
+            "= %d,\t out_idx = %d,\t blockDim.x = %d,\t blockDim.y = %d,\t "
+            "out_data[%d][%d]=%f\n",
+            cols,
+            rows,
+            row_idx,
+            col_idx,
+            in_idx,
+            out_idx,
+            blockDim.x,
+            blockDim.y,
+            out_idx,
+            row_idx,
+            out_datas[out_idx][row_idx]);
       }
     }
   }
@@ -93,10 +109,10 @@ void StackGradKernel(const Context& dev_ctx,
   PADDLE_ENFORCE_EQ(num,
                     x_grad.size(),
                     phi::errors::InvalidArgument(
-                    "Output x_grad size should be equal to num, but"
-                    " received num is:%d x_grad size is:%d.",
-                    num,
-                    x_grad.size()));
+                        "Output x_grad size should be equal to num, but"
+                        " received num is:%d x_grad size is:%d.",
+                        num,
+                        x_grad.size()));
   auto dy_data = out.data<T>();
   bool use_int32 = out.numel() < std::numeric_limits<int32_t>::max();
 
@@ -124,28 +140,44 @@ void StackGradKernel(const Context& dev_ctx,
                        reinterpret_cast<void*>(outputs.data()),
                        outputs.size() * sizeof(T*),
                        dev_ctx.stream());
-
   if (axis == (dy_dims.size() - 1)) {
     constexpr int threads = 512;
-    int tid_x = std::min(kMaxOut, num);
-    int tid_y = tid_x < kMaxOut ? threads / backends::gpu::RoundToNextHighPowOfTwo(tid_x) : kWarpSize;
-    tid_y = std::min(static_cast<int>(backends::gpu::RoundToNextHighPowOfTwo(dy_pre)), tid_y);
-    int bid_x = num > kMaxOut ? backends::gpu::DivUp<int>(num, kMaxOut): 1;
-    int tile_y_num = backends::gpu::DivUp<int>(dy_pre, tid_y);
-    int bid_y = std::min(tile_y_num, backends::gpu::kMultiDimslimit);
-    printf("tid_x = %d\t, tid_y = %d\n", tid_x, tid_y);
-    printf("bid_x = %d\t, bid_y = %d\n", bid_x, bid_y);
+    bool is_small_num = num < kMaxOut;
+    int tid_y = is_small_num ? num : kMaxOut;
+    int tid_x =
+        is_small_num
+            ? std::min(
+                  backends::gpu::RoundToNextHighPowOfTwo(dy_pre, kWarpSize),
+                  threads / backends::gpu::RoundToNextHighPowOfTwo(tid_y))
+            : kWarpSize;
+    int bid_y = is_small_num ? 1 : backends::gpu::DivUp<int>(num, kMaxOut);
+    int tile_x_num = backends::gpu::DivUp<int>(dy_pre, tid_x);
+    int bid_x = std::min(tile_x_num, backends::gpu::kMultiDimslimit);
+
+    printf("tid_x = %d\t, tid_y = %d\t, bid_x = %d\t, bid_y = %d\n",
+           tid_x,
+           tid_y,
+           bid_x,
+           bid_y);
     dim3 blocks(tid_x, tid_y, 1);
     dim3 grids(bid_x, bid_y, 1);
-    
+
     if (use_int32) {
       StackGradKernelForLastDim<T, int32_t>
-          <<<blocks, grids, 0, dev_ctx.stream()>>>(dy_data, num, dy_pre, 
-            tile_y_num, reinterpret_cast<T**>(tmp_out_data->ptr()));
+          <<<grids, blocks, 0, dev_ctx.stream()>>>(
+              dy_data,
+              num,
+              dy_pre,
+              tile_x_num,
+              reinterpret_cast<T**>(tmp_out_data->ptr()));
     } else {
       StackGradKernelForLastDim<T, int64_t>
-          <<<blocks, grids, 0, dev_ctx.stream()>>>(dy_data, num, dy_pre, 
-            tile_y_num, reinterpret_cast<T**>(tmp_out_data->ptr()));
+          <<<grids, blocks, 0, dev_ctx.stream()>>>(
+              dy_data,
+              num,
+              dy_pre,
+              tile_x_num,
+              reinterpret_cast<T**>(tmp_out_data->ptr()));
     }
     return;
   } else {
@@ -157,10 +189,10 @@ void StackGradKernel(const Context& dev_ctx,
   int split_dim = num;
   dy_suf = out.numel() / (split_dim * dy_pre);
 
-  auto config = backends::gpu::GetGpuLaunchConfig1D(
-      dev_ctx, dy_pre * split_dim * dy_suf);
+  auto config =
+      backends::gpu::GetGpuLaunchConfig1D(dev_ctx, dy_pre * split_dim * dy_suf);
 
-  if (out.numel() < std::numeric_limits<int32_t>::max()) {
+  if (use_int32) {
     UnStackHelperCUDAKernel<T, int32_t>
         <<<config.block_per_grid.x,
            config.thread_per_block.x,
