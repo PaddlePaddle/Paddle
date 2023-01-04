@@ -154,9 +154,11 @@ class TestModelCastBF16(unittest.TestCase):
             t = paddle.static.data(
                 name='t', shape=[-1, size, size], dtype='float32'
             )
+            t.desc.set_need_check_feed(False)
             tt = paddle.static.data(
                 name='tt', shape=[-1, size, size], dtype='float32'
             )
+            tt.desc.set_need_check_feed(False)
 
             with amp.bf16.bf16_guard():
                 ret = paddle.add(t, tt)
