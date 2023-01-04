@@ -692,9 +692,11 @@ TEST(BuildCinnPassTest, TestSkipGcVars) {
   ASSERT_TRUE(CheckNodeExisted(nodes, kCinnLaunchOp));
 
   // After search, there should has just one cinn subgraph
+  // Note v3 has fetched because of v3 in kSkipGcVarNames
+  // And v1 is a feed var so v1 no need fetched though it in kSkipGcVarNames
   // feed --> v1 --
   //               | --> mul --> v3 --> relu --> v4 --> fetch
-  //          v2 --
+  // feed --> v2 --                 --> fetch
   auto compilation_keys = GetCompilationKeys(*g);
   ASSERT_EQ(compilation_keys.size(), static_cast<size_t>(1));
   auto* cinn_compiler = CinnCompiler::GetInstance();
