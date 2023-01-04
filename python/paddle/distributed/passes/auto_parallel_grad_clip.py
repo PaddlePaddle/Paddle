@@ -19,10 +19,7 @@ import numpy as np
 import paddle
 from paddle.distributed.fleet.meta_optimizers.common import OP_ROLE_KEY, OpRole
 
-from ..auto_parallel.dist_attribute import (
-    OperatorDistAttr,
-    TensorDistAttr,
-)
+from ..auto_parallel.dist_attribute import OperatorDistAttr, TensorDistAttr
 from ..auto_parallel.operators.common import SyncMode
 from ..auto_parallel.process_group import get_world_process_group
 from ..auto_parallel.process_mesh import ProcessMesh
