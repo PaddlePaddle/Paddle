@@ -104,7 +104,7 @@ class DistributedJobInfo:
         self.job_info.strategy = dist_strategy
 
 
-ReduceStrategyFluid = paddle.static.BuildStrategy.ReduceStrategy
+ReduceStrategyFluid = paddle.fluid.BuildStrategy.ReduceStrategy
 ReduceStrategyFleet = int
 
 
@@ -256,7 +256,7 @@ class DistributedStrategy:
 
         """
 
-        build_strategy = paddle.static.BuildStrategy()
+        build_strategy = paddle.fluid.BuildStrategy()
         fields = self.strategy.build_strategy.DESCRIPTOR.fields
         for f in fields:
             value = getattr(self.strategy.build_strategy, f.name)
