@@ -30,7 +30,6 @@ __all__ = []
 def mean(x, axis=None, keepdim=False, name=None):
     """
     Computes the mean of the input tensor's elements along ``axis``.
-
     Args:
         x (Tensor): The input Tensor with data type float32, float64.
         axis (int|list|tuple, optional): The axis along which to perform mean
@@ -48,16 +47,12 @@ def mean(x, axis=None, keepdim=False, name=None):
             the output Tensor is squeezed in ``axis`` . Default is False.
         name (str, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
-
     Returns:
         Tensor, results of average along ``axis`` of ``x``, with the same data
         type as ``x``.
-
     Examples:
         .. code-block:: python
-
             import paddle
-
             x = paddle.to_tensor([[[1., 2., 3., 4.],
                                    [5., 6., 7., 8.],
                                    [9., 10., 11., 12.]],
@@ -81,39 +76,37 @@ def mean(x, axis=None, keepdim=False, name=None):
     """
     if in_dygraph_mode():
         return _C_ops.mean(x, axis, keepdim)
-
-    reduce_all, axis = _get_reduce_axis_with_tensor(axis, x)
-    if _in_legacy_dygraph():
-        return _legacy_C_ops.reduce_mean(
-            x, 'dim', axis, 'keep_dim', keepdim, 'reduce_all', reduce_all
+    else:
+        reduce_all, axis = _get_reduce_axis_with_tensor(axis, x)
+        check_variable_and_dtype(
+            x,
+            'x/input',
+            ['uint16', 'float16', 'float32', 'float64'],
+            'mean/reduce_mean',
         )
+        check_type(
+            axis, 'axis/dim', (int, list, tuple, Variable), 'mean/reduce_mean'
+        )
+        if isinstance(axis, (list, tuple)):
+            for item in axis:
+                check_type(
+                    item,
+                    'elements of axis/dim',
+                    (int, Variable),
+                    'mean/reduce_mean',
+                )
 
-    check_variable_and_dtype(
-        x,
-        'x/input',
-        ['uint16', 'float16', 'float32', 'float64'],
-        'mean/reduce_mean',
-    )
-    check_type(
-        axis, 'axis/dim', (int, list, tuple, Variable), 'mean/reduce_mean'
-    )
-    if isinstance(axis, (list, tuple)):
-        for item in axis:
-            check_type(
-                item,
-                'elements of axis/dim',
-                (int, Variable),
-                'mean/reduce_mean',
-            )
+        helper = LayerHelper('mean', **locals())
 
-    helper = LayerHelper('mean', **locals())
-
-    attrs = {'dim': axis, 'keep_dim': keepdim, 'reduce_all': reduce_all}
-    out = helper.create_variable_for_type_inference(x.dtype)
-    helper.append_op(
-        type='reduce_mean', inputs={'X': x}, outputs={'Out': out}, attrs=attrs
-    )
-    return out
+        attrs = {'dim': axis, 'keep_dim': keepdim, 'reduce_all': reduce_all}
+        out = helper.create_variable_for_type_inference(x.dtype)
+        helper.append_op(
+            type='reduce_mean',
+            inputs={'X': x},
+            outputs={'Out': out},
+            attrs=attrs,
+        )
+        return out
 
 
 def var(x, axis=None, unbiased=True, keepdim=False, name=None):
