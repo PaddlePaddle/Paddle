@@ -87,35 +87,6 @@ class ProcessGroup {
     bool sync_op_{true};
   };
 
-  class TaskStream : public Task {
-   public:
-    TaskStream(int rank, CommType comm_type, bool sync_op, bool use_calc_stream)
-        : Task(rank, comm_type, sync_op), use_calc_stream_(use_calc_stream) {}
-
-    virtual ~TaskStream() = default;
-
-    // below constructors are temporary here for compatible reason,
-    // will be deleted soon.
-    TaskStream(int rank,
-               const std::vector<phi::DenseTensor>& inputs,
-               CommType comm_type)
-        : Task(rank, inputs, comm_type) {}
-
-    TaskStream(int rank,
-               const std::vector<phi::DenseTensor>& inputs,
-               CommType comm_type,
-               bool sync_op,
-               bool use_calc_stream)
-        : Task(rank, inputs, comm_type, sync_op),
-          use_calc_stream_(use_calc_stream) {}
-
-   protected:
-    bool UseCalcStream() const { return use_calc_stream_; }
-
-   private:
-    bool use_calc_stream_{false};
-  };
-
  public:
   ProcessGroup(int rank, int size, int gid);
   virtual ~ProcessGroup() = default;
@@ -144,11 +115,9 @@ class ProcessGroup {
       phi::DenseTensor* out_tensor,
       const phi::DenseTensor& in_tensor,
       bool sync_op) {
-    return AllGather(out_tensor,
-                     in_tensor,
-                     /*offset*/ 0,
-                     /*numel*/ -1,  // -1 indicates the whole tensor
-                     sync_op);
+    PADDLE_THROW(phi::errors::Unimplemented(
+        "ProcessGroup%s does not support all_gather with sync_op flag.",
+        GetBackendName()));
   }
 
   virtual std::shared_ptr<ProcessGroup::Task> AllGather(
@@ -232,11 +201,9 @@ class ProcessGroup {
   virtual std::shared_ptr<ProcessGroup::Task> Recv(phi::DenseTensor* tensor,
                                                    int src_rank,
                                                    bool sync_op) {
-    return Recv(tensor,
-                src_rank,
-                /*offset*/ 0,
-                /*numel*/ -1,  // -1 indicates the whole tensor
-                sync_op);
+    PADDLE_THROW(phi::errors::Unimplemented(
+        "ProcessGroup%s does not support recv with sync_op flag.",
+        GetBackendName()));
   }
 
   virtual std::shared_ptr<ProcessGroup::Task> Recv(phi::DenseTensor* tensor,
@@ -251,11 +218,9 @@ class ProcessGroup {
 
   virtual std::shared_ptr<ProcessGroup::Task> Send(
       const phi::DenseTensor& tensor, int dst_rank, bool sync_op) {
-    return Send(tensor,
-                dst_rank,
-                /*offset*/ 0,
-                /*numel*/ -1,  // -1 indicates the whole tensor
-                sync_op);
+    PADDLE_THROW(phi::errors::Unimplemented(
+        "ProcessGroup%s does not support send with sync_op flag.",
+        GetBackendName()));
   }
 
   virtual std::shared_ptr<ProcessGroup::Task> Send(
@@ -275,12 +240,10 @@ class ProcessGroup {
       const phi::DenseTensor& in_tensor,
       bool sync_op,
       bool use_calc_stream) {
-    return AllGather(out_tensor,
-                     in_tensor,
-                     /*offset*/ 0,
-                     /*numel*/ -1,  // -1 indicates the whole tensor
-                     sync_op,
-                     use_calc_stream);
+    PADDLE_THROW(
+        phi::errors::Unimplemented("ProcessGroup%s does not support all_gather "
+                                   "with sync_op and use_calc_stream flag.",
+                                   GetBackendName()));
   }
 
   virtual std::shared_ptr<ProcessGroup::Task> AllGather(
@@ -373,12 +336,10 @@ class ProcessGroup {
                                                    int src_rank,
                                                    bool sync_op,
                                                    bool use_calc_stream) {
-    return Recv(tensor,
-                src_rank,
-                /*offset*/ 0,
-                /*numel*/ -1,  // -1 indicates sending the whole tensor
-                sync_op,
-                use_calc_stream);
+    PADDLE_THROW(
+        phi::errors::Unimplemented("ProcessGroup%s does not support recv with "
+                                   "sync_op and use_calc_stream flag.",
+                                   GetBackendName()));
   }
 
   virtual std::shared_ptr<ProcessGroup::Task> Recv(phi::DenseTensor* tensor,
@@ -398,12 +359,10 @@ class ProcessGroup {
       int dst_rank,
       bool sync_op,
       bool use_calc_stream) {
-    return Send(tensor,
-                dst_rank,
-                /*offset*/ 0,
-                /*numel*/ -1,  // -1 indicates receiving the whole tensor
-                sync_op,
-                use_calc_stream);
+    PADDLE_THROW(
+        phi::errors::Unimplemented("ProcessGroup%s does not support send "
+                                   "with sync_op and use_calc_stream flag.",
+                                   GetBackendName()));
   }
 
   virtual std::shared_ptr<ProcessGroup::Task> Send(

@@ -90,7 +90,7 @@ ProcessGroupNCCL::ProcessGroupNCCL(const std::shared_ptr<Store>& store,
                                    int rank,
                                    int size,
                                    int gid)
-    : ProcessGroup(rank, size, gid), store_(store) {}
+    : ProcessGroupWithStream(rank, size, gid), store_(store) {}
 
 void ProcessGroupNCCL::GroupStart() {
   NCCL_CHECK(phi::dynload::ncclGroupStart());

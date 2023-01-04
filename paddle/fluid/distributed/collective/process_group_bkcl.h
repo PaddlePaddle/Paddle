@@ -21,11 +21,11 @@
 #include <unordered_map>
 
 #include "paddle/fluid/distributed/collective/process_group.h"
+#include "paddle/fluid/distributed/collective/process_group_with_stream.h"
 #include "paddle/fluid/distributed/store/store.h"
 #include "paddle/fluid/platform/device/xpu/xpu_header.h"
-#include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/gen_comm_id_helper.h"
-#include "paddle/fluid/platform/place.h"
+#include "paddle/phi/common/place.h"
 #include "paddle/phi/core/device_context.h"
 
 #if defined(PADDLE_WITH_XPU)
@@ -37,7 +37,7 @@ constexpr const char* BKCL_BACKEND_NAME = "BKCL";
 namespace paddle {
 namespace distributed {
 
-using Place = paddle::platform::Place;
+using Place = phi::Place;
 
 // BKCL funcs use separate communication stream by default
 class ProcessGroupBKCL : public ProcessGroup {
@@ -71,7 +71,8 @@ class ProcessGroupBKCL : public ProcessGroup {
   ProcessGroupBKCL(const std::shared_ptr<Store>& store,
                    int rank,
                    int size,
-                   int gid);
+                   int gid)
+      : ProcessGroupWithStream(rank, size, gid), store_(store) {}
 
   static std::shared_ptr<ProcessGroupBKCL> CreateProcessGroupBKCL(
       const std::shared_ptr<Store>& store, int rank, int size, int gid);
@@ -89,18 +90,6 @@ class ProcessGroupBKCL : public ProcessGroup {
       phi::DenseTensor* out_tensor,
       const phi::DenseTensor& in_tensor,
       const AllreduceOptions& opts,
-      bool sync_op) override {
-    return AllReduce(out_tensor,
-                     in_tensor,
-                     opts,
-                     sync_op,
-                     /*use_calc_stream*/ false);
-  }
-
-  std::shared_ptr<ProcessGroup::Task> AllReduce(
-      phi::DenseTensor* out_tensor,
-      const phi::DenseTensor& in_tensor,
-      const AllreduceOptions& opts,
       bool sync_op,
       bool use_calc_stream) override;
 
@@ -108,34 +97,8 @@ class ProcessGroupBKCL : public ProcessGroup {
       phi::DenseTensor* out_tensor,
       const phi::DenseTensor& in_tensor,
       const BroadcastOptions& opts,
-      bool sync_op) override {
-    return Broadcast(out_tensor,
-                     in_tensor,
-                     opts,
-                     sync_op,
-                     /*use_calc_stream*/ false);
-  }
-
-  std::shared_ptr<ProcessGroup::Task> Broadcast(
-      phi::DenseTensor* out_tensor,
-      const phi::DenseTensor& in_tensor,
-      const BroadcastOptions& opts,
       bool sync_op,
       bool use_calc_stream) override;
-
-  std::shared_ptr<ProcessGroup::Task> AllGather(
-      phi::DenseTensor* out_tensor,
-      const phi::DenseTensor& in_tensor,
-      int64_t offset,
-      int64_t numel,
-      bool sync_op) override {
-    return AllGather(out_tensor,
-                     in_tensor,
-                     offset,
-                     numel,
-                     sync_op,
-                     /*use_calc_stream*/ false);
-  }
 
   std::shared_ptr<ProcessGroup::Task> AllGather(
       phi::DenseTensor* out_tensor,
@@ -144,17 +107,6 @@ class ProcessGroupBKCL : public ProcessGroup {
       int64_t numel,   // for compatibility, no use now
       bool sync_op,
       bool use_calc_stream) override;
-
-  std::shared_ptr<ProcessGroup::Task> Reduce(phi::DenseTensor* out_tensor,
-                                             const phi::DenseTensor& in_tensor,
-                                             const ReduceOptions& opts,
-                                             bool sync_op) override {
-    return Reduce(out_tensor,
-                  in_tensor,
-                  opts,
-                  sync_op,
-                  /*use_calc_stream*/ false);
-  }
 
   std::shared_ptr<ProcessGroup::Task> Reduce(phi::DenseTensor* out_tensor,
                                              const phi::DenseTensor& in_tensor,

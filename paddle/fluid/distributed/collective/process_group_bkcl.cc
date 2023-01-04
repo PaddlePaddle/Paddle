@@ -18,8 +18,8 @@
 #include "paddle/fluid/distributed/collective/common.h"
 #include "paddle/fluid/platform/device/xpu/bkcl_helper.h"
 #include "paddle/fluid/platform/device/xpu/xpu_info.h"
-#include "paddle/fluid/platform/device_context.h"
-#include "paddle/fluid/platform/place.h"
+#include "paddle/phi/core/device_context.h"
+#include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/errors.h"
 
 namespace paddle {
@@ -76,7 +76,7 @@ ProcessGroupBKCL::ProcessGroupBKCL(const std::shared_ptr<Store>& store,
                                    int rank,
                                    int size,
                                    int gid)
-    : ProcessGroup(rank, size, gid), store_(store) {}
+    : ProcessGroupWithStream(rank, size, gid), store_(store) {}
 
 void ProcessGroupBKCL::GroupStart() {
   PADDLE_ENFORCE_XPU_SUCCESS(bkcl_group_start());
