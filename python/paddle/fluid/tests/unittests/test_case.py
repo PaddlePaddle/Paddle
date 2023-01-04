@@ -222,7 +222,7 @@ class TestAPICase_Nested(unittest.TestCase):
                     (
                         var_5 == var_6,
                         partial(
-                            layers.fill_constant,
+                            paddle.tensor.fill_constant,
                             shape=[2],
                             dtype='int32',
                             value=7,
