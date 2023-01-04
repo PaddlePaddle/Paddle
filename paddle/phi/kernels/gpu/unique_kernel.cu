@@ -20,6 +20,7 @@
 #include <thrust/functional.h>
 #include <thrust/scatter.h>
 #include <thrust/sequence.h>
+#include <thrust/sort.h>
 #include <thrust/unique.h>
 
 #include <iostream>
