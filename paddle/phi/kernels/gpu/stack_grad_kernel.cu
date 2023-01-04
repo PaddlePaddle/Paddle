@@ -67,32 +67,16 @@ __global__ void StackGradKernelForLastDim(const T* __restrict__ in_data,
   for (IndexT tile_x = blockIdx.x; tile_x < tile_x_num; tile_x += gridDim.x) {
     IndexT row_idx = tile_x * blockDim.x + threadIdx.x;
     IndexT col_idx = blockIdx.y * blockDim.y + threadIdx.y;
+    int s_idx = threadIdx.y * blockDim.x + threadIdx.x;
 
     if (col_idx < cols && row_idx < rows) {
-      int s_idx = threadIdx.y * blockDim.x + threadIdx.x;
       T data = in_data[row_idx * cols + col_idx];
       s_buf[s_idx] = data;
-      __syncthreads();
-
-      IndexT in_idx = row_idx * cols + col_idx;
-      int out_idx = threadIdx.y + blockIdx.y * blockDim.y;
-      if (out_datas[out_idx] != nullptr) {
-        out_datas[out_idx][row_idx] = s_buf[s_idx];
-        printf(
-            "cols = %d,\t rows = %d,\t row_idx = %d,\t col_idx = %d,\t in_idx "
-            "= %d,\t out_idx = %d,\t blockDim.x = %d,\t blockDim.y = %d,\t "
-            "out_data[%d][%d]=%f\n",
-            cols,
-            rows,
-            row_idx,
-            col_idx,
-            in_idx,
-            out_idx,
-            blockDim.x,
-            blockDim.y,
-            out_idx,
-            row_idx,
-            out_datas[out_idx][row_idx]);
+    }
+    __syncthreads();
+    if (col_idx < cols && row_idx < rows) {
+      if (out_datas[col_idx] != nullptr) {
+        out_datas[col_idx][row_idx] = s_buf[s_idx];
       }
     }
   }
@@ -153,12 +137,6 @@ void StackGradKernel(const Context& dev_ctx,
     int bid_y = is_small_num ? 1 : backends::gpu::DivUp<int>(num, kMaxOut);
     int tile_x_num = backends::gpu::DivUp<int>(dy_pre, tid_x);
     int bid_x = std::min(tile_x_num, backends::gpu::kMultiDimslimit);
-
-    printf("tid_x = %d\t, tid_y = %d\t, bid_x = %d\t, bid_y = %d\n",
-           tid_x,
-           tid_y,
-           bid_x,
-           bid_y);
     dim3 blocks(tid_x, tid_y, 1);
     dim3 grids(bid_x, bid_y, 1);
 

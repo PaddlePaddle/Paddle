@@ -135,6 +135,10 @@ class TestRunProgram(unittest.TestCase):
             False,
             'program_id',
             _hash_with_id(program),
+            'param_grad_names',
+            ['Fake_var@GRAD'],
+            'out_grad_names',
+            [out.name + '@GRAD'],
         ]
 
         use_interpretorcore = (

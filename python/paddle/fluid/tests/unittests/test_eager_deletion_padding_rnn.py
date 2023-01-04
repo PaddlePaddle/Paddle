@@ -504,8 +504,8 @@ class PaddingRNNTestBase(unittest.TestCase):
                     self.feed_order,
                 ) = res_vars
 
-                fluid.clip.set_gradient_clip(
-                    clip=fluid.clip.GradientClipByGlobalNorm(
+                paddle.nn.clip.set_gradient_clip(
+                    clip=paddle.nn.ClipGradByGlobalNorm(
                         clip_norm=config.max_grad_norm
                     )
                 )
