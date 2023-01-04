@@ -211,7 +211,7 @@ DECLARE_INFER_SHAPE_FUNCTOR(cumsum,
                             PD_INFER_META(phi::CumScalarAxisInferMeta));
 DECLARE_INFER_SHAPE_FUNCTOR(cummax,
                             CummaxInferShapeFunctor,
-                            PD_INFER_META(phi::CummaxInferMeta));   
+                            PD_INFER_META(phi::CummaxInferMeta));
 DECLARE_INFER_SHAPE_FUNCTOR(logcumsumexp,
                             LogcumsumexpInferShapeFunctor,
                             PD_INFER_META(phi::CumInferMeta));

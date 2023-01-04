@@ -457,6 +457,15 @@
     data_type : input
   backward : cross_entropy_with_softmax_grad
 
+- op : cummax
+  args : (Tensor x, int axis, bool flatten, bool exclusive, bool reverse)
+  output : Tensor(out)
+  infer_meta :
+    func : CummaxInferMeta
+  kernel :
+    func : cummax
+  backward : cummax_grad
+
 - op : cumprod
   args : (Tensor x,  int dim)
   output : Tensor(out)
@@ -475,15 +484,6 @@
   kernel :
     func : cumsum
   backward : cumsum_grad
-
-- op : cummax
-  args : (Tensor x, int axis, bool flatten, bool exclusive, bool reverse)
-  output : Tensor(out)
-  infer_meta :
-    func : CummaxInferMeta
-  kernel :
-    func : cummax
-  backward : cummax_grad
 
 - op : decode_jpeg
   args : (Tensor x, str mode, Place place)

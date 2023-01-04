@@ -3267,24 +3267,25 @@ def cumsum(x, axis=None, dtype=None, name=None):
         _cum_sum_ = generate_layer_fn('cumsum')
         return _cum_sum_(**kwargs)
 
+
 def cummax(x, axis=None, dtype=None, name=None):
     """
-    The cumulative sum of the elements along a given axis. 
-    
+    The cumulative sum of the elements along a given axis.
+
     **Note**:
-    The first element of the result is the same as the first element of the input. 
+    The first element of the result is the same as the first element of the input.
     Args:
         x (Tensor): The input tensor needed to be cumsumed.
         axis (int, optional): The dimension to accumulate along. -1 means the last dimension. The default (None) is to compute the cumsum over the flattened array.
-        dtype (str, optional): The data type of the output tensor, can be float32, float64, int32, int64. If specified, the input tensor is casted to dtype before the operation is performed. This is useful for preventing data type overflows. The default value is None. 
+        dtype (str, optional): The data type of the output tensor, can be float32, float64, int32, int64. If specified, the input tensor is casted to dtype before the operation is performed. This is useful for preventing data type overflows. The default value is None.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
     Returns:
-        Tensor, the result of cumsum operator. 
+        Tensor, the result of cumsum operator.
     Examples:
         .. code-block:: python
-            
+
             import paddle
-            
+
             data = paddle.arange(12)
             data = paddle.reshape(data, (3, 4))
             y = paddle.cumsum(data)
@@ -3293,7 +3294,7 @@ def cummax(x, axis=None, dtype=None, name=None):
             # [[ 0  1  2  3]
             #  [ 4  6  8 10]
             #  [12 15 18 21]]
-            
+
             y = paddle.cumsum(data, axis=-1)
             # [[ 0  1  3  6]
             #  [ 4  9 15 22]
@@ -3310,9 +3311,10 @@ def cummax(x, axis=None, dtype=None, name=None):
         x = cast(x, dtype)
 
     if in_dygraph_mode():
-        if axis is None: axis = -1
+        if axis is None:
+            axis = -1
         return _C_ops.cummax(x, axis, flatten, False, False)
-    
+
     check_type(x, 'x', (Variable), 'cummax')
     locals_var = locals().copy()
     kwargs = dict()
@@ -3321,7 +3323,8 @@ def cummax(x, axis=None, dtype=None, name=None):
             kwargs[name] = val
     _cum_sum_ = generate_layer_fn('cummax')
     return _cum_sum_(**kwargs)
-    
+
+
 def logcumsumexp(x, axis=None, dtype=None, name=None):
     r"""
     The logarithm of the cumulative summation of the exponentiation of the elements along a given axis.
