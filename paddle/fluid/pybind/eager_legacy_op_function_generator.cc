@@ -31,7 +31,7 @@
 #ifdef PADDLE_WITH_ASCEND_CL
 #include "paddle/fluid/framework/fleet/ascend_wrapper.h"
 #endif
-#include "paddle/fluid/pybind/op_function_generator.h"
+#include "paddle/fluid/pybind/eager_generator.h"
 
 // phi
 #include "paddle/phi/kernels/declarations.h"
