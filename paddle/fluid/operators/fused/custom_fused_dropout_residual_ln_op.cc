@@ -199,7 +199,7 @@ class CustomFusedDropoutResidualLnGradOpMaker
   void Apply(GradOpPtr<T> op) const override {
 
     op->SetType("custom_fused_dropout_residual_ln");
-    op->SetInput(framework::GradVarName("Y"), this->OutputGrad("Y"));
+    // op->SetInput(framework::GradVarName("Y"), this->OutputGrad("Y"));
     op->SetInput("X", this->Input("X"));
     op->SetInput("Residual", this->Input("Residual"));
     // if (this->HasInput("Bias")) {
