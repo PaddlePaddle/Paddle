@@ -436,6 +436,30 @@ def main(
         op['op_name'] = op['name']
     for bw_op in backward_ops:
         bw_op['op_name'] = bw_op['name']
+        for bw_output in bw_op['outputs']:
+            bw_output['drop_empty_grad'] = True
+
+    # deal the drop_empty_grad of bw_op by op_compat.yaml
+    def get_op_bwname(op_item):
+        names = op_item.split('(')
+        if len(names) == 1:
+            return names[0].strip()
+        else:
+            return names[1].split(')')[0].strip()
+
+    for op_op in op_op_map:
+        if 'drop_empty_grad' in op_op:
+            bw_names = [
+                get_op_bwname(bw_name)
+                for bw_name in op_op['backward'].split(',')
+            ]
+            for bw_name in bw_names:
+                if bw_name in backward_op_dict:
+                    for out_grad in op_op['drop_empty_grad']:
+                        if out_grad in backward_op_dict[bw_name]['output_dict']:
+                            backward_op_dict[bw_name]['output_dict'][out_grad][
+                                'drop_empty_grad'
+                            ] = False
 
     replace_compat_name(op_op_map, forward_op_dict, backward_op_dict)
 

@@ -404,7 +404,8 @@ class {{name | to_pascal_case}}OpMaker : public framework::SingleGradOpMaker<T> 
       forward_input_names,
       forward_output_names,
       forward_input_orig_names,
-      forward_output_orig_names)}});
+      forward_output_orig_names,
+      output['drop_empty_grad'])}});
   {% endfor %}
 
     grad_op->SetAttrMap(this->Attrs());
@@ -462,7 +463,7 @@ class {{name | to_pascal_case}}OpMaker : public framework::SingleGradOpMaker<T> 
   {% endfor %}
 
   {% for output in invoke_op["outputs"] %}
-    grad_op->SetOutput({{output["name"] | to_opmaker_name}}, this->{{extract_output_from_forward(
+    grad_op->SetOutput({{output["name"] | to_opmaker_name}}, this->{{extract_output_from_forward_invoke(
       output["value"],
       forward_input_names,
       forward_output_names,
@@ -497,6 +498,27 @@ OutputGrad({{name_in_forward_orig | to_opmaker_name}})
 {%- endmacro %}
 
 {% macro extract_output_from_forward(name, input_names, output_names,
+  input_orig_names, output_orig_names, drop_empty_grad) %}{# inline #}
+  {% if name[:-5] in input_names %}
+    {% set name_in_forward = name[:-5] %}
+    {% set name_in_forward_orig = input_orig_names[input_names.index(name_in_forward)]%}
+      {% if drop_empty_grad is true -%}
+InputGrad({{name_in_forward_orig | to_opmaker_name}})
+      {%- else -%}
+InputGrad({{name_in_forward_orig | to_opmaker_name}}, false)
+      {%- endif %}
+  {%- elif (name | to_input_name) in input_names %}
+    {% set name_in_forward = name | to_input_name %}
+    {% set name_in_forward_orig = input_orig_names[input_names.index(name_in_forward)]%}
+       {% if drop_empty_grad is true -%}
+InputGrad({{name | to_input_name | to_opmaker_name}})
+        {%- else -%}
+InputGrad({{name | to_input_name | to_opmaker_name}}, false)
+        {%- endif %}
+  {%- endif %}
+{%- endmacro %}
+
+{% macro extract_output_from_forward_invoke(name, input_names, output_names,
   input_orig_names, output_orig_names) %}{# inline #}
   {% if name[:-5] in input_names %}
     {% set name_in_forward = name[:-5] %}

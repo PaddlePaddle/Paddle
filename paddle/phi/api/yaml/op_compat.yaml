@@ -874,6 +874,14 @@
   outputs :
     out : Out
 
+- op : meshgrid
+  backward : meshgrid_grad
+  inputs :
+    inputs : X
+  outputs :
+    out : Out
+  drop_empty_grad : [inputs_grad]
+
 - op : mish
   backward : mish_grad
   extra :
@@ -886,6 +894,14 @@
   outputs :
     {out : Out, indices : Indices}
 
+- op : multi_dot
+  backward : multi_dot_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
+  drop_empty_grad : [x_grad]
+
 - op : multinomial
   inputs :
     {x : X}
@@ -895,6 +911,14 @@
     num_samples :
       data_type : int
       support_tensor : true
+
+- op : multiplex
+  backward : multiplex_grad
+  inputs :
+    {inputs : X, index : Ids}
+  outputs :
+    out : Out
+  drop_empty_grad : [inputs_grad]
 
 - op : multiply (elementwise_mul)
   backward : multiply_grad (elementwise_mul_grad)
