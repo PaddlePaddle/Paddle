@@ -30,10 +30,16 @@ class TrtConvertNearestInterpV2Test(TrtLayerAutoScanTest):
         def generate_input():
             return np.ones([1, 3, 32, 32]).astype(np.float32)
 
+        def generate_weight():
+            return np.array([64]).astype(np.int32)
+
         ops_config = [
             {
                 "op_type": "nearest_interp_v2",
-                "op_inputs": {"X": ["input_data"]},
+                "op_inputs": {
+                    "X": ["input_data"],
+                    "SizeTensor": ["size_tensor_data0", "size_tensor_data1"],
+                },
                 "op_outputs": {"Out": ["interp_output_data"]},
                 "op_attrs": {
                     "data_layout": "NCHW",
@@ -51,7 +57,10 @@ class TrtConvertNearestInterpV2Test(TrtLayerAutoScanTest):
         ops = self.generate_op_config(ops_config)
         program_config = ProgramConfig(
             ops=ops,
-            weights={},
+            weights={
+                "size_tensor_data0": TensorConfig(data_gen=generate_weight),
+                "size_tensor_data1": TensorConfig(data_gen=generate_weight),
+            },
             inputs={"input_data": TensorConfig(data_gen=generate_input)},
             outputs=["interp_output_data"],
         )

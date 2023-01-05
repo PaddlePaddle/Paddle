@@ -138,7 +138,7 @@ InterpreterCore::InterpreterCore(const platform::Place& place,
     Priority lhs_prority = vec_instruction_[lhs].GetPriority();
     Priority rhs_prority = vec_instruction_[rhs].GetPriority();
     if (lhs_prority == rhs_prority) {
-      return lhs > rhs;
+      return lhs < rhs;
     }
     return lhs_prority > rhs_prority;
   };
