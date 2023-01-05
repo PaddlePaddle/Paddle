@@ -33,6 +33,22 @@ class TrtConvertCastTest(TrtLayerAutoScanTest):
             'out_dtype'
         ] not in [0, 1, 2, 4, 5]:
             return False
+        compile_version = paddle_infer.get_trt_compile_version()
+        runtime_version = paddle_infer.get_trt_runtime_version()
+        if (
+            compile_version[0] * 1000
+            + compile_version[1] * 100
+            + compile_version[2] * 10
+            < 8400
+        ):
+            return False
+        if (
+            runtime_version[0] * 1000
+            + runtime_version[1] * 100
+            + runtime_version[2] * 10
+            < 8400
+        ):
+            return False
         return True
 
     def sample_program_configs(self):
