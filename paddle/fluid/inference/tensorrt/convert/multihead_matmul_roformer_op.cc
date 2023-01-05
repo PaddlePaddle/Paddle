@@ -261,6 +261,17 @@ class MultiheadMatMulRoformerOpConverter : public OpConverter {
         plugin_layer->setName(
             ("CustomQKVToContextPluginDynamic: " + output_name).c_str());
         engine_->SetITensor(output_name, plugin_layer->getOutput(0));
+	// add for plan3 
+	if (op_desc.HasAttr("out_threshold")) {
+          PADDLE_ENFORCE_EQ(op_desc.HasAttr("out_threshold"),
+                            true,
+                            platform::errors::InvalidArgument(
+                                "must have out threshold in multihead layers "
+                                "in int8 mode"));
+          float out_scale =
+              PADDLE_GET_CONST(float, op_desc.GetAttr("out_threshold"));
+          engine_->SetTensorDynamicRange(plugin_layer->getOutput(0), out_scale);
+        }
 
       } else {  // no varlen
         PADDLE_ENFORCE_EQ(
