@@ -74,7 +74,6 @@ paddle/fluid/pybind/eager_op_function.cc
 tools/nvcc_lazy
 
 # these files (directories) are generated before build system generation
-paddle/fluid/operators/generated_op.cc
 paddle/fluid/operators/generated_sparse_op.cc
 paddle/fluid/operators/generated_static_op.cc
 paddle/phi/ops/compat/generated_*.cc

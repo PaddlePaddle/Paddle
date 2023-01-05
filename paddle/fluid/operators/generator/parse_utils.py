@@ -306,6 +306,7 @@ def check_op_config(op_entry, op_name):
         'intermediate',
         'no_need_buffer',
         'data_transform',
+        'composite'
     )
     infer_meta_key_set = ('func', 'param')
     kernel_key_set = ('func', 'param', 'data_type', 'layout', 'backend')
