@@ -27,7 +27,7 @@ PDNode* FusedAttentionPattern::operator()(PDNode* x,
                                           bool do_dropout,
                                           bool add_residual) {
   // pre layer norm pattern
-  PDNode* pre_layer_norm_out_node;
+  PDNode* pre_layer_norm_out_node{nullptr};
   if (pre_layer_norm) {
     auto* pre_layer_norm_node =
         pattern->NewNode(pre_layer_norm_op_repr())->assert_is_op("layer_norm");
@@ -149,7 +149,7 @@ PDNode* FusedAttentionPattern::operator()(PDNode* x,
   qk_matmul_out_node->AsIntermediate()->assert_is_op_input("scale", "X");
   qk_scale_node->LinksFrom({qk_matmul_out_node}).LinksTo({qk_scale_out_node});
 
-  PDNode* add_mask_ele_add_out_node;
+  PDNode* add_mask_ele_add_out_node{nullptr};
   if (has_attn_mask) {
     auto* add_mask_ele_add_node = pattern->NewNode(add_mask_ele_add_op_repr())
                                       ->assert_is_op("elementwise_add");
@@ -181,7 +181,7 @@ PDNode* FusedAttentionPattern::operator()(PDNode* x,
         .LinksTo({qk_softmax_out_node});
   }
 
-  PDNode* attn_dropout_out_node;
+  PDNode* attn_dropout_out_node{nullptr};
   if (do_dropout) {
     auto* attn_dropout_node =
         pattern->NewNode(attn_dropout_op_repr())->assert_is_op("dropout");
@@ -279,7 +279,7 @@ PDNode* FusedAttentionPattern::operator()(PDNode* x,
   }
 
   // add residual
-  PDNode* residual_ele_add_out_node;
+  PDNode* residual_ele_add_out_node{nullptr};
   if (add_residual) {
     // this kind of pattern only support `residual + dropout_out`, since we have
     // to fix X and Y
@@ -360,7 +360,33 @@ void FusedAttentionsPass::ApplyImpl(Graph* graph) const {
 ir::Graph* FusedAttentionsPass::PreMaskDropResFwd(Graph* graph,
                                                   const std::string& name_scope,
                                                   Scope* scope) const {
-  // TODO(Yuang Liu): finish the pass
+  GraphPatternDetector gpd;
+  auto* x = gpd.mutable_pattern()
+                ->NewNode(patterns::PDNodeName(name_scope, "x"))
+                ->AsInput()
+                ->assert_is_op_input("layer_norm", "X");
+  patterns::FusedAttentionPattern fused_attention_pattern(
+      gpd.mutable_pattern(), "fused_attention_pattern");
+
+  fused_attention_pattern(x,
+                          /* pre_layer_norm */ true,
+                          /* post_layer_norm */ false,
+                          /* has_attn_mask */ true,
+                          /* do_dropout */ true,
+                          /* add_residual */ true);
+
+  int found_fused_attention = 0;
+
+  auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
+                     Graph* g) {
+    // TODO(Yuang Liu): finish the handler
+    VLOG(3) << "handle FusedMultiHeadAttention pass's fusion";
+    found_fused_attention++;
+  };
+
+  gpd(graph, handler);
+  AddStatis(found_fused_attention);
+
   return graph;
 }
 

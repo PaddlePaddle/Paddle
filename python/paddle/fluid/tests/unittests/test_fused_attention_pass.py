@@ -19,6 +19,7 @@ import numpy as np
 import paddle
 import paddle.fluid.core as core
 import paddle.nn.functional as F
+from paddle.distributed.passes import PassManager, new_pass
 
 paddle.enable_static()
 
@@ -100,6 +101,13 @@ class MultiHeadAttention(paddle.nn.Layer):
     not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
 )
 class TestFusedAttentionPass(unittest.TestCase):
+    def setUp(self):
+        self.add_residual = True
+        self.pre_ln = True
+        self.post_ln = False
+        self.attn_dropout = True
+        self.add_mask = True
+
     def test_pass(self):
         batch_size = 2
         seq_len = 1024
@@ -122,28 +130,30 @@ class TestFusedAttentionPass(unittest.TestCase):
                 shape=[-1, seq_len, hidden_size],
                 dtype='float32',
             )
-            attn_mask = paddle.static.data(
-                name="attn_mask",
-                shape=[-1, num_heads, seq_len, seq_len],
-                dtype='float32',
+            if self.add_mask:
+                attn_mask = paddle.static.data(
+                    name="attn_mask",
+                    shape=[-1, num_heads, seq_len, seq_len],
+                    dtype='float32',
+                )
+            else:
+                attn_mask = None
+            multi_head_attn = MultiHeadAttention(
+                hidden_size,
+                num_heads,
+                add_residual=self.add_residual,
+                pre_ln=self.pre_ln,
+                post_ln=self.post_ln,
+                attn_dropout=self.attn_dropout,
             )
-            multi_head_attn = MultiHeadAttention(hidden_size, num_heads)
             out = multi_head_attn(data, attn_mask)
             loss = paddle.mean(out)
 
             sgd_optimizer = paddle.fluid.optimizer.SGD(learning_rate=0.001)
             sgd_optimizer.minimize(loss)
 
-        place = paddle.CUDAPlace(0)
-        exe = paddle.static.Executor(place)
-        exe.run(startup_prog)
-        loss = exe.run(
-            main_prog,
-            feed={"x": x_data, "attn_mask": mask_data},
-            fetch_list=[loss.name],
-        )
-        print(loss)
-        print(main_prog)
+            pass_manager = PassManager([new_pass("fused_attention")])
+            pass_manager.apply([main_prog], [startup_prog])
 
 
 if __name__ == "__main__":
