@@ -44,7 +44,11 @@ class ProcessGroupWithoutStream : public ProcessGroup {
       const phi::DenseTensor& in_tensor,
       int64_t offset,
       int64_t numel,
-      bool sync_op) override;
+      bool sync_op) override {
+    PADDLE_THROW(phi::errors::Unimplemented(
+        "ProcessGroupWithoutStream (%s) does not support all_gather.",
+        GetBackendName()));
+  }
 
   std::shared_ptr<ProcessGroup::Task> Recv(phi::DenseTensor* tensor,
                                            int src_rank,
@@ -60,7 +64,11 @@ class ProcessGroupWithoutStream : public ProcessGroup {
                                            int src_rank,
                                            int64_t offset,
                                            int64_t numel,
-                                           bool sync_op) override;
+                                           bool sync_op) override {
+    PADDLE_THROW(phi::errors::Unimplemented(
+        "ProcessGroupWithoutStream (%s) does not support recv.",
+        GetBackendName()));
+  }
 
   std::shared_ptr<ProcessGroup::Task> Send(const phi::DenseTensor& tensor,
                                            int dst_rank,
@@ -76,7 +84,11 @@ class ProcessGroupWithoutStream : public ProcessGroup {
                                            int dst_rank,
                                            int64_t offset,
                                            int64_t numel,
-                                           bool sync_op) override;
+                                           bool sync_op) override {
+    PADDLE_THROW(phi::errors::Unimplemented(
+        "ProcessGroupWithoutStream (%s) does not support send.",
+        GetBackendName()));
+  }
 };
 
 }  // namespace distributed
