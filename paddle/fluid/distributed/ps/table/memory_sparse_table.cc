@@ -1048,8 +1048,8 @@ int32_t MemorySparseTable::PushSparse(const uint64_t *keys,
 
 int32_t MemorySparseTable::Flush() { return 0; }
 
-int32_t MemorySparseTable::shrink(const std::string& param) {
-  VLOG(0) << "MemorySparseTable::shrink";
+int32_t MemorySparseTable::Shrink(const std::string &param) {
+  VLOG(0) << "MemorySparseTable::Shrink";
   int thread_num = _real_local_shard_num < 20 ? _real_local_shard_num : 20;
 
   omp_set_num_threads(thread_num);
