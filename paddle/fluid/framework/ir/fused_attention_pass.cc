@@ -132,8 +132,6 @@ PDNode* FusedAttentionPattern::operator()(PDNode* x,
   // core attention pattern
   auto* qk_matmul_node =
       pattern->NewNode(qk_matmul_op_repr())->assert_is_op("matmul_v2");
-  auto* qk_matmul_w_node = pattern->NewNode(qk_matmul_w_repr())
-                               ->assert_is_op_input("matmul_v2", "Y");
   auto* qk_matmul_out_node = pattern->NewNode(qk_matmul_out_repr())
                                  ->assert_is_op_output("matmul_v2", "Out");
   fuse_qkv_split_out_q_node->AsIntermediate()->assert_is_op_input("matmul_v2",
@@ -198,18 +196,19 @@ PDNode* FusedAttentionPattern::operator()(PDNode* x,
 
   auto* qkv_matmul_node =
       pattern->NewNode(qkv_matmul_op_repr())->assert_is_op("matmul_v2");
-  auto* qkv_matmul_w_node = pattern->NewNode(qkv_matmul_w_repr())
-                                ->assert_is_op_input("matmul_v2", "Y");
   auto* qkv_matmul_out_node = pattern->NewNode(qkv_matmul_out_repr())
                                   ->assert_is_op_output("matmul_v2", "Out");
+  fuse_qkv_split_out_v_node->AsIntermediate()->assert_is_op_input("matmul_v2",
+                                                                  "Y");
   if (do_dropout) {
     attn_dropout_out_node->AsIntermediate()->assert_is_op_input("matmul_v2",
                                                                 "X");
-    qkv_matmul_node->LinksFrom({attn_dropout_out_node, qkv_matmul_w_node})
+    qkv_matmul_node
+        ->LinksFrom({attn_dropout_out_node, fuse_qkv_split_out_v_node})
         .LinksTo({qkv_matmul_out_node});
   } else {
     qk_softmax_out_node->AsIntermediate()->assert_is_op_input("matmul_v2", "X");
-    qkv_matmul_node->LinksFrom({qk_softmax_out_node, qkv_matmul_w_node})
+    qkv_matmul_node->LinksFrom({qk_softmax_out_node, fuse_qkv_split_out_v_node})
         .LinksTo({qkv_matmul_out_node});
   }
 

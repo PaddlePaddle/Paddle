@@ -75,7 +75,6 @@ struct FusedAttentionPattern : public PatternBase {
 
   // core attention
   PATTERN_DECL_NODE(qk_matmul_op);
-  PATTERN_DECL_NODE(qk_matmul_w);
   PATTERN_DECL_NODE(qk_matmul_out);
 
   PATTERN_DECL_NODE(qk_scale_op);
@@ -93,7 +92,6 @@ struct FusedAttentionPattern : public PatternBase {
   PATTERN_DECL_NODE(attn_dropout_mask);
 
   PATTERN_DECL_NODE(qkv_matmul_op);
-  PATTERN_DECL_NODE(qkv_matmul_w);
   PATTERN_DECL_NODE(qkv_matmul_out);
 
   PATTERN_DECL_NODE(qkv_transpose_op);
