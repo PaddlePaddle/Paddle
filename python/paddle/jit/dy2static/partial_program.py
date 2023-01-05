@@ -379,7 +379,7 @@ class PartialProgramLayer:
 
             When we access RunProgramAPI, it's possible to get an invalid backward_program address.
             """
-            return self._empty_backward_program_for_eval()
+            return self._empty_backward_program_for_eval
 
     @LazyInitialized
     def _train_program_id(self):
