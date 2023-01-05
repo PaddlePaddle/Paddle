@@ -662,7 +662,6 @@ EOF
             pip3.6 install --user ${INSTALL_PREFIX:-/paddle/build}/opt/paddle/share/wheels/*.whl
             pip3.6 install --user hypothesis
         elif [ "$1" == "cp37-cp37m" ]; then
-            find / -name paddlepaddle-0.0.0-cp37-cp37m-macosx_10_14_x86_64.whl
             pip3.7 install --user {PADDLE_ROOT}/dist/*.whl
             pip3.7 install --user hypothesis
         elif [ "$1" == "cp38-cp38" ]; then
@@ -1063,6 +1062,8 @@ function generate_api_spec() {
     fi
     if [ -d "${PADDLE_ROOT}/build/python/dist/" ]; then
         pip --no-cache-dir install ${PADDLE_ROOT}/build/python/dist/*whl
+    elif [ -d "${PADDLE_ROOT}/dist/" ];then
+        pip --no-cache-dir install ${PADDLE_ROOT}/dist/*whl
     fi
     spec_path=${PADDLE_ROOT}/paddle/fluid/API_${spec_kind}.spec
     python ${PADDLE_ROOT}/tools/print_signatures.py paddle > $spec_path
