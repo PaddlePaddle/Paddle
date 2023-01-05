@@ -135,11 +135,11 @@ void CumprodGradKernel(const Context &dev_ctx,
   const auto *dy = &dout;
 
   size_t outer_dim, mid_dim, inner_dim;
+  GetCumprodDimInfo(x.dims(), dim, &outer_dim, &mid_dim, &inner_dim);
   if (x.dims().size() == 0) {
     phi::Copy<Context>(dev_ctx, dout, dev_ctx.GetPlace(), false, dx);
     return;
   }
-  GetCumprodDimInfo(x.dims(), dim, &outer_dim, &mid_dim, &inner_dim);
   if (outer_dim == 0 || mid_dim == 0 || inner_dim == 0) return;
 
   size_t numel = outer_dim * mid_dim * inner_dim;

@@ -560,6 +560,8 @@ class TestSundryAPI(unittest.TestCase):
         out = paddle.cumprod(x, 0)
         out.backward()
 
+        with self.assertRaises(IndexError):
+            tmp = paddle.cumprod(x, 2)
         self.assertEqual(out.shape, [])
         self.assertEqual(out.grad.shape, [])
         self.assertEqual(x.grad.shape, [])
