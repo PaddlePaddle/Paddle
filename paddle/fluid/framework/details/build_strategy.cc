@@ -519,6 +519,9 @@ USE_PASS(fuse_all_reduce_op_pass);
 USE_PASS(runtime_context_cache_pass);
 USE_PASS(add_reader_dependency_pass);
 USE_PASS(delete_dropout_op_x_pass);
+#ifdef PADDLE_WITH_CUDA
+USE_PASS(fused_attention_pass)
+#endif
 #ifdef PADDLE_WITH_CINN
 USE_PASS(build_cinn_pass);
 #endif
