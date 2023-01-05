@@ -410,14 +410,10 @@ void ArgsortKernel(const Context &dev_ctx,
   if (size == in_dims[axis]) {
     thrust::sequence(thrust::device, ids_data, ids_data + size);
     thrust::copy(thrust::device, in_data, in_data + size, out_data);
+    thrust::sort_by_key(thrust::device, out_data, out_data + size, ids_data);
     if (descending) {
-      thrust::sort_by_key(thrust::device,
-                          out_data,
-                          out_data + size,
-                          ids_data,
-                          thrust::greater<T>());
-    } else {
-      thrust::sort_by_key(thrust::device, out_data, out_data + size, ids_data);
+      thrust::reverse(thrust::device, out_data, out_data + size);
+      thrust::reverse(thrust::device, ids_data, ids_data + size);
     }
     return;
   }
