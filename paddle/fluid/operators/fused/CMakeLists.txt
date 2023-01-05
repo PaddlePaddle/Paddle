@@ -29,7 +29,8 @@ register_operators(
   fused_gemm_epilogue_op
   fused_gate_attention_op
   resnet_basic_block_op
-  custom_fused_dense_op)
+  custom_fused_dense_op
+  custom_fmha_op)
 
 # fusion_gru_op does not have CUDA kernel
 op_library(fusion_gru_op)
@@ -40,6 +41,7 @@ if(WITH_XPU)
   op_library(resnet_unit_op)
   op_library(fused_gemm_epilogue_op)
   op_library(custom_fused_dense_op)
+  op_library(custom_fmha_op)
 endif()
 
 if(WITH_GPU OR WITH_ROCM)

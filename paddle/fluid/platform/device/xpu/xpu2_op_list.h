@@ -675,6 +675,12 @@ XPUOpMap& get_kl2_ops() {
       {"custom_fused_dense_grad",
        XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace()),
                      pOpKernelType(vartype::FP16, XPUPlace())})},
+      {"custom_fmha",
+       XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace()),
+                     pOpKernelType(vartype::FP16, XPUPlace())})},
+      {"custom_fmha_grad",
+       XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace()),
+                     pOpKernelType(vartype::FP16, XPUPlace())})},
   };
 
   return s_xpu2_kernels;
