@@ -158,5 +158,15 @@ class TestRandomRotation_expand_True(TestTransformUnitTestBase):
         self.api = transforms.RandomRotation(degree_tuple, expand=True, fill=3)
 
 
+class TestRandomHorizontalFlip0(TestTransformUnitTestBase):
+    def set_trans_api(self):
+        self.api = transforms.RandomHorizontalFlip(0)
+
+
+class TestRandomHorizontalFlip1(TestTransformUnitTestBase):
+    def set_trans_api(self):
+        self.api = transforms.RandomHorizontalFlip(1)
+
+
 if __name__ == "__main__":
     unittest.main()
