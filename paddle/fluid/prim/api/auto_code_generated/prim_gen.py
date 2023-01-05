@@ -36,7 +36,6 @@ class PrimAPI(BaseAPI):
     def __init__(self, api_item_yaml):
         super().__init__(api_item_yaml)
         self.is_prim_api = False
-        #print("init prim api :", api_item_yaml['op'])
         if api_item_yaml['op'] in white_ops_list:
             self.is_prim_api = True
 
@@ -76,7 +75,6 @@ template <typename T>
 """
             )
 
-        #print("api_declaration: ", api_declaration)
         return api_declaration
 
     def get_ad_func_input_args(self, inplace_flag=False):
@@ -98,7 +96,6 @@ template <typename T>
             ad_func_args.append(name)
 
         ad_func_args_str = ", ".join(ad_func_args)
-        #print("ad_func_args_str: ", ad_func_args_str)
         return ad_func_args_str
 
     def gene_ad_func_call(self):
@@ -138,46 +135,6 @@ template <>
 
         return api_code
 
-    
-#     def gene_input(self, kernel_tensor_type=None, code_indent=''):
-#         kernel_param = self.kernel['param']
-#         input_name_tensor_map, input_tensor_code = super().gene_input(
-#             kernel_tensor_type, code_indent
-#         )
-
-#         # generate the input that is in view list
-#         for i, input_name in enumerate(self.inputs['names']):
-#             if (
-#                 input_name in self.view_map.values()
-#                 and input_name not in input_name_tensor_map.keys()
-#             ):
-#                 if (
-#                     kernel_tensor_type is None
-#                     or kernel_tensor_type[0][kernel_param.index(input_name)]
-#                     == 'dense'
-#                 ):
-#                     trans_flag = self.gene_trans_flag(input_name)
-#                     input_tensor_code = (
-#                         input_tensor_code
-#                         + f"""
-# {code_indent}  auto {PREFIX_TENSOR_NAME}{input_name} = PrepareData({input_name}, kernel.InputAt(0), {trans_flag});"""
-#                     )
-#                 else:
-#                     # do nothing
-#                     pass
-
-#         return input_name_tensor_map, input_tensor_code
-
-    # def parse_intermediate(self, api_item_yaml):
-    #     if 'intermediate' in api_item_yaml:
-    #         intermediate_outs = [
-    #             item.strip()
-    #             for item in api_item_yaml['intermediate'].split(',')
-    #         ]
-    #         return True, intermediate_outs
-    #     else:
-    #         return False, []
-
     def parse_inplace_and_view(self, api_item_yaml):
         inplace_map, view_map = {}, {}
         for mode in ['inplace', 'view']:
@@ -205,25 +162,6 @@ template <>
 
         return inplace_map, view_map
 
-    # def get_return_type_with_intermediate(self, inplace_flag=False):
-    #     out_type_list = []
-    #     for i, out_type in enumerate(self.outputs['types']):
-    #         out_name = self.outputs['names'][i].split('@')[0]
-    #         if inplace_flag and out_name in self.inplace_map:
-    #             if self.inplace_map[out_name] in self.optional_vars:
-    #                 out_type_list.append(
-    #                     inplace_optional_out_type_map[out_type]
-    #                 )
-    #             else:
-    #                 out_type_list.append(inplace_out_type_map[out_type])
-    #         else:
-    #             out_type_list.append(out_type)
-
-    #     if len(out_type_list) == 1:
-    #         return out_type_list[0]
-    #     else:
-    #         return "std::tuple<" + ", ".join(out_type_list) + ">"
-
     def get_return_type(self, inplace_flag=False):
         out_type_list = []
         for i, out_type in enumerate(self.outputs['types']):
@@ -242,172 +180,6 @@ template <>
         else:
             return "std::tuple<" + ", ".join(out_type_list) + ">"
 
-#     def gene_return_code(self):
-#         if self.is_dygraph_api or len(self.intermediate_outs) == 0:
-#             return "return api_output;"
-#         else:
-#             return_out_list = []
-#             for i, name in enumerate(self.outputs['names']):
-#                 if name.split('@')[0] not in self.intermediate_outs:
-#                     return_out_list.append(i)
-#             if len(return_out_list) == 1:
-#                 return f"return std::get<{return_out_list[0]}>(api_output);"
-#             else:
-#                 selected_code = [
-#                     f"std::get<{i}>(api_output)" for i in return_out_list
-#                 ]
-#             return 'return std::make_tuple(' + ", ".join(selected_code) + ');'
-
-#     def gene_output(
-#         self,
-#         out_dtype_list,
-#         out_tensor_type_list=None,
-#         code_indent='',
-#         inplace_flag=False,
-#     ):
-#         kernel_output = []
-#         output_names = []
-#         output_create = ""
-#         return_type = self.get_return_type_with_intermediate(inplace_flag)
-
-#         if len(out_dtype_list) == 1:
-#             kernel_output.append('kernel_out')
-#             output_names.append('kernel_out')
-#             inplace_assign = (
-#                 " = " + self.inplace_map[self.outputs['names'][0]]
-#                 if inplace_flag and self.outputs['names'][0] in self.inplace_map
-#                 else ""
-#             )
-#             output_create = f"""
-# {code_indent}  {return_type} api_output{inplace_assign};"""
-#             set_out_func = (
-#                 'SetKernelOutput'
-#                 if out_tensor_type_list is None
-#                 or out_tensor_type_list[0] == 'dense'
-#                 else 'SetSelectedRowsKernelOutput'
-#             )
-#             if return_type == 'std::vector<Tensor>':
-#                 assert (
-#                     self.outputs['out_size_expr'][0] is not None
-#                 ), f"{self.api}: The out size expr : '{{expr}}' should be set when output has Tensor[]. You can refer 'split' api."
-#                 output_create = (
-#                     output_create
-#                     + f"""
-# {code_indent}  auto kernel_out = {set_out_func}({self.outputs['out_size_expr'][0]}, &api_output);"""
-#                 )
-
-#             else:
-#                 output_create = (
-#                     output_create
-#                     + f"""
-# {code_indent}  auto kernel_out = {set_out_func}(&api_output);"""
-#                 )
-
-#             if (
-#                 not inplace_flag
-#                 and self.view_map is not None
-#                 and self.outputs['names'][0] in self.view_map
-#             ):
-#                 output_create = (
-#                     output_create
-#                     + f"""
-# {code_indent}  kernel_out->ShareBufferWith(*{PREFIX_TENSOR_NAME}{self.view_map[self.outputs['names'][0]]});
-# {code_indent}  kernel_out->ShareInplaceVersionCounterWith(*{PREFIX_TENSOR_NAME}{self.view_map[self.outputs['names'][0]]});
-# {code_indent}  VLOG(3) << "Perform View between Output and Input Tensor, share allocation and inplace version.";"""
-#                 )
-
-#         elif len(out_dtype_list) > 1:
-#             output_create = f"""
-# {code_indent}  {return_type} api_output;"""
-
-#             if inplace_flag:
-#                 output_create = f"""
-# {code_indent}  {return_type} api_output{{"""
-
-#                 for out_name in self.outputs['names']:
-#                     if out_name in self.inplace_map:
-#                         output_create += self.inplace_map[out_name] + ', '
-#                     else:
-#                         output_create += 'Tensor(), '
-#                 output_create = output_create[:-2] + '};'
-
-#             for i in range(len(out_dtype_list)):
-#                 kernel_output.append(f'kernel_out_{i}')
-#                 output_names.append(f'kernel_out_{i}')
-#                 set_out_func = (
-#                     'SetKernelOutput'
-#                     if out_tensor_type_list is None
-#                     or out_tensor_type_list[i] == 'dense'
-#                     else 'SetSelectedRowsKernelOutput'
-#                 )
-
-#                 get_out_code = f"&std::get<{i}>(api_output)"
-#                 if (
-#                     self.outputs['names'][i] in self.inplace_map
-#                     and self.inplace_map[self.outputs['names'][i]]
-#                     in self.optional_vars
-#                 ):
-#                     get_out_code = f"std::get<{i}>(api_output).get_ptr()"
-
-#                 if out_dtype_list[i] == 'std::vector<Tensor>':
-#                     assert (
-#                         self.outputs['out_size_expr'][i] is not None
-#                     ), f"{self.api}: The out size expr : '{{expr}}' should be set when output has Tensor[]. You can refer 'split' api."
-#                     # Special case for inplace vector and inplace optional<vector>
-#                     if self.outputs['names'][i] in self.inplace_map:
-#                         set_out_func = "SetInplaceVectorKernelOutput"
-#                         if (
-#                             self.inplace_map[self.outputs['names'][i]]
-#                             in self.optional_vars
-#                         ):
-#                             set_out_func = (
-#                                 "SetInplaceOptionalVectorKernelOutput"
-#                             )
-#                             get_out_code = f"std::get<{i}>(api_output)"
-#                     output_create = (
-#                         output_create
-#                         + f"""
-# {code_indent}  auto kernel_out_{i} = {set_out_func}({self.outputs['out_size_expr'][i]}, {get_out_code});"""
-#                     )
-
-#                 else:
-#                     output_create = (
-#                         output_create
-#                         + f"""
-# {code_indent}  auto kernel_out_{i} = {set_out_func}({get_out_code});"""
-#                     )
-
-#                 if (
-#                     not inplace_flag
-#                     and self.view_map is not None
-#                     and self.outputs['names'][i] in self.view_map
-#                 ):
-#                     if out_dtype_list[i] == 'Tensor':
-#                         output_create = (
-#                             output_create
-#                             + f"""
-#     {code_indent}  kernel_out_{i}->ShareBufferWith(*{PREFIX_TENSOR_NAME}{self.view_map[self.outputs['names'][i]]});
-#     {code_indent}  kernel_out_{i}->ShareInplaceVersionCounterWith(*{PREFIX_TENSOR_NAME}{self.view_map[self.outputs['names'][i]]});
-#     {code_indent}  VLOG(3) << "Perform View between Output and Input Tensor, share allocation and inplace version.";"""
-#                         )
-#                     else:
-#                         raise ValueError(
-#                             "{} : Output error: only support Tensor type when use view in yaml. But get {}".format(
-#                                 self.api, out_dtype_list[i]
-#                             )
-#                         )
-#         else:
-#             raise ValueError(
-#                 "{} : Output error: the output should not be empty.".format(
-#                     self.api
-#                 )
-#             )
-
-#         return kernel_output, output_names, output_create
-
-#########
-# Utils #
-#########
 
 white_ops_list = [
     "pow",
