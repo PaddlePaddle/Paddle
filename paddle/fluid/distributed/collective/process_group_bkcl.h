@@ -15,17 +15,16 @@
 #pragma once
 
 #include <chrono>
-#include <map>
 #include <memory>
 #include <string>
 #include <unordered_map>
 
-#include "paddle/fluid/distributed/collective/process_group_stream.h"
+#include "paddle/fluid/distributed/collective/process_group.h"
+#include "paddle/fluid/distributed/collective/process_group_with_stream.h"
 #include "paddle/fluid/distributed/store/store.h"
 #include "paddle/fluid/platform/device/xpu/xpu_header.h"
-#include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/gen_comm_id_helper.h"
-#include "paddle/fluid/platform/place.h"
+#include "paddle/phi/common/place.h"
 #include "paddle/phi/core/device_context.h"
 
 #if defined(PADDLE_WITH_XPU)
@@ -37,12 +36,12 @@ constexpr const char* BKCL_BACKEND_NAME = "BKCL";
 namespace paddle {
 namespace distributed {
 
-using Place = paddle::platform::Place;
+using Place = phi::Place;
 
 // BKCL funcs use separate communication stream by default
-class ProcessGroupBKCL : public ProcessGroupStream {
+class ProcessGroupBKCL : public ProcessGroupWithStream {
  public:
-  class BKCLTask final : public ProcessGroupStream::TaskStream,
+  class BKCLTask final : public ProcessGroupWithStream::TaskStream,
                          public std::enable_shared_from_this<BKCLTask> {
    public:
     BKCLTask(const Place& place,
@@ -161,12 +160,12 @@ class ProcessGroupBKCL : public ProcessGroupStream {
                                                          bool sync_op,
                                                          bool use_calc_stream);
 
-  void BroadcastUniqueBKCLID(BKCLUniqueId* bkcl_id);  // NOLINT
+  void BroadcastUniqueBKCLID(BKCLUniqueId* bkcl_id);
 
   void CreateBKCLEnvCache(const Place& place, const std::string& place_key);
 
   template <typename Fn>
-  std::shared_ptr<ProcessGroupStream::Task> Collective(
+  std::shared_ptr<ProcessGroup::Task> Collective(
       phi::DenseTensor* out_tensor,
       const phi::DenseTensor& in_tensor,
       Fn fn,
