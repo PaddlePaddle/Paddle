@@ -25,4 +25,3 @@ cc_test_old(
   test_eager_prim
   SRCS test_eager_prim.cc
   DEPS ${prim_eager_deps} ${prim_generated_deps} prim_utils)
-
