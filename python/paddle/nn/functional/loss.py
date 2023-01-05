@@ -2113,7 +2113,7 @@ def margin_cross_entropy(
     if input_dims - 1 != label_dims and input_dims != label_dims:
         raise ValueError(
             'Expected input_dims - 1 = label_dims or input_dims == label_dims\
-             (got input_dims{}, label_dims{})'.format(
+             (got nput_dims{}, label_dims{})'.format(
                 input_dims, label_dims
             )
         )
