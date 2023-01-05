@@ -13,10 +13,9 @@
 # limitations under the License.
 
 
-import paddle
 from paddle import _C_ops
 
-from ...fluid import framework, unique_name
+from ...fluid import core, framework, unique_name
 from ...fluid.data_feeder import check_variable_and_dtype
 from ...fluid.framework import _current_expected_place, in_dygraph_mode
 from ...fluid.initializer import Initializer
@@ -92,15 +91,15 @@ class UniformInitializer(Initializer):
             self._seed = block.program.random_seed
 
         # to be compatible of fp16 initializers
-        if var.dtype == paddle.VarDesc.VarType.FP16:
-            out_dtype = paddle.VarDesc.VarType.FP32
+        if var.dtype == core.VarDesc.VarType.FP16:
+            out_dtype = core.VarDesc.VarType.FP32
             out_var = block.create_var(
                 name=unique_name.generate(
                     ".".join(['uniform_random', var.name, 'tmp'])
                 ),
                 shape=var.shape,
                 dtype=out_dtype,
-                type=paddle.VarDesc.VarType.LOD_TENSOR,
+                type=core.VarDesc.VarType.LOD_TENSOR,
                 persistable=False,
             )
         else:
@@ -116,7 +115,7 @@ class UniformInitializer(Initializer):
                 self._seed,
                 _current_expected_place(),
             )
-            if var.dtype == paddle.VarDesc.VarType.FP16:
+            if var.dtype == core.VarDesc.VarType.FP16:
                 var_tmp = _C_ops.cast(out_var, var.dtype)
                 var_tmp._share_underline_tensor_to(var)
             else:
@@ -140,7 +139,7 @@ class UniformInitializer(Initializer):
                 stop_gradient=True,
             )
 
-            if var.dtype == paddle.VarDesc.VarType.FP16:
+            if var.dtype == core.VarDesc.VarType.FP16:
                 block.append_op(
                     type="cast",
                     inputs={"X": out_var},
@@ -199,7 +198,7 @@ class ConstantInitializer(Initializer):
         if in_dygraph_mode():
             place = _current_expected_place()
             if self._force_cpu:
-                place = paddle.CPUPlace()
+                place = core.CPUPlace()
             _C_ops.full_(
                 var, var.shape, str(float(self._value)), var.dtype, place
             )
