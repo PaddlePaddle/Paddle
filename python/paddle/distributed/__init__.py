@@ -31,7 +31,7 @@ from paddle.distributed.fleet.base.topology import ParallelMode  # noqa: F401
 from .collective import split  # noqa: F401
 from .collective import new_group  # noqa: F401
 from .collective import is_available
-from .collective import destroy_process_group_custom
+from .collective import destroy_process_group_id_map
 from .communication import (
     stream,
     ReduceOp,
@@ -123,7 +123,7 @@ __all__ = [  # noqa
     "reduce_scatter",
     "is_available",
     "get_backend",
-    "destroy_process_group_custom",
+    "destroy_process_group_id_map",
 ]
 
-atexit.register(destroy_process_group_custom)
+atexit.register(destroy_process_group_id_map)

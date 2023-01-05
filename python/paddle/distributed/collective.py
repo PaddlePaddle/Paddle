@@ -327,12 +327,11 @@ def is_available():
     return core.is_compiled_with_dist()
 
 
-def destroy_process_group_custom():
+def destroy_process_group_id_map():
     """
 
     Destroy the custom process group. Designed for CustomDevice.
 
 
     """
-    if 'npu' in paddle.device.get_all_custom_device_type():
-        core.ProcessGroupIdMap.destroy()
+    core.ProcessGroupIdMap.destroy()
