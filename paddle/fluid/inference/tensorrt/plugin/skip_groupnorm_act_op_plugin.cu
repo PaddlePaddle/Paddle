@@ -54,6 +54,8 @@ bool SkipGroupnormActPluginDynamic::supportsFormatCombination(
       return ((in.type == nvinfer1::DataType::kHALF) &&
               (in.format == nvinfer1::PluginFormat::kHWC8));
     } else {
+      PADDLE_THROW(platform::errors::Fatal(
+          "SkipGroupnormAct TRT Plugin is fp16 only so far"));
       return (in.type == nvinfer1::DataType::kFLOAT) &&
              (in.format == nvinfer1::TensorFormat::kLINEAR);
     }
