@@ -187,7 +187,20 @@ def parse_kernel(op_name: str, kernel_config: Dict[str, Any]) -> Dict[str, Any]:
         kernel['layout'] = parse_candidates(kernel_config["layout"])
 
     if 'data_type' in kernel_config:
-        kernel['data_type'] = parse_candidates(kernel_config["data_type"])
+        data_type_item = parse_candidates(kernel_config["data_type"])
+        params_num = len(data_type_item['candidates'])
+        data_type_item['to_complex_flag'] = [False] * params_num
+        for i in range(params_num):
+            complex_match_result = re.match(
+                r"complex\((?P<param_name>\w+)\)",
+                data_type_item['candidates'][i],
+            )
+            if complex_match_result:
+                data_type_item['candidates'][i] = complex_match_result.group(
+                    'param_name'
+                )
+                data_type_item['to_complex_flag'][i] = True
+        kernel['data_type'] = data_type_item
 
     kernel_funcs = re.compile(r'([a-zA-Z0-9_]+)\s*({[^}]+})?').findall(
         kernel_config['func']
@@ -293,7 +306,7 @@ def check_op_config(op_entry, op_name):
         'intermediate',
         'no_need_buffer',
         'data_transform',
-        'composite'
+        'composite',
     )
     infer_meta_key_set = ('func', 'param')
     kernel_key_set = ('func', 'param', 'data_type', 'layout', 'backend')

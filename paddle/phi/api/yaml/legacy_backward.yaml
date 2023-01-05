@@ -617,12 +617,6 @@
   kernel :
     func : huber_loss_grad
 
-- backward_op : imag_grad
-  forward : imag (Tensor x) -> Tensor(out)
-  args : (Tensor out_grad)
-  output : Tensor(x_grad)
-  invoke : imag_grad_impl(out_grad, x_grad)
-
 - backward_op : index_add_grad
   forward : index_add(Tensor x, Tensor index,  Tensor add_value, int axis) -> Tensor(out)
   args : (Tensor index, Tensor add_value, Tensor out_grad, int axis)
@@ -1124,12 +1118,6 @@
     func : psroi_pool_grad
     data_type : x
   optional : boxes_num
-
-- backward_op : real_grad
-  forward : real (Tensor x) -> Tensor(out)
-  args : (Tensor out_grad)
-  output : Tensor(x_grad)
-  invoke : real_grad_impl(out_grad, x_grad)
 
 - backward_op : relu6_grad
   forward : relu6 (Tensor x) -> Tensor(out)
