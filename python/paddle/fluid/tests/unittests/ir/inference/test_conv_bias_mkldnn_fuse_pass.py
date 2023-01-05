@@ -20,7 +20,7 @@ from program_config import OpConfig, ProgramConfig, TensorConfig
 
 
 class TestConvBiasMkldnnFusePass(PassAutoScanTest):
-    r"""
+    r'''
     x_var   f_var(persistable)
       \       /
         conv2d
@@ -30,56 +30,44 @@ class TestConvBiasMkldnnFusePass(PassAutoScanTest):
            elementwise_add
                 |
          elementwise_add_var
-    """
+    '''
 
     def sample_predictor_configs(self, program_config):
-        # MKLDNN
         config = self.create_inference_config(use_gpu=False)
         config.enable_mkldnn()
-        yield config, ["fused_conv2d"], (1e-4, 1e-5)
+        yield config, ['fused_conv2d'], (1e-4, 1e-5)
 
     def is_program_valid(self, prog_config):
-        paddings = prog_config.ops[0].attrs["paddings"]
-        strides = prog_config.ops[0].attrs["strides"]
-        groups = prog_config.ops[0].attrs["groups"]
-        padding_algorithm = prog_config.ops[0].attrs["padding_algorithm"]
-        dilations = prog_config.ops[0].attrs["dilations"]
-        data_format = prog_config.ops[0].attrs["data_format"]
-        filter_shape = prog_config.weights["filter"].shape
-        input_shape = prog_config.inputs["input_x"].shape
-        if padding_algorithm == "VALID":
+        paddings = prog_config.ops[0].attrs['paddings']
+        groups = prog_config.ops[0].attrs['groups']
+        padding_algorithm = prog_config.ops[0].attrs['padding_algorithm']
+        dilations = prog_config.ops[0].attrs['dilations']
+        data_format = prog_config.ops[0].attrs['data_format']
+        filter_shape = prog_config.weights['filter'].shape
+        input_shape = prog_config.inputs['input_x'].shape
+        if padding_algorithm == 'VALID':
             if (
-                (input_shape[2] - (dilations[0] * (filter_shape[2] - 1) + 1))
-                / strides[0]
-                + 1
-            ) <= 1 or (
-                (input_shape[3] - (dilations[1] * (filter_shape[3] - 1) + 1))
-                / strides[1]
-                + 1
-            ) <= 1:
+                input_shape[2] - (dilations[0] * (filter_shape[2] - 1) + 1) <= 0
+            ) or (
+                input_shape[3] - (dilations[1] * (filter_shape[3] - 1) + 1) <= 0
+            ):
                 return False
-        if padding_algorithm == "EXPLICIT":
+        if padding_algorithm == 'EXPLICIT':
             if (
-                (
-                    input_shape[2]
-                    + paddings[0]
-                    + paddings[1]
-                    - (dilations[0] * (filter_shape[2] - 1) + 1)
-                )
-                / strides[0]
-                + 1
-            ) <= 1 or (
-                (
-                    input_shape[3]
-                    + paddings[2]
-                    + paddings[3]
-                    - (dilations[1] * (filter_shape[3] - 1) + 1)
-                )
-                / strides[1]
-                + 1
-            ) <= 1:
+                input_shape[2]
+                + paddings[0]
+                + paddings[1]
+                - (dilations[0] * (filter_shape[2] - 1) + 1)
+                <= 0
+            ) or (
+                input_shape[3]
+                + paddings[2]
+                + paddings[3]
+                - (dilations[1] * (filter_shape[3] - 1) + 1)
+                <= 0
+            ):
                 return False
-        if data_format == "NCHW":
+        if data_format == 'NCHW':
             if input_shape[1] != filter_shape[1] * groups:
                 return False
             if filter_shape[0] % groups != 0:
@@ -101,7 +89,7 @@ class TestConvBiasMkldnnFusePass(PassAutoScanTest):
         x_shape[1] = draw(st.integers(min_value=5, max_value=10))
 
         # 2. Generate legal attr:data_format of conv2d
-        data_format = draw(st.sampled_from(["NCHW", "NHWC"]))
+        data_format = draw(st.sampled_from(['NCHW', 'NHWC']))
 
         # 3. Generate legal shape of input:Y of conv2d
         f_shape = draw(
@@ -109,7 +97,7 @@ class TestConvBiasMkldnnFusePass(PassAutoScanTest):
                 st.integers(min_value=1, max_value=4), min_size=4, max_size=4
             )
         )
-        if data_format == "NCHW":
+        if data_format == 'NCHW':
             f_shape[1] = x_shape[1]
         else:
             f_shape[1] = x_shape[3]
@@ -122,7 +110,7 @@ class TestConvBiasMkldnnFusePass(PassAutoScanTest):
         )
 
         # 5. Generate legal attr:padding_algorithm of conv2d
-        padding_algorithm = draw(st.sampled_from(["EXPLICIT", "SAME", "VALID"]))
+        padding_algorithm = draw(st.sampled_from(['EXPLICIT', 'SAME', 'VALID']))
 
         # 6. Generate legal attr:padding of conv2d
         padding = draw(
@@ -146,7 +134,7 @@ class TestConvBiasMkldnnFusePass(PassAutoScanTest):
 
         # 10. Generate legal shape of attr:axis of elementwise_add
         axis = 1
-        if data_format == "NCHW":
+        if data_format == 'NCHW':
             axis = 1
         else:
             axis = 3
@@ -156,36 +144,36 @@ class TestConvBiasMkldnnFusePass(PassAutoScanTest):
         inputs = dict()
         weights = dict()
         use_mkldnn = None
-        conv_type = "conv2d"
+        conv_type = 'conv2d'
         if draw(st.booleans()):
             conv_bias_shape = [f_shape[0]]
-            conv_type = "fused_conv2d"
+            conv_type = 'fused_conv2d'
             inputs = {
-                "Input": ["input_x"],
-                "Filter": ["filter"],
-                "Bias": ["conv_bias"],
+                'Input': ['input_x'],
+                'Filter': ['filter'],
+                'Bias': ['conv_bias'],
             }
             weights = {
-                "filter": TensorConfig(shape=f_shape),
-                "bias": TensorConfig(shape=bias_shape),
-                "conv_bias": TensorConfig(shape=conv_bias_shape),
+                'filter': TensorConfig(shape=f_shape),
+                'bias': TensorConfig(shape=bias_shape),
+                'conv_bias': TensorConfig(shape=conv_bias_shape),
             }
             use_mkldnn = True
         else:
             inputs = {
-                "Input": ["input_x"],
-                "Filter": ["filter"],
+                'Input': ['input_x'],
+                'Filter': ['filter'],
             }
             weights = {
-                "filter": TensorConfig(shape=f_shape),
-                "bias": TensorConfig(shape=bias_shape),
+                'filter': TensorConfig(shape=f_shape),
+                'bias': TensorConfig(shape=bias_shape),
             }
             use_mkldnn = False
 
         conv2d_op = OpConfig(
             conv_type,
             inputs=inputs,
-            outputs={"Output": ["conv2d_out"]},
+            outputs={'Output': ['conv2d_out']},
             strides=strides,
             padding_algorithm=padding_algorithm,
             paddings=padding,
@@ -196,9 +184,9 @@ class TestConvBiasMkldnnFusePass(PassAutoScanTest):
         )
 
         add_op = OpConfig(
-            "elementwise_add",
-            inputs={"X": ["conv2d_out"], "Y": ["bias"]},
-            outputs={"Out": ["add_out"]},
+            'elementwise_add',
+            inputs={'X': ['conv2d_out'], 'Y': ['bias']},
+            outputs={'Out': ['add_out']},
             axis=axis,
         )
 
@@ -207,16 +195,16 @@ class TestConvBiasMkldnnFusePass(PassAutoScanTest):
         program_config = ProgramConfig(
             ops=ops,
             weights=weights,
-            inputs={"input_x": TensorConfig(shape=x_shape)},
-            outputs=ops[-1].outputs["Out"],
+            inputs={'input_x': TensorConfig(shape=x_shape)},
+            outputs=ops[-1].outputs['Out'],
         )
         return program_config
 
     def test(self):
         self.run_and_statis(
-            quant=False, max_examples=350, passes=["conv_bias_mkldnn_fuse_pass"]
+            quant=False, max_examples=350, passes=['conv_bias_mkldnn_fuse_pass']
         )
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     unittest.main()
