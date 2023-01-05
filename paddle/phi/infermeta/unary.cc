@@ -160,26 +160,39 @@ void ArgMinMaxInferMeta(const MetaTensor& x,
   auto int_axis = axis.to<int64_t>();
   const auto& x_dims = x.dims();
 
-  PADDLE_ENFORCE_GE(
-      int_axis,
-      -x_dims.size(),
-      phi::errors::InvalidArgument("'axis'(%d) must be greater than or equal to"
-                                   " -Rank(X)(%d).",
-                                   int_axis,
-                                   -x_dims.size()));
-  PADDLE_ENFORCE_LT(int_axis,
-                    x_dims.size(),
-                    phi::errors::InvalidArgument(
-                        "'axis'(%d) must be less than Rank(X)(%d) of Input(X).",
-                        int_axis,
-                        x_dims.size()));
+  auto x_rank = x.dims().size();
+  if (x_rank > 0) {
+    PADDLE_ENFORCE_GE(int_axis,
+                      -x_rank,
+                      phi::errors::InvalidArgument(
+                          "'axis'(%d) must be greater than or equal to"
+                          " -Rank(X)(%d).",
+                          int_axis,
+                          -x_rank));
+    PADDLE_ENFORCE_LT(
+        int_axis,
+        x_rank,
+        phi::errors::InvalidArgument(
+            "'axis'(%d) must be less than Rank(X)(%d) of Input(X).",
+            int_axis,
+            x_rank));
+  } else {
+    // 0-dim tensor
+    PADDLE_ENFORCE_EQ(
+        int_axis == 0 || int_axis == -1,
+        true,
+        phi::errors::InvalidArgument(
+            "'axis'(%d) must be 0 or -1 if input tensor is 0-dim.", int_axis));
+  }
 
-  auto x_rank = x_dims.size();
   if (int_axis < 0) int_axis += x_rank;
+
   if (config.is_runtime) {
     if (dtype == phi::TransToProtoVarType(DataType::INT32)) {
       int64_t all_element_num = 0;
-      if (flatten) {
+      if (x_rank == 0) {
+        all_element_num = 1;
+      } else if (flatten) {
         all_element_num = phi::product(x_dims);
       } else {
         all_element_num = x_dims[int_axis];
@@ -195,8 +208,12 @@ void ArgMinMaxInferMeta(const MetaTensor& x,
               INT_MAX));
     }
   }
+
   std::vector<int64_t> vec;
-  if (flatten) {
+
+  if (x_rank == 0) {
+    // vec is set to empty
+  } else if (flatten) {
     vec.emplace_back(static_cast<int64_t>(1));
   } else {
     for (int64_t i = 0; i < int_axis; i++) vec.emplace_back(x_dims[i]);
@@ -205,6 +222,7 @@ void ArgMinMaxInferMeta(const MetaTensor& x,
     }
     for (int64_t i = int_axis + 1; i < x_rank; i++) vec.emplace_back(x_dims[i]);
   }
+
   out->set_dims(phi::make_ddim(vec));
   if (dtype == 2) {
     out->set_dtype(DataType::INT32);

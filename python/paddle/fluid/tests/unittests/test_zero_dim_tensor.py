@@ -46,6 +46,8 @@ unary_api_list = [
     paddle.nn.functional.silu,
     paddle.nn.functional.tanh,
     paddle.nn.functional.dropout,
+    paddle.argmax,
+    paddle.argmin,
     paddle.cosh,
     paddle.sinh,
     paddle.abs,

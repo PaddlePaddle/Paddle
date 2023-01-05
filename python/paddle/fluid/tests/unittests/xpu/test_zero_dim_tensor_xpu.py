@@ -51,6 +51,8 @@ unary_api_list = [
     paddle.sinh,
     paddle.abs,
     paddle.acos,
+    paddle.argmax,
+    paddle.argmin,
     paddle.asin,
     paddle.atan,
     paddle.ceil,
