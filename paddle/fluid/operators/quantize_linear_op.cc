@@ -201,10 +201,11 @@ class QuantizeLinearOpMaker : public framework::OpProtoAndCheckerMaker {
                   "for training. Some layers may run faster when this is true.")
         .SetDefault(true);
     AddAttr<bool>(
-        "observer",
-        "(bool, default false) Whether to observer or not."
-        "If observer=False, it will calculate fake quant or dequant output."
-        "If observer=False, it will only calibrate scale information.")
+        "only_observer",
+        "(bool, default false) Whether to only observer or not."
+        "If only_observer=false, it will calculate fake quant or dequant "
+        "output."
+        "If only_observer=true, it will only calibrate scale information.")
         .SetDefault(false);
     AddComment(R"DOC(
 The scale of QuantizeLinear operator is a vector.

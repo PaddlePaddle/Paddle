@@ -112,18 +112,25 @@ SUPPORT_QUANTIZATION_OP_DICT = {
 
 class BaseQuantizer:
     """
-    Basic quantization configuration class, configure some quantized hyperparameters,
-    including the op that needs to be quantized, the number of quantized bits,
-    the value range and the rounding method, etc.
+    Basic quantization configuration class, which configures some hyperparameters
+    required for quantization, including the list of op types to be quantized,
+    quantization bit number for weight and activation and the range of quantization values.
+    Args:
+        quantizable_op_type(list[str], optional): List the type of ops
+            that will be quantized. Default is []. If quantizable_op_type is [],
+            it will use the default quantization op type of the qunat config in
+            the current Quantizer.
+        quant_bits(int, optional): Quantization bit number for weight and activation.
+            Default is 8.
     """
 
     def __init__(
         self,
-        quant_operation_types=None,
+        quantizable_op_type=[],
         quant_bits=8,
     ):
-        self._quantize_op = quant_operation_types
-        self.quant_bits = quant_bits
+        self._quantizable_op_type = quantizable_op_type
+        self._quant_bits = quant_bits
         self._quant_min = -128
         self._quant_max = 127
 
@@ -141,9 +148,9 @@ class BaseQuantizer:
             'matmul',
             'matmul_v2',
         ]
-        if self._quantize_op:
+        if self._quantizable_op_type:
             weight_list = []
-            for _op_type in self._quantize_op:
+            for _op_type in self._quantizable_op_type:
                 if _op_type in base_weight_op_type_list:
                     weight_list.append(_op_type)
             return weight_list
@@ -157,8 +164,8 @@ class BaseQuantizer:
         And before these ops, quant dequant nodes will be inserted.
         """
         act_quant_op_list = []
-        if self._quantize_op:
-            for _op_type in self._quantize_op:
+        if self._quantizable_op_type:
+            for _op_type in self._quantizable_op_type:
                 if _op_type in self.observer_operation_types:
                     act_quant_op_list.append(_op_type)
         else:
@@ -272,16 +279,23 @@ class BaseQuantizer:
 class TensorRTQuantizer(BaseQuantizer):
     """
     TensorRT quantization configuration class.
+    Args:
+        quantizable_op_type(list[str], optional): List the type of ops
+            that will be quantized. Default is []. If quantizable_op_type is [],
+            it will use the default quantization op type of the qunat config in
+            the current Quantizer.
+        quant_bits(int, optional): Quantization bit number for weight and activation.
+            Default is 8.
     """
 
     def __init__(
         self,
-        quant_operation_types=None,
+        quantizable_op_type=[],
         quant_bits=8,
     ):
         super().__init__()
-        self._quantize_op = quant_operation_types
-        self.quant_bits = quant_bits
+        self._quantizable_op_type = quantizable_op_type
+        self._quant_bits = quant_bits
         self._quant_min = -128
         self._quant_max = 127
 
@@ -331,16 +345,23 @@ class TensorRTQuantizer(BaseQuantizer):
 class MKLDNNQuantizer(BaseQuantizer):
     """
     MKLDNN quantization configuration class.
+    Args:
+        quantizable_op_type(list[str], optional): List the type of ops
+            that will be quantized. Default is []. If quantizable_op_type is [],
+            it will use the default quantization op type of the qunat config in
+            the current Quantizer.
+        quant_bits(int, optional): Quantization bit number for weight and activation.
+            Default is 8.
     """
 
     def __init__(
         self,
-        quant_operation_types=None,
+        quantizable_op_type=[],
         quant_bits=8,
     ):
         super().__init__()
-        self._quantize_op = quant_operation_types
-        self.quant_bits = quant_bits
+        self._quantizable_op_type = quantizable_op_type
+        self._quant_bits = quant_bits
         self._quant_min = -128
         self._quant_max = 127
 
@@ -364,15 +385,22 @@ class MKLDNNQuantizer(BaseQuantizer):
 class ARMCPUQuantizer(BaseQuantizer):
     """
     ARM CPU with Paddle Lite quantization configuration class.
+    Args:
+        quantizable_op_type(list[str], optional): List the type of ops
+            that will be quantized. Default is []. If quantizable_op_type is [],
+            it will use the default quantization op type of the qunat config in
+            the current Quantizer.
+        quant_bits(int, optional): Quantization bit number for weight and activation.
+            Default is 8.
     """
 
     def __init__(
         self,
-        quant_operation_types=None,
+        quantizable_op_type=[],
         quant_bits=8,
     ):
         super().__init__()
-        self._quantize_op = quant_operation_types
-        self.quant_bits = quant_bits
+        self._quantizable_op_type = quantizable_op_type
+        self._quant_bits = quant_bits
         self._quant_min = -127
         self._quant_max = 127

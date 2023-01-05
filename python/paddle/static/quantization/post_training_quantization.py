@@ -205,7 +205,9 @@ class PostTrainingQuantization:
             hist_percent(float, optional): The threshold of algo 'hist' for activations.
                 Default is 0.99999.
             quantizable_op_type(list[str], optional): List the type of ops
-                that will be quantized. Default is None.
+                that will be quantized. Default is []. If quantizable_op_type is [],
+                it will use the default quantization op type of the qunat config in
+                the current deploy_backend.
             round_type(str, optional): The method of converting the quantized weights
                 value float->int. Currently supports ['round', 'adaround'] methods.
                 Default is `round`, which is rounding nearest to the integer.
@@ -213,8 +215,8 @@ class PostTrainingQuantization:
             learning_rate(float, optional): The learning rate of adaround method.
             is_full_quantized(bool, optional): If set is_full_quantized as True,
                 apply quantization to all supported quantizable op type. If set
-                is_full_quantized as False, only apply quantization to the op type
-                according to the input quantizable_op_type.
+                is_full_quantized as False, it will apply quantization to the op type
+                according to the input quantizable_op_type or quant config of deploy_backend.
             bias_correction(bool, optional): If set as True, use the bias correction
                 method of https://arxiv.org/abs/1810.05723. Default is False.
             activation_bits(int): quantization bit number for activation.
@@ -248,9 +250,9 @@ class PostTrainingQuantization:
                 quantization. Default False.
             is_use_cache_file(bool, optional): This param is deprecated.
             cache_dir(str, optional): This param is deprecated.
-            deploy_backend(str, optional): Deploy backend, it could be None, TensorRT, MKLDNN, ARM.
-                Other backends will continue to expand, the default is None, which means to
-                use the default general quantization configuration.
+            deploy_backend(str, optional): Deploy backend, it can be None, `TensorRT`,
+                `MKLDNN`, `ARM`. And it will extend the new backend. Default is None,
+                which means to use the default general quantization configuration.
         Returns:
             None
 
@@ -415,6 +417,7 @@ class PostTrainingQuantization:
         assert (
             activation_bits == weight_bits
         ), "activation_bits and weight_bits must be the same, other cases are not supported."
+        support_deploy_backend = [None, "tensorrt", "mkldnn", "arm"]
         if not deploy_backend:
             self.quant_config = BaseQuantizer(
                 quant_operation_types=quantizable_op_type,
@@ -436,8 +439,8 @@ class PostTrainingQuantization:
                 quant_bits=weight_bits,
             )
         else:
-            assert "Deploy Backend {} not support, please choose None, tensorrt or mkldnn.".format(
-                deploy_backend
+            assert "Deploy Backend {} not support, please choose one of {}.".format(
+                deploy_backend, support_deploy_backend
             )
 
     def quantize(self):
