@@ -1,4 +1,3 @@
-
 file(
   GLOB TEST_OPS
   RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
@@ -10,5 +9,4 @@ foreach(TEST_OP ${TEST_OPS})
   py_test_modules(${TEST_OP} MODULES ${TEST_OP} ENVS ${GC_ENVS})
 endforeach()
 
-add_subdirectory(eager_test)
-add_subdirectory(static_test)
+set_tests_properties(test_tanh_grad_comp PROPERTIES TIMEOUT 60)
