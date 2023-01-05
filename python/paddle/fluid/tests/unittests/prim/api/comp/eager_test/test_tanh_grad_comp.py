@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
 import os
 import unittest
 
@@ -49,9 +48,13 @@ class TestTanhGradComp(unittest.TestCase):
             paddle.disable_static()
             x = paddle.to_tensor(primal, dtype='float32', stop_gradient=False)
             x.stop_gradient = False
-            v = paddle.to_tensor(cotangent, dtype='float32', stop_gradient=False)
+            v = paddle.to_tensor(
+                cotangent, dtype='float32', stop_gradient=False
+            )
             y = paddle.tanh(x)
-            x_cotangent = paddle.grad(y, x, v,create_graph=True, retain_graph=True)
+            x_cotangent = paddle.grad(
+                y, x, v, create_graph=True, retain_graph=True
+            )
             return x_cotangent[0]
 
         def desired(primal, cotangent):
