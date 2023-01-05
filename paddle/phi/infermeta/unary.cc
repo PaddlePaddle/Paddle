@@ -220,18 +220,26 @@ void ArgsortInferMeta(const MetaTensor& input,
                       MetaTensor* indices) {
   auto in_dims = input.dims();
   auto num_dims = in_dims.size();
-  PADDLE_ENFORCE_GE(
-      axis,
-      -num_dims,
-      phi::errors::InvalidArgument("'axis'(%d) must be greater than or equal to"
-                                   " -num_dims(%d).",
-                                   axis,
-                                   -num_dims));
-  PADDLE_ENFORCE_LT(
-      axis,
-      num_dims,
-      phi::errors::InvalidArgument(
-          "'axis'(%d) must be less than num_dims(%d).", axis, num_dims));
+  if (num_dims > 0) {
+    PADDLE_ENFORCE_GE(axis,
+                      -num_dims,
+                      phi::errors::InvalidArgument(
+                          "'axis'(%d) must be greater than or equal to"
+                          " -num_dims(%d).",
+                          axis,
+                          -num_dims));
+    PADDLE_ENFORCE_LT(
+        axis,
+        num_dims,
+        phi::errors::InvalidArgument(
+            "'axis'(%d) must be less than num_dims(%d).", axis, num_dims));
+  } else {  // 0-dim tensor
+    PADDLE_ENFORCE_EQ(
+        axis == 0 || axis == -1,
+        1,
+        phi::errors::InvalidArgument(
+            "'axis'(%d) must be 0 or -1 if input tensor is 0-dim.", axis));
+  }
 
   output->share_dims(input);
   output->set_dtype(input.dtype());
