@@ -13,13 +13,13 @@
 # limitations under the License.
 
 import copy
+import os
 import warnings
 
 import paddle
 from paddle.fluid import core
 from paddle.fluid.framework import _dygraph_tracer, dygraph_only
 from paddle.fluid.wrapped_decorator import signature_safe_contextmanager
-import os
 
 AMP_LEVEL = core.AmpLevel
 
