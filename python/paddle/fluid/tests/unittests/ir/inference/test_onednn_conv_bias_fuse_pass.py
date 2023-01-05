@@ -54,7 +54,9 @@ class TestOneDNNConvBiasFusePassPaddingSame(InferencePassTest):
         )
 
 
-class TestOneDNNConvBiasFusePassPaddingValid(TestOneDNNConvBiasFusePassPaddingSame):
+class TestOneDNNConvBiasFusePassPaddingValid(
+    TestOneDNNConvBiasFusePassPaddingSame
+):
     def setUp(self):
         with fluid.program_guard(self.main_program, self.startup_program):
             data = fluid.data(
@@ -79,7 +81,9 @@ class TestOneDNNConvBiasFusePassPaddingValid(TestOneDNNConvBiasFusePassPaddingSa
         self.enable_mkldnn = True
 
 
-class TestOneDNNConvBiasOneDNNFusePassPaddingExplicit(TestOneDNNConvBiasFusePassPaddingSame):
+class TestOneDNNConvBiasOneDNNFusePassPaddingExplicit(
+    TestOneDNNConvBiasFusePassPaddingSame
+):
     def setUp(self):
         with fluid.program_guard(self.main_program, self.startup_program):
             data = fluid.data(
@@ -133,7 +137,9 @@ class TestOneDNNConvBiasFusePassGroups(TestOneDNNConvBiasFusePassPaddingSame):
         self.enable_mkldnn = True
 
 
-class TestOneDNNConvBiasFusePassDilatation(TestOneDNNConvBiasFusePassPaddingSame):
+class TestOneDNNConvBiasFusePassDilatation(
+    TestOneDNNConvBiasFusePassPaddingSame
+):
     def setUp(self):
         with fluid.program_guard(self.main_program, self.startup_program):
             data = fluid.data(

@@ -21,7 +21,6 @@ from auto_scan_test import PassAutoScanTest
 from program_config import OpConfig, ProgramConfig, TensorConfig
 
 
-# the two inputs of elementwise_add are tensor
 class TestOneDNNConvElementwiseAddFusePass(PassAutoScanTest):
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         attrs = [
