@@ -27,7 +27,7 @@ except ModuleNotFoundError:
     import sys
 
     sys.path.append(path.join(path.dirname(__file__), 'proto'))
-    from .proto import pass_desc_pb2
+    from paddle.fluid.proto import pass_desc_pb2
 
 
 class RegisterPassHelper:
