@@ -28,11 +28,11 @@ KernelSignature ReshapeOpArgumentMapping(const ArgumentMappingContext& ctx) {
     }
   } else {
     if (ctx.InputSize("ShapeTensor") > 0) {
-      return KernelSignature("reshape", {"X"}, {"ShapeTensor"}, {"Out"});
+      return KernelSignature("reshape_infer", {"X"}, {"ShapeTensor"}, {"Out"});
     } else if (ctx.HasInput("Shape")) {
-      return KernelSignature("reshape", {"X"}, {"Shape"}, {"Out"});
+      return KernelSignature("reshape_infer", {"X"}, {"Shape"}, {"Out"});
     } else {
-      return KernelSignature("reshape", {"X"}, {"shape"}, {"Out"});
+      return KernelSignature("reshape_infer", {"X"}, {"shape"}, {"Out"});
     }
   }
 }

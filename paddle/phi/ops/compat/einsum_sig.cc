@@ -29,7 +29,5 @@ KernelSignature EinsumGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
 }
 }  // namespace phi
 
-PD_REGISTER_BASE_KERNEL_NAME(einsum, einsum);
-
 PD_REGISTER_ARG_MAPPING_FN(einsum, phi::EinsumOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(einsum_grad, phi::EinsumGradOpArgumentMapping);
