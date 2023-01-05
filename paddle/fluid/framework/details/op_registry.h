@@ -268,7 +268,7 @@ struct OpInfoFiller<T, kGradCompOpDescMaker> {
         [](const OpDesc& fwd_op,
            const std::unordered_set<std::string>& no_grad_set,
            std::unordered_map<std::string, std::string>* grad_to_var,
-           BlockDesc* current_block,
+           const BlockDesc* current_block,
            const std::vector<BlockDesc*>& grad_block) {
           T maker(fwd_op, no_grad_set, grad_to_var, current_block, grad_block);
           return maker();

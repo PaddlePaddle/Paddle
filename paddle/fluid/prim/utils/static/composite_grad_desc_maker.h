@@ -46,7 +46,7 @@ class GradCompositeOpMakerBase {
       const framework::OpDesc& fwd_op,
       const std::unordered_set<std::string>& no_grad_set,
       std::unordered_map<std::string, std::string>* grad_to_var,
-      framework::BlockDesc* original_block,
+      const framework::BlockDesc* original_block,
       const std::vector<framework::BlockDesc*>& grad_block =
           std::vector<framework::BlockDesc*>())
       : fwd_op_(fwd_op),
@@ -331,7 +331,7 @@ class GradCompositeOpMakerBase {
   const framework::OpDesc& fwd_op_;
   const std::unordered_set<std::string>& no_grad_set_;
   std::unordered_map<std::string, std::string>* grad_to_var_;
-  framework::BlockDesc* original_block_;
+  const framework::BlockDesc* original_block_;
   framework::ProgramDesc acting_program_;
 
  protected:
