@@ -1373,6 +1373,26 @@ DECLARE_INFER_SHAPE_FUNCTOR(histogram,
                             HistogramInferShapeFunctor,
                             PD_INFER_META(phi::HistogramInferMeta));
 
+class ImagOpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  void Make() override {
+    AddInput("X", "(Tensor), input 0 of imag op.");
+    AddOutput("Out", "(Tensor), output 0 of imag op.");
+    AddComment(R"DOC(
+TODO: Documentation of imag op.
+)DOC");
+  }
+};
+
+class ImagOp : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+};
+
+DECLARE_INFER_SHAPE_FUNCTOR(imag,
+                            ImagInferShapeFunctor,
+                            PD_INFER_META(phi::RealAndImagInferMeta));
+
 class IndexSampleOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
@@ -2214,6 +2234,26 @@ class QrOp : public framework::OperatorWithKernel {
 DECLARE_INFER_SHAPE_FUNCTOR(qr,
                             QrInferShapeFunctor,
                             PD_INFER_META(phi::QrInferMeta));
+
+class RealOpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  void Make() override {
+    AddInput("X", "(Tensor), input 0 of real op.");
+    AddOutput("Out", "(Tensor), output 0 of real op.");
+    AddComment(R"DOC(
+TODO: Documentation of real op.
+)DOC");
+  }
+};
+
+class RealOp : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+};
+
+DECLARE_INFER_SHAPE_FUNCTOR(real,
+                            RealInferShapeFunctor,
+                            PD_INFER_META(phi::RealAndImagInferMeta));
 
 class ReciprocalOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
@@ -4845,6 +4885,41 @@ DECLARE_INPLACE_OP_INFERER(HardSigmoidGradInplaceInferer,
                            {GradVarName("Out"), GradVarName("X")});
 
 template <typename T>
+class ImagGradOpMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  void Apply(GradOpPtr<T> grad_op) const override {
+    grad_op->SetType("imag_grad");
+
+    grad_op->SetInput(GradVarName("Out"), this->OutputGrad("Out"));
+
+    grad_op->SetOutput(GradVarName("X"), this->InputGrad("X"));
+
+    grad_op->SetAttrMap(this->Attrs());
+  }
+};
+
+class ImagGradOp : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
+ protected:
+  phi::KernelKey GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    auto data_type = framework::OperatorWithKernel::IndicateVarDataType(
+        ctx, GradVarName("Out"));
+    data_type = framework::ToComplexType(data_type);
+    return phi::KernelKey(data_type, ctx.GetPlace());
+  }
+};
+
+DECLARE_INFER_SHAPE_FUNCTOR(imag_grad,
+                            ImagGradInferShapeFunctor,
+                            PD_INFER_META(phi::RealAndImagGradInferMeta));
+
+template <typename T>
 class IndexSampleGradOpMaker : public framework::SingleGradOpMaker<T> {
  public:
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
@@ -5727,6 +5802,41 @@ class QrGradOp : public framework::OperatorWithKernel {
 DECLARE_INFER_SHAPE_FUNCTOR(qr_grad,
                             QrGradInferShapeFunctor,
                             PD_INFER_META(phi::UnchangedInferMeta));
+
+template <typename T>
+class RealGradOpMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  void Apply(GradOpPtr<T> grad_op) const override {
+    grad_op->SetType("real_grad");
+
+    grad_op->SetInput(GradVarName("Out"), this->OutputGrad("Out"));
+
+    grad_op->SetOutput(GradVarName("X"), this->InputGrad("X"));
+
+    grad_op->SetAttrMap(this->Attrs());
+  }
+};
+
+class RealGradOp : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
+ protected:
+  phi::KernelKey GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    auto data_type = framework::OperatorWithKernel::IndicateVarDataType(
+        ctx, GradVarName("Out"));
+    data_type = framework::ToComplexType(data_type);
+    return phi::KernelKey(data_type, ctx.GetPlace());
+  }
+};
+
+DECLARE_INFER_SHAPE_FUNCTOR(real_grad,
+                            RealGradInferShapeFunctor,
+                            PD_INFER_META(phi::RealAndImagGradInferMeta));
 
 template <typename T>
 class ReciprocalGradOpMaker : public framework::SingleGradOpMaker<T> {
@@ -7632,6 +7742,13 @@ REGISTER_OPERATOR(
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
     ops::HistogramInferShapeFunctor);
 
+REGISTER_OPERATOR(imag,
+                  ops::ImagOp,
+                  ops::ImagOpMaker,
+                  ops::ImagGradOpMaker<paddle::framework::OpDesc>,
+                  ops::ImagGradOpMaker<paddle::imperative::OpBase>,
+                  ops::ImagInferShapeFunctor);
+
 REGISTER_OPERATOR(index_sample,
                   ops::IndexSampleOp,
                   ops::IndexSampleOpMaker,
@@ -7885,6 +8002,13 @@ REGISTER_OPERATOR(qr,
                   ops::QrGradOpMaker<paddle::imperative::OpBase>,
                   ops::QrInferShapeFunctor);
 
+REGISTER_OPERATOR(real,
+                  ops::RealOp,
+                  ops::RealOpMaker,
+                  ops::RealGradOpMaker<paddle::framework::OpDesc>,
+                  ops::RealGradOpMaker<paddle::imperative::OpBase>,
+                  ops::RealInferShapeFunctor);
+
 REGISTER_OPERATOR(reciprocal,
                   ops::ReciprocalOp,
                   ops::ReciprocalOpMaker,
@@ -8099,8 +8223,8 @@ REGISTER_OPERATOR(tanh,
                   ops::TanhOpMaker,
                   ops::TanhGradOpMaker<paddle::framework::OpDesc>,
                   ops::TanhGradOpMaker<paddle::imperative::OpBase>,
-                  ops::TanhInplaceInferer,
                   ops::TanhCompositeGradOpMaker,
+                  ops::TanhInplaceInferer,
                   ops::TanhInferShapeFunctor);
 
 REGISTER_OPERATOR(tanh_shrink,
@@ -8572,6 +8696,13 @@ REGISTER_OPERATOR(
     ops::HardSigmoidGradInferShapeFunctor);
 
 REGISTER_OPERATOR(
+    imag_grad,
+    ops::ImagGradOp,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
+    ops::ImagGradInferShapeFunctor);
+
+REGISTER_OPERATOR(
     index_sample_grad,
     ops::IndexSampleGradOp,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
@@ -8782,6 +8913,13 @@ REGISTER_OPERATOR(
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
     ops::QrGradInferShapeFunctor);
+
+REGISTER_OPERATOR(
+    real_grad,
+    ops::RealGradOp,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
+    ops::RealGradInferShapeFunctor);
 
 REGISTER_OPERATOR(
     reciprocal_grad,
