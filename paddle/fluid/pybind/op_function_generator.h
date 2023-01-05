@@ -231,6 +231,11 @@ std::map<std::string, std::set<std::string>> op_ins_map = {
       "Bias3",
       "Mean3",
       "Var3"}},
+    {"custom_fused_dense",
+      {"X",
+       "Y",
+       "Bias",
+      }},
     {"graph_send_recv", {"X", "Src_index", "Dst_index", "Out_size"}},
     {"graph_send_ue_recv", {"X", "Y", "Src_index", "Dst_index", "Out_size"}},
 };
@@ -342,6 +347,8 @@ std::map<std::string, std::set<std::string>> op_outs_map = {
       "Var2Out",   "Conv3",     "SavedMean3", "SavedInvstd3", "Mean3Out",
       "Var3Out",   "MaxInput1", "MaxFilter1", "MaxInput2",    "MaxFilter2",
       "MaxInput3", "MaxFilter3"}},
+    {"custom_fused_dense",
+      {"Y",}},
 };
 
 // NOTE(zhiqiu): Commonly, the outputs in auto-generated OP function are

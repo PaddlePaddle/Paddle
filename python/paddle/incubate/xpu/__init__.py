@@ -13,3 +13,4 @@
 # limitations under the License.
 
 from .resnet_block import ResNetBasicBlock
+# from .custom_setup_ops import CustomFusedDense
