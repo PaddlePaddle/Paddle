@@ -152,18 +152,21 @@ struct PointerToPointerAndCol {
 };
 
 template <typename IndexT, int MovSize, typename PointerAndColWrapperT>
-__global__ void ConcatTensorWithDifferentShape(PointerAndColWrapperT ins_datas,
-                                               int col_size,
-                                               const IndexT output_rows,
-                                               const IndexT output_cols,
-                                               void* output) {
+__global__ void ConcatTensorWithDifferentShape(
+    const PointerAndColWrapperT ins_datas,
+    int col_size,
+    const IndexT output_rows,
+    const IndexT output_cols,
+    void* output) {
   using VecT = typename std::aligned_storage<MovSize, MovSize>::type;
   VecT* dst = reinterpret_cast<VecT*>(output);
 
   IndexT curr_segment = 0;
   IndexT curr_offset = ins_datas.col_length[0];
+
   CUDA_KERNEL_LOOP_TYPE(tid_x, output_cols, IndexT) {
     IndexT curr_col_offset = ins_datas.col_length[curr_segment + 1];
+
     while (curr_col_offset <= tid_x) {
       curr_offset = curr_col_offset;
       ++curr_segment;
@@ -186,7 +189,7 @@ __global__ void ConcatTensorWithDifferentShape(PointerAndColWrapperT ins_datas,
 }
 
 template <typename IndexT, int MovSize, typename PointerWrapperT>
-__global__ void ConcatTensorWithSameShape(PointerWrapperT ins_data,
+__global__ void ConcatTensorWithSameShape(const PointerWrapperT ins_data,
                                           const IndexT fixed_in_col,
                                           const IndexT out_rows,
                                           const IndexT out_cols,
@@ -235,9 +238,7 @@ void DispatchConcatWithDifferentShapeKernelLimitNum(
         ctx, ins, inputs_col_num, inputs_data, inputs_col); \
     __VA_ARGS__;                                            \
   } break;
-
   switch (phi::backends::gpu::RoundToNextHighPowOfTwo(limit_num, 4)) {
-    printf("Enter here? \n");
     IMPL_CONCATE_CUDA_KERNEL_HELPER(
         IMPL_COMPLEX_CONCAT_CUDA_KERNEL_CASE,
         ConcatTensorWithDifferentShape<IndexT, MovSize, decltype(ptr_col_array)>
@@ -248,7 +249,6 @@ void DispatchConcatWithDifferentShapeKernelLimitNum(
                                                      // output->data<T>()));
                                                      output->data()));
     default: {
-      printf("Enter default? \n");
       paddle::memory::AllocationPtr dev_ins_ptr{nullptr};
       paddle::memory::AllocationPtr dev_col_ptr{nullptr};
       PointerToPointerAndCol<T, IndexT> ptr_col_array(ctx,
