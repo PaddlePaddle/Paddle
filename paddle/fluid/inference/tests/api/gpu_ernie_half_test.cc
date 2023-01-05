@@ -164,7 +164,7 @@ TEST(Ernie_gpu_fp16_no_ir, compare_results) {
     }
     float *result = reinterpret_cast<float *>(output.data.data());
     for (size_t j = 0; j < outputs_size; ++j) {
-      EXPECT_NEAR(ref[i * outputs_size + j], result[j], 5e-2);
+      EXPECT_NEAR(ref[i * outputs_size + j], result[j], 8e-3);
     }
   }
 }
@@ -175,8 +175,6 @@ TEST(Ernie_gpu_fp16_with_ir, compare_results) {
   config.SetModel(FLAGS_infer_model);
   config.EnableUseGpu(512, 0, paddle_infer::PrecisionType::kHalf);
   config.SwitchIrOptim(true);
-  // The fc_fuse_pass has diff, which will be repaired later.
-  config.pass_builder()->DeletePass("fc_fuse_pass");
   // There is a problem with the model itself, which has nothing to do with
   // constant_folding_pass.
   config.pass_builder()->DeletePass("constant_folding_pass");
@@ -206,7 +204,7 @@ TEST(Ernie_gpu_fp16_with_ir, compare_results) {
     }
     float *result = reinterpret_cast<float *>(output.data.data());
     for (size_t j = 0; j < outputs_size; ++j) {
-      EXPECT_NEAR(ref[i * outputs_size + j], result[j], 5e-2);
+      EXPECT_NEAR(ref[i * outputs_size + j], result[j], 2e-2);
     }
   }
 }
@@ -243,7 +241,7 @@ TEST(Ernie_gpu_bf16_no_ir, compare_results) {
     }
     float *result = reinterpret_cast<float *>(output.data.data());
     for (size_t j = 0; j < outputs_size; ++j) {
-      EXPECT_NEAR(ref[i * outputs_size + j], result[j], 7e-2);
+      EXPECT_NEAR(ref[i * outputs_size + j], result[j], 1e-2);
     }
   }
 }
@@ -254,8 +252,6 @@ TEST(Ernie_gpu_bf16_with_ir, compare_results) {
   config.SetModel(FLAGS_infer_model);
   config.EnableUseGpu(512, 0, paddle_infer::PrecisionType::kBf16);
   config.SwitchIrOptim(true);
-  // The fc_fuse_pass has diff, which will be repaired later.
-  config.pass_builder()->DeletePass("fc_fuse_pass");
   // There is a problem with the model itself, which has nothing to do with
   // constant_folding_pass.
   config.pass_builder()->DeletePass("constant_folding_pass");
@@ -285,7 +281,7 @@ TEST(Ernie_gpu_bf16_with_ir, compare_results) {
     }
     float *result = reinterpret_cast<float *>(output.data.data());
     for (size_t j = 0; j < outputs_size; ++j) {
-      EXPECT_NEAR(ref[i * outputs_size + j], result[j], 7e-2);
+      EXPECT_NEAR(ref[i * outputs_size + j], result[j], 5e-3);
     }
   }
 }
