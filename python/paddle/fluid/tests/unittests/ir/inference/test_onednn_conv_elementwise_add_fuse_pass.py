@@ -22,7 +22,7 @@ from program_config import OpConfig, ProgramConfig, TensorConfig
 
 
 # the two inputs of elementwise_add are tensor
-class TestConvElementwiseAddMkldnnFusePass(PassAutoScanTest):
+class TestOneDNNConvElementwiseAddFusePass(PassAutoScanTest):
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         attrs = [
             program_config.ops[i].attrs for i in range(len(program_config.ops))

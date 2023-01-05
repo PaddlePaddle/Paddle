@@ -22,8 +22,7 @@ import paddle.fluid as fluid
 from paddle.fluid.core import PassVersionChecker
 
 
-# padding SAME
-class ConvBiasMkldnnFusePassSamePadTest(InferencePassTest):
+class TestOneDNNConvBiasFusePassPaddingSame(InferencePassTest):
     def setUp(self):
         with fluid.program_guard(self.main_program, self.startup_program):
             data = fluid.data(
@@ -55,8 +54,7 @@ class ConvBiasMkldnnFusePassSamePadTest(InferencePassTest):
         )
 
 
-# padding VALID
-class ConvBiasMkldnnFusePassValidPadTest(ConvBiasMkldnnFusePassSamePadTest):
+class TestOneDNNConvBiasFusePassPaddingValid(TestOneDNNConvBiasFusePassPaddingSame):
     def setUp(self):
         with fluid.program_guard(self.main_program, self.startup_program):
             data = fluid.data(
@@ -81,8 +79,7 @@ class ConvBiasMkldnnFusePassValidPadTest(ConvBiasMkldnnFusePassSamePadTest):
         self.enable_mkldnn = True
 
 
-# padding EXPLICT NUMBER
-class ConvBiasMkldnnFusePassExplictPadTest(ConvBiasMkldnnFusePassSamePadTest):
+class TestOneDNNConvBiasOneDNNFusePassPaddingExplicit(TestOneDNNConvBiasFusePassPaddingSame):
     def setUp(self):
         with fluid.program_guard(self.main_program, self.startup_program):
             data = fluid.data(
@@ -107,7 +104,7 @@ class ConvBiasMkldnnFusePassExplictPadTest(ConvBiasMkldnnFusePassSamePadTest):
         self.enable_mkldnn = True
 
 
-class ConvBiasMkldnnFusePassGroupTest(ConvBiasMkldnnFusePassSamePadTest):
+class TestOneDNNConvBiasFusePassGroups(TestOneDNNConvBiasFusePassPaddingSame):
     def setUp(self):
         with fluid.program_guard(self.main_program, self.startup_program):
             data = fluid.data(
@@ -136,9 +133,7 @@ class ConvBiasMkldnnFusePassGroupTest(ConvBiasMkldnnFusePassSamePadTest):
         self.enable_mkldnn = True
 
 
-class ConvBiasMkldnnFusePassDialtionsGroupsTest(
-    ConvBiasMkldnnFusePassSamePadTest
-):
+class TestOneDNNConvBiasFusePassDilatation(TestOneDNNConvBiasFusePassPaddingSame):
     def setUp(self):
         with fluid.program_guard(self.main_program, self.startup_program):
             data = fluid.data(
@@ -168,7 +163,7 @@ class ConvBiasMkldnnFusePassDialtionsGroupsTest(
         self.enable_mkldnn = True
 
 
-class ConvTransposeMkldnnFusePassDialtionsGroupsTest(InferencePassTest):
+class TestOneDNNConvTransposeFusePassDilatation(InferencePassTest):
     def setUp(self):
         with fluid.program_guard(self.main_program, self.startup_program):
             data = fluid.data(name="data", shape=[-1, 3, 5, 5], dtype="float32")

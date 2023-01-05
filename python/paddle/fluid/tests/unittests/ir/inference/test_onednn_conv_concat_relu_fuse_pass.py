@@ -21,7 +21,7 @@ from auto_scan_test import PassAutoScanTest
 from program_config import OpConfig, ProgramConfig, TensorConfig
 
 
-class TestConvConcatActivationMkldnnFusePass(PassAutoScanTest):
+class TestOneDNNConvConcatActivationFusePass(PassAutoScanTest):
     def sample_program_config(self, draw):
         data_format = draw(st.sampled_from(['NCHW', 'NHWC']))
         dilations = draw(st.sampled_from([[2, 2]]))
