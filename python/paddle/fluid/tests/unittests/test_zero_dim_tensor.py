@@ -1242,6 +1242,9 @@ class TestNoBackwardAPIStatic(unittest.TestCase):
         prog = paddle.static.default_main_program()
         res = self.exe.run(prog, fetch_list=[emb])
         self.assertEqual(res[0].shape, (2,))
+        result = [5.0, 6.0]
+        for i in range(len(res)):
+            self.assertEqual(res[0][i], result[i])
 
     def test_static_embedding(self):
         ids = paddle.full(shape=[], fill_value=1, dtype='int64')
