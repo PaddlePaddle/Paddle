@@ -26,7 +26,6 @@ template <typename T,
           int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenTensor = phi::EigenTensor<T, D, MajorType, IndexType>;
-using Tensor = phi::DenseTensor;
 using DataLayout = phi::DataLayout;
 
 inline std::vector<int> get_new_shape(
@@ -1344,7 +1343,7 @@ static void Interpolate2DCPUBwd(const framework::ExecutionContext& ctx,
 template <typename T>
 static void Interpolate3DCPUBwd(const framework::ExecutionContext& ctx,
                                 phi::DenseTensor* input_grad,
-                                const Tensor output_grad) {
+                                const phi::DenseTensor output_grad) {
   auto* input = ctx.Input<phi::DenseTensor>("X");
   const std::string data_layout_str = ctx.Attr<std::string>("data_layout");
   const DataLayout data_layout = phi::StringToDataLayout(data_layout_str);

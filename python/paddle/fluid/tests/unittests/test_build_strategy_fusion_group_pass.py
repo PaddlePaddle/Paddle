@@ -13,9 +13,11 @@
 # limitations under the License.
 
 import unittest
+
+from test_eager_deletion_padding_rnn import PaddingRNNTestBase, RNNConfig
+
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-from test_eager_deletion_padding_rnn import RNNConfig, PaddingRNNTestBase
 
 
 class FusionGroupPaddingRNNTest(PaddingRNNTestBase):

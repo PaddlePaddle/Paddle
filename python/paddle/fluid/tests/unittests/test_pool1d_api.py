@@ -12,13 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
 import unittest
+
+import numpy as np
+
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 import paddle.nn.functional as F
-import numpy as np
-from paddle.fluid.framework import _test_eager_guard
 
 
 def adaptive_start_index(index, input_size, output_size):
@@ -272,10 +273,6 @@ class TestPool1D_API(unittest.TestCase):
             self.check_avg_dygraph_padding_same(place)
             self.check_max_dygraph_return_index_results(place)
 
-    def test_dygraph_api(self):
-        with _test_eager_guard():
-            self.test_pool1d()
-
 
 class TestPool2DError_API(unittest.TestCase):
     def test_error_api(self):
@@ -419,10 +416,6 @@ class TestPool2DError_API(unittest.TestCase):
                 )
 
         self.assertRaises(ValueError, run_stride_out_of_range)
-
-    def test_dygraph_api(self):
-        with _test_eager_guard():
-            self.test_error_api()
 
 
 if __name__ == '__main__':

@@ -13,11 +13,11 @@
 # limitations under the License.
 import collections
 import os
-from typing import List
-from typing import Tuple
+from typing import List, Tuple
 
-from paddle.utils import download
 from paddle.dataset.common import DATA_HOME
+from paddle.utils import download
+
 from .dataset import AudioClassificationDataset
 
 __all__ = []

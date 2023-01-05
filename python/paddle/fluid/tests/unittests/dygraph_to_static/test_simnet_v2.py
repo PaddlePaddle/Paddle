@@ -13,12 +13,13 @@
 # limitations under the License.
 
 import argparse
-import numpy as np
-import paddle
 import random
 import unittest
 
+import numpy as np
 from simnet_dygraph_model_v2 import BOW, HingeLoss
+
+import paddle
 
 SEED = 102
 random.seed(SEED)

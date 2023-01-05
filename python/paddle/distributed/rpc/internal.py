@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from collections import namedtuple
 import pickle
+from collections import namedtuple
 
 PythonFunc = namedtuple("PythonFunc", ["func", "args", "kwargs"])
 """Some Python code interfaces called in C++"""

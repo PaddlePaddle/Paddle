@@ -12,13 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from functools import partial
+
 import paddle
 import paddle.nn as nn
 from paddle.utils.download import get_weights_path_from_url
-from functools import partial
 
-from .utils import _make_divisible
 from ..ops import ConvNormActivation
+from ._utils import _make_divisible
 
 __all__ = []
 

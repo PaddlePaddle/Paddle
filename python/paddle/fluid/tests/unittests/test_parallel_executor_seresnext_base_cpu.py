@@ -13,9 +13,10 @@
 # limitations under the License.
 
 import unittest
-import seresnext_net
-from seresnext_test_base import TestResnetBase, DeviceType
 from functools import partial
+
+import seresnext_net
+from seresnext_test_base import DeviceType, TestResnetBase
 
 
 class TestResnetCPU(TestResnetBase):

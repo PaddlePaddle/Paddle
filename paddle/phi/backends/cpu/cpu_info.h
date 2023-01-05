@@ -36,9 +36,53 @@
 #define ALIGN32_END __attribute__((aligned(32)))
 #endif  // _WIN32
 
+#ifndef PADDLE_WITH_XBYAK
+#ifdef _WIN32
+#define cpuid(reg, x) __cpuidex(reg, x, 0)
+#else
+#if !defined(WITH_NV_JETSON) && !defined(PADDLE_WITH_ARM) && \
+    !defined(PADDLE_WITH_SW) && !defined(PADDLE_WITH_MIPS)
+#include <cpuid.h>
+inline void cpuid(int reg[4], int x) {
+  __cpuid_count(x, 0, reg[0], reg[1], reg[2], reg[3]);
+}
+#endif
+#endif
+#endif
+
 namespace phi {
 namespace backends {
 namespace cpu {
+
+size_t CpuTotalPhysicalMemory();
+
+//! Get the maximum allocation size for a machine.
+size_t CpuMaxAllocSize();
+
+//! Get the maximum allocation size for a machine.
+size_t CUDAPinnedMaxAllocSize();
+
+//! Get the minimum chunk size for buddy allocator.
+size_t CpuMinChunkSize();
+
+//! Get the maximum chunk size for buddy allocator.
+size_t CpuMaxChunkSize();
+
+//! Get the minimum chunk size for buddy allocator.
+size_t CUDAPinnedMinChunkSize();
+
+//! Get the maximum chunk size for buddy allocator.
+size_t CUDAPinnedMaxChunkSize();
+
+//! Get the maximum allocation size for a machine.
+size_t NPUPinnedMaxAllocSize();
+
+//! Get the minimum chunk size for buddy allocator.
+size_t NPUPinnedMinChunkSize();
+
+//! Get the maximum chunk size for buddy allocator.
+size_t NPUPinnedMaxChunkSize();
+
 typedef enum {
   isa_any,
   sse42,
@@ -51,6 +95,9 @@ typedef enum {
   avx512_mic_4ops,
   avx512_bf16,
 } cpu_isa_t;  // Instruction set architecture
+
+// May I use some instruction
+bool MayIUse(const cpu_isa_t cpu_isa);
 }  // namespace cpu
 }  // namespace backends
 }  // namespace phi

@@ -12,12 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import unittest
+
 import numpy as np
+
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
-import unittest
-import paddle
+from paddle.tensor.manipulation import tensor_array_to_tensor
+
+paddle.enable_static()
 
 
 def build_and_run_program(place, batch_size, beam_size, stop_gradient=False):
@@ -35,28 +39,28 @@ def build_and_run_program(place, batch_size, beam_size, stop_gradient=False):
     max_len = layers.fill_constant(
         shape=[1], dtype="int64", value=10, force_cpu=True
     )
-    cond = layers.less_than(x=step_idx, y=max_len)
-    while_op = layers.While(cond)
-    scores = layers.array_write(x, step_idx)
+    cond = paddle.less_than(x=step_idx, y=max_len)
+    while_op = paddle.static.nn.control_flow.While(cond)
+    scores = paddle.tensor.array_write(x, step_idx)
     with while_op.block():
-        bs = layers.cast(layers.shape(x)[0], "int64")
+        bs = layers.cast(paddle.shape(x)[0], "int64")
         for _ in range(20):
             bs = layers.cast(bs, 'int64')
         bs.stop_gradient = stop_gradient
         batch_pos = paddle.expand(
-            layers.unsqueeze(paddle.arange(0, bs, 1, dtype=bs.dtype), [1]),
+            paddle.unsqueeze(paddle.arange(0, bs, 1, dtype=bs.dtype), [1]),
             [-1, beam_size],
         )
         topk_coordinates = paddle.stack([batch_pos, indices], axis=2)
         topk_coordinates.stop_gradient = stop_gradient
-        score = layers.gather_nd(x, topk_coordinates)
-        layers.increment(x=step_idx, value=1.0, in_place=True)
-        layers.array_write(score, i=step_idx, array=scores)
-        length_cond = layers.less_than(x=step_idx, y=max_len)
+        score = paddle.gather_nd(x, topk_coordinates)
+        paddle.increment(x=step_idx, value=1.0)
+        paddle.tensor.array_write(score, i=step_idx, array=scores)
+        length_cond = paddle.less_than(x=step_idx, y=max_len)
         layers.assign(length_cond, cond)
 
-    out = layers.tensor_array_to_tensor(scores, axis=0, use_stack=True)[0]
-    loss = layers.reduce_mean(out)
+    out = tensor_array_to_tensor(scores, axis=0, use_stack=True)[0]
+    loss = paddle.mean(out)
     opt = fluid.optimizer.Adam(0.01)
     opt.minimize(loss)
     exe = fluid.Executor(place)

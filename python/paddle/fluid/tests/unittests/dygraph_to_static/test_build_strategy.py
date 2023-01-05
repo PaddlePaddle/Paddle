@@ -12,12 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
 import unittest
-import numpy as np
-from paddle.jit import ProgramTranslator
 
+import numpy as np
 from test_resnet import ResNetHelper
+
+import paddle
+from paddle.jit import ProgramTranslator
 
 program_translator = ProgramTranslator()
 

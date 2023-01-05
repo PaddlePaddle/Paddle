@@ -13,9 +13,9 @@
 # limitations under the License.
 
 import paddle
-import paddle.fluid.framework as framework
 import paddle.distributed as dist
 import paddle.fluid.data_feeder as data_feeder
+import paddle.fluid.framework as framework
 import paddle.fluid.layer_helper as layer_helper
 from paddle.distributed.communication.group import (
     _get_global_group,
@@ -200,7 +200,9 @@ def alltoall(
                 "The output and input should be both tensor or tensor list."
             )
     else:
-        assert group is None, "Group can not be used in static mode for now."
+        assert (
+            group is None
+        ), "Group can not be used in static graph mode for now."
         return _all_to_all_in_static_mode(
             out_tensor_or_tensor_list,
             in_tensor_or_tensor_list,

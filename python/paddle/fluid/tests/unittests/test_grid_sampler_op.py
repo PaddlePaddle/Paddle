@@ -12,11 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
 import unittest
+
 import numpy as np
-import paddle.fluid.core as core
 from op_test import OpTest, skip_check_grad_ci
+
+import paddle
+import paddle.fluid.core as core
 
 paddle.enable_static()
 

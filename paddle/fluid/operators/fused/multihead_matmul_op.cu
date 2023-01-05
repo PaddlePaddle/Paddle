@@ -273,7 +273,6 @@ template <typename DeviceContext, typename T>
 class MultiHeadMatMulV2Kernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
-    using Tensor = phi::DenseTensor;
     auto *input = context.Input<phi::DenseTensor>("Input");
     auto *w = context.Input<phi::DenseTensor>("W");
     auto *bias = context.Input<phi::DenseTensor>("Bias");
@@ -296,7 +295,7 @@ class MultiHeadMatMulV2Kernel : public framework::OpKernel<T> {
     int batch = input_dims[0];
     int seq_len = input_dims[1];
     int hidden = input_dims[2];
-    Tensor temp_bias_tensor;
+    phi::DenseTensor temp_bias_tensor;
     // if bias_qk is[batch, 1, 1, seq_len], the bias_qk_d need to be broadcasted
     if (bias_qk && bias_qk->numel() == (batch * seq_len)) {
       VLOG(4) << "Do broadcasted bias_qk from [batch, 1, 1, seq_len]";
@@ -343,13 +342,13 @@ class MultiHeadMatMulV2Kernel : public framework::OpKernel<T> {
         device_ctx.template Alloc<T>(out, out->numel() * sizeof(T));
 
     // (B*S, hidden)
-    const Tensor input_matrix =
+    const phi::DenseTensor input_matrix =
         framework::ReshapeToMatrix(*input, 2 /*x_num_col_dims */);
     // (hidden, 3 * all_head_size)
-    const Tensor w_matrix =
+    const phi::DenseTensor w_matrix =
         framework::ReshapeToMatrix(*w, 1 /*y_num_col_dims*/);
 
-    Tensor temp_out_tensor;
+    phi::DenseTensor temp_out_tensor;
     auto temp_out_dims =
         phi::make_ddim({batch, seq_len, 3, head_number, head_size});
     temp_out_tensor.Resize(
@@ -364,7 +363,7 @@ class MultiHeadMatMulV2Kernel : public framework::OpKernel<T> {
     VLOG(2) << temp_out_tensor;
     // temp_out_tensor.Resize(temp_out_dims);
 
-    Tensor multihead_temp_tensor;
+    phi::DenseTensor multihead_temp_tensor;
     // B * head_number * S * S * 1 + B * S * 3 * N * H
     int scratch_size = batch * head_number * seq_len * seq_len * 1;
     multihead_temp_tensor.Resize({scratch_size + temp_out_tensor.numel()});

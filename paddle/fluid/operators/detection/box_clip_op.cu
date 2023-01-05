@@ -22,7 +22,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
 using LoDTenso = phi::DenseTensor;
 
 static constexpr int ImInfoSize = 3;

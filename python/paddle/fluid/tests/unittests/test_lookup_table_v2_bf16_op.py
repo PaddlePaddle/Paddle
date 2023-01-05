@@ -13,18 +13,20 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
+
 import paddle
+import paddle.fluid as fluid
+import paddle.fluid.core as core
 from paddle.fluid.tests.unittests.op_test import convert_uint16_to_float
 from paddle.fluid.tests.unittests.test_lookup_table_bf16_op import (
-    _lookup,
     TestLookupTableBF16Op,
     TestLookupTableBF16OpIds4D,
     TestLookupTableBF16OpWIsSelectedRows,
     TestLookupTableBF16OpWIsSelectedRows4DIds,
+    _lookup,
 )
-import paddle.fluid as fluid
-import paddle.fluid.core as core
 
 
 class TestLookupTableV2BF16Op(TestLookupTableBF16Op):

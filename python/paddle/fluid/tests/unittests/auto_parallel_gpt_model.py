@@ -231,8 +231,10 @@ class MultiHeadAttention(nn.Layer):
             return self.Cache(key, value)
 
     def core_attn(self, q, k, v, attn_mask):
-        product = layers.matmul(
-            x=q, y=k, transpose_y=True, alpha=self.head_dim**-0.5
+        product = paddle.matmul(x=q, y=k, transpose_y=True)
+        product = paddle.multiply(
+            product,
+            paddle.to_tensor(self.head_dim**-0.5, dtype=product.dtype),
         )
         if attn_mask is not None:
             product = product + attn_mask
@@ -832,13 +834,14 @@ class GPTForPretraining(nn.Layer):
             x_dims_mapping = ["x"] + [None for i in range(len(x.shape) - 1)]
             w_dims_mapping = ["y"] + [None for i in range(len(w.shape) - 1)]
 
-        if mesh:
-            matmul = auto.shard_op(
-                paddle.matmul, mesh, [x_dims_mapping, w_dims_mapping, None]
-            )
-            logits = matmul(x, w, transpose_y=True)
-        else:
-            logits = paddle.matmul(x, w, transpose_y=True)
+        with paddle.fluid.name_scope('skip_quant'):
+            if mesh:
+                matmul = auto.shard_op(
+                    paddle.matmul, mesh, [x_dims_mapping, w_dims_mapping, None]
+                )
+                logits = matmul(x, w, transpose_y=True)
+            else:
+                logits = paddle.matmul(x, w, transpose_y=True)
 
         if use_cache:
             return logits, cached_kvs

@@ -19,7 +19,6 @@
 namespace paddle {
 namespace operators {
 using phi::PADDLE_CUDA_NUM_THREADS;
-using LoDTensor = phi::DenseTensor;
 
 template <typename T>
 class PullGpuPSSparseCUDAKernel : public framework::OpKernel<T> {

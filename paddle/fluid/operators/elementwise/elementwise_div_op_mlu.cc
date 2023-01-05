@@ -21,8 +21,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
-
 template <typename T>
 class ElementwiseDivMLUKernel : public framework::OpKernel<T> {
  public:
@@ -66,7 +64,7 @@ class ElementwiseDivGradMLUKernel : public framework::OpKernel<T> {
         CNNL_OP_TENSOR_MUL, ToCnnlDataType<T>(), CNNL_NOT_PROPAGATE_NAN);
 
     // compute dout/y == 1/y * dout
-    Tensor dout_div_y(dout->dtype());
+    phi::DenseTensor dout_div_y(dout->dtype());
     dout_div_y.Resize(dout->dims());
     dout_div_y.mutable_data<T>(ctx.GetPlace());
     MLUBinary<DIV>(ctx,
@@ -110,7 +108,7 @@ class ElementwiseDivGradMLUKernel : public framework::OpKernel<T> {
 
     if (dy) {
       // compute dy = -out * (dout/y) = -out/y * dout
-      Tensor neg_out(out->type());
+      phi::DenseTensor neg_out(out->type());
       neg_out.mutable_data<T>(out->dims(), ctx.GetPlace());
 
       MLUCnnlTensorDesc out_desc(*out);
@@ -121,7 +119,7 @@ class ElementwiseDivGradMLUKernel : public framework::OpKernel<T> {
                     out_desc.get(),
                     GetBasePtr(&neg_out));
 
-      Tensor dy_temp(y->dtype());
+      phi::DenseTensor dy_temp(y->dtype());
       dy_temp.Resize(dout->dims());
       dy_temp.mutable_data<T>(ctx.GetPlace());
 

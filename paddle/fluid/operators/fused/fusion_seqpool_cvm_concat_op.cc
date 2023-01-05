@@ -67,17 +67,18 @@ void FusionSeqPoolCVMConcatOp::InferShape(
   ctx->SetOutputDim("Out", {-1, ins_dims[0][axis] * static_cast<int>(n)});
 }
 
-framework::OpKernelType FusionSeqPoolCVMConcatOp::GetExpectedKernelType(
+phi::KernelKey FusionSeqPoolCVMConcatOp::GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const {
-  return framework::OpKernelType(
-      OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace());
+  return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+                        ctx.GetPlace());
 }
 
 void FusionSeqPoolCVMConcatOpMaker::Make() {
   AddInput("X", "(phi::DenseTensor) Input tensors of this operator.")
       .AsDuplicable();
   AddInput("CVM",
-           "(Tensor),  a 2-D Tensor with shape [N x 2], where N is the batch "
+           "(phi::DenseTensor),  a 2-D phi::DenseTensor with shape [N x 2], "
+           "where N is the batch "
            "size, 2 is show and click.");
   AddOutput("Out", "(phi::DenseTensor) Output tensor of concat operator.");
   AddAttr<std::string>("pooltype",

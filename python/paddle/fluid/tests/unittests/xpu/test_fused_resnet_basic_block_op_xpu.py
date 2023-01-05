@@ -16,19 +16,21 @@ import sys
 
 sys.path.append("..")
 import unittest
+
 import numpy as np
 from op_test import OpTest
+from xpu.get_test_cover_info import (
+    XPUOpTestWrapper,
+    create_test_class,
+    get_xpu_op_support_types,
+)
+
 import paddle
 import paddle.fluid as fluid
 import paddle.nn as nn
 from paddle.fluid import core
-from paddle.incubate.xpu.resnet_block import ResNetBasicBlock
 from paddle.fluid.framework import default_main_program
-from xpu.get_test_cover_info import (
-    create_test_class,
-    get_xpu_op_support_types,
-    XPUOpTestWrapper,
-)
+from paddle.incubate.xpu.resnet_block import ResNetBasicBlock
 
 paddle.enable_static()
 
@@ -111,7 +113,7 @@ class XPUTestResNetBasicBlockOp(XPUOpTestWrapper):
                 bias_attr=None,
                 data_format='NCHW',
             )
-            self.bn1 = nn.BatchNorm(
+            self.bn1 = paddle.nn.BatchNorm(
                 self.out_channels,
                 act='relu',
                 param_attr=bn1_weight,
@@ -128,7 +130,7 @@ class XPUTestResNetBasicBlockOp(XPUOpTestWrapper):
                 bias_attr=None,
                 data_format='NCHW',
             )
-            self.bn2 = nn.BatchNorm(
+            self.bn2 = paddle.nn.BatchNorm(
                 self.out_channels,
                 act=None,
                 param_attr=bn2_weight,
@@ -145,7 +147,7 @@ class XPUTestResNetBasicBlockOp(XPUOpTestWrapper):
                 bias_attr=None,
                 data_format='NCHW',
             )
-            self.bn3 = nn.BatchNorm(
+            self.bn3 = paddle.nn.BatchNorm(
                 self.out_channels,
                 act=None,
                 param_attr=bn3_weight,

@@ -13,9 +13,11 @@
 # limitations under the License.
 
 import unittest
-import paddle
-from op_test import OpTest
+
 import numpy as np
+from op_test import OpTest
+
+import paddle
 
 
 def output_hist(out):

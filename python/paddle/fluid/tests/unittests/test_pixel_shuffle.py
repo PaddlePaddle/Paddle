@@ -13,13 +13,14 @@
 # limitations under the License.
 
 import unittest
-import numpy as np
 
+import numpy as np
 from op_test import OpTest
+
 import paddle
-import paddle.nn.functional as F
-import paddle.fluid.core as core
 import paddle.fluid as fluid
+import paddle.fluid.core as core
+import paddle.nn.functional as F
 
 
 def pixel_shuffle_np(x, up_factor, data_format="NCHW"):

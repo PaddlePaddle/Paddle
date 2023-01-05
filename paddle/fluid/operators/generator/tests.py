@@ -13,7 +13,8 @@
 # limitations under the License.
 
 import re
-from type_mapping import input_types_map, attr_types_map, output_type_map
+
+from type_mapping import attr_types_map, input_types_map, output_type_map
 
 
 # tests for typename

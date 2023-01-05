@@ -20,7 +20,6 @@ limitations under the License. */
 #include "paddle/fluid/eager/api/all.h"
 #include "paddle/fluid/eager/autograd_meta.h"
 #include "paddle/fluid/eager/pylayer/py_layer_node.h"
-#include "paddle/fluid/eager/saved_tensors_hooks.h"
 #include "paddle/fluid/eager/utils.h"
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/memory/allocation/allocator.h"
@@ -445,11 +444,14 @@ PyObject* pylayer_method_apply(PyObject* cls,
   }
 
   if (outputs_size == 1) {
-    Py_XDECREF(outputs);
-    outputs = PyTuple_GetItem(outputs_tuple, 0);
-    Py_INCREF(outputs);
-    Py_XDECREF(outputs_tuple);
+    if (!PyTuple_Check(outputs) && !PyList_Check(outputs)) {
+      Py_XDECREF(outputs);
+      outputs = PyTuple_GetItem(outputs_tuple, 0);
+      Py_INCREF(outputs);
+      Py_XDECREF(outputs_tuple);
+    }
   }
+
   Py_XDECREF(forward_args);
   Py_XDECREF(kwargs_value_list);
   Py_XDECREF(backward_function);

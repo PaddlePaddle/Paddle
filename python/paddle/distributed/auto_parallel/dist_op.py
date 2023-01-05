@@ -13,15 +13,19 @@
 # limitations under the License
 
 import copy
+
 import paddle
 from paddle.fluid.framework import Variable
-from .dist_attribute import OperatorDistributedAttribute
-from .dist_attribute import append_op_input_suffix
-from .dist_attribute import append_op_output_suffix
+
+from .dist_attribute import (
+    OperatorDistributedAttribute,
+    append_op_input_suffix,
+    append_op_output_suffix,
+)
 from .utils import (
+    __no_shape_var_type__,
     convert_to_shard_spec,
     verify_shard_spec,
-    __no_shape_var_type__,
 )
 
 
@@ -155,10 +159,10 @@ class DistributedOperator:
                 return False
             for i in range(len(dims_mapping)):
                 if dims_mapping[i] < -1 or dims_mapping[i] >= len(
-                    self.dist_attr.process_mesh.topology
+                    self.dist_attr.process_mesh.shape
                 ):
                     return False
-            for i in range(len(self.dist_attr.process_mesh.topology)):
+            for i in range(len(self.dist_attr.process_mesh.shape)):
                 if dims_mapping.count(i) > 1:
                     return False
             if self.dist_attr.process_mesh != input_dist_attr.process_mesh:
@@ -175,10 +179,10 @@ class DistributedOperator:
                 return False
             for i in range(len(dims_mapping)):
                 if dims_mapping[i] < -1 or dims_mapping[i] >= len(
-                    self.dist_attr.process_mesh.topology
+                    self.dist_attr.process_mesh.shape
                 ):
                     return False
-            for i in range(len(self.dist_attr.process_mesh.topology)):
+            for i in range(len(self.dist_attr.process_mesh.shape)):
                 if dims_mapping.count(i) > 1:
                     return False
             if self.dist_attr.process_mesh != output_dist_attr.process_mesh:

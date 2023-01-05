@@ -13,13 +13,14 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
+
 import paddle
-import paddle.fluid.core as core
 import paddle.fluid as fluid
+import paddle.fluid.core as core
 from paddle.fluid import Program, program_guard
 from paddle.fluid.dygraph import to_variable
-from paddle.fluid.framework import _test_eager_guard
 
 
 def _reference_instance_norm_naive(x, scale, bias, epsilon, mean, var):
@@ -239,11 +240,11 @@ class TestInstanceNormOpError(unittest.TestCase):
             x1 = fluid.create_lod_tensor(
                 np.array([-1, 3, 5, 5]), [[1, 1, 1, 1]], fluid.CPUPlace()
             )
-            self.assertRaises(TypeError, fluid.layers.instance_norm, x1)
+            self.assertRaises(TypeError, paddle.static.nn.instance_norm, x1)
 
             # the input dtype of instance_norm must be float32 or float64
             x2 = fluid.layers.data(name='x2', shape=[3, 4, 5, 6], dtype="int32")
-            self.assertRaises(TypeError, fluid.layers.instance_norm, x2)
+            self.assertRaises(TypeError, paddle.static.nn.instance_norm, x2)
 
 
 class TestInstanceNormOpErrorCase1(unittest.TestCase):
@@ -289,10 +290,6 @@ class TestElasticNormOp(unittest.TestCase):
                     outputs.numpy(), out_np, rtol=1e-05, atol=1e-06
                 )
 
-    def test_eager_api(self):
-        with _test_eager_guard():
-            self.test_norm()
-
 
 class TestElasticNormOpCase2(unittest.TestCase):
     def init_test_case(self):
@@ -326,10 +323,6 @@ class TestElasticNormOpCase2(unittest.TestCase):
                 np.testing.assert_allclose(
                     outputs.numpy(), out_np, rtol=1e-05, atol=1e-06
                 )
-
-    def test_eager_api(self):
-        with _test_eager_guard():
-            self.test_norm()
 
 
 if __name__ == '__main__':

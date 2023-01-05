@@ -12,19 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
 import sys
+import unittest
 
 sys.path.append("..")
 
-import paddle
-
 from test_merged_momentum_op_xpu_base import TestMergedMomentumBase
 from xpu.get_test_cover_info import (
+    XPUOpTestWrapper,
     create_test_class,
     get_xpu_op_support_types,
-    XPUOpTestWrapper,
 )
+
+import paddle
 
 paddle.enable_static()
 

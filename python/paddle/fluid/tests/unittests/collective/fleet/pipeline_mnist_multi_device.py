@@ -60,20 +60,20 @@ def cnn_model(data):
     scale = (2.0 / (param_shape[0] ** 2 * SIZE)) ** 0.5
 
     with fluid.device_guard("gpu:1"):
-        predict = fluid.layers.fc(
-            input=conv_pool_2,
+        predict = paddle.static.nn.fc(
+            x=conv_pool_2,
             size=SIZE,
-            act="softmax",
-            param_attr=fluid.param_attr.ParamAttr(
+            activation="softmax",
+            weight_attr=fluid.param_attr.ParamAttr(
                 initializer=fluid.initializer.Constant(value=0.01)
             ),
         )
         # To cover @RENAMED@GRADIENT
-        predict2 = fluid.layers.fc(
-            input=conv_pool_1,
+        predict2 = paddle.static.nn.fc(
+            x=conv_pool_1,
             size=SIZE,
-            act="softmax",
-            param_attr=fluid.param_attr.ParamAttr(
+            activation="softmax",
+            weight_attr=fluid.param_attr.ParamAttr(
                 initializer=fluid.initializer.Constant(value=0.01)
             ),
         )
@@ -100,13 +100,15 @@ class TestDistMnist2x2(TestDistRunnerBase):
             # Train program
             predict = cnn_model(images)
         with fluid.device_guard("gpu:1"):
-            cost = fluid.layers.cross_entropy(input=predict, label=label)
+            cost = paddle.nn.functional.cross_entropy(
+                input=predict, label=label, reduction='none', use_softmax=False
+            )
             avg_cost = paddle.mean(x=cost)
 
         # Evaluator
         with fluid.device_guard("gpu:1"):
-            batch_size_tensor = fluid.layers.create_tensor(dtype='int64')
-            batch_acc = fluid.layers.accuracy(
+            batch_size_tensor = paddle.tensor.create_tensor(dtype='int64')
+            batch_acc = paddle.static.accuracy(
                 input=predict, label=label, total=batch_size_tensor
             )
 
@@ -120,7 +122,7 @@ class TestDistMnist2x2(TestDistRunnerBase):
         opt = fluid.optimizer.Momentum(
             learning_rate=lr_val,
             momentum=0.9,
-            grad_clip=fluid.clip.GradientClipByGlobalNorm(clip_norm=1.0),
+            grad_clip=paddle.nn.ClipGradByGlobalNorm(clip_norm=1.0),
         )
 
         acc_steps = 2  # accumulated steps for pipeline

@@ -13,17 +13,18 @@
 # limitations under the License.
 
 import os
+
 import numpy as np
 
 os.environ['FLAGS_use_mkldnn'] = '0'
 os.environ['CPU_NUM'] = '4'
 
-import paddle.fluid as fluid
-import unittest
 import multiprocessing
+import unittest
 from functools import reduce
 
 import paddle
+import paddle.fluid as fluid
 
 paddle.enable_static()
 
@@ -35,16 +36,18 @@ def simple_fc_net():
     label = fluid.layers.data(name='label', shape=[1], dtype='int64')
     hidden = image
     for _ in range(4):
-        hidden = fluid.layers.fc(
+        hidden = paddle.static.nn.fc(
             hidden,
             size=200,
-            act='tanh',
+            activation='tanh',
             bias_attr=fluid.ParamAttr(
                 initializer=fluid.initializer.Constant(value=1.0)
             ),
         )
-    prediction = fluid.layers.fc(hidden, size=10, act='softmax')
-    loss = fluid.layers.cross_entropy(input=prediction, label=label)
+    prediction = paddle.static.nn.fc(hidden, size=10, activation='softmax')
+    loss = paddle.nn.functional.cross_entropy(
+        input=prediction, label=label, reduction='none', use_softmax=False
+    )
     loss = paddle.mean(loss)
     optimizer = fluid.optimizer.Adam(learning_rate=1e-3)
     optimizer.minimize(loss)

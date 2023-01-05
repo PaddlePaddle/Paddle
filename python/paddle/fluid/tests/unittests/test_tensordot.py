@@ -12,8 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
 import unittest
+
+import numpy as np
 
 import paddle
 import paddle.fluid.core as core
@@ -281,7 +282,7 @@ class TestTensordotAPIAxesType(TestTensordotAPI):
         ]
 
     def test_tensor_axes(self):
-        # The 'axes' with type 'Tensor' in tensordot is not available in static mode
+        # The 'axes' with type 'Tensor' in tensordot is not available in static graph mode
         paddle.disable_static()
         tensor_axes = [
             paddle.to_tensor([1]),

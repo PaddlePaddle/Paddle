@@ -332,7 +332,7 @@ void TopkKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(top_k,
+PD_REGISTER_KERNEL(topk,
                    GPU,
                    ALL_LAYOUT,
                    phi::TopkKernel,

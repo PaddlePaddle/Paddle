@@ -12,14 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle.fluid.core as core
-from paddle.fluid.core import AnalysisConfig, PaddleDType, PaddlePlace
-from paddle.fluid.core import PaddleInferPredictor, PaddleInferTensor
-from paddle.fluid.core import convert_to_mixed_precision_bind
-
 import os
-import numpy as np
 from typing import Set
+
+import numpy as np
+
+import paddle.fluid.core as core
+from paddle.fluid.core import (
+    AnalysisConfig,
+    PaddleDType,
+    PaddleInferPredictor,
+    PaddleInferTensor,
+    PaddlePlace,
+    convert_to_mixed_precision_bind,
+)
 
 DataType = PaddleDType
 PlaceType = PaddlePlace

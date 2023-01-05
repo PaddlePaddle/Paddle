@@ -94,12 +94,9 @@ void GPUGather(const phi::GPUContext& ctx,
   }
 
   // index size
-  int64_t index_size = index.dims()[0];
-  if (index_size == 0) return;
+  int64_t index_size = index.dims().size() == 0 ? 1 : index.dims()[0];
 
   auto src_dims = src.dims();
-  phi::DDim output_dims(src_dims);
-  output_dims[0] = index_size;
 
   // slice size
   int64_t slice_size = 1;
@@ -246,7 +243,9 @@ void GatherV2CUDAFunction(const DenseTensor* input,
     inner_dim_size *= input_dim[i];
     out_dim_vec.push_back(input_dim[i]);
   }
-  out_dim_vec.push_back(index_size);
+  if (index->dims().size() != 0) {
+    out_dim_vec.push_back(index_size);
+  }
   for (int i = axis_index + 1; i < input_dim.size(); i++) {
     outer_dim_size *= input_dim[i];
     out_dim_vec.push_back(input_dim[i]);

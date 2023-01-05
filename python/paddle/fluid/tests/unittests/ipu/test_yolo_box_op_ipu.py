@@ -65,7 +65,7 @@ class TestBase(IPUOpTest):
             'value': 6,
         }
         img_size = paddle.fluid.layers.fill_constant(**attrs)
-        out = paddle.fluid.layers.yolo_box(x=x, img_size=img_size, **self.attrs)
+        out = paddle.vision.ops.yolo_box(x=x, img_size=img_size, **self.attrs)
         self.fetch_list = [x.name for x in out]
 
     def run_model(self, exec_mode):

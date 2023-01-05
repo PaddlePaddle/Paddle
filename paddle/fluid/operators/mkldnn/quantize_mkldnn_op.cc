@@ -14,10 +14,10 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/quantize_op.h"
 
-#include "paddle/fluid/framework/data_layout_transform.h"
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/platform/mkldnn_helper.h"
-#include "paddle/fluid/platform/mkldnn_reuse.h"
+#include "paddle/phi/backends/onednn/onednn_reuse.h"
 
 namespace paddle {
 namespace operators {
@@ -25,7 +25,6 @@ namespace operators {
 using dnnl::memory;
 using dnnl::primitive;
 using dnnl::reorder;
-using Tensor = phi::DenseTensor;
 using dnnl::stream;
 using phi::DataLayout;
 
@@ -51,8 +50,7 @@ class QuantOpKernel : public framework::OpKernel<T> {
                        "255 and greater or equal to 0, but got %f",
                        quantization_shift));
 
-    auto& dev_ctx =
-        ctx.template device_context<platform::MKLDNNDeviceContext>();
+    auto& dev_ctx = ctx.template device_context<phi::OneDNNContext>();
 
     auto x_tz = phi::vectorize<int64_t>(x->dims());
 
@@ -95,7 +93,7 @@ class QuantOpKernel : public framework::OpKernel<T> {
     auto reorder_p = reorder_handler.AcquireReorder(
         reorder_dst_memory_p, reorder_src_memory_p, attrs);
 
-    auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
+    auto& astream = phi::OneDNNContext::tls().get_stream();
     reorder_p->execute(astream, *reorder_src_memory_p, *reorder_dst_memory_p);
     astream.wait();
 
@@ -108,5 +106,5 @@ namespace ops = paddle::operators;
 
 REGISTER_OP_KERNEL(quantize,
                    MKLDNN,
-                   ::paddle::platform::CPUPlace,
+                   ::phi::CPUPlace,
                    ops::QuantOpKernel<float>);

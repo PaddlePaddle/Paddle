@@ -12,18 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import numpy as np
-
-from op_test import OpTest
-import paddle
-import paddle.fluid.core as core
 import random
 import sys
+import unittest
+
+import numpy as np
+from op_test import OpTest
+
+import paddle
+import paddle.fluid.core as core
 
 sys.path.append("./rnn")
-from rnn_numpy import SimpleRNN
 from convert import get_params_for_net
+from rnn_numpy import SimpleRNN
 
 random.seed(2)
 np.set_printoptions(threshold=np.inf)

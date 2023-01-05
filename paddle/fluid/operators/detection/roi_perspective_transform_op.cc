@@ -22,8 +22,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
-
 template <typename T>
 bool GT_E(T a, T b) {
   return (a > b) || fabs(a - b) < 1e-4;
@@ -561,11 +559,10 @@ class ROIPerspectiveTransformOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
-        ctx.device_context());
+    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+                          ctx.GetPlace());
   }
 };
 
@@ -587,11 +584,10 @@ class ROIPerspectiveTransformGradOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
-        ctx.device_context());
+    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+                          ctx.GetPlace());
   }
 };
 
@@ -600,7 +596,7 @@ class ROIPerspectiveTransformOpMaker
  public:
   void Make() override {
     AddInput("X",
-             "(Tensor), "
+             "(phi::DenseTensor), "
              "the input of ROIPerspectiveTransformOp. "
              "The format of input tensor is NCHW. Where N is batch size, "
              "C is the number of input channels, "
@@ -617,28 +613,28 @@ class ROIPerspectiveTransformOpMaker
              "(x4, y4) is the bottom left coordinates.");
     AddOutput(
         "Out",
-        "(Tensor), "
+        "(phi::DenseTensor), "
         "The output of ROIPerspectiveTransformOp is a 4-D tensor with shape "
         "(num_rois, channels, transformed_h, transformed_w).");
     AddOutput("Mask",
-              "(Tensor), "
+              "(phi::DenseTensor), "
               "The output mask of ROIPerspectiveTransformOp is a 4-D tensor "
               "with shape "
               "(num_rois, 1, transformed_h, transformed_w).");
     AddOutput("TransformMatrix",
-              "(Tensor), "
+              "(phi::DenseTensor), "
               "The output transform matrix of ROIPerspectiveTransformOp is a "
               "1-D tensor with shape "
               "(num_rois, 9).");
     AddOutput("Out2InIdx",
-              "(Tensor), "
+              "(phi::DenseTensor), "
               "An intermediate tensor used to map indexes of input feature map "
               "and indexes of output feature map."
               "The shape of the tensor is [out_size, 4] and out_size is the "
               "number of elements in output feature map.")
         .AsIntermediate();
     AddOutput("Out2InWeights",
-              "(Tensor), "
+              "(phi::DenseTensor), "
               "An intermediate tensor used to record the weights of bilinear "
               "interpolatein for each element in output. The shape of the "
               "tensor is [out_size, 4] and out_size is the number of elements "

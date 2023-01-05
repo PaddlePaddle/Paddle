@@ -12,39 +12,41 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
-import sys
-import json
-import shlex
 import copy
-import pathlib
-import subprocess
+import json
 import logging
+import os
+import pathlib
 import pickle
+import shlex
+import subprocess
+import sys
 import time
+
 import paddle
 import paddle.fluid.core as core
+from paddle.distributed.passes import PassContext, new_pass
+from paddle.distributed.utils.log_utils import get_logger
 from paddle.fluid import program_guard
 from paddle.fluid.backward import append_backward
-from paddle.distributed.utils.log_utils import get_logger
-from paddle.distributed.passes import new_pass, PassContext
-from .dist_context import DistributedContext
-from .dist_context import set_default_distributed_context
-from .completion import Completer
-from .partitioner import Partitioner
-from .process_group import get_all_process_groups
-from .process_group import get_process_group
-from .process_group import get_world_process_group
-from .process_group import _g_process_group_map, ProcessGroup
-from .utils import make_data_unshard
-from .utils import set_grad_var_shape
-from .utils import SerialProgramInfo
-from .reshard import Resharder
+
 from .cluster import Cluster
-from .mapper import mapping
+from .completion import Completer
+from .dist_context import DistributedContext, set_default_distributed_context
 from .dist_op import DistributedOperator
 from .dist_tensor import DistributedTensor
+from .mapper import mapping
+from .partitioner import Partitioner
 from .planner import Planner
+from .process_group import (
+    ProcessGroup,
+    _g_process_group_map,
+    get_all_process_groups,
+    get_process_group,
+    get_world_process_group,
+)
+from .reshard import Resharder
+from .utils import SerialProgramInfo, make_data_unshard, set_grad_var_shape
 
 _logger = get_logger(logging.INFO)
 
@@ -284,7 +286,7 @@ class AutoParallelizer:
             _g_process_group_map.clear()
             _g_process_group_map[0] = ProcessGroup(0, [])
             for process_mesh in self._dist_context._process_meshes:
-                _g_process_group_map[0].add_ranks(process_mesh.processes)
+                _g_process_group_map[0].add_ranks(process_mesh.process_ids)
         return (
             dist_optimize_ops,
             dist_params_grads,
@@ -480,7 +482,7 @@ class AutoParallelizer:
             if dist_context is not None:
                 pg0 = get_process_group(0)
                 for process_mesh in dist_context._process_meshes:
-                    pg0.add_ranks(process_mesh.processes)
+                    pg0.add_ranks(process_mesh.process_ids)
             (
                 dist_optimize_ops,
                 dist_params_grads,

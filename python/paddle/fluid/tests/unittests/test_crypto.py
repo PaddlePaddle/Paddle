@@ -12,10 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.fluid.core import CipherUtils
-from paddle.fluid.core import CipherFactory
-
 import unittest
+
+from paddle.fluid.core import CipherFactory, CipherUtils
 
 
 class CipherUtilsTestCase(unittest.TestCase):

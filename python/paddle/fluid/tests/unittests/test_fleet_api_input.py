@@ -13,23 +13,25 @@
 # limitations under the License.
 
 import unittest
+
+from dist_simnet_bow import train_network
+
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.transpiler.distribute_transpiler import (
-    DistributeTranspilerConfig,
-)
-from paddle.fluid.incubate.fleet.base.role_maker import UserDefinedRoleMaker
-from paddle.fluid.incubate.fleet.base.role_maker import (
-    UserDefinedCollectiveRoleMaker,
-)
-from paddle.fluid.incubate.fleet.base.role_maker import Role
 import paddle.fluid.incubate.fleet.base.role_maker as role_maker
+from paddle.fluid.incubate.fleet.base.role_maker import (
+    Role,
+    UserDefinedCollectiveRoleMaker,
+    UserDefinedRoleMaker,
+)
+from paddle.fluid.incubate.fleet.collective import CollectiveOptimizer
+from paddle.fluid.incubate.fleet.parameter_server import TranspilerOptimizer
 from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import (
     fleet,
 )
-from paddle.fluid.incubate.fleet.parameter_server import TranspilerOptimizer
-from paddle.fluid.incubate.fleet.collective import CollectiveOptimizer
-from dist_simnet_bow import train_network
+from paddle.fluid.transpiler.distribute_transpiler import (
+    DistributeTranspilerConfig,
+)
 
 
 class DistributeTranspilerConfigTest(unittest.TestCase):
@@ -60,7 +62,7 @@ class FleetTest(unittest.TestCase):
         self.assertRaises(Exception, fleet.init, "pserver")
 
         data = fluid.layers.data(name='X', shape=[1], dtype='float32')
-        hidden = fluid.layers.fc(input=data, size=10)
+        hidden = paddle.static.nn.fc(x=data, size=10)
         loss = paddle.mean(hidden)
         adam = fluid.optimizer.Adam()
         adam.minimize(loss)
@@ -175,7 +177,7 @@ class TranspilerOptimizerTest(unittest.TestCase):
         transpiler = TranspilerOptimizer(fluid.optimizer.Adam(0.001))
         self.assertRaises(Exception, transpiler.minimize, loss=[])
         data = fluid.layers.data(name='X', shape=[1], dtype='float32')
-        hidden = fluid.layers.fc(input=data, size=10)
+        hidden = paddle.static.nn.fc(x=data, size=10)
         loss = paddle.mean(hidden)
         self.assertRaises(
             Exception, transpiler.minimize, loss=loss.name, startup_program=[]

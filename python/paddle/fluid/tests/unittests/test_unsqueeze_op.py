@@ -14,14 +14,14 @@
 
 import unittest
 
+import gradient_checker
 import numpy as np
+from decorator_helper import prog_scope
+from op_test import OpTest, convert_float_to_uint16
 
 import paddle
 import paddle.fluid as fluid
-from op_test import OpTest, convert_float_to_uint16
 import paddle.fluid.core as core
-import gradient_checker
-from decorator_helper import prog_scope
 import paddle.fluid.layers as layers
 
 paddle.enable_static()

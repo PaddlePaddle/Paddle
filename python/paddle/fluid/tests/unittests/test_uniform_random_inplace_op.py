@@ -13,13 +13,11 @@
 # limitations under the License.
 
 import unittest
+
+import numpy as np
+
 import paddle
 import paddle.fluid as fluid
-import numpy as np
-from paddle.fluid.framework import (
-    _enable_legacy_dygraph,
-    _disable_legacy_dygraph,
-)
 
 
 class TestUniformRandomInplaceOpDtype(unittest.TestCase):
@@ -185,11 +183,6 @@ class TestUniformRandomInplaceGrad(unittest.TestCase):
 
     def test_uniform_random_inplace_grad(self):
         self.run_()
-
-    def test_uniform_random_inplace_grad_old_dygraph(self):
-        _enable_legacy_dygraph()
-        self.run_()
-        _disable_legacy_dygraph()
 
 
 if __name__ == '__main__':

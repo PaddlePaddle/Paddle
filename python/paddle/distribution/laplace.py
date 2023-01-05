@@ -15,6 +15,7 @@
 import numbers
 
 import numpy as np
+
 import paddle
 from paddle.distribution import distribution
 from paddle.fluid import framework as framework

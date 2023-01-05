@@ -13,12 +13,13 @@
 # limitations under the License.
 
 import unittest
-import numpy as np
 
-import paddle.fluid.core as core
+import numpy as np
 from op_test import OpTest
-import paddle.fluid as fluid
+
 import paddle
+import paddle.fluid as fluid
+import paddle.fluid.core as core
 
 
 def conv3d_forward_naive(

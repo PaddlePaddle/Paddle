@@ -13,9 +13,11 @@
 # limitations under the License.
 
 import logging
-import numpy as np
-import paddle
 import unittest
+
+import numpy as np
+
+import paddle
 
 paddle.enable_static()
 

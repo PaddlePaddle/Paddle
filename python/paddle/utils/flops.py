@@ -60,11 +60,20 @@ def register_flops(op_type):
     return register
 
 
+@register_flops("c_embedding")
+def _c_embedding_flops(input_shapes, attrs):
+    """FLOPs computation for c_embedding op.
+    For c_embedding(input):
+        equation: flops = 0
+    """
+    return 0
+
+
 @register_flops("dropout")
 def _dropout_flops(input_shapes, attrs):
     """FLOPs computation for dropout op.
     For dropout(input):
-    equation: flops = 0
+        equation: flops = 0
     """
     return 0
 
@@ -108,7 +117,7 @@ def _elementwise_mul_flops(input_shapes, attrs):
 
 
 @register_flops("elementwise_div")
-def _elementwise_mul_flops(input_shapes, attrs):
+def _elementwise_div_flops(input_shapes, attrs):
     """FLOPs computation for elementwise_div op.
     For elementwise_div(input,other):
         input_shapes = [shape_of_input, shape_of_ohther]
@@ -155,8 +164,9 @@ def _matmul_flops(input_shapes, attrs):
         shape_of_output = [dim1, dim2 ... max(dim(n-m), odim(n-m)), max(dim(n-m+1), odim(n-m+1)) ... dim_n_1, dim_m]
         equation: flops = 2 * numel(output) * dim_n
     """
-    x_shape = input_shapes.get("X")[0]
-    y_shape = input_shapes.get("Y")[0]
+
+    x_shape = input_shapes.get("X", input_shapes.get("x", [[0]]))[0]
+    y_shape = input_shapes.get("Y", input_shapes.get("y", [[0]]))[0]
     if attrs.get('transpose_X') or attrs.get('transpose_x'):
         x_shape[-1], x_shape[-2] = x_shape[-2], x_shape[-1]
 
@@ -181,7 +191,7 @@ def _matmul_v2_flops(input_shapes, attrs):
     """FLOPs computation for matmul_v2 op.
     For matmul_v2(input,other):
         input_shapes = [shape_of_input, shape_of_ohther]
-        shape_of_input =                  [dim1, dim2 ...dim_n_1, dim_n] length:n
+        shape_of_input =                   [dim1, dim2 ...dim_n_1, dim_n] length:n
         shape_of_other = [odim1, odim2 ... odim(n-m) ... odim_m_1, dim_m] length:m
         suppose n > m and dim_n = odim_m_1:
         shape_of_output = [dim1, dim2 ... max(dim(n-m), odim(n-m)), max(dim(n-m+1), odim(n-m+1))...dim_n_1, dim_m]
@@ -206,13 +216,43 @@ def _matmul_v2_flops(input_shapes, attrs):
     return 2 * macs
 
 
-@register_flops("relu")
-def _relu_flops(input_shapes, attrs):
-    """FLOPs computation for relu op.
-    For relu(input):
+def _relu_class_flops(input_shapes, attrs):
+    """FLOPs computation for relu_like ops.
+    For elu/leaky_relu/prelu/relu/relu6/silu (input):
         equation: flops = (numel)total number of elements in the input tensor.
     """
-    return prod(input_shapes.get('X')[0])
+    input = input_shapes.get('X')[0]
+    return prod(input)
+
+
+@register_flops("elu")
+def _elu_flops(input_shapes, attrs):
+    return _relu_class_flops(input_shapes, attrs)
+
+
+@register_flops("leaky_relu")
+def _leaky_relu_flops(input_shapes, attrs):
+    return _relu_class_flops(input_shapes, attrs)
+
+
+@register_flops("prelu")
+def _prelu_flops(input_shapes, attrs):
+    return _relu_class_flops(input_shapes, attrs)
+
+
+@register_flops("relu")
+def _relu_flops(input_shapes, attrs):
+    return _relu_class_flops(input_shapes, attrs)
+
+
+@register_flops("relu6")
+def _relu6_flops(input_shapes, attrs):
+    return _relu_class_flops(input_shapes, attrs)
+
+
+@register_flops("silu")
+def _silu_flops(input_shapes, attrs):
+    return _relu_class_flops(input_shapes, attrs)
 
 
 @register_flops("reshape2")

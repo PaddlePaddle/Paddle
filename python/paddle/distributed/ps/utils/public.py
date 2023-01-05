@@ -12,15 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from functools import reduce
-
 import collections
+import logging
 import os
 import warnings
-import logging
+from functools import reduce
+
 import paddle.fluid as fluid
-from paddle.framework import core
 import paddle.fluid.framework as framework
+from paddle.framework import core
 
 # logging.basicConfig(
 #    format='%(levelname)s - %(asctime)s - %(pathname)s: %(lineno)s - %(message)s', level=logging.INFO)

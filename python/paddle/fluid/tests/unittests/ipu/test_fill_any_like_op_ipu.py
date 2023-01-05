@@ -47,7 +47,7 @@ class TestBase(IPUOpTest):
             name=self.feed_list[0], shape=self.feed_shape[0], dtype='float32'
         )
         x_fill = paddle.full_like(x, **self.attrs)
-        out = paddle.fluid.layers.elementwise_add(x_fill, x_fill)
+        out = paddle.add(x_fill, x_fill)
         self.fetch_list = [out.name]
 
     def run_model(self, exec_mode):
@@ -71,7 +71,7 @@ class TestError(TestBase):
     def build_model(self):
         x = paddle.fluid.data('x', [-1, 3, 13], 'float32')
         x_fill = paddle.full_like(x, **self.attrs)
-        out = paddle.fluid.layers.elementwise_add(x_fill, x_fill)
+        out = paddle.add(x_fill, x_fill)
         self.fetch_list = [out.name]
 
     def test(self):

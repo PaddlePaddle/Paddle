@@ -12,18 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 
-from .common import DistributedOperatorImplContainer
-from .common import DistributedOperatorImpl
-from .common import register_distributed_operator_impl_container
-from .common import register_distributed_operator_impl
-from paddle.fluid import core
-from paddle.distributed.fleet.meta_optimizers.common import OP_ROLE_KEY, OpRole
-from ..utils import set_var_dist_attr
-from ..utils import set_dist_op_desc_original_id
-from ..process_group import new_process_group
-from ..dist_attribute import OperatorDistributedAttribute
 from paddle.distributed.auto_parallel.process_group import (
     get_world_process_group,
+)
+from paddle.distributed.fleet.meta_optimizers.common import OP_ROLE_KEY, OpRole
+from paddle.fluid import core
+
+from ..dist_attribute import OperatorDistributedAttribute
+from ..process_group import new_process_group
+from ..utils import set_dist_op_desc_original_id, set_var_dist_attr
+from .common import (
+    DistributedOperatorImpl,
+    DistributedOperatorImplContainer,
+    SyncMode,
+    register_distributed_operator_impl,
+    register_distributed_operator_impl_container,
 )
 
 world_process_group = get_world_process_group()
@@ -87,7 +90,7 @@ class DistributedCheckFiniteAndUnscaleImpl(DistributedOperatorImpl):
             str(backward_op)
         )
 
-        assert rank_id in dist_attr.process_mesh.processes
+        assert rank_id in dist_attr.process_mesh.process_ids
 
         assert 'X' in kwargs, "input [{}] is not given".format('X')
         assert 'Scale' in kwargs, "input [{}] is not given".format('Scale')
@@ -118,7 +121,7 @@ class DistributedCheckFiniteAndUnscaleImpl(DistributedOperatorImpl):
                 rank_id
                 in ctx.get_tensor_dist_attr_for_program(
                     main_block._var_recursive(varname)
-                ).process_mesh.processes
+                ).process_mesh.process_ids
             ):
                 filter_vars.append(varname)
 
@@ -164,6 +167,7 @@ class DistributedCheckFiniteAndUnscaleImpl(DistributedOperatorImpl):
                 OP_ROLE_KEY: OpRole.Optimize,
             },
         )
+        allreduce_op._set_attr('op_namescope', str('/') + SyncMode.AmpFlagSync)
         cast_op2 = main_block.append_op(
             type='cast',
             inputs={'X': inf_var_int32},

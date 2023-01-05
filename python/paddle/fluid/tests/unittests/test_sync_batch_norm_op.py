@@ -16,18 +16,18 @@ test for sync bachnorm op.
 for both FP64 and FP16 input.
 """
 
-import unittest
-import numpy as np
 import os
-import paddle
-import paddle.fluid.core as core
-import paddle.fluid as fluid
-import paddle.nn as nn
-from paddle.fluid import compiler
-from paddle.fluid import Program, program_guard
+import unittest
 
-from op_test import OpTest, _set_use_system_allocator
+import numpy as np
 from decorator_helper import prog_scope
+from op_test import OpTest, _set_use_system_allocator
+
+import paddle
+import paddle.fluid as fluid
+import paddle.fluid.core as core
+import paddle.nn as nn
+from paddle.fluid import Program, compiler, program_guard
 
 _set_use_system_allocator(True)
 
@@ -73,7 +73,7 @@ class TestSyncBatchNormOpTraining(unittest.TestCase):
                     dtype=self.dtype,
                     append_batch_size=False,
                 )
-                conv = fluid.layers.conv2d(
+                conv = paddle.static.nn.conv2d(
                     input=data,
                     num_filters=32,
                     filter_size=1,
@@ -81,7 +81,7 @@ class TestSyncBatchNormOpTraining(unittest.TestCase):
                     bias_attr=False,
                     use_cudnn=use_cudnn,
                 )
-                bn = fluid.layers.batch_norm(
+                bn = paddle.static.nn.batch_norm(
                     conv,
                     param_attr=fluid.ParamAttr(name='bn_scale'),
                     bias_attr=fluid.ParamAttr(name='bn_bias'),

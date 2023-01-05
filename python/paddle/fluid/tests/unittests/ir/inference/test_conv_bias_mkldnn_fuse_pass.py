@@ -36,7 +36,7 @@ class TestConvBiasMkldnnFusePass(PassAutoScanTest):
         # MKLDNN
         config = self.create_inference_config(use_gpu=False)
         config.enable_mkldnn()
-        yield config, ["conv2d"], (1e-4, 1e-5)
+        yield config, ["fused_conv2d"], (1e-4, 1e-5)
 
     def is_program_valid(self, prog_config):
         paddings = prog_config.ops[0].attrs["paddings"]
@@ -156,8 +156,10 @@ class TestConvBiasMkldnnFusePass(PassAutoScanTest):
         inputs = dict()
         weights = dict()
         use_mkldnn = None
+        conv_type = "conv2d"
         if draw(st.booleans()):
             conv_bias_shape = [f_shape[0]]
+            conv_type = "fused_conv2d"
             inputs = {
                 "Input": ["input_x"],
                 "Filter": ["filter"],
@@ -181,7 +183,7 @@ class TestConvBiasMkldnnFusePass(PassAutoScanTest):
             use_mkldnn = False
 
         conv2d_op = OpConfig(
-            "conv2d",
+            conv_type,
             inputs=inputs,
             outputs={"Output": ["conv2d_out"]},
             strides=strides,

@@ -13,11 +13,12 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
-import numpy as np
-from paddle.fluid import Program, program_guard
-from paddle import fluid
+
 import paddle
+from paddle import fluid
+from paddle.fluid import Program, program_guard
 
 
 class TestChunkOpError(unittest.TestCase):

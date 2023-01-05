@@ -18,7 +18,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
 using NPUDeviceContext = platform::NPUDeviceContext;
 
 template <typename T>

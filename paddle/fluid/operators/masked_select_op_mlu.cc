@@ -39,7 +39,7 @@ class MaskedSelectedMLUKernel : public framework::OpKernel<T> {
             input_dim,
             mask_dim));
 
-    Tensor number(framework::TransToPhiDataType(VT::INT32));
+    phi::DenseTensor number(framework::TransToPhiDataType(VT::INT32));
     void* number_ptr = number.mutable_data<int32_t>({1}, ctx.GetPlace());
 
     out->Resize(mask->dims());
@@ -72,7 +72,7 @@ class MaskedSelectedGradMLUKernel : public framework::OpKernel<T> {
 
     auto& dev_ctx =
         ctx.template device_context<paddle::platform::MLUDeviceContext>();
-    Tensor mask_int32, out_size;
+    phi::DenseTensor mask_int32, out_size;
     std::vector<int32_t> out_size_vec;
     mask_int32.mutable_data<int32_t>(mask->dims(), ctx.GetPlace());
     out_size.mutable_data<int32_t>({1}, ctx.GetPlace());
@@ -118,10 +118,10 @@ class MaskedSelectedGradMLUKernel : public framework::OpKernel<T> {
     paddle::framework::TensorToVector(out_size, dev_ctx, &out_size_vec);
     dev_ctx.Wait();
 
-    Tensor mask_int32_tmp;
+    phi::DenseTensor mask_int32_tmp;
     mask_int32_tmp.ShareDataWith(mask_int32);
     mask_int32_tmp.Resize({mask_int32.numel()});
-    Tensor topk_v2_out(framework::TransToPhiDataType(VT::INT32)),
+    phi::DenseTensor topk_v2_out(framework::TransToPhiDataType(VT::INT32)),
         indices_int32(framework::TransToPhiDataType(VT::INT32));
     topk_v2_out.mutable_data<int32_t>({mask_int32.numel()}, ctx.GetPlace());
     indices_int32.mutable_data<int32_t>({mask_int32.numel()}, ctx.GetPlace());
@@ -145,7 +145,7 @@ class MaskedSelectedGradMLUKernel : public framework::OpKernel<T> {
 
     auto stream = ctx.template device_context<MLUDeviceContext>().stream();
 
-    Tensor indices_int32_out;
+    phi::DenseTensor indices_int32_out;
     indices_int32_out.mutable_data<int32_t>({out_size_vec[0]}, ctx.GetPlace());
     memory::Copy(ctx.GetPlace(),
                  GetBasePtr(&indices_int32_out),
@@ -154,7 +154,7 @@ class MaskedSelectedGradMLUKernel : public framework::OpKernel<T> {
                  out_size_vec[0] * sizeof(int32_t),
                  stream);
 
-    Tensor y_grad_tmp_out;
+    phi::DenseTensor y_grad_tmp_out;
     y_grad_tmp_out.mutable_data<T>({out_size_vec[0]}, ctx.GetPlace());
     MLUCnnlTensorDesc y_grad_tmp_out_desc(y_grad_tmp_out);
     memory::Copy(ctx.GetPlace(),
@@ -164,7 +164,7 @@ class MaskedSelectedGradMLUKernel : public framework::OpKernel<T> {
                  out_size_vec[0] * sizeof(T),
                  stream);
 
-    Tensor indices_int32_tmp;
+    phi::DenseTensor indices_int32_tmp;
     indices_int32_tmp.ShareDataWith(indices_int32_out);
     indices_int32_tmp.Resize({out_size_vec[0], 1});
     MLUCnnlTensorDesc indices_int32_tmp_desc(indices_int32_tmp);

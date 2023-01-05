@@ -15,10 +15,11 @@
 import os
 import tempfile
 import unittest
+
+import paddle
+import paddle.fluid as fluid
 from paddle.dataset.common import download
 from paddle.distributed.fleet.dataset import TreeIndex
-import paddle.fluid as fluid
-import paddle
 
 paddle.enable_static()
 

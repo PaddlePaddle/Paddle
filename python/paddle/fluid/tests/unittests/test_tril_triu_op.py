@@ -12,8 +12,10 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
 from op_test import OpTest
+
 import paddle
 import paddle.fluid as fluid
 import paddle.tensor as tensor
@@ -183,7 +185,7 @@ class TestTrilTriuOpAPI(unittest.TestCase):
             with program_guard(prog, startup_prog):
                 data = np.random.random([1, 9, 9, 4]).astype(dtype)
                 x = fluid.data(shape=[1, 9, -1, 4], dtype=dtype, name='x')
-                triu_out = fluid.layers.triu(x)
+                triu_out = paddle.triu(x)
 
                 place = (
                     fluid.CUDAPlace(0)

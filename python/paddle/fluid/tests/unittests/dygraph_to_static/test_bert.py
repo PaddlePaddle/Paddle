@@ -13,20 +13,19 @@
 # limitations under the License.
 
 import os
-import time
 import tempfile
+import time
 import unittest
+
 import numpy as np
+from bert_dygraph_model import PretrainModelLayer
+from bert_utils import get_bert_config, get_feed_data_reader
+from predictor_utils import PredictorTools
 
 import paddle
 import paddle.fluid as fluid
 from paddle.jit import ProgramTranslator
-from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
-
-from bert_dygraph_model import PretrainModelLayer
-from bert_utils import get_bert_config, get_feed_data_reader
-
-from predictor_utils import PredictorTools
+from paddle.jit.translated_layer import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 
 program_translator = ProgramTranslator()
 place = (
@@ -120,8 +119,9 @@ class TestBert(unittest.TestCase):
                     if to_static:
                         paddle.jit.save(bert, self.model_save_prefix)
                     else:
-                        fluid.dygraph.save_dygraph(
-                            bert.state_dict(), self.dy_state_dict_save_path
+                        paddle.save(
+                            bert.state_dict(),
+                            self.dy_state_dict_save_path + '.pdparams',
                         )
                     break
             return loss, ppl
@@ -162,9 +162,7 @@ class TestBert(unittest.TestCase):
             bert = PretrainModelLayer(
                 config=bert_config, weight_sharing=False, use_fp16=False
             )
-            model_dict, _ = fluid.dygraph.load_dygraph(
-                self.dy_state_dict_save_path
-            )
+            model_dict = paddle.load(self.dy_state_dict_save_path + '.pdparams')
 
             bert.set_dict(model_dict)
             bert.eval()
@@ -282,5 +280,4 @@ class TestBert(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    with fluid.framework._test_eager_guard():
-        unittest.main()
+    unittest.main()

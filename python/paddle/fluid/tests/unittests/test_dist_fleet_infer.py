@@ -14,8 +14,9 @@
 
 import os
 import shutil
-import unittest
 import tempfile
+import unittest
+
 from test_dist_fleet_base import TestFleetBase
 
 

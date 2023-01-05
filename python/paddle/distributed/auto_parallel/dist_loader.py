@@ -13,19 +13,20 @@
 # limitations under the License
 
 import abc
+
 import numpy as np
 
 import paddle
-from paddle.io import BatchSampler, IterableDataset
 from paddle.fluid.dataloader.batch_sampler import (
-    _InfiniteIterableSampler,
     DistributedBatchSampler,
+    _InfiniteIterableSampler,
 )
 from paddle.fluid.dataloader.dataloader_iter import (
     _DatasetKind,
     default_collate_fn,
     default_convert_fn,
 )
+from paddle.io import BatchSampler, IterableDataset
 
 
 class DistributedDataLoaderBase(metaclass=abc.ABCMeta):

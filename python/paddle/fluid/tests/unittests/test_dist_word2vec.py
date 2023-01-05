@@ -12,10 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-from test_dist_base import TestDistBase
-
 import os
+import unittest
+
+from test_dist_base import TestDistBase
 
 flag_name = os.path.splitext(__file__)[0]
 

@@ -13,23 +13,20 @@
 # limitations under the License.
 
 import os
+import signal
 import time
 import unittest
 from multiprocessing import Process
-import signal
 
 import numpy as np
-
-import paddle.fluid as fluid
-import paddle.fluid.layers as layers
-from paddle.fluid.layers.io import ListenAndServ
-from paddle.fluid.layers.io import Recv
-from paddle.fluid.layers.io import Send
-import paddle.fluid.layers.ops as ops
 from dist_test_utils import remove_ps_flag
 
-from paddle.fluid import core
 import paddle
+import paddle.fluid as fluid
+import paddle.fluid.layers as layers
+import paddle.fluid.layers.ops as ops
+from paddle.fluid import core
+from paddle.fluid.layers.io import ListenAndServ, Recv, Send
 
 RPC_OP_ROLE_ATTR_NAME = (
     op_role_attr_name

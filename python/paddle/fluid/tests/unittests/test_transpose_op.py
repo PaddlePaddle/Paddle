@@ -13,15 +13,17 @@
 # limitations under the License.
 
 import unittest
+
+import gradient_checker
 import numpy as np
-from paddle.fluid.tests.unittests.op_test import OpTest, convert_float_to_uint16
+from decorator_helper import prog_scope
+
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid import Program, program_guard
 import paddle.fluid.core as core
-import gradient_checker
-from decorator_helper import prog_scope
 import paddle.fluid.layers as layers
+from paddle.fluid import Program, program_guard
+from paddle.fluid.tests.unittests.op_test import OpTest, convert_float_to_uint16
 
 paddle.enable_static()
 

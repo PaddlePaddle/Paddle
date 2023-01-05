@@ -12,17 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+import tempfile
 import unittest
+
+import numpy as np
+
 import paddle
-import paddle.fluid.core as core
 import paddle.fluid as fluid
+import paddle.fluid.core as core
 import paddle.fluid.framework as framework
 from paddle.fluid.optimizer import SGDOptimizer
 from paddle.fluid.tests.unittests.test_imperative_base import new_program_scope
 from paddle.fluid.tests.unittests.test_static_save_load import PtbModel
-import numpy as np
-import tempfile
-import os
 
 
 @unittest.skipIf(

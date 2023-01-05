@@ -479,6 +479,11 @@ void StackInferMeta(const std::vector<const MetaTensor*>& x,
 void UnchangedMultiInferMeta(const std::vector<const MetaTensor*>& x,
                              std::vector<MetaTensor*> out);
 
+void ShareBufferInferMeta(const std::vector<const MetaTensor*>& x,
+                          const std::vector<bool>& share_dims_and_dtype,
+                          std::vector<MetaTensor*> out,
+                          std::vector<MetaTensor*> xout);
+
 void UpdateLossScalingInferMeta(const std::vector<const MetaTensor*>& xs,
                                 const MetaTensor& found_infinite,
                                 const MetaTensor& prev_loss_scaling,
@@ -497,6 +502,15 @@ void WarpctcInferMeta(const MetaTensor& logits,
                       bool norm_by_times,
                       MetaTensor* loss,
                       MetaTensor* warpctcgrad);
+
+void WarprnntInferMeta(const MetaTensor& input,
+                       const MetaTensor& label,
+                       const MetaTensor& input_lengths,
+                       const MetaTensor& label_lengths,
+                       int blank,
+                       float fastemit_lambda,
+                       MetaTensor* loss,
+                       MetaTensor* warpctcgrad);
 
 void WhereInferMeta(const MetaTensor& condition,
                     const MetaTensor& x,
@@ -517,5 +531,14 @@ void YoloLossInferMeta(const MetaTensor& x,
                        MetaTensor* loss,
                        MetaTensor* objectness_mask,
                        MetaTensor* gt_match_mask);
+
+void MoeInferMeta(const MetaTensor& x,
+                  const MetaTensor& gate,
+                  const MetaTensor& bmm0,
+                  const MetaTensor& bias0,
+                  const MetaTensor& bmm1,
+                  const MetaTensor& bias1,
+                  const std::string& act_type,
+                  MetaTensor* out);
 
 }  // namespace phi

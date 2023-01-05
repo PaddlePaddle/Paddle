@@ -12,25 +12,28 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
 from functools import reduce
 
-import paddle
+import numpy as np
 
-from .pass_base import PassBase, register_pass
-from ..auto_parallel.reshard import Resharder
+import paddle
+from paddle.distributed.fleet.meta_optimizers.common import OP_ROLE_KEY, OpRole
+
+from ..auto_parallel.dist_attribute import (
+    OperatorDistributedAttribute,
+    TensorDistributedAttribute,
+)
+from ..auto_parallel.operators.common import SyncMode
 from ..auto_parallel.process_group import get_world_process_group
+from ..auto_parallel.reshard import Resharder
 from ..auto_parallel.utils import (
+    _get_comm_group,
+    insert_dependencies_for_vars,
     is_gradient_clip_op,
     is_optimize_op,
-    OP_ROLE_KEY,
-    OpRole,
-    _get_comm_group,
+    use_standalone_executor,
 )
-from ..auto_parallel.dist_attribute import (
-    TensorDistributedAttribute,
-    OperatorDistributedAttribute,
-)
+from .pass_base import PassBase, register_pass
 
 
 def _get_params_grads(block):
@@ -162,8 +165,8 @@ class ClipHelper:
 
         param = self.params[self.params_name.index(name)]
         dist_attr = self._get_dist_attr(name)
-        topology = dist_attr.process_mesh.topology
-        processes = dist_attr.process_mesh.processes
+        topology = dist_attr.process_mesh.shape
+        processes = dist_attr.process_mesh.process_ids
         dims_mapping = dist_attr.dims_mapping
         return _is_about_global_norm(
             self.rank_id,
@@ -186,7 +189,7 @@ class ClipHelper:
     def _is_local_var(self, name):
         dist_attr = self._get_dist_attr(name)
         assert dist_attr is not None
-        return self.rank_id in dist_attr.process_mesh.processes
+        return self.rank_id in dist_attr.process_mesh.process_ids
 
     def _init_dist_attr(self, op):
         op_dist_attr = OperatorDistributedAttribute()
@@ -334,6 +337,7 @@ class ClipGradByGloblNormPass(PassBase):
             if op.type == 'sqrt':
                 input_name = op.input("X")[0]
                 input_var = block.vars[input_name]
+                insert_leaf_fill_constant_node = False
                 if paddle.distributed.get_world_size() > 1:
                     offset = 0
                     if input_name in removed_tmp_var:
@@ -356,6 +360,7 @@ class ClipGradByGloblNormPass(PassBase):
                         )
                         offset += 1
                         self.clip_helper._init_dist_attr(fill_constant_op)
+                        insert_leaf_fill_constant_node = True
 
                     allreduce_op = block._insert_op(
                         idx + offset,
@@ -368,10 +373,50 @@ class ClipGradByGloblNormPass(PassBase):
                             OP_ROLE_KEY: OpRole.Optimize,
                         },
                     )
+                    # TODO better regular the usage of op namescope
                     allreduce_op._set_attr(
-                        'op_namescope', "/gradient_clip_pass"
+                        'op_namescope', str('/') + SyncMode.GlobalNormSync
                     )
                     self.clip_helper._init_dist_attr(allreduce_op)
+
+                    if (
+                        use_standalone_executor
+                        and insert_leaf_fill_constant_node
+                    ):
+
+                        # NOTE add naive deps for global norm sync in graph exe
+                        j = idx - 1
+                        prior_op = None
+                        while j > 0:
+                            op_type = block.ops[j].type
+                            if op_type in [
+                                'update_loss_scaling',
+                                'check_finite_and_unscale',
+                            ] or op_type.endswith("_grad"):
+                                prior_op = block.ops[j]
+                                break
+                            j -= 1
+                        assert (
+                            prior_op is not None
+                        ), "Unexpected: ClipByGlobalNorm could not find priory depend op"
+                        prior_var = block.vars[prior_op.output_arg_names[0]]
+                        assert (
+                            prior_var is not None
+                        ), "Unexpected: ClipByGlobalNorm could not find priory depend var"
+                        insert_dependencies_for_vars(
+                            block,
+                            idx,
+                            prior_var,
+                            input_var,
+                            self.clip_helper.dist_context,
+                            OpRole.Optimize,
+                            process_mesh=[
+                                -1
+                            ],  # hack to avoid initialize the dist attr for coalesc var
+                            is_recompute=False,
+                            sync=False,
+                            op_namescope="grad_clip_fill_constant_dep",
+                        )
 
         for varname in removed_tmp_var:
             block._remove_var(varname, sync=False)

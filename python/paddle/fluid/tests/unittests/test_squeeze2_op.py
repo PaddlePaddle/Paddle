@@ -12,15 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
 
 import numpy as np
-import os
 from op_test import OpTest
-import paddle
-from paddle.fluid.framework import program_guard, Program
-
 from test_attribute_var import UnittestBase
+
+import paddle
+from paddle.fluid.framework import Program, program_guard
 
 paddle.enable_static()
 

@@ -14,38 +14,50 @@
 
 import copy
 
-from .common import infer_shape
-from .common import DistributedOperatorImplContainer
-from .common import DistributedOperatorImpl
-from .common import register_distributed_operator_impl_container
-from .common import register_distributed_operator_impl
-from .common import gradient_synchronization
-from .common import is_parameter_related, set_comm_op_dist_attr_for_program
-from ..utils import is_dim_shard
-from ..utils import is_dim_replicate
-from ..utils import is_valid_list_index
-from ..utils import compute_compatible_dims_mapping
-from ..utils import compute_compatible_and_update_dim_mapping
-from ..utils import set_dist_op_desc_original_id
-from ..dist_attribute import OperatorDistributedAttribute
-from paddle.fluid import core, unique_name
-from paddle.fluid.data_feeder import check_variable_and_dtype, check_dtype
-from paddle.distributed.fleet.meta_optimizers.common import OP_ROLE_KEY, OpRole
-from ..process_group import new_process_group
-from ..utils import _get_comm_group, _get_corresponding_rank
-from .dist_default import DistributedDefaultImpl0
-from ..cost import (
-    build_comp_desc_from_dist_op,
-    build_comm_desc_from_dist_op,
-    build_dp_costs,
-)
-from ..cost import build_comm_costs_from_descs, build_comp_costs_from_descs
-from ..cost import MatmulV2OpCost, MatmulOpCost, MulOpCost
-from ..cost import MatmulV2GradOpCost, MatmulGradOpCost, MulGradOpCost
 from paddle.distributed.auto_parallel.cost.comm_op_cost import (
     AllreduceSumOpCost,
     IdentityOpCost,
 )
+from paddle.distributed.fleet.meta_optimizers.common import OP_ROLE_KEY, OpRole
+from paddle.fluid import core, unique_name
+from paddle.fluid.data_feeder import check_dtype, check_variable_and_dtype
+
+from ..cost import (
+    MatmulGradOpCost,
+    MatmulOpCost,
+    MatmulV2GradOpCost,
+    MatmulV2OpCost,
+    MulGradOpCost,
+    MulOpCost,
+    build_comm_costs_from_descs,
+    build_comm_desc_from_dist_op,
+    build_comp_costs_from_descs,
+    build_comp_desc_from_dist_op,
+    build_dp_costs,
+)
+from ..dist_attribute import OperatorDistributedAttribute
+from ..process_group import new_process_group
+from ..utils import (
+    _get_comm_group,
+    _get_corresponding_rank,
+    compute_compatible_and_update_dim_mapping,
+    compute_compatible_dims_mapping,
+    is_dim_replicate,
+    is_dim_shard,
+    is_valid_list_index,
+    set_dist_op_desc_original_id,
+)
+from .common import (
+    DistributedOperatorImpl,
+    DistributedOperatorImplContainer,
+    gradient_synchronization,
+    infer_shape,
+    is_parameter_related,
+    register_distributed_operator_impl,
+    register_distributed_operator_impl_container,
+    set_comm_op_dist_attr_for_program,
+)
+from .dist_default import DistributedDefaultImpl0
 
 
 def trans_x_y_dims_mapping(trans_x, trans_y, x_dims_mapping, y_dims_mapping):
@@ -287,7 +299,7 @@ def _right_operand_parameter_matmul_backward(ctx, *args, **kwargs):
     ), "backward op [{}] don't have dist attribute !".format(str(backward_op))
 
     # FIXME (JZ-LIANG) Remove this hack to support any op mesh group for Pipeline Parallelism
-    if rank_id not in dist_attr.process_mesh.processes:
+    if rank_id not in dist_attr.process_mesh.process_ids:
         rank_id = _get_corresponding_rank(ctx, dist_attr.process_mesh, rank_id)
 
     assert 'Y' in kwargs, "input [{}] is not given".format('Y')
@@ -329,8 +341,8 @@ def _right_operand_parameter_matmul_backward(ctx, *args, **kwargs):
 
     X_var_dims_mapping = dist_attr.get_input_dims_mapping(X_var.name)
     Y_var_dim_mapping = dist_attr.get_input_dims_mapping(Y_var.name)
-    process_mesh_shape = dist_attr.process_mesh.topology
-    process_mesh_group = dist_attr.process_mesh.processes
+    process_mesh_shape = dist_attr.process_mesh.shape
+    process_mesh_group = dist_attr.process_mesh.process_ids
 
     trans_x = None
     trans_y = None
@@ -364,7 +376,7 @@ def _right_operand_parameter_matmul_backward(ctx, *args, **kwargs):
             check_variable_and_dtype(
                 Out_grad,
                 'tensor',
-                ['float16', 'float32', 'float64', 'int32', 'int64'],
+                ['float16', 'float32', 'float64', 'int32', 'int64', 'uint16'],
                 '_c_identity',
             )
 
@@ -405,13 +417,13 @@ def _right_operand_parameter_matmul_backward(ctx, *args, **kwargs):
             check_variable_and_dtype(
                 intermediate_var_0,
                 'x',
-                ['float16', 'float32', 'float64'],
+                ['float16', 'float32', 'float64', 'uint16'],
                 'linear',
             )
             check_dtype(
                 intermediate_var_0.dtype,
                 'dtype',
-                ['float16', 'float32', 'float64'],
+                ['float16', 'float32', 'float64', 'uint16'],
                 'linear',
             )
             set_comm_op_dist_attr_for_program(
@@ -520,12 +532,12 @@ def _init_param_sync(Weight_var, dist_op_context, startup_block, ctx, rank_id):
     process_mesh = param_dist_attr.process_mesh
     dim_mapping = param_dist_attr.dims_mapping
 
-    for axis, size in enumerate(process_mesh.topology):
+    for axis, size in enumerate(process_mesh.shape):
         if size <= 1 or axis in dim_mapping:
             pass
         else:
             group_ranks = _get_comm_group(
-                process_mesh.processes, process_mesh.topology, axis, rank_id
+                process_mesh.process_ids, process_mesh.shape, axis, rank_id
             )
             sync_group = new_process_group(group_ranks)
 
@@ -588,7 +600,7 @@ class DistributedMatmulImpl0(DistributedOperatorImpl):
             dist_op=dist_op, dist_context=ctx
         )
         process_mesh = dist_attr.process_mesh
-        processes = process_mesh.processes
+        processes = process_mesh.process_ids
         cost_mapping = build_comp_costs_from_descs(
             MatmulGradOpCost, ctx, processes, desc_mapping, cluster
         )
@@ -619,7 +631,7 @@ class DistributedMatmulImpl0(DistributedOperatorImpl):
         var_dim_mapping = dist_attr.get_input_dims_mapping(
             backward_op.input("X")[0]
         )
-        mesh_shape = process_mesh.topology
+        mesh_shape = process_mesh.shape
         batch_size_axis = var_dim_mapping[0]
         if (
             batch_size_axis > -1
@@ -639,7 +651,7 @@ class DistributedMatmulImpl0(DistributedOperatorImpl):
         desc_mapping = build_comp_desc_from_dist_op(
             dist_op=dist_op, dist_context=ctx
         )
-        processes = dist_op.dist_attr.process_mesh.processes
+        processes = dist_op.dist_attr.process_mesh.process_ids
         cost_mapping = build_comp_costs_from_descs(
             MatmulOpCost, ctx, processes, desc_mapping, cluster
         )
@@ -737,7 +749,7 @@ class DistributedMatmulImpl0(DistributedOperatorImpl):
         ), "backward op [{}] don't have dist attribute !".format(str(src_op))
 
         # FIXME (JZ-LIANG) Remove this hack to support any op mesh group for Pipeline Parallelism
-        if rank_id not in op_dist_attr.process_mesh.processes:
+        if rank_id not in op_dist_attr.process_mesh.process_ids:
             rank_id = _get_corresponding_rank(
                 ctx, op_dist_attr.process_mesh, rank_id
             )
@@ -779,8 +791,8 @@ class DistributedMatmulImpl0(DistributedOperatorImpl):
         ), "col_parallel_matmul's row should be divided by a specific mesh axis, but got [{}]".format(
             matmul_col_dim_mapping
         )
-        process_mesh_shape = op_dist_attr.process_mesh.topology
-        process_mesh_group = op_dist_attr.process_mesh.processes
+        process_mesh_shape = op_dist_attr.process_mesh.shape
+        process_mesh_group = op_dist_attr.process_mesh.process_ids
 
         parallel_axis = matmul_col_dim_mapping
         group_ranks = _get_comm_group(
@@ -823,7 +835,7 @@ class DistributedMatmulImpl0(DistributedOperatorImpl):
         check_variable_and_dtype(
             X_var,
             'tensor',
-            ['float16', 'float32', 'float64', 'int32', 'int64'],
+            ['float16', 'float32', 'float64', 'int32', 'int64', 'uint16'],
             '_c_identity',
         )
 
@@ -842,12 +854,15 @@ class DistributedMatmulImpl0(DistributedOperatorImpl):
             intermediate_var_0.desc.set_shape(ref_shape_x)
 
         check_variable_and_dtype(
-            intermediate_var_0, 'x', ['float16', 'float32', 'float64'], 'linear'
+            intermediate_var_0,
+            'x',
+            ['float16', 'float32', 'float64', 'uint16'],
+            'linear',
         )
         check_dtype(
             intermediate_var_0.dtype,
             'dtype',
-            ['float16', 'float32', 'float64'],
+            ['float16', 'float32', 'float64', 'uint16'],
             'linear',
         )
         attrs = {
@@ -974,7 +989,7 @@ class DistributedMatmulImpl1(DistributedOperatorImpl):
             parallel_axis=parallel_axis,
         )
         process_mesh = dist_attr.process_mesh
-        processes = process_mesh.processes
+        processes = process_mesh.process_ids
         comm_op_cost_list = build_comm_costs_from_descs(
             IdentityOpCost, ctx, processes, c_identity_desc_mapping, cluster
         )
@@ -993,7 +1008,7 @@ class DistributedMatmulImpl1(DistributedOperatorImpl):
         var_dim_mapping = dist_attr.get_input_dims_mapping(
             backward_op.input("X")[0]
         )
-        mesh_shape = process_mesh.topology
+        mesh_shape = process_mesh.shape
         batch_size_axis = var_dim_mapping[0]
         if (
             batch_size_axis > -1
@@ -1013,7 +1028,7 @@ class DistributedMatmulImpl1(DistributedOperatorImpl):
         desc_mapping = build_comp_desc_from_dist_op(
             dist_op=dist_op, dist_context=ctx
         )
-        processes = dist_op.dist_attr.process_mesh.processes
+        processes = dist_op.dist_attr.process_mesh.process_ids
         cost_mapping = build_comp_costs_from_descs(
             MatmulOpCost, ctx, processes, desc_mapping, cluster
         )
@@ -1119,7 +1134,7 @@ class DistributedMatmulImpl1(DistributedOperatorImpl):
         ), "backward op [{}] don't have dist attribute !".format(str(src_op))
 
         # FIXME (JZ-LIANG) Remove this hack to support any op mesh group for Pipeline Parallelism
-        if rank_id not in op_dist_attr.process_mesh.processes:
+        if rank_id not in op_dist_attr.process_mesh.process_ids:
             rank_id = _get_corresponding_rank(
                 ctx, op_dist_attr.process_mesh, rank_id
             )
@@ -1161,8 +1176,8 @@ class DistributedMatmulImpl1(DistributedOperatorImpl):
         ), "row_parallel_matmul's row should be divided by a specific mesh axis, but got [{}]".format(
             matmul_row_dim_mapping
         )
-        process_mesh_shape = op_dist_attr.process_mesh.topology
-        process_mesh_group = op_dist_attr.process_mesh.processes
+        process_mesh_shape = op_dist_attr.process_mesh.shape
+        process_mesh_group = op_dist_attr.process_mesh.process_ids
 
         parallel_axis = matmul_row_dim_mapping
         group_ranks = _get_comm_group(
@@ -1171,10 +1186,13 @@ class DistributedMatmulImpl1(DistributedOperatorImpl):
         group = new_process_group(group_ranks)
 
         check_variable_and_dtype(
-            X_var, 'x', ['float16', 'float32', 'float64'], 'linear'
+            X_var, 'x', ['float16', 'float32', 'float64', 'uint16'], 'linear'
         )
         check_dtype(
-            X_var.dtype, 'dtype', ['float16', 'float32', 'float64'], 'linear'
+            X_var.dtype,
+            'dtype',
+            ['float16', 'float32', 'float64', 'uint16'],
+            'linear',
         )
         attrs = {
             'transpose_X': trans_x,
@@ -1317,7 +1335,7 @@ class DistributedMatmulImpl2(DistributedOperatorImpl):
             dist_op=dist_op, dist_context=ctx
         )
         process_mesh = dist_attr.process_mesh
-        processes = process_mesh.processes
+        processes = process_mesh.process_ids
         cost_mapping = build_comp_costs_from_descs(
             MatmulGradOpCost, ctx, processes, desc_mapping, cluster
         )
@@ -1327,7 +1345,7 @@ class DistributedMatmulImpl2(DistributedOperatorImpl):
         var_dim_mapping = dist_attr.get_input_dims_mapping(
             backward_op.input("X")[0]
         )
-        mesh_shape = process_mesh.topology
+        mesh_shape = process_mesh.shape
         batch_size_axis = var_dim_mapping[0]
         if (
             batch_size_axis > -1
@@ -1348,7 +1366,7 @@ class DistributedMatmulImpl2(DistributedOperatorImpl):
         desc_mapping = build_comp_desc_from_dist_op(
             dist_op=dist_op, dist_context=ctx
         )
-        processes = dist_op.dist_attr.process_mesh.processes
+        processes = dist_op.dist_attr.process_mesh.process_ids
         cost_mapping = build_comp_costs_from_descs(
             MatmulOpCost, ctx, processes, desc_mapping, cluster
         )
@@ -1467,7 +1485,7 @@ class DistributedMatmulV2Impl0(DistributedOperatorImpl):
             backward_op.input("Y")[0]
         )
         process_mesh = dist_attr.process_mesh
-        processes = process_mesh.processes
+        processes = process_mesh.process_ids
         # col parallel: matmul + allreduce
         if backward_op.attr("trans_y"):
             Y_var_dim_mapping.reverse()
@@ -1514,7 +1532,7 @@ class DistributedMatmulV2Impl0(DistributedOperatorImpl):
         var_dim_mapping = dist_attr.get_input_dims_mapping(
             backward_op.input("X")[0]
         )
-        mesh_shape = process_mesh.topology
+        mesh_shape = process_mesh.shape
         batch_size_axis = var_dim_mapping[0]
         if (
             batch_size_axis > -1
@@ -1535,7 +1553,7 @@ class DistributedMatmulV2Impl0(DistributedOperatorImpl):
         comp_desc_mapping = build_comp_desc_from_dist_op(
             dist_op=dist_op, dist_context=ctx
         )
-        processes = dist_op.dist_attr.process_mesh.processes
+        processes = dist_op.dist_attr.process_mesh.process_ids
         comp_cost_mapping = build_comp_costs_from_descs(
             MatmulV2OpCost, ctx, processes, comp_desc_mapping, cluster
         )
@@ -1633,7 +1651,7 @@ class DistributedMatmulV2Impl0(DistributedOperatorImpl):
         ), "backward op [{}] don't have dist attribute !".format(str(src_op))
 
         # FIXME (JZ-LIANG) Remove this hack to support any op mesh group for Pipeline Parallelism
-        if rank_id not in op_dist_attr.process_mesh.processes:
+        if rank_id not in op_dist_attr.process_mesh.process_ids:
             rank_id = _get_corresponding_rank(
                 ctx, op_dist_attr.process_mesh, rank_id
             )
@@ -1675,8 +1693,8 @@ class DistributedMatmulV2Impl0(DistributedOperatorImpl):
         ), "col_parallel_matmul's row should be divided by a specific mesh axis, but got [{}]".format(
             matmul_col_dim_mapping
         )
-        process_mesh_shape = op_dist_attr.process_mesh.topology
-        process_mesh_group = op_dist_attr.process_mesh.processes
+        process_mesh_shape = op_dist_attr.process_mesh.shape
+        process_mesh_group = op_dist_attr.process_mesh.process_ids
 
         parallel_axis = matmul_col_dim_mapping
         group_ranks = _get_comm_group(
@@ -1719,7 +1737,7 @@ class DistributedMatmulV2Impl0(DistributedOperatorImpl):
         check_variable_and_dtype(
             X_var,
             'tensor',
-            ['float16', 'float32', 'float64', 'int32', 'int64'],
+            ['float16', 'float32', 'float64', 'int32', 'int64', 'uint16'],
             '_c_identity',
         )
         c_identity_op = main_block.append_op(
@@ -1737,12 +1755,15 @@ class DistributedMatmulV2Impl0(DistributedOperatorImpl):
             intermediate_var_0.desc.set_shape(ref_shape_x)
 
         check_variable_and_dtype(
-            intermediate_var_0, 'x', ['float16', 'float32', 'float64'], 'linear'
+            intermediate_var_0,
+            'x',
+            ['float16', 'float32', 'float64', 'uint16'],
+            'linear',
         )
         check_dtype(
             intermediate_var_0.dtype,
             'dtype',
-            ['float16', 'float32', 'float64'],
+            ['float16', 'float32', 'float64', 'uint16'],
             'linear',
         )
         attrs = {
@@ -1857,7 +1878,7 @@ class DistributedMatmulV2Impl1(DistributedOperatorImpl):
         parallel_axis = Y_var_dim_mapping[0]
 
         process_mesh = dist_attr.process_mesh
-        processes = process_mesh.processes
+        processes = process_mesh.process_ids
         # calc comm op cost
         var_names = [backward_op.input("Out@GRAD")[0]]
         attrs = {"use_calc_stream": True, "use_model_parallel": True}
@@ -1888,7 +1909,7 @@ class DistributedMatmulV2Impl1(DistributedOperatorImpl):
         var_dim_mapping = dist_attr.get_input_dims_mapping(
             backward_op.input("X")[0]
         )
-        mesh_shape = process_mesh.topology
+        mesh_shape = process_mesh.shape
         batch_size_axis = var_dim_mapping[0]
         if (
             batch_size_axis > -1
@@ -1908,7 +1929,7 @@ class DistributedMatmulV2Impl1(DistributedOperatorImpl):
         desc_mapping = build_comp_desc_from_dist_op(
             dist_op=dist_op, dist_context=ctx
         )
-        processes = dist_op.dist_attr.process_mesh.processes
+        processes = dist_op.dist_attr.process_mesh.process_ids
         cost_mapping = build_comp_costs_from_descs(
             MatmulV2OpCost, ctx, processes, desc_mapping, cluster
         )
@@ -2013,7 +2034,7 @@ class DistributedMatmulV2Impl1(DistributedOperatorImpl):
         ), "backward op [{}] don't have dist attribute !".format(str(src_op))
 
         # FIXME (JZ-LIANG) Remove this hack to support any op mesh group for Pipeline Parallelism
-        if rank_id not in op_dist_attr.process_mesh.processes:
+        if rank_id not in op_dist_attr.process_mesh.process_ids:
             rank_id = _get_corresponding_rank(
                 ctx, op_dist_attr.process_mesh, rank_id
             )
@@ -2055,8 +2076,8 @@ class DistributedMatmulV2Impl1(DistributedOperatorImpl):
         ), "row_parallel_matmul's row should be divided by a specific mesh axis, but got [{}]".format(
             matmul_row_dim_mapping
         )
-        process_mesh_shape = op_dist_attr.process_mesh.topology
-        process_mesh_group = op_dist_attr.process_mesh.processes
+        process_mesh_shape = op_dist_attr.process_mesh.shape
+        process_mesh_group = op_dist_attr.process_mesh.process_ids
 
         parallel_axis = matmul_row_dim_mapping
         group_ranks = _get_comm_group(
@@ -2065,10 +2086,13 @@ class DistributedMatmulV2Impl1(DistributedOperatorImpl):
         group = new_process_group(group_ranks)
 
         check_variable_and_dtype(
-            X_var, 'x', ['float16', 'float32', 'float64'], 'linear'
+            X_var, 'x', ['float16', 'float32', 'float64', 'uint16'], 'linear'
         )
         check_dtype(
-            X_var.dtype, 'dtype', ['float16', 'float32', 'float64'], 'linear'
+            X_var.dtype,
+            'dtype',
+            ['float16', 'float32', 'float64', 'uint16'],
+            'linear',
         )
         attrs = {
             'trans_x': trans_x,
@@ -2210,7 +2234,7 @@ class DistributedMatmulV2Impl2(DistributedOperatorImpl):
         desc_mapping = build_comp_desc_from_dist_op(
             dist_op=dist_op, dist_context=ctx
         )
-        processes = process_mesh.processes
+        processes = process_mesh.process_ids
         cost_mapping = build_comp_costs_from_descs(
             MatmulV2GradOpCost, ctx, processes, desc_mapping, cluster
         )
@@ -2220,7 +2244,7 @@ class DistributedMatmulV2Impl2(DistributedOperatorImpl):
         var_dim_mapping = dist_attr.get_input_dims_mapping(
             backward_op.input("X")[0]
         )
-        mesh_shape = process_mesh.topology
+        mesh_shape = process_mesh.shape
         batch_size_axis = var_dim_mapping[0]
         if (
             batch_size_axis > -1
@@ -2241,7 +2265,7 @@ class DistributedMatmulV2Impl2(DistributedOperatorImpl):
         desc_mapping = build_comp_desc_from_dist_op(
             dist_op=dist_op, dist_context=ctx
         )
-        processes = dist_op.dist_attr.process_mesh.processes
+        processes = dist_op.dist_attr.process_mesh.process_ids
         cost_mapping = build_comp_costs_from_descs(
             MatmulV2OpCost, ctx, processes, desc_mapping, cluster
         )
@@ -2374,7 +2398,7 @@ class DistributedMulImpl0(DistributedOperatorImpl):
             dist_op=dist_op, dist_context=ctx
         )
         process_mesh = dist_attr.process_mesh
-        processes = process_mesh.processes
+        processes = process_mesh.process_ids
         cost_mapping = build_comp_costs_from_descs(
             MulGradOpCost, ctx, processes, desc_mapping, cluster
         )
@@ -2405,7 +2429,7 @@ class DistributedMulImpl0(DistributedOperatorImpl):
         var_dim_mapping = dist_attr.get_input_dims_mapping(
             backward_op.input("X")[0]
         )
-        mesh_shape = process_mesh.topology
+        mesh_shape = process_mesh.shape
         batch_size_axis = var_dim_mapping[0]
         if (
             batch_size_axis > -1
@@ -2425,7 +2449,7 @@ class DistributedMulImpl0(DistributedOperatorImpl):
         desc_mapping = build_comp_desc_from_dist_op(
             dist_op=dist_op, dist_context=ctx
         )
-        processes = dist_op.dist_attr.process_mesh.processes
+        processes = dist_op.dist_attr.process_mesh.process_ids
         cost_mapping = build_comp_costs_from_descs(
             MulOpCost, ctx, processes, desc_mapping, cluster
         )
@@ -2518,7 +2542,7 @@ class DistributedMulImpl0(DistributedOperatorImpl):
         ), "backward op [{}] don't have dist attribute !".format(str(src_op))
 
         # FIXME (JZ-LIANG) Remove this hack to support any op mesh group for Pipeline Parallelism
-        if rank_id not in op_dist_attr.process_mesh.processes:
+        if rank_id not in op_dist_attr.process_mesh.process_ids:
             rank_id = _get_corresponding_rank(
                 ctx, op_dist_attr.process_mesh, rank_id
             )
@@ -2554,8 +2578,8 @@ class DistributedMulImpl0(DistributedOperatorImpl):
         ), "col_parallel_matmul's row should be divided by a specific mesh axis, but got [{}]".format(
             matmul_col_dim_mapping
         )
-        process_mesh_shape = op_dist_attr.process_mesh.topology
-        process_mesh_group = op_dist_attr.process_mesh.processes
+        process_mesh_shape = op_dist_attr.process_mesh.shape
+        process_mesh_group = op_dist_attr.process_mesh.process_ids
 
         parallel_axis = matmul_col_dim_mapping
         group_ranks = _get_comm_group(
@@ -2598,7 +2622,7 @@ class DistributedMulImpl0(DistributedOperatorImpl):
         check_variable_and_dtype(
             X_var,
             'tensor',
-            ['float16', 'float32', 'float64', 'int32', 'int64'],
+            ['float16', 'float32', 'float64', 'int32', 'int64', 'uint16'],
             '_c_identity',
         )
         c_identity_op = main_block.append_op(
@@ -2616,12 +2640,15 @@ class DistributedMulImpl0(DistributedOperatorImpl):
             intermediate_var_0.desc.set_shape(ref_shape_x)
 
         check_variable_and_dtype(
-            intermediate_var_0, 'x', ['float16', 'float32', 'float64'], 'linear'
+            intermediate_var_0,
+            'x',
+            ['float16', 'float32', 'float64', 'uint16'],
+            'linear',
         )
         check_dtype(
             intermediate_var_0.dtype,
             'dtype',
-            ['float16', 'float32', 'float64'],
+            ['float16', 'float32', 'float64', 'uint16'],
             'linear',
         )
         # attrs = {'trans_x': False, 'trans_y': False}
@@ -2766,7 +2793,7 @@ class DistributedMulImpl1(DistributedOperatorImpl):
             attrs=attrs,
             parallel_axis=parallel_axis,
         )
-        processes = process_mesh.processes
+        processes = process_mesh.process_ids
         comm_op_cost_list = build_comm_costs_from_descs(
             IdentityOpCost, ctx, processes, c_identity_desc_mapping, cluster
         )
@@ -2785,7 +2812,7 @@ class DistributedMulImpl1(DistributedOperatorImpl):
         var_dim_mapping = dist_attr.get_input_dims_mapping(
             backward_op.input("X")[0]
         )
-        mesh_shape = process_mesh.topology
+        mesh_shape = process_mesh.shape
         batch_size_axis = var_dim_mapping[0]
         if (
             batch_size_axis > -1
@@ -2805,7 +2832,7 @@ class DistributedMulImpl1(DistributedOperatorImpl):
         desc_mapping = build_comp_desc_from_dist_op(
             dist_op=dist_op, dist_context=ctx
         )
-        processes = dist_op.dist_attr.process_mesh.processes
+        processes = dist_op.dist_attr.process_mesh.process_ids
         cost_mapping = build_comp_costs_from_descs(
             MulOpCost, ctx, processes, desc_mapping, cluster
         )
@@ -2907,7 +2934,7 @@ class DistributedMulImpl1(DistributedOperatorImpl):
         ), "backward op [{}] don't have dist attribute !".format(str(src_op))
 
         # FIXME (JZ-LIANG) Remove this hack to support any op mesh group for Pipeline Parallelism
-        if rank_id not in op_dist_attr.process_mesh.processes:
+        if rank_id not in op_dist_attr.process_mesh.process_ids:
             rank_id = _get_corresponding_rank(
                 ctx, op_dist_attr.process_mesh, rank_id
             )
@@ -2943,8 +2970,8 @@ class DistributedMulImpl1(DistributedOperatorImpl):
         ), "row_parallel_matmul's row should be divided by a specific mesh axis, but got [{}]".format(
             matmul_row_dim_mapping
         )
-        process_mesh_shape = op_dist_attr.process_mesh.topology
-        process_mesh_group = op_dist_attr.process_mesh.processes
+        process_mesh_shape = op_dist_attr.process_mesh.shape
+        process_mesh_group = op_dist_attr.process_mesh.process_ids
 
         parallel_axis = matmul_row_dim_mapping
         group_ranks = _get_comm_group(
@@ -2953,10 +2980,13 @@ class DistributedMulImpl1(DistributedOperatorImpl):
         group = new_process_group(group_ranks)
 
         check_variable_and_dtype(
-            X_var, 'x', ['float16', 'float32', 'float64'], 'linear'
+            X_var, 'x', ['float16', 'float32', 'float64', 'uint16'], 'linear'
         )
         check_dtype(
-            X_var.dtype, 'dtype', ['float16', 'float32', 'float64'], 'linear'
+            X_var.dtype,
+            'dtype',
+            ['float16', 'float32', 'float64', 'uint16'],
+            'linear',
         )
         # attrs = {'trans_x': False, 'trans_y': False}
         attrs = {
@@ -3119,7 +3149,7 @@ class DistributedMulImpl2(DistributedOperatorImpl):
             dist_op=dist_op, dist_context=ctx
         )
         process_mesh = dist_attr.process_mesh
-        processes = process_mesh.processes
+        processes = process_mesh.process_ids
         cost_mapping = build_comp_costs_from_descs(
             MulGradOpCost, ctx, processes, desc_mapping, cluster
         )
@@ -3129,7 +3159,7 @@ class DistributedMulImpl2(DistributedOperatorImpl):
         var_dim_mapping = dist_attr.get_input_dims_mapping(
             backward_op.input("X")[0]
         )
-        mesh_shape = process_mesh.topology
+        mesh_shape = process_mesh.shape
         batch_size_axis = var_dim_mapping[0]
         if (
             batch_size_axis > -1
@@ -3150,7 +3180,7 @@ class DistributedMulImpl2(DistributedOperatorImpl):
         desc_mapping = build_comp_desc_from_dist_op(
             dist_op=dist_op, dist_context=ctx
         )
-        processes = dist_op.dist_attr.process_mesh.processes
+        processes = dist_op.dist_attr.process_mesh.process_ids
         cost_mapping = build_comp_costs_from_descs(
             MulOpCost, ctx, processes, desc_mapping, cluster
         )

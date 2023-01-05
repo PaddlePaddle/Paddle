@@ -29,18 +29,16 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
-
 class GenerateProposalsV2Op : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return framework::OpKernelType(
+    return phi::KernelKey(
         OperatorWithKernel::IndicateVarDataType(ctx, "Anchors"),
-        ctx.device_context());
+        ctx.GetPlace());
   }
 };
 

@@ -16,9 +16,10 @@ import copy
 import inspect
 
 import paddle
-from paddle.fluid.framework import Parameter, Block, Variable
+from paddle.fluid.framework import Block, Parameter, Variable
+
 from .dist_attribute import TensorDistributedAttribute
-from .utils import _linear_idx2coordinate, __no_shape_var_type__
+from .utils import __no_shape_var_type__, _linear_idx2coordinate
 
 
 class DistributedTensor:
@@ -224,10 +225,10 @@ class DistributedTensor:
             if self.dist_attr.dims_mapping[
                 i
             ] < -1 or self.dist_attr.dims_mapping[i] >= len(
-                self.dist_attr.process_mesh.topology
+                self.dist_attr.process_mesh.shape
             ):
                 return False
-        for i in range(len(self.dist_attr.process_mesh.topology)):
+        for i in range(len(self.dist_attr.process_mesh.shape)):
             if self.dist_attr.dims_mapping.count(i) > 1:
                 return False
         return True
@@ -238,8 +239,8 @@ class DistributedTensor:
         global_sizes = self.serial_tensor.shape
         dims_mapping = self.dist_attr.dims_mapping
         shard_sizes = self.dist_attr.shard_sizes
-        processes = self.dist_attr.process_mesh.processes
-        topology = self.dist_attr.process_mesh.topology
+        processes = self.dist_attr.process_mesh.process_ids
+        topology = self.dist_attr.process_mesh.shape
         local_sizes = DistributedTensor.get_local_sizes(
             global_sizes, dims_mapping, topology, processes, rank, shard_sizes
         )
@@ -255,8 +256,8 @@ class DistributedTensor:
             global_sizes = self.serial_tensor.shape
             dims_mapping = self.dist_attr.dims_mapping
             shard_sizes = self.dist_attr.shard_sizes
-            processes = self.dist_attr.process_mesh.processes
-            topology = self.dist_attr.process_mesh.topology
+            processes = self.dist_attr.process_mesh.process_ids
+            topology = self.dist_attr.process_mesh.shape
             local_offsets = DistributedTensor.get_local_offsets(
                 global_sizes,
                 dims_mapping,
@@ -281,8 +282,8 @@ class DistributedTensor:
             global_sizes = self.serial_tensor.shape
             dims_mapping = self.dist_attr.dims_mapping
             shard_sizes = self.dist_attr.shard_sizes
-            processes = self.dist_attr.process_mesh.processes
-            topology = self.dist_attr.process_mesh.topology
+            processes = self.dist_attr.process_mesh.process_ids
+            topology = self.dist_attr.process_mesh.shape
             local_shard = DistributedTensor.get_local_shard(
                 global_sizes,
                 dims_mapping,

@@ -542,11 +542,10 @@ struct MergeAddImpl {
     }
 
     out.set_height(input_height);
-    out.mutable_value()->mutable_data<T>(
-        phi::make_ddim(
-            {static_cast<int64_t>(merged_row_set.size()), input_width}),
-        context.GetPlace());
-    auto* out_data = out.mutable_value()->data<T>();
+    DenseTensor* out_tensor = out.mutable_value();
+    out_tensor->Resize(phi::make_ddim(
+        {static_cast<int64_t>(merged_row_set.size()), input_width}));
+    auto* out_data = context.template Alloc<T>(out_tensor);
 
     if (merged_row_set.size() == row_num && !sorted_result) {
       // no duplicated ids, just concat the result together
@@ -659,9 +658,10 @@ struct MergeAdd<phi::XPUContext, T> {
 
     out.set_rows(merge_rows);
     out.set_height(input.height());
-    out.mutable_value()->mutable_data<T>(
-        phi::make_ddim({static_cast<int64_t>(merge_rows.size()), input_width}),
-        context.GetPlace());
+    DenseTensor* out_tensor = out.mutable_value();
+    out_tensor->Resize(
+        phi::make_ddim({static_cast<int64_t>(merge_rows.size()), input_width}));
+    context.template Alloc<T>(out_tensor);
 
     std::unordered_map<int64_t, size_t> rows_to_id;
     for (size_t i = 0; i < merge_rows.size(); ++i) {
@@ -748,12 +748,13 @@ struct MergeAdd<phi::XPUContext, T> {
 
     out.set_rows(merge_rows);
     out.set_height(input_height);
-    out.mutable_value()->mutable_data<T>(
-        phi::make_ddim(
-            {static_cast<int64_t>(merged_row_set.size()), input_width}),
-        context.GetPlace());
 
-    float* y_data = reinterpret_cast<float*>(out.mutable_value()->data<T>());
+    DenseTensor* out_tensor = out.mutable_value();
+    out_tensor->Resize(phi::make_ddim(
+        {static_cast<int64_t>(merged_row_set.size()), input_width}));
+    context.template Alloc<T>(out_tensor);
+
+    float* y_data = reinterpret_cast<float*>(out_tensor->data<T>());
 
     std::unordered_map<int64_t, size_t> rows_to_id;
     for (size_t i = 0; i < merge_rows.size(); ++i) {
@@ -856,11 +857,11 @@ struct MergeAverage<phi::CPUContext, T> {
     }
 
     out.set_height(input_height);
-    out.mutable_value()->mutable_data<T>(
-        phi::make_ddim(
-            {static_cast<int64_t>(merged_row_set.size()), input_width}),
-        context.GetPlace());
-    auto* out_data = out.mutable_value()->data<T>();
+
+    DenseTensor* out_tensor = out.mutable_value();
+    out_tensor->Resize(phi::make_ddim(
+        {static_cast<int64_t>(merged_row_set.size()), input_width}));
+    auto* out_data = context.template Alloc<T>(out_tensor);
 
     std::vector<int64_t> merge_rows(merged_row_set.begin(),
                                     merged_row_set.end());

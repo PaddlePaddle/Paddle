@@ -9,5 +9,4 @@ if(NOT (NOT WITH_PYTHON AND ON_INFER))
     SRCS nodes.cc ${eager_manual_nodes}
     DEPS ${eager_deps})
   add_dependencies(final_dygraph_node eager_codegen)
-  target_link_libraries(final_dygraph_node ${PYTHON_LIBRARIES})
 endif()

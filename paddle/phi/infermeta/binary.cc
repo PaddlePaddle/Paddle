@@ -859,6 +859,7 @@ void CrossEntropyWithSoftmaxInferMeta(const MetaTensor& logits,
   auto logits_dims = logits.dims();
   auto labels_dims = label.dims();
   auto logits_rank = logits_dims.size();
+  auto labels_rank = labels_dims.size();
   PADDLE_ENFORCE_GE(axis,
                     -logits_rank,
                     phi::errors::InvalidArgument(
@@ -890,6 +891,12 @@ void CrossEntropyWithSoftmaxInferMeta(const MetaTensor& logits,
         phi::errors::InvalidArgument("Attr(axis) can only be -1 "
                                      "when not in numeric_stable_mode."));
   }
+
+  PADDLE_ENFORCE_EQ(
+      (logits_rank - 1 != labels_rank) && (logits_rank != labels_rank),
+      false,
+      phi::errors::InvalidArgument("Expected input_dims - 1 == label_dims "
+                                   "or input_dims == label_dims."));
 
   if (soft_label) {
     if (config.is_runtime || (logits_dims[axis] > 0 && labels_dims[axis] > 0)) {
@@ -1268,37 +1275,69 @@ void GatherInferMeta(const MetaTensor& x,
             index_dims[1]));
   } else {
     PADDLE_ENFORCE_EQ(
-        index_dims.size(),
-        1,
+        index_dims.size() == 1 || index_dims.size() == 0,
+        true,
         phi::errors::InvalidArgument(
-            "The index should be 1D, when it is not 2D, but we get %d",
+            "The index should be 0D or 1D, when it is not 2D, but we get %d",
             index_dims.size()));
   }
 
   auto input_dim = x.dims();
   auto axis_v = axis.to<int>();
-  if (axis.FromTensor() || axis_v == 0) {
-    // if axis.FromTensor(), we can not obtain correct shape of output
-    int batch_size = index_dims[0];
-    phi::DDim output_dims(input_dim);
-    output_dims[0] = batch_size;
-    out->set_dims(output_dims);
-    out->set_dtype(x.dtype());
-    out->share_lod(x);
+  if (index_dims.size() == 0) {
+    // 0D index will decrease the dimension
+    if (input_dim.size() == 1) {
+      // the index is a 0D tensor and the x is a 1D tensor
+      out->set_dims(phi::DDim(phi::Dim<0>()));
+    } else {
+      if (axis.FromTensor() || axis_v == 0) {
+        // decrease the output dimension
+        std::vector<int> out_dim_vec;
+        for (int i = 1; i < input_dim.size(); ++i) {
+          out_dim_vec.emplace_back(input_dim[i]);
+        }
+        auto output_dims = phi::make_ddim(out_dim_vec);
+        out->set_dims(output_dims);
+        out->set_dtype(x.dtype());
+        out->share_lod(x);
+      } else {
+        std::vector<int> out_dim_vec;
+        for (int i = 0; i < axis_v; i++) {
+          out_dim_vec.push_back(input_dim[i]);
+        }
+        for (int i = axis_v + 1; i < input_dim.size(); i++) {
+          out_dim_vec.push_back(input_dim[i]);
+        }
+        auto output_dims = phi::make_ddim(out_dim_vec);
+        out->set_dims(output_dims);
+        out->set_dtype(x.dtype());
+        out->share_lod(x);
+      }
+    }
   } else {
-    int index_size = index_dims[0];
-    std::vector<int> out_dim_vec;
-    for (int i = 0; i < axis_v; i++) {
-      out_dim_vec.push_back(input_dim[i]);
+    if (axis.FromTensor() || axis_v == 0) {
+      // if axis.FromTensor(), we can not obtain correct shape of output
+      int batch_size = index_dims[0];
+      phi::DDim output_dims(input_dim);
+      output_dims[0] = batch_size;
+      out->set_dims(output_dims);
+      out->set_dtype(x.dtype());
+      out->share_lod(x);
+    } else {
+      int index_size = index_dims[0];
+      std::vector<int> out_dim_vec;
+      for (int i = 0; i < axis_v; i++) {
+        out_dim_vec.push_back(input_dim[i]);
+      }
+      out_dim_vec.push_back(index_size);
+      for (int i = axis_v + 1; i < input_dim.size(); i++) {
+        out_dim_vec.push_back(input_dim[i]);
+      }
+      auto output_dims = phi::make_ddim(out_dim_vec);
+      out->set_dims(output_dims);
+      out->set_dtype(x.dtype());
+      out->share_lod(x);
     }
-    out_dim_vec.push_back(index_size);
-    for (int i = axis_v + 1; i < input_dim.size(); i++) {
-      out_dim_vec.push_back(input_dim[i]);
-    }
-    auto output_dims = phi::make_ddim(out_dim_vec);
-    out->set_dims(output_dims);
-    out->set_dtype(x.dtype());
-    out->share_lod(x);
   }
 }
 

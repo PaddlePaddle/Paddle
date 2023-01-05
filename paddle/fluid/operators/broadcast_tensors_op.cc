@@ -27,26 +27,27 @@ class BroadcastTensorsOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     // Broadcast semantics enforces all input variables having the same
     // DataType/VarType
     // This condition is also checked during VarType Inference
     // Here we simply copy input type to output
-    return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace());
+    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+                          ctx.GetPlace());
   }
 };
 
 class BroadcastTensorsOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("X",
-             "A Varaible list. The shape and data type of the list elements"
-             "should be consistent. Variable can be multi-dimensional Tensor"
-             "or LoDTensor, and data types can be: bool, float16, float32, "
-             "float64, int32, "
-             "int64.")
+    AddInput(
+        "X",
+        "A Varaible list. The shape and data type of the list elements"
+        "should be consistent. Variable can be multi-dimensional Tensor"
+        "or phi::DenseTensor, and data types can be: bool, float16, float32, "
+        "float64, int32, "
+        "int64.")
         .AsDuplicable();
     AddOutput("Out",
               "the sum of input :code:`x`. its shape and data types are "
@@ -54,7 +55,7 @@ class BroadcastTensorsOpMaker : public framework::OpProtoAndCheckerMaker {
         .AsDuplicable();
     AddComment(
         R"DOC(This OP is used to broadcast a vector of inputs
-                     with Tensor or LoDTensor type, following broadcast semantics.)DOC");
+                     with phi::DenseTensor type, following broadcast semantics.)DOC");
   }
 };
 
@@ -126,11 +127,11 @@ class BroadcastTensorsGradOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
-                                       ctx, framework::GradVarName("Out")),
-                                   ctx.device_context());
+    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(
+                              ctx, framework::GradVarName("Out")),
+                          ctx.device_context().GetPlace());
   }
 };
 

@@ -14,11 +14,12 @@
 
 import paddle
 import paddle.fluid as fluid
-from .public import *  # noqa: F403
 from paddle.distributed.fleet.base.private_helper_function import (
     wait_server_ready,
 )
 from paddle.distributed.passes import new_pass
+
+from .public import *  # noqa: F403
 
 
 class PsProgramBuilder:

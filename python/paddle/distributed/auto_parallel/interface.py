@@ -13,15 +13,15 @@
 # limitations under the License.
 
 import paddle
-from .process_mesh import ProcessMesh
-from .process_mesh import get_current_process_mesh
+
 from .dist_context import get_default_distributed_context
-from .dist_tensor import DistributedTensor
 from .dist_op import DistributedOperatorHelper
+from .dist_tensor import DistributedTensor
+from .process_mesh import ProcessMesh, get_current_process_mesh
 from .utils import (
-    verify_shard_spec,
-    convert_to_dims_mapping,
     __no_shape_var_type__,
+    convert_to_dims_mapping,
+    verify_shard_spec,
 )
 
 
@@ -256,6 +256,16 @@ def add_to_collection(collection_name, value, name=None):
 
 
 def fetch(tensor, name=None, logging=False):
+    if isinstance(tensor, paddle.fluid.framework.Variable):
+        tensor = tensor.name
+    elif isinstance(tensor, str):
+        tensor = tensor
+    else:
+        raise TypeError(
+            "Only support fetch `Variable` or `str`[`Variable`'s name], but got `{}`".format(
+                type(tensor)
+            )
+        )
     add_to_collection(CollectionNames.FETCHES, tensor, name)
     if logging:
         add_to_collection(CollectionNames.LOGGING, tensor, name)

@@ -12,17 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import unittest
+
+import numpy as np
+from ifelse_simple_func import dyfunc_with_if_else
+
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-from paddle.jit import to_static
-from paddle.jit import ProgramTranslator
-from paddle.fluid.dygraph.dygraph_to_static.utils import Dygraph2StaticException
-
-import unittest
-import numpy as np
-
-from ifelse_simple_func import dyfunc_with_if_else
+from paddle.jit import ProgramTranslator, to_static
+from paddle.jit.dy2static.utils import Dygraph2StaticException
 
 SEED = 2020
 np.random.seed(SEED)

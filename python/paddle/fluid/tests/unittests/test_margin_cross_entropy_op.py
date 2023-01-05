@@ -13,11 +13,12 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
 from op_test import OpTest
+
 import paddle
-from paddle.fluid import core
-from paddle.fluid import Program, program_guard
+from paddle.fluid import Program, core, program_guard
 
 
 def stable_softmax_comm(x):

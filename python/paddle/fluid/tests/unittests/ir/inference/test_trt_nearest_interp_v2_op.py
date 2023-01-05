@@ -19,6 +19,7 @@ from inference_pass_test import InferencePassTest
 
 import paddle.fluid.core as core
 import paddle.nn.functional as F
+import paddle.static.nn as nn
 from paddle import fluid
 from paddle.fluid.core import AnalysisConfig, PassVersionChecker
 
@@ -44,7 +45,7 @@ class TRTNearestInterpTest(InferencePassTest):
                 ]
             data = fluid.data(name='data', shape=shape, dtype='float32')
             resize_out = self.append_nearest_interp(data)
-            out = fluid.layers.batch_norm(resize_out, is_test=True)
+            out = nn.batch_norm(resize_out, is_test=True)
 
         if self.data_layout == 'NCHW':
             shape = [

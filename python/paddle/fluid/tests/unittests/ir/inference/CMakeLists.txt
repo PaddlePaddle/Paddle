@@ -94,6 +94,19 @@ if(WITH_MKLDNN)
   endforeach()
 endif()
 
+# below are cutlass unitests
+file(
+  GLOB TEST_CUTLASS
+  RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
+  "test_cutlass_*.py")
+string(REPLACE ".py" "" TEST_CUTLASS "${TEST_CUTLASS}")
+list(REMOVE_ITEM TEST_INFERENCE_IR_PASSES ${TEST_CUTLASS})
+if(WITH_CUTLASS)
+  foreach(target ${TEST_CUTLASS})
+    py_test_modules(${target} MODULES ${target})
+  endforeach()
+endif()
+
 if(WITH_MKLDNN
    AND TENSORRT_FOUND
    AND WITH_GPU)
@@ -123,9 +136,7 @@ if(WITH_GPU AND TENSORRT_FOUND)
   #set_tests_properties(test_trt_multiclass_nms_op PROPERTIES TIMEOUT 200)
   set_tests_properties(test_trt_dynamic_shape PROPERTIES TIMEOUT 120)
   set_tests_properties(test_trt_inspector PROPERTIES TIMEOUT 60)
-  set_tests_properties(test_merge_layernorm_fuse_pass PROPERTIES TIMEOUT 180)
-  set_tests_properties(test_skip_merge_layernorm_fuse_pass PROPERTIES TIMEOUT
-                                                                      180)
+
   if(WITH_NV_JETSON)
     set_tests_properties(
       test_trt_pool_op
@@ -144,7 +155,6 @@ if(WITH_GPU AND TENSORRT_FOUND)
       test_trt_pool3d_op
       PROPERTIES ENVIRONMENT FLAGS_fraction_of_gpu_memory_to_use=0.1 TIMEOUT 45)
   endif()
-  set_tests_properties(test_trt_reduce_mean_op PROPERTIES TIMEOUT 60)
   set_tests_properties(test_trt_tile_op PROPERTIES TIMEOUT 60)
   set_tests_properties(test_trt_fc_fuse_quant_dequant_pass PROPERTIES TIMEOUT
                                                                       100)
@@ -160,9 +170,16 @@ if(WITH_GPU AND TENSORRT_FOUND)
   if(WITH_MKLDNN
      AND TENSORRT_FOUND
      AND WITH_GPU)
+    set_tests_properties(test_merge_layernorm_fuse_pass PROPERTIES TIMEOUT 180)
+    set_tests_properties(test_skip_merge_layernorm_fuse_pass PROPERTIES TIMEOUT
+                                                                        180)
     set_tests_properties(test_emb_eltwise_layernorm_fuse_pass PROPERTIES TIMEOUT
                                                                          120)
+
     set_tests_properties(test_fc_fuse_pass PROPERTIES TIMEOUT 240)
+    set_tests_properties(test_reverse_roll_fuse_pass PROPERTIES TIMEOUT 120)
+    set_tests_properties(test_inplace_op_pass PROPERTIES TIMEOUT 120)
+
     set_tests_properties(test_simplify_with_basic_ops_pass_autoscan
                          PROPERTIES TIMEOUT 60)
     set_tests_properties(test_adaptive_pool2d_convert_global_pass_autoscan

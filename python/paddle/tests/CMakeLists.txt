@@ -1,3 +1,5 @@
+add_subdirectory(quantization)
+
 file(
   GLOB TEST_OPS
   RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
