@@ -167,7 +167,7 @@ const std::vector<std::string> kGpuLowerPrecisionPasses{
     "silu_fuse_pass",
     "delete_quant_dequant_linear_op_pass",
     "delete_weight_dequant_linear_op_pass",
-    "map_depthwise_conv_to_conv_pass",
+    "map_op_pass",
     "conv_bn_fuse_pass",
     "conv_eltwiseadd_bn_fuse_pass",
     "conv_elementwise_add_act_fuse_pass",
@@ -217,7 +217,7 @@ GpuPassStrategy::GpuPassStrategy() : PassStrategy({}) {
         "simplify_with_basic_ops_pass",                                 //
         "delete_quant_dequant_linear_op_pass",                          //
         "delete_weight_dequant_linear_op_pass",                         //
-        "map_depthwise_conv_to_conv_pass",                              //
+        "map_op_pass",                                                  //
         "constant_folding_pass",                                        //
         "silu_fuse_pass",                                               //
         "conv_bn_fuse_pass",                                            //
