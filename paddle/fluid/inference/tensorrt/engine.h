@@ -681,16 +681,6 @@ class TensorRTEngine {
   std::vector<std::unique_ptr<nvinfer1::IPluginV2IOExt>> owned_plugin_v2ioext_;
 
   // TensorRT related internal members
-  template <typename T>
-  struct Destroyer {
-    void operator()(T* x) {
-      if (x) {
-        x->destroy();
-      }
-    }
-  };
-  template <typename T>
-  using infer_ptr = std::unique_ptr<T, Destroyer<T>>;
   infer_ptr<nvinfer1::IBuilder> infer_builder_;
   infer_ptr<nvinfer1::INetworkDefinition> infer_network_;
   infer_ptr<nvinfer1::ICudaEngine> infer_engine_;
@@ -736,6 +726,9 @@ class TRTEngineManager {
 
  public:
   TRTEngineManager() {
+    // createInferBuilder loads trt kernels and take a few second
+    // But as long as one IBuilder lives, trt kernel will not be unloaded
+    // Hence, a persistent IBuilder to avoid TensorRT unload/reload kernels
     if (FLAGS_trt_ibuilder_cache) {
       holder_.reset(createInferBuilder(&NaiveLogger::Global()));
     }
@@ -862,19 +855,6 @@ class TRTEngineManager {
   size_t max_ctx_mem_size_{0};
   std::unordered_map<PredictorID, AllocationPtr> context_memorys_;
   std::unordered_map<std::string, std::unique_ptr<TensorRTEngine>> engines_;
-  // createInferBuilder loads trt kernels and take a few second
-  // But as long as one IBuilder lives, trt kernel will not be unloaded
-  // Hence, a persistent IBuilder to avoid TensorRT unload/reload kernels
-  template <typename T>
-  struct Destroyer {
-    void operator()(T* x) {
-      if (x) {
-        x->destroy();
-      }
-    }
-  };
-  template <typename T>
-  using infer_ptr = std::unique_ptr<T, Destroyer<T>>;
   infer_ptr<nvinfer1::IBuilder> holder_;
 };
 
