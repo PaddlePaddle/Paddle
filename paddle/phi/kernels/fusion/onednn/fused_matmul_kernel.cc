@@ -70,24 +70,24 @@ class FusedMatmulOneDNNHandler
     y_strides.reserve(x_dims.size());
     out_strides.reserve(x_dims.size());
 
-    if (!x_strides_override.empty()) {
-      x_strides = x_strides_override;
-    } else {
-      if (!trans_x) {
-        x_strides.insert(x_strides.end(), {M * K, K, 1});
-      } else {
+    if (x_strides_override.empty()) {
+      if (trans_x) {
         x_strides.insert(x_strides.end(), {M * K, 1, M});
+      } else {
+        x_strides.insert(x_strides.end(), {M * K, K, 1});
       }
+    } else {
+      x_strides = x_strides_override;
     }
 
-    if (!y_strides_override.empty()) {
-      y_strides = y_strides_override;
-    } else {
-      if (!trans_y) {
-        y_strides.insert(y_strides.end(), {N * K, N, 1});
-      } else {
+    if (y_strides_override.empty()) {
+      if (trans_y) {
         y_strides.insert(y_strides.end(), {N * K, 1, K});
+      } else {
+        y_strides.insert(y_strides.end(), {N * K, N, 1});
       }
+    } else {
+      y_strides = y_strides_override;
     }
 
     out_strides.insert(out_strides.end(), {M * N, N, 1});
@@ -240,22 +240,22 @@ static std::vector<int64_t> TransposeAxis(const std::vector<int64_t> &x,
   auto axis_set = std::set<int>(axis.begin(), axis.end());
   PADDLE_ENFORCE_EQ(axis_set.size(),
                     axis_size,
-                    paddle::platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "In an axis array, elements must be unique."));
 
-  PADDLE_ENFORCE_EQ(in_rank,
-                    axis_size,
-                    paddle::platform::errors::InvalidArgument(
-                        "The input dimension's size "
-                        "should be equal to the axis's size. "
-                        "But received dimension is %d, "
-                        "axis's size is %d",
-                        in_rank,
-                        axis_size));
+  PADDLE_ENFORCE_EQ(
+      in_rank,
+      axis_size,
+      phi::errors::InvalidArgument("The input dimension's size "
+                                   "should be equal to the axis's size. "
+                                   "But received dimension is %d, "
+                                   "axis's size is %d",
+                                   in_rank,
+                                   axis_size));
 
   PADDLE_ENFORCE_LT(*std::max_element(axis.begin(), axis.end()),
                     axis_size,
-                    paddle::platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "Axis values must be ranging from 0 to (dims - 1)."));
 
   std::vector<int64_t> new_x(x.size());
@@ -504,24 +504,24 @@ void FusedMatmulKernel(const Context &dev_ctx,
                                  fused_output_scale,
                                  out);
   } else if (is_bfloat16) {
-    ExecuteFusedMatmul<T, paddle::platform::bfloat16>(dev_ctx,
-                                                      x,
-                                                      y,
-                                                      residual_data.get_ptr(),
-                                                      x_bd_dims,
-                                                      y_bd_dims,
-                                                      transpose_x,
-                                                      transpose_y,
-                                                      matmul_alpha,
-                                                      x_strides_override,
-                                                      y_strides_override,
-                                                      is_output_fused,
-                                                      fused_transpose_Out,
-                                                      fuse_activation,
-                                                      fuse_alpha,
-                                                      fuse_beta,
-                                                      fused_output_scale,
-                                                      out);
+    ExecuteFusedMatmul<T, phi::dtype::bfloat16>(dev_ctx,
+                                                x,
+                                                y,
+                                                residual_data.get_ptr(),
+                                                x_bd_dims,
+                                                y_bd_dims,
+                                                transpose_x,
+                                                transpose_y,
+                                                matmul_alpha,
+                                                x_strides_override,
+                                                y_strides_override,
+                                                is_output_fused,
+                                                fused_transpose_Out,
+                                                fuse_activation,
+                                                fuse_alpha,
+                                                fuse_beta,
+                                                fused_output_scale,
+                                                out);
   } else if (fuse_relu) {
     ExecuteFusedMatmul<T, uint8_t>(dev_ctx,
                                    x,

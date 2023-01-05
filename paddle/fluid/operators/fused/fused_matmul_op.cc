@@ -20,24 +20,21 @@
 namespace paddle {
 namespace operators {
 
-static framework::DDim GetDimForInput(const framework::InferShapeContext& ctx,
-                                      const std::string input_name) {
-  auto shape = ctx.Attrs().Get<std::vector<int>>("fused_reshape_" + input_name);
-  auto axis =
-      ctx.Attrs().Get<std::vector<int>>("fused_transpose_" + input_name);
-  auto dim = ctx.GetInputDim(input_name);
-
-  PADDLE_ENFORCE_GT(dim.size(),
+static std::vector<int64_t> GetInputShape(phi::DDim input_dim,
+                                          std::vector<int> shape,
+                                          std::vector<int> axis) {
+  PADDLE_ENFORCE_GT(input_dim.size(),
                     0,
-                    platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "The Input(%s) has not been initialized properly. The "
                         "shape of Input(%s) = [%s].",
-                        dim));
+                        input_dim));
 
   if (!shape.empty() && !axis.empty()) {
-    dim = dim.reshape(shape).transpose(axis);
+    input_dim = input_dim.reshape(shape).transpose(axis);
   }
-  return dim;
+
+  return phi::vectorize(input_dim);
 }
 
 class FusedMatmulOp : public framework::OperatorWithKernel {
@@ -50,18 +47,26 @@ class FusedMatmulOp : public framework::OperatorWithKernel {
     bool trans_x = ctx->Attrs().Get<bool>("trans_x");
     bool trans_y = ctx->Attrs().Get<bool>("trans_y");
 
-    std::vector<int64_t> dims_x = phi::vectorize(GetDimForInput(*ctx, "X"));
-    std::vector<int64_t> dims_y = phi::vectorize(GetDimForInput(*ctx, "Y"));
+    std::vector<int64_t> dims_x =
+        GetInputShape(ctx->GetInputDim("X"),
+                      ctx->Attrs().Get<std::vector<int>>("fused_reshape_X"),
+                      ctx->Attrs().Get<std::vector<int>>("fused_transpose_X"));
+
+    std::vector<int64_t> dims_y =
+        GetInputShape(ctx->GetInputDim("Y"),
+                      ctx->Attrs().Get<std::vector<int>>("fused_reshape_Y"),
+                      ctx->Attrs().Get<std::vector<int>>("fused_transpose_Y"));
+
     auto ndims_x = dims_x.size();
     auto ndims_y = dims_y.size();
     PADDLE_ENFORCE_GT(ndims_x,
                       0,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The Input(X) dims size must be greater than 0,"
                           " but received dims size is 0. "));
     PADDLE_ENFORCE_GT(ndims_y,
                       0,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The Input(Y) dims size must be greater than 0,"
                           " but received dims size is 0. "));
 
@@ -113,14 +118,11 @@ class FusedMatmulOp : public framework::OperatorWithKernel {
 
     auto ddim_out = phi::make_ddim(new_dims);
 
-#ifdef PADDLE_WITH_MKLDNN
     auto shape = ctx->Attrs().Get<std::vector<int>>("fused_reshape_Out");
     auto axis = ctx->Attrs().Get<std::vector<int>>("fused_transpose_Out");
-
     if (!shape.empty() && !axis.empty()) {
       ddim_out = ddim_out.transpose(axis).reshape(shape);
     }
-#endif
 
     ctx->SetOutputDim("Out", ddim_out);
     ctx->ShareLoD("X", "Out");
@@ -142,9 +144,8 @@ class FusedMatmulOp : public framework::OperatorWithKernel {
       // only promote inputs’s types when contains complex input
       return phi::KernelKey(tensor.place(), tensor.layout(), tensor.dtype());
     } else {
-#ifdef PADDLE_WITH_MKLDNN
-      // When matmul_v2 is first oneDNN op in a chain (there was some non oneDNN
-      // op previously) then we also need to rotate shape NHWC -> NCWH
+      // When fused_matmul is first oneDNN op in a chain (there was some non
+      // oneDNN op previously) then we also need to rotate shape NHWC -> NCWH
       if ((expected_kernel_type.layout() == phi::DataLayout::ONEDNN) &&
           (tensor.layout() != phi::DataLayout::ONEDNN) &&
           phi::OneDNNContext::tls().get_cur_paddle_data_layout() ==
@@ -153,7 +154,6 @@ class FusedMatmulOp : public framework::OperatorWithKernel {
                               phi::DataLayout::kNHWC,
                               expected_kernel_type.dtype());
       }
-#endif
       return phi::KernelKey(
           tensor.place(), tensor.layout(), expected_kernel_type.dtype());
     }
@@ -163,65 +163,60 @@ class FusedMatmulOp : public framework::OperatorWithKernel {
 class FusedMatmulOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("X", "tensor of shape (d0, d1 ... M, K)");
-    AddInput("Y", "tensor of shape (d0, d1 ... K, N)");
-    AddInput("ResidualData", "tensor of shape (d0, d1 ... K, N)")
+    AddInput("X", "Matmul first input");
+    AddInput("Y", "Matmul second input");
+    AddInput("ResidualData",
+             "Extra input from matmul_elementwise_add_mkldnn_fuse_pass")
         .AsDispensable()
         .AsExtra();
-    AddOutput("Out", "tensor of shape (d0, d1 ... M, N)");
+    AddOutput("Out", "Matmul output");
     AddAttr<bool>("trans_x",
-                  "Set true to transpose the last two dimensions of X before "
-                  "doing multiplication")
+                  "Transpose the last two dims of X before multiplication")
         .SetDefault(false);
     AddAttr<bool>("trans_y",
-                  "Set true to transpose the last two dimensions of Y before "
-                  "doing multiplication")
+                  "Transpose the last two dims of Y before multiplication")
         .SetDefault(false);
-    AddAttr<float>("matmul_alpha",
-                   "Set true to transpose the last two dimensions of Y before "
-                   "doing multiplication")
+    AddAttr<float>("matmul_alpha", "Output scale used in matmul_v1")
         .SetDefault(1.0f);
-    AddAttr<std::string>("fuse_activation",
-                         "Activation type from matmul_activation fuse pass")
+    AddAttr<std::string>(
+        "fuse_activation",
+        "Activation type from matmul_activation_mkldnn_fuse_pass")
         .SetDefault("");
     AddAttr<float>("fuse_alpha",
-                   "Activation alpha from matmul_activation fuse pass")
+                   "Activation alpha from matmul_activation_mkldnn_fuse_pass")
         .SetDefault(0.0f);
     AddAttr<float>("fuse_beta",
-                   "Activation beta from matmul_activation fuse pass")
+                   "Activation beta from matmul_activation_mkldnn_fuse_pass")
         .SetDefault(0.0f);
-    AddAttr<float>("fused_output_scale", "Scale from operator_scale fuse pass")
+    AddAttr<float>("fused_output_scale",
+                   "Output scale from operator_scale_onednn_fuse_pass")
         .SetDefault(1.0f);
-    AddAttr<std::vector<int>>(
-        "fused_reshape_X",
-        "Reshape's shape attribute from reshape_transpose_matmul fuse pass")
+    AddAttr<std::vector<int>>("fused_reshape_X",
+                              "Reshape's shape attribute from "
+                              "reshape_transpose_matmul_mkldnn_fuse_pass")
         .SetDefault({});
-    AddAttr<std::vector<int>>(
-        "fused_transpose_X",
-        "Transpose's axis attribute from reshape_transpose_matmul fuse pass")
+    AddAttr<std::vector<int>>("fused_transpose_X",
+                              "Transpose's axis attribute from "
+                              "reshape_transpose_matmul_mkldnn_fuse_pass")
         .SetDefault({});
-    AddAttr<std::vector<int>>(
-        "fused_reshape_Y",
-        "Reshape's shape attribute from reshape_transpose_matmul fuse pass")
+    AddAttr<std::vector<int>>("fused_reshape_Y",
+                              "Reshape's shape attribute from "
+                              "reshape_transpose_matmul_mkldnn_fuse_pass")
         .SetDefault({});
-    AddAttr<std::vector<int>>(
-        "fused_transpose_Y",
-        "Transpose's axis attribute from reshape_transpose_matmul fuse pass")
+    AddAttr<std::vector<int>>("fused_transpose_Y",
+                              "Transpose's axis attribute from "
+                              "reshape_transpose_matmul_mkldnn_fuse_pass")
         .SetDefault({});
-    AddAttr<std::vector<int>>(
-        "fused_reshape_Out",
-        "Reshape's shape attribute from matmul_transpose_reshape fuse pass")
+    AddAttr<std::vector<int>>("fused_reshape_Out",
+                              "Reshape's shape attribute from "
+                              "matmul_transpose_reshape_mkldnn_fuse_pass")
         .SetDefault({});
-    AddAttr<std::vector<int>>(
-        "fused_transpose_Out",
-        "Transpose's axis attribute from matmul_transpose_reshape fuse pass")
+    AddAttr<std::vector<int>>("fused_transpose_Out",
+                              "Transpose's axis attribute from "
+                              "matmul_transpose_reshape_mkldnn_fuse_pass")
         .SetDefault({});
     AddComment(
-        R"DOC(Matrix multiplication Out = X * Y. A has shape (d0, d1 ... M, K),
-        B has shape (d0, d1 ... K, N), Out has shape ((d0, d1 ... M, N)).
-        In addition, it also follows the broadcast rule which is similar as
-        numpy.matmul.
-)DOC");
+        R"DOC(Matrix multiplication extended with oneDNN-specific fusion logic.)DOC");
   }
 };
 
