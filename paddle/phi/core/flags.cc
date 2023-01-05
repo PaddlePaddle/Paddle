@@ -1172,8 +1172,8 @@ PADDLE_DEFINE_EXPORTED_int32(cudnn_cache_saturation_count, 1, "");
  * Since Version: 2.5.0
  * Value Range: bool, default=false
  * Example:
- * Note: If True, a persistent IBuilder is added to avoid TensorRT unload/reload
- * kernels.
+ * Note: This FLAG is only enabled when CI is running. If True, a persistent
+ * IBuilder is added to avoid TensorRT unload/reload kernels.
  */
 PADDLE_DEFINE_EXPORTED_bool(trt_ibuilder_cache,
                             false,
