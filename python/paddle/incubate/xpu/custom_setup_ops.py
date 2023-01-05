@@ -97,3 +97,42 @@ def custom_fmha(qkv,
                      })
     return ctx_out, s_out
 
+def custom_fused_dropout_residual_ln(
+            hidden_states, input_tensor, weight, bias, epsilon,
+            is_test, fix_seed, seed_val,
+            is_upscale_in_train, hidden_dropout_prob):
+    if _non_static_mode():
+        return _legacy_C_ops.custom_fused_dropout_residual_ln(hidden_states, input_tensor, weight, bias, epsilon,
+                                                            is_test, fix_seed, seed_val,
+                                                            is_upscale_in_train, hidden_dropout_prob)
+
+    helper = LayerHelper('custom_fused_dropout_residual_ln', **locals())
+    out = helper.create_variable_for_type_inference(dtype=hidden_states.dtype)
+    dropout_mask = helper.create_variable_for_type_inference(dtype=hidden_states.dtype)
+    ln_mean = helper.create_variable_for_type_inference(dtype=hidden_states.dtype)
+    ln_var = helper.create_variable_for_type_inference(dtype=hidden_states.dtype)
+    dropout_residual_out = helper.create_variable_for_type_inference(dtype=hidden_states.dtype)
+
+    helper.append_op(type='custom_fused_dropout_residual_ln',
+                     inputs={
+                         'X': hidden_states,
+                         'Residual': input_tensor,
+                         'LnScale': weight,
+                         'LnBias': bias,
+                     },
+                     outputs={
+                        'Out': out,
+                        'DropoutMask': dropout_mask,
+                        'LnMean': ln_mean,
+                        'LnVar': ln_var,
+                        'DropoutResidualOut': dropout_residual_out,
+                     },
+                     attrs={
+                        'ln_epsilon': epsilon,
+                        'is_test': is_test,
+                        'fix_seed': fix_seed,
+                        'seed_val': seed_val,
+                        'is_upscale_in_train': is_upscale_in_train,
+                        'dropout_rate': hidden_dropout_prob,
+                     })
+    return out, dropout_mask, ln_mean, ln_var, dropout_residual_out

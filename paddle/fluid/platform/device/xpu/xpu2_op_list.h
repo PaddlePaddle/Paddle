@@ -681,6 +681,10 @@ XPUOpMap& get_kl2_ops() {
       {"custom_fmha_grad",
        XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace()),
                      pOpKernelType(vartype::FP16, XPUPlace())})},
+      {"custom_fused_dropout_residual_ln_grad",
+       XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
+      {"custom_fused_dropout_residual_ln",
+       XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
   };
 
   return s_xpu2_kernels;
