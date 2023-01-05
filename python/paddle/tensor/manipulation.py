@@ -1163,7 +1163,7 @@ def concat(x, axis=0, name=None):
         if input[0].desc.type() == core.VarDesc.VarType.LOD_TENSOR_ARRAY:
             # NOTE(liym27): Don't remove this if branch!
             # This feature is supported for Dynamic-to-Static, because after transformed, the type of inputs[0]
-            # is LOD_TENSOR_ARRAY in some scenarios. And this feature can be used in static mode.
+            # is LOD_TENSOR_ARRAY in some scenarios. And this feature can be used in static graph mode.
 
             assert len(input) == 1, (
                 "If the elements of 'input' in concat are Variable(LoDTensorArray), "
@@ -3336,7 +3336,6 @@ def expand(x, shape, name=None):
 
     Both the number of dimensions of ``x`` and the number of elements in ``shape`` should be less than or equal to 6. And the number of dimensions of ``x`` should be less than the number of elements in ``shape``. The dimension to expand must have a value 1.
 
-
     Args:
         x (Tensor): The input Tensor, its data type is bool, float32, float64, int32 or int64.
         shape (list|tuple|Tensor): The result shape after expanding. The data type is int32. If shape is a list or tuple, all its elements
@@ -3450,7 +3449,7 @@ def reshape(x, shape, name=None):
     Args:
         x (Tensor): An N-D Tensor. The data type is ``float32``, ``float64``, ``int32``, ``int64`` or ``bool``
         shape (list|tuple|Tensor): Define the target shape. At most one dimension of the target shape can be -1.
-                        The data type is ``int32`` . If ``shape`` is a list or tuple, the elements of it should be integers or Tensors with shape [1].
+                        The data type is ``int32`` . If ``shape`` is a list or tuple, the elements of it should be integers or Tensors with shape [].
                         If ``shape`` is an Tensor, it should be an 1-D Tensor .
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
@@ -3574,10 +3573,6 @@ def reshape(x, shape, name=None):
             shape.stop_gradient = True
             inputs["Shape"] = shape
         elif isinstance(shape, (list, tuple)):
-            assert len(shape) > 0, (
-                "The size of 'shape' in reshape can't be zero, "
-                "but received %s." % len(shape)
-            )
             attrs["shape"] = get_attr_shape(shape)
             if utils._contain_var(shape):
                 inputs['ShapeTensor'] = utils._convert_to_tensor_list(shape)
