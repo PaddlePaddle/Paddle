@@ -28,11 +28,6 @@ class ProcessGroupWithoutStream : public ProcessGroup {
 
   virtual ~ProcessGroupWithoutStream() = default;
 
-  // methods from base class
-  using ProcessGroup::AllGather;
-  using ProcessGroup::Recv;
-  using ProcessGroup::Send;
-
   std::shared_ptr<ProcessGroup::Task> AllGather(
       phi::DenseTensor* out_tensor,
       const phi::DenseTensor& in_tensor,
@@ -44,6 +39,13 @@ class ProcessGroupWithoutStream : public ProcessGroup {
                      sync_op);
   }
 
+  std::shared_ptr<ProcessGroup::Task> AllGather(
+      phi::DenseTensor* out_tensor,
+      const phi::DenseTensor& in_tensor,
+      int64_t offset,
+      int64_t numel,
+      bool sync_op) override;
+
   std::shared_ptr<ProcessGroup::Task> Recv(phi::DenseTensor* tensor,
                                            int src_rank,
                                            bool sync_op) override {
@@ -54,6 +56,12 @@ class ProcessGroupWithoutStream : public ProcessGroup {
                 sync_op);
   }
 
+  std::shared_ptr<ProcessGroup::Task> Recv(phi::DenseTensor* tensor,
+                                           int src_rank,
+                                           int64_t offset,
+                                           int64_t numel,
+                                           bool sync_op) override;
+
   std::shared_ptr<ProcessGroup::Task> Send(const phi::DenseTensor& tensor,
                                            int dst_rank,
                                            bool sync_op) override {
@@ -63,6 +71,12 @@ class ProcessGroupWithoutStream : public ProcessGroup {
                 /*numel*/ -1,  // -1 indicates the whole tensor
                 sync_op);
   }
+
+  std::shared_ptr<ProcessGroup::Task> Send(const phi::DenseTensor& tensor,
+                                           int dst_rank,
+                                           int64_t offset,
+                                           int64_t numel,
+                                           bool sync_op) override;
 };
 
 }  // namespace distributed
