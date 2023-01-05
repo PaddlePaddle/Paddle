@@ -261,6 +261,8 @@ class MultiheadMatMulRoformerOpConverter : public OpConverter {
         plugin_layer->setName(
             ("CustomQKVToContextPluginDynamic: " + output_name).c_str());
         engine_->SetITensor(output_name, plugin_layer->getOutput(0));
+	layer = plugin_layer;
+
 	// add for plan3 
 	if (op_desc.HasAttr("out_threshold")) {
           PADDLE_ENFORCE_EQ(op_desc.HasAttr("out_threshold"),
@@ -369,8 +371,8 @@ class MultiheadMatMulRoformerOpConverter : public OpConverter {
             new plugin::MultiheadMatmulRoformerPlugin(
                 hidden_in, head_number, head_size, scale, with_fp16);
         layer = engine_->AddDynamicPlugin(plugin_inputs.data(), 4, plugin);
-        RreplenishLayerAndOutput(
-            layer, "multihead_matmul_roformer", {output_name}, test_mode);
+        //RreplenishLayerAndOutput(
+        //    layer, "multihead_matmul_roformer", {output_name}, test_mode);
       }
     } else {
       PADDLE_THROW(platform::errors::Fatal(
@@ -379,8 +381,8 @@ class MultiheadMatMulRoformerOpConverter : public OpConverter {
           "You can use the config.SetTRTDynamicShapeInfo(...) interface to set "
           "the shape information to run the dynamic shape mode."));
     }
-    // RreplenishLayerAndOutput(
-    //     layer, "multihead_matmul_roformer", {output_name}, test_mode);
+    RreplenishLayerAndOutput(
+        layer, "multihead_matmul_roformer", {output_name}, test_mode);
   }
 };
 
