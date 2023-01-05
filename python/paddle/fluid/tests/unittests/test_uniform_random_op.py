@@ -284,7 +284,7 @@ class TestUniformRandomOpApi(unittest.TestCase):
         y = paddle.static.nn.fc(
             x,
             size=16,
-            weight_attr=paddle.nn.initializer.Uniform(
+            weight_attr=paddle.nn.initializer.UniformInitializer(
                 low=-0.5,
                 high=0.5,
                 seed=10,
