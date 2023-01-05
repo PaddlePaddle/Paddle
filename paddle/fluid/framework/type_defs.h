@@ -101,7 +101,7 @@ using GradCompositeOpMakerFN =
         const OpDesc&,
         const std::unordered_set<std::string>& /*no_grad_set*/,
         std::unordered_map<std::string, std::string>* /*grad_to_var*/,
-        BlockDesc*,
+        const BlockDesc*,
         const std::vector<BlockDesc*>& grad_block)>;
 
 using DygraphGradOpMakerFN =

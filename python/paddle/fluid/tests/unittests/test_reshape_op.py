@@ -49,20 +49,20 @@ class TestReshapeOp(OpTest):
 class TestReshapeOp_ZeroDim1(OpTest):
     def init_data(self):
         self.ori_shape = ()
-        self.new_shape = 1
-        self.infered_shape = 1
+        self.new_shape = (1,)
+        self.infered_shape = (1,)
 
 
 class TestReshapeOp_ZeroDim2(OpTest):
     def init_data(self):
         self.ori_shape = ()
-        self.new_shape = -1
-        self.infered_shape = 1
+        self.new_shape = (-1,)
+        self.infered_shape = (1,)
 
 
 class TestReshapeOp_ZeroDim3(OpTest):
     def init_data(self):
-        self.ori_shape = 1
+        self.ori_shape = (1,)
         self.new_shape = ()
         self.infered_shape = ()
 
