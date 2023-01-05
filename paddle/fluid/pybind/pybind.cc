@@ -1871,6 +1871,7 @@ All parameter, weight, gradient are variables in Paddle.
   BindGlobalValueGetterSetter(&m);
   BindFleetExecutor(&m);
   BindTCPStore(&m);
+  BindCommContextManager(&m);
   BindAutoParallel(&m);
   BindJitProperty(&m);
 

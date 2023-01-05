@@ -12,15 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/distributed/store/tcp_utils.h"
+#include "paddle/phi/core/store/tcp_utils.h"
 
 #include <cerrno>
 #include <cstring>
 #include <thread>
 
-#include "paddle/fluid/platform/enforce.h"
-
-namespace paddle {
+namespace phi {
 namespace distributed {
 namespace tcputils {
 
@@ -60,7 +58,7 @@ void close_socket(SocketType socket) {
                                             : "");
   PADDLE_ENFORCE_EQ(n,
                     0,
-                    platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "%s network %s:%s cannot be obtained. Details: %s.",
                         proto,
                         host,
@@ -73,7 +71,7 @@ void close_socket(SocketType socket) {
 void free_addr_info(::addrinfo* hint) {
   PADDLE_ENFORCE_NOT_NULL(
       hint,
-      platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "The parameter for free_addr_info cannot be null."));
   ::freeaddrinfo(hint);
 }
@@ -91,14 +89,14 @@ SocketType tcp_connect(const std::string host,
   do {
     for (::addrinfo* cur = res; cur != nullptr; cur = cur->ai_next) {
       sockfd = ::socket(cur->ai_family, cur->ai_socktype, cur->ai_protocol);
-      PADDLE_ENFORCE_GT(sockfd,
-                        0,
-                        platform::errors::InvalidArgument(
-                            "Create socket to connect %s:%s failed. "
-                            "Details: %s. ",
-                            host,
-                            port,
-                            socket_error().message()));
+      PADDLE_ENFORCE_GT(
+          sockfd,
+          0,
+          phi::errors::InvalidArgument("Create socket to connect %s:%s failed. "
+                                       "Details: %s. ",
+                                       host,
+                                       port,
+                                       socket_error().message()));
 
       if (::connect(sockfd, cur->ai_addr, cur->ai_addrlen) == 0) {
         retry = false;
@@ -125,7 +123,7 @@ SocketType tcp_connect(const std::string host,
 
   PADDLE_ENFORCE_GT(sockfd,
                     0,
-                    platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "Network %s:%s cannot be connected.", host, port));
   VLOG(0) << "Successfully connected to " << host << ":" << port;
 
@@ -173,7 +171,7 @@ SocketType tcp_listen(const std::string host,
 
   PADDLE_ENFORCE_GT(sockfd,
                     0,
-                    platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "Bind network on %s:%s failedd.", node, port));
 
   ::listen(sockfd, LISTENQ);
@@ -190,7 +188,7 @@ SocketType tcp_accept(SocketType socket) {
   PADDLE_ENFORCE_GT(
       new_socket,
       0,
-      platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "The server failed to accept a new connection. Details: %s.",
           socket_error().message()));
 #ifndef _WIN32
@@ -225,4 +223,4 @@ std::string receive_string(SocketType socket) {
 
 }  // namespace tcputils
 }  // namespace distributed
-}  // namespace paddle
+}  // namespace phi
