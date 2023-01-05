@@ -456,7 +456,11 @@ EOF
         buildSize=$($com ${PADDLE_ROOT}/build |awk '{print $1}')
         echo "Build Size: $buildSize"
         echo "ipipe_log_param_Build_Size: $buildSize" >> ${PADDLE_ROOT}/build/build_summary.txt
-        PR_whlSize=$($com ${PADDLE_ROOT}/build/python/dist |awk '{print $1}')
+        if ls ${PADDLE_ROOT}/build/python/dist/*whl >/dev/null 2>&1; then
+            PR_whlSize=$($com ${PADDLE_ROOT}/build/python/dist |awk '{print $1}')
+        elif ls ${PADDLE_ROOT}/dist/*whl >/dev/null 2>&1; then
+            PR_whlSize=$($com ${PADDLE_ROOT}/build/python/dist |awk '{print $1}')
+        fi
         echo "PR whl Size: $PR_whlSize"
         echo "ipipe_log_param_PR_whl_Size: $PR_whlSize" >> ${PADDLE_ROOT}/build/build_summary.txt
         PR_soSize=$($com ${PADDLE_ROOT}/build/paddle/fluid/pybind/libpaddle.so |awk '{print $1}')
@@ -659,7 +663,7 @@ EOF
             pip3.6 install --user hypothesis
         elif [ "$1" == "cp37-cp37m" ]; then
             find / -name paddlepaddle-0.0.0-cp37-cp37m-macosx_10_14_x86_64.whl
-            pip3.7 install --user ${INSTALL_PREFIX:-/paddle/build}/opt/paddle/share/wheels/*.whl
+            pip3.7 install --user {PADDLE_ROOT}/dist/*.whl
             pip3.7 install --user hypothesis
         elif [ "$1" == "cp38-cp38" ]; then
             pip3.8 install --user ${INSTALL_PREFIX:-/paddle/build}/opt/paddle/share/wheels/*.whl
@@ -3696,7 +3700,216 @@ function run_setup(){
     echo "Build Time: $[ $endTime_s - $startTime_s ]s"
     echo "ipipe_log_param_Build_Time: $[ $endTime_s - $startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt
 }
+function run_setup_mac(){
+    startTime_s=`date +%s`
+    mkdir -p ${PADDLE_ROOT}/build
+    cd ${PADDLE_ROOT}/build
+    # Build script will not fail if *.deb does not exist
+    rm *.deb 2>/dev/null || true
+    # Delete previous built egg packages
+    rm -rf ${PADDLE_ROOT}/dist 2>/dev/null || true
+    # Delete previous built paddle cache
+    rm -rf ${PADDLE_ROOT}/build/python/paddle 2>/dev/null || true
 
+    SYSTEM=`uname -s`
+    if [ "$SYSTEM" == "Darwin" ]; then
+        echo "Using python abi: $1"
+        if [ "$1" == "cp37-cp37m" ]; then
+            if [ -d "/Library/Frameworks/Python.framework/Versions/3.7" ]; then
+                export LD_LIBRARY_PATH=/Library/Frameworks/Python.framework/Versions/3.7/lib/
+                export DYLD_LIBRARY_PATH=${DYLD_LIBRARY_PATH}:/Library/Frameworks/Python.framework/Versions/3.7/lib/
+                export PATH=/Library/Frameworks/Python.framework/Versions/3.7/bin/:${PATH}
+                #after changing "PYTHON_LIBRARY:FILEPATH" to "PYTHON_LIBRARY" ,we can use export
+                export PYTHON_EXECUTABLE=/Library/Frameworks/Python.framework/Versions/3.7/bin/python3
+                export PYTHON_INCLUDE_DIR=/Library/Frameworks/Python.framework/Versions/3.7/include/python3.7m/
+                export PYTHON_LIBRARY=/Library/Frameworks/Python.framework/Versions/3.7/lib/libpython3.7m.dylib
+                pip3.7 install --user -r ${PADDLE_ROOT}/python/requirements.txt
+            else
+                exit 1
+            fi
+        elif [ "$1" == "cp38-cp38" ]; then
+            if [ -d "/Library/Frameworks/Python.framework/Versions/3.8" ]; then
+                export LD_LIBRARY_PATH=/Library/Frameworks/Python.framework/Versions/3.8/lib/
+                export DYLD_LIBRARY_PATH=${DYLD_LIBRARY_PATH}:/Library/Frameworks/Python.framework/Versions/3.8/lib/
+                export PATH=/Library/Frameworks/Python.framework/Versions/3.8/bin/:${PATH}
+                #after changing "PYTHON_LIBRARY:FILEPATH" to "PYTHON_LIBRARY" ,we can use export
+                export PYTHON_EXECUTABLE=/Library/Frameworks/Python.framework/Versions/3.8/bin/python3
+                export PYTHON_INCLUDE_DIR=/Library/Frameworks/Python.framework/Versions/3.8/include/python3.8/
+                export PYTHON_LIBRARY=/Library/Frameworks/Python.framework/Versions/3.8/lib/libpython3.8.dylib
+                pip3.8 install --user -r ${PADDLE_ROOT}/python/requirements.txt
+            else
+                exit 1
+            fi
+        elif [ "$1" == "cp39-cp39" ]; then
+            if [ -d "/Library/Frameworks/Python.framework/Versions/3.9" ]; then
+                export LD_LIBRARY_PATH=/Library/Frameworks/Python.framework/Versions/3.9/lib/
+                export DYLD_LIBRARY_PATH=${DYLD_LIBRARY_PATH}:/Library/Frameworks/Python.framework/Versions/3.9/lib/
+                export PATH=/Library/Frameworks/Python.framework/Versions/3.9/bin/:${PATH}
+                #after changing "PYTHON_LIBRARY:FILEPATH" to "PYTHON_LIBRARY" ,we can use export
+                export PYTHON_EXECUTABLE=/Library/Frameworks/Python.framework/Versions/3.9/bin/python3
+                export PYTHON_INCLUDE_DIR=/Library/Frameworks/Python.framework/Versions/3.9/include/python3.9/
+                export PYTHON_LIBRARY=/Library/Frameworks/Python.framework/Versions/3.9/lib/libpython3.9.dylib
+                pip3.9 install --user -r ${PADDLE_ROOT}/python/requirements.txt
+            else
+                exit 1
+            fi
+        elif [ "$1" == "cp310-cp310" ]; then
+            if [ -d "/Library/Frameworks/Python.framework/Versions/3.10" ]; then
+                export LD_LIBRARY_PATH=/Library/Frameworks/Python.framework/Versions/3.10/lib/
+                export DYLD_LIBRARY_PATH=${DYLD_LIBRARY_PATH}:/Library/Frameworks/Python.framework/Versions/3.10/lib/
+                export PATH=/Library/Frameworks/Python.framework/Versions/3.10/bin/:${PATH}
+                #after changing "PYTHON_LIBRARY:FILEPATH" to "PYTHON_LIBRARY" ,we can use export
+                export PYTHON_EXECUTABLE=/Library/Frameworks/Python.framework/Versions/3.10/bin/python3
+                export PYTHON_INCLUDE_DIR=/Library/Frameworks/Python.framework/Versions/3.10/include/python3.10/
+                export PYTHON_LIBRARY=/Library/Frameworks/Python.framework/Versions/3.10/lib/libpython3.10.dylib
+                pip3.10 install --user -r ${PADDLE_ROOT}/python/requirements.txt
+            else
+                exit 1
+            fi
+        fi
+    else
+        if [ "$1" != "" ]; then
+            echo "using python abi: $1"
+            if [ "$1" == "cp37-cp37m" ]; then
+                export LD_LIBRARY_PATH=/opt/_internal/cpython-3.7.0/lib/:${LD_LIBRARY_PATH}
+                export PATH=/opt/_internal/cpython-3.7.0/bin/:${PATH}
+                #after changing "PYTHON_LIBRARY:FILEPATH" to "PYTHON_LIBRARY" ,we can use export
+                export PYTHON_EXECUTABLE=/opt/_internal/cpython-3.7.0/bin/python3.7
+                export PYTHON_INCLUDE_DIR=/opt/_internal/cpython-3.7.0/include/python3.7m
+                export PYTHON_LIBRARIES=/opt/_internal/cpython-3.7.0/lib/libpython3.so
+                pip3.7 install -r ${PADDLE_ROOT}/python/requirements.txt
+            elif [ "$1" == "cp38-cp38" ]; then
+                export LD_LIBRARY_PATH=/opt/_internal/cpython-3.8.0/lib/:${LD_LIBRARY_PATH}
+                export PATH=/opt/_internal/cpython-3.8.0/bin/:${PATH}
+                #after changing "PYTHON_LIBRARY:FILEPATH" to "PYTHON_LIBRARY" ,we can use export
+                export PYTHON_EXECUTABLE=/opt/_internal/cpython-3.8.0/bin/python3.8
+                export PYTHON_INCLUDE_DIR=/opt/_internal/cpython-3.8.0/include/python3.8
+                export PYTHON_LIBRARIES=/opt/_internal/cpython-3.8.0/lib/libpython3.so
+                pip3.8 install -r ${PADDLE_ROOT}/python/requirements.txt
+            elif [ "$1" == "cp39-cp39" ]; then
+                export LD_LIBRARY_PATH=/opt/_internal/cpython-3.9.0/lib/:${LD_LIBRARY_PATH}
+                export PATH=/opt/_internal/cpython-3.9.0/bin/:${PATH}
+                #after changing "PYTHON_LIBRARY:FILEPATH" to "PYTHON_LIBRARY" ,we can use export
+                export PYTHON_EXECUTABLE=/opt/_internal/cpython-3.9.0/bin/python3.9
+                export PYTHON_INCLUDE_DIR=/opt/_internal/cpython-3.9.0/include/python3.9
+                export PYTHON_LIBRARIES=/opt/_internal/cpython-3.9.0/lib/libpython3.so
+                pip3.9 install -r ${PADDLE_ROOT}/python/requirements.txt
+            elif [ "$1" == "cp310-cp310" ]; then
+                export LD_LIBRARY_PATH=/opt/_internal/cpython-3.10.0/lib/:${LD_LIBRARY_PATH}
+                export PATH=/opt/_internal/cpython-3.10.0/bin/:${PATH}
+                #after changing "PYTHON_LIBRARY:FILEPATH" to "PYTHON_LIBRARY" ,we can use export
+                export PYTHON_EXECUTABLE=/opt/_internal/cpython-3.10.0/bin/python3.10
+                export PYTHON_INCLUDE_DIR=/opt/_internal/cpython-3.10.0/include/python3.10
+                export PYTHON_LIBRARIES=/opt/_internal/cpython-3.10.0/lib/libpython3.so
+                pip3.10 install -r ${PADDLE_ROOT}/python/requirements.txt
+           elif [ "$1" == "conda-python3.7" ]; then
+                export LD_LIBRARY_PATH=/opt/conda/lib/:${LD_LIBRARY_PATH}
+                export PATH=/opt/conda/bin/:${PATH}
+                #after changing "PYTHON_LIBRARY:FILEPATH" to "PYTHON_LIBRARY" ,we can use export
+                export DPYTHON_EXECUTABLE=/opt/conda/bin/python
+                export PYTHON_INCLUDE_DIR=/opt/conda/include/python3.7m
+                export PYTHON_LIBRARIES=/opt/conda/lib/libpython3.so
+                /opt/conda/bin/pip install -r ${PADDLE_ROOT}/python/requirements.txt
+           fi
+        else
+            pip install -r ${PADDLE_ROOT}/python/requirements.txt
+        fi
+    fi
+
+    if [ "$SYSTEM" == "Darwin" ]; then
+        WITH_DISTRIBUTE="OFF"
+        WITH_AVX=${WITH_AVX:-ON}
+        WITH_ARM=${WITH_ARM:-OFF}
+        INFERENCE_DEMO_INSTALL_DIR=${INFERENCE_DEMO_INSTALL_DIR:-~/.cache/inference_demo}
+    else
+        INFERENCE_DEMO_INSTALL_DIR=${INFERENCE_DEMO_INSTALL_DIR:-/root/.cache/inference_demo}
+    fi
+
+    distibuted_flag=${WITH_DISTRIBUTE:-OFF}
+    gloo_flag=${distibuted_flag}
+
+    if [ "$CMD" != "assert_file_approvals" ];then
+      which python
+      python -V
+      python -m pip install distro
+      python ${PADDLE_ROOT}/tools/summary_env.py
+      bash ${PADDLE_ROOT}/tools/get_cpu_info.sh
+    fi
+    export CMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE:-Release}
+    export WITH_GPU=${WITH_GPU:-OFF}
+    export WITH_TENSORRT=${WITH_TENSORRT:-ON}
+    export WITH_ROCM=${WITH_ROCM:-OFF}
+    export WITH_CINN=${WITH_CINN:-OFF}
+    export WITH_DISTRIBUTE=${distibuted_flag}
+    export WITH_MKL=${WITH_MKL:-ON}
+    export WITH_AVX=${WITH_AVX:-OFF}
+    export CUDA_ARCH_NAME=${CUDA_ARCH_NAME:-All}
+    export NEW_RELEASE_PYPI=${NEW_RELEASE_PYPI:-OFF} 
+    export NEW_RELEASE_ALL=${NEW_RELEASE_ALL:-OFF}
+    export NEW_RELEASE_JIT=${NEW_RELEASE_JIT:-OFF}
+    export WITH_PYTHON=${WITH_PYTHON:-ON}
+    export CUDNN_ROOT=/usr/
+    export WITH_TESTING=${WITH_TESTING:-ON}
+    export WITH_COVERAGE=${WITH_COVERAGE:-OFF}
+    export WITH_INCREMENTAL_COVERAGE=${WITH_INCREMENTAL_COVERAGE:-OFF}
+    export CMAKE_MODULE_PATH=/opt/rocm/hip/cmake
+    export CMAKE_EXPORT_COMPILE_COMMANDS=ON
+    export WITH_CONTRIB=${WITH_CONTRIB:-ON}
+    export WITH_INFERENCE_API_TEST=${WITH_INFERENCE_API_TEST:-ON}
+    export WITH_INFRT=${WITH_INFRT:-OFF}
+    export INFERENCE_DEMO_INSTALL_DIR=${INFERENCE_DEMO_INSTALL_DIR}
+    export PY_VERSION=${PY_VERSION:-3.7}
+    export CMAKE_INSTALL_PREFIX=${INSTALL_PREFIX:-/paddle/build}
+    export WITH_PSCORE=${distibuted_flag}
+    export WITH_PSLIB=${WITH_PSLIB:-OFF}
+    export WITH_GLOO=${gloo_flag}
+    export LITE_GIT_TAG=release/v2.10
+    export WITH_XPU=${WITH_XPU:-OFF}
+    export WITH_MLU=${WITH_MLU:-OFF}
+    export WITH_IPU=${WITH_IPU:-OFF}
+    export WITH_CNCL=${WITH_CNCL:-OFF}
+    export XPU_SDK_ROOT=${XPU_SDK_ROOT:-""}
+    export WITH_LITE=${WITH_LITE:-OFF}
+    export WITH_XPU_BKCL=${WITH_XPU_BKCL:-OFF}
+    export WITH_ARM=${WITH_ARM:-OFF}
+    export WITH_ASCEND=${WITH_ASCEND:-OFF}
+    export WITH_ASCEND_CL=${WITH_ASCEND_CL:-OFF}
+    export WITH_ASCEND_INT64=${WITH_ASCEND_INT64:-OFF}
+    export WITH_STRIP=${WITH_STRIP:-ON}
+    export ON_INFER=${ON_INFER:-OFF}
+    export WITH_HETERPS=${WITH_HETERPS:-OFF}
+    export WITH_FLUID_ONLY=${WITH_FLUID_ONLY:-OFF}
+    export CUDA_ARCH_BIN=${CUDA_ARCH_BIN}
+    export WITH_RECORD_BUILDTIME=${WITH_RECORD_BUILDTIME:-OFF}
+    export WITH_UNITY_BUILD=${WITH_UNITY_BUILD:-OFF}
+    export WITH_ONNXRUNTIME=${WITH_ONNXRUNTIME:-OFF}
+    export WITH_CUDNN_FRONTEND=${WITH_CUDNN_FRONTEND:-OFF}
+
+    export MAX_JOBS=8
+    # reset ccache zero stats for collect PR's actual hit rate
+
+    ccache -z
+    cd ..
+    if [ "${PYTHON_EXECUTABLE}" != "" ];then
+        ${PYTHON_EXECUTABLE} setup.py $2;build_error=$?
+    else
+        python setup.py $2;build_error=$?
+    fi
+    
+    # ci will collect ccache hit rate
+    collect_ccache_hits
+
+    if [ "$build_error" != 0 ];then
+        exit 7;
+    fi
+    
+    build_size
+
+    endTime_s=`date +%s`
+    [ -n "$startTime_firstBuild" ] && startTime_s=$startTime_firstBuild
+    echo "Build Time: $[ $endTime_s - $startTime_s ]s"
+    echo "ipipe_log_param_Build_Time: $[ $endTime_s - $startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt
+}
 function main() {
     local CMD=$1
     local parallel_number=$2
@@ -3732,7 +3945,7 @@ function main() {
         ;;
       build_and_check_cpu)
         set +e
-        run_setup ${PYTHON_ABI:-""} install ${parallel_number}
+        run_setup ${PYTHON_ABI:-""} bdist_wheel ${parallel_number}
         generate_api_spec ${PYTHON_ABI:-""} "PR"
         generate_upstream_develop_api_spec ${PYTHON_ABI:-""} ${parallel_number}
         check_sequence_op_unittest
@@ -3899,7 +4112,7 @@ function main() {
         run_mac_test ${PYTHON_ABI:-""} ${PROC_RUN:-1}
         ;;
       maccheck_py35)
-        run_setup ${PYTHON_ABI:-""} bdist_wheel ${parallel_number} 
+        run_setup_mac ${PYTHON_ABI:-""} bdist_wheel 
         run_mac_test ${PYTHON_ABI:-""} ${PROC_RUN:-1}
         ;;
       macbuild)
