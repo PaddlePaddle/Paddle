@@ -38,6 +38,7 @@ constexpr char kInternalVars[] = "InternalVars";
 constexpr char kOutputVars[] = "OutputVars";
 constexpr char kMemOptVarInfoFromMainGraph[] =
     "mem_opt_var_info_from_main_graph";
+constexpr char kSkipGcVarNames[] = "skip_gc_vars";
 
 using Name2VarInfoMap =
     std::unordered_map<std::string,
