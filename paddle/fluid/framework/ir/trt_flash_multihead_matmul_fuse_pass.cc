@@ -532,13 +532,14 @@ void TrtFlashMultiHeadMatmulFusePass::ApplyImpl(Graph* graph) const {
   FusePassBase::Init(name_scope_, graph);
   auto* scope = param_scope();
 
-#ifdef PADDLE_WITH_TENSORRT
-#if IS_TRT_VERSION_LT(8522)
-  VLOG(3) << "Flash attention oss plugin only available for trt version >= "
-             "8.5.2.2. Stop this pass";
-  return;
-#endif
-#endif
+  auto trt_version = paddle::inference::tensorrt::GetTrtRuntimeVersion();
+
+  if (std::get<0>(trt_version) * 1000 + std::get<1>(trt_version) * 100 +
+          std::get<2>(trt_version) * 10 <
+      8520) {
+    VLOG(3) << "Flash attention oss plugin only available for trt version >= "
+               "8.5.2.2. Stop this pass";
+  }
 
   bool with_dynamic_shape = Get<bool>("with_dynamic_shape");
   if (!with_dynamic_shape) {
