@@ -19,18 +19,18 @@
 #include <mutex>
 
 #include "paddle/fluid/distributed/collective/process_group.h"
+#include "paddle/fluid/distributed/collective/process_group_without_stream.h"
+#include "paddle/fluid/distributed/store/store.h"
+#include "paddle/fluid/distributed/store/tcp_store.h"
 
 #ifdef PADDLE_WITH_GLOO
 #include "paddle/fluid/framework/fleet/gloo_wrapper.h"
 #endif
 
-#include "paddle/fluid/distributed/store/store.h"
-#include "paddle/fluid/distributed/store/tcp_store.h"
-
 namespace paddle {
 namespace distributed {
 
-class ProcessGroupGloo : public ProcessGroup {
+class ProcessGroupGloo : public ProcessGroupWithoutStream {
  public:
   class GlooTask : public ProcessGroup::Task,
                    public std::enable_shared_from_this<GlooTask> {
@@ -118,11 +118,6 @@ class ProcessGroupGloo : public ProcessGroup {
       const phi::DenseTensor& in_tensor,
       int64_t /*offset*/,  // for compatibility, no use now
       int64_t /*numel*/,   // for compatibility, no use now
-      bool sync_op) override;
-
-  std::shared_ptr<ProcessGroup::Task> AllGather(
-      phi::DenseTensor* out_tensor,
-      const phi::DenseTensor& in_tensor,
       bool sync_op) override;
 
   std::shared_ptr<ProcessGroup::Task> AllReduce(

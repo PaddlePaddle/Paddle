@@ -100,7 +100,7 @@ def convert_to_dims_mapping(shard_spec, process_mesh):
     for shard in shard_spec:
         if shard is None:
             dims_mapping.append(-1)
-        elif process_mesh.topology[process_mesh.dim_names.index(shard)] == 1:
+        elif process_mesh.shape[process_mesh.dim_names.index(shard)] == 1:
             dims_mapping.append(-1)
         else:
             dims_mapping.append(process_mesh.dim_names.index(shard))
@@ -429,26 +429,26 @@ def _get_corresponding_rank(dist_context, target_mesh, rank):
 
     coordinate = None
     for mesh in dist_context.process_meshes:
-        if rank in mesh.processes and mesh.topology == target_mesh.topology:
+        if rank in mesh.process_ids and mesh.shape == target_mesh.shape:
             coordinate = _linear_idx2coordinate(
-                mesh.topology, mesh.processes.index(rank)
+                mesh.shape, mesh.process_ids.index(rank)
             )
             break
 
     # assert coordinate is not None, "could NOT found rank [{}] in any registered mesh".format(
     #     rank)
     if coordinate is not None:
-        return target_mesh.processes[
-            _coordinate2linear_idx(mesh.topology, coordinate)
+        return target_mesh.process_ids[
+            _coordinate2linear_idx(mesh.shape, coordinate)
         ]
     else:
-        return target_mesh.processes[0]
+        return target_mesh.process_ids[0]
 
 
 def _get_unshard_dist_shape(var, dist_attr):
     var_shape = var.shape
     mapping = dist_attr.dims_mapping
-    mesh = dist_attr.process_mesh.topology
+    mesh = dist_attr.process_mesh.shape
     assert len(var_shape) == len(
         mapping
     ), "variable shape [{}] and dim_mapping [{}] is NOT match !".format(
@@ -832,8 +832,8 @@ def get_dist_attr(program, dist_context=None):
             process_mesh = tensor_dist_attr.process_mesh
             dims_mapping = tensor_dist_attr.dims_mapping
             dist_attr[var.name] = {
-                "process_shape": process_mesh.topology,
-                "process_group": process_mesh.processes,
+                "process_shape": process_mesh.shape,
+                "process_group": process_mesh.process_ids,
                 "dims_mapping": dims_mapping,
             }
     return dist_attr
@@ -1184,6 +1184,8 @@ def _get_split_indices(
 
 
 def set_grad_var_shape(program, dist_context):
+    from paddle.distributed.fleet.meta_optimizers.common import OpRole
+
     from .operators.common import infer_shape
 
     block = program.global_block()
@@ -1261,6 +1263,8 @@ def set_grad_var_shape(program, dist_context):
                 "fused_softmax_mask_upper_triangle_grad",
                 "flatten_contiguous_range_grad",
                 "relu_grad",
+                "exp_grad",
+                "sigmoid_grad",
             ]
             forward_list = [
                 "reshape2",
@@ -1279,6 +1283,8 @@ def set_grad_var_shape(program, dist_context):
                 "fused_softmax_mask_upper_triangle",
                 "flatten_contiguous_range",
                 "relu",
+                "exp",
+                "sigmoid",
             ]
             if op.type in need_set_shape_list:
                 for forward_op in block.ops:
@@ -1951,6 +1957,9 @@ def set_recompute_segments(model, losses, strategy, program):
             and hasattr(model.gpt, "checkpoints")
         ):
             ckpts = model.gpt.checkpoints
+            # last recompute segment is not need to recompute
+            if len(ckpts) > 2:
+                ckpts.pop()
         else:
             ckpts = recompute.checkpoints
     else:
@@ -2006,16 +2015,16 @@ def get_input_split_info(cur_rank, var, dist_context):
     process_mesh = tensor_dist_attr.process_mesh
     dims_mapping = tensor_dist_attr.dims_mapping
 
-    if cur_rank not in process_mesh.processes:
+    if cur_rank not in process_mesh.process_ids:
         rank_id = _get_corresponding_rank(dist_context, process_mesh, cur_rank)
     else:
         rank_id = cur_rank
 
     batch_size_axis = dims_mapping[0]
-    if batch_size_axis > -1 and process_mesh.topology[batch_size_axis] > 1:
+    if batch_size_axis > -1 and process_mesh.shape[batch_size_axis] > 1:
         group_ranks = _get_comm_group(
-            process_mesh.processes,
-            process_mesh.topology,
+            process_mesh.process_ids,
+            process_mesh.shape,
             batch_size_axis,
             rank_id,
         )
@@ -2185,6 +2194,7 @@ def insert_dependencies_for_two_ops(
     dist_context,
     is_recompute=False,
     sync=False,
+    op_namescope=None,
 ):
     """
     dependency: prior_op should be run before posterior_op
@@ -2229,49 +2239,74 @@ def insert_dependencies_for_two_ops(
         [block.var(name) for name in posterior_op.input_arg_names]
     )
 
-    return insert_dependencies_for_two_vars(
+    return insert_dependencies_for_vars(
         block,
         idx,
         first_var,
         second_var,
         dist_context,
         OpRole.Backward,
-        prior_op_mesh,
-        is_recompute,
-        sync,
+        process_mesh=prior_op_mesh,
+        is_recompute=is_recompute,
+        sync=sync,
+        op_namescope=op_namescope,
+        use_nop=False,
     )
 
 
-def insert_dependencies_for_two_vars(
+def insert_dependencies_for_vars(
     block,
     idx,
-    prior_var,
-    post_var,
+    prior_vars,
+    post_vars,
     dist_context,
     oprole,
     process_mesh=None,
     is_recompute=False,
     sync=False,
+    op_namescope=None,
+    use_nop=False,
 ):
     """
-    dependency: op that generates prior_var should be run before op that generates post_var
+    dependency: op that generates prior_vars should be run before op that generates post_vars
     """
-    assert block.has_var(prior_var.name)
-    assert block.has_var(post_var.name)
+
+    if isinstance(prior_vars, Variable):
+        prior_vars = [prior_vars]
+    if isinstance(post_vars, Variable):
+        post_vars = [post_vars]
+    for prior_var in prior_vars:
+        assert block.has_var(prior_var.name)
+    for post_var in post_vars:
+        assert block.has_var(post_var.name)
+
     if process_mesh is None:
         process_mesh = dist_context.get_tensor_dist_attr_for_program(
-            post_var
+            post_vars[0]
         ).process_mesh
     assert process_mesh is not None
 
-    depend_op = block._insert_op_without_sync(
-        idx,
-        type='nop',
-        inputs={
-            "X": prior_var,
-        },
-        outputs={"Out": post_var},
-    )
+    use_nop = True
+    if use_nop:
+        depend_op = block._insert_op_without_sync(
+            idx,
+            type='nop',
+            inputs={
+                "X": prior_vars,
+            },
+            outputs={"Out": post_vars},
+        )
+    else:
+        depend_op = block._insert_op_without_sync(
+            idx,
+            type='depend',
+            inputs={
+                "X": post_vars,
+                "Dep": prior_vars,
+            },
+            outputs={"Out": post_vars},
+        )
+
     # depend_op.desc.set_type("depend")
     depend_op._set_attr(OP_ROLE_KEY, oprole)
     # depend_op.desc.set_input("Dep", [first_var.name])
@@ -2280,8 +2315,17 @@ def insert_dependencies_for_two_vars(
     naive_set_dist_op_attr_for_program_by_mesh(
         depend_op, process_mesh, dist_context, is_recompute
     )
+    if op_namescope is not None:
+        depend_op._set_attr('op_namescope', "/{}".format(op_namescope))
 
     if sync:
         block._sync_with_cpp()
 
     return depend_op
+
+
+def is_dep_skip_op(op):
+    if "c_" in op.type:
+        return True
+
+    return False

@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Test set_value op in static mode
+# Test set_value op in static graph mode
 
 import unittest
 from functools import reduce

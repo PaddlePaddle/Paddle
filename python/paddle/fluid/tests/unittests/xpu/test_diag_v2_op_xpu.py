@@ -28,7 +28,6 @@ from xpu.get_test_cover_info import (
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
-from paddle.fluid.framework import _test_eager_guard
 
 paddle.enable_static()
 
@@ -305,8 +304,6 @@ class XPUTestDiagV2Op(XPUOpTestWrapper):
         def test_xpu(self):
             paddle.disable_static(place=paddle.fluid.XPUPlace(0))
             self.run_imperative()
-            with _test_eager_guard():
-                self.run_imperative()
 
             paddle.enable_static()
 

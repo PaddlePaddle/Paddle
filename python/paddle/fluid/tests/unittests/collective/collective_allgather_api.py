@@ -60,7 +60,7 @@ class TestCollectiveAllgatherAPI(test_base.TestCollectiveAPIRunnerBase):
         )
         assert (
             args['static_mode'] == 1
-        ), "collective_allgather_api only support static mode"
+        ), "collective_allgather_api only support static graph mode"
         result = self.get_model(
             train_prog, startup_prog, rank, dtype=args["dtype"]
         )

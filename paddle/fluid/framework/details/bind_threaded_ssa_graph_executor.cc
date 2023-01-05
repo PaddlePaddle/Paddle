@@ -254,9 +254,13 @@ void BindThreadedSSAGraphExecutor::RunMultiDeviceOpAsync(
         auto dev_ctxes = op->DeviceContext();
         auto &inputs = op->Inputs();
         for (auto &input : inputs) {
-          auto dev_ctxes = input->GeneratedOp()->DeviceContext();
-          for (auto &item : dev_ctxes) {
-            ((platform::XPUDeviceContext *)(item.second))->Wait();
+          if (input && input->GeneratedOp() != nullptr) {
+            auto dev_ctxes = input->GeneratedOp()->DeviceContext();
+            for (auto &item : dev_ctxes) {
+              ((platform::XPUDeviceContext *)(item.second))->Wait();
+            }
+          } else {
+            VLOG(3) << "No generated op:" << op->Name();
           }
         }
         op->Run(strategy_.use_device_);
