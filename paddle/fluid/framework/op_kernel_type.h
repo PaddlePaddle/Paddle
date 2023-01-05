@@ -21,6 +21,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/library_type.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/phi/core/device_context.h"
+#include "paddle/phi/core/kernel_factory.h"
 
 namespace paddle {
 namespace framework {
@@ -108,15 +109,32 @@ inline bool NeedTransformLayout(const DataLayout& l, const DataLayout& r) {
   return ret;
 }
 
-inline bool NeedTransformDataType(const OpKernelType& l,
-                                  const OpKernelType& r) {
-  return (l.data_type_ != r.data_type_);
+inline bool NeedTransformDataType(const phi::KernelKey& l,
+                                  const phi::KernelKey& r) {
+  return l.dtype() != phi::DataType::ALL_DTYPE &&
+         r.dtype() != phi::DataType::ALL_DTYPE && l.dtype() != r.dtype();
 }
 
-inline bool NeedTransform(const OpKernelType& l, const OpKernelType& r) {
-  return (!platform::places_are_same_class(l.place_, r.place_)) ||
-         (l.data_type_ != r.data_type_) ||
-         NeedTransformLayout(l.data_layout_, r.data_layout_);
+inline bool backends_are_same_class(const phi::Backend& l,
+                                    const phi::Backend& r) {
+  if (l == phi::Backend::ALL_BACKEND || r == phi::Backend::ALL_BACKEND) {
+    return true;
+  }
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+  size_t num_backends = static_cast<size_t>(phi::Backend::NUM_BACKENDS);
+  if (static_cast<size_t>(l) > num_backends &&
+      static_cast<size_t>(r) > num_backends) {
+    return phi::TransToPhiPlace(l).GetDeviceType() ==
+           phi::TransToPhiPlace(r).GetDeviceType();
+  }
+#endif
+  return phi::TransToPhiPlace(l) == phi::TransToPhiPlace(r);
+}
+
+inline bool NeedTransform(const phi::KernelKey& l, const phi::KernelKey& r) {
+  return !backends_are_same_class(l.backend(), r.backend()) ||
+         NeedTransformDataType(l, r) ||
+         NeedTransformLayout(l.layout(), r.layout());
 }
 
 }  // namespace framework
