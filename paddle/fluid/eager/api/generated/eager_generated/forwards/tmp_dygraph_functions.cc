@@ -31,6 +31,7 @@ std::unordered_map<std::string, std::vector<std::string>> core_ops_args_info = {
     {"acos", {"x"}},
     {"acosh", {"x"}},
     {"addmm", {"input", "x", "y", "beta", "alpha"}},
+    {"allclose", {"x", "y", "rtol", "atol", "equal_nan"}},
     {"angle", {"x"}},
     {"argsort", {"x", "axis", "descending"}},
     {"as_complex", {"x"}},
@@ -47,6 +48,8 @@ std::unordered_map<std::string, std::vector<std::string>> core_ops_args_info = {
     {"celu", {"x", "alpha"}},
     {"cholesky", {"x", "upper"}},
     {"cholesky_solve", {"x", "y", "upper"}},
+    {"clip", {"x", "min", "max"}},
+    {"clip_", {"x", "min", "max"}},
     {"complex", {"real", "imag"}},
     {"conj", {"x"}},
     {"cos", {"x"}},
@@ -75,6 +78,8 @@ std::unordered_map<std::string, std::vector<std::string>> core_ops_args_info = {
     {"fft_c2c", {"x", "axes", "normalization", "forward"}},
     {"fft_c2r", {"x", "axes", "normalization", "forward", "last_dim_size"}},
     {"fft_r2c", {"x", "axes", "normalization", "forward", "onesided"}},
+    {"fill_diagonal", {"x", "value", "offset", "wrap"}},
+    {"fill_diagonal_", {"x", "value", "offset", "wrap"}},
     {"fill_diagonal_tensor", {"x", "y", "offset", "dim1", "dim2"}},
     {"fill_diagonal_tensor_", {"x", "y", "offset", "dim1", "dim2"}},
     {"flip", {"x", "axis"}},
@@ -90,6 +95,7 @@ std::unordered_map<std::string, std::vector<std::string>> core_ops_args_info = {
     {"gumbel_softmax", {"x", "temperature", "hard", "axis"}},
     {"hardshrink", {"x", "threshold"}},
     {"hardsigmoid", {"x", "slope", "offset"}},
+    {"hardtanh", {"x", "t_min", "t_max"}},
     {"histogram", {"input", "bins", "min", "max"}},
     {"imag", {"x"}},
     {"index_sample", {"x", "index"}},
@@ -245,7 +251,6 @@ std::unordered_map<std::string, std::vector<std::string>> core_ops_args_info = {
     {"add_", {"x", "y"}},
     {"affine_grid", {"input", "outputShape", "align_corners"}},
     {"all", {"x", "axis", "keepdim"}},
-    {"allclose", {"x", "y", "rtol", "atol", "equal_nan"}},
     {"amax", {"x", "axis", "keepdim"}},
     {"amin", {"x", "axis", "keepdim"}},
     {"any", {"x", "axis", "keepdim"}},
@@ -340,8 +345,6 @@ std::unordered_map<std::string, std::vector<std::string>> core_ops_args_info = {
       "nranks",
       "fix_seed",
       "seed"}},
-    {"clip", {"x", "min", "max"}},
-    {"clip_", {"x", "min", "max"}},
     {"clip_by_norm", {"x", "max_norm"}},
     {"coalesce_tensor",
      {"input",
@@ -457,8 +460,6 @@ std::unordered_map<std::string, std::vector<std::string>> core_ops_args_info = {
     {"eye", {"num_rows", "num_columns", "dtype", "place"}},
     {"fill", {"x", "value"}},
     {"fill_", {"x", "value"}},
-    {"fill_diagonal", {"x", "value", "offset", "wrap"}},
-    {"fill_diagonal_", {"x", "value", "offset", "wrap"}},
     {"flatten", {"x", "start_axis", "stop_axis"}},
     {"flatten_", {"x", "start_axis", "stop_axis"}},
     {"floor_divide", {"x", "y"}},
@@ -494,7 +495,6 @@ std::unordered_map<std::string, std::vector<std::string>> core_ops_args_info = {
     {"greater_than", {"x", "y"}},
     {"group_norm", {"x", "scale", "bias", "epsilon", "groups", "data_layout"}},
     {"hardswish", {"x"}},
-    {"hardtanh", {"x", "t_min", "t_max"}},
     {"hsigmoid_loss",
      {"x",
       "label",
@@ -935,6 +935,7 @@ std::unordered_map<std::string, std::vector<std::string>>
         {"acos", {"tensor"}},
         {"acosh", {"tensor"}},
         {"addmm", {"tensor", "tensor", "tensor", "", ""}},
+        {"allclose", {"tensor", "tensor", "", "", ""}},
         {"angle", {"tensor"}},
         {"argsort", {"tensor", "", ""}},
         {"as_complex", {"tensor"}},
@@ -951,6 +952,8 @@ std::unordered_map<std::string, std::vector<std::string>>
         {"celu", {"tensor", ""}},
         {"cholesky", {"tensor", ""}},
         {"cholesky_solve", {"tensor", "tensor", ""}},
+        {"clip", {"tensor", "", ""}},
+        {"clip_", {"tensor", "", ""}},
         {"complex", {"tensor", "tensor"}},
         {"conj", {"tensor"}},
         {"cos", {"tensor"}},
@@ -979,6 +982,8 @@ std::unordered_map<std::string, std::vector<std::string>>
         {"fft_c2c", {"tensor", "", "", ""}},
         {"fft_c2r", {"tensor", "", "", "", ""}},
         {"fft_r2c", {"tensor", "", "", "", ""}},
+        {"fill_diagonal", {"tensor", "", "", ""}},
+        {"fill_diagonal_", {"tensor", "", "", ""}},
         {"fill_diagonal_tensor", {"tensor", "tensor", "", "", ""}},
         {"fill_diagonal_tensor_", {"tensor", "tensor", "", "", ""}},
         {"flip", {"tensor", ""}},
@@ -993,6 +998,7 @@ std::unordered_map<std::string, std::vector<std::string>>
         {"gumbel_softmax", {"tensor", "", "", ""}},
         {"hardshrink", {"tensor", ""}},
         {"hardsigmoid", {"tensor", "", ""}},
+        {"hardtanh", {"tensor", "", ""}},
         {"histogram", {"tensor", "", "", ""}},
         {"imag", {"tensor"}},
         {"index_sample", {"tensor", "tensor"}},
@@ -1134,7 +1140,6 @@ std::unordered_map<std::string, std::vector<std::string>>
         {"add_", {"tensor", "tensor"}},
         {"affine_grid", {"tensor", "", ""}},
         {"all", {"tensor", "", ""}},
-        {"allclose", {"tensor", "tensor", "", "", ""}},
         {"amax", {"tensor", "", ""}},
         {"amin", {"tensor", "", ""}},
         {"any", {"tensor", "", ""}},
@@ -1206,8 +1211,6 @@ std::unordered_map<std::string, std::vector<std::string>>
         {"cast", {"tensor", "", ""}},
         {"check_finite_and_unscale_", {"list", "tensor", "tensor"}},
         {"class_center_sample", {"tensor", "", "", "", "", "", "", ""}},
-        {"clip", {"tensor", "", ""}},
-        {"clip_", {"tensor", "", ""}},
         {"clip_by_norm", {"tensor", ""}},
         {"coalesce_tensor", {"list", "", "", "", "", "", "", "", "", "", ""}},
         {"concat", {"list", ""}},
@@ -1245,8 +1248,6 @@ std::unordered_map<std::string, std::vector<std::string>>
         {"eye", {"", "", "", ""}},
         {"fill", {"tensor", ""}},
         {"fill_", {"tensor", ""}},
-        {"fill_diagonal", {"tensor", "", "", ""}},
-        {"fill_diagonal_", {"tensor", "", "", ""}},
         {"flatten", {"tensor", "", ""}},
         {"flatten_", {"tensor", "", ""}},
         {"floor_divide", {"tensor", "tensor"}},
@@ -1275,7 +1276,6 @@ std::unordered_map<std::string, std::vector<std::string>>
         {"greater_than", {"tensor", "tensor"}},
         {"group_norm", {"tensor", "tensor", "tensor", "", "", ""}},
         {"hardswish", {"tensor"}},
-        {"hardtanh", {"tensor", "", ""}},
         {"hsigmoid_loss",
          {"tensor",
           "tensor",
@@ -1558,6 +1558,7 @@ std::unordered_map<std::string, std::vector<std::string>>
         {"acos", {"out"}},
         {"acosh", {"out"}},
         {"addmm", {"out"}},
+        {"allclose", {"out"}},
         {"angle", {"out"}},
         {"argsort", {"out", "indices"}},
         {"as_complex", {"out"}},
@@ -1574,6 +1575,8 @@ std::unordered_map<std::string, std::vector<std::string>>
         {"celu", {"out"}},
         {"cholesky", {"out"}},
         {"cholesky_solve", {"out"}},
+        {"clip", {"out"}},
+        {"clip_", {"out"}},
         {"complex", {"out"}},
         {"conj", {"out"}},
         {"cos", {"out"}},
@@ -1602,6 +1605,8 @@ std::unordered_map<std::string, std::vector<std::string>>
         {"fft_c2c", {"out"}},
         {"fft_c2r", {"out"}},
         {"fft_r2c", {"out"}},
+        {"fill_diagonal", {"out"}},
+        {"fill_diagonal_", {"out"}},
         {"fill_diagonal_tensor", {"out"}},
         {"fill_diagonal_tensor_", {"out"}},
         {"flip", {"out"}},
@@ -1616,6 +1621,7 @@ std::unordered_map<std::string, std::vector<std::string>>
         {"gumbel_softmax", {"out"}},
         {"hardshrink", {"out"}},
         {"hardsigmoid", {"out"}},
+        {"hardtanh", {"out"}},
         {"histogram", {"out"}},
         {"imag", {"out"}},
         {"index_sample", {"out"}},
@@ -1726,7 +1732,6 @@ std::unordered_map<std::string, std::vector<std::string>>
         {"add_", {"out"}},
         {"affine_grid", {"output"}},
         {"all", {"out"}},
-        {"allclose", {"out"}},
         {"amax", {"out"}},
         {"amin", {"out"}},
         {"any", {"out"}},
@@ -1766,8 +1771,6 @@ std::unordered_map<std::string, std::vector<std::string>>
         {"check_finite_and_unscale_", {"out", "output_found_infinite"}},
         {"class_center_sample",
          {"remapped_label", "sampled_local_class_center"}},
-        {"clip", {"out"}},
-        {"clip_", {"out"}},
         {"clip_by_norm", {"out"}},
         {"coalesce_tensor", {"output", "fused_output"}},
         {"concat", {"out"}},
@@ -1801,8 +1804,6 @@ std::unordered_map<std::string, std::vector<std::string>>
         {"eye", {"out"}},
         {"fill", {"out"}},
         {"fill_", {"out"}},
-        {"fill_diagonal", {"out"}},
-        {"fill_diagonal_", {"out"}},
         {"flatten", {"out", "xshape"}},
         {"flatten_", {"out", "xshape"}},
         {"floor_divide", {"out"}},
@@ -1820,7 +1821,6 @@ std::unordered_map<std::string, std::vector<std::string>>
         {"greater_than", {"out"}},
         {"group_norm", {"y", "mean", "variance"}},
         {"hardswish", {"out"}},
-        {"hardtanh", {"out"}},
         {"hsigmoid_loss", {"out", "pre_out", "w_out"}},
         {"huber_loss", {"out", "residual"}},
         {"increment", {"out"}},
@@ -2431,6 +2431,117 @@ paddle::experimental::Tensor addmm_ad_func(
     std::string input_input_str = paddle::string::Sprintf(
         TENSOR_INPUT_TEMPLATE, egr::EagerUtils::TensorStr(input));
     input_str += input_input_str;
+    const char* TENSOR_X_TEMPLATE = " \n( x , [%s]), ";
+    std::string input_x_str = paddle::string::Sprintf(
+        TENSOR_X_TEMPLATE, egr::EagerUtils::TensorStr(x));
+    input_str += input_x_str;
+    const char* TENSOR_Y_TEMPLATE = " \n( y , [%s]), ";
+    std::string input_y_str = paddle::string::Sprintf(
+        TENSOR_Y_TEMPLATE, egr::EagerUtils::TensorStr(y));
+    input_str += input_y_str;
+    const char* TENSOR_OUT_TEMPLATE = " \n( out , [%s]), ";
+    std::string output_out_str = paddle::string::Sprintf(
+        TENSOR_OUT_TEMPLATE, egr::EagerUtils::TensorStr(out));
+    output_str += output_out_str;
+    VLOG(4) << paddle::string::Sprintf(
+        INPUT_PRINT_TEMPLATE, input_str, output_str);
+  }
+
+  // Returns
+  return out;
+}
+
+paddle::experimental::Tensor allclose_ad_func(
+    const paddle::experimental::Tensor& x,
+    const paddle::experimental::Tensor& y,
+    paddle::experimental::Scalar rtol,
+    paddle::experimental::Scalar atol,
+    bool equal_nan) {
+  VLOG(3) << "Running AD API: "
+          << "allclose";
+  // Dygraph Record Event
+  paddle::platform::RecordEvent dygraph_entrance_record_event(
+      "allclose dygraph", paddle::platform::TracerEventType::Operator, 1);
+
+  // AMP Logic
+  if (egr::Controller::Instance().GetAMPLevel() !=
+      paddle::imperative::AmpLevel::O0) {
+    VLOG(5) << "Check and Prepare For AMP";
+    auto op_name = phi::TransToFluidOpName("allclose");
+    paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                         egr::kSlotSmallVectorSize>
+        amp_tensors_vector = {{x}, {y}};
+
+    auto amp_dst_dtype = egr::GetAmpDestDtype(op_name, amp_tensors_vector);
+
+    auto new_x = egr::EagerAmpAutoCast("x", x, amp_dst_dtype, op_name);
+    auto new_y = egr::EagerAmpAutoCast("y", y, amp_dst_dtype, op_name);
+
+    {
+      paddle::imperative::AutoCastGuard guard(
+          egr::Controller::Instance().GetCurrentTracer(),
+          paddle::imperative::AmpLevel::O0);
+      return allclose_ad_func(new_x, new_y, rtol, atol, equal_nan);
+    }
+  }
+
+  // Layout autotune
+
+  if (egr::Controller::Instance().UseLayoutAutoTune()) {
+    paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                         egr::kSlotSmallVectorSize>
+        tensors_vector = {{x}, {y}};
+
+    auto op_name = phi::TransToFluidOpName("allclose");
+    auto transformer = egr::EagerLayoutAutotune(op_name, tensors_vector);
+    auto new_x = transformer->TransInTensor("x", x);
+    auto new_y = transformer->TransInTensor("y", y);
+
+    VLOG(5) << "Check and Prepare For LAYOUT " << op_name;
+    paddle::imperative::LayoutAutotuneGuard guard(
+        egr::Controller::Instance().GetCurrentTracer(), false);
+    paddle::experimental::Tensor out =
+        allclose_ad_func(new_x, new_y, rtol, atol, equal_nan);
+
+    transformer->SetOutTensorLayout(&out);
+
+    // Returns
+    return out;
+  }
+
+  VLOG(5) << "Running C++ API: "
+          << "allclose";
+  // Before log info
+
+  if (VLOG_IS_ON(3)) {
+    const char* INPUT_PRINT_TEMPLATE = "{ Input: [%s]} ";
+
+    std::string input_str = "";
+    std::string output_str = "";
+    const char* TENSOR_X_TEMPLATE = " \n( x , [%s]), ";
+    std::string input_x_str = paddle::string::Sprintf(
+        TENSOR_X_TEMPLATE, egr::EagerUtils::TensorStr(x));
+    input_str += input_x_str;
+    const char* TENSOR_Y_TEMPLATE = " \n( y , [%s]), ";
+    std::string input_y_str = paddle::string::Sprintf(
+        TENSOR_Y_TEMPLATE, egr::EagerUtils::TensorStr(y));
+    input_str += input_y_str;
+    VLOG(3) << paddle::string::Sprintf(INPUT_PRINT_TEMPLATE, input_str);
+  }
+
+  // Forward API Call
+  auto api_result = paddle::experimental::allclose(x, y, rtol, atol, equal_nan);
+  // Get Outputs
+  auto& out = api_result;
+
+  VLOG(4) << "Finish AD API: allclose";
+  // LOG IF DEBUG
+
+  if (VLOG_IS_ON(4)) {
+    const char* INPUT_PRINT_TEMPLATE = "{ Input: [%s],  \n Output: [%s] } ";
+
+    std::string input_str = "";
+    std::string output_str = "";
     const char* TENSOR_X_TEMPLATE = " \n( x , [%s]), ";
     std::string input_x_str = paddle::string::Sprintf(
         TENSOR_X_TEMPLATE, egr::EagerUtils::TensorStr(x));
@@ -4732,6 +4843,282 @@ paddle::experimental::Tensor cholesky_solve_ad_func(
     std::string input_y_str = paddle::string::Sprintf(
         TENSOR_Y_TEMPLATE, egr::EagerUtils::TensorStr(y));
     input_str += input_y_str;
+    const char* TENSOR_OUT_TEMPLATE = " \n( out , [%s]), ";
+    std::string output_out_str = paddle::string::Sprintf(
+        TENSOR_OUT_TEMPLATE, egr::EagerUtils::TensorStr(out));
+    output_str += output_out_str;
+    VLOG(4) << paddle::string::Sprintf(
+        INPUT_PRINT_TEMPLATE, input_str, output_str);
+  }
+
+  // Returns
+  return out;
+}
+
+paddle::experimental::Tensor clip_ad_func(const paddle::experimental::Tensor& x,
+                                          paddle::experimental::Scalar min,
+                                          paddle::experimental::Scalar max) {
+  VLOG(3) << "Running AD API: "
+          << "clip";
+  // Dygraph Record Event
+  paddle::platform::RecordEvent dygraph_entrance_record_event(
+      "clip dygraph", paddle::platform::TracerEventType::Operator, 1);
+
+  // AMP Logic
+  if (egr::Controller::Instance().GetAMPLevel() !=
+      paddle::imperative::AmpLevel::O0) {
+    VLOG(5) << "Check and Prepare For AMP";
+    auto op_name = phi::TransToFluidOpName("clip");
+    paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                         egr::kSlotSmallVectorSize>
+        amp_tensors_vector = {{x}};
+
+    auto amp_dst_dtype = egr::GetAmpDestDtype(op_name, amp_tensors_vector);
+
+    auto new_x = egr::EagerAmpAutoCast("x", x, amp_dst_dtype, op_name);
+
+    {
+      paddle::imperative::AutoCastGuard guard(
+          egr::Controller::Instance().GetCurrentTracer(),
+          paddle::imperative::AmpLevel::O0);
+      return clip_ad_func(new_x, min, max);
+    }
+  }
+
+  // Layout autotune
+
+  if (egr::Controller::Instance().UseLayoutAutoTune()) {
+    paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                         egr::kSlotSmallVectorSize>
+        tensors_vector = {{x}};
+
+    auto op_name = phi::TransToFluidOpName("clip");
+    auto transformer = egr::EagerLayoutAutotune(op_name, tensors_vector);
+    auto new_x = transformer->TransInTensor("x", x);
+
+    VLOG(5) << "Check and Prepare For LAYOUT " << op_name;
+    paddle::imperative::LayoutAutotuneGuard guard(
+        egr::Controller::Instance().GetCurrentTracer(), false);
+    paddle::experimental::Tensor out = clip_ad_func(new_x, min, max);
+
+    transformer->SetOutTensorLayout(&out);
+
+    // Returns
+    return out;
+  }
+
+  // Get Input AutoGradMeta
+  egr::AutogradMeta* x_autograd_meta =
+      egr::EagerUtils::nullable_autograd_meta(x);
+
+  VLOG(5) << "Running C++ API: "
+          << "clip";
+  // Before log info
+
+  if (VLOG_IS_ON(3)) {
+    const char* INPUT_PRINT_TEMPLATE = "{ Input: [%s]} ";
+
+    std::string input_str = "";
+    std::string output_str = "";
+    const char* TENSOR_X_TEMPLATE = " \n( x , [%s]), ";
+    std::string input_x_str = paddle::string::Sprintf(
+        TENSOR_X_TEMPLATE, egr::EagerUtils::TensorStr(x));
+    input_str += input_x_str;
+    VLOG(3) << paddle::string::Sprintf(INPUT_PRINT_TEMPLATE, input_str);
+  }
+
+  // Forward API Call
+  auto api_result = paddle::experimental::clip(x, min, max);
+  // Check NaN and Inf if needed
+  if (FLAGS_check_nan_inf) {
+    egr::CheckTensorHasNanOrInf("clip", api_result);
+  }
+
+  // Get Outputs
+  auto& out = api_result;
+
+  // Get Output AutoGradMeta
+  egr::AutogradMeta* out_autograd_meta = egr::EagerUtils::autograd_meta(&out);
+  bool trace_backward = egr::Controller::Instance().HasGrad();
+  bool require_any_grad =
+      egr::EagerUtils::ComputeRequireGrad(trace_backward, x_autograd_meta);
+
+  // Check Inplace if needed
+
+  // Node Creation
+  if (require_any_grad) {
+    paddle::platform::RecordEvent node_creation_record_event(
+        "clip node_creation",
+        paddle::platform::TracerEventType::OperatorInner,
+        1);
+
+    egr::EagerUtils::PassStopGradient(false, out_autograd_meta);
+
+    // Node Construction
+    auto grad_node = std::shared_ptr<ClipGradNode>(new ClipGradNode(1, 1));
+    // SetAttributes if needed
+    grad_node->SetAttributemin(min);
+    grad_node->SetAttributemax(max);
+    // Set TensorWrappers for Forward Inputs if needed
+    grad_node->SetTensorWrapperx(x);
+    // SetGradOutMeta & SetEdges
+    grad_node->SetGradOutMeta(x, 0);
+    // SetOutRank & SetHistory & SetGradInMeta & RetainGrad
+    if (out_autograd_meta) {
+      egr::EagerUtils::SetOutRankWithSlot(out_autograd_meta, 0);
+    }
+    if (out_autograd_meta) {
+      egr::EagerUtils::SetHistory(out_autograd_meta, grad_node);
+    }
+    grad_node->SetGradInMeta(out, 0);
+    egr::EagerUtils::CheckAndRetainGrad(out);
+    // Set TensorWrappers for Forward Outputs if needed
+  }
+
+  VLOG(4) << "Finish AD API: clip";
+  // LOG IF DEBUG
+
+  if (VLOG_IS_ON(4)) {
+    const char* INPUT_PRINT_TEMPLATE = "{ Input: [%s],  \n Output: [%s] } ";
+
+    std::string input_str = "";
+    std::string output_str = "";
+    const char* TENSOR_X_TEMPLATE = " \n( x , [%s]), ";
+    std::string input_x_str = paddle::string::Sprintf(
+        TENSOR_X_TEMPLATE, egr::EagerUtils::TensorStr(x));
+    input_str += input_x_str;
+    const char* TENSOR_OUT_TEMPLATE = " \n( out , [%s]), ";
+    std::string output_out_str = paddle::string::Sprintf(
+        TENSOR_OUT_TEMPLATE, egr::EagerUtils::TensorStr(out));
+    output_str += output_out_str;
+    VLOG(4) << paddle::string::Sprintf(
+        INPUT_PRINT_TEMPLATE, input_str, output_str);
+  }
+
+  // Returns
+  return out;
+}
+
+paddle::experimental::Tensor& clip__ad_func(paddle::experimental::Tensor& x,
+                                            paddle::experimental::Scalar min,
+                                            paddle::experimental::Scalar max) {
+  VLOG(3) << "Running AD API: "
+          << "clip_";
+  // Dygraph Record Event
+  paddle::platform::RecordEvent dygraph_entrance_record_event(
+      "clip_ dygraph", paddle::platform::TracerEventType::Operator, 1);
+
+  // AMP Logic
+
+  VLOG(5) << " No AMP for clip__ad_func because it is a inplace or cast api. ";
+  // Layout autotune
+
+  if (egr::Controller::Instance().UseLayoutAutoTune()) {
+    paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                         egr::kSlotSmallVectorSize>
+        tensors_vector = {{x}};
+
+    auto op_name = phi::TransToFluidOpName("clip_");
+    auto transformer = egr::EagerLayoutAutotune(op_name, tensors_vector);
+    auto new_x = transformer->TransInTensor("x", x);
+
+    VLOG(5) << "Check and Prepare For LAYOUT " << op_name;
+    paddle::imperative::LayoutAutotuneGuard guard(
+        egr::Controller::Instance().GetCurrentTracer(), false);
+    paddle::experimental::Tensor& out = clip__ad_func(new_x, min, max);
+
+    transformer->SetOutTensorLayout(&out);
+
+    // Returns
+    return out;
+  }
+
+  // Get Input AutoGradMeta
+  egr::AutogradMeta* x_autograd_meta =
+      egr::EagerUtils::nullable_autograd_meta(x);
+
+  VLOG(5) << "Running C++ API: "
+          << "clip_";
+  // Before log info
+
+  if (VLOG_IS_ON(3)) {
+    const char* INPUT_PRINT_TEMPLATE = "{ Input: [%s]} ";
+
+    std::string input_str = "";
+    std::string output_str = "";
+    const char* TENSOR_X_TEMPLATE = " \n( x , [%s]), ";
+    std::string input_x_str = paddle::string::Sprintf(
+        TENSOR_X_TEMPLATE, egr::EagerUtils::TensorStr(x));
+    input_str += input_x_str;
+    VLOG(3) << paddle::string::Sprintf(INPUT_PRINT_TEMPLATE, input_str);
+  }
+
+  // Forward API Call
+  auto& api_result = paddle::experimental::clip_(x, min, max);
+  // Check NaN and Inf if needed
+  if (FLAGS_check_nan_inf) {
+    egr::CheckTensorHasNanOrInf("clip_", api_result);
+  }
+
+  // Get Outputs
+  auto& out = api_result;
+
+  // Get Output AutoGradMeta
+  egr::AutogradMeta* out_autograd_meta = egr::EagerUtils::autograd_meta(&out);
+  bool trace_backward = egr::Controller::Instance().HasGrad();
+  bool require_any_grad =
+      egr::EagerUtils::ComputeRequireGrad(trace_backward, x_autograd_meta);
+
+  // Check Inplace if needed
+
+  egr::EagerUtils::CheckInplace(x, x_autograd_meta, require_any_grad);
+
+  // Bump Inplace Version
+  x.bump_inplace_version();
+  VLOG(3) << "Tensor(" << x.name() << ") uses Inplace Strategy.";
+
+  // Node Creation
+  if (require_any_grad) {
+    paddle::platform::RecordEvent node_creation_record_event(
+        "clip node_creation",
+        paddle::platform::TracerEventType::OperatorInner,
+        1);
+
+    egr::EagerUtils::PassStopGradient(false, out_autograd_meta);
+
+    // Node Construction
+    auto grad_node = std::shared_ptr<ClipGradNode>(new ClipGradNode(1, 1));
+    // SetAttributes if needed
+    grad_node->SetAttributemin(min);
+    grad_node->SetAttributemax(max);
+    // Set TensorWrappers for Forward Inputs if needed
+    grad_node->SetTensorWrapperx(x);
+    // SetGradOutMeta & SetEdges
+    grad_node->SetGradOutMeta(x, 0);
+    // SetOutRank & SetHistory & SetGradInMeta & RetainGrad
+    if (out_autograd_meta) {
+      egr::EagerUtils::SetOutRankWithSlot(out_autograd_meta, 0);
+    }
+    if (out_autograd_meta) {
+      egr::EagerUtils::SetHistory(out_autograd_meta, grad_node);
+    }
+    grad_node->SetGradInMeta(out, 0);
+    egr::EagerUtils::CheckAndRetainGrad(out);
+    // Set TensorWrappers for Forward Outputs if needed
+  }
+
+  VLOG(4) << "Finish AD API: clip_";
+  // LOG IF DEBUG
+
+  if (VLOG_IS_ON(4)) {
+    const char* INPUT_PRINT_TEMPLATE = "{ Input: [%s],  \n Output: [%s] } ";
+
+    std::string input_str = "";
+    std::string output_str = "";
+    const char* TENSOR_X_TEMPLATE = " \n( x , [%s]), ";
+    std::string input_x_str = paddle::string::Sprintf(
+        TENSOR_X_TEMPLATE, egr::EagerUtils::TensorStr(x));
+    input_str += input_x_str;
     const char* TENSOR_OUT_TEMPLATE = " \n( out , [%s]), ";
     std::string output_out_str = paddle::string::Sprintf(
         TENSOR_OUT_TEMPLATE, egr::EagerUtils::TensorStr(out));
@@ -8720,6 +9107,288 @@ paddle::experimental::Tensor fft_r2c_ad_func(
   return out;
 }
 
+paddle::experimental::Tensor fill_diagonal_ad_func(
+    const paddle::experimental::Tensor& x, float value, int offset, bool wrap) {
+  VLOG(3) << "Running AD API: "
+          << "fill_diagonal";
+  // Dygraph Record Event
+  paddle::platform::RecordEvent dygraph_entrance_record_event(
+      "fill_diagonal dygraph", paddle::platform::TracerEventType::Operator, 1);
+
+  // AMP Logic
+  if (egr::Controller::Instance().GetAMPLevel() !=
+      paddle::imperative::AmpLevel::O0) {
+    VLOG(5) << "Check and Prepare For AMP";
+    auto op_name = phi::TransToFluidOpName("fill_diagonal");
+    paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                         egr::kSlotSmallVectorSize>
+        amp_tensors_vector = {{x}};
+
+    auto amp_dst_dtype = egr::GetAmpDestDtype(op_name, amp_tensors_vector);
+
+    auto new_x = egr::EagerAmpAutoCast("x", x, amp_dst_dtype, op_name);
+
+    {
+      paddle::imperative::AutoCastGuard guard(
+          egr::Controller::Instance().GetCurrentTracer(),
+          paddle::imperative::AmpLevel::O0);
+      return fill_diagonal_ad_func(new_x, value, offset, wrap);
+    }
+  }
+
+  // Layout autotune
+
+  if (egr::Controller::Instance().UseLayoutAutoTune()) {
+    paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                         egr::kSlotSmallVectorSize>
+        tensors_vector = {{x}};
+
+    auto op_name = phi::TransToFluidOpName("fill_diagonal");
+    auto transformer = egr::EagerLayoutAutotune(op_name, tensors_vector);
+    auto new_x = transformer->TransInTensor("x", x);
+
+    VLOG(5) << "Check and Prepare For LAYOUT " << op_name;
+    paddle::imperative::LayoutAutotuneGuard guard(
+        egr::Controller::Instance().GetCurrentTracer(), false);
+    paddle::experimental::Tensor out =
+        fill_diagonal_ad_func(new_x, value, offset, wrap);
+
+    transformer->SetOutTensorLayout(&out);
+
+    // Returns
+    return out;
+  }
+
+  // Get Input AutoGradMeta
+  egr::AutogradMeta* x_autograd_meta =
+      egr::EagerUtils::nullable_autograd_meta(x);
+
+  VLOG(5) << "Running C++ API: "
+          << "fill_diagonal";
+  // Before log info
+
+  if (VLOG_IS_ON(3)) {
+    const char* INPUT_PRINT_TEMPLATE = "{ Input: [%s]} ";
+
+    std::string input_str = "";
+    std::string output_str = "";
+    const char* TENSOR_X_TEMPLATE = " \n( x , [%s]), ";
+    std::string input_x_str = paddle::string::Sprintf(
+        TENSOR_X_TEMPLATE, egr::EagerUtils::TensorStr(x));
+    input_str += input_x_str;
+    VLOG(3) << paddle::string::Sprintf(INPUT_PRINT_TEMPLATE, input_str);
+  }
+
+  // Forward API Call
+  auto api_result = paddle::experimental::fill_diagonal(x, value, offset, wrap);
+  // Check NaN and Inf if needed
+  if (FLAGS_check_nan_inf) {
+    egr::CheckTensorHasNanOrInf("fill_diagonal", api_result);
+  }
+
+  // Get Outputs
+  auto& out = api_result;
+
+  // Get Output AutoGradMeta
+  egr::AutogradMeta* out_autograd_meta = egr::EagerUtils::autograd_meta(&out);
+  bool trace_backward = egr::Controller::Instance().HasGrad();
+  bool require_any_grad =
+      egr::EagerUtils::ComputeRequireGrad(trace_backward, x_autograd_meta);
+
+  // Check Inplace if needed
+
+  // Node Creation
+  if (require_any_grad) {
+    paddle::platform::RecordEvent node_creation_record_event(
+        "fill_diagonal node_creation",
+        paddle::platform::TracerEventType::OperatorInner,
+        1);
+
+    egr::EagerUtils::PassStopGradient(false, out_autograd_meta);
+
+    // Node Construction
+    auto grad_node =
+        std::shared_ptr<FillDiagonalGradNode>(new FillDiagonalGradNode(1, 1));
+    // SetAttributes if needed
+    grad_node->SetAttributevalue(value);
+    grad_node->SetAttributeoffset(offset);
+    grad_node->SetAttributewrap(wrap);
+    // Set TensorWrappers for Forward Inputs if needed
+
+    // SetGradOutMeta & SetEdges
+    grad_node->SetGradOutMeta(x, 0);
+    // SetOutRank & SetHistory & SetGradInMeta & RetainGrad
+    if (out_autograd_meta) {
+      egr::EagerUtils::SetOutRankWithSlot(out_autograd_meta, 0);
+    }
+    if (out_autograd_meta) {
+      egr::EagerUtils::SetHistory(out_autograd_meta, grad_node);
+    }
+    grad_node->SetGradInMeta(out, 0);
+    egr::EagerUtils::CheckAndRetainGrad(out);
+    // Set TensorWrappers for Forward Outputs if needed
+  }
+
+  VLOG(4) << "Finish AD API: fill_diagonal";
+  // LOG IF DEBUG
+
+  if (VLOG_IS_ON(4)) {
+    const char* INPUT_PRINT_TEMPLATE = "{ Input: [%s],  \n Output: [%s] } ";
+
+    std::string input_str = "";
+    std::string output_str = "";
+    const char* TENSOR_X_TEMPLATE = " \n( x , [%s]), ";
+    std::string input_x_str = paddle::string::Sprintf(
+        TENSOR_X_TEMPLATE, egr::EagerUtils::TensorStr(x));
+    input_str += input_x_str;
+    const char* TENSOR_OUT_TEMPLATE = " \n( out , [%s]), ";
+    std::string output_out_str = paddle::string::Sprintf(
+        TENSOR_OUT_TEMPLATE, egr::EagerUtils::TensorStr(out));
+    output_str += output_out_str;
+    VLOG(4) << paddle::string::Sprintf(
+        INPUT_PRINT_TEMPLATE, input_str, output_str);
+  }
+
+  // Returns
+  return out;
+}
+
+paddle::experimental::Tensor& fill_diagonal__ad_func(
+    paddle::experimental::Tensor& x, float value, int offset, bool wrap) {
+  VLOG(3) << "Running AD API: "
+          << "fill_diagonal_";
+  // Dygraph Record Event
+  paddle::platform::RecordEvent dygraph_entrance_record_event(
+      "fill_diagonal_ dygraph", paddle::platform::TracerEventType::Operator, 1);
+
+  // AMP Logic
+
+  VLOG(5) << " No AMP for fill_diagonal__ad_func because it is a inplace or "
+             "cast api. ";
+  // Layout autotune
+
+  if (egr::Controller::Instance().UseLayoutAutoTune()) {
+    paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                         egr::kSlotSmallVectorSize>
+        tensors_vector = {{x}};
+
+    auto op_name = phi::TransToFluidOpName("fill_diagonal_");
+    auto transformer = egr::EagerLayoutAutotune(op_name, tensors_vector);
+    auto new_x = transformer->TransInTensor("x", x);
+
+    VLOG(5) << "Check and Prepare For LAYOUT " << op_name;
+    paddle::imperative::LayoutAutotuneGuard guard(
+        egr::Controller::Instance().GetCurrentTracer(), false);
+    paddle::experimental::Tensor& out =
+        fill_diagonal__ad_func(new_x, value, offset, wrap);
+
+    transformer->SetOutTensorLayout(&out);
+
+    // Returns
+    return out;
+  }
+
+  // Get Input AutoGradMeta
+  egr::AutogradMeta* x_autograd_meta =
+      egr::EagerUtils::nullable_autograd_meta(x);
+
+  VLOG(5) << "Running C++ API: "
+          << "fill_diagonal_";
+  // Before log info
+
+  if (VLOG_IS_ON(3)) {
+    const char* INPUT_PRINT_TEMPLATE = "{ Input: [%s]} ";
+
+    std::string input_str = "";
+    std::string output_str = "";
+    const char* TENSOR_X_TEMPLATE = " \n( x , [%s]), ";
+    std::string input_x_str = paddle::string::Sprintf(
+        TENSOR_X_TEMPLATE, egr::EagerUtils::TensorStr(x));
+    input_str += input_x_str;
+    VLOG(3) << paddle::string::Sprintf(INPUT_PRINT_TEMPLATE, input_str);
+  }
+
+  // Forward API Call
+  auto& api_result =
+      paddle::experimental::fill_diagonal_(x, value, offset, wrap);
+  // Check NaN and Inf if needed
+  if (FLAGS_check_nan_inf) {
+    egr::CheckTensorHasNanOrInf("fill_diagonal_", api_result);
+  }
+
+  // Get Outputs
+  auto& out = api_result;
+
+  // Get Output AutoGradMeta
+  egr::AutogradMeta* out_autograd_meta = egr::EagerUtils::autograd_meta(&out);
+  bool trace_backward = egr::Controller::Instance().HasGrad();
+  bool require_any_grad =
+      egr::EagerUtils::ComputeRequireGrad(trace_backward, x_autograd_meta);
+
+  // Check Inplace if needed
+
+  egr::EagerUtils::CheckInplace(x, x_autograd_meta, require_any_grad);
+
+  // Bump Inplace Version
+  x.bump_inplace_version();
+  VLOG(3) << "Tensor(" << x.name() << ") uses Inplace Strategy.";
+
+  // Node Creation
+  if (require_any_grad) {
+    paddle::platform::RecordEvent node_creation_record_event(
+        "fill_diagonal node_creation",
+        paddle::platform::TracerEventType::OperatorInner,
+        1);
+
+    egr::EagerUtils::PassStopGradient(false, out_autograd_meta);
+
+    // Node Construction
+    auto grad_node =
+        std::shared_ptr<FillDiagonalGradNode>(new FillDiagonalGradNode(1, 1));
+    // SetAttributes if needed
+    grad_node->SetAttributevalue(value);
+    grad_node->SetAttributeoffset(offset);
+    grad_node->SetAttributewrap(wrap);
+    // Set TensorWrappers for Forward Inputs if needed
+
+    // SetGradOutMeta & SetEdges
+    grad_node->SetGradOutMeta(x, 0);
+    // SetOutRank & SetHistory & SetGradInMeta & RetainGrad
+    if (out_autograd_meta) {
+      egr::EagerUtils::SetOutRankWithSlot(out_autograd_meta, 0);
+    }
+    if (out_autograd_meta) {
+      egr::EagerUtils::SetHistory(out_autograd_meta, grad_node);
+    }
+    grad_node->SetGradInMeta(out, 0);
+    egr::EagerUtils::CheckAndRetainGrad(out);
+    // Set TensorWrappers for Forward Outputs if needed
+  }
+
+  VLOG(4) << "Finish AD API: fill_diagonal_";
+  // LOG IF DEBUG
+
+  if (VLOG_IS_ON(4)) {
+    const char* INPUT_PRINT_TEMPLATE = "{ Input: [%s],  \n Output: [%s] } ";
+
+    std::string input_str = "";
+    std::string output_str = "";
+    const char* TENSOR_X_TEMPLATE = " \n( x , [%s]), ";
+    std::string input_x_str = paddle::string::Sprintf(
+        TENSOR_X_TEMPLATE, egr::EagerUtils::TensorStr(x));
+    input_str += input_x_str;
+    const char* TENSOR_OUT_TEMPLATE = " \n( out , [%s]), ";
+    std::string output_out_str = paddle::string::Sprintf(
+        TENSOR_OUT_TEMPLATE, egr::EagerUtils::TensorStr(out));
+    output_str += output_out_str;
+    VLOG(4) << paddle::string::Sprintf(
+        INPUT_PRINT_TEMPLATE, input_str, output_str);
+  }
+
+  // Returns
+  return out;
+}
+
 paddle::experimental::Tensor fill_diagonal_tensor_ad_func(
     const paddle::experimental::Tensor& x,
     const paddle::experimental::Tensor& y,
@@ -10742,6 +11411,150 @@ paddle::experimental::Tensor hardsigmoid_ad_func(
   }
 
   VLOG(4) << "Finish AD API: hardsigmoid";
+  // LOG IF DEBUG
+
+  if (VLOG_IS_ON(4)) {
+    const char* INPUT_PRINT_TEMPLATE = "{ Input: [%s],  \n Output: [%s] } ";
+
+    std::string input_str = "";
+    std::string output_str = "";
+    const char* TENSOR_X_TEMPLATE = " \n( x , [%s]), ";
+    std::string input_x_str = paddle::string::Sprintf(
+        TENSOR_X_TEMPLATE, egr::EagerUtils::TensorStr(x));
+    input_str += input_x_str;
+    const char* TENSOR_OUT_TEMPLATE = " \n( out , [%s]), ";
+    std::string output_out_str = paddle::string::Sprintf(
+        TENSOR_OUT_TEMPLATE, egr::EagerUtils::TensorStr(out));
+    output_str += output_out_str;
+    VLOG(4) << paddle::string::Sprintf(
+        INPUT_PRINT_TEMPLATE, input_str, output_str);
+  }
+
+  // Returns
+  return out;
+}
+
+paddle::experimental::Tensor hardtanh_ad_func(
+    const paddle::experimental::Tensor& x, float t_min, float t_max) {
+  VLOG(3) << "Running AD API: "
+          << "hardtanh";
+  // Dygraph Record Event
+  paddle::platform::RecordEvent dygraph_entrance_record_event(
+      "hardtanh dygraph", paddle::platform::TracerEventType::Operator, 1);
+
+  // AMP Logic
+  if (egr::Controller::Instance().GetAMPLevel() !=
+      paddle::imperative::AmpLevel::O0) {
+    VLOG(5) << "Check and Prepare For AMP";
+    auto op_name = phi::TransToFluidOpName("hardtanh");
+    paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                         egr::kSlotSmallVectorSize>
+        amp_tensors_vector = {{x}};
+
+    auto amp_dst_dtype = egr::GetAmpDestDtype(op_name, amp_tensors_vector);
+
+    auto new_x = egr::EagerAmpAutoCast("x", x, amp_dst_dtype, op_name);
+
+    {
+      paddle::imperative::AutoCastGuard guard(
+          egr::Controller::Instance().GetCurrentTracer(),
+          paddle::imperative::AmpLevel::O0);
+      return hardtanh_ad_func(new_x, t_min, t_max);
+    }
+  }
+
+  // Layout autotune
+
+  if (egr::Controller::Instance().UseLayoutAutoTune()) {
+    paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                         egr::kSlotSmallVectorSize>
+        tensors_vector = {{x}};
+
+    auto op_name = phi::TransToFluidOpName("hardtanh");
+    auto transformer = egr::EagerLayoutAutotune(op_name, tensors_vector);
+    auto new_x = transformer->TransInTensor("x", x);
+
+    VLOG(5) << "Check and Prepare For LAYOUT " << op_name;
+    paddle::imperative::LayoutAutotuneGuard guard(
+        egr::Controller::Instance().GetCurrentTracer(), false);
+    paddle::experimental::Tensor out = hardtanh_ad_func(new_x, t_min, t_max);
+
+    transformer->SetOutTensorLayout(&out);
+
+    // Returns
+    return out;
+  }
+
+  // Get Input AutoGradMeta
+  egr::AutogradMeta* x_autograd_meta =
+      egr::EagerUtils::nullable_autograd_meta(x);
+
+  VLOG(5) << "Running C++ API: "
+          << "hardtanh";
+  // Before log info
+
+  if (VLOG_IS_ON(3)) {
+    const char* INPUT_PRINT_TEMPLATE = "{ Input: [%s]} ";
+
+    std::string input_str = "";
+    std::string output_str = "";
+    const char* TENSOR_X_TEMPLATE = " \n( x , [%s]), ";
+    std::string input_x_str = paddle::string::Sprintf(
+        TENSOR_X_TEMPLATE, egr::EagerUtils::TensorStr(x));
+    input_str += input_x_str;
+    VLOG(3) << paddle::string::Sprintf(INPUT_PRINT_TEMPLATE, input_str);
+  }
+
+  // Forward API Call
+  auto api_result = paddle::experimental::hardtanh(x, t_min, t_max);
+  // Check NaN and Inf if needed
+  if (FLAGS_check_nan_inf) {
+    egr::CheckTensorHasNanOrInf("hardtanh", api_result);
+  }
+
+  // Get Outputs
+  auto& out = api_result;
+
+  // Get Output AutoGradMeta
+  egr::AutogradMeta* out_autograd_meta = egr::EagerUtils::autograd_meta(&out);
+  bool trace_backward = egr::Controller::Instance().HasGrad();
+  bool require_any_grad =
+      egr::EagerUtils::ComputeRequireGrad(trace_backward, x_autograd_meta);
+
+  // Check Inplace if needed
+
+  // Node Creation
+  if (require_any_grad) {
+    paddle::platform::RecordEvent node_creation_record_event(
+        "hardtanh node_creation",
+        paddle::platform::TracerEventType::OperatorInner,
+        1);
+
+    egr::EagerUtils::PassStopGradient(false, out_autograd_meta);
+
+    // Node Construction
+    auto grad_node =
+        std::shared_ptr<HardtanhGradNode>(new HardtanhGradNode(1, 1));
+    // SetAttributes if needed
+    grad_node->SetAttributet_min(t_min);
+    grad_node->SetAttributet_max(t_max);
+    // Set TensorWrappers for Forward Inputs if needed
+    grad_node->SetTensorWrapperx(x);
+    // SetGradOutMeta & SetEdges
+    grad_node->SetGradOutMeta(x, 0);
+    // SetOutRank & SetHistory & SetGradInMeta & RetainGrad
+    if (out_autograd_meta) {
+      egr::EagerUtils::SetOutRankWithSlot(out_autograd_meta, 0);
+    }
+    if (out_autograd_meta) {
+      egr::EagerUtils::SetHistory(out_autograd_meta, grad_node);
+    }
+    grad_node->SetGradInMeta(out, 0);
+    egr::EagerUtils::CheckAndRetainGrad(out);
+    // Set TensorWrappers for Forward Outputs if needed
+  }
+
+  VLOG(4) << "Finish AD API: hardtanh";
   // LOG IF DEBUG
 
   if (VLOG_IS_ON(4)) {
@@ -25235,117 +26048,6 @@ paddle::experimental::Tensor all_ad_func(const paddle::experimental::Tensor& x,
   return out;
 }
 
-paddle::experimental::Tensor allclose_ad_func(
-    const paddle::experimental::Tensor& x,
-    const paddle::experimental::Tensor& y,
-    paddle::experimental::Scalar rtol,
-    paddle::experimental::Scalar atol,
-    bool equal_nan) {
-  VLOG(3) << "Running AD API: "
-          << "allclose";
-  // Dygraph Record Event
-  paddle::platform::RecordEvent dygraph_entrance_record_event(
-      "allclose dygraph", paddle::platform::TracerEventType::Operator, 1);
-
-  // AMP Logic
-  if (egr::Controller::Instance().GetAMPLevel() !=
-      paddle::imperative::AmpLevel::O0) {
-    VLOG(5) << "Check and Prepare For AMP";
-    auto op_name = phi::TransToFluidOpName("allclose");
-    paddle::small_vector<std::vector<paddle::experimental::Tensor>,
-                         egr::kSlotSmallVectorSize>
-        amp_tensors_vector = {{x}, {y}};
-
-    auto amp_dst_dtype = egr::GetAmpDestDtype(op_name, amp_tensors_vector);
-
-    auto new_x = egr::EagerAmpAutoCast("x", x, amp_dst_dtype, op_name);
-    auto new_y = egr::EagerAmpAutoCast("y", y, amp_dst_dtype, op_name);
-
-    {
-      paddle::imperative::AutoCastGuard guard(
-          egr::Controller::Instance().GetCurrentTracer(),
-          paddle::imperative::AmpLevel::O0);
-      return allclose_ad_func(new_x, new_y, rtol, atol, equal_nan);
-    }
-  }
-
-  // Layout autotune
-
-  if (egr::Controller::Instance().UseLayoutAutoTune()) {
-    paddle::small_vector<std::vector<paddle::experimental::Tensor>,
-                         egr::kSlotSmallVectorSize>
-        tensors_vector = {{x}, {y}};
-
-    auto op_name = phi::TransToFluidOpName("allclose");
-    auto transformer = egr::EagerLayoutAutotune(op_name, tensors_vector);
-    auto new_x = transformer->TransInTensor("x", x);
-    auto new_y = transformer->TransInTensor("y", y);
-
-    VLOG(5) << "Check and Prepare For LAYOUT " << op_name;
-    paddle::imperative::LayoutAutotuneGuard guard(
-        egr::Controller::Instance().GetCurrentTracer(), false);
-    paddle::experimental::Tensor out =
-        allclose_ad_func(new_x, new_y, rtol, atol, equal_nan);
-
-    transformer->SetOutTensorLayout(&out);
-
-    // Returns
-    return out;
-  }
-
-  VLOG(5) << "Running C++ API: "
-          << "allclose";
-  // Before log info
-
-  if (VLOG_IS_ON(3)) {
-    const char* INPUT_PRINT_TEMPLATE = "{ Input: [%s]} ";
-
-    std::string input_str = "";
-    std::string output_str = "";
-    const char* TENSOR_X_TEMPLATE = " \n( x , [%s]), ";
-    std::string input_x_str = paddle::string::Sprintf(
-        TENSOR_X_TEMPLATE, egr::EagerUtils::TensorStr(x));
-    input_str += input_x_str;
-    const char* TENSOR_Y_TEMPLATE = " \n( y , [%s]), ";
-    std::string input_y_str = paddle::string::Sprintf(
-        TENSOR_Y_TEMPLATE, egr::EagerUtils::TensorStr(y));
-    input_str += input_y_str;
-    VLOG(3) << paddle::string::Sprintf(INPUT_PRINT_TEMPLATE, input_str);
-  }
-
-  // Forward API Call
-  auto api_result = paddle::experimental::allclose(x, y, rtol, atol, equal_nan);
-  // Get Outputs
-  auto& out = api_result;
-
-  VLOG(4) << "Finish AD API: allclose";
-  // LOG IF DEBUG
-
-  if (VLOG_IS_ON(4)) {
-    const char* INPUT_PRINT_TEMPLATE = "{ Input: [%s],  \n Output: [%s] } ";
-
-    std::string input_str = "";
-    std::string output_str = "";
-    const char* TENSOR_X_TEMPLATE = " \n( x , [%s]), ";
-    std::string input_x_str = paddle::string::Sprintf(
-        TENSOR_X_TEMPLATE, egr::EagerUtils::TensorStr(x));
-    input_str += input_x_str;
-    const char* TENSOR_Y_TEMPLATE = " \n( y , [%s]), ";
-    std::string input_y_str = paddle::string::Sprintf(
-        TENSOR_Y_TEMPLATE, egr::EagerUtils::TensorStr(y));
-    input_str += input_y_str;
-    const char* TENSOR_OUT_TEMPLATE = " \n( out , [%s]), ";
-    std::string output_out_str = paddle::string::Sprintf(
-        TENSOR_OUT_TEMPLATE, egr::EagerUtils::TensorStr(out));
-    output_str += output_out_str;
-    VLOG(4) << paddle::string::Sprintf(
-        INPUT_PRINT_TEMPLATE, input_str, output_str);
-  }
-
-  // Returns
-  return out;
-}
-
 paddle::experimental::Tensor amax_ad_func(const paddle::experimental::Tensor& x,
                                           std::vector<int64_t> axis,
                                           bool keepdim) {
@@ -29314,282 +30016,6 @@ class_center_sample_ad_func(const paddle::experimental::Tensor& label,
   // Returns
   return std::tuple<paddle::experimental::Tensor, paddle::experimental::Tensor>{
       remapped_label, sampled_local_class_center};
-}
-
-paddle::experimental::Tensor clip_ad_func(const paddle::experimental::Tensor& x,
-                                          paddle::experimental::Scalar min,
-                                          paddle::experimental::Scalar max) {
-  VLOG(3) << "Running AD API: "
-          << "clip";
-  // Dygraph Record Event
-  paddle::platform::RecordEvent dygraph_entrance_record_event(
-      "clip dygraph", paddle::platform::TracerEventType::Operator, 1);
-
-  // AMP Logic
-  if (egr::Controller::Instance().GetAMPLevel() !=
-      paddle::imperative::AmpLevel::O0) {
-    VLOG(5) << "Check and Prepare For AMP";
-    auto op_name = phi::TransToFluidOpName("clip");
-    paddle::small_vector<std::vector<paddle::experimental::Tensor>,
-                         egr::kSlotSmallVectorSize>
-        amp_tensors_vector = {{x}};
-
-    auto amp_dst_dtype = egr::GetAmpDestDtype(op_name, amp_tensors_vector);
-
-    auto new_x = egr::EagerAmpAutoCast("x", x, amp_dst_dtype, op_name);
-
-    {
-      paddle::imperative::AutoCastGuard guard(
-          egr::Controller::Instance().GetCurrentTracer(),
-          paddle::imperative::AmpLevel::O0);
-      return clip_ad_func(new_x, min, max);
-    }
-  }
-
-  // Layout autotune
-
-  if (egr::Controller::Instance().UseLayoutAutoTune()) {
-    paddle::small_vector<std::vector<paddle::experimental::Tensor>,
-                         egr::kSlotSmallVectorSize>
-        tensors_vector = {{x}};
-
-    auto op_name = phi::TransToFluidOpName("clip");
-    auto transformer = egr::EagerLayoutAutotune(op_name, tensors_vector);
-    auto new_x = transformer->TransInTensor("x", x);
-
-    VLOG(5) << "Check and Prepare For LAYOUT " << op_name;
-    paddle::imperative::LayoutAutotuneGuard guard(
-        egr::Controller::Instance().GetCurrentTracer(), false);
-    paddle::experimental::Tensor out = clip_ad_func(new_x, min, max);
-
-    transformer->SetOutTensorLayout(&out);
-
-    // Returns
-    return out;
-  }
-
-  // Get Input AutoGradMeta
-  egr::AutogradMeta* x_autograd_meta =
-      egr::EagerUtils::nullable_autograd_meta(x);
-
-  VLOG(5) << "Running C++ API: "
-          << "clip";
-  // Before log info
-
-  if (VLOG_IS_ON(3)) {
-    const char* INPUT_PRINT_TEMPLATE = "{ Input: [%s]} ";
-
-    std::string input_str = "";
-    std::string output_str = "";
-    const char* TENSOR_X_TEMPLATE = " \n( x , [%s]), ";
-    std::string input_x_str = paddle::string::Sprintf(
-        TENSOR_X_TEMPLATE, egr::EagerUtils::TensorStr(x));
-    input_str += input_x_str;
-    VLOG(3) << paddle::string::Sprintf(INPUT_PRINT_TEMPLATE, input_str);
-  }
-
-  // Forward API Call
-  auto api_result = paddle::experimental::clip(x, min, max);
-  // Check NaN and Inf if needed
-  if (FLAGS_check_nan_inf) {
-    egr::CheckTensorHasNanOrInf("clip", api_result);
-  }
-
-  // Get Outputs
-  auto& out = api_result;
-
-  // Get Output AutoGradMeta
-  egr::AutogradMeta* out_autograd_meta = egr::EagerUtils::autograd_meta(&out);
-  bool trace_backward = egr::Controller::Instance().HasGrad();
-  bool require_any_grad =
-      egr::EagerUtils::ComputeRequireGrad(trace_backward, x_autograd_meta);
-
-  // Check Inplace if needed
-
-  // Node Creation
-  if (require_any_grad) {
-    paddle::platform::RecordEvent node_creation_record_event(
-        "clip node_creation",
-        paddle::platform::TracerEventType::OperatorInner,
-        1);
-
-    egr::EagerUtils::PassStopGradient(false, out_autograd_meta);
-
-    // Node Construction
-    auto grad_node = std::shared_ptr<ClipGradNode>(new ClipGradNode(1, 1));
-    // SetAttributes if needed
-    grad_node->SetAttributemin(min);
-    grad_node->SetAttributemax(max);
-    // Set TensorWrappers for Forward Inputs if needed
-    grad_node->SetTensorWrapperx(x);
-    // SetGradOutMeta & SetEdges
-    grad_node->SetGradOutMeta(x, 0);
-    // SetOutRank & SetHistory & SetGradInMeta & RetainGrad
-    if (out_autograd_meta) {
-      egr::EagerUtils::SetOutRankWithSlot(out_autograd_meta, 0);
-    }
-    if (out_autograd_meta) {
-      egr::EagerUtils::SetHistory(out_autograd_meta, grad_node);
-    }
-    grad_node->SetGradInMeta(out, 0);
-    egr::EagerUtils::CheckAndRetainGrad(out);
-    // Set TensorWrappers for Forward Outputs if needed
-  }
-
-  VLOG(4) << "Finish AD API: clip";
-  // LOG IF DEBUG
-
-  if (VLOG_IS_ON(4)) {
-    const char* INPUT_PRINT_TEMPLATE = "{ Input: [%s],  \n Output: [%s] } ";
-
-    std::string input_str = "";
-    std::string output_str = "";
-    const char* TENSOR_X_TEMPLATE = " \n( x , [%s]), ";
-    std::string input_x_str = paddle::string::Sprintf(
-        TENSOR_X_TEMPLATE, egr::EagerUtils::TensorStr(x));
-    input_str += input_x_str;
-    const char* TENSOR_OUT_TEMPLATE = " \n( out , [%s]), ";
-    std::string output_out_str = paddle::string::Sprintf(
-        TENSOR_OUT_TEMPLATE, egr::EagerUtils::TensorStr(out));
-    output_str += output_out_str;
-    VLOG(4) << paddle::string::Sprintf(
-        INPUT_PRINT_TEMPLATE, input_str, output_str);
-  }
-
-  // Returns
-  return out;
-}
-
-paddle::experimental::Tensor& clip__ad_func(paddle::experimental::Tensor& x,
-                                            paddle::experimental::Scalar min,
-                                            paddle::experimental::Scalar max) {
-  VLOG(3) << "Running AD API: "
-          << "clip_";
-  // Dygraph Record Event
-  paddle::platform::RecordEvent dygraph_entrance_record_event(
-      "clip_ dygraph", paddle::platform::TracerEventType::Operator, 1);
-
-  // AMP Logic
-
-  VLOG(5) << " No AMP for clip__ad_func because it is a inplace or cast api. ";
-  // Layout autotune
-
-  if (egr::Controller::Instance().UseLayoutAutoTune()) {
-    paddle::small_vector<std::vector<paddle::experimental::Tensor>,
-                         egr::kSlotSmallVectorSize>
-        tensors_vector = {{x}};
-
-    auto op_name = phi::TransToFluidOpName("clip_");
-    auto transformer = egr::EagerLayoutAutotune(op_name, tensors_vector);
-    auto new_x = transformer->TransInTensor("x", x);
-
-    VLOG(5) << "Check and Prepare For LAYOUT " << op_name;
-    paddle::imperative::LayoutAutotuneGuard guard(
-        egr::Controller::Instance().GetCurrentTracer(), false);
-    paddle::experimental::Tensor& out = clip__ad_func(new_x, min, max);
-
-    transformer->SetOutTensorLayout(&out);
-
-    // Returns
-    return out;
-  }
-
-  // Get Input AutoGradMeta
-  egr::AutogradMeta* x_autograd_meta =
-      egr::EagerUtils::nullable_autograd_meta(x);
-
-  VLOG(5) << "Running C++ API: "
-          << "clip_";
-  // Before log info
-
-  if (VLOG_IS_ON(3)) {
-    const char* INPUT_PRINT_TEMPLATE = "{ Input: [%s]} ";
-
-    std::string input_str = "";
-    std::string output_str = "";
-    const char* TENSOR_X_TEMPLATE = " \n( x , [%s]), ";
-    std::string input_x_str = paddle::string::Sprintf(
-        TENSOR_X_TEMPLATE, egr::EagerUtils::TensorStr(x));
-    input_str += input_x_str;
-    VLOG(3) << paddle::string::Sprintf(INPUT_PRINT_TEMPLATE, input_str);
-  }
-
-  // Forward API Call
-  auto& api_result = paddle::experimental::clip_(x, min, max);
-  // Check NaN and Inf if needed
-  if (FLAGS_check_nan_inf) {
-    egr::CheckTensorHasNanOrInf("clip_", api_result);
-  }
-
-  // Get Outputs
-  auto& out = api_result;
-
-  // Get Output AutoGradMeta
-  egr::AutogradMeta* out_autograd_meta = egr::EagerUtils::autograd_meta(&out);
-  bool trace_backward = egr::Controller::Instance().HasGrad();
-  bool require_any_grad =
-      egr::EagerUtils::ComputeRequireGrad(trace_backward, x_autograd_meta);
-
-  // Check Inplace if needed
-
-  egr::EagerUtils::CheckInplace(x, x_autograd_meta, require_any_grad);
-
-  // Bump Inplace Version
-  x.bump_inplace_version();
-  VLOG(3) << "Tensor(" << x.name() << ") uses Inplace Strategy.";
-
-  // Node Creation
-  if (require_any_grad) {
-    paddle::platform::RecordEvent node_creation_record_event(
-        "clip node_creation",
-        paddle::platform::TracerEventType::OperatorInner,
-        1);
-
-    egr::EagerUtils::PassStopGradient(false, out_autograd_meta);
-
-    // Node Construction
-    auto grad_node = std::shared_ptr<ClipGradNode>(new ClipGradNode(1, 1));
-    // SetAttributes if needed
-    grad_node->SetAttributemin(min);
-    grad_node->SetAttributemax(max);
-    // Set TensorWrappers for Forward Inputs if needed
-    grad_node->SetTensorWrapperx(x);
-    // SetGradOutMeta & SetEdges
-    grad_node->SetGradOutMeta(x, 0);
-    // SetOutRank & SetHistory & SetGradInMeta & RetainGrad
-    if (out_autograd_meta) {
-      egr::EagerUtils::SetOutRankWithSlot(out_autograd_meta, 0);
-    }
-    if (out_autograd_meta) {
-      egr::EagerUtils::SetHistory(out_autograd_meta, grad_node);
-    }
-    grad_node->SetGradInMeta(out, 0);
-    egr::EagerUtils::CheckAndRetainGrad(out);
-    // Set TensorWrappers for Forward Outputs if needed
-  }
-
-  VLOG(4) << "Finish AD API: clip_";
-  // LOG IF DEBUG
-
-  if (VLOG_IS_ON(4)) {
-    const char* INPUT_PRINT_TEMPLATE = "{ Input: [%s],  \n Output: [%s] } ";
-
-    std::string input_str = "";
-    std::string output_str = "";
-    const char* TENSOR_X_TEMPLATE = " \n( x , [%s]), ";
-    std::string input_x_str = paddle::string::Sprintf(
-        TENSOR_X_TEMPLATE, egr::EagerUtils::TensorStr(x));
-    input_str += input_x_str;
-    const char* TENSOR_OUT_TEMPLATE = " \n( out , [%s]), ";
-    std::string output_out_str = paddle::string::Sprintf(
-        TENSOR_OUT_TEMPLATE, egr::EagerUtils::TensorStr(out));
-    output_str += output_out_str;
-    VLOG(4) << paddle::string::Sprintf(
-        INPUT_PRINT_TEMPLATE, input_str, output_str);
-  }
-
-  // Returns
-  return out;
 }
 
 paddle::experimental::Tensor clip_by_norm_ad_func(
@@ -34399,288 +34825,6 @@ paddle::experimental::Tensor& fill__ad_func(
   return out;
 }
 
-paddle::experimental::Tensor fill_diagonal_ad_func(
-    const paddle::experimental::Tensor& x, float value, int offset, bool wrap) {
-  VLOG(3) << "Running AD API: "
-          << "fill_diagonal";
-  // Dygraph Record Event
-  paddle::platform::RecordEvent dygraph_entrance_record_event(
-      "fill_diagonal dygraph", paddle::platform::TracerEventType::Operator, 1);
-
-  // AMP Logic
-  if (egr::Controller::Instance().GetAMPLevel() !=
-      paddle::imperative::AmpLevel::O0) {
-    VLOG(5) << "Check and Prepare For AMP";
-    auto op_name = phi::TransToFluidOpName("fill_diagonal");
-    paddle::small_vector<std::vector<paddle::experimental::Tensor>,
-                         egr::kSlotSmallVectorSize>
-        amp_tensors_vector = {{x}};
-
-    auto amp_dst_dtype = egr::GetAmpDestDtype(op_name, amp_tensors_vector);
-
-    auto new_x = egr::EagerAmpAutoCast("x", x, amp_dst_dtype, op_name);
-
-    {
-      paddle::imperative::AutoCastGuard guard(
-          egr::Controller::Instance().GetCurrentTracer(),
-          paddle::imperative::AmpLevel::O0);
-      return fill_diagonal_ad_func(new_x, value, offset, wrap);
-    }
-  }
-
-  // Layout autotune
-
-  if (egr::Controller::Instance().UseLayoutAutoTune()) {
-    paddle::small_vector<std::vector<paddle::experimental::Tensor>,
-                         egr::kSlotSmallVectorSize>
-        tensors_vector = {{x}};
-
-    auto op_name = phi::TransToFluidOpName("fill_diagonal");
-    auto transformer = egr::EagerLayoutAutotune(op_name, tensors_vector);
-    auto new_x = transformer->TransInTensor("x", x);
-
-    VLOG(5) << "Check and Prepare For LAYOUT " << op_name;
-    paddle::imperative::LayoutAutotuneGuard guard(
-        egr::Controller::Instance().GetCurrentTracer(), false);
-    paddle::experimental::Tensor out =
-        fill_diagonal_ad_func(new_x, value, offset, wrap);
-
-    transformer->SetOutTensorLayout(&out);
-
-    // Returns
-    return out;
-  }
-
-  // Get Input AutoGradMeta
-  egr::AutogradMeta* x_autograd_meta =
-      egr::EagerUtils::nullable_autograd_meta(x);
-
-  VLOG(5) << "Running C++ API: "
-          << "fill_diagonal";
-  // Before log info
-
-  if (VLOG_IS_ON(3)) {
-    const char* INPUT_PRINT_TEMPLATE = "{ Input: [%s]} ";
-
-    std::string input_str = "";
-    std::string output_str = "";
-    const char* TENSOR_X_TEMPLATE = " \n( x , [%s]), ";
-    std::string input_x_str = paddle::string::Sprintf(
-        TENSOR_X_TEMPLATE, egr::EagerUtils::TensorStr(x));
-    input_str += input_x_str;
-    VLOG(3) << paddle::string::Sprintf(INPUT_PRINT_TEMPLATE, input_str);
-  }
-
-  // Forward API Call
-  auto api_result = paddle::experimental::fill_diagonal(x, value, offset, wrap);
-  // Check NaN and Inf if needed
-  if (FLAGS_check_nan_inf) {
-    egr::CheckTensorHasNanOrInf("fill_diagonal", api_result);
-  }
-
-  // Get Outputs
-  auto& out = api_result;
-
-  // Get Output AutoGradMeta
-  egr::AutogradMeta* out_autograd_meta = egr::EagerUtils::autograd_meta(&out);
-  bool trace_backward = egr::Controller::Instance().HasGrad();
-  bool require_any_grad =
-      egr::EagerUtils::ComputeRequireGrad(trace_backward, x_autograd_meta);
-
-  // Check Inplace if needed
-
-  // Node Creation
-  if (require_any_grad) {
-    paddle::platform::RecordEvent node_creation_record_event(
-        "fill_diagonal node_creation",
-        paddle::platform::TracerEventType::OperatorInner,
-        1);
-
-    egr::EagerUtils::PassStopGradient(false, out_autograd_meta);
-
-    // Node Construction
-    auto grad_node =
-        std::shared_ptr<FillDiagonalGradNode>(new FillDiagonalGradNode(1, 1));
-    // SetAttributes if needed
-    grad_node->SetAttributevalue(value);
-    grad_node->SetAttributeoffset(offset);
-    grad_node->SetAttributewrap(wrap);
-    // Set TensorWrappers for Forward Inputs if needed
-
-    // SetGradOutMeta & SetEdges
-    grad_node->SetGradOutMeta(x, 0);
-    // SetOutRank & SetHistory & SetGradInMeta & RetainGrad
-    if (out_autograd_meta) {
-      egr::EagerUtils::SetOutRankWithSlot(out_autograd_meta, 0);
-    }
-    if (out_autograd_meta) {
-      egr::EagerUtils::SetHistory(out_autograd_meta, grad_node);
-    }
-    grad_node->SetGradInMeta(out, 0);
-    egr::EagerUtils::CheckAndRetainGrad(out);
-    // Set TensorWrappers for Forward Outputs if needed
-  }
-
-  VLOG(4) << "Finish AD API: fill_diagonal";
-  // LOG IF DEBUG
-
-  if (VLOG_IS_ON(4)) {
-    const char* INPUT_PRINT_TEMPLATE = "{ Input: [%s],  \n Output: [%s] } ";
-
-    std::string input_str = "";
-    std::string output_str = "";
-    const char* TENSOR_X_TEMPLATE = " \n( x , [%s]), ";
-    std::string input_x_str = paddle::string::Sprintf(
-        TENSOR_X_TEMPLATE, egr::EagerUtils::TensorStr(x));
-    input_str += input_x_str;
-    const char* TENSOR_OUT_TEMPLATE = " \n( out , [%s]), ";
-    std::string output_out_str = paddle::string::Sprintf(
-        TENSOR_OUT_TEMPLATE, egr::EagerUtils::TensorStr(out));
-    output_str += output_out_str;
-    VLOG(4) << paddle::string::Sprintf(
-        INPUT_PRINT_TEMPLATE, input_str, output_str);
-  }
-
-  // Returns
-  return out;
-}
-
-paddle::experimental::Tensor& fill_diagonal__ad_func(
-    paddle::experimental::Tensor& x, float value, int offset, bool wrap) {
-  VLOG(3) << "Running AD API: "
-          << "fill_diagonal_";
-  // Dygraph Record Event
-  paddle::platform::RecordEvent dygraph_entrance_record_event(
-      "fill_diagonal_ dygraph", paddle::platform::TracerEventType::Operator, 1);
-
-  // AMP Logic
-
-  VLOG(5) << " No AMP for fill_diagonal__ad_func because it is a inplace or "
-             "cast api. ";
-  // Layout autotune
-
-  if (egr::Controller::Instance().UseLayoutAutoTune()) {
-    paddle::small_vector<std::vector<paddle::experimental::Tensor>,
-                         egr::kSlotSmallVectorSize>
-        tensors_vector = {{x}};
-
-    auto op_name = phi::TransToFluidOpName("fill_diagonal_");
-    auto transformer = egr::EagerLayoutAutotune(op_name, tensors_vector);
-    auto new_x = transformer->TransInTensor("x", x);
-
-    VLOG(5) << "Check and Prepare For LAYOUT " << op_name;
-    paddle::imperative::LayoutAutotuneGuard guard(
-        egr::Controller::Instance().GetCurrentTracer(), false);
-    paddle::experimental::Tensor& out =
-        fill_diagonal__ad_func(new_x, value, offset, wrap);
-
-    transformer->SetOutTensorLayout(&out);
-
-    // Returns
-    return out;
-  }
-
-  // Get Input AutoGradMeta
-  egr::AutogradMeta* x_autograd_meta =
-      egr::EagerUtils::nullable_autograd_meta(x);
-
-  VLOG(5) << "Running C++ API: "
-          << "fill_diagonal_";
-  // Before log info
-
-  if (VLOG_IS_ON(3)) {
-    const char* INPUT_PRINT_TEMPLATE = "{ Input: [%s]} ";
-
-    std::string input_str = "";
-    std::string output_str = "";
-    const char* TENSOR_X_TEMPLATE = " \n( x , [%s]), ";
-    std::string input_x_str = paddle::string::Sprintf(
-        TENSOR_X_TEMPLATE, egr::EagerUtils::TensorStr(x));
-    input_str += input_x_str;
-    VLOG(3) << paddle::string::Sprintf(INPUT_PRINT_TEMPLATE, input_str);
-  }
-
-  // Forward API Call
-  auto& api_result =
-      paddle::experimental::fill_diagonal_(x, value, offset, wrap);
-  // Check NaN and Inf if needed
-  if (FLAGS_check_nan_inf) {
-    egr::CheckTensorHasNanOrInf("fill_diagonal_", api_result);
-  }
-
-  // Get Outputs
-  auto& out = api_result;
-
-  // Get Output AutoGradMeta
-  egr::AutogradMeta* out_autograd_meta = egr::EagerUtils::autograd_meta(&out);
-  bool trace_backward = egr::Controller::Instance().HasGrad();
-  bool require_any_grad =
-      egr::EagerUtils::ComputeRequireGrad(trace_backward, x_autograd_meta);
-
-  // Check Inplace if needed
-
-  egr::EagerUtils::CheckInplace(x, x_autograd_meta, require_any_grad);
-
-  // Bump Inplace Version
-  x.bump_inplace_version();
-  VLOG(3) << "Tensor(" << x.name() << ") uses Inplace Strategy.";
-
-  // Node Creation
-  if (require_any_grad) {
-    paddle::platform::RecordEvent node_creation_record_event(
-        "fill_diagonal node_creation",
-        paddle::platform::TracerEventType::OperatorInner,
-        1);
-
-    egr::EagerUtils::PassStopGradient(false, out_autograd_meta);
-
-    // Node Construction
-    auto grad_node =
-        std::shared_ptr<FillDiagonalGradNode>(new FillDiagonalGradNode(1, 1));
-    // SetAttributes if needed
-    grad_node->SetAttributevalue(value);
-    grad_node->SetAttributeoffset(offset);
-    grad_node->SetAttributewrap(wrap);
-    // Set TensorWrappers for Forward Inputs if needed
-
-    // SetGradOutMeta & SetEdges
-    grad_node->SetGradOutMeta(x, 0);
-    // SetOutRank & SetHistory & SetGradInMeta & RetainGrad
-    if (out_autograd_meta) {
-      egr::EagerUtils::SetOutRankWithSlot(out_autograd_meta, 0);
-    }
-    if (out_autograd_meta) {
-      egr::EagerUtils::SetHistory(out_autograd_meta, grad_node);
-    }
-    grad_node->SetGradInMeta(out, 0);
-    egr::EagerUtils::CheckAndRetainGrad(out);
-    // Set TensorWrappers for Forward Outputs if needed
-  }
-
-  VLOG(4) << "Finish AD API: fill_diagonal_";
-  // LOG IF DEBUG
-
-  if (VLOG_IS_ON(4)) {
-    const char* INPUT_PRINT_TEMPLATE = "{ Input: [%s],  \n Output: [%s] } ";
-
-    std::string input_str = "";
-    std::string output_str = "";
-    const char* TENSOR_X_TEMPLATE = " \n( x , [%s]), ";
-    std::string input_x_str = paddle::string::Sprintf(
-        TENSOR_X_TEMPLATE, egr::EagerUtils::TensorStr(x));
-    input_str += input_x_str;
-    const char* TENSOR_OUT_TEMPLATE = " \n( out , [%s]), ";
-    std::string output_out_str = paddle::string::Sprintf(
-        TENSOR_OUT_TEMPLATE, egr::EagerUtils::TensorStr(out));
-    output_str += output_out_str;
-    VLOG(4) << paddle::string::Sprintf(
-        INPUT_PRINT_TEMPLATE, input_str, output_str);
-  }
-
-  // Returns
-  return out;
-}
-
 paddle::experimental::Tensor flatten_ad_func(
     const paddle::experimental::Tensor& x, int start_axis, int stop_axis) {
   VLOG(3) << "Running AD API: "
@@ -36900,150 +37044,6 @@ paddle::experimental::Tensor hardswish_ad_func(
   }
 
   VLOG(4) << "Finish AD API: hardswish";
-  // LOG IF DEBUG
-
-  if (VLOG_IS_ON(4)) {
-    const char* INPUT_PRINT_TEMPLATE = "{ Input: [%s],  \n Output: [%s] } ";
-
-    std::string input_str = "";
-    std::string output_str = "";
-    const char* TENSOR_X_TEMPLATE = " \n( x , [%s]), ";
-    std::string input_x_str = paddle::string::Sprintf(
-        TENSOR_X_TEMPLATE, egr::EagerUtils::TensorStr(x));
-    input_str += input_x_str;
-    const char* TENSOR_OUT_TEMPLATE = " \n( out , [%s]), ";
-    std::string output_out_str = paddle::string::Sprintf(
-        TENSOR_OUT_TEMPLATE, egr::EagerUtils::TensorStr(out));
-    output_str += output_out_str;
-    VLOG(4) << paddle::string::Sprintf(
-        INPUT_PRINT_TEMPLATE, input_str, output_str);
-  }
-
-  // Returns
-  return out;
-}
-
-paddle::experimental::Tensor hardtanh_ad_func(
-    const paddle::experimental::Tensor& x, float t_min, float t_max) {
-  VLOG(3) << "Running AD API: "
-          << "hardtanh";
-  // Dygraph Record Event
-  paddle::platform::RecordEvent dygraph_entrance_record_event(
-      "hardtanh dygraph", paddle::platform::TracerEventType::Operator, 1);
-
-  // AMP Logic
-  if (egr::Controller::Instance().GetAMPLevel() !=
-      paddle::imperative::AmpLevel::O0) {
-    VLOG(5) << "Check and Prepare For AMP";
-    auto op_name = phi::TransToFluidOpName("hardtanh");
-    paddle::small_vector<std::vector<paddle::experimental::Tensor>,
-                         egr::kSlotSmallVectorSize>
-        amp_tensors_vector = {{x}};
-
-    auto amp_dst_dtype = egr::GetAmpDestDtype(op_name, amp_tensors_vector);
-
-    auto new_x = egr::EagerAmpAutoCast("x", x, amp_dst_dtype, op_name);
-
-    {
-      paddle::imperative::AutoCastGuard guard(
-          egr::Controller::Instance().GetCurrentTracer(),
-          paddle::imperative::AmpLevel::O0);
-      return hardtanh_ad_func(new_x, t_min, t_max);
-    }
-  }
-
-  // Layout autotune
-
-  if (egr::Controller::Instance().UseLayoutAutoTune()) {
-    paddle::small_vector<std::vector<paddle::experimental::Tensor>,
-                         egr::kSlotSmallVectorSize>
-        tensors_vector = {{x}};
-
-    auto op_name = phi::TransToFluidOpName("hardtanh");
-    auto transformer = egr::EagerLayoutAutotune(op_name, tensors_vector);
-    auto new_x = transformer->TransInTensor("x", x);
-
-    VLOG(5) << "Check and Prepare For LAYOUT " << op_name;
-    paddle::imperative::LayoutAutotuneGuard guard(
-        egr::Controller::Instance().GetCurrentTracer(), false);
-    paddle::experimental::Tensor out = hardtanh_ad_func(new_x, t_min, t_max);
-
-    transformer->SetOutTensorLayout(&out);
-
-    // Returns
-    return out;
-  }
-
-  // Get Input AutoGradMeta
-  egr::AutogradMeta* x_autograd_meta =
-      egr::EagerUtils::nullable_autograd_meta(x);
-
-  VLOG(5) << "Running C++ API: "
-          << "hardtanh";
-  // Before log info
-
-  if (VLOG_IS_ON(3)) {
-    const char* INPUT_PRINT_TEMPLATE = "{ Input: [%s]} ";
-
-    std::string input_str = "";
-    std::string output_str = "";
-    const char* TENSOR_X_TEMPLATE = " \n( x , [%s]), ";
-    std::string input_x_str = paddle::string::Sprintf(
-        TENSOR_X_TEMPLATE, egr::EagerUtils::TensorStr(x));
-    input_str += input_x_str;
-    VLOG(3) << paddle::string::Sprintf(INPUT_PRINT_TEMPLATE, input_str);
-  }
-
-  // Forward API Call
-  auto api_result = paddle::experimental::hardtanh(x, t_min, t_max);
-  // Check NaN and Inf if needed
-  if (FLAGS_check_nan_inf) {
-    egr::CheckTensorHasNanOrInf("hardtanh", api_result);
-  }
-
-  // Get Outputs
-  auto& out = api_result;
-
-  // Get Output AutoGradMeta
-  egr::AutogradMeta* out_autograd_meta = egr::EagerUtils::autograd_meta(&out);
-  bool trace_backward = egr::Controller::Instance().HasGrad();
-  bool require_any_grad =
-      egr::EagerUtils::ComputeRequireGrad(trace_backward, x_autograd_meta);
-
-  // Check Inplace if needed
-
-  // Node Creation
-  if (require_any_grad) {
-    paddle::platform::RecordEvent node_creation_record_event(
-        "hardtanh node_creation",
-        paddle::platform::TracerEventType::OperatorInner,
-        1);
-
-    egr::EagerUtils::PassStopGradient(false, out_autograd_meta);
-
-    // Node Construction
-    auto grad_node =
-        std::shared_ptr<HardtanhGradNode>(new HardtanhGradNode(1, 1));
-    // SetAttributes if needed
-    grad_node->SetAttributet_min(t_min);
-    grad_node->SetAttributet_max(t_max);
-    // Set TensorWrappers for Forward Inputs if needed
-    grad_node->SetTensorWrapperx(x);
-    // SetGradOutMeta & SetEdges
-    grad_node->SetGradOutMeta(x, 0);
-    // SetOutRank & SetHistory & SetGradInMeta & RetainGrad
-    if (out_autograd_meta) {
-      egr::EagerUtils::SetOutRankWithSlot(out_autograd_meta, 0);
-    }
-    if (out_autograd_meta) {
-      egr::EagerUtils::SetHistory(out_autograd_meta, grad_node);
-    }
-    grad_node->SetGradInMeta(out, 0);
-    egr::EagerUtils::CheckAndRetainGrad(out);
-    // Set TensorWrappers for Forward Outputs if needed
-  }
-
-  VLOG(4) << "Finish AD API: hardtanh";
   // LOG IF DEBUG
 
   if (VLOG_IS_ON(4)) {

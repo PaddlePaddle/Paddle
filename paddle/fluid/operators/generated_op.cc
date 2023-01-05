@@ -29,7 +29,6 @@
 #include "paddle/phi/infermeta/nullary.h"
 #include "paddle/phi/infermeta/ternary.h"
 #include "paddle/phi/infermeta/unary.h"
-
 namespace paddle {
 namespace operators {
 
@@ -123,6 +122,45 @@ class AddmmOp : public framework::OperatorWithKernel {
 DECLARE_INFER_SHAPE_FUNCTOR(addmm,
                             AddmmInferShapeFunctor,
                             PD_INFER_META(phi::AddmmInferMeta));
+
+class AllcloseOpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  void Make() override {
+    AddInput("Input", "(Tensor), input 0 of allclose op.");
+    AddInput("Other", "(Tensor), input 1 of allclose op.");
+    AddOutput("Out", "(Tensor), output 0 of allclose op.");
+    AddInput("Rtol", "attribute 0 for allclose op from 0D Tensor.")
+        .AsDispensable();
+    AddAttr<std::string>("rtol", "(std::string), attribute 0 for allclose op.")
+        .SetDefault("1e-5");
+    AddInput("Atol", "attribute 1 for allclose op from 0D Tensor.")
+        .AsDispensable();
+    AddAttr<std::string>("atol", "(std::string), attribute 1 for allclose op.")
+        .SetDefault("1e-8");
+    AddAttr<bool>("equal_nan", "(bool), attribute 2 for allclose op.")
+        .SetDefault(false);
+    AddComment(R"DOC(
+TODO: Documentation of allclose op.
+)DOC");
+  }
+};
+
+class AllcloseOp : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
+ protected:
+  phi::KernelKey GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    auto data_type =
+        framework::OperatorWithKernel::IndicateVarDataType(ctx, "Input");
+    return phi::KernelKey(data_type, ctx.GetPlace());
+  }
+};
+
+DECLARE_INFER_SHAPE_FUNCTOR(allclose,
+                            AllcloseInferShapeFunctor,
+                            PD_INFER_META(phi::AllValueCompareInferMeta));
 
 class AngleOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
@@ -437,6 +475,39 @@ class CholeskySolveOp : public framework::OperatorWithKernel {
 DECLARE_INFER_SHAPE_FUNCTOR(cholesky_solve,
                             CholeskySolveInferShapeFunctor,
                             PD_INFER_META(phi::CholeskySolveInferMeta));
+
+class ClipOpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  void Make() override {
+    AddInput("X", "(Tensor), input 0 of clip op.");
+    AddOutput("Out", "(Tensor), output 0 of clip op.");
+    AddInput("Min", "attribute 0 for clip op from 0D Tensor.").AsDispensable();
+    AddAttr<float>("min", "(float), attribute 0 for clip op.");
+    AddInput("Max", "attribute 1 for clip op from 0D Tensor.").AsDispensable();
+    AddAttr<float>("max", "(float), attribute 1 for clip op.");
+    AddComment(R"DOC(
+TODO: Documentation of clip op.
+)DOC");
+  }
+};
+
+class ClipOp : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
+ protected:
+  phi::KernelKey GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    auto data_type =
+        framework::OperatorWithKernel::IndicateVarDataType(ctx, "X");
+    return phi::KernelKey(data_type, ctx.GetPlace());
+  }
+};
+
+DECLARE_INFER_SHAPE_FUNCTOR(clip,
+                            ClipInferShapeFunctor,
+                            PD_INFER_META(phi::UnchangedInferMeta));
+DECLARE_INPLACE_OP_INFERER(ClipInplaceInferer, {"X", "Out"});
 
 class ComplexOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
@@ -1035,6 +1106,41 @@ DECLARE_INFER_SHAPE_FUNCTOR(fft_r2c,
                             FftR2cInferShapeFunctor,
                             PD_INFER_META(phi::FFTR2CInferMeta));
 
+class FillDiagonalOpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  void Make() override {
+    AddInput("X", "(Tensor), input 0 of fill_diagonal op.");
+    AddOutput("Out", "(Tensor), output 0 of fill_diagonal op.");
+    AddAttr<float>("value", "(float), attribute 0 for fill_diagonal op.")
+        .SetDefault(0);
+    AddAttr<int>("offset", "(int), attribute 1 for fill_diagonal op.")
+        .SetDefault(0);
+    AddAttr<bool>("wrap", "(bool), attribute 2 for fill_diagonal op.")
+        .SetDefault(false);
+    AddComment(R"DOC(
+TODO: Documentation of fill_diagonal op.
+)DOC");
+  }
+};
+
+class FillDiagonalOp : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
+ protected:
+  phi::KernelKey GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    auto data_type =
+        framework::OperatorWithKernel::IndicateVarDataType(ctx, "X");
+    return phi::KernelKey(data_type, ctx.GetPlace());
+  }
+};
+
+DECLARE_INFER_SHAPE_FUNCTOR(fill_diagonal,
+                            FillDiagonalInferShapeFunctor,
+                            PD_INFER_META(phi::FillDiagonalInferMeta));
+DECLARE_INPLACE_OP_INFERER(FillDiagonalInplaceInferer, {"X", "Out"});
+
 class FillDiagonalTensorOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
@@ -1347,6 +1453,29 @@ class HardSigmoidOp : public framework::OperatorWithKernel {
 
 DECLARE_INFER_SHAPE_FUNCTOR(hard_sigmoid,
                             HardSigmoidInferShapeFunctor,
+                            PD_INFER_META(phi::UnchangedInferMeta));
+
+class BreluOpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  void Make() override {
+    AddInput("X", "(Tensor), input 0 of brelu op.");
+    AddOutput("Out", "(Tensor), output 0 of brelu op.");
+    AddAttr<float>("t_min", "(float), attribute 0 for brelu op.").SetDefault(0);
+    AddAttr<float>("t_max", "(float), attribute 1 for brelu op.")
+        .SetDefault(24);
+    AddComment(R"DOC(
+TODO: Documentation of brelu op.
+)DOC");
+  }
+};
+
+class BreluOp : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+};
+
+DECLARE_INFER_SHAPE_FUNCTOR(brelu,
+                            BreluInferShapeFunctor,
                             PD_INFER_META(phi::UnchangedInferMeta));
 
 class HistogramOpMaker : public framework::OpProtoAndCheckerMaker {
@@ -3744,6 +3873,84 @@ DECLARE_INFER_SHAPE_FUNCTOR(cholesky_solve_grad,
                             PD_INFER_META(phi::GeneralBinaryGradInferMeta));
 
 template <typename T>
+class ClipDoubleGradOpMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  void Apply(GradOpPtr<T> grad_op) const override {
+    grad_op->SetType("clip_double_grad");
+
+    grad_op->SetInput("X", this->Input("X"));
+    grad_op->SetInput(GradVarName("grad_x"),
+                      this->OutputGrad(GradVarName("X")));
+
+    grad_op->SetOutput(GradVarName("grad_out"),
+                       this->InputGrad(GradVarName("Out")));
+
+    grad_op->SetAttrMap(this->Attrs());
+    if (this->HasInput("Min")) {
+      grad_op->SetInput("Min", this->Input("Min"));
+    }
+    if (this->HasInput("Max")) {
+      grad_op->SetInput("Max", this->Input("Max"));
+    }
+  }
+};
+
+class ClipDoubleGradOp : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
+ protected:
+  phi::KernelKey GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    auto data_type =
+        framework::OperatorWithKernel::IndicateVarDataType(ctx, "X");
+    return phi::KernelKey(data_type, ctx.GetPlace());
+  }
+};
+
+DECLARE_INFER_SHAPE_FUNCTOR(clip_double_grad,
+                            ClipDoubleGradInferShapeFunctor,
+                            PD_INFER_META(phi::UnchangedInferMeta));
+
+template <typename T>
+class ClipGradOpMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  void Apply(GradOpPtr<T> grad_op) const override {
+    grad_op->SetType("clip_grad");
+
+    grad_op->SetInput("X", this->Input("X"));
+    grad_op->SetInput(GradVarName("Out"), this->OutputGrad("Out"));
+
+    grad_op->SetOutput(GradVarName("X"), this->InputGrad("X"));
+
+    grad_op->SetAttrMap(this->Attrs());
+    if (this->HasInput("Min")) {
+      grad_op->SetInput("Min", this->Input("Min"));
+    }
+    if (this->HasInput("Max")) {
+      grad_op->SetInput("Max", this->Input("Max"));
+    }
+  }
+};
+
+class ClipGradOp : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+};
+
+DECLARE_INFER_SHAPE_FUNCTOR(clip_grad,
+                            ClipGradInferShapeFunctor,
+                            PD_INFER_META(phi::UnchangedInferMeta));
+DECLARE_INPLACE_OP_INFERER(ClipGradInplaceInferer,
+                           {GradVarName("Out"), GradVarName("X")});
+
+template <typename T>
 class ComplexGradOpMaker : public framework::SingleGradOpMaker<T> {
  public:
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
@@ -4568,6 +4775,32 @@ DECLARE_INFER_SHAPE_FUNCTOR(fft_r2c_grad,
 DECLARE_NO_NEED_BUFFER_VARS_INFERER(FftR2cGradNoNeedBufferVarInferer, "X");
 
 template <typename T>
+class FillDiagonalGradOpMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  void Apply(GradOpPtr<T> grad_op) const override {
+    grad_op->SetType("fill_diagonal_grad");
+
+    grad_op->SetInput(GradVarName("Out"), this->OutputGrad("Out"));
+
+    grad_op->SetOutput(GradVarName("X"), this->InputGrad("X"));
+
+    grad_op->SetAttrMap(this->Attrs());
+  }
+};
+
+class FillDiagonalGradOp : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+};
+
+DECLARE_INFER_SHAPE_FUNCTOR(fill_diagonal_grad,
+                            FillDiagonalGradInferShapeFunctor,
+                            PD_INFER_META(phi::FillDiagonalGradInferMeta));
+
+template <typename T>
 class FillDiagonalTensorGradOpMaker : public framework::SingleGradOpMaker<T> {
  public:
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
@@ -4882,6 +5115,35 @@ DECLARE_INFER_SHAPE_FUNCTOR(hard_sigmoid_grad,
                             HardSigmoidGradInferShapeFunctor,
                             PD_INFER_META(phi::UnchangedInferMeta));
 DECLARE_INPLACE_OP_INFERER(HardSigmoidGradInplaceInferer,
+                           {GradVarName("Out"), GradVarName("X")});
+
+template <typename T>
+class BreluGradOpMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  void Apply(GradOpPtr<T> grad_op) const override {
+    grad_op->SetType("brelu_grad");
+
+    grad_op->SetInput("X", this->Input("X"));
+    grad_op->SetInput(GradVarName("Out"), this->OutputGrad("Out"));
+
+    grad_op->SetOutput(GradVarName("X"), this->InputGrad("X"));
+
+    grad_op->SetAttrMap(this->Attrs());
+  }
+};
+
+class BreluGradOp : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+};
+
+DECLARE_INFER_SHAPE_FUNCTOR(brelu_grad,
+                            BreluGradInferShapeFunctor,
+                            PD_INFER_META(phi::UnchangedInferMeta));
+DECLARE_INPLACE_OP_INFERER(BreluGradInplaceInferer,
                            {GradVarName("Out"), GradVarName("X")});
 
 template <typename T>
@@ -7343,6 +7605,38 @@ REGISTER_OPERATOR(addmm,
                   ops::AddmmGradOpMaker<paddle::imperative::OpBase>,
                   ops::AddmmInferShapeFunctor);
 
+REGISTER_OPERATOR(
+    allclose,
+    ops::AllcloseOp,
+    ops::AllcloseOpMaker,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
+    ops::AllcloseInferShapeFunctor);
+
+REGISTER_OP_VERSION(allclose)
+    .AddCheckpoint(
+        R"ROC(Upgrade allclose, add two new inputs [Rtol] and [Atol].)ROC",
+        paddle::framework::compatible::OpVersionDesc()
+            .NewInput("Rtol", "The added input 'Rtol' is not dispensable.")
+            .NewInput("Atol", "The added input 'Atol' is not dispensable."))
+    .AddCheckpoint(
+        R"ROC(Delete two float attributes [rtol] and [atol], then add 2 string attributes [atol, rtol]. Don't be surprised. This is because float cannot represent hight-precision floating-point values, and our framework doesn't support the use of double attributes. As a result, string instead of double is used here to represent high-precision floating-point values.)ROC",
+        paddle::framework::compatible::OpVersionDesc()
+            .NewAttr("rtol",
+                     "The relative tolerance. Default::math:`1e-5` .",
+                     std::string("1e-5"))
+            .DeleteAttr("rtol",
+                        "The attribute 'rtol' is deleted. The reason why it is "
+                        "deleted is that attributes do not support a float64 "
+                        "value and it is changed to a tensor.")
+            .NewAttr("atol",
+                     "(string) The absolute tolerance. Default::math:`1e-8` .",
+                     std::string("1e-5"))
+            .DeleteAttr("atol",
+                        "The attribute 'atol' is deleted. The reason why it is "
+                        "deleted is that attributes do not support a float64 "
+                        "value and it is changed to a tensor."));
+
 REGISTER_OPERATOR(angle,
                   ops::AngleOp,
                   ops::AngleOpMaker,
@@ -7449,6 +7743,24 @@ REGISTER_OPERATOR(cholesky_solve,
                   ops::CholeskySolveGradOpMaker<paddle::framework::OpDesc>,
                   ops::CholeskySolveGradOpMaker<paddle::imperative::OpBase>,
                   ops::CholeskySolveInferShapeFunctor);
+
+REGISTER_OPERATOR(clip,
+                  ops::ClipOp,
+                  ops::ClipOpMaker,
+                  ops::ClipGradOpMaker<paddle::framework::OpDesc>,
+                  ops::ClipGradOpMaker<paddle::imperative::OpBase>,
+                  ops::ClipInplaceInferer,
+                  ops::ClipInferShapeFunctor);
+
+REGISTER_OP_VERSION(clip).AddCheckpoint(
+    R"ROC(Upgrade clip add a new input [Min])ROC",
+    paddle::framework::compatible::OpVersionDesc()
+        .NewInput("Min",
+                  "Pass the mix, min value as input, not attribute. Min is "
+                  "dispensable.")
+        .NewInput("Max",
+                  "Pass the mix, min value as input, not attribute. Max is "
+                  "dispensable."));
 
 REGISTER_OPERATOR(complex,
                   ops::ComplexOp,
@@ -7631,6 +7943,14 @@ REGISTER_OPERATOR(fft_r2c,
                   ops::FftR2cGradOpMaker<paddle::imperative::OpBase>,
                   ops::FftR2cInferShapeFunctor);
 
+REGISTER_OPERATOR(fill_diagonal,
+                  ops::FillDiagonalOp,
+                  ops::FillDiagonalOpMaker,
+                  ops::FillDiagonalGradOpMaker<paddle::framework::OpDesc>,
+                  ops::FillDiagonalGradOpMaker<paddle::imperative::OpBase>,
+                  ops::FillDiagonalInplaceInferer,
+                  ops::FillDiagonalInferShapeFunctor);
+
 REGISTER_OPERATOR(
     fill_diagonal_tensor,
     ops::FillDiagonalTensorOp,
@@ -7733,6 +8053,13 @@ REGISTER_OPERATOR(hard_sigmoid,
                   ops::HardSigmoidGradOpMaker<paddle::framework::OpDesc>,
                   ops::HardSigmoidGradOpMaker<paddle::imperative::OpBase>,
                   ops::HardSigmoidInferShapeFunctor);
+
+REGISTER_OPERATOR(brelu,
+                  ops::BreluOp,
+                  ops::BreluOpMaker,
+                  ops::BreluGradOpMaker<paddle::framework::OpDesc>,
+                  ops::BreluGradOpMaker<paddle::imperative::OpBase>,
+                  ops::BreluInferShapeFunctor);
 
 REGISTER_OPERATOR(
     histogram,
@@ -8444,6 +8771,20 @@ REGISTER_OPERATOR(
     ops::CholeskySolveGradInferShapeFunctor);
 
 REGISTER_OPERATOR(
+    clip_double_grad,
+    ops::ClipDoubleGradOp,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
+    ops::ClipDoubleGradInferShapeFunctor);
+
+REGISTER_OPERATOR(clip_grad,
+                  ops::ClipGradOp,
+                  ops::ClipDoubleGradOpMaker<paddle::framework::OpDesc>,
+                  ops::ClipDoubleGradOpMaker<paddle::imperative::OpBase>,
+                  ops::ClipGradInplaceInferer,
+                  ops::ClipGradInferShapeFunctor);
+
+REGISTER_OPERATOR(
     complex_grad,
     ops::ComplexGradOp,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
@@ -8620,6 +8961,13 @@ REGISTER_OPERATOR(
     ops::FftR2cGradInferShapeFunctor);
 
 REGISTER_OPERATOR(
+    fill_diagonal_grad,
+    ops::FillDiagonalGradOp,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
+    ops::FillDiagonalGradInferShapeFunctor);
+
+REGISTER_OPERATOR(
     fill_diagonal_tensor_grad,
     ops::FillDiagonalTensorGradOp,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
@@ -8694,6 +9042,14 @@ REGISTER_OPERATOR(
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
     ops::HardSigmoidGradInplaceInferer,
     ops::HardSigmoidGradInferShapeFunctor);
+
+REGISTER_OPERATOR(
+    brelu_grad,
+    ops::BreluGradOp,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
+    ops::BreluGradInplaceInferer,
+    ops::BreluGradInferShapeFunctor);
 
 REGISTER_OPERATOR(
     imag_grad,

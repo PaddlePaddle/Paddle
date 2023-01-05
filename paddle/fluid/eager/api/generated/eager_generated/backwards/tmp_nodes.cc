@@ -2335,6 +2335,278 @@ CholeskySolveGradNode::operator()(
 
 paddle::small_vector<std::vector<paddle::experimental::Tensor>,
                      egr::kSlotSmallVectorSize>
+ClipGradNode::operator()(
+    paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                         egr::kSlotSmallVectorSize>& grads,
+    bool create_graph,
+    bool is_new_grad) {
+  VLOG(3) << "Running AD API GRAD: "
+          << "clip_grad";
+  // Fill Zero For GradIn Tensors
+
+  // Apply Gradient Hooks
+  auto hooked_grads = ApplyGradientHooks(grads);
+
+  // Collect GradIn Tensors, Attrs and Recovered TensorWrappers
+  auto x = egr::EagerUtils::RecoverTensorWrapper(&this->x_);
+  auto& grad_out = hooked_grads[0][0];
+  auto& min = this->min_;
+  auto& max = this->max_;
+  // Prepare Grad function call
+
+  const auto& out_metas = OutputMeta();
+  paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                       egr::kSlotSmallVectorSize>
+      returns(1);
+  for (int i = 0; i < 1; ++i) {
+    out_metas[i].size() == 0 ? returns[i].resize(1)
+                             : returns[i].resize(out_metas[i].size());
+  }
+
+  auto* api_output_0 =
+      (out_metas[0].empty() || out_metas[0][0].IsStopGradient())
+          ? nullptr
+          : &returns[0][0];
+  // Runtime check if we need next grad
+  bool trace_backward = egr::Controller::Instance().HasGrad() && create_graph;
+
+  // Inplace Check
+
+  bool can_be_inplaced = false;
+  if (grad_out.initialized()) {
+    VLOG(10) << grad_out.name()
+             << "(out_grad) use_count: " << grad_out.impl().use_count();
+    if (grad_out.impl().use_count() == 1 ||
+        (grad_out.impl().use_count() == 2 &&
+         grad_out.impl().get() == grads[0][0].impl().get())) {
+      can_be_inplaced = true;
+    }
+  }
+  // Inplace Strategy
+
+  if (trace_backward) {
+    if (api_output_0 != nullptr && can_be_inplaced) {
+      egr::EagerUtils::HandleViewBetweenInputAndOutput(grad_out, api_output_0);
+    }
+  } else {
+    if (api_output_0 != nullptr && can_be_inplaced) {
+      egr::EagerUtils::HandleViewBetweenInputAndOutput(grad_out, api_output_0);
+    }
+  }
+
+  VLOG(5) << "Running C++ API: "
+          << "clip_grad";
+  // Before log info
+
+  if (VLOG_IS_ON(3)) {
+    const char* INPUT_PRINT_TEMPLATE = "{ Input: [%s]} ";
+
+    std::string input_str = "";
+    std::string output_str = "";
+    const char* TENSOR_GRAD_OUT_TEMPLATE = " \n( grad_out , [%s]), ";
+    std::string input_grad_out_str = paddle::string::Sprintf(
+        TENSOR_GRAD_OUT_TEMPLATE, egr::EagerUtils::TensorStr(grad_out));
+    input_str += input_grad_out_str;
+    const char* TENSOR_X_TEMPLATE = " \n( x , [%s]), ";
+    std::string input_x_str = paddle::string::Sprintf(
+        TENSOR_X_TEMPLATE, egr::EagerUtils::TensorStr(x));
+    input_str += input_x_str;
+    VLOG(3) << paddle::string::Sprintf(INPUT_PRINT_TEMPLATE, input_str);
+  }
+
+  // Call grad_api function
+
+  paddle::experimental::clip_grad(x, grad_out, min, max, api_output_0);
+  // Check NaN and Inf id needed
+  if (FLAGS_check_nan_inf) {
+    egr::CheckTensorHasNanOrInf("clip_grad", returns);
+  }
+
+  // Get GradOut autograd_meta
+
+  auto& grad_x = returns[0][0];
+  egr::AutogradMeta* grad_x_autograd_meta =
+      returns[0][0].initialized() ? egr::EagerUtils::autograd_meta(&grad_x)
+                                  : nullptr;
+  if (grad_x_autograd_meta) grad_x_autograd_meta->SetStopGradient(false);
+
+  // Create Grad Node
+  if (trace_backward) {
+    paddle::platform::RecordEvent node_creation_record_event(
+        "clip_grad node_creation",
+        paddle::platform::TracerEventType::OperatorInner,
+        1);
+
+    // Node Construction
+    auto grad_node =
+        std::shared_ptr<ClipDoubleGradNode>(new ClipDoubleGradNode(1, 2));
+    // SetAttributes if needed
+    grad_node->SetAttributemin(min);
+    grad_node->SetAttributemax(max);
+    // Set TensorWrappers for Forward Inputs if needed
+    grad_node->SetTensorWrapperx(x);
+    // SetGradOutMeta & SetEdges
+    grad_node->SetGradOutMeta(grad_out, 1);
+    // SetOutRank & SetHistory & SetGradInMeta & RetainGrad
+    if (grad_x_autograd_meta) {
+      egr::EagerUtils::SetOutRankWithSlot(grad_x_autograd_meta, 0);
+    }
+    if (grad_x_autograd_meta) {
+      egr::EagerUtils::SetHistory(grad_x_autograd_meta, grad_node);
+    }
+    grad_node->SetGradInMeta(grad_x, 0);
+    egr::EagerUtils::CheckAndRetainGrad(grad_x);
+    // Set TensorWrappers for Forward Outputs if needed
+  }
+
+  VLOG(4) << "Finish AD API GRAD: clip_grad";
+  // LOG IF DEBUG
+
+  if (VLOG_IS_ON(4)) {
+    const char* INPUT_PRINT_TEMPLATE = "{ Input: [%s],  \n Output: [%s] } ";
+
+    std::string input_str = "";
+    std::string output_str = "";
+    const char* TENSOR_GRAD_OUT_TEMPLATE = " \n( grad_out , [%s]), ";
+    std::string input_grad_out_str = paddle::string::Sprintf(
+        TENSOR_GRAD_OUT_TEMPLATE, egr::EagerUtils::TensorStr(grad_out));
+    input_str += input_grad_out_str;
+    const char* TENSOR_X_TEMPLATE = " \n( x , [%s]), ";
+    std::string input_x_str = paddle::string::Sprintf(
+        TENSOR_X_TEMPLATE, egr::EagerUtils::TensorStr(x));
+    input_str += input_x_str;
+    const char* TENSOR_GRAD_X_TEMPLATE = " \n ( grad_x , [%s]), ";
+    std::string output_grad_x_str = paddle::string::Sprintf(
+        TENSOR_GRAD_X_TEMPLATE, egr::EagerUtils::TensorStr(grad_x));
+    output_str += output_grad_x_str;
+    VLOG(4) << paddle::string::Sprintf(
+        INPUT_PRINT_TEMPLATE, input_str, output_str);
+  }
+
+  // Return
+  if (NeedComplexToRealConversion()) HandleComplexGradToRealGrad(&returns);
+  return returns;
+}
+
+paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                     egr::kSlotSmallVectorSize>
+ClipDoubleGradNode::operator()(
+    paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                         egr::kSlotSmallVectorSize>& grads,
+    bool create_graph,
+    bool is_new_grad) {
+  VLOG(3) << "Running AD API GRAD: "
+          << "clip_double_grad";
+  // Fill Zero For GradIn Tensors
+
+  // Apply Gradient Hooks
+  auto hooked_grads = ApplyGradientHooks(grads);
+
+  // Collect GradIn Tensors, Attrs and Recovered TensorWrappers
+  auto x = egr::EagerUtils::RecoverTensorWrapper(&this->x_);
+  auto& grad_x_grad = hooked_grads[0][0];
+  auto& min = this->min_;
+  auto& max = this->max_;
+  // Prepare Grad function call
+
+  const auto& out_metas = OutputMeta();
+  paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                       egr::kSlotSmallVectorSize>
+      returns(2);
+  for (int i = 0; i < 2; ++i) {
+    out_metas[i].size() == 0 ? returns[i].resize(1)
+                             : returns[i].resize(out_metas[i].size());
+  }
+
+  auto* api_output_0 =
+      (out_metas[1].empty() || out_metas[1][0].IsStopGradient())
+          ? nullptr
+          : &returns[1][0];
+  // Runtime check if we need next grad
+  bool trace_backward = egr::Controller::Instance().HasGrad() && create_graph;
+
+  // Inplace Check
+
+  // Inplace Strategy
+
+  VLOG(5) << "Running C++ API: "
+          << "clip_double_grad";
+  // Before log info
+
+  if (VLOG_IS_ON(3)) {
+    const char* INPUT_PRINT_TEMPLATE = "{ Input: [%s]} ";
+
+    std::string input_str = "";
+    std::string output_str = "";
+    const char* TENSOR_GRAD_X_GRAD_TEMPLATE = " \n( grad_x_grad , [%s]), ";
+    std::string input_grad_x_grad_str = paddle::string::Sprintf(
+        TENSOR_GRAD_X_GRAD_TEMPLATE, egr::EagerUtils::TensorStr(grad_x_grad));
+    input_str += input_grad_x_grad_str;
+    const char* TENSOR_X_TEMPLATE = " \n( x , [%s]), ";
+    std::string input_x_str = paddle::string::Sprintf(
+        TENSOR_X_TEMPLATE, egr::EagerUtils::TensorStr(x));
+    input_str += input_x_str;
+    VLOG(3) << paddle::string::Sprintf(INPUT_PRINT_TEMPLATE, input_str);
+  }
+
+  // Call grad_api function
+
+  paddle::experimental::clip_double_grad(
+      x, grad_x_grad, min, max, api_output_0);
+  // Check NaN and Inf id needed
+  if (FLAGS_check_nan_inf) {
+    egr::CheckTensorHasNanOrInf("clip_double_grad", returns);
+  }
+
+  // Get GradOut autograd_meta
+
+  auto& grad_out_grad = returns[1][0];
+  egr::AutogradMeta* grad_out_grad_autograd_meta =
+      returns[1][0].initialized()
+          ? egr::EagerUtils::autograd_meta(&grad_out_grad)
+          : nullptr;
+  if (grad_out_grad_autograd_meta)
+    grad_out_grad_autograd_meta->SetStopGradient(false);
+
+  // Create Grad Node
+  if (trace_backward) {
+    PADDLE_THROW(phi::errors::Unavailable(
+        "The Op clip_double_grad doesn't have any grad"
+        "op. If you don't intend calculating higher order"
+        "derivatives, please set `create_graph`to False."));
+  }
+  VLOG(4) << "Finish AD API GRAD: clip_double_grad";
+  // LOG IF DEBUG
+
+  if (VLOG_IS_ON(4)) {
+    const char* INPUT_PRINT_TEMPLATE = "{ Input: [%s],  \n Output: [%s] } ";
+
+    std::string input_str = "";
+    std::string output_str = "";
+    const char* TENSOR_GRAD_X_GRAD_TEMPLATE = " \n( grad_x_grad , [%s]), ";
+    std::string input_grad_x_grad_str = paddle::string::Sprintf(
+        TENSOR_GRAD_X_GRAD_TEMPLATE, egr::EagerUtils::TensorStr(grad_x_grad));
+    input_str += input_grad_x_grad_str;
+    const char* TENSOR_X_TEMPLATE = " \n( x , [%s]), ";
+    std::string input_x_str = paddle::string::Sprintf(
+        TENSOR_X_TEMPLATE, egr::EagerUtils::TensorStr(x));
+    input_str += input_x_str;
+    const char* TENSOR_GRAD_OUT_GRAD_TEMPLATE = " \n ( grad_out_grad , [%s]), ";
+    std::string output_grad_out_grad_str =
+        paddle::string::Sprintf(TENSOR_GRAD_OUT_GRAD_TEMPLATE,
+                                egr::EagerUtils::TensorStr(grad_out_grad));
+    output_str += output_grad_out_grad_str;
+    VLOG(4) << paddle::string::Sprintf(
+        INPUT_PRINT_TEMPLATE, input_str, output_str);
+  }
+
+  // Return
+  if (NeedComplexToRealConversion()) HandleComplexGradToRealGrad(&returns);
+  return returns;
+}
+
+paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                     egr::kSlotSmallVectorSize>
 ComplexGradNode::operator()(
     paddle::small_vector<std::vector<paddle::experimental::Tensor>,
                          egr::kSlotSmallVectorSize>& grads,
@@ -5659,6 +5931,112 @@ FftR2cGradNode::operator()(
 
 paddle::small_vector<std::vector<paddle::experimental::Tensor>,
                      egr::kSlotSmallVectorSize>
+FillDiagonalGradNode::operator()(
+    paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                         egr::kSlotSmallVectorSize>& grads,
+    bool create_graph,
+    bool is_new_grad) {
+  VLOG(3) << "Running AD API GRAD: "
+          << "fill_diagonal_grad";
+  // Fill Zero For GradIn Tensors
+
+  // Apply Gradient Hooks
+  auto hooked_grads = ApplyGradientHooks(grads);
+
+  // Collect GradIn Tensors, Attrs and Recovered TensorWrappers
+  auto& out_grad = hooked_grads[0][0];
+  auto& value = this->value_;
+  auto& offset = this->offset_;
+  auto& wrap = this->wrap_;
+  // Prepare Grad function call
+
+  const auto& out_metas = OutputMeta();
+  paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                       egr::kSlotSmallVectorSize>
+      returns(1);
+  for (int i = 0; i < 1; ++i) {
+    out_metas[i].size() == 0 ? returns[i].resize(1)
+                             : returns[i].resize(out_metas[i].size());
+  }
+
+  auto* api_output_0 =
+      (out_metas[0].empty() || out_metas[0][0].IsStopGradient())
+          ? nullptr
+          : &returns[0][0];
+  // Runtime check if we need next grad
+  bool trace_backward = egr::Controller::Instance().HasGrad() && create_graph;
+
+  // Inplace Check
+
+  // Inplace Strategy
+
+  VLOG(5) << "Running C++ API: "
+          << "fill_diagonal_grad";
+  // Before log info
+
+  if (VLOG_IS_ON(3)) {
+    const char* INPUT_PRINT_TEMPLATE = "{ Input: [%s]} ";
+
+    std::string input_str = "";
+    std::string output_str = "";
+    const char* TENSOR_OUT_GRAD_TEMPLATE = " \n( out_grad , [%s]), ";
+    std::string input_out_grad_str = paddle::string::Sprintf(
+        TENSOR_OUT_GRAD_TEMPLATE, egr::EagerUtils::TensorStr(out_grad));
+    input_str += input_out_grad_str;
+    VLOG(3) << paddle::string::Sprintf(INPUT_PRINT_TEMPLATE, input_str);
+  }
+
+  // Call grad_api function
+
+  paddle::experimental::fill_diagonal_grad(
+      out_grad, value, offset, wrap, api_output_0);
+  // Check NaN and Inf id needed
+  if (FLAGS_check_nan_inf) {
+    egr::CheckTensorHasNanOrInf("fill_diagonal_grad", returns);
+  }
+
+  // Get GradOut autograd_meta
+
+  auto& x_grad = returns[0][0];
+  egr::AutogradMeta* x_grad_autograd_meta =
+      returns[0][0].initialized() ? egr::EagerUtils::autograd_meta(&x_grad)
+                                  : nullptr;
+  if (x_grad_autograd_meta) x_grad_autograd_meta->SetStopGradient(false);
+
+  // Create Grad Node
+  if (trace_backward) {
+    PADDLE_THROW(phi::errors::Unavailable(
+        "The Op fill_diagonal_grad doesn't have any grad"
+        "op. If you don't intend calculating higher order"
+        "derivatives, please set `create_graph`to False."));
+  }
+  VLOG(4) << "Finish AD API GRAD: fill_diagonal_grad";
+  // LOG IF DEBUG
+
+  if (VLOG_IS_ON(4)) {
+    const char* INPUT_PRINT_TEMPLATE = "{ Input: [%s],  \n Output: [%s] } ";
+
+    std::string input_str = "";
+    std::string output_str = "";
+    const char* TENSOR_OUT_GRAD_TEMPLATE = " \n( out_grad , [%s]), ";
+    std::string input_out_grad_str = paddle::string::Sprintf(
+        TENSOR_OUT_GRAD_TEMPLATE, egr::EagerUtils::TensorStr(out_grad));
+    input_str += input_out_grad_str;
+    const char* TENSOR_X_GRAD_TEMPLATE = " \n ( x_grad , [%s]), ";
+    std::string output_x_grad_str = paddle::string::Sprintf(
+        TENSOR_X_GRAD_TEMPLATE, egr::EagerUtils::TensorStr(x_grad));
+    output_str += output_x_grad_str;
+    VLOG(4) << paddle::string::Sprintf(
+        INPUT_PRINT_TEMPLATE, input_str, output_str);
+  }
+
+  // Return
+  if (NeedComplexToRealConversion()) HandleComplexGradToRealGrad(&returns);
+  return returns;
+}
+
+paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                     egr::kSlotSmallVectorSize>
 FillDiagonalTensorGradNode::operator()(
     paddle::small_vector<std::vector<paddle::experimental::Tensor>,
                          egr::kSlotSmallVectorSize>& grads,
@@ -6961,6 +7339,132 @@ HardsigmoidGradNode::operator()(
     std::string input_out_str = paddle::string::Sprintf(
         TENSOR_OUT_TEMPLATE, egr::EagerUtils::TensorStr(out));
     input_str += input_out_str;
+    const char* TENSOR_X_GRAD_TEMPLATE = " \n ( x_grad , [%s]), ";
+    std::string output_x_grad_str = paddle::string::Sprintf(
+        TENSOR_X_GRAD_TEMPLATE, egr::EagerUtils::TensorStr(x_grad));
+    output_str += output_x_grad_str;
+    VLOG(4) << paddle::string::Sprintf(
+        INPUT_PRINT_TEMPLATE, input_str, output_str);
+  }
+
+  // Return
+  if (NeedComplexToRealConversion()) HandleComplexGradToRealGrad(&returns);
+  return returns;
+}
+
+paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                     egr::kSlotSmallVectorSize>
+HardtanhGradNode::operator()(
+    paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                         egr::kSlotSmallVectorSize>& grads,
+    bool create_graph,
+    bool is_new_grad) {
+  VLOG(3) << "Running AD API GRAD: "
+          << "hardtanh_grad";
+  // Fill Zero For GradIn Tensors
+
+  // Apply Gradient Hooks
+  auto hooked_grads = ApplyGradientHooks(grads);
+
+  // Collect GradIn Tensors, Attrs and Recovered TensorWrappers
+  auto x = egr::EagerUtils::RecoverTensorWrapper(&this->x_);
+  auto& out_grad = hooked_grads[0][0];
+  auto& t_min = this->t_min_;
+  auto& t_max = this->t_max_;
+  // Prepare Grad function call
+
+  const auto& out_metas = OutputMeta();
+  paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                       egr::kSlotSmallVectorSize>
+      returns(1);
+  for (int i = 0; i < 1; ++i) {
+    out_metas[i].size() == 0 ? returns[i].resize(1)
+                             : returns[i].resize(out_metas[i].size());
+  }
+
+  auto* api_output_0 =
+      (out_metas[0].empty() || out_metas[0][0].IsStopGradient())
+          ? nullptr
+          : &returns[0][0];
+  // Runtime check if we need next grad
+  bool trace_backward = egr::Controller::Instance().HasGrad() && create_graph;
+
+  // Inplace Check
+
+  bool can_be_inplaced = false;
+  if (out_grad.initialized()) {
+    VLOG(10) << out_grad.name()
+             << "(out_grad) use_count: " << out_grad.impl().use_count();
+    if (out_grad.impl().use_count() == 1 ||
+        (out_grad.impl().use_count() == 2 &&
+         out_grad.impl().get() == grads[0][0].impl().get())) {
+      can_be_inplaced = true;
+    }
+  }
+  // Inplace Strategy
+  if (api_output_0 != nullptr && can_be_inplaced) {
+    egr::EagerUtils::HandleViewBetweenInputAndOutput(out_grad, api_output_0);
+  }
+
+  VLOG(5) << "Running C++ API: "
+          << "hardtanh_grad";
+  // Before log info
+
+  if (VLOG_IS_ON(3)) {
+    const char* INPUT_PRINT_TEMPLATE = "{ Input: [%s]} ";
+
+    std::string input_str = "";
+    std::string output_str = "";
+    const char* TENSOR_OUT_GRAD_TEMPLATE = " \n( out_grad , [%s]), ";
+    std::string input_out_grad_str = paddle::string::Sprintf(
+        TENSOR_OUT_GRAD_TEMPLATE, egr::EagerUtils::TensorStr(out_grad));
+    input_str += input_out_grad_str;
+    const char* TENSOR_X_TEMPLATE = " \n( x , [%s]), ";
+    std::string input_x_str = paddle::string::Sprintf(
+        TENSOR_X_TEMPLATE, egr::EagerUtils::TensorStr(x));
+    input_str += input_x_str;
+    VLOG(3) << paddle::string::Sprintf(INPUT_PRINT_TEMPLATE, input_str);
+  }
+
+  // Call grad_api function
+
+  paddle::experimental::hardtanh_grad(x, out_grad, t_min, t_max, api_output_0);
+  // Check NaN and Inf id needed
+  if (FLAGS_check_nan_inf) {
+    egr::CheckTensorHasNanOrInf("hardtanh_grad", returns);
+  }
+
+  // Get GradOut autograd_meta
+
+  auto& x_grad = returns[0][0];
+  egr::AutogradMeta* x_grad_autograd_meta =
+      returns[0][0].initialized() ? egr::EagerUtils::autograd_meta(&x_grad)
+                                  : nullptr;
+  if (x_grad_autograd_meta) x_grad_autograd_meta->SetStopGradient(false);
+
+  // Create Grad Node
+  if (trace_backward) {
+    PADDLE_THROW(phi::errors::Unavailable(
+        "The Op hardtanh_grad doesn't have any grad"
+        "op. If you don't intend calculating higher order"
+        "derivatives, please set `create_graph`to False."));
+  }
+  VLOG(4) << "Finish AD API GRAD: hardtanh_grad";
+  // LOG IF DEBUG
+
+  if (VLOG_IS_ON(4)) {
+    const char* INPUT_PRINT_TEMPLATE = "{ Input: [%s],  \n Output: [%s] } ";
+
+    std::string input_str = "";
+    std::string output_str = "";
+    const char* TENSOR_OUT_GRAD_TEMPLATE = " \n( out_grad , [%s]), ";
+    std::string input_out_grad_str = paddle::string::Sprintf(
+        TENSOR_OUT_GRAD_TEMPLATE, egr::EagerUtils::TensorStr(out_grad));
+    input_str += input_out_grad_str;
+    const char* TENSOR_X_TEMPLATE = " \n( x , [%s]), ";
+    std::string input_x_str = paddle::string::Sprintf(
+        TENSOR_X_TEMPLATE, egr::EagerUtils::TensorStr(x));
+    input_str += input_x_str;
     const char* TENSOR_X_GRAD_TEMPLATE = " \n ( x_grad , [%s]), ";
     std::string output_x_grad_str = paddle::string::Sprintf(
         TENSOR_X_GRAD_TEMPLATE, egr::EagerUtils::TensorStr(x_grad));
@@ -20565,278 +21069,6 @@ CastGradNode::operator()(
 
 paddle::small_vector<std::vector<paddle::experimental::Tensor>,
                      egr::kSlotSmallVectorSize>
-ClipGradNode::operator()(
-    paddle::small_vector<std::vector<paddle::experimental::Tensor>,
-                         egr::kSlotSmallVectorSize>& grads,
-    bool create_graph,
-    bool is_new_grad) {
-  VLOG(3) << "Running AD API GRAD: "
-          << "clip_grad";
-  // Fill Zero For GradIn Tensors
-
-  // Apply Gradient Hooks
-  auto hooked_grads = ApplyGradientHooks(grads);
-
-  // Collect GradIn Tensors, Attrs and Recovered TensorWrappers
-  auto x = egr::EagerUtils::RecoverTensorWrapper(&this->x_);
-  auto& grad_out = hooked_grads[0][0];
-  auto& min = this->min_;
-  auto& max = this->max_;
-  // Prepare Grad function call
-
-  const auto& out_metas = OutputMeta();
-  paddle::small_vector<std::vector<paddle::experimental::Tensor>,
-                       egr::kSlotSmallVectorSize>
-      returns(1);
-  for (int i = 0; i < 1; ++i) {
-    out_metas[i].size() == 0 ? returns[i].resize(1)
-                             : returns[i].resize(out_metas[i].size());
-  }
-
-  auto* api_output_0 =
-      (out_metas[0].empty() || out_metas[0][0].IsStopGradient())
-          ? nullptr
-          : &returns[0][0];
-  // Runtime check if we need next grad
-  bool trace_backward = egr::Controller::Instance().HasGrad() && create_graph;
-
-  // Inplace Check
-
-  bool can_be_inplaced = false;
-  if (grad_out.initialized()) {
-    VLOG(10) << grad_out.name()
-             << "(out_grad) use_count: " << grad_out.impl().use_count();
-    if (grad_out.impl().use_count() == 1 ||
-        (grad_out.impl().use_count() == 2 &&
-         grad_out.impl().get() == grads[0][0].impl().get())) {
-      can_be_inplaced = true;
-    }
-  }
-  // Inplace Strategy
-
-  if (trace_backward) {
-    if (api_output_0 != nullptr && can_be_inplaced) {
-      egr::EagerUtils::HandleViewBetweenInputAndOutput(grad_out, api_output_0);
-    }
-  } else {
-    if (api_output_0 != nullptr && can_be_inplaced) {
-      egr::EagerUtils::HandleViewBetweenInputAndOutput(grad_out, api_output_0);
-    }
-  }
-
-  VLOG(5) << "Running C++ API: "
-          << "clip_grad";
-  // Before log info
-
-  if (VLOG_IS_ON(3)) {
-    const char* INPUT_PRINT_TEMPLATE = "{ Input: [%s]} ";
-
-    std::string input_str = "";
-    std::string output_str = "";
-    const char* TENSOR_GRAD_OUT_TEMPLATE = " \n( grad_out , [%s]), ";
-    std::string input_grad_out_str = paddle::string::Sprintf(
-        TENSOR_GRAD_OUT_TEMPLATE, egr::EagerUtils::TensorStr(grad_out));
-    input_str += input_grad_out_str;
-    const char* TENSOR_X_TEMPLATE = " \n( x , [%s]), ";
-    std::string input_x_str = paddle::string::Sprintf(
-        TENSOR_X_TEMPLATE, egr::EagerUtils::TensorStr(x));
-    input_str += input_x_str;
-    VLOG(3) << paddle::string::Sprintf(INPUT_PRINT_TEMPLATE, input_str);
-  }
-
-  // Call grad_api function
-
-  paddle::experimental::clip_grad(x, grad_out, min, max, api_output_0);
-  // Check NaN and Inf id needed
-  if (FLAGS_check_nan_inf) {
-    egr::CheckTensorHasNanOrInf("clip_grad", returns);
-  }
-
-  // Get GradOut autograd_meta
-
-  auto& grad_x = returns[0][0];
-  egr::AutogradMeta* grad_x_autograd_meta =
-      returns[0][0].initialized() ? egr::EagerUtils::autograd_meta(&grad_x)
-                                  : nullptr;
-  if (grad_x_autograd_meta) grad_x_autograd_meta->SetStopGradient(false);
-
-  // Create Grad Node
-  if (trace_backward) {
-    paddle::platform::RecordEvent node_creation_record_event(
-        "clip_grad node_creation",
-        paddle::platform::TracerEventType::OperatorInner,
-        1);
-
-    // Node Construction
-    auto grad_node =
-        std::shared_ptr<ClipDoubleGradNode>(new ClipDoubleGradNode(1, 2));
-    // SetAttributes if needed
-    grad_node->SetAttributemin(min);
-    grad_node->SetAttributemax(max);
-    // Set TensorWrappers for Forward Inputs if needed
-    grad_node->SetTensorWrapperx(x);
-    // SetGradOutMeta & SetEdges
-    grad_node->SetGradOutMeta(grad_out, 1);
-    // SetOutRank & SetHistory & SetGradInMeta & RetainGrad
-    if (grad_x_autograd_meta) {
-      egr::EagerUtils::SetOutRankWithSlot(grad_x_autograd_meta, 0);
-    }
-    if (grad_x_autograd_meta) {
-      egr::EagerUtils::SetHistory(grad_x_autograd_meta, grad_node);
-    }
-    grad_node->SetGradInMeta(grad_x, 0);
-    egr::EagerUtils::CheckAndRetainGrad(grad_x);
-    // Set TensorWrappers for Forward Outputs if needed
-  }
-
-  VLOG(4) << "Finish AD API GRAD: clip_grad";
-  // LOG IF DEBUG
-
-  if (VLOG_IS_ON(4)) {
-    const char* INPUT_PRINT_TEMPLATE = "{ Input: [%s],  \n Output: [%s] } ";
-
-    std::string input_str = "";
-    std::string output_str = "";
-    const char* TENSOR_GRAD_OUT_TEMPLATE = " \n( grad_out , [%s]), ";
-    std::string input_grad_out_str = paddle::string::Sprintf(
-        TENSOR_GRAD_OUT_TEMPLATE, egr::EagerUtils::TensorStr(grad_out));
-    input_str += input_grad_out_str;
-    const char* TENSOR_X_TEMPLATE = " \n( x , [%s]), ";
-    std::string input_x_str = paddle::string::Sprintf(
-        TENSOR_X_TEMPLATE, egr::EagerUtils::TensorStr(x));
-    input_str += input_x_str;
-    const char* TENSOR_GRAD_X_TEMPLATE = " \n ( grad_x , [%s]), ";
-    std::string output_grad_x_str = paddle::string::Sprintf(
-        TENSOR_GRAD_X_TEMPLATE, egr::EagerUtils::TensorStr(grad_x));
-    output_str += output_grad_x_str;
-    VLOG(4) << paddle::string::Sprintf(
-        INPUT_PRINT_TEMPLATE, input_str, output_str);
-  }
-
-  // Return
-  if (NeedComplexToRealConversion()) HandleComplexGradToRealGrad(&returns);
-  return returns;
-}
-
-paddle::small_vector<std::vector<paddle::experimental::Tensor>,
-                     egr::kSlotSmallVectorSize>
-ClipDoubleGradNode::operator()(
-    paddle::small_vector<std::vector<paddle::experimental::Tensor>,
-                         egr::kSlotSmallVectorSize>& grads,
-    bool create_graph,
-    bool is_new_grad) {
-  VLOG(3) << "Running AD API GRAD: "
-          << "clip_double_grad";
-  // Fill Zero For GradIn Tensors
-
-  // Apply Gradient Hooks
-  auto hooked_grads = ApplyGradientHooks(grads);
-
-  // Collect GradIn Tensors, Attrs and Recovered TensorWrappers
-  auto x = egr::EagerUtils::RecoverTensorWrapper(&this->x_);
-  auto& grad_x_grad = hooked_grads[0][0];
-  auto& min = this->min_;
-  auto& max = this->max_;
-  // Prepare Grad function call
-
-  const auto& out_metas = OutputMeta();
-  paddle::small_vector<std::vector<paddle::experimental::Tensor>,
-                       egr::kSlotSmallVectorSize>
-      returns(2);
-  for (int i = 0; i < 2; ++i) {
-    out_metas[i].size() == 0 ? returns[i].resize(1)
-                             : returns[i].resize(out_metas[i].size());
-  }
-
-  auto* api_output_0 =
-      (out_metas[1].empty() || out_metas[1][0].IsStopGradient())
-          ? nullptr
-          : &returns[1][0];
-  // Runtime check if we need next grad
-  bool trace_backward = egr::Controller::Instance().HasGrad() && create_graph;
-
-  // Inplace Check
-
-  // Inplace Strategy
-
-  VLOG(5) << "Running C++ API: "
-          << "clip_double_grad";
-  // Before log info
-
-  if (VLOG_IS_ON(3)) {
-    const char* INPUT_PRINT_TEMPLATE = "{ Input: [%s]} ";
-
-    std::string input_str = "";
-    std::string output_str = "";
-    const char* TENSOR_GRAD_X_GRAD_TEMPLATE = " \n( grad_x_grad , [%s]), ";
-    std::string input_grad_x_grad_str = paddle::string::Sprintf(
-        TENSOR_GRAD_X_GRAD_TEMPLATE, egr::EagerUtils::TensorStr(grad_x_grad));
-    input_str += input_grad_x_grad_str;
-    const char* TENSOR_X_TEMPLATE = " \n( x , [%s]), ";
-    std::string input_x_str = paddle::string::Sprintf(
-        TENSOR_X_TEMPLATE, egr::EagerUtils::TensorStr(x));
-    input_str += input_x_str;
-    VLOG(3) << paddle::string::Sprintf(INPUT_PRINT_TEMPLATE, input_str);
-  }
-
-  // Call grad_api function
-
-  paddle::experimental::clip_double_grad(
-      x, grad_x_grad, min, max, api_output_0);
-  // Check NaN and Inf id needed
-  if (FLAGS_check_nan_inf) {
-    egr::CheckTensorHasNanOrInf("clip_double_grad", returns);
-  }
-
-  // Get GradOut autograd_meta
-
-  auto& grad_out_grad = returns[1][0];
-  egr::AutogradMeta* grad_out_grad_autograd_meta =
-      returns[1][0].initialized()
-          ? egr::EagerUtils::autograd_meta(&grad_out_grad)
-          : nullptr;
-  if (grad_out_grad_autograd_meta)
-    grad_out_grad_autograd_meta->SetStopGradient(false);
-
-  // Create Grad Node
-  if (trace_backward) {
-    PADDLE_THROW(phi::errors::Unavailable(
-        "The Op clip_double_grad doesn't have any grad"
-        "op. If you don't intend calculating higher order"
-        "derivatives, please set `create_graph`to False."));
-  }
-  VLOG(4) << "Finish AD API GRAD: clip_double_grad";
-  // LOG IF DEBUG
-
-  if (VLOG_IS_ON(4)) {
-    const char* INPUT_PRINT_TEMPLATE = "{ Input: [%s],  \n Output: [%s] } ";
-
-    std::string input_str = "";
-    std::string output_str = "";
-    const char* TENSOR_GRAD_X_GRAD_TEMPLATE = " \n( grad_x_grad , [%s]), ";
-    std::string input_grad_x_grad_str = paddle::string::Sprintf(
-        TENSOR_GRAD_X_GRAD_TEMPLATE, egr::EagerUtils::TensorStr(grad_x_grad));
-    input_str += input_grad_x_grad_str;
-    const char* TENSOR_X_TEMPLATE = " \n( x , [%s]), ";
-    std::string input_x_str = paddle::string::Sprintf(
-        TENSOR_X_TEMPLATE, egr::EagerUtils::TensorStr(x));
-    input_str += input_x_str;
-    const char* TENSOR_GRAD_OUT_GRAD_TEMPLATE = " \n ( grad_out_grad , [%s]), ";
-    std::string output_grad_out_grad_str =
-        paddle::string::Sprintf(TENSOR_GRAD_OUT_GRAD_TEMPLATE,
-                                egr::EagerUtils::TensorStr(grad_out_grad));
-    output_str += output_grad_out_grad_str;
-    VLOG(4) << paddle::string::Sprintf(
-        INPUT_PRINT_TEMPLATE, input_str, output_str);
-  }
-
-  // Return
-  if (NeedComplexToRealConversion()) HandleComplexGradToRealGrad(&returns);
-  return returns;
-}
-
-paddle::small_vector<std::vector<paddle::experimental::Tensor>,
-                     egr::kSlotSmallVectorSize>
 ConcatGradNode::operator()(
     paddle::small_vector<std::vector<paddle::experimental::Tensor>,
                          egr::kSlotSmallVectorSize>& grads,
@@ -24764,112 +24996,6 @@ FillGradNode::operator()(
 
 paddle::small_vector<std::vector<paddle::experimental::Tensor>,
                      egr::kSlotSmallVectorSize>
-FillDiagonalGradNode::operator()(
-    paddle::small_vector<std::vector<paddle::experimental::Tensor>,
-                         egr::kSlotSmallVectorSize>& grads,
-    bool create_graph,
-    bool is_new_grad) {
-  VLOG(3) << "Running AD API GRAD: "
-          << "fill_diagonal_grad";
-  // Fill Zero For GradIn Tensors
-
-  // Apply Gradient Hooks
-  auto hooked_grads = ApplyGradientHooks(grads);
-
-  // Collect GradIn Tensors, Attrs and Recovered TensorWrappers
-  auto& out_grad = hooked_grads[0][0];
-  auto& value = this->value_;
-  auto& offset = this->offset_;
-  auto& wrap = this->wrap_;
-  // Prepare Grad function call
-
-  const auto& out_metas = OutputMeta();
-  paddle::small_vector<std::vector<paddle::experimental::Tensor>,
-                       egr::kSlotSmallVectorSize>
-      returns(1);
-  for (int i = 0; i < 1; ++i) {
-    out_metas[i].size() == 0 ? returns[i].resize(1)
-                             : returns[i].resize(out_metas[i].size());
-  }
-
-  auto* api_output_0 =
-      (out_metas[0].empty() || out_metas[0][0].IsStopGradient())
-          ? nullptr
-          : &returns[0][0];
-  // Runtime check if we need next grad
-  bool trace_backward = egr::Controller::Instance().HasGrad() && create_graph;
-
-  // Inplace Check
-
-  // Inplace Strategy
-
-  VLOG(5) << "Running C++ API: "
-          << "fill_diagonal_grad";
-  // Before log info
-
-  if (VLOG_IS_ON(3)) {
-    const char* INPUT_PRINT_TEMPLATE = "{ Input: [%s]} ";
-
-    std::string input_str = "";
-    std::string output_str = "";
-    const char* TENSOR_OUT_GRAD_TEMPLATE = " \n( out_grad , [%s]), ";
-    std::string input_out_grad_str = paddle::string::Sprintf(
-        TENSOR_OUT_GRAD_TEMPLATE, egr::EagerUtils::TensorStr(out_grad));
-    input_str += input_out_grad_str;
-    VLOG(3) << paddle::string::Sprintf(INPUT_PRINT_TEMPLATE, input_str);
-  }
-
-  // Call grad_api function
-
-  paddle::experimental::fill_diagonal_grad(
-      out_grad, value, offset, wrap, api_output_0);
-  // Check NaN and Inf id needed
-  if (FLAGS_check_nan_inf) {
-    egr::CheckTensorHasNanOrInf("fill_diagonal_grad", returns);
-  }
-
-  // Get GradOut autograd_meta
-
-  auto& x_grad = returns[0][0];
-  egr::AutogradMeta* x_grad_autograd_meta =
-      returns[0][0].initialized() ? egr::EagerUtils::autograd_meta(&x_grad)
-                                  : nullptr;
-  if (x_grad_autograd_meta) x_grad_autograd_meta->SetStopGradient(false);
-
-  // Create Grad Node
-  if (trace_backward) {
-    PADDLE_THROW(phi::errors::Unavailable(
-        "The Op fill_diagonal_grad doesn't have any grad"
-        "op. If you don't intend calculating higher order"
-        "derivatives, please set `create_graph`to False."));
-  }
-  VLOG(4) << "Finish AD API GRAD: fill_diagonal_grad";
-  // LOG IF DEBUG
-
-  if (VLOG_IS_ON(4)) {
-    const char* INPUT_PRINT_TEMPLATE = "{ Input: [%s],  \n Output: [%s] } ";
-
-    std::string input_str = "";
-    std::string output_str = "";
-    const char* TENSOR_OUT_GRAD_TEMPLATE = " \n( out_grad , [%s]), ";
-    std::string input_out_grad_str = paddle::string::Sprintf(
-        TENSOR_OUT_GRAD_TEMPLATE, egr::EagerUtils::TensorStr(out_grad));
-    input_str += input_out_grad_str;
-    const char* TENSOR_X_GRAD_TEMPLATE = " \n ( x_grad , [%s]), ";
-    std::string output_x_grad_str = paddle::string::Sprintf(
-        TENSOR_X_GRAD_TEMPLATE, egr::EagerUtils::TensorStr(x_grad));
-    output_str += output_x_grad_str;
-    VLOG(4) << paddle::string::Sprintf(
-        INPUT_PRINT_TEMPLATE, input_str, output_str);
-  }
-
-  // Return
-  if (NeedComplexToRealConversion()) HandleComplexGradToRealGrad(&returns);
-  return returns;
-}
-
-paddle::small_vector<std::vector<paddle::experimental::Tensor>,
-                     egr::kSlotSmallVectorSize>
 FlattenGradNode::operator()(
     paddle::small_vector<std::vector<paddle::experimental::Tensor>,
                          egr::kSlotSmallVectorSize>& grads,
@@ -25834,132 +25960,6 @@ HardswishGradNode::operator()(
         "derivatives, please set `create_graph`to False."));
   }
   VLOG(4) << "Finish AD API GRAD: hardswish_grad";
-  // LOG IF DEBUG
-
-  if (VLOG_IS_ON(4)) {
-    const char* INPUT_PRINT_TEMPLATE = "{ Input: [%s],  \n Output: [%s] } ";
-
-    std::string input_str = "";
-    std::string output_str = "";
-    const char* TENSOR_OUT_GRAD_TEMPLATE = " \n( out_grad , [%s]), ";
-    std::string input_out_grad_str = paddle::string::Sprintf(
-        TENSOR_OUT_GRAD_TEMPLATE, egr::EagerUtils::TensorStr(out_grad));
-    input_str += input_out_grad_str;
-    const char* TENSOR_X_TEMPLATE = " \n( x , [%s]), ";
-    std::string input_x_str = paddle::string::Sprintf(
-        TENSOR_X_TEMPLATE, egr::EagerUtils::TensorStr(x));
-    input_str += input_x_str;
-    const char* TENSOR_X_GRAD_TEMPLATE = " \n ( x_grad , [%s]), ";
-    std::string output_x_grad_str = paddle::string::Sprintf(
-        TENSOR_X_GRAD_TEMPLATE, egr::EagerUtils::TensorStr(x_grad));
-    output_str += output_x_grad_str;
-    VLOG(4) << paddle::string::Sprintf(
-        INPUT_PRINT_TEMPLATE, input_str, output_str);
-  }
-
-  // Return
-  if (NeedComplexToRealConversion()) HandleComplexGradToRealGrad(&returns);
-  return returns;
-}
-
-paddle::small_vector<std::vector<paddle::experimental::Tensor>,
-                     egr::kSlotSmallVectorSize>
-HardtanhGradNode::operator()(
-    paddle::small_vector<std::vector<paddle::experimental::Tensor>,
-                         egr::kSlotSmallVectorSize>& grads,
-    bool create_graph,
-    bool is_new_grad) {
-  VLOG(3) << "Running AD API GRAD: "
-          << "hardtanh_grad";
-  // Fill Zero For GradIn Tensors
-
-  // Apply Gradient Hooks
-  auto hooked_grads = ApplyGradientHooks(grads);
-
-  // Collect GradIn Tensors, Attrs and Recovered TensorWrappers
-  auto x = egr::EagerUtils::RecoverTensorWrapper(&this->x_);
-  auto& out_grad = hooked_grads[0][0];
-  auto& t_min = this->t_min_;
-  auto& t_max = this->t_max_;
-  // Prepare Grad function call
-
-  const auto& out_metas = OutputMeta();
-  paddle::small_vector<std::vector<paddle::experimental::Tensor>,
-                       egr::kSlotSmallVectorSize>
-      returns(1);
-  for (int i = 0; i < 1; ++i) {
-    out_metas[i].size() == 0 ? returns[i].resize(1)
-                             : returns[i].resize(out_metas[i].size());
-  }
-
-  auto* api_output_0 =
-      (out_metas[0].empty() || out_metas[0][0].IsStopGradient())
-          ? nullptr
-          : &returns[0][0];
-  // Runtime check if we need next grad
-  bool trace_backward = egr::Controller::Instance().HasGrad() && create_graph;
-
-  // Inplace Check
-
-  bool can_be_inplaced = false;
-  if (out_grad.initialized()) {
-    VLOG(10) << out_grad.name()
-             << "(out_grad) use_count: " << out_grad.impl().use_count();
-    if (out_grad.impl().use_count() == 1 ||
-        (out_grad.impl().use_count() == 2 &&
-         out_grad.impl().get() == grads[0][0].impl().get())) {
-      can_be_inplaced = true;
-    }
-  }
-  // Inplace Strategy
-  if (api_output_0 != nullptr && can_be_inplaced) {
-    egr::EagerUtils::HandleViewBetweenInputAndOutput(out_grad, api_output_0);
-  }
-
-  VLOG(5) << "Running C++ API: "
-          << "hardtanh_grad";
-  // Before log info
-
-  if (VLOG_IS_ON(3)) {
-    const char* INPUT_PRINT_TEMPLATE = "{ Input: [%s]} ";
-
-    std::string input_str = "";
-    std::string output_str = "";
-    const char* TENSOR_OUT_GRAD_TEMPLATE = " \n( out_grad , [%s]), ";
-    std::string input_out_grad_str = paddle::string::Sprintf(
-        TENSOR_OUT_GRAD_TEMPLATE, egr::EagerUtils::TensorStr(out_grad));
-    input_str += input_out_grad_str;
-    const char* TENSOR_X_TEMPLATE = " \n( x , [%s]), ";
-    std::string input_x_str = paddle::string::Sprintf(
-        TENSOR_X_TEMPLATE, egr::EagerUtils::TensorStr(x));
-    input_str += input_x_str;
-    VLOG(3) << paddle::string::Sprintf(INPUT_PRINT_TEMPLATE, input_str);
-  }
-
-  // Call grad_api function
-
-  paddle::experimental::hardtanh_grad(x, out_grad, t_min, t_max, api_output_0);
-  // Check NaN and Inf id needed
-  if (FLAGS_check_nan_inf) {
-    egr::CheckTensorHasNanOrInf("hardtanh_grad", returns);
-  }
-
-  // Get GradOut autograd_meta
-
-  auto& x_grad = returns[0][0];
-  egr::AutogradMeta* x_grad_autograd_meta =
-      returns[0][0].initialized() ? egr::EagerUtils::autograd_meta(&x_grad)
-                                  : nullptr;
-  if (x_grad_autograd_meta) x_grad_autograd_meta->SetStopGradient(false);
-
-  // Create Grad Node
-  if (trace_backward) {
-    PADDLE_THROW(phi::errors::Unavailable(
-        "The Op hardtanh_grad doesn't have any grad"
-        "op. If you don't intend calculating higher order"
-        "derivatives, please set `create_graph`to False."));
-  }
-  VLOG(4) << "Finish AD API GRAD: hardtanh_grad";
   // LOG IF DEBUG
 
   if (VLOG_IS_ON(4)) {

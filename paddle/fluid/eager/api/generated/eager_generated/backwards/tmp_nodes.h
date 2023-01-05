@@ -777,6 +777,95 @@ class CholeskySolveGradNode : public egr::GradNodeBase {
   bool upper_;
 };
 
+class ClipGradNode : public egr::GradNodeBase {
+ public:
+  ClipGradNode() : egr::GradNodeBase() {}
+  ClipGradNode(size_t bwd_in_slot_num, size_t bwd_out_slot_num)
+      : egr::GradNodeBase(bwd_in_slot_num, bwd_out_slot_num) {}
+  ~ClipGradNode() override = default;
+
+  virtual paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                               egr::kSlotSmallVectorSize>
+  operator()(paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                                  egr::kSlotSmallVectorSize>& grads,
+             bool create_graph = false,
+             bool is_new_grad = false) override;
+  std::string name() override { return "ClipGradNode"; }
+
+  void ClearTensorWrappers() override {
+    x_.clear();
+
+    SetIsTensorWrappersCleared(true);
+  }
+
+  std::shared_ptr<GradNodeBase> Copy() const override {
+    auto copied_node = std::shared_ptr<ClipGradNode>(new ClipGradNode(*this));
+    return copied_node;
+  }
+
+  // SetTensorWrapperX, SetTensorWrapperY, ...
+  void SetTensorWrapperx(const paddle::experimental::Tensor& x) {
+    x_ = egr::TensorWrapper(x, false);
+  }
+
+  // SetAttributes
+  void SetAttributemin(const paddle::experimental::Scalar& min) { min_ = min; }
+  void SetAttributemax(const paddle::experimental::Scalar& max) { max_ = max; }
+
+ private:
+  // TensorWrappers
+  egr::TensorWrapper x_;
+
+  // Attributes
+  paddle::experimental::Scalar min_ = 0.;
+  paddle::experimental::Scalar max_ = 0.;
+};
+
+class ClipDoubleGradNode : public egr::GradNodeBase {
+ public:
+  ClipDoubleGradNode() : egr::GradNodeBase() {}
+  ClipDoubleGradNode(size_t bwd_in_slot_num, size_t bwd_out_slot_num)
+      : egr::GradNodeBase(bwd_in_slot_num, bwd_out_slot_num) {}
+  ~ClipDoubleGradNode() override = default;
+
+  virtual paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                               egr::kSlotSmallVectorSize>
+  operator()(paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                                  egr::kSlotSmallVectorSize>& grads,
+             bool create_graph = false,
+             bool is_new_grad = false) override;
+  std::string name() override { return "ClipDoubleGradNode"; }
+
+  void ClearTensorWrappers() override {
+    x_.clear();
+
+    SetIsTensorWrappersCleared(true);
+  }
+
+  std::shared_ptr<GradNodeBase> Copy() const override {
+    auto copied_node =
+        std::shared_ptr<ClipDoubleGradNode>(new ClipDoubleGradNode(*this));
+    return copied_node;
+  }
+
+  // SetTensorWrapperX, SetTensorWrapperY, ...
+  void SetTensorWrapperx(const paddle::experimental::Tensor& x) {
+    x_ = egr::TensorWrapper(x, false);
+  }
+
+  // SetAttributes
+  void SetAttributemin(const paddle::experimental::Scalar& min) { min_ = min; }
+  void SetAttributemax(const paddle::experimental::Scalar& max) { max_ = max; }
+
+ private:
+  // TensorWrappers
+  egr::TensorWrapper x_;
+
+  // Attributes
+  paddle::experimental::Scalar min_ = 0.;
+  paddle::experimental::Scalar max_ = 0.;
+};
+
 class ComplexGradNode : public egr::GradNodeBase {
  public:
   ComplexGradNode() : egr::GradNodeBase() {}
@@ -1880,6 +1969,45 @@ class FftR2cGradNode : public egr::GradNodeBase {
   bool onesided_;
 };
 
+class FillDiagonalGradNode : public egr::GradNodeBase {
+ public:
+  FillDiagonalGradNode() : egr::GradNodeBase() {}
+  FillDiagonalGradNode(size_t bwd_in_slot_num, size_t bwd_out_slot_num)
+      : egr::GradNodeBase(bwd_in_slot_num, bwd_out_slot_num) {}
+  ~FillDiagonalGradNode() override = default;
+
+  virtual paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                               egr::kSlotSmallVectorSize>
+  operator()(paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                                  egr::kSlotSmallVectorSize>& grads,
+             bool create_graph = false,
+             bool is_new_grad = false) override;
+  std::string name() override { return "FillDiagonalGradNode"; }
+
+  void ClearTensorWrappers() override { SetIsTensorWrappersCleared(true); }
+
+  std::shared_ptr<GradNodeBase> Copy() const override {
+    auto copied_node =
+        std::shared_ptr<FillDiagonalGradNode>(new FillDiagonalGradNode(*this));
+    return copied_node;
+  }
+
+  // SetTensorWrapperX, SetTensorWrapperY, ...
+
+  // SetAttributes
+  void SetAttributevalue(const float& value) { value_ = value; }
+  void SetAttributeoffset(const int& offset) { offset_ = offset; }
+  void SetAttributewrap(const bool& wrap) { wrap_ = wrap; }
+
+ private:
+  // TensorWrappers
+
+  // Attributes
+  float value_;
+  int offset_;
+  bool wrap_;
+};
+
 class FillDiagonalTensorGradNode : public egr::GradNodeBase {
  public:
   FillDiagonalTensorGradNode() : egr::GradNodeBase() {}
@@ -2370,6 +2498,51 @@ class HardsigmoidGradNode : public egr::GradNodeBase {
   // Attributes
   float slope_;
   float offset_;
+};
+
+class HardtanhGradNode : public egr::GradNodeBase {
+ public:
+  HardtanhGradNode() : egr::GradNodeBase() {}
+  HardtanhGradNode(size_t bwd_in_slot_num, size_t bwd_out_slot_num)
+      : egr::GradNodeBase(bwd_in_slot_num, bwd_out_slot_num) {}
+  ~HardtanhGradNode() override = default;
+
+  virtual paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                               egr::kSlotSmallVectorSize>
+  operator()(paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                                  egr::kSlotSmallVectorSize>& grads,
+             bool create_graph = false,
+             bool is_new_grad = false) override;
+  std::string name() override { return "HardtanhGradNode"; }
+
+  void ClearTensorWrappers() override {
+    x_.clear();
+
+    SetIsTensorWrappersCleared(true);
+  }
+
+  std::shared_ptr<GradNodeBase> Copy() const override {
+    auto copied_node =
+        std::shared_ptr<HardtanhGradNode>(new HardtanhGradNode(*this));
+    return copied_node;
+  }
+
+  // SetTensorWrapperX, SetTensorWrapperY, ...
+  void SetTensorWrapperx(const paddle::experimental::Tensor& x) {
+    x_ = egr::TensorWrapper(x, false);
+  }
+
+  // SetAttributes
+  void SetAttributet_min(const float& t_min) { t_min_ = t_min; }
+  void SetAttributet_max(const float& t_max) { t_max_ = t_max; }
+
+ private:
+  // TensorWrappers
+  egr::TensorWrapper x_;
+
+  // Attributes
+  float t_min_;
+  float t_max_;
 };
 
 class ImagGradNode : public egr::GradNodeBase {
@@ -6881,95 +7054,6 @@ class CastGradNode : public egr::GradNodeBase {
   // Attributes
 };
 
-class ClipGradNode : public egr::GradNodeBase {
- public:
-  ClipGradNode() : egr::GradNodeBase() {}
-  ClipGradNode(size_t bwd_in_slot_num, size_t bwd_out_slot_num)
-      : egr::GradNodeBase(bwd_in_slot_num, bwd_out_slot_num) {}
-  ~ClipGradNode() override = default;
-
-  virtual paddle::small_vector<std::vector<paddle::experimental::Tensor>,
-                               egr::kSlotSmallVectorSize>
-  operator()(paddle::small_vector<std::vector<paddle::experimental::Tensor>,
-                                  egr::kSlotSmallVectorSize>& grads,
-             bool create_graph = false,
-             bool is_new_grad = false) override;
-  std::string name() override { return "ClipGradNode"; }
-
-  void ClearTensorWrappers() override {
-    x_.clear();
-
-    SetIsTensorWrappersCleared(true);
-  }
-
-  std::shared_ptr<GradNodeBase> Copy() const override {
-    auto copied_node = std::shared_ptr<ClipGradNode>(new ClipGradNode(*this));
-    return copied_node;
-  }
-
-  // SetTensorWrapperX, SetTensorWrapperY, ...
-  void SetTensorWrapperx(const paddle::experimental::Tensor& x) {
-    x_ = egr::TensorWrapper(x, false);
-  }
-
-  // SetAttributes
-  void SetAttributemin(const paddle::experimental::Scalar& min) { min_ = min; }
-  void SetAttributemax(const paddle::experimental::Scalar& max) { max_ = max; }
-
- private:
-  // TensorWrappers
-  egr::TensorWrapper x_;
-
-  // Attributes
-  paddle::experimental::Scalar min_ = 0.;
-  paddle::experimental::Scalar max_ = 0.;
-};
-
-class ClipDoubleGradNode : public egr::GradNodeBase {
- public:
-  ClipDoubleGradNode() : egr::GradNodeBase() {}
-  ClipDoubleGradNode(size_t bwd_in_slot_num, size_t bwd_out_slot_num)
-      : egr::GradNodeBase(bwd_in_slot_num, bwd_out_slot_num) {}
-  ~ClipDoubleGradNode() override = default;
-
-  virtual paddle::small_vector<std::vector<paddle::experimental::Tensor>,
-                               egr::kSlotSmallVectorSize>
-  operator()(paddle::small_vector<std::vector<paddle::experimental::Tensor>,
-                                  egr::kSlotSmallVectorSize>& grads,
-             bool create_graph = false,
-             bool is_new_grad = false) override;
-  std::string name() override { return "ClipDoubleGradNode"; }
-
-  void ClearTensorWrappers() override {
-    x_.clear();
-
-    SetIsTensorWrappersCleared(true);
-  }
-
-  std::shared_ptr<GradNodeBase> Copy() const override {
-    auto copied_node =
-        std::shared_ptr<ClipDoubleGradNode>(new ClipDoubleGradNode(*this));
-    return copied_node;
-  }
-
-  // SetTensorWrapperX, SetTensorWrapperY, ...
-  void SetTensorWrapperx(const paddle::experimental::Tensor& x) {
-    x_ = egr::TensorWrapper(x, false);
-  }
-
-  // SetAttributes
-  void SetAttributemin(const paddle::experimental::Scalar& min) { min_ = min; }
-  void SetAttributemax(const paddle::experimental::Scalar& max) { max_ = max; }
-
- private:
-  // TensorWrappers
-  egr::TensorWrapper x_;
-
-  // Attributes
-  paddle::experimental::Scalar min_ = 0.;
-  paddle::experimental::Scalar max_ = 0.;
-};
-
 class ConcatGradNode : public egr::GradNodeBase {
  public:
   ConcatGradNode() : egr::GradNodeBase() {}
@@ -8440,45 +8524,6 @@ class FillGradNode : public egr::GradNodeBase {
   paddle::experimental::Scalar value_;
 };
 
-class FillDiagonalGradNode : public egr::GradNodeBase {
- public:
-  FillDiagonalGradNode() : egr::GradNodeBase() {}
-  FillDiagonalGradNode(size_t bwd_in_slot_num, size_t bwd_out_slot_num)
-      : egr::GradNodeBase(bwd_in_slot_num, bwd_out_slot_num) {}
-  ~FillDiagonalGradNode() override = default;
-
-  virtual paddle::small_vector<std::vector<paddle::experimental::Tensor>,
-                               egr::kSlotSmallVectorSize>
-  operator()(paddle::small_vector<std::vector<paddle::experimental::Tensor>,
-                                  egr::kSlotSmallVectorSize>& grads,
-             bool create_graph = false,
-             bool is_new_grad = false) override;
-  std::string name() override { return "FillDiagonalGradNode"; }
-
-  void ClearTensorWrappers() override { SetIsTensorWrappersCleared(true); }
-
-  std::shared_ptr<GradNodeBase> Copy() const override {
-    auto copied_node =
-        std::shared_ptr<FillDiagonalGradNode>(new FillDiagonalGradNode(*this));
-    return copied_node;
-  }
-
-  // SetTensorWrapperX, SetTensorWrapperY, ...
-
-  // SetAttributes
-  void SetAttributevalue(const float& value) { value_ = value; }
-  void SetAttributeoffset(const int& offset) { offset_ = offset; }
-  void SetAttributewrap(const bool& wrap) { wrap_ = wrap; }
-
- private:
-  // TensorWrappers
-
-  // Attributes
-  float value_;
-  int offset_;
-  bool wrap_;
-};
-
 class FlattenGradNode : public egr::GradNodeBase {
  public:
   FlattenGradNode() : egr::GradNodeBase() {}
@@ -8839,51 +8884,6 @@ class HardswishGradNode : public egr::GradNodeBase {
   float threshold_ = 6.0;
   float scale_ = 6.0;
   float offset_ = 3.0;
-};
-
-class HardtanhGradNode : public egr::GradNodeBase {
- public:
-  HardtanhGradNode() : egr::GradNodeBase() {}
-  HardtanhGradNode(size_t bwd_in_slot_num, size_t bwd_out_slot_num)
-      : egr::GradNodeBase(bwd_in_slot_num, bwd_out_slot_num) {}
-  ~HardtanhGradNode() override = default;
-
-  virtual paddle::small_vector<std::vector<paddle::experimental::Tensor>,
-                               egr::kSlotSmallVectorSize>
-  operator()(paddle::small_vector<std::vector<paddle::experimental::Tensor>,
-                                  egr::kSlotSmallVectorSize>& grads,
-             bool create_graph = false,
-             bool is_new_grad = false) override;
-  std::string name() override { return "HardtanhGradNode"; }
-
-  void ClearTensorWrappers() override {
-    x_.clear();
-
-    SetIsTensorWrappersCleared(true);
-  }
-
-  std::shared_ptr<GradNodeBase> Copy() const override {
-    auto copied_node =
-        std::shared_ptr<HardtanhGradNode>(new HardtanhGradNode(*this));
-    return copied_node;
-  }
-
-  // SetTensorWrapperX, SetTensorWrapperY, ...
-  void SetTensorWrapperx(const paddle::experimental::Tensor& x) {
-    x_ = egr::TensorWrapper(x, false);
-  }
-
-  // SetAttributes
-  void SetAttributet_min(const float& t_min) { t_min_ = t_min; }
-  void SetAttributet_max(const float& t_max) { t_max_ = t_max; }
-
- private:
-  // TensorWrappers
-  egr::TensorWrapper x_;
-
-  // Attributes
-  float t_min_;
-  float t_max_;
 };
 
 class HsigmoidLossGradNode : public egr::GradNodeBase {

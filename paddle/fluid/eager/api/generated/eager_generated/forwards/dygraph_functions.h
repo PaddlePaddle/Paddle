@@ -43,6 +43,13 @@ paddle::experimental::Tensor addmm_ad_func(
     float beta = 1.0,
     float alpha = 1.0);
 
+paddle::experimental::Tensor allclose_ad_func(
+    const paddle::experimental::Tensor& x,
+    const paddle::experimental::Tensor& y,
+    paddle::experimental::Scalar rtol = "1e-5",
+    paddle::experimental::Scalar atol = "1e-8",
+    bool equal_nan = false);
+
 paddle::experimental::Tensor angle_ad_func(
     const paddle::experimental::Tensor& x);
 
@@ -93,6 +100,13 @@ paddle::experimental::Tensor cholesky_solve_ad_func(
     const paddle::experimental::Tensor& x,
     const paddle::experimental::Tensor& y,
     bool upper);
+
+paddle::experimental::Tensor clip_ad_func(const paddle::experimental::Tensor& x,
+                                          paddle::experimental::Scalar min,
+                                          paddle::experimental::Scalar max);
+paddle::experimental::Tensor& clip__ad_func(paddle::experimental::Tensor& x,
+                                            paddle::experimental::Scalar min,
+                                            paddle::experimental::Scalar max);
 
 paddle::experimental::Tensor complex_ad_func(
     const paddle::experimental::Tensor& real,
@@ -191,6 +205,17 @@ paddle::experimental::Tensor fft_r2c_ad_func(
     bool forward,
     bool onesided);
 
+paddle::experimental::Tensor fill_diagonal_ad_func(
+    const paddle::experimental::Tensor& x,
+    float value = 0,
+    int offset = 0,
+    bool wrap = false);
+paddle::experimental::Tensor& fill_diagonal__ad_func(
+    paddle::experimental::Tensor& x,
+    float value = 0,
+    int offset = 0,
+    bool wrap = false);
+
 paddle::experimental::Tensor fill_diagonal_tensor_ad_func(
     const paddle::experimental::Tensor& x,
     const paddle::experimental::Tensor& y,
@@ -253,6 +278,9 @@ paddle::experimental::Tensor hardshrink_ad_func(
 
 paddle::experimental::Tensor hardsigmoid_ad_func(
     const paddle::experimental::Tensor& x, float slope, float offset);
+
+paddle::experimental::Tensor hardtanh_ad_func(
+    const paddle::experimental::Tensor& x, float t_min = 0, float t_max = 24);
 
 paddle::experimental::Tensor histogram_ad_func(
     const paddle::experimental::Tensor& input,
@@ -687,13 +715,6 @@ paddle::experimental::Tensor all_ad_func(const paddle::experimental::Tensor& x,
                                          std::vector<int64_t> axis = {},
                                          bool keepdim = false);
 
-paddle::experimental::Tensor allclose_ad_func(
-    const paddle::experimental::Tensor& x,
-    const paddle::experimental::Tensor& y,
-    paddle::experimental::Scalar rtol,
-    paddle::experimental::Scalar atol,
-    bool equal_nan);
-
 paddle::experimental::Tensor amax_ad_func(const paddle::experimental::Tensor& x,
                                           std::vector<int64_t> axis = {},
                                           bool keepdim = false);
@@ -881,13 +902,6 @@ class_center_sample_ad_func(const paddle::experimental::Tensor& label,
                             int nranks,
                             bool fix_seed,
                             int seed);
-
-paddle::experimental::Tensor clip_ad_func(const paddle::experimental::Tensor& x,
-                                          paddle::experimental::Scalar min,
-                                          paddle::experimental::Scalar max);
-paddle::experimental::Tensor& clip__ad_func(paddle::experimental::Tensor& x,
-                                            paddle::experimental::Scalar min,
-                                            paddle::experimental::Scalar max);
 
 paddle::experimental::Tensor clip_by_norm_ad_func(
     const paddle::experimental::Tensor& x, float max_norm);
@@ -1103,11 +1117,6 @@ paddle::experimental::Tensor fill_ad_func(const paddle::experimental::Tensor& x,
 paddle::experimental::Tensor& fill__ad_func(paddle::experimental::Tensor& x,
                                             paddle::experimental::Scalar value);
 
-paddle::experimental::Tensor fill_diagonal_ad_func(
-    const paddle::experimental::Tensor& x, float value, int offset, bool wrap);
-paddle::experimental::Tensor& fill_diagonal__ad_func(
-    paddle::experimental::Tensor& x, float value, int offset, bool wrap);
-
 paddle::experimental::Tensor flatten_ad_func(
     const paddle::experimental::Tensor& x, int start_axis, int stop_axis);
 paddle::experimental::Tensor& flatten__ad_func(paddle::experimental::Tensor& x,
@@ -1209,9 +1218,6 @@ paddle::experimental::Tensor group_norm_ad_func(
 
 paddle::experimental::Tensor hardswish_ad_func(
     const paddle::experimental::Tensor& x);
-
-paddle::experimental::Tensor hardtanh_ad_func(
-    const paddle::experimental::Tensor& x, float t_min, float t_max);
 
 std::tuple<paddle::experimental::Tensor,
            paddle::experimental::Tensor,
