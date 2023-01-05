@@ -21,7 +21,7 @@ from auto_scan_test import PassAutoScanTest
 from program_config import ProgramConfig, TensorConfig
 
 
-class TestReshapeTransposeMatmulMkldnnFusePass(PassAutoScanTest):
+class TestOneDNNReshapeTransposeMatmulFusePass(PassAutoScanTest):
     def setUp(self):
         self.num = 32 * 64
 
