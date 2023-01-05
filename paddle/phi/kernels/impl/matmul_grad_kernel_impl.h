@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/backends/onednn/matmul_utils.h"
 #include "paddle/phi/kernels/complex_kernel.h"
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/full_kernel.h"
@@ -64,17 +65,6 @@ struct ReduceSumForMatmulGrad<GPUContext, T> {
 };
 #endif
 
-// Reshape a rank-3 tensor from P x M x N to (P * M) x N.
-// Identity op if the tensor is not of rank 3.
-static DenseTensor FoldInitDims(const DenseTensor& input) {
-  DenseTensor output = input;
-  auto in_dims = input.dims();
-  if (in_dims.size() == 3) {
-    output.Resize({in_dims[0] * in_dims[1], in_dims[2]});
-  }
-  return output;
-}
-
 // Reshape a rank-3 tensor from P x M x N to M x (P * N).
 // (Warning: This requires transposing data and writes into new memory.)
 // Identity op if the tensor is not of rank 3.
@@ -122,70 +112,6 @@ void MatMul(const Context& dev_ctx,
               static_cast<T>(flag));
 }
 
-/**
- * Get row matrix shape from a vector shape. If the rank of x_dim > 1, the
- * original x_dim is returned.
- */
-static DDim RowMatrixFromVector(const DDim& x_dim) {
-  if (x_dim.size() > 1) {
-    return x_dim;
-  }
-  return phi::make_ddim({1, x_dim[0]});
-}
-
-/**
- * Get column matrix shape from a vector shape. If the ran of y_dim > 1, the
- * original y_dim is returned.
- */
-static DDim ColumnMatrixFromVector(const DDim& y_dim) {
-  if (y_dim.size() > 1) {
-    return y_dim;
-  }
-  return phi::make_ddim({y_dim[0], 1});
-}
-
-/**
- * Reshape a tensor to 3-D or 2-D tensor by matrix descriptor.
- *
- * The shape would be [BatchSize, H, W] or [H, W].
- * If transposed, `H,W` will be swapped.
- */
-static void ReshapeTensorIntoMatrixSequence(
-    DenseTensor* x, const phi::funcs::MatDescriptor& descriptor) {
-  int64_t h, w;
-  h = descriptor.height_;
-  w = descriptor.width_;
-  if (descriptor.trans_) {
-    std::swap(w, h);
-  }
-  if (descriptor.batch_size_) {
-    x->Resize({descriptor.batch_size_, h, w});
-  } else {
-    x->Resize({h, w});
-  }
-}
-
-static void ReshapeXYOutIntoMatrixSequence(DenseTensor* x,
-                                           DenseTensor* y,
-                                           DenseTensor* out,
-                                           bool trans_x,
-                                           bool trans_y) {
-  auto x_dim = RowMatrixFromVector(x->dims());
-  auto y_dim = ColumnMatrixFromVector(y->dims());
-  auto mat_dim_x = phi::funcs::CreateMatrixDescriptor(x_dim, 0, trans_x);
-  auto mat_dim_y = phi::funcs::CreateMatrixDescriptor(y_dim, 0, trans_y);
-  if (mat_dim_x.batch_size_ == 0 && mat_dim_y.batch_size_ == 0) {
-    out->Resize({mat_dim_x.height_, mat_dim_y.width_});
-  } else {
-    out->Resize({(std::max)(mat_dim_x.batch_size_, mat_dim_y.batch_size_),
-                 mat_dim_x.height_,
-                 mat_dim_y.width_});
-  }
-
-  ReshapeTensorIntoMatrixSequence(x, mat_dim_x);
-  ReshapeTensorIntoMatrixSequence(y, mat_dim_y);
-}
-
 template <typename T, typename Context>
 void CalcInputGrad(const Context& dev_ctx,
                    const DenseTensor& a,
@@ -204,10 +130,10 @@ void CalcInputGrad(const Context& dev_ctx,
   } else {
     MatMul<Context, T>(
         dev_ctx,
-        is_fold_init_dims_a ? FoldInitDims(a)
+        is_fold_init_dims_a ? phi::funcs::FoldInitDims(a)
                             : FoldHeadAndLastDims<Context, T>(dev_ctx, a),
         trans_a,
-        is_fold_init_dims_b ? FoldInitDims(b)
+        is_fold_init_dims_b ? phi::funcs::FoldInitDims(b)
                             : FoldHeadAndLastDims<Context, T>(dev_ctx, b),
         trans_b,
         out,
@@ -264,7 +190,7 @@ void MatmulGradKernel(const Context& dev_ctx,
     DenseTensor y_help = y;
     DenseTensor out_grad_help = out_grad;
 
-    ReshapeXYOutIntoMatrixSequence(
+    phi::funcs::ReshapeXYOutIntoMatrixSequence(
         &x_help, &y_help, &out_grad_help, transpose_x, transpose_y);
 
     DDim dx_dims;
@@ -515,7 +441,7 @@ void MatmulDoubleGradKernel(const Context& dev_ctx,
     DenseTensor x_help = x;
     DenseTensor y_help = y;
     DenseTensor dout_help = dout;
-    ReshapeXYOutIntoMatrixSequence(
+    phi::funcs::ReshapeXYOutIntoMatrixSequence(
         &x_help, &y_help, &dout_help, transpose_x, transpose_y);
     DDim dx_dims;
 
@@ -937,7 +863,7 @@ void MatmulTripleGradKernel(const Context& dev_ctx,
 
     DenseTensor ddx_help;
     DenseTensor ddy_help;
-    ReshapeXYOutIntoMatrixSequence(
+    phi::funcs::ReshapeXYOutIntoMatrixSequence(
         &x_help, &y_help, &dout_help, transpose_x, transpose_y);
     if (ddx) {
       ddx_help = ddx.get();

@@ -16,8 +16,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/operators/fused/fused_dropout_helper.h"
 #include "paddle/fluid/operators/layer_norm_kernel.cu.h"
-#include "paddle/fluid/operators/matmul_v2_op.h"
 #include "paddle/phi/api/include/tensor.h"
+#include "paddle/phi/backends/onednn/matmul_utils.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/broadcast_function.h"
 #include "paddle/phi/kernels/funcs/elementwise_functor.h"
@@ -73,8 +73,8 @@ class FusedFeedForwardKernel : public framework::OpKernel<T> {
               const phi::DenseTensor& b,
               phi::DenseTensor* c) const {
     auto blas = phi::funcs::GetBlas<DeviceContext, T>(ctx);
-    auto a_2d = FoldInitDims(a);
-    auto b_2d = FoldInitDims(b);
+    auto a_2d = phi::funcs::FoldInitDims(a);
+    auto b_2d = phi::funcs::FoldInitDims(b);
     auto mat_dim_a = phi::funcs::CreateMatrixDescriptor(a_2d.dims(), 0, false);
     auto mat_dim_b = phi::funcs::CreateMatrixDescriptor(b_2d.dims(), 0, false);
     T alpha = static_cast<T>(1.0);
@@ -259,7 +259,7 @@ class FusedFeedForwardKernel : public framework::OpKernel<T> {
 
     auto x_dim = x->dims();
     auto mat_dim_x = phi::funcs::CreateMatrixDescriptor(
-        RowMatrixFromVector(x_dim), 0, false);
+        phi::funcs::RowMatrixFromVector(x_dim), 0, false);
 
     auto dim = linear1_weight->dims();
     int d_model = dim[0];
@@ -311,8 +311,8 @@ class FusedFeedForwardGradKernel : public framework::OpKernel<T> {
                   phi::DenseTensor* d_a,
                   phi::DenseTensor* d_b) const {
     auto blas = phi::funcs::GetBlas<DeviceContext, T>(ctx);
-    auto a_2d = FoldInitDims(a);
-    auto b_2d = FoldInitDims(b);
+    auto a_2d = phi::funcs::FoldInitDims(a);
+    auto b_2d = phi::funcs::FoldInitDims(b);
     auto mat_dim_a = phi::funcs::CreateMatrixDescriptor(a_2d.dims(), 0, true);
     auto mat_dim_b = phi::funcs::CreateMatrixDescriptor(b_2d.dims(), 0, true);
     auto mat_dim_dout =
@@ -575,7 +575,7 @@ class FusedFeedForwardGradKernel : public framework::OpKernel<T> {
 
     auto x_dim = x.dims();
     auto mat_dim_x = phi::funcs::CreateMatrixDescriptor(
-        RowMatrixFromVector(x_dim), 0, false);
+        phi::funcs::RowMatrixFromVector(x_dim), 0, false);
 
     auto linear1_weight_dim = linear1_weight.dims();
     int d_model = linear1_weight_dim[0];
