@@ -25,7 +25,7 @@
 #include "paddle/fluid/framework/program_desc.h"
 
 #include "paddle/fluid/framework/convert_utils.h"
-#include "paddle/fluid/prim/api/manual/prim_api/prim_api.h"
+#include "paddle/fluid/prim/api/generated/prim_api/prim_api.h"
 #include "paddle/fluid/prim/api/manual/utils/utils.h"
 #include "paddle/fluid/prim/utils/static/composite_grad_desc_maker.h"
 #include "paddle/fluid/prim/utils/static/desc_tensor.h"
@@ -34,7 +34,7 @@ namespace paddle {
 namespace prim {
 
 template <>
-Tensor pow<DescTensor>(const Tensor& x, const paddle::experimental::Scalar& y) {
+Tensor pow<DescTensor>(const Tensor& x, const Scalar& y) {
   Tensor out = empty<DescTensor>({}, phi::DataType::FLOAT32, paddle::Place());
   framework::BlockDesc* block = StaticCompositeContext::Instance().GetBlock();
   framework::OpDesc* op = block->AppendOp();
@@ -52,7 +52,7 @@ Tensor pow<DescTensor>(const Tensor& x, const paddle::experimental::Scalar& y) {
 
 template <>
 Tensor scale<DescTensor>(const Tensor& x,
-                         const paddle::experimental::Scalar& scale,
+                         const Scalar& scale,
                          float bias,
                          bool bias_after_scale) {
   Tensor out = empty<DescTensor>({}, phi::DataType::FLOAT32, paddle::Place());
