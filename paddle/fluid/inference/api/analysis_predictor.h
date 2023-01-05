@@ -111,7 +111,7 @@ class AnalysisPredictor : public PaddlePredictor {
       predictor_id_ = -trt_identifier;
       LOG_FIRST_N(WARNING, 1)
           << "Since the engine context memory of multiple predictors "
-             "is enabled in Paddle-TRT, we set the id of current predictor to "
+             "is enabled in Paddle-TRT, we set the id of these predictors to "
              "negative sharing_identifier you specified.";
     } else {
       predictor_id_ = inference::GetUniqueId();
