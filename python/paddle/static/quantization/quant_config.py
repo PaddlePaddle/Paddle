@@ -13,11 +13,20 @@
 # limitations under the License.
 
 
-# A full dict of operators that support quantization, include op name, real input and output names.
-SUPPORT_QUANTIZATION_OP_DICT = {
+# A dict of operators that contain weights and support quantization,
+# including operator names, actual input and output names.
+SUPPORT_WEIGHT_QUANTIZATION_OP_DICT = {
     "conv2d": [["Input", "Filter"], ["Output"]],
     "depthwise_conv2d": [["Input", "Filter"], ["Output"]],
     "conv2d_transpose": [["Input", "Filter"], ["Output"]],
+    "mul": [["X", "Y"], ["Out"]],
+    "matmul": [["X", "Y"], ["Out"]],
+    "matmul_v2": [["X", "Y"], ["Out"]],
+}
+
+# A dict of operators that supports quantization and has only activation inputs,
+# including operator names, actual input and output names.
+SUPPORT_ACT_QUANTIZATION_OP_DICT = {
     "mul": [["X", "Y"], ["Out"]],
     "matmul": [["X", "Y"], ["Out"]],
     "matmul_v2": [["X", "Y"], ["Out"]],
@@ -109,6 +118,11 @@ SUPPORT_QUANTIZATION_OP_DICT = {
     "scale": [["X"], ["Out"]],
 }
 
+# A full dict of operators that supports quantization,
+# including operator names, actual input and output names.
+SUPPORT_QUANTIZATION_OP_DICT = SUPPORT_WEIGHT_QUANTIZATION_OP_DICT.copy()
+SUPPORT_QUANTIZATION_OP_DICT.update(SUPPORT_ACT_QUANTIZATION_OP_DICT)
+
 
 class BaseQuantizer:
     """
@@ -140,14 +154,9 @@ class BaseQuantizer:
         Operation type list which should support weight quantization.
         And before these ops, quant dequant nodes will be inserted.
         """
-        base_weight_op_type_list = [
-            'conv2d',
-            'depthwise_conv2d',
-            'conv2d_transpose',
-            'mul',
-            'matmul',
-            'matmul_v2',
-        ]
+        base_weight_op_type_list = list(
+            SUPPORT_WEIGHT_QUANTIZATION_OP_DICT.keys()
+        )
         if self._quantizable_op_type:
             weight_list = []
             for _op_type in self._quantizable_op_type:
@@ -163,10 +172,11 @@ class BaseQuantizer:
         Operation type list which should support activation quantization.
         And before these ops, quant dequant nodes will be inserted.
         """
+        base_act_op_type_list = list(SUPPORT_ACT_QUANTIZATION_OP_DICT.keys())
         act_quant_op_list = []
         if self._quantizable_op_type:
             for _op_type in self._quantizable_op_type:
-                if _op_type in self.observer_operation_types:
+                if _op_type in base_act_op_type_list:
                     act_quant_op_list.append(_op_type)
         else:
             act_quant_op_list = [
@@ -184,96 +194,7 @@ class BaseQuantizer:
         In order to facilitate the deployment of the prediction engine, quant
         and dequant nodes will be inserted after these ops when exporting the model.
         """
-        return [
-            "pool2d",
-            "elementwise_add",
-            "concat",
-            "softmax",
-            "argmax",
-            "transpose",
-            "equal",
-            "gather",
-            "greater_equal",
-            "greater_than",
-            "less_equal",
-            "less_than",
-            "mean",
-            "not_equal",
-            "reshape",
-            "reshape2",
-            "dropout",
-            "bilinear_interp",
-            "nearest_interp",
-            "trilinear_interp",
-            "slice",
-            "squeeze",
-            "elementwise_sub",
-            "mul",
-            "matmul",
-            "relu",
-            "relu6",
-            "leaky_relu",
-            "tanh",
-            "swish",
-            "transpose",
-            "transpose2",
-            "sigmoid",
-            "pad2d",
-            "flatten",
-            "flatten2",
-            "batch_norm",
-            "layer_norm",
-            "matmul_v2",
-            "split",
-            "flatten_contiguous_range",
-            "squeeze2",
-            "nearest_interp_v2",
-            "bilinear_interp",
-            "bilinear_interp_v2",
-            "fill_constant_batch_size_like",
-            "arg_max",
-            "abs",
-            "assign",
-            "cast",
-            "clip",
-            "box_coder",
-            "crop",
-            "cumsum",
-            "elementwise_mul",
-            "elementwise_pow",
-            "expand_v2",
-            "fill_any_like",
-            "fill_constant",
-            "gelu",
-            "hard_sigmoid",
-            "hard_swish",
-            "instance_norm",
-            "lookup_table",
-            "lookup_table_v2",
-            "norm",
-            "p_norm",
-            "pad3d",
-            "pow",
-            "prelu",
-            "reduce_mean",
-            "unsqueeze",
-            "unsqueeze2",
-            "logical_and",
-            "logical_not",
-            "meshgrid",
-            "roi_align",
-            "strided_slice",
-            "where",
-            "grid_sampler",
-            "tile",
-            "group_norm",
-            "reduce_sum",
-            "square",
-            "softplus",
-            "shuffle_channel",
-            "reduce_max",
-            "scale",
-        ]
+        return list(SUPPORT_ACT_QUANTIZATION_OP_DICT.keys())
 
 
 class TensorRTQuantizer(BaseQuantizer):

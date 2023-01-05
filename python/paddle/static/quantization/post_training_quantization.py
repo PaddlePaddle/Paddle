@@ -52,12 +52,6 @@ from .quantization_pass import (
     QuantWeightPass,
 )
 
-__all__ = [
-    'PostTrainingQuantization',
-    'WeightQuantization',
-    'PostTrainingQuantizationProgram',
-]
-
 _logger = get_logger(
     __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s'
 )
@@ -376,7 +370,6 @@ class PostTrainingQuantization:
         self._fetch_list = None
         self._data_loader = data_loader
 
-        self._out_scale_op_list = utils.QUANT_SUPPORTED_OP_TYPE_LIST
         self._quantized_weight_var_name = set()
         self._quantized_act_var_name = set()
         self._weight_op_pairs = {}
@@ -420,22 +413,22 @@ class PostTrainingQuantization:
         support_deploy_backend = [None, "tensorrt", "mkldnn", "arm"]
         if not deploy_backend:
             self.quant_config = BaseQuantizer(
-                quant_operation_types=quantizable_op_type,
+                quantizable_op_type=quantizable_op_type,
                 quant_bits=weight_bits,
             )
         elif deploy_backend.lower() == "tensorrt":
             self.quant_config = TensorRTQuantizer(
-                quant_operation_types=quantizable_op_type,
+                quantizable_op_type=quantizable_op_type,
                 quant_bits=weight_bits,
             )
         elif deploy_backend.lower() == "mkldnn":
             self.quant_config = MKLDNNQuantizer(
-                quant_operation_types=quantizable_op_type,
+                quantizable_op_type=quantizable_op_type,
                 quant_bits=weight_bits,
             )
         elif deploy_backend.lower() == "arm":
             self.quant_config = ARMCPUQuantizer(
-                quant_operation_types=quantizable_op_type,
+                quantizable_op_type=quantizable_op_type,
                 quant_bits=weight_bits,
             )
         else:

@@ -202,9 +202,8 @@ class QuantizeLinearOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(true);
     AddAttr<bool>(
         "only_observer",
-        "(bool, default false) Whether to only observer or not."
-        "If only_observer=false, it will calculate fake quant or dequant "
-        "output."
+        "(bool, default false) Whether to only observer or not. If "
+        "only_observer=false, it will calculate fake quant or dequant output. "
         "If only_observer=true, it will only calibrate scale information.")
         .SetDefault(false);
     AddComment(R"DOC(
