@@ -64,7 +64,6 @@ def custom_fused_dense(x,
                      })
     return out
 
-
 def custom_fmha(qkv,
                 cu_seq_len,
                 host_seq_len,
@@ -136,3 +135,44 @@ def custom_fused_dropout_residual_ln(
                         'dropout_rate': hidden_dropout_prob,
                      })
     return out, dropout_mask, ln_mean, ln_var, dropout_residual_out
+def acc_merge(acc,
+              total,
+              out,
+              step):
+    if _non_static_mode():
+        return _legacy_C_ops.acc_merge(acc, total, out, step)
+
+    helper = LayerHelper('acc_merge', **locals())
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    helper.append_op(type='acc_merge',
+                     inputs={
+                         'Acc': acc,
+                         'Total': total
+                     },
+                     outputs={
+                         'Out': out,
+                         'Step': step
+                    })
+    return out
+
+def custom_lr(x,
+              out,
+              base_lr,
+              max_step):
+    if _non_static_mode():
+        return _legacy_C_ops.custom_fused_dense(x, out, base_lr, max_step)
+
+    helper = LayerHelper('custom_lr', **locals())
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    helper.append_op(type='custom_lr',
+                     inputs={
+                         'X': x
+                     },
+                     outputs={
+                         'Out': out
+                    },
+                     attrs={
+                         'base_lr': base_lr,
+                         'max_step': max_step
+                     })
+    return out

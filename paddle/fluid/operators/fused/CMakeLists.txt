@@ -32,7 +32,10 @@ register_operators(
   custom_fused_dense_op
   custom_fmha_op
   custom_fused_dropout_residual_ln_op
-  resnet_basic_block_op)
+  resnet_basic_block_op
+  custom_fmha_op
+  acc_merge_op
+  custom_lr_op)
 
 # fusion_gru_op does not have CUDA kernel
 op_library(fusion_gru_op)
@@ -45,6 +48,8 @@ if(WITH_XPU)
   op_library(custom_fused_dense_op)
   op_library(custom_fmha_op)
   op_library(custom_fused_dropout_residual_ln_op)
+  op_library(acc_merge_op)
+  op_library(custom_lr_op)
 endif()
 
 if(WITH_GPU OR WITH_ROCM)
