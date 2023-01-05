@@ -29,14 +29,8 @@ class CustomFMHAXPUKernel : public framework::OpKernel<T> {
   using XPUT = typename XPUTypeTrait<T>::Type;
 
   void Compute(const framework::ExecutionContext& ctx) const override {
-    PADDLE_ENFORCE_EQ(
-        platform::is_xpu_place(ctx.GetPlace()),
-        true,
-        platform::errors::PreconditionNotMet("It must use XPUPlace."));
-    PADDLE_ENFORCE_EQ(
-        platform::is_xpu_place(ctx.GetPlace()),
-        false,
-        platform::errors::PreconditionNotMet("Not implement yet."));
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "The custom_fmha operator does not support XPU yet."));
 #if 0
     PADDLE_ENFORCE_EQ(
         platform::is_xpu_place(ctx.GetPlace()),
@@ -442,14 +436,8 @@ class CustomFMHAGradXPUKernel : public framework::OpKernel<T> {
   using XPUT = typename XPUTypeTrait<T>::Type;
 
   void Compute(const framework::ExecutionContext& ctx) const override {
-    PADDLE_ENFORCE_EQ(
-        platform::is_xpu_place(ctx.GetPlace()),
-        true,
-        platform::errors::PreconditionNotMet("It must use XPUPlace."));
-    PADDLE_ENFORCE_EQ(
-        platform::is_xpu_place(ctx.GetPlace()),
-        false,
-        platform::errors::PreconditionNotMet("Not implement yet."));
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "The custom_fmha_grad operator does not support XPU yet."));
 #if 0
     PADDLE_ENFORCE_EQ(
         platform::is_xpu_place(ctx.GetPlace()),

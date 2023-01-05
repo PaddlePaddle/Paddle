@@ -30,6 +30,8 @@ class AccMergeXPUKernel : public framework::OpKernel<T> {
 
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "The acc_merge operator does not support XPU yet."));
     // auto& dev_ctx = ctx.template device_context<phi::XPUContext>();
 
     // const phi::DenseTensor* acc = ctx.Input<phi::DenseTensor>("Acc");

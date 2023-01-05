@@ -182,7 +182,7 @@ class CustomFMHAGradOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("HostSeqLen", "int[batch_size + 1], lod on host");
     AddInput("SOut", "float16[batch_size, num_heads, max_seq_len, max_seq_len]");
     AddInput("DCtxOut", "float16[total_tokens, num_heads, head_size]");
-    AddOutput("DKQV", "float16[total_tokens, 3, num_heads, head_size]");
+    AddOutput("DQKV", "float16[total_tokens, 3, num_heads, head_size]");
     AddAttr<bool>("is_test", "is_test").SetDefault(false);
     AddAttr<float>("dropout_rate", "dropout_rate").SetDefault(0.0);
     AddAttr<bool>("zero_tensors", "zero_tensors").SetDefault(false);
@@ -206,7 +206,7 @@ class CustomFMHAOpGradMaker : public framework::SingleGradOpMaker<T> {
     op->SetInput("CuSeqLen", this->Input("CuSeqLen"));
     op->SetInput("HostSeqLen", this->Input("HostSeqLen"));
     op->SetInput("SOut", this->Output("SOut"));
-    op->SetInput("DCtxOut", this->OutputGrad("HostSeqLen"));
+    op->SetInput("DCtxOut", this->OutputGrad("CtxOut"));
     op->SetOutput("DQKV", this->InputGrad("QKV"));
     
     op->SetAttrMap(this->Attrs());

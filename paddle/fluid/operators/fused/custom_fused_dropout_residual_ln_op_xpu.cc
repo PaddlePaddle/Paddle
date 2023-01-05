@@ -30,6 +30,9 @@ class CustomFusedDropoutResidualLnXPUKernel : public framework::OpKernel<T> {
 
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "The custom_fused_dropout_residual_ln operator does not support XPU yet."));
+#if 0
   auto& dev_ctx = ctx.template device_context<phi::XPUContext>();
 
   const phi::DenseTensor* x = ctx.Input<phi::DenseTensor>("X");
@@ -92,6 +95,7 @@ class CustomFusedDropoutResidualLnXPUKernel : public framework::OpKernel<T> {
         dropout_out_ptr, dropout_mask_out_ptr, out_ptr, ln_mean_ptr, ln_var_ptr, (const xpu::DropoutAddLayernormParam)dropout_param);
 
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "dropout_add_layernorm");
+#endif
   }
 };
 
@@ -101,6 +105,8 @@ class CustomFusedDropoutResidualLnXPUGradKernel : public framework::OpKernel<T> 
 
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "The custom_fused_dropout_residual_ln_grad operator does not support XPU yet."));
 #if 0
     auto& dev_ctx = ctx.template device_context<phi::XPUContext>();
 
@@ -135,9 +141,10 @@ namespace ops = paddle::operators;
 
 REGISTER_OP_XPU_KERNEL(
     custom_fused_dropout_residual_ln,
-    ops::CustomFusedDropoutResidualLnXPUKernel<phi::XPUContext, float>);
-//ops::CustomFusedDropoutResidualLnXPUKernel<phi::XPUContext, paddle::platform::float16>
+    ops::CustomFusedDropoutResidualLnXPUKernel<phi::XPUContext, float>,
+    ops::CustomFusedDropoutResidualLnXPUKernel<phi::XPUContext, paddle::platform::float16>);
 
 REGISTER_OP_XPU_KERNEL(
     custom_fused_dropout_residual_ln_grad,
-    ops::CustomFusedDropoutResidualLnXPUGradKernel<phi::XPUContext, float>);
+    ops::CustomFusedDropoutResidualLnXPUGradKernel<phi::XPUContext, float>,
+    ops::CustomFusedDropoutResidualLnXPUGradKernel<phi::XPUContext, paddle::platform::float16>);

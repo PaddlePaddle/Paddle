@@ -176,8 +176,6 @@ class CustomFusedDropoutResidualLnGradOp : public framework::OperatorWithKernel 
     if (ctx->HasOutput(framework::GradVarName("X"))) {
       ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
     }
-    ctx->SetOutputDim(framework::GradVarName("DropoutResidualOut"),
-                      ctx->GetInputDim("DropoutResidualOut"));
   }
 
  protected:
@@ -198,8 +196,8 @@ class CustomFusedDropoutResidualLnGradOpMaker
  protected:
   void Apply(GradOpPtr<T> op) const override {
 
-    op->SetType("custom_fused_dropout_residual_ln");
-    // op->SetInput(framework::GradVarName("Y"), this->OutputGrad("Y"));
+    op->SetType("custom_fused_dropout_residual_ln_grad");
+    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
     op->SetInput("X", this->Input("X"));
     op->SetInput("Residual", this->Input("Residual"));
     // if (this->HasInput("Bias")) {
@@ -230,8 +228,8 @@ class CustomFusedDropoutResidualLnGradOpMaker
     op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
     op->SetOutput(framework::GradVarName("Residual"),
                   this->InputGrad("Residual"));
-    op->SetOutput(framework::GradVarName("DropoutResidualOut"),
-                  this->OutputGrad("DropoutResidualOut"));
+
+    op->SetAttrMap(this->Attrs());
   }
 };
 

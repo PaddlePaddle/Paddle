@@ -32,8 +32,6 @@ register_operators(
   custom_fused_dense_op
   custom_fmha_op
   custom_fused_dropout_residual_ln_op
-  resnet_basic_block_op
-  custom_fmha_op
   acc_merge_op
   custom_lr_op)
 
