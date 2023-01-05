@@ -486,6 +486,17 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
                 )
 
         if kernel['data_type'] is not None:
+
+            def process_data_type_args(args_item):
+                args_item = args_item.strip()
+                complex_match_result = re.match(
+                    r"complex\((?P<param_name>\w+)\)", args_item
+                )
+                if complex_match_result:
+                    return f"phi::dtype::ToComplex(ParseDataType({complex_match_result.group('param_name')}))"
+                else:
+                    return f"ParseDataType({args_item})"
+
             if '>' in kernel['data_type']:
                 vars_list = kernel['data_type'].split('>')
                 assert (
@@ -511,7 +522,7 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
                 kernel_select_code = (
                     kernel_select_code
                     + f"""
-  kernel_data_type = ParseDataType({vars_list[0].strip()});
+  kernel_data_type = {process_data_type_args(vars_list[0])};
 """
                 )
 
