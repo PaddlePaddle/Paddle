@@ -150,10 +150,10 @@ class ConstantInitializer(Initializer):
             import paddle.fluid as fluid
             paddle.enable_static()
             x = fluid.data(name="data", shape=[8, 32, 32], dtype="float32")
-            fc = fluid.layers.fc(
-                input=x,
+            fc = paddle.static.nn.fc(
+                x,
                 size=10,
-                param_attr=fluid.initializer.Constant(value=2.0))
+                weight_attr=fluid.initializer.Constant(value=2.0))
 
     """
 
@@ -224,10 +224,12 @@ class UniformInitializer(Initializer):
     Examples:
         .. code-block:: python
 
+            import paddle
             import paddle.fluid as fluid
+            paddle.enable_static()
             x = fluid.data(name='x', shape=[None, 1], dtype='float32')
-            fc = fluid.layers.fc(input=x, size=10,
-                param_attr=fluid.initializer.Uniform(low=-0.5, high=0.5))
+            fc = paddle.static.nn.fc(x, size=10,
+                weight_attr=fluid.initializer.Uniform(low=-0.5, high=0.5))
     """
 
     def __init__(
@@ -346,10 +348,12 @@ class NormalInitializer(Initializer):
     Examples:
         .. code-block:: python
 
+            import paddle
             import paddle.fluid as fluid
+            paddle.enable_static()
             x = fluid.data(name="data", shape=[None, 32, 32], dtype="float32")
-            fc = fluid.layers.fc(input=x, size=10,
-                param_attr=fluid.initializer.Normal(loc=0.0, scale=2.0))
+            fc = paddle.static.nn.fc(x, size=10,
+                weight_attr=fluid.initializer.Normal(loc=0.0, scale=2.0))
 
     """
 
@@ -429,10 +433,12 @@ class TruncatedNormalInitializer(Initializer):
     Examples:
         .. code-block:: python
 
+            import paddle
             import paddle.fluid as fluid
+            paddle.enable_static()
             x = fluid.data(name='x', shape=[None, 1], dtype='float32')
-            fc = fluid.layers.fc(input=x, size=10,
-                param_attr=fluid.initializer.TruncatedNormal(loc=0.0, scale=2.0))
+            fc = paddle.static.nn.fc(x, size=10,
+                weight_attr=fluid.initializer.TruncatedNormal(loc=0.0, scale=2.0))
     """
 
     def __init__(self, loc=0.0, scale=1.0, seed=0):
@@ -557,11 +563,13 @@ class XavierInitializer(Initializer):
     Examples:
         .. code-block:: python
 
+            import paddle
             import paddle.fluid as fluid
+            paddle.enable_static()
             queries = fluid.data(name='x', shape=[None,1], dtype='float32')
-            fc = fluid.layers.fc(
-                input=queries, size=10,
-                param_attr=fluid.initializer.Xavier(uniform=False))
+            fc = paddle.static.nn.fc(
+                x=queries, size=10,
+                weight_attr=fluid.initializer.Xavier(uniform=False))
 
     """
 
@@ -732,8 +740,8 @@ class MSRAInitializer(Initializer):
             import paddle.fluid as fluid
             paddle.enable_static()
             x = fluid.data(name="data", shape=[8, 32, 32], dtype="float32")
-            fc = fluid.layers.fc(input=x, size=10,
-                param_attr=fluid.initializer.MSRA(uniform=False))
+            fc = paddle.static.nn.fc(x, size=10,
+                weight_attr=fluid.initializer.MSRA(uniform=False))
 
     """
 
@@ -1044,11 +1052,13 @@ class NumpyArrayInitializer(Initializer):
     Examples:
         .. code-block:: python
 
+            import paddle
             import paddle.fluid as fluid
             import numpy
+            paddle.enable_static()
             x = fluid.data(name="x", shape=[2, 1], dtype='float32')
-            fc = fluid.layers.fc(input=x, size=10,
-                param_attr=fluid.initializer.NumpyArrayInitializer(numpy.array([1,2])))
+            fc = paddle.static.nn.fc(x, size=10,
+                weight_attr=fluid.initializer.NumpyArrayInitializer(numpy.array([1,2])))
     """
 
     def __init__(self, value):
@@ -1282,10 +1292,11 @@ def calculate_gain(nonlinearity, param=None):
 # We short the class name, since users will use the initializer with the package
 # name. The sample code:
 #
+# import paddle
 # import paddle.fluid as fluid
 #
-# hidden = fluid.layers.fc(...,
-#                          param_attr=ParamAttr(fluid.initializer.Xavier()))
+# hidden = paddle.static.nn.fc(...,
+#                          weight_attr=ParamAttr(fluid.initializer.Xavier()))
 #
 # It is no need to add an `Initializer` as the class suffix
 Constant = ConstantInitializer

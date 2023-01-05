@@ -1023,15 +1023,20 @@ void BroadcastKernel(const KPDevice &ctx,
                      std::vector<DenseTensor *> *outs,
                      int axis,
                      Functor func) {
-  std::vector<int> dims_size;
-  dims_size.reserve(ins.size());
+  // When there are multiple inputs, the outputs's rank should be equal the
+  // maximum rank of all inputs.
+  int max_rank = 0;
+  int min_rank = phi::DDim::kMaxRank;
   for (auto *in : ins) {
-    dims_size.emplace_back(in->dims().size());
+    max_rank = std::max(max_rank, in->dims().size());
+    min_rank = std::min(min_rank, in->dims().size());
   }
-
-  axis = axis == -1 ? *std::max_element(dims_size.begin(), dims_size.end()) -
-                          *std::min_element(dims_size.begin(), dims_size.end())
-                    : axis;
+  if (ins.size() == 1) {
+    // When there is only 1 input, the input's rank may be less than outputs'
+    // rank.
+    max_rank = std::max(max_rank, (*outs)[0]->dims().size());
+  }
+  axis = axis == -1 ? max_rank - min_rank : axis;
   BroadcastKernelForDifferentVecSize<ET, InT, OutT, Functor, NumOuts>(
       ctx, ins, outs, axis, func);
 }
