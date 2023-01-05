@@ -12,11 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
-import numpy as np
 import unittest
-import paddle.nn.functional as F
+
+import numpy as np
 from test_sparse_attention_op import get_cuda_version
+
+import paddle
+import paddle.nn.functional as F
 
 
 class BF16EmbeddingTest(unittest.TestCase):

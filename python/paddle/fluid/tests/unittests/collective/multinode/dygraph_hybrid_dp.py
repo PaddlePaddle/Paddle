@@ -24,6 +24,7 @@ class TestDygrapgHybridDP(TestCollectiveAPIRunnerBase):
 
     def check_pass(self, *args, **kwargs):
         from common import init_parallel_env
+
         import paddle
 
         hcg = init_parallel_env("DP16-MP1-PP1-SH1-O1", 2)

@@ -17,8 +17,8 @@
 # pylint: skip-file
 
 import numpy as np
-from paddle.fluid.core import AnalysisConfig
-from paddle.fluid.core import create_paddle_predictor
+
+from paddle.fluid.core import AnalysisConfig, create_paddle_predictor
 
 
 def main():

@@ -14,12 +14,13 @@
 """Defination of Role Makers."""
 import os
 import time
-import numpy as np
 import warnings
-from multiprocessing import Process, Manager
+from multiprocessing import Manager, Process
+
+import numpy as np
 
 import paddle
-import paddle.fluid as fluid
+import paddle.fluid.core as core
 from paddle.distributed.fleet.base.private_helper_function import (
     wait_server_ready,
 )
@@ -128,7 +129,7 @@ class Gloo:
 
     def _init_fs(self, fs_path, prefix):
         def init(rank, nodes, role):
-            gloo = fluid.core.Gloo()
+            gloo = core.Gloo()
             gloo.set_rank(rank)
             gloo.set_size(nodes)
             gloo.set_prefix(prefix)
@@ -156,7 +157,7 @@ class Gloo:
 
     def _init_dfs(self, dfs_name, dfs_ugi, dfs_path, prefix):
         def init(rank, nodes, role):
-            gloo = fluid.core.Gloo()
+            gloo = core.Gloo()
             gloo.set_rank(rank)
             gloo.set_size(nodes)
             gloo.set_prefix(prefix)
@@ -216,7 +217,7 @@ class Gloo:
             return _http_server
 
         def init(rank, nodes, role):
-            gloo = fluid.core.Gloo()
+            gloo = core.Gloo()
             gloo.set_rank(rank)
             gloo.set_size(nodes)
             gloo.set_prefix(prefix)
@@ -1175,7 +1176,7 @@ class PaddleCloudRoleMaker(RoleMakerBase):
             else:
                 self._collective_env()
             self._role_is_generated = True
-            if not paddle.fluid.framework._non_static_mode():
+            if not paddle.framework.in_dynamic_mode():
                 self._gloo_init()
 
 

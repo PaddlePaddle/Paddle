@@ -23,8 +23,8 @@
 #include "paddle/phi/kernels/gpudnn/conv_cudnn_v7.h"
 #endif
 
-#include "paddle/fluid/platform/cudnn_workspace_helper.h"
 #include "paddle/fluid/platform/profiler.h"
+#include "paddle/phi/backends/gpu/cuda/cudnn_workspace_helper.h"
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/kernels/cpu/conv_util.h"
@@ -32,244 +32,51 @@
 #include "paddle/phi/kernels/funcs/padding.h"
 #include "paddle/phi/kernels/impl/conv_cudnn_impl.h"
 
+#ifdef PADDLE_WITH_CUDNN_FRONTEND
+// clang-format off
+#include "paddle/phi/backends/dynload/cudnn_frontend.h"
+#include "paddle/phi/kernels/gpudnn/conv_cudnn_frontend.h"
+// clang-format on
+#endif
+
 namespace phi {
 
 template <typename T, typename Context>
-void ConvCudnnGradKernel(const Context& ctx,
-                         const DenseTensor& input,
-                         const DenseTensor& filter,
-                         const DenseTensor& output_grad,
-                         const std::vector<int>& strides_t,
-                         const std::vector<int>& paddings_t,
-                         const std::string& padding_algorithm,
-                         const std::vector<int>& dilations_t,
-                         int groups,
-                         const std::string& data_format,
-                         DenseTensor* input_grad,
-                         DenseTensor* filter_grad) {
-  if (input_grad) {
-    ctx.template Alloc<T>(input_grad);
-  }
-  if (filter_grad) {
-    ctx.template Alloc<T>(filter_grad);
-  }
-
-  bool has_use_addto = ctx.HasDnnAttr("use_addto");
-  VLOG(4) << "GPUContext contains `use_addto`: " << has_use_addto;
-  bool use_addto = has_use_addto
-                       ? PADDLE_GET_CONST(bool, ctx.GetDnnAttr("use_addto"))
-                       : false;
-
-  std::vector<int> dilations = dilations_t;
-  std::vector<int> strides = strides_t;
-  std::vector<int> paddings = paddings_t;
-
-  bool has_exhaustive_search = ctx.HasDnnAttr("exhaustive_search");
-  VLOG(4) << "GPUContext contains `exhaustive_search`: "
-          << has_exhaustive_search;
-  bool exhaustive_search_attr =
-      has_exhaustive_search
-          ? PADDLE_GET_CONST(bool, ctx.GetDnnAttr("exhaustive_search"))
-          : false;
-  bool exhaustive_search =
-      FLAGS_cudnn_exhaustive_search || exhaustive_search_attr;
-  bool deterministic = FLAGS_cudnn_deterministic;
-  auto exhaustive_deterministic = exhaustive_search && deterministic;
-  PADDLE_ENFORCE_EQ(exhaustive_deterministic,
-                    false,
-                    phi::errors::InvalidArgument(
-                        "Cann't set exhaustive_search True and "
-                        "FLAGS_cudnn_deterministic True at same time."));
-
-  const bool channel_last = (data_format == "NHWC" || data_format == "NDHWC");
-
-  auto dtype = paddle::platform::CudnnDataType<T>::type;
-
-#ifdef PADDLE_WITH_HIP
-  // HIP MIOPEN ONLY SUPPORT NCHW format
-  auto compute_format = paddle::platform::DataLayout::kNCHW;
-#else
-  const bool compute_in_nhwc = dtype == CUDNN_DATA_HALF && IsVoltaOrLater(ctx);
-  auto compute_format = compute_in_nhwc && channel_last
-                            ? paddle::platform::DataLayout::kNHWC
-                            : paddle::platform::DataLayout::kNCHW;
-#endif
-  VLOG(3) << "Compute ConvGradOp with cuDNN:"
-          << " data_format=" << data_format << " compute_format="
-          << (compute_format == paddle::platform::DataLayout::kNHWC ? "NHWC"
-                                                                    : "NCHW");
-
-  // transform Tensor
-  DenseTensor transformed_input_channel(input.type());
-  DenseTensor transformed_output_grad_channel(output_grad.type());
-  DenseTensor transformed_input_grad_channel(input.type());
-  DenseTensor transformed_filter_channel(filter.type());
-  DenseTensor transformed_filter_grad_channel(filter.type());
-
-  if (channel_last && compute_format == paddle::platform::DataLayout::kNCHW) {
-    VLOG(3) << "Transform input, output_grad, input_grad and tensor from "
-               "NHWC to NCHW.";
-    ResizeToChannelFirst<Context, T>(ctx, &input, &transformed_input_channel);
-    TransToChannelFirst<Context, T>(ctx, &input, &transformed_input_channel);
-
-    ResizeToChannelFirst<Context, T>(
-        ctx, &output_grad, &transformed_output_grad_channel);
-    TransToChannelFirst<Context, T>(
-        ctx, &output_grad, &transformed_output_grad_channel);
-
-    if (input_grad) {
-      ResizeToChannelFirst<Context, T>(
-          ctx, input_grad, &transformed_input_grad_channel);
-      // NOTE(zhiqiu): If inplace_addto strategy is enabled, we need to copy
-      // the data of input_grad to transformed_input_grad_channel.
-      if (use_addto) {
-        TransToChannelFirst<Context, T>(
-            ctx, input_grad, &transformed_input_grad_channel);
-      }
-    }
-  } else {
-    transformed_input_channel.ShareDataWith(input);
-    transformed_output_grad_channel.ShareDataWith(output_grad);
-    if (input_grad) {
-      transformed_input_grad_channel.ShareDataWith(*input_grad);
-    }
-  }
-
-  if (compute_format == paddle::platform::DataLayout::kNHWC) {
-    VLOG(3) << "Transform filter and filter_grad tensor from NCHW to NHWC.";
-    ResizeToChannelLast<Context, T>(ctx, &filter, &transformed_filter_channel);
-    TransToChannelLast<Context, T>(ctx, &filter, &transformed_filter_channel);
-
-    if (filter_grad) {
-      ResizeToChannelLast<Context, T>(
-          ctx, filter_grad, &transformed_filter_grad_channel);
-    }
-  } else {
-    transformed_filter_channel.ShareDataWith(filter);
-    if (filter_grad) {
-      transformed_filter_grad_channel.ShareDataWith(*filter_grad);
-    }
-  }
-
-  //  update paddings
-  auto in_dims = transformed_input_channel.dims();
-  auto filter_dims = transformed_filter_channel.dims();
-  DDim in_data_dims;
-  DDim filter_data_dims;
-  if (compute_format == paddle::platform::DataLayout::kNCHW) {
-    in_data_dims = slice_ddim(in_dims, 2, in_dims.size());
-    filter_data_dims = slice_ddim(filter_dims, 2, filter_dims.size());
-  } else {
-    in_data_dims = slice_ddim(in_dims, 1, in_dims.size() - 1);
-    filter_data_dims = slice_ddim(filter_dims, 1, filter_dims.size() - 1);
-  }
-  std::vector<int> ksize = vectorize<int>(filter_data_dims);
-  UpdatePaddingAndDilation(
-      &paddings, &dilations, padding_algorithm, in_data_dims, strides, ksize);
-
-  // cuDNN only supports padding the same amount on every dimension.
-  // So we create a new padded input tensor.
-  int data_dim = strides.size();  // 2d or 3d
-  bool is_sys_pad = funcs::IsSymmetricPadding(paddings, data_dim);
-  Tensor transformed_input(input.type());
-  Tensor transformed_input_grad(input.type());
-  std::vector<int> padding_common(data_dim, 0);
-  std::vector<int> input_pad(transformed_input_channel.dims().size() * 2, 0);
-
-  if (!is_sys_pad) {
-    // get pad
-    std::vector<int> padding_diff(data_dim);
-    std::vector<int> new_input_shape_vec(data_dim + 2);
-    new_input_shape_vec[0] = transformed_input_channel.dims()[0];
-    if (compute_format == paddle::platform::DataLayout::kNCHW) {
-      new_input_shape_vec[1] = transformed_input_channel.dims()[1];
-    } else {
-      new_input_shape_vec[data_dim + 1] =
-          transformed_input_channel.dims()[data_dim + 1];
-    }
-
-    for (size_t i = 0; i < data_dim; ++i) {
-      padding_diff[i] = std::abs(paddings[2 * i] - paddings[2 * i + 1]);
-      padding_common[i] = std::min(paddings[2 * i], paddings[2 * i + 1]);
-      if (compute_format == paddle::platform::DataLayout::kNCHW) {
-        new_input_shape_vec[i + 2] =
-            transformed_input_channel.dims()[i + 2] + padding_diff[i];
-      } else {
-        new_input_shape_vec[i + 1] =
-            transformed_input_channel.dims()[i + 1] + padding_diff[i];
-      }
-      if (compute_format == paddle::platform::DataLayout::kNCHW) {
-        input_pad[2 * i + 4] = paddings[2 * i] - padding_common[i];
-        input_pad[2 * i + 4 + 1] = paddings[2 * i + 1] - padding_common[i];
-      } else {
-        input_pad[2 * i + 2] = paddings[2 * i] - padding_common[i];
-        input_pad[2 * i + 2 + 1] = paddings[2 * i + 1] - padding_common[i];
-      }
-    }
-    DDim new_input_shape(make_ddim(new_input_shape_vec));
-    transformed_input.Resize(new_input_shape);
-    ctx.template Alloc<T>(&transformed_input);
-
-    transformed_input_grad.Resize(new_input_shape);
-
-    if (input_grad) {
-      ctx.template Alloc<T>(&transformed_input_grad);
-    }
-    // pad for input
-    const int rank = transformed_input_channel.dims().size();
-    T pad_value(0.0);
-    switch (rank) {
-      case 4: {
-        funcs::PadFunction<Context, T, 4>(ctx,
-                                          input_pad,
-                                          transformed_input_channel,
-                                          pad_value,
-                                          &transformed_input);
-      } break;
-      case 5: {
-        funcs::PadFunction<Context, T, 5>(ctx,
-                                          input_pad,
-                                          transformed_input_channel,
-                                          pad_value,
-                                          &transformed_input);
-      } break;
-      default:
-        PADDLE_THROW(phi::errors::InvalidArgument(
-            "ConvOp only support tensors with 4 or 5 dimensions."));
-    }
-  } else {
-    transformed_input.ShareDataWith(transformed_input_channel);
-    if (input_grad) {
-      transformed_input_grad.ShareDataWith(transformed_input_grad_channel);
-    }
-    if (paddings.size() == data_dim) {
-      for (size_t i = 0; i < data_dim; ++i) {
-        padding_common[i] = paddings[i];
-      }
-    } else {
-      for (size_t i = 0; i < data_dim; ++i) {
-        padding_common[i] = paddings[2 * i];
-      }
-    }
-  }
-
-  const T* input_data = transformed_input.data<T>();
-  const T* output_grad_data = transformed_output_grad_channel.data<T>();
-  const T* filter_data = transformed_filter_channel.data<T>();
+void ConvCudnnGradKernelImplV7(
+    const DenseTensor* transformed_input,
+    const DenseTensor* transformed_filter_channel,
+    const DenseTensor* transformed_output_grad_channel,
+    DenseTensor* input_grad,
+    DenseTensor* filter_grad,
+    const Context& ctx,
+    const std::vector<int>& strides,
+    const std::vector<int>& padding_common,
+    const std::vector<int>& dilations,
+    phi::backends::gpu::DataLayout compute_format,
+    phi::backends::gpu::DataLayout layout,
+    bool use_addto,
+    bool exhaustive_search,
+    bool deterministic,
+    int groups,
+    DenseTensor* transformed_input_grad,
+    DenseTensor* transformed_filter_grad_channel) {
+  const T* input_data = transformed_input->data<T>();
+  const T* output_grad_data = transformed_output_grad_channel->data<T>();
+  const T* filter_data = transformed_filter_channel->data<T>();
   T* filter_grad_data = nullptr;
   T* input_grad_data = nullptr;
   T* transformed_input_grad_data = nullptr;
 
   auto handle = ctx.cudnn_handle();
-  paddle::platform::DataLayout layout =
-      compute_format == paddle::platform::DataLayout::kNHWC
-          ? paddle::platform::DataLayout::kNHWC
-          : paddle::platform::DataLayout::kNCHW;
+  auto workspace_handle = ctx.cudnn_workspace_handle();
+
+  auto dtype = phi::backends::gpu::CudnnDataType<T>::type;
+  auto layout_tensor = phi::backends::gpu::GetCudnnTensorFormat(layout);
 
   ConvArgs args1{handle,
-                 &transformed_input_grad,
-                 &transformed_filter_channel,
-                 &transformed_output_grad_channel,
+                 transformed_input_grad,
+                 transformed_filter_channel,
+                 transformed_output_grad_channel,
                  strides,
                  padding_common,
                  dilations,
@@ -277,9 +84,9 @@ void ConvCudnnGradKernel(const Context& ctx,
                  groups,
                  layout};
   ConvArgs args2{handle,
-                 &transformed_input,
-                 &transformed_filter_grad_channel,
-                 &transformed_output_grad_channel,
+                 transformed_input,
+                 transformed_filter_grad_channel,
+                 transformed_output_grad_channel,
                  strides,
                  padding_common,
                  dilations,
@@ -287,43 +94,33 @@ void ConvCudnnGradKernel(const Context& ctx,
                  groups,
                  layout};
 
-  // TODO(phlrain): replace paddle::platform::DataLaytout to phi::DataLayout
-
-  if (transformed_input.dims().size() == 5) {
-    layout = compute_format == paddle::platform::DataLayout::kNHWC
-                 ? paddle::platform::DataLayout::kNDHWC
-                 : paddle::platform::DataLayout::kNCDHW;
-  }
-  auto layout_tensor = paddle::platform::GetCudnnTensorFormat(layout);
-  auto workspace_handle = ctx.cudnn_workspace_handle();
-
   int i_n, i_c, i_d, i_h, i_w;
   int o_n, o_c, o_d, o_h, o_w;
-  if (compute_format == paddle::platform::DataLayout::kNHWC) {
-    GetNCDHW(transformed_input.dims(),
-             paddle::platform::DataLayout::kNHWC,
+  if (compute_format == phi::backends::gpu::DataLayout::kNHWC) {
+    GetNCDHW(transformed_input->dims(),
+             phi::backends::gpu::DataLayout::kNHWC,
              &i_n,
              &i_c,
              &i_d,
              &i_h,
              &i_w);
-    GetNCDHW(transformed_output_grad_channel.dims(),
-             paddle::platform::DataLayout::kNHWC,
+    GetNCDHW(transformed_output_grad_channel->dims(),
+             phi::backends::gpu::DataLayout::kNHWC,
              &o_n,
              &o_c,
              &o_d,
              &o_h,
              &o_w);
   } else {
-    GetNCDHW(transformed_input.dims(),
-             paddle::platform::DataLayout::kNCHW,
+    GetNCDHW(transformed_input->dims(),
+             phi::backends::gpu::DataLayout::kNCHW,
              &i_n,
              &i_c,
              &i_d,
              &i_h,
              &i_w);
-    GetNCDHW(transformed_output_grad_channel.dims(),
-             paddle::platform::DataLayout::kNCHW,
+    GetNCDHW(transformed_output_grad_channel->dims(),
+             phi::backends::gpu::DataLayout::kNCHW,
              &o_n,
              &o_c,
              &o_d,
@@ -333,7 +130,7 @@ void ConvCudnnGradKernel(const Context& ctx,
 
   int group_offset_in = i_c / groups * i_h * i_w * i_d;
   int group_offset_out = o_c / groups * o_h * o_w * o_d;
-  int group_offset_filter = transformed_filter_channel.numel() / groups;
+  int group_offset_filter = transformed_filter_channel->numel() / groups;
 
 // ------------------- cudnn backward algorithm ---------------------
 #ifdef PADDLE_WITH_HIP
@@ -356,11 +153,11 @@ void ConvCudnnGradKernel(const Context& ctx,
   if (input_grad) {
     // ------------------- cudnn descriptors ---------------------
     input_grad_data = input_grad->data<T>();
-    transformed_input_grad_data = transformed_input_grad.data<T>();
+    transformed_input_grad_data = transformed_input_grad->data<T>();
 
-    args1.idesc.set(transformed_input_grad, layout_tensor);
-    args1.wdesc.set(transformed_filter_channel, layout_tensor, iwo_groups);
-    args1.odesc.set(transformed_output_grad_channel, layout_tensor);
+    args1.idesc.set(*transformed_input_grad, layout_tensor);
+    args1.wdesc.set(*transformed_filter_channel, layout_tensor, iwo_groups);
+    args1.odesc.set(*transformed_output_grad_channel, layout_tensor);
     args1.cdesc.set(dtype,
                     padding_common,
                     strides,
@@ -382,11 +179,12 @@ void ConvCudnnGradKernel(const Context& ctx,
 
   if (filter_grad) {
     // ------------------- cudnn descriptors ---------------------
-    filter_grad_data = transformed_filter_grad_channel.data<T>();
+    filter_grad_data = transformed_filter_grad_channel->data<T>();
 
-    args2.idesc.set(transformed_input, layout_tensor);
-    args2.wdesc.set(transformed_filter_grad_channel, layout_tensor, iwo_groups);
-    args2.odesc.set(transformed_output_grad_channel, layout_tensor);
+    args2.idesc.set(*transformed_input, layout_tensor);
+    args2.wdesc.set(
+        *transformed_filter_grad_channel, layout_tensor, iwo_groups);
+    args2.odesc.set(*transformed_output_grad_channel, layout_tensor);
     args2.cdesc.set(dtype,
                     padding_common,
                     strides,
@@ -424,8 +222,8 @@ void ConvCudnnGradKernel(const Context& ctx,
 // When beta is 1, the output cannot be reset since addt strategy used.
 #ifdef PADDLE_WITH_HIP
     if (use_addto) {
-      DenseTensor temp_tensor(transformed_input_grad.type());
-      temp_tensor.Resize(transformed_input_grad.dims());
+      DenseTensor temp_tensor(transformed_input_grad->type());
+      temp_tensor.Resize(transformed_input_grad->dims());
       T* temp_tensor_data = ctx.template Alloc<T>(&temp_tensor);
       workspace_handle.RunFunc(
           [&](void* cudnn_workspace_ptr) {
@@ -494,36 +292,6 @@ void ConvCudnnGradKernel(const Context& ctx,
                                                   &workspace_handle,
                                                   use_addto);
 #endif
-
-    if (!is_sys_pad) {
-      std::vector<int> starts(transformed_input_channel.dims().size(), 0);
-      std::vector<int> axes(transformed_input_channel.dims().size(), 0);
-
-      for (size_t i = 0; i < transformed_input_channel.dims().size(); ++i) {
-        starts[i] = input_pad[2 * i];
-        axes[i] = i;
-      }
-
-      ctx.template Alloc<T>(&transformed_input_grad_channel);
-      if (transformed_input_channel.dims().size() == 4) {
-        RemovePaddingSlice<Context, T, 4>(ctx,
-                                          &transformed_input_grad,
-                                          &transformed_input_grad_channel,
-                                          starts,
-                                          axes);
-      } else {
-        RemovePaddingSlice<Context, T, 5>(ctx,
-                                          &transformed_input_grad,
-                                          &transformed_input_grad_channel,
-                                          starts,
-                                          axes);
-      }
-    }
-
-    if (channel_last && compute_format == paddle::platform::DataLayout::kNCHW) {
-      TransToChannelLast<Context, T>(
-          ctx, &transformed_input_grad_channel, input_grad);
-    }
   }
 
   // ------------------- cudnn conv backward filter ---------------------
@@ -564,8 +332,400 @@ void ConvCudnnGradKernel(const Context& ctx,
                                                     &workspace_handle,
                                                     false);
 #endif
+  }
+}
 
-    if (compute_format == paddle::platform::DataLayout::kNHWC) {
+#ifdef PADDLE_WITH_CUDNN_FRONTEND
+template <typename T, typename Context>
+void ConvCudnnGradKernelImplV8(
+    const DenseTensor* transformed_input,
+    const DenseTensor* transformed_filter_channel,
+    const DenseTensor* transformed_output_grad_channel,
+    DenseTensor* input_grad,
+    DenseTensor* filter_grad,
+    const Context& ctx,
+    const std::vector<int>& strides,
+    const std::vector<int>& padding_common,
+    const std::vector<int>& dilations,
+    phi::backends::gpu::DataLayout layout,
+    bool use_addto,
+    bool exhaustive_search,
+    bool deterministic,
+    int groups,
+    DenseTensor* transformed_input_grad,
+    DenseTensor* transformed_filter_grad_channel) {
+  PADDLE_ENFORCE_EQ(
+      groups,
+      1,
+      paddle::platform::errors::Unimplemented(
+          "Group concolution using CUDNNv8 API is unsupported for now"));
+
+  cudnnHandle_t handle = const_cast<cudnnHandle_t>(ctx.cudnn_handle());
+  auto workspace_handle = ctx.cudnn_workspace_handle();
+
+  auto dtype = phi::backends::gpu::CudnnDataType<T>::type;
+  auto layout_format = phi::backends::gpu::GetCudnnTensorFormat(layout);
+
+  if (input_grad) {
+    CudnnConvBwdDataV8<T>(transformed_output_grad_channel,
+                          transformed_filter_channel,
+                          handle,
+                          &workspace_handle,
+                          strides,
+                          padding_common,
+                          dilations,
+                          dtype,
+                          layout_format,
+                          use_addto,
+                          exhaustive_search,
+                          deterministic,
+                          transformed_input_grad);
+  }
+
+  if (filter_grad) {
+    CudnnConvBwdFilterV8<T>(transformed_input,
+                            transformed_output_grad_channel,
+                            handle,
+                            &workspace_handle,
+                            strides,
+                            padding_common,
+                            dilations,
+                            dtype,
+                            layout_format,
+                            use_addto,
+                            exhaustive_search,
+                            deterministic,
+                            transformed_filter_grad_channel);
+  }
+}
+#endif
+
+template <typename T, typename Context>
+void ConvCudnnGradKernel(const Context& ctx,
+                         const DenseTensor& input,
+                         const DenseTensor& filter,
+                         const DenseTensor& output_grad,
+                         const std::vector<int>& strides_t,
+                         const std::vector<int>& paddings_t,
+                         const std::string& padding_algorithm,
+                         const std::vector<int>& dilations_t,
+                         int groups,
+                         const std::string& data_format,
+                         DenseTensor* input_grad,
+                         DenseTensor* filter_grad) {
+  if (input_grad) {
+    ctx.template Alloc<T>(input_grad);
+  }
+  if (filter_grad) {
+    ctx.template Alloc<T>(filter_grad);
+  }
+
+  bool has_use_addto = ctx.HasDnnAttr("use_addto");
+  VLOG(4) << "GPUContext contains `use_addto`: " << has_use_addto;
+  bool use_addto = has_use_addto
+                       ? PADDLE_GET_CONST(bool, ctx.GetDnnAttr("use_addto"))
+                       : false;
+
+  std::vector<int> dilations = dilations_t;
+  std::vector<int> strides = strides_t;
+  std::vector<int> paddings = paddings_t;
+
+  bool has_exhaustive_search = ctx.HasDnnAttr("exhaustive_search");
+  VLOG(4) << "GPUContext contains `exhaustive_search`: "
+          << has_exhaustive_search;
+  bool exhaustive_search_attr =
+      has_exhaustive_search
+          ? PADDLE_GET_CONST(bool, ctx.GetDnnAttr("exhaustive_search"))
+          : false;
+  bool exhaustive_search =
+      FLAGS_cudnn_exhaustive_search || exhaustive_search_attr;
+  bool deterministic = FLAGS_cudnn_deterministic;
+  auto exhaustive_deterministic = exhaustive_search && deterministic;
+  PADDLE_ENFORCE_EQ(exhaustive_deterministic,
+                    false,
+                    phi::errors::InvalidArgument(
+                        "Cann't set exhaustive_search True and "
+                        "FLAGS_cudnn_deterministic True at same time."));
+
+  const bool channel_last = (data_format == "NHWC" || data_format == "NDHWC");
+
+  auto dtype = phi::backends::gpu::CudnnDataType<T>::type;
+
+#ifdef PADDLE_WITH_HIP
+  // HIP MIOPEN ONLY SUPPORT NCHW format
+  auto compute_format = phi::backends::gpu::DataLayout::kNCHW;
+#else
+#if CUDNN_VERSION_MIN(8, 1, 0)
+  const bool compute_in_nhwc =
+      (dtype == CUDNN_DATA_HALF || dtype == CUDNN_DATA_BFLOAT16) &&
+      IsVoltaOrLater(ctx);
+#else
+  const bool compute_in_nhwc = dtype == CUDNN_DATA_HALF && IsVoltaOrLater(ctx);
+#endif
+  auto compute_format = compute_in_nhwc && channel_last
+                            ? phi::backends::gpu::DataLayout::kNHWC
+                            : phi::backends::gpu::DataLayout::kNCHW;
+#endif
+  VLOG(3) << "Compute ConvGradOp with cuDNN:"
+          << " data_format=" << data_format << " compute_format="
+          << (compute_format == phi::backends::gpu::DataLayout::kNHWC ? "NHWC"
+                                                                      : "NCHW");
+
+  // transform Tensor
+  DenseTensor transformed_input_channel(input.type());
+  DenseTensor transformed_output_grad_channel(output_grad.type());
+  DenseTensor transformed_input_grad_channel(input.type());
+  DenseTensor transformed_filter_channel(filter.type());
+  DenseTensor transformed_filter_grad_channel(filter.type());
+
+  if (channel_last && compute_format == phi::backends::gpu::DataLayout::kNCHW) {
+    VLOG(3) << "Transform input, output_grad, input_grad and tensor from "
+               "NHWC to NCHW.";
+    ResizeToChannelFirst<Context, T>(ctx, &input, &transformed_input_channel);
+    TransToChannelFirst<Context, T>(ctx, &input, &transformed_input_channel);
+
+    ResizeToChannelFirst<Context, T>(
+        ctx, &output_grad, &transformed_output_grad_channel);
+    TransToChannelFirst<Context, T>(
+        ctx, &output_grad, &transformed_output_grad_channel);
+
+    if (input_grad) {
+      ResizeToChannelFirst<Context, T>(
+          ctx, input_grad, &transformed_input_grad_channel);
+      // NOTE(zhiqiu): If inplace_addto strategy is enabled, we need to copy
+      // the data of input_grad to transformed_input_grad_channel.
+      if (use_addto) {
+        TransToChannelFirst<Context, T>(
+            ctx, input_grad, &transformed_input_grad_channel);
+      }
+    }
+  } else {
+    transformed_input_channel.ShareDataWith(input);
+    transformed_output_grad_channel.ShareDataWith(output_grad);
+    if (input_grad) {
+      transformed_input_grad_channel.ShareDataWith(*input_grad);
+    }
+  }
+
+  if (compute_format == phi::backends::gpu::DataLayout::kNHWC) {
+    VLOG(3) << "Transform filter and filter_grad tensor from NCHW to NHWC.";
+    ResizeToChannelLast<Context, T>(ctx, &filter, &transformed_filter_channel);
+    TransToChannelLast<Context, T>(ctx, &filter, &transformed_filter_channel);
+
+    if (filter_grad) {
+      ResizeToChannelLast<Context, T>(
+          ctx, filter_grad, &transformed_filter_grad_channel);
+    }
+  } else {
+    transformed_filter_channel.ShareDataWith(filter);
+    if (filter_grad) {
+      transformed_filter_grad_channel.ShareDataWith(*filter_grad);
+    }
+  }
+
+  //  update paddings
+  auto in_dims = transformed_input_channel.dims();
+  auto filter_dims = transformed_filter_channel.dims();
+  DDim in_data_dims;
+  DDim filter_data_dims;
+  if (compute_format == phi::backends::gpu::DataLayout::kNCHW) {
+    in_data_dims = slice_ddim(in_dims, 2, in_dims.size());
+    filter_data_dims = slice_ddim(filter_dims, 2, filter_dims.size());
+  } else {
+    in_data_dims = slice_ddim(in_dims, 1, in_dims.size() - 1);
+    filter_data_dims = slice_ddim(filter_dims, 1, filter_dims.size() - 1);
+  }
+  std::vector<int> ksize = vectorize<int>(filter_data_dims);
+  UpdatePaddingAndDilation(
+      &paddings, &dilations, padding_algorithm, in_data_dims, strides, ksize);
+
+  // cuDNN only supports padding the same amount on every dimension.
+  // So we create a new padded input tensor.
+  int data_dim = strides.size();  // 2d or 3d
+  bool is_sys_pad = funcs::IsSymmetricPadding(paddings, data_dim);
+  Tensor transformed_input(input.type());
+  Tensor transformed_input_grad(input.type());
+  std::vector<int> padding_common(data_dim, 0);
+  std::vector<int> input_pad(transformed_input_channel.dims().size() * 2, 0);
+
+  if (!is_sys_pad) {
+    // get pad
+    std::vector<int> padding_diff(data_dim);
+    std::vector<int> new_input_shape_vec(data_dim + 2);
+    new_input_shape_vec[0] = transformed_input_channel.dims()[0];
+    if (compute_format == phi::backends::gpu::DataLayout::kNCHW) {
+      new_input_shape_vec[1] = transformed_input_channel.dims()[1];
+    } else {
+      new_input_shape_vec[data_dim + 1] =
+          transformed_input_channel.dims()[data_dim + 1];
+    }
+
+    for (size_t i = 0; i < data_dim; ++i) {
+      padding_diff[i] = std::abs(paddings[2 * i] - paddings[2 * i + 1]);
+      padding_common[i] = std::min(paddings[2 * i], paddings[2 * i + 1]);
+      if (compute_format == phi::backends::gpu::DataLayout::kNCHW) {
+        new_input_shape_vec[i + 2] =
+            transformed_input_channel.dims()[i + 2] + padding_diff[i];
+      } else {
+        new_input_shape_vec[i + 1] =
+            transformed_input_channel.dims()[i + 1] + padding_diff[i];
+      }
+      if (compute_format == phi::backends::gpu::DataLayout::kNCHW) {
+        input_pad[2 * i + 4] = paddings[2 * i] - padding_common[i];
+        input_pad[2 * i + 4 + 1] = paddings[2 * i + 1] - padding_common[i];
+      } else {
+        input_pad[2 * i + 2] = paddings[2 * i] - padding_common[i];
+        input_pad[2 * i + 2 + 1] = paddings[2 * i + 1] - padding_common[i];
+      }
+    }
+    DDim new_input_shape(make_ddim(new_input_shape_vec));
+    transformed_input.Resize(new_input_shape);
+    ctx.template Alloc<T>(&transformed_input);
+
+    transformed_input_grad.Resize(new_input_shape);
+
+    if (input_grad) {
+      ctx.template Alloc<T>(&transformed_input_grad);
+    }
+    // pad for input
+    const int rank = transformed_input_channel.dims().size();
+    T pad_value(0.0);
+    switch (rank) {
+      case 4: {
+        funcs::PadFunction<Context, T, 4>(ctx,
+                                          input_pad,
+                                          transformed_input_channel,
+                                          pad_value,
+                                          &transformed_input);
+      } break;
+      case 5: {
+        funcs::PadFunction<Context, T, 5>(ctx,
+                                          input_pad,
+                                          transformed_input_channel,
+                                          pad_value,
+                                          &transformed_input);
+      } break;
+      default:
+        PADDLE_THROW(phi::errors::InvalidArgument(
+            "ConvOp only support tensors with 4 or 5 dimensions."));
+    }
+  } else {
+    transformed_input.ShareDataWith(transformed_input_channel);
+    if (input_grad) {
+      transformed_input_grad.ShareDataWith(transformed_input_grad_channel);
+    }
+    if (paddings.size() == data_dim) {
+      for (size_t i = 0; i < data_dim; ++i) {
+        padding_common[i] = paddings[i];
+      }
+    } else {
+      for (size_t i = 0; i < data_dim; ++i) {
+        padding_common[i] = paddings[2 * i];
+      }
+    }
+  }
+  phi::backends::gpu::DataLayout layout =
+      compute_format == phi::backends::gpu::DataLayout::kNHWC
+          ? phi::backends::gpu::DataLayout::kNHWC
+          : phi::backends::gpu::DataLayout::kNCHW;
+  // TODO(phlrain): replace paddle::platform::DataLaytout to phi::DataLayout
+  if (transformed_input.dims().size() == 5) {
+    layout = compute_format == phi::backends::gpu::DataLayout::kNHWC
+                 ? phi::backends::gpu::DataLayout::kNDHWC
+                 : phi::backends::gpu::DataLayout::kNCDHW;
+  }
+
+#ifdef PADDLE_WITH_CUDNN_FRONTEND
+  if (dynload::IsCudnnFrontendEnabled() && (groups == 1))
+    ConvCudnnGradKernelImplV8<T>(&transformed_input,
+                                 &transformed_filter_channel,
+                                 &transformed_output_grad_channel,
+                                 input_grad,
+                                 filter_grad,
+                                 ctx,
+                                 strides,
+                                 padding_common,
+                                 dilations,
+                                 layout,
+                                 use_addto,
+                                 exhaustive_search,
+                                 deterministic,
+                                 groups,
+                                 &transformed_input_grad,
+                                 &transformed_filter_grad_channel);
+  else
+    ConvCudnnGradKernelImplV7<T>(&transformed_input,
+                                 &transformed_filter_channel,
+                                 &transformed_output_grad_channel,
+                                 input_grad,
+                                 filter_grad,
+                                 ctx,
+                                 strides,
+                                 padding_common,
+                                 dilations,
+                                 compute_format,
+                                 layout,
+                                 use_addto,
+                                 exhaustive_search,
+                                 deterministic,
+                                 groups,
+                                 &transformed_input_grad,
+                                 &transformed_filter_grad_channel);
+#else
+  ConvCudnnGradKernelImplV7<T>(&transformed_input,
+                               &transformed_filter_channel,
+                               &transformed_output_grad_channel,
+                               input_grad,
+                               filter_grad,
+                               ctx,
+                               strides,
+                               padding_common,
+                               dilations,
+                               compute_format,
+                               layout,
+                               use_addto,
+                               exhaustive_search,
+                               deterministic,
+                               groups,
+                               &transformed_input_grad,
+                               &transformed_filter_grad_channel);
+#endif
+
+  if (input_grad) {
+    if (!is_sys_pad) {
+      std::vector<int> starts(transformed_input_channel.dims().size(), 0);
+      std::vector<int> axes(transformed_input_channel.dims().size(), 0);
+
+      for (size_t i = 0; i < transformed_input_channel.dims().size(); ++i) {
+        starts[i] = input_pad[2 * i];
+        axes[i] = i;
+      }
+
+      ctx.template Alloc<T>(&transformed_input_grad_channel);
+      if (transformed_input_channel.dims().size() == 4) {
+        RemovePaddingSlice<Context, T, 4>(ctx,
+                                          &transformed_input_grad,
+                                          &transformed_input_grad_channel,
+                                          starts,
+                                          axes);
+      } else {
+        RemovePaddingSlice<Context, T, 5>(ctx,
+                                          &transformed_input_grad,
+                                          &transformed_input_grad_channel,
+                                          starts,
+                                          axes);
+      }
+    }
+
+    if (channel_last &&
+        compute_format == phi::backends::gpu::DataLayout::kNCHW) {
+      TransToChannelLast<Context, T>(
+          ctx, &transformed_input_grad_channel, input_grad);
+    }
+  }
+
+  if (filter_grad) {
+    if (compute_format == phi::backends::gpu::DataLayout::kNHWC) {
       TransToChannelFirst<Context, T>(
           ctx, &transformed_filter_grad_channel, filter_grad);
     }
@@ -849,11 +1009,11 @@ void ConvCudnnGradGradKernel(
   c_group = groups;
   groups = 1;
 #endif
-  auto dtype = paddle::platform::CudnnDataType<T>::type;
+  auto dtype = phi::backends::gpu::CudnnDataType<T>::type;
 
   auto handle = ctx.cudnn_handle();
-  auto layout = paddle::platform::GetCudnnTensorFormat(
-      paddle::platform::DataLayout::kNCHW);
+  auto layout = phi::backends::gpu::GetCudnnTensorFormat(
+      phi::backends::gpu::DataLayout::kNCHW);
 
   ConvArgs args1{handle,
                  &transformed_ddX,
@@ -864,7 +1024,7 @@ void ConvCudnnGradGradKernel(
                  dilations,
                  dtype,
                  groups,
-                 paddle::platform::DataLayout::kNCHW};
+                 phi::backends::gpu::DataLayout::kNCHW};
   ConvArgs args2{handle,
                  &transformed_X,
                  ddW,
@@ -874,7 +1034,7 @@ void ConvCudnnGradGradKernel(
                  dilations,
                  dtype,
                  groups,
-                 paddle::platform::DataLayout::kNCHW};
+                 phi::backends::gpu::DataLayout::kNCHW};
   ConvArgs args3{handle,
                  &transformed_ddX,
                  dW,
@@ -884,7 +1044,7 @@ void ConvCudnnGradGradKernel(
                  dilations,
                  dtype,
                  groups,
-                 paddle::platform::DataLayout::kNCHW};
+                 phi::backends::gpu::DataLayout::kNCHW};
   ConvArgs args4{handle,
                  &transformed_dX,
                  ddW,
@@ -894,7 +1054,7 @@ void ConvCudnnGradGradKernel(
                  dilations,
                  dtype,
                  groups,
-                 paddle::platform::DataLayout::kNCHW};
+                 phi::backends::gpu::DataLayout::kNCHW};
 
 #ifdef PADDLE_WITH_HIP
   SearchResult<miopenConvFwdAlgorithm_t> fwd_result1;

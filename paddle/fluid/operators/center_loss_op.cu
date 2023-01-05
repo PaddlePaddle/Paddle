@@ -16,11 +16,11 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/center_loss_op.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
-#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
+#include "paddle/phi/backends/gpu/gpu_primitives.h"
 namespace paddle {
 namespace operators {
 
-using platform::PADDLE_CUDA_NUM_THREADS;
+using phi::PADDLE_CUDA_NUM_THREADS;
 
 template <typename T, int BlockDimX, int BlockDimY, int GridDimX>
 __global__ void ComputeDifferent(T *centers_diff,
@@ -75,7 +75,7 @@ __global__ void UpdateCenters(T *centers,
     const T *diff = centers_diff + idy * D;
     T *cent = centers + id * D;
     for (int i = idx; i < D; i += BlockDimX) {
-      paddle::platform::CudaAtomicAdd(&cent[i], alpha[0] * diff[i] / count);
+      phi::CudaAtomicAdd(&cent[i], alpha[0] * diff[i] / count);
     }
     idy += BlockDimY * GridDimX;
   }

@@ -26,16 +26,16 @@ limitations under the License. */
 #include "paddle/phi/kernels/transpose_kernel.h"
 
 #ifdef PADDLE_WITH_HIP
-#include "paddle/fluid/platform/device/gpu/rocm/miopen_helper.h"
+#include "paddle/phi/backends/gpu/rocm/miopen_helper.h"
 #include "paddle/phi/kernels/gpudnn/conv_miopen_helper.h"
 #else
-#include "paddle/fluid/platform/device/gpu/cuda/cudnn_helper.h"
+#include "paddle/phi/backends/gpu/cuda/cudnn_helper.h"
 #include "paddle/phi/kernels/gpudnn/conv_cudnn_v7.h"
 #endif
 
 namespace phi {
 
-using GPUDNNDataLayout = paddle::platform::DataLayout;
+using GPUDNNDataLayout = phi::backends::gpu::DataLayout;
 
 template <typename T, typename Context>
 void ConvTransposeRawGPUDNNKernel(const Context& ctx,
@@ -194,10 +194,10 @@ void ConvTransposeRawGPUDNNKernel(const Context& ctx,
 #endif
   // ------------------- cudnn conv algorithm ---------------------
   auto handle = ctx.cudnn_handle();
-  auto layout_tensor = paddle::platform::GetCudnnTensorFormat(layout);
+  auto layout_tensor = phi::backends::gpu::GetCudnnTensorFormat(layout);
   bool deterministic = FLAGS_cudnn_deterministic;
 
-  auto dtype = paddle::platform::CudnnDataType<T>::type;
+  auto dtype = phi::backends::gpu::CudnnDataType<T>::type;
   // ------------------- cudnn descriptors ---------------------
   ConvArgs args{handle,
                 &transformed_out,

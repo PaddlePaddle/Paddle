@@ -12,11 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import seresnext_net
-import paddle.fluid.core as core
-from parallel_executor_test_base import TestParallelExecutorBase, DeviceType
-from parallel_executor_test_base import DeviceType
 import numpy as np
+import seresnext_net
+from parallel_executor_test_base import DeviceType, TestParallelExecutorBase
+
+import paddle.fluid.core as core
 
 
 class TestResnetBase(TestParallelExecutorBase):

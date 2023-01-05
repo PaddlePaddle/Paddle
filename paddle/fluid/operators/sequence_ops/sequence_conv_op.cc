@@ -145,30 +145,31 @@ class SequenceConvOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput(
         "X",
-        "(LoDTensor) the input(X) is a LodTensor, which supports "
+        "(phi::DenseTensor) the input(X) is a LodTensor, which supports "
         "variable-time length input sequence. The underlying tensor in "
-        "this LoDTensor is a matrix with shape (T, N), where T is the "
+        "this phi::DenseTensor is a matrix with shape (T, N), where T is the "
         "total time steps in this mini-batch and N is the input_hidden_size.");
-    AddInput("PaddingData",
-             "(Tensor, optional) the input(PaddingData) is an optional "
-             "parameter, and it is learnable. "
-             "This is a tensor with shape (P, N), where P is the "
-             "top_pad + bottom_pad, N is the input_hidden_size. In order to "
-             "ensure the equal length of sequence before and after "
-             "convolution, it is necessary to fill the top and bottom of each "
-             "sequence according to context_length, context_stride and "
-             "context_start")
+    AddInput(
+        "PaddingData",
+        "(phi::DenseTensor, optional) the input(PaddingData) is an optional "
+        "parameter, and it is learnable. "
+        "This is a tensor with shape (P, N), where P is the "
+        "top_pad + bottom_pad, N is the input_hidden_size. In order to "
+        "ensure the equal length of sequence before and after "
+        "convolution, it is necessary to fill the top and bottom of each "
+        "sequence according to context_length, context_stride and "
+        "context_start")
         .AsDispensable();
     AddInput(
         "Filter",
-        "(Tensor) the input(Filter) is an learnable parameter."
+        "(phi::DenseTensor) the input(Filter) is an learnable parameter."
         "This is a tensor with shape (K, M), where K is the "
         "context_length * input_hidden_size, M is the output feature size.");
     AddOutput(
         "Out",
-        "(LoDTensor) the output(Out) is a LodTensor, which support "
+        "(phi::DenseTensor) the output(Out) is a LodTensor, which support "
         "variable-time length output sequence. The underlying tensor in "
-        "this LoDTensor is a matrix with shape (T, M), where, T is the "
+        "this phi::DenseTensor is a matrix with shape (T, M), where, T is the "
         "total time steps in this mini-batch, M is the output feature size.");
 
     AddAttr<bool>("paddingTrainable",

@@ -147,7 +147,7 @@ class TestSetValueItemSlice4(TestSetValueApi):
 #             return i, x
 
 #         i = paddle.zeros(shape=(1, ), dtype='int32')
-#         i, x = paddle.fluid.layers.while_loop(cond, body, [i, x])
+#         i, x = paddle.static.nn.while_loop(cond, body, [i, x])
 
 #     def _get_answer(self):
 #         self.data[0] = self.value

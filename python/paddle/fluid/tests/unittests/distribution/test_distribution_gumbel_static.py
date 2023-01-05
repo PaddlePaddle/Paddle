@@ -14,13 +14,12 @@
 
 import unittest
 
+import config
 import numpy as np
+import parameterize
 import scipy.stats
 
 import paddle
-import config
-import parameterize
-
 from paddle.distribution.gumbel import Gumbel
 
 paddle.enable_static()

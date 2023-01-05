@@ -221,6 +221,10 @@ NCCLComm* NCCLCommContext::AssignNCCLComm(
       paddle::memory::allocation::AllocatorFacade::Instance()
           .GetZeroAllocator(CUDAPlace(dev_id))
           .get());
+  dev_ctx->SetHostZeroAllocator(
+      paddle::memory::allocation::AllocatorFacade::Instance()
+          .GetZeroAllocator(paddle::platform::CPUPlace())
+          .get());
   dev_ctx->SetPinnedAllocator(
       paddle::memory::allocation::AllocatorFacade::Instance()
           .GetAllocator(paddle::platform::CUDAPinnedPlace())
@@ -363,6 +367,10 @@ BKCLComm* BKCLCommContext::AssignBKCLComm(
   dev_ctx->SetZeroAllocator(
       paddle::memory::allocation::AllocatorFacade::Instance()
           .GetZeroAllocator(XPUPlace(dev_id))
+          .get());
+  dev_ctx->SetHostZeroAllocator(
+      paddle::memory::allocation::AllocatorFacade::Instance()
+          .GetZeroAllocator(paddle::platform::CPUPlace())
           .get());
 
   BKCLCommImpl* c = new BKCLCommImpl;

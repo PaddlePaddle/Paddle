@@ -13,8 +13,9 @@
 # limitations under the License.
 
 import enum
-import numpy as np
 from functools import partial
+
+import numpy as np
 from numpy import asarray
 from numpy.fft._pocketfft import _cook_nd_args, _raw_fft, _raw_fftnd
 

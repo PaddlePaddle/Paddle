@@ -12,14 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from auto_scan_test import PassAutoScanTest, IgnoreReasons
-from program_config import TensorConfig, ProgramConfig, OpConfig
-import numpy as np
-import paddle.inference as paddle_infer
-from functools import partial
 import unittest
+from functools import partial
 
 import hypothesis.strategies as st
+import numpy as np
+from auto_scan_test import IgnoreReasons, PassAutoScanTest
+from program_config import OpConfig, ProgramConfig, TensorConfig
+
+import paddle.inference as paddle_infer
 
 
 class TestConvBnFusePass(PassAutoScanTest):
@@ -167,7 +168,7 @@ class TestConvBnFusePass(PassAutoScanTest):
         if program_config.ops[0].attrs['use_mkldnn']:
             config = self.create_inference_config()
             config.enable_mkldnn()
-            yield config, ['conv2d'], (1e-5, 1e-5)
+            yield config, ['fused_conv2d'], (1e-5, 1e-5)
         else:
             config = self.create_inference_config()
             yield config, ['conv2d', 'elementwise_add'], (1e-5, 1e-5)

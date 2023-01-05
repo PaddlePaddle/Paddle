@@ -149,7 +149,7 @@ void ArgMinMaxKernel(const Context& dev_ctx,
     return;
   }
   phi::VisitDataTypeTiny(
-      var_type_map[dtype],
+      phi::TransToPhiDataType(dtype),
       VisitDataArgMinMaxFunctor<Context, T, EnumArgMinMaxValue>(
           dev_ctx, x, axis.to<int64_t>(), keepdims, flatten, out));
 }
@@ -180,7 +180,7 @@ void ArgMaxKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(arg_min,
+PD_REGISTER_KERNEL(argmin,
                    CPU,
                    ALL_LAYOUT,
                    phi::ArgMinKernel,
@@ -191,7 +191,7 @@ PD_REGISTER_KERNEL(arg_min,
                    int16_t,
                    uint8_t) {}
 
-PD_REGISTER_KERNEL(arg_max,
+PD_REGISTER_KERNEL(argmax,
                    CPU,
                    ALL_LAYOUT,
                    phi::ArgMaxKernel,

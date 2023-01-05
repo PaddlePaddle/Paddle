@@ -15,16 +15,16 @@
 import unittest
 from functools import reduce
 
+import numpy as np
+
 import paddle
+import paddle.fluid as fluid
+import paddle.fluid.core as core
 from paddle.fluid.framework import (
     Program,
     convert_np_dtype_to_dtype_,
     default_main_program,
 )
-import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-import numpy as np
 
 paddle.enable_static()
 
@@ -156,7 +156,7 @@ class TestVariable(unittest.TestCase):
             var3 = var[0:1]
             var4 = var[::-1]
             var5 = var[1, 1:, 1:]
-            var_reshape = fluid.layers.reshape(var, [3, -1, 3])
+            var_reshape = paddle.reshape(var, [3, -1, 3])
             var6 = var_reshape[:, :, -1]
             var7 = var[:, :, :-1]
             var8 = var[:1, :1, :1]
@@ -169,7 +169,7 @@ class TestVariable(unittest.TestCase):
             var15 = var[::-1, ::-1, ::-1]
 
             x = fluid.layers.data(name='x', shape=[13], dtype='float32')
-            y = fluid.layers.fc(input=x, size=1, act=None)
+            y = paddle.static.nn.fc(x, size=1, activation=None)
             y_1 = y[:, 0]
             feeder = fluid.DataFeeder(place=place, feed_list=[x])
             data = []

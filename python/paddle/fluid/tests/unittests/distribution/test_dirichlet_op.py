@@ -15,8 +15,9 @@
 import sys
 
 import numpy as np
-import paddle
 import scipy.stats
+
+import paddle
 
 sys.path.append("../")
 from op_test import OpTest

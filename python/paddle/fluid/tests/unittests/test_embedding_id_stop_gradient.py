@@ -12,10 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import unittest
+
 import numpy as np
+
 import paddle
 import paddle.fluid as fluid
-import unittest
 
 
 class TestEmbeddingIdStopGradientBase(unittest.TestCase):
@@ -52,7 +54,7 @@ class TestEmbeddingIdStopGradientBase(unittest.TestCase):
                 x = fluid.layers.concat([x_1, x_2], axis=-1)
 
                 for _ in range(self.reshape_times):
-                    x = fluid.layers.reshape(x, [-1, 1])
+                    x = paddle.reshape(x, [-1, 1])
 
                 x.stop_gradient = stop_gradient
 

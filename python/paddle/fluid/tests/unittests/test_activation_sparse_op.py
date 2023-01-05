@@ -13,10 +13,12 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
+
+import paddle
 import paddle.fluid.core as core
 from paddle.fluid.op import Operator
-import paddle
 
 
 class TestSparseSquareOp(unittest.TestCase):

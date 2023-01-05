@@ -52,20 +52,6 @@ if(WITH_NCCL)
   endif()
 endif()
 if(WITH_NCCL)
-  if((WITH_GPU) AND LOCAL_ALL_PLAT)
-    bash_test_modules(
-      test_dygraph_sharding_stage3
-      START_BASH
-      ../../dist_test.sh
-      LABELS
-      "RUN_TYPE=DIST"
-      ENVS
-      "PADDLE_DIST_UT_PORT=21202;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
-    )
-    set_tests_properties(test_dygraph_sharding_stage3 PROPERTIES TIMEOUT "350")
-  endif()
-endif()
-if(WITH_NCCL)
   if(${NCCL_VERSION} VERSION_GREATER_EQUAL 2212)
     if((WITH_GPU) AND LOCAL_ALL_PLAT)
       bash_test_modules(
@@ -401,19 +387,6 @@ if(LOCAL_ALL_ARCH AND (LINUX OR WIN32))
     test_fleet_amp_init MODULES test_fleet_amp_init ENVS
     "http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python")
 endif()
-if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
-  bash_test_modules(
-    test_dygraph_sharding_optimizer_stage2
-    START_BASH
-    ../../dist_test.sh
-    LABELS
-    "RUN_TYPE=DIST"
-    ENVS
-    "PADDLE_DIST_UT_PORT=21238;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
-  )
-  set_tests_properties(test_dygraph_sharding_optimizer_stage2 PROPERTIES TIMEOUT
-                                                                         "120")
-endif()
 if(LOCAL_ALL_ARCH AND (LINUX OR WIN32))
   py_test_modules(
     test_fleet_meta_optimizer_base MODULES test_fleet_meta_optimizer_base ENVS
@@ -667,18 +640,6 @@ if((WITH_GPU
     test_fleet_recompute_meta_optimizer ENVS
     "http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python")
 endif()
-if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
-  bash_test_modules(
-    test_dygraph_group_sharded_api
-    START_BASH
-    ../../dist_test.sh
-    LABELS
-    "RUN_TYPE=DIST"
-    ENVS
-    "PADDLE_DIST_UT_PORT=21266;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
-  )
-  set_tests_properties(test_dygraph_group_sharded_api PROPERTIES TIMEOUT "120")
-endif()
 if(LOCAL_ALL_ARCH AND (LINUX OR WIN32))
   py_test_modules(
     test_fleet_private_function MODULES test_fleet_private_function ENVS
@@ -762,14 +723,6 @@ if((WITH_GPU OR WITH_ROCM) AND LOCAL_ALL_PLAT)
 endif()
 if((WITH_GPU OR WITH_ROCM) AND LOCAL_ALL_PLAT)
   py_test_modules(
-    test_imperative_auto_mixed_precision MODULES
-    test_imperative_auto_mixed_precision ENVS
-    "http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python")
-  set_tests_properties(test_imperative_auto_mixed_precision
-                       PROPERTIES TIMEOUT "300" LABELS "RUN_TYPE=DIST")
-endif()
-if((WITH_GPU OR WITH_ROCM) AND LOCAL_ALL_PLAT)
-  py_test_modules(
     test_imperative_auto_mixed_precision_for_eager MODULES
     test_imperative_auto_mixed_precision_for_eager ENVS
     "http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python")
@@ -779,11 +732,6 @@ endif()
 if((WITH_GPU OR WITH_ROCM) AND LOCAL_ALL_PLAT)
   py_test_modules(
     test_mixed_precision MODULES test_mixed_precision ENVS
-    "http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python")
-endif()
-if((WITH_GPU OR WITH_ROCM) AND LOCAL_ALL_PLAT)
-  py_test_modules(
-    test_dygraph_recompute MODULES test_dygraph_recompute ENVS
     "http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python")
 endif()
 if((WITH_GPU OR WITH_ROCM) AND LOCAL_ALL_PLAT)

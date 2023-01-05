@@ -25,6 +25,7 @@ void MeanGradKernel(const Context& dev_ctx,
                     bool keep_dim,
                     bool reduce_all,
                     DenseTensor* x_grad) {
+  reduce_all = recompute_reduce_all(x, dims, reduce_all);
   auto input_dims = phi::vectorize(x.dims());
   std::vector<int64_t> reduce_dims = dims.GetData();
   int number_of_elements = 1;

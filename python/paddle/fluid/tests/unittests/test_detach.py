@@ -12,14 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import unittest
+
 import numpy as np
 
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.dygraph import Linear
 from paddle.fluid.dygraph.base import to_variable
-
-import unittest
+from paddle.nn import Linear
 
 
 class Test_Detach(unittest.TestCase):
@@ -32,40 +32,40 @@ class Test_Detach(unittest.TestCase):
     def no_detach_multi(self):
         data = self.generate_Data()
         with fluid.dygraph.guard():
-            linear_w_param_attrs = fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(5.0)
+            linear_w_param_attrs = paddle.ParamAttr(
+                initializer=paddle.nn.initializer.Constant(5.0)
             )
-            linear_b_param_attrs = fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(6.0)
+            linear_b_param_attrs = paddle.ParamAttr(
+                initializer=paddle.nn.initializer.Constant(6.0)
             )
             linear = Linear(
                 4,
                 10,
-                param_attr=linear_w_param_attrs,
+                weight_attr=linear_w_param_attrs,
                 bias_attr=linear_b_param_attrs,
             )
-            linear1_w_param_attrs = fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(7.0)
+            linear1_w_param_attrs = paddle.ParamAttr(
+                initializer=paddle.nn.initializer.Constant(7.0)
             )
-            linear1_b_param_attrs = fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(8.0)
+            linear1_b_param_attrs = paddle.ParamAttr(
+                initializer=paddle.nn.initializer.Constant(8.0)
             )
             linear1 = Linear(
                 10,
                 1,
-                param_attr=linear1_w_param_attrs,
+                weight_attr=linear1_w_param_attrs,
                 bias_attr=linear1_b_param_attrs,
             )
-            linear2_w_param_attrs = fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(9.0)
+            linear2_w_param_attrs = paddle.ParamAttr(
+                initializer=paddle.nn.initializer.Constant(9.0)
             )
-            linear2_b_param_attrs = fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(10.0)
+            linear2_b_param_attrs = paddle.ParamAttr(
+                initializer=paddle.nn.initializer.Constant(10.0)
             )
             linear2 = Linear(
                 10,
                 1,
-                param_attr=linear2_w_param_attrs,
+                weight_attr=linear2_w_param_attrs,
                 bias_attr=linear2_b_param_attrs,
             )
             data = to_variable(data)
@@ -80,28 +80,28 @@ class Test_Detach(unittest.TestCase):
     def no_detach_single(self):
         data = self.generate_Data()
         with fluid.dygraph.guard():
-            linear_w_param_attrs = fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(5.0)
+            linear_w_param_attrs = paddle.ParamAttr(
+                initializer=paddle.nn.initializer.Constant(5.0)
             )
-            linear_b_param_attrs = fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(6.0)
+            linear_b_param_attrs = paddle.ParamAttr(
+                initializer=paddle.nn.initializer.Constant(6.0)
             )
             linear = Linear(
                 4,
                 10,
-                param_attr=linear_w_param_attrs,
+                weight_attr=linear_w_param_attrs,
                 bias_attr=linear_b_param_attrs,
             )
-            linear1_w_param_attrs = fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(7.0)
+            linear1_w_param_attrs = paddle.ParamAttr(
+                initializer=paddle.nn.initializer.Constant(7.0)
             )
-            linear1_b_param_attrs = fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(8.0)
+            linear1_b_param_attrs = paddle.ParamAttr(
+                initializer=paddle.nn.initializer.Constant(8.0)
             )
             linear1 = Linear(
                 10,
                 1,
-                param_attr=linear1_w_param_attrs,
+                weight_attr=linear1_w_param_attrs,
                 bias_attr=linear1_b_param_attrs,
             )
             data = to_variable(data)
@@ -115,8 +115,8 @@ class Test_Detach(unittest.TestCase):
     def detach_multi(self):
         data = self.generate_Data()
         with fluid.dygraph.guard():
-            linear_w_param_attrs = fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(5.0)
+            linear_w_param_attrs = paddle.ParamAttr(
+                initializer=paddle.nn.initializer.Constant(5.0)
             )
             linear_b_param_attrs = fluid.ParamAttr(
                 initializer=fluid.initializer.Constant(6.0)
@@ -124,11 +124,11 @@ class Test_Detach(unittest.TestCase):
             linear = Linear(
                 4,
                 10,
-                param_attr=linear_w_param_attrs,
+                weight_attr=linear_w_param_attrs,
                 bias_attr=linear_b_param_attrs,
             )
-            linear1_w_param_attrs = fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(7.0)
+            linear1_w_param_attrs = paddle.ParamAttr(
+                initializer=paddle.nn.initializer.Constant(7.0)
             )
             linear1_b_param_attrs = fluid.ParamAttr(
                 initializer=fluid.initializer.Constant(8.0)
@@ -136,19 +136,19 @@ class Test_Detach(unittest.TestCase):
             linear1 = Linear(
                 10,
                 1,
-                param_attr=linear1_w_param_attrs,
+                weight_attr=linear1_w_param_attrs,
                 bias_attr=linear1_b_param_attrs,
             )
-            linear2_w_param_attrs = fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(9.0)
+            linear2_w_param_attrs = paddle.ParamAttr(
+                initializer=paddle.nn.initializer.Constant(9.0)
             )
-            linear2_b_param_attrs = fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(10.0)
+            linear2_b_param_attrs = paddle.ParamAttr(
+                initializer=paddle.nn.initializer.Constant(10.0)
             )
             linear2 = Linear(
                 10,
                 1,
-                param_attr=linear2_w_param_attrs,
+                weight_attr=linear2_w_param_attrs,
                 bias_attr=linear2_b_param_attrs,
             )
             data = to_variable(data)

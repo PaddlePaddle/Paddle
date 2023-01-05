@@ -15,13 +15,13 @@
 import paddle
 
 paddle.set_default_dtype("float64")
-from paddle.fluid.layers import sequence_mask
-
-import numpy as np
 import unittest
 
+import numpy as np
 from convert import convert_params_for_cell
-from rnn_numpy import GRUCell, RNN, BiRNN
+from rnn_numpy import RNN, BiRNN, GRUCell
+
+from paddle.fluid.layers import sequence_mask
 
 
 class TestRNNWrapper(unittest.TestCase):

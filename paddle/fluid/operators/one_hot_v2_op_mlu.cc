@@ -19,8 +19,6 @@ limitations under the License. */
 
 namespace paddle {
 namespace operators {
-using Tensor = phi::DenseTensor;
-using LoDTensor = phi::DenseTensor;
 
 template <typename T>
 class OneHotV2MLUKernel : public framework::OpKernel<T> {
@@ -28,8 +26,8 @@ class OneHotV2MLUKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto& dev_ctx =
         ctx.template device_context<paddle::platform::MLUDeviceContext>();
-    auto* in = ctx.Input<LoDTensor>("X");
-    auto* out = ctx.Output<LoDTensor>("Out");
+    auto* in = ctx.Input<phi::DenseTensor>("X");
+    auto* out = ctx.Output<phi::DenseTensor>("Out");
     int depth = ctx.Attr<int>("depth");
     if (ctx.HasInput("depth_tensor")) {
       std::vector<int32_t> depth_data;
@@ -45,10 +43,12 @@ class OneHotV2MLUKernel : public framework::OpKernel<T> {
 
     float on_value = 1.0f, off_value = 0.0f;
     const int in_off_dim[1] = {1};
-    Tensor on_value_tensor = ctx.AllocateTmpTensor<float, MLUDeviceContext>(
-        framework::DDim(in_off_dim, 1), dev_ctx);
-    Tensor off_value_tensor = ctx.AllocateTmpTensor<float, MLUDeviceContext>(
-        framework::DDim(in_off_dim, 1), dev_ctx);
+    phi::DenseTensor on_value_tensor =
+        ctx.AllocateTmpTensor<float, MLUDeviceContext>(
+            framework::DDim(in_off_dim, 1), dev_ctx);
+    phi::DenseTensor off_value_tensor =
+        ctx.AllocateTmpTensor<float, MLUDeviceContext>(
+            framework::DDim(in_off_dim, 1), dev_ctx);
     FillMLUTensorWithHostValue(ctx, on_value, &on_value_tensor);
     FillMLUTensorWithHostValue(ctx, off_value, &off_value_tensor);
 
@@ -65,7 +65,7 @@ class OneHotV2MLUKernel : public framework::OpKernel<T> {
                       ToCnnlDataType(out->dtype()),
                       GetBasePtr(out));
     } else {
-      Tensor transformed_in;
+      phi::DenseTensor transformed_in;
       transformed_in.mutable_data<int32_t>(in->dims(), dev_ctx.GetPlace());
       // use cnnlCast to cast int64_t to int32_t then do one_hot
       MLUCnnlTensorDesc in_desc(*in);

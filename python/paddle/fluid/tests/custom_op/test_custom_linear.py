@@ -14,15 +14,15 @@
 
 import os
 import unittest
+
 import numpy as np
+from utils import extra_cc_args, extra_nvcc_args, paddle_includes
 
 import paddle
-import paddle.static as static
 import paddle.nn.functional as F
-from paddle.utils.cpp_extension import load, get_build_directory
+import paddle.static as static
+from paddle.utils.cpp_extension import get_build_directory, load
 from paddle.utils.cpp_extension.extension_utils import run_cmd
-from utils import paddle_includes, extra_cc_args, extra_nvcc_args
-from paddle.fluid.framework import _test_eager_guard
 
 # Because Windows don't use docker, the shared lib already exists in the
 # cache dir, it will not be compiled again unless the shared lib is removed.
@@ -139,7 +139,7 @@ class TestCustomLinearJit(unittest.TestCase):
                 )
                 self.check_output(phi_bias_grad, pd_bias_grad, "bias_grad")
 
-    def func_dynamic(self):
+    def test_dynamic(self):
         for device in self.devices:
             for dtype in self.dtypes:
                 (
@@ -174,11 +174,6 @@ class TestCustomLinearJit(unittest.TestCase):
                     phi_weight_grad, pd_weight_grad, "weight_grad"
                 )
                 self.check_output(phi_bias_grad, pd_bias_grad, "bias_grad")
-
-    def test_dynamic(self):
-        with _test_eager_guard():
-            self.func_dynamic()
-        self.func_dynamic()
 
 
 if __name__ == "__main__":

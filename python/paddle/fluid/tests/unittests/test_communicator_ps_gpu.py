@@ -13,17 +13,17 @@
 # limitations under the License.
 
 import os
-import unittest
-import time
 import tempfile
+import time
+import unittest
 
 import paddle
 
 paddle.enable_static()
 
-import paddle.fluid as fluid
-import paddle.distributed.fleet.base.role_maker as role_maker
 import paddle.distributed.fleet as fleet
+import paddle.distributed.fleet.base.role_maker as role_maker
+import paddle.fluid as fluid
 
 
 class TestCommunicator(unittest.TestCase):
@@ -55,7 +55,7 @@ class TestCommunicator(unittest.TestCase):
         y = fluid.layers.data(name='y', shape=[1], dtype='float32')
         slots_vars = [x, y]
 
-        cost = fluid.layers.square_error_cost(input=x, label=y)
+        cost = paddle.nn.functional.square_error_cost(input=x, label=y)
         avg_cost = paddle.mean(cost)
 
         optimizer = fluid.optimizer.Adam(0.01)

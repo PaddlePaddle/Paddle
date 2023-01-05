@@ -26,10 +26,7 @@ import paddle.fluid
 from .data_feeder import check_type
 import warnings
 
-try:
-    from collections.abc import Sequence
-except:
-    from collections import Sequence
+from collections.abc import Sequence
 
 __all__ = [
     'append_backward',
@@ -2223,6 +2220,10 @@ def _find_op_path_(
                 op.desc.output_arg_names(), output_names
             ):
                 relevant_op_flags[i] = True
+                if core.has_non_empty_grad_op_maker(op.type):
+                    for name in op.desc.input_arg_names():
+                        if name not in no_grad_set:
+                            output_names.add(name)
 
     op_path = [
         block.ops[i] for i in range(len(block.ops)) if relevant_op_flags[i]

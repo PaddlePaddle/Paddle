@@ -24,12 +24,12 @@ class MeshgridMLUKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto ins = ctx.MultiInput<phi::DenseTensor>("X");
     auto outs = ctx.MultiOutput<phi::DenseTensor>("Out");
-    PADDLE_ENFORCE_EQ(
-        (ins.size() > 1) && (ins.size() < 7),
-        true,
-        platform::errors::InvalidArgument(
-            "Excepted Tensor numbers between 2 and 6, but only received d% .",
-            ins.size()));
+    PADDLE_ENFORCE_EQ((ins.size() > 1) && (ins.size() < 7),
+                      true,
+                      platform::errors::InvalidArgument(
+                          "Excepted phi::DenseTensor numbers between 2 and 6, "
+                          "but only received d% .",
+                          ins.size()));
 
     int64_t size = ins.size();
     std::vector<int64_t> shape(size);

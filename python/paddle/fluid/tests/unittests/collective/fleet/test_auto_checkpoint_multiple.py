@@ -12,15 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import paddle
 import os
+import unittest
 
-from paddle.distributed.fleet.utils.fs import LocalFS, HDFSClient
-import paddle.fluid.incubate.checkpoint.auto_checkpoint as acp
-
-from paddle.fluid.tests.unittests.auto_checkpoint_utils import get_logger
 from test_auto_checkpoint import AutoCheckPointACLBase
+
+import paddle
+import paddle.fluid.incubate.checkpoint.auto_checkpoint as acp
+from paddle.distributed.fleet.utils.fs import HDFSClient, LocalFS
+from paddle.fluid.tests.unittests.auto_checkpoint_utils import get_logger
 
 paddle.enable_static()
 logger = get_logger()

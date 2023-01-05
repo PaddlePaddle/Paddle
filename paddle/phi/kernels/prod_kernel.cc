@@ -25,7 +25,7 @@ void ProdKernel(const Context& dev_ctx,
                 const IntArray& dims,
                 bool keep_dim,
                 DenseTensor* out) {
-  bool reduce_all = false;
+  bool reduce_all = recompute_reduce_all(x, dims);
   ProdRawKernel<T>(dev_ctx, x, dims, keep_dim, reduce_all, out);
 }
 

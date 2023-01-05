@@ -30,7 +30,7 @@ class InplaceABNOp : public paddle::operators::BatchNormOp {
   using paddle::operators::BatchNormOp::BatchNormOp;
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
     // By default, the type of the scale, bias, mean,
@@ -61,11 +61,7 @@ class InplaceABNOp : public paddle::operators::BatchNormOp {
                       platform::errors::InvalidArgument(
                           "Variance input should be of float type"));
 
-    framework::LibraryType library = framework::LibraryType::kPlain;
-    phi::DataLayout layout = phi::DataLayout::kAnyLayout;
-
-    return framework::OpKernelType(
-        input_data_type, ctx.GetPlace(), layout, library);
+    return phi::KernelKey(input_data_type, ctx.GetPlace());
   }
 };
 
@@ -113,7 +109,7 @@ class InplaceABNGradOp : public paddle::operators::BatchNormGradOp {
           true,
           platform::errors::InvalidArgument(
               "Using global stats during training is not supported "
-              "in gradient op kernel of batch_norm_mkldnn_op now."));
+              "in oneDNN version of batch_norm_gradient kernel now."));
     }
 
     OP_INOUT_CHECK(ctx->HasInput("Y"), "Input", "Y", "InplaceABNGrad");
@@ -135,7 +131,7 @@ class InplaceABNGradOp : public paddle::operators::BatchNormGradOp {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     const auto* var = ctx.InputVar(framework::GradVarName("Y"));
     auto input_data_type = framework::TransToProtoVarType(
@@ -145,20 +141,17 @@ class InplaceABNGradOp : public paddle::operators::BatchNormGradOp {
           "can't find gradient variable of Y"));
     }
     const phi::DenseTensor* t = nullptr;
-    if (var->IsType<Tensor>()) {
-      t = &var->Get<Tensor>();
-    } else if (var->IsType<LoDTensor>()) {
-      t = &var->Get<LoDTensor>();
+    if (var->IsType<phi::DenseTensor>()) {
+      t = &var->Get<phi::DenseTensor>();
+    } else if (var->IsType<phi::DenseTensor>()) {
+      t = &var->Get<phi::DenseTensor>();
     }
     if (t == nullptr) {
       PADDLE_THROW(
           platform::errors::InvalidArgument("gradient variable of Y is empty"));
     }
-    framework::LibraryType library = framework::LibraryType::kPlain;
-    phi::DataLayout layout = phi::DataLayout::kAnyLayout;
 
-    return framework::OpKernelType(
-        input_data_type, ctx.GetPlace(), layout, library);
+    return phi::KernelKey(input_data_type, ctx.GetPlace());
   }
 };
 
@@ -323,9 +316,9 @@ class InplaceABNGradKernel : public framework::OpKernel<T> {
     auto* mean = ctx.Input<phi::DenseTensor>("ReserveSpace");
     auto* variance = ctx.Input<phi::DenseTensor>("ReserveSpace");
 
-    paddle::optional<Tensor> space_opt;
-    paddle::optional<Tensor> mean_opt;
-    paddle::optional<Tensor> variance_opt;
+    paddle::optional<phi::DenseTensor> space_opt;
+    paddle::optional<phi::DenseTensor> mean_opt;
+    paddle::optional<phi::DenseTensor> variance_opt;
 
     if (reserve_space != nullptr) {
       space_opt = *reserve_space;

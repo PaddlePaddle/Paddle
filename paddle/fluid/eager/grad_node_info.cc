@@ -41,16 +41,16 @@ static void CheckTensor(const paddle::experimental::Tensor& pre,
         "The tensor in before and after hook are not consistent"));
   }
   if (pre.initialized() && post.initialized()) {
-    VLOG(7) << paddle::framework::DataType2String(pre.dtype()) << " "
-            << paddle::framework::DataType2String(post.dtype());
+    VLOG(7) << phi::DataTypeToString(pre.dtype()) << " "
+            << phi::DataTypeToString(post.dtype());
     PADDLE_ENFORCE_EQ(
         pre.dtype(),
         post.dtype(),
         paddle::platform::errors::PermissionDenied(
             "The dtype of tensor before(%s) and after(%s) hook are not "
             "consistent",
-            paddle::framework::DataType2String(pre.dtype()),
-            paddle::framework::DataType2String(post.dtype())));
+            phi::DataTypeToString(pre.dtype()),
+            phi::DataTypeToString(post.dtype())));
     PADDLE_ENFORCE_EQ(pre.place(),
                       post.place(),
                       paddle::platform::errors::PermissionDenied(

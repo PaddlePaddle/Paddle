@@ -13,17 +13,17 @@
 # limitations under the License.
 
 import unittest
+
+import gradient_checker
 import numpy as np
+from decorator_helper import prog_scope
+from op_test import OpTest, convert_float_to_uint16, convert_uint16_to_float
 
 import paddle
-import paddle.fluid.core as core
 import paddle.fluid as fluid
-from paddle.fluid import Program, program_guard
-from op_test import OpTest, convert_uint16_to_float, convert_float_to_uint16
-from paddle.fluid.framework import _test_eager_guard
-import gradient_checker
-from decorator_helper import prog_scope
+import paddle.fluid.core as core
 import paddle.fluid.layers as layers
+from paddle.fluid import Program, program_guard
 
 
 class TestCastOpFp32ToFp64(OpTest):
@@ -121,16 +121,15 @@ class TestCastOpError(unittest.TestCase):
 class TestCastOpEager(unittest.TestCase):
     def test_eager(self):
         with paddle.fluid.dygraph.base.guard():
-            with _test_eager_guard():
-                x = paddle.ones([2, 2], dtype="float16")
-                x.stop_gradient = False
-                out = paddle.cast(x, "float32")
-                np.testing.assert_array_equal(
-                    out, np.ones([2, 2]).astype('float32')
-                )
-                out.backward()
-                np.testing.assert_array_equal(x.gradient(), x.numpy())
-                self.assertTrue(x.gradient().dtype == np.float16)
+            x = paddle.ones([2, 2], dtype="float16")
+            x.stop_gradient = False
+            out = paddle.cast(x, "float32")
+            np.testing.assert_array_equal(
+                out, np.ones([2, 2]).astype('float32')
+            )
+            out.backward()
+            np.testing.assert_array_equal(x.gradient(), x.numpy())
+            self.assertTrue(x.gradient().dtype == np.float16)
 
 
 class TestCastDoubleGradCheck(unittest.TestCase):

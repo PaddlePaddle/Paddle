@@ -12,10 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import struct
 import unittest
+
 import numpy as np
 from op_test import OpTest
-import struct
 
 
 class TestLookupTableDequantOp(OpTest):

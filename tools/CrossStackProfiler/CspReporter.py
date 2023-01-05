@@ -12,18 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
-import glob
 import argparse
-
+import glob
+import os
 from multiprocessing import Process
 
+from CspFileReader import (
+    DCGM_PATH,
+    FILEORGANIZEFORM_BYRANK,
+    FILEORGANIZEFORM_BYTRAINER,
+    NET_PATH,
+    PROFILE_PATH,
+    TIME_PATH,
+    getLogger,
+)
 from DCGMFileReader import dcgmFileReader
 from ProfileFileReader import profileFileReader
-
-from CspFileReader import getLogger
-from CspFileReader import TIME_PATH, DCGM_PATH, NET_PATH, PROFILE_PATH
-from CspFileReader import FILEORGANIZEFORM_BYRANK, FILEORGANIZEFORM_BYTRAINER
 
 
 def get_argparse():

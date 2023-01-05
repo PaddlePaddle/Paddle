@@ -12,22 +12,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
 import os
-import sys
 import pickle
-import numpy as np
+import sys
 from collections import OrderedDict
+
+import numpy as np
 from dist_pass_test_base import DistPassTestBase
 
+import paddle
 import paddle.distributed.fleet as fleet
 from paddle.distributed.fleet import auto
 
 sys.path.append("..")
 import auto_parallel_gpt_model as modeling
 from auto_parallel_gpt_model import (
-    GPTModel,
     GPTForPretraining,
+    GPTModel,
     GPTPretrainingCriterion,
 )
 

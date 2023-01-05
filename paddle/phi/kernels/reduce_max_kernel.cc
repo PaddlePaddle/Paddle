@@ -25,10 +25,7 @@ void MaxKernel(const Context& dev_ctx,
                const IntArray& dims,
                bool keep_dim,
                DenseTensor* out) {
-  bool reduce_all = false;
-  if (dims.size() == 0 || static_cast<int>(dims.size()) == x.dims().size()) {
-    reduce_all = true;
-  }
+  bool reduce_all = recompute_reduce_all(x, dims);
   MaxRawKernel<T>(dev_ctx, x, dims, keep_dim, reduce_all, out);
 }
 

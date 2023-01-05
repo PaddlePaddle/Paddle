@@ -46,7 +46,6 @@ limitations under the License. */
 #include "paddle/fluid/imperative/nccl_context.h"
 #include "paddle/fluid/imperative/partial_grad_engine.h"
 #include "paddle/fluid/imperative/profiler.h"
-#include "paddle/fluid/imperative/py_layer_fwd.h"
 #include "paddle/fluid/imperative/reducer.h"
 #include "paddle/fluid/imperative/tracer.h"
 #include "paddle/fluid/imperative/type_defs.h"
@@ -54,7 +53,6 @@ limitations under the License. */
 #include "paddle/fluid/operators/utils.h"
 #include "paddle/fluid/pybind/cuda_streams_py.h"
 #include "paddle/fluid/pybind/eager_utils.h"
-#include "paddle/fluid/pybind/op_function.h"
 #include "paddle/fluid/pybind/pybind_variant_caster.h"
 #include "paddle/fluid/pybind/slice_utils.h"
 #include "paddle/fluid/pybind/tensor_py.h"
@@ -499,15 +497,6 @@ static void VarBaseCopy(std::shared_ptr<imperative::VarBase> &src,  // NOLINT
 void BindImperative(py::module *m_ptr) {
   auto &m = *m_ptr;
 
-  BindOpFunctions1(&m);
-  BindOpFunctions2(&m);
-  BindOpFunctions3(&m);
-  BindOpFunctions4(&m);
-  BindOpFunctions5(&m);
-  BindOpFunctions6(&m);
-  BindOpFunctions7(&m);
-  BindOpFunctions8(&m);
-
 #ifndef _WIN32
   // Dygraph DataLoader signal handler
   m.def("_set_process_pids", [](int64_t key, py::object &obj) {
@@ -551,7 +540,7 @@ void BindImperative(py::module *m_ptr) {
               string::Sprintf("%s", array.dtype()).compare("object"),
               0,
               platform::errors::InvalidArgument(
-                  "Faild to convert input data to a regular ndarray.\n  * "
+                  "Failed to convert input data to a regular ndarray.\n  * "
                   "Usually this means the input data contains nested "
                   "lists with different lengths.\n  * Check the reader "
                   "function passed to 'set_(sample/sample_list/batch)"
@@ -562,7 +551,7 @@ void BindImperative(py::module *m_ptr) {
               &t, array, platform::CPUPlace(), true);
           // 3. allocate shared memory
           void *data_ptr = t.data();
-          size_t data_size = t.numel() * framework::DataTypeSize(t.dtype());
+          size_t data_size = t.numel() * phi::SizeOf(t.dtype());
           auto shared_writer_holder =
               memory::allocation::AllocateMemoryMapWriterAllocation(data_size);
           // 4. maintain mmap fd set & backup ipc_name
@@ -591,7 +580,7 @@ void BindImperative(py::module *m_ptr) {
             string::Sprintf("%s", array.dtype()).compare("object"),
             0,
             platform::errors::InvalidArgument(
-                "Faild to convert input data to a regular ndarray.\n  * "
+                "Failed to convert input data to a regular ndarray.\n  * "
                 "Usually this means the input data contains nested "
                 "lists with different lengths.\n  * Check the reader "
                 "function passed to 'set_(sample/sample_list/batch)"
@@ -602,7 +591,7 @@ void BindImperative(py::module *m_ptr) {
             &t, array, platform::CPUPlace(), true);
         // 3. allocate shared memory
         void *data_ptr = t.data();
-        size_t data_size = t.numel() * framework::DataTypeSize(t.dtype());
+        size_t data_size = t.numel() * phi::SizeOf(t.dtype());
         auto shared_writer_holder =
             memory::allocation::AllocateMemoryMapWriterAllocation(data_size);
         // 4. maintain mmap fd set & backup ipc_name
@@ -2655,60 +2644,6 @@ void BindImperative(py::module *m_ptr) {
       .def(py::init<const imperative::ParallelStrategy &, const int &>())
       .def("init", [](imperative::HeterParallelContext &self) { self.Init(); });
 #endif
-
-  m.def("pylayer_apply",
-        [](const platform::CPUPlace &place,
-           const py::object &cls,
-           const py::args args,
-           const py::kwargs kwargs) {
-          return imperative::PyLayerApply(place, cls, args, kwargs);
-        });
-
-  m.def("pylayer_apply",
-        [](const platform::CUDAPlace &place,
-           const py::object &cls,
-           const py::args args,
-           const py::kwargs kwargs) {
-          return imperative::PyLayerApply(place, cls, args, kwargs);
-        });
-
-  m.def("pylayer_apply",
-        [](const platform::XPUPlace &place,
-           const py::object &cls,
-           const py::args args,
-           const py::kwargs kwargs) {
-          return imperative::PyLayerApply(place, cls, args, kwargs);
-        });
-
-  m.def("pylayer_apply",
-        [](const platform::CUDAPinnedPlace &place,
-           const py::object &cls,
-           const py::args args,
-           const py::kwargs kwargs) {
-          return imperative::PyLayerApply(place, cls, args, kwargs);
-        });
-
-  m.def("pylayer_apply",
-        [](const platform::NPUPlace &place,
-           const py::object &cls,
-           const py::args args,
-           const py::kwargs kwargs) {
-          return imperative::PyLayerApply(place, cls, args, kwargs);
-        });
-  m.def("pylayer_apply",
-        [](const platform::MLUPlace &place,
-           const py::object &cls,
-           const py::args args,
-           const py::kwargs kwargs) {
-          return imperative::PyLayerApply(place, cls, args, kwargs);
-        });
-  m.def("pylayer_apply",
-        [](const platform::CustomPlace &place,
-           const py::object &cls,
-           const py::args args,
-           const py::kwargs kwargs) {
-          return imperative::PyLayerApply(place, cls, args, kwargs);
-        });
 
 #if defined(PADDLE_WITH_CUDA)
   m.def(

@@ -13,12 +13,14 @@
 # limitations under the License.
 
 import os
-import unittest
 import tempfile
+import unittest
+
 import numpy as np
+from op_test import OpTest
+
 import paddle
 import paddle.fluid as fluid
-from op_test import OpTest
 import paddle.inference as paddle_infer
 from paddle.fluid.framework import in_dygraph_mode
 

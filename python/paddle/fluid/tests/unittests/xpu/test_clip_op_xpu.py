@@ -16,18 +16,18 @@ import sys
 
 sys.path.append("..")
 import unittest
-import numpy as np
-import paddle.fluid as fluid
-from op_test_xpu import XPUOpTest
-import paddle
-from paddle.fluid import Program, program_guard
 
+import numpy as np
 from op_test_xpu import XPUOpTest
 from xpu.get_test_cover_info import (
+    XPUOpTestWrapper,
     create_test_class,
     get_xpu_op_support_types,
-    XPUOpTestWrapper,
 )
+
+import paddle
+import paddle.fluid as fluid
+from paddle.fluid import Program, program_guard
 
 
 class XPUTestClipOp(XPUOpTestWrapper):
@@ -131,15 +131,9 @@ class TestClipOpError(unittest.TestCase):
             input_data = np.random.random((2, 4)).astype("float32")
 
             def test_Variable():
-                fluid.layers.clip(x=input_data, min=-1.0, max=1.0)
+                paddle.clip(x=input_data, min=-1.0, max=1.0)
 
             self.assertRaises(TypeError, test_Variable)
-
-            def test_dtype():
-                x2 = fluid.layers.data(name='x2', shape=[1], dtype='int32')
-                fluid.layers.clip(x=x2, min=-1.0, max=1.0)
-
-            self.assertRaises(TypeError, test_dtype)
         paddle.disable_static()
 
 

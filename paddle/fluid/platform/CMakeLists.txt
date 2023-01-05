@@ -1,8 +1,5 @@
 proto_library(profiler_proto SRCS profiler.proto DEPS framework_proto
               simple_threadpool)
-if(WITH_GPU)
-  proto_library(external_error_proto SRCS external_error.proto)
-endif()
 if(WITH_PYTHON)
   py_proto_compile(profiler_py_proto SRCS profiler.proto)
   add_custom_target(profiler_py_proto_init ALL COMMAND ${CMAKE_COMMAND} -E
@@ -35,10 +32,6 @@ if(WITH_PYTHON)
 endif()
 
 cc_library(
-  flags
-  SRCS flags.cc
-  DEPS gflags)
-cc_library(
   denormal
   SRCS denormal.cc
   DEPS)
@@ -63,18 +56,10 @@ cc_test(
   SRCS enforce_test.cc
   DEPS enforce)
 
-set(CPU_INFO_DEPS gflags glog enforce)
-if(WITH_XBYAK)
-  list(APPEND CPU_INFO_DEPS xbyak)
-endif()
-cc_library(
-  cpu_info
-  SRCS cpu_info.cc
-  DEPS ${CPU_INFO_DEPS})
 cc_test(
   cpu_info_test
   SRCS cpu_info_test.cc
-  DEPS cpu_info)
+  DEPS phi_backends)
 cc_library(
   os_info
   SRCS os_info.cc
@@ -88,7 +73,7 @@ if(WITH_GPU)
   nv_library(
     cuda_graph_with_memory_pool
     SRCS cuda_graph_with_memory_pool.cc
-    DEPS device_context allocator cuda_graph)
+    DEPS device_context allocator phi_backends)
 else()
   cc_library(
     cuda_graph_with_memory_pool
@@ -181,11 +166,6 @@ if(WITH_GLOO)
     DEPS framework_proto gloo_wrapper enforce)
 endif()
 
-cc_library(
-  cudnn_workspace_helper
-  SRCS cudnn_workspace_helper.cc
-  DEPS)
-
 # separate init from device_context to avoid cycle dependencies
 cc_library(
   init
@@ -206,7 +186,6 @@ cc_library(
        phi_place
        eigen3
        cpu_helper
-       cpu_info
        framework_proto
        ${IPU_CTX_DEPS}
        ${GPU_CTX_DEPS}
@@ -381,10 +360,6 @@ if(WITH_GPU)
          stats
          op_proto_maker
          shape_inference)
-  nv_library(
-    device_memory_aligment
-    SRCS device_memory_aligment.cc
-    DEPS cpu_info gpu_info place)
 elseif(WITH_ROCM)
   hip_library(
     profiler
@@ -397,10 +372,6 @@ elseif(WITH_ROCM)
          stats
          op_proto_maker
          shape_inference)
-  hip_library(
-    device_memory_aligment
-    SRCS device_memory_aligment.cc
-    DEPS cpu_info gpu_info place)
 else()
   cc_library(
     profiler
@@ -412,10 +383,6 @@ else()
          stats
          op_proto_maker
          shape_inference)
-  cc_library(
-    device_memory_aligment
-    SRCS device_memory_aligment.cc
-    DEPS cpu_info place)
 endif()
 
 cc_test(

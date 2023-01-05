@@ -17,13 +17,14 @@ import os
 os.environ['NVIDIA_TF32_OVERRIDE'] = "0"
 os.environ['FLAGS_new_einsum'] = "0"
 
+import unittest
+
 import numpy as np
+from op_test import OpTest, convert_float_to_uint16, convert_uint16_to_float
+from test_sparse_attention_op import get_cuda_version
 
 import paddle
 import paddle.nn as nn
-import unittest
-from op_test import OpTest, convert_float_to_uint16, convert_uint16_to_float
-from test_sparse_attention_op import get_cuda_version
 from paddle import _legacy_C_ops
 from paddle.fluid import core
 
@@ -401,7 +402,9 @@ class TestMergeQKVLargeBatchSizeFp16Case(TestMergeQKVFp16Case):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda() or get_cuda_version() < 11000,
+    not core.is_compiled_with_cuda()
+    or get_cuda_version() < 11000
+    or paddle.device.cuda.get_device_capability()[0] < 8,
     "core is not compiled with CUDA and cuda version need larger than or equal to 11.3",
 )
 class TestMergeQKVBF16Case(TestFusedGateAttentionOp):

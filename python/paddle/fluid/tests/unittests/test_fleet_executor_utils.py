@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import unittest
+
 import paddle
 from paddle.distributed.fleet.fleet_executor_utils import FleetExecutorUtils
 

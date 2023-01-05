@@ -13,9 +13,9 @@
 # limitations under the License.
 
 import paddle
-import paddle.fluid.framework as framework
-import paddle.fluid.core as core
 import paddle.distributed.communication.stream as stream
+import paddle.fluid.core as core
+import paddle.fluid.framework as framework
 
 
 class ReduceOp:
@@ -121,16 +121,14 @@ def reduce(tensor, dst, op=ReduceOp.SUM, group=None, sync_op=True):
             # [[5, 7, 9], [5, 7, 9]] (2 GPUs, out for rank 0)
             # [[1, 2, 3], [1, 2, 3]] (2 GPUs, out for rank 1)
     """
-
-    if not framework._in_legacy_dygraph():
-        return stream.reduce(
-            tensor,
-            dst=dst,
-            op=op,
-            group=group,
-            sync_op=sync_op,
-            use_calc_stream=False,
-        )
+    return stream.reduce(
+        tensor,
+        dst=dst,
+        op=op,
+        group=group,
+        sync_op=sync_op,
+        use_calc_stream=False,
+    )
 
     # code below will be removed after we remove the old dygraph
     if group is not None and not group.is_member():

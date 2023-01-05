@@ -12,6 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import argparse
+import ast
+import copy
+import os
+import struct
+import sys
+
+import numpy as np
+import yaml
+
+import paddle
+import paddle.distributed.fleet as fleet
 import paddle.distributed.fleet.base.role_maker as role_maker
 from paddle.distributed.ps.utils.ps_program_builder import (
     debug_program,
@@ -19,16 +31,6 @@ from paddle.distributed.ps.utils.ps_program_builder import (
     new_pass,
     ps_log_root_dir,
 )
-import paddle.distributed.fleet as fleet
-import argparse
-import sys
-import yaml
-import copy
-import paddle
-import os
-import ast
-import numpy as np
-import struct
 
 sys.path.append("..")
 from ps_dnn_model import StaticModel

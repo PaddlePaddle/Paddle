@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import os
-from argparse import ArgumentParser, REMAINDER
+from argparse import REMAINDER, ArgumentParser
 
 env_args_mapping = {
     'POD_IP': 'host',

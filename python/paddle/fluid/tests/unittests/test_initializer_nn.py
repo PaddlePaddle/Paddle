@@ -12,13 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
 import unittest
 
+import numpy as np
+
 import paddle
-import paddle.nn as nn
 import paddle.fluid as fluid
 import paddle.fluid.framework as framework
+import paddle.nn as nn
 import paddle.nn.initializer as initializer
 from paddle.fluid.core import VarDesc
 

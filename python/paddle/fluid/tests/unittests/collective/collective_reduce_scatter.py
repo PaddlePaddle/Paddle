@@ -14,8 +14,9 @@
 
 import unittest
 
-import paddle
 import numpy as np
+
+import paddle
 import paddle.distributed as dist
 from paddle.distributed.communication.reduce_scatter import _reduce_scatter_base
 

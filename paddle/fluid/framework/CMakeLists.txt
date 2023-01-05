@@ -115,7 +115,7 @@ proto_library(trainer_desc_proto SRCS trainer_desc.proto DEPS framework_proto
 cc_library(
   string_array
   SRCS string_array.cc
-  DEPS utf8proc)
+  DEPS utf8proc phi_enforce)
 
 cc_library(
   data_type
@@ -225,10 +225,6 @@ cc_test(
   SRCS reader_test.cc
   DEPS reader)
 
-cc_library(
-  threadpool
-  SRCS threadpool.cc
-  DEPS enforce)
 cc_test(
   threadpool_test
   SRCS threadpool_test.cc
@@ -237,7 +233,8 @@ cc_test(
 cc_library(
   var_type_traits
   SRCS var_type_traits.cc
-  DEPS framework_proto scope tensor_array sparse_coo_tensor sparse_csr_tensor)
+  DEPS framework_proto scope tensor_array sparse_coo_tensor sparse_csr_tensor
+       extended_tensor)
 if(WITH_GPU)
   target_link_libraries(var_type_traits dynload_cuda)
 endif()
@@ -1246,25 +1243,4 @@ cc_test(
   SRCS phi_utils_test.cc
   DEPS phi_utils)
 
-if(WITH_GPU OR WITH_ROCM)
-  cc_library(
-    fluid_convert_utils
-    SRCS convert_utils.cc
-    DEPS data_type place gpu_info)
-else()
-  cc_library(
-    fluid_convert_utils
-    SRCS convert_utils.cc
-    DEPS data_type place)
-endif()
-
-# every source file that includes "dnnl.h" must depends on mkldnn
-# or, the first one should depends on mkldnn
-if(WITH_MKLDNN)
-  add_dependencies(fluid_convert_utils mkldnn)
-endif()
-
-cc_test(
-  convert_utils_test
-  SRCS convert_utils_test.cc
-  DEPS fluid_convert_utils)
+cc_test(convert_utils_test SRCS convert_utils_test.cc)

@@ -13,25 +13,25 @@
 # limitations under the License.
 
 import os
-import unittest
 import tempfile
+import unittest
+
+import gradient_checker
 import numpy as np
-from op_test import OpTest
+from decorator_helper import prog_scope
+
 import paddle
-from paddle import enable_static
 import paddle.fluid as fluid
 import paddle.fluid.core as core
+import paddle.fluid.layers as layers
+import paddle.inference as paddle_infer
+from paddle import enable_static
 from paddle.fluid.op import Operator
 from paddle.fluid.tests.unittests.op_test import (
     OpTest,
     convert_float_to_uint16,
     convert_uint16_to_float,
 )
-from paddle.fluid.framework import _test_eager_guard
-import paddle.inference as paddle_infer
-import gradient_checker
-from decorator_helper import prog_scope
-import paddle.fluid.layers as layers
 
 
 class TestSumOp(OpTest):
@@ -375,27 +375,24 @@ class API_Test_Add_n(unittest.TestCase):
 
     def test_dygraph_api(self):
         with fluid.dygraph.guard():
-            with _test_eager_guard():
-                input0 = paddle.ones(shape=[2, 3], dtype='float32')
-                input1 = paddle.ones(shape=[2, 3], dtype='float32')
-                input0.stop_gradient = False
-                input1.stop_gradient = False
-                expected_result = np.empty((2, 3))
-                expected_result.fill(2)
-                sum_value = paddle.add_n([input0, input1])
-                self.assertEqual(
-                    (sum_value.numpy() == expected_result).all(), True
-                )
+            input0 = paddle.ones(shape=[2, 3], dtype='float32')
+            input1 = paddle.ones(shape=[2, 3], dtype='float32')
+            input0.stop_gradient = False
+            input1.stop_gradient = False
+            expected_result = np.empty((2, 3))
+            expected_result.fill(2)
+            sum_value = paddle.add_n([input0, input1])
+            self.assertEqual((sum_value.numpy() == expected_result).all(), True)
 
-                expected_grad_result = np.empty((2, 3))
-                expected_grad_result.fill(1)
-                sum_value.backward()
-                self.assertEqual(
-                    (input0.grad.numpy() == expected_grad_result).all(), True
-                )
-                self.assertEqual(
-                    (input1.grad.numpy() == expected_grad_result).all(), True
-                )
+            expected_grad_result = np.empty((2, 3))
+            expected_grad_result.fill(1)
+            sum_value.backward()
+            self.assertEqual(
+                (input0.grad.numpy() == expected_grad_result).all(), True
+            )
+            self.assertEqual(
+                (input1.grad.numpy() == expected_grad_result).all(), True
+            )
 
     def test_add_n_and_add_and_grad(self):
         with fluid.dygraph.guard():
@@ -424,20 +421,20 @@ class API_Test_Add_n(unittest.TestCase):
 class TestRaiseSumError(unittest.TestCase):
     def test_errors(self):
         def test_type():
-            fluid.layers.sum([11, 22])
+            paddle.add_n([11, 22])
 
         self.assertRaises(TypeError, test_type)
 
         def test_dtype():
             data1 = fluid.data(name="input1", shape=[10], dtype="int8")
             data2 = fluid.data(name="input2", shape=[10], dtype="int8")
-            fluid.layers.sum([data1, data2])
+            paddle.add_n([data1, data2])
 
         self.assertRaises(TypeError, test_dtype)
 
         def test_dtype1():
             data1 = fluid.data(name="input1", shape=[10], dtype="int8")
-            fluid.layers.sum(data1)
+            paddle.add_n(data1)
 
         self.assertRaises(TypeError, test_dtype1)
 

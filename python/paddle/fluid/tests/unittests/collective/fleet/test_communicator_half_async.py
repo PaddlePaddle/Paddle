@@ -13,15 +13,16 @@
 # limitations under the License.
 
 import os
-import sys
 import subprocess
+import sys
 import unittest
+
 import numpy
 
 import paddle
-import paddle.fluid as fluid
 import paddle.distributed.fleet as fleet
 import paddle.distributed.fleet.base.role_maker as role_maker
+import paddle.fluid as fluid
 
 paddle.enable_static()
 
@@ -29,10 +30,10 @@ paddle.enable_static()
 class TestCommunicatorHalfAsyncEnd2End(unittest.TestCase):
     def net(self):
         x = fluid.layers.data(name='x', shape=[13], dtype='float32')
-        y_predict = fluid.layers.fc(input=x, size=1, act=None)
+        y_predict = paddle.static.nn.fc(x, size=1, activation=None)
         y = fluid.layers.data(name='y', shape=[1], dtype='float32')
 
-        cost = fluid.layers.square_error_cost(input=y_predict, label=y)
+        cost = paddle.nn.functional.square_error_cost(input=y_predict, label=y)
         avg_cost = paddle.mean(cost)
         return avg_cost, x, y
 

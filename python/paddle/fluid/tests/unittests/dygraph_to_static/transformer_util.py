@@ -15,11 +15,12 @@
 import pickle
 import warnings
 from functools import partial
+
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
 import paddle.dataset.wmt16 as wmt16
+import paddle.fluid as fluid
 
 
 def get_input_descs(args, mode="train"):
@@ -328,8 +329,11 @@ def load_dygraph(model_path, keep_name_table=False):
     To load python2 saved models in python3.
     """
     try:
-        para_dict, opti_dict = fluid.load_dygraph(
-            model_path, keep_name_table=keep_name_table
+        para_dict = paddle.load(
+            model_path + '.pdparams', keep_name_table=keep_name_table
+        )
+        opti_dict = paddle.load(
+            model_path + '.pdopt', keep_name_table=keep_name_table
         )
         return para_dict, opti_dict
     except UnicodeDecodeError:
@@ -340,8 +344,11 @@ def load_dygraph(model_path, keep_name_table=False):
         )
         load_bak = pickle.load
         pickle.load = partial(load_bak, encoding="latin1")
-        para_dict, opti_dict = fluid.load_dygraph(
-            model_path, keep_name_table=keep_name_table
+        para_dict = paddle.load(
+            model_path + '.pdparams', keep_name_table=keep_name_table
+        )
+        opti_dict = paddle.load(
+            model_path + '.pdopt', keep_name_table=keep_name_table
         )
         pickle.load = load_bak
         return para_dict, opti_dict

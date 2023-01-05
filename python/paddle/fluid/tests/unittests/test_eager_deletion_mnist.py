@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import unittest
+
 import paddle.fluid as fluid
 
 fluid.core._set_eager_deletion_mode(0.0, 1.0, True)

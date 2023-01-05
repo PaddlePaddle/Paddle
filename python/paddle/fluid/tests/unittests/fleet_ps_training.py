@@ -12,13 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle.fluid as fluid
-from utils import gen_data
 from nets import mlp
+from utils import gen_data
+
+import paddle.fluid as fluid
+from paddle.fluid.incubate.fleet.base import role_maker
 from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import (
     fleet,
 )
-from paddle.fluid.incubate.fleet.base import role_maker
 
 input_x = fluid.layers.data(name="x", shape=[32], dtype='float32')
 input_y = fluid.layers.data(name="y", shape=[1], dtype='int64')

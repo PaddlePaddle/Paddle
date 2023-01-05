@@ -98,7 +98,7 @@ inline size_t SizeOf(DataType data_type) {
     case DataType::COMPLEX128:
       return 16;
     case DataType::PSTRING:
-      return 24;
+      return 48;
     case DataType::UNDEFINED:
       return 0;
     case DataType::NUM_DATA_TYPES:
@@ -258,6 +258,8 @@ inline std::string DataTypeToString(const DataType& dtype) {
 
 namespace phi {
 using DataType = paddle::experimental::DataType;
+using paddle::experimental::DataTypeToString;
+using paddle::experimental::SizeOf;
 }  // namespace phi
 
 namespace paddle {

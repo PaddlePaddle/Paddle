@@ -12,10 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import paddle
 import os
-from launch_function_helper import launch_func, wait, _find_free_port
+import unittest
+
+from launch_function_helper import _find_free_port, launch_func, wait
+
+import paddle
 
 paddle.enable_static()
 
@@ -65,13 +67,16 @@ class TestFleetGraphExecutionMetaOptimizer(unittest.TestCase):
                 name="y", shape=[1], dtype='int64'
             )
 
-            fc_1 = paddle.fluid.layers.fc(input=input_x, size=64, act='tanh')
-            fc_2 = paddle.fluid.layers.fc(input=fc_1, size=64, act='tanh')
-            prediction = paddle.fluid.layers.fc(
-                input=[fc_2], size=2, act='softmax'
+            fc_1 = paddle.static.nn.fc(x=input_x, size=64, activation='tanh')
+            fc_2 = paddle.static.nn.fc(x=fc_1, size=64, activation='tanh')
+            prediction = paddle.static.nn.fc(
+                x=[fc_2], size=2, activation='softmax'
             )
-            cost = paddle.fluid.layers.cross_entropy(
-                input=prediction, label=input_y
+            cost = paddle.nn.functional.cross_entropy(
+                input=prediction,
+                label=input_y,
+                reduction='none',
+                use_softmax=False,
             )
             avg_cost = paddle.mean(x=cost)
 
@@ -128,13 +133,16 @@ class TestFleetGraphExecutionMetaOptimizer(unittest.TestCase):
                 name="y", shape=[1], dtype='int64'
             )
 
-            fc_1 = paddle.fluid.layers.fc(input=input_x, size=64, act='tanh')
-            fc_2 = paddle.fluid.layers.fc(input=fc_1, size=64, act='tanh')
-            prediction = paddle.fluid.layers.fc(
-                input=[fc_2], size=2, act='softmax'
+            fc_1 = paddle.static.nn.fc(x=input_x, size=64, activation='tanh')
+            fc_2 = paddle.static.nn.fc(x=fc_1, size=64, activation='tanh')
+            prediction = paddle.static.nn.fc(
+                x=[fc_2], size=2, activation='softmax'
             )
-            cost = paddle.fluid.layers.cross_entropy(
-                input=prediction, label=input_y
+            cost = paddle.nn.functional.cross_entropy(
+                input=prediction,
+                label=input_y,
+                reduction='none',
+                use_softmax=False,
             )
             avg_cost = paddle.mean(x=cost)
 
@@ -203,13 +211,16 @@ class TestFleetGraphExecutionMetaOptimizer(unittest.TestCase):
                 name="y", shape=[1], dtype='int64'
             )
 
-            fc_1 = paddle.fluid.layers.fc(input=input_x, size=64, act='tanh')
-            fc_2 = paddle.fluid.layers.fc(input=fc_1, size=64, act='tanh')
-            prediction = paddle.fluid.layers.fc(
-                input=[fc_2], size=2, act='softmax'
+            fc_1 = paddle.static.nn.fc(x=input_x, size=64, activation='tanh')
+            fc_2 = paddle.static.nn.fc(x=fc_1, size=64, activation='tanh')
+            prediction = paddle.static.nn.fc(
+                x=[fc_2], size=2, activation='softmax'
             )
-            cost = paddle.fluid.layers.cross_entropy(
-                input=prediction, label=input_y
+            cost = paddle.nn.functional.cross_entropy(
+                input=prediction,
+                label=input_y,
+                reduction='none',
+                use_softmax=False,
             )
             avg_cost = paddle.mean(x=cost)
 
@@ -265,13 +276,16 @@ class TestFleetGraphExecutionMetaOptimizer(unittest.TestCase):
                 name="y", shape=[1], dtype='int64'
             )
 
-            fc_1 = paddle.fluid.layers.fc(input=input_x, size=64, act='tanh')
-            fc_2 = paddle.fluid.layers.fc(input=fc_1, size=64, act='tanh')
-            prediction = paddle.fluid.layers.fc(
-                input=[fc_2], size=2, act='softmax'
+            fc_1 = paddle.static.nn.fc(x=input_x, size=64, activation='tanh')
+            fc_2 = paddle.static.nn.fc(x=fc_1, size=64, activation='tanh')
+            prediction = paddle.static.nn.fc(
+                x=[fc_2], size=2, activation='softmax'
             )
-            cost = paddle.fluid.layers.cross_entropy(
-                input=prediction, label=input_y
+            cost = paddle.nn.functional.cross_entropy(
+                input=prediction,
+                label=input_y,
+                reduction='none',
+                use_softmax=False,
             )
             avg_cost = paddle.mean(x=cost)
 

@@ -64,7 +64,7 @@ struct XPUContext::Impl {
       // manually destroy XPUStream here until xpu::api integrates this work
       // into Context dtor
       xpu_wait(context_->xpu_stream);
-      PADDLE_ENFORCE_XPU_SUCCESS(xpu_stream_destroy(context_->xpu_stream));
+      xpu_stream_destroy(context_->xpu_stream);
       context_->xpu_stream = nullptr;
       xpu::destroy_context(context_);
       context_ = nullptr;

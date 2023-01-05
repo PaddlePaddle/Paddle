@@ -13,14 +13,17 @@
 # limitations under the License.
 
 import os
-import paddle
-from ..ps.utils.public import *  # noqa: F403
-from paddle.framework import core
-from paddle.distributed.passes.pass_base import PassBase, register_pass
-from paddle.fluid.transpiler.details.program_utils import delete_ops
-from paddle.fluid.transpiler.collective import SingleProcessMultiThread
+
 from _collections import defaultdict
-from paddle.fluid.framework import Program, Parameter
+
+import paddle
+from paddle.distributed.passes.pass_base import PassBase, register_pass
+from paddle.fluid.framework import Parameter
+from paddle.framework import core
+from paddle.static import Program
+
+from ..ps.utils.collective_transpiler import SingleProcessMultiThread
+from ..ps.utils.public import *  # noqa: F403
 
 
 @register_pass("append_send_ops_pass")

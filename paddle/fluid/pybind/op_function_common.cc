@@ -461,7 +461,11 @@ std::vector<int64_t> CastPyArg2Longs(PyObject* obj,
             i));
       }
     }
-  } else if ((PyObject*)obj != Py_None) {  // NOLINT
+  } else if (obj == Py_None) {
+    return {};
+  } else if (PyObject_CheckLongOrToLong(&obj)) {
+    return {static_cast<int64_t>(PyLong_AsLong(obj))};
+  } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "%s(): argument (position %d) must be "
         "list or tuple, but got %s",

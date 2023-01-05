@@ -74,7 +74,7 @@ class TestCinnInstructionRunOp : public ::testing::Test {
     // so a cinn_instruction_run_op will throw an error
     framework::Scope scope;
     InitVariablesWithRandomValue<float>({"x", "y"}, {10, 20}, place, &scope);
-    scope.Var(test_op_out_name)->GetMutable<LoDTensor>();
+    scope.Var(test_op_out_name)->GetMutable<phi::DenseTensor>();
     ASSERT_THROW(cinn_instruction_run_op->Run(scope, place),
                  paddle::platform::EnforceNotMet);
 
@@ -83,21 +83,20 @@ class TestCinnInstructionRunOp : public ::testing::Test {
     // of both type float and int
     cinn_launch_op->Run(scope, place);
     scope.EraseVars({"x", "y", test_op_out_name});
-    scope.Var(test_op_out_name)->GetMutable<LoDTensor>();
+    scope.Var(test_op_out_name)->GetMutable<phi::DenseTensor>();
     InitVariablesWithRandomValue<int>({"x", "y"}, {30, 40}, place, &scope);
     cinn_launch_op->Run(scope, place);
   }
 
-  void RunAndCheck(const platform::Place& place) {
+  void RunAndCheck(const platform::Place& place, framework::Scope* scope) {
     // Run ops and check the computation results
-    framework::Scope scope;
-    InitVariablesWithRandomValue<float>({"x", "y"}, {10, 20}, place, &scope);
-    scope.Var(test_op_out_name)->GetMutable<LoDTensor>();
-    scope.Var(add_op_out_name)->GetMutable<LoDTensor>();
-    elementwise_add_op->Run(scope, place);
-    cinn_launch_op->Run(scope, place);
-    CompareOpResult<float>(scope.GetVar(test_op_out_name),
-                           scope.GetVar(add_op_out_name));
+    InitVariablesWithRandomValue<float>({"x", "y"}, {10, 20}, place, scope);
+    scope->Var(test_op_out_name)->GetMutable<phi::DenseTensor>();
+    scope->Var(add_op_out_name)->GetMutable<phi::DenseTensor>();
+    elementwise_add_op->Run(*scope, place);
+    cinn_launch_op->Run(*scope, place);
+    CompareOpResult<float>(scope->GetVar(test_op_out_name),
+                           scope->GetVar(add_op_out_name));
   }
 
   void TearDown() override { CinnCompiler::GetInstance()->Clear(); }
@@ -106,17 +105,21 @@ class TestCinnInstructionRunOp : public ::testing::Test {
 TEST_F(TestCinnInstructionRunOp, CPU) {
   platform::CPUPlace place;
   Compile(place);
-  RunAndCheck(place);
+  framework::Scope scope1;
+  RunAndCheck(place, &scope1);
   // the second run on the same place is to check the cache logic
-  RunAndCheck(place);
+  framework::Scope scope2;
+  RunAndCheck(place, &scope2);
 }
 
 #ifdef PADDLE_WITH_CUDA
 TEST_F(TestCinnInstructionRunOp, GPU) {
   platform::CUDAPlace place;
   Compile(place);
-  RunAndCheck(place);
-  RunAndCheck(place);
+  framework::Scope scope1;
+  RunAndCheck(place, &scope1);
+  framework::Scope scope2;
+  RunAndCheck(place, &scope2);
 }
 #endif
 

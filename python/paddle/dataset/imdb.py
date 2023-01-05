@@ -20,12 +20,13 @@ of 25,000 highly polar movie reviews for training, and 25,000 for testing.
 Besides, this module also provides API for building dictionary.
 """
 
-import paddle.dataset.common
-import paddle.utils.deprecated as deprecated
 import collections
-import tarfile
 import re
 import string
+import tarfile
+
+import paddle.dataset.common
+import paddle.utils.deprecated as deprecated
 
 __all__ = []
 

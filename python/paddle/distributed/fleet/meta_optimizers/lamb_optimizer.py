@@ -11,10 +11,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 
+import logging
+
 from paddle.fluid.optimizer import AdamOptimizer
 from paddle.fluid.optimizer import LambOptimizer as LAMB
+
 from .meta_optimizer_base import MetaOptimizerBase
-import logging
 
 __all__ = []
 

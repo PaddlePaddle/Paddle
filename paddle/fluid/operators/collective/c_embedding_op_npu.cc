@@ -111,9 +111,9 @@ void shard_index(const Tensor &table_t,
 
 template <typename TIds, typename T>
 void NPUGetIdsEmbedding(const framework::ExecutionContext &context) {
-  auto *table_t = context.Input<LoDTensor>("W");
-  auto *ids_t = context.Input<LoDTensor>("Ids");
-  auto *output_t = context.Output<LoDTensor>("Out");
+  auto *table_t = context.Input<phi::DenseTensor>("W");
+  auto *ids_t = context.Input<phi::DenseTensor>("Ids");
+  auto *output_t = context.Output<phi::DenseTensor>("Out");
   const int64_t start_idx = context.Attr<int64_t>("start_index");
 
   auto stream =
@@ -127,10 +127,8 @@ void NPUGetIdsEmbedding(const framework::ExecutionContext &context) {
   auto pad_shape = phi::make_ddim({table_t->dims()[0] + 1, table_t->dims()[1]});
   phi::DenseTensor table_t_pad;
 
-  size_t mem_size =
-      table_t->numel() * framework::DataTypeSize(table_t->dtype());
-  size_t line_mem_size =
-      table_t->dims()[1] * framework::DataTypeSize(table_t->dtype());
+  size_t mem_size = table_t->numel() * phi::SizeOf(table_t->dtype());
+  size_t line_mem_size = table_t->dims()[1] * phi::SizeOf(table_t->dtype());
   PADDLE_ENFORCE_EQ(line_mem_size % 64,
                     0,
                     platform::errors::InvalidArgument(
@@ -167,7 +165,7 @@ template <typename T>
 class CEmbeddingNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
-    auto *ids_t = context.Input<LoDTensor>("Ids");
+    auto *ids_t = context.Input<phi::DenseTensor>("Ids");
 
     const auto &index_type = framework::TransToProtoVarType(ids_t->dtype());
     if (index_type == framework::proto::VarType::INT32) {
@@ -183,10 +181,12 @@ template <typename TIds, typename T>
 void NPUUpdateEmbedding(const framework::ExecutionContext &context) {
   // get inputs
   const int64_t start_idx = context.Attr<int64_t>("start_index");
-  auto ids_t = context.Input<LoDTensor>("Ids");
-  auto d_output_t = context.Input<LoDTensor>(framework::GradVarName("Out"));
+  auto ids_t = context.Input<phi::DenseTensor>("Ids");
+  auto d_output_t =
+      context.Input<phi::DenseTensor>(framework::GradVarName("Out"));
   auto table_t = context.Input<phi::DenseTensor>("W");
-  auto table_grad_t = context.Output<LoDTensor>(framework::GradVarName("W"));
+  auto table_grad_t =
+      context.Output<phi::DenseTensor>(framework::GradVarName("W"));
 
   VLOG(10) << "ids_t:" << ids_t << ", d_output_t:" << d_output_t
            << ", table_t:" << table_t << ", table_grad_t" << table_grad_t;
@@ -227,11 +227,11 @@ void NPUUpdateEmbedding(const framework::ExecutionContext &context) {
   // copy table_t_pad to table_t
   T *dst = table_grad_t->mutable_data<T>(table_t->dims(), context.GetPlace());
   const size_t mem_size =
-      table_grad_t->numel() * framework::DataTypeSize(table_grad_t->dtype());
+      table_grad_t->numel() * phi::SizeOf(table_grad_t->dtype());
 
   // check align
   size_t line_mem_size =
-      table_grad_t->dims()[1] * framework::DataTypeSize(table_grad_t->dtype());
+      table_grad_t->dims()[1] * phi::SizeOf(table_grad_t->dtype());
   PADDLE_ENFORCE_EQ(line_mem_size % 64,
                     0,
                     platform::errors::InvalidArgument(
@@ -245,7 +245,7 @@ template <typename T>
 class CEmbeddingGradNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
-    auto *ids_t = context.Input<LoDTensor>("Ids");
+    auto *ids_t = context.Input<phi::DenseTensor>("Ids");
 
     const auto &index_type = framework::TransToProtoVarType(ids_t->dtype());
     if (index_type == framework::proto::VarType::INT32) {

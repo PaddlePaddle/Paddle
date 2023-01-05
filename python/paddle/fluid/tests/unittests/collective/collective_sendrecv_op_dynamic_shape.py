@@ -12,10 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from test_collective_base import TestCollectiveRunnerBase, runtime_main
+
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
-from test_collective_base import TestCollectiveRunnerBase, runtime_main
 
 paddle.enable_static()
 

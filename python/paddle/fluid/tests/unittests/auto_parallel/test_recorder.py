@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
 
 from paddle.distributed.auto_parallel.tuner import recorder as rd

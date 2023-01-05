@@ -13,15 +13,23 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
 from op_test import OpTest
-from test_reorder_lod_tensor import convert_to_offset
 from sequence.test_sequence_pool import (
-    compute_seqpool_sum,
     compute_seqpool_avg,
     compute_seqpool_sqrt,
+    compute_seqpool_sum,
 )
 from test_cvm_op import cvm_compute
+
+
+def convert_to_offset(lod):
+    offset = [[0] for i in lod]
+    for i, level in enumerate(lod):
+        for seq_len in level:
+            offset[i].append(offset[i][-1] + seq_len)
+    return offset
 
 
 class TestFusionSeqPoolCVMConcatOp(OpTest):

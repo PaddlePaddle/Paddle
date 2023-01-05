@@ -24,7 +24,7 @@ limitations under the License. */
 #if defined(__NVCC__) || defined(__HIPCC__)
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/fluid/memory/memcpy.h"
-#include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
+#include "paddle/phi/backends/gpu/gpu_device_function.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/kernels/primitive/kernel_primitives.h"
 
@@ -237,7 +237,8 @@ void CommonElementwiseBroadcastBackward(const CPUContext &ctx,
   // result.
   if (dx && dx->IsSharedBufferWith(dout)) {
     dx->clear();
-    dx->mutable_data<T>(x_dims, ctx.GetPlace());
+    dx->Resize(x_dims);
+    ctx.template Alloc<T>(dx);
   }
 
   VLOG(3) << "CommonElementwiseBroadcastBackward xdims:"
@@ -504,7 +505,7 @@ static __global__ void FastCommonGradBroadcastOneCUDAKernel(const T *x,
     }
     if (dd) {
       int h = n > ELEMWISE_MAX_BLOCK_DIM ? ELEMWISE_MAX_BLOCK_DIM : n;
-      val = paddle::platform::reduceSum(val, tid, h);
+      val = phi::backends::gpu::reduceSum(val, tid, h);
       if (tid == 0) {
         dd[bid] = val;
       }
@@ -527,7 +528,7 @@ static __global__ void FastCommonGradBroadcastOneCUDAKernel(const T *x,
     }
     if (dd) {
       int h = n > ELEMWISE_MAX_BLOCK_DIM ? ELEMWISE_MAX_BLOCK_DIM : n;
-      val = paddle::platform::reduceSum(val, tid, h);
+      val = phi::backends::gpu::reduceSum(val, tid, h);
       if (tid == 0) {
         dd[bid] = val;
       }
@@ -569,7 +570,7 @@ static __global__ void FastCommonGradBroadcastAllCUDAKernel(
     }
     if (dy) {
       int h = n > ELEMWISE_MAX_BLOCK_DIM ? ELEMWISE_MAX_BLOCK_DIM : n;
-      val = paddle::platform::reduceSum(val, tid, h);
+      val = phi::backends::gpu::reduceSum(val, tid, h);
       if (tid == 0) {
         dy[bid] = val;
       }
@@ -590,7 +591,7 @@ static __global__ void FastCommonGradBroadcastAllCUDAKernel(
     }
     if (dx) {
       int h = n > ELEMWISE_MAX_BLOCK_DIM ? ELEMWISE_MAX_BLOCK_DIM : n;
-      val = paddle::platform::reduceSum(val, tid, h);
+      val = phi::backends::gpu::reduceSum(val, tid, h);
       if (tid == 0) {
         dx[bid] = val;
       }
@@ -636,7 +637,8 @@ static __global__ void FastCommonGradBroadcastCUDAKernelHeight(const T *x,
       if (dy) {
         T my_val = sdata[THREAD_ID_X][THREAD_ID_Y];
         for (int i = warpSize >> 1; i > 0; i >>= 1) {
-          my_val += paddle::platform::CudaShuffleXorSync(0xFFFFFFFF, my_val, i);
+          my_val +=
+              phi::backends::gpu::CudaShuffleXorSync(0xFFFFFFFF, my_val, i);
         }
         __syncthreads();
         if ((THREAD_ID_X == 0)) {
@@ -665,7 +667,8 @@ static __global__ void FastCommonGradBroadcastCUDAKernelHeight(const T *x,
       if (dy) {
         T my_val = sdata[THREAD_ID_X][THREAD_ID_Y];
         for (int i = warpSize >> 1; i > 0; i >>= 1) {
-          my_val += paddle::platform::CudaShuffleXorSync(0xFFFFFFFF, my_val, i);
+          my_val +=
+              phi::backends::gpu::CudaShuffleXorSync(0xFFFFFFFF, my_val, i);
         }
         __syncthreads();
         if ((THREAD_ID_X == 0)) {
@@ -709,7 +712,7 @@ static __global__ void CommonGradBroadcast1CUDAKernelHeight(const T *x,
 
     if (dy) {
       h = h > ELEMWISE_MAX_BLOCK_DIM ? ELEMWISE_MAX_BLOCK_DIM : h;
-      val = paddle::platform::reduceSum(val, tid, h);
+      val = phi::backends::gpu::reduceSum(val, tid, h);
       if (THREAD_ID_X == 0) {
         dy[j] = val;
       }
@@ -726,7 +729,7 @@ static __global__ void CommonGradBroadcast1CUDAKernelHeight(const T *x,
 
     if (dy) {
       h = h > ELEMWISE_MAX_BLOCK_DIM ? ELEMWISE_MAX_BLOCK_DIM : h;
-      val = paddle::platform::reduceSum(val, tid, h);
+      val = phi::backends::gpu::reduceSum(val, tid, h);
       if (THREAD_ID_X == 0) {
         dy[j] = val;
       }
@@ -764,7 +767,7 @@ static __global__ void ElemwiseGradBroadcast1CUDAKernel(const T *x,
 
     if (dy) {
       h = h > ELEMWISE_MAX_BLOCK_DIM ? ELEMWISE_MAX_BLOCK_DIM : h;
-      val = paddle::platform::reduceSum(val, tid, h);
+      val = phi::backends::gpu::reduceSum(val, tid, h);
       if (THREAD_ID_X == 0) {
         dy[j] = val;
       }
@@ -783,7 +786,7 @@ static __global__ void ElemwiseGradBroadcast1CUDAKernel(const T *x,
 
     if (dx) {
       h = h > ELEMWISE_MAX_BLOCK_DIM ? ELEMWISE_MAX_BLOCK_DIM : h;
-      val = paddle::platform::reduceSum(val, tid, h);
+      val = phi::backends::gpu::reduceSum(val, tid, h);
       if (THREAD_ID_X == 0) {
         dx[j] = val;
       }
@@ -835,7 +838,8 @@ static __global__ void FastElemwiseGradBroadcast1CUDAKernel(
       if (dy) {
         T my_val = sdata[THREAD_ID_X][THREAD_ID_Y];
         for (int i = warpSize >> 1; i > 0; i >>= 1)
-          my_val += paddle::platform::CudaShuffleXorSync(0xFFFFFFFF, my_val, i);
+          my_val +=
+              phi::backends::gpu::CudaShuffleXorSync(0xFFFFFFFF, my_val, i);
         __syncthreads();
         if ((THREAD_ID_X == 0)) {
           sdata[0][THREAD_ID_Y] = my_val;
@@ -866,7 +870,8 @@ static __global__ void FastElemwiseGradBroadcast1CUDAKernel(
       if (dx) {
         T my_val = sdata[THREAD_ID_X][THREAD_ID_Y];
         for (int i = warpSize >> 1; i > 0; i >>= 1)
-          my_val += paddle::platform::CudaShuffleXorSync(0xFFFFFFFF, my_val, i);
+          my_val +=
+              phi::backends::gpu::CudaShuffleXorSync(0xFFFFFFFF, my_val, i);
         __syncthreads();
         if ((THREAD_ID_X == 0)) {
           sdata[0][THREAD_ID_Y] = my_val;
@@ -921,7 +926,7 @@ static __global__ void ElemwiseGradBroadcast2CUDAKernel(const T *x,
     if (dy) {
       int h = pre * post;
       h = h > ELEMWISE_MAX_BLOCK_DIM ? ELEMWISE_MAX_BLOCK_DIM : h;
-      val = paddle::platform::reduceSum(val, tid, h);
+      val = phi::backends::gpu::reduceSum(val, tid, h);
       if (THREAD_ID_X == 0) {
         dy[j] = val;
       }
@@ -948,7 +953,7 @@ static __global__ void ElemwiseGradBroadcast2CUDAKernel(const T *x,
     if (dx) {
       int h = pre * post;
       h = h > ELEMWISE_MAX_BLOCK_DIM ? ELEMWISE_MAX_BLOCK_DIM : h;
-      val = paddle::platform::reduceSum(val, tid, h);
+      val = phi::backends::gpu::reduceSum(val, tid, h);
       if (THREAD_ID_X == 0) {
         dx[j] = val;
       }
@@ -1054,7 +1059,7 @@ __global__ void CommonGradBroadcastCUDAKernel(const int *x_strides_array,
     out_index = C_index;
     val += dx_op(x[x_index], y[y_index], out[out_index], dout[out_index]);
   }
-  val = paddle::platform::reduceSum(val, tid, thread_num);
+  val = phi::backends::gpu::reduceSum(val, tid, thread_num);
   if (THREAD_ID_X == 0) {
     dx[i] = val;
   }
@@ -1676,7 +1681,8 @@ void CommonElementwiseBroadcastBackward(const GPUContext &ctx,
   // result.
   if (dx && dx->IsSharedBufferWith(dout)) {
     dx->clear();
-    dx->mutable_data<T>(x_dims, ctx.GetPlace());
+    dx->Resize(x_dims);
+    ctx.template Alloc<T>(dx);
   }
 
   VLOG(3) << "CommonElementwiseBroadcastBackward xdims:"

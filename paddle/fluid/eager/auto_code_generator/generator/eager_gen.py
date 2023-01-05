@@ -12,30 +12,36 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import re
 import argparse
 import os
+import re
+
 from codegen_utils import (
-    core_ops_returns_info,
+    AssertMessage,
+    FindForwardName,
+    FunctionGeneratorBase,
+    GeneratorBase,
+    GetAutoGradMetaName,
+    GetAutoGradMetaVectorName,
+    GetConstReference,
+    GetDygraphForwardFunctionName,
+    GetGradNodeName,
+    GetIndent,
+    GetInplacedFunctionName,
+    GetIntermediateAPIFunctionName,
+    GetSavedName,
+    IsPlainTensorType,
+    IsVectorTensorType,
+    ParseYamlBackward,
+    ParseYamlForwardFromBackward,
+    ParseYamlInplaceInfo,
+    ReadBwdFile,
+    RemoveConstAndReference,
     core_ops_args_info,
     core_ops_args_type_info,
+    core_ops_returns_info,
+    ops_to_fill_zero_for_empty_grads,
 )
-from codegen_utils import ReadBwdFile
-from codegen_utils import FindForwardName, GetGradNodeName, GetSavedName
-from codegen_utils import IsPlainTensorType, IsVectorTensorType
-from codegen_utils import GetConstReference, RemoveConstAndReference
-from codegen_utils import (
-    GetDygraphForwardFunctionName,
-    GetIntermediateAPIFunctionName,
-)
-from codegen_utils import GetAutoGradMetaName, GetAutoGradMetaVectorName
-from codegen_utils import GetInplacedFunctionName
-from codegen_utils import ParseYamlForwardFromBackward
-from codegen_utils import ParseYamlBackward
-from codegen_utils import ParseYamlInplaceInfo
-from codegen_utils import FunctionGeneratorBase, GeneratorBase
-from codegen_utils import ops_to_fill_zero_for_empty_grads
-from codegen_utils import AssertMessage, GetIndent
 
 # Note: assign is a inplace api when parameter(output) isn't none,
 # so we should check parameter(output) with rule of inplace.
@@ -224,7 +230,7 @@ FORWARD_FUNCTION_TEMPLATE = """
 
 AFTER_LOG_PRINT_TEMPLATE = """
   if(VLOG_IS_ON(4)){{
-      const char* INPUT_PRINT_TEMPLATE = \"{{ Input: [%s],  Output: [%s] }} \";
+      const char* INPUT_PRINT_TEMPLATE = \"{{ Input: [%s],  \\n Output: [%s] }} \";
       {}
       VLOG(4) << paddle::string::Sprintf(INPUT_PRINT_TEMPLATE, input_str, output_str);
   }}
@@ -732,6 +738,14 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
             self.backward_attrs_list,
             self.backward_returns_list,
         ) = ParseYamlBackward(backward_args_str, backward_returns_str)
+
+        # Remove the output which is intermediate
+        if 'intermediate' in grad_api_contents:
+            backward_returns_list_new = []
+            for return_item in self.backward_returns_list:
+                if return_item[0] not in grad_api_contents['intermediate']:
+                    backward_returns_list_new.append(return_item)
+            self.backward_returns_list = backward_returns_list_new
 
     def CollectForwardInfoFromBackwardContents(self):
 
@@ -1973,7 +1987,6 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
                         fill_zero_str += f"{indent}egr::EagerUtils::FillZeroForEmptyGradInput(&grads[{fwd_position}], input_metas[{fwd_position}]);\n"
 
         inplace_grad_input_str = ""
-        inplaced_tensor_wrapper = False
         inplace_check_str = ""
         optional_inplace_var_name = []
         # Grad Ins from TensorWrappers

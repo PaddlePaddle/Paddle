@@ -15,6 +15,7 @@
 import unittest
 
 import numpy as np
+
 import paddle
 import paddle.static
 from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
@@ -63,7 +64,7 @@ class TestBase(IPUOpTest):
         right = paddle.static.data(
             name=self.feed_list[2], shape=self.feed_shape[2], dtype='float32'
         )
-        out = paddle.fluid.layers.margin_rank_loss(label, left, right)
+        out = paddle.nn.functional.margin_ranking_loss(left, right, label)
         self.fetch_list = [out.name]
 
     def run_model(self, exec_mode):

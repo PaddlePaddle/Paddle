@@ -253,7 +253,7 @@ void AdamDenseKernel(const Context& dev_ctx,
         param.numel());
     if (!use_global_beta_pow) {
       // Update with gpu
-      UpdateBetaPow<MPDType><<<1, 32, 0, dev_ctx.stream()>>>(
+      UpdateBetaPow<MPDType><<<1, 1, 0, dev_ctx.stream()>>>(
           beta1_,
           beta2_,
           beta1_pow.data<MPDType>(),
@@ -352,7 +352,7 @@ void MergedAdamKernel(
           param[idx]->numel());
       if (!use_global_beta_pow) {
         // Update with gpu
-        UpdateBetaPow<MPDType><<<1, 32, 0, dev_ctx.stream()>>>(
+        UpdateBetaPow<MPDType><<<1, 1, 0, dev_ctx.stream()>>>(
             beta1_,
             beta2_,
             beta1_pow[idx]->data<MPDType>(),

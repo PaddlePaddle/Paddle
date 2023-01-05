@@ -15,12 +15,11 @@
 import sys
 import unittest
 
-from paddle.fluid.dygraph.dygraph_to_static.ast_transformer import (
-    DygraphToStaticAst,
-)
-from paddle.fluid.dygraph.dygraph_to_static.origin_info import (
-    Location,
+from paddle.jit.api import to_static
+from paddle.jit.dy2static import DygraphToStaticAst
+from paddle.jit.dy2static.origin_info import (
     ORIGI_INFO,
+    Location,
     OriginInfo,
     attach_origin_info,
     create_and_update_origin_info_map,
@@ -28,8 +27,7 @@ from paddle.fluid.dygraph.dygraph_to_static.origin_info import (
     inspect,
     unwrap,
 )
-from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_func
-from paddle.fluid.dygraph.jit import declarative
+from paddle.jit.dy2static.utils import ast_to_func
 
 
 def simple_func(x):
@@ -45,13 +43,13 @@ def nested_func(x):
     return result
 
 
-@declarative
+@to_static
 def decorated_func(x):
     return x
 
 
-@declarative
-@declarative
+@to_static
+@to_static
 def decorated_func2(x):
     return x
 

@@ -25,6 +25,7 @@
 # limitations under the License.
 
 import unittest
+
 import paddle.fluid as fluid
 from paddle.fluid.incubate.fleet.collective import (
     CollectiveOptimizer,

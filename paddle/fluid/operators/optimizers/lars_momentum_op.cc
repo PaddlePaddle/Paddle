@@ -37,12 +37,12 @@ class LarsMomentumOp : public framework::OperatorWithKernel {
                    "Output",
                    "VelocityOut",
                    "LarsMomentum");
-    PADDLE_ENFORCE_EQ(
-        ctx->GetInputsVarType("Param").front(),
-        framework::proto::VarType::LOD_TENSOR,
-        platform::errors::InvalidArgument(
-            "The input var's type should be LoDTensor, but the received is %s",
-            ctx->GetInputsVarType("Param").front()));
+    PADDLE_ENFORCE_EQ(ctx->GetInputsVarType("Param").front(),
+                      framework::proto::VarType::LOD_TENSOR,
+                      platform::errors::InvalidArgument(
+                          "The input var's type should be phi::DenseTensor, "
+                          "but the received is %s",
+                          ctx->GetInputsVarType("Param").front()));
 
     auto lr_dims = ctx->GetInputsDim("LearningRate");
     auto grad_dim = ctx->GetInputsDim("Grad");
@@ -102,7 +102,7 @@ class LarsMomentumOp : public framework::OperatorWithKernel {
       PADDLE_ENFORCE_EQ(ctx->GetInputsVarType("Grad")[i],
                         framework::proto::VarType::LOD_TENSOR,
                         platform::errors::InvalidArgument(
-                            "The Var(%s)'s type should be LoDTensor, "
+                            "The Var(%s)'s type should be phi::DenseTensor, "
                             "but the received is %s",
                             ctx->Inputs("Grad")[i].front(),
                             ctx->GetInputsVarType("Grad")[i]));
@@ -133,11 +133,11 @@ class LarsMomentumOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto input_data_type =
         OperatorWithKernel::IndicateVarDataType(ctx, "Param");
-    return framework::OpKernelType(input_data_type, ctx.GetPlace());
+    return phi::KernelKey(input_data_type, ctx.GetPlace());
   }
 };
 
@@ -145,31 +145,31 @@ class LarsMomentumOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("Param",
-             "(LoDTensor, default LoDTensor<float>) "
+             "(phi::DenseTensor, default phi::DenseTensor<float>) "
              "Input parameter that has to be updated")
         .AsDuplicable();
     AddInput("Grad",
-             "(LoDTensor, default LoDTensor<float>) "
+             "(phi::DenseTensor, default phi::DenseTensor<float>) "
              "Input gradient of the parameter")
         .AsDuplicable();
     AddInput("Velocity",
-             "(LoDTensor, default LoDTensor<float>) "
+             "(phi::DenseTensor, default phi::DenseTensor<float>) "
              "Input velocity (corresponding to the parameter) "
              "that has to be updated")
         .AsDuplicable();
     AddInput("LearningRate",
-             "(LoDTensor, default LoDTensor<float>) "
+             "(phi::DenseTensor, default phi::DenseTensor<float>) "
              "Input learning rate")
         .AsDuplicable();
     AddInput("MasterParam", "FP32 master weight for AMP.")
         .AsDuplicable()
         .AsDispensable();
     AddOutput("ParamOut",
-              "(LoDTensor) This output is updated parameter. "
+              "(phi::DenseTensor) This output is updated parameter. "
               "It shared memory with Input(Param).")
         .AsDuplicable();
     AddOutput("VelocityOut",
-              "(LoDTensor) This output is updated velocity. "
+              "(phi::DenseTensor) This output is updated velocity. "
               "It shared memory with Input(Velocity).")
         .AsDuplicable();
     AddOutput("MasterParamOut",

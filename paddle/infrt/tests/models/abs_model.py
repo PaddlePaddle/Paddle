@@ -12,10 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
-from paddle.static import InputSpec
-from paddle.jit import to_static
 import sys
+
+import paddle
+from paddle.jit import to_static
+from paddle.static import InputSpec
 
 
 class AbsNet(paddle.nn.Layer):

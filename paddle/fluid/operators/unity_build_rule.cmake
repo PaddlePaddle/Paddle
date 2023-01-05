@@ -27,7 +27,6 @@ register_unity_group(
   bilateral_slice_op.cc)
 register_unity_group(
   cc
-  mkldnn/batch_norm_mkldnn_op.cc
   bilinear_tensor_product_op.cc
   bmm_op.cc
   bpr_loss_op.cc

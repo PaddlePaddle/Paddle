@@ -15,19 +15,20 @@
 import copy
 import unittest
 
+import test_auto_parallel_reshard
+from test_auto_parallel_reshard import mlp_forward
+
 import paddle
-from paddle.distributed.fleet import auto
-from paddle.distributed.auto_parallel.completion import Completer
 from paddle.distributed import fleet
-from paddle.distributed.auto_parallel.parallelizer import AutoParallelizer
-from paddle.distributed.auto_parallel.partitioner import Partitioner
-from paddle.distributed.auto_parallel.dist_context import DistributedContext
-from paddle.distributed.auto_parallel.dist_tensor import DistributedTensor
+from paddle.distributed.auto_parallel.completion import Completer
 from paddle.distributed.auto_parallel.dist_attribute import (
     TensorDistributedAttribute,
 )
-import test_auto_parallel_reshard
-from test_auto_parallel_reshard import mlp_forward
+from paddle.distributed.auto_parallel.dist_context import DistributedContext
+from paddle.distributed.auto_parallel.dist_tensor import DistributedTensor
+from paddle.distributed.auto_parallel.parallelizer import AutoParallelizer
+from paddle.distributed.auto_parallel.partitioner import Partitioner
+from paddle.distributed.fleet import auto
 
 
 def get_dist_prog(

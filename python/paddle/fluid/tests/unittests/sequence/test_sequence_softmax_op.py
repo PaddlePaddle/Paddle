@@ -12,10 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import numpy as np
-import paddle.fluid.core as core
 import sys
+import unittest
+
+import numpy as np
+
+import paddle.fluid.core as core
 
 sys.path.append("../")
 from op_test import OpTest

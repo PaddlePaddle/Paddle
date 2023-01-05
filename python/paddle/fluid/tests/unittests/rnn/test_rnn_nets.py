@@ -15,15 +15,15 @@
 import paddle
 
 paddle.set_default_dtype("float64")
-from paddle.fluid.layers import sequence_mask
-
 import os
-import numpy as np
-import unittest
 import tempfile
+import unittest
 
+import numpy as np
 from convert import convert_params_for_net
-from rnn_numpy import SimpleRNN, LSTM, GRU
+from rnn_numpy import GRU, LSTM, SimpleRNN
+
+from paddle.fluid.layers import sequence_mask
 
 bidirectional_list = ["bidirectional", "bidirect"]
 

@@ -12,15 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from functools import reduce
-
 import collections
+import logging
 import os
 import warnings
-import logging
+from functools import reduce
+
 import paddle.fluid as fluid
-from paddle.fluid import core
 import paddle.fluid.framework as framework
+from paddle.framework import core
 
 # logging.basicConfig(
 #    format='%(levelname)s - %(asctime)s - %(pathname)s: %(lineno)s - %(message)s', level=logging.INFO)
@@ -896,7 +896,7 @@ def find_heter_ops(program, default_device="cpu"):
     if len(heter_ops) == 0:
         warnings.warn(
             "No heterogeneous OP was found in your program , "
-            " please using fluid.device_guard() to run OPs on different device."
+            " please using static.device_guard() to run OPs on different device."
         )
 
     total_heter_ops = 0

@@ -12,13 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import ssl
-import re
-import urllib.request
-import sys
 import getopt
-import external_error_pb2
+import re
+import ssl
+import sys
+import urllib.request
 from html.parser import HTMLParser
+
+import external_error_pb2
 
 
 def parsing(externalErrorDesc):

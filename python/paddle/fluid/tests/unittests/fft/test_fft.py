@@ -16,8 +16,9 @@ import sys
 import unittest
 
 import numpy as np
-import paddle
 import scipy.fft
+
+import paddle
 
 DEVICES = [paddle.CPUPlace()]
 if paddle.is_compiled_with_cuda():

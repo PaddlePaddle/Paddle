@@ -12,17 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import time
+import copy
 import os
 import signal
-import copy
-import sys
-import subprocess
-from contextlib import closing
 import socket
+import subprocess
+import sys
+import time
+from contextlib import closing
 from distutils.util import strtobool
 
 from paddle.distributed.fleet.launch_utils import get_backend_by_compile_flag
+
 from ..utils.log_utils import get_logger
 
 logger = get_logger("INFO", "root")

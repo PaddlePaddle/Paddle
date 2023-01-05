@@ -12,10 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.fluid.layer_helper import LayerHelper
-from paddle.fluid.framework import _non_static_mode
-from paddle.fluid.data_feeder import check_variable_and_dtype
 from paddle import _legacy_C_ops
+from paddle.fluid.data_feeder import check_variable_and_dtype
+from paddle.fluid.framework import _non_static_mode
+from paddle.fluid.layer_helper import LayerHelper
 
 __all__ = []
 
@@ -31,6 +31,7 @@ def sample_neighbors(
     name=None,
 ):
     """
+
     Graph Sample Neighbors API.
 
     This API is mainly used in Graph Learning domain, and the main purpose is to
@@ -51,16 +52,16 @@ def sample_neighbors(
                          The data type should be the same with `row`.
         input_nodes (Tensor): The input nodes we need to sample neighbors for, and the
                               data type should be the same with `row`.
-        sample_size (int): The number of neighbors we need to sample. Default value is -1,
+        sample_size (int, optional): The number of neighbors we need to sample. Default value is -1,
                            which means returning all the neighbors of the input nodes.
-        eids (Tensor): The eid information of the input graph. If return_eids is True,
+        eids (Tensor, optional): The eid information of the input graph. If return_eids is True,
                             then `eids` should not be None. The data type should be the
                             same with `row`. Default is None.
-        return_eids (bool): Whether to return eid information of sample edges. Default is False.
-        perm_buffer (Tensor): Permutation buffer for fisher-yates sampling. If `use_perm_buffer`
+        return_eids (bool, optional): Whether to return eid information of sample edges. Default is False.
+        perm_buffer (Tensor, optional): Permutation buffer for fisher-yates sampling. If `use_perm_buffer`
                               is True, then `perm_buffer` should not be None. The data type should
                               be the same with `row`. If not None, we will use fiser-yates sampling
-                              to speed up. Only useful for gpu version.
+                              to speed up. Only useful for gpu version. Default is None.
         name (str, optional): Name for the operation (optional, default is None).
                               For more information, please refer to :ref:`api_guide_Name`.
 
@@ -68,15 +69,16 @@ def sample_neighbors(
         - out_neighbors (Tensor), the sample neighbors of the input nodes.
 
         - out_count (Tensor), the number of sampling neighbors of each input node, and the shape
-                              should be the same with `input_nodes`.
+          should be the same with `input_nodes`.
 
         - out_eids (Tensor), if `return_eids` is True, we will return the eid information of the
-                             sample edges.
+          sample edges.
 
     Examples:
         .. code-block:: python
 
             import paddle
+
             # edges: (3, 0), (7, 0), (0, 1), (9, 1), (1, 2), (4, 3), (2, 4),
             #        (9, 5), (3, 5), (9, 6), (1, 6), (9, 8), (7, 8)
             row = [3, 7, 0, 9, 1, 4, 2, 9, 3, 9, 1, 9, 7]

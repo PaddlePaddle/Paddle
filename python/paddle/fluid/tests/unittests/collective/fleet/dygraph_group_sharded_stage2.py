@@ -16,19 +16,19 @@
 
 import os
 import shutil
-import numpy as np
 import tempfile
+
+import numpy as np
+
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.dygraph.nn import Linear
-from paddle.fluid.framework import _test_eager_guard
-
 from paddle.distributed.fleet.meta_parallel.sharding.group_sharded_optimizer_stage2 import (
     GroupShardedOptimizerStage2,
 )
 from paddle.distributed.fleet.meta_parallel.sharding.group_sharded_stage2 import (
     GroupShardedStage2,
 )
+from paddle.nn import Linear
 
 seed = 2022
 epoch = 2
@@ -245,5 +245,4 @@ def test_dp_stage2():
 
 
 if __name__ == '__main__':
-    with _test_eager_guard():
-        test_dp_stage2()
+    test_dp_stage2()

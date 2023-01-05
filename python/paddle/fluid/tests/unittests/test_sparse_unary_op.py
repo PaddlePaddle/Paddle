@@ -13,7 +13,9 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
+
 import paddle
 from paddle.fluid.framework import convert_np_dtype_to_dtype_
 

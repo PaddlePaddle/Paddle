@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import os
+
 import numpy as np
 
 os.environ[str("FLAGS_check_nan_inf")] = str("1")
@@ -20,7 +21,6 @@ os.environ[str("GLOG_vmodule")] = str("nan_inf_utils_detail=10")
 
 import paddle
 import paddle.nn as nn
-from paddle.fluid.framework import _test_eager_guard
 
 np.random.seed(0)
 
@@ -113,6 +113,4 @@ def run_check():
 
 
 if __name__ == '__main__':
-    with _test_eager_guard():
-        run_check()
     run_check()

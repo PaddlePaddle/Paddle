@@ -122,7 +122,7 @@ class TestCorrelationOp(unittest.TestCase):
             stride2=1,
         )
 
-        loss = fluid.layers.reduce_mean(out)
+        loss = paddle.mean(out)
         optimizer = fluid.optimizer.Momentum(0.0001, 0.9)
         optimizer.minimize(loss)
 

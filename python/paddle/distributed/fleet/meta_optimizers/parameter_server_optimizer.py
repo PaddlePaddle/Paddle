@@ -11,14 +11,17 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 
-from paddle import fluid
-from .meta_optimizer_base import MetaOptimizerBase
-from paddle.fluid import core
-import subprocess
-import re
 import os
 import platform
+import re
+import subprocess
+
+import paddle
+from paddle import fluid
+from paddle.framework import core
+
 from ..base.private_helper_function import wait_server_ready
+from .meta_optimizer_base import MetaOptimizerBase
 
 __all__ = []
 
@@ -185,8 +188,8 @@ class ParameterServerOptimizer(MetaOptimizerBase):
         return _main, _startup
 
     def _build_pserver_programs(self, compiled_config):
-        _main = fluid.Program()
-        _startup = fluid.Program()
+        _main = paddle.static.Program()
+        _startup = paddle.static.Program()
 
         from paddle.fluid.incubate.fleet.parameter_server.ir import (
             pserver_pass as server,
