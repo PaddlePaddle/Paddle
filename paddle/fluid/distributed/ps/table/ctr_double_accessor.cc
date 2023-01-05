@@ -321,9 +321,10 @@ std::string CtrDoubleAccessor::ParseToString(const float* v, int param_size) {
   os.clear();
   os.str("");
   os << v[0] << " " << v[1] << " "
-     << static_cast<float>(reinterpret_cast<const double*>(v + 2))[0] << " "
-     << static_cast<float>(reinterpret_cast<const double*>(v + 4))[0] << " "
-     << v[6] << " " << v[7] << " " << v[8];
+     << static_cast<const float>(reinterpret_cast<const double*>(v + 2))[0]
+     << " "
+     << static_cast<const float>(reinterpret_cast<const double*>(v + 4))[0]
+     << " " << v[6] << " " << v[7] << " " << v[8];
   auto show = CtrDoubleFeatureValue::Show(const_cast<float*>(v));
   auto click = CtrDoubleFeatureValue::Click(const_cast<float*>(v));
   auto score = ShowClickScore(show, click);
@@ -337,8 +338,8 @@ std::string CtrDoubleAccessor::ParseToString(const float* v, int param_size) {
 }
 int CtrDoubleAccessor::ParseFromString(const std::string& str, float* value) {
   int embedx_dim = _config.embedx_dim();
-  std::unique_ptr<float> data_buff(new float(_accessor_info.dim + 2));
-  float* data_buff_ptr = data_buff;
+  std::unique_ptr<float> data_buff_ptr(new float(_accessor_info.dim + 2));
+  // float* data_buff_ptr = data_buff;
   _embedx_sgd_rule->InitValue(
       data_buff_ptr + CtrDoubleFeatureValue::EmbedxWIndex(),
       data_buff_ptr + CtrDoubleFeatureValue::EmbedxG2SumIndex());
