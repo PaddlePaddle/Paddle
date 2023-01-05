@@ -26,8 +26,6 @@ limitations under the License. */
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/phi/common/data_type.h"
 
-DECLARE_bool(trt_ibuilder_cache);
-
 namespace paddle {
 namespace inference {
 namespace tensorrt {
@@ -65,13 +63,6 @@ void TensorRTEngine::Weight::SetDataType(phi::DataType type) {
 }
 
 void TensorRTEngine::InitNetwork() {
-  if (FLAGS_trt_ibuilder_cache) {
-    holder.reset(createInferBuilder(&NaiveLogger::Global()), [](auto *ptr) {
-      if (ptr) {
-        ptr->destroy();
-      }
-    });
-  }
   freshDeviceId();
   infer_builder_.reset(createInferBuilder(&logger_));
 
