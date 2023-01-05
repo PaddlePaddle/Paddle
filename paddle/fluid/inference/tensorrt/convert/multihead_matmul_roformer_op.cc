@@ -51,7 +51,9 @@ class MultiheadMatMulRoformerOpConverter : public OpConverter {
     auto* bias_t = bias_v->GetMutable<phi::DenseTensor>();
 
     float* weight_data = nullptr;
-    bool qkv2context_plugin_int8 = op_desc.HasAttr("qkv2context_plugin_int8");
+    // bool qkv2context_plugin_int8 = op_desc.HasAttr("qkv2context_plugin_int8");
+    // Do not use int8 in qkv2context_plugin!
+    bool qkv2context_plugin_int8 = false;
     float in_scale = 0.;
 
     if (op_desc.HasAttr("Input_scale")) {
