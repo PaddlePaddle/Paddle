@@ -42,8 +42,6 @@ limitations under the License. */
 #include "paddle/phi/core/stream.h"
 #include "paddle/utils/any.h"
 
-DECLARE_bool(trt_ibuilder_cache);
-
 namespace paddle {
 namespace inference {
 namespace tensorrt {
@@ -712,6 +710,11 @@ class TensorRTEngine {
 #endif
   std::mutex mutex_;
   bool use_inspector_;
+  // createInferBuilder loads trt kernels and take a few second
+  // But as long as one IBuilder lives, trt kernel will not be unloaded
+  // Hence, a persistent IBuilder to avoid TensorRT unload/reload kernels
+  std::unique_ptr<nvinfer1::IBuilder, std::function<void(nvinfer1::IBuilder*)>>
+      holder;
 
  public:
   thread_local static int predictor_id_per_thread;
@@ -856,18 +859,6 @@ class TRTEngineManager {
   size_t max_ctx_mem_size_{0};
   std::unordered_map<PredictorID, AllocationPtr> context_memorys_;
   std::unordered_map<std::string, std::unique_ptr<TensorRTEngine>> engines_;
-  // createInferBuilder loads trt kernels and take a few second
-  // But as long as one IBuilder lives, trt kernel will not be unloaded
-  // Hence, a persistent IBuilder to avoid TensorRT unload/reload kernels
-  if (FLAGS_trt_ibuilder_cache) {
-    std::unique_ptr<nvinfer1::IBuilder,
-                    std::function<void(nvinfer1::IBuilder*)>>
-        holder{createInferBuilder(&NaiveLogger::Global()), [](auto* ptr) {
-                 if (ptr) {
-                   ptr->destroy();
-                 }
-               }};
-  }
 };
 
 }  // namespace tensorrt
