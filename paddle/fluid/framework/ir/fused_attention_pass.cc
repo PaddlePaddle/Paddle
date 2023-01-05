@@ -40,13 +40,28 @@ PDNode* FusedAttentionGradPattern::operator()(PDNode* x,
 
 }  // namespace patterns
 
-void FusedAttentionsPass::ApplyImpl(Graph* graph) const {}
+void FusedAttentionsPass::ApplyImpl(Graph* graph) const {
+  FusePassBase::Init(name_scope_, graph);
+  auto* scope = param_scope();
 
-int FusedAttentionsPass::FAWithNoFusePreMaskDropoutResidualPost(
-    Graph* graph, const std::string& name_scope, Scope* scope) const {
-  return 0;
+  graph = PreMaskDropResFwd(graph, name_scope_, scope);
+  graph = PreMaskDropResBwd(graph, name_scope_, scope);
+}
+
+ir::Graph* FusedAttentionsPass::PreMaskDropResFwd(Graph* graph,
+                                                  const std::string& name_scope,
+                                                  Scope* scope) const {
+  return graph;
+}
+
+ir::Graph* FusedAttentionsPass::PreMaskDropResBwd(Graph* graph,
+                                                  const std::string& name_scope,
+                                                  Scope* scope) const {
+  return graph;
 }
 
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle
+
+REGISTER_PASS(fused_attention_pass, paddle::framework::ir::FusedAttentionsPass);

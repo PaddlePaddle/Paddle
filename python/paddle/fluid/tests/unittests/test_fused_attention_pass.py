@@ -127,14 +127,7 @@ class TestFusedAttentionPass(unittest.TestCase):
                 shape=[-1, num_heads, seq_len, seq_len],
                 dtype='float32',
             )
-            multi_head_attn = MultiHeadAttention(
-                hidden_size,
-                num_heads,
-                add_residual=True,
-                attn_dropout=True,
-                pre_ln=True,
-                post_ln=True,
-            )
+            multi_head_attn = MultiHeadAttention(hidden_size, num_heads)
             out = multi_head_attn(data, attn_mask)
             loss = paddle.mean(out)
 
