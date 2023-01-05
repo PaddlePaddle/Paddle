@@ -338,7 +338,8 @@ std::string CtrDoubleAccessor::ParseToString(const float* v, int param_size) {
 }
 int CtrDoubleAccessor::ParseFromString(const std::string& str, float* value) {
   int embedx_dim = _config.embedx_dim();
-  std::vector<float> data_buff_ptr(_accessor_info.dim + 2);
+  float data_buff[_accessor_info.dim + 2];  // NOLINT
+  float* data_buff_ptr = data_buff;
   _embedx_sgd_rule->InitValue(
       data_buff_ptr + CtrDoubleFeatureValue::EmbedxWIndex(),
       data_buff_ptr + CtrDoubleFeatureValue::EmbedxG2SumIndex());
