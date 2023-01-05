@@ -170,7 +170,7 @@ class TestFlatten2OpError(unittest.TestCase):
             x_var = paddle.static.data(
                 name="x", shape=image_shape, dtype='float32'
             )
-            out = paddle.flatten(x_var, start_axis=2, stop_axis=1)
+            out = paddle.flatten(x_var, start_axis=3, stop_axis=1)
 
         self.assertRaises(ValueError, test_ValueError1)
 
@@ -189,6 +189,22 @@ class TestFlatten2OpError(unittest.TestCase):
             paddle.flatten(x_var, start_axis=2, stop_axis=10)
 
         self.assertRaises(ValueError, test_ValueError3)
+
+        def test_ValueError4():
+            x_var = paddle.static.data(
+                name="x", shape=image_shape, dtype='float32'
+            )
+            paddle.flatten(x_var, start_axis=2.0, stop_axis=10)
+
+        self.assertRaises(ValueError, test_ValueError4)
+
+        def test_ValueError5():
+            x_var = paddle.static.data(
+                name="x", shape=image_shape, dtype='float32'
+            )
+            paddle.flatten(x_var, start_axis=2, stop_axis=10.0)
+
+        self.assertRaises(ValueError, test_ValueError5)
 
         def test_type():
             # dtype must be float32, float64, int8, int32, int64, uint8.
