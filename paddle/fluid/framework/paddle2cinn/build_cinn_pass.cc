@@ -485,7 +485,8 @@ void AnalyseClusterVariables(
     GraphNodeSet* cluster_inputs,
     GraphNodeSet* cluster_outputs,
     GraphNodeSet* cluster_internals,
-    bool is_inference_stage) {
+    bool is_inference_stage,
+    const std::unordered_set<std::string>& skip_gc_var_names) {
   // collecting all input and output of op
   for (auto* op_node : cluster) {
     const auto& op_name = op_node->Name();
@@ -510,9 +511,11 @@ void AnalyseClusterVariables(
 
       // the internal node is must an output node of sub-graph,
       // but not any input node of out-graph.
-      bool is_only_used_internal = true;
-      for (auto* next_op_node : var_node->outputs) {
-        is_only_used_internal &= (cluster.count(next_op_node) > 0);
+      // And should not in skip gc var
+      bool is_only_used_internal = !skip_gc_var_names.count(var_node->Name());
+      for (size_t i = 0; i < var_node->outputs.size() && is_only_used_internal;
+           ++i) {
+        is_only_used_internal &= (cluster.count(var_node->outputs[i]) > 0);
       }
       if (is_only_used_internal) {
         cluster_internals->insert(var_node);
@@ -672,6 +675,12 @@ void SearchAllSubgraphs(Graph* graph, bool is_inference_stage) {
     return res;
   };
 
+  std::unordered_set<std::string> skip_gc_var_names;
+  if (graph->Has(kSkipGcVarNames)) {
+    skip_gc_var_names =
+        graph->Get<std::unordered_set<std::string>>(kSkipGcVarNames);
+  }
+
   auto* cinn_compiler = CinnCompiler::GetInstance();
   for (const auto& node_vec : clusters) {
     // Classify var node to inputs, outputs, and internals.
@@ -685,7 +694,8 @@ void SearchAllSubgraphs(Graph* graph, bool is_inference_stage) {
                             &cluster_inputs,
                             &cluster_outputs,
                             &cluster_internals,
-                            is_inference_stage);
+                            is_inference_stage,
+                            skip_gc_var_names);
 
     VLOG(4) << "Cluster Ops: " << cluster_debug_info(cluster_set);
     VLOG(4) << "Cluster input vars: " << cluster_debug_info(cluster_inputs);
