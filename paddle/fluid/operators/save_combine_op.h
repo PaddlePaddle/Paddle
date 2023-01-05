@@ -99,12 +99,14 @@ void SaveCombineTensorKernel(const Context& dev_ctx,
             "The Tensor with Index (%d) to be saved is not initialized.", i));
     // Serialize tensors one by one
     // Check types to see if a fp16 transformation is required
-    auto in_dtype = framework::TransToProtoVarType(tensor.dtype());
-    auto out_dtype = save_as_fp16 ? framework::proto::VarType::FP16 : in_dtype;
+    auto in_dtype = tensor.dtype();
+    auto out_dtype = save_as_fp16 ? phi::DataType::FLOAT16 : in_dtype;
     if (in_dtype != out_dtype) {
       auto place = dev_ctx.GetPlace();
-      auto in_kernel_type = framework::OpKernelType(in_dtype, place);
-      auto out_kernel_type = framework::OpKernelType(out_dtype, place);
+      auto in_kernel_type =
+          phi::KernelKey(place, phi::DataLayout::ALL_LAYOUT, in_dtype);
+      auto out_kernel_type =
+          phi::KernelKey(place, phi::DataLayout::ALL_LAYOUT, out_dtype);
       phi::DenseTensor out;
       framework::TransDataType(in_kernel_type, out_kernel_type, tensor, &out);
       // copy LoD info to the new tensor
