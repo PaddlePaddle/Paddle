@@ -658,6 +658,7 @@ EOF
             pip3.6 install --user ${INSTALL_PREFIX:-/paddle/build}/opt/paddle/share/wheels/*.whl
             pip3.6 install --user hypothesis
         elif [ "$1" == "cp37-cp37m" ]; then
+            find / -name paddlepaddle-0.0.0-cp37-cp37m-macosx_10_14_x86_64.whl
             pip3.7 install --user ${INSTALL_PREFIX:-/paddle/build}/opt/paddle/share/wheels/*.whl
             pip3.7 install --user hypothesis
         elif [ "$1" == "cp38-cp38" ]; then
