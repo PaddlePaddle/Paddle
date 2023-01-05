@@ -22,10 +22,10 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-class MapOpPass : public FusePassBase {
+class MapOp2AnotherPass : public FusePassBase {
  public:
-  MapOpPass() = default;
-  virtual ~MapOpPass() = default;
+  MapOp2AnotherPass() = default;
+  virtual ~MapOp2AnotherPass() = default;
 
  protected:
   void ApplyImpl(Graph* graph) const override;

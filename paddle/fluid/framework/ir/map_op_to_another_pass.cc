@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/ir/map_op_pass.h"
+#include "paddle/fluid/framework/ir/map_op_to_another_pass.h"
 
 #include <string>
 
@@ -23,10 +23,10 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-void MapOpPass::ApplyImpl(ir::Graph* graph) const {
+void MapOp2AnotherPass::ApplyImpl(ir::Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph, platform::errors::InvalidArgument("Graph cannot be nullptr."));
-  FusePassBase::Init("map_op_pass", graph);
+  FusePassBase::Init("map_op_to_another_pass", graph);
 
   int found_count = 0;
   std::unordered_map<std::string, std::string> replaced_map{
@@ -67,8 +67,8 @@ void MapOpPass::ApplyImpl(ir::Graph* graph) const {
 }  // namespace framework
 }  // namespace paddle
 
-REGISTER_PASS(map_op_pass, paddle::framework::ir::MapOpPass);
-REGISTER_PASS_CAPABILITY(map_op_pass)
+REGISTER_PASS(map_op_to_another_pass, paddle::framework::ir::MapOp2AnotherPass);
+REGISTER_PASS_CAPABILITY(map_op_to_another_pass)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination()
             .LE("depthwise_conv2d", 1)
