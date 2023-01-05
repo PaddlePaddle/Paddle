@@ -1031,3 +1031,12 @@
   kernel :
     func : unfold
   backward : unfold_grad
+
+- op : embedding_bag
+  args : (Tensor input, Tensor params, Tensor weight, str mode)
+  output : Tensor
+  infer_meta :
+    func : EmbeddingBagInferMeta
+  kernel : 
+    func : embedding_bag 
+  backward : embedding_bag_grad
