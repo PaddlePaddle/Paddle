@@ -103,7 +103,7 @@ class AnalysisPredictor : public PaddlePredictor {
     if (config_.shape_range_info_collected()) {
       config_.SwitchIrOptim(false);
     }
-    auto trt_identifier = config_.trt_engine_memory_sharing_identifier_;
+    int trt_identifier = config_.trt_engine_memory_sharing_identifier_;
     if (trt_identifier > 0) {
       // NOTE(liuyuanle): For convenience, we set the id of the predictor to
       // negative sharing_identifier directly. In the future, this may affect
