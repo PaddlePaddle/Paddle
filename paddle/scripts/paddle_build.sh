@@ -3678,9 +3678,17 @@ function run_setup(){
     ccache -z
     cd ..
     if [ "${PYTHON_EXECUTABLE}" != "" ];then
-        ${PYTHON_EXECUTABLE} setup.py $2;build_error=$?
+        if [ "$SYSTEM" == "Darwin" ]; then
+            ${PYTHON_EXECUTABLE} setup.py $2 --plat-name=macosx_10_9_x86_64;build_error=$?
+        else
+            ${PYTHON_EXECUTABLE} setup.py $2;build_error=$?
+        fi
     else
-        python setup.py $2;build_error=$?
+        if [ "$SYSTEM" == "Darwin" ]; then
+            python setup.py $2 --plat-name=macosx_10_9_x86_64;build_error=$?
+        else
+            python setup.py $2;build_error=$?
+        fi
     fi
     
     # ci will collect ccache hit rate
