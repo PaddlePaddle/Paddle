@@ -318,9 +318,17 @@ class TestFlatten0DTensorOpError(unittest.TestCase):
             x_var = paddle.static.data(
                 name="x", shape=image_shape, dtype='float32'
             )
-            out = paddle.flatten(x_var, start_axis=2, stop_axis=2)
+            out = paddle.flatten(x_var, start_axis=10, stop_axis=0)
 
         self.assertRaises(ValueError, test_ValueError1)
+
+        def test_ValueError2():
+            x_var = paddle.static.data(
+                name="x", shape=image_shape, dtype='float32'
+            )
+            out = paddle.flatten(x_var, start_axis=0, stop_axis=10)
+
+        self.assertRaises(ValueError, test_ValueError2)
 
 
 if __name__ == "__main__":
