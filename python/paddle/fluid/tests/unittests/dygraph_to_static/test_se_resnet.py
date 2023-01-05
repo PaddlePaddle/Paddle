@@ -460,9 +460,9 @@ class TestSeResnet(unittest.TestCase):
                                 output_spec=[pred],
                             )
                         else:
-                            fluid.dygraph.save_dygraph(
+                            paddle.save(
                                 se_resnext.state_dict(),
-                                self.dy_state_dict_save_path,
+                                self.dy_state_dict_save_path + '.pdparams',
                             )
                         break
             return (
@@ -478,9 +478,7 @@ class TestSeResnet(unittest.TestCase):
         with fluid.dygraph.guard(place):
             se_resnext = SeResNeXt()
 
-            model_dict, _ = fluid.dygraph.load_dygraph(
-                self.dy_state_dict_save_path
-            )
+            model_dict = paddle.load(self.dy_state_dict_save_path + '.pdparams')
             se_resnext.set_dict(model_dict)
             se_resnext.eval()
 

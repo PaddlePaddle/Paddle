@@ -70,7 +70,7 @@ class TestFleet1(unittest.TestCase):
             bow = paddle.static.nn.data_norm(
                 input=bow, epsilon=1e-4, name="norm"
             )
-            fc = fluid.layers.fc(input=bow, size=1, act=None)
+            fc = paddle.static.nn.fc(x=bow, size=1, activation=None)
             label = fluid.layers.data(
                 name="click",
                 shape=[-1, 1],
