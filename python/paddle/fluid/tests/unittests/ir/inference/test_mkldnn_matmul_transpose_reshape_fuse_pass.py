@@ -57,42 +57,42 @@ class TestMatmulTransposeReshapeMkldnnFusePass(PassAutoScanTest):
                 shape_x = [batch_size, channel, 32, input_dim]
                 shape_y = [batch_size, channel, input_dim, 16]
 
-            if type == "x":
+            if type == 'x':
                 return np.random.random(shape_x).astype(np.float32)
             else:
                 return np.random.random(shape_y).astype(np.float32)
 
         matmul_op = OpConfig(
-            type="matmul",
-            inputs={"X": ["input_data1"], "Y": ["input_data2"]},
-            outputs={"Out": ["matmul_output"]},
+            type='matmul',
+            inputs={'X': ['input_data1'], 'Y': ['input_data2']},
+            outputs={'Out': ['matmul_output']},
             attrs={
-                "transpose_X": transpose_X,
-                "transpose_Y": transpose_Y,
-                "alpha": alpha,
-                "fused_reshape_X": [],
-                "fused_reshape_Y": [],
-                "fused_transpose_X": [],
-                "fused_transpose_Y": [],
-                "fused_reshape_Out": [],
-                "fused_transpose_Out": [],
+                'transpose_X': transpose_X,
+                'transpose_Y': transpose_Y,
+                'alpha': alpha,
+                'fused_reshape_X': [],
+                'fused_reshape_Y': [],
+                'fused_transpose_X': [],
+                'fused_transpose_Y': [],
+                'fused_reshape_Out': [],
+                'fused_transpose_Out': [],
             },
         )
 
         transpose2_op = OpConfig(
-            type="transpose2",
-            inputs={"X": ["matmul_output"]},
+            type='transpose2',
+            inputs={'X': ['matmul_output']},
             outputs={
-                "Out": ["transpose2_output"],
-                "XShape": ["transpose2_xshape"],
+                'Out': ['transpose2_output'],
+                'XShape': ['transpose2_xshape'],
             },
             attrs={'axis': axis},
         )
 
         reshape2_op = OpConfig(
-            type="reshape2",
-            inputs={"X": ["transpose2_output"]},
-            outputs={"Out": ["reshape2_output"], "XShape": ["reshape2_xshape"]},
+            type='reshape2',
+            inputs={'X': ['transpose2_output']},
+            outputs={'Out': ['reshape2_output'], 'XShape': ['reshape2_xshape']},
             attrs={'shape': shape},
         )
 
@@ -102,27 +102,27 @@ class TestMatmulTransposeReshapeMkldnnFusePass(PassAutoScanTest):
             ops=model_net,
             weights={},
             inputs={
-                "input_data1": TensorConfig(
-                    data_gen=partial(generate_input, "x")
+                'input_data1': TensorConfig(
+                    data_gen=partial(generate_input, 'x')
                 ),
-                "input_data2": TensorConfig(
-                    data_gen=partial(generate_input, "y")
+                'input_data2': TensorConfig(
+                    data_gen=partial(generate_input, 'y')
                 ),
             },
-            outputs=["reshape2_output"],
+            outputs=['reshape2_output'],
         )
 
         return program_config
 
     def sample_predictor_configs(self, program_config):
         config = self.create_inference_config(use_mkldnn=True)
-        yield config, ["matmul"], (1e-5, 1e-5)
+        yield config, ['matmul'], (1e-5, 1e-5)
 
     def test(self):
         self.run_and_statis(
-            quant=False, passes=["matmul_transpose_reshape_mkldnn_fuse_pass"]
+            quant=False, passes=['matmul_transpose_reshape_mkldnn_fuse_pass']
         )
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     unittest.main()
