@@ -16,18 +16,18 @@ import inspect
 from os import path
 
 import paddle
+import paddle.fluid.proto.framework_pb2 as framework_pb2
 
 from ...fluid import core, unique_name
 from ...fluid.framework import OpProtoHolder
-from ...fluid.proto import framework_pb2
 
 try:
-    from ...fluid.proto import pass_desc_pb2
+    from paddle.fluid.proto import pass_desc_pb2
 except ModuleNotFoundError:
     import sys
 
     sys.path.append(path.join(path.dirname(__file__), 'proto'))
-    from ...fluid.proto import pass_desc_pb2
+    from .proto import pass_desc_pb2
 
 
 class RegisterPassHelper:
