@@ -140,28 +140,6 @@ class ActivationOpGrad : public framework::OperatorWithKernel {
   }
 };
 
-class BReluOpMaker : public framework::OpProtoAndCheckerMaker {
- public:
-  void Make() override {
-    AddInput("X",
-             "The input is a multi-dimensional Tensor. The data type is "
-             "float32, float64.");
-    AddOutput("Out",
-              "The output is a multi-dimensional Tensor which has same "
-              "dimension and data type as the ``X``.");
-    AddAttr<float>("t_min", "The min marginal value of BRelu")
-        .SetDefault(static_cast<float>(0));
-    AddAttr<float>("t_max", "The max marginal value of BRelu")
-        .SetDefault(static_cast<float>(24));
-    AddComment(R"DOC(
-BRelu Activation Operator.
-
-$$out = \min(\max(x, t_{min}), t_{max})$$
-
-)DOC");
-  }
-};
-
 class SoftReluOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
@@ -595,7 +573,6 @@ namespace plat = paddle::platform;
 FOR_EACH_ACTIVATION_OP(REGISTER_ACTIVATION_OP);
 FOR_EACH_ACTIVATION_OP(REGISTER_ACTIVATION_CPU_KERNEL);
 
-REGISTER_ACTIVATION_OP(brelu, BRelu, BReluFunctor, BReluGradFunctor);
 REGISTER_ACTIVATION_OP(relu6, Relu6, Relu6Functor, Relu6GradFunctor);
 REGISTER_ACTIVATION_OP(mish, Mish, MishFunctor, MishGradFunctor);
 REGISTER_ACTIVATION_OP(stanh, STanh, STanhFunctor, STanhGradFunctor);
