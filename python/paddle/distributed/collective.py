@@ -330,9 +330,9 @@ def is_available():
 def destroy_process_group_custom():
     """
 
-    Destory the custom process group. Designed for CustomDevice.
+    Destroy the custom process group. Designed for CustomDevice.
 
 
     """
     if 'npu' in paddle.device.get_all_custom_device_type():
-        core.ProcessGroupCustom.destory()
+        core.ProcessGroupIdMap.destroy()

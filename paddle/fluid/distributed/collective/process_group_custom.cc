@@ -446,12 +446,5 @@ ProcessGroupCustom::CreateProcessGroupCustom(
   return process_group;
 }
 
-void ProcessGroupCustom::DestoryProcessGroupCustom(int gid) {
-  int use_count = ProcessGroupIdMap::GetInstance()[gid].use_count();
-  for (int i = 0; i < use_count; ++i) {
-    ProcessGroupIdMap::GetInstance()[gid].reset();
-  }
-}
-
 }  //  namespace distributed
 }  //  namespace paddle
