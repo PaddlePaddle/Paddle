@@ -3731,7 +3731,7 @@ function main() {
         ;;
       build_and_check_cpu)
         set +e
-        cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
+        run_setup ${PYTHON_ABI:-""} install ${parallel_number}
         generate_api_spec ${PYTHON_ABI:-""} "PR"
         generate_upstream_develop_api_spec ${PYTHON_ABI:-""} ${parallel_number}
         check_sequence_op_unittest
@@ -3826,7 +3826,7 @@ function main() {
         ;;
       cpu_cicheck_coverage)
         check_diff_file_for_coverage
-        cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
+        run_setup ${PYTHON_ABI:-""} bdist_wheel ${parallel_number} 
         enable_unused_var_check
         check_coverage_build
         ;;
@@ -3898,7 +3898,7 @@ function main() {
         run_mac_test ${PYTHON_ABI:-""} ${PROC_RUN:-1}
         ;;
       maccheck_py35)
-        cmake_gen_and_build_mac ${PYTHON_ABI:-""}
+        run_setup ${PYTHON_ABI:-""} bdist_wheel ${parallel_number} 
         run_mac_test ${PYTHON_ABI:-""} ${PROC_RUN:-1}
         ;;
       macbuild)
