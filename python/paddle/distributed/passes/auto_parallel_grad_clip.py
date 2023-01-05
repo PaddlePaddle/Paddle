@@ -39,6 +39,7 @@ from ..auto_parallel.utils import (
     is_optimize_op,
     use_standalone_executor,
 )
+from .auto_parallel_sharding import ShardingPass
 from .pass_base import PassBase, register_pass
 
 
@@ -153,13 +154,16 @@ def _is_about_global_norm(
 
 
 class ClipHelper:
-    def __init__(self, params_grads, rank_id, block, dist_context):
+    def __init__(
+        self, params_grads, rank_id, block, dist_context, pass_context
+    ):
         params, _ = zip(*params_grads)
         self.params = list(params)
         self.params_name = [p.name for p in self.params]
         self.rank_id = rank_id
         self.block = block
         self.dist_context = dist_context
+        self.pass_context = pass_context
         self.sharding_group = None
         self.world_ranks = get_world_process_group().ranks
         if hasattr(dist_context, '_sharding_group'):
@@ -237,6 +241,10 @@ class ClipHelper:
         self.dist_context.set_op_dist_attr_for_program(op, op_dist_attr)
 
     def _is_pure_data_parallel(self):
+        for applied_pass in self.pass_context.passes:
+            if isinstance(applied_pass, ShardingPass):
+                return False
+
         groups = get_all_process_groups()
         for g in groups:
             if g.nranks != self.world_nranks:
@@ -248,6 +256,7 @@ class ClipHelper:
                 "c_allreduce_sum",
             ] and not is_data_parallel_reduce_op(op):
                 return False
+
         return True
 
     def _partition_parameters(self, params):
@@ -311,7 +320,7 @@ class ClipGradByGloblNormPass(PassBase):
         # dist_params_grads = _get_params_grads(block)
 
         self.clip_helper = ClipHelper(
-            dist_params_grads, rank_id, block, dist_context
+            dist_params_grads, rank_id, block, dist_context, context
         )
         self._remove_no_need_ops_vars(block)
 
