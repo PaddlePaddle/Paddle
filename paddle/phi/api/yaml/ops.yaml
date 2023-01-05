@@ -560,6 +560,15 @@
   kernel :
     func : histogram
 
+- op : imag
+  args : (Tensor x)
+  output : Tensor (out)
+  infer_meta :
+    func : RealAndImagInferMeta
+  kernel :
+    func : imag
+  backward : imag_grad
+
 - op : index_sample
   args : (Tensor x, Tensor index)
   output : Tensor
@@ -881,6 +890,15 @@
   kernel :
     func : qr
   backward : qr_grad
+
+- op : real
+  args : (Tensor x)
+  output : Tensor (out)
+  infer_meta :
+    func : RealAndImagInferMeta
+  kernel :
+    func : real
+  backward : real_grad
 
 - op : reciprocal
   args : (Tensor x)

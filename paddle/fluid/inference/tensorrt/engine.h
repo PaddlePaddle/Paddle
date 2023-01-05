@@ -802,8 +802,9 @@ class TRTEngineManager {
   }
 
   void updateContextMemorySize(size_t mem_size, PredictorID predictor_id) {
-    VLOG(3) << "TensorRT engine context memory size is " << mem_size
-            << " in predictor id " << predictor_id;
+    VLOG(3) << "TensorRT engine context memory size is "
+            << mem_size / 1024.0 / 1024.0 << "MiB in predictor id "
+            << predictor_id;
     bool size_updated{false};
 
     {
