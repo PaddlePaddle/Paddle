@@ -242,12 +242,8 @@ void DispatchConcatWithDifferentShapeKernelLimitNum(
     IMPL_CONCATE_CUDA_KERNEL_HELPER(
         IMPL_COMPLEX_CONCAT_CUDA_KERNEL_CASE,
         ConcatTensorWithDifferentShape<IndexT, MovSize, decltype(ptr_col_array)>
-        <<<grid_dims, block_dims, 0, ctx.stream()>>>(ptr_col_array,
-                                                     inputs_col_num,
-                                                     out_row,
-                                                     out_col,
-                                                     // output->data<T>()));
-                                                     output->data()));
+        <<<grid_dims, block_dims, 0, ctx.stream()>>>(
+            ptr_col_array, inputs_col_num, out_row, out_col, output->data()));
     default: {
       paddle::memory::AllocationPtr dev_ins_ptr{nullptr};
       paddle::memory::AllocationPtr dev_col_ptr{nullptr};
@@ -259,12 +255,8 @@ void DispatchConcatWithDifferentShapeKernelLimitNum(
                                                       &dev_ins_ptr,
                                                       &dev_col_ptr);
       ConcatTensorWithDifferentShape<IndexT, MovSize, decltype(ptr_col_array)>
-          <<<grid_dims, block_dims, 0, ctx.stream()>>>(ptr_col_array,
-                                                       inputs_col_num,
-                                                       out_row,
-                                                       out_col,
-                                                       //  output->data<T>());
-                                                       output->data());
+          <<<grid_dims, block_dims, 0, ctx.stream()>>>(
+              ptr_col_array, inputs_col_num, out_row, out_col, output->data());
     }
   }
 #undef IMPL_COMPLEX_CONCAT_CUDA_KERNEL_CASE
