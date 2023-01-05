@@ -563,10 +563,6 @@
   extra :
     attrs : [bool use_mkldnn = false]
 
-- op : fused_matmul
-  extra :
-    attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32"]
-
 - op : gather
   backward : gather_grad
   extra :

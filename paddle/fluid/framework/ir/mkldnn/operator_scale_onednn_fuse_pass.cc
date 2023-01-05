@@ -29,6 +29,7 @@ void FuseOperatorScaleOneDNNPass::ApplyImpl(Graph *graph) const {
       "fc",
       "matmul",
       "matmul_v2",
+      "fused_matmul",
       "elementwise_add",
       "elementwise_sub",
       "elementwise_mul",
