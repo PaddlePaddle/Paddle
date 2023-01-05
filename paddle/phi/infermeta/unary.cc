@@ -4033,13 +4033,22 @@ void TraceInferMeta(
       x_dims.size(),
       2,
       phi::errors::OutOfRange(
-          "Input's dim is out of range (expected at least 2, but got %ld).",
+          "Input(x)'s dim is out of range (expected at least 2, but got %ld).",
           x_dims.size()));
   PADDLE_ENFORCE_LT(
       dim1_,
       x_dims.size(),
       phi::errors::OutOfRange(
-          "Attr(dim1) is out of range (expected to be in range of [%ld, "
+          "axis1 is out of range (expected to be in range of [%ld, "
+          "%ld], but got %ld).",
+          -(x_dims.size()),
+          (x_dims.size() - 1),
+          dim1));
+  PADDLE_ENFORCE_GE(
+      dim1_,
+      0,
+      phi::errors::OutOfRange(
+          "axis1 is out of range (expected to be in range of [%ld, "
           "%ld], but got %ld).",
           -(x_dims.size()),
           (x_dims.size() - 1),
@@ -4048,7 +4057,16 @@ void TraceInferMeta(
       dim2_,
       x_dims.size(),
       phi::errors::OutOfRange(
-          "Attr(dim2) is out of range (expected to be in range of [%ld, "
+          "axis2 is out of range (expected to be in range of [%ld, "
+          "%ld], but got %ld).",
+          -(x_dims.size()),
+          (x_dims.size() - 1),
+          dim2));
+  PADDLE_ENFORCE_GE(
+      dim2_,
+      0,
+      phi::errors::OutOfRange(
+          "axis2 is out of range (expected to be in range of [%ld, "
           "%ld], but got %ld).",
           -(x_dims.size()),
           (x_dims.size() - 1),
