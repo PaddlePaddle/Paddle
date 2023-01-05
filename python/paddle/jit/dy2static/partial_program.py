@@ -1144,7 +1144,6 @@ def add_build_strategy_for(
             build_strategy=build_strategy,
         )
         if skip_vars:
-            print(set(skip_vars))
             # TODO(Aurelius84): Need to unify name with C++, such as kSkipVarNames.
             compiled_program._graph.set("skip_gc_vars", set(skip_vars))
         compiled_program._compile(
