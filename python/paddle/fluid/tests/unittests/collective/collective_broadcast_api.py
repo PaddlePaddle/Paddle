@@ -29,6 +29,7 @@ class TestCollectiveBroadcastAPI(TestCollectiveAPIRunnerBase):
             tindata = paddle.static.data(
                 name="tindata", shape=[-1, 10, 1000], dtype='float32'
             )
+            tindata.desc.set_need_check_feed(False)
             paddle.distributed.broadcast(tindata, src=1)
             return [tindata]
 

@@ -29,6 +29,7 @@ class TestCollectiveReduceAPI(TestCollectiveAPIRunnerBase):
             tindata = paddle.static.data(
                 name="tindata", shape=[-1, 10, 1000], dtype='float32'
             )
+            tindata.desc.set_need_check_feed(False)
             paddle.distributed.reduce(tindata, dst=0)
             return [tindata]
 
