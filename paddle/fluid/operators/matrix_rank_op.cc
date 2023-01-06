@@ -19,10 +19,6 @@
 #include "paddle/fluid/operators/svd_helper.h"
 #include "paddle/phi/kernels/funcs/compare_functors.h"
 
-#ifdef PADDLE_WITH_MKLDNN
-#include "paddle/fluid/platform/mkldnn_helper.h"
-#endif
-
 namespace paddle {
 namespace operators {
 using DDim = framework::DDim;
@@ -88,12 +84,10 @@ class MatrixRankOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    framework::LibraryType library{framework::LibraryType::kPlain};
-    framework::DataLayout layout = framework::DataLayout::kAnyLayout;
     auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
-    return framework::OpKernelType(data_type, ctx.GetPlace(), layout, library);
+    return phi::KernelKey(data_type, ctx.GetPlace());
   }
 };
 

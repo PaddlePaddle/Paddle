@@ -13,91 +13,66 @@
 # limitations under the License.
 
 import unittest
-import paddle
-import paddle.distributed.auto_parallel as auto
 
+import paddle
+from paddle.distributed.fleet import auto
 from paddle.fluid import program_guard
 from paddle.fluid.backward import append_backward
-from paddle.distributed.auto_parallel.utils import print_program_with_dist_attr
 
 paddle.enable_static()
 
-mesh = [[0, 1], [2, 3]]
+mesh = auto.ProcessMesh([[0, 1], [2, 3]], dim_names=["x", "y"])
 
 
 def init_x_row(trans_x):
     if trans_x:
         x = paddle.static.data(name='x', shape=[10, 6, 8], dtype='float32')
-        auto.shard_tensor(x,
-                          dist_attr={
-                              "process_mesh": mesh,
-                              "dims_mapping": [0, 1, -1]
-                          })
+        auto.shard_tensor(x, mesh, ["x", "y", None])
+
         return x
     else:
         x = paddle.static.data(name='x', shape=[10, 8, 6], dtype='float32')
-        auto.shard_tensor(x,
-                          dist_attr={
-                              "process_mesh": mesh,
-                              "dims_mapping": [0, -1, 1]
-                          })
+        auto.shard_tensor(x, mesh, ["x", None, "y"])
+
         return x
 
 
 def init_x_col(trans_x):
     if trans_x:
         x = paddle.static.data(name='x', shape=[6, 8], dtype='float32')
-        auto.shard_tensor(x,
-                          dist_attr={
-                              "process_mesh": mesh,
-                              "dims_mapping": [-1, 0]
-                          })
+        auto.shard_tensor(x, mesh, [None, "x"])
+
         return x
     else:
         x = paddle.static.data(name='x', shape=[8, 6], dtype='float32')
-        auto.shard_tensor(x,
-                          dist_attr={
-                              "process_mesh": mesh,
-                              "dims_mapping": [0, -1]
-                          })
+        auto.shard_tensor(x, mesh, ["x", None])
+
         return x
 
 
 def init_y_row(trans_y):
     if trans_y:
         y = paddle.static.data(name='y', shape=[4, 6], dtype='float32')
-        auto.shard_tensor(y,
-                          dist_attr={
-                              "process_mesh": mesh,
-                              "dims_mapping": [-1, 1]
-                          })
+        auto.shard_tensor(y, mesh, [None, "y"])
+
         return y
     else:
         y = paddle.static.data(name='y', shape=[6, 4], dtype='float32')
-        auto.shard_tensor(y,
-                          dist_attr={
-                              "process_mesh": mesh,
-                              "dims_mapping": [1, -1]
-                          })
+        auto.shard_tensor(y, mesh, ["y", None])
+
         return y
 
 
 def init_y_col(trans_y):
     if trans_y:
         y = paddle.static.data(name='y', shape=[4, 6], dtype='float32')
-        auto.shard_tensor(y,
-                          dist_attr={
-                              "process_mesh": mesh,
-                              "dims_mapping": [1, -1]
-                          })
+        auto.shard_tensor(y, mesh, ["y", None])
+
         return y
     else:
         y = paddle.static.data(name='y', shape=[6, 4], dtype='float32')
-        auto.shard_tensor(y,
-                          dist_attr={
-                              "process_mesh": mesh,
-                              "dims_mapping": [-1, 1]
-                          })
+        auto.shard_tensor(y, mesh, [None, "y"])
+
         return y
 
 
@@ -109,10 +84,7 @@ def matmul_dp2mp2(init_x, init_y, trans_x, trans_y):
         y = init_y(trans_y)
         x.stop_gradient = False
         y.stop_gradient = False
-        out = paddle.fluid.layers.matmul(x,
-                                         y,
-                                         transpose_x=trans_x,
-                                         transpose_y=trans_y)
+        out = paddle.matmul(x, y, transpose_x=trans_x, transpose_y=trans_y)
         loss = paddle.mean(out)
     return main_program, start_program, loss
 
@@ -132,8 +104,8 @@ def matmulv2_dp2mp2(init_x, init_y, trans_x, trans_y):
 
 def parallelizer(program_func, *args, **kwargs):
     from paddle.distributed.auto_parallel.completion import Completer
-    from paddle.distributed.auto_parallel.partitioner import Partitioner
     from paddle.distributed.auto_parallel.dist_context import DistributedContext
+    from paddle.distributed.auto_parallel.partitioner import Partitioner
 
     main_program, start_program, loss = program_func(*args, **kwargs)
 
@@ -148,77 +120,89 @@ def parallelizer(program_func, *args, **kwargs):
     dist_context.block_state.parse_backward_blocks(main_program)
 
     partitioner = Partitioner(dist_context, 0)
-    dist_main_prog, _, _ = partitioner.partition(main_program, start_program,
-                                                 [])
+    dist_main_prog, _, _ = partitioner.partition(
+        main_program, start_program, []
+    )
 
     return dist_main_prog, dist_context
 
 
 class TestDistMatmul(unittest.TestCase):
-
     def check_col_program(self, main_program, dist_ctx):
         # [0, -1] * [-1, 1] --> [0, 1]
         ref_ops = [
-            "c_identity", "matmul", "reduce_mean", "fill_constant",
-            "reduce_mean_grad", "matmul_grad"
+            "c_identity",
+            "matmul_v2",
+            "reduce_mean",
+            "fill_constant",
+            "reduce_mean_grad",
+            "matmul_v2_grad",
         ]
         ops = []
         block = main_program.global_block()
         for op in block.ops:
             ops.append(op.type)
-            if op.type == "matmul":
+            if op.type == "matmul_v2":
                 out_name = op.output('Out')[0]
                 out_var = block.vars[out_name]
                 op_dist_attr = dist_ctx.get_op_dist_attr_for_program(op)
                 assert op_dist_attr.impl_idx == 0
-                assert op_dist_attr.impl_type == "matmul"
+                assert op_dist_attr.impl_type == "matmul_v2"
                 out_dims_mapping = op_dist_attr.get_output_dims_mapping(
-                    out_name)
+                    out_name
+                )
                 assert out_dims_mapping == [0, 1]
                 tensor_dist_attr = dist_ctx.get_tensor_dist_attr_for_program(
-                    out_var)
+                    out_var
+                )
                 assert tensor_dist_attr.dims_mapping == [0, 1]
-            if op.type == "matmul_grad":
+            if op.type == "matmul_v2_grad":
                 op_dist_attr = dist_ctx.get_op_dist_attr_for_program(op)
                 assert op_dist_attr.impl_idx == 0
-                assert op_dist_attr.impl_type == "matmul"
+                assert op_dist_attr.impl_type == "matmul_v2"
 
         assert ops == ref_ops
 
     def check_row_program(self, main_program, dist_ctx):
         # [0, -1, 1] * [1, -1] --> [0, -1, -1]
         ref_ops = [
-            "matmul", "c_allreduce_sum", "reduce_mean", "fill_constant",
-            "reduce_mean_grad", "matmul_grad"
+            "matmul_v2",
+            "c_allreduce_sum",
+            "reduce_mean",
+            "fill_constant",
+            "reduce_mean_grad",
+            "matmul_v2_grad",
         ]
         ops = []
         block = main_program.global_block()
         for op in block.ops:
             ops.append(op.type)
-            if op.type == "matmul":
+            if op.type == "matmul_v2":
                 out_name = op.output('Out')[0]
                 out_var = block.vars[out_name]
                 op_dist_attr = dist_ctx.get_op_dist_attr_for_program(op)
                 assert op_dist_attr.impl_idx == 1
-                assert op_dist_attr.impl_type == "matmul"
+                assert op_dist_attr.impl_type == "matmul_v2"
                 out_dims_mapping = op_dist_attr.get_output_dims_mapping(
-                    out_name)
+                    out_name
+                )
                 assert out_dims_mapping == [0, -1, -1]
                 tensor_dist_attr = dist_ctx.get_tensor_dist_attr_for_program(
-                    out_var)
+                    out_var
+                )
                 assert tensor_dist_attr.dims_mapping == [0, -1, -1]
-            if op.type == "matmul_grad":
+            if op.type == "matmul_v2_grad":
                 op_dist_attr = dist_ctx.get_op_dist_attr_for_program(op)
                 assert op_dist_attr.impl_idx == 1
-                assert op_dist_attr.impl_type == "matmul"
+                assert op_dist_attr.impl_type == "matmul_v2"
         assert ops == ref_ops
 
 
 class TestDistMatmulCol(TestDistMatmul):
-
     def init(self, trans_x, trans_y):
-        dist_main_prog, dist_ctx = parallelizer(matmul_dp2mp2, init_x_col,
-                                                init_y_col, trans_x, trans_y)
+        dist_main_prog, dist_ctx = parallelizer(
+            matmul_dp2mp2, init_x_col, init_y_col, trans_x, trans_y
+        )
         return dist_main_prog, dist_ctx
 
     def test_matmul_col(self):
@@ -239,10 +223,10 @@ class TestDistMatmulCol(TestDistMatmul):
 
 
 class TestDistMatmulRow(TestDistMatmul):
-
     def init(self, trans_x, trans_y):
-        dist_main_prog, dist_ctx = parallelizer(matmul_dp2mp2, init_x_row,
-                                                init_y_row, trans_x, trans_y)
+        dist_main_prog, dist_ctx = parallelizer(
+            matmul_dp2mp2, init_x_row, init_y_row, trans_x, trans_y
+        )
         return dist_main_prog, dist_ctx
 
     def test_matmul_row(self):
@@ -263,12 +247,15 @@ class TestDistMatmulRow(TestDistMatmul):
 
 
 class TestDistMatmulV2(unittest.TestCase):
-
     def check_col_program(self, main_program, dist_ctx):
         # [0, -1] * [-1, 1] --> [0, 1]
         ref_ops = [
-            "c_identity", "matmul_v2", "reduce_mean", "fill_constant",
-            "reduce_mean_grad", "matmul_v2_grad"
+            "c_identity",
+            "matmul_v2",
+            "reduce_mean",
+            "fill_constant",
+            "reduce_mean_grad",
+            "matmul_v2_grad",
         ]
         ops = []
         block = main_program.global_block()
@@ -281,10 +268,12 @@ class TestDistMatmulV2(unittest.TestCase):
                 assert op_dist_attr.impl_idx == 0
                 assert op_dist_attr.impl_type == "matmul_v2"
                 out_dims_mapping = op_dist_attr.get_output_dims_mapping(
-                    out_name)
+                    out_name
+                )
                 assert out_dims_mapping == [0, 1]
                 tensor_dist_attr = dist_ctx.get_tensor_dist_attr_for_program(
-                    out_var)
+                    out_var
+                )
                 assert tensor_dist_attr.dims_mapping == [0, 1]
             if op.type == "matmul_v2_grad":
                 op_dist_attr = dist_ctx.get_op_dist_attr_for_program(op)
@@ -296,8 +285,12 @@ class TestDistMatmulV2(unittest.TestCase):
     def check_row_program(self, main_program, dist_ctx):
         # [0, -1, 1] * [1, -1] --> [0, -1, -1]
         ref_ops = [
-            "matmul_v2", "c_allreduce_sum", "reduce_mean", "fill_constant",
-            "reduce_mean_grad", "matmul_v2_grad"
+            "matmul_v2",
+            "c_allreduce_sum",
+            "reduce_mean",
+            "fill_constant",
+            "reduce_mean_grad",
+            "matmul_v2_grad",
         ]
         ops = []
         block = main_program.global_block()
@@ -310,10 +303,12 @@ class TestDistMatmulV2(unittest.TestCase):
                 assert op_dist_attr.impl_idx == 1
                 assert op_dist_attr.impl_type == "matmul_v2"
                 out_dims_mapping = op_dist_attr.get_output_dims_mapping(
-                    out_name)
+                    out_name
+                )
                 assert out_dims_mapping == [0, -1, -1]
                 tensor_dist_attr = dist_ctx.get_tensor_dist_attr_for_program(
-                    out_var)
+                    out_var
+                )
                 assert tensor_dist_attr.dims_mapping == [0, -1, -1]
             if op.type == "matmul_v2_grad":
                 op_dist_attr = dist_ctx.get_op_dist_attr_for_program(op)
@@ -323,10 +318,10 @@ class TestDistMatmulV2(unittest.TestCase):
 
 
 class TestDistMatmulV2Col(TestDistMatmulV2):
-
     def init(self, trans_x, trans_y):
-        dist_main_prog, dist_ctx = parallelizer(matmulv2_dp2mp2, init_x_col,
-                                                init_y_col, trans_x, trans_y)
+        dist_main_prog, dist_ctx = parallelizer(
+            matmulv2_dp2mp2, init_x_col, init_y_col, trans_x, trans_y
+        )
         return dist_main_prog, dist_ctx
 
     def test_matmul_col(self):
@@ -347,10 +342,10 @@ class TestDistMatmulV2Col(TestDistMatmulV2):
 
 
 class TestDistMatmulV2Row(TestDistMatmulV2):
-
     def init(self, trans_x, trans_y):
-        dist_main_prog, dist_ctx = parallelizer(matmulv2_dp2mp2, init_x_row,
-                                                init_y_row, trans_x, trans_y)
+        dist_main_prog, dist_ctx = parallelizer(
+            matmulv2_dp2mp2, init_x_row, init_y_row, trans_x, trans_y
+        )
         return dist_main_prog, dist_ctx
 
     def test_matmul_row(self):

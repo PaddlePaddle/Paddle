@@ -42,14 +42,14 @@ class TransferLayoutOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     // kernel's device type is decided by input tensor place
     auto *in = ctx.InputVar("X");
     auto *in_tensor = framework::GetLoDTensorOrSelectedRowsValueFromVar(*in);
     // NOTE(zhiqiu): hot fix, allow empty tensor of kMKLDNN layout to run this
     // op
-    if (in_tensor->layout() != DataLayout::kMKLDNN) {
+    if (in_tensor->layout() != DataLayout::ONEDNN) {
       PADDLE_ENFORCE_EQ(in_tensor->IsInitialized(),
                         true,
                         platform::errors::PreconditionNotMet(
@@ -59,16 +59,16 @@ class TransferLayoutOp : public framework::OperatorWithKernel {
         in_tensor->IsInitialized() ? in_tensor->place() : platform::CPUPlace();
 
     // dtype is not important
-    return framework::OpKernelType(framework::proto::VarType::FP32, place);
+    return phi::KernelKey(framework::proto::VarType::FP32, place);
   }
 
-  framework::OpKernelType GetKernelTypeForVar(
+  phi::KernelKey GetKernelTypeForVar(
       const std::string &var_name,
-      const framework::Tensor &tensor,
-      const framework::OpKernelType &expected_kernel_type) const override {
-    return framework::OpKernelType(expected_kernel_type.data_type_,
-                                   expected_kernel_type.place_,
-                                   expected_kernel_type.data_layout_);
+      const phi::DenseTensor &tensor,
+      const phi::KernelKey &expected_kernel_type) const override {
+    return phi::KernelKey(phi::Backend::ALL_BACKEND,
+                          expected_kernel_type.layout(),
+                          expected_kernel_type.dtype());
   }
 };
 
@@ -96,8 +96,9 @@ class TransferLayoutKernel {
 class TransferLayoutOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("X", "(LoDTensor) The input Tensor");
-    AddOutput("Out", "(LoDTensor) The Output Tensor with desired layout");
+    AddInput("X", "(phi::DenseTensor) The input Tensor");
+    AddOutput("Out",
+              "(phi::DenseTensor) The Output Tensor with desired layout");
     // NOTE(zhiqiu): in most case, the src_layout is not needed, the op can use
     // the layout
     // of input X. However, in some mkldnn kernel, the src layout computed by

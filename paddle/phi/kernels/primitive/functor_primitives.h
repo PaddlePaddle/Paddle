@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include "paddle/fluid/operators/amp/fp16_type_traits.h"
+#include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/kernels/funcs/eigen/extensions.h"
@@ -79,7 +79,7 @@ struct IdentityFunctor {
 template <typename Tx, typename Ty = Tx>
 struct DivideFunctor {
  private:
-  using MPType = typename ::paddle::operators::details::MPTypeTrait<Tx>::Type;
+  using MPType = typename ::phi::dtype::MPTypeTrait<Tx>::Type;
 
  public:
   HOSTDEVICE inline DivideFunctor() { n_inv = static_cast<MPType>(1.0f); }

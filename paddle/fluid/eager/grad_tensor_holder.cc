@@ -99,6 +99,11 @@ void GradTensorHolder::add(size_t slot_id,
                            size_t rank,
                            const paddle::experimental::Tensor& t,
                            bool create_graph) {
+  if (!t.initialized()) {
+    VLOG(3) << "No need to do accumulate for uninitialized t.";
+    return;
+  }  // TODO(jiabin): Remove this when we fix all kernel.
+
   PADDLE_ENFORCE(slot_id < buffer_.size(),
                  paddle::platform::errors::Fatal(
                      "Invalid slot_id for GradTensorHolder::add() "
@@ -143,7 +148,7 @@ void GradTensorHolder::add(size_t slot_id,
     if (t.is_dense_tensor()) {
       if (buffer_tensor.is_dense_tensor()) {
         if (create_graph || t.is_custom_device()) {
-          buffer_tensor = add_dygraph_function(t, buffer_tensor);
+          buffer_tensor = add_ad_func(t, buffer_tensor);
         } else {
           paddle::imperative::TensorAdd<paddle::experimental::Tensor>(
               t, &buffer_tensor);
@@ -170,7 +175,7 @@ void GradTensorHolder::add(size_t slot_id,
             std::make_shared<phi::DenseTensor>(
                 buffer_sparse->non_zero_elements()));
         if (create_graph || t.is_custom_device()) {
-          buffer_values = add_dygraph_function(t_values, buffer_values);
+          buffer_values = add_ad_func(t_values, buffer_values);
         } else {
           paddle::imperative::TensorAdd<paddle::experimental::Tensor>(
               t_values, &buffer_values);

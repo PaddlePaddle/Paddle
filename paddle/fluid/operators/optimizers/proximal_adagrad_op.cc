@@ -17,7 +17,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
 class ProximalAdagradOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -73,10 +72,10 @@ class ProximalAdagradOp : public framework::OperatorWithKernel {
     ctx->SetOutputDim("ParamOut", param_dim);
     ctx->SetOutputDim("MomentOut", param_dim);
   }
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "Param"), ctx.GetPlace());
+    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "Param"),
+                          ctx.GetPlace());
   }
 };
 
@@ -119,9 +118,9 @@ param = sign(prox\_param) / (1 + learning\_rate * l2) *
         \max(|prox\_param| - learning\_rate * l1 , 0)
 $$
 
-The paper that proposed Proximal GD: 
+The paper that proposed Proximal GD:
 (http://papers.nips.cc/paper/3793-efficient-learning-using-forward-backward-splitting.pdf)
-Here, we use the adagrad learning rate as specified here: 
+Here, we use the adagrad learning rate as specified here:
 (http://www.jmlr.org/papers/volume12/duchi11a/duchi11a.pdf)
 
 )DOC");

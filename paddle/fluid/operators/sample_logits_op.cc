@@ -102,7 +102,7 @@ class SampleLogitsOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
   """
   Computes sampled output training logits and labels suitable for implementing
-  sampled softmax.        
+  sampled softmax.
   """
 
 )DOC");
@@ -177,12 +177,10 @@ class SampleLogitsOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "Logits");
-    framework::OpKernelType kt =
-        framework::OpKernelType(data_type, ctx.device_context());
-    return kt;
+    return phi::KernelKey(data_type, ctx.GetPlace());
   }
 };
 
@@ -234,13 +232,11 @@ class SampleLogitsOpGrad : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto data_type = OperatorWithKernel::IndicateVarDataType(
         ctx, framework::GradVarName("SampledLogits"));
-    framework::OpKernelType kt =
-        framework::OpKernelType(data_type, ctx.device_context());
-    return kt;
+    return phi::KernelKey(data_type, ctx.GetPlace());
   }
 };
 

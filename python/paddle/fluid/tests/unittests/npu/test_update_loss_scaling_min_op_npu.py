@@ -29,7 +29,6 @@ SEED = 2021
 
 
 class TestUpdateLossScalingOpMinLossScalingBad(TestUpdateLossScalingOpBad):
-
     def setUp(self):
         self.set_npu()
         self.op_type = "update_loss_scaling"
@@ -48,14 +47,14 @@ class TestUpdateLossScalingOpMinLossScalingBad(TestUpdateLossScalingOpBad):
             'FoundInfinite': found_inf,
             'PrevLossScaling': self.prev_loss_scaling,
             'InGoodSteps': self.num_good_steps,
-            'InBadSteps': self.num_bad_steps
+            'InBadSteps': self.num_bad_steps,
         }
 
         self.outputs = {
             'Out': [('out0', np.zeros_like(x))],
             'LossScaling': np.array([1639.0]).astype(self.dtype),
             'OutGoodSteps': self.zero_steps,
-            'OutBadSteps': self.zero_steps
+            'OutBadSteps': self.zero_steps,
         }
 
     def init(self):

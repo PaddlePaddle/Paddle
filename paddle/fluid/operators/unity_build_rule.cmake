@@ -27,7 +27,6 @@ register_unity_group(
   bilateral_slice_op.cc)
 register_unity_group(
   cc
-  mkldnn/batch_norm_mkldnn_op.cc
   bilinear_tensor_product_op.cc
   bmm_op.cc
   bpr_loss_op.cc
@@ -108,7 +107,6 @@ register_unity_group(
 register_unity_group(
   cc
   flatten_op.cc
-  flip_op.cc
   fsp_op.cc
   gather_nd_op.cc
   gather_op.cc
@@ -363,9 +361,7 @@ register_unity_group(
   lstm_op.cu.cc
   rnn_op.cu.cc
   split_op.cu.cc
-  activation_cudnn_op.cu.cc
   assign_value_op.cu.cc
-  merge_selected_rows_op.cu.cc
   run_program_op.cu.cc
   warpctc_op.cu.cc)
 register_unity_group(
@@ -424,7 +420,6 @@ register_unity_group(cu expand_v2_op.cu fake_dequantize_op.cu
                      fill_any_like_op.cu)
 register_unity_group(
   cu
-  flip_op.cu
   fsp_op.cu
   gather_nd_op.cu
   gather_op.cu
@@ -469,7 +464,6 @@ register_unity_group(
   lookup_table_v2_op.cu
   margin_rank_loss_op.cu
   masked_select_op.cu
-  merge_selected_rows_op.cu
   lstmp_op.cu
   shuffle_channel_op.cu
   softmax_cudnn_op.cu

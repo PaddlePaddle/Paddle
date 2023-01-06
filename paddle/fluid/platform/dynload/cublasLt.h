@@ -40,26 +40,28 @@ namespace dynload {
 
 // APIs available after CUDA 10.1
 // #if CUDA_VERSION >= 10100
-#define CUBLASLT_BLAS_ROUTINE_EACH(__macro)      \
-  __macro(cublasLtCreate);                       \
-  __macro(cublasLtDestroy);                      \
-  __macro(cublasLtMatmul);                       \
-  __macro(cublasLtMatmulDescCreate);             \
-  __macro(cublasLtMatmulDescDestroy);            \
-  __macro(cublasLtMatmulDescSetAttribute);       \
-  __macro(cublasLtMatmulDescGetAttribute);       \
-  __macro(cublasLtMatrixLayoutCreate);           \
-  __macro(cublasLtMatrixLayoutDestroy);          \
-  __macro(cublasLtMatrixLayoutSetAttribute);     \
-  __macro(cublasLtMatrixLayoutGetAttribute);     \
-  __macro(cublasLtMatmulPreferenceCreate);       \
-  __macro(cublasLtMatmulPreferenceDestroy);      \
-  __macro(cublasLtMatmulPreferenceSetAttribute); \
-  __macro(cublasLtMatmulAlgoGetHeuristic);       \
-  __macro(cublasLtMatrixTransform);              \
-  __macro(cublasLtMatrixTransformDescCreate);    \
-  __macro(cublasLtMatrixTransformDescDestroy);   \
-  __macro(cublasLtMatrixTransformDescSetAttribute);
+#define CUBLASLT_BLAS_ROUTINE_EACH(__macro)         \
+  __macro(cublasLtCreate);                          \
+  __macro(cublasLtDestroy);                         \
+  __macro(cublasLtMatmul);                          \
+  __macro(cublasLtMatmulDescCreate);                \
+  __macro(cublasLtMatmulDescDestroy);               \
+  __macro(cublasLtMatmulDescSetAttribute);          \
+  __macro(cublasLtMatmulDescGetAttribute);          \
+  __macro(cublasLtMatrixLayoutCreate);              \
+  __macro(cublasLtMatrixLayoutDestroy);             \
+  __macro(cublasLtMatrixLayoutSetAttribute);        \
+  __macro(cublasLtMatrixLayoutGetAttribute);        \
+  __macro(cublasLtMatmulPreferenceCreate);          \
+  __macro(cublasLtMatmulPreferenceDestroy);         \
+  __macro(cublasLtMatmulPreferenceSetAttribute);    \
+  __macro(cublasLtMatmulAlgoGetHeuristic);          \
+  __macro(cublasLtMatrixTransform);                 \
+  __macro(cublasLtMatrixTransformDescCreate);       \
+  __macro(cublasLtMatrixTransformDescDestroy);      \
+  __macro(cublasLtMatrixTransformDescSetAttribute); \
+  __macro(cublasLtMatmulAlgoInit);                  \
+  __macro(cublasLtMatmulAlgoConfigSetAttribute);
 
 CUBLASLT_BLAS_ROUTINE_EACH(PLATFORM_DECLARE_DYNAMIC_LOAD_CUBLASLT_WRAP)
 // #endif

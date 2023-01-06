@@ -16,25 +16,23 @@ limitations under the License. */
 #include <string>
 
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/math/cross_entropy.h"
-#include "paddle/fluid/operators/math/softmax.h"
 #include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 #include "paddle/phi/kernels/funcs/axis_utils.h"
+#include "paddle/phi/kernels/funcs/cross_entropy.h"
+#include "paddle/phi/kernels/funcs/softmax.h"
 
 namespace paddle {
 namespace operators {
-
-using Tensor = framework::Tensor;
 
 template <typename DeviceContext, typename T>
 class SoftmaxWithCrossEntropyNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* logits = ctx.Input<Tensor>("Logits");
-    auto* labels = ctx.Input<Tensor>("Label");
-    auto* softmax = ctx.Output<Tensor>("Softmax");
-    auto* loss = ctx.Output<Tensor>("Loss");
-    auto* backprop = ctx.Output<Tensor>("Backprop");
+    auto* logits = ctx.Input<phi::DenseTensor>("Logits");
+    auto* labels = ctx.Input<phi::DenseTensor>("Label");
+    auto* softmax = ctx.Output<phi::DenseTensor>("Softmax");
+    auto* loss = ctx.Output<phi::DenseTensor>("Loss");
+    auto* backprop = ctx.Output<phi::DenseTensor>("Backprop");
     auto soft_label = ctx.Attr<bool>("soft_label");
     PADDLE_ENFORCE_EQ(soft_label,
                       false,
@@ -61,7 +59,7 @@ class SoftmaxWithCrossEntropyNPUKernel : public framework::OpKernel<T> {
     backprop->mutable_data<T>(ctx.GetPlace());
     softmax->mutable_data<T>(ctx.GetPlace());
 
-    Tensor logits_2d, labels_1d, loss_1d, backprop_2d, softmax_2d;
+    phi::DenseTensor logits_2d, labels_1d, loss_1d, backprop_2d, softmax_2d;
     logits_2d.ShareDataWith(*logits).Resize({n, d});
     labels_1d.ShareDataWith(*labels).Resize({n});
     loss_1d.ShareDataWith(*loss).Resize({n});
@@ -93,9 +91,11 @@ template <typename DeviceContext, typename T>
 class SoftmaxWithCrossEntropyGradNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* backprop = ctx.Input<Tensor>("Backprop");
-    auto* loss_grad = ctx.Input<Tensor>(framework::GradVarName("Loss"));
-    auto* logits_grad = ctx.Output<Tensor>(framework::GradVarName("Logits"));
+    auto* backprop = ctx.Input<phi::DenseTensor>("Backprop");
+    auto* loss_grad =
+        ctx.Input<phi::DenseTensor>(framework::GradVarName("Loss"));
+    auto* logits_grad =
+        ctx.Output<phi::DenseTensor>(framework::GradVarName("Logits"));
 
     PADDLE_ENFORCE_NOT_NULL(backprop,
                             platform::errors::PreconditionNotMet(
@@ -108,7 +108,7 @@ class SoftmaxWithCrossEntropyGradNPUKernel : public framework::OpKernel<T> {
     const int n = phi::funcs::SizeToAxis(axis, logits_grad->dims());
     const int d = phi::funcs::SizeFromAxis(axis, logits_grad->dims());
 
-    Tensor logits_grad_2d, loss_grad_1d, backprop_2d;
+    phi::DenseTensor logits_grad_2d, loss_grad_1d, backprop_2d;
 
     logits_grad_2d.ShareDataWith(*logits_grad).Resize({n, d});
     loss_grad_1d.ShareDataWith(*loss_grad).Resize({n});

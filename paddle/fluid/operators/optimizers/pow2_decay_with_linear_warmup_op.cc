@@ -31,11 +31,11 @@ class Pow2DecayWithLinearWarmupOp : public framework::OperatorWithKernel {
     ctx->SetOutputDim("StepOut", dim);
   }
 
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     auto data_type =
         OperatorWithKernel::IndicateVarDataType(ctx, "LearningRate");
-    return framework::OpKernelType(data_type, ctx.device_context());
+    return phi::KernelKey(data_type, ctx.GetPlace());
   }
 };
 
@@ -62,11 +62,11 @@ class Pow2DecayWithLinearWarmupOpMaker
     AddComment(R"DOC(
 The Pow2DecayWithLinearWarmup learning rate scheduler.
 
-When step_num < warmup_steps, lr = base_lr * step_num / warmup_steps 
+When step_num < warmup_steps, lr = base_lr * step_num / warmup_steps
 
-When warmup_steps <= step_num <= total_steps, 
-   factor = 1 - (step_num - warmup_steps) / (total_steps - warmup_steps) 
-   lr = (base_lr - end_lr) * factor * factor + end_lr 
+When warmup_steps <= step_num <= total_steps,
+   factor = 1 - (step_num - warmup_steps) / (total_steps - warmup_steps)
+   lr = (base_lr - end_lr) * factor * factor + end_lr
 
 When step_num > total_steps, lr = end_lr
 

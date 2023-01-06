@@ -12,21 +12,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle.fluid as fluid
 import unittest
+
 import numpy as np
-import six
+
 import paddle
-from paddle.fluid.framework import _test_eager_guard
+import paddle.fluid as fluid
 
 
 class TensorFillDiagonal_Test(unittest.TestCase):
-
-    def func_dim2_normal(self):
-        expected_np = np.array([[1, 2, 2], [2, 1, 2], [2, 2,
-                                                       1]]).astype('float32')
-        expected_grad = np.array([[0, 1, 1], [1, 0, 1], [1, 1,
-                                                         0]]).astype('float32')
+    def test_dim2_normal(self):
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
+        expected_np = np.array([[1, 2, 2], [2, 1, 2], [2, 2, 1]]).astype(
+            'float32'
+        )
+        expected_grad = np.array([[0, 1, 1], [1, 0, 1], [1, 1, 0]]).astype(
+            'float32'
+        )
 
         typelist = ['float32', 'float64', 'int32', 'int64']
         places = [fluid.CPUPlace()]
@@ -47,23 +49,22 @@ class TensorFillDiagonal_Test(unittest.TestCase):
                 loss.backward()
 
                 self.assertEqual(
-                    (y.numpy().astype('float32') == expected_np).all(), True)
+                    (y.numpy().astype('float32') == expected_np).all(), True
+                )
                 self.assertEqual(
                     (y.grad.numpy().astype('float32') == expected_grad).all(),
-                    True)
-
-    def test_dim2_normal(self):
-        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
-        with _test_eager_guard():
-            self.func_dim2_normal()
-        self.func_dim2_normal()
+                    True,
+                )
         fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
-    def func_offset(self):
-        expected_np = np.array([[2, 2, 1], [2, 2, 2], [2, 2,
-                                                       2]]).astype('float32')
-        expected_grad = np.array([[1, 1, 0], [1, 1, 1], [1, 1,
-                                                         1]]).astype('float32')
+    def test_offset(self):
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
+        expected_np = np.array([[2, 2, 1], [2, 2, 2], [2, 2, 2]]).astype(
+            'float32'
+        )
+        expected_grad = np.array([[1, 1, 0], [1, 1, 1], [1, 1, 1]]).astype(
+            'float32'
+        )
 
         typelist = ['float32', 'float64', 'int32', 'int64']
         places = [fluid.CPUPlace()]
@@ -84,21 +85,18 @@ class TensorFillDiagonal_Test(unittest.TestCase):
                 loss.backward()
 
                 self.assertEqual(
-                    (y.numpy().astype('float32') == expected_np).all(), True)
+                    (y.numpy().astype('float32') == expected_np).all(), True
+                )
                 self.assertEqual(
                     (y.grad.numpy().astype('float32') == expected_grad).all(),
-                    True)
-
-    def test_offset(self):
-        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
-        with _test_eager_guard():
-            self.func_offset()
-        self.func_offset()
+                    True,
+                )
         fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
-    def func_bool(self):
-        expected_np = np.array([[False, True, True], [True, False, True],
-                                [True, True, False]])
+    def test_bool(self):
+        expected_np = np.array(
+            [[False, True, True], [True, False, True], [True, True, False]]
+        )
 
         typelist = ['bool']
         places = [fluid.CPUPlace()]
@@ -117,18 +115,30 @@ class TensorFillDiagonal_Test(unittest.TestCase):
 
                 self.assertEqual((x.numpy() == expected_np).all(), True)
 
-    def test_bool(self):
-        with _test_eager_guard():
-            self.func_bool()
-        self.func_bool()
-
-    def func_dim2_unnormal_wrap(self):
-        expected_np = np.array([[1, 2, 2], [2, 1, 2], [2, 2, 1], [2, 2, 2],
-                                [1, 2, 2], [2, 1, 2], [2, 2,
-                                                       1]]).astype('float32')
-        expected_grad = np.array([[0, 1, 1], [1, 0, 1], [1, 1, 0], [1, 1, 1],
-                                  [0, 1, 1], [1, 0, 1], [1, 1,
-                                                         0]]).astype('float32')
+    def test_dim2_unnormal_wrap(self):
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
+        expected_np = np.array(
+            [
+                [1, 2, 2],
+                [2, 1, 2],
+                [2, 2, 1],
+                [2, 2, 2],
+                [1, 2, 2],
+                [2, 1, 2],
+                [2, 2, 1],
+            ]
+        ).astype('float32')
+        expected_grad = np.array(
+            [
+                [0, 1, 1],
+                [1, 0, 1],
+                [1, 1, 0],
+                [1, 1, 1],
+                [0, 1, 1],
+                [1, 0, 1],
+                [1, 1, 0],
+            ]
+        ).astype('float32')
 
         typelist = ['float32', 'float64', 'int32', 'int64']
         places = [fluid.CPUPlace()]
@@ -149,25 +159,38 @@ class TensorFillDiagonal_Test(unittest.TestCase):
                 loss.backward()
 
                 self.assertEqual(
-                    (y.numpy().astype('float32') == expected_np).all(), True)
+                    (y.numpy().astype('float32') == expected_np).all(), True
+                )
                 self.assertEqual(
                     (y.grad.numpy().astype('float32') == expected_grad).all(),
-                    True)
-
-    def test_dim2_unnormal_wrap(self):
-        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
-        with _test_eager_guard():
-            self.func_dim2_unnormal_wrap()
-        self.func_dim2_unnormal_wrap()
+                    True,
+                )
         fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
-    def func_dim2_unnormal_unwrap(self):
-        expected_np = np.array([[1, 2, 2], [2, 1, 2], [2, 2, 1], [2, 2, 2],
-                                [2, 2, 2], [2, 2, 2], [2, 2,
-                                                       2]]).astype('float32')
-        expected_grad = np.array([[0, 1, 1], [1, 0, 1], [1, 1, 0], [1, 1, 1],
-                                  [1, 1, 1], [1, 1, 1], [1, 1,
-                                                         1]]).astype('float32')
+    def test_dim2_unnormal_unwrap(self):
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
+        expected_np = np.array(
+            [
+                [1, 2, 2],
+                [2, 1, 2],
+                [2, 2, 1],
+                [2, 2, 2],
+                [2, 2, 2],
+                [2, 2, 2],
+                [2, 2, 2],
+            ]
+        ).astype('float32')
+        expected_grad = np.array(
+            [
+                [0, 1, 1],
+                [1, 0, 1],
+                [1, 1, 0],
+                [1, 1, 1],
+                [1, 1, 1],
+                [1, 1, 1],
+                [1, 1, 1],
+            ]
+        ).astype('float32')
 
         typelist = ['float32', 'float64', 'int32', 'int64']
         places = [fluid.CPUPlace()]
@@ -188,27 +211,30 @@ class TensorFillDiagonal_Test(unittest.TestCase):
                 loss.backward()
 
                 self.assertEqual(
-                    (y.numpy().astype('float32') == expected_np).all(), True)
+                    (y.numpy().astype('float32') == expected_np).all(), True
+                )
                 self.assertEqual(
                     (y.grad.numpy().astype('float32') == expected_grad).all(),
-                    True)
-
-    def test_dim2_unnormal_unwrap(self):
-        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
-        with _test_eager_guard():
-            self.func_dim2_unnormal_unwrap()
-        self.func_dim2_unnormal_unwrap()
+                    True,
+                )
         fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
-    def func_dim_larger2_normal(self):
-        expected_np = np.array([[[1, 2, 2], [2, 2, 2], [2, 2, 2]],
-                                [[2, 2, 2], [2, 1, 2], [2, 2, 2]],
-                                [[2, 2, 2], [2, 2, 2], [2, 2,
-                                                        1]]]).astype('float32')
-        expected_grad = np.array([[[0, 1, 1], [1, 1, 1], [1, 1, 1]],
-                                  [[1, 1, 1], [1, 0, 1], [1, 1, 1]],
-                                  [[1, 1, 1], [1, 1, 1],
-                                   [1, 1, 0]]]).astype('float32')
+    def test_dim_larger2_normal(self):
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
+        expected_np = np.array(
+            [
+                [[1, 2, 2], [2, 2, 2], [2, 2, 2]],
+                [[2, 2, 2], [2, 1, 2], [2, 2, 2]],
+                [[2, 2, 2], [2, 2, 2], [2, 2, 1]],
+            ]
+        ).astype('float32')
+        expected_grad = np.array(
+            [
+                [[0, 1, 1], [1, 1, 1], [1, 1, 1]],
+                [[1, 1, 1], [1, 0, 1], [1, 1, 1]],
+                [[1, 1, 1], [1, 1, 1], [1, 1, 0]],
+            ]
+        ).astype('float32')
 
         typelist = ['float32', 'float64', 'int32', 'int64']
         places = [fluid.CPUPlace()]
@@ -229,16 +255,12 @@ class TensorFillDiagonal_Test(unittest.TestCase):
                 loss.backward()
 
                 self.assertEqual(
-                    (y.numpy().astype('float32') == expected_np).all(), True)
+                    (y.numpy().astype('float32') == expected_np).all(), True
+                )
                 self.assertEqual(
                     (y.grad.numpy().astype('float32') == expected_grad).all(),
-                    True)
-
-    def test_dim_larger2_normal(self):
-        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
-        with _test_eager_guard():
-            self.func_dim_larger2_normal()
-        self.func_dim_larger2_normal()
+                    True,
+                )
         fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
 

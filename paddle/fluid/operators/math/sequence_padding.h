@@ -82,8 +82,8 @@ inline static void CheckDims(const framework::DDim& seq_tensor_dims,
 }
 
 /*
- * \brief   Padding/Unpadding LoDTensor to/from normal Tensor of the shape
- *          [max_sequence_length, num_sequences, sequence_width].
+ * \brief   Padding/Unpadding phi::DenseTensor to/from normal Tensor of the
+ * shape [max_sequence_length, num_sequences, sequence_width].
  *
  *  Padding sequence:
  *        padding[i] = seq[lod[level][i]]
@@ -97,13 +97,11 @@ inline static void CheckDims(const framework::DDim& seq_tensor_dims,
  *    padding (s0, s1, s2, s3; s0, s1, s2, 0; s0, 0, s2, 0; s0, 0, 0, 0)
  *
  * \param context       device context of this functor.
- * \param seq           LoDTensor which is stored in sequence format, the shape
- *                      is [total_sequence_length, sequence_width] where
- *                      total_sequence_length is the sum of all sequences'
- *                      length.
- * \param padding       Tensor which is padded to the same length, the shape is
- *                      [max_sequence_length, num_sequences, sequence_width].
- * \param norm_by_times whether dividing sequence's length.
+ * \param seq           phi::DenseTensor which is stored in sequence format, the
+ * shape is [total_sequence_length, sequence_width] where total_sequence_length
+ * is the sum of all sequences' length. \param padding       Tensor which is
+ * padded to the same length, the shape is [max_sequence_length, num_sequences,
+ * sequence_width]. \param norm_by_times whether dividing sequence's length.
  *
  * \note  transposition is also done in this functor.
  */
@@ -111,9 +109,9 @@ template <typename DeviceContext, typename T>
 class PaddingLoDTensorFunctor {
  public:
   void operator()(const DeviceContext& context,
-                  const framework::LoDTensor& seq_tensor,
-                  framework::LoDTensor* pad_tensor,
-                  const framework::LoDTensor& pad_value,
+                  const phi::DenseTensor& seq_tensor,
+                  phi::DenseTensor* pad_tensor,
+                  const phi::DenseTensor& pad_value,
                   int pad_seq_len = -1,
                   int lod_level = 0,
                   bool norm_by_times = false,
@@ -124,8 +122,8 @@ template <typename DeviceContext, typename T>
 class UnpaddingLoDTensorFunctor {
  public:
   void operator()(const DeviceContext& context,
-                  const framework::LoDTensor& pad_tensor,
-                  framework::LoDTensor* seq_tensor,
+                  const phi::DenseTensor& pad_tensor,
+                  phi::DenseTensor* seq_tensor,
                   int pad_seq_len = -1,
                   int lod_level = 0,
                   bool norm_by_times = false,

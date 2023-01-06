@@ -28,12 +28,13 @@ template <typename DeviceContext,
           bool kNoNeedBufferX = false>
 class ReduceSumGradKernel : public framework::OpKernel<T> {
  public:
-  void ComputeFromInput(const Tensor* input2,
+  void ComputeFromInput(const phi::DenseTensor* input2,
                         const framework::ExecutionContext& context) const {
     auto dims = context.Attr<std::vector<int>>("dim");
-    auto* input0 = context.Input<Tensor>("X");
+    auto* input0 = context.Input<phi::DenseTensor>("X");
 
-    auto* output = context.Output<Tensor>(framework::GradVarName("X"));
+    auto* output =
+        context.Output<phi::DenseTensor>(framework::GradVarName("X"));
     output->mutable_data<T>(context.GetPlace());
     const auto* input2_d = input2->data<T>();
     auto* output_d = output->data<T>();
@@ -79,19 +80,19 @@ class ReduceSumGradKernel : public framework::OpKernel<T> {
       int in_dtype = context.Attr<int>("out_dtype");
 
       if (in_dtype >= 0) {
-        Tensor tmp_tensor;
-        auto* pre_input = context.Input<Tensor>(framework::GradVarName("Out"));
-        auto in_kernel_type = framework::OpKernelType(
-            framework::TransToProtoVarType(pre_input->dtype()),
-            context.GetPlace());
-        auto out_kernel_type = framework::OpKernelType(
-            static_cast<framework::proto::VarType::Type>(in_dtype),
-            context.GetPlace());
+        phi::DenseTensor tmp_tensor;
+        auto* pre_input =
+            context.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+        auto in_kernel_type = phi::KernelKey(context.GetPlace(),
+                                             phi::DataLayout::ALL_LAYOUT,
+                                             pre_input->dtype());
+        auto out_kernel_type = phi::KernelKey(in_dtype, context.GetPlace());
         framework::TransDataType(
             in_kernel_type, out_kernel_type, *pre_input, &tmp_tensor);
         ComputeFromInput(&tmp_tensor, context);
       } else {
-        auto* input2 = context.Input<Tensor>(framework::GradVarName("Out"));
+        auto* input2 =
+            context.Input<phi::DenseTensor>(framework::GradVarName("Out"));
         ComputeFromInput(input2, context);
       }
       return;

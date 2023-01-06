@@ -12,45 +12,45 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
+
 import numpy as np
+
 import paddle.fluid as fluid
-from paddle.fluid.dygraph import declarative
+from paddle.jit.api import to_static
 
 SEED = 2020
 np.random.seed(SEED)
 
 
-@declarative
+@to_static
 def test_bool_cast(x):
     x = fluid.dygraph.to_variable(x)
     x = bool(x)
     return x
 
 
-@declarative
+@to_static
 def test_int_cast(x):
     x = fluid.dygraph.to_variable(x)
     x = int(x)
     return x
 
 
-@declarative
+@to_static
 def test_float_cast(x):
     x = fluid.dygraph.to_variable(x)
     x = float(x)
     return x
 
 
-@declarative
+@to_static
 def test_not_var_cast(x):
     x = int(x)
     return x
 
 
-@declarative
+@to_static
 def test_mix_cast(x):
     x = fluid.dygraph.to_variable(x)
     x = int(x)
@@ -61,19 +61,23 @@ def test_mix_cast(x):
 
 
 class TestCastBase(unittest.TestCase):
-
     def setUp(self):
-        self.place = fluid.CUDAPlace(
-            0) if fluid.is_compiled_with_cuda() else fluid.CPUPlace()
+        self.place = (
+            fluid.CUDAPlace(0)
+            if fluid.is_compiled_with_cuda()
+            else fluid.CPUPlace()
+        )
         self.prepare()
         self.set_func()
 
     def prepare(self):
         self.input_shape = (16, 32)
         self.input_dtype = 'float32'
-        self.input = np.random.binomial(
-            4, 0.3, size=np.product(self.input_shape)).reshape(
-                self.input_shape).astype(self.input_dtype)
+        self.input = (
+            np.random.binomial(4, 0.3, size=np.product(self.input_shape))
+            .reshape(self.input_shape)
+            .astype(self.input_dtype)
+        )
         self.cast_dtype = 'bool'
 
     def set_func(self):
@@ -89,24 +93,29 @@ class TestCastBase(unittest.TestCase):
         self.assertTrue(
             res.dtype == self.cast_dtype,
             msg='The target dtype is {}, but the casted dtype is {}.'.format(
-                self.cast_dtype, res.dtype))
+                self.cast_dtype, res.dtype
+            ),
+        )
         ref_val = self.input.astype(self.cast_dtype)
         np.testing.assert_allclose(
             res,
             ref_val,
             rtol=1e-05,
             err_msg='The casted value is {}.\nThe correct value is {}.'.format(
-                res, ref_val))
+                res, ref_val
+            ),
+        )
 
 
 class TestIntCast(TestCastBase):
-
     def prepare(self):
-        self.input_shape = (1, )
+        self.input_shape = (1,)
         self.input_dtype = 'float32'
-        self.input = np.random.normal(
-            loc=6, scale=10, size=np.product(self.input_shape)).reshape(
-                self.input_shape).astype(self.input_dtype)
+        self.input = (
+            np.random.normal(loc=6, scale=10, size=np.product(self.input_shape))
+            .reshape(self.input_shape)
+            .astype(self.input_dtype)
+        )
         self.cast_dtype = 'int32'
 
     def set_func(self):
@@ -114,13 +123,14 @@ class TestIntCast(TestCastBase):
 
 
 class TestFloatCast(TestCastBase):
-
     def prepare(self):
         self.input_shape = (8, 16)
         self.input_dtype = 'bool'
-        self.input = np.random.binomial(
-            2, 0.5, size=np.product(self.input_shape)).reshape(
-                self.input_shape).astype(self.input_dtype)
+        self.input = (
+            np.random.binomial(2, 0.5, size=np.product(self.input_shape))
+            .reshape(self.input_shape)
+            .astype(self.input_dtype)
+        )
         self.cast_dtype = 'float32'
 
     def set_func(self):
@@ -128,13 +138,14 @@ class TestFloatCast(TestCastBase):
 
 
 class TestMixCast(TestCastBase):
-
     def prepare(self):
         self.input_shape = (8, 32)
         self.input_dtype = 'float32'
-        self.input = np.random.normal(
-            loc=6, scale=10, size=np.product(self.input_shape)).reshape(
-                self.input_shape).astype(self.input_dtype)
+        self.input = (
+            np.random.normal(loc=6, scale=10, size=np.product(self.input_shape))
+            .reshape(self.input_shape)
+            .astype(self.input_dtype)
+        )
         self.cast_int = 'int'
         self.cast_float = 'float32'
         self.cast_bool = 'bool'
@@ -148,19 +159,26 @@ class TestMixCast(TestCastBase):
         self.assertTrue(
             res.dtype == self.cast_dtype,
             msg='The target dtype is {}, but the casted dtype is {}.'.format(
-                self.cast_dtype, res.dtype))
-        ref_val = self.input.astype(self.cast_int).astype(
-            self.cast_float).astype(self.cast_bool).astype(self.cast_dtype)
+                self.cast_dtype, res.dtype
+            ),
+        )
+        ref_val = (
+            self.input.astype(self.cast_int)
+            .astype(self.cast_float)
+            .astype(self.cast_bool)
+            .astype(self.cast_dtype)
+        )
         np.testing.assert_allclose(
             res,
             ref_val,
             rtol=1e-05,
             err_msg='The casted value is {}.\nThe correct value is {}.'.format(
-                res, ref_val))
+                res, ref_val
+            ),
+        )
 
 
 class TestNotVarCast(TestCastBase):
-
     def prepare(self):
         self.input = 3.14
         self.cast_dtype = 'int'
@@ -175,7 +193,9 @@ class TestNotVarCast(TestCastBase):
         self.assertTrue(
             res == ref_val,
             msg='The casted value is {}.\nThe correct value is {}.'.format(
-                res, ref_val))
+                res, ref_val
+            ),
+        )
 
 
 if __name__ == '__main__':

@@ -15,6 +15,8 @@
 #include "paddle/phi/kernels/arange_kernel.h"
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/core/enforce.h"
+#include "paddle/phi/core/errors.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/range_function.h"
@@ -55,8 +57,11 @@ void ArangeKernel(const Context& dev_ctx,
   T* out_data = dev_ctx.template Alloc<T>(out);
 
   auto stream = dev_ctx.stream();
-  int block = std::min(size, static_cast<int64_t>(256));
-  int grid = (size + block - 1) / block;
+  int64_t block = std::min(size, static_cast<int64_t>(256));
+  if (block == 0) {
+    return;
+  }
+  int64_t grid = (size + block - 1) / block;
   Range<T><<<grid, block, 0, stream>>>(start_value, step_value, size, out_data);
 }
 

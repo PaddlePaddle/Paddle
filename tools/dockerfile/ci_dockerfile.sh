@@ -38,7 +38,7 @@ function make_ubuntu_dockerfile(){
     ENV PATH=/usr/local/gcc-8.2/bin:\$PATH #g" ${dockerfile_name}
   sed -i "s#bash /build_scripts/install_nccl2.sh#wget -q --no-proxy https://nccl2-deb.cdn.bcebos.com/nccl-repo-ubuntu1604-2.7.8-ga-cuda10.1_1-1_amd64.deb \\
     RUN dpkg -i nccl-repo-ubuntu1604-2.7.8-ga-cuda10.1_1-1_amd64.deb \\
-    RUN apt remove -y libnccl* --allow-change-held-packages \&\&  apt-get install -y libnccl2=2.7.8-1+cuda10.1 libnccl-dev=2.7.8-1+cuda10.1 zstd pigz --allow-change-held-packages #g" ${dockerfile_name}
+    RUN apt remove -y libnccl* --allow-change-held-packages \&\&  apt-get install -y libsndfile1 libnccl2=2.7.8-1+cuda10.1 libnccl-dev=2.7.8-1+cuda10.1 zstd pigz --allow-change-held-packages #g" ${dockerfile_name}
 }
 
 function make_ubuntu_trt7_dockerfile(){
@@ -47,7 +47,7 @@ function make_ubuntu_trt7_dockerfile(){
   sed -i "s#liblzma-dev#liblzma-dev openmpi-bin openmpi-doc libopenmpi-dev#g" ${dockerfile_name} 
   dockerfile_line=$(wc -l ${dockerfile_name}|awk '{print $1}')
   sed -i "${dockerfile_line}i RUN apt remove -y libcudnn* --allow-change-held-packages \&\& \
-      apt-get install -y --allow-unauthenticated libcudnn8=8.1.0.77-1+cuda10.2 libcudnn8-dev=8.1.0.77-1+cuda10.2 --allow-change-held-packages" ${dockerfile_name}
+      apt-get install -y --allow-unauthenticated libsndfile1 libcudnn8=8.1.0.77-1+cuda10.2 libcudnn8-dev=8.1.0.77-1+cuda10.2 --allow-change-held-packages" ${dockerfile_name}
   sed -i "${dockerfile_line}i RUN wget --no-check-certificate -q  \
       https://developer.download.nvidia.com/compute/cuda/10.2/Prod/patches/2/cuda_10.2.2_linux.run \&\& \
       bash cuda_10.2.2_linux.run --silent --toolkit \&\& ldconfig" ${dockerfile_name}
@@ -73,7 +73,7 @@ function make_ubuntu_trt7_dockerfile(){
     RUN ln -s /usr/local/gcc-8.2/bin/g++ /usr/bin/g++ \\
     ENV PATH=/usr/local/gcc-8.2/bin:\$PATH #g" ${dockerfile_name}
   sed -i "s#bash /build_scripts/install_nccl2.sh#wget -q --no-proxy https://nccl2-deb.cdn.bcebos.com/nccl-repo-ubuntu1604-2.7.8-ga-cuda10.1_1-1_amd64.deb \\
-    RUN apt remove -y libnccl* --allow-change-held-packages \&\&  apt-get install -y libnccl2=2.7.8-1+cuda10.1 libnccl-dev=2.7.8-1+cuda10.1 zstd pigz --allow-change-held-packages #g" ${dockerfile_name}
+    RUN apt remove -y libnccl* --allow-change-held-packages \&\&  apt-get install -y libsndfile1 libnccl2=2.7.8-1+cuda10.1 libnccl-dev=2.7.8-1+cuda10.1 zstd pigz --allow-change-held-packages #g" ${dockerfile_name}
 }
 
 
@@ -82,7 +82,7 @@ function make_centos_dockerfile(){
   sed "s/<baseimg>/11.0-cudnn8-devel-centos7/g" Dockerfile.centos >${dockerfile_name}
   sed -i "s#COPY build_scripts /build_scripts#COPY tools/dockerfile/build_scripts  ./build_scripts#g" ${dockerfile_name} 
   dockerfile_line=$(wc -l ${dockerfile_name}|awk '{print $1}')
-  sed -i "${dockerfile_line}i RUN yum install -y pigz graphviz zstd" ${dockerfile_name}
+  sed -i "${dockerfile_line}i RUN yum install -y pigz graphviz zstd libsndfile" ${dockerfile_name}
   sed -i "${dockerfile_line}i RUN pip3.7 install distro" ${dockerfile_name}
   sed -i "${dockerfile_line}i ENV LD_LIBRARY_PATH /opt/_internal/cpython-3.7.0/lib:/usr/local/ssl/lib:/opt/rh/devtoolset-2/root/usr/lib64:/opt/rh/devtoolset-2/root/usr/lib:/usr/local/lib64:/usr/local/lib:/usr/local/nvidia/lib:/usr/local/nvidia/lib64 " ${dockerfile_name}
   sed -i "${dockerfile_line}i ENV PATH /opt/_internal/cpython-3.7.0/bin:/usr/local/ssl:/usr/local/gcc-8.2/bin:/usr/local/go/bin:/root/gopath/bin:/opt/rh/devtoolset-2/root/usr/bin:/usr/local/nvidia/bin:/usr/local/cuda/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/java/jdk1.8.0_192/bin " ${dockerfile_name}
@@ -104,7 +104,7 @@ function make_cinn_dockerfile(){
   sed -i 's#<install_cpu_package>##g' ${dockerfile_name}
   sed -i "7i ENV TZ=Asia/Beijing" ${dockerfile_name}
   sed -i "8i RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone" ${dockerfile_name}
-  sed -i "9i RUN apt-get update && apt-get install -y liblzma-dev openmpi-bin openmpi-doc libopenmpi-dev" ${dockerfile_name}
+  sed -i "27i RUN apt-get update && apt-get install -y liblzma-dev openmpi-bin openmpi-doc libopenmpi-dev libsndfile1" ${dockerfile_name}
   dockerfile_line=$(wc -l ${dockerfile_name}|awk '{print $1}')
   sed -i "${dockerfile_line}i RUN wget --no-check-certificate -q https://paddle-edl.bj.bcebos.com/hadoop-2.7.7.tar.gz \&\& \
      tar -xzf  hadoop-2.7.7.tar.gz && mv hadoop-2.7.7 /usr/local/" ${dockerfile_name}
@@ -145,12 +145,33 @@ function make_ce_framework_dockcerfile(){
   sed -i 's#python setup.py install#python3.7 setup.py install#g' ${dockerfile_name}
 }
 
+function make_unbuntu18_cu117_dockerfile(){
+  dockerfile_name="Dockerfile.cuda117_cudnn8_gcc82_ubuntu18_coverage"
+  sed "s#<baseimg>#nvidia/cuda:11.7.0-cudnn8-devel-ubuntu18.04#g" ./Dockerfile.ubuntu18 >${dockerfile_name}
+  sed -i "s#<setcuda>#ENV LD_LIBRARY_PATH=/usr/local/cuda-11.7/targets/x86_64-linux/lib:\$LD_LIBRARY_PATH #g" ${dockerfile_name}
+  sed -i 's#<install_cpu_package>##g' ${dockerfile_name}
+  sed -i "7i ENV TZ=Asia/Beijing" ${dockerfile_name}
+  sed -i "8i RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone" ${dockerfile_name}
+  sed -i "27i RUN apt-get update && apt-get install -y liblzma-dev openmpi-bin openmpi-doc libopenmpi-dev libsndfile1" ${dockerfile_name}
+  dockerfile_line=$(wc -l ${dockerfile_name}|awk '{print $1}')
+  sed -i "${dockerfile_line}i RUN wget --no-check-certificate -q https://paddle-edl.bj.bcebos.com/hadoop-2.7.7.tar.gz \&\& \
+     tar -xzf  hadoop-2.7.7.tar.gz && mv hadoop-2.7.7 /usr/local/" ${dockerfile_name}
+  sed -i "${dockerfile_line}i RUN apt remove git -y \&\& apt install -y libcurl4-openssl-dev gettext pigz zstd \&\& wget -q https://paddle-ci.gz.bcebos.com/git-2.17.1.tar.gz \&\& \
+    tar -xvf git-2.17.1.tar.gz \&\& \
+    cd git-2.17.1 \&\& \
+    ./configure --with-openssl --with-curl --prefix=/usr/local \&\& \
+    make -j8 \&\& make install " ${dockerfile_name}
+  sed -i "${dockerfile_line}i RUN pip install wheel \&\& pip3 install PyGithub wheel distro \&\& pip3.7 install PyGithub \&\& pip3.8 install distro" ${dockerfile_name}
+  sed -i 's# && rm /etc/apt/sources.list.d/nvidia-ml.list##g' ${dockerfile_name}
+}
+
 function main() {
   make_ubuntu_dockerfile
   make_ubuntu_trt7_dockerfile
   make_centos_dockerfile
   make_cinn_dockerfile
   make_ce_framework_dockcerfile
+  make_unbuntu18_cu117_dockerfile
 }
 
 main "$@"

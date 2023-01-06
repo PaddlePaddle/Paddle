@@ -44,11 +44,11 @@ class RandpermOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     auto data_type =
         static_cast<framework::proto::VarType::Type>(ctx.Attr<int>("dtype"));
-    return framework::OpKernelType(data_type, ctx.GetPlace());
+    return phi::KernelKey(data_type, ctx.GetPlace());
   }
 };
 
@@ -71,7 +71,7 @@ class RandpermOpMaker : public framework::OpProtoAndCheckerMaker {
                  "Default: 0.")
         .SetDefault(0);
 
-    AddComment(R"DOC( 
+    AddComment(R"DOC(
 This operator returns a random permutation of integers from 0 to n-1.
 )DOC");
   }

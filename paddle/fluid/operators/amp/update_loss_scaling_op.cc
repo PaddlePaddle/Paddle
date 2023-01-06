@@ -29,23 +29,25 @@ class UpdateLossScalingOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto dtype = framework::proto::VarType::FP32;
     if (ctx.MultiInputVar("X").size() >= 1) {
       dtype = OperatorWithKernel::IndicateVarDataType(ctx, "X");
     }
 
-    return framework::OpKernelType(dtype, ctx.GetPlace());
+    return phi::KernelKey(dtype, ctx.GetPlace());
   }
 
-  framework::OpKernelType GetKernelTypeForVar(
+  phi::KernelKey GetKernelTypeForVar(
       const std::string& var_name,
-      const framework::Tensor& tensor,
-      const framework::OpKernelType& expected_kernel_type) const override {
+      const phi::DenseTensor& tensor,
+      const phi::KernelKey& expected_kernel_type) const override {
 #ifndef PADDLE_WITH_XPU
     if (var_name == "FoundInfinite" || var_name == "StopUpdate") {
-      return expected_kernel_type;
+      return phi::KernelKey(phi::Backend::ALL_BACKEND,
+                            expected_kernel_type.layout(),
+                            expected_kernel_type.dtype());
     }
 #endif
     return framework::OperatorWithKernel::GetKernelTypeForVar(
@@ -111,8 +113,8 @@ class UpdateLossScalingOpMaker : public framework::OpProtoAndCheckerMaker {
                   "Stop updating loss scaling, and just zero inputs.")
         .SetDefault(false);
     AddComment(R"DOC(
-Update loss scaling according to overall gradients. If all gradients is 
-finite after incr_every_n_steps, loss scaling will increase by incr_ratio. 
+Update loss scaling according to overall gradients. If all gradients is
+finite after incr_every_n_steps, loss scaling will increase by incr_ratio.
 Otherwise, loss scaling will decrease by decr_ratio after
 decr_every_n_nan_or_inf steps and each step some gradients are infinite.
 

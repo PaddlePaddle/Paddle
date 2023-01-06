@@ -54,6 +54,10 @@ static ExecutionStrategy GetExecutionStrategy(const platform::Place &place) {
       execution_strategy.num_threads_ = 1;
       break;
     }
+    case platform::DeviceType::CUSTOM_DEVICE: {
+      execution_strategy.num_threads_ = 1;
+      break;
+    }
     default:
       PADDLE_THROW(platform::errors::Unavailable("Unsupported Device type %d.",
                                                  device_type));
@@ -291,6 +295,8 @@ std::shared_ptr<InterpreterCore> CreateInterpreterCoreInfoToCache(
   auto &interpretercore_info_cache =
       framework::InterpreterCoreInfoCache::Instance();
   if (interpretercore_info_cache.Size() > 4u /* max_cached_size*/) {
+    VLOG(2) << "The cached info size has exceeded max_cached_size: 4, clear "
+               "all cache!";
     interpretercore_info_cache.Finalize();
   }
   auto core = std::make_shared<InterpreterCore>(

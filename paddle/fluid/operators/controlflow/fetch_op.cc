@@ -23,23 +23,22 @@ namespace operators {
 
 // FIXME(yuyang18): Should we assume the fetch operator always generate
 // CPU outputs?
-static void DataCopy(const framework::LoDTensor &src_item,
+static void DataCopy(const phi::DenseTensor &src_item,
                      const std::string &fetch_var_name,
-                     framework::LoDTensor *dst_item) {
+                     phi::DenseTensor *dst_item) {
   if (src_item.IsInitialized() && src_item.numel() > 0) {
 #ifdef PADDLE_WITH_MKLDNN
     // Conversion from MKL-DNN to Paddle
-    if (src_item.layout() == framework::DataLayout::kMKLDNN) {
-      framework::Tensor out;
+    if (src_item.layout() == phi::DataLayout::ONEDNN) {
+      phi::DenseTensor out;
       // Convert to desired Paddle layout, apart from grads of filter
       // as params are not a subject to paddle's data_format
-      VLOG(4) << "innerTransDataLayoutFromMKLDNN";
-      framework::innerTransDataLayoutFromMKLDNN(
+      VLOG(4) << "TransDataLayoutFromOneDNN";
+      phi::funcs::TransDataLayoutFromOneDNN(
           src_item.layout(),
           fetch_var_name == framework::GradVarName("Filter")
-              ? framework::DataLayout::kNCHW
-              : paddle::platform::MKLDNNDeviceContext::tls()
-                    .get_cur_paddle_data_layout(),
+              ? phi::DataLayout::kNCHW
+              : phi::OneDNNContext::tls().get_cur_paddle_data_layout(),
           src_item,
           &out,
           platform::CPUPlace());
@@ -115,14 +114,17 @@ class FetchOp : public framework::OperatorBase {
       fetch_list->resize(col + 1);
     }
 
-    if (fetch_var->IsType<framework::LoDTensor>()) {
-      auto &src_item = fetch_var->Get<framework::LoDTensor>();
-      auto *dst_item = &(PADDLE_GET(framework::LoDTensor, fetch_list->at(col)));
+    if (fetch_var->IsType<phi::DenseTensor>()) {
+      auto &src_item = fetch_var->Get<phi::DenseTensor>();
+      auto *dst_item = &(PADDLE_GET(phi::DenseTensor, fetch_list->at(col)));
       DataCopy(src_item, fetch_var_name, dst_item);
     } else if (fetch_var->IsType<framework::Vocab>()) {
       auto &src_item = fetch_var->Get<framework::Vocab>();
       auto *dst_item = &(PADDLE_GET(framework::Vocab, fetch_list->at(col)));
       *dst_item = src_item;
+    } else if (fetch_var->IsType<phi::SparseCooTensor>()) {
+      auto &src_item = fetch_var->Get<phi::SparseCooTensor>();
+      fetch_list->at(col) = src_item;
     } else {
       auto &src_item = fetch_var->Get<framework::LoDTensorArray>();
       framework::LoDTensorArray tmp(src_item.size());
@@ -140,12 +142,14 @@ class FetchOpInfoMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("X",
-             "(LoDTensor) The resulted LoDTensor which is expected to return "
+             "(phi::DenseTensor) The resulted phi::DenseTensor which is "
+             "expected to return "
              "to users.");
     AddOutput(
         "Out",
-        "(vector<LoDTensor>|unordered_map<string, int32_t>) A fetching list"
-        " of LoDTensor|unordered_map<string, int32_t> which may have "
+        "(vector<phi::DenseTensor>|unordered_map<string, int32_t>) A fetching "
+        "list"
+        " of phi::DenseTensor|unordered_map<string, int32_t> which may have "
         "different dimension, shape and data type.");
     AddAttr<int>("col", "(int) The column index of fetching object.");
     AddComment(R"DOC(

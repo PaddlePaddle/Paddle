@@ -38,6 +38,7 @@ USE_OP_ITSELF(reduce_mean);
 USE_OP_ITSELF(feed);
 USE_OP_ITSELF(fetch);
 USE_OP_ITSELF(scale);
+USE_OP_ITSELF(transfer_layout);
 
 PD_DECLARE_KERNEL(add, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(matmul, CPU, ALL_LAYOUT);
@@ -85,7 +86,7 @@ TEST(CpuLayerTest, Construct) {
   int ds = layer.Attribute<int>("down_sampling");
   EXPECT_EQ(ds, 4);
 
-  std::string fstr = layer.Attribute<std::string>("fstr");
+  std::string fstr = layer.Attribute<framework::String>("fstr");
   EXPECT_STREQ(fstr.c_str(), "save str property");
 
   std::vector<int> ints = layer.Attribute<std::vector<int>>("ints");

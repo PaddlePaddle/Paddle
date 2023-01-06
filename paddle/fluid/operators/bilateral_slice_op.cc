@@ -20,8 +20,7 @@
 namespace paddle {
 namespace operators {
 
-using framework::Tensor;
-using DataLayout = framework::DataLayout;
+using DataLayout = phi::DataLayout;
 
 class BilateralSliceOp : public framework::OperatorWithKernel {
  public:
@@ -86,18 +85,10 @@ class BilateralSliceOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace());
-  }
-
-  framework::OpKernelType GetKernelTypeForVar(
-      const std::string& var_name,
-      const Tensor& tensor,
-      const framework::OpKernelType& expected_kernel_type) const override {
-    return framework::OpKernelType(
-        expected_kernel_type.data_type_, tensor.place(), tensor.layout());
+    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+                          ctx.GetPlace());
   }
 };
 
@@ -156,11 +147,11 @@ class BilateralSliceOpGrad : public framework::OperatorWithKernel {
     }
   }
 
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
-                                       ctx, framework::GradVarName("Out")),
-                                   ctx.GetPlace());
+    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(
+                              ctx, framework::GradVarName("Out")),
+                          ctx.GetPlace());
   }
 };
 

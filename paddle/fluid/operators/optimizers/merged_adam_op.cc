@@ -19,29 +19,29 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
-
 class MergedAdamOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto param_dtype =
         framework::OperatorWithKernel::IndicateVarDataType(ctx, "Param");
-    return framework::OpKernelType(param_dtype, ctx.GetPlace());
+    return phi::KernelKey(param_dtype, ctx.GetPlace());
   }
 
-  framework::OpKernelType GetKernelTypeForVar(
+  phi::KernelKey GetKernelTypeForVar(
       const std::string& var_name,
-      const framework::Tensor& tensor,
-      const framework::OpKernelType& expected_kernel_type) const override {
+      const phi::DenseTensor& tensor,
+      const phi::KernelKey& expected_kernel_type) const override {
     if (var_name == "Beta1Pow" || var_name == "Beta2Pow" ||
         var_name == "SkipUpdate") {
-      return expected_kernel_type;
+      return phi::KernelKey(phi::Backend::ALL_BACKEND,
+                            expected_kernel_type.layout(),
+                            expected_kernel_type.dtype());
     } else {
-      return framework::OpKernelType(
-          expected_kernel_type.data_type_, tensor.place(), tensor.layout());
+      return phi::KernelKey(
+          tensor.place(), tensor.layout(), expected_kernel_type.dtype());
     }
   }
 };

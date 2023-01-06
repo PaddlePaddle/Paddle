@@ -49,7 +49,7 @@ class TDMChildOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(2);
     AddComment(R"DOC("
      **Tdm Child**
-     According to the input node_id on the given tree, return the corresponding child node_id and 
+     According to the input node_id on the given tree, return the corresponding child node_id and
       whether child is a leaf node by LeafMask.")DOC");
   }
 };
@@ -102,10 +102,10 @@ class TDMChildOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
-    return framework::OpKernelType(data_type, ctx.device_context());
+    return phi::KernelKey(data_type, ctx.GetPlace());
   }
 };
 }  // namespace operators

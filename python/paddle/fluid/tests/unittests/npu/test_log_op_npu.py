@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import numpy as np
 import unittest
 import sys
@@ -28,7 +26,6 @@ SEED = 2021
 
 
 class TestLog(OpTest):
-
     def setUp(self):
         self.set_npu()
         self.op_type = "log"
@@ -57,7 +54,6 @@ class TestLog(OpTest):
 
 
 class TestLogFp16(OpTest):
-
     def setUp(self):
         self.set_npu()
         self.op_type = "log"
@@ -84,7 +80,6 @@ class TestLogFp16(OpTest):
 
 
 class TestLogNet(unittest.TestCase):
-
     def _test(self, run_npu=True):
         main_prog = paddle.static.Program()
         startup_prog = paddle.static.Program()
@@ -99,18 +94,18 @@ class TestLogNet(unittest.TestCase):
         with paddle.static.program_guard(main_prog, startup_prog):
             a = paddle.static.data(name="a", shape=[32, 32], dtype='float32')
             b = paddle.static.data(name="b", shape=[32, 32], dtype='float32')
-            label = paddle.static.data(name="label",
-                                       shape=[32, 1],
-                                       dtype='int64')
+            label = paddle.static.data(
+                name="label", shape=[32, 1], dtype='int64'
+            )
 
             c = paddle.multiply(a, b)
             d = paddle.log(c)
 
-            fc_1 = fluid.layers.fc(input=d, size=128)
-            prediction = fluid.layers.fc(input=fc_1, size=2, act='softmax')
+            fc_1 = paddle.static.nn.fc(x=d, size=128)
+            prediction = paddle.static.nn.fc(x=fc_1, size=2, activation='softmax')
 
-            cost = fluid.layers.cross_entropy(input=prediction, label=label)
-            loss = fluid.layers.reduce_mean(cost)
+            cost = paddle.nn.functional.cross_entropy(input=prediction, label=label, reduction='none', use_softmax=False)
+            loss = paddle.mean(cost)
             sgd = fluid.optimizer.SGD(learning_rate=0.01)
             sgd.minimize(loss)
 
@@ -125,16 +120,17 @@ class TestLogNet(unittest.TestCase):
         print("Start run on {}".format(place))
         for epoch in range(100):
 
-            pred_res, loss_res = exe.run(main_prog,
-                                         feed={
-                                             "a": a_np,
-                                             "b": b_np,
-                                             "label": label_np
-                                         },
-                                         fetch_list=[prediction, loss])
+            pred_res, loss_res = exe.run(
+                main_prog,
+                feed={"a": a_np, "b": b_np, "label": label_np},
+                fetch_list=[prediction, loss],
+            )
             if epoch % 10 == 0:
-                print("Epoch {} | Prediction[0]: {}, Loss: {}".format(
-                    epoch, pred_res[0], loss_res))
+                print(
+                    "Epoch {} | Prediction[0]: {}, Loss: {}".format(
+                        epoch, pred_res[0], loss_res
+                    )
+                )
 
         return pred_res, loss_res
 

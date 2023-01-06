@@ -14,6 +14,8 @@ limitations under the License. */
 
 #pragma once
 
+#ifdef PADDLE_WITH_XPU
+
 #include <memory>
 
 #include "paddle/phi/backends/xpu/forwards.h"
@@ -26,7 +28,8 @@ namespace xpu = baidu::xpu::api;
 
 namespace phi {
 
-class XPUContext : public DeviceContext {
+class XPUContext : public DeviceContext,
+                   public TypeInfoTraits<DeviceContext, XPUContext> {
  public:
   XPUContext();
 
@@ -61,9 +64,9 @@ class XPUContext : public DeviceContext {
 
   void SetL3Cache(int l3_size = 14155776);
 
-  void SetXPUStream(XPUStream stream);
-
   XPUStream stream() const;
+
+  static const char* name() { return "XPUContext"; }
 
  private:
   struct Impl;
@@ -79,3 +82,5 @@ using KPSContext = XPUContext;
 #endif
 
 }  // namespace phi
+
+#endif

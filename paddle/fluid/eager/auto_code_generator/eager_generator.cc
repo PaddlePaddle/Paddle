@@ -23,7 +23,7 @@
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/variable.h"
-#include "paddle/fluid/pybind/op_function_generator.h"
+#include "paddle/fluid/pybind/eager_generator.h"
 #include "paddle/fluid/pybind/pybind.h"
 #include "paddle/fluid/string/string_helper.h"
 
@@ -51,11 +51,15 @@ static std::unordered_set<std::string> ops_to_fill_zero_for_empty_grads = {
     "split", "rnn"};
 
 /* --- Black Ops list that's NO NEED to apply code generation --- */
-static std::unordered_set<std::string> black_ops_list = {"run_program",
-                                                         "fused_gate_attention",
-                                                         "fused_feedforward",
-                                                         "fused_attention",
-                                                         "fused_gemm_epilogue"};
+static std::unordered_set<std::string> black_ops_list = {
+    "run_program",
+    "fused_gate_attention",
+    "fused_feedforward",
+    "fused_attention",
+    "fused_gemm_epilogue",
+    "fused_bias_dropout_residual_layer_norm",
+    "sparse_divide_scalar",
+    "sparse_scale"};
 
 static std::string LegalizeVariableName(const std::string& var_name) {
   std::string ret = var_name;
@@ -590,7 +594,7 @@ static bool CheckOpProto(proto::OpProto* op_proto) {
   }
 
   // Only handle matmul_v2 for now
-  VLOG(1) << "------ Analyzing Op ------: " << op_type;
+  VLOG(3) << "------ Analyzing Op ------: " << op_type;
 
   return true;
 }
@@ -826,7 +830,7 @@ static bool CollectGradInformationFromOpInfo(
           new paddle::imperative::VarBase("auto_" + in_name + "_" +
                                           std::to_string(i))));
       ins[in_name][i]->SetOverridedStopGradient(false);
-      ins[in_name][i]->MutableVar()->GetMutable<framework::LoDTensor>();
+      ins[in_name][i]->MutableVar()->GetMutable<phi::DenseTensor>();
     }
   } else {
     for (const proto::OpProto::Var& input : op_proto.inputs()) {
@@ -850,7 +854,7 @@ static bool CollectGradInformationFromOpInfo(
       ins[in_name] = {std::shared_ptr<paddle::imperative::VarBase>(
           new paddle::imperative::VarBase("auto_" + in_name))};
       ins[in_name][0]->SetOverridedStopGradient(false);
-      ins[in_name][0]->MutableVar()->GetMutable<framework::LoDTensor>();
+      ins[in_name][0]->MutableVar()->GetMutable<phi::DenseTensor>();
     }
   }
   VLOG(6) << "Prepared Forward Ins Map, size = " << ins.size();
@@ -868,7 +872,7 @@ static bool CollectGradInformationFromOpInfo(
     outs[out_name] = {std::shared_ptr<paddle::imperative::VarBase>(
         new paddle::imperative::VarBase("auto_" + out_name))};
     outs[out_name][0]->SetOverridedStopGradient(false);
-    outs[out_name][0]->MutableVar()->GetMutable<framework::LoDTensor>();
+    outs[out_name][0]->MutableVar()->GetMutable<phi::DenseTensor>();
   }
   VLOG(6) << "Prepared Forward Outs Map, size = " << outs.size();
 
@@ -1797,6 +1801,15 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
     generated_function_body += amp_context;
     generated_function_body += "\n";
   }
+
+  if (!forward_inplace_map.empty()) {
+    generated_function_body +=
+        "  auto current_level = egr::Controller::Instance().GetAMPLevel();\n";
+    generated_function_body +=
+        "  "
+        "egr::Controller::Instance().SetAMPLevel(paddle::imperative::AmpLevel::"
+        "O0);\n";
+  }
   // forward ins insert
   const char* FWD_INS_MAP_TEMPLATE =
       "  std::map<std::string, "
@@ -1998,6 +2011,10 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
       return_contents[return_position] = output_varname;
     }
     trace_op_body_str += out_tensor_str;
+  }
+  if (!forward_inplace_map.empty()) {
+    trace_op_body_str +=
+        "  egr::Controller::Instance().SetAMPLevel(current_level);\n";
   }
   trace_op_body_str += "\n";
   VLOG(6) << "Converted Output VarBase to EagerVariable(s)";
@@ -3013,8 +3030,8 @@ static void GenerateForwardDygraphFile(const std::string& forward_cc_path,
       "#include \"paddle/fluid/eager/api/utils/global_utils.h\"\n"
       "#include \"paddle/fluid/eager/amp_utils.h\"\n"
       "#include \"paddle/fluid/eager/amp_auto_cast.h\"\n"
-      "#include \"paddle/fluid/platform/profiler/event_tracing.h\"\n"
-      "#pragma GCC diagnostic ignored \"-Wunused-variable\"\n\n";
+      "#include \"paddle/fluid/platform/profiler/event_tracing.h\"\n\n";
+
   std::string forward_cc_include_str =
       paddle::string::Sprintf(FORWARD_INCLUDE_TEMPLATE);
   std::ofstream forward_cc_stream(forward_cc_path, std::ios::out);
@@ -3145,6 +3162,12 @@ static void DygraphCodeGeneration(const std::string& output_dir,
     if (!CheckOpProto(op_proto)) continue;
     const std::string& op_type = op_proto->type();
     if (black_ops_list.count(op_type)) {
+      continue;
+    }
+
+    // Skip the sparse op
+    if (op_type.compare(0, 7, "sparse_") == 0 && op_type != "sparse_momentum" &&
+        op_type != "sparse_attention") {
       continue;
     }
 

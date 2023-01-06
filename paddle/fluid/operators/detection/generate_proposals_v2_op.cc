@@ -29,19 +29,16 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
-using LoDTensor = framework::LoDTensor;
-
 class GenerateProposalsV2Op : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return framework::OpKernelType(
+    return phi::KernelKey(
         OperatorWithKernel::IndicateVarDataType(ctx, "Anchors"),
-        ctx.device_context());
+        ctx.GetPlace());
   }
 };
 
@@ -65,9 +62,10 @@ class GenerateProposalsV2OpMaker : public framework::OpProtoAndCheckerMaker {
              "(Tensor) Bounding box variances with same shape as `Anchors`.");
 
     AddOutput("RpnRois",
-              "(LoDTensor), Output proposals with shape (rois_num, 4).");
-    AddOutput("RpnRoiProbs",
-              "(LoDTensor) Scores of proposals with shape (rois_num, 1).");
+              "(phi::DenseTensor), Output proposals with shape (rois_num, 4).");
+    AddOutput(
+        "RpnRoiProbs",
+        "(phi::DenseTensor) Scores of proposals with shape (rois_num, 1).");
     AddOutput("RpnRoisNum", "(Tensor), The number of Rpn RoIs in each image")
         .AsDispensable();
     AddAttr<int>("pre_nms_topN",
@@ -86,7 +84,7 @@ class GenerateProposalsV2OpMaker : public framework::OpProtoAndCheckerMaker {
                   "If true, im_shape pixel offset is 1.")
         .SetDefault(true);
     AddComment(R"DOC(
-This operator is the second version of generate_proposals op to generate 
+This operator is the second version of generate_proposals op to generate
 bounding box proposals for Faster RCNN.
 The proposals are generated for a list of images based on image
 score 'Scores', bounding box regression result 'BboxDeltas' as
@@ -96,9 +94,9 @@ boxes.
 
 The difference between this version and the first version is that the image
  scale is no long needed now, so the input requires im_shape instead of im_info.
-The change aims to unify the input for all kinds of objective detection 
-such as YOLO-v3 and Faster R-CNN. As a result, the min_size represents the 
-size on input image instead of original image which is slightly different 
+The change aims to unify the input for all kinds of objective detection
+such as YOLO-v3 and Faster R-CNN. As a result, the min_size represents the
+size on input image instead of original image which is slightly different
 to before and will not effect the result.
 
 )DOC");

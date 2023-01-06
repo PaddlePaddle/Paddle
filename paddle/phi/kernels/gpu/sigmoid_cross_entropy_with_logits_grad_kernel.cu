@@ -37,8 +37,8 @@ struct SigmoidBwdFunctor {
       dx_data = static_cast<T>(0.);
       counts = 0;
     } else {
-      T simoid_x = static_cast<T>(1) /
-                   (static_cast<T>(1) + paddle::operators::real_exp(-x));
+      T simoid_x =
+          static_cast<T>(1) / (static_cast<T>(1) + phi::funcs::real_exp(-x));
       T diff = simoid_x - label;
       dx_data = dout * diff;
       counts = 1;

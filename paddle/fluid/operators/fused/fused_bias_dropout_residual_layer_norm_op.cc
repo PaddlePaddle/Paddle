@@ -20,8 +20,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
-
 class FusedBiasDropoutResidualLnOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -62,11 +60,11 @@ class FusedBiasDropoutResidualLnOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    auto input = ctx.Input<Tensor>("X");
+    auto input = ctx.Input<phi::DenseTensor>("X");
     auto input_data_type = framework::TransToProtoVarType(input->dtype());
-    return framework::OpKernelType(input_data_type, ctx.GetPlace());
+    return phi::KernelKey(input_data_type, ctx.GetPlace());
   }
 };
 
@@ -140,8 +138,8 @@ class FusedBiasDropoutResidualLnOpMaker
 
     AddComment(R"DOC(
     Add fused bias_dropout_residual_layer_norm op whose logic is as follows:
-    // @input: [batch_size, seq_len, embed_dim] 
-    // @final_out: [batch_size, seq_len, embed_dim] 
+    // @input: [batch_size, seq_len, embed_dim]
+    // @final_out: [batch_size, seq_len, embed_dim]
     y = layer_norm(residual + dropout(bias + x));
     )DOC");
   }
@@ -192,11 +190,11 @@ class FusedBiasDropoutResidualLnGradOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    auto input = ctx.Input<Tensor>("X");
+    auto input = ctx.Input<phi::DenseTensor>("X");
     auto input_data_type = framework::TransToProtoVarType(input->dtype());
-    return framework::OpKernelType(input_data_type, ctx.GetPlace());
+    return phi::KernelKey(input_data_type, ctx.GetPlace());
   }
 };
 

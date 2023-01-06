@@ -29,6 +29,7 @@
 #include "paddle/fluid/imperative/layer.h"
 #include "paddle/fluid/imperative/type_defs.h"
 #include "paddle/fluid/imperative/var_helper.h"
+#include "paddle/phi/common/place.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_context.h"
 #include "paddle/phi/core/selected_rows.h"
@@ -38,7 +39,7 @@ DECLARE_bool(use_mkldnn);
 namespace paddle {
 namespace imperative {
 
-const framework::Tensor* GetTensorFromVar(const framework::Variable& var);
+const phi::DenseTensor* GetTensorFromVar(const framework::Variable& var);
 
 template <typename VarType>
 static void SetForwardDataTypeOfGradVar(const std::shared_ptr<VarType>& var);
@@ -75,7 +76,8 @@ template <typename VarType>
 std::shared_ptr<NameVarMap<VarType>> PrepareData(
     const framework::OperatorWithKernel& op,
     const NameVarMap<VarType>& ins,
-    const framework::OpKernelType& expected_kernel_key) {
+    const phi::KernelKey& expected_kernel_key,
+    const phi::Place& place) {
   std::shared_ptr<NameVarMap<VarType>> tmp_ins_ptr = nullptr;
   for (const auto& name_pair : ins) {
     for (size_t i = 0; i < name_pair.second.size(); ++i) {
@@ -85,7 +87,8 @@ std::shared_ptr<NameVarMap<VarType>> PrepareData(
       if (tensor && tensor->IsInitialized() && (tensor->memory_size() != 0)) {
         auto kernel_type_for_var = op.GetKernelTypeForVar(
             name_pair.first, *tensor, expected_kernel_key);
-        if (!NeedTransform(kernel_type_for_var, expected_kernel_key)) {
+        if (!framework::NeedTransform(kernel_type_for_var,
+                                      expected_kernel_key)) {
           continue;
         } else {
           VLOG(3) << "Transform Variable " << GetNameFromVar(template_var)
@@ -110,11 +113,11 @@ std::shared_ptr<NameVarMap<VarType>> PrepareData(
                 cache_var->Var(), *tensor, tmp_var->MutableVar());
             (*tmp_ins_ptr)[name_pair.first][i] = tmp_var;
           } else {
-            framework::Tensor out;
-            TransformData(
-                expected_kernel_key, kernel_type_for_var, *tensor, &out);
-            if (NeedTransformDataType(kernel_type_for_var,
-                                      expected_kernel_key)) {
+            phi::DenseTensor out;
+            framework::TransformData(
+                expected_kernel_key, kernel_type_for_var, *tensor, &out, place);
+            if (framework::NeedTransformDataType(kernel_type_for_var,
+                                                 expected_kernel_key)) {
               // To avoid NameVarMap copy construction overhead in general
               // scenarios, if inplace transformed, return original input
               // directly
@@ -149,7 +152,7 @@ class PreparedOp {
  public:
   PreparedOp(const framework::OperatorBase& op,
              const framework::RuntimeContext& ctx,
-             const framework::OpKernelType& kernel_type,
+             const phi::KernelKey& kernel_key,
              const framework::OperatorWithKernel::OpKernelFunc& func,
              const phi::ArgumentMappingFn* arg_map_fn,
              const phi::KernelSignature* default_kernel_signature,
@@ -157,7 +160,7 @@ class PreparedOp {
 
   PreparedOp(const framework::OperatorBase& op,
              const framework::RuntimeContext& ctx,
-             const framework::OpKernelType& kernel_type,
+             const phi::KernelKey& kernel_key,
              const phi::ArgumentMappingFn* arg_map_fn,
              const phi::KernelSignature* default_kernel_signature,
              phi::KernelSignature&& kernel_signature,
@@ -200,12 +203,14 @@ class PreparedOp {
            const framework::AttributeMap& attrs,
            const framework::AttributeMap& default_attrs);
 
-  const framework::OpKernelType& kernel_type() const { return kernel_type_; }
+  const phi::KernelKey& kernel_key() const { return kernel_key_; }
+
+  const phi::Place& place() const { return dev_ctx_->GetPlace(); }
 
  private:
   const framework::OperatorBase& op_;
   const framework::RuntimeContext& ctx_;
-  framework::OpKernelType kernel_type_;
+  phi::KernelKey kernel_key_;
   framework::OperatorWithKernel::OpKernelFunc func_;
   platform::DeviceContext* dev_ctx_;
   // NOTE(chenweihang): Similar op members are used to adapt to
@@ -330,13 +335,8 @@ void BuildDygraphPhiKernelContext(const phi::KernelSignature& kernel_signature,
         tensor_in = &(var.template Get<phi::SelectedRows>());
         kernel_ctx->EmplaceBackInputWithoutSetRange(tensor_in);
       } else if (var.template IsType<framework::LoDTensorArray>()) {
-        paddle::small_vector<const phi::TensorBase*> tensor_vector;
-        auto& tensor_array = var.template Get<framework::LoDTensorArray>();
-        for (auto& t : tensor_array) {
-          tensor_vector.emplace_back(&t);
-        }
-        kernel_ctx->EmplaceBackInputsWithoutSetRange(tensor_vector);
-        end_idx += tensor_array.size() - 1;
+        tensor_in = &(var.template Get<framework::LoDTensorArray>());
+        kernel_ctx->EmplaceBackInputWithoutSetRange(tensor_in);
       } else {
         PADDLE_THROW(platform::errors::Unimplemented(
             "Unsupported input `%s` type when call pt kernel.",
@@ -352,7 +352,7 @@ void BuildDygraphPhiKernelContext(const phi::KernelSignature& kernel_signature,
 
     auto iter = outs.find(output_names[i]);
     if (iter == outs.end()) {
-      kernel_ctx->EmplaceBackOutputWithoutSetRange({nullptr});
+      kernel_ctx->EmplaceBackOutputWithoutSetRange(nullptr);
       kernel_ctx->AssignOutputRange(std::make_pair(start_idx, start_idx + 1),
                                     i);
       continue;
@@ -363,7 +363,7 @@ void BuildDygraphPhiKernelContext(const phi::KernelSignature& kernel_signature,
 
     for (size_t offset = 0; offset < outs_vector.size(); ++offset) {
       if (outs_vector[offset] == nullptr) {
-        kernel_ctx->EmplaceBackOutputWithoutSetRange({nullptr});
+        kernel_ctx->EmplaceBackOutputWithoutSetRange(nullptr);
         continue;
       }
 
@@ -377,14 +377,8 @@ void BuildDygraphPhiKernelContext(const phi::KernelSignature& kernel_signature,
           tensor_out = var->template GetMutable<phi::SelectedRows>();
           kernel_ctx->EmplaceBackOutputWithoutSetRange(tensor_out);
         } else if (var->template IsType<framework::LoDTensorArray>()) {
-          paddle::small_vector<phi::TensorBase*> tensor_vector;
-          auto* tensor_array =
-              var->template GetMutable<framework::LoDTensorArray>();
-          for (auto& t : *tensor_array) {
-            tensor_vector.emplace_back(&t);
-          }
-          kernel_ctx->EmplaceBackOutputsWithoutSetRange(tensor_vector);
-          end_idx += tensor_array->size() - 1;
+          tensor_out = var->template GetMutable<framework::LoDTensorArray>();
+          kernel_ctx->EmplaceBackOutputWithoutSetRange(tensor_out);
         } else {
           PADDLE_THROW(platform::errors::Unimplemented(
               "Unsupported output `%s` type when call pt kernel.",
@@ -667,7 +661,7 @@ void PreparePhiData(const phi::Kernel& phi_kernel,
         VLOG(3) << "Phi Transform Variable " << input_names[i] << " from "
                 << tensor_in->place() << " to " << expected_place;
 
-        framework::Tensor tmp_tensor;
+        phi::DenseTensor tmp_tensor;
         framework::TensorCopySync(*tensor_in, expected_place, &tmp_tensor);
 
         SetTensorToVariable(var->Var(), tmp_tensor, var->MutableVar());

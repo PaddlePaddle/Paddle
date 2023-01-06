@@ -12,18 +12,40 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
-import numpy as np
 import unittest
 
-import paddle
-from paddle.fluid.dygraph.jit import declarative
-from paddle.fluid.dygraph.dygraph_to_static.program_translator import ProgramTranslator
-from paddle.fluid.dygraph.dygraph_to_static.utils import Dygraph2StaticException
-import paddle.fluid.core as core
+import numpy as np
+from ifelse_simple_func import (
+    NetWithControlFlowIf,
+    add_fn,
+    dyfunc_empty_nonlocal,
+    dyfunc_ifelse_ret_int1,
+    dyfunc_ifelse_ret_int2,
+    dyfunc_ifelse_ret_int3,
+    dyfunc_ifelse_ret_int4,
+    dyfunc_with_if_else,
+    dyfunc_with_if_else2,
+    dyfunc_with_if_else3,
+    dyfunc_with_if_else_with_list_geneator,
+    fluid,
+    if_tensor_case,
+    if_with_and_or,
+    if_with_and_or_1,
+    if_with_and_or_2,
+    if_with_and_or_3,
+    if_with_and_or_4,
+    if_with_class_var,
+    loss_fn,
+    nested_if_else,
+    nested_if_else_2,
+    nested_if_else_3,
+)
 
-from ifelse_simple_func import *
+import paddle
+import paddle.fluid.core as core
+import paddle.nn.functional as F
+from paddle.jit.dy2static.program_translator import ProgramTranslator
+from paddle.jit.dy2static.utils import Dygraph2StaticException
 
 np.random.seed(1)
 
@@ -34,7 +56,6 @@ else:
 
 
 class TestDy2staticException(unittest.TestCase):
-
     def setUp(self):
         self.x = np.random.random([10, 16]).astype('float32')
         self.dyfunc = None
@@ -44,7 +65,7 @@ class TestDy2staticException(unittest.TestCase):
         if self.dyfunc:
             with self.assertRaisesRegex(Dygraph2StaticException, self.error):
                 ProgramTranslator().enable(True)
-                self.assertTrue(declarative(self.dyfunc)(self.x))
+                self.assertTrue(paddle.jit.to_static(self.dyfunc)(self.x))
         paddle.fluid.dygraph.base._in_declarative_mode_ = False
         ProgramTranslator().enable(False)
 
@@ -67,7 +88,7 @@ class TestDygraphIfElse(unittest.TestCase):
         with fluid.dygraph.guard(place):
             x_v = fluid.dygraph.to_variable(self.x)
             if to_static:
-                ret = declarative(self.dyfunc)(x_v)
+                ret = paddle.jit.to_static(self.dyfunc)(x_v)
             else:
                 ret = self.dyfunc(x_v)
             return ret.numpy()
@@ -77,49 +98,42 @@ class TestDygraphIfElse(unittest.TestCase):
 
 
 class TestDygraphIfElse2(TestDygraphIfElse):
-
     def setUp(self):
         self.x = np.random.random([10, 16]).astype('float32')
         self.dyfunc = dyfunc_with_if_else2
 
 
 class TestDygraphIfElse3(TestDygraphIfElse):
-
     def setUp(self):
         self.x = np.random.random([10, 16]).astype('float32')
         self.dyfunc = dyfunc_with_if_else3
 
 
 class TestDygraphIfElse4(TestDygraphIfElse):
-
     def setUp(self):
         self.x = np.random.random([10, 16]).astype('float32')
         self.dyfunc = dyfunc_empty_nonlocal
 
 
 class TestDygraphIfElseWithListGenerator(TestDygraphIfElse):
-
     def setUp(self):
         self.x = np.random.random([10, 16]).astype('float32')
         self.dyfunc = dyfunc_with_if_else_with_list_geneator
 
 
 class TestDygraphNestedIfElse(TestDygraphIfElse):
-
     def setUp(self):
         self.x = np.random.random([10, 16]).astype('float32')
         self.dyfunc = nested_if_else
 
 
 class TestDygraphNestedIfElse2(TestDygraphIfElse):
-
     def setUp(self):
         self.x = np.random.random([10, 16]).astype('float32')
         self.dyfunc = nested_if_else_2
 
 
 class TestDygraphNestedIfElse3(TestDygraphIfElse):
-
     def setUp(self):
         self.x = np.random.random([10, 16]).astype('float32')
         self.dyfunc = nested_if_else_3
@@ -140,19 +154,18 @@ def dyfunc_ifExp_with_while(x):
 
     def body(i, ten, y):
         # It will be converted into `layers.cond` as followed.
-        # map_func(lambda x: fluid.layers.cond(i==0, lambda: x, lambda: add_fn(x), y)
+        # map_func(lambda x: paddle.static.nn.cond(i==0, lambda: x, lambda: add_fn(x), y)
         y = map_func(lambda x: x if (i == 0) is not None else add_fn(x), y)
         i += 1
         return [i, ten, y]
 
     i = fluid.layers.fill_constant(shape=[1], dtype='int64', value=0)
     ten = fluid.layers.fill_constant(shape=[1], dtype='int64', value=10)
-    i, ten, y = fluid.layers.while_loop(cond, body, [i, ten, y])
+    i, ten, y = paddle.static.nn.while_loop(cond, body, [i, ten, y])
     return y[0]
 
 
 class TestDygraphIfElse6(TestDygraphIfElse):
-
     def setUp(self):
         self.x = np.random.random([10, 16]).astype('float32')
         self.dyfunc = dyfunc_ifExp_with_while
@@ -170,63 +183,55 @@ def dyfunc_ifExp(x):
 
     i = fluid.layers.fill_constant(shape=[1], dtype='int64', value=0)
     # It will be converted into `layers.cond` as followed.
-    # map_func(lambda x: fluid.layers.cond(i==1, lambda: x, lambda: add_fn(x), y)
+    # map_func(lambda x: paddle.static.nn.cond(i==1, lambda: x, lambda: add_fn(x), y)
     # `if (Tensor) == 1` is supported in dygraph.
     y = map_func(lambda x: x if i == 1 else add_fn(x), y)
     return y[0]
 
 
 class TestDygraphIfElse7(TestDygraphIfElse):
-
     def setUp(self):
         self.x = np.random.random([10, 16]).astype('float32')
         self.dyfunc = dyfunc_ifExp
 
 
 class TestDygraphIfElseWithAndOr(TestDygraphIfElse):
-
     def setUp(self):
         self.x = np.random.random([10, 16]).astype('float32')
         self.dyfunc = if_with_and_or
 
 
 class TestDygraphIfElseWithAndOr1(TestDygraphIfElse):
-
     def setUp(self):
         self.x = np.random.random([10, 16]).astype('float32')
         self.dyfunc = if_with_and_or_1
 
 
 class TestDygraphIfElseWithAndOr2(TestDygraphIfElse):
-
     def setUp(self):
         self.x = np.random.random([10, 16]).astype('float32')
         self.dyfunc = if_with_and_or_2
 
 
 class TestDygraphIfElseWithAndOr3(TestDygraphIfElse):
-
     def setUp(self):
         self.x = np.random.random([10, 16]).astype('float32')
         self.dyfunc = if_with_and_or_3
 
 
 class TestDygraphIfElseWithAndOr4(TestDygraphIfElse):
-
     def setUp(self):
         self.x = np.random.random([10, 16]).astype('float32')
         self.dyfunc = if_with_and_or_4
 
 
 class TestDygraphIfElseWithClassVar(TestDygraphIfElse):
-
     def setUp(self):
         self.x = np.random.random([10, 16]).astype('float32')
         self.dyfunc = if_with_class_var
 
 
 class TestDygraphIfTensor(TestDygraphIfElse):
-
     def setUp(self):
         self.x = np.random.random([10, 16]).astype('float32')
         self.dyfunc = if_tensor_case
@@ -264,7 +269,7 @@ class TestDygraphIfElseNet(unittest.TestCase):
 
 # Test to call function ahead caller.
 def relu(x):
-    return fluid.layers.relu(x)
+    return F.relu(x)
 
 
 def call_external_func(x, label=None):
@@ -281,15 +286,13 @@ def call_external_func(x, label=None):
 
 
 class TestAst2FuncWithExternalFunc(TestDygraphIfElse):
-
     def setUp(self):
         self.x = np.random.random([10, 16]).astype('float32')
         self.dyfunc = call_external_func
 
 
 class NetWithExternalFunc(fluid.dygraph.Layer):
-
-    @declarative
+    @paddle.jit.to_static
     def forward(self, x, label=None):
         if paddle.mean(x) < 0:
             x_v = x - 1
@@ -305,20 +308,18 @@ class NetWithExternalFunc(fluid.dygraph.Layer):
 
 # Test to call function behind caller.
 def softmax(x):
-    return fluid.layers.softmax(x)
+    return paddle.nn.functional.softmax(x)
 
 
 class TestNetWithExternalFunc(TestDygraphIfElseNet):
-
     def setUp(self):
         self.x = np.random.random([10, 16]).astype('float32')
         self.Net = NetWithExternalFunc
 
 
 class DiffModeNet1(paddle.nn.Layer):
-
     def __init__(self, mode):
-        super(DiffModeNet1, self).__init__()
+        super().__init__()
         self.mode = mode
 
     @paddle.jit.to_static
@@ -333,9 +334,8 @@ class DiffModeNet1(paddle.nn.Layer):
 
 
 class DiffModeNet2(paddle.nn.Layer):
-
     def __init__(self, mode):
-        super(DiffModeNet2, self).__init__()
+        super().__init__()
         self.mode = mode
 
     @paddle.jit.to_static
@@ -373,27 +373,28 @@ class TestDiffModeNet(unittest.TestCase):
 
     def test_train_mode(self):
         self.assertTrue(
-            (self._run(mode='train',
-                       to_static=True) == self._run(mode='train',
-                                                    to_static=False)).all())
+            (
+                self._run(mode='train', to_static=True)
+                == self._run(mode='train', to_static=False)
+            ).all()
+        )
 
     def test_infer_mode(self):
         self.assertTrue(
-            (self._run(mode='infer',
-                       to_static=True) == self._run(mode='infer',
-                                                    to_static=False)).all())
+            (
+                self._run(mode='infer', to_static=True)
+                == self._run(mode='infer', to_static=False)
+            ).all()
+        )
 
 
 class TestDiffModeNet2(TestDiffModeNet):
-
     def init_net(self):
         self.Net = DiffModeNet2
 
 
 class TestNewVarCreateInOneBranch(unittest.TestCase):
-
     def test_var_used_in_another_for(self):
-
         def case_func(training):
             # targets and targets_list is dynamically defined by training
             if training:
@@ -416,7 +417,6 @@ class TestNewVarCreateInOneBranch(unittest.TestCase):
 
 
 class TestDy2StIfElseRetInt1(unittest.TestCase):
-
     def setUp(self):
         self.x = np.random.random([5]).astype('float32')
         self.dyfunc = dyfunc_ifelse_ret_int1
@@ -435,7 +435,6 @@ class TestDy2StIfElseRetInt1(unittest.TestCase):
 
 
 class TestDy2StIfElseRetInt2(TestDy2staticException):
-
     def setUp(self):
         self.x = np.random.random([5]).astype('float32')
         self.error = "Your if/else have different number of return value."
@@ -443,7 +442,6 @@ class TestDy2StIfElseRetInt2(TestDy2staticException):
 
 
 class TestDy2StIfElseRetInt3(TestDy2StIfElseRetInt1):
-
     def setUp(self):
         self.x = np.random.random([5]).astype('float32')
         self.dyfunc = dyfunc_ifelse_ret_int3
@@ -454,7 +452,6 @@ class TestDy2StIfElseRetInt3(TestDy2StIfElseRetInt1):
 
 
 class TestDy2StIfElseRetInt4(TestDy2StIfElseRetInt1):
-
     def setUp(self):
         self.x = np.random.random([5]).astype('float32')
         self.dyfunc = dyfunc_ifelse_ret_int4
@@ -474,12 +471,11 @@ class TestDy2StIfElseRetInt4(TestDy2StIfElseRetInt1):
 
 
 class IfElseNet(paddle.nn.Layer):
-
     def __init__(self):
-        super(IfElseNet, self).__init__()
-        self.param = self.create_parameter(shape=[3, 2],
-                                           dtype='float32',
-                                           is_bias=False)
+        super().__init__()
+        self.param = self.create_parameter(
+            shape=[3, 2], dtype='float32', is_bias=False
+        )
 
     @paddle.jit.to_static
     def forward(self, a, b, c):
@@ -495,7 +491,6 @@ class IfElseNet(paddle.nn.Layer):
 
 
 class TestDy2StIfElseBackward(unittest.TestCase):
-
     def test_run_backward(self):
         a = paddle.randn((4, 3), dtype='float32')
         a.stop_gradient = False
@@ -508,11 +503,10 @@ class TestDy2StIfElseBackward(unittest.TestCase):
         net.train()
         out = net(a, b, c)
         out.backward()
-        np.testing.assert_allclose((b + net.param).numpy(),
-                                   out.numpy(),
-                                   rtol=1e-05)
+        np.testing.assert_allclose(
+            (b + net.param).numpy(), out.numpy(), rtol=1e-05
+        )
 
 
 if __name__ == '__main__':
-    with paddle.fluid.framework._test_eager_guard():
-        unittest.main()
+    unittest.main()

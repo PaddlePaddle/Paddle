@@ -20,19 +20,15 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
-using LoDTensor = framework::LoDTensor;
-
 class ROIAlignOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
-        ctx.device_context());
+    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+                          ctx.GetPlace());
   }
 };
 
@@ -54,11 +50,10 @@ class ROIAlignGradOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "ROIs"),
-        ctx.device_context());
+    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "ROIs"),
+                          ctx.GetPlace());
   }
 };
 
@@ -73,9 +68,9 @@ class ROIAlignOpMaker : public framework::OpProtoAndCheckerMaker {
              "H is the height of the feature, and "
              "W is the width of the feature.");
     AddInput("ROIs",
-             "(LoDTensor), "
+             "(phi::DenseTensor), "
              "ROIs (Regions of Interest) to pool over. "
-             "should be a 2-D LoDTensor of shape (num_rois, 4)"
+             "should be a 2-D phi::DenseTensor of shape (num_rois, 4)"
              "given as [[x1, y1, x2, y2], ...]. "
              "(x1, y1) is the top left coordinates, and "
              "(x2, y2) is the bottom right coordinates.");
@@ -116,17 +111,17 @@ class ROIAlignOpMaker : public framework::OpProtoAndCheckerMaker {
 **RoIAlign Operator**
 
 Region of interest align (also known as RoI align) is to perform
-bilinear interpolation on inputs of nonuniform sizes to obtain 
+bilinear interpolation on inputs of nonuniform sizes to obtain
 fixed-size feature maps (e.g. 7*7)
 
 Dividing each region proposal into equal-sized sections with
 the pooled_width and pooled_height. Location remains the origin
 result.
 
-In each ROI bin, the value of the four regularly sampled locations 
+In each ROI bin, the value of the four regularly sampled locations
 are computed directly through bilinear interpolation. The output is
 the mean of four locations.
-Thus avoid the misaligned problem.   
+Thus avoid the misaligned problem.
     )DOC");
   }
 };

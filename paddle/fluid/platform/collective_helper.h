@@ -69,10 +69,7 @@ class NCCLComm {
 // A singleton NCCL communicator context reserves communication ring ids
 class NCCLCommContext {
  public:
-  static NCCLCommContext& Instance() {
-    static NCCLCommContext comm_ctx;
-    return comm_ctx;
-  }
+  static NCCLCommContext& Instance();
 
   NCCLComm* CreateComm(
       ncclUniqueId* nccl_id, int nranks, int rank, int dev_id, int ring_id = 0);
@@ -103,6 +100,17 @@ class NCCLCommContext {
                           "One device id should be specified to retrieve from "
                           "multiple communicators."));
     return comm_map_.at(ring_id).begin()->second.get();
+  }
+
+  int GetRingId(ncclComm_t comm) const {
+    for (const auto& pair : comm_map_) {
+      for (const auto& p : pair.second) {
+        if (p.second.get()->comm() == comm) {
+          return pair.first;
+        }
+      }
+    }
+    return -1;
   }
 
   // retrieve a communicator by the ring id and the device id

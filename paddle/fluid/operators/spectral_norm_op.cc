@@ -20,16 +20,14 @@
 namespace paddle {
 namespace operators {
 
-using framework::Tensor;
-
 class SpectralNormOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
+    return phi::KernelKey(
         OperatorWithKernel::IndicateVarDataType(ctx, "Weight"), ctx.GetPlace());
   }
 };
@@ -114,7 +112,7 @@ class SpectralNormOpMaker : public framework::OpProtoAndCheckerMaker {
 
             $$\sigma{\mathbf{W}} = \mathbf{u}^{T} \mathbf{W} \mathbf{v}$$
 
-          For details of spectral normalization, please refer to paper: 
+          For details of spectral normalization, please refer to paper:
           `Spectral Normalization <https://arxiv.org/abs/1802.05957>`_ .
          )DOC");
   }
@@ -145,9 +143,9 @@ class SpectralNormOpGrad : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
+    return phi::KernelKey(
         OperatorWithKernel::IndicateVarDataType(ctx, "Weight"), ctx.GetPlace());
   }
 };

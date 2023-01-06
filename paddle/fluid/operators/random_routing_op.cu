@@ -14,8 +14,8 @@
 
 #include "paddle/fluid/operators/random_routing_op.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/fluid/platform/float16.h"
+#include "paddle/phi/backends/gpu/gpu_primitives.h"
 
 namespace paddle {
 namespace operators {
@@ -28,9 +28,6 @@ const int CUDA_NUM_THREADS = 512;
 static inline int GET_BLOCKS(const int N) {
   return (N + CUDA_NUM_THREADS - 1) / CUDA_NUM_THREADS;
 }
-
-using LoDTensor = framework::LoDTensor;
-using Tensor = framework::Tensor;
 
 template <typename T>
 __global__ void random_routing_kernel(int64_t* data,
@@ -54,10 +51,10 @@ template <typename T>
 class RandomRoutingOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto topk_idx = context.Input<LoDTensor>("TopK_Idx");
-    auto topk_value = context.Input<LoDTensor>("TopK_Value");
-    auto prob = context.Input<LoDTensor>("Prob");
-    auto out = context.Output<LoDTensor>("Out");
+    auto topk_idx = context.Input<phi::DenseTensor>("TopK_Idx");
+    auto topk_value = context.Input<phi::DenseTensor>("TopK_Value");
+    auto prob = context.Input<phi::DenseTensor>("Prob");
+    auto out = context.Output<phi::DenseTensor>("Out");
 
     auto place = context.GetPlace();
     const auto& dev_ctx = context.template device_context<phi::GPUContext>();

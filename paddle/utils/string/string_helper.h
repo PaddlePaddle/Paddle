@@ -334,6 +334,42 @@ inline int split_string_ptr(const char* str,
   return num;
 }
 
+inline int split_string_ptr(const char* str,
+                            size_t len,
+                            char delim,
+                            std::vector<str_ptr>* values,
+                            int max_num) {
+  if (len <= 0) {
+    return 0;
+  }
+
+  int num = 0;
+  const char* p = str;
+  const char* end = str + len;
+  const char* last = str;
+  while (p < end) {
+    if (*p != delim) {
+      ++p;
+      continue;
+    }
+    values->emplace_back(last, (size_t)(p - last));
+    ++num;
+    ++p;
+    if (num >= max_num) {
+      return num;
+    }
+    // skip continue delim
+    while (*p == delim) {
+      ++p;
+    }
+    last = p;
+  }
+  if (p > last) {
+    values->emplace_back(last, (size_t)(p - last));
+    ++num;
+  }
+  return num;
+}
 // A helper class for reading lines from file. A line buffer is maintained. It
 // doesn't need to know the maximum possible length of a line.
 

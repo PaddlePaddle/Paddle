@@ -92,8 +92,7 @@ void TemporalShiftKernel(const Context& dev_ctx,
   auto* input = &x;
   auto* output = out;
   int t = seg_num;
-  const DataLayout data_layout =
-      paddle::framework::StringToDataLayout(data_format_str);
+  const DataLayout data_layout = phi::StringToDataLayout(data_format_str);
 
   const int nt = input->dims()[0];
   const int c =
@@ -115,7 +114,8 @@ void TemporalShiftKernel(const Context& dev_ctx,
       (data_layout == DataLayout::kNCHW ? phi::make_ddim({nt, c, h, w})
                                         : phi::make_ddim({nt, h, w, c}));
   const T* input_data = input->data<T>();
-  T* output_data = output->mutable_data<T>(out_dims, dev_ctx.GetPlace());
+  output->Resize(out_dims);
+  T* output_data = dev_ctx.template Alloc<T>(output);
 
   if (data_layout == DataLayout::kNCHW) {
     TemporalShiftFwNCHW<T>(

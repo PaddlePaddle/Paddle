@@ -27,20 +27,11 @@ class ScaleOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     auto input_data_type =
         framework::OperatorWithKernel::IndicateVarDataType(ctx, "X");
-
-#ifdef PADDLE_WITH_MKLDNN
-    if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
-      return framework::OpKernelType(input_data_type,
-                                     ctx.GetPlace(),
-                                     framework::DataLayout::kMKLDNN,
-                                     framework::LibraryType::kMKLDNN);
-    }
-#endif
-    return framework::OpKernelType(input_data_type, ctx.GetPlace());
+    return phi::KernelKey(input_data_type, ctx.GetPlace());
   }
 };
 
@@ -75,10 +66,6 @@ $$Out = scale*(X + bias)$$
         "Apply bias addition after or before scaling. It is useful for "
         "numeric stability in some circumstances.")
         .SetDefault(true);
-    AddAttr<bool>("use_mkldnn",
-                  "(bool, default false) Only used in mkldnn kernel")
-        .SetDefault(false)
-        .AsExtra();
   }
 };
 
@@ -108,11 +95,6 @@ class ScaleGradMaker : public framework::SingleGradOpMaker<T> {
     VLOG(6) << "Finish Set Attr bias";
     grad_op->SetAttr("bias_after_scale", true);
     VLOG(6) << "Finish Set Attr bias_after_scale";
-    if (grad_op->HasAttr("use_mkldnn")) {
-      VLOG(6) << "Finish Check Attr use_mkldnn";
-      grad_op->SetAttr("use_mkldnn", this->GetAttr("use_mkldnn"));
-      VLOG(6) << "Finish Set Attr use_mkldnn";
-    }
     VLOG(6) << "Finish Apply";
   }
 };

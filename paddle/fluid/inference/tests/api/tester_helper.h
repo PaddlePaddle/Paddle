@@ -372,23 +372,15 @@ std::unordered_map<std::string, int> GetFuseStatis(PaddlePredictor *predictor,
                                                    int *num_ops) {
   std::unordered_map<std::string, int> res;
   auto *analysis_predictor = static_cast<AnalysisPredictor *>(predictor);
-  auto *fusion_status =
-      analysis_predictor->analysis_argument().fusion_statis_ptr();
-  if (!fusion_status) {
-    return res;
+  auto fusion_status = analysis_predictor->fusion_statis();
+  if (fusion_status.empty()) {
+    fusion_status = res;
   }
-  for (auto &item : *fusion_status) {
+  for (auto &item : fusion_status) {
     LOG(INFO) << "fused " << item.first << " " << item.second;
   }
-  int num = 0;
-  for (auto &node :
-       analysis_predictor->analysis_argument().main_graph().Nodes()) {
-    if (node->IsOp()) {
-      ++num;
-    }
-  }
-  *num_ops = num;
-  return *fusion_status;
+  *num_ops = 0;
+  return fusion_status;
 }
 
 void SetFakeImageInput(std::vector<std::vector<PaddleTensor>> *inputs,
@@ -1029,7 +1021,7 @@ void SaveOptimModel(AnalysisConfig *cfg, const std::string &dstPath) {
 }
 
 template <typename T>
-std::string LoDTensorSummary(const framework::LoDTensor &tensor) {
+std::string LoDTensorSummary(const phi::DenseTensor &tensor) {
   std::stringstream ss;
   ss << "\n---- tensor ---" << '\n';
   ss << "lod: [";
@@ -1095,8 +1087,8 @@ static bool CompareShape(const std::vector<int64_t> &a,
   return true;
 }
 
-static bool CompareTensorData(const framework::LoDTensor &a,
-                              const framework::LoDTensor &b) {
+static bool CompareTensorData(const phi::DenseTensor &a,
+                              const phi::DenseTensor &b) {
   auto a_shape = phi::vectorize(a.dims());
   auto b_shape = phi::vectorize(b.dims());
   size_t a_size = std::accumulate(
@@ -1141,8 +1133,8 @@ static bool CompareTensorData(const framework::LoDTensor &a,
   return true;
 }
 
-static bool CompareTensor(const framework::LoDTensor &a,
-                          const framework::LoDTensor &b) {
+static bool CompareTensor(const phi::DenseTensor &a,
+                          const phi::DenseTensor &b) {
   if (!CompareLoD(a.lod(), b.lod())) {
     return false;
   }

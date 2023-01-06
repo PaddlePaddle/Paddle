@@ -1501,7 +1501,7 @@ int32_t BrpcPsClient::RecvAndSaveTable(const uint64_t table_id,
   auto &dev_ctx = *pool.Get(place);
 
   framework::Variable *var = scope->Var(var_name);
-  framework::LoDTensor *var_tensor = var->GetMutable<framework::LoDTensor>();
+  phi::DenseTensor *var_tensor = var->GetMutable<phi::DenseTensor>();
 
   std::vector<int64_t> vec_dim = {var_num, var_shape};
   var_tensor->Resize(phi::make_ddim(vec_dim));

@@ -18,14 +18,12 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
-
 template <typename DeviceContext, typename T>
 class SquaredL2NormNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
-    auto *x = context.Input<Tensor>("X");
-    auto *out = context.Output<Tensor>("Out");
+    auto *x = context.Input<phi::DenseTensor>("X");
+    auto *out = context.Output<phi::DenseTensor>("Out");
 
     auto place = context.GetPlace();
     auto stream =
@@ -47,9 +45,11 @@ template <typename DeviceContext, typename T>
 class SquaredL2NormGradNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
-    auto *x = context.Input<Tensor>("X");
-    auto *x_grad = context.Output<Tensor>(framework::GradVarName("X"));
-    auto *out_grad = context.Input<Tensor>(framework::GradVarName("Out"));
+    auto *x = context.Input<phi::DenseTensor>("X");
+    auto *x_grad =
+        context.Output<phi::DenseTensor>(framework::GradVarName("X"));
+    auto *out_grad =
+        context.Input<phi::DenseTensor>(framework::GradVarName("Out"));
 
     PADDLE_ENFORCE_EQ(
         out_grad->numel(),
@@ -63,7 +63,7 @@ class SquaredL2NormGradNPUKernel : public framework::OpKernel<T> {
             .stream();
 
     // broadcast out_grad
-    Tensor broadcasted_out_grad;
+    phi::DenseTensor broadcasted_out_grad;
     broadcasted_out_grad.mutable_data<T>(x_grad->dims(), place);
     const auto &broadcast_runner =
         NpuOpRunner("BroadcastToD",
@@ -72,13 +72,13 @@ class SquaredL2NormGradNPUKernel : public framework::OpKernel<T> {
                     {{"shape", phi::vectorize(x_grad->dims())}});
     broadcast_runner.Run(stream);
     // mul x
-    Tensor tmp_x_grad;
+    phi::DenseTensor tmp_x_grad;
     tmp_x_grad.mutable_data<T>(x_grad->dims(), place);
     const auto &mul_x_runner =
         NpuOpRunner("Mul", {broadcasted_out_grad, *x}, {tmp_x_grad}, {});
     mul_x_runner.Run(stream);
     // mul coefficient:2
-    Tensor coefficient;
+    phi::DenseTensor coefficient;
     coefficient.mutable_data<T>({1}, place);
     FillNpuTensorWithConstant<T>(&coefficient, static_cast<T>(2.0));
     x_grad->mutable_data<T>(place);

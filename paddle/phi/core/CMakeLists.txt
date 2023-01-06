@@ -1,6 +1,15 @@
 # compatible utils used for fluid op system
 add_subdirectory(compat)
 
+if(WITH_GPU)
+  proto_library(external_error_proto SRCS external_error.proto)
+endif()
+
+cc_library(
+  flags
+  SRCS flags.cc
+  DEPS gflags)
+
 cc_library(errors SRCS errors.cc)
 set(phi_enforce_deps errors flags)
 if(WITH_GPU)
@@ -11,10 +20,17 @@ cc_library(
   SRCS enforce.cc
   DEPS ${phi_enforce_deps})
 
-cc_library(
-  kernel_factory
-  SRCS kernel_factory.cc
-  DEPS phi_enforce fluid_convert_utils)
+if(WITH_XPU)
+  cc_library(
+    kernel_factory
+    SRCS kernel_factory.cc
+    DEPS phi_enforce convert_utils phi_backends)
+else()
+  cc_library(
+    kernel_factory
+    SRCS kernel_factory.cc
+    DEPS phi_enforce convert_utils)
+endif()
 cc_library(
   kernel_context
   SRCS kernel_context.cc
@@ -42,11 +58,15 @@ cc_library(
   lod_utils
   SRCS lod_utils.cc
   DEPS phi_enforce)
+cc_library(
+  threadpool
+  SRCS threadpool.cc
+  DEPS phi_enforce)
 
 cc_library(
   dense_tensor
   SRCS dense_tensor.cc dense_tensor_impl.cc
-  DEPS convert_utils fluid_convert_utils tensor_meta tensor_base ddim strides)
+  DEPS convert_utils tensor_meta tensor_base ddim strides)
 
 target_link_libraries(dense_tensor malloc)
 
@@ -62,6 +82,16 @@ cc_library(
   string_tensor
   SRCS string_tensor.cc
   DEPS convert_utils tensor_meta tensor_base)
+
+cc_library(
+  tensor_array
+  SRCS tensor_array.cc
+  DEPS dense_tensor tensor_base)
+
+cc_library(
+  extended_tensor
+  SRCS extended_tensor.cc
+  DEPS tensor_base)
 
 cc_library(
   meta_tensor

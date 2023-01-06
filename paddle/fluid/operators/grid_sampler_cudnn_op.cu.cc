@@ -25,7 +25,6 @@ class DenseTensor;
 namespace paddle {
 namespace operators {
 
-using framework::Tensor;
 using ScopedTensorDescriptor = platform::ScopedTensorDescriptor;
 using DataLayout = platform::DataLayout;
 using ScopedSpatialTransformerDescriptor =
@@ -43,9 +42,9 @@ class CUDNNGridSampleOpKernel : public framework::OpKernel<T> {
                           "It must use CUDAPlace when using CUDA Kernel"));
     auto& dev_ctx = ctx.template device_context<phi::GPUContext>();
     auto handle = dev_ctx.cudnn_handle();
-    auto* input = ctx.Input<Tensor>("X");
-    auto* grid = ctx.Input<Tensor>("Grid");
-    auto* output = ctx.Output<Tensor>("Output");
+    auto* input = ctx.Input<phi::DenseTensor>("X");
+    auto* grid = ctx.Input<phi::DenseTensor>("Grid");
+    auto* output = ctx.Output<phi::DenseTensor>("Output");
 
     int n = input->dims()[0];
     int c = input->dims()[1];
@@ -92,11 +91,14 @@ class CUDNNGridSampleGradOpKernel : public framework::OpKernel<T> {
                           "It must use CUDAPlace when using CUDA Kernel"));
     auto& dev_ctx = ctx.template device_context<phi::GPUContext>();
     auto handle = dev_ctx.cudnn_handle();
-    auto* input = ctx.Input<Tensor>("X");
-    auto* grid = ctx.Input<Tensor>("Grid");
-    auto* output_grad = ctx.Input<Tensor>(framework::GradVarName("Output"));
-    auto* input_grad = ctx.Output<Tensor>(framework::GradVarName("X"));
-    auto* grid_grad = ctx.Output<Tensor>(framework::GradVarName("Grid"));
+    auto* input = ctx.Input<phi::DenseTensor>("X");
+    auto* grid = ctx.Input<phi::DenseTensor>("Grid");
+    auto* output_grad =
+        ctx.Input<phi::DenseTensor>(framework::GradVarName("Output"));
+    auto* input_grad =
+        ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
+    auto* grid_grad =
+        ctx.Output<phi::DenseTensor>(framework::GradVarName("Grid"));
 
     auto output_grad_dims = output_grad->dims();
     const int n = output_grad_dims[0];

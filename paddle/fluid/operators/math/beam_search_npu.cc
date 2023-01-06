@@ -35,13 +35,13 @@ template <typename T>
 class BeamSearchFunctor<platform::NPUDeviceContext, T> {
  public:
   void operator()(const platform::NPUDeviceContext& ctx,
-                  const framework::LoDTensor* pre_ids,
-                  const framework::LoDTensor* pre_scores,
-                  const framework::LoDTensor* ids,
-                  const framework::LoDTensor* scores,
-                  framework::LoDTensor* selected_ids,
-                  framework::LoDTensor* selected_scores,
-                  framework::Tensor* parent_idx,
+                  const phi::DenseTensor* pre_ids,
+                  const phi::DenseTensor* pre_scores,
+                  const phi::DenseTensor* ids,
+                  const phi::DenseTensor* scores,
+                  phi::DenseTensor* selected_ids,
+                  phi::DenseTensor* selected_scores,
+                  phi::DenseTensor* parent_idx,
                   size_t level,
                   size_t beam_size,
                   int end_id,
@@ -185,8 +185,8 @@ class BeamSearchFunctor<platform::NPUDeviceContext, T> {
           "FillD", {true_tmp_tensor}, {second_pos_true_tensors}, fill_attr2);
       runner_fill_true_tensors.Run(stream);
 
-      std::vector<framework::Tensor> concat_inputs = {first_pos_false_tensors,
-                                                      second_pos_true_tensors};
+      std::vector<phi::DenseTensor> concat_inputs = {first_pos_false_tensors,
+                                                     second_pos_true_tensors};
       std::vector<std::string> concat_names = {"x0", "x1"};
       NpuOpRunner runner_concat_false_true{"ConcatD",
                                            {concat_inputs},
@@ -403,8 +403,8 @@ class BeamSearchFunctor<platform::NPUDeviceContext, T> {
 
     sorted_score_indices.Resize(
         phi::make_ddim({num_seqs, static_cast<int64_t>(beam_size), 1}));
-    std::vector<framework::Tensor> concat_inputs2 = {batch_ids,
-                                                     sorted_score_indices};
+    std::vector<phi::DenseTensor> concat_inputs2 = {batch_ids,
+                                                    sorted_score_indices};
     std::vector<std::string> concat_names = {"x0", "x1"};
     NpuOpRunner runner_concat_score_indices{"ConcatD",
                                             {concat_inputs2},
@@ -429,8 +429,8 @@ class BeamSearchFunctor<platform::NPUDeviceContext, T> {
         phi::make_ddim({num_seqs, static_cast<int64_t>(beam_size), 2}));
     gather_nd_id_indices.mutable_data<int>(place);
 
-    std::vector<framework::Tensor> concat_inputs3 = {batch_ids,
-                                                     cast_sort_tmp_indices};
+    std::vector<phi::DenseTensor> concat_inputs3 = {batch_ids,
+                                                    cast_sort_tmp_indices};
     NpuOpRunner runner_concat_id_indices{"ConcatD",
                                          {concat_inputs3},
                                          {gather_nd_id_indices},

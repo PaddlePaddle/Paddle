@@ -172,14 +172,14 @@ class FusedElemwiseActivationOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx.Input<framework::Tensor>("X")->dtype(),
-                      ctx.Input<framework::Tensor>("Y")->dtype(),
+    PADDLE_ENFORCE_EQ(ctx.Input<phi::DenseTensor>("X")->dtype(),
+                      ctx.Input<phi::DenseTensor>("Y")->dtype(),
                       platform::errors::InvalidArgument(
                           "The element's type of input should be the same."));
-    return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace());
+    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+                          ctx.GetPlace());
   }
 };
 
@@ -389,11 +389,11 @@ class FusedElemwiseActivationOpGrad : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
-                                       ctx, framework::GradVarName("Out")),
-                                   ctx.GetPlace());
+    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(
+                              ctx, framework::GradVarName("Out")),
+                          ctx.GetPlace());
   }
 };
 

@@ -29,13 +29,13 @@ class CheckFiniteAndUnscaleOp : public framework::OperatorWithKernel {
       : OperatorWithKernel(type, inputs, outputs, attrs) {}
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto dtype = framework::proto::VarType::FP32;
     if (ctx.MultiInputVar("X").size() >= 1) {
       dtype = OperatorWithKernel::IndicateVarDataType(ctx, "X");
     }
-    return framework::OpKernelType(dtype, ctx.GetPlace());
+    return phi::KernelKey(dtype, ctx.GetPlace());
   }
 };
 
@@ -69,8 +69,8 @@ Check if input X contains all finite data, if yes, scale it by input Scale.
 $$Out = X / scale$$
 
 If any tensor in X contains Inf or Nan, the Out will generate a indicator.
-FoundInfinite will be 1 (True), and Out will not be scaled. In this case, the data of 
-Out should not be used, and its data may not be deterministic. 
+FoundInfinite will be 1 (True), and Out will not be scaled. In this case, the data of
+Out should not be used, and its data may not be deterministic.
 Otherwise, FoundInfinite will be 0 (False).
 
 )DOC");

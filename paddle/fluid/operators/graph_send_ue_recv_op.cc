@@ -25,11 +25,10 @@ class GraphSendUERecvOP : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
-        ctx.device_context());
+    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+                          ctx.device_context().GetPlace());
   }
 };
 
@@ -45,11 +44,11 @@ class GraphSendUERecvGradOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
-                                       ctx, framework::GradVarName("Out")),
-                                   ctx.device_context());
+    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(
+                              ctx, framework::GradVarName("Out")),
+                          ctx.device_context().GetPlace());
   }
 };
 
@@ -97,7 +96,7 @@ intermediate memory consumption in the process of message passing.
 
 Take `X` as the input tensor, we first use `src_index` to gather corresponding data.
 Then the gather data should compute with `Y` in different message_ops, like add, sub, mul, and div,
-and get the computation result. Then, use `dst_index` to update the corresponding position of output 
+and get the computation result. Then, use `dst_index` to update the corresponding position of output
 tensor in different pooling types, like sum, mean, max, or min.
 
 )DOC");
@@ -140,7 +139,7 @@ namespace ops = paddle::operators;
 
 DECLARE_INFER_SHAPE_FUNCTOR(graph_send_ue_recv,
                             GraphSendUERecvInferShapeFunctor,
-                            PD_INFER_META(phi::GraphSendUERecvInferMeta));
+                            PD_INFER_META(phi::SendUERecvInferMeta));
 REGISTER_OPERATOR(graph_send_ue_recv,
                   ops::GraphSendUERecvOP,
                   ops::GraphSendUERecvOpMaker,

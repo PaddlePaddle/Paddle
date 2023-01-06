@@ -12,14 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
+
 from test_parallel_dygraph_dataparallel import TestMultipleGpus
 
 
 class TestProcessGroup(TestMultipleGpus):
-
     def test_process_group_nccl(self):
         self.run_mnist_2gpu('process_group_nccl.py')
 

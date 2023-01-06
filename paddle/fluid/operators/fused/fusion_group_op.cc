@@ -76,10 +76,10 @@ class FusionGroupOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(framework::proto::VarType::FP32,
-                                   platform::CUDAPlace(0));
+    return phi::KernelKey(framework::proto::VarType::FP32,
+                          platform::CUDAPlace(0));
   };
 };
 
@@ -87,10 +87,10 @@ class FusionGroupOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("Inputs",
-             "(std::vector<LoDTensor>) The inputs of fusion_group op.")
+             "(std::vector<phi::DenseTensor>) The inputs of fusion_group op.")
         .AsDuplicable();
     AddOutput("Outs",
-              "(std::vector<LoDTensor>) The outputs of fusion_group op.")
+              "(std::vector<phi::DenseTensor>) The outputs of fusion_group op.")
         .AsDuplicable();
     AddAttr<std::vector<int>>("outs_dtype",
                               "The data type of Outputs in fusion_group op.")

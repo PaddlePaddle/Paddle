@@ -12,17 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
-import unittest
-import time
-import paddle
-import paddle.fluid as fluid
 import copy
 import os
 import subprocess
+import time
+import unittest
 
-from paddle.distributed.utils import find_free_ports, watch_local_trainers, get_cluster, TrainerProc
+import paddle.fluid as fluid
+from paddle.distributed.utils.launch_utils import (
+    TrainerProc,
+    find_free_ports,
+    get_cluster,
+    watch_local_trainers,
+)
 
 
 def get_cluster_from_args(selected_gpus):
@@ -50,17 +52,19 @@ def get_gpus(selected_gpus):
     return selected_gpus
 
 
-def start_local_trainers(cluster,
-                         pod,
-                         training_script,
-                         training_script_args,
-                         eager_mode=True,
-                         log_dir=None):
+def start_local_trainers(
+    cluster,
+    pod,
+    training_script,
+    training_script_args,
+    eager_mode=True,
+    log_dir=None,
+):
     current_env = copy.copy(os.environ.copy())
-    #paddle broadcast ncclUniqueId use socket, and
-    #proxy maybe make trainers unreachable, so delete them.
-    #if we set them to "", grpc will log error message "bad uri"
-    #so just delete them.
+    # paddle broadcast ncclUniqueId use socket, and
+    # proxy maybe make trainers unreachable, so delete them.
+    # if we set them to "", grpc will log error message "bad uri"
+    # so just delete them.
     current_env.pop("http_proxy", None)
     current_env.pop("https_proxy", None)
 
@@ -71,11 +75,8 @@ def start_local_trainers(cluster,
             "PADDLE_TRAINER_ID": "%d" % t.rank,
             "PADDLE_CURRENT_ENDPOINT": "%s" % t.endpoint,
             "PADDLE_TRAINERS_NUM": "%d" % cluster.trainers_nranks(),
-            "PADDLE_TRAINER_ENDPOINTS": ",".join(cluster.trainers_endpoints())
+            "PADDLE_TRAINER_ENDPOINTS": ",".join(cluster.trainers_endpoints()),
         }
-
-        if not eager_mode:
-            proc_env["FLAGS_enable_eager_mode"] = "%d" % 0
 
         current_env.update(proc_env)
 
@@ -104,10 +105,11 @@ def start_local_trainers(cluster,
 
 
 class TestMultipleGpus(unittest.TestCase):
-
     def run_2gpu(self, target_file_name, eager_mode=True):
-        if not fluid.core.is_compiled_with_cuda(
-        ) or fluid.core.get_cuda_device_count() == 0:
+        if (
+            not fluid.core.is_compiled_with_cuda()
+            or fluid.core.get_cuda_device_count() == 0
+        ):
             return
 
         selected_gpus = get_gpus('0,1')
@@ -116,11 +118,13 @@ class TestMultipleGpus(unittest.TestCase):
 
         cluster, pod = get_cluster_from_args(selected_gpus)
 
-        procs = start_local_trainers(cluster,
-                                     pod,
-                                     eager_mode=eager_mode,
-                                     training_script=target_file_name,
-                                     training_script_args=[])
+        procs = start_local_trainers(
+            cluster,
+            pod,
+            eager_mode=eager_mode,
+            training_script=target_file_name,
+            training_script_args=[],
+        )
 
         while True:
             alive = watch_local_trainers(procs, cluster.trainers_endpoints())
@@ -132,7 +136,6 @@ class TestMultipleGpus(unittest.TestCase):
 
 
 class TestDataParallelQAT(TestMultipleGpus):
-
     def test_multiple_gpus_qat(self):
         self.run_2gpu('hybrid_parallel_qat.py')
 

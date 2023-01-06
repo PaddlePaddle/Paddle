@@ -24,8 +24,7 @@
 namespace paddle {
 namespace pybind {
 
-static void tensor_uva(paddle::framework::LoDTensor *self_tensor,
-                       int device_id) {
+static void tensor_uva(phi::DenseTensor *self_tensor, int device_id) {
   VLOG(4) << "Running in _uva interface.";
 #if defined(PADDLE_WITH_CUDA)
   platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();

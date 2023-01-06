@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import numpy as np
 import unittest
 import sys
@@ -30,66 +28,77 @@ SEED = 2021
 
 
 class TestMemcpy_FillConstant(unittest.TestCase):
-
     def get_prog(self):
         paddle.enable_static()
         main_program = Program()
         with program_guard(main_program):
             cpu_var_name = "tensor@Cpu"
             npu_var_name = "tensor@Npu"
-            cpu_var = main_program.global_block().create_var(name=cpu_var_name,
-                                                             shape=[10, 10],
-                                                             dtype='float32',
-                                                             persistable=False,
-                                                             stop_gradient=True)
-            npu_var = main_program.global_block().create_var(name=npu_var_name,
-                                                             shape=[10, 10],
-                                                             dtype='float32',
-                                                             persistable=False,
-                                                             stop_gradient=True)
-            main_program.global_block().append_op(type="fill_constant",
-                                                  outputs={"Out": npu_var_name},
-                                                  attrs={
-                                                      "shape": [10, 10],
-                                                      "dtype": npu_var.dtype,
-                                                      "value": 1.0,
-                                                      "place_type": 4
-                                                  })
-            main_program.global_block().append_op(type="fill_constant",
-                                                  outputs={"Out": cpu_var_name},
-                                                  attrs={
-                                                      "shape": [10, 10],
-                                                      "dtype": cpu_var.dtype,
-                                                      "value": 0.0,
-                                                      "place_type": 0
-                                                  })
+            cpu_var = main_program.global_block().create_var(
+                name=cpu_var_name,
+                shape=[10, 10],
+                dtype='float32',
+                persistable=False,
+                stop_gradient=True,
+            )
+            npu_var = main_program.global_block().create_var(
+                name=npu_var_name,
+                shape=[10, 10],
+                dtype='float32',
+                persistable=False,
+                stop_gradient=True,
+            )
+            main_program.global_block().append_op(
+                type="fill_constant",
+                outputs={"Out": npu_var_name},
+                attrs={
+                    "shape": [10, 10],
+                    "dtype": npu_var.dtype,
+                    "value": 1.0,
+                    "place_type": 4,
+                },
+            )
+            main_program.global_block().append_op(
+                type="fill_constant",
+                outputs={"Out": cpu_var_name},
+                attrs={
+                    "shape": [10, 10],
+                    "dtype": cpu_var.dtype,
+                    "value": 0.0,
+                    "place_type": 0,
+                },
+            )
         return main_program, npu_var, cpu_var
 
     def test_npu_cpoy_to_cpu(self):
         main_program, npu_var, cpu_var = self.get_prog()
-        main_program.global_block().append_op(type='memcpy',
-                                              inputs={'X': npu_var},
-                                              outputs={'Out': cpu_var},
-                                              attrs={'dst_place_type': 0})
+        main_program.global_block().append_op(
+            type='memcpy',
+            inputs={'X': npu_var},
+            outputs={'Out': cpu_var},
+            attrs={'dst_place_type': 0},
+        )
         place = fluid.NPUPlace(0)
         exe = fluid.Executor(place)
-        npu_, cpu_ = exe.run(main_program,
-                             feed={},
-                             fetch_list=[npu_var.name, cpu_var.name])
+        npu_, cpu_ = exe.run(
+            main_program, feed={}, fetch_list=[npu_var.name, cpu_var.name]
+        )
         np.testing.assert_allclose(npu_, cpu_)
         np.testing.assert_allclose(cpu_, np.ones((10, 10)))
 
     def test_cpu_cpoy_npu(self):
         main_program, npu_var, cpu_var = self.get_prog()
-        main_program.global_block().append_op(type='memcpy',
-                                              inputs={'X': cpu_var},
-                                              outputs={'Out': npu_var},
-                                              attrs={'dst_place_type': 4})
+        main_program.global_block().append_op(
+            type='memcpy',
+            inputs={'X': cpu_var},
+            outputs={'Out': npu_var},
+            attrs={'dst_place_type': 4},
+        )
         place = fluid.NPUPlace(0)
         exe = fluid.Executor(place)
-        npu_, cpu_ = exe.run(main_program,
-                             feed={},
-                             fetch_list=[npu_var.name, cpu_var.name])
+        npu_, cpu_ = exe.run(
+            main_program, feed={}, fetch_list=[npu_var.name, cpu_var.name]
+        )
         np.testing.assert_allclose(npu_, cpu_)
         np.testing.assert_allclose(npu_, np.zeros((10, 10)))
 

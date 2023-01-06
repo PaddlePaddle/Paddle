@@ -55,6 +55,23 @@ class Controller {
   paddle::imperative::AmpLevel GetAMPLevel() const {
     return tracer_->GetAmpLevel();
   }
+
+  bool UseLayoutAutoTune() {
+    bool use_autotune = false;
+#if defined(PADDLE_WITH_CUDA)
+    auto place = tracer_->ExpectedPlace();
+    bool is_gpu_place = paddle::platform::is_gpu_place(place);
+    if (is_gpu_place) {
+      use_autotune = tracer_->UseLayoutAutoTune();
+    }
+#endif
+    return use_autotune;
+  }
+
+  void DisableLayoutAutoTune() { tracer_->DisableLayoutAutoTune(); }
+
+  void EnableLayoutAutoTune() { tracer_->EnableLayoutAutoTune(); }
+
   bool HasGrad() const { return tracer_->HasGrad(); }
   void SetHasGrad(bool has_grad) { tracer_->SetHasGrad(has_grad); }
   std::string GenerateUniqueName(std::string key = "eager_in_tmp") {

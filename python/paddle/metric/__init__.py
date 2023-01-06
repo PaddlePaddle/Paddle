@@ -19,6 +19,11 @@ from .metrics import Recall  # noqa: F401
 from .metrics import Auc  # noqa: F401
 from .metrics import accuracy  # noqa: F401
 
-__all__ = [  #noqa
-    'Metric', 'Accuracy', 'Precision', 'Recall', 'Auc', 'accuracy'
+__all__ = [  # noqa
+    'Metric',
+    'Accuracy',
+    'Precision',
+    'Recall',
+    'Auc',
+    'accuracy',
 ]

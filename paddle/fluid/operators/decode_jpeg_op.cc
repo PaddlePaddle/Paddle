@@ -32,24 +32,23 @@ class DecodeJpegOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace());
+    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+                          ctx.GetPlace());
   }
 
-  framework::OpKernelType GetKernelTypeForVar(
+  phi::KernelKey GetKernelTypeForVar(
       const std::string& var_name,
-      const framework::Tensor& tensor,
-      const framework::OpKernelType& expected_kernel_type) const {
+      const phi::DenseTensor& tensor,
+      const phi::KernelKey& expected_kernel_type) const override {
     if (var_name == "X") {
-      return expected_kernel_type;
+      return phi::KernelKey(phi::Backend::ALL_BACKEND,
+                            expected_kernel_type.layout(),
+                            expected_kernel_type.dtype());
     }
 
-    return framework::OpKernelType(
-        framework::TransToProtoVarType(tensor.dtype()),
-        tensor.place(),
-        tensor.layout());
+    return phi::KernelKey(tensor.place(), tensor.layout(), tensor.dtype());
   }
 };
 
@@ -61,9 +60,9 @@ class DecodeJpegOpMaker : public framework::OpProtoAndCheckerMaker {
              "of the JPEG image. It is a tensor with rank 1.");
     AddOutput("Out", "The output tensor of DecodeJpeg op");
     AddComment(R"DOC(
-This operator decodes a JPEG image into a 3 dimensional RGB Tensor 
-or 1 dimensional Gray Tensor. Optionally converts the image to the 
-desired format. The values of the output tensor are uint8 between 0 
+This operator decodes a JPEG image into a 3 dimensional RGB Tensor
+or 1 dimensional Gray Tensor. Optionally converts the image to the
+desired format. The values of the output tensor are uint8 between 0
 and 255.
 )DOC");
     AddAttr<std::string>(

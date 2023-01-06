@@ -12,15 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
-import os
-
-os.environ['FLAGS_enable_eager_mode'] = '1'
-
-import os
 import unittest
-import paddle.fluid as fluid
 
 from test_parallel_dygraph_dataparallel import TestMultipleGpus
 
@@ -36,5 +28,4 @@ class TestDygraphShardingStage3(TestMultipleGpus):
 
 
 if __name__ == "__main__":
-    os.environ["FLAGS_enable_eager_mode"] = "1"
     unittest.main()

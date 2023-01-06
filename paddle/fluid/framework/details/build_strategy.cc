@@ -56,7 +56,7 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
     AppendPrintGraphPass("graph_viz_pass", "_original_graph");
 
 #ifdef PADDLE_WITH_CINN
-    if (FLAGS_use_cinn) {
+    if (FLAGS_use_cinn || strategy.build_cinn_pass_) {
       // Note: This pass is used to enable cinn.
       AppendPass("build_cinn_pass");
       AppendPrintGraphPass("graph_viz_pass", "_build_cinn_graph");
@@ -170,8 +170,12 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
 
   void AppendOpFusePasses() {
     // 1. infernce pass if enabled.
-    AppendPassWithCheck(strategy_.inference_ && strategy_.del_dropout_,
-                        "delete_dropout_op_x_pass");
+    AppendPassWithCheck(
+        strategy_.enable_inference_pass_ && strategy_.delete_dropout_,
+        "delete_dropout_op_x_pass");
+    AppendPassWithCheck(
+        strategy_.enable_inference_pass_ && strategy_.use_mkldnn_,
+        "mkldnn_placement_pass");
 
     // 2. trainning pass
     AppendPassWithCheck(strategy_.fuse_relu_depthwise_conv_,

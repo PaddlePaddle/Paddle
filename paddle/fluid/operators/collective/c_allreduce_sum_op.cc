@@ -47,6 +47,10 @@ class CAllReduceSumOpGradMaker : public framework::SingleGradOpMaker<T> {
 
 class CAllReduceSumOpMaker : public CAllReduceOpMaker {
  protected:
+  void ExtraMake() override {
+    AddInput("Cond", "(Tensor), whether to do all reduce or not.")
+        .AsDispensable();
+  }
   std::string GetName() const override { return "Sum"; }
 };
 
@@ -58,12 +62,10 @@ DECLARE_INPLACE_OP_INFERER(AllreduceSumInplaceInferer, {"X", "Out"});
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OPERATOR(c_allreduce_sum,
-                  ops::CAllReduceOp,
-                  ops::CAllReduceSumOpGradMaker<paddle::framework::OpDesc>,
-                  ops::CAllReduceSumOpGradMaker<paddle::imperative::OpBase>,
-                  ops::CAllReduceSumOpMaker,
-                  ops::AllreduceSumInplaceInferer);
+REGISTER_OP_WITHOUT_GRADIENT(c_allreduce_sum,
+                             ops::CAllReduceOp,
+                             ops::CAllReduceSumOpMaker,
+                             ops::AllreduceSumInplaceInferer)
 
 REGISTER_OP_CPU_KERNEL(c_allreduce_sum,
                        ops::CAllReduceOpCPUKernel<ops::kRedSum, float>,

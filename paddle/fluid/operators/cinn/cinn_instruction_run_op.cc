@@ -57,10 +57,9 @@ class CinnInstructionRunOp : public framework::OperatorWithKernel {
    * specified a data type here.
    *
    */
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(framework::proto::VarType::FP32,
-                                   ctx.GetPlace());
+    return phi::KernelKey(framework::proto::VarType::FP32, ctx.GetPlace());
   }
 };
 
@@ -68,11 +67,11 @@ class CinnInstructionRunOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput(kX,
-             "(vector<LoDTensor>)"
+             "(vector<phi::DenseTensor>)"
              "which are the input arguments of this cinn instruction")
         .AsDuplicable();
     AddOutput(kOutputs,
-              "(vector<LoDTensor>)"
+              "(vector<phi::DenseTensor>)"
               "which are the output arguments of this cinn instruction")
         .AsDuplicable();
     AddAttr<int64_t>(
@@ -94,7 +93,7 @@ CINN(https://github.com/PaddlePaddle/CINN/blob/develop/README.md) instruction ex
 Both the input and output of this operator are a set of variables
 which are the input and output arguments of the bound cinn instruction respectively.
 In addition, there is an attribute named 'cached_index' should be
-set necessarily to get the CinnCompiledObject where the instruction is included 
+set necessarily to get the CinnCompiledObject where the instruction is included
 and 'instruction_index' is fetch the instruction object from complied runtime prograrm.
 
 It accomplishes the execution of the instruction according to the following steps:

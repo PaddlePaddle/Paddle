@@ -17,8 +17,8 @@
 #include <sstream>
 #include <vector>
 
-#include "paddle/fluid/platform/device_memory_aligment.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/phi/backends/device_memory_aligment.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
@@ -72,12 +72,12 @@ void GetMemSizeAndDtype(const std::vector<const DenseTensor *> &lod_tensors,
                       0,
                       errors::InvalidArgument(
                           "The number of `%d`-th tensor's elements is 0.", i));
-    auto len = use_align ? paddle::platform::Alignment(
-                               static_cast<size_t>(size) * size_of_dtype,
-                               place,
-                               align_size) /
-                               size_of_dtype
-                         : static_cast<size_t>(size);
+    auto len = use_align
+                   ? phi::Alignment(static_cast<size_t>(size) * size_of_dtype,
+                                    place,
+                                    align_size) /
+                         size_of_dtype
+                   : static_cast<size_t>(size);
     const void *ptr =
         lod_tensors[i]->IsInitialized() ? lod_tensors[i]->data() : nullptr;
     VLOG(4) << size << " " << len;
@@ -206,7 +206,7 @@ void CoalesceTensorKernel(const Context &dev_ctx,
       phi::Copy(dev_ctx, *input[i], dev_ctx.GetPlace(), false, &sub_tensor);
 
       offset += use_align
-                    ? paddle::platform::Alignment(
+                    ? phi::Alignment(
                           len * size_of_dtype, dev_ctx.GetPlace(), align_size) /
                           size_of_dtype
                     : len;
@@ -224,7 +224,7 @@ void CoalesceTensorKernel(const Context &dev_ctx,
         phi::Copy(dev_ctx, *output[i], dev_ctx.GetPlace(), false, &sub_tensor);
       }
       offset += use_align
-                    ? paddle::platform::Alignment(
+                    ? phi::Alignment(
                           len * size_of_dtype, dev_ctx.GetPlace(), align_size) /
                           size_of_dtype
                     : len;
@@ -244,7 +244,7 @@ void CoalesceTensorKernel(const Context &dev_ctx,
         ->ShareDataWith(fused_output->Slice(static_cast<int64_t>(offset),
                                             static_cast<int64_t>(offset + len)))
         .Resize(dim);
-    len = use_align ? paddle::platform::Alignment(
+    len = use_align ? phi::Alignment(
                           len * size_of_dtype, dev_ctx.GetPlace(), align_size) /
                           size_of_dtype
                     : len;

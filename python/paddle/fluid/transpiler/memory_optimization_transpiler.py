@@ -15,13 +15,11 @@
 import logging
 
 
-def memory_optimize(input_program,
-                    skip_opt_set=None,
-                    print_log=False,
-                    level=0,
-                    skip_grads=True):
+def memory_optimize(
+    input_program, skip_opt_set=None, print_log=False, level=0, skip_grads=True
+):
     """
-	:api_attr: Static Graph
+        :api_attr: Static Graph
 
     This API is deprecated since 1.6. Please do not use it. The better
     memory optimization strategies are enabled by default.
@@ -38,15 +36,18 @@ def memory_optimize(input_program,
         'default value).\n'
         ' 2. Inplace strategy, which is enabled by setting '
         'build_strategy.enable_inplace=True (True is the default value) '
-        'when using CompiledProgram or ParallelExecutor.\n')
+        'when using CompiledProgram or ParallelExecutor.\n'
+    )
 
 
 def release_memory(input_program, skip_opt_set=None):
     """
-	:api_attr: Static Graph
+        :api_attr: Static Graph
 
     This API is deprecated since 1.6. Please do not use it. The better
     memory optimization strategies are enabled by default.
     """
-    logging.warn('paddle.fluid.release_memory() is deprecated, it would not'
-                 ' take any memory release on your program')
+    logging.warn(
+        'paddle.fluid.release_memory() is deprecated, it would not'
+        ' take any memory release on your program'
+    )

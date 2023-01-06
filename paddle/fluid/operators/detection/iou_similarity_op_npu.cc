@@ -18,8 +18,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
-
 template <typename T>
 struct IouFunction {
  public:
@@ -28,43 +26,57 @@ struct IouFunction {
     stream = ctx.template device_context<paddle::platform::NPUDeviceContext>()
                  .stream();
   }
-  void Transpose(const Tensor* x, Tensor* y, const std::vector<int>& axis) {
+  void Transpose(const phi::DenseTensor* x,
+                 phi::DenseTensor* y,
+                 const std::vector<int>& axis) {
     //  y should be init first
     const auto& runner =
         NpuOpRunner("TransposeD", {*x}, {*y}, {{"perm", axis}});
     runner.Run(stream);
   }
-  void Add(const Tensor* x, const Tensor* y, Tensor* z) {
+  void Add(const phi::DenseTensor* x,
+           const phi::DenseTensor* y,
+           phi::DenseTensor* z) {
     //  y should be init first
     const auto& runner = NpuOpRunner("AddV2", {*x, *y}, {*z}, {});
     runner.Run(stream);
   }
-  void Sub(const Tensor* x, const Tensor* y, Tensor* z) {
+  void Sub(const phi::DenseTensor* x,
+           const phi::DenseTensor* y,
+           phi::DenseTensor* z) {
     //  y should be init first
     const auto& runner = NpuOpRunner("Sub", {*x, *y}, {*z}, {});
     runner.Run(stream);
   }
-  void Mul(const Tensor* x, const Tensor* y, Tensor* z) {
+  void Mul(const phi::DenseTensor* x,
+           const phi::DenseTensor* y,
+           phi::DenseTensor* z) {
     //  y should be init first
     const auto& runner = NpuOpRunner("Mul", {*x, *y}, {*z}, {});
     runner.Run(stream);
   }
-  void DivNoNan(const Tensor* x, const Tensor* y, Tensor* z) {
+  void DivNoNan(const phi::DenseTensor* x,
+                const phi::DenseTensor* y,
+                phi::DenseTensor* z) {
     //  y should be init first
     const auto& runner = NpuOpRunner("DivNoNan", {*x, *y}, {*z}, {});
     runner.Run(stream);
   }
-  void Adds(const Tensor* x, float scalar, Tensor* y) {
+  void Adds(const phi::DenseTensor* x, float scalar, phi::DenseTensor* y) {
     //  y should be init first
     const auto& runner = NpuOpRunner("Adds", {*x}, {*y}, {{"value", scalar}});
     runner.Run(stream);
   }
-  void Maximum(const Tensor* x, const Tensor* y, Tensor* z) {
+  void Maximum(const phi::DenseTensor* x,
+               const phi::DenseTensor* y,
+               phi::DenseTensor* z) {
     //  z should be init first
     const auto& runner = NpuOpRunner("Maximum", {*x, *y}, {*z}, {});
     runner.Run(stream);
   }
-  void Minimum(const Tensor* x, const Tensor* y, Tensor* z) {
+  void Minimum(const phi::DenseTensor* x,
+               const phi::DenseTensor* y,
+               phi::DenseTensor* z) {
     //  z should be init first
     const auto& runner = NpuOpRunner("Minimum", {*x, *y}, {*z}, {});
     runner.Run(stream);
@@ -80,10 +92,10 @@ template <typename T>
 class IouSimilarityNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x = ctx.Input<framework::LoDTensor>("X");
-    auto* y = ctx.Input<framework::Tensor>("Y");
+    auto* x = ctx.Input<phi::DenseTensor>("X");
+    auto* y = ctx.Input<phi::DenseTensor>("Y");
     bool normalized = ctx.Attr<bool>("box_normalized");
-    auto* out = ctx.Output<framework::LoDTensor>("Out");
+    auto* out = ctx.Output<phi::DenseTensor>("Out");
 
     auto _type = x->dtype();
     auto place = ctx.GetPlace();
@@ -94,21 +106,21 @@ class IouSimilarityNPUKernel : public framework::OpKernel<T> {
     auto M = y->dims()[0];
 
     out->mutable_data<T>({N, M}, place);
-    Tensor xt(_type);
-    Tensor yt(_type);
+    phi::DenseTensor xt(_type);
+    phi::DenseTensor yt(_type);
     xt.mutable_data<T>({4, N}, place);
     yt.mutable_data<T>({4, M}, place);
     std::vector<int> vec_trans = {1, 0};
     F.Transpose(x, &xt, vec_trans);
     F.Transpose(y, &yt, vec_trans);
-    Tensor xmin1 = xt.Slice(0, 1);
-    Tensor ymin1 = xt.Slice(1, 2);
-    Tensor xmax1 = xt.Slice(2, 3);
-    Tensor ymax1 = xt.Slice(3, 4);
-    Tensor xmin2 = yt.Slice(0, 1);
-    Tensor ymin2 = yt.Slice(1, 2);
-    Tensor xmax2 = yt.Slice(2, 3);
-    Tensor ymax2 = yt.Slice(3, 4);
+    phi::DenseTensor xmin1 = xt.Slice(0, 1);
+    phi::DenseTensor ymin1 = xt.Slice(1, 2);
+    phi::DenseTensor xmax1 = xt.Slice(2, 3);
+    phi::DenseTensor ymax1 = xt.Slice(3, 4);
+    phi::DenseTensor xmin2 = yt.Slice(0, 1);
+    phi::DenseTensor ymin2 = yt.Slice(1, 2);
+    phi::DenseTensor xmax2 = yt.Slice(2, 3);
+    phi::DenseTensor ymax2 = yt.Slice(3, 4);
     xmin1.Resize({N, 1});
     ymin1.Resize({N, 1});
     xmax1.Resize({N, 1});
@@ -118,12 +130,12 @@ class IouSimilarityNPUKernel : public framework::OpKernel<T> {
     xmax2.Resize({1, M});
     ymax2.Resize({1, M});
 
-    Tensor w1(_type);
-    Tensor h1(_type);
-    Tensor w2(_type);
-    Tensor h2(_type);
-    Tensor area1(_type);
-    Tensor area2(_type);
+    phi::DenseTensor w1(_type);
+    phi::DenseTensor h1(_type);
+    phi::DenseTensor w2(_type);
+    phi::DenseTensor h2(_type);
+    phi::DenseTensor area1(_type);
+    phi::DenseTensor area2(_type);
     w1.mutable_data<T>({N, 1}, place);
     h1.mutable_data<T>({N, 1}, place);
     w2.mutable_data<T>({1, M}, place);
@@ -143,10 +155,10 @@ class IouSimilarityNPUKernel : public framework::OpKernel<T> {
     F.Mul(&w1, &h1, &area1);
     F.Mul(&w2, &h2, &area2);
 
-    Tensor inter_xmax(_type);
-    Tensor inter_ymax(_type);
-    Tensor inter_xmin(_type);
-    Tensor inter_ymin(_type);
+    phi::DenseTensor inter_xmax(_type);
+    phi::DenseTensor inter_ymax(_type);
+    phi::DenseTensor inter_xmin(_type);
+    phi::DenseTensor inter_ymin(_type);
     inter_xmax.mutable_data<T>({N, M}, place);
     inter_ymax.mutable_data<T>({N, M}, place);
     inter_xmin.mutable_data<T>({N, M}, place);
@@ -156,8 +168,8 @@ class IouSimilarityNPUKernel : public framework::OpKernel<T> {
     F.Maximum(&xmin1, &xmin2, &inter_xmin);
     F.Maximum(&ymin1, &ymin2, &inter_ymin);
 
-    Tensor inter_w(_type);
-    Tensor inter_h(_type);
+    phi::DenseTensor inter_w(_type);
+    phi::DenseTensor inter_h(_type);
     inter_w.mutable_data<T>({N, M}, place);
     inter_h.mutable_data<T>({N, M}, place);
     F.Sub(&inter_xmax, &inter_xmin, &inter_w);
@@ -167,14 +179,14 @@ class IouSimilarityNPUKernel : public framework::OpKernel<T> {
       F.Adds(&inter_w, 1.0f, &inter_w);
       F.Adds(&inter_h, 1.0f, &inter_h);
     }
-    Tensor zeros(_type);
+    phi::DenseTensor zeros(_type);
     zeros.mutable_data<T>({1}, place);
     FillNpuTensorWithConstant<T>(&zeros, static_cast<T>(0));
     F.Maximum(&inter_w, &zeros, &inter_w);
     F.Maximum(&inter_h, &zeros, &inter_h);
 
     F.Mul(&inter_w, &inter_h, out);
-    Tensor union_area(_type);
+    phi::DenseTensor union_area(_type);
     union_area.mutable_data<T>({N, M}, place);
     F.Add(&area1, &area2, &union_area);
     F.Sub(&union_area, out, &union_area);

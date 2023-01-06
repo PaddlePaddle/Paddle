@@ -17,7 +17,6 @@ limitations under the License. */
 
 namespace paddle {
 namespace operators {
-using Tensor = framework::Tensor;
 
 class PartialSumOp : public framework::OperatorWithKernel {
  public:
@@ -92,9 +91,9 @@ class PartialSumOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    auto inputs = ctx.MultiInput<Tensor>("X");
+    auto inputs = ctx.MultiInput<phi::DenseTensor>("X");
     auto input_data_type = framework::proto::VarType::Type(0);
     bool flag = 0;
     for (auto *input : inputs) {
@@ -109,7 +108,7 @@ class PartialSumOp : public framework::OperatorWithKernel {
                       1,
                       platform::errors::InvalidArgument(
                           "All Inputs of PartialSum OP are Empty!"));
-    return framework::OpKernelType(input_data_type, platform::CPUPlace());
+    return phi::KernelKey(input_data_type, platform::CPUPlace());
   }
 };
 
@@ -142,11 +141,11 @@ class PartialSumGradOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
-                                       ctx, framework::GradVarName("Out")),
-                                   ctx.device_context());
+    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(
+                              ctx, framework::GradVarName("Out")),
+                          ctx.device_context().GetPlace());
   }
 };
 
@@ -161,9 +160,9 @@ class PartialSumOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(-1);
     AddComment(R"DOC(
 PartialSum Operator.
-This Op can sum the vars by specifying the initial position(start_index) and length(length). 
+This Op can sum the vars by specifying the initial position(start_index) and length(length).
 This OP exists in contrib, which means that it is not shown to the public.
-Only 2-D Tensor or LodTensor input is supported. Slice and concat can only be 
+Only 2-D Tensor or LodTensor input is supported. Slice and concat can only be
 performed along the second dimension.
 
 Examples:

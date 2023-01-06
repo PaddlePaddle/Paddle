@@ -73,7 +73,7 @@ TEST(tensorrt_tester_ppyolo_mbv3, multi_thread4_trt_fp32_bz2) {
                   FLAGS_modeldir + "/model.pdiparams");
   config.EnableUseGpu(100, 0);
   config.EnableTensorRtEngine(
-      1 << 20, 2, 3, paddle_infer::PrecisionType::kFloat32, false, false);
+      1 << 25, 2, 3, paddle_infer::PrecisionType::kFloat32, false, false);
   LOG(INFO) << config.Summary();
   // get groudtruth by disbale ir
   paddle_infer::services::PredictorPool pred_pool_no_ir(config_no_ir, 1);

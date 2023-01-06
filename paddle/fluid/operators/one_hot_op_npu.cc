@@ -17,7 +17,6 @@ limitations under the License. */
 
 namespace paddle {
 namespace operators {
-using Tensor = framework::Tensor;
 
 template <typename T>
 class OneHotNPUKernel : public framework::OpKernel<T> {
@@ -25,12 +24,12 @@ class OneHotNPUKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto& dev_ctx =
         ctx.template device_context<paddle::platform::NPUDeviceContext>();
-    auto* in = ctx.Input<LoDTensor>("X");
-    auto* out = ctx.Output<LoDTensor>("Out");
+    auto* in = ctx.Input<phi::DenseTensor>("X");
+    auto* out = ctx.Output<phi::DenseTensor>("Out");
     int depth = ctx.Attr<int>("depth");
 
     if (ctx.HasInput("depth_tensor")) {
-      auto* depth_tensor = ctx.Input<Tensor>("depth_tensor");
+      auto* depth_tensor = ctx.Input<phi::DenseTensor>("depth_tensor");
       std::vector<int32_t> depth_data;
       framework::TensorToVector(*depth_tensor, dev_ctx, &depth_data);
       depth = depth_data[0];
@@ -54,7 +53,7 @@ class OneHotNPUKernel : public framework::OpKernel<T> {
           .AddOutput(*out);
       runner.Run(dev_ctx.stream());
     } else {
-      Tensor transformed_in;
+      phi::DenseTensor transformed_in;
       transformed_in.mutable_data<int32_t>(in->dims(), dev_ctx.GetPlace());
       const auto& cast_runner = NpuOpRunner(
           "Cast", {*in}, {transformed_in}, {{"dst_type", ACL_INT32}});

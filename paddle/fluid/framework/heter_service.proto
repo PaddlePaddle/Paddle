@@ -15,7 +15,7 @@ syntax = "proto2";
 package paddle.framework;
 option cc_generic_services = true;
 
-// It can be: LoDTensor、SelectedRows or NCCL_ID
+// It can be: phi::DenseTensor、SelectedRows or NCCL_ID
 enum VarType {
   LOD_TENSOR = 0;
   SELECTED_ROWS = 1;

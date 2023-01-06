@@ -68,8 +68,13 @@ const MetaTensor& InferMetaContext::InputAt(size_t idx) const {
 std::vector<const MetaTensor*> InferMetaContext::InputsBetween(
     size_t start, size_t end) const {
   std::vector<const MetaTensor*> result;
-  result.reserve(end - start);
+  // If vector only contains one input that is not initialized,
+  // we should return a empty vector
+  if (end - start == 1 && !inputs_.at(start).initialized()) {
+    return result;
+  }
 
+  result.reserve(end - start);
   for (size_t i = start; i < end; ++i) {
     auto& in = inputs_.at(i);
     result.emplace_back(in.initialized() ? &in : nullptr);
@@ -104,6 +109,12 @@ MetaTensor* InferMetaContext::MutableOutputAt(size_t idx) {
 std::vector<MetaTensor*> InferMetaContext::MutableOutputBetween(size_t start,
                                                                 size_t end) {
   std::vector<MetaTensor*> result;
+  // If vector only contains one output that is not initialized,
+  // we should return a empty vector
+  if (end - start == 1 && !outputs_.at(start).initialized()) {
+    return result;
+  }
+
   result.reserve(end - start);
   for (size_t i = start; i < end; ++i) {
     auto& out = outputs_.at(i);

@@ -27,6 +27,37 @@
 namespace paddle {
 namespace operators {
 
+struct CacheAllocator {
+  typedef char value_type;
+  explicit CacheAllocator(platform::Place place) {
+    VLOG(2) << "construct allocator";
+    place_ = place;
+  }
+
+  ~CacheAllocator() { VLOG(2) << "destory allocator"; }
+
+  char *allocate(std::ptrdiff_t num_bytes) {
+    VLOG(2) << "allocate " << num_bytes << " bytes";
+    auto storage = memory::AllocShared(place_, num_bytes);
+    char *ptr = reinterpret_cast<char *>(storage->ptr());
+    busy_allocation_.emplace(std::make_pair(ptr, storage));
+    return ptr;
+  }
+
+  void deallocate(char *ptr, size_t) {
+    VLOG(2) << "deallocate ";
+    allocation_map_type::iterator iter = busy_allocation_.find(ptr);
+    CHECK(iter != busy_allocation_.end());
+    busy_allocation_.erase(iter);
+  }
+
+ private:
+  typedef std::unordered_map<char *, std::shared_ptr<phi::Allocation>>
+      allocation_map_type;
+  allocation_map_type busy_allocation_;
+  platform::Place place_;
+};
+
 template <typename T, bool kIsForward>
 struct ReorderFunctor {
   ReorderFunctor(const T *x, const int64_t *shuffle_idx, T *y, int64_t stride)
@@ -56,11 +87,11 @@ class ShuffleBatchCUDAKernel : public framework::OpKernel<T> {
     PADDLE_THROW(platform::errors::Unimplemented(
         "GPU shuffle_batch is not supported on Windows yet"));
 #else
-    auto *x = ctx.Input<framework::Tensor>("X");
-    auto *seed = ctx.Input<framework::Tensor>("Seed");
-    auto *out = ctx.Output<framework::Tensor>("Out");
-    auto *shuffleidx = ctx.Output<framework::Tensor>("ShuffleIdx");
-    auto *seed_out = ctx.Output<framework::Tensor>("SeedOut");
+    auto *x = ctx.Input<phi::DenseTensor>("X");
+    auto *seed = ctx.Input<phi::DenseTensor>("Seed");
+    auto *out = ctx.Output<phi::DenseTensor>("Out");
+    auto *shuffleidx = ctx.Output<phi::DenseTensor>("ShuffleIdx");
+    auto *seed_out = ctx.Output<phi::DenseTensor>("SeedOut");
 
     int64_t x_embed_size = x->dims()[x->dims().size() - 1];
     int64_t elem_size = 1;
@@ -76,7 +107,7 @@ class ShuffleBatchCUDAKernel : public framework::OpKernel<T> {
         // NOTE: We have overwritten GetKernelTypeForVar, so seed_place would
         // not be CUDAPlace in practice. This case would only happen in Python
         // op_test framework.
-        framework::Tensor tmp_tensor;
+        phi::DenseTensor tmp_tensor;
         framework::TensorCopySync(*seed, platform::CPUPlace(), &tmp_tensor);
         seed_int = *(tmp_tensor.data<int64_t>());
       } else {
@@ -90,7 +121,8 @@ class ShuffleBatchCUDAKernel : public framework::OpKernel<T> {
 
     auto &dev_ctx = ctx.template device_context<phi::GPUContext>();
 #ifdef PADDLE_WITH_CUDA
-    const auto &exec_policy = thrust::cuda::par.on(dev_ctx.stream());
+    CacheAllocator allocator(ctx.GetPlace());
+    const auto &exec_policy = thrust::cuda::par(allocator).on(dev_ctx.stream());
 #else
     const auto &exec_policy = thrust::hip::par.on(dev_ctx.stream());
 #endif
@@ -126,9 +158,9 @@ class ShuffleBatchGradCUDAKernel : public framework::OpKernel<T> {
         "GPU shuffle_batch_grad is not supported on Windows yet"));
 #else
     const auto *out_grad =
-        ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
-    const auto *shuffleidx = ctx.Input<framework::Tensor>("ShuffleIdx");
-    auto *x_grad = ctx.Output<framework::Tensor>(framework::GradVarName("X"));
+        ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+    const auto *shuffleidx = ctx.Input<phi::DenseTensor>("ShuffleIdx");
+    auto *x_grad = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
 
     const auto *out_grad_data = out_grad->data<T>();
     const auto *shuffleidx_data = shuffleidx->data<int64_t>();

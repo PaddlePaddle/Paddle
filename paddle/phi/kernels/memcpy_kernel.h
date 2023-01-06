@@ -17,6 +17,7 @@
 #include <vector>
 
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/tensor_array.h"
 
 namespace phi {
 
@@ -36,9 +37,9 @@ void MemcpyD2HKernel(const Context& dev_ctx,
 
 template <typename Context>
 void MemcpyD2HMultiIOKernel(const Context& dev_ctx,
-                            const std::vector<const DenseTensor*>& array,
+                            const TensorArray& array,
                             int dst_place_type,
-                            std::vector<DenseTensor*> out_array);
+                            TensorArray* out_array);
 
 template <typename Context>
 void MemcpyKernel(const Context& dev_ctx,

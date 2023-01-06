@@ -19,7 +19,7 @@ limitations under the License. */
 
 // Note(chenweihang): In order to be compatible with the original custom
 // operator Tensor interface, only available to external users, the file
-// cannot be includeed in paddle
+// cannot be included in paddle
 
 namespace paddle {
 using Tensor = experimental::Tensor;
@@ -100,6 +100,7 @@ using experimental::multinomial;
 using experimental::multiply;
 using experimental::mv;
 using experimental::nll_loss;
+using experimental::npu_identity;
 using experimental::one_hot;
 using experimental::ones;
 using experimental::pixel_shuffle;

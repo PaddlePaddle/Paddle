@@ -2,47 +2,11 @@ add_subdirectory(garbage_collector)
 add_subdirectory(interpreter)
 add_subdirectory(workqueue)
 
-set(STANDALONE_EXECUTOR_SRCS
-    data_transfer.cc
-    new_executor_defs.cc
-    interpretercore_util.cc
-    event_manager.cc
-    stream_analyzer.cc
-    interpretercore.cc
-    standalone_executor.cc)
+set(STANDALONE_EXECUTOR_SRCS interpretercore.cc new_executor_defs.cc
+                             standalone_executor.cc)
 
-set(STANDALONE_EXECUTOR_DEPS
-    dependency_builder
-    device_context
-    op_registry
-    scope
-    framework_proto
-    data_feed_proto
-    ops_extra_info
-    heter_service_proto
-    trainer_desc_proto
-    glog
-    lod_rank_table
-    fs
-    shell
-    fleet_wrapper
-    heter_wrapper
-    ps_gpu_wrapper
-    box_wrapper
-    lodtensor_printer
-    feed_fetch_method
-    graph_to_program_pass
-    variable_helper
-    timer
-    monitor
-    nan_inf_utils
-    enforce
-    scope
-    glog
-    workqueue
-    interpretercore_garbage_collector
-    ${DEVICE_EVENT_LIBS}
-    glog)
+set(STANDALONE_EXECUTOR_DEPS interpreter interpretercore_garbage_collector
+                             workqueue)
 
 cc_library(
   standalone_executor
@@ -60,9 +24,11 @@ if(WITH_GPU
    AND NOT WIN32)
   add_custom_target(
     download_program
-    COMMAND wget -nc https://paddle-ci.gz.bcebos.com/new_exec/lm_main_program
-    COMMAND wget -nc
-            https://paddle-ci.gz.bcebos.com/new_exec/lm_startup_program)
+    COMMAND wget -nc --no-check-certificate
+            https://paddle-ci.gz.bcebos.com/new_exec/lm_main_program
+    COMMAND wget -nc --no-check-certificate
+            https://paddle-ci.gz.bcebos.com/new_exec/lm_startup_program
+    WORKING_DIRECTORY "${CC_TESTS_DIR}")
 
   # all operators used in the program
   set(OPS
@@ -93,16 +59,11 @@ if(WITH_GPU
   # All deps of the operators above, part of GLOB_OPERATOR_DEPS.
   set(OP_DEPS generator softmax selected_rows_functor jit_kernel_helper
               concat_and_split cross_entropy)
+  cc_test(standalone_executor_test SRCS standalone_executor_test.cc)
 
-  cc_test(
-    standalone_executor_test
-    SRCS standalone_executor_test.cc
-    DEPS standalone_executor operator op_registry executor ${OPS} ${OP_DEPS})
-  set_tests_properties(standalone_executor_test PROPERTIES TIMEOUT 100)
-
-  add_dependencies(standalone_executor_test download_program)
-  if(WITH_PROFILER)
-    target_link_libraries(standalone_executor_test profiler)
-    add_dependencies(standalone_executor_test profiler)
-  endif()
+  # add_dependencies(standalone_executor_test download_program)
+  # if(WITH_PROFILER)
+  #   target_link_libraries(standalone_executor_test profiler)
+  #   add_dependencies(standalone_executor_test profiler)
+  # endif()
 endif()

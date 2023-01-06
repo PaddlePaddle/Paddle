@@ -41,7 +41,7 @@ inline bool NeedTransformPlace(const paddle::platform::Place& input,
                                const TransformFlag& transform_flag) {
   // NOTE(dev): The default value of TransformFlag is True, if it is set with
   // False
-  // somewhere such as api.yaml or backward.yaml that means we should skip data
+  // somewhere such as ops.yaml or backward.yaml that means we should skip data
   // transform. Because "stop_transform_" has highest priority.
   if (!transform_flag.need_trans_backend()) {
     return false;
@@ -53,9 +53,9 @@ inline bool NeedTransformPlace(const paddle::platform::Place& input,
   return ret;
 }
 
-inline bool NeedTransformLayout(const paddle::platform::Place& place,
-                                const DataLayout& input,
+inline bool NeedTransformLayout(const DataLayout& input,
                                 const DataLayout& target,
+                                const paddle::platform::Place& place,
                                 const TransformFlag& transform_flag) {
   bool ret = transform_flag.need_trans_layout() &&
              (input != DataLayout::ALL_LAYOUT &&
@@ -92,7 +92,7 @@ inline phi::DenseTensor TransDataLayout(const phi::DenseTensor& tensor,
 }
 
 template <typename Context>
-phi::DenseTensor CastDateType(const Context& dev_ctx,
+phi::DenseTensor CastDataType(const Context& dev_ctx,
                               const phi::DenseTensor& tensor,
                               DataType dtype) {
   switch (tensor.dtype()) {
@@ -122,7 +122,7 @@ phi::DenseTensor CastDateType(const Context& dev_ctx,
 }
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-phi::DenseTensor CastDateType(const phi::GPUContext& dev_ctx,
+phi::DenseTensor CastDataType(const phi::GPUContext& dev_ctx,
                               const phi::DenseTensor& tensor,
                               DataType dtype) {
   switch (tensor.dtype()) {
@@ -162,11 +162,11 @@ inline phi::DenseTensor TransDataType(const phi::DenseTensor& tensor,
 
   if (platform::is_cpu_place(tensor.place())) {
     auto* dev_ctx = static_cast<phi::CPUContext*>(pool.Get(tensor.place()));
-    return CastDateType(*dev_ctx, tensor, dtype);
+    return CastDataType(*dev_ctx, tensor, dtype);
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   } else if (platform::is_gpu_place(tensor.place())) {
     auto* dev_ctx = static_cast<phi::GPUContext*>(pool.Get(tensor.place()));
-    return CastDateType(*dev_ctx, tensor, dtype);
+    return CastDataType(*dev_ctx, tensor, dtype);
 #endif
   } else {
     PADDLE_THROW(phi::errors::Unimplemented(
@@ -179,10 +179,6 @@ inline phi::DenseTensor TransDataPlace(const phi::DenseTensor& tensor,
                                        Place dst_place) {
   VLOG(3) << "DeviceTransform in, src_place " << tensor.place()
           << " dst_place: " << dst_place;
-
-  DefaultAllocator alloc(dst_place);
-  phi::DenseTensor out(&alloc,
-                       {tensor.dtype(), tensor.dims(), tensor.layout()});
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   auto& pool = paddle::platform::DeviceContextPool::Instance();
@@ -202,6 +198,7 @@ inline phi::DenseTensor TransDataPlace(const phi::DenseTensor& tensor,
   // the transforming is from CPU to GPU and the number of elements is little.
   // But the embarrassment is that this solution this solution makes training
   // slower.
+  phi::DenseTensor out;
   paddle::framework::TensorCopySync(tensor, dst_place, &out);
   return out;
 }
@@ -326,10 +323,11 @@ phi::DenseTensor TransformData(phi::DenseTensor* tensor,
   bool trans_layout = false;
   bool trans_dtype = false;
 
-  if (NeedTransformLayout(tensor->place(),
-                          tensor->layout(),
+  if (NeedTransformLayout(tensor->layout(),
                           target_args_def.layout,
-                          transform_flag)) {
+                          tensor->place(),
+                          transform_flag) &&
+      tensor->dims().size() != 1) {
     out = TransDataLayout(out, target_args_def.layout);
     trans_layout = true;
   }
@@ -376,9 +374,9 @@ std::shared_ptr<phi::DenseTensor> PrepareData(
              dense_tensor.place(), target_args_def.backend, transform_flag) &&
          !NeedTransformDataType(
              dense_tensor.dtype(), target_args_def.dtype, transform_flag) &&
-         !NeedTransformLayout(dense_tensor.place(),
-                              dense_tensor.layout(),
+         !NeedTransformLayout(dense_tensor.layout(),
                               target_args_def.layout,
+                              dense_tensor.place(),
                               transform_flag) &&
          !NeedTransform2Contiguous(next_op_support_stride,
                                    dense_tensor.strides().IsContiguous()))) {
@@ -425,9 +423,9 @@ std::unique_ptr<std::vector<phi::DenseTensor>> PrepareData(
              tensor_in->place(), target_args_def.backend, transform_flag) &&
          !NeedTransformDataType(
              tensor_in->dtype(), target_args_def.dtype, transform_flag) &&
-         !NeedTransformLayout(tensor_in->place(),
-                              tensor_in->layout(),
+         !NeedTransformLayout(tensor_in->layout(),
                               target_args_def.layout,
+                              tensor_in->place(),
                               transform_flag) &&
          !NeedTransform2Contiguous(next_op_support_stride,
                                    dense_tensor.strides().IsContiguous()))) {
@@ -459,10 +457,51 @@ paddle::optional<std::vector<phi::DenseTensor>> PrepareData(
   return paddle::none;
 }
 
+std::shared_ptr<phi::SelectedRows> PrepareDataForSelectedRows(
+    const Tensor& input,
+    const phi::TensorArgDef& target_args_def,
+    const TransformFlag& transform_flag) {
+  const auto& tensor_in = input.impl();
+  if (tensor_in) {
+    phi::SelectedRows& selected_rows =
+        *static_cast<phi::SelectedRows*>(tensor_in.get());
+    if (!transform_flag.NeedTransform() || !selected_rows.initialized() ||
+        (!NeedTransformPlace(
+            selected_rows.place(), target_args_def.backend, transform_flag))) {
+      return std::static_pointer_cast<phi::SelectedRows>(tensor_in);
+    }
+
+    auto dense_out = TransDataPlace(
+        selected_rows.value(), phi::TransToPhiPlace(target_args_def.backend));
+    if (selected_rows.place().GetType() == AllocationType::GPUPINNED) {
+      selected_rows.mutable_value()->ShareBufferWith(dense_out);
+      return std::static_pointer_cast<phi::SelectedRows>(tensor_in);
+    }
+
+    auto out_new = std::make_shared<phi::SelectedRows>(selected_rows.rows(),
+                                                       selected_rows.height());
+    *out_new->mutable_value() = dense_out;
+    return out_new;
+  }
+  PADDLE_THROW(phi::errors::InvalidArgument(
+      "The impl() of input tensor is nullptr, it doesn't support for "
+      "selected_rows data transform now."));
+}
+
+paddle::optional<phi::SelectedRows> PrepareDataForSelectedRows(
+    const paddle::optional<Tensor>& input,
+    const phi::TensorArgDef& target_args_def,
+    const TransformFlag& transform_flag) {
+  if (input) {
+    return *PrepareDataForSelectedRows(*input, target_args_def, transform_flag);
+  }
+  return paddle::none;
+}
+
 void TransDataBackend(const phi::DenseTensor* tensor,
                       Backend target_backend,
                       phi::DenseTensor* out) {
-  if (tensor) {
+  if (tensor && tensor->initialized()) {
     *out = TransDataPlace(*tensor, phi::TransToPhiPlace(target_backend));
   }
 }

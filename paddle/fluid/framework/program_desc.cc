@@ -14,12 +14,13 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/program_desc.h"
 
+extern "C" {
+#include <xxhash.h>
+}
+
 #include <algorithm>
 #include "paddle/fluid/framework/feed_fetch_type.h"
 #include "paddle/fluid/framework/version.h"
-#ifdef PADDLE_WITH_CRYPTO
-#include "paddle/fluid/framework/io/crypto/sha.h"
-#endif
 
 namespace paddle {
 namespace framework {
@@ -257,11 +258,9 @@ std::string ProgramDesc::CachedHashString() {
   if (cached_hash_str_.size() == 0 || NeedUpdate()) {
     Flush();
     desc_.SerializePartialToString(&serialize_str);
-#ifdef PADDLE_WITH_CRYPTO
-    cached_hash_str_ = HexEncoding(GetSha1(serialize_str));
-#else
-    cached_hash_str_ = serialize_str;
-#endif
+    // non-cryptographic is enough
+    cached_hash_str_ =
+        std::to_string(XXH64(serialize_str.c_str(), serialize_str.size(), 1));
   }
   return cached_hash_str_;
 }

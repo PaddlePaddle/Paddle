@@ -24,8 +24,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using LoDTensor = framework::LoDTensor;
-
 void FusedBatchNormActOp::InferShape(framework::InferShapeContext *ctx) const {
   PADDLE_ENFORCE_EQ(ctx->HasInput("X"),
                     true,
@@ -158,7 +156,7 @@ void FusedBatchNormActOp::InferShape(framework::InferShapeContext *ctx) const {
   ctx->ShareLoD("X", "Y");
 }
 
-framework::OpKernelType FusedBatchNormActOp::GetExpectedKernelType(
+phi::KernelKey FusedBatchNormActOp::GetExpectedKernelType(
     const framework::ExecutionContext &ctx) const {
   auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
   // By default, the type of the scale, bias, mean,
@@ -168,40 +166,28 @@ framework::OpKernelType FusedBatchNormActOp::GetExpectedKernelType(
   if (input_data_type == framework::proto::VarType::FP64) {
     bn_param_type = framework::proto::VarType::FP64;
   }
-  PADDLE_ENFORCE_EQ(
-      bn_param_type,
-      framework::TransToProtoVarType(ctx.Input<Tensor>("Scale")->dtype()),
-      platform::errors::PreconditionNotMet(
-          "Scale input should be of float type"));
-  PADDLE_ENFORCE_EQ(
-      bn_param_type,
-      framework::TransToProtoVarType(ctx.Input<Tensor>("Bias")->dtype()),
-      platform::errors::PreconditionNotMet(
-          "Bias input should be of float type"));
-  PADDLE_ENFORCE_EQ(
-      bn_param_type,
-      framework::TransToProtoVarType(ctx.Input<Tensor>("Mean")->dtype()),
-      platform::errors::PreconditionNotMet(
-          "Mean input should be of float type"));
-  PADDLE_ENFORCE_EQ(
-      bn_param_type,
-      framework::TransToProtoVarType(ctx.Input<Tensor>("Variance")->dtype()),
-      platform::errors::PreconditionNotMet(
-          "Variance input should be of float type"));
+  PADDLE_ENFORCE_EQ(bn_param_type,
+                    framework::TransToProtoVarType(
+                        ctx.Input<phi::DenseTensor>("Scale")->dtype()),
+                    platform::errors::PreconditionNotMet(
+                        "Scale input should be of float type"));
+  PADDLE_ENFORCE_EQ(bn_param_type,
+                    framework::TransToProtoVarType(
+                        ctx.Input<phi::DenseTensor>("Bias")->dtype()),
+                    platform::errors::PreconditionNotMet(
+                        "Bias input should be of float type"));
+  PADDLE_ENFORCE_EQ(bn_param_type,
+                    framework::TransToProtoVarType(
+                        ctx.Input<phi::DenseTensor>("Mean")->dtype()),
+                    platform::errors::PreconditionNotMet(
+                        "Mean input should be of float type"));
+  PADDLE_ENFORCE_EQ(bn_param_type,
+                    framework::TransToProtoVarType(
+                        ctx.Input<phi::DenseTensor>("Variance")->dtype()),
+                    platform::errors::PreconditionNotMet(
+                        "Variance input should be of float type"));
 
-  framework::LibraryType library = framework::LibraryType::kPlain;
-  framework::DataLayout layout = framework::DataLayout::kAnyLayout;
-
-  return framework::OpKernelType(
-      input_data_type, ctx.GetPlace(), layout, library);
-}
-
-framework::OpKernelType FusedBatchNormActOp::GetKernelTypeForVar(
-    const std::string &var_name,
-    const Tensor &tensor,
-    const framework::OpKernelType &expected_kernel_type) const {
-  return framework::OpKernelType(
-      expected_kernel_type.data_type_, tensor.place(), tensor.layout());
+  return phi::KernelKey(input_data_type, ctx.GetPlace());
 }
 
 void FusedBatchNormActOpMaker::Make() {
@@ -307,32 +293,26 @@ void FusedBatchNormActGradOp::InferShape(
   ctx->SetOutputDim(framework::GradVarName("Bias"), {C});
 }
 
-framework::OpKernelType FusedBatchNormActGradOp::GetExpectedKernelType(
+phi::KernelKey FusedBatchNormActGradOp::GetExpectedKernelType(
     const framework::ExecutionContext &ctx) const {
   const auto *var = ctx.InputVar(framework::GradVarName("Y"));
   if (var == nullptr) {
     PADDLE_THROW(platform::errors::NotFound(
         "Can not find Y@GRAD in the execution context."));
   }
-  const Tensor *t = nullptr;
-  if (var->IsType<Tensor>()) {
-    t = &var->Get<Tensor>();
-  } else if (var->IsType<LoDTensor>()) {
-    t = &var->Get<LoDTensor>();
+  const phi::DenseTensor *t = nullptr;
+  if (var->IsType<phi::DenseTensor>()) {
+    t = &var->Get<phi::DenseTensor>();
+  } else if (var->IsType<phi::DenseTensor>()) {
+    t = &var->Get<phi::DenseTensor>();
   }
   if (t == nullptr) {
     PADDLE_THROW(
         platform::errors::NotFound("Can not get the tensor value of Y@GRAD."));
   }
 
-  framework::LibraryType library = framework::LibraryType::kPlain;
-  framework::DataLayout layout = framework::DataLayout::kAnyLayout;
-
-  return framework::OpKernelType(
-      OperatorWithKernel::IndicateVarDataType(ctx, "X"),
-      ctx.GetPlace(),
-      layout,
-      library);
+  return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+                        ctx.GetPlace());
 }
 
 }  // namespace operators
