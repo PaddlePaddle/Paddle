@@ -20,7 +20,6 @@ import numpy as np
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-import paddle.fluid.layers as layers
 import paddle.fluid.optimizer as optimizer
 from paddle.fluid.framework import Program, program_guard
 
@@ -237,7 +236,7 @@ class TestAPICase_Nested(unittest.TestCase):
                     (
                         var_5 == var_6,
                         partial(
-                            layers.fill_constant,
+                            paddle.tensor.fill_constant,
                             shape=[2],
                             dtype='int32',
                             value=x,
@@ -260,7 +259,7 @@ class TestAPICase_Nested(unittest.TestCase):
                     (
                         var_5 == var_6,
                         partial(
-                            layers.fill_constant,
+                            paddle.tensor.fill_constant,
                             shape=[2],
                             dtype='int32',
                             value=x,

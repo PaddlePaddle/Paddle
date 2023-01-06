@@ -390,7 +390,7 @@ class TestFillConstantOpError(unittest.TestCase):
 
             self.assertRaises(
                 TypeError,
-                fluid.layers.fill_constant,
+                paddle.tensor.fill_constant,
                 shape=[1.1],
                 value=5,
                 dtype='float32',
@@ -403,7 +403,7 @@ class TestFillConstantOpError(unittest.TestCase):
 
             self.assertRaises(
                 TypeError,
-                fluid.layers.fill_constant,
+                paddle.tensor.fill_constant,
                 shape=[1],
                 value=5,
                 dtype='float64',
@@ -413,7 +413,7 @@ class TestFillConstantOpError(unittest.TestCase):
             x3 = np.random.randn(100, 100).astype('int32')
             self.assertRaises(
                 TypeError,
-                fluid.layers.fill_constant,
+                paddle.tensor.fill_constant,
                 shape=[100, 100],
                 value=5,
                 dtype='float64',
