@@ -46,4 +46,4 @@ void ClipKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(clip, XPU, ALL_LAYOUT, phi::ClipKernel, float, int) {}
+PD_REGISTER_KERNEL(clip, XPU, ALL_LAYOUT, phi::ClipKernel, float) {}
