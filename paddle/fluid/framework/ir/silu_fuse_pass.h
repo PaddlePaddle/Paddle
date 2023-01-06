@@ -12,19 +12,24 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/core/compat/op_utils.h"
+#pragma once
+#include "paddle/fluid/framework/ir/fuse_pass_base.h"
+#include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 
-namespace phi {
+namespace paddle {
+namespace framework {
+namespace ir {
 
-KernelSignature RealGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
-  return KernelSignature("real_grad", {"Out@GRAD"}, {}, {"X@GRAD"});
-}
+class Graph;
 
-KernelSignature ImagGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
-  return KernelSignature("imag_grad", {"Out@GRAD"}, {}, {"X@GRAD"});
-}
+class SiluFusePass : public FusePassBase {
+ public:
+  virtual ~SiluFusePass() {}
 
-}  // namespace phi
+ protected:
+  void ApplyImpl(ir::Graph* graph) const override;
+};
 
-PD_REGISTER_ARG_MAPPING_FN(real_grad, phi::RealGradOpArgumentMapping);
-PD_REGISTER_ARG_MAPPING_FN(imag_grad, phi::ImagGradOpArgumentMapping);
+}  // namespace ir
+}  // namespace framework
+}  // namespace paddle
