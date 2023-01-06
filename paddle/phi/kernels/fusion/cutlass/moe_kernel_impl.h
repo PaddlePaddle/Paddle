@@ -255,7 +255,7 @@ __global__ void softmax_kernel_v4(
   float max_val =
       blockDim.x <= 32
           ? phi::funcs::WarpReduceMax<float>(local_max, 0xFFFFFFFF)
-          : phi::funcs::BlockReduceMax<float>(local_max, 0xffffffff);
+          : phi::funcs::BlockReduceMax<float>(local_max, 0xFFFFFFFF);
   if (threadIdx.x == 0) {
     s_max = max_val;
   }
@@ -268,8 +268,8 @@ __global__ void softmax_kernel_v4(
   }
   float sum_val =
       blockDim.x <= 32
-          ? phi::funcs::WarpReduceSum<float>(local_sum, 0xffffffff)
-          : phi::funcs::BlockReduceSum<float>(local_sum, 0xffffffff);
+          ? phi::funcs::WarpReduceSum<float>(local_sum, 0xFFFFFFFF)
+          : phi::funcs::BlockReduceSum<float>(local_sum, 0xFFFFFFFF);
   if (threadIdx.x == 0) {
     s_mean = sum_val + 1e-6f;
     s_mean = __fdividef(1.0f, s_mean);
