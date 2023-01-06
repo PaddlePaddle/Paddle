@@ -1803,7 +1803,7 @@ class RandomErasing(BaseTransform):
         self.value = value
         self.inplace = inplace
 
-    def _get_param(self, img, scale, ratio, value):
+    def _dynamic_get_param(self, img, scale, ratio, value):
         """Get parameters for ``erase`` for a random erasing.
 
         Args:
@@ -1853,7 +1853,99 @@ class RandomErasing(BaseTransform):
 
         return 0, 0, h, w, img
 
-    def _apply_image(self, img):
+    def _static_get_param(self, img, scale, ratio, value):
+        """Get parameters for ``erase`` for a random erasing.
+
+        Args:
+            img (paddle.Tensor | np.array | PIL.Image): Image to be erased.
+            scale (sequence, optional): The proportional range of the erased area to the input image.
+            ratio (sequence, optional): Aspect ratio range of the erased area.
+            value (sequence | None): The value each pixel in erased area will be replaced with.
+                               If value is a sequence with length 3, the R, G, B channels will be ereased
+                               respectively. If value is None, each pixel will be erased with random values.
+
+        Returns:
+            tuple: params (i, j, h, w, v) to be passed to ``erase`` for random erase.
+        """
+
+        c, h, w = img.shape[-3], img.shape[-2], img.shape[-1]
+
+        img_area = h * w
+        log_ratio = np.log(np.array(ratio))
+
+        def cond(i, ten, erase_h, erase_w):
+            return i < ten and (erase_h >= h or erase_w >= w)
+
+        def body(i, ten, erase_h, erase_w):
+
+            erase_area = (
+                paddle.uniform([1], min=scale[0], max=scale[1]) * img_area
+            )
+            aspect_ratio = paddle.exp(
+                paddle.uniform([1], min=log_ratio[0], max=log_ratio[1])
+            )
+            erase_h = paddle.round(paddle.sqrt(erase_area * aspect_ratio)).cast(
+                "int32"
+            )
+            erase_w = paddle.round(paddle.sqrt(erase_area / aspect_ratio)).cast(
+                "int32"
+            )
+
+            # i = paddle.static.nn.cond(erase_h >= h or erase_w >= w,
+            #             lambda : i + 1,
+            #             lambda : ten)
+            i += 1
+
+            return [i, ten, erase_h, erase_w]
+
+        h = paddle.assign([h]).astype("int32")
+        w = paddle.assign([w]).astype("int32")
+        erase_h, erase_w = h.clone(), w.clone()
+        i = paddle.full(shape=[1], fill_value=0, dtype='int32')  # loop counter
+        ten = paddle.full(
+            shape=[1], fill_value=10, dtype='int32'
+        )  # loop length
+        i, ten, erase_h, erase_w = paddle.static.nn.while_loop(
+            cond, body, [i, ten, erase_h, erase_w]
+        )
+
+        if value is None:
+            v = paddle.normal(shape=[c, erase_h, erase_w]).astype(img.dtype)
+        else:
+            v = value[:, None, None]
+
+        zero = paddle.zeros([1]).astype("int32")
+        top = paddle.static.nn.cond(
+            erase_h < h and erase_w < w,
+            lambda: paddle.uniform(
+                shape=[1], min=0, max=h - erase_h + 1
+            ).astype("int32"),
+            lambda: zero,
+        )
+
+        left = paddle.static.nn.cond(
+            erase_h < h and erase_w < w,
+            lambda: paddle.uniform(
+                shape=[1], min=0, max=w - erase_w + 1
+            ).astype("int32"),
+            lambda: zero,
+        )
+
+        erase_h = paddle.static.nn.cond(
+            erase_h < h and erase_w < w, lambda: erase_h, lambda: h
+        )
+
+        erase_w = paddle.static.nn.cond(
+            erase_h < h and erase_w < w, lambda: erase_w, lambda: w
+        )
+
+        v = paddle.static.nn.cond(
+            erase_h < h and erase_w < w, lambda: v, lambda: img
+        )
+
+        return top, left, erase_h, erase_w, v, i
+
+    def _dynamic_apply_image(self, img):
         """
         Args:
             img (paddle.Tensor | np.array | PIL.Image): Image to be Erased.
@@ -1873,8 +1965,45 @@ class RandomErasing(BaseTransform):
                 raise ValueError(
                     "Value should be a single number or a sequence with length equals to image's channel."
                 )
-            top, left, erase_h, erase_w, v = self._get_param(
+            top, left, erase_h, erase_w, v = self._dynamic_get_param(
                 img, self.scale, self.ratio, value
             )
             return F.erase(img, top, left, erase_h, erase_w, v, self.inplace)
         return img
+
+    def _static_apply_image(self, img):
+        """
+        Args:
+            img (paddle.Tensor | np.array | PIL.Image): Image to be Erased.
+
+        Returns:
+            output (paddle.Tensor np.array | PIL.Image): A random erased image.
+        """
+
+        if isinstance(self.value, numbers.Number):
+            value = paddle.assign([self.value]).astype(img.dtype)
+        elif isinstance(self.value, str):
+            value = None
+        else:
+            value = paddle.assign(self.value).astype(img.dtype)
+        if value is not None and not (
+            value.shape[0] == 1 or value.shape[0] == 3
+        ):
+            raise ValueError(
+                "Value should be a single number or a sequence with length equals to image's channel."
+            )
+
+        top, left, erase_h, erase_w, v, i = self._static_get_param(
+            img, self.scale, self.ratio, value
+        )
+        return F.erase(img, top, left, erase_h, erase_w, v, self.inplace)
+
+    def _apply_image(self, img):
+        if paddle.in_dynamic_mode():
+            return self._dynamic_apply_image(img)
+        else:
+            return paddle.static.nn.cond(
+                paddle.rand([1]) < self.prob,
+                lambda: self._static_apply_image(img),
+                lambda: img,
+            )
