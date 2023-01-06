@@ -1531,7 +1531,7 @@ class OpTest(unittest.TestCase):
         inplace_atol=None,
         check_eager=False,
     ):
-
+        check_dygraph = False
         # disable legacy dygraph check when check_eager is True
         if check_eager:
             check_dygraph = False
@@ -1710,80 +1710,6 @@ class OpTest(unittest.TestCase):
                     "Output (" + name + ") has different lod at " + str(place),
                 )
 
-        class DygraphChecker(Checker):
-            def init(self):
-                self.checker_name = "dygraph checker"
-
-            def calculate_output(self):
-                self.outputs = self.op_test._calc_dygraph_output(
-                    place, no_check_set=no_check_set
-                )
-
-            def find_actual_value(self, name):
-                with fluid.dygraph.base.guard(place=place):
-                    imperative_actual = find_imperative_actual(
-                        name, self.outputs, place
-                    )
-                    imperative_actual_t = np.array(
-                        imperative_actual.value().get_tensor()
-                    )
-                    return imperative_actual, imperative_actual_t
-
-            def convert_uint16_to_float_ifneed(self, actual_np, expect_np):
-                if actual_np.dtype == np.uint16 and expect_np.dtype in [
-                    np.float32,
-                    np.float64,
-                ]:
-                    self.rtol = 1.0e-2
-                else:
-                    self.rtol = 1.0e-5
-                if self.op_test.is_bfloat16_op():
-                    if actual_np.dtype == np.uint16:
-                        actual_np = convert_uint16_to_float(actual_np)
-                    if expect_np.dtype == np.uint16:
-                        expect_np = convert_uint16_to_float(expect_np)
-                return actual_np, expect_np
-
-            def _compare_list(self, name, actual, expect):
-                """if expect is a tuple, we need to compare list."""
-                with fluid.dygraph.base.guard(place=place):
-                    self.op_test.assertListEqual(
-                        actual.value()
-                        .get_tensor()
-                        .recursive_sequence_lengths(),
-                        expect[1],
-                        "Output ("
-                        + name
-                        + ") has different lod at "
-                        + str(place)
-                        + " in dygraph mode",
-                    )
-
-            def _compare_numpy(self, name, actual_np, expect_np):
-                if (
-                    functools.reduce(lambda x, y: x * y, actual_np.shape, 1)
-                    == 0
-                    and functools.reduce(lambda x, y: x * y, expect_np.shape, 1)
-                    == 0
-                ):
-                    pass
-                else:
-                    self.op_test.assertTrue(
-                        np.allclose(
-                            actual_np,
-                            expect_np,
-                            atol=atol,
-                            rtol=self.rtol if hasattr(self, 'rtol') else 1e-5,
-                            equal_nan=equal_nan,
-                        ),
-                        "Output ("
-                        + name
-                        + ") has diff at "
-                        + str(place)
-                        + " in "
-                        + self.checker_name,
-                    )
-
         class EagerChecker(Checker):
             def init(self):
                 self.checker_name = "eager checker"
@@ -1803,16 +1729,6 @@ class OpTest(unittest.TestCase):
                         )
                 self.outputs = eager_dygraph_outs
 
-            def find_actual_value(self, name):
-                with fluid.dygraph.base.guard(place=place):
-                    imperative_actual = find_imperative_actual(
-                        name, self.outputs, place
-                    )
-                    imperative_actual_t = np.array(
-                        imperative_actual.value().get_tensor()
-                    )
-                    return imperative_actual, imperative_actual_t
-
             def _compare_numpy(self, name, actual_np, expect_np):
                 if (
                     functools.reduce(lambda x, y: x * y, actual_np.shape, 1)
@@ -1852,6 +1768,16 @@ class OpTest(unittest.TestCase):
                     if expect_np.dtype == np.uint16:
                         expect_np = convert_uint16_to_float(expect_np)
                 return actual_np, expect_np
+
+            def find_actual_value(self, name):
+                with fluid.dygraph.base.guard(place=place):
+                    imperative_actual = find_imperative_actual(
+                        name, self.outputs, place
+                    )
+                    imperative_actual_t = np.array(
+                        imperative_actual.value().get_tensor()
+                    )
+                    return imperative_actual, imperative_actual_t
 
             def _compare_list(self, name, actual, expect):
                 """if expect is a tuple, we need to compare list."""
@@ -1911,14 +1837,7 @@ class OpTest(unittest.TestCase):
         static_checker = StaticChecker(self, self.outputs)
         static_checker.check()
         outs, fetch_list = static_checker.outputs, static_checker.fetch_list
-        if check_dygraph:
-            # always enable legacy dygraph
-            g_enable_legacy_dygraph()
-            dygraph_checker = DygraphChecker(self, self.outputs)
-            dygraph_checker.check()
-            dygraph_outs = dygraph_checker.outputs
-            # yield the original state
-            g_disable_legacy_dygraph()
+
         if check_eager:
             eager_checker = EagerChecker(self, self.outputs)
             eager_checker.check()
@@ -1951,8 +1870,6 @@ class OpTest(unittest.TestCase):
         if check_eager:
             assert not check_dygraph
             return outs, eager_dygraph_outs, fetch_list
-        elif check_dygraph:
-            return outs, dygraph_outs, fetch_list
         else:
             return outs, fetch_list
 
@@ -2037,6 +1954,7 @@ class OpTest(unittest.TestCase):
         inplace_atol=None,
         check_eager=False,
     ):
+        check_dygraph = False
 
         # disable legacy dygraph check when check_eager is True
         if check_eager:
@@ -2179,6 +2097,7 @@ class OpTest(unittest.TestCase):
         check_eager=False,
     ):
 
+        check_dygraph = False
         # disable legacy dygraph check when check_eager is True
         if check_eager:
             check_dygraph = False
@@ -2215,6 +2134,8 @@ class OpTest(unittest.TestCase):
         numeric_place=None,
         check_eager=False,
     ):
+
+        check_dygraph = False
 
         # disable legacy dygraph check when check_eager is True
         if check_eager:

@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import numpy as np
-from op_test import OpTest
 from testsuite import append_loss_ops, create_op, set_input
 from white_list import no_grad_set_white_list, op_threshold_white_list
 from xpu.get_test_cover_info import (
@@ -25,6 +24,7 @@ from xpu.get_test_cover_info import (
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
+from op_test import OpTest
 from paddle.fluid.backward import append_backward
 from paddle.fluid.framework import Program, convert_np_dtype_to_dtype_
 
@@ -72,6 +72,7 @@ class XPUOpTest(OpTest):
         inplace_atol=None,
         check_eager=False,
     ):
+        check_dygraph = False
         place = paddle.XPUPlace(0)
         self.check_output_with_place(
             place,
@@ -93,6 +94,7 @@ class XPUOpTest(OpTest):
         inplace_atol=None,
         check_eager=False,
     ):
+        check_dygraph = False
         self.infer_dtype_from_inputs_outputs(self.inputs, self.outputs)
         if self.dtype == np.float64:
             return
@@ -121,6 +123,7 @@ class XPUOpTest(OpTest):
         numeric_place=None,
         check_eager=False,
     ):
+        check_dygraph = False
         place = paddle.XPUPlace(0)
         self.check_grad_with_place(
             place,
@@ -152,6 +155,7 @@ class XPUOpTest(OpTest):
         numeric_place=None,
         check_eager=False,
     ):
+        check_dygraph = False
         if hasattr(self, 'op_type_need_check_grad'):
             xpu_version = core.get_xpu_device_version(0)
             if is_empty_grad_op_type(
@@ -234,6 +238,7 @@ class XPUOpTest(OpTest):
         user_defined_grad_outputs=None,
         check_dygraph=True,
     ):
+        check_dygraph = False
         self.scope = core.Scope()
         op_inputs = self.inputs if hasattr(self, "inputs") else dict()
         op_outputs = self.outputs if hasattr(self, "outputs") else dict()
