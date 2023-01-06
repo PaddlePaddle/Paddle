@@ -20,7 +20,6 @@ import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid import Program, program_guard
 from paddle.fluid.op import Operator
-from paddle.nn import clip
 
 
 class TestGetTensorFromSelectedRowsError(unittest.TestCase):
@@ -32,12 +31,12 @@ class TestGetTensorFromSelectedRowsError(unittest.TestCase):
             x_data = np.random.random((2, 4)).astype("float32")
 
             def test_Variable():
-                clip.get_tensor_from_selected_rows(x=x_data)
+                fluid.layers.get_tensor_from_selected_rows(x=x_data)
 
             self.assertRaises(TypeError, test_Variable)
 
             def test_SELECTED_ROWS():
-                clip.get_tensor_from_selected_rows(x=x_var)
+                fluid.layers.get_tensor_from_selected_rows(x=x_var)
 
             self.assertRaises(TypeError, test_SELECTED_ROWS)
 

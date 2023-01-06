@@ -90,6 +90,7 @@ from .transpiler import (
     DistributeTranspilerConfig,
 )
 from .lod_tensor import create_lod_tensor, create_random_int_lodtensor
+from . import clip
 from . import profiler
 from . import unique_name
 from . import parallel_executor
@@ -162,6 +163,7 @@ __all__ = (
         'ParamAttr',
         'WeightNormParamAttr',
         'DataFeeder',
+        'clip',
         'profiler',
         'unique_name',
         'Scope',

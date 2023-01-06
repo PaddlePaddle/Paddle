@@ -23,8 +23,8 @@ from seq2seq_utils import Seq2SeqModelHyperParams, get_data_iter
 
 import paddle
 import paddle.fluid as fluid
+from paddle.fluid.clip import GradientClipByGlobalNorm
 from paddle.jit import ProgramTranslator
-from paddle.nn import ClipGradByGlobalNorm
 
 place = (
     fluid.CUDAPlace(0) if fluid.is_compiled_with_cuda() else fluid.CPUPlace()
@@ -72,7 +72,7 @@ def train(args, attn_model=False):
                 dropout=args.dropout,
             )
 
-        gloabl_norm_clip = ClipGradByGlobalNorm(args.max_grad_norm)
+        gloabl_norm_clip = GradientClipByGlobalNorm(args.max_grad_norm)
         optimizer = fluid.optimizer.SGD(
             args.learning_rate,
             parameter_list=model.parameters(),

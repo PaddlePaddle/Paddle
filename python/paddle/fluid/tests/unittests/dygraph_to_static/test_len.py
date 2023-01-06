@@ -19,7 +19,6 @@ import numpy as np
 import paddle
 import paddle.fluid as fluid
 from paddle.jit.dy2static import Call
-from paddle.nn import clip
 
 SEED = 2020
 np.random.seed(SEED)
@@ -90,11 +89,11 @@ def len_with_selected_rows(place):
         type=fluid.core.VarDesc.VarType.SELECTED_ROWS,
     )
     # y is Variable(SelectedRows)
-    y = clip.merge_selected_rows(var)
+    y = fluid.layers.merge_selected_rows(var)
     y_len = Call(len)(y)
 
     # z is inner tensor with shape [4, 2]
-    z = clip.get_tensor_from_selected_rows(y)
+    z = fluid.layers.get_tensor_from_selected_rows(y)
     z_len = Call(len)(z)
 
     # set data for selected_rows
