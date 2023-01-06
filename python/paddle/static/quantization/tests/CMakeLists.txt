@@ -245,7 +245,6 @@ if(WIN32)
   list(REMOVE_ITEM TEST_OPS test_post_training_quantization_mnist)
   list(REMOVE_ITEM TEST_OPS test_post_training_quantization_while)
   list(REMOVE_ITEM TEST_OPS test_post_training_quantization_mobilenetv1)
-  list(REMOVE_ITEM TEST_OPS test_post_training_quantization_mobilenet_backends)
   list(REMOVE_ITEM TEST_OPS test_post_training_quantization_resnet50)
   list(REMOVE_ITEM TEST_OPS test_post_training_quantization_program_resnet50)
   list(REMOVE_ITEM TEST_OPS test_post_training_quantization_lstm_model)
@@ -530,8 +529,6 @@ if(NOT WIN32)
                        PROPERTIES TIMEOUT 240)
   set_tests_properties(test_post_training_quantization_mobilenetv1
                        PROPERTIES TIMEOUT 900 LABELS "RUN_TYPE=NIGHTLY")
-  set_tests_properties(test_post_training_quantization_mobilenet_backends
-                       PROPERTIES TIMEOUT 300)
   set_tests_properties(test_post_training_quantization_resnet50
                        PROPERTIES TIMEOUT 600 LABELS "RUN_TYPE=NIGHTLY")
   set_tests_properties(test_post_training_quantization_mnist PROPERTIES TIMEOUT
