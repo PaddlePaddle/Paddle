@@ -140,12 +140,12 @@ class TestIrMemOptBase(BuildIrMemOptBase):
                     self.network
                 )
 
-                self.assertAlmostEquals(
+                self.assertAlmostEqual(
                     np.mean(baseline_last_loss),
                     np.mean(cur_last_loss),
                     delta=1e-6,
                 )
-                self.assertAlmostEquals(
+                self.assertAlmostEqual(
                     np.mean(baseline_first_loss),
                     np.mean(cur_first_loss),
                     delta=1e-6,

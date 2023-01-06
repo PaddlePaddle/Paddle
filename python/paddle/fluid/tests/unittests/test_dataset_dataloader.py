@@ -153,7 +153,7 @@ class DatasetLoaderTestBase(unittest.TestCase):
         for _ in range(EPOCH_NUM):
             has_complete_batch = False
             for batch_id, data in enumerate(dataloader):
-                self.assertEquals(len(places), len(data))
+                self.assertEqual(len(places), len(data))
                 for idx, data_on_each_device in enumerate(data):
                     image = data_on_each_device["image"]
                     label = data_on_each_device["label"]
@@ -166,7 +166,7 @@ class DatasetLoaderTestBase(unittest.TestCase):
                         else:
                             batch_size = BATCH_SIZE
 
-                    self.assertEquals(image.shape()[1:], IMAGE_SHAPE)
+                    self.assertEqual(image.shape()[1:], IMAGE_SHAPE)
                     self.assertTrue(
                         image._place()._equals(places[idx]),
                         msg=get_place_string(image._place())
@@ -174,24 +174,24 @@ class DatasetLoaderTestBase(unittest.TestCase):
                         + get_place_string(places[idx]),
                     )
                     if self.drop_last:
-                        self.assertEquals(image.shape()[0], BATCH_SIZE)
+                        self.assertEqual(image.shape()[0], BATCH_SIZE)
                     else:
                         self.assertTrue(
                             image.shape()[0] == BATCH_SIZE
                             or image.shape()[0] == BATCH_SIZE / 2
                         )
 
-                    self.assertEquals(label.shape()[1:], LABEL_SHAPE)
+                    self.assertEqual(label.shape()[1:], LABEL_SHAPE)
                     self.assertTrue(label._place()._equals(places[idx]))
                     if self.drop_last:
-                        self.assertEquals(label.shape()[0], BATCH_SIZE)
+                        self.assertEqual(label.shape()[0], BATCH_SIZE)
                     else:
                         self.assertTrue(
                             label.shape()[0] == BATCH_SIZE
                             or label.shape()[0] == BATCH_SIZE / 2
                         )
 
-                    self.assertEquals(image.shape()[0], label.shape()[0])
+                    self.assertEqual(image.shape()[0], label.shape()[0])
 
                     if image.shape()[0] == BATCH_SIZE:
                         has_complete_batch = True

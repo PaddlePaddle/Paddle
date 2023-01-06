@@ -174,12 +174,12 @@ class TestMNIST(TestParallelExecutorBase):
             use_parallel_executor=True,
         )
 
-        self.assertAlmostEquals(
+        self.assertAlmostEqual(
             np.mean(parallel_first_loss),
             single_first_loss,
             delta=1e-6,
         )
-        self.assertAlmostEquals(
+        self.assertAlmostEqual(
             np.mean(parallel_last_loss), single_last_loss, delta=1e-6
         )
 
