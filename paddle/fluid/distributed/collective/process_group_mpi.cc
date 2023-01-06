@@ -13,9 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/distributed/collective/process_group_mpi.h"
-
 #include <chrono>
-
 #include "paddle/fluid/distributed/collective/common.h"
 
 constexpr int64_t kWaitBlockTImeout = 10;

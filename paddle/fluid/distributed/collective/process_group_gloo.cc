@@ -12,18 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/distributed/collective/process_group_gloo.h"
-
-#include <gloo/broadcast.h>
-#include <gloo/reduce.h>
-#include <gloo/scatter.h>
-
 #include <iostream>
-
-#include "paddle/fluid/distributed/collective/common.h"
-#include "paddle/fluid/framework/fleet/gloo_wrapper.h"
-#include "paddle/fluid/platform/enforce.h"
-#include "paddle/phi/core/distributed/store/tcp_utils.h"
 
 #ifdef _WIN32
 #include <gloo/common/win.h>
@@ -34,6 +23,15 @@
 #include <sys/socket.h>
 #include <unistd.h>
 #endif
+
+#include <gloo/broadcast.h>
+#include <gloo/reduce.h>
+#include <gloo/scatter.h>
+
+#include "paddle/fluid/distributed/collective/common.h"
+#include "paddle/fluid/distributed/collective/process_group_gloo.h"
+#include "paddle/fluid/framework/fleet/gloo_wrapper.h"
+#include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace distributed {

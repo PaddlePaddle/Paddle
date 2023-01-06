@@ -21,6 +21,7 @@
 #include "paddle/fluid/distributed/collective/process_group.h"
 #include "paddle/fluid/distributed/collective/process_group_without_stream.h"
 #include "paddle/phi/core/distributed/store/store.h"
+#include "paddle/phi/core/distributed/store/tcp_store.h"
 
 #ifdef PADDLE_WITH_GLOO
 #include "paddle/fluid/framework/fleet/gloo_wrapper.h"
