@@ -242,14 +242,11 @@ def parse_kernel(op_name: str, kernel_config: Dict[str, Any]) -> Dict[str, Any]:
 
 def parse_inplace(op_name: str, inplace_cfg: str) -> Dict[str, str]:
     inplace_map = {}
-    inplace_list = inplace_cfg.split(',')
-    for inplace_cfg in inplace_list:
-        inplace_cfg.strip()
-        inplace_cfg = inplace_cfg.lstrip("(").rstrip(")")
-        pairs = parse_plain_list(inplace_cfg)
-        for pair in pairs:
-            in_name, out_name = parse_plain_list(pair, sep="->")
-            inplace_map[out_name] = in_name
+    inplace_cfg = inplace_cfg.lstrip("(").rstrip(")")
+    pairs = parse_plain_list(inplace_cfg)
+    for pair in pairs:
+        in_name, out_name = parse_plain_list(pair, sep="->")
+        inplace_map[out_name] = in_name
     return inplace_map
 
 
@@ -309,7 +306,7 @@ def check_op_config(op_entry, op_name):
         'intermediate',
         'no_need_buffer',
         'data_transform',
-        'composite'
+        'composite',
     )
     infer_meta_key_set = ('func', 'param')
     kernel_key_set = ('func', 'param', 'data_type', 'layout', 'backend')

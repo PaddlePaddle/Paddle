@@ -200,6 +200,7 @@ class BaseAPI:
                 inputs['input_info'][input_dict['name']] = input_types_map[
                     input_dict['typename']
                 ]
+
         attrs = {'names': [], 'attr_info': {}}
         for attr_dict in attrs_list:
             attrs['names'].append(attr_dict['name'])
@@ -218,110 +219,6 @@ class BaseAPI:
                     attr_types_map[attr_dict['typename']],
                     default_value,
                 )
-        return inputs, attrs
-
-    def parse_input_and_attr_(self, api_name, args_config, optional_vars=[]):
-        inputs = {'names': [], 'input_info': {}}
-        attrs = {'names': [], 'attr_info': {}}
-        args_str = args_config.strip()
-        assert args_str.startswith('(') and args_str.endswith(
-            ')'
-        ), f"Args declaration should start with '(' and end with ')', please check the args of {api_name} in yaml."
-        args_str = args_str[1:-1]
-        args_list = args_str.split(',')
-        input_types_map = {
-            'Tensor': 'const Tensor&',
-            'Tensor[]': 'const std::vector<Tensor>&',
-            'Scalar': 'const Scalar&',
-        }
-        attr_types_map = {
-            'IntArray': 'const IntArray&',
-            'Scalar': 'const Scalar&',
-            'Scalar(int)': 'const Scalar&',
-            'Scalar(int64_t)': 'const Scalar&',
-            'Scalar(float)': 'const Scalar&',
-            'Scalar(dobule)': 'const Scalar&',
-            'Scalar[]': 'const std::vector<phi::Scalar>&',
-            'int': 'int',
-            'int32_t': 'int32_t',
-            'int64_t': 'int64_t',
-            'long': 'long',
-            'size_t': 'size_t',
-            'float': 'float',
-            'float[]': 'const std::vector<float>&',
-            'double': 'double',
-            'bool': 'bool',
-            'bool[]': 'const std::vector<bool>&',
-            'str': 'const std::string&',
-            'str[]': 'const std::vector<std::string>&',
-            'Place': 'const Place&',
-            'DataLayout': 'DataLayout',
-            'DataType': 'DataType',
-            'int64_t[]': 'const std::vector<int64_t>&',
-            'int[]': 'const std::vector<int>&',
-        }
-        optional_types_trans = {
-            'Tensor': 'const paddle::optional<Tensor>&',
-            'Tensor[]': 'const paddle::optional<std::vector<Tensor>>&',
-            'int': 'paddle::optional<int>',
-            'int32_t': 'paddle::optional<int32_t>',
-            'int64_t': 'paddle::optional<int64_t>',
-            'float': 'paddle::optional<float>',
-            'double': 'paddle::optional<double>',
-            'bool': 'paddle::optional<bool>',
-            'Place': 'paddle::optional<const Place&>',
-            'DataLayout': 'paddle::optional<DataLayout>',
-            'DataType': 'paddle::optional<DataType>',
-        }
-
-        for item in args_list:
-            item = item.strip()
-            type_and_name = item.split(' ')
-            # match the input tensor
-            has_input = False
-            for in_type_symbol, in_type in input_types_map.items():
-                if type_and_name[0] == in_type_symbol:
-                    input_name = type_and_name[1].strip()
-                    assert (
-                        len(input_name) > 0
-                    ), f"The input tensor name should not be empty. Please check the args of {api_name} in yaml."
-                    assert (
-                        len(attrs['names']) == 0
-                    ), f"The input Tensor should appear before attributes. please check the position of {api_name}:input({input_name}) in yaml"
-
-                    if input_name in optional_vars:
-                        in_type = optional_types_trans[in_type_symbol]
-
-                    inputs['names'].append(input_name)
-                    inputs['input_info'][input_name] = in_type
-                    has_input = True
-                    break
-            if has_input:
-                continue
-
-            # match the attribute
-            for attr_type_symbol, attr_type in attr_types_map.items():
-                if type_and_name[0] == attr_type_symbol:
-                    attr_name = item[len(attr_type_symbol) :].strip()
-                    assert (
-                        len(attr_name) > 0
-                    ), f"The attribute name should not be empty. Please check the args of {api_name} in yaml."
-                    default_value = None
-                    if '=' in attr_name:
-                        attr_infos = attr_name.split('=')
-                        attr_name = attr_infos[0].strip()
-                        default_value = attr_infos[1].strip()
-
-                    if attr_name in optional_vars:
-                        attr_type = optional_types_trans[attr_type_symbol]
-
-                    default_value_str = (
-                        "" if default_value is None else '=' + default_value
-                    )
-                    attrs['names'].append(attr_name)
-                    attrs['attr_info'][attr_name] = (attr_type, default_value)
-                    break
-
         return inputs, attrs
 
     def parse_output(self, outputs_list):
