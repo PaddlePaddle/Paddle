@@ -16,7 +16,7 @@ import abc
 
 from paddle.distributed.fleet.meta_optimizers.common import OP_ROLE_KEY, OpRole
 
-from ..dist_attribute import OperatorDistributedAttribute
+from ..dist_attribute import OperatorDistAttr
 from ..process_group import new_process_group
 from ..utils import _get_comm_group, _get_corresponding_rank, is_optimize_op
 
@@ -318,7 +318,7 @@ def set_comm_op_dist_attr_for_program(
     assert process_mesh is not None
     assert tensor_dist_attr is not None
 
-    new_op_dist_attr = OperatorDistributedAttribute()
+    new_op_dist_attr = OperatorDistAttr()
     new_op_dist_attr.process_mesh = process_mesh
     for input_varname in new_op.desc.input_arg_names():
         new_op_dist_attr.set_input_dist_attr(input_varname, tensor_dist_attr)
@@ -330,7 +330,7 @@ def set_comm_op_dist_attr_for_program(
 def naive_copy_op_dist_attr_for_program(new_op, ref_op, ctx):
 
     ref_dist_attr = ctx.get_op_dist_attr_for_program(ref_op)
-    new_op_dist_attr = OperatorDistributedAttribute()
+    new_op_dist_attr = OperatorDistAttr()
     new_op_dist_attr.process_mesh = ref_dist_attr.process_mesh
 
     for input_name in ref_op.input_names:
@@ -455,7 +455,7 @@ def sync_and_scale_gradients(dist_ctx, op, dp_group, allreduce_var_names):
         )
         # NOTE auxiliary op's dist attr should follow dist_op not dist_tensor
         for new_op in added_ops:
-            new_op_attr = OperatorDistributedAttribute()
+            new_op_attr = OperatorDistAttr()
             new_op_attr.process_mesh = process_mesh
             new_op_attr.set_output_dims_mapping(grad_var.name, dims_mapping)
             new_op_attr.set_input_dims_mapping(grad_var.name, dims_mapping)

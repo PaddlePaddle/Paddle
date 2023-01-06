@@ -246,12 +246,13 @@ class FusedMultiHeadAttention(Layer):
         epsilon (float, optional): The small value added to the variance to prevent
             division by zero. Default: 1e-05.
         nranks (int, optional): Distributed tensor model parallel nranks. Default is 1, means not using tensor parallel.
+        ring_id (int, optional): For distributed tensor model parallel. Default is -1, means not using tensor parallel.
         transpose_qkv_wb (bool, optional): Support input qkv matmul weight shape as
             [hidden_size, 3 * hidden_size] and qkv matmul bias shape as [3 * hidden_size].
             Will transpose the weight to [3, num_head, head_dim, hidden_size] and transpose bias to
             [3, num_head, hidden_size] in the fused_attention_op. Only support for GPU for now.
             The default value is False, which is not do transpose to qkv_w and qkv_b.
-        ring_id (int, optional): For distributed tensor model parallel. Default is -1, means not using tensor parallel.
+        name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Examples:
 

@@ -182,7 +182,7 @@ ProcessGroupGloo::ProcessGroupGloo(
     int world_size,
     int gid,
     const std::shared_ptr<GlooOptions> options)
-    : ProcessGroup(rank, world_size, gid),
+    : ProcessGroupWithoutStream(rank, world_size, gid),
       _tag(0),
       _store(new GlooStore(store)) {
   _context = std::make_shared<gloo::rendezvous::Context>(rank, world_size);
@@ -399,15 +399,6 @@ class AllgatherGlooTask : public ProcessGroupGloo::GlooTask {
     gloo::allgather(opts);
   }
 };
-
-std::shared_ptr<ProcessGroup::Task> ProcessGroupGloo::AllGather(
-    phi::DenseTensor* out_tensor,
-    const phi::DenseTensor& in_tensor,
-    bool sync_op) {
-  std::vector<phi::DenseTensor> in_wrapper{in_tensor};
-  std::vector<phi::DenseTensor> out_wrapper{*out_tensor};
-  return AllGather(in_wrapper, out_wrapper, true);
-}
 
 std::shared_ptr<ProcessGroup::Task> ProcessGroupGloo::AllGather(
     phi::DenseTensor* out_tensor,

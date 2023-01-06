@@ -143,6 +143,12 @@ class DistributedFusedAttentionImpl(DistributedOperatorImpl):
                 )
                 if dim_changed:
                     changed = True
+                    op_dist_attr.set_output_dims_mapping(
+                        out_name, out_dims_mapping
+                    )
+
+        if changed:
+            op_dist_attr.set_input_dims_mapping(x_name, x_dims_mapping)
 
         return changed
 
