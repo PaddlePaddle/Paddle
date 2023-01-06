@@ -107,15 +107,6 @@
   kernel :
     func : all
 
-- op : allclose
-  args : (Tensor x, Tensor y, Scalar rtol, Scalar atol, bool equal_nan)
-  output : Tensor(out)
-  infer_meta :
-    func : AllValueCompareInferMeta
-    param: [x, y]
-  kernel :
-    func : allclose
-
 - op : amax
   args : (Tensor x, int64_t[] axis={}, bool keepdim=false)
   output : Tensor(out)
@@ -366,17 +357,6 @@
     func : ClassCenterSampleInferMeta
   kernel :
     func : class_center_sample
-
-- op : clip
-  args : (Tensor x, Scalar(float) min, Scalar(float) max)
-  output : Tensor(out)
-  inplace : (x -> out)
-  infer_meta :
-    func : UnchangedInferMeta
-    param : [x]
-  kernel :
-    func : clip
-  backward : clip_grad
 
 - op : clip_by_norm
   args : (Tensor x, float max_norm)
@@ -692,16 +672,6 @@
   inplace : (x -> out)
   backward: fill_grad
 
-- op : fill_diagonal
-  args : (Tensor x, float value, int offset, bool wrap)
-  output : Tensor(out)
-  infer_meta :
-    func : FillDiagonalInferMeta
-  kernel :
-    func : fill_diagonal
-  inplace : (x -> out)
-  backward : fill_diagonal_grad
-
 - op : flatten
   args : (Tensor x, int start_axis, int stop_axis)
   output : Tensor(out), Tensor(xshape)
@@ -870,16 +840,6 @@
     func : hardswish
   backward : hardswish_grad
 
-- op : hardtanh
-  args : (Tensor x, float t_min, float t_max)
-  output : Tensor
-  infer_meta :
-    func : UnchangedInferMeta
-    param : [x]
-  kernel :
-    func : hardtanh
-  backward : hardtanh_grad
-
 - op : hsigmoid_loss
   args : (Tensor x, Tensor label, Tensor w, Tensor bias, Tensor path, Tensor code, int num_classes, bool remote_prefetch, bool is_sparse)
   output : Tensor(out), Tensor(pre_out), Tensor(w_out)
@@ -899,15 +859,6 @@
   kernel :
     func : huber_loss
   backward : huber_loss_grad
-
-- op : imag
-  args : (Tensor x)
-  output : Tensor
-  infer_meta :
-    func : RealAndImagInferMeta
-  kernel :
-    func : imag
-  backward : imag_grad
 
 - op : increment
   args : (Tensor x, float value = 1.0)
@@ -1507,15 +1458,6 @@
     data_type : dtype
     backend : place
 
-- op : real
-  args : (Tensor x)
-  output : Tensor
-  infer_meta :
-    func : RealAndImagInferMeta
-  kernel :
-    func : real
-  backward : real_grad
-
 - op : relu6
   args : (Tensor x)
   output : Tensor
@@ -1777,18 +1719,6 @@
     func : squared_l2_norm
   backward : squared_l2_norm_grad
 
-- op : squeeze
-  args : (Tensor x, IntArray axis)
-  output : Tensor(out), Tensor(xshape)
-  infer_meta :
-    func : SqueezeWithXShapeInferMeta
-  kernel :
-    func : squeeze_with_xshape
-  inplace : (x -> out)
-  view: (x -> out)
-  intermediate : xshape
-  backward : squeeze_grad
-
 - op : stack
   args : (Tensor[] x, int axis)
   output : Tensor
@@ -2021,18 +1951,6 @@
     func: unpool3d
     data_type: x
   backward: unpool3d_grad
-
-- op : unsqueeze
-  args : (Tensor x, IntArray axis)
-  output : Tensor(out), Tensor(xshape)
-  infer_meta :
-    func : UnsqueezeWithXShapeInferMeta
-  kernel :
-    func : unsqueeze_with_xshape
-  inplace : (x -> out)
-  view: (x -> out)
-  intermediate : xshape
-  backward : unsqueeze_grad
 
 - op : update_loss_scaling_
   args : (Tensor[] x, Tensor found_infinite, Tensor prev_loss_scaling, Tensor in_good_steps, Tensor in_bad_steps, int incr_every_n_steps, int decr_every_n_nan_or_inf, float incr_ratio, float decr_ratio, Scalar stop_update)

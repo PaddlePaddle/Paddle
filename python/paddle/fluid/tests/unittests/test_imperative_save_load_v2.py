@@ -844,9 +844,9 @@ class TestDygraphPtbRnn(unittest.TestCase):
             last_hidden = None
             last_cell = None
 
-            state_dict, opti_dict = fluid.load_dygraph(
-                os.path.join(self.temp_dir.name, "test_dy_v2")
-            )
+            model_prefix = os.path.join(self.temp_dir.name, "test_dy_v2")
+            state_dict = paddle.load(model_prefix + '.pdparams')
+            opti_dict = paddle.load(model_prefix + '.pdopt')
             adam.set_state_dict(opti_dict)
             ptb_model.set_dict(state_dict)
 

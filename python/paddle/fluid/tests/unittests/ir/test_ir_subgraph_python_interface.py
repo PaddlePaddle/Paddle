@@ -18,9 +18,9 @@ import paddle
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
 from paddle.fluid import core
-from paddle.fluid.contrib.slim.quantization import QuantizationTransformPass
 from paddle.fluid.framework import IrGraph, Program, program_guard
 from paddle.fluid.tests.unittests.op_test import OpTestTool
+from paddle.static.quantization import QuantizationTransformPass
 
 paddle.enable_static()
 
@@ -34,7 +34,9 @@ class TestQuantizationSubGraph(unittest.TestCase):
             label = fluid.layers.data(name='label', shape=[1], dtype='int64')
             hidden = data
             for _ in range(num):
-                hidden = fluid.layers.fc(hidden, size=128, act='relu')
+                hidden = paddle.static.nn.fc(
+                    hidden, size=128, activation='relu'
+                )
             loss = paddle.nn.functional.cross_entropy(
                 input=hidden, label=label, reduction='none', use_softmax=False
             )
