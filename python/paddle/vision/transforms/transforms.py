@@ -542,8 +542,8 @@ class RandomResizedCrop(BaseTransform):
 
         i = paddle.zeros([1], dtype="int32")
         j = paddle.zeros([1], dtype="int32")
-        h = paddle.assign([height]).astype("int32")
-        w = paddle.assign([width]).astype("int32")
+        h = paddle.ones([1], dtype="int32") * (height + 1)
+        w = paddle.ones([1], dtype="int32") * (width + 1)
 
         def cond(counter, ten, i, j, h, w):
             return (counter < ten) and (w > width or h > height)
@@ -614,11 +614,11 @@ class RandomResizedCrop(BaseTransform):
             i = (height.astype("int32") - h) // 2
             j = (width.astype("int32") - w) // 2
 
-            return i, j, h, w
+            return i, j, h, w, counter
 
         return paddle.static.nn.cond(
             0 < w <= width and 0 < h <= height,
-            lambda: [i, j, h, w],
+            lambda: [i, j, h, w, counter],
             lambda: central_crop(width, height),
         )
 
@@ -626,7 +626,7 @@ class RandomResizedCrop(BaseTransform):
         if paddle.in_dynamic_mode():
             i, j, h, w = self._dynamic_get_param(img)
         else:
-            i, j, h, w = self._static_get_param(img)
+            i, j, h, w, counter = self._static_get_param(img)
 
         cropped_img = F.crop(img, i, j, h, w)
         return F.resize(cropped_img, self.size, self.interpolation)
