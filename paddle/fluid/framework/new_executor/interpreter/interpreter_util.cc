@@ -730,8 +730,8 @@ bool BuildOpFuncList(const platform::Place& place,
         auto* dev_ctx = pool.Get(place);
         auto exec_ctx = ExecutionContext(
             *op_with_kernel, *runtime_scope, *dev_ctx, runtime_context);
-        auto expected_kernel_key =
-            op_with_kernel->GetExpectedKernelType(exec_ctx);
+        auto expected_kernel_key = framework::TransPhiKernelKeyToOpKernelType(
+            op_with_kernel->GetExpectedKernelType(exec_ctx));
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
         if (op_with_kernel->CanCUDNNBeUsed(exec_ctx,
                                            expected_kernel_key.data_type_)) {
@@ -741,6 +741,10 @@ bool BuildOpFuncList(const platform::Place& place,
         VLOG(4) << "expected_kernel_key : " << expected_kernel_key;
         // change device by the device_guard()
         ApplyDeviceGuard(op, place, &expected_kernel_key);
+        if (platform::places_are_same_class(exec_ctx.GetPlace(),
+                                            expected_kernel_key.place_)) {
+          expected_kernel_key.place_ = exec_ctx.GetPlace();
+        }
 
         // step 2. select op kernel
         auto run_phi_kernel = false;

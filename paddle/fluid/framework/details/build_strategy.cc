@@ -56,7 +56,7 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
     AppendPrintGraphPass("graph_viz_pass", "_original_graph");
 
 #ifdef PADDLE_WITH_CINN
-    if (FLAGS_use_cinn) {
+    if (FLAGS_use_cinn || strategy.build_cinn_pass_) {
       // Note: This pass is used to enable cinn.
       AppendPass("build_cinn_pass");
       AppendPrintGraphPass("graph_viz_pass", "_build_cinn_graph");

@@ -24,22 +24,16 @@ TEST(DataTransform, DataLayoutFunction) {
   in.set_layout(phi::DataLayout::kNHWC);
 
   auto kernel_nhwc =
-      paddle::framework::OpKernelType(paddle::framework::proto::VarType::FP32,
-                                      place,
-                                      phi::DataLayout::kNHWC,
-                                      paddle::framework::LibraryType::kPlain);
+      phi::KernelKey(place, phi::DataLayout::kNHWC, phi::DataType::FLOAT32);
   auto kernel_ncwh =
-      paddle::framework::OpKernelType(paddle::framework::proto::VarType::FP32,
-                                      place,
-                                      phi::DataLayout::kNCHW,
-                                      paddle::framework::LibraryType::kPlain);
+      phi::KernelKey(place, phi::DataLayout::kNCHW, phi::DataType::FLOAT32);
 
-  paddle::framework::TransDataLayout(kernel_nhwc, kernel_ncwh, in, &out);
+  paddle::framework::TransDataLayout(kernel_nhwc, kernel_ncwh, in, &out, place);
 
   EXPECT_TRUE(out.layout() == phi::DataLayout::kNCHW);
   EXPECT_TRUE(out.dims() == phi::make_ddim({2, 2, 3, 1}));
 
-  TransDataLayout(kernel_ncwh, kernel_nhwc, in, &out);
+  paddle::framework::TransDataLayout(kernel_ncwh, kernel_nhwc, in, &out, place);
 
   EXPECT_TRUE(in.layout() == phi::DataLayout::kNHWC);
   EXPECT_TRUE(in.dims() == phi::make_ddim({2, 3, 1, 2}));

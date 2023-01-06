@@ -1550,8 +1550,6 @@ def fused_bn_add_act(
 
             import paddle
             import paddle.fluid as fluid
-            import paddle
-            paddle.enable_static()
 
             paddle.enable_static()
             # required: gpu
@@ -1582,7 +1580,7 @@ def fused_bn_add_act(
                         act=None,
                         data_layout='NHWC')
                     fused_bn_add_act = fluid.contrib.layers.fused_bn_add_act(conv1_2, bn)
-                    prediction = fluid.layers.fc(input=fused_bn_add_act, size=10, act='softmax')
+                    prediction = paddle.static.nn.fc(x=fused_bn_add_act, size=10, activation='softmax')
                     loss = paddle.nn.functional.cross_entropy(
                         input=prediction, label=y,
                         reduction='none', use_softmax=False

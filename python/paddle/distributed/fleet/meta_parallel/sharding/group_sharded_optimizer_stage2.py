@@ -30,7 +30,7 @@ import paddle
 import paddle.distributed as dist
 from paddle.distributed import ParallelMode, fleet
 from paddle.fluid import core
-from paddle.fluid.clip import ClipGradByGlobalNorm
+from paddle.nn import ClipGradByGlobalNorm
 from paddle.optimizer import Optimizer
 
 HybridParallelClipGrad = (

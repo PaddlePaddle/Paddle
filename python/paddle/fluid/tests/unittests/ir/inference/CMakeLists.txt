@@ -94,6 +94,19 @@ if(WITH_MKLDNN)
   endforeach()
 endif()
 
+# below are cutlass unitests
+file(
+  GLOB TEST_CUTLASS
+  RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
+  "test_cutlass_*.py")
+string(REPLACE ".py" "" TEST_CUTLASS "${TEST_CUTLASS}")
+list(REMOVE_ITEM TEST_INFERENCE_IR_PASSES ${TEST_CUTLASS})
+if(WITH_CUTLASS)
+  foreach(target ${TEST_CUTLASS})
+    py_test_modules(${target} MODULES ${target})
+  endforeach()
+endif()
+
 if(WITH_MKLDNN
    AND TENSORRT_FOUND
    AND WITH_GPU)
@@ -165,6 +178,7 @@ if(WITH_GPU AND TENSORRT_FOUND)
 
     set_tests_properties(test_fc_fuse_pass PROPERTIES TIMEOUT 240)
     set_tests_properties(test_reverse_roll_fuse_pass PROPERTIES TIMEOUT 120)
+    set_tests_properties(test_inplace_op_pass PROPERTIES TIMEOUT 120)
 
     set_tests_properties(test_simplify_with_basic_ops_pass_autoscan
                          PROPERTIES TIMEOUT 60)

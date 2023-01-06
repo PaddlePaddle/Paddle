@@ -48,11 +48,13 @@ class TestFuseBatchNormActPass(unittest.TestCase):
                 act='relu',
                 data_layout='NHWC',
             )
-            hidden3 = fluid.layers.fc(input=hidden2, size=32, act='relu')
+            hidden3 = paddle.static.nn.fc(x=hidden2, size=32, activation='relu')
             hidden4 = paddle.static.nn.batch_norm(
                 input=hidden3, act='relu', data_layout='NHWC'
             )
-            prediction = fluid.layers.fc(input=hidden4, size=10, act='softmax')
+            prediction = paddle.static.nn.fc(
+                x=hidden4, size=10, activation='softmax'
+            )
             loss = paddle.nn.functional.cross_entropy(
                 input=prediction, label=y, reduction='none', use_softmax=False
             )

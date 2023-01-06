@@ -1272,7 +1272,7 @@ def broadcast_tensors(input, name=None):
                         last_index = output_shape_r_last_tensor_index[i]
                         raise TypeError(
                             "Input tensors to broadcast_tensors does not follow bcast semantics"
-                            "Tensor {last_index} conflicts with Tensor {j} in reversed dimension {i}"
+                            f"Tensor {last_index} conflicts with Tensor {j} in reversed dimension {i}"
                         )
                     if output_shape_r[i] <= shape[i]:
                         output_shape_r[i] = shape[i]
@@ -1550,28 +1550,38 @@ def flatten(x, start_axis=0, stop_axis=-1, name=None):
         )
 
     x_dim = len(x.shape)
-    if (
-        not (isinstance(start_axis, int))
-        or (start_axis > x_dim - 1)
-        or start_axis < -x_dim
-    ):
-        raise ValueError(
-            "The start_axis should be a int, and in range [-rank(x), rank(x))"
-        )
-    if (
-        not (isinstance(stop_axis, int))
-        or (stop_axis > x_dim - 1)
-        or stop_axis < -x_dim
-    ):
-        raise ValueError(
-            "The stop_axis should be a int, and in range [-rank(x), rank(x))"
-        )
-    if start_axis < 0:
-        start_axis = start_axis + x_dim
-    if stop_axis < 0:
-        stop_axis = stop_axis + x_dim
-    if start_axis > stop_axis:
-        raise ValueError("The stop_axis should be larger than stat_axis")
+    if x_dim == 0:
+        if not (isinstance(start_axis, int)) or start_axis not in [0, -1]:
+            raise ValueError(
+                "The start_axis should be int, and should be 0 or -1 when the input tensor is a 0D-Tensor"
+            )
+        if not (isinstance(stop_axis, int)) or stop_axis not in [0, -1]:
+            raise ValueError(
+                "The stop_axis should be int, and should be 0 or -1 when the input tensor is a 0D-Tensor"
+            )
+    else:
+        if (
+            not (isinstance(start_axis, int))
+            or (start_axis > x_dim - 1)
+            or start_axis < -x_dim
+        ):
+            raise ValueError(
+                "The start_axis should be a int, and in range [-rank(x), rank(x))"
+            )
+        if (
+            not (isinstance(stop_axis, int))
+            or (stop_axis > x_dim - 1)
+            or stop_axis < -x_dim
+        ):
+            raise ValueError(
+                "The stop_axis should be a int, and in range [-rank(x), rank(x))"
+            )
+        if start_axis < 0:
+            start_axis = start_axis + x_dim
+        if stop_axis < 0:
+            stop_axis = stop_axis + x_dim
+        if start_axis > stop_axis:
+            raise ValueError("The stop_axis should be larger than stat_axis")
 
     if in_dygraph_mode():
         return _C_ops.flatten(x, start_axis, stop_axis)
@@ -3336,7 +3346,6 @@ def expand(x, shape, name=None):
 
     Both the number of dimensions of ``x`` and the number of elements in ``shape`` should be less than or equal to 6. And the number of dimensions of ``x`` should be less than the number of elements in ``shape``. The dimension to expand must have a value 1.
 
-
     Args:
         x (Tensor): The input Tensor, its data type is bool, float32, float64, int32 or int64.
         shape (list|tuple|Tensor): The result shape after expanding. The data type is int32. If shape is a list or tuple, all its elements
@@ -3450,7 +3459,7 @@ def reshape(x, shape, name=None):
     Args:
         x (Tensor): An N-D Tensor. The data type is ``float32``, ``float64``, ``int32``, ``int64`` or ``bool``
         shape (list|tuple|Tensor): Define the target shape. At most one dimension of the target shape can be -1.
-                        The data type is ``int32`` . If ``shape`` is a list or tuple, the elements of it should be integers or Tensors with shape [1].
+                        The data type is ``int32`` . If ``shape`` is a list or tuple, the elements of it should be integers or Tensors with shape [].
                         If ``shape`` is an Tensor, it should be an 1-D Tensor .
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
@@ -3574,10 +3583,6 @@ def reshape(x, shape, name=None):
             shape.stop_gradient = True
             inputs["Shape"] = shape
         elif isinstance(shape, (list, tuple)):
-            assert len(shape) > 0, (
-                "The size of 'shape' in reshape can't be zero, "
-                "but received %s." % len(shape)
-            )
             attrs["shape"] = get_attr_shape(shape)
             if utils._contain_var(shape):
                 inputs['ShapeTensor'] = utils._convert_to_tensor_list(shape)
