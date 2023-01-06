@@ -1784,7 +1784,7 @@ class OpTest(unittest.TestCase):
                         + self.checker_name,
                     )
 
-        class EagerChecker(DygraphChecker):
+        class EagerChecker(Checker):
             def init(self):
                 self.checker_name = "eager checker"
 
@@ -1803,24 +1803,70 @@ class OpTest(unittest.TestCase):
                         )
                 self.outputs = eager_dygraph_outs
 
-            def _compare_numpy(self, name, actual_np, expect_np):
-                with _test_eager_guard():
-                    super()._compare_numpy(name, actual_np, expect_np)
+            def find_actual_value(self, name):
+                with fluid.dygraph.base.guard(place=place):
+                    imperative_actual = find_imperative_actual(
+                        name, self.outputs, place
+                    )
+                    imperative_actual_t = np.array(
+                        imperative_actual.value().get_tensor()
+                    )
+                    return imperative_actual, imperative_actual_t
 
-            def convert_uint16_to_float_ifneed(self, actual_np, expect_np):
-                with _test_eager_guard():
-                    return super().convert_uint16_to_float_ifneed(
-                        actual_np, expect_np
+            def _compare_numpy(self, name, actual_np, expect_np):
+                if (
+                    functools.reduce(lambda x, y: x * y, actual_np.shape, 1)
+                    == 0
+                    and functools.reduce(lambda x, y: x * y, expect_np.shape, 1)
+                    == 0
+                ):
+                    pass
+                else:
+                    self.op_test.assertTrue(
+                        np.allclose(
+                            actual_np,
+                            expect_np,
+                            atol=atol,
+                            rtol=self.rtol if hasattr(self, 'rtol') else 1e-5,
+                            equal_nan=equal_nan,
+                        ),
+                        "Output ("
+                        + name
+                        + ") has diff at "
+                        + str(place)
+                        + " in "
+                        + self.checker_name,
                     )
 
-            def find_actual_value(self, name):
-                with _test_eager_guard():
-                    return super().find_actual_value(name)
+            def convert_uint16_to_float_ifneed(self, actual_np, expect_np):
+                if actual_np.dtype == np.uint16 and expect_np.dtype in [
+                    np.float32,
+                    np.float64,
+                ]:
+                    self.rtol = 1.0e-2
+                else:
+                    self.rtol = 1.0e-5
+                if self.op_test.is_bfloat16_op():
+                    if actual_np.dtype == np.uint16:
+                        actual_np = convert_uint16_to_float(actual_np)
+                    if expect_np.dtype == np.uint16:
+                        expect_np = convert_uint16_to_float(expect_np)
+                return actual_np, expect_np
 
             def _compare_list(self, name, actual, expect):
                 """if expect is a tuple, we need to compare list."""
-                with _test_eager_guard():
-                    super()._compare_list(name, actual, expect)
+                with fluid.dygraph.base.guard(place=place):
+                    self.op_test.assertListEqual(
+                        actual.value()
+                        .get_tensor()
+                        .recursive_sequence_lengths(),
+                        expect[1],
+                        "Output ("
+                        + name
+                        + ") has different lod at "
+                        + str(place)
+                        + " in dygraph mode",
+                    )
 
             def _is_skip_name(self, name):
                 # if in final state and kernel signature don't have name, then skip it.
