@@ -45,10 +45,12 @@ class ForwardAPI(BaseAPI):
         else:
             return self.api
 
-    def gene_input(self, kernel_tensor_type=None, code_indent=''):
+    def gene_input(
+        self, kernel_tensor_type=None, code_indent='', kernel_name=''
+    ):
         kernel_param = self.kernel['param']
         input_name_tensor_map, input_tensor_code = super().gene_input(
-            kernel_tensor_type, code_indent
+            kernel_tensor_type, code_indent, kernel_name
         )
 
         # generate the input that is in view list
