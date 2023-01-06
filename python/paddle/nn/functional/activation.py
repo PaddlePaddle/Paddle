@@ -622,12 +622,6 @@ def rrelu(x, lower=1.0 / 8.0, upper=1.0 / 3.0, training=True, name=None):
             #   [-1.3766339   6.          7.         -2.3465784 ]
             #   [ 6.          7.          8.          9.        ]]]]
     """
-
-    if not in_dynamic_mode():
-        check_variable_and_dtype(
-            x, 'X', ['float16', 'float32', 'float64'], 'rrelu'
-        )
-
     if not isinstance(lower, float) or not isinstance(upper, float):
         raise TypeError(
             "The lower and upper values must be float type. Received: lower {}, upper {}.".format(
@@ -664,6 +658,9 @@ def rrelu(x, lower=1.0 / 8.0, upper=1.0 / 3.0, training=True, name=None):
         )
         return out
     else:
+        check_variable_and_dtype(
+            x, 'X', ['float16', 'float32', 'float64'], 'rrelu'
+        )
         helper = LayerHelper('rrelu', **locals())
         out = helper.create_variable_for_type_inference(x.dtype)
         noise = helper.create_variable_for_type_inference(dtype=x.dtype)
