@@ -24,7 +24,7 @@ import paddle
 from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.layers import utils
 from ... import unique_name
-from paddle.fluid.initializer import Normal, NumpyArrayInitializer
+from paddle.fluid.initializer import NumpyArrayInitializer
 from paddle.fluid.data_feeder import (
     check_variable_and_dtype,
     check_type,
