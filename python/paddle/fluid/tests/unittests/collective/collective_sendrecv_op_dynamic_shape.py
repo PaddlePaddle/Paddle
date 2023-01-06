@@ -32,6 +32,7 @@ class TestCollectiveSendRecvDynamicShape(TestCollectiveRunnerBase):
                 shape=[-1, 10, 1000],
                 dtype='float64',
             )
+            tindata.desc.set_need_check_feed(False)
             if self.rank == 0:
                 main_prog.global_block().append_op(
                     type="send_v2",

@@ -48,9 +48,11 @@ class TestFleetExecutor(unittest.TestCase):
             x = paddle.static.data(
                 name='x', shape=[-1] + list(x_data.shape), dtype=x_data.dtype
             )
+            x.desc.set_need_check_feed(False)
             y = paddle.static.data(
                 name='y', shape=[-1] + list(y_data.shape), dtype=y_data.dtype
             )
+            y.desc.set_need_check_feed(False)
             z = x + y
             a = 2 * x + 3 * y
             loss = paddle.mean(a)

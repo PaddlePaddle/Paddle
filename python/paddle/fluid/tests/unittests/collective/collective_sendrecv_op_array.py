@@ -33,6 +33,7 @@ class TestCollectiveSendRecv(TestCollectiveRunnerBase):
                 shape=[10, 1000],
                 dtype='float64',
             )
+            tindata.desc.set_need_check_feed(False)
             if self.rank == 0:
                 data1 = fluid.layers.assign(
                     np.array([[0, 1, 2]], dtype='float32')

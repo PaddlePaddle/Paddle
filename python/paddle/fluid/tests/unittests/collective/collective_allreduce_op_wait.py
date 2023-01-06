@@ -31,6 +31,7 @@ class TestCollectiveAllreduce(TestCollectiveRunnerBase):
             tindata = paddle.static.data(
                 name="tindata", shape=[-1, 10, 1000], dtype='float32'
             )
+            tindata.desc.set_need_check_feed(False)
             toutdata = main_prog.current_block().create_var(
                 name="outofallreduce",
                 dtype='float32',

@@ -31,6 +31,7 @@ class TestCollectiveReduceScatter(TestCollectiveRunnerBase):
             tindata = paddle.static.data(
                 name="tindata", shape=[-1, 10, 1000], dtype='float32'
             )
+            tindata.desc.set_need_check_feed(False)
             toutdata = fluid.layers.collective._c_reducescatter(tindata, nranks)
             toutdata = fluid.layers.collective._c_sync_comm_stream(toutdata, 0)
             return toutdata
