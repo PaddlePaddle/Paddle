@@ -1981,8 +1981,6 @@ class OpTest(unittest.TestCase):
             if check_eager:
                 assert not check_dygraph
                 outs, eager_dygraph_outs, fetch_list = res
-            elif check_dygraph:
-                outs, dygraph_outs, fetch_list = res
             else:
                 outs, fetch_list = res
             if (
@@ -2264,68 +2262,34 @@ class OpTest(unittest.TestCase):
             "Gradient Check On %s" % str(place),
         )
 
-        if check_dygraph:
-            # ensure switch into legacy dygraph
-            g_enable_legacy_dygraph()
-
-            dygraph_grad = self._get_dygraph_grad(
-                inputs_to_check,
-                place,
-                output_names,
-                user_defined_grad_outputs,
-                no_grad_set,
-                False,
-            )
-            fp32_grads = []
-            for grad in dygraph_grad:
-                if grad.dtype == np.uint16:
-                    grad = convert_uint16_to_float(grad)
-                    max_relative_error = (
-                        0.03
-                        if max_relative_error < 0.03
-                        else max_relative_error
-                    )
-                fp32_grads.append(grad)
-            dygraph_grad = fp32_grads
-            self._assert_is_close(
-                numeric_grads,
-                dygraph_grad,
-                inputs_to_check,
-                max_relative_error,
-                "Gradient Check On %s" % str(place),
-            )
-            # ensure switch back eager dygraph
-            g_disable_legacy_dygraph()
-
         if check_eager:
             with fluid.dygraph.base.guard(place):
-                with _test_eager_guard():
-                    eager_dygraph_grad = self._get_dygraph_grad(
-                        inputs_to_check,
-                        place,
-                        output_names,
-                        user_defined_grad_outputs,
-                        no_grad_set,
-                        check_eager,
-                    )
-                    fp32_grads = []
-                    for grad in eager_dygraph_grad:
-                        if grad.dtype == np.uint16:
-                            grad = convert_uint16_to_float(grad)
-                            max_relative_error = (
-                                0.03
-                                if max_relative_error < 0.03
-                                else max_relative_error
-                            )
-                        fp32_grads.append(grad)
-                    eager_dygraph_grad = fp32_grads
-                    self._assert_is_close(
-                        numeric_grads,
-                        eager_dygraph_grad,
-                        inputs_to_check,
-                        max_relative_error,
-                        "Gradient Check On %s" % str(place),
-                    )
+                eager_dygraph_grad = self._get_dygraph_grad(
+                    inputs_to_check,
+                    place,
+                    output_names,
+                    user_defined_grad_outputs,
+                    no_grad_set,
+                    check_eager,
+                )
+                fp32_grads = []
+                for grad in eager_dygraph_grad:
+                    if grad.dtype == np.uint16:
+                        grad = convert_uint16_to_float(grad)
+                        max_relative_error = (
+                            0.03
+                            if max_relative_error < 0.03
+                            else max_relative_error
+                        )
+                    fp32_grads.append(grad)
+                eager_dygraph_grad = fp32_grads
+                self._assert_is_close(
+                    numeric_grads,
+                    eager_dygraph_grad,
+                    inputs_to_check,
+                    max_relative_error,
+                    "Gradient Check On %s" % str(place),
+                )
 
     def _find_var_in_dygraph(self, output_vars, name):
         if name in output_vars:
