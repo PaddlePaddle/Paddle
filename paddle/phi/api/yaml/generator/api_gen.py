@@ -45,12 +45,10 @@ class ForwardAPI(BaseAPI):
         else:
             return self.api
 
-    def gene_input(
-        self, kernel_tensor_type=None, code_indent='', kernel_name=''
-    ):
+    def gene_input(self, kernel_tensor_type=None, code_indent=''):
         kernel_param = self.kernel['param']
         input_name_tensor_map, input_tensor_code = super().gene_input(
-            kernel_tensor_type, code_indent, kernel_name
+            kernel_tensor_type, code_indent
         )
 
         # generate the input that is in view list
@@ -68,7 +66,7 @@ class ForwardAPI(BaseAPI):
                     input_tensor_code = (
                         input_tensor_code
                         + f"""
-{code_indent}  auto {PREFIX_TENSOR_NAME}{input_name} = PrepareData({input_name}, kernel.InputAt(0), {trans_flag}, \"{kernel_name}\");"""
+{code_indent}  auto {PREFIX_TENSOR_NAME}{input_name} = PrepareData({input_name}, kernel.InputAt(0), {trans_flag}, \"kernel_result.is_stride_kernel\");"""
                     )
                 else:
                     # do nothing

@@ -69,10 +69,10 @@ const Kernel& KernelFactory::SelectKernel(const std::string& kernel_name,
     return empty_kernel;
   }
 
-  auto strided_kernel_iter = iter->second.find(
+  auto stride_kernel_iter = iter->second.find(
       {kernel_key.backend(), phi::DataLayout::STRIDED, kernel_key.dtype()});
-  if (strided_kernel_iter != iter->second.end()) {
-    return strided_kernel_iter->second;
+  if (stride_kernel_iter != iter->second.end()) {
+    return stride_kernel_iter->second;
   }
 
   auto kernel_iter = iter->second.find(kernel_key);
@@ -146,11 +146,11 @@ KernelResult KernelFactory::SelectKernelOrThrowError(
       kernels_.end(),
       phi::errors::NotFound("The kernel `%s` is not registered.", kernel_name));
 
-  auto strided_kernel_iter = iter->second.find({const_kernel_key.backend(),
-                                                phi::DataLayout::STRIDED,
-                                                const_kernel_key.dtype()});
-  if (strided_kernel_iter != iter->second.end()) {
-    return {strided_kernel_iter->second, false};
+  auto stride_kernel_iter = iter->second.find({const_kernel_key.backend(),
+                                               phi::DataLayout::STRIDED,
+                                               const_kernel_key.dtype()});
+  if (stride_kernel_iter != iter->second.end()) {
+    return {stride_kernel_iter->second, false, true};
   }
 
   KernelKey kernel_key = KernelKey(const_kernel_key.backend(),
@@ -161,7 +161,7 @@ KernelResult KernelFactory::SelectKernelOrThrowError(
     auto kernel_iter = iter->second.find(
         {Backend::GPUDNN, phi::DataLayout::ALL_LAYOUT, kernel_key.dtype()});
     if (kernel_iter != iter->second.end()) {
-      return {kernel_iter->second, false};
+      return {kernel_iter->second, false, false};
     }
     kernel_key =
         KernelKey(Backend::GPU, kernel_key.layout(), kernel_key.dtype());
@@ -206,7 +206,7 @@ KernelResult KernelFactory::SelectKernelOrThrowError(
             << ", expected_kernel_key:" << kernel_key
             << ", fallbacking to CPU one!";
 
-    return {kernel_iter->second, true};
+    return {kernel_iter->second, true, false};
   }
 
   PADDLE_ENFORCE_NE(
@@ -221,7 +221,7 @@ KernelResult KernelFactory::SelectKernelOrThrowError(
           kernel_name,
           KernelSelectionErrorMessage(kernel_name, kernel_key)));
 
-  return {kernel_iter->second, false};
+  return {kernel_iter->second, false, false};
 }
 
 const KernelArgsDef& KernelFactory::GetFirstKernelArgsDef(

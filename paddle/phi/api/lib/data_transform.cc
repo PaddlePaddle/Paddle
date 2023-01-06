@@ -66,14 +66,14 @@ inline bool NeedTransformLayout(const DataLayout& input,
   return ret;
 }
 
-inline bool NeedTransform2Contiguous(bool next_op_support_stride,
+inline bool NeedTransform2Contiguous(bool is_stride_kernel,
                                      bool is_contiguous) {
-  return !next_op_support_stride && !is_contiguous;
+  return !is_stride_kernel && !is_contiguous;
 }
 
-inline bool NeedPrepareStrides(bool next_op_support_stride,
+inline bool NeedPrepareStrides(bool is_stride_kernel,
                                bool is_strides_valiable) {
-  return next_op_support_stride && !is_strides_valiable;
+  return is_stride_kernel && !is_strides_valiable;
 }
 
 inline phi::DenseTensor TransDataLayout(const phi::DenseTensor& tensor,
@@ -318,7 +318,7 @@ void InitTensorStrides(phi::DenseTensor* tensor) {
 phi::DenseTensor TransformData(phi::DenseTensor* tensor,
                                const phi::TensorArgDef& target_args_def,
                                const TransformFlag& transform_flag,
-                               bool next_op_support_stride) {
+                               bool is_stride_kernel) {
   phi::DenseTensor out = *tensor;
   bool trans_layout = false;
   bool trans_dtype = false;
@@ -347,12 +347,12 @@ phi::DenseTensor TransformData(phi::DenseTensor* tensor,
     }
   }
 
-  if (NeedTransform2Contiguous(next_op_support_stride,
+  if (NeedTransform2Contiguous(is_stride_kernel,
                                out.strides().IsContiguous())) {
     out = Trans2Contiguous(out);
   }
 
-  if (NeedPrepareStrides(next_op_support_stride, out.strides().IsValiable())) {
+  if (NeedPrepareStrides(is_stride_kernel, out.strides().IsValiable())) {
     InitTensorStrides(&out);
   }
 
@@ -363,10 +363,9 @@ std::shared_ptr<phi::DenseTensor> PrepareData(
     const Tensor& input,
     const phi::TensorArgDef& target_args_def,
     const TransformFlag& transform_flag,
-    const std::string& kernel_name) {
+    bool is_stride_kernel) {
   const auto& tensor_in = input.impl();
   if (tensor_in) {
-    bool next_op_support_stride = phi::Strides::IsOpSupportStrides(kernel_name);
     phi::DenseTensor& dense_tensor =
         *static_cast<phi::DenseTensor*>(tensor_in.get());
     if (!transform_flag.NeedTransform() || !dense_tensor.initialized() ||
@@ -378,16 +377,16 @@ std::shared_ptr<phi::DenseTensor> PrepareData(
                               target_args_def.layout,
                               dense_tensor.place(),
                               transform_flag) &&
-         !NeedTransform2Contiguous(next_op_support_stride,
+         !NeedTransform2Contiguous(is_stride_kernel,
                                    dense_tensor.strides().IsContiguous()))) {
-      if (NeedPrepareStrides(next_op_support_stride,
+      if (NeedPrepareStrides(is_stride_kernel,
                              dense_tensor.strides().IsValiable())) {
         InitTensorStrides(&dense_tensor);
       }
       return std::static_pointer_cast<phi::DenseTensor>(tensor_in);
     }
     phi::DenseTensor out = TransformData(
-        &dense_tensor, target_args_def, transform_flag, next_op_support_stride);
+        &dense_tensor, target_args_def, transform_flag, is_stride_kernel);
     return std::make_shared<phi::DenseTensor>(std::move(out));
   }
   return nullptr;
@@ -397,9 +396,10 @@ paddle::optional<phi::DenseTensor> PrepareData(
     const paddle::optional<Tensor>& input,
     const phi::TensorArgDef& target_args_def,
     const TransformFlag& transform_flag,
-    const std::string& kernel_name) {
+    bool is_stride_kernel) {
   if (input) {
-    return {*PrepareData(*input, target_args_def, transform_flag, kernel_name)};
+    return {*PrepareData(
+        *input, target_args_def, transform_flag, is_stride_kernel)};
   }
   return paddle::none;
 }
@@ -408,11 +408,9 @@ std::unique_ptr<std::vector<phi::DenseTensor>> PrepareData(
     const std::vector<Tensor>& inputs,
     const phi::TensorArgDef& target_args_def,
     const TransformFlag& transform_flag,
-    const std::string& kernel_name) {
+    bool is_stride_kernel) {
   auto pt_tensors = std::make_unique<std::vector<phi::DenseTensor>>();
   pt_tensors->reserve(inputs.size());
-
-  bool next_op_support_stride = phi::Strides::IsOpSupportStrides(kernel_name);
 
   for (const auto& input : inputs) {
     const auto& tensor_in = input.impl();
@@ -427,18 +425,16 @@ std::unique_ptr<std::vector<phi::DenseTensor>> PrepareData(
                               target_args_def.layout,
                               tensor_in->place(),
                               transform_flag) &&
-         !NeedTransform2Contiguous(next_op_support_stride,
+         !NeedTransform2Contiguous(is_stride_kernel,
                                    dense_tensor.strides().IsContiguous()))) {
-      if (NeedPrepareStrides(next_op_support_stride,
+      if (NeedPrepareStrides(is_stride_kernel,
                              dense_tensor.strides().IsValiable())) {
         InitTensorStrides(&dense_tensor);
       }
       pt_tensors->emplace_back(dense_tensor);
     } else {
-      pt_tensors->emplace_back(TransformData(&dense_tensor,
-                                             target_args_def,
-                                             transform_flag,
-                                             next_op_support_stride));
+      pt_tensors->emplace_back(TransformData(
+          &dense_tensor, target_args_def, transform_flag, is_stride_kernel));
     }
   }
 
@@ -449,10 +445,10 @@ paddle::optional<std::vector<phi::DenseTensor>> PrepareData(
     const paddle::optional<std::vector<Tensor>>& inputs,
     const phi::TensorArgDef& target_args_def,
     const TransformFlag& transform_flag,
-    const std::string& kernel_name) {
+    bool is_stride_kernel) {
   if (inputs) {
-    return {
-        *PrepareData(*inputs, target_args_def, transform_flag, kernel_name)};
+    return {*PrepareData(
+        *inputs, target_args_def, transform_flag, is_stride_kernel)};
   }
   return paddle::none;
 }

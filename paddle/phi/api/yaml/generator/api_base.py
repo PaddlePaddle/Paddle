@@ -685,7 +685,7 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
         return trans_flag
 
     def gene_dense_input(
-        self, input_name, input_name_tensor_map, code_indent='', kernel_name=''
+        self, input_name, input_name_tensor_map, code_indent=''
     ):
         input_tensor_code = ""
         trans_flag = self.gene_trans_flag(input_name)
@@ -701,12 +701,12 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
         input_tensor_code = (
             input_tensor_code
             + f"""
-{code_indent}  auto {PREFIX_TENSOR_NAME}{input_name} = PrepareData({input_name}, kernel.InputAt({kernel_param.index(input_name)}), {trans_flag}, \"{kernel_name}\");"""
+{code_indent}  auto {PREFIX_TENSOR_NAME}{input_name} = PrepareData({input_name}, kernel.InputAt({kernel_param.index(input_name)}), {trans_flag}, \"kernel_result.is_stride_kernel\");"""
         )
         return input_tensor_code
 
     def gene_selected_rows_input(
-        self, input_name, input_name_tensor_map, code_indent='', kernel_name=''
+        self, input_name, input_name_tensor_map, code_indent=''
     ):
         input_tensor_code = ""
         trans_flag = self.gene_trans_flag(input_name)
@@ -728,7 +728,7 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
         return input_tensor_code
 
     def gene_optional_vec_dense_input(
-        self, input_name, input_name_tensor_map, code_indent='', kernel_name=''
+        self, input_name, input_name_tensor_map, code_indent=''
     ):
         input_tensor_code = ""
         trans_flag = self.gene_trans_flag(input_name)
@@ -753,7 +753,7 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
             input_tensor_code = (
                 input_tensor_code
                 + f"""
-{code_indent}  auto {PREFIX_TENSOR_NAME}{input_name}_vec = PrepareData({input_name}, kernel.InputAt({kernel_param.index(input_name)}), {trans_flag}, \"{kernel_name}\");
+{code_indent}  auto {PREFIX_TENSOR_NAME}{input_name}_vec = PrepareData({input_name}, kernel.InputAt({kernel_param.index(input_name)}), {trans_flag}, \"kernel_result.is_stride_kernel\");
 {code_indent}  paddle::optional<std::vector<const phi::DenseTensor*>> {PREFIX_TENSOR_NAME}{input_name};
 {code_indent}  if ({PREFIX_TENSOR_NAME}{input_name}_vec){{
 {code_indent}    {PREFIX_TENSOR_NAME}{input_name} = paddle::optional<std::vector<const phi::DenseTensor*>>({PREFIX_TENSOR_NAME}{input_name}_vec->size());
@@ -765,7 +765,7 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
         return input_tensor_code
 
     def gene_vec_dense_input(
-        self, input_name, input_name_tensor_map, code_indent='', kernel_name=''
+        self, input_name, input_name_tensor_map, code_indent=''
     ):
         input_tensor_code = ""
         trans_flag = self.gene_trans_flag(input_name)
@@ -791,7 +791,7 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
             input_tensor_code = (
                 input_tensor_code
                 + f"""
-{code_indent}  auto {PREFIX_TENSOR_NAME}{input_name}_vec = PrepareData({input_name}, kernel.InputAt({kernel_param.index(input_name)}), {trans_flag}, \"{kernel_name}\");
+{code_indent}  auto {PREFIX_TENSOR_NAME}{input_name}_vec = PrepareData({input_name}, kernel.InputAt({kernel_param.index(input_name)}), {trans_flag}, \"kernel_result.is_stride_kernel\");
 {code_indent}  std::vector<const phi::DenseTensor*> {PREFIX_TENSOR_NAME}{input_name}({PREFIX_TENSOR_NAME}{input_name}_vec->size());
 {code_indent}  for (size_t i = 0; i < {PREFIX_TENSOR_NAME}{input_name}.size(); ++i) {{
 {code_indent}    {PREFIX_TENSOR_NAME}{input_name}[i] = &{PREFIX_TENSOR_NAME}{input_name}_vec->at(i);
@@ -799,9 +799,7 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
             )
         return input_tensor_code
 
-    def gene_input(
-        self, kernel_tensor_type=None, code_indent='', kernel_name=''
-    ):
+    def gene_input(self, kernel_tensor_type=None, code_indent=''):
         input_names = self.inputs['names']
         attr_names = self.attrs['names']
         kernel_param = self.kernel['param']
@@ -826,7 +824,6 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
                         input_name,
                         input_name_tensor_map,
                         code_indent,
-                        kernel_name,
                     )
                 else:
                     # do nothing
@@ -860,9 +857,7 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
 
         return input_name_tensor_map, input_tensor_code
 
-    def get_kernel_args(
-        self, kernel_tensor_type=None, code_indent='', kernel_name=''
-    ):
+    def get_kernel_args(self, kernel_tensor_type=None, code_indent=''):
         dense_input_trans_map = {
             'const Tensor&': 'const phi::DenseTensor&',
             'const std::vector<Tensor>&': 'const std::vector<const phi::DenseTensor*>&',
@@ -889,7 +884,7 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
             kernel_param = input_names + attr_names
 
         input_name_tensor_map, input_tensor_code = self.gene_input(
-            kernel_tensor_type, code_indent, kernel_name
+            kernel_tensor_type, code_indent
         )
 
         input_tensor_code = (
