@@ -12,12 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
 import unittest
-
-from paddle.fluid import core
-
-core.set_enable_prim(True)
 
 import autograd
 import autograd.numpy
@@ -25,6 +20,9 @@ import numpy as np
 import parameterized as param
 
 import paddle
+from paddle.fluid import core
+
+core.set_enable_prim(True)
 
 
 @param.parameterized_class(
@@ -47,22 +45,17 @@ class TestTanhGradComp(unittest.TestCase):
 
     def test_tanh_grad_comp(self):
         def actual(primal, cotangent):
-            mp, sp = paddle.static.Program(), paddle.static.Program()
-            with paddle.static.program_guard(mp, sp):
-                x = paddle.static.data('primal', primal.shape, primal.dtype)
-                x.stop_gradient = False
-                v = paddle.static.data(
-                    'cotangent', cotangent.shape, cotangent.dtype
-                )
-                y = paddle.tanh(x)
-                x_cotangent = paddle.static.gradients(y, x, v)
-            exe = paddle.static.Executor()
-            exe.run(sp)
-            return exe.run(
-                program=mp,
-                feed={'primal': primal, 'cotangent': cotangent},
-                fetch_list='composite_tmp_2',
-            )[0]
+            paddle.disable_static()
+            x = paddle.to_tensor(primal, dtype='float32', stop_gradient=False)
+            x.stop_gradient = False
+            v = paddle.to_tensor(
+                cotangent, dtype='float32', stop_gradient=False
+            )
+            y = paddle.tanh(x)
+            x_cotangent = paddle.grad(
+                y, x, v, create_graph=True, retain_graph=True
+            )
+            return x_cotangent[0]
 
         def desired(primal, cotangent):
             return autograd.make_vjp(autograd.numpy.tanh)(primal)[0](cotangent)
