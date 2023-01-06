@@ -163,7 +163,7 @@ def _convert_into_variable(tensor):
                 ProgramTranslator,
             )
 
-            ProgramTranslator.params_recorder().add(
+            ProgramTranslator.get_instance()._params_recorder.add(
                 tensor.block.program, tensor
             )
         return new_var

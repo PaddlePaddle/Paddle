@@ -1005,7 +1005,9 @@ class ConcreteProgram:
 
                 # 3. Gets all ParamBases and buffered VarBases in the function
                 all_parameters_and_buffers = (
-                    ProgramTranslator.params_recorder().pop(main_program)
+                    ProgramTranslator.get_instance()._params_recorder.pop(
+                        main_program
+                    )
                 )
 
                 if outputs is not None:
@@ -1235,10 +1237,6 @@ class ProgramTranslator:
             "ProgramTranslator.enable",
         )
         self.enable_to_static = enable_to_static
-
-    @classmethod
-    def params_recorder(cls):
-        return cls.get_instance()._params_recorder
 
     def get_output(self, dygraph_func, *args, **kwargs):
         """
