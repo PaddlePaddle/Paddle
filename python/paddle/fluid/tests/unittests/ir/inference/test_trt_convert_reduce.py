@@ -68,7 +68,7 @@ class TrtConvertReduceTest(TrtLayerAutoScanTest):
                     for out_dtype in [-1, 2, 5]:
                         for op_type in [
                             "reduce_max",
-                            "reduce_minx",
+                            "reduce_min",
                             "reduce_mean",
                             "reduce_sum",
                             "reduce_prod",
