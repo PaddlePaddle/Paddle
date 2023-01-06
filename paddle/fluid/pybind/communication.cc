@@ -24,8 +24,8 @@ limitations under the License. */
 #include <memory>
 #include <string>
 
-#include "paddle/phi/core/comm_context_manager.h"
-#include "paddle/phi/core/store/tcp_store.h"
+#include "paddle/phi/core/distributed/comm_context_manager.h"
+#include "paddle/phi/core/distributed/store/tcp_store.h"
 
 namespace py = pybind11;
 

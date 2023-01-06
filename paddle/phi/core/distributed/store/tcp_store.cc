@@ -12,13 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/core/store/tcp_store.h"
+#include "paddle/phi/core/distributed/store/tcp_store.h"
+
 #include <chrono>
 #include <iostream>
 #include <thread>
 
+#include "paddle/phi/core/distributed/store/tcp_utils.h"
 #include "paddle/phi/core/flags.h"
-#include "paddle/phi/core/store/tcp_utils.h"
 
 namespace phi {
 namespace distributed {

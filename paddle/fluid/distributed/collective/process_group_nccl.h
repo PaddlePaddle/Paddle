@@ -25,8 +25,7 @@
 #include "paddle/fluid/platform/device_event.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/device_context.h"
-#include "paddle/phi/core/store/store.h"
-#include "paddle/phi/core/store/tcp_store.h"
+#include "paddle/phi/core/distributed/store/store.h"
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/fluid/distributed/collective/nccl_tools.h"
@@ -34,7 +33,7 @@
 
 #ifdef PADDLE_WITH_RCCL
 #include "paddle/phi/backends/dynload/rccl.h"
-#elif PADDLE_WITH_NCCL
+#else
 #include "paddle/phi/backends/dynload/nccl.h"
 #endif
 

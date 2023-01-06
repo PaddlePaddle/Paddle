@@ -29,7 +29,7 @@
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/gen_comm_id_helper.h"
 #include "paddle/fluid/platform/place.h"
-#include "paddle/phi/core/store/store.h"
+#include "paddle/phi/core/distributed/store/store.h"
 
 namespace paddle {
 namespace distributed {

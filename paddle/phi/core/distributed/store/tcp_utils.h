@@ -14,6 +14,12 @@
 
 #pragma once
 
+#include <chrono>
+#include <iostream>
+#include <vector>
+
+#include "paddle/phi/core/enforce.h"
+
 #ifdef _WIN32
 #include <winsock2.h>
 #include <ws2tcpip.h>
@@ -26,11 +32,6 @@
 #include <sys/socket.h>
 #include <unistd.h>
 #endif
-#include <chrono>
-#include <iostream>
-#include <vector>
-
-#include "paddle/phi/core/enforce.h"
 
 // Utility functions for TCP socket.
 namespace phi {

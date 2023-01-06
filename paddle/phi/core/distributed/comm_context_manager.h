@@ -13,10 +13,12 @@
 // limitations under the License.
 
 #pragma once
+
 #include <iostream>
 #include <memory>
 #include <unordered_map>
-#include "paddle/phi/core/comm_context.h"
+
+#include "paddle/phi/core/distributed/comm_context.h"
 #include "paddle/phi/core/macros.h"
 
 namespace phi {

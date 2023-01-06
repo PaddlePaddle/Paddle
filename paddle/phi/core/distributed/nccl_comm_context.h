@@ -12,19 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 #pragma once
-#if defined(PADDLE_WITH_NCCL)
-#include "paddle/phi/backends/dynload/nccl.h"
-#endif
+
+#include "paddle/phi/backends/gpu/gpu_decls.h"
+#include "paddle/phi/core/distributed/comm_context.h"
+#include "paddle/phi/core/macros.h"
 
 #if defined(PADDLE_WITH_RCCL)
 #include "paddle/phi/backends/dynload/rccl.h"
+#else
+#include "paddle/phi/backends/dynload/nccl.h"
 #endif
-
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-
-#include "paddle/phi/backends/gpu/gpu_decls.h"
-#include "paddle/phi/core/comm_context.h"
-#include "paddle/phi/core/macros.h"
 
 namespace phi {
 class DenseTensor;
@@ -47,5 +44,3 @@ class NCCLCommContext final : public CommContext {
 
 }  // namespace distributed
 }  // namespace phi
-
-#endif

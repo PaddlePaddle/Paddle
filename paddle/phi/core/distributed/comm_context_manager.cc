@@ -12,13 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/core/comm_context_manager.h"
+#include "paddle/phi/core/distributed/comm_context_manager.h"
+
 #include <memory>
 #include <string>
+
 #include "paddle/phi/backends/gpu/gpu_info.h"
+#include "paddle/phi/core/distributed/nccl_comm_context.h"
+#include "paddle/phi/core/distributed/store/store.h"
 #include "paddle/phi/core/enforce.h"
-#include "paddle/phi/core/nccl_comm_context.h"
-#include "paddle/phi/core/store/store.h"
 
 namespace phi {
 namespace distributed {

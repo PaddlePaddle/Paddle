@@ -19,10 +19,6 @@
 #include <string.h>
 #include <sys/types.h>
 
-#ifndef _WIN32
-#include <unistd.h>
-#endif
-
 #include <array>
 #include <iostream>
 #include <memory>
@@ -30,9 +26,13 @@
 #include <thread>
 #include <unordered_map>
 
-#include "paddle/phi/core/store/socket.h"
-#include "paddle/phi/core/store/store.h"
-#include "paddle/phi/core/store/tcp_utils.h"
+#include "paddle/phi/core/distributed/store/socket.h"
+#include "paddle/phi/core/distributed/store/store.h"
+#include "paddle/phi/core/distributed/store/tcp_utils.h"
+
+#ifndef _WIN32
+#include <unistd.h>
+#endif
 
 namespace phi {
 namespace distributed {

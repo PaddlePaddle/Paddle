@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/core/store/tcp_utils.h"
+#include "paddle/phi/core/distributed/store/tcp_utils.h"
 
 #include <cerrno>
 #include <cstring>

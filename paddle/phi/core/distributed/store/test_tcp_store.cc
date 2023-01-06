@@ -13,8 +13,8 @@
 // limitations under the License.
 
 #include "gtest/gtest.h"
-#include "paddle/phi/core/store/tcp_store.h"
-#include "paddle/phi/core/store/tcp_utils.h"
+#include "paddle/phi/core/distributed/store/tcp_store.h"
+#include "paddle/phi/core/distributed/store/tcp_utils.h"
 
 #ifdef _WIN32
 #include <windows.h>

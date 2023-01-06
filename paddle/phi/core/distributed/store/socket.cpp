@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/core/store/socket.h"
+#include "paddle/phi/core/distributed/store/socket.h"
 
 #ifndef _WIN32
 #include <arpa/inet.h>

@@ -25,7 +25,7 @@
 #include "paddle/fluid/platform/gen_comm_id_helper.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/device_context.h"
-#include "paddle/phi/core/store/store.h"
+#include "paddle/phi/core/distributed/store/store.h"
 
 #if defined(PADDLE_WITH_XPU)
 #include "paddle/fluid/distributed/collective/bkcl_tools.h"

@@ -12,9 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-
-#include "paddle/phi/core/nccl_comm_context.h"
+#include "paddle/phi/core/distributed/nccl_comm_context.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/utils/data_type.h"
@@ -43,5 +41,3 @@ void NCCLCommContext::Broadcast(phi::DenseTensor* out_tensor,
 
 }  // namespace distributed
 }  // namespace phi
-
-#endif
