@@ -15,6 +15,12 @@
 import collections
 import re
 
+# prim api list
+white_ops_list = [
+    "pow",
+    "scale",
+    "multiply",
+]
 
 inplace_out_type_map = {
     "Tensor": "Tensor&",
@@ -29,7 +35,9 @@ inplace_optional_out_type_map = {
 class BaseAPI:
     def __init__(self, api_item_yaml):
         self.api = api_item_yaml['op']
-
+        #self.api = api_item_yaml['name']
+        
+        #######################################
         # inputs:
         #     names : [], list of input names
         #     input_info : {input_name : type}
@@ -40,6 +48,7 @@ class BaseAPI:
         #     names : [], list of output names
         #     types : [], list of output types
         #     out_size_expr : [], expression for getting size of vector<Tensor>
+        ########################################3
         (
             self.inputs,
             self.attrs,
@@ -47,38 +56,49 @@ class BaseAPI:
             self.optional_vars,
         ) = self.parse_args(self.api, api_item_yaml)
 
-        # self.is_base_api = True
-        # if 'invoke' in api_item_yaml:
-        #     self.is_base_api = False
-        #     self.invoke = api_item_yaml['invoke']
-        # else:
-        #     if 'infer_meta' in api_item_yaml:
-        #         self.infer_meta = self.parse_infer_meta(
-        #             api_item_yaml['infer_meta']
-        #         )
-        #     self.kernel = self.parse_kernel(api_item_yaml['kernel'])
-        #     self.data_transform = self.parse_data_transform(api_item_yaml)
-        #     self.inplace_map, self.view_map = {}, {}
+        self.is_prim_api = False
+        if api_item_yaml['op'] in white_ops_list:
+            self.is_prim_api = True
 
-        # self.gene_input_func = {
-        #     "const Tensor&": {
-        #         "dense": self.gene_dense_input,
-        #         "selected_rows": self.gene_selected_rows_input,
-        #     },
-        #     "const paddle::optional<Tensor>&": {
-        #         "dense": self.gene_dense_input,
-        #         "selected_rows": self.gene_selected_rows_input,
-        #     },
-        #     "const std::vector<Tensor>&": {"dense": self.gene_vec_dense_input},
-        #     "const paddle::optional<std::vector<Tensor>>&": {
-        #         "dense": self.gene_optional_vec_dense_input
-        #     },
-        # }
+        self.inplace_map, self.view_map = self.parse_inplace_and_view(
+            api_item_yaml
+        )
 
+    def parse_inplace_and_view(self, api_item_yaml):
+        inplace_map, view_map = {}, {}
+        for mode in ['inplace', 'view']:
+            if mode in api_item_yaml:
+                if mode == 'inplace':
+                    inplace_map = {}
+                else:
+                    view_map = {}
+                in_out_mapping_list = api_item_yaml[mode].split(',')
+                for item in in_out_mapping_list:
+                    result = re.search(r"(?P<in>\w+)\s*->\s*(?P<out>\w+)", item)
+                    in_val = result.group('in')
+                    out_val = result.group('out')
+                    assert (
+                        in_val in self.inputs['names']
+                    ), f"{self.api} : {mode} input error: the input var name('{in_val}') is not found in the input args of {self.api}."
+                    assert (
+                        out_val in self.outputs['names']
+                    ), f"{self.api} : {mode} output error: the output var name('{out_val}') is not found in the output args of {self.api}."
+
+                    if mode == 'inplace':
+                        inplace_map[out_val] = in_val
+                    else:
+                        view_map[out_val] = in_val
+
+        return inplace_map, view_map
 
     def get_api_func_name(self):
         return self.api
 
+    def is_inplace(self):
+        if len(self.inplace_map) > 0:
+            return True
+        return False
+        
     def get_input_tensor_args(self, inplace_flag=False):
         input_args = []
         inplace_type_map = {
@@ -111,6 +131,23 @@ class BaseAPI:
 
         return ", ".join(declare_args)
 
+    def get_return_type(self, inplace_flag=False):
+        out_type_list = []
+        for i, out_type in enumerate(self.outputs['types']):
+            out_name = self.outputs['names'][i].split('@')[0]
+            if inplace_flag and out_name in self.inplace_map:
+                if self.inplace_map[out_name] in self.optional_vars:
+                    out_type_list.append(
+                        inplace_optional_out_type_map[out_type]
+                    )
+                else:
+                    out_type_list.append(inplace_out_type_map[out_type])
+            else:
+                out_type_list.append(out_type)
+        if len(out_type_list) == 1:
+            return out_type_list[0]
+        else:
+            return "std::tuple<" + ", ".join(out_type_list) + ">"
 
     def parse_args(self, api_name, api_item_yaml):
         optional_vars = []
@@ -287,21 +324,10 @@ class BaseAPI:
             return out_type_list, out_name_list, out_size_expr_list
 
 
-class PrimAPI(BaseAPI):
+class EagerPrimAPI(BaseAPI):
     def __init__(self, api_item_yaml):
         super().__init__(api_item_yaml)
-        self.is_prim_api = False
-        if api_item_yaml['op'] in white_ops_list:
-            self.is_prim_api = True
-
-        self.inplace_map, self.view_map = self.parse_inplace_and_view(
-            api_item_yaml
-        )
-
-    def is_inplace(self):
-        if len(self.inplace_map) > 0:
-            return True
-        return False
+        
 
     def get_api__func_name(self):
         api_func_name = self.api
@@ -385,54 +411,13 @@ template <>
         #func code
 
         api_code = api_code + '{'
-        api_code += f"""{self.gene_ad_func_call()} """
+        api_code += f"""{self.gene_ad_func_call()}"""
         api_code += '}'+ '\n'
 
         return api_code
 
-    def parse_inplace_and_view(self, api_item_yaml):
-        inplace_map, view_map = {}, {}
-        for mode in ['inplace', 'view']:
-            if mode in api_item_yaml:
-                if mode == 'inplace':
-                    inplace_map = {}
-                else:
-                    view_map = {}
-                in_out_mapping_list = api_item_yaml[mode].split(',')
-                for item in in_out_mapping_list:
-                    result = re.search(r"(?P<in>\w+)\s*->\s*(?P<out>\w+)", item)
-                    in_val = result.group('in')
-                    out_val = result.group('out')
-                    assert (
-                        in_val in self.inputs['names']
-                    ), f"{self.api} : {mode} input error: the input var name('{in_val}') is not found in the input args of {self.api}."
-                    assert (
-                        out_val in self.outputs['names']
-                    ), f"{self.api} : {mode} output error: the output var name('{out_val}') is not found in the output args of {self.api}."
+    
 
-                    if mode == 'inplace':
-                        inplace_map[out_val] = in_val
-                    else:
-                        view_map[out_val] = in_val
 
-        return inplace_map, view_map
-
-    def get_return_type(self, inplace_flag=False):
-        out_type_list = []
-        for i, out_type in enumerate(self.outputs['types']):
-            out_name = self.outputs['names'][i].split('@')[0]
-            if inplace_flag and out_name in self.inplace_map:
-                if self.inplace_map[out_name] in self.optional_vars:
-                    out_type_list.append(
-                        inplace_optional_out_type_map[out_type]
-                    )
-                else:
-                    out_type_list.append(inplace_out_type_map[out_type])
-            else:
-                out_type_list.append(out_type)
-        if len(out_type_list) == 1:
-            return out_type_list[0]
-        else:
-            return "std::tuple<" + ", ".join(out_type_list) + ">"
 
     

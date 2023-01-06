@@ -15,14 +15,9 @@
 import yaml
 import argparse
 
-from prim_base import PrimAPI
+from prim_base import EagerPrimAPI
 
-# prim api list
-white_ops_list = [
-    "pow",
-    "scale",
-    "multiply",
-]
+
 
 
 def header_include():
@@ -32,12 +27,11 @@ def header_include():
 """
 
 
-def source_include(header_file_path):
+def eager_source_include(header_file_path):
     return f"""
 #include "paddle/fluid/eager/api/all.h"
 #include "paddle/fluid/eager/api/generated/eager_generated/forwards/dygraph_functions.h"
 #include "paddle/fluid/prim/api/generated/prim_api/prim_api.h"
-
 """
 
 
@@ -77,11 +71,11 @@ def generate_api(api_yaml_path, header_file_path, eager_prim_source_file_path):
     header_file.write(namespace[0])
     header_file.write(namespace[1])
     include_header_file = "#include paddle/fluid/prim/api/generated/prim_api/prim_api.h"
-    eager_prim_source_file.write(source_include(include_header_file))
+    eager_prim_source_file.write(eager_source_include(include_header_file))
     eager_prim_source_file.write(namespace[0])
 
     for api in apis:
-        prim_api = PrimAPI(api)
+        prim_api = EagerPrimAPI(api)
         if prim_api.is_prim_api:
             header_file.write(prim_api.gene_prim_api_declaration())
             eager_prim_source_file.write(prim_api.gene_eager_prim_api_code())

@@ -5,6 +5,12 @@ set(api_yaml_path
 set(legacy_api_yaml_path
     "${PADDLE_SOURCE_DIR}/paddle/phi/api/yaml/legacy_ops.yaml"
 )
+# set(api_yaml_path
+#     "${PADDLE_SOURCE_DIR}/paddle/fluid/operators/generator/parsed_ops/ops.parsed.yaml"
+# )
+# set(legacy_api_yaml_path
+#     "${PADDLE_SOURCE_DIR}/paddle/fluid/operators/generator/parsed_ops/legacy_ops.parsed.yaml"
+# )
 set(tmp_eager_prim_api_cc_path
     "${PADDLE_SOURCE_DIR}/paddle/fluid/prim/api/generated/prim_api/tmp_eager_prim_api.cc"
 )
@@ -32,5 +38,3 @@ add_custom_target(
   COMMAND ${CMAKE_COMMAND} -E copy_if_different ${tmp_prim_api_h_path}
           ${prim_api_h_path}
   VERBATIM)
-
-

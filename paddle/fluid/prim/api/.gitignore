@@ -1,2 +1,1 @@
-generated/prim_api/*.cc
-generated/prim_api/*.h
+#generated/prim_api/tmp_*
