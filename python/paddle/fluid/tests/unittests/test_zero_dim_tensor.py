@@ -763,6 +763,19 @@ class TestSundryAPI(unittest.TestCase):
             self.assertEqual(x.grad.shape, [])
             self.assertTrue(x.grad.numpy() == 1)
 
+    def test_flatten(self):
+        x = paddle.rand([])
+        x.stop_gradient = False
+
+        start_axis = 0
+        stop_axis = -1
+
+        out = paddle.flatten(x, start_axis=start_axis, stop_axis=stop_axis)
+        out.backward()
+
+        self.assertEqual(out.shape, [1])
+        self.assertEqual(x.grad.shape, [])
+
     def test_scale(self):
         x = paddle.rand([])
         x.stop_gradient = False
@@ -896,6 +909,50 @@ class TestSundryAPI(unittest.TestCase):
         self.assertEqual(x.shape, [])
         self.assertEqual(out.shape, [])
         self.assertEqual(out.grad.shape, [])
+
+    def test_sort(self):
+        x1 = paddle.rand([])
+        x2 = paddle.rand([])
+        x1.stop_gradient = False
+        x2.stop_gradient = False
+        out1 = paddle.sort(x1, axis=-1)
+        out2 = paddle.sort(x2, axis=0)
+
+        out1.backward()
+        out2.backward()
+
+        self.assertEqual(out1.shape, [])
+        self.assertEqual(out2.shape, [])
+        self.assertEqual(out1.numpy(), x1.numpy())
+        self.assertEqual(out2.numpy(), x2.numpy())
+        self.assertEqual(out1.grad.shape, [])
+        self.assertEqual(out2.grad.shape, [])
+        self.assertEqual(x1.grad.shape, [])
+        self.assertEqual(x2.grad.shape, [])
+        self.assertEqual(x1.grad.numpy(), 1)
+        self.assertEqual(x2.grad.numpy(), 1)
+
+    def test_argsort(self):
+        x1 = paddle.rand([])
+        x2 = paddle.rand([])
+        x1.stop_gradient = False
+        x2.stop_gradient = False
+        out1 = paddle.argsort(x1, axis=-1)
+        out2 = paddle.argsort(x2, axis=0)
+
+        out1.backward()
+        out2.backward()
+
+        self.assertEqual(out1.shape, [])
+        self.assertEqual(out2.shape, [])
+        self.assertEqual(out1.numpy(), 0)
+        self.assertEqual(out2.numpy(), 0)
+        self.assertEqual(out1.grad.shape, [])
+        self.assertEqual(out2.grad.shape, [])
+        self.assertEqual(x1.grad.shape, [])
+        self.assertEqual(x2.grad.shape, [])
+        self.assertEqual(x1.grad.numpy(), 0)
+        self.assertEqual(x2.grad.numpy(), 0)
 
 
 class TestSundryAPIStatic(unittest.TestCase):
@@ -1134,6 +1191,22 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(len(res[0].shape), 0)
 
     @prog_scope()
+    def test_flatten(self):
+        x = paddle.full([], 1, 'float32')
+        x.stop_gradient = False
+
+        start_axis = 0
+        stop_axis = -1
+
+        out = paddle.flatten(x, start_axis=start_axis, stop_axis=stop_axis)
+        paddle.static.append_backward(out)
+
+        prog = paddle.static.default_main_program()
+        res = self.exe.run(prog, feed={}, fetch_list=[out])
+
+        self.assertEqual(res[0].shape, (1,))
+
+    @prog_scope()
     def test_scale(self):
         x = paddle.rand([])
         x.stop_gradient = False
@@ -1245,6 +1318,42 @@ class TestSundryAPIStatic(unittest.TestCase):
         res1, res2 = self.exe.run(program, fetch_list=[x, out])
         self.assertEqual(res1.shape, ())
         self.assertEqual(res2.shape, ())
+
+    @prog_scope()
+    def test_sort(self):
+        x1 = paddle.rand([])
+        x1.stop_gradient = False
+        out1 = paddle.sort(x1, axis=-1)
+        paddle.static.append_backward(out1)
+
+        x2 = paddle.rand([])
+        x2.stop_gradient = False
+        out2 = paddle.sort(x2, axis=0)
+        paddle.static.append_backward(out2)
+
+        prog = paddle.static.default_main_program()
+        res = self.exe.run(prog, fetch_list=[out1, out2])
+
+        self.assertEqual(res[0].shape, ())
+        self.assertEqual(res[1].shape, ())
+
+    @prog_scope()
+    def test_argsort(self):
+        x1 = paddle.rand([])
+        x1.stop_gradient = False
+        out1 = paddle.argsort(x1, axis=-1)
+        paddle.static.append_backward(out1)
+
+        x2 = paddle.rand([])
+        x2.stop_gradient = False
+        out2 = paddle.argsort(x2, axis=0)
+        paddle.static.append_backward(out2)
+
+        prog = paddle.static.default_main_program()
+        res = self.exe.run(prog, fetch_list=[out1, out2])
+
+        self.assertEqual(res[0].shape, ())
+        self.assertEqual(res[1].shape, ())
 
 
 # Use to test API whose zero-dim input tensors don't have grad and not need to test backward in OpTest.

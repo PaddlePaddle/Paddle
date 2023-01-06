@@ -345,6 +345,26 @@ class MatMulGradKernel : public framework::OpKernel<T> {
   }
 };
 
+framework::DDim GetDimForInput(const framework::InferShapeContext &ctx,
+                               std::string input_name) {
+  auto shape = ctx.Attrs().Get<std::vector<int>>("fused_reshape_" + input_name);
+  auto axis =
+      ctx.Attrs().Get<std::vector<int>>("fused_transpose_" + input_name);
+  auto dim = ctx.GetInputDim(input_name);
+
+  PADDLE_ENFORCE_GT(dim.size(),
+                    0,
+                    platform::errors::InvalidArgument(
+                        "The Input(%s) has not been initialized properly. The "
+                        "shape of Input(%s) = [%s].",
+                        dim));
+
+  if (!shape.empty() && !axis.empty()) {
+    dim = dim.reshape(shape).transpose(axis);
+  }
+  return dim;
+}
+
 template <typename DeviceContext, typename T>
 class MatMulDoubleGradKernel : public framework::OpKernel<T> {
  public:
@@ -559,8 +579,8 @@ class MatMulOp : public framework::OperatorWithKernel {
     OP_INOUT_CHECK(context->HasInput("Y"), "Input", "Y", "matmul");
     OP_INOUT_CHECK(context->HasOutput("Out"), "Output", "Out", "matmul");
 
-    auto dim_x = context->GetInputDim("X");
-    auto dim_y = context->GetInputDim("Y");
+    auto dim_x = GetDimForInput(*context, "X");
+    auto dim_y = GetDimForInput(*context, "Y");
 
 #ifdef PADDLE_WITH_MKLDNN
     // (jczaja): For NHWC execution output shape needs
@@ -661,43 +681,48 @@ class MatMulOp : public framework::OperatorWithKernel {
 
     framework::DDim ddim_out = phi::make_ddim(dim_out);
 
+#ifdef PADDLE_WITH_MKLDNN
+    auto shape = context->Attrs().Get<std::vector<int>>("fused_reshape_Out");
+    auto axis = context->Attrs().Get<std::vector<int>>("fused_transpose_Out");
+
+    if (!shape.empty() && !axis.empty()) {
+      ddim_out = ddim_out.transpose(axis).reshape(shape);
+    }
+#endif
     context->SetOutputDim("Out", ddim_out);
     context->ShareLoD("X", "Out");
   }
 
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     auto input_data_type =
         OperatorWithKernel::IndicateOrPromoteVarDataTypes(ctx, "X", "Y");
-    return framework::OpKernelType(input_data_type, ctx.GetPlace());
+    return phi::KernelKey(input_data_type, ctx.GetPlace());
   }
 
-  framework::OpKernelType GetKernelTypeForVar(
+  phi::KernelKey GetKernelTypeForVar(
       const std::string &var_name,
       const phi::DenseTensor &tensor,
-      const framework::OpKernelType &expected_kernel_type) const override {
-    if (framework::IsComplexType(expected_kernel_type.data_type_)) {
+      const phi::KernelKey &expected_kernel_type) const override {
+    if (framework::IsComplexType(expected_kernel_type.dtype())) {
       // only promote inputs’s types when contains complex input
-      return framework::OpKernelType(
-          framework::TransToProtoVarType(tensor.dtype()),
-          tensor.place(),
-          tensor.layout());
+      return phi::KernelKey(tensor.place(), tensor.layout(), tensor.dtype());
     } else {
 #ifdef PADDLE_WITH_MKLDNN
       // When matmul is first oneDNN op in a chain (there was some non oneDNN op
       // previously)
       // then we also need to rotate shape NHWC -> NCWH
-      if ((expected_kernel_type.data_layout_ == phi::DataLayout::ONEDNN) &&
+      if ((expected_kernel_type.layout() == phi::DataLayout::ONEDNN) &&
           (tensor.layout() != phi::DataLayout::ONEDNN) &&
           phi::OneDNNContext::tls().get_cur_paddle_data_layout() ==
               phi::DataLayout::kNHWC) {
-        return framework::OpKernelType(expected_kernel_type.data_type_,
-                                       tensor.place(),
-                                       phi::DataLayout::kNHWC);
+        return phi::KernelKey(tensor.place(),
+                              phi::DataLayout::kNHWC,
+                              expected_kernel_type.dtype());
       }
 #endif
-      return framework::OpKernelType(
-          expected_kernel_type.data_type_, tensor.place(), tensor.layout());
+      return phi::KernelKey(
+          tensor.place(), tensor.layout(), expected_kernel_type.dtype());
     }
   }
 };
@@ -846,11 +871,11 @@ class MatMulOpGrad : public framework::OperatorWithKernel {
     }
   }
 
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     auto input_data_type =
         OperatorWithKernel::IndicateOrPromoteVarDataTypes(ctx, "X", "Y");
-    return framework::OpKernelType(input_data_type, ctx.GetPlace());
+    return phi::KernelKey(input_data_type, ctx.GetPlace());
   }
 };
 

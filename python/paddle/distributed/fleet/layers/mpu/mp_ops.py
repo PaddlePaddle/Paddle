@@ -390,8 +390,8 @@ def _c_softmax_with_cross_entropy(
     label_dims = len(list(label.shape))
     if input_dims - 1 != label_dims and input_dims != label_dims:
         raise ValueError(
-            'Expected nput_dims - 1 = label_dims or input_dims == label_dims\
-             (got nput_dims{}, label_dims{})'.format(
+            'Expected input_dims - 1 = label_dims or input_dims == label_dims\
+             (got input_dims{}, label_dims{})'.format(
                 input_dims, label_dims
             )
         )

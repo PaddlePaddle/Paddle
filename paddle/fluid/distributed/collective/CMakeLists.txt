@@ -2,14 +2,11 @@ cc_library(
   process_group
   SRCS process_group.cc
   DEPS dense_tensor)
-cc_library(
-  process_group_stream
-  SRCS process_group_stream.cc
-  DEPS dense_tensor)
+
 cc_library(
   eager_reducer
   SRCS reducer.cc
-  DEPS eager_api process_group process_group_stream phi_api string_helper)
+  DEPS eager_api process_group phi_api string_helper)
 
 if(WITH_DISTRIBUTE)
   cc_library(
@@ -23,7 +20,6 @@ if(WITH_NCCL OR WITH_RCCL)
     process_group_nccl
     SRCS process_group_nccl.cc nccl_tools.cc common.cc check.cc
     DEPS process_group
-         process_group_stream
          place
          enforce
          collective_helper

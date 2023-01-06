@@ -114,6 +114,93 @@ class TestAPISwitchCase(unittest.TestCase):
                 err_msg='result is {} but answer is {}'.format(res[0], 2),
             )
 
+    def test_0d_tensor(self):
+        def fn_1():
+            return paddle.full(shape=[], dtype='int32', fill_value=1)
+
+        def fn_2():
+            return paddle.full(shape=[], dtype='int32', fill_value=2)
+
+        def fn_3():
+            return paddle.full(shape=[], dtype='int32', fill_value=3)
+
+        main_program = Program()
+        startup_program = Program()
+        with program_guard(main_program, startup_program):
+            index_1 = paddle.full(shape=[], dtype='int32', fill_value=1)
+            index_2 = paddle.full(shape=[], dtype='int32', fill_value=2)
+            index_5 = paddle.full(shape=[], dtype='int32', fill_value=5)
+
+            # call fn_1
+            out_0 = paddle.static.nn.switch_case(
+                branch_index=index_1, branch_fns={1: fn_1, 2: fn_2, 3: fn_3}
+            )
+
+            # call fn_2 : branch_fns={0: fn_1, 1:fn_2, 2:fn_3}
+            out_1 = paddle.static.nn.switch_case(
+                branch_index=index_1, branch_fns=(fn_1, fn_2, fn_3)
+            )
+
+            # call default fn_3
+            out_2 = paddle.static.nn.switch_case(
+                branch_index=index_5,
+                branch_fns=((1, fn_1), (2, fn_2)),
+                default=fn_3,
+            )
+
+            # no default, call fn_2
+            out_3 = paddle.static.nn.switch_case(
+                branch_index=index_2, branch_fns=[(1, fn_1), (2, fn_2)]
+            )
+
+            # no default, call fn_2 but branch_index is 5
+            out_4 = paddle.static.nn.switch_case(
+                branch_index=index_5,
+                branch_fns=[(1, fn_1), (3, fn_2), (2, fn_3)],
+            )
+
+            place = (
+                fluid.CUDAPlace(0)
+                if core.is_compiled_with_cuda()
+                else fluid.CPUPlace()
+            )
+            exe = fluid.Executor(place)
+
+            res = exe.run(
+                main_program, fetch_list=[out_0, out_1, out_2, out_3, out_4]
+            )
+
+            np.testing.assert_allclose(
+                res[0],
+                1,
+                rtol=1e-05,
+                err_msg='result is {} but answer is {}'.format(res[0], 1),
+            )
+            np.testing.assert_allclose(
+                res[1],
+                2,
+                rtol=1e-05,
+                err_msg='result is {} but answer is {}'.format(res[0], 2),
+            )
+            np.testing.assert_allclose(
+                res[2],
+                3,
+                rtol=1e-05,
+                err_msg='result is {} but answer is {}'.format(res[0], 3),
+            )
+            np.testing.assert_allclose(
+                res[3],
+                2,
+                rtol=1e-05,
+                err_msg='result is {} but answer is {}'.format(res[0], 2),
+            )
+            np.testing.assert_allclose(
+                res[4],
+                2,
+                rtol=1e-05,
+                err_msg='result is {} but answer is {}'.format(res[0], 2),
+            )
+
     def test_return_var_tuple(self):
         def fn_1():
             return layers.fill_constant(
@@ -213,6 +300,101 @@ class TestAPISwitchCase_Nested(unittest.TestCase):
             index_1 = fluid.data(name="index_1", shape=[1], dtype='uint8')
             index_2 = layers.fill_constant(shape=[1], dtype='int32', value=2)
             index_3 = layers.fill_constant(shape=[1], dtype='int64', value=3)
+
+            out_1 = paddle.static.nn.switch_case(
+                branch_index=index_1, branch_fns={1: fn_1, 2: fn_2, 3: fn_3}
+            )
+            out_2 = paddle.static.nn.switch_case(
+                branch_index=index_2, branch_fns={1: fn_1, 2: fn_2, 3: fn_3}
+            )
+
+            out_3 = paddle.static.nn.switch_case(
+                branch_index=index_3, branch_fns={1: fn_1, 2: fn_2, 3: fn_3}
+            )
+
+            place = (
+                fluid.CUDAPlace(0)
+                if core.is_compiled_with_cuda()
+                else fluid.CPUPlace()
+            )
+            exe = fluid.Executor(place)
+
+            res = exe.run(
+                main_program,
+                feed={"index_1": np.array([1], dtype="uint8")},
+                fetch_list=[out_1, out_2, out_3],
+            )
+
+            np.testing.assert_allclose(
+                res[0],
+                1,
+                rtol=1e-05,
+                err_msg='result is {} but answer is {}'.format(res[0], 1),
+            )
+            np.testing.assert_allclose(
+                res[1],
+                2,
+                rtol=1e-05,
+                err_msg='result is {} but answer is {}'.format(res[1], 2),
+            )
+            np.testing.assert_allclose(
+                res[2],
+                3,
+                rtol=1e-05,
+                err_msg='result is {} but answer is {}'.format(res[2], 3),
+            )
+
+    def test_nested_switch_0d_tensor(self):
+        def fn_1(x=1):
+            out = paddle.static.nn.switch_case(
+                branch_index=paddle.full(shape=[], dtype='int32', fill_value=x),
+                branch_fns={
+                    1: partial(
+                        paddle.full, shape=[], dtype='int32', fill_value=1
+                    ),
+                    x: partial(
+                        paddle.full, shape=[], dtype='int32', fill_value=x
+                    ),
+                },
+            )
+            return out
+
+        def fn_2(x=2):
+            out = paddle.static.nn.switch_case(
+                branch_index=paddle.full(shape=[], dtype='int32', fill_value=2),
+                branch_fns={
+                    1: partial(
+                        paddle.full,
+                        shape=[],
+                        dtype='int32',
+                        fill_value=1,
+                    ),
+                    2: partial(fn_1, x=x),
+                },
+            )
+            return out
+
+        def fn_3():
+            out = paddle.static.nn.switch_case(
+                branch_index=paddle.full(shape=[], dtype='int32', fill_value=3),
+                branch_fns={
+                    1: partial(
+                        paddle.full,
+                        shape=[],
+                        dtype='int32',
+                        fill_value=1,
+                    ),
+                    3: partial(fn_2, x=3),
+                },
+            )
+            return out
+
+        main_program = Program()
+        startup_program = Program()
+        with program_guard(main_program, startup_program):
+            index_1 = fluid.data(name="index_1", shape=[1], dtype='uint8')
+            index_2 = paddle.full(shape=[], dtype='int32', fill_value=2)
+            index_3 = paddle.full(shape=[], dtype='int64', fill_value=3)
 
             out_1 = paddle.static.nn.switch_case(
                 branch_index=index_1, branch_fns={1: fn_1, 2: fn_2, 3: fn_3}

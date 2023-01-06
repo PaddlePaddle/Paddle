@@ -20,7 +20,6 @@ import paddle.fluid as fluid
 from paddle import _C_ops, in_dynamic_mode
 from paddle.fluid.framework import in_dygraph_mode
 
-from ...fluid import dygraph_utils
 from ...fluid.data_feeder import check_type, check_variable_and_dtype
 from ...fluid.layer_helper import LayerHelper
 
@@ -210,10 +209,7 @@ def batch_norm(
             use_global_stats,
             trainable_statistics,
         )
-
-        return dygraph_utils._append_activation_in_dygraph(
-            batch_norm_out, act=None
-        )
+        return batch_norm_out
 
     else:
         check_variable_and_dtype(

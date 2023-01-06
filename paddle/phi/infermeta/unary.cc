@@ -220,18 +220,26 @@ void ArgsortInferMeta(const MetaTensor& input,
                       MetaTensor* indices) {
   auto in_dims = input.dims();
   auto num_dims = in_dims.size();
-  PADDLE_ENFORCE_GE(
-      axis,
-      -num_dims,
-      phi::errors::InvalidArgument("'axis'(%d) must be greater than or equal to"
-                                   " -num_dims(%d).",
-                                   axis,
-                                   -num_dims));
-  PADDLE_ENFORCE_LT(
-      axis,
-      num_dims,
-      phi::errors::InvalidArgument(
-          "'axis'(%d) must be less than num_dims(%d).", axis, num_dims));
+  if (num_dims > 0) {
+    PADDLE_ENFORCE_GE(axis,
+                      -num_dims,
+                      phi::errors::InvalidArgument(
+                          "'axis'(%d) must be greater than or equal to"
+                          " -num_dims(%d).",
+                          axis,
+                          -num_dims));
+    PADDLE_ENFORCE_LT(
+        axis,
+        num_dims,
+        phi::errors::InvalidArgument(
+            "'axis'(%d) must be less than num_dims(%d).", axis, num_dims));
+  } else {  // 0-dim tensor
+    PADDLE_ENFORCE_EQ(
+        axis == 0 || axis == -1,
+        1,
+        phi::errors::InvalidArgument(
+            "'axis'(%d) must be 0 or -1 if input tensor is 0-dim.", axis));
+  }
 
   output->share_dims(input);
   output->set_dtype(input.dtype());
@@ -605,7 +613,6 @@ void DiagonalInferMeta(const MetaTensor& input,
   int offset_ = offset;
   int axis1_ = axis1 < 0 ? x_dims.size() + axis1 : axis1;
   int axis2_ = axis2 < 0 ? x_dims.size() + axis2 : axis2;
-
   PADDLE_ENFORCE_GE(
       x_dims.size(),
       2,
@@ -621,9 +628,27 @@ void DiagonalInferMeta(const MetaTensor& input,
           -(x_dims.size()),
           (x_dims.size() - 1),
           axis1));
+  PADDLE_ENFORCE_GE(
+      axis1_,
+      0,
+      phi::errors::OutOfRange(
+          "Attr(axis1) is out of range (expected to be in range of [%ld, "
+          "%ld], but got %ld).",
+          -(x_dims.size()),
+          (x_dims.size() - 1),
+          axis1));
   PADDLE_ENFORCE_LT(
       axis2_,
       x_dims.size(),
+      phi::errors::OutOfRange(
+          "Attr(axis2) is out of range (expected to be in range of [%ld, "
+          "%ld], but got %ld).",
+          -(x_dims.size()),
+          (x_dims.size() - 1),
+          axis2));
+  PADDLE_ENFORCE_GE(
+      axis2_,
+      0,
       phi::errors::OutOfRange(
           "Attr(axis2) is out of range (expected to be in range of [%ld, "
           "%ld], but got %ld).",
@@ -1072,21 +1097,40 @@ void FlattenWithXShapeInferMeta(const MetaTensor& x,
                                 MetaTensor* xshape) {
   auto x_dims = x.dims();
   int in_dims_size = x_dims.size();
+
+  if (in_dims_size == 0) {
+    PADDLE_ENFORCE_EQ(
+        start_axis == 0 || start_axis == -1,
+        true,
+        phi::errors::InvalidArgument("The start_axis should be 0 or -1 when "
+                                     "the input tensor is a 0D-Tensor"));
+    PADDLE_ENFORCE_EQ(
+        stop_axis == 0 || stop_axis == -1,
+        true,
+        phi::errors::InvalidArgument("The stop_axis should be 0 or -1 when the "
+                                     "input tensor is a 0D-Tensor"));
+    // this can ensure out shape {1}
+    start_axis = 0;
+    stop_axis = -1;
+  }
+
   if (start_axis < 0) {
     start_axis = start_axis + in_dims_size;
   }
   if (stop_axis < 0) {
     stop_axis = stop_axis + in_dims_size;
   }
-  PADDLE_ENFORCE_GE(
-      stop_axis,
-      start_axis,
-      phi::errors::InvalidArgument("The stop_axis should be greater"
-                                   "than or equal to start_axis."));
+  if (in_dims_size > 0) {
+    PADDLE_ENFORCE_GE(
+        stop_axis,
+        start_axis,
+        phi::errors::InvalidArgument("The stop_axis should be greater"
+                                     "than or equal to start_axis."));
+  }
 
   int64_t outer = 1;
   std::vector<int32_t> out_shape;
-  out_shape.reserve(in_dims_size - stop_axis + start_axis);
+  out_shape.reserve(in_dims_size - stop_axis + start_axis + 1);
 
   for (int i = 0; i < start_axis; ++i) {
     out_shape.push_back(x_dims[i]);
@@ -2634,8 +2678,9 @@ void PNormInferMeta(const MetaTensor& x,
     if (reduce_dims.size() == 0) {
       reduce_dims.emplace_back(1);
     }
+
+    x_dim[axis] = 1;
   }
-  x_dim[axis] = 1;
 
   if (keepdim) {
     out->set_dims(x_dim);
@@ -4023,13 +4068,22 @@ void TraceInferMeta(
       x_dims.size(),
       2,
       phi::errors::OutOfRange(
-          "Input's dim is out of range (expected at least 2, but got %ld).",
+          "Input(x)'s dim is out of range (expected at least 2, but got %ld).",
           x_dims.size()));
   PADDLE_ENFORCE_LT(
       dim1_,
       x_dims.size(),
       phi::errors::OutOfRange(
-          "Attr(dim1) is out of range (expected to be in range of [%ld, "
+          "axis1 is out of range (expected to be in range of [%ld, "
+          "%ld], but got %ld).",
+          -(x_dims.size()),
+          (x_dims.size() - 1),
+          dim1));
+  PADDLE_ENFORCE_GE(
+      dim1_,
+      0,
+      phi::errors::OutOfRange(
+          "axis1 is out of range (expected to be in range of [%ld, "
           "%ld], but got %ld).",
           -(x_dims.size()),
           (x_dims.size() - 1),
@@ -4038,7 +4092,16 @@ void TraceInferMeta(
       dim2_,
       x_dims.size(),
       phi::errors::OutOfRange(
-          "Attr(dim2) is out of range (expected to be in range of [%ld, "
+          "axis2 is out of range (expected to be in range of [%ld, "
+          "%ld], but got %ld).",
+          -(x_dims.size()),
+          (x_dims.size() - 1),
+          dim2));
+  PADDLE_ENFORCE_GE(
+      dim2_,
+      0,
+      phi::errors::OutOfRange(
+          "axis2 is out of range (expected to be in range of [%ld, "
           "%ld], but got %ld).",
           -(x_dims.size()),
           (x_dims.size() - 1),

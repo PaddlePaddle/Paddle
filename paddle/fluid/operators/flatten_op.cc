@@ -41,11 +41,13 @@ class FlattenOp : public framework::OperatorWithKernel {
                       0,
                       platform::errors::InvalidArgument(
                           "The axis should be greater than or equal to 0."));
-    PADDLE_ENFORCE_LE(
-        axis,
-        in_dims.size(),
-        platform::errors::InvalidArgument(
-            "The axis should be less than or equal to input tensor's rank."));
+    if (in_dims.size() > 0) {
+      PADDLE_ENFORCE_LE(
+          axis,
+          in_dims.size(),
+          platform::errors::InvalidArgument(
+              "The axis should be less than or equal to input tensor's rank."));
+    }
 
     const auto &out_dims = GetOutputShape(axis, in_dims);
     ctx->SetOutputDim("Out", phi::make_ddim(out_dims));
@@ -58,6 +60,10 @@ class FlattenOp : public framework::OperatorWithKernel {
 
   static std::vector<int32_t> GetOutputShape(const int axis,
                                              const framework::DDim &in_dims) {
+    if (in_dims.size() == 0) {
+      return {1};
+    }
+
     int64_t outer = 1, inner = 1;
     for (int i = 0; i < in_dims.size(); ++i) {
       if (i < axis) {
@@ -81,11 +87,11 @@ class FlattenOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     auto input_data_type =
         framework::OperatorWithKernel::IndicateVarDataType(ctx, "X");
-    return framework::OpKernelType(input_data_type, ctx.GetPlace());
+    return phi::KernelKey(input_data_type, ctx.GetPlace());
   }
 };
 
@@ -153,11 +159,11 @@ class FlattenGradOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     auto input_data_type = framework::OperatorWithKernel::IndicateVarDataType(
         ctx, framework::GradVarName("Out"));
-    return framework::OpKernelType(input_data_type, ctx.GetPlace());
+    return phi::KernelKey(input_data_type, ctx.GetPlace());
   }
 };
 
@@ -217,11 +223,11 @@ class Flatten2Op : public framework::OperatorWithKernel {
     ctx->ShareLoD("X", "XShape");
   }
 
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     auto input_data_type =
         framework::OperatorWithKernel::IndicateVarDataType(ctx, "X");
-    return framework::OpKernelType(input_data_type, ctx.GetPlace());
+    return phi::KernelKey(input_data_type, ctx.GetPlace());
   }
 };
 
@@ -269,11 +275,11 @@ class Flatten2GradOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     auto input_data_type = framework::OperatorWithKernel::IndicateVarDataType(
         ctx, framework::GradVarName("Out"));
-    return framework::OpKernelType(input_data_type, ctx.GetPlace());
+    return phi::KernelKey(input_data_type, ctx.GetPlace());
   }
 };
 
@@ -387,11 +393,11 @@ class FlattenContiguousRangeGradOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
-                                       ctx, framework::GradVarName("Out")),
-                                   ctx.device_context());
+    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(
+                              ctx, framework::GradVarName("Out")),
+                          ctx.GetPlace());
   }
 };
 DECLARE_INPLACE_OP_INFERER(FlattenOpInplaceInferer, {"X", "Out"});
