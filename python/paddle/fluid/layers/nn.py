@@ -22,7 +22,6 @@ import numpy as np
 
 import paddle
 from ..layer_helper import LayerHelper
-from ..initializer import Normal
 from ..framework import (
     Variable,
     OpProtoHolder,
