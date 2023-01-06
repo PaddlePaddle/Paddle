@@ -285,6 +285,9 @@ PDNode* FusedAttentionPattern::operator()(PDNode* x,
     // to fix X and Y
     auto* residual_ele_add_node = pattern->NewNode(residual_ele_add_op_repr())
                                       ->assert_is_op("elementwise_add");
+    residual_ele_add_out_node =
+        pattern->NewNode(residual_ele_add_out_repr())
+            ->assert_is_op_output("elementwise_add", "Out");
     out_linear_dropout_out_node->AsIntermediate()->assert_is_op_input(
         "elementwise_add", "Y");
     residual_ele_add_node->LinksFrom({x, out_linear_dropout_out_node})
