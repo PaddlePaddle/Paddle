@@ -382,7 +382,7 @@ class TestFillConstantOpError(unittest.TestCase):
             x1 = fluid.layers.data(name='x1', shape=[1], dtype="int16")
             self.assertRaises(
                 TypeError,
-                fluid.layers.fill_constant,
+                paddle.tensor.fill_constant,
                 shape=[1],
                 value=5,
                 dtype='uint4',

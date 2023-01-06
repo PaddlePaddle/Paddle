@@ -20,7 +20,6 @@ import numpy as np
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-import paddle.fluid.layers as layers
 from paddle.fluid.framework import Program, program_guard
 
 paddle.enable_static()
@@ -184,10 +183,16 @@ class TestAPISwitchCase_Nested(unittest.TestCase):
                 ),
                 branch_fns={
                     1: partial(
-                        layers.fill_constant, shape=[1], dtype='int32', value=1
+                        paddle.tensor.fill_constant,
+                        shape=[1],
+                        dtype='int32',
+                        value=1,
                     ),
                     x: partial(
-                        layers.fill_constant, shape=[2], dtype='int32', value=x
+                        paddle.tensor.fill_constant,
+                        shape=[2],
+                        dtype='int32',
+                        value=x,
                     ),
                 },
             )
@@ -200,7 +205,7 @@ class TestAPISwitchCase_Nested(unittest.TestCase):
                 ),
                 branch_fns={
                     1: partial(
-                        layers.fill_constant,
+                        paddle.tensor.fill_constant,
                         shape=[4, 3],
                         dtype='int32',
                         value=1,
@@ -217,7 +222,7 @@ class TestAPISwitchCase_Nested(unittest.TestCase):
                 ),
                 branch_fns={
                     1: partial(
-                        layers.fill_constant,
+                        paddle.tensor.fill_constant,
                         shape=[4, 3],
                         dtype='int32',
                         value=1,
