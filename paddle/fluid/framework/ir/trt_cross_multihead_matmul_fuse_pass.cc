@@ -375,8 +375,7 @@ int TrtCrossMultiHeadMatmulFusePass::BuildCrossFusion(
 
     auto* wk_data = wk_tensor->mutable_data<float>(platform::CPUPlace());
     auto* wv_data = wv_tensor->mutable_data<float>(platform::CPUPlace());
-    // combined_w_dims =
-    // [in,2,out]
+    // combined_w_dims = [in,2,out]
     auto combined_w_kv_dims =
         phi::make_ddim({wk_tensor->dims()[0], 2, wk_tensor->dims()[1]});
     VLOG(5) << "trt cross attention trt wk_dim in:" << wk_tensor->dims()[0]
@@ -501,36 +500,35 @@ int TrtCrossMultiHeadMatmulFusePass::BuildCrossFusion(
                  scale,
                  scale_out);
 
-    std::unordered_set<const Node*> marked_nodes(
-        {reshape2_0,
-         reshape2_1,
-         reshape2_2,
-         reshape2_0_out,
-         reshape2_1_out,
-         reshape2_2_out,
-         transpose2_0,
-         transpose2_1,
-         transpose2_2,
-         transpose2_0_out,
-         transpose2_1_out,
-         transpose2_2_out,
-         matmul_qk,
-         matmul_qk_out,
-         softmax_qk,
-         softmax_qk_out,  // dropout_qk, dropout_qk_out,
-         transpose2_qkv,
-         transpose2_qkv_out,
-         matmul_qkv,
-         matmul_qkv_out,
-         mul0,
-         mul1,
-         mul2,
-         mul0_out,
-         mul1_out,
-         mul2_out,
-         mul2_w,
-         reshape2_qkv,
-         scale});
+    std::unordered_set<const Node*> marked_nodes({reshape2_0,
+                                                  reshape2_1,
+                                                  reshape2_2,
+                                                  reshape2_0_out,
+                                                  reshape2_1_out,
+                                                  reshape2_2_out,
+                                                  transpose2_0,
+                                                  transpose2_1,
+                                                  transpose2_2,
+                                                  transpose2_0_out,
+                                                  transpose2_1_out,
+                                                  transpose2_2_out,
+                                                  matmul_qk,
+                                                  matmul_qk_out,
+                                                  softmax_qk,
+                                                  softmax_qk_out,
+                                                  transpose2_qkv,
+                                                  transpose2_qkv_out,
+                                                  matmul_qkv,
+                                                  matmul_qkv_out,
+                                                  mul0,
+                                                  mul1,
+                                                  mul2,
+                                                  mul0_out,
+                                                  mul1_out,
+                                                  mul2_out,
+                                                  mul2_w,
+                                                  reshape2_qkv,
+                                                  scale});
     // Remove unneeded nodes.
     GraphSafeRemoveNodes(graph, marked_nodes);
     ++fusion_count;
@@ -549,6 +547,7 @@ void TrtCrossMultiHeadMatmulFusePass::ApplyImpl(Graph* graph) const {
       8520) {
     VLOG(3) << "Flash attention oss plugin only available for trt version >= "
                "8.5.2.2. Stop this pass";
+    return;
   }
   bool with_dynamic_shape = Get<bool>("with_dynamic_shape");
   if (!with_dynamic_shape) {
