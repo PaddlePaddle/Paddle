@@ -113,15 +113,12 @@ KernelSignature PowTripleGradOpArgumentMapping(
 }
 }  // namespace phi
 
-PD_REGISTER_BASE_KERNEL_NAME(brelu, hardtanh);
-PD_REGISTER_BASE_KERNEL_NAME(brelu_grad, hardtanh_grad);
 PD_REGISTER_BASE_KERNEL_NAME(hard_swish, hardswish);
 PD_REGISTER_BASE_KERNEL_NAME(hard_swish_grad, hardswish_grad);
 
 PD_REGISTER_ARG_MAPPING_FN(mish_grad, phi::MishGradOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(stanh_grad, phi::STanhGradOpArgumentMapping);
 
-PD_REGISTER_ARG_MAPPING_FN(brelu_grad, phi::HardTanhGradOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(relu6_grad, phi::Relu6GradOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(relu6, phi::Relu6OpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(hard_swish_grad,

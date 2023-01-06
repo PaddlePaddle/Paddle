@@ -646,6 +646,8 @@ PYBIND11_MODULE(libpaddle, m) {
         return oss.str();
       });
 
+  m.def("set_enable_prim", &paddle::prim::PrimCommonUtils::SetPrimEnable);
+  m.def("is_enable_prim", &paddle::prim::PrimCommonUtils::IsPrimEnabled);
   m.def("set_num_threads", &platform::SetNumThreads);
 
   m.def("disable_signal_handler", &DisableSignalHandler);

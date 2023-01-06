@@ -14,13 +14,13 @@
 
 #pragma once
 #include <algorithm>
+#include <atomic>
 #include <memory>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
 #include <utility>
 #include <vector>
-
 #include "paddle/fluid/framework/op_call_stack.h"
 #include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/framework/operator.h"
@@ -56,12 +56,17 @@ class StaticCompositeContext {
     return generator_->Generate(key);
   }
 
+  void SetEnablePrim(bool enable_prim) { enable_prim_ = enable_prim; }
+
+  bool IsPrimEnabled() { return enable_prim_; }
+
  private:
   StaticCompositeContext()
       : current_block_desc_(nullptr), generator_(new UniqueNameGenerator()) {}
 
   framework::BlockDesc* current_block_desc_;
   std::unique_ptr<UniqueNameGenerator> generator_;
+  static thread_local bool enable_prim_;
   static StaticCompositeContext* static_composite_context_;
   DISABLE_COPY_AND_ASSIGN(StaticCompositeContext);
 };

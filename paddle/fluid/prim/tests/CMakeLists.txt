@@ -32,7 +32,8 @@ cc_test_old(
   scale_op
   activation_op
   phi_api
-  phi_dygraph_api)
+  phi_dygraph_api
+  static_global_utils)
 
 if(NOT (NOT WITH_PYTHON AND ON_INFER))
   cc_test_old(
@@ -42,5 +43,6 @@ if(NOT (NOT WITH_PYTHON AND ON_INFER))
     DEPS
     ${prim_eager_deps}
     ${prim_generated_deps}
-    prim_utils)
+    prim_utils
+    static_global_utils)
 endif()

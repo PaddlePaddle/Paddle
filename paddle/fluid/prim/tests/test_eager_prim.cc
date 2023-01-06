@@ -25,7 +25,6 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_meta.h"
 
-DECLARE_bool(prim_enabled);
 PD_DECLARE_KERNEL(full, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(tanh, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(tanh_grad, CPU, ALL_LAYOUT);
@@ -69,7 +68,7 @@ TEST(EagerPrim, TanhBackwardTest) {
   paddle::experimental::Tensor out0 = tanh_ad_func(tensor0);
   std::vector<paddle::experimental::Tensor> outs0 = {out0};
   // Disable prim
-  FLAGS_prim_enabled = false;
+  PrimCommonUtils::SetPrimEnable(false);
   ASSERT_FALSE(PrimCommonUtils::IsPrimEnabled());
   // 4. Run Backward
   egr::Backward(outs0, {}, false);
@@ -77,7 +76,7 @@ TEST(EagerPrim, TanhBackwardTest) {
   paddle::experimental::Tensor out1 = tanh_ad_func(tensor1);
   std::vector<paddle::experimental::Tensor> outs1 = {out1};
   // Disable prim
-  FLAGS_prim_enabled = true;
+  PrimCommonUtils::SetPrimEnable(true);
   ASSERT_TRUE(PrimCommonUtils::IsPrimEnabled());
   // 4. Run Backward
   ::egr::Backward(outs1, {}, false);
@@ -100,9 +99,9 @@ TEST(EagerPrim, TanhBackwardTest) {
 }
 
 TEST(EagerPrim, TestFlags) {
-  FLAGS_prim_enabled = true;
+  PrimCommonUtils::SetPrimEnable(true);
   ASSERT_TRUE(PrimCommonUtils::IsPrimEnabled());
-  FLAGS_prim_enabled = false;
+  PrimCommonUtils::SetPrimEnable(false);
   ASSERT_FALSE(PrimCommonUtils::IsPrimEnabled());
 }
 

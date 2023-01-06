@@ -18,5 +18,6 @@ namespace paddle {
 namespace prim {
 StaticCompositeContext* StaticCompositeContext::static_composite_context_ =
     new StaticCompositeContext();
-}
+thread_local bool StaticCompositeContext::enable_prim_ = false;
+}  // namespace prim
 }  // namespace paddle

@@ -13,10 +13,11 @@
 # limitations under the License.
 
 
-import os
 import unittest
 
-os.environ['FLAGS_prim_enabled'] = 'False'
+from paddle.fluid import core
+
+core.set_enable_prim(False)
 
 import parameterized as param
 
