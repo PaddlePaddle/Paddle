@@ -1097,21 +1097,40 @@ void FlattenWithXShapeInferMeta(const MetaTensor& x,
                                 MetaTensor* xshape) {
   auto x_dims = x.dims();
   int in_dims_size = x_dims.size();
+
+  if (in_dims_size == 0) {
+    PADDLE_ENFORCE_EQ(
+        start_axis == 0 || start_axis == -1,
+        true,
+        phi::errors::InvalidArgument("The start_axis should be 0 or -1 when "
+                                     "the input tensor is a 0D-Tensor"));
+    PADDLE_ENFORCE_EQ(
+        stop_axis == 0 || stop_axis == -1,
+        true,
+        phi::errors::InvalidArgument("The stop_axis should be 0 or -1 when the "
+                                     "input tensor is a 0D-Tensor"));
+    // this can ensure out shape {1}
+    start_axis = 0;
+    stop_axis = -1;
+  }
+
   if (start_axis < 0) {
     start_axis = start_axis + in_dims_size;
   }
   if (stop_axis < 0) {
     stop_axis = stop_axis + in_dims_size;
   }
-  PADDLE_ENFORCE_GE(
-      stop_axis,
-      start_axis,
-      phi::errors::InvalidArgument("The stop_axis should be greater"
-                                   "than or equal to start_axis."));
+  if (in_dims_size > 0) {
+    PADDLE_ENFORCE_GE(
+        stop_axis,
+        start_axis,
+        phi::errors::InvalidArgument("The stop_axis should be greater"
+                                     "than or equal to start_axis."));
+  }
 
   int64_t outer = 1;
   std::vector<int32_t> out_shape;
-  out_shape.reserve(in_dims_size - stop_axis + start_axis);
+  out_shape.reserve(in_dims_size - stop_axis + start_axis + 1);
 
   for (int i = 0; i < start_axis; ++i) {
     out_shape.push_back(x_dims[i]);
