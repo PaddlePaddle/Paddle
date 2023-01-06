@@ -1,4 +1,4 @@
-// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -22,7 +22,6 @@
 #include "paddle/fluid/prim/api/manual/backward/composite_backward_api.h"
 #include "paddle/fluid/prim/utils/static/composite_grad_desc_maker.h"
 #include "paddle/fluid/prim/utils/static/desc_tensor.h"
-#include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/phi/infermeta/backward.h"
 #include "paddle/phi/infermeta/binary.h"
@@ -30,11 +29,25 @@
 #include "paddle/phi/infermeta/nullary.h"
 #include "paddle/phi/infermeta/ternary.h"
 #include "paddle/phi/infermeta/unary.h"
-
 namespace paddle {
 namespace operators {
 
 using paddle::framework::GradVarName;
+
+class TanhCompositeGradOpMaker : public prim::GradCompositeOpMakerBase {
+ public:
+  using prim::GradCompositeOpMakerBase::GradCompositeOpMakerBase;
+
+  void Apply() override {
+    paddle::experimental::Tensor out = paddle::experimental::Tensor(
+        std::make_shared<prim::DescTensor>(this->SingleForwardOutput("Out")));
+    paddle::experimental::Tensor grad_out = paddle::experimental::Tensor(
+        std::make_shared<prim::DescTensor>(this->SingleOutputGrad("Out")));
+    paddle::experimental::Tensor grad_x = paddle::experimental::Tensor(
+        std::make_shared<prim::DescTensor>(this->SingleInputGrad("X")));
+    prim::tanh_grad<prim::DescTensor>(out, grad_out, &grad_x);
+  }
+};
 
 class AcosOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
@@ -75,6 +88,79 @@ class AcoshOp : public framework::OperatorWithKernel {
 DECLARE_INFER_SHAPE_FUNCTOR(acosh,
                             AcoshInferShapeFunctor,
                             PD_INFER_META(phi::UnchangedInferMeta));
+
+class AddmmOpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  void Make() override {
+    AddInput("Input", "(Tensor), input 0 of addmm op.");
+    AddInput("X", "(Tensor), input 1 of addmm op.");
+    AddInput("Y", "(Tensor), input 2 of addmm op.");
+    AddOutput("Out", "(Tensor), output 0 of addmm op.");
+    AddAttr<float>("Beta", "(float), attribute 0 for addmm op.")
+        .SetDefault(1.0);
+    AddAttr<float>("Alpha", "(float), attribute 1 for addmm op.")
+        .SetDefault(1.0);
+    AddComment(R"DOC(
+TODO: Documentation of addmm op.
+)DOC");
+  }
+};
+
+class AddmmOp : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
+ protected:
+  phi::KernelKey GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    auto data_type =
+        framework::OperatorWithKernel::IndicateVarDataType(ctx, "X");
+    return phi::KernelKey(data_type, ctx.GetPlace());
+  }
+};
+
+DECLARE_INFER_SHAPE_FUNCTOR(addmm,
+                            AddmmInferShapeFunctor,
+                            PD_INFER_META(phi::AddmmInferMeta));
+
+class AllcloseOpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  void Make() override {
+    AddInput("Input", "(Tensor), input 0 of allclose op.");
+    AddInput("Other", "(Tensor), input 1 of allclose op.");
+    AddOutput("Out", "(Tensor), output 0 of allclose op.");
+    AddInput("Rtol", "attribute 0 for allclose op from 0D Tensor.")
+        .AsDispensable();
+    AddAttr<std::string>("rtol", "(std::string), attribute 0 for allclose op.")
+        .SetDefault("1e-5");
+    AddInput("Atol", "attribute 1 for allclose op from 0D Tensor.")
+        .AsDispensable();
+    AddAttr<std::string>("atol", "(std::string), attribute 1 for allclose op.")
+        .SetDefault("1e-8");
+    AddAttr<bool>("equal_nan", "(bool), attribute 2 for allclose op.")
+        .SetDefault(false);
+    AddComment(R"DOC(
+TODO: Documentation of allclose op.
+)DOC");
+  }
+};
+
+class AllcloseOp : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
+ protected:
+  phi::KernelKey GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    auto data_type =
+        framework::OperatorWithKernel::IndicateVarDataType(ctx, "Input");
+    return phi::KernelKey(data_type, ctx.GetPlace());
+  }
+};
+
+DECLARE_INFER_SHAPE_FUNCTOR(allclose,
+                            AllcloseInferShapeFunctor,
+                            PD_INFER_META(phi::AllValueCompareInferMeta));
 
 class AngleOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
@@ -390,6 +476,68 @@ DECLARE_INFER_SHAPE_FUNCTOR(cholesky_solve,
                             CholeskySolveInferShapeFunctor,
                             PD_INFER_META(phi::CholeskySolveInferMeta));
 
+class ClipOpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  void Make() override {
+    AddInput("X", "(Tensor), input 0 of clip op.");
+    AddOutput("Out", "(Tensor), output 0 of clip op.");
+    AddInput("Min", "attribute 0 for clip op from 0D Tensor.").AsDispensable();
+    AddAttr<float>("min", "(float), attribute 0 for clip op.");
+    AddInput("Max", "attribute 1 for clip op from 0D Tensor.").AsDispensable();
+    AddAttr<float>("max", "(float), attribute 1 for clip op.");
+    AddComment(R"DOC(
+TODO: Documentation of clip op.
+)DOC");
+  }
+};
+
+class ClipOp : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
+ protected:
+  phi::KernelKey GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    auto data_type =
+        framework::OperatorWithKernel::IndicateVarDataType(ctx, "X");
+    return phi::KernelKey(data_type, ctx.GetPlace());
+  }
+};
+
+DECLARE_INFER_SHAPE_FUNCTOR(clip,
+                            ClipInferShapeFunctor,
+                            PD_INFER_META(phi::UnchangedInferMeta));
+DECLARE_INPLACE_OP_INFERER(ClipInplaceInferer, {"X", "Out"});
+
+class ComplexOpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  void Make() override {
+    AddInput("X", "(Tensor), input 0 of complex op.");
+    AddInput("Y", "(Tensor), input 1 of complex op.");
+    AddOutput("Out", "(Tensor), output 0 of complex op.");
+    AddComment(R"DOC(
+TODO: Documentation of complex op.
+)DOC");
+  }
+};
+
+class ComplexOp : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
+ protected:
+  phi::KernelKey GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    auto data_type =
+        framework::OperatorWithKernel::IndicateVarDataType(ctx, "X");
+    return phi::KernelKey(data_type, ctx.GetPlace());
+  }
+};
+
+DECLARE_INFER_SHAPE_FUNCTOR(complex,
+                            ComplexInferShapeFunctor,
+                            PD_INFER_META(phi::ComplexInferMeta));
+
 class ConjOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
@@ -485,11 +633,11 @@ class CropTensorOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto data_type =
         framework::OperatorWithKernel::IndicateVarDataType(ctx, "X");
-    return framework::OpKernelType(data_type, ctx.GetPlace());
+    return phi::KernelKey(data_type, ctx.GetPlace());
   }
 };
 
@@ -515,11 +663,11 @@ class CrossOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto data_type =
         framework::OperatorWithKernel::IndicateVarDataType(ctx, "X");
-    return framework::OpKernelType(data_type, ctx.GetPlace());
+    return phi::KernelKey(data_type, ctx.GetPlace());
   }
 };
 
@@ -678,11 +826,11 @@ class DotOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto data_type =
         framework::OperatorWithKernel::IndicateVarDataType(ctx, "X");
-    return framework::OpKernelType(data_type, ctx.GetPlace());
+    return phi::KernelKey(data_type, ctx.GetPlace());
   }
 };
 
@@ -958,6 +1106,41 @@ DECLARE_INFER_SHAPE_FUNCTOR(fft_r2c,
                             FftR2cInferShapeFunctor,
                             PD_INFER_META(phi::FFTR2CInferMeta));
 
+class FillDiagonalOpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  void Make() override {
+    AddInput("X", "(Tensor), input 0 of fill_diagonal op.");
+    AddOutput("Out", "(Tensor), output 0 of fill_diagonal op.");
+    AddAttr<float>("value", "(float), attribute 0 for fill_diagonal op.")
+        .SetDefault(0);
+    AddAttr<int>("offset", "(int), attribute 1 for fill_diagonal op.")
+        .SetDefault(0);
+    AddAttr<bool>("wrap", "(bool), attribute 2 for fill_diagonal op.")
+        .SetDefault(false);
+    AddComment(R"DOC(
+TODO: Documentation of fill_diagonal op.
+)DOC");
+  }
+};
+
+class FillDiagonalOp : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
+ protected:
+  phi::KernelKey GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    auto data_type =
+        framework::OperatorWithKernel::IndicateVarDataType(ctx, "X");
+    return phi::KernelKey(data_type, ctx.GetPlace());
+  }
+};
+
+DECLARE_INFER_SHAPE_FUNCTOR(fill_diagonal,
+                            FillDiagonalInferShapeFunctor,
+                            PD_INFER_META(phi::FillDiagonalInferMeta));
+DECLARE_INPLACE_OP_INFERER(FillDiagonalInplaceInferer, {"X", "Out"});
+
 class FillDiagonalTensorOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
@@ -1060,6 +1243,58 @@ DECLARE_INFER_SHAPE_FUNCTOR(fold,
                             FoldInferShapeFunctor,
                             PD_INFER_META(phi::FoldInferMeta));
 
+class FrameOpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  void Make() override {
+    AddInput("X", "(Tensor), input 0 of frame op.");
+    AddOutput("Out", "(Tensor), output 0 of frame op.");
+    AddAttr<int>("frame_length", "(int), attribute 0 for frame op.");
+    AddAttr<int>("hop_length", "(int), attribute 1 for frame op.");
+    AddAttr<int>("axis", "(int), attribute 2 for frame op.").SetDefault(-1);
+    AddComment(R"DOC(
+TODO: Documentation of frame op.
+)DOC");
+  }
+};
+
+class FrameOp : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+};
+
+DECLARE_INFER_SHAPE_FUNCTOR(frame,
+                            FrameInferShapeFunctor,
+                            PD_INFER_META(phi::FrameInferMeta));
+
+class GatherNdOpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  void Make() override {
+    AddInput("X", "(Tensor), input 0 of gather_nd op.");
+    AddInput("Index", "(Tensor), input 1 of gather_nd op.");
+    AddOutput("Out", "(Tensor), output 0 of gather_nd op.");
+    AddComment(R"DOC(
+TODO: Documentation of gather_nd op.
+)DOC");
+  }
+};
+
+class GatherNdOp : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
+ protected:
+  phi::KernelKey GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    auto data_type =
+        framework::OperatorWithKernel::IndicateVarDataType(ctx, "X");
+    return phi::KernelKey(data_type, ctx.GetPlace());
+  }
+};
+
+DECLARE_INFER_SHAPE_FUNCTOR(gather_nd,
+                            GatherNdInferShapeFunctor,
+                            PD_INFER_META(phi::GatherNdInferMeta));
+
 class GatherTreeOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
@@ -1077,11 +1312,11 @@ class GatherTreeOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto data_type =
         framework::OperatorWithKernel::IndicateVarDataType(ctx, "Ids");
-    return framework::OpKernelType(data_type, ctx.GetPlace());
+    return phi::KernelKey(data_type, ctx.GetPlace());
   }
 };
 
@@ -1136,11 +1371,11 @@ class GridSamplerOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto data_type =
         framework::OperatorWithKernel::IndicateVarDataType(ctx, "X");
-    return framework::OpKernelType(data_type, ctx.GetPlace());
+    return phi::KernelKey(data_type, ctx.GetPlace());
   }
 };
 
@@ -1220,6 +1455,29 @@ DECLARE_INFER_SHAPE_FUNCTOR(hard_sigmoid,
                             HardSigmoidInferShapeFunctor,
                             PD_INFER_META(phi::UnchangedInferMeta));
 
+class BreluOpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  void Make() override {
+    AddInput("X", "(Tensor), input 0 of brelu op.");
+    AddOutput("Out", "(Tensor), output 0 of brelu op.");
+    AddAttr<float>("t_min", "(float), attribute 0 for brelu op.").SetDefault(0);
+    AddAttr<float>("t_max", "(float), attribute 1 for brelu op.")
+        .SetDefault(24);
+    AddComment(R"DOC(
+TODO: Documentation of brelu op.
+)DOC");
+  }
+};
+
+class BreluOp : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+};
+
+DECLARE_INFER_SHAPE_FUNCTOR(brelu,
+                            BreluInferShapeFunctor,
+                            PD_INFER_META(phi::UnchangedInferMeta));
+
 class HistogramOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
@@ -1244,6 +1502,26 @@ DECLARE_INFER_SHAPE_FUNCTOR(histogram,
                             HistogramInferShapeFunctor,
                             PD_INFER_META(phi::HistogramInferMeta));
 
+class ImagOpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  void Make() override {
+    AddInput("X", "(Tensor), input 0 of imag op.");
+    AddOutput("Out", "(Tensor), output 0 of imag op.");
+    AddComment(R"DOC(
+TODO: Documentation of imag op.
+)DOC");
+  }
+};
+
+class ImagOp : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+};
+
+DECLARE_INFER_SHAPE_FUNCTOR(imag,
+                            ImagInferShapeFunctor,
+                            PD_INFER_META(phi::RealAndImagInferMeta));
+
 class IndexSampleOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
@@ -1261,11 +1539,11 @@ class IndexSampleOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto data_type =
         framework::OperatorWithKernel::IndicateVarDataType(ctx, "X");
-    return framework::OpKernelType(data_type, ctx.GetPlace());
+    return phi::KernelKey(data_type, ctx.GetPlace());
   }
 };
 
@@ -1292,11 +1570,11 @@ class IndexSelectOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto data_type =
         framework::OperatorWithKernel::IndicateVarDataType(ctx, "X");
-    return framework::OpKernelType(data_type, ctx.GetPlace());
+    return phi::KernelKey(data_type, ctx.GetPlace());
   }
 };
 
@@ -1343,6 +1621,45 @@ class IsEmptyOp : public framework::OperatorWithKernel {
 DECLARE_INFER_SHAPE_FUNCTOR(is_empty,
                             IsEmptyInferShapeFunctor,
                             PD_INFER_META(phi::IsEmptyInferMeta));
+
+class IscloseOpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  void Make() override {
+    AddInput("Input", "(Tensor), input 0 of isclose op.");
+    AddInput("Other", "(Tensor), input 1 of isclose op.");
+    AddOutput("Out", "(Tensor), output 0 of isclose op.");
+    AddInput("Rtol", "attribute 0 for isclose op from 0D Tensor.")
+        .AsDispensable();
+    AddAttr<std::string>("rtol", "(std::string), attribute 0 for isclose op.")
+        .SetDefault("1e-5");
+    AddInput("Atol", "attribute 1 for isclose op from 0D Tensor.")
+        .AsDispensable();
+    AddAttr<std::string>("atol", "(std::string), attribute 1 for isclose op.")
+        .SetDefault("1e-8");
+    AddAttr<bool>("equal_nan", "(bool), attribute 2 for isclose op.")
+        .SetDefault(false);
+    AddComment(R"DOC(
+TODO: Documentation of isclose op.
+)DOC");
+  }
+};
+
+class IscloseOp : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
+ protected:
+  phi::KernelKey GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    auto data_type =
+        framework::OperatorWithKernel::IndicateVarDataType(ctx, "Input");
+    return phi::KernelKey(data_type, ctx.GetPlace());
+  }
+};
+
+DECLARE_INFER_SHAPE_FUNCTOR(isclose,
+                            IscloseInferShapeFunctor,
+                            PD_INFER_META(phi::ValueCompareInferMeta));
 
 class IsfiniteV2OpMaker : public framework::OpProtoAndCheckerMaker {
  public:
@@ -1449,11 +1766,11 @@ class LabelSmoothOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto data_type =
         framework::OperatorWithKernel::IndicateVarDataType(ctx, "X");
-    return framework::OpKernelType(data_type, ctx.GetPlace());
+    return phi::KernelKey(data_type, ctx.GetPlace());
   }
 };
 
@@ -1693,11 +2010,11 @@ class LuUnpackOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto data_type =
         framework::OperatorWithKernel::IndicateVarDataType(ctx, "X");
-    return framework::OpKernelType(data_type, ctx.GetPlace());
+    return phi::KernelKey(data_type, ctx.GetPlace());
   }
 };
 
@@ -1722,11 +2039,11 @@ class MaskedSelectOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto data_type =
         framework::OperatorWithKernel::IndicateVarDataType(ctx, "X");
-    return framework::OpKernelType(data_type, ctx.GetPlace());
+    return phi::KernelKey(data_type, ctx.GetPlace());
   }
 };
 
@@ -1822,11 +2139,11 @@ class MultinomialOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto data_type =
         framework::OperatorWithKernel::IndicateVarDataType(ctx, "X");
-    return framework::OpKernelType(data_type, ctx.GetPlace());
+    return phi::KernelKey(data_type, ctx.GetPlace());
   }
 };
 
@@ -1879,11 +2196,11 @@ class NllLossOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto data_type =
         framework::OperatorWithKernel::IndicateVarDataType(ctx, "X");
-    return framework::OpKernelType(data_type, ctx.GetPlace());
+    return phi::KernelKey(data_type, ctx.GetPlace());
   }
 };
 
@@ -1912,6 +2229,62 @@ class NpuIdentityOp : public framework::OperatorWithKernel {
 DECLARE_INFER_SHAPE_FUNCTOR(npu_identity,
                             NpuIdentityInferShapeFunctor,
                             PD_INFER_META(phi::UnchangedInferMeta));
+
+class OverlapAddOpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  void Make() override {
+    AddInput("X", "(Tensor), input 0 of overlap_add op.");
+    AddOutput("Out", "(Tensor), output 0 of overlap_add op.");
+    AddAttr<int>("hop_length", "(int), attribute 0 for overlap_add op.");
+    AddAttr<int>("axis", "(int), attribute 1 for overlap_add op.")
+        .SetDefault(-1);
+    AddComment(R"DOC(
+TODO: Documentation of overlap_add op.
+)DOC");
+  }
+};
+
+class OverlapAddOp : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
+ protected:
+  phi::KernelKey GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    auto data_type =
+        framework::OperatorWithKernel::IndicateVarDataType(ctx, "X");
+    return phi::KernelKey(data_type, ctx.GetPlace());
+  }
+};
+
+DECLARE_INFER_SHAPE_FUNCTOR(overlap_add,
+                            OverlapAddInferShapeFunctor,
+                            PD_INFER_META(phi::OverlapAddInferMeta));
+
+class PixelShuffleOpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  void Make() override {
+    AddInput("X", "(Tensor), input 0 of pixel_shuffle op.");
+    AddOutput("Out", "(Tensor), output 0 of pixel_shuffle op.");
+    AddAttr<int>("upscale_factor", "(int), attribute 0 for pixel_shuffle op.")
+        .SetDefault(1);
+    AddAttr<std::string>("data_format",
+                         "(std::string), attribute 1 for pixel_shuffle op.")
+        .SetDefault("NCHW");
+    AddComment(R"DOC(
+TODO: Documentation of pixel_shuffle op.
+)DOC");
+  }
+};
+
+class PixelShuffleOp : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+};
+
+DECLARE_INFER_SHAPE_FUNCTOR(pixel_shuffle,
+                            PixelShuffleInferShapeFunctor,
+                            PD_INFER_META(phi::PixelShuffleInferMeta));
 
 class PoissonOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
@@ -1955,11 +2328,11 @@ class PutAlongAxisOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto data_type =
         framework::OperatorWithKernel::IndicateVarDataType(ctx, "Input");
-    return framework::OpKernelType(data_type, ctx.GetPlace());
+    return phi::KernelKey(data_type, ctx.GetPlace());
   }
 };
 
@@ -1990,6 +2363,26 @@ class QrOp : public framework::OperatorWithKernel {
 DECLARE_INFER_SHAPE_FUNCTOR(qr,
                             QrInferShapeFunctor,
                             PD_INFER_META(phi::QrInferMeta));
+
+class RealOpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  void Make() override {
+    AddInput("X", "(Tensor), input 0 of real op.");
+    AddOutput("Out", "(Tensor), output 0 of real op.");
+    AddComment(R"DOC(
+TODO: Documentation of real op.
+)DOC");
+  }
+};
+
+class RealOp : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+};
+
+DECLARE_INFER_SHAPE_FUNCTOR(real,
+                            RealInferShapeFunctor,
+                            PD_INFER_META(phi::RealAndImagInferMeta));
 
 class ReciprocalOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
@@ -2056,6 +2449,42 @@ DECLARE_INFER_SHAPE_FUNCTOR(renorm,
                             RenormInferShapeFunctor,
                             PD_INFER_META(phi::UnchangedInferMeta));
 
+class RollOpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  void Make() override {
+    AddInput("X", "(Tensor), input 0 of roll op.");
+    AddOutput("Out", "(Tensor), output 0 of roll op.");
+    AddInput("ShiftsTensor", "attribute 0 for roll op from 1D integer Tensor.")
+        .AsDispensable();
+    AddAttr<std::vector<int64_t>>(
+        "shifts", "(std::vector<int64_t>), attribute 0 for roll op.")
+        .SetDefault({});
+    AddAttr<std::vector<int64_t>>(
+        "axis", "(std::vector<int64_t>), attribute 1 for roll op.")
+        .SetDefault({});
+    AddComment(R"DOC(
+TODO: Documentation of roll op.
+)DOC");
+  }
+};
+
+class RollOp : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
+ protected:
+  phi::KernelKey GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    auto data_type =
+        framework::OperatorWithKernel::IndicateVarDataType(ctx, "X");
+    return phi::KernelKey(data_type, ctx.GetPlace());
+  }
+};
+
+DECLARE_INFER_SHAPE_FUNCTOR(roll,
+                            RollInferShapeFunctor,
+                            PD_INFER_META(phi::RollInferMeta));
+
 class RoundOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
@@ -2098,6 +2527,69 @@ DECLARE_INFER_SHAPE_FUNCTOR(rsqrt,
                             PD_INFER_META(phi::UnchangedInferMeta));
 DECLARE_INPLACE_OP_INFERER(RsqrtInplaceInferer, {"X", "Out"});
 
+class ScatterOpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  void Make() override {
+    AddInput("X", "(Tensor), input 0 of scatter op.");
+    AddInput("Ids", "(Tensor), input 1 of scatter op.");
+    AddInput("Updates", "(Tensor), input 2 of scatter op.");
+    AddOutput("Out", "(Tensor), output 0 of scatter op.");
+    AddAttr<bool>("overwrite", "(bool), attribute 0 for scatter op.")
+        .SetDefault(true);
+    AddComment(R"DOC(
+TODO: Documentation of scatter op.
+)DOC");
+  }
+};
+
+class ScatterOp : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
+ protected:
+  phi::KernelKey GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    auto data_type =
+        framework::OperatorWithKernel::IndicateVarDataType(ctx, "X");
+    return phi::KernelKey(data_type, ctx.GetPlace());
+  }
+};
+
+DECLARE_INFER_SHAPE_FUNCTOR(scatter,
+                            ScatterInferShapeFunctor,
+                            PD_INFER_META(phi::ScatterInferMeta));
+DECLARE_INPLACE_OP_INFERER(ScatterInplaceInferer, {"X", "Out"});
+
+class ScatterNdAddOpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  void Make() override {
+    AddInput("X", "(Tensor), input 0 of scatter_nd_add op.");
+    AddInput("Index", "(Tensor), input 1 of scatter_nd_add op.");
+    AddInput("Updates", "(Tensor), input 2 of scatter_nd_add op.");
+    AddOutput("Out", "(Tensor), output 0 of scatter_nd_add op.");
+    AddComment(R"DOC(
+TODO: Documentation of scatter_nd_add op.
+)DOC");
+  }
+};
+
+class ScatterNdAddOp : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
+ protected:
+  phi::KernelKey GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    auto data_type =
+        framework::OperatorWithKernel::IndicateVarDataType(ctx, "X");
+    return phi::KernelKey(data_type, ctx.GetPlace());
+  }
+};
+
+DECLARE_INFER_SHAPE_FUNCTOR(scatter_nd_add,
+                            ScatterNdAddInferShapeFunctor,
+                            PD_INFER_META(phi::ScatterNdAddInferMeta));
+
 class SearchsortedOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
@@ -2119,17 +2611,41 @@ class SearchsortedOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto data_type = framework::OperatorWithKernel::IndicateVarDataType(
         ctx, "SortedSequence");
-    return framework::OpKernelType(data_type, ctx.GetPlace());
+    return phi::KernelKey(data_type, ctx.GetPlace());
   }
 };
 
 DECLARE_INFER_SHAPE_FUNCTOR(searchsorted,
                             SearchsortedInferShapeFunctor,
                             PD_INFER_META(phi::SearchsortedInferMeta));
+
+class SeluOpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  void Make() override {
+    AddInput("X", "(Tensor), input 0 of selu op.");
+    AddOutput("Out", "(Tensor), output 0 of selu op.");
+    AddAttr<float>("scale", "(float), attribute 0 for selu op.")
+        .SetDefault(1.0507009873554804934193349852946);
+    AddAttr<float>("alpha", "(float), attribute 1 for selu op.")
+        .SetDefault(1.6732632423543772848170429916717);
+    AddComment(R"DOC(
+TODO: Documentation of selu op.
+)DOC");
+  }
+};
+
+class SeluOp : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+};
+
+DECLARE_INFER_SHAPE_FUNCTOR(selu,
+                            SeluInferShapeFunctor,
+                            PD_INFER_META(phi::UnchangedInferMeta));
 
 class GraphSendUvOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
@@ -2153,17 +2669,42 @@ class GraphSendUvOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto data_type =
         framework::OperatorWithKernel::IndicateVarDataType(ctx, "x");
-    return framework::OpKernelType(data_type, ctx.GetPlace());
+    return phi::KernelKey(data_type, ctx.GetPlace());
   }
 };
 
 DECLARE_INFER_SHAPE_FUNCTOR(graph_send_uv,
                             GraphSendUvInferShapeFunctor,
                             PD_INFER_META(phi::SendUVInferMeta));
+
+class ShardIndexOpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  void Make() override {
+    AddInput("X", "(Tensor), input 0 of shard_index op.");
+    AddOutput("Out", "(Tensor), output 0 of shard_index op.");
+    AddAttr<int>("index_num", "(int), attribute 0 for shard_index op.");
+    AddAttr<int>("nshards", "(int), attribute 1 for shard_index op.");
+    AddAttr<int>("shard_id", "(int), attribute 2 for shard_index op.");
+    AddAttr<int>("ignore_value", "(int), attribute 3 for shard_index op.")
+        .SetDefault(-1);
+    AddComment(R"DOC(
+TODO: Documentation of shard_index op.
+)DOC");
+  }
+};
+
+class ShardIndexOp : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+};
+
+DECLARE_INFER_SHAPE_FUNCTOR(shard_index,
+                            ShardIndexInferShapeFunctor,
+                            PD_INFER_META(phi::ShardIndexInferMeta));
 
 class SigmoidOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
@@ -2328,11 +2869,11 @@ class SolveOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto data_type =
         framework::OperatorWithKernel::IndicateVarDataType(ctx, "X");
-    return framework::OpKernelType(data_type, ctx.GetPlace());
+    return phi::KernelKey(data_type, ctx.GetPlace());
   }
 };
 
@@ -2381,6 +2922,42 @@ DECLARE_INFER_SHAPE_FUNCTOR(square,
                             SquareInferShapeFunctor,
                             PD_INFER_META(phi::UnchangedInferMeta));
 
+class Squeeze2OpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  void Make() override {
+    AddInput("X", "(Tensor), input 0 of squeeze2 op.");
+    AddOutput("Out", "(Tensor), output 0 of squeeze2 op.");
+    AddOutput("XShape", "(Tensor), output 1 of squeeze2 op.")
+        .AsIntermediate()
+        .AsExtra();
+    AddAttr<std::vector<int>>(
+        "axes", "(std::vector<int>), attribute 0 for squeeze2 op.")
+        .SetDefault({})
+        .SupportTensor();
+    AddComment(R"DOC(
+TODO: Documentation of squeeze2 op.
+)DOC");
+  }
+};
+
+class Squeeze2Op : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
+ protected:
+  phi::KernelKey GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    auto data_type =
+        framework::OperatorWithKernel::IndicateVarDataType(ctx, "X");
+    return phi::KernelKey(data_type, ctx.GetPlace());
+  }
+};
+
+DECLARE_INFER_SHAPE_FUNCTOR(squeeze2,
+                            Squeeze2InferShapeFunctor,
+                            PD_INFER_META(phi::SqueezeWithXShapeInferMeta));
+DECLARE_INPLACE_OP_INFERER(Squeeze2InplaceInferer, {"X", "Out"});
+
 class SvdOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
@@ -2423,11 +3000,11 @@ class TakeAlongAxisOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto data_type =
         framework::OperatorWithKernel::IndicateVarDataType(ctx, "Input");
-    return framework::OpKernelType(data_type, ctx.GetPlace());
+    return phi::KernelKey(data_type, ctx.GetPlace());
   }
 };
 
@@ -2543,11 +3120,11 @@ class TopKV2Op : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto data_type =
         framework::OperatorWithKernel::IndicateVarDataType(ctx, "X");
-    return framework::OpKernelType(data_type, ctx.GetPlace());
+    return phi::KernelKey(data_type, ctx.GetPlace());
   }
 };
 
@@ -2626,6 +3203,162 @@ DECLARE_INFER_SHAPE_FUNCTOR(unfold,
                             UnfoldInferShapeFunctor,
                             PD_INFER_META(phi::UnfoldInferMeta));
 
+class Unsqueeze2OpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  void Make() override {
+    AddInput("X", "(Tensor), input 0 of unsqueeze2 op.");
+    AddOutput("Out", "(Tensor), output 0 of unsqueeze2 op.");
+    AddOutput("XShape", "(Tensor), output 1 of unsqueeze2 op.")
+        .AsIntermediate()
+        .AsExtra();
+    AddInput("AxesTensor",
+             "attribute 0 for unsqueeze2 op from 1D integer Tensor.")
+        .AsDispensable();
+    AddInput("AxesTensorList",
+             "attribute 0 for unsqueeze2 op from list fo 0D integer Tensors.")
+        .AsDuplicable()
+        .AsDispensable();
+    AddAttr<std::vector<int>>(
+        "axes", "(std::vector<int>), attribute 0 for unsqueeze2 op.")
+        .SetDefault({});
+    AddComment(R"DOC(
+TODO: Documentation of unsqueeze2 op.
+)DOC");
+  }
+};
+
+class Unsqueeze2Op : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
+ protected:
+  phi::KernelKey GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    auto data_type =
+        framework::OperatorWithKernel::IndicateVarDataType(ctx, "X");
+    return phi::KernelKey(data_type, ctx.GetPlace());
+  }
+};
+
+DECLARE_INFER_SHAPE_FUNCTOR(unsqueeze2,
+                            Unsqueeze2InferShapeFunctor,
+                            PD_INFER_META(phi::UnsqueezeWithXShapeInferMeta));
+DECLARE_INPLACE_OP_INFERER(Unsqueeze2InplaceInferer, {"X", "Out"});
+
+class UnstackOpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  void Make() override {
+    AddInput("X", "(Tensor), input 0 of unstack op.");
+    AddOutput("Y", "(Tensor[]), output 0 of unstack op.").AsDuplicable();
+    AddAttr<int>("axis", "(int), attribute 0 for unstack op.").SetDefault(0);
+    AddAttr<int>("num", "(int), attribute 1 for unstack op.").SetDefault(0);
+    AddComment(R"DOC(
+TODO: Documentation of unstack op.
+)DOC");
+  }
+};
+
+class UnstackOp : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+};
+
+DECLARE_INFER_SHAPE_FUNCTOR(unstack,
+                            UnstackInferShapeFunctor,
+                            PD_INFER_META(phi::UnStackInferMeta));
+
+class ViterbiDecodeOpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  void Make() override {
+    AddInput("Input", "(Tensor), input 0 of viterbi_decode op.");
+    AddInput("Transition", "(Tensor), input 1 of viterbi_decode op.");
+    AddInput("Length", "(Tensor), input 2 of viterbi_decode op.");
+    AddOutput("Scores", "(Tensor), output 0 of viterbi_decode op.");
+    AddOutput("Path", "(Tensor), output 1 of viterbi_decode op.");
+    AddAttr<bool>("include_bos_eos_tag",
+                  "(bool), attribute 0 for viterbi_decode op.")
+        .SetDefault(true);
+    AddComment(R"DOC(
+TODO: Documentation of viterbi_decode op.
+)DOC");
+  }
+};
+
+class ViterbiDecodeOp : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
+ protected:
+  phi::KernelKey GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    auto data_type =
+        framework::OperatorWithKernel::IndicateVarDataType(ctx, "Input");
+    return phi::KernelKey(data_type, ctx.GetPlace());
+  }
+};
+
+DECLARE_INFER_SHAPE_FUNCTOR(viterbi_decode,
+                            ViterbiDecodeInferShapeFunctor,
+                            PD_INFER_META(phi::ViterbiDecodeInferMeta));
+
+class WarprnntOpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  void Make() override {
+    AddInput("input", "(Tensor), input 0 of warprnnt op.");
+    AddInput("label", "(Tensor), input 1 of warprnnt op.");
+    AddInput("input_lengths", "(Tensor), input 2 of warprnnt op.");
+    AddInput("label_lengths", "(Tensor), input 3 of warprnnt op.");
+    AddOutput("loss", "(Tensor), output 0 of warprnnt op.");
+    AddOutput("warprnntgrad", "(Tensor), output 1 of warprnnt op.")
+        .AsIntermediate();
+    AddAttr<int>("blank", "(int), attribute 0 for warprnnt op.").SetDefault(0);
+    AddAttr<float>("fastemit_lambda", "(float), attribute 1 for warprnnt op.")
+        .SetDefault(0.0);
+    AddComment(R"DOC(
+TODO: Documentation of warprnnt op.
+)DOC");
+  }
+};
+
+class WarprnntOp : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
+ protected:
+  phi::KernelKey GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    auto data_type =
+        framework::OperatorWithKernel::IndicateVarDataType(ctx, "input");
+    return phi::KernelKey(data_type, ctx.GetPlace());
+  }
+};
+
+DECLARE_INFER_SHAPE_FUNCTOR(warprnnt,
+                            WarprnntInferShapeFunctor,
+                            PD_INFER_META(phi::WarprnntInferMeta));
+
+class WhereOpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  void Make() override {
+    AddInput("Condition", "(Tensor), input 0 of where op.");
+    AddInput("X", "(Tensor), input 1 of where op.");
+    AddInput("Y", "(Tensor), input 2 of where op.");
+    AddOutput("Out", "(Tensor), output 0 of where op.");
+    AddComment(R"DOC(
+TODO: Documentation of where op.
+)DOC");
+  }
+};
+
+class WhereOp : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+};
+
+DECLARE_INFER_SHAPE_FUNCTOR(where,
+                            WhereInferShapeFunctor,
+                            PD_INFER_META(phi::WhereInferMeta));
+
 template <typename T>
 class AcosGradOpMaker : public framework::SingleGradOpMaker<T> {
  public:
@@ -2685,6 +3418,37 @@ DECLARE_INPLACE_OP_INFERER(AcoshGradInplaceInferer,
                            {GradVarName("Out"), GradVarName("X")});
 
 template <typename T>
+class AddmmGradOpMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  void Apply(GradOpPtr<T> grad_op) const override {
+    grad_op->SetType("addmm_grad");
+
+    grad_op->SetInput("Input", this->Input("Input"));
+    grad_op->SetInput("X", this->Input("X"));
+    grad_op->SetInput("Y", this->Input("Y"));
+    grad_op->SetInput(GradVarName("Out"), this->OutputGrad("Out"));
+
+    grad_op->SetOutput(GradVarName("Input"), this->InputGrad("Input"));
+    grad_op->SetOutput(GradVarName("X"), this->InputGrad("X"));
+    grad_op->SetOutput(GradVarName("Y"), this->InputGrad("Y"));
+
+    grad_op->SetAttrMap(this->Attrs());
+  }
+};
+
+class AddmmGradOp : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+};
+
+DECLARE_INFER_SHAPE_FUNCTOR(addmm_grad,
+                            AddmmGradInferShapeFunctor,
+                            PD_INFER_META(phi::GeneralTernaryGradInferMeta));
+
+template <typename T>
 class AngleGradOpMaker : public framework::SingleGradOpMaker<T> {
  public:
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
@@ -2735,11 +3499,11 @@ class ArgsortGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto data_type = framework::OperatorWithKernel::IndicateVarDataType(
         ctx, GradVarName("Out"));
-    return framework::OpKernelType(data_type, ctx.GetPlace());
+    return phi::KernelKey(data_type, ctx.GetPlace());
   }
 };
 
@@ -2949,11 +3713,11 @@ class BmmGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto data_type = framework::OperatorWithKernel::IndicateVarDataType(
         ctx, GradVarName("Out"));
-    return framework::OpKernelType(data_type, ctx.GetPlace());
+    return phi::KernelKey(data_type, ctx.GetPlace());
   }
 };
 
@@ -2998,12 +3762,12 @@ class CeluGradGradOpMaker : public framework::SingleGradOpMaker<T> {
   void Apply(GradOpPtr<T> grad_op) const override {
     grad_op->SetType("celu_grad_grad");
 
-    grad_op->SetInput("x", this->Input("X"));
+    grad_op->SetInput("X", this->Input("X"));
     grad_op->SetInput("grad_out", this->Input(GradVarName("Out")));
     grad_op->SetInput(GradVarName("grad_x"),
                       this->OutputGrad(GradVarName("X")));
 
-    grad_op->SetOutput(GradVarName("x"), this->InputGrad("X"));
+    grad_op->SetOutput(GradVarName("X"), this->InputGrad("X"));
     grad_op->SetOutput(GradVarName("grad_out"),
                        this->InputGrad(GradVarName("Out")));
 
@@ -3109,6 +3873,121 @@ DECLARE_INFER_SHAPE_FUNCTOR(cholesky_solve_grad,
                             PD_INFER_META(phi::GeneralBinaryGradInferMeta));
 
 template <typename T>
+class ClipDoubleGradOpMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  void Apply(GradOpPtr<T> grad_op) const override {
+    grad_op->SetType("clip_double_grad");
+
+    grad_op->SetInput("X", this->Input("X"));
+    grad_op->SetInput(GradVarName("grad_x"),
+                      this->OutputGrad(GradVarName("X")));
+
+    grad_op->SetOutput(GradVarName("grad_out"),
+                       this->InputGrad(GradVarName("Out")));
+
+    grad_op->SetAttrMap(this->Attrs());
+    if (this->HasInput("Min")) {
+      grad_op->SetInput("Min", this->Input("Min"));
+    }
+    if (this->HasInput("Max")) {
+      grad_op->SetInput("Max", this->Input("Max"));
+    }
+  }
+};
+
+class ClipDoubleGradOp : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
+ protected:
+  phi::KernelKey GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    auto data_type =
+        framework::OperatorWithKernel::IndicateVarDataType(ctx, "X");
+    return phi::KernelKey(data_type, ctx.GetPlace());
+  }
+};
+
+DECLARE_INFER_SHAPE_FUNCTOR(clip_double_grad,
+                            ClipDoubleGradInferShapeFunctor,
+                            PD_INFER_META(phi::UnchangedInferMeta));
+
+template <typename T>
+class ClipGradOpMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  void Apply(GradOpPtr<T> grad_op) const override {
+    grad_op->SetType("clip_grad");
+
+    grad_op->SetInput("X", this->Input("X"));
+    grad_op->SetInput(GradVarName("Out"), this->OutputGrad("Out"));
+
+    grad_op->SetOutput(GradVarName("X"), this->InputGrad("X"));
+
+    grad_op->SetAttrMap(this->Attrs());
+    if (this->HasInput("Min")) {
+      grad_op->SetInput("Min", this->Input("Min"));
+    }
+    if (this->HasInput("Max")) {
+      grad_op->SetInput("Max", this->Input("Max"));
+    }
+  }
+};
+
+class ClipGradOp : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+};
+
+DECLARE_INFER_SHAPE_FUNCTOR(clip_grad,
+                            ClipGradInferShapeFunctor,
+                            PD_INFER_META(phi::UnchangedInferMeta));
+DECLARE_INPLACE_OP_INFERER(ClipGradInplaceInferer,
+                           {GradVarName("Out"), GradVarName("X")});
+
+template <typename T>
+class ComplexGradOpMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  void Apply(GradOpPtr<T> grad_op) const override {
+    grad_op->SetType("complex_grad");
+
+    grad_op->SetInput("X", this->Input("X"));
+    grad_op->SetInput("Y", this->Input("Y"));
+    grad_op->SetInput(GradVarName("Out"), this->OutputGrad("Out"));
+
+    grad_op->SetOutput(GradVarName("X"), this->InputGrad("X"));
+    grad_op->SetOutput(GradVarName("Y"), this->InputGrad("Y"));
+
+    grad_op->SetAttrMap(this->Attrs());
+  }
+};
+
+class ComplexGradOp : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
+ protected:
+  phi::KernelKey GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    auto data_type =
+        framework::OperatorWithKernel::IndicateVarDataType(ctx, "X");
+    return phi::KernelKey(data_type, ctx.GetPlace());
+  }
+};
+
+DECLARE_INFER_SHAPE_FUNCTOR(complex_grad,
+                            ComplexGradInferShapeFunctor,
+                            PD_INFER_META(phi::ComplexGradInferMeta));
+
+template <typename T>
 class ConjGradOpMaker : public framework::SingleGradOpMaker<T> {
  public:
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
@@ -3132,12 +4011,12 @@ class CosDoubleGradOpMaker : public framework::SingleGradOpMaker<T> {
   void Apply(GradOpPtr<T> grad_op) const override {
     grad_op->SetType("cos_double_grad");
 
-    grad_op->SetInput("x", this->Input("X"));
+    grad_op->SetInput("X", this->Input("X"));
     grad_op->SetInput("grad_out", this->Input(GradVarName("Out")));
     grad_op->SetInput(GradVarName("grad_x"),
                       this->OutputGrad(GradVarName("X")));
 
-    grad_op->SetOutput(GradVarName("x"), this->InputGrad("X"));
+    grad_op->SetOutput(GradVarName("X"), this->InputGrad("X"));
     grad_op->SetOutput(GradVarName("grad_out"),
                        this->InputGrad(GradVarName("Out")));
 
@@ -3194,16 +4073,16 @@ class CosTripleGradOpMaker : public framework::SingleGradOpMaker<T> {
   void Apply(GradOpPtr<T> grad_op) const override {
     grad_op->SetType("cos_triple_grad");
 
-    grad_op->SetInput("x", this->Input("x"));
+    grad_op->SetInput("X", this->Input("X"));
     grad_op->SetInput("grad_out_forward", this->Input("grad_out"));
     grad_op->SetInput("grad_x_grad_forward",
                       this->Input(GradVarName("grad_x")));
     grad_op->SetInput(GradVarName("grad_x"),
-                      this->OutputGrad(GradVarName("x")));
+                      this->OutputGrad(GradVarName("X")));
     grad_op->SetInput(GradVarName("grad_out_grad"),
                       this->OutputGrad(GradVarName("grad_out")));
 
-    grad_op->SetOutput(GradVarName("x"), this->InputGrad("x"));
+    grad_op->SetOutput(GradVarName("X"), this->InputGrad("X"));
     grad_op->SetOutput(GradVarName("grad_out_forward"),
                        this->InputGrad("grad_out"));
     grad_op->SetOutput(GradVarName("grad_x_grad_forward"),
@@ -3283,11 +4162,11 @@ class CropTensorGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto data_type =
         framework::OperatorWithKernel::IndicateVarDataType(ctx, "X");
-    return framework::OpKernelType(data_type, ctx.GetPlace());
+    return phi::KernelKey(data_type, ctx.GetPlace());
   }
 };
 
@@ -3320,11 +4199,11 @@ class CrossGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto data_type = framework::OperatorWithKernel::IndicateVarDataType(
         ctx, GradVarName("Out"));
-    return framework::OpKernelType(data_type, ctx.GetPlace());
+    return phi::KernelKey(data_type, ctx.GetPlace());
   }
 };
 
@@ -3356,11 +4235,11 @@ class DeterminantGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto data_type = framework::OperatorWithKernel::IndicateVarDataType(
         ctx, GradVarName("Out"));
-    return framework::OpKernelType(data_type, ctx.GetPlace());
+    return phi::KernelKey(data_type, ctx.GetPlace());
   }
 };
 
@@ -3391,11 +4270,11 @@ class DiagV2GradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto data_type = framework::OperatorWithKernel::IndicateVarDataType(
         ctx, GradVarName("Out"));
-    return framework::OpKernelType(data_type, ctx.GetPlace());
+    return phi::KernelKey(data_type, ctx.GetPlace());
   }
 };
 
@@ -3428,11 +4307,11 @@ class DiagonalGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto data_type = framework::OperatorWithKernel::IndicateVarDataType(
         ctx, GradVarName("Out"));
-    return framework::OpKernelType(data_type, ctx.GetPlace());
+    return phi::KernelKey(data_type, ctx.GetPlace());
   }
 };
 
@@ -3525,11 +4404,11 @@ class DotGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto data_type = framework::OperatorWithKernel::IndicateVarDataType(
         ctx, GradVarName("Out"));
-    return framework::OpKernelType(data_type, ctx.GetPlace());
+    return phi::KernelKey(data_type, ctx.GetPlace());
   }
 };
 
@@ -3564,11 +4443,11 @@ class EigGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto data_type =
         framework::OperatorWithKernel::IndicateVarDataType(ctx, "Eigenvectors");
-    return framework::OpKernelType(data_type, ctx.GetPlace());
+    return phi::KernelKey(data_type, ctx.GetPlace());
   }
 };
 
@@ -3603,11 +4482,11 @@ class EighGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto data_type =
         framework::OperatorWithKernel::IndicateVarDataType(ctx, "Eigenvectors");
-    return framework::OpKernelType(data_type, ctx.GetPlace());
+    return phi::KernelKey(data_type, ctx.GetPlace());
   }
 };
 
@@ -3624,12 +4503,12 @@ class EluGradGradOpMaker : public framework::SingleGradOpMaker<T> {
   void Apply(GradOpPtr<T> grad_op) const override {
     grad_op->SetType("elu_grad_grad");
 
-    grad_op->SetInput("x", this->Input("X"));
+    grad_op->SetInput("X", this->Input("X"));
     grad_op->SetInput("grad_out", this->Input(GradVarName("Out")));
     grad_op->SetInput(GradVarName("grad_x"),
                       this->OutputGrad(GradVarName("X")));
 
-    grad_op->SetOutput(GradVarName("x"), this->InputGrad("X"));
+    grad_op->SetOutput(GradVarName("X"), this->InputGrad("X"));
     grad_op->SetOutput(GradVarName("grad_out"),
                        this->InputGrad(GradVarName("Out")));
 
@@ -3701,11 +4580,11 @@ class ErfGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto data_type = framework::OperatorWithKernel::IndicateVarDataType(
         ctx, GradVarName("Out"));
-    return framework::OpKernelType(data_type, ctx.GetPlace());
+    return phi::KernelKey(data_type, ctx.GetPlace());
   }
 };
 
@@ -3846,11 +4725,11 @@ class FftC2rGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto data_type = framework::OperatorWithKernel::IndicateVarDataType(
         ctx, GradVarName("Out"));
-    return framework::OpKernelType(data_type, ctx.GetPlace());
+    return phi::KernelKey(data_type, ctx.GetPlace());
   }
 };
 
@@ -3881,11 +4760,11 @@ class FftR2cGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto data_type = framework::OperatorWithKernel::IndicateVarDataType(
         ctx, GradVarName("Out"));
-    return framework::OpKernelType(data_type, ctx.GetPlace());
+    return phi::KernelKey(data_type, ctx.GetPlace());
   }
 };
 
@@ -3894,6 +4773,32 @@ DECLARE_INFER_SHAPE_FUNCTOR(fft_r2c_grad,
                             PD_INFER_META(phi::UnchangedInferMeta));
 
 DECLARE_NO_NEED_BUFFER_VARS_INFERER(FftR2cGradNoNeedBufferVarInferer, "X");
+
+template <typename T>
+class FillDiagonalGradOpMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  void Apply(GradOpPtr<T> grad_op) const override {
+    grad_op->SetType("fill_diagonal_grad");
+
+    grad_op->SetInput(GradVarName("Out"), this->OutputGrad("Out"));
+
+    grad_op->SetOutput(GradVarName("X"), this->InputGrad("X"));
+
+    grad_op->SetAttrMap(this->Attrs());
+  }
+};
+
+class FillDiagonalGradOp : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+};
+
+DECLARE_INFER_SHAPE_FUNCTOR(fill_diagonal_grad,
+                            FillDiagonalGradInferShapeFunctor,
+                            PD_INFER_META(phi::FillDiagonalGradInferMeta));
 
 template <typename T>
 class FillDiagonalTensorGradOpMaker : public framework::SingleGradOpMaker<T> {
@@ -3992,11 +4897,11 @@ class FoldGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto data_type = framework::OperatorWithKernel::IndicateVarDataType(
         ctx, GradVarName("Y"));
-    return framework::OpKernelType(data_type, ctx.GetPlace());
+    return phi::KernelKey(data_type, ctx.GetPlace());
   }
 };
 
@@ -4005,6 +4910,63 @@ DECLARE_INFER_SHAPE_FUNCTOR(fold_grad,
                             PD_INFER_META(phi::UnchangedInferMeta));
 
 DECLARE_NO_NEED_BUFFER_VARS_INFERER(FoldGradNoNeedBufferVarInferer, "X");
+
+template <typename T>
+class FrameGradOpMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  void Apply(GradOpPtr<T> grad_op) const override {
+    grad_op->SetType("frame_grad");
+
+    grad_op->SetInput("X", this->Input("X"));
+    grad_op->SetInput(GradVarName("Out"), this->OutputGrad("Out"));
+
+    grad_op->SetOutput(GradVarName("X"), this->InputGrad("X"));
+
+    grad_op->SetAttrMap(this->Attrs());
+  }
+};
+
+class FrameGradOp : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+};
+
+DECLARE_INFER_SHAPE_FUNCTOR(frame_grad,
+                            FrameGradInferShapeFunctor,
+                            PD_INFER_META(phi::UnchangedInferMeta));
+
+template <typename T>
+class GatherNdGradOpMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  void Apply(GradOpPtr<T> grad_op) const override {
+    grad_op->SetType("gather_nd_grad");
+
+    grad_op->SetInput("X", this->Input("X"));
+    grad_op->SetInput("Index", this->Input("Index"));
+    grad_op->SetInput(GradVarName("Out"), this->OutputGrad("Out"));
+
+    grad_op->SetOutput(GradVarName("X"), this->InputGrad("X"));
+
+    grad_op->SetAttrMap(this->Attrs());
+  }
+};
+
+class GatherNdGradOp : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+};
+
+DECLARE_INFER_SHAPE_FUNCTOR(gather_nd_grad,
+                            GatherNdGradInferShapeFunctor,
+                            PD_INFER_META(phi::GatherNdGradInferMeta));
+
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(GatherNdGradNoNeedBufferVarInferer, "X");
 
 template <typename T>
 class GeluGradOpMaker : public framework::SingleGradOpMaker<T> {
@@ -4058,11 +5020,11 @@ class GridSamplerGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto data_type =
         framework::OperatorWithKernel::IndicateVarDataType(ctx, "X");
-    return framework::OpKernelType(data_type, ctx.GetPlace());
+    return phi::KernelKey(data_type, ctx.GetPlace());
   }
 };
 
@@ -4156,6 +5118,70 @@ DECLARE_INPLACE_OP_INFERER(HardSigmoidGradInplaceInferer,
                            {GradVarName("Out"), GradVarName("X")});
 
 template <typename T>
+class BreluGradOpMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  void Apply(GradOpPtr<T> grad_op) const override {
+    grad_op->SetType("brelu_grad");
+
+    grad_op->SetInput("X", this->Input("X"));
+    grad_op->SetInput(GradVarName("Out"), this->OutputGrad("Out"));
+
+    grad_op->SetOutput(GradVarName("X"), this->InputGrad("X"));
+
+    grad_op->SetAttrMap(this->Attrs());
+  }
+};
+
+class BreluGradOp : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+};
+
+DECLARE_INFER_SHAPE_FUNCTOR(brelu_grad,
+                            BreluGradInferShapeFunctor,
+                            PD_INFER_META(phi::UnchangedInferMeta));
+DECLARE_INPLACE_OP_INFERER(BreluGradInplaceInferer,
+                           {GradVarName("Out"), GradVarName("X")});
+
+template <typename T>
+class ImagGradOpMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  void Apply(GradOpPtr<T> grad_op) const override {
+    grad_op->SetType("imag_grad");
+
+    grad_op->SetInput(GradVarName("Out"), this->OutputGrad("Out"));
+
+    grad_op->SetOutput(GradVarName("X"), this->InputGrad("X"));
+
+    grad_op->SetAttrMap(this->Attrs());
+  }
+};
+
+class ImagGradOp : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
+ protected:
+  phi::KernelKey GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    auto data_type = framework::OperatorWithKernel::IndicateVarDataType(
+        ctx, GradVarName("Out"));
+    data_type = framework::ToComplexType(data_type);
+    return phi::KernelKey(data_type, ctx.GetPlace());
+  }
+};
+
+DECLARE_INFER_SHAPE_FUNCTOR(imag_grad,
+                            ImagGradInferShapeFunctor,
+                            PD_INFER_META(phi::RealAndImagGradInferMeta));
+
+template <typename T>
 class IndexSampleGradOpMaker : public framework::SingleGradOpMaker<T> {
  public:
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
@@ -4179,11 +5205,11 @@ class IndexSampleGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto data_type = framework::OperatorWithKernel::IndicateVarDataType(
         ctx, GradVarName("Out"));
-    return framework::OpKernelType(data_type, ctx.GetPlace());
+    return phi::KernelKey(data_type, ctx.GetPlace());
   }
 };
 
@@ -4217,11 +5243,11 @@ class IndexSelectGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto data_type = framework::OperatorWithKernel::IndicateVarDataType(
         ctx, GradVarName("Out"));
-    return framework::OpKernelType(data_type, ctx.GetPlace());
+    return phi::KernelKey(data_type, ctx.GetPlace());
   }
 };
 
@@ -4282,11 +5308,11 @@ class KthvalueGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto data_type = framework::OperatorWithKernel::IndicateVarDataType(
         ctx, GradVarName("Out"));
-    return framework::OpKernelType(data_type, ctx.GetPlace());
+    return phi::KernelKey(data_type, ctx.GetPlace());
   }
 };
 
@@ -4329,7 +5355,7 @@ class LeakyReluGradGradOpMaker : public framework::SingleGradOpMaker<T> {
   void Apply(GradOpPtr<T> grad_op) const override {
     grad_op->SetType("leaky_relu_grad_grad");
 
-    grad_op->SetInput("x", this->Input("X"));
+    grad_op->SetInput("X", this->Input("X"));
     grad_op->SetInput(GradVarName("grad_x"),
                       this->OutputGrad(GradVarName("X")));
 
@@ -4534,12 +5560,12 @@ class LogGradGradOpMaker : public framework::SingleGradOpMaker<T> {
   void Apply(GradOpPtr<T> grad_op) const override {
     grad_op->SetType("log_grad_grad");
 
-    grad_op->SetInput("x", this->Input("X"));
+    grad_op->SetInput("X", this->Input("X"));
     grad_op->SetInput("grad_out", this->Input(GradVarName("Out")));
     grad_op->SetInput(GradVarName("grad_x"),
                       this->OutputGrad(GradVarName("X")));
 
-    grad_op->SetOutput(GradVarName("x"), this->InputGrad("X"));
+    grad_op->SetOutput(GradVarName("X"), this->InputGrad("X"));
     grad_op->SetOutput(GradVarName("grad_out"),
                        this->InputGrad(GradVarName("Out")));
 
@@ -4727,11 +5753,11 @@ class MaskedSelectGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto data_type =
         framework::OperatorWithKernel::IndicateVarDataType(ctx, "X");
-    return framework::OpKernelType(data_type, ctx.GetPlace());
+    return phi::KernelKey(data_type, ctx.GetPlace());
   }
 };
 
@@ -4881,17 +5907,78 @@ class NllLossGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto data_type =
         framework::OperatorWithKernel::IndicateVarDataType(ctx, "X");
-    return framework::OpKernelType(data_type, ctx.GetPlace());
+    return phi::KernelKey(data_type, ctx.GetPlace());
   }
 };
 
 DECLARE_INFER_SHAPE_FUNCTOR(nll_loss_grad,
                             NllLossGradInferShapeFunctor,
                             PD_INFER_META(phi::NllLossGradInferMeta));
+
+template <typename T>
+class OverlapAddGradOpMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  void Apply(GradOpPtr<T> grad_op) const override {
+    grad_op->SetType("overlap_add_grad");
+
+    grad_op->SetInput("X", this->Input("X"));
+    grad_op->SetInput(GradVarName("Out"), this->OutputGrad("Out"));
+
+    grad_op->SetOutput(GradVarName("X"), this->InputGrad("X"));
+
+    grad_op->SetAttrMap(this->Attrs());
+  }
+};
+
+class OverlapAddGradOp : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
+ protected:
+  phi::KernelKey GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    auto data_type =
+        framework::OperatorWithKernel::IndicateVarDataType(ctx, "X");
+    return phi::KernelKey(data_type, ctx.GetPlace());
+  }
+};
+
+DECLARE_INFER_SHAPE_FUNCTOR(overlap_add_grad,
+                            OverlapAddGradInferShapeFunctor,
+                            PD_INFER_META(phi::OverlapAddGradInferMeta));
+
+template <typename T>
+class PixelShuffleGradOpMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  void Apply(GradOpPtr<T> grad_op) const override {
+    grad_op->SetType("pixel_shuffle_grad");
+
+    grad_op->SetInput(GradVarName("Out"), this->OutputGrad("Out"));
+
+    grad_op->SetOutput(GradVarName("X"), this->InputGrad("X"));
+
+    grad_op->SetAttrMap(this->Attrs());
+  }
+};
+
+class PixelShuffleGradOp : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+};
+
+DECLARE_INFER_SHAPE_FUNCTOR(pixel_shuffle_grad,
+                            PixelShuffleGradInferShapeFunctor,
+                            PD_INFER_META(phi::PixelShuffleGradInferMeta));
 
 template <typename T>
 class PoissonGradOpMaker : public framework::SingleGradOpMaker<T> {
@@ -4979,6 +6066,41 @@ DECLARE_INFER_SHAPE_FUNCTOR(qr_grad,
                             PD_INFER_META(phi::UnchangedInferMeta));
 
 template <typename T>
+class RealGradOpMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  void Apply(GradOpPtr<T> grad_op) const override {
+    grad_op->SetType("real_grad");
+
+    grad_op->SetInput(GradVarName("Out"), this->OutputGrad("Out"));
+
+    grad_op->SetOutput(GradVarName("X"), this->InputGrad("X"));
+
+    grad_op->SetAttrMap(this->Attrs());
+  }
+};
+
+class RealGradOp : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
+ protected:
+  phi::KernelKey GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    auto data_type = framework::OperatorWithKernel::IndicateVarDataType(
+        ctx, GradVarName("Out"));
+    data_type = framework::ToComplexType(data_type);
+    return phi::KernelKey(data_type, ctx.GetPlace());
+  }
+};
+
+DECLARE_INFER_SHAPE_FUNCTOR(real_grad,
+                            RealGradInferShapeFunctor,
+                            PD_INFER_META(phi::RealAndImagGradInferMeta));
+
+template <typename T>
 class ReciprocalGradOpMaker : public framework::SingleGradOpMaker<T> {
  public:
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
@@ -5016,7 +6138,7 @@ class ReluGradGradOpMaker : public framework::SingleGradOpMaker<T> {
   void Apply(GradOpPtr<T> grad_op) const override {
     grad_op->SetType("relu_grad_grad");
 
-    grad_op->SetInput("out", this->Input("Out"));
+    grad_op->SetInput("Out", this->Input("Out"));
     grad_op->SetInput(GradVarName("grad_x"),
                       this->OutputGrad(GradVarName("X")));
 
@@ -5095,6 +6217,46 @@ DECLARE_INFER_SHAPE_FUNCTOR(renorm_grad,
                             PD_INFER_META(phi::UnchangedInferMeta));
 
 template <typename T>
+class RollGradOpMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  void Apply(GradOpPtr<T> grad_op) const override {
+    grad_op->SetType("roll_grad");
+
+    grad_op->SetInput("X", this->Input("X"));
+    grad_op->SetInput(GradVarName("Out"), this->OutputGrad("Out"));
+
+    grad_op->SetOutput(GradVarName("X"), this->InputGrad("X"));
+
+    grad_op->SetAttrMap(this->Attrs());
+    if (this->HasInput("ShiftsTensor")) {
+      grad_op->SetInput("ShiftsTensor", this->Input("ShiftsTensor"));
+    }
+  }
+};
+
+class RollGradOp : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
+ protected:
+  phi::KernelKey GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    auto data_type =
+        framework::OperatorWithKernel::IndicateVarDataType(ctx, "X");
+    return phi::KernelKey(data_type, ctx.GetPlace());
+  }
+};
+
+DECLARE_INFER_SHAPE_FUNCTOR(roll_grad,
+                            RollGradInferShapeFunctor,
+                            PD_INFER_META(phi::UnchangedInferMeta));
+
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(RollGradNoNeedBufferVarInferer, "X");
+
+template <typename T>
 class RoundGradOpMaker : public framework::SingleGradOpMaker<T> {
  public:
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
@@ -5131,12 +6293,12 @@ class RsqrtGradGradOpMaker : public framework::SingleGradOpMaker<T> {
   void Apply(GradOpPtr<T> grad_op) const override {
     grad_op->SetType("rsqrt_grad_grad");
 
-    grad_op->SetInput("out", this->Input("Out"));
+    grad_op->SetInput("Out", this->Input("Out"));
     grad_op->SetInput("grad_x", this->Output(GradVarName("X")));
     grad_op->SetInput(GradVarName("grad_x"),
                       this->OutputGrad(GradVarName("X")));
 
-    grad_op->SetOutput(GradVarName("out"), this->InputGrad("Out"));
+    grad_op->SetOutput(GradVarName("Out"), this->InputGrad("Out"));
     grad_op->SetOutput(GradVarName("grad_out"),
                        this->InputGrad(GradVarName("Out")));
 
@@ -5185,6 +6347,105 @@ DECLARE_INPLACE_OP_INFERER(RsqrtGradInplaceInferer,
                            {GradVarName("Out"), GradVarName("X")});
 
 template <typename T>
+class ScatterGradOpMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  void Apply(GradOpPtr<T> grad_op) const override {
+    grad_op->SetType("scatter_grad");
+
+    grad_op->SetInput("Ids", this->Input("Ids"));
+    grad_op->SetInput("Updates", this->Input("Updates"));
+    grad_op->SetInput(GradVarName("Out"), this->OutputGrad("Out"));
+
+    grad_op->SetOutput(GradVarName("X"), this->InputGrad("X"));
+    grad_op->SetOutput(GradVarName("Updates"), this->InputGrad("Updates"));
+
+    grad_op->SetAttrMap(this->Attrs());
+  }
+};
+
+class ScatterGradOp : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+};
+
+DECLARE_INFER_SHAPE_FUNCTOR(scatter_grad,
+                            ScatterGradInferShapeFunctor,
+                            PD_INFER_META(phi::ScatterGradInferMeta));
+
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(ScatterGradNoNeedBufferVarInferer,
+                                    "Updates");
+
+template <typename T>
+class ScatterNdAddGradOpMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  void Apply(GradOpPtr<T> grad_op) const override {
+    grad_op->SetType("scatter_nd_add_grad");
+
+    grad_op->SetInput("Index", this->Input("Index"));
+    grad_op->SetInput("Updates", this->Input("Updates"));
+    grad_op->SetInput(GradVarName("Out"), this->OutputGrad("Out"));
+
+    grad_op->SetOutput(GradVarName("X"), this->InputGrad("X"));
+    grad_op->SetOutput(GradVarName("Updates"), this->InputGrad("Updates"));
+
+    grad_op->SetAttrMap(this->Attrs());
+  }
+};
+
+class ScatterNdAddGradOp : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+};
+
+DECLARE_INFER_SHAPE_FUNCTOR(scatter_nd_add_grad,
+                            ScatterNdAddGradInferShapeFunctor,
+                            PD_INFER_META(phi::ScatterNdAddGradInferMeta));
+
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(ScatterNdAddGradNoNeedBufferVarInferer,
+                                    "Updates");
+
+template <typename T>
+class SeluGradOpMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  void Apply(GradOpPtr<T> grad_op) const override {
+    grad_op->SetType("selu_grad");
+
+    grad_op->SetInput("Out", this->Output("Out"));
+    grad_op->SetInput(GradVarName("Out"), this->OutputGrad("Out"));
+
+    grad_op->SetOutput(GradVarName("X"), this->InputGrad("X"));
+
+    grad_op->SetAttrMap(this->Attrs());
+  }
+};
+
+class SeluGradOp : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
+ protected:
+  phi::KernelKey GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    auto data_type =
+        framework::OperatorWithKernel::IndicateVarDataType(ctx, "Out");
+    return phi::KernelKey(data_type, ctx.GetPlace());
+  }
+};
+
+DECLARE_INFER_SHAPE_FUNCTOR(selu_grad,
+                            SeluGradInferShapeFunctor,
+                            PD_INFER_META(phi::UnchangedInferMeta));
+
+template <typename T>
 class GraphSendUvGradOpMaker : public framework::SingleGradOpMaker<T> {
  public:
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
@@ -5211,11 +6472,11 @@ class GraphSendUvGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto data_type =
         framework::OperatorWithKernel::IndicateVarDataType(ctx, "x");
-    return framework::OpKernelType(data_type, ctx.GetPlace());
+    return phi::KernelKey(data_type, ctx.GetPlace());
   }
 };
 
@@ -5232,12 +6493,12 @@ class SigmoidGradGradOpMaker : public framework::SingleGradOpMaker<T> {
   void Apply(GradOpPtr<T> grad_op) const override {
     grad_op->SetType("sigmoid_grad_grad");
 
-    grad_op->SetInput("out", this->Input("Out"));
+    grad_op->SetInput("Out", this->Input("Out"));
     grad_op->SetInput("fwd_grad_out", this->Input(GradVarName("Out")));
     grad_op->SetInput(GradVarName("grad_x"),
                       this->OutputGrad(GradVarName("X")));
 
-    grad_op->SetOutput(GradVarName("out"), this->InputGrad("Out"));
+    grad_op->SetOutput(GradVarName("Out"), this->InputGrad("Out"));
     grad_op->SetOutput(GradVarName("fwd_grad_out"),
                        this->InputGrad(GradVarName("Out")));
 
@@ -5295,15 +6556,15 @@ class SigmoidTripleGradOpMaker : public framework::SingleGradOpMaker<T> {
   void Apply(GradOpPtr<T> grad_op) const override {
     grad_op->SetType("sigmoid_triple_grad");
 
-    grad_op->SetInput("out", this->Input("out"));
+    grad_op->SetInput("Out", this->Input("Out"));
     grad_op->SetInput("fwd_grad_out", this->Input("fwd_grad_out"));
     grad_op->SetInput("grad_grad_x", this->Input(GradVarName("grad_x")));
     grad_op->SetInput(GradVarName("grad_out"),
-                      this->OutputGrad(GradVarName("out")));
+                      this->OutputGrad(GradVarName("Out")));
     grad_op->SetInput(GradVarName("grad_grad_out"),
                       this->OutputGrad(GradVarName("fwd_grad_out")));
 
-    grad_op->SetOutput(GradVarName("out"), this->InputGrad("out"));
+    grad_op->SetOutput(GradVarName("Out"), this->InputGrad("Out"));
     grad_op->SetOutput(GradVarName("fwd_grad_out"),
                        this->InputGrad("fwd_grad_out"));
     grad_op->SetOutput(GradVarName("grad_grad_x"),
@@ -5362,12 +6623,12 @@ class SinDoubleGradOpMaker : public framework::SingleGradOpMaker<T> {
   void Apply(GradOpPtr<T> grad_op) const override {
     grad_op->SetType("sin_double_grad");
 
-    grad_op->SetInput("x", this->Input("X"));
+    grad_op->SetInput("X", this->Input("X"));
     grad_op->SetInput("grad_out", this->Input(GradVarName("Out")));
     grad_op->SetInput(GradVarName("grad_x"),
                       this->OutputGrad(GradVarName("X")));
 
-    grad_op->SetOutput(GradVarName("x"), this->InputGrad("X"));
+    grad_op->SetOutput(GradVarName("X"), this->InputGrad("X"));
     grad_op->SetOutput(GradVarName("grad_out"),
                        this->InputGrad(GradVarName("Out")));
 
@@ -5424,16 +6685,16 @@ class SinTripleGradOpMaker : public framework::SingleGradOpMaker<T> {
   void Apply(GradOpPtr<T> grad_op) const override {
     grad_op->SetType("sin_triple_grad");
 
-    grad_op->SetInput("x", this->Input("x"));
+    grad_op->SetInput("X", this->Input("X"));
     grad_op->SetInput("grad_out_forward", this->Input("grad_out"));
     grad_op->SetInput("grad_x_grad_forward",
                       this->Input(GradVarName("grad_x")));
     grad_op->SetInput(GradVarName("grad_x"),
-                      this->OutputGrad(GradVarName("x")));
+                      this->OutputGrad(GradVarName("X")));
     grad_op->SetInput(GradVarName("grad_out_grad"),
                       this->OutputGrad(GradVarName("grad_out")));
 
-    grad_op->SetOutput(GradVarName("x"), this->InputGrad("x"));
+    grad_op->SetOutput(GradVarName("X"), this->InputGrad("X"));
     grad_op->SetOutput(GradVarName("grad_out_forward"),
                        this->InputGrad("grad_out"));
     grad_op->SetOutput(GradVarName("grad_x_grad_forward"),
@@ -5610,12 +6871,12 @@ class SqrtGradGradOpMaker : public framework::SingleGradOpMaker<T> {
   void Apply(GradOpPtr<T> grad_op) const override {
     grad_op->SetType("sqrt_grad_grad");
 
-    grad_op->SetInput("out", this->Input("Out"));
+    grad_op->SetInput("Out", this->Input("Out"));
     grad_op->SetInput("grad_x", this->Output(GradVarName("X")));
     grad_op->SetInput(GradVarName("grad_x"),
                       this->OutputGrad(GradVarName("X")));
 
-    grad_op->SetOutput(GradVarName("out"), this->InputGrad("Out"));
+    grad_op->SetOutput(GradVarName("Out"), this->InputGrad("Out"));
     grad_op->SetOutput(GradVarName("grad_out"),
                        this->InputGrad(GradVarName("Out")));
 
@@ -5672,12 +6933,12 @@ class SquareGradGradOpMaker : public framework::SingleGradOpMaker<T> {
   void Apply(GradOpPtr<T> grad_op) const override {
     grad_op->SetType("square_grad_grad");
 
-    grad_op->SetInput("x", this->Input("X"));
+    grad_op->SetInput("X", this->Input("X"));
     grad_op->SetInput("grad_out", this->Input(GradVarName("Out")));
     grad_op->SetInput(GradVarName("grad_x"),
                       this->OutputGrad(GradVarName("X")));
 
-    grad_op->SetOutput(GradVarName("x"), this->InputGrad("X"));
+    grad_op->SetOutput(GradVarName("X"), this->InputGrad("X"));
     grad_op->SetOutput(GradVarName("grad_out"),
                        this->InputGrad(GradVarName("Out")));
 
@@ -5723,6 +6984,61 @@ DECLARE_INFER_SHAPE_FUNCTOR(square_grad,
                             SquareGradInferShapeFunctor,
                             PD_INFER_META(phi::UnchangedInferMeta));
 DECLARE_INPLACE_OP_INFERER(SquareGradInplaceInferer,
+                           {GradVarName("Out"), GradVarName("X")});
+
+template <typename T>
+class Squeeze2DoubleGradOpMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  void Apply(GradOpPtr<T> grad_op) const override {
+    grad_op->SetType("squeeze2");
+
+    grad_op->SetInput("X", this->OutputGrad(GradVarName("X")));
+
+    grad_op->SetOutput("Out", this->InputGrad(GradVarName("Out")));
+    grad_op->SetOutput("XShape", this->Input("XShape"));
+
+    grad_op->SetAttr("axes", this->GetAttr("axes"));
+  }
+};
+
+template <typename T>
+class Squeeze2GradOpMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  void Apply(GradOpPtr<T> grad_op) const override {
+    grad_op->SetType("squeeze2_grad");
+
+    grad_op->SetInput("XShape", this->Output("XShape"));
+    grad_op->SetInput(GradVarName("Out"), this->OutputGrad("Out"));
+
+    grad_op->SetOutput(GradVarName("X"), this->InputGrad("X"));
+
+    grad_op->SetAttrMap(this->Attrs());
+  }
+};
+
+class Squeeze2GradOp : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
+ protected:
+  phi::KernelKey GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    auto data_type = framework::OperatorWithKernel::IndicateVarDataType(
+        ctx, GradVarName("Out"));
+    return phi::KernelKey(data_type, ctx.GetPlace());
+  }
+};
+
+DECLARE_INFER_SHAPE_FUNCTOR(squeeze2_grad,
+                            Squeeze2GradInferShapeFunctor,
+                            PD_INFER_META(phi::KernelWithXShapeInferMeta));
+DECLARE_INPLACE_OP_INFERER(Squeeze2GradInplaceInferer,
                            {GradVarName("Out"), GradVarName("X")});
 
 template <typename T>
@@ -5803,21 +7119,6 @@ class TanGradOpMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
-class TanhCompositeGradOpMaker : public prim::GradCompositeOpMakerBase {
- public:
-  using prim::GradCompositeOpMakerBase::GradCompositeOpMakerBase;
-
-  void Apply() override {
-    paddle::experimental::Tensor out = paddle::experimental::Tensor(
-        std::make_shared<prim::DescTensor>(this->SingleForwardOutput("Out")));
-    paddle::experimental::Tensor grad_out = paddle::experimental::Tensor(
-        std::make_shared<prim::DescTensor>(this->SingleOutputGrad("Out")));
-    paddle::experimental::Tensor grad_x = paddle::experimental::Tensor(
-        std::make_shared<prim::DescTensor>(this->SingleInputGrad("X")));
-    prim::tanh_grad<prim::DescTensor>(out, grad_out, &grad_x);
-  }
-};
-
 class TanGradOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -5838,12 +7139,12 @@ class TanhGradGradOpMaker : public framework::SingleGradOpMaker<T> {
   void Apply(GradOpPtr<T> grad_op) const override {
     grad_op->SetType("tanh_grad_grad");
 
-    grad_op->SetInput("out", this->Input("Out"));
+    grad_op->SetInput("Out", this->Input("Out"));
     grad_op->SetInput("grad_out", this->Input(GradVarName("Out")));
     grad_op->SetInput(GradVarName("grad_x"),
                       this->OutputGrad(GradVarName("X")));
 
-    grad_op->SetOutput(GradVarName("out"), this->InputGrad("Out"));
+    grad_op->SetOutput(GradVarName("Out"), this->InputGrad("Out"));
     grad_op->SetOutput(GradVarName("grad_out"),
                        this->InputGrad(GradVarName("Out")));
 
@@ -5929,16 +7230,16 @@ class TanhTripleGradOpMaker : public framework::SingleGradOpMaker<T> {
   void Apply(GradOpPtr<T> grad_op) const override {
     grad_op->SetType("tanh_triple_grad");
 
-    grad_op->SetInput("out", this->Input("out"));
+    grad_op->SetInput("Out", this->Input("Out"));
     grad_op->SetInput("grad_out_forward", this->Input("grad_out"));
     grad_op->SetInput("grad_x_grad_forward",
                       this->Input(GradVarName("grad_x")));
     grad_op->SetInput(GradVarName("grad_out_new"),
-                      this->OutputGrad(GradVarName("out")));
+                      this->OutputGrad(GradVarName("Out")));
     grad_op->SetInput(GradVarName("grad_out_grad"),
                       this->OutputGrad(GradVarName("grad_out")));
 
-    grad_op->SetOutput(GradVarName("out"), this->InputGrad("out"));
+    grad_op->SetOutput(GradVarName("Out"), this->InputGrad("Out"));
     grad_op->SetOutput(GradVarName("grad_out_forward"),
                        this->InputGrad("grad_out"));
     grad_op->SetOutput(GradVarName("grad_x_grad_forward"),
@@ -6016,11 +7317,11 @@ class TopKV2GradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto data_type = framework::OperatorWithKernel::IndicateVarDataType(
         ctx, GradVarName("Out"));
-    return framework::OpKernelType(data_type, ctx.GetPlace());
+    return phi::KernelKey(data_type, ctx.GetPlace());
   }
 };
 
@@ -6051,11 +7352,11 @@ class TraceGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto data_type = framework::OperatorWithKernel::IndicateVarDataType(
         ctx, GradVarName("Out"));
-    return framework::OpKernelType(data_type, ctx.GetPlace());
+    return phi::KernelKey(data_type, ctx.GetPlace());
   }
 };
 
@@ -6114,11 +7415,11 @@ class UnfoldGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto data_type = framework::OperatorWithKernel::IndicateVarDataType(
         ctx, GradVarName("Y"));
-    return framework::OpKernelType(data_type, ctx.GetPlace());
+    return phi::KernelKey(data_type, ctx.GetPlace());
   }
 };
 
@@ -6127,6 +7428,157 @@ DECLARE_INFER_SHAPE_FUNCTOR(unfold_grad,
                             PD_INFER_META(phi::UnchangedInferMeta));
 
 DECLARE_NO_NEED_BUFFER_VARS_INFERER(UnfoldGradNoNeedBufferVarInferer, "X");
+
+template <typename T>
+class Unsqueeze2DoubleGradOpMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  void Apply(GradOpPtr<T> grad_op) const override {
+    grad_op->SetType("unsqueeze2");
+
+    grad_op->SetInput("X", this->OutputGrad(GradVarName("X")));
+
+    grad_op->SetOutput("Out", this->InputGrad(GradVarName("Out")));
+    grad_op->SetOutput("XShape", this->Input("XShape"));
+
+    grad_op->SetAttr("axes", this->GetAttr("axes"));
+  }
+};
+
+template <typename T>
+class Unsqueeze2GradOpMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  void Apply(GradOpPtr<T> grad_op) const override {
+    grad_op->SetType("unsqueeze2_grad");
+
+    grad_op->SetInput("XShape", this->Output("XShape"));
+    grad_op->SetInput(GradVarName("Out"), this->OutputGrad("Out"));
+
+    grad_op->SetOutput(GradVarName("X"), this->InputGrad("X"));
+
+    grad_op->SetAttrMap(this->Attrs());
+    if (this->HasInput("AxesTensor")) {
+      grad_op->SetInput("AxesTensor", this->Input("AxesTensor"));
+    }
+    if (this->HasInput("AxesTensorList")) {
+      grad_op->SetInput("AxesTensorList", this->Input("AxesTensorList"));
+    }
+  }
+};
+
+class Unsqueeze2GradOp : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
+ protected:
+  phi::KernelKey GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    auto data_type = framework::OperatorWithKernel::IndicateVarDataType(
+        ctx, GradVarName("Out"));
+    return phi::KernelKey(data_type, ctx.GetPlace());
+  }
+};
+
+DECLARE_INFER_SHAPE_FUNCTOR(unsqueeze2_grad,
+                            Unsqueeze2GradInferShapeFunctor,
+                            PD_INFER_META(phi::KernelWithXShapeInferMeta));
+DECLARE_INPLACE_OP_INFERER(Unsqueeze2GradInplaceInferer,
+                           {GradVarName("Out"), GradVarName("X")});
+
+template <typename T>
+class UnstackGradOpMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  void Apply(GradOpPtr<T> grad_op) const override {
+    grad_op->SetType("unstack_grad");
+
+    grad_op->SetInput(GradVarName("Y"), this->OutputGrad("Y"));
+
+    grad_op->SetOutput(GradVarName("X"), this->InputGrad("X"));
+
+    grad_op->SetAttrMap(this->Attrs());
+  }
+};
+
+class UnstackGradOp : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+};
+
+DECLARE_INFER_SHAPE_FUNCTOR(unstack_grad,
+                            UnstackGradInferShapeFunctor,
+                            PD_INFER_META(phi::UnStackGradInferMeta));
+
+template <typename T>
+class WarprnntGradOpMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  void Apply(GradOpPtr<T> grad_op) const override {
+    grad_op->SetType("warprnnt_grad");
+
+    grad_op->SetInput("input", this->Input("input"));
+    grad_op->SetInput("input_lengths", this->Input("input_lengths"));
+    grad_op->SetInput("warprnntgrad", this->Output("warprnntgrad"));
+    grad_op->SetInput(GradVarName("loss"), this->OutputGrad("loss"));
+
+    grad_op->SetOutput(GradVarName("input"), this->InputGrad("input"));
+
+    grad_op->SetAttrMap(this->Attrs());
+  }
+};
+
+class WarprnntGradOp : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+};
+
+DECLARE_INFER_SHAPE_FUNCTOR(warprnnt_grad,
+                            WarprnntGradInferShapeFunctor,
+                            PD_INFER_META(phi::UnchangedInferMeta));
+
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(WarprnntGradNoNeedBufferVarInferer,
+                                    "input");
+
+template <typename T>
+class WhereGradOpMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  void Apply(GradOpPtr<T> grad_op) const override {
+    grad_op->SetType("where_grad");
+
+    grad_op->SetInput("Condition", this->Input("Condition"));
+    grad_op->SetInput("X", this->Input("X"));
+    grad_op->SetInput("Y", this->Input("Y"));
+    grad_op->SetInput(GradVarName("Out"), this->OutputGrad("Out"));
+
+    grad_op->SetOutput(GradVarName("X"), this->InputGrad("X"));
+    grad_op->SetOutput(GradVarName("Y"), this->InputGrad("Y"));
+
+    grad_op->SetAttrMap(this->Attrs());
+  }
+};
+
+class WhereGradOp : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+};
+
+DECLARE_INFER_SHAPE_FUNCTOR(where_grad,
+                            WhereGradInferShapeFunctor,
+                            PD_INFER_META(phi::GeneralBinaryGradInferMeta));
+
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(WhereGradNoNeedBufferVarInferer, "X", "Y");
 
 }  // namespace operators
 }  // namespace paddle
@@ -6145,6 +7597,45 @@ REGISTER_OPERATOR(acosh,
                   ops::AcoshGradOpMaker<paddle::framework::OpDesc>,
                   ops::AcoshGradOpMaker<paddle::imperative::OpBase>,
                   ops::AcoshInferShapeFunctor);
+
+REGISTER_OPERATOR(addmm,
+                  ops::AddmmOp,
+                  ops::AddmmOpMaker,
+                  ops::AddmmGradOpMaker<paddle::framework::OpDesc>,
+                  ops::AddmmGradOpMaker<paddle::imperative::OpBase>,
+                  ops::AddmmInferShapeFunctor);
+
+REGISTER_OPERATOR(
+    allclose,
+    ops::AllcloseOp,
+    ops::AllcloseOpMaker,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
+    ops::AllcloseInferShapeFunctor);
+
+REGISTER_OP_VERSION(allclose)
+    .AddCheckpoint(
+        R"ROC(Upgrade allclose, add two new inputs [Rtol] and [Atol].)ROC",
+        paddle::framework::compatible::OpVersionDesc()
+            .NewInput("Rtol", "The added input 'Rtol' is not dispensable.")
+            .NewInput("Atol", "The added input 'Atol' is not dispensable."))
+    .AddCheckpoint(
+        R"ROC(Delete two float attributes [rtol] and [atol], then add 2 string attributes [atol, rtol]. Don't be surprised. This is because float cannot represent hight-precision floating-point values, and our framework doesn't support the use of double attributes. As a result, string instead of double is used here to represent high-precision floating-point values.)ROC",
+        paddle::framework::compatible::OpVersionDesc()
+            .NewAttr("rtol",
+                     "The relative tolerance. Default::math:`1e-5` .",
+                     std::string("1e-5"))
+            .DeleteAttr("rtol",
+                        "The attribute 'rtol' is deleted. The reason why it is "
+                        "deleted is that attributes do not support a float64 "
+                        "value and it is changed to a tensor.")
+            .NewAttr("atol",
+                     "(string) The absolute tolerance. Default::math:`1e-8` .",
+                     std::string("1e-5"))
+            .DeleteAttr("atol",
+                        "The attribute 'atol' is deleted. The reason why it is "
+                        "deleted is that attributes do not support a float64 "
+                        "value and it is changed to a tensor."));
 
 REGISTER_OPERATOR(angle,
                   ops::AngleOp,
@@ -6252,6 +7743,31 @@ REGISTER_OPERATOR(cholesky_solve,
                   ops::CholeskySolveGradOpMaker<paddle::framework::OpDesc>,
                   ops::CholeskySolveGradOpMaker<paddle::imperative::OpBase>,
                   ops::CholeskySolveInferShapeFunctor);
+
+REGISTER_OPERATOR(clip,
+                  ops::ClipOp,
+                  ops::ClipOpMaker,
+                  ops::ClipGradOpMaker<paddle::framework::OpDesc>,
+                  ops::ClipGradOpMaker<paddle::imperative::OpBase>,
+                  ops::ClipInplaceInferer,
+                  ops::ClipInferShapeFunctor);
+
+REGISTER_OP_VERSION(clip).AddCheckpoint(
+    R"ROC(Upgrade clip add a new input [Min])ROC",
+    paddle::framework::compatible::OpVersionDesc()
+        .NewInput("Min",
+                  "Pass the mix, min value as input, not attribute. Min is "
+                  "dispensable.")
+        .NewInput("Max",
+                  "Pass the mix, min value as input, not attribute. Max is "
+                  "dispensable."));
+
+REGISTER_OPERATOR(complex,
+                  ops::ComplexOp,
+                  ops::ComplexOpMaker,
+                  ops::ComplexGradOpMaker<paddle::framework::OpDesc>,
+                  ops::ComplexGradOpMaker<paddle::imperative::OpBase>,
+                  ops::ComplexInferShapeFunctor);
 
 REGISTER_OPERATOR(conj,
                   ops::ConjOp,
@@ -6427,6 +7943,14 @@ REGISTER_OPERATOR(fft_r2c,
                   ops::FftR2cGradOpMaker<paddle::imperative::OpBase>,
                   ops::FftR2cInferShapeFunctor);
 
+REGISTER_OPERATOR(fill_diagonal,
+                  ops::FillDiagonalOp,
+                  ops::FillDiagonalOpMaker,
+                  ops::FillDiagonalGradOpMaker<paddle::framework::OpDesc>,
+                  ops::FillDiagonalGradOpMaker<paddle::imperative::OpBase>,
+                  ops::FillDiagonalInplaceInferer,
+                  ops::FillDiagonalInferShapeFunctor);
+
 REGISTER_OPERATOR(
     fill_diagonal_tensor,
     ops::FillDiagonalTensorOp,
@@ -6465,6 +7989,20 @@ REGISTER_OPERATOR(fold,
                   ops::FoldGradOpMaker<paddle::framework::OpDesc>,
                   ops::FoldGradOpMaker<paddle::imperative::OpBase>,
                   ops::FoldInferShapeFunctor);
+
+REGISTER_OPERATOR(frame,
+                  ops::FrameOp,
+                  ops::FrameOpMaker,
+                  ops::FrameGradOpMaker<paddle::framework::OpDesc>,
+                  ops::FrameGradOpMaker<paddle::imperative::OpBase>,
+                  ops::FrameInferShapeFunctor);
+
+REGISTER_OPERATOR(gather_nd,
+                  ops::GatherNdOp,
+                  ops::GatherNdOpMaker,
+                  ops::GatherNdGradOpMaker<paddle::framework::OpDesc>,
+                  ops::GatherNdGradOpMaker<paddle::imperative::OpBase>,
+                  ops::GatherNdInferShapeFunctor);
 
 REGISTER_OPERATOR(
     gather_tree,
@@ -6516,6 +8054,13 @@ REGISTER_OPERATOR(hard_sigmoid,
                   ops::HardSigmoidGradOpMaker<paddle::imperative::OpBase>,
                   ops::HardSigmoidInferShapeFunctor);
 
+REGISTER_OPERATOR(brelu,
+                  ops::BreluOp,
+                  ops::BreluOpMaker,
+                  ops::BreluGradOpMaker<paddle::framework::OpDesc>,
+                  ops::BreluGradOpMaker<paddle::imperative::OpBase>,
+                  ops::BreluInferShapeFunctor);
+
 REGISTER_OPERATOR(
     histogram,
     ops::HistogramOp,
@@ -6523,6 +8068,13 @@ REGISTER_OPERATOR(
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
     ops::HistogramInferShapeFunctor);
+
+REGISTER_OPERATOR(imag,
+                  ops::ImagOp,
+                  ops::ImagOpMaker,
+                  ops::ImagGradOpMaker<paddle::framework::OpDesc>,
+                  ops::ImagGradOpMaker<paddle::imperative::OpBase>,
+                  ops::ImagInferShapeFunctor);
 
 REGISTER_OPERATOR(index_sample,
                   ops::IndexSampleOp,
@@ -6552,6 +8104,14 @@ REGISTER_OPERATOR(
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
     ops::IsEmptyInferShapeFunctor);
+
+REGISTER_OPERATOR(
+    isclose,
+    ops::IscloseOp,
+    ops::IscloseOpMaker,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
+    ops::IscloseInferShapeFunctor);
 
 REGISTER_OPERATOR(
     isfinite_v2,
@@ -6727,6 +8287,26 @@ REGISTER_OPERATOR(
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
     ops::NpuIdentityInferShapeFunctor);
 
+REGISTER_OPERATOR(overlap_add,
+                  ops::OverlapAddOp,
+                  ops::OverlapAddOpMaker,
+                  ops::OverlapAddGradOpMaker<paddle::framework::OpDesc>,
+                  ops::OverlapAddGradOpMaker<paddle::imperative::OpBase>,
+                  ops::OverlapAddInferShapeFunctor);
+
+REGISTER_OPERATOR(pixel_shuffle,
+                  ops::PixelShuffleOp,
+                  ops::PixelShuffleOpMaker,
+                  ops::PixelShuffleGradOpMaker<paddle::framework::OpDesc>,
+                  ops::PixelShuffleGradOpMaker<paddle::imperative::OpBase>,
+                  ops::PixelShuffleInferShapeFunctor);
+
+REGISTER_OP_VERSION(pixel_shuffle)
+    .AddCheckpoint(
+        R"ROC(Compatible upgrade of pixel_shuffle, add a new attribute [data_format])ROC",
+        paddle::framework::compatible::OpVersionDesc().NewAttr(
+            "None", "Specify the data format of the input data", true));
+
 REGISTER_OPERATOR(poisson,
                   ops::PoissonOp,
                   ops::PoissonOpMaker,
@@ -6748,6 +8328,13 @@ REGISTER_OPERATOR(qr,
                   ops::QrGradOpMaker<paddle::framework::OpDesc>,
                   ops::QrGradOpMaker<paddle::imperative::OpBase>,
                   ops::QrInferShapeFunctor);
+
+REGISTER_OPERATOR(real,
+                  ops::RealOp,
+                  ops::RealOpMaker,
+                  ops::RealGradOpMaker<paddle::framework::OpDesc>,
+                  ops::RealGradOpMaker<paddle::imperative::OpBase>,
+                  ops::RealInferShapeFunctor);
 
 REGISTER_OPERATOR(reciprocal,
                   ops::ReciprocalOp,
@@ -6772,6 +8359,31 @@ REGISTER_OPERATOR(renorm,
                   ops::RenormGradOpMaker<paddle::imperative::OpBase>,
                   ops::RenormInferShapeFunctor);
 
+REGISTER_OPERATOR(roll,
+                  ops::RollOp,
+                  ops::RollOpMaker,
+                  ops::RollGradOpMaker<paddle::framework::OpDesc>,
+                  ops::RollGradOpMaker<paddle::imperative::OpBase>,
+                  ops::RollInferShapeFunctor);
+
+REGISTER_OP_VERSION(roll)
+    .AddCheckpoint(
+        R"ROC(Upgrade roll add 1 attribute [axis], delete 1 attribute[dims].)ROC",
+        paddle::framework::compatible::OpVersionDesc()
+            .NewAttr("axis",
+                     "Axis along which to roll. It must have the same size "
+                     "with shifts, or size = 0.",
+                     std::vector<float>())
+            .DeleteAttr("dims",
+                        "Dims along which to roll. It must have the same size "
+                        "with shifts, or size = 0"))
+    .AddCheckpoint(
+        R"ROC(Upgrade roll add a dispensable input "ShiftsTensor")ROC",
+        paddle::framework::compatible::OpVersionDesc().NewInput(
+            "ShiftsTensor",
+            "The number of places by which the elements of the tensor are "
+            "shifted."));
+
 REGISTER_OPERATOR(round,
                   ops::RoundOp,
                   ops::RoundOpMaker,
@@ -6788,6 +8400,21 @@ REGISTER_OPERATOR(rsqrt,
                   ops::RsqrtInplaceInferer,
                   ops::RsqrtInferShapeFunctor);
 
+REGISTER_OPERATOR(scatter,
+                  ops::ScatterOp,
+                  ops::ScatterOpMaker,
+                  ops::ScatterGradOpMaker<paddle::framework::OpDesc>,
+                  ops::ScatterGradOpMaker<paddle::imperative::OpBase>,
+                  ops::ScatterInplaceInferer,
+                  ops::ScatterInferShapeFunctor);
+
+REGISTER_OPERATOR(scatter_nd_add,
+                  ops::ScatterNdAddOp,
+                  ops::ScatterNdAddOpMaker,
+                  ops::ScatterNdAddGradOpMaker<paddle::framework::OpDesc>,
+                  ops::ScatterNdAddGradOpMaker<paddle::imperative::OpBase>,
+                  ops::ScatterNdAddInferShapeFunctor);
+
 REGISTER_OPERATOR(
     searchsorted,
     ops::SearchsortedOp,
@@ -6796,12 +8423,27 @@ REGISTER_OPERATOR(
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
     ops::SearchsortedInferShapeFunctor);
 
+REGISTER_OPERATOR(selu,
+                  ops::SeluOp,
+                  ops::SeluOpMaker,
+                  ops::SeluGradOpMaker<paddle::framework::OpDesc>,
+                  ops::SeluGradOpMaker<paddle::imperative::OpBase>,
+                  ops::SeluInferShapeFunctor);
+
 REGISTER_OPERATOR(graph_send_uv,
                   ops::GraphSendUvOp,
                   ops::GraphSendUvOpMaker,
                   ops::GraphSendUvGradOpMaker<paddle::framework::OpDesc>,
                   ops::GraphSendUvGradOpMaker<paddle::imperative::OpBase>,
                   ops::GraphSendUvInferShapeFunctor);
+
+REGISTER_OPERATOR(
+    shard_index,
+    ops::ShardIndexOp,
+    ops::ShardIndexOpMaker,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
+    ops::ShardIndexInferShapeFunctor);
 
 REGISTER_OPERATOR(sigmoid,
                   ops::SigmoidOp,
@@ -6873,6 +8515,14 @@ REGISTER_OPERATOR(square,
                   ops::SquareGradOpMaker<paddle::framework::OpDesc>,
                   ops::SquareGradOpMaker<paddle::imperative::OpBase>,
                   ops::SquareInferShapeFunctor);
+
+REGISTER_OPERATOR(squeeze2,
+                  ops::Squeeze2Op,
+                  ops::Squeeze2OpMaker,
+                  ops::Squeeze2GradOpMaker<paddle::framework::OpDesc>,
+                  ops::Squeeze2GradOpMaker<paddle::imperative::OpBase>,
+                  ops::Squeeze2InplaceInferer,
+                  ops::Squeeze2InferShapeFunctor);
 
 REGISTER_OPERATOR(svd,
                   ops::SvdOp,
@@ -6962,6 +8612,43 @@ REGISTER_OPERATOR(unfold,
                   ops::UnfoldGradOpMaker<paddle::imperative::OpBase>,
                   ops::UnfoldInferShapeFunctor);
 
+REGISTER_OPERATOR(unsqueeze2,
+                  ops::Unsqueeze2Op,
+                  ops::Unsqueeze2OpMaker,
+                  ops::Unsqueeze2GradOpMaker<paddle::framework::OpDesc>,
+                  ops::Unsqueeze2GradOpMaker<paddle::imperative::OpBase>,
+                  ops::Unsqueeze2InplaceInferer,
+                  ops::Unsqueeze2InferShapeFunctor);
+
+REGISTER_OPERATOR(unstack,
+                  ops::UnstackOp,
+                  ops::UnstackOpMaker,
+                  ops::UnstackGradOpMaker<paddle::framework::OpDesc>,
+                  ops::UnstackGradOpMaker<paddle::imperative::OpBase>,
+                  ops::UnstackInferShapeFunctor);
+
+REGISTER_OPERATOR(
+    viterbi_decode,
+    ops::ViterbiDecodeOp,
+    ops::ViterbiDecodeOpMaker,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
+    ops::ViterbiDecodeInferShapeFunctor);
+
+REGISTER_OPERATOR(warprnnt,
+                  ops::WarprnntOp,
+                  ops::WarprnntOpMaker,
+                  ops::WarprnntGradOpMaker<paddle::framework::OpDesc>,
+                  ops::WarprnntGradOpMaker<paddle::imperative::OpBase>,
+                  ops::WarprnntInferShapeFunctor);
+
+REGISTER_OPERATOR(where,
+                  ops::WhereOp,
+                  ops::WhereOpMaker,
+                  ops::WhereGradOpMaker<paddle::framework::OpDesc>,
+                  ops::WhereGradOpMaker<paddle::imperative::OpBase>,
+                  ops::WhereInferShapeFunctor);
+
 REGISTER_OPERATOR(
     acos_grad,
     ops::AcosGradOp,
@@ -6977,6 +8664,13 @@ REGISTER_OPERATOR(
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
     ops::AcoshGradInplaceInferer,
     ops::AcoshGradInferShapeFunctor);
+
+REGISTER_OPERATOR(
+    addmm_grad,
+    ops::AddmmGradOp,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
+    ops::AddmmGradInferShapeFunctor);
 
 REGISTER_OPERATOR(
     angle_grad,
@@ -7075,6 +8769,27 @@ REGISTER_OPERATOR(
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
     ops::CholeskySolveGradInferShapeFunctor);
+
+REGISTER_OPERATOR(
+    clip_double_grad,
+    ops::ClipDoubleGradOp,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
+    ops::ClipDoubleGradInferShapeFunctor);
+
+REGISTER_OPERATOR(clip_grad,
+                  ops::ClipGradOp,
+                  ops::ClipDoubleGradOpMaker<paddle::framework::OpDesc>,
+                  ops::ClipDoubleGradOpMaker<paddle::imperative::OpBase>,
+                  ops::ClipGradInplaceInferer,
+                  ops::ClipGradInferShapeFunctor);
+
+REGISTER_OPERATOR(
+    complex_grad,
+    ops::ComplexGradOp,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
+    ops::ComplexGradInferShapeFunctor);
 
 REGISTER_OPERATOR(cos_double_grad,
                   ops::CosDoubleGradOp,
@@ -7246,6 +8961,13 @@ REGISTER_OPERATOR(
     ops::FftR2cGradInferShapeFunctor);
 
 REGISTER_OPERATOR(
+    fill_diagonal_grad,
+    ops::FillDiagonalGradOp,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
+    ops::FillDiagonalGradInferShapeFunctor);
+
+REGISTER_OPERATOR(
     fill_diagonal_tensor_grad,
     ops::FillDiagonalTensorGradOp,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
@@ -7268,6 +8990,21 @@ REGISTER_OPERATOR(
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
     ops::FoldGradNoNeedBufferVarInferer,
     ops::FoldGradInferShapeFunctor);
+
+REGISTER_OPERATOR(
+    frame_grad,
+    ops::FrameGradOp,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
+    ops::FrameGradInferShapeFunctor);
+
+REGISTER_OPERATOR(
+    gather_nd_grad,
+    ops::GatherNdGradOp,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
+    ops::GatherNdGradNoNeedBufferVarInferer,
+    ops::GatherNdGradInferShapeFunctor);
 
 REGISTER_OPERATOR(
     gelu_grad,
@@ -7305,6 +9042,21 @@ REGISTER_OPERATOR(
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
     ops::HardSigmoidGradInplaceInferer,
     ops::HardSigmoidGradInferShapeFunctor);
+
+REGISTER_OPERATOR(
+    brelu_grad,
+    ops::BreluGradOp,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
+    ops::BreluGradInplaceInferer,
+    ops::BreluGradInferShapeFunctor);
+
+REGISTER_OPERATOR(
+    imag_grad,
+    ops::ImagGradOp,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
+    ops::ImagGradInferShapeFunctor);
 
 REGISTER_OPERATOR(
     index_sample_grad,
@@ -7484,6 +9236,20 @@ REGISTER_OPERATOR(
     ops::NllLossGradInferShapeFunctor);
 
 REGISTER_OPERATOR(
+    overlap_add_grad,
+    ops::OverlapAddGradOp,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
+    ops::OverlapAddGradInferShapeFunctor);
+
+REGISTER_OPERATOR(
+    pixel_shuffle_grad,
+    ops::PixelShuffleGradOp,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
+    ops::PixelShuffleGradInferShapeFunctor);
+
+REGISTER_OPERATOR(
     poisson_grad,
     ops::PoissonGradOp,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
@@ -7503,6 +9269,13 @@ REGISTER_OPERATOR(
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
     ops::QrGradInferShapeFunctor);
+
+REGISTER_OPERATOR(
+    real_grad,
+    ops::RealGradOp,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
+    ops::RealGradInferShapeFunctor);
 
 REGISTER_OPERATOR(
     reciprocal_grad,
@@ -7535,6 +9308,14 @@ REGISTER_OPERATOR(
     ops::RenormGradInferShapeFunctor);
 
 REGISTER_OPERATOR(
+    roll_grad,
+    ops::RollGradOp,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
+    ops::RollGradNoNeedBufferVarInferer,
+    ops::RollGradInferShapeFunctor);
+
+REGISTER_OPERATOR(
     round_grad,
     ops::RoundGradOp,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
@@ -7556,6 +9337,29 @@ REGISTER_OPERATOR(rsqrt_grad,
                   ops::RsqrtGradGradOpMaker<paddle::imperative::OpBase>,
                   ops::RsqrtGradInplaceInferer,
                   ops::RsqrtGradInferShapeFunctor);
+
+REGISTER_OPERATOR(
+    scatter_grad,
+    ops::ScatterGradOp,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
+    ops::ScatterGradNoNeedBufferVarInferer,
+    ops::ScatterGradInferShapeFunctor);
+
+REGISTER_OPERATOR(
+    scatter_nd_add_grad,
+    ops::ScatterNdAddGradOp,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
+    ops::ScatterNdAddGradNoNeedBufferVarInferer,
+    ops::ScatterNdAddGradInferShapeFunctor);
+
+REGISTER_OPERATOR(
+    selu_grad,
+    ops::SeluGradOp,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
+    ops::SeluGradInferShapeFunctor);
 
 REGISTER_OPERATOR(
     graph_send_uv_grad,
@@ -7685,6 +9489,13 @@ REGISTER_OPERATOR(square_grad,
                   ops::SquareGradInplaceInferer,
                   ops::SquareGradInferShapeFunctor);
 
+REGISTER_OPERATOR(squeeze2_grad,
+                  ops::Squeeze2GradOp,
+                  ops::Squeeze2DoubleGradOpMaker<paddle::framework::OpDesc>,
+                  ops::Squeeze2DoubleGradOpMaker<paddle::imperative::OpBase>,
+                  ops::Squeeze2GradInplaceInferer,
+                  ops::Squeeze2GradInferShapeFunctor);
+
 REGISTER_OPERATOR(
     svd_grad,
     ops::SvdGradOp,
@@ -7774,3 +9585,33 @@ REGISTER_OPERATOR(
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
     ops::UnfoldGradNoNeedBufferVarInferer,
     ops::UnfoldGradInferShapeFunctor);
+
+REGISTER_OPERATOR(unsqueeze2_grad,
+                  ops::Unsqueeze2GradOp,
+                  ops::Unsqueeze2DoubleGradOpMaker<paddle::framework::OpDesc>,
+                  ops::Unsqueeze2DoubleGradOpMaker<paddle::imperative::OpBase>,
+                  ops::Unsqueeze2GradInplaceInferer,
+                  ops::Unsqueeze2GradInferShapeFunctor);
+
+REGISTER_OPERATOR(
+    unstack_grad,
+    ops::UnstackGradOp,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
+    ops::UnstackGradInferShapeFunctor);
+
+REGISTER_OPERATOR(
+    warprnnt_grad,
+    ops::WarprnntGradOp,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
+    ops::WarprnntGradNoNeedBufferVarInferer,
+    ops::WarprnntGradInferShapeFunctor);
+
+REGISTER_OPERATOR(
+    where_grad,
+    ops::WhereGradOp,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
+    ops::WhereGradNoNeedBufferVarInferer,
+    ops::WhereGradInferShapeFunctor);

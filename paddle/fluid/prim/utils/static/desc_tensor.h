@@ -34,7 +34,7 @@ class DescTensor : public phi::ExtendedTensor,
 
   std::vector<int64_t> shape() const { return desc_ptr_->GetShape(); }
 
-  const phi::DDim& dims() const {
+  const phi::DDim& dims() const override {
     dims_ = phi::make_ddim(desc_ptr_->GetShape());
     return dims_;
   }

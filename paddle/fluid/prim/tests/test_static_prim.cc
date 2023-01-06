@@ -21,8 +21,25 @@
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/prim/api/manual/utils/utils.h"
 #include "paddle/fluid/prim/utils/static/desc_tensor.h"
+#include "paddle/fluid/prim/utils/utils.h"
 #include "paddle/phi/core/enforce.h"
+#include "paddle/phi/core/kernel_registry.h"
 
+DECLARE_bool(prim_enabled);
+PD_DECLARE_KERNEL(full, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(tanh, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(tanh_grad, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(pow, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(scale, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(multiply, CPU, ALL_LAYOUT);
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+PD_DECLARE_KERNEL(full, GPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(tanh, GPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(tanh_grad, GPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(pow, GPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(scale, GPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(multiply, KPS, ALL_LAYOUT);
+#endif
 namespace paddle {
 namespace prim {
 
@@ -161,5 +178,17 @@ TEST(StaticPrim, TanhBackwardComposite) {
   ASSERT_EQ(grad_ops[2]->Outputs().at("Out").size(),
             static_cast<std::size_t>(1));
 }
+
+TEST(StaticPrim, TestFlags) {
+  PrimCommonUtils::SetPrimEnable(true);
+  ASSERT_TRUE(PrimCommonUtils::IsPrimEnabled());
+  PrimCommonUtils::SetPrimEnable(false);
+  ASSERT_FALSE(PrimCommonUtils::IsPrimEnabled());
+}
 }  // namespace prim
 }  // namespace paddle
+USE_OP_ITSELF(tanh);
+USE_OP_ITSELF(tanh_grad);
+USE_OP_ITSELF(pow);
+USE_OP_ITSELF(elementwise_mul);
+USE_OP_ITSELF(scale);
