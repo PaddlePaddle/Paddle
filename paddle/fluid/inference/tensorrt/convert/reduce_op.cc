@@ -125,12 +125,12 @@ class ReduceMaxOpConverter : public ReduceOpConverter {
 
 class ReduceMinOpConverter : public ReduceOpConverter {
  public:
-  ReduceMaxOpConverter() { op_type = "reduce_min"; }
+  ReduceMinOpConverter() { op_type = "reduce_min"; }
 };
 
 class ReduceProdOpConverter : public ReduceOpConverter {
  public:
-  ReduceMaxOpConverter() { op_type = "reduce_prod"; }
+  ReduceProdOpConverter() { op_type = "reduce_prod"; }
 };
 }  // namespace tensorrt
 }  // namespace inference
