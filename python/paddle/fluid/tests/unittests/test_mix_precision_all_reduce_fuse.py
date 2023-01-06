@@ -27,7 +27,7 @@ img_shape = [1, 28, 28]
 
 
 def loss_net(hidden, label):
-    prediction = paddle.static.nn.fc(x=hidden, size=10, activation='softmax')
+    prediction = fluid.layers.fc(input=hidden, size=10, act='softmax')
     loss = paddle.nn.functional.cross_entropy(
         input=prediction, label=label, reduction='none', use_softmax=False
     )

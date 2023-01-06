@@ -1691,7 +1691,7 @@ class PyReader(DataLoaderBase):
 
            def network(image, label):
                # User-defined network, here is an example of softmax regression.
-               predict = paddle.static.nn.fc(x=image, size=10, activation='softmax')
+               predict = fluid.layers.fc(input=image, size=10, act='softmax')
                return paddle.nn.functional.cross_entropy(
                     input=predict, label=label,
                     reduction='none', use_softmax=False
@@ -1750,7 +1750,7 @@ class PyReader(DataLoaderBase):
 
            def network(image, label):
                # User-defined network, here is an example of softmax regression.
-               predict = paddle.static.nn.fc(x=image, size=10, activation='softmax')
+               predict = fluid.layers.fc(input=image, size=10, act='softmax')
                return paddle.nn.functional.cross_entropy(
                    input=predict, label=label,
                    reduction='none', use_softmax=False
@@ -1938,7 +1938,6 @@ class PyReader(DataLoaderBase):
         Example:
             .. code-block:: python
 
-                import paddle
                 import paddle.fluid as fluid
                 import numpy as np
 
@@ -1948,7 +1947,7 @@ class PyReader(DataLoaderBase):
 
                 def network(image, label):
                     # User-defined network, here is an example of softmax regression.
-                    predict = paddle.static.nn.fc(x=image, size=10, activation='softmax')
+                    predict = fluid.layers.fc(input=image, size=10, act='softmax')
                     return paddle.nn.functional.cross_entropy(
                         input=predict, label=label,
                         reduction='none', use_softmax=False
@@ -2015,7 +2014,7 @@ class PyReader(DataLoaderBase):
 
                 def network(image, label):
                     # User-defined network, here is an example of softmax regression.
-                    predict = paddle.static.nn.fc(x=image, size=10, activation='softmax')
+                    predict = fluid.layers.fc(input=image, size=10, act='softmax')
                     return paddle.nn.functional.cross_entropy(
                         input=predict, label=label,
                         reduction='none', use_softmax=False
@@ -2081,7 +2080,7 @@ class PyReader(DataLoaderBase):
 
                 def network(image, label):
                     # User-defined network, here is an example of softmax regression.
-                    predict = paddle.static.nn.fc(x=image, size=10, activation='softmax')
+                    predict = fluid.layers.fc(input=image, size=10, act='softmax')
                     return paddle.nn.functional.cross_entropy(
                         input=predict, label=label,
                         reduction='none', use_softmax=False

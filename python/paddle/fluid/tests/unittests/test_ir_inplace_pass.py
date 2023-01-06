@@ -29,17 +29,17 @@ def fc_with_batchnorm(use_feed):
 
     hidden = img
     for _ in range(3):
-        hidden = paddle.static.nn.fc(
+        hidden = fluid.layers.fc(
             hidden,
             size=200,
-            activation='tanh',
+            act='tanh',
             bias_attr=fluid.ParamAttr(
                 initializer=fluid.initializer.Constant(value=1.0)
             ),
         )
 
         hidden = paddle.static.nn.batch_norm(input=hidden)
-    prediction = paddle.static.nn.fc(hidden, size=10, activation='softmax')
+    prediction = fluid.layers.fc(hidden, size=10, act='softmax')
     loss = paddle.nn.functional.cross_entropy(
         input=prediction, label=label, reduction='none', use_softmax=False
     )

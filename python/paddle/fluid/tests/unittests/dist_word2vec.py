@@ -79,19 +79,19 @@ class TestDistWord2vec2x2(TestDistRunnerBase):
                 input=[embed_first, embed_second, embed_third, embed_forth],
                 axis=1,
             )
-            hidden1 = paddle.static.nn.fc(
-                x=concat_embed,
+            hidden1 = fluid.layers.fc(
+                input=concat_embed,
                 size=HIDDEN_SIZE,
-                activation='sigmoid',
-                weight_attr=fluid.ParamAttr(
+                act='sigmoid',
+                param_attr=fluid.ParamAttr(
                     initializer=fluid.initializer.Constant(value=0.1)
                 ),
             )
-            predict_word = paddle.static.nn.fc(
-                x=hidden1,
+            predict_word = fluid.layers.fc(
+                input=hidden1,
                 size=dict_size,
-                activation='softmax',
-                weight_attr=fluid.ParamAttr(
+                act='softmax',
+                param_attr=fluid.ParamAttr(
                     initializer=fluid.initializer.Constant(value=0.1)
                 ),
             )

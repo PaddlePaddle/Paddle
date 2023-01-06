@@ -29,7 +29,7 @@ BATCH_SIZE = 64
 
 
 def loss_net(hidden, label):
-    prediction = paddle.static.nn.fc(x=hidden, size=10, activation='softmax')
+    prediction = fluid.layers.fc(input=hidden, size=10, act='softmax')
     loss = paddle.nn.functional.cross_entropy(
         input=prediction, label=label, reduction='none', use_softmax=False
     )
@@ -39,8 +39,8 @@ def loss_net(hidden, label):
 
 
 def mlp(img, label):
-    hidden = paddle.static.nn.fc(x=img, size=200, activation='tanh')
-    hidden = paddle.static.nn.fc(x=hidden, size=200, activation='tanh')
+    hidden = fluid.layers.fc(input=img, size=200, act='tanh')
+    hidden = fluid.layers.fc(input=hidden, size=200, act='tanh')
     return loss_net(hidden, label)
 
 

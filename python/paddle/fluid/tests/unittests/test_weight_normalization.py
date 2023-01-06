@@ -38,16 +38,16 @@ class TestWeightNormalization(unittest.TestCase):
         data = fluid.layers.data(
             name=cls.data_desc[0][0], shape=cls.data_desc[0][1]
         )
-        out = paddle.static.nn.fc(
-            x=data,
+        out = fluid.layers.fc(
+            input=data,
             size=cls.hidden_size,
-            weight_attr=WeightNormParamAttr(
+            param_attr=WeightNormParamAttr(
                 dim=None,
                 name='weight_norm_param',
                 initializer=ConstantInitializer(1.0),
             ),
             bias_attr=False,
-            activation=None,
+            act=None,
         )
         loss = paddle.sum(out)
         fluid.backward.append_backward(loss=loss)

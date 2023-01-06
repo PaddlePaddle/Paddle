@@ -98,11 +98,11 @@ class TestDistFleetHeterProgram(unittest.TestCase):
         concated = fluid.layers.concat(sparse_embed_seq + inputs[0:1], axis=1)
 
         with fluid.device_guard("gpu"):
-            fc1 = paddle.static.nn.fc(
-                x=concated,
+            fc1 = fluid.layers.fc(
+                input=concated,
                 size=400,
-                activation="relu",
-                weight_attr=fluid.ParamAttr(
+                act="relu",
+                param_attr=fluid.ParamAttr(
                     initializer=fluid.initializer.Normal(
                         scale=1 / math.sqrt(concated.shape[1])
                     )
@@ -111,11 +111,11 @@ class TestDistFleetHeterProgram(unittest.TestCase):
             )
 
         with fluid.device_guard("cpu"):
-            fc2 = paddle.static.nn.fc(
-                x=fc1,
+            fc2 = fluid.layers.fc(
+                input=fc1,
                 size=400,
-                activation="relu",
-                weight_attr=fluid.ParamAttr(
+                act="relu",
+                param_attr=fluid.ParamAttr(
                     initializer=fluid.initializer.Normal(
                         scale=1 / math.sqrt(fc1.shape[1])
                     )
@@ -124,11 +124,11 @@ class TestDistFleetHeterProgram(unittest.TestCase):
             )
 
         with fluid.device_guard("gpu"):
-            fc3 = paddle.static.nn.fc(
-                x=fc2,
+            fc3 = fluid.layers.fc(
+                input=fc2,
                 size=400,
-                activation="relu",
-                weight_attr=fluid.ParamAttr(
+                act="relu",
+                param_attr=fluid.ParamAttr(
                     initializer=fluid.initializer.Normal(
                         scale=1 / math.sqrt(fc2.shape[1])
                     )
@@ -137,11 +137,11 @@ class TestDistFleetHeterProgram(unittest.TestCase):
             )
 
         with fluid.device_guard("cpu"):
-            predict = paddle.static.nn.fc(
-                x=fc3,
+            predict = fluid.layers.fc(
+                input=fc3,
                 size=2,
-                activation="softmax",
-                weight_attr=fluid.ParamAttr(
+                act="softmax",
+                param_attr=fluid.ParamAttr(
                     initializer=fluid.initializer.Normal(
                         scale=1 / math.sqrt(fc3.shape[1])
                     )

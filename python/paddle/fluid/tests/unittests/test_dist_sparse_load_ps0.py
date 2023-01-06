@@ -44,11 +44,11 @@ class SparseLoadOp(unittest.TestCase):
                 ),
             )
 
-            fc1 = paddle.static.nn.fc(
-                x=emb,
+            fc1 = fluid.layers.fc(
+                input=emb,
                 size=10,
-                activation="relu",
-                weight_attr=fluid.ParamAttr(
+                act="relu",
+                param_attr=fluid.ParamAttr(
                     name='fc',
                     initializer=fluid.initializer.NumpyArrayInitializer(
                         fc_array

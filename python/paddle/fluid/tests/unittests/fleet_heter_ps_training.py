@@ -97,11 +97,11 @@ def net(batch_size=4, lr=0.01):
 
     with fluid.device_guard("gpu"):
         for i, dim in enumerate(dnn_layer_dims[1:]):
-            fc = paddle.static.nn.fc(
-                x=dnn_out,
+            fc = fluid.layers.fc(
+                input=dnn_out,
                 size=dim,
-                activation="relu",
-                weight_attr=fluid.ParamAttr(
+                act="relu",
+                param_attr=fluid.ParamAttr(
                     initializer=fluid.initializer.Constant(value=0.01)
                 ),
                 name='dnn-fc-%d' % i,
@@ -110,9 +110,7 @@ def net(batch_size=4, lr=0.01):
 
         merge_layer = fluid.layers.concat(input=[dnn_out, lr_pool], axis=1)
         label = fluid.layers.cast(label, dtype="int64")
-        predict = paddle.static.nn.fc(
-            x=merge_layer, size=2, activation='softmax'
-        )
+        predict = fluid.layers.fc(input=merge_layer, size=2, act='softmax')
 
         cost = paddle.nn.functional.cross_entropy(
             input=predict, label=label, reduction='none', use_softmax=False

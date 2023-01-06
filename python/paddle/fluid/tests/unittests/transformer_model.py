@@ -73,28 +73,28 @@ def multi_head_attention(
         """
         Add linear projection to queries, keys, and values.
         """
-        q = paddle.static.nn.fc(
-            x=queries,
+        q = layers.fc(
+            input=queries,
             size=d_key * n_head,
-            weight_attr=fluid.initializer.Xavier(
+            param_attr=fluid.initializer.Xavier(
                 uniform=False, fan_in=d_model * d_key, fan_out=n_head * d_key
             ),
             bias_attr=False,
             num_flatten_dims=2,
         )
-        k = paddle.static.nn.fc(
-            x=keys,
+        k = layers.fc(
+            input=keys,
             size=d_key * n_head,
-            weight_attr=fluid.initializer.Xavier(
+            param_attr=fluid.initializer.Xavier(
                 uniform=False, fan_in=d_model * d_key, fan_out=n_head * d_key
             ),
             bias_attr=False,
             num_flatten_dims=2,
         )
-        v = paddle.static.nn.fc(
-            x=values,
+        v = layers.fc(
+            input=values,
             size=d_value * n_head,
-            weight_attr=fluid.initializer.Xavier(
+            param_attr=fluid.initializer.Xavier(
                 uniform=False,
                 fan_in=d_model * d_value,
                 fan_out=n_head * d_value,
@@ -184,10 +184,10 @@ def multi_head_attention(
     out = __combine_heads(ctx_multiheads)
 
     # Project back to the model size.
-    proj_out = paddle.static.nn.fc(
-        x=out,
+    proj_out = layers.fc(
+        input=out,
         size=d_model,
-        weight_attr=fluid.initializer.Xavier(uniform=False),
+        param_attr=fluid.initializer.Xavier(uniform=False),
         bias_attr=False,
         num_flatten_dims=2,
     )
@@ -200,20 +200,20 @@ def positionwise_feed_forward(x, d_inner_hid, d_hid):
     This module consists of two linear transformations with a ReLU activation
     in between, which is applied to each position separately and identically.
     """
-    hidden = paddle.static.nn.fc(
-        x,
+    hidden = layers.fc(
+        input=x,
         size=d_inner_hid,
         num_flatten_dims=2,
-        weight_attr=fluid.initializer.Uniform(
+        param_attr=fluid.initializer.Uniform(
             low=-(d_hid**-0.5), high=(d_hid**-0.5)
         ),
-        activation="relu",
+        act="relu",
     )
-    out = paddle.static.nn.fc(
-        x=hidden,
+    out = layers.fc(
+        input=hidden,
         size=d_hid,
         num_flatten_dims=2,
-        weight_attr=fluid.initializer.Uniform(
+        param_attr=fluid.initializer.Uniform(
             low=-(d_inner_hid**-0.5), high=(d_inner_hid**-0.5)
         ),
     )
@@ -582,10 +582,10 @@ def transformer(
     # TODO(guosheng): Share the weight matrix between the embedding layers and
     # the pre-softmax linear transformation.
     predict = paddle.reshape(
-        x=paddle.static.nn.fc(
-            x=dec_output,
+        x=layers.fc(
+            input=dec_output,
             size=trg_vocab_size,
-            weight_attr=fluid.initializer.Xavier(uniform=False),
+            param_attr=fluid.initializer.Xavier(uniform=False),
             bias_attr=False,
             num_flatten_dims=2,
         ),

@@ -64,19 +64,19 @@ def simple_fc_net_static():
                 initializer=fluid.initializer.Constant(value=0.5)
             )
             for hidden_size in [10, 20, 30]:
-                hidden = paddle.static.nn.fc(
+                hidden = fluid.layers.fc(
                     hidden,
                     size=hidden_size,
-                    activation='tanh',
-                    weight_attr=param_attr,
+                    act='tanh',
+                    param_attr=param_attr,
                     bias_attr=bias_attr,
                 )
 
-            predict_label = paddle.static.nn.fc(
+            predict_label = fluid.layers.fc(
                 hidden,
                 size=CLASS_NUM,
-                activation='softmax',
-                weight_attr=param_attr,
+                act='softmax',
+                param_attr=param_attr,
                 bias_attr=bias_attr,
             )
             loss = paddle.mean(

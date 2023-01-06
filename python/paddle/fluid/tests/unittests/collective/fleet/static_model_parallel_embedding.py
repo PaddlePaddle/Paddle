@@ -51,10 +51,10 @@ def create_model(data, rank):
             bias_attr=False,
         )
     else:
-        result = paddle.static.nn.fc(
+        result = fluid.layers.fc(
             data,
             size=OUT_SIZE,
-            weight_attr=paddle.ParamAttr(
+            param_attr=paddle.ParamAttr(
                 initializer=fluid.initializer.NumpyArrayInitializer(np_weight)
             ),
             bias_attr=False,

@@ -298,19 +298,19 @@ class RecurrentOpTest2(RecurrentOpTest1):
             h_pre = rnn.memory(init=h_boot)
             x_t = rnn.step_input(x)
 
-            temp_l = paddle.static.nn.fc(
-                x=x_t,
+            temp_l = layers.fc(
+                input=x_t,
                 size=self.input_dim,
-                weight_attr=ParamAttr(
+                param_attr=ParamAttr(
                     name='W',
                     initializer=fluid.initializer.ConstantInitializer(1.0),
                 ),
                 bias_attr=False,
             )
-            temp_r = paddle.static.nn.fc(
-                x=h_pre,
+            temp_r = layers.fc(
+                input=h_pre,
                 size=self.input_dim,
-                weight_attr=ParamAttr(
+                param_attr=ParamAttr(
                     name='U',
                     initializer=fluid.initializer.ConstantInitializer(0.0),
                 ),
@@ -692,19 +692,19 @@ class RecurrentOpStopGradientTest(RecurrentOpTest1):
             h_pre = rnn.memory(init=h_boot)  # init doesn't have gradient
             x_t = rnn.step_input(x)
 
-            temp_l = paddle.static.nn.fc(
-                x=x_t,
+            temp_l = layers.fc(
+                input=x_t,
                 size=self.input_dim,
-                weight_attr=ParamAttr(
+                param_attr=ParamAttr(
                     name="W",
                     initializer=fluid.initializer.ConstantInitializer(1.0),
                 ),
                 bias_attr=False,
             )
-            temp_r = paddle.static.nn.fc(
-                x=h_pre,
+            temp_r = layers.fc(
+                input=h_pre,
                 size=self.input_dim,
-                weight_attr=ParamAttr(
+                param_attr=ParamAttr(
                     name="U",
                     initializer=fluid.initializer.ConstantInitializer(0.0),
                 ),

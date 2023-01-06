@@ -90,11 +90,11 @@ def train(
         concat_embed = fluid.layers.concat(
             input=[embed_first, embed_second, embed_third, embed_forth], axis=1
         )
-        hidden1 = paddle.static.nn.fc(
-            x=concat_embed, size=HIDDEN_SIZE, activation='sigmoid'
+        hidden1 = fluid.layers.fc(
+            input=concat_embed, size=HIDDEN_SIZE, act='sigmoid'
         )
-        predict_word = paddle.static.nn.fc(
-            x=hidden1, size=dict_size, activation='softmax'
+        predict_word = fluid.layers.fc(
+            input=hidden1, size=dict_size, act='softmax'
         )
         cost = paddle.nn.functional.cross_entropy(
             input=predict_word,

@@ -117,17 +117,17 @@ class TestGeneratorSeed(unittest.TestCase):
             # example 1:
             # attr shape is a list which doesn't contain tensor Variable.
             x = paddle.uniform(shape=[2, 10])
-            result_1 = paddle.static.nn.fc(
-                x,
+            result_1 = fluid.layers.fc(
+                input=x,
                 size=10,
-                weight_attr=fluid.initializer.TruncatedNormal(
+                param_attr=fluid.initializer.TruncatedNormal(
                     loc=0.0, scale=2.0
                 ),
             )
-            result_2 = paddle.static.nn.fc(
-                x,
+            result_2 = fluid.layers.fc(
+                input=x,
                 size=10,
-                weight_attr=fluid.initializer.TruncatedNormal(
+                param_attr=fluid.initializer.TruncatedNormal(
                     loc=0.0, scale=2.0
                 ),
             )

@@ -56,9 +56,7 @@ def convolutional_neural_network(use_py_reader):
             act="relu",
         )
 
-        prediction = paddle.static.nn.fc(
-            x=conv_pool_2, size=10, activation='softmax'
-        )
+        prediction = fluid.layers.fc(input=conv_pool_2, size=10, act='softmax')
         loss = paddle.nn.functional.cross_entropy(
             input=prediction, label=label, reduction='none', use_softmax=False
         )

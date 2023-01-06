@@ -281,10 +281,10 @@ class TestUniformRandomOpApi(unittest.TestCase):
     def test_api(self):
         paddle.seed(10)
         x = fluid.layers.data('x', shape=[16], dtype='float32', lod_level=1)
-        y = paddle.static.nn.fc(
+        y = fluid.layers.fc(
             x,
             size=16,
-            weight_attr=fluid.initializer.Uniform(
+            param_attr=fluid.initializer.Uniform(
                 low=-0.5,
                 high=0.5,
                 seed=10,

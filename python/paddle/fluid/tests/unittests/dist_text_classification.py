@@ -74,19 +74,19 @@ def conv_net(
         ),
     )
 
-    fc_0 = paddle.static.nn.fc(
-        x=[conv_3],
+    fc_0 = fluid.layers.fc(
+        input=[conv_3],
         size=fc0_dim,
-        weight_attr=fluid.ParamAttr(
+        param_attr=fluid.ParamAttr(
             initializer=fluid.initializer.Constant(value=0.01)
         ),
     )
 
-    prediction = paddle.static.nn.fc(
-        x=[fc_0],
+    prediction = fluid.layers.fc(
+        input=[fc_0],
         size=class_dim,
-        activation="softmax",
-        weight_attr=fluid.ParamAttr(
+        act="softmax",
+        param_attr=fluid.ParamAttr(
             initializer=fluid.initializer.Constant(value=0.01)
         ),
     )
