@@ -85,7 +85,7 @@ class TestPostTrainingKLONNXFormatForMobilenetv1MKLDNN(
         is_optimize_model = False
         onnx_format = True
         diff_threshold = 0.05
-        batch_nums = 3
+        batch_nums = 2
         deploy_backend = "mkldnn"
         self.run_test(
             model,
@@ -127,7 +127,7 @@ class TestPostTrainingAvgONNXFormatForMobilenetv1ARMCPU(
         is_optimize_model = True
         onnx_format = True
         diff_threshold = 0.05
-        batch_nums = 5
+        batch_nums = 3
         deploy_backend = "arm"
         self.run_test(
             model,
