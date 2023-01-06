@@ -82,10 +82,13 @@ class EntryAttrChecks(unittest.TestCase):
                     entry=prob,
                     param_attr=fluid.ParamAttr(name="deep_embedding"),
                 )
+
                 pool = paddle.static.nn.sequence_lod.sequence_pool(
                     input=emb, pool_type="sum"
                 )
-                predict = fluid.layers.fc(input=pool, size=2, act='softmax')
+                predict = paddle.static.nn.fc(
+                    x=pool, size=2, activation='softmax'
+                )
 
         block = prog.global_block()
         for op in block.ops:

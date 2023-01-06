@@ -50,7 +50,7 @@ def get_usr_combined_features():
         is_sparse=IS_SPARSE,
     )
 
-    usr_fc = layers.fc(input=usr_emb, size=32)
+    usr_fc = paddle.static.nn.fc(x=usr_emb, size=32)
 
     USR_GENDER_DICT_SIZE = 2
 
@@ -63,7 +63,7 @@ def get_usr_combined_features():
         is_sparse=IS_SPARSE,
     )
 
-    usr_gender_fc = layers.fc(input=usr_gender_emb, size=16)
+    usr_gender_fc = paddle.static.nn.fc(x=usr_gender_emb, size=16)
 
     USR_AGE_DICT_SIZE = len(paddle.dataset.movielens.age_table)
     usr_age_id = layers.data(name='age_id', shape=[1], dtype="int64")
@@ -75,7 +75,7 @@ def get_usr_combined_features():
         param_attr='age_table',
     )
 
-    usr_age_fc = layers.fc(input=usr_age_emb, size=16)
+    usr_age_fc = paddle.static.nn.fc(x=usr_age_emb, size=16)
 
     USR_JOB_DICT_SIZE = paddle.dataset.movielens.max_job_id() + 1
     usr_job_id = layers.data(name='job_id', shape=[1], dtype="int64")
@@ -87,13 +87,15 @@ def get_usr_combined_features():
         is_sparse=IS_SPARSE,
     )
 
-    usr_job_fc = layers.fc(input=usr_job_emb, size=16)
+    usr_job_fc = paddle.static.nn.fc(x=usr_job_emb, size=16)
 
     concat_embed = layers.concat(
         input=[usr_fc, usr_gender_fc, usr_age_fc, usr_job_fc], axis=1
     )
 
-    usr_combined_features = layers.fc(input=concat_embed, size=200, act="tanh")
+    usr_combined_features = paddle.static.nn.fc(
+        x=concat_embed, size=200, activation="tanh"
+    )
 
     return usr_combined_features
 
@@ -112,7 +114,7 @@ def get_mov_combined_features():
         is_sparse=IS_SPARSE,
     )
 
-    mov_fc = layers.fc(input=mov_emb, size=32)
+    mov_fc = paddle.static.nn.fc(x=mov_emb, size=32)
 
     CATEGORY_DICT_SIZE = len(paddle.dataset.movielens.movie_categories())
 
@@ -151,7 +153,9 @@ def get_mov_combined_features():
     )
 
     # FIXME(dzh) : need tanh operator
-    mov_combined_features = layers.fc(input=concat_embed, size=200, act="tanh")
+    mov_combined_features = paddle.static.nn.fc(
+        x=concat_embed, size=200, activation="tanh"
+    )
 
     return mov_combined_features
 
