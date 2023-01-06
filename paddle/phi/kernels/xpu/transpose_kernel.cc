@@ -16,7 +16,6 @@
 
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/funcs/stride/transpose_stride.h"
 
 namespace phi {
 
@@ -29,10 +28,6 @@ void TransposeKernel(const Context& dev_ctx,
 
   dev_ctx.template Alloc<T>(out);
   if (out->numel() == 0) {
-    return;
-  }
-  if (x.strides().IsValiable()) {
-    funcs::TransposeStride<T, Context>(ctx, x, axis, out);
     return;
   }
 

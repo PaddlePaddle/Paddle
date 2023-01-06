@@ -45,6 +45,7 @@ enum class DataLayout {
   SPARSE_COO,
   SPARSE_CSR,
   PSTRING_UNION,
+  STRIDED,
 
   NUM_DATA_LAYOUTS,
 

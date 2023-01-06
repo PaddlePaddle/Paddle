@@ -177,6 +177,7 @@ void DenseTensor::ShareBufferWith(const DenseTensor& tensor, bool only_buffer) {
   if (!only_buffer) {
     meta_.offset = tensor.meta().offset;
     meta_.dtype = tensor.dtype();
+    meta_.strides = tensor.meta().strides;
   }
 }
 
@@ -360,6 +361,7 @@ DenseTensor& DenseTensor::ShareDataWith(const DenseTensor& src) {
   meta_.layout = src.meta_.layout;
   meta_.offset = src.meta_.offset;
   meta_.use_gpudnn = src.meta_.use_gpudnn;
+  meta_.strides = src.meta_.strides;
   storage_properties_ =
       std::move(CopyStorageProperties(src.storage_properties_));
 #ifdef PADDLE_WITH_MKLDNN

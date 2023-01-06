@@ -13,13 +13,13 @@
 // limitations under the License.
 #pragma once
 
+#include "paddle/phi/kernels/transpose_kernel.h"
 #include "paddle/phi/core/kernel_registry.h"
 
 namespace phi {
-namespace funcs {
 
 template <typename T, typename Context>
-void TransposeStride(const Context& ctx,
+void TransposeKernel(const Context& ctx,
                      const DenseTensor& x,
                      const std::vector<int>& axis,
                      DenseTensor* out) {
@@ -39,5 +39,20 @@ void TransposeStride(const Context& ctx,
   out->ResetHolder(x.Holder());
 }
 
-}  // namespace funcs
 }  // namespace phi
+
+PD_REGISTER_GENERAL_KERNEL(
+    transpose, CPU, STRIDED, phi::TransposeKernel<phi::CPUContext>, ALL_DTYPE) {
+}
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+PD_REGISTER_GENERAL_KERNEL(
+    transpose, GPU, STRIDED, phi::TransposeKernel<phi::GPUContext>, ALL_DTYPE) {
+}
+#endif
+
+#ifdef PADDLE_WITH_XPU
+PD_REGISTER_GENERAL_KERNEL(
+    transpose, XPU, STRIDED, phi::TransposeKernel<phi::XPUContext>, ALL_DTYPE) {
+}
+#endif

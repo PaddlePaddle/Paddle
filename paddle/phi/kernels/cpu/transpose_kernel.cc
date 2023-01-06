@@ -20,7 +20,6 @@
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
-#include "paddle/phi/kernels/funcs/stride/transpose_stride.h"
 #include "paddle/phi/kernels/impl/transpose_grad_kernel_impl.h"
 
 namespace phi {
@@ -32,11 +31,6 @@ void TransposeKernel(const Context& ctx,
                      DenseTensor* out) {
   ctx.template Alloc<T>(out);
   if (out->numel() == 0) {
-    return;
-  }
-
-  if (x.strides().IsValiable()) {
-    funcs::TransposeStride<T, Context>(ctx, x, axis, out);
     return;
   }
 

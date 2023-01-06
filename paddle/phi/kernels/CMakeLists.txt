@@ -103,7 +103,8 @@ file(
   "selected_rows/gpu/*.cu"
   "sparse/gpu/*.cu"
   "strings/gpu/*.cu"
-  "fusion/gpu/*.cu")
+  "fusion/gpu/*.cu"
+  "stride/*.cc")
 
 if(WITH_CUTLASS)
   file(GLOB cutlass_cu "fusion/cutlass/conv2d/*.cu" "fusion/cutlass/*.cu")

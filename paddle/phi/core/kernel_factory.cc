@@ -133,11 +133,17 @@ std::map<const std::string, int> KernelFactory::GetLowPrecisionKernelList() {
 KernelResult KernelFactory::SelectKernelOrThrowError(
     const std::string& kernel_name, const KernelKey& const_kernel_key) const {
   auto iter = kernels_.find(kernel_name);
-
   PADDLE_ENFORCE_NE(
       iter,
       kernels_.end(),
       phi::errors::NotFound("The kernel `%s` is not registered.", kernel_name));
+
+  auto strided_kernel_iter = iter->second.find({const_kernel_key.backend(),
+                                                phi::DataLayout::STRIDED,
+                                                const_kernel_key.dtype()});
+  if (strided_kernel_iter != iter->second.end()) {
+    return {strided_kernel_iter->second, false};
+  }
 
   KernelKey kernel_key = KernelKey(const_kernel_key.backend(),
                                    phi::DataLayout::ALL_LAYOUT,
