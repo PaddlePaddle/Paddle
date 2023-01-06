@@ -2257,8 +2257,8 @@ void OneHotRawInferMeta(const MetaTensor& x,
   auto x_dims = x.dims();
   PADDLE_ENFORCE_GE(
       x_dims.size(),
-      1,
-      phi::errors::InvalidArgument("Rank of Input(X) should be at least 1."));
+      0,
+      phi::errors::InvalidArgument("Rank of Input(X) should be at least 0."));
   auto out_dims_vec = phi::vectorize(x_dims);
   out_dims_vec.push_back(depth.to<int>());
   auto out_dims = phi::make_ddim(out_dims_vec);
@@ -2273,8 +2273,8 @@ void OneHotInferMeta(const MetaTensor& x,
   auto x_dims = x.dims();
   PADDLE_ENFORCE_GE(
       x_dims.size(),
-      1,
-      phi::errors::InvalidArgument("Rank of Input(X) should be at least 1."));
+      0,
+      phi::errors::InvalidArgument("Rank of Input(X) should be at least 0."));
 
   int depth = depth_t.to<int>();
   auto out_dims_vec = phi::vectorize(x_dims);
