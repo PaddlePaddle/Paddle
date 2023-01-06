@@ -18,9 +18,12 @@
 #include <string>
 
 #include "paddle/phi/backends/gpu/gpu_info.h"
-#include "paddle/phi/core/distributed/nccl_comm_context.h"
 #include "paddle/phi/core/distributed/store/store.h"
 #include "paddle/phi/core/enforce.h"
+
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#include "paddle/phi/core/distributed/nccl_comm_context.h"
+#endif
 
 namespace phi {
 namespace distributed {
@@ -55,7 +58,6 @@ void CommContextManager::CreateNCCLCommContext(
   comm_context_manager.SetStore(store);
   comm_context_manager.Emplace(ring_id, std::move(nccl_comm_context));
 }
-
 #endif
 
 CommContext* CommContextManager::Emplace(
