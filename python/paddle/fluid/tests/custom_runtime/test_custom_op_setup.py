@@ -177,14 +177,15 @@ class TestNewCustomOpSetUpInstall(unittest.TestCase):
             )
 
         custom_module = paddle.utils.cpp_extension.load(
-            name='custom_device_relu',
-            sources=['custom_relu_op.cc'],
+            name='custom_device',
+            sources=['custom_op.cc'],
             extra_include_paths=paddle_includes,  # add for Coverage CI
             extra_cxx_cflags=["-w", "-g"],  # test for cc flags
             # build_directory=self.cur_dir,
             verbose=True,
         )
         self.custom_op = custom_module.custom_relu
+        self.custom_stream_op = custom_module.custom_stream
 
         self.dtypes = ["float32", "float64"]
         self.device = "custom_cpu"
@@ -204,6 +205,7 @@ class TestNewCustomOpSetUpInstall(unittest.TestCase):
         self._test_dynamic()
         self._test_double_grad_dynamic()
         self._test_with_dataloader()
+        self._test_stream()
 
     def _test_static(self):
         for dtype in self.dtypes:
@@ -316,6 +318,15 @@ class TestNewCustomOpSetUpInstall(unittest.TestCase):
 
             if batch_id == 5:
                 break
+
+    def _test_stream(self):
+        import paddle
+
+        paddle.set_device(self.device)
+        x = paddle.ones([2, 2], dtype='float32')
+        out = self.custom_stream_op(x)
+
+        np.testing.assert_array_equal(x.numpy(), out.numpy())
 
 
 if __name__ == "__main__":
