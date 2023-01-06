@@ -1898,7 +1898,9 @@ class RandomErasing(BaseTransform):
         h = paddle.assign([h]).astype("int32")
         w = paddle.assign([w]).astype("int32")
         erase_h, erase_w = h.clone(), w.clone()
-        counter = paddle.full(shape=[1], fill_value=0, dtype='int32')  # loop counter
+        counter = paddle.full(
+            shape=[1], fill_value=0, dtype='int32'
+        )  # loop counter
         ten = paddle.full(
             shape=[1], fill_value=10, dtype='int32'
         )  # loop length
