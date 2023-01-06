@@ -3460,7 +3460,7 @@ function trt_convert_test() {
 
 function build_pr_and_develop() {
     #cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
-    run_setup ${PYTHON_ABI:-""} install ${parallel_number} 
+    run_setup ${PYTHON_ABI:-""} bdist_wheel ${parallel_number} 
     cmake_change=`git diff --name-only upstream/$BRANCH | grep "cmake/external" || true`
     cp ${PADDLE_ROOT}/python/requirements.txt /tmp
     generate_api_spec "$1" "PR"
@@ -3484,7 +3484,7 @@ function build_pr_and_develop() {
         #cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
         run_setup ${PYTHON_ABI:-""} install ${parallel_number} 
         generate_api_spec "$1" "DEV"
-        mkdir ${PADDLE_ROOT}/build/dev_whl && cp ${PADDLE_ROOT}/build/python/dist/*.whl ${PADDLE_ROOT}/build/dev_whl
+        mkdir ${PADDLE_ROOT}/build/dev_whl && cp ${PADDLE_ROOT}/dist/*.whl ${PADDLE_ROOT}/build/dev_whl
     fi
 
 }
