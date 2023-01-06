@@ -12,12 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import yaml
 import argparse
 
+import yaml
 from prim_base import EagerPrimAPI
-
-
 
 
 def header_include():
@@ -28,7 +26,7 @@ def header_include():
 
 
 def eager_source_include(header_file_path):
-    return f"""
+    return """
 #include "paddle/fluid/eager/api/all.h"
 #include "paddle/fluid/eager/api/generated/eager_generated/forwards/dygraph_functions.h"
 #include "paddle/fluid/prim/api/generated/prim_api/prim_api.h"
@@ -70,7 +68,9 @@ def generate_api(api_yaml_path, header_file_path, eager_prim_source_file_path):
     header_file.write(header_include())
     header_file.write(namespace[0])
     header_file.write(namespace[1])
-    include_header_file = "#include paddle/fluid/prim/api/generated/prim_api/prim_api.h"
+    include_header_file = (
+        "#include paddle/fluid/prim/api/generated/prim_api/prim_api.h"
+    )
     eager_prim_source_file.write(eager_source_include(include_header_file))
     eager_prim_source_file.write(namespace[0])
 
@@ -85,6 +85,7 @@ def generate_api(api_yaml_path, header_file_path, eager_prim_source_file_path):
 
     header_file.close()
     eager_prim_source_file.close()
+
 
 def main():
     parser = argparse.ArgumentParser(
@@ -115,7 +116,11 @@ def main():
     prim_api_header_file_path = options.prim_api_header_path
     eager_prim_api_source_file_path = options.eager_prim_api_source_path
 
-    generate_api(api_yaml_path, prim_api_header_file_path, eager_prim_api_source_file_path)
+    generate_api(
+        api_yaml_path,
+        prim_api_header_file_path,
+        eager_prim_api_source_file_path,
+    )
 
 
 if __name__ == '__main__':

@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import collections
-import re
 
 # prim api list
 white_ops_list = [
@@ -32,11 +30,12 @@ inplace_optional_out_type_map = {
     "std::vector<Tensor>": "paddle::optional<std::vector<Tensor>>&",
 }
 
+
 class BaseAPI:
     def __init__(self, api_item_yaml):
-        #self.api = api_item_yaml['op']
+        # self.api = api_item_yaml['op']
         self.api = api_item_yaml['name']
-        
+
         self.is_prim_api = False
         if api_item_yaml['name'] in white_ops_list:
             self.is_prim_api = True
@@ -70,7 +69,7 @@ class BaseAPI:
     #     if self.inplace_map
     #         return True
     #     return False
-        
+
     def get_input_tensor_args(self, inplace_flag=False):
         input_args = []
         inplace_type_map = {
@@ -126,11 +125,11 @@ class BaseAPI:
         for input_dict in api_item_yaml['inputs']:
             if input_dict['optional']:
                 optional_vars.append(input_dict['name'])
-                
+
         inputs, attrs = self.parse_input_and_attr(
             api_item_yaml['inputs'], api_item_yaml['attrs']
         )
-        
+
         output_type_list, output_names, out_size_expr = self.parse_output(
             api_item_yaml['outputs']
         )
@@ -194,9 +193,13 @@ class BaseAPI:
         for input_dict in inputs_list:
             inputs['names'].append(input_dict['name'])
             if input_dict['optional']:
-                inputs['input_info'][input_dict['name']] = optional_types_trans[input_dict['typename']]
+                inputs['input_info'][input_dict['name']] = optional_types_trans[
+                    input_dict['typename']
+                ]
             else:
-                inputs['input_info'][input_dict['name']] = input_types_map[input_dict['typename']]
+                inputs['input_info'][input_dict['name']] = input_types_map[
+                    input_dict['typename']
+                ]
         attrs = {'names': [], 'attr_info': {}}
         for attr_dict in attrs_list:
             attrs['names'].append(attr_dict['name'])
@@ -204,11 +207,17 @@ class BaseAPI:
                 default_value = attr_dict['default_value']
             else:
                 default_value = None
-            
+
             if 'optional' in attr_dict.keys():
-                attrs['attr_info'][attr_dict['name']] = (optional_types_trans[attr_dict['typename']], default_value)
+                attrs['attr_info'][attr_dict['name']] = (
+                    optional_types_trans[attr_dict['typename']],
+                    default_value,
+                )
             else:
-                attrs['attr_info'][attr_dict['name']] = (attr_types_map[attr_dict['typename']], default_value)
+                attrs['attr_info'][attr_dict['name']] = (
+                    attr_types_map[attr_dict['typename']],
+                    default_value,
+                )
         return inputs, attrs
 
     def parse_input_and_attr_(self, api_name, args_config, optional_vars=[]):
@@ -316,7 +325,7 @@ class BaseAPI:
         return inputs, attrs
 
     def parse_output(self, outputs_list):
-        
+
         out_type_list = []
         out_name_list = []
         out_size_expr_list = []
@@ -329,10 +338,11 @@ class BaseAPI:
                 out_size_expr_list.append(None)
         return out_type_list, out_name_list, out_size_expr_list
 
+
 class EagerPrimAPI(BaseAPI):
     def __init__(self, api_item_yaml):
         super().__init__(api_item_yaml)
-        
+
     def get_api__func_name(self):
         api_func_name = self.api
         # if self.is_inplace:
@@ -340,8 +350,6 @@ class EagerPrimAPI(BaseAPI):
         #         api_func_name += '_'
         # print("after api name", api_func_name)
         return api_func_name
-
-    
 
     def gene_prim_api_declaration(self):
         api_declaration = ""
@@ -385,15 +393,15 @@ template <typename T>
 
     def gene_ad_func_call(self):
         api_func_name = self.get_api__func_name()
-        
+
         dygraph_ad_func_name = '::' + api_func_name + '_ad_func'
         dygraph_ad_func_parameters = self.get_ad_func_args()
-        
+
         ad_func_call_str = f"""
 VLOG(4) << "Eager Prim API {api_func_name}_ad_func call";
 return {dygraph_ad_func_name}({dygraph_ad_func_parameters});
 """
-        #print("ad_func_call_str: ", ad_func_call_str)
+        # print("ad_func_call_str: ", ad_func_call_str)
         return ad_func_call_str
 
     def gene_eager_prim_api_code(self):
@@ -401,7 +409,7 @@ return {dygraph_ad_func_name}({dygraph_ad_func_parameters});
         indent = "  "
         api_func_name = self.get_api__func_name()
         template = '<Tensor>'
-        # func decalaration 
+        # func decalaration
         if api_func_name[-1] != '_':
             api_code = f"""
 template <>
@@ -412,16 +420,10 @@ template <>
 template <>
 {self.get_return_type(inplace_flag=True)} {api_func_name}{template}({self.get_declare_args(inplace_flag=True)})
 """
-        #func code
+        # func code
 
         api_code = api_code + '{'
         api_code += f"""{self.gene_ad_func_call()}"""
-        api_code += '}'+ '\n'
+        api_code += '}' + '\n'
 
         return api_code
-
-    
-
-
-
-    
