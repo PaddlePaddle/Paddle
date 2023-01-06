@@ -22,7 +22,7 @@ from paddle.distributed.auto_parallel.operators.common import (
 from paddle.fluid import core
 from paddle.fluid.framework import Parameter, Program
 
-from .dist_attribute import OperatorDistributedAttribute
+from .dist_attribute import OperatorDistAttr
 from .operators.common import BACKWARD_ONLY_DIST_OPS
 from .utils import (
     __no_shape_var_type__,
@@ -165,7 +165,7 @@ class Partitioner:
             output_var_attr = (
                 self._dist_context.get_tensor_dist_attr_for_program(output_var)
             )
-            op_attr = OperatorDistributedAttribute()
+            op_attr = OperatorDistAttr()
             op_attr.process_mesh = output_var_attr.process_mesh
             op_attr.set_output_dims_mapping(
                 output_var.name, output_var_attr.dims_mapping
@@ -407,8 +407,13 @@ def _get_dist_shape(var, dist_attr):
         else:
             assert (
                 var_shape[idx] % mesh[mapping[idx]] == 0
-            ), "un-event partition: var_shape[idx]=[{}], mesh[{}]".format(
-                var_shape[idx], mesh[mapping[idx]]
+            ), "un-event partition: var_shape[idx]=[{}], mesh[{}], {}, {}, {}, {}".format(
+                var_shape[idx],
+                mesh[mapping[idx]],
+                var.name,
+                var_shape,
+                mesh,
+                mapping,
             )
             new_shape.append(var_shape[idx] // mesh[mapping[idx]])
 

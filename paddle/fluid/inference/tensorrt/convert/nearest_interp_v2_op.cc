@@ -38,6 +38,7 @@ class NearestInterpolateV2OpConverter : public OpConverter {
     std::string output_name = op_desc.Output("Out").front();
 
     auto input = engine_->GetITensor(input_name);
+    auto inputs = op_desc.Inputs();
 
     auto data_layout = phi::StringToDataLayout(
         PADDLE_GET_CONST(std::string, op_desc.GetAttr("data_layout")));
@@ -73,8 +74,22 @@ class NearestInterpolateV2OpConverter : public OpConverter {
       scale_w =
           static_cast<float>(out_w) / static_cast<float>(in_dim.d[w_axis]);
     } else {
-      scale_h = scale[0];
-      scale_w = scale[1];
+      if (scale.size() >= 2) {
+        scale_h = scale[0];
+        scale_w = scale[1];
+      }
+    }
+
+    // Priority: Input(SizeTensor) > attr(out_h/out_w) > attr(scale)
+    nvinfer1::ITensor* outsize_tensor = nullptr;
+    if (engine_->with_dynamic_shape() &&
+        inputs.find("SizeTensor") != inputs.end()) {
+      if (op_desc.Input("SizeTensor").size() >= 2) {
+        auto* outsize_h = engine_->GetITensor(op_desc.Input("SizeTensor")[0]);
+        auto* outsize_w = engine_->GetITensor(op_desc.Input("SizeTensor")[1]);
+        outsize_tensor =
+            Concat(std::vector<nvinfer1::ITensor*>{outsize_h, outsize_w});
+      }
     }
 
     if (engine_->with_dynamic_shape()) {
@@ -94,7 +109,27 @@ class NearestInterpolateV2OpConverter : public OpConverter {
       PADDLE_THROW(platform::errors::InvalidArgument(
           "Data layout must be NCHW or NHWC."));
     }
-    layer->setScales(scales.data(), scales.size());
+
+    if (engine_->with_dynamic_shape()) {
+      if (outsize_tensor != nullptr) {
+        std::vector<nvinfer1::ITensor*> outsize_itensors;
+        auto* input_shape = Shape(input);
+        outsize_itensors.push_back(GetEleTensorOfShape(input_shape, 0));
+
+        if (data_layout == phi::DataLayout::kNCHW) {
+          outsize_itensors.push_back(GetEleTensorOfShape(input_shape, 1));
+          outsize_itensors.push_back(outsize_tensor);
+        } else if (data_layout == phi::DataLayout::kNHWC) {
+          outsize_itensors.push_back(outsize_tensor);
+          outsize_itensors.push_back(GetEleTensorOfShape(input_shape, 3));
+        }
+        layer->setInput(1, *Concat(outsize_itensors));
+      } else {
+        layer->setScales(scales.data(), scales.size());
+      }
+    } else {
+      layer->setScales(scales.data(), scales.size());
+    }
 
     RreplenishLayerAndOutput(
         layer, "nearest_interp_v2", {output_name}, test_mode);
