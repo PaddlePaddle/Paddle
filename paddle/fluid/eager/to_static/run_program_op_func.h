@@ -80,16 +80,10 @@ inline void run_program_ad_func(
       trace_backward, &p_autograd_x, &p_autograd_params);
 
   if (require_any_grad) {
-    std::vector<std::string> out_names;
-    for (auto& t : deref_out) {
-      out_names.emplace_back(t.name());
-    }
-
     egr::EagerUtils::PassStopGradient(false, &p_autograd_outs);
     // Create GradOpNode (1 means [out_grad], 2 means [x_grad, paramx_grad])
     auto grad_node = std::make_shared<GradNodeRunProgram>(1, 2);
 
-    grad_node->SetFwdOutNames(out_names);
     // Set Attributes
     grad_node->SetAttrMap(attrs);
     // Set TensorWrappers

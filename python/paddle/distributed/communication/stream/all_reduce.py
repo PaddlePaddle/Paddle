@@ -58,7 +58,7 @@ def _all_reduce_in_static_mode(tensor, op, group, sync_op, use_calc_stream):
     if not isinstance(ring_id, int):
         raise ValueError("The type of 'ring_id' for all_reduce should be int.")
 
-    # TODO: Support task and use task.wait in static mode
+    # TODO: Support task and use task.wait in static graph mode
     #       Use use_calc_stream rather than sync_op
     helper = layer_helper.LayerHelper(op_type, **locals())
     helper.append_op(
@@ -123,7 +123,9 @@ def all_reduce(
             tensor, op, group, sync_op, use_calc_stream
         )
     else:
-        assert group is None, "Group can not be used in static mode for now."
+        assert (
+            group is None
+        ), "Group can not be used in static graph mode for now."
         return _all_reduce_in_static_mode(
             tensor, op, group, sync_op, use_calc_stream
         )

@@ -211,7 +211,7 @@ class ProcessMesh(core.ProcessMesh):
         return new_process_mesh
 
     def __eq__(self, other):
-        if not isinstance(other, ProcessMesh):
+        if not isinstance(other, (ProcessMesh, core.ProcessMesh)):
             return False
         if self.shape != other.shape or self.process_ids != other.process_ids:
             return False

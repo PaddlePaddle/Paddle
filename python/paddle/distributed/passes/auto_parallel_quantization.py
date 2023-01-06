@@ -17,21 +17,18 @@ import logging
 import numpy as np
 
 import paddle
-from paddle.fluid.contrib.slim.quantization import (
+from paddle.fluid.dygraph.parallel import ParallelEnv
+from paddle.framework import IrGraph, core
+from paddle.static.quantization import (
     AddQuantDequantForInferencePass,
     AddQuantDequantPassV2,
     OutScaleForTrainingPass,
     QuantizationTransformPassV2,
     utils,
 )
-from paddle.fluid.dygraph.parallel import ParallelEnv
-from paddle.framework import IrGraph, core
 
 from ..auto_parallel.converter import Converter
-from ..auto_parallel.dist_attribute import (
-    OperatorDistributedAttribute,
-    TensorDistributedAttribute,
-)
+from ..auto_parallel.dist_attribute import OperatorDistAttr, TensorDistAttr
 from .pass_base import PassBase, register_pass
 
 TRANSFORM_PASS_OP_TYPES = utils._weight_supported_quantizable_op_type
@@ -248,7 +245,7 @@ class QuantizationPass(PassBase):
             # recover origin ops' dist_attr and set quant ops' dist_attr
             qat_offset = 0
             for ip, quant_op in enumerate(block.ops):
-                quant_op_dist_attr = OperatorDistributedAttribute()
+                quant_op_dist_attr = OperatorDistAttr()
 
                 if (
                     "quantize" in quant_op.type
@@ -318,7 +315,7 @@ class QuantizationPass(PassBase):
                                     x_dist_attr.dims_mapping[quant_axis]
                                 ]
 
-                        tensor_dist_attr = TensorDistributedAttribute()
+                        tensor_dist_attr = TensorDistAttr()
                         tensor_dist_attr.process_mesh = ref_process_mesh
                         tensor_dist_attr.dims_mapping = ref_dims_mapping
                         dist_context.set_tensor_dist_attr_for_program(
@@ -357,7 +354,7 @@ class QuantizationPass(PassBase):
                                     x_dist_attr.dims_mapping[quant_axis]
                                 ]
 
-                        tensor_dist_attr = TensorDistributedAttribute()
+                        tensor_dist_attr = TensorDistAttr()
                         tensor_dist_attr.process_mesh = ref_process_mesh
                         tensor_dist_attr.dims_mapping = ref_dims_mapping
                         dist_context.set_tensor_dist_attr_for_program(
