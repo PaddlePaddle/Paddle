@@ -1276,7 +1276,7 @@ def broadcast_tensors(input, name=None):
                         last_index = output_shape_r_last_tensor_index[i]
                         raise TypeError(
                             "Input tensors to broadcast_tensors does not follow bcast semantics"
-                            "Tensor {last_index} conflicts with Tensor {j} in reversed dimension {i}"
+                            f"Tensor {last_index} conflicts with Tensor {j} in reversed dimension {i}"
                         )
                     if output_shape_r[i] <= shape[i]:
                         output_shape_r[i] = shape[i]
@@ -3339,7 +3339,6 @@ def expand(x, shape, name=None):
     Expand the input tensor to a given shape.
 
     Both the number of dimensions of ``x`` and the number of elements in ``shape`` should be less than or equal to 6. And the number of dimensions of ``x`` should be less than the number of elements in ``shape``. The dimension to expand must have a value 1.
-
 
     Args:
         x (Tensor): The input Tensor, its data type is bool, float32, float64, int32 or int64.

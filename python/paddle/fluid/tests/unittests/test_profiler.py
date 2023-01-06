@@ -356,6 +356,32 @@ class TestFLOPSAPI(unittest.TestCase):
             )
             == 144
         )
+        self.assertTrue(
+            flops(
+                'pool',
+                {'X': [[12, 12]]},
+                {},
+            )
+            == 12 * 12
+        )
+        self.assertTrue(
+            flops(
+                'conv2d',
+                {
+                    'Bias': [],
+                    'Filter': [[3, 3, 2, 2]],
+                    'Input': [[8, 3, 4, 4]],
+                    'ResidualData': [],
+                },
+                {
+                    'dilations': [1, 1],
+                    'groups': 1,
+                    'paddings': [1, 1],
+                    'strides': [1, 1],
+                },
+            )
+            == 14400
+        )
 
 
 if __name__ == '__main__':

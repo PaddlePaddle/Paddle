@@ -879,16 +879,6 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
           data5 = paddle.tensor.fill_constant(shape=[2,1], value=val, dtype='float32') #data5=[[2.0],[2.0]]
     """
 
-    attrs = {'force_cpu': force_cpu}
-    dtype = convert_dtype(dtype)
-    if not isinstance(value, Variable):
-        if dtype in ['uint8', 'int16', 'int32', 'int64']:
-            attrs['str_value'] = str(int(value))
-            attrs['value'] = int(value)
-        else:
-            attrs['str_value'] = str(float(value))
-            attrs['value'] = float(value)
-
     if in_dygraph_mode():
         place = _current_expected_place()
         if force_cpu:
@@ -910,6 +900,16 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
             out.stop_gradient = True
             return out
     else:
+        attrs = {'force_cpu': force_cpu}
+        dtype = convert_dtype(dtype)
+        if not isinstance(value, Variable):
+            if dtype in ['uint8', 'int16', 'int32', 'int64']:
+                attrs['str_value'] = str(int(value))
+                attrs['value'] = int(value)
+            else:
+                attrs['str_value'] = str(float(value))
+                attrs['value'] = float(value)
+
         helper = LayerHelper("fill_constant", **locals())
         inputs = {}
         if isinstance(value, Variable):
@@ -1155,8 +1155,8 @@ def eye(num_rows, num_columns=None, dtype=None, name=None):
     _check_attr(num_rows, "num_rows")
 
     if dtype is None:
-        dtype = 'float32'
-    if not isinstance(dtype, core.VarDesc.VarType):
+        dtype = core.VarDesc.VarType.FP32
+    elif not isinstance(dtype, core.VarDesc.VarType):
         dtype = convert_np_dtype_to_dtype_(dtype)
     if num_columns is not None:
         _check_attr(num_columns, "num_columns")
@@ -1310,14 +1310,6 @@ def arange(start=0, end=None, step=1, dtype=None, name=None):
         end = start
         start = 0
 
-    out_shape = None
-    if (
-        not isinstance(start, Variable)
-        and not isinstance(end, Variable)
-        and not isinstance(step, Variable)
-    ):
-        out_shape = [int(math.ceil((end - start) / step))]
-
     if not isinstance(dtype, core.VarDesc.VarType):
         dtype = convert_np_dtype_to_dtype_(dtype)
 
@@ -1349,6 +1341,13 @@ def arange(start=0, end=None, step=1, dtype=None, name=None):
             'range/arange',
         )
         helper = LayerHelper('range', **locals())
+        out_shape = None
+        if (
+            not isinstance(start, Variable)
+            and not isinstance(end, Variable)
+            and not isinstance(step, Variable)
+        ):
+            out_shape = [int(math.ceil((end - start) / step))]
         out = helper.create_variable_for_type_inference(dtype, shape=out_shape)
         helper.append_op(
             type='range',

@@ -23,6 +23,7 @@
 
 #include "paddle/fluid/distributed/collective/custom_ccl_tools.h"
 #include "paddle/fluid/distributed/collective/process_group.h"
+#include "paddle/fluid/distributed/collective/process_group_without_stream.h"
 #include "paddle/fluid/distributed/store/store.h"
 #include "paddle/fluid/platform/device/npu/npu_stream.h"
 #include "paddle/fluid/platform/device_context.h"
@@ -34,7 +35,7 @@ namespace paddle {
 namespace distributed {
 using Place = paddle::platform::Place;
 using CustomDeviceContext = paddle::platform::CustomDeviceContext;
-class ProcessGroupCustom : public ProcessGroup {
+class ProcessGroupCustom : public ProcessGroupWithoutStream {
  public:
   class CustomTask : public ProcessGroup::Task,
                      public std::enable_shared_from_this<CustomTask> {

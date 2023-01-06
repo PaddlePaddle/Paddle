@@ -633,7 +633,33 @@ void BindParallelExecutor(pybind11::module &m) {  // NOLINT
           [](BuildStrategy &self, int nranks) {
             self.hierarchical_allreduce_inter_nranks_ = nranks;
           })
+      .def_property(
+          "build_cinn_pass",
+          [](const BuildStrategy &self) { return self.build_cinn_pass_; },
+          [](BuildStrategy &self, bool b) {
+            PADDLE_ENFORCE_NE(self.IsFinalized(),
+                              true,
+                              platform::errors::PreconditionNotMet(
+                                  "BuildStrategy has been finlaized, "
+                                  "cannot be configured again."));
+            self.build_cinn_pass_ = b;
+          },
+          R"DOC((bool, optional): build_cinn_pass indicates whether
+                      to lowering some operators in graph into cinn ops
+                      to execute, which will speed up the process of execution.
+                      Default False.
 
+                      Examples:
+                          .. code-block:: python
+
+                              import paddle
+                              import paddle.static as static
+
+                              paddle.enable_static()
+
+                              build_strategy = static.BuildStrategy()
+                              build_strategy.build_cinn_pass = True
+                    )DOC")
       .def_property(
           "fuse_elewise_add_act_ops",
           [](const BuildStrategy &self) {
