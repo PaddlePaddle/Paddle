@@ -531,92 +531,95 @@ class RandomResizedCrop(BaseTransform):
         width, height = _get_image_size(image)
         area = height * width
         log_ratio = tuple(math.log(x) for x in self.ratio)
-        
+
         counter = paddle.full(
             shape=[1], fill_value=0, dtype='int32'
         )  # loop counter
-        
+
         ten = paddle.full(
             shape=[1], fill_value=10, dtype='int32'
         )  # loop length
-        
+
         i = paddle.zeros([1], dtype="int32")
         j = paddle.zeros([1], dtype="int32")
         h = paddle.assign([height]).astype("int32")
-        w = paddle.assign([width ]).astype("int32")
-        
-        
+        w = paddle.assign([width]).astype("int32")
+
         def cond(counter, ten, i, j, h, w):
             return (counter < ten) and (w > width or h > height)
-        
-        def body(counter, ten, i, j, h, w):
-            target_area = paddle.uniform(shape=[1], min=self.scale[0], max=self.scale[1]) * area
-            aspect_ratio = paddle.exp(paddle.uniform(shape=[1], min=log_ratio[0], max=log_ratio[1]))
 
-            w = paddle.round(paddle.sqrt(target_area * aspect_ratio)).astype('int32')
-            h = paddle.round(paddle.sqrt(target_area / aspect_ratio)).astype('int32')
-            
+        def body(counter, ten, i, j, h, w):
+            target_area = (
+                paddle.uniform(shape=[1], min=self.scale[0], max=self.scale[1])
+                * area
+            )
+            aspect_ratio = paddle.exp(
+                paddle.uniform(shape=[1], min=log_ratio[0], max=log_ratio[1])
+            )
+
+            w = paddle.round(paddle.sqrt(target_area * aspect_ratio)).astype(
+                'int32'
+            )
+            h = paddle.round(paddle.sqrt(target_area / aspect_ratio)).astype(
+                'int32'
+            )
+
             i = paddle.static.nn.cond(
                 0 < w <= width and 0 < h <= height,
-                lambda : paddle.uniform(shape=[1], min=0, max=height - h).astype("int32"),
-                lambda : i
+                lambda: paddle.uniform(shape=[1], min=0, max=height - h).astype(
+                    "int32"
+                ),
+                lambda: i,
             )
-            
+
             j = paddle.static.nn.cond(
                 0 < w <= width and 0 < h <= height,
-                lambda : paddle.uniform(shape=[1], min=0, max=width - w).astype("int32"),
-                lambda : j
+                lambda: paddle.uniform(shape=[1], min=0, max=width - w).astype(
+                    "int32"
+                ),
+                lambda: j,
             )
-            
+
             counter += 1
-            
+
             return counter, ten, i, j, h, w
-        
+
         counter, ten, i, j, h, w = paddle.static.nn.while_loop(
             cond, body, [counter, ten, i, j, h, w]
         )
 
         def central_crop(width, height):
-            
-            height = paddle.assign([height]).astype("float32")
-            width = paddle.assign([width ]).astype("float32")
 
-            
+            height = paddle.assign([height]).astype("float32")
+            width = paddle.assign([width]).astype("float32")
+
             # Fallback to central crop
             in_ratio = width / height
-            
+
             w, h = paddle.static.nn.cond(
-                in_ratio < self.ratio[0], 
-                lambda : [width.astype("int32"), paddle.round(width / self.ratio[0]).astype("int32")],
-                lambda : paddle.static.nn.cond(
+                in_ratio < self.ratio[0],
+                lambda: [
+                    width.astype("int32"),
+                    paddle.round(width / self.ratio[0]).astype("int32"),
+                ],
+                lambda: paddle.static.nn.cond(
                     in_ratio > self.ratio[1],
-                    lambda : [paddle.round(height * self.ratio[1]), height.astype("int32")],
-                    lambda : [width.astype("int32"), height.astype("int32")]
-                )
+                    lambda: [
+                        paddle.round(height * self.ratio[1]),
+                        height.astype("int32"),
+                    ],
+                    lambda: [width.astype("int32"), height.astype("int32")],
+                ),
             )
             i = (height.astype("int32") - h) // 2
             j = (width.astype("int32") - w) // 2
-            
-            
-            # if in_ratio < min(self.ratio):
-            #     w = width
-            #     h = int(round(w / min(self.ratio)))
-            # elif in_ratio > max(self.ratio):
-            #     h = height
-            #     w = int(round(h * max(self.ratio)))
-            # else:
-            #     # return whole image
-            #     w = width
-            #     h = height
-            # i = (height - h) // 2
-            # j = (width - w) // 2
-            
+
             return i, j, h, w
-        
+
         return paddle.static.nn.cond(
             0 < w <= width and 0 < h <= height,
-            lambda : [i, j, h, w],
-            lambda : central_crop(width, height)
+            lambda: [i, j, h, w],
+            lambda: central_crop(width, height),
         )
 
     def _apply_image(self, img):
