@@ -227,9 +227,10 @@ GpuPassStrategy::GpuPassStrategy() : PassStrategy({}) {
         "conv_elementwise_add_fuse_pass",      //
 #endif                                         //
         "transpose_flatten_concat_fuse_pass",  //
-        "constant_folding_pass",
+        "constant_folding_pass",               //
         // following pass should be located in the last, since it will
         // work on all fused ops.
+        "auto_mixed_precision_pass",  //
         "runtime_context_cache_pass"
   });
 

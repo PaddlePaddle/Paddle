@@ -85,15 +85,29 @@ void AnalysisConfig::SetModel(const std::string &prog_file_path,
 
   Update();
 }
+
 void AnalysisConfig::EnableUseGpu(uint64_t memory_pool_init_size_mb,
-                                  int device_id) {
+                                  int device_id,
+                                  Precision precision_mode) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   use_gpu_ = true;
   memory_pool_init_size_mb_ = memory_pool_init_size_mb;
   FLAGS_initial_gpu_memory_in_mb = memory_pool_init_size_mb_;
   gpu_device_id_ = device_id;
+  mixed_precision_mode_ = precision_mode;
+  if (precision_mode == Precision::kFloat32) {
+    // default
+  } else if (precision_mode == Precision::kHalf ||
+             precision_mode == Precision::kBf16) {
+    enable_gpu_mixed_ = true;
+  } else {
+    LOG(ERROR)
+        << "The Paddle-GPU inference currently only supports "
+           "float32/float16/bfloat16 precision. Please check the parameters "
+           "you specified in EnableUseGpu or enable_use_gpu function.";
+  }
 #else
-  LOG(ERROR) << "Please compile with gpu to EnableGpu()";
+  LOG(ERROR) << "Please use PaddlePaddle with GPU version.";
   use_gpu_ = false;
 #endif
 
@@ -279,7 +293,7 @@ void AnalysisConfig::LoadIpuConfig(const std::string &config_path) {
 
     if (ipu_config_mapper_.find(key) == ipu_config_mapper_.end()) {
       PADDLE_THROW(platform::errors::InvalidArgument(
-          "invalid key {} in IPU config", key));
+          "invalid key %s in IPU config: ", key));
     }
     switch (ipu_config_mapper_.at(key)) {
       case ipu_config_code::ipu_device_num:
@@ -315,7 +329,7 @@ void AnalysisConfig::LoadIpuConfig(const std::string &config_path) {
 
       default:
         PADDLE_THROW(platform::errors::InvalidArgument(
-            "invalid key {} in IPU config", key));
+            "invalid key %s in IPU config", key));
         break;
     }
   }
@@ -372,8 +386,10 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(gpu_device_id_);
   CP_MEMBER(memory_pool_init_size_mb_);
 
-  // Mixed related.
+  // Mixed precision related.
   CP_MEMBER(mixed_black_list_);
+  CP_MEMBER(enable_gpu_mixed_);
+  CP_MEMBER(mixed_precision_mode_);
 
   CP_MEMBER(enable_memory_optim_);
   // TensorRT related.
@@ -740,13 +756,7 @@ void AnalysisConfig::Update() {
       ((use_custom_device() ^ pass_builder_->use_custom_device()))) {
     if (use_gpu()) {
       pass_builder_.reset(new GpuPassStrategy);
-
-      if (use_tensorrt_) {
-        // Append after the Affine_channel_conv_fuse pass.
-        pass_builder()->InsertPass(3, "tensorrt_subgraph_pass");
-      }
     } else if (use_ipu()) {
-      VLOG(1) << "IpuPassStrategy has been used for new.";
       pass_builder_.reset(new IpuPassStrategy);
     } else if (use_xpu()) {
       PADDLE_ENFORCE_EQ(
@@ -946,9 +956,6 @@ void AnalysisConfig::Update() {
         "but did not have the option -DWITH_CUSTOM_DEVICE compiled."));
 #endif
   }
-  if (ir_debug_) {
-    pass_builder()->TurnOnDebug();
-  }
 }
 
 std::string AnalysisConfig::SerializeInfoCache() {
@@ -960,6 +967,7 @@ std::string AnalysisConfig::SerializeInfoCache() {
   ss << calibration_file_path_;
 
   ss << use_gpu_;
+  ss << enable_gpu_mixed_;
   ss << use_external_stream_;
   ss << exec_stream_;
   ss << use_fc_padding_;
@@ -1167,6 +1175,7 @@ std::string AnalysisConfig::Summary() {
   os.InsertRow({"use_gpu", use_gpu_ ? "true" : "false"});
   if (use_gpu_) {
     os.InsertRow({"gpu_device_id", std::to_string(gpu_device_id_)});
+    os.InsertRow({"enable_gpu_mixed", std::to_string(enable_gpu_mixed_)});
     os.InsertRow({"memory_pool_init_size",
                   std::to_string(memory_pool_init_size_mb_) + "MB"});
     os.InsertRow(
@@ -1360,7 +1369,7 @@ bool AnalysisConfig::trt_allow_build_at_runtime() {
   return trt_allow_build_at_runtime_;
 }
 
-void AnalysisConfig::Exp_SetBlackListOpsForMixedModel(
+void AnalysisConfig::Exp_DisableMixedPrecisionOps(
     const std::unordered_set<std::string> &black_list) {
   mixed_black_list_ = black_list;
 }

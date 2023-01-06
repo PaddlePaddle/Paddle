@@ -121,8 +121,10 @@ void TransferLayoutMKLDNN(const Context& dev_ctx,
       OneDNNContext::tls().set_cur_paddle_data_layout(src_layout);
     }
 
-    out->set_layout(DataLayout::ONEDNN);
-    out->set_format(out_format);
+    dnnl::memory::desc out_mem_desc(vectorize<int64_t>(out->dims()),
+                                    funcs::ToOneDNNDataType(x.dtype()),
+                                    out_format);
+    out->set_mem_desc(out_mem_desc);
   } else if (src_layout == DataLayout::ONEDNN &&
              dst_layout != DataLayout::ONEDNN) {
     // Case2 - transfrom from MKLDNN OPKernel to Non-MKLDNN OPKernel

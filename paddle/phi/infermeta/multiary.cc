@@ -301,6 +301,10 @@ void AddNInferMeta(const std::vector<const MetaTensor*>& x,
   phi::DDim in_dim({0});
   for (size_t i = 0; i < x.size(); ++i) {
     auto x_dim = x[i]->dims();
+    // x_dim.size() == 1 means the real dim of selected rows is [0]
+    if (x[i]->is_selected_rows() && x_dim.size() == 1) {
+      continue;
+    }
     if (phi::product(x_dim) == 0) {
       continue;
     }
@@ -353,6 +357,31 @@ void AddNInferMeta(const std::vector<const MetaTensor*>& x,
   }
   out->set_dims(in_dim);
   out->share_lod(*x[0]);
+}
+
+// TODO(YuanRisheng) This InferMeta is used in Fluid
+//                   and will be deleted in the future.
+void AddNTensorArrayInferMeta(const std::vector<const MetaTensor*>& x,
+                              MetaTensor* out,
+                              MetaConfig config) {
+  int64_t max_length = 0;
+  bool has_tensor_array = false;
+  for (auto input : x) {
+    if (input->is_tensor_array()) {
+      has_tensor_array = true;
+      // if input is lod_tensor_array, dims() will return its size (one element)
+      max_length =
+          input->dims()[0] > max_length ? input->dims()[0] : max_length;
+    }
+  }
+
+  if (has_tensor_array) {
+    if (out->is_tensor_array()) {
+      out->set_dims(make_ddim({max_length}));
+    }
+  } else {
+    AddNInferMeta(x, out, config);
+  }
 }
 
 void AucInferMeta(const MetaTensor& input,

@@ -123,6 +123,7 @@ message BuildStrategy {
   optional bool allow_cuda_graph_capture = 14 [ default = false ];
   optional int32 reduce_strategy = 15 [ default = 0 ];
   optional bool fuse_gemm_epilogue = 16 [ default = false ];
+  optional string debug_graphviz_path = 17;
 }
 
 message ExecutionStrategy {

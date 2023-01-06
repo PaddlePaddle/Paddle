@@ -295,7 +295,7 @@ void UpdateOpDescsByReuse(
   }
 }
 
-std::string MemoryOptimizePass::repr() const { return "memory optimize pass"; }
+std::string MemoryOptimizePass::repr() const { return "memory_optimize_pass"; }
 
 void MemoryOptimizePass::RunImpl(Argument* argument) {
   // Memory optimization.

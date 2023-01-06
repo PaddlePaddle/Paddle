@@ -94,14 +94,14 @@ void OutputProcess(framework::ir::Graph *graph,
                   backend,
                   precision,
                   blacklist)) {
-            AddCastOp(graph,
-                      var_node,
-                      next_op,
-                      framework::proto::VarType::FP32,
-                      to_type,
-                      &suffix,
-                      block_desc,
-                      &var_to_cast_op_map);
+            InsertCastOp(graph,
+                         var_node,
+                         next_op,
+                         framework::proto::VarType::FP32,
+                         to_type,
+                         block_desc,
+                         &suffix,
+                         &var_to_cast_op_map);
             var_node->Var()->SetDataType(framework::proto::VarType::FP32);
           }
         }

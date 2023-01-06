@@ -221,7 +221,7 @@ class MulPrimitiveFactory {
               to_void_cast<T>(x_tmp.data<T>()));
 
       x_tmp.Resize(data->dims());
-      x_tmp.set_format(platform::GetMKLDNNFormat(dst_mdesc));
+      x_tmp.set_mem_desc(dst_mdesc);
       data_matrix = framework::ReshapeToMatrix(x_tmp, num_col_dims);
     } else {
       data_matrix = framework::ReshapeToMatrix(*data, num_col_dims);
@@ -235,11 +235,7 @@ class MulPrimitiveFactory {
                           const Tensor *in) {
     x_input_->set_data_handle(to_void_cast<XT>(in->data<XT>()));
     output_->set_data_handle(out->mutable_data<OT>(ctx.GetPlace()));
-
-    if (out->format() == MKLDNNMemoryFormat::undef) {
-      auto output_format = platform::GetMKLDNNFormat(*output_);
-      out->set_format((MKLDNNMemoryFormat)output_format);
-    }
+    out->set_mem_desc(output_->get_desc());
   }
 
   template <typename T>
@@ -272,7 +268,7 @@ class MulPrimitiveFactory {
     auto buffer_size = dst_desc.get_size();
 
     OT *output_data = output->mutable_data<OT>(ctx.GetPlace(), buffer_size);
-    output->set_format(paddle::platform::GetMKLDNNFormat(dst_desc));
+    output->set_mem_desc(dst_desc);
     return memory(dst_desc, engine_, to_void_cast<OT>(output_data));
   }
 
@@ -392,9 +388,10 @@ class MulMKLDNNINT8Kernel : public framework::OpKernel<XT> {
     if (out_dims.size() != 2) {
       out->Resize(out_dims);
     }
-    out->set_layout(DataLayout::kMKLDNN);
-    out->set_format(platform::MKLDNNFormatForSize(out_dims.size(),
-                                                  MKLDNNMemoryFormat::nchw));
+
+    auto in_md = dnnl::memory::desc(*dnnl_primitive_desc_query_md(
+        mul.get_primitive_desc(), dnnl_query_dst_md, 0));
+    out->set_mem_desc(in_md.reshape(phi::vectorize<int64_t>(out->dims())));
   }
 };
 
@@ -442,10 +439,11 @@ class MulMKLDNNKernel : public framework::OpKernel<XT> {
     matmul_p->execute(astream, matmul_args);
     astream.wait();
 
-    out->set_layout(framework::DataLayout::kMKLDNN);
-    // plain output formats are enforced inside handler
-    out->set_format(platform::MKLDNNFormatForSize(
-        out->dims().size(), dnnl::memory::format_tag::nchw));
+    // This kernel is flattening dims so then we need to unflattened version
+    // that should be set in out reshape require plain layout, but
+    // MatmulV2MKLDNNHanlder enforces one so it should work
+    out->set_mem_desc(
+        dst_memory_p->get_desc().reshape(phi::vectorize<int64_t>(out->dims())));
   }
 
  private:

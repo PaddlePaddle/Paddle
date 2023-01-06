@@ -87,6 +87,15 @@ class InferShapeArgumentMappingContext : public phi::ArgumentMappingContext {
                        });
   }
 
+  bool IsSelectedRowsInputs(const std::string& name) const override {
+    auto var_types = ctx_.GetInputsVarType(name);
+    return std::all_of(var_types.begin(),
+                       var_types.end(),
+                       [](const proto::VarType::Type& type) {
+                         return type == proto::VarType::SELECTED_ROWS;
+                       });
+  }
+
   bool IsSelectedRowsInput(const std::string& name) const override {
     auto var_type = ctx_.GetInputVarType(name);
     return var_type == proto::VarType::SELECTED_ROWS;
@@ -155,6 +164,16 @@ int64_t CompatMetaTensor::numel() const {
   }
 }
 
+bool CompatMetaTensor::is_selected_rows() const {
+  if (is_runtime_) {
+    auto* var = PADDLE_GET_CONST(Variable*, var_);
+    return var->IsType<phi::SelectedRows>();
+  } else {
+    auto* var = PADDLE_GET_CONST(VarDesc*, var_);
+    return var->GetType() == proto::VarType::SELECTED_ROWS;
+  }
+}
+
 bool CompatMetaTensor::is_dense() const {
   if (is_runtime_) {
     auto* var = PADDLE_GET_CONST(Variable*, var_);
@@ -182,7 +201,7 @@ DDim CompatMetaTensor::dims() const {
     if (var->IsType<phi::DenseTensor>()) {
       return var->Get<phi::DenseTensor>().dims();
     } else if (var->IsType<phi::SelectedRows>()) {
-      return var->Get<phi::SelectedRows>().dims();
+      return var->Get<phi::SelectedRows>().GetCompleteDims();
     } else if (var->IsType<phi::SparseCooTensor>()) {
       return var->Get<phi::SparseCooTensor>().dims();
     } else if (var->IsType<framework::LoDTensorArray>()) {
@@ -260,8 +279,7 @@ void CompatMetaTensor::set_dims(const DDim& dims) {
       auto* tensor = var->GetMutable<phi::DenseTensor>();
       phi::DenseTensorUtils::GetMutableMeta(tensor)->dims = dims;
     } else if (var->IsType<phi::SelectedRows>()) {
-      auto* tensor = var->GetMutable<phi::SelectedRows>()->mutable_value();
-      phi::DenseTensorUtils::GetMutableMeta(tensor)->dims = dims;
+      var->GetMutable<phi::SelectedRows>()->set_height(dims[0]);
     } else if (var->IsType<phi::SparseCooTensor>()) {
       auto* tensor = var->GetMutable<phi::SparseCooTensor>();
       phi::DenseTensorUtils::GetMutableMeta(tensor)->dims = dims;

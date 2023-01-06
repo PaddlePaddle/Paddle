@@ -12,21 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/core/compat/op_utils.h"
+#include "paddle/phi/kernels/selected_rows/impl/add_n_kernel_impl.h"
 
-#include "glog/logging.h"
-
-namespace phi {
-
-KernelSignature MemcpyD2HOpArgumentMapping(const ArgumentMappingContext& ctx) {
-  if (ctx.IsDenseTensorVectorInput("X")) {
-    return KernelSignature(
-        "memcpy_d2h_multi_io", {"X"}, {"dst_place_type"}, {"Out"});
-  }
-
-  return KernelSignature("memcpy_d2h", {"X"}, {"dst_place_type"}, {"Out"});
-}
-
-}  // namespace phi
-
-PD_REGISTER_ARG_MAPPING_FN(memcpy_d2h, phi::MemcpyD2HOpArgumentMapping);
+PD_REGISTER_KERNEL(add_n_sr,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::sr::AddNKernel,
+                   float,
+                   double,
+                   int,
+                   phi::dtype::bfloat16,
+                   int64_t) {}

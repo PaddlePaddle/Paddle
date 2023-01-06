@@ -223,13 +223,7 @@ __global__ void InplaceAddReluAddLayerNormKernel(const float16* y_data,
 
       // For layer_norm, reduce to calculate mean and std
       sum_i += static_cast<float>(tmp_3);
-#if defined(PADDLE_WITH_CUDA) && __CUDA_ARCH__ >= 530
-      square_sum_i += static_cast<float>(__hmul(tmp_3, tmp_3));
-#elif defined(PADDLE_WITH_CUDA)
       square_sum_i += static_cast<float>(tmp_3) * static_cast<float>(tmp_3);
-#else
-      square_sum_i += static_cast<float>(tmp_3 * tmp_3);
-#endif
     }
     auto pair = BlockReduce(temp_storage)
                     .Reduce(PairForLayerNorm<float>(sum_i, square_sum_i),
@@ -282,9 +276,9 @@ __global__ void InplaceAddReluAddLayerNormKernel(const float16* y_data,
       half tmp_0 = __hdiv(__hsub(save_ptr[save_index], mean_i), std_i);
       half tmp_1 = scale ? __hmul(scale[j], tmp_0) : tmp_0;
 #else
-      half tmp_0 = static_cast<float>(static_cast<float>(save_ptr[save_index]) +
-                                      static_cast<float>(mean_i) /
-                                          static_cast<float>(std_i));
+      half tmp_0 = static_cast<half>(static_cast<float>(save_ptr[save_index]) -
+                                     static_cast<float>(mean_i) /
+                                         static_cast<float>(std_i));
       half tmp_1 = scale ? static_cast<half>(static_cast<float>(scale[j]) *
                                              static_cast<float>(tmp_0))
                          : tmp_0;

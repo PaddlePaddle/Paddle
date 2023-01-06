@@ -64,7 +64,8 @@ void IrGraphBuildPass::RunImpl(Argument *argument) {
         "set."));
   }
 
-  auto graph = std::unique_ptr<Graph>(new Graph(argument->main_program()));
+  auto graph = std::unique_ptr<framework::ir::Graph>(
+      new framework::ir::Graph(argument->main_program()));
   argument->SetMainGraph(graph.release());
   auto *scope_ptr = argument->scope_ptr();
   PADDLE_ENFORCE_NOT_NULL(scope_ptr,
@@ -125,7 +126,7 @@ std::unique_ptr<framework::ProgramDesc> IrGraphBuildPass::LoadModel(
   }
 }
 
-std::string IrGraphBuildPass::repr() const { return "ir-graph-build-pass"; }
+std::string IrGraphBuildPass::repr() const { return "ir_graph_build_pass"; }
 
 }  // namespace analysis
 }  // namespace inference

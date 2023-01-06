@@ -45,6 +45,14 @@ struct NormConvolutionArgs {
            int stride,
            int dilation,
            int group) {
+    PADDLE_ENFORCE_LT(
+        ctx.GetComputeCapability(),
+        90,
+        phi::errors::PreconditionNotMet(
+            "Expect compute compatiblity to be less than 90, but got %d. "
+            "CUDNN FusedOps is no longer available on H100 and later "
+            "devices.",
+            ctx.GetComputeCapability()));
     PADDLE_ENFORCE_EQ(
         input_shape.size(),
         4U,

@@ -149,7 +149,7 @@ __global__ void bias_relu_v2(const int num,
 #if __CUDA_ARCH__ >= 800
       packed_val = __hmax2(__half2(0, 0), packed_val);
 #elif __CUDA_ARCH__ >= 530
-      packed_val = __hmul2(__hgt2(__half2(0, 0), packed_val), packed_val);
+      packed_val = __hmul2(__hgt2(packed_val, __half2(0, 0)), packed_val);
 #else
       packed_val.x = static_cast<int>(static_cast<float>(packed_val.x) > 0) *
                      static_cast<float>(packed_val.x);

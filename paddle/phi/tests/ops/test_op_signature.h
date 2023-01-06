@@ -77,6 +77,10 @@ class TestArgumentMappingContext : public phi::ArgumentMappingContext {
     return selected_rows_inputs.count(name) > 0;
   }
 
+  bool IsSelectedRowsInputs(const std::string& name) const override {
+    return selected_rows_inputs.count(name) > 0;
+  }
+
   // add member if needed
   bool IsDenseTensorVectorInput(const std::string& name) const override {
     return false;
