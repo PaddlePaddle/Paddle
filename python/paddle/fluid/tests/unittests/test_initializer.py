@@ -20,7 +20,7 @@ import numpy as np
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.framework as framework
-import paddle.nn.initializer as initializer
+import paddle.fluid.initializer as initializer
 from paddle.fluid.core import VarDesc
 from paddle.regularizer import L2Decay
 
@@ -230,7 +230,7 @@ class TestNormalInitializer(unittest.TestCase):
                 shape=[5, 10],
                 lod_level=0,
                 name="param",
-                initializer=initializer.NormalInitializer(),
+                initializer=paddle.nn.initializer.NormalInitializer(),
             )
         self.assertEqual(len(block.ops), 1)
         init_op = block.ops[0]
@@ -249,7 +249,9 @@ class TestNormalInitializer(unittest.TestCase):
                 shape=[5, 10],
                 lod_level=0,
                 name="param",
-                initializer=initializer.NormalInitializer(2.3, 1.9, 123),
+                initializer=paddle.nn.initializer.NormalInitializer(
+                    2.3, 1.9, 123
+                ),
             )
         num_ops = 1
         self.assertEqual(len(block.ops), num_ops)
@@ -690,7 +692,9 @@ class TestSetGlobalInitializer(unittest.TestCase):
         startup_prog = framework.Program()
         fluid.set_global_initializer(
             paddle.nn.initializer.UniformInitializer(low=-0.5, high=0.5),
-            bias_init=initializer.Normal(loc=0.0, scale=2.0),
+            bias_init=paddle.nn.initializer.NormalInitializer(
+                loc=0.0, scale=2.0
+            ),
         )
         with fluid.program_guard(main_prog, startup_prog):
             x = fluid.data(name="x", shape=[1, 3, 32, 32])

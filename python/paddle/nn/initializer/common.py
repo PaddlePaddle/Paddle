@@ -44,8 +44,8 @@ class UniformInitializer(Initializer):
             import paddle.fluid as fluid
             paddle.enable_static()
             x = fluid.data(name='x', shape=[None, 1], dtype='float32')
-            fc = paddle.static.nn.fc(input=x, size=10,
-                param_attr=paddle.nn.initializer.UniformInitializer(low=-0.5, high=0.5))
+            fc = paddle.static.nn.fc(x, size=10,
+                weight_attr=paddle.nn.initializer.UniformInitializer(low=-0.5, high=0.5))
     """
 
     def __init__(
@@ -167,9 +167,9 @@ class ConstantInitializer(Initializer):
             paddle.enable_static()
             x = fluid.data(name="data", shape=[8, 32, 32], dtype="float32")
             fc = paddle.static.nn.fc(
-                input=x,
+                x,
                 size=10,
-                param_attr=paddle.nn.initializer.ConstantInitializer(value=2.0))
+                weight_attr=paddle.nn.initializer.ConstantInitializer(value=2.0))
 
     """
 
@@ -239,7 +239,7 @@ class NormalInitializer(Initializer):
             paddle.enable_static()
             x = fluid.data(name="data", shape=[None, 32, 32], dtype="float32")
             fc = paddle.static.nn.fc(x, size=10,
-                weight_attr=paddle.nn.initializer.Normal(loc=0.0, scale=2.0))
+                weight_attr=paddle.nn.initializer.NormalInitializer(loc=0.0, scale=2.0))
 
     """
 
