@@ -19,7 +19,6 @@ import numpy as np
 import paddle
 import paddle.fluid.core as core
 import paddle.nn.functional as F
-from paddle.distributed.passes import PassManager, new_pass
 
 paddle.enable_static()
 
@@ -152,8 +151,14 @@ class TestFusedAttentionPass(unittest.TestCase):
             sgd_optimizer = paddle.fluid.optimizer.SGD(learning_rate=0.001)
             sgd_optimizer.minimize(loss)
 
-            pass_manager = PassManager([new_pass("fused_attention")])
-            pass_manager.apply([main_prog], [startup_prog])
+            build_strategy = paddle.static.BuildStrategy()
+            build_strategy.fused_attention = True
+            program = paddle.static.CompiledProgram(main_prog)
+            program = program.with_data_parallel(
+                loss_name=self.loss.name,
+                build_strategy=build_strategy,
+                places=paddle.static.cuda_places(),
+            )
 
 
 if __name__ == "__main__":
