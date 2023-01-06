@@ -733,8 +733,14 @@ class TestSundryAPI(unittest.TestCase):
 
             out = paddle.kthvalue(x, 1)
             out[0].backward()
+
+            # check shape of output value and indice
             self.assertEqual(out[0].shape, [])
             self.assertEqual(out[1].shape, [])
+
+            # check grad shape and value
+            self.assertEqual(x.grad.shape, [])
+            self.assertTrue(x.grad.numpy() == 1)
 
     def test_mode(self):
         places = ['cpu']
@@ -748,8 +754,14 @@ class TestSundryAPI(unittest.TestCase):
 
             out = paddle.mode(x)
             out[0].backward()
+
+            # check shape of output value and indice
             self.assertEqual(out[0].shape, [])
             self.assertEqual(out[1].shape, [])
+
+            # check grad shape and value
+            self.assertEqual(x.grad.shape, [])
+            self.assertTrue(x.grad.numpy() == 1)
 
     def test_scale(self):
         x = paddle.rand([])
