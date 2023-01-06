@@ -793,9 +793,11 @@ class TestSundryAPIStatic(unittest.TestCase):
         x.stop_gradient = False
         out = paddle.cumprod(x, 0)
         paddle.static.append_backward(out)
-
         prog = paddle.static.default_main_program()
         res = self.exe.run(prog, fetch_list=[out])
+
+        with self.assertRaises(ValueError):
+            tmp = paddle.cumprod(x, 2)
         self.assertEqual(res[0].shape, ())
 
     @prog_scope()
