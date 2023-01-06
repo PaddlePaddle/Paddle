@@ -3241,7 +3241,7 @@ EOF
     else
         python setup.py bdist_wheel;build_error=$?
     fi
-
+    find ./ -name env_dict.py
     # ci will collect ccache hit rate
     collect_ccache_hits
 
