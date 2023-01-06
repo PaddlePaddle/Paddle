@@ -22,7 +22,7 @@ from paddle.fluid.framework import Parameter
 from paddle.framework import core
 from paddle.static import Program
 
-from ..ps.utils.collective_transpiler import SingleProcessMultiThread
+from paddle.fluid.transpiler.collective import SingleProcessMultiThread
 from ..ps.utils.public import *  # noqa: F403
 
 
