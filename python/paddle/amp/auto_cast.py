@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import copy
+import os
 import warnings
 
 import paddle
@@ -94,18 +95,23 @@ _g_amp_state_ = None
 
 
 def low_precision_op_list():
-    op_list = paddle.fluid.core.get_low_precision_op_list()
-    op_count = 0
-    print('<---------------- low precision op list ------------------->')
-    print('<---- op name ------|------- op count---------------------->')
-    for x in op_list:
-        print('  %-18s| %4d' % (x, op_list[x]))
-        op_count += 1
-    print(
-        '<------------- low precision op num:{:5d} ----------------->'.format(
-            op_count
+    if os.getenv("FLAGS_low_precision_op_list") is not None:
+        level = int(os.getenv("FLAGS_low_precision_op_list"))
+        if level == 0:
+            return
+        if level == 1:
+            print('<{:-^60}>'.format(" low precision op list "))
+        else:
+            print('<{:-^60}>'.format(" op list "))
+        op_list = paddle.fluid.core.get_low_precision_op_list()
+        op_count = 0
+        print(
+            '<{:-^40}'.format(" op_name "), '|', '{:-^17}>'.format(" op count ")
         )
-    )
+        for x in op_list:
+            print('  %-40s|  %-15d' % (x, op_list[x]))
+            op_count += 1
+        print('<{:-^60}>'.format(" op count: " + str(op_count) + " "))
 
 
 def amp_state():
