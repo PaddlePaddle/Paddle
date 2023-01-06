@@ -351,18 +351,15 @@ PDNode* FusedAttentionGradPattern::operator()(PDNode* x,
 
 void FusedAttentionsPass::ApplyImpl(Graph* graph) const {
   FusePassBase::Init(name_scope_, graph);
-  auto* scope = param_scope();
 
-  graph = PreMaskDropResFwd(graph, name_scope_, scope);
-  graph = PreMaskDropResBwd(graph, name_scope_, scope);
+  graph = PreMaskDropResFwd(graph);
+  graph = PreMaskDropResBwd(graph);
 }
 
-ir::Graph* FusedAttentionsPass::PreMaskDropResFwd(Graph* graph,
-                                                  const std::string& name_scope,
-                                                  Scope* scope) const {
+ir::Graph* FusedAttentionsPass::PreMaskDropResFwd(Graph* graph) const {
   GraphPatternDetector gpd;
   auto* x = gpd.mutable_pattern()
-                ->NewNode(patterns::PDNodeName(name_scope, "x"))
+                ->NewNode(patterns::PDNodeName(name_scope_, "x"))
                 ->AsInput()
                 ->assert_is_op_input("layer_norm", "X");
   patterns::FusedAttentionPattern fused_attention_pattern(
@@ -390,9 +387,7 @@ ir::Graph* FusedAttentionsPass::PreMaskDropResFwd(Graph* graph,
   return graph;
 }
 
-ir::Graph* FusedAttentionsPass::PreMaskDropResBwd(Graph* graph,
-                                                  const std::string& name_scope,
-                                                  Scope* scope) const {
+ir::Graph* FusedAttentionsPass::PreMaskDropResBwd(Graph* graph) const {
   // TODO(Yuang Liu): finish the pass
   return graph;
 }

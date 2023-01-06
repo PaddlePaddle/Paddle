@@ -155,9 +155,16 @@ class TestFusedAttentionPass(unittest.TestCase):
             build_strategy.fused_attention = True
             program = paddle.static.CompiledProgram(main_prog)
             program = program.with_data_parallel(
-                loss_name=self.loss.name,
+                loss_name=loss.name,
                 build_strategy=build_strategy,
                 places=paddle.static.cuda_places(),
+            )
+
+            exe = paddle.static.Executor(paddle.CUDAPlace(0))
+            result = exe.run(
+                program,
+                feed={'x': x_data, 'attn_mask': mask_data},
+                fetch_list=[loss.name],
             )
 
 
