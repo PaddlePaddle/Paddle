@@ -17,7 +17,6 @@ Contrib layers just related to metric.
 
 import warnings
 from paddle.fluid.layer_helper import LayerHelper
-from paddle.fluid.initializer import Normal
 from paddle.fluid.framework import Variable
 from paddle.fluid.param_attr import ParamAttr
 from paddle.fluid.layers import tensor
