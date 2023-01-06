@@ -34,9 +34,13 @@ inplace_optional_out_type_map = {
 
 class BaseAPI:
     def __init__(self, api_item_yaml):
-        self.api = api_item_yaml['op']
-        #self.api = api_item_yaml['name']
+        #self.api = api_item_yaml['op']
+        self.api = api_item_yaml['name']
         
+        self.is_prim_api = False
+        if api_item_yaml['name'] in white_ops_list:
+            self.is_prim_api = True
+
         #######################################
         # inputs:
         #     names : [], list of input names
@@ -48,56 +52,24 @@ class BaseAPI:
         #     names : [], list of output names
         #     types : [], list of output types
         #     out_size_expr : [], expression for getting size of vector<Tensor>
-        ########################################3
-        (
-            self.inputs,
-            self.attrs,
-            self.outputs,
-            self.optional_vars,
-        ) = self.parse_args(self.api, api_item_yaml)
+        ########################################
+        if self.is_prim_api:
+            (
+                self.inputs,
+                self.attrs,
+                self.outputs,
+                self.optional_vars,
+            ) = self.parse_args(self.api, api_item_yaml)
 
-        self.is_prim_api = False
-        if api_item_yaml['op'] in white_ops_list:
-            self.is_prim_api = True
-
-        self.inplace_map, self.view_map = self.parse_inplace_and_view(
-            api_item_yaml
-        )
-
-    def parse_inplace_and_view(self, api_item_yaml):
-        inplace_map, view_map = {}, {}
-        for mode in ['inplace', 'view']:
-            if mode in api_item_yaml:
-                if mode == 'inplace':
-                    inplace_map = {}
-                else:
-                    view_map = {}
-                in_out_mapping_list = api_item_yaml[mode].split(',')
-                for item in in_out_mapping_list:
-                    result = re.search(r"(?P<in>\w+)\s*->\s*(?P<out>\w+)", item)
-                    in_val = result.group('in')
-                    out_val = result.group('out')
-                    assert (
-                        in_val in self.inputs['names']
-                    ), f"{self.api} : {mode} input error: the input var name('{in_val}') is not found in the input args of {self.api}."
-                    assert (
-                        out_val in self.outputs['names']
-                    ), f"{self.api} : {mode} output error: the output var name('{out_val}') is not found in the output args of {self.api}."
-
-                    if mode == 'inplace':
-                        inplace_map[out_val] = in_val
-                    else:
-                        view_map[out_val] = in_val
-
-        return inplace_map, view_map
+            self.inplace_map = api_item_yaml['inplace']
 
     def get_api_func_name(self):
         return self.api
 
-    def is_inplace(self):
-        if len(self.inplace_map) > 0:
-            return True
-        return False
+    # def is_inplace(self):
+    #     if self.inplace_map
+    #         return True
+    #     return False
         
     def get_input_tensor_args(self, inplace_flag=False):
         input_args = []
@@ -151,15 +123,16 @@ class BaseAPI:
 
     def parse_args(self, api_name, api_item_yaml):
         optional_vars = []
-        if 'optional' in api_item_yaml:
-            optional_vars = [
-                item.strip() for item in api_item_yaml['optional'].split(',')
-            ]
+        for input_dict in api_item_yaml['inputs']:
+            if input_dict['optional']:
+                optional_vars.append(input_dict['name'])
+                
         inputs, attrs = self.parse_input_and_attr(
-            api_name, api_item_yaml['args'], optional_vars
+            api_item_yaml['inputs'], api_item_yaml['attrs']
         )
+        
         output_type_list, output_names, out_size_expr = self.parse_output(
-            api_name, api_item_yaml['output']
+            api_item_yaml['outputs']
         )
         return (
             inputs,
@@ -172,7 +145,73 @@ class BaseAPI:
             optional_vars,
         )
 
-    def parse_input_and_attr(self, api_name, args_config, optional_vars=[]):
+    def parse_input_and_attr(self, inputs_list, attrs_list):
+        input_types_map = {
+            'Tensor': 'const Tensor&',
+            'Tensor[]': 'const std::vector<Tensor>&',
+        }
+        attr_types_map = {
+            'IntArray': 'const IntArray&',
+            'Scalar': 'const Scalar&',
+            'Scalar(int)': 'const Scalar&',
+            'Scalar(int64_t)': 'const Scalar&',
+            'Scalar(float)': 'const Scalar&',
+            'Scalar(dobule)': 'const Scalar&',
+            'Scalar[]': 'const std::vector<phi::Scalar>&',
+            'int': 'int',
+            'int32_t': 'int32_t',
+            'int64_t': 'int64_t',
+            'long': 'long',
+            'size_t': 'size_t',
+            'float': 'float',
+            'float[]': 'const std::vector<float>&',
+            'double': 'double',
+            'bool': 'bool',
+            'bool[]': 'const std::vector<bool>&',
+            'str': 'const std::string&',
+            'str[]': 'const std::vector<std::string>&',
+            'Place': 'const Place&',
+            'DataLayout': 'DataLayout',
+            'DataType': 'DataType',
+            'int64_t[]': 'const std::vector<int64_t>&',
+            'int[]': 'const std::vector<int>&',
+        }
+        optional_types_trans = {
+            'Tensor': 'const paddle::optional<Tensor>&',
+            'Tensor[]': 'const paddle::optional<std::vector<Tensor>>&',
+            'int': 'paddle::optional<int>',
+            'int32_t': 'paddle::optional<int32_t>',
+            'int64_t': 'paddle::optional<int64_t>',
+            'float': 'paddle::optional<float>',
+            'double': 'paddle::optional<double>',
+            'bool': 'paddle::optional<bool>',
+            'Place': 'paddle::optional<const Place&>',
+            'DataLayout': 'paddle::optional<DataLayout>',
+            'DataType': 'paddle::optional<DataType>',
+        }
+
+        inputs = {'names': [], 'input_info': {}}
+        for input_dict in inputs_list:
+            inputs['names'].append(input_dict['name'])
+            if input_dict['optional']:
+                inputs['input_info'][input_dict['name']] = optional_types_trans[input_dict['typename']]
+            else:
+                inputs['input_info'][input_dict['name']] = input_types_map[input_dict['typename']]
+        attrs = {'names': [], 'attr_info': {}}
+        for attr_dict in attrs_list:
+            attrs['names'].append(attr_dict['name'])
+            if 'default_value' in attr_dict.keys():
+                default_value = attr_dict['default_value']
+            else:
+                default_value = None
+            
+            if 'optional' in attr_dict.keys():
+                attrs['attr_info'][attr_dict['name']] = (optional_types_trans[attr_dict['typename']], default_value)
+            else:
+                attrs['attr_info'][attr_dict['name']] = (attr_types_map[attr_dict['typename']], default_value)
+        return inputs, attrs
+
+    def parse_input_and_attr_(self, api_name, args_config, optional_vars=[]):
         inputs = {'names': [], 'input_info': {}}
         attrs = {'names': [], 'attr_info': {}}
         args_str = args_config.strip()
@@ -184,6 +223,7 @@ class BaseAPI:
         input_types_map = {
             'Tensor': 'const Tensor&',
             'Tensor[]': 'const std::vector<Tensor>&',
+            'Scalar': 'const Scalar&',
         }
         attr_types_map = {
             'IntArray': 'const IntArray&',
@@ -275,60 +315,24 @@ class BaseAPI:
 
         return inputs, attrs
 
-    def parse_output(self, api_name, output_config):
-        def parse_output_item(output_item):
-            output_type_map = {
-                'Tensor': 'Tensor',
-                'Tensor[]': 'std::vector<Tensor>',
-            }
-            result = re.search(
-                r"(?P<out_type>[a-zA-Z0-9_[\]]+)\s*(?P<name>\([a-zA-Z0-9_@]+\))?\s*(?P<expr>\{[^\}]+\})?",
-                output_item,
-            )
-            assert (
-                result is not None
-            ), f"{api_name} : the output config parse error."
-            out_type = result.group('out_type')
-            assert (
-                out_type in output_type_map
-            ), f"{api_name} : Output type error: the output type only support Tensor and Tensor[], \
-                  but now is {out_type}."
-
-            out_name = (
-                'out'
-                if result.group('name') is None
-                else result.group('name')[1:-1]
-            )
-            out_size_expr = (
-                None
-                if result.group('expr') is None
-                else result.group('expr')[1:-1]
-            )
-            return output_type_map[out_type], out_name, out_size_expr
-
-        temp_list = output_config.split(',')
-
-        if len(temp_list) == 1:
-            out_type, out_name, size_expr = parse_output_item(temp_list[0])
-            return [out_type], [out_name], [size_expr]
-        else:
-            out_type_list = []
-            out_name_list = []
-            out_size_expr_list = []
-            for output_item in temp_list:
-                out_type, out_name, size_expr = parse_output_item(output_item)
-                out_type_list.append(out_type)
-                out_name_list.append(out_name)
-                out_size_expr_list.append(size_expr)
-
-            return out_type_list, out_name_list, out_size_expr_list
-
+    def parse_output(self, outputs_list):
+        
+        out_type_list = []
+        out_name_list = []
+        out_size_expr_list = []
+        for output_dict in outputs_list:
+            out_type_list.append(output_dict['typename'])
+            out_name_list.append(output_dict['name'])
+            if 'size' in output_dict.keys():
+                out_size_expr_list.append(output_dict['size'])
+            else:
+                out_size_expr_list.append(None)
+        return out_type_list, out_name_list, out_size_expr_list
 
 class EagerPrimAPI(BaseAPI):
     def __init__(self, api_item_yaml):
         super().__init__(api_item_yaml)
         
-
     def get_api__func_name(self):
         api_func_name = self.api
         # if self.is_inplace:
