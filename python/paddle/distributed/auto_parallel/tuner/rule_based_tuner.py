@@ -1340,8 +1340,8 @@ class RuleBasedTuner:
 
         return program
 
-    def _compelte_sub_fwd_program(self, idx, sub_fwd_program, process_mesh):
-        """Compelete sub forward program."""
+    def _complete_fwd_sub_program(self, idx, sub_fwd_program, process_mesh):
+        """Compelete forward sub  program."""
         selective_parallelisms = (
             ["dp", "mp"] if len(process_mesh.shape) == 1 else ["dp_mp", "mp_dp"]
         )
@@ -1409,15 +1409,15 @@ class RuleBasedTuner:
                     )
                 )
 
-    def complete_sub_fwd_programs(self, process_mesh):
-        """Complete all sub forward programs."""
+    def complete_fwd_sub_programs(self, process_mesh):
+        """Complete all forward sub programs."""
         for idx in self.fwd_sub_programs.keys():
             sub_fwd_program = self.fwd_sub_programs[idx]
             if idx not in self.sub_programs_dist_context:
                 self.sub_programs_dist_context[idx] = {}
-            self._compelte_sub_fwd_program(idx, sub_fwd_program, process_mesh)
+            self._complete_fwd_sub_program(idx, sub_fwd_program, process_mesh)
 
-    def _complete_sub_bwd_program(self, sub_program_dist_context):
+    def _complete_bwd_sub_program(self, sub_program_dist_context):
         """
         Complete the backward OP according to the forward OP.
         Most of the logic is the same as the backward completion in the completer.
@@ -1468,16 +1468,16 @@ class RuleBasedTuner:
                         grad_var_to_var,
                     )
 
-    def complete_sub_bwd_programs(self):
+    def complete_bwd_sub_programs(self):
         for idx in self.sub_programs_dist_context:
             for parallelism in self.sub_programs_dist_context[idx]:
                 for key in self.sub_programs_dist_context[idx][parallelism]:
                     sub_program_dist_context = self.sub_programs_dist_context[
                         idx
                     ][parallelism][key]
-                    self._complete_sub_bwd_program(sub_program_dist_context)
+                    self._complete_bwd_sub_program(sub_program_dist_context)
 
-    def _complete_sub_update_program(self, sub_program_dist_context):
+    def _complete_update_sub_program(self, sub_program_dist_context):
         """
         Complete the opt OP according to the tensor.
         Most of the logic is the same as the update completion in the completer.
@@ -1507,7 +1507,7 @@ class RuleBasedTuner:
                     learning_rate_completed,
                 )
 
-    def complete_sub_update_programs(self):
+    def complete_update_sub_programs(self):
         """
         Complete the dist attr on update phase.
         """
@@ -1517,7 +1517,7 @@ class RuleBasedTuner:
                     sub_program_dist_context = self.sub_programs_dist_context[
                         idx
                     ][parallelism][key]
-                    self._complete_sub_update_program(sub_program_dist_context)
+                    self._complete_update_sub_program(sub_program_dist_context)
 
     def convert_process_mesh_to_key(self, process_mesh):
         """Convert process mesh object to str."""
@@ -1788,17 +1788,17 @@ class RuleBasedTuner:
 
         # step6: generate full program
         self.gen_full_program()
-        # print("self.full_program: ", self.full_main_program)
 
-        # step7: fwd complete sub program
+        # step7: complete forward sub program
         for process_mesh in self.process_meshes:
-            self.complete_sub_fwd_programs(process_mesh)
+            self.complete_fwd_sub_programs(process_mesh)
 
-        # step8: bwd complete sub program
-        self.complete_sub_bwd_programs()
+        if self.mode == "train":
+            # step8: complete backward sub program
+            self.complete_bwd_sub_programs()
 
-        # step8: update compete sub program
-        self.complete_sub_update_programs()
+            # step8: complete update sub program
+            self.complete_update_sub_programs()
 
     def layer_placement_pass(self, stages, layers, device_meshes):
         """Get the best cost and the corresponding strategy of the given layers on the stages which running on the devices."""
