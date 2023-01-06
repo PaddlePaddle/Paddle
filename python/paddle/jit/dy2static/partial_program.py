@@ -409,7 +409,7 @@ class PartialProgramLayer:
         for param in self._params:
             candidate = [
                 var_name
-                for var_name in self.backward_program.block(0).vars.keys()
+                for var_name in self._train_program.block(0).vars.keys()
                 if var_name.endswith(param.name + '@GRAD')
             ]
             if candidate:
@@ -753,7 +753,11 @@ class PartialProgramLayer:
             self._outputs.var_ids
         )
         backward_end_op_index = whole_program.desc.block(0).op_size()
-        backward_skip_vars = self._parse_skip_gc_vars(whole_program)
+        # For Backward process in CINN, all param@GRAD shoule be skipped for GC, because
+        # they will be shared in scope and used by optimizer.
+        backward_skip_vars = (
+            self._parse_skip_gc_vars(whole_program) + self._param_grad_names
+        )
         backward_builded_program = add_build_strategy_for(
             whole_program,
             backward_start_op_index,
@@ -843,7 +847,7 @@ class PartialProgramLayer:
 
         if backward_program:
             for var_name in core.parse_safe_eager_deletion_skip_vars(
-                backward_program.desc
+                backward_program.desc, True
             ):
                 skip_vars.append(var_name)
         return skip_vars
