@@ -178,6 +178,8 @@ binary_api_list = [
     paddle.logical_and,
     paddle.logical_or,
     paddle.logical_xor,
+    paddle.maximum,
+    paddle.minimum,
 ]
 
 binary_int_api_list = [
@@ -645,6 +647,26 @@ class TestSundryAPI(unittest.TestCase):
         new_shape = [paddle.full([], -1, "int32"), paddle.full([], 1, "int32")]
         out = paddle.reshape_(x, new_shape)
         self.assertEqual(out.shape, [1, 1])
+
+    def test_sigmoid_focal_loss(self):
+        logit = paddle.to_tensor(
+            [[0.97, 0.91, 0.03], [0.55, 0.43, 0.71]], dtype='float32'
+        )
+        label = paddle.to_tensor(
+            [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0]], dtype='float32'
+        )
+        one = paddle.to_tensor([1.0], dtype='float32')
+        fg_num_0 = paddle.full([], 2.0)
+        fg_num_1 = paddle.full([1], 2.0)
+        np.testing.assert_array_equal(
+            F.sigmoid_focal_loss(logit, label, normalizer=fg_num_0).numpy(),
+            F.sigmoid_focal_loss(logit, label, normalizer=fg_num_1).numpy(),
+        )
+
+    def test_allclose(self):
+        x = paddle.full([], 0.5)
+        y = paddle.full([], 0.6)
+        self.assertFalse(paddle.allclose(x, y))
 
 
 # Use to test API whose zero-dim input tensors don't have grad and not need to test backward in OpTest.
