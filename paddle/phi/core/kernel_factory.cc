@@ -68,6 +68,13 @@ const Kernel& KernelFactory::SelectKernel(const std::string& kernel_name,
   if (iter == kernels_.end()) {
     return empty_kernel;
   }
+
+  auto strided_kernel_iter = iter->second.find(
+      {kernel_key.backend(), phi::DataLayout::STRIDED, kernel_key.dtype()});
+  if (strided_kernel_iter != iter->second.end()) {
+    return strided_kernel_iter->second;
+  }
+
   auto kernel_iter = iter->second.find(kernel_key);
   if (kernel_iter == iter->second.end() &&
       kernel_key.layout() != phi::DataLayout::ALL_LAYOUT) {
@@ -133,6 +140,7 @@ std::map<const std::string, int> KernelFactory::GetLowPrecisionKernelList() {
 KernelResult KernelFactory::SelectKernelOrThrowError(
     const std::string& kernel_name, const KernelKey& const_kernel_key) const {
   auto iter = kernels_.find(kernel_name);
+
   PADDLE_ENFORCE_NE(
       iter,
       kernels_.end(),

@@ -33,7 +33,6 @@ void TransposeKernel(const Context& ctx,
   if (out->numel() == 0) {
     return;
   }
-
   int rank = axis.size();
   switch (rank) {
     case 0:
