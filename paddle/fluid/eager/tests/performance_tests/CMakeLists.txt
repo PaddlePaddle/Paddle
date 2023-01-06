@@ -8,7 +8,8 @@ cc_library(
        scale_node
        scale_op
        matmul_v2_op
-       dygraph_function)
+       dygraph_function
+       eager_prim_api)
 
 cc_test_old(
   test_egr_performance_benchmark_eager_cpu
