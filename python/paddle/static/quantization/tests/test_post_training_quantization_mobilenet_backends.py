@@ -40,10 +40,10 @@ class TestPostTrainingAvgONNXFormatForMobilenetv1TensorRT(
         ]
         is_full_quantize = False
         is_use_cache_file = False
-        is_optimize_model = True
+        is_optimize_model = False
         onnx_format = True
         diff_threshold = 0.05
-        batch_nums = 5
+        batch_nums = 10
         deploy_backend = "tensorrt"
         self.run_test(
             model,
@@ -64,12 +64,12 @@ class TestPostTrainingAvgONNXFormatForMobilenetv1TensorRT(
         )
 
 
-class TestPostTrainingAvgONNXFormatForMobilenetv1MKLDNN(
+class TestPostTrainingKLONNXFormatForMobilenetv1MKLDNN(
     TestPostTrainingQuantization
 ):
     def test_post_training_onnx_format_mobilenetv1_mkldnn(self):
         model = "MobileNet-V1"
-        algo = "avg"
+        algo = "KL"
         round_type = "round"
         data_urls = [
             'https://paddle-imagenet-models-name.bj.bcebos.com/dygraph/inference/MobileNetV1_infer.tar'
@@ -82,10 +82,10 @@ class TestPostTrainingAvgONNXFormatForMobilenetv1MKLDNN(
         ]
         is_full_quantize = False
         is_use_cache_file = False
-        is_optimize_model = True
+        is_optimize_model = False
         onnx_format = True
         diff_threshold = 0.05
-        batch_nums = 5
+        batch_nums = 3
         deploy_backend = "mkldnn"
         self.run_test(
             model,
@@ -127,7 +127,7 @@ class TestPostTrainingAvgONNXFormatForMobilenetv1ARMCPU(
         is_optimize_model = True
         onnx_format = True
         diff_threshold = 0.05
-        batch_nums = 10
+        batch_nums = 5
         deploy_backend = "arm"
         self.run_test(
             model,
