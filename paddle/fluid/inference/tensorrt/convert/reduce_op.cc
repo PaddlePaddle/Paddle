@@ -123,12 +123,12 @@ class ReduceMaxOpConverter : public ReduceOpConverter {
   ReduceMaxOpConverter() { op_type = "reduce_max"; }
 };
 
-class ReduceMaxOpConverter : public ReduceOpConverter {
+class ReduceMinOpConverter : public ReduceOpConverter {
  public:
   ReduceMaxOpConverter() { op_type = "reduce_min"; }
 };
 
-class ReduceMaxOpConverter : public ReduceOpConverter {
+class ReduceProdOpConverter : public ReduceOpConverter {
  public:
   ReduceMaxOpConverter() { op_type = "reduce_prod"; }
 };
@@ -139,5 +139,5 @@ class ReduceMaxOpConverter : public ReduceOpConverter {
 REGISTER_TRT_OP_CONVERTER(reduce_sum, ReduceSumOpConverter);
 REGISTER_TRT_OP_CONVERTER(reduce_mean, ReduceMeanOpConverter);
 REGISTER_TRT_OP_CONVERTER(reduce_max, ReduceMaxOpConverter);
-REGISTER_TRT_OP_CONVERTER(reduce_min, ReduceMeanOpConverter);
-REGISTER_TRT_OP_CONVERTER(reduce_prod, ReduceMaxOpConverter);
+REGISTER_TRT_OP_CONVERTER(reduce_min, ReduceMinOpConverter);
+REGISTER_TRT_OP_CONVERTER(reduce_prod, ReduceProdOpConverter);
