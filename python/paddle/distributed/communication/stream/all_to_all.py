@@ -200,7 +200,9 @@ def alltoall(
                 "The output and input should be both tensor or tensor list."
             )
     else:
-        assert group is None, "Group can not be used in static mode for now."
+        assert (
+            group is None
+        ), "Group can not be used in static graph mode for now."
         return _all_to_all_in_static_mode(
             out_tensor_or_tensor_list,
             in_tensor_or_tensor_list,

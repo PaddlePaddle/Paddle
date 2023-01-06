@@ -1357,7 +1357,14 @@ class FusedMultiTransformer(Layer):
         self.name = name
 
     def forward(
-        self, src, attn_mask=None, caches=None, pre_caches=None, time_step=None
+        self,
+        src,
+        attn_mask=None,
+        caches=None,
+        pre_caches=None,
+        rotary_embs=None,
+        rotary_emb_dims=0,
+        time_step=None,
     ):
         r"""
         Applies multi transformer layers on the input.
@@ -1378,6 +1385,9 @@ class FusedMultiTransformer(Layer):
                 `[2, batch_size, num_head, max_seq_len, head_dim]`. Default None.
             pre_caches (list(Tensor)|tuple(Tensor), optional): The prefix caches
                 for the generation model. The shape is `[2, bsz, num\_head, cache\_len, head\_dim]`. Default None.
+            rotary_embs (Tensor optional): The RoPE embs for the rotary computation. The shape is `[2, bsz, 1, seq\_len, head\_dim]`. Default None.
+            rotary_emb_dims (int, optional): The rotary_emb_dims of rotary computation, and it is 0 when rotary_embs is None,
+                1 when rotary_embs is not None and pos_extra_ids is None, 2 when rotary_embs and pos_extra_ids are both not None. Default 0.
             time_step (Tensor, optional): The time step tensor for the generation
                 model. Which used in decode stage, to represent the time step,
                 that is, the real seq_len of CacheKV. The shape is `[1]`, must be
@@ -1411,9 +1421,11 @@ class FusedMultiTransformer(Layer):
             epsilon=self._epsilon,
             cache_kvs=caches,
             pre_caches=pre_caches,
+            rotary_embs=rotary_embs,
             time_step=time_step,
             attn_mask=attn_mask,
             dropout_rate=self.dropout_rate,
+            rotary_emb_dims=rotary_emb_dims,
             activation=self.activation,
             training=self.training,
             mode='upscale_in_train',

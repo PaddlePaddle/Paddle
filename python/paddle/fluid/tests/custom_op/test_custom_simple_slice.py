@@ -19,7 +19,6 @@ import numpy as np
 from utils import extra_cc_args, extra_nvcc_args, paddle_includes
 
 import paddle
-from paddle.fluid.framework import _test_eager_guard
 from paddle.utils.cpp_extension import get_build_directory, load
 from paddle.utils.cpp_extension.extension_utils import run_cmd
 
@@ -43,7 +42,7 @@ custom_ops = load(
 
 
 class TestCustomSimpleSliceJit(unittest.TestCase):
-    def func_slice_output(self):
+    def test_slice_output(self):
         np_x = np.random.random((5, 2)).astype("float32")
         x = paddle.to_tensor(np_x)
         custom_op_out = custom_ops.custom_simple_slice(x, 2, 3)
@@ -55,11 +54,6 @@ class TestCustomSimpleSliceJit(unittest.TestCase):
                 np_out, custom_op_out.numpy()
             ),
         )
-
-    def test_slice_output(self):
-        with _test_eager_guard():
-            self.func_slice_output()
-        self.func_slice_output()
 
 
 if __name__ == "__main__":

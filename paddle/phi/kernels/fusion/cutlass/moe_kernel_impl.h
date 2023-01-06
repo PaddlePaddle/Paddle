@@ -234,6 +234,7 @@ __global__ void softmax_kernel_v4(
     const T* attr_mask,   // shape [batch_size, seq_len]
     const int batch_size,
     const int seq_len) {
+#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 700
   float data[ITEMS_PER_THREAD];
   int qk_offset;
   __shared__ float s_mean, s_max;
@@ -281,6 +282,7 @@ __global__ void softmax_kernel_v4(
         ((blockIdx.y + blockIdx.z)) * seq_len + blockDim.x * i + threadIdx.x;
     qk_buf_[qk_offset] = (T)(data[i] * s_mean);
   }
+#endif
 }
 
 template <typename T, int ITEMS_PER_THREAD>
@@ -288,6 +290,7 @@ __global__ void softmax_kernel_v4_half2(T* qk_buf_,
                                         const T* attr_mask,
                                         const int batch_size,
                                         const int seq_len) {
+#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 700
   using T2 = half2;
   T2* qk_buf_half2 = reinterpret_cast<T2*>(qk_buf_);
   const T2* attr_mask_half2 = (const T2*)attr_mask;
@@ -350,6 +353,7 @@ __global__ void softmax_kernel_v4_half2(T* qk_buf_,
                 threadIdx.x;
     qk_buf_half2[qk_offset] = __hmul2(data[i], __float2half2_rn(s_mean));
   }
+#endif
 }
 
 template <typename T, int ITEMS_PER_THREAD, int NUM>
@@ -357,6 +361,7 @@ __global__ void softmax_kernel_v5_half2(T* qk_buf_,
                                         const T* attr_mask,
                                         const int batch_size,
                                         const int seq_len) {
+#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 700
   using T2 = half2;
   T2* qk_buf_half2 = reinterpret_cast<T2*>(qk_buf_);
   const T2* attr_mask_half2 = (const T2*)attr_mask;
@@ -474,6 +479,7 @@ __global__ void softmax_kernel_v5_half2(T* qk_buf_,
           __hmul2(data[j][i], __float2half2_rn(s_sum[j]));
     }
   }
+#endif
 }
 
 // --------      transpose_kernel      -------- //

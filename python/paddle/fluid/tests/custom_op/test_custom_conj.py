@@ -20,7 +20,6 @@ from utils import extra_cc_args, extra_nvcc_args, paddle_includes
 
 import paddle
 import paddle.static as static
-from paddle.fluid.framework import _test_eager_guard
 from paddle.utils.cpp_extension import get_build_directory, load
 from paddle.utils.cpp_extension.extension_utils import run_cmd
 
@@ -128,15 +127,10 @@ class TestCustomConjJit(unittest.TestCase):
         self.check_output(out, pd_out, "out")
         self.check_output(x_grad, pd_x_grad, "x's grad")
 
-    def func_dynamic(self):
+    def test_dynamic(self):
         for dtype in self.dtypes:
             np_input = np.random.random(self.shape).astype(dtype)
             self.run_dynamic(dtype, np_input)
-
-    def test_dynamic(self):
-        with _test_eager_guard():
-            self.func_dynamic()
-        self.func_dynamic()
 
     def test_static(self):
         for dtype in self.dtypes:

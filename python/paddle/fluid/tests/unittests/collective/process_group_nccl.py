@@ -46,9 +46,13 @@ class TestProcessGroupFp32(unittest.TestCase):
         device_id = paddle.distributed.ParallelEnv().dev_id
         paddle.set_device('gpu:%d' % device_id)
 
+        assert paddle.distributed.is_available()
+
         pg = init_process_group()
         print("rank:", pg.rank(), "size:", pg.size(), "name:", pg.name())
         print("test new group api ok")
+
+        assert paddle.distributed.get_backend() == "NCCL"
 
         # test allreduce sum
         # rank 0
