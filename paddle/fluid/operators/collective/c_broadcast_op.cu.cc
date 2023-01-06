@@ -35,7 +35,7 @@ class CBroadcastOpCUDAKernel : public framework::OpKernel<T> {
 
     int rid = ctx.Attr<int>("ring_id");
     const auto& place = ctx.GetPlace();
-    out->mutable_data<T>(place);
+    ctx.device_context().Alloc<T>(out);
 
     int root = ctx.Attr<int>("root");
 
@@ -71,13 +71,8 @@ class CBroadcastOpCUDAKernel : public framework::OpKernel<T> {
               static_cast<phi::DenseTensor*>(out));
         }
       } else {
-        PADDLE_ENFORCE_GPU_SUCCESS(
-            platform::dynload::ncclBcast(out->mutable_data<T>(place),
-                                         numel,
-                                         dtype,
-                                         root,
-                                         comm->comm(),
-                                         stream));
+        PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclBcast(
+            out->data<T>(), numel, dtype, root, comm->comm(), stream));
         VLOG(3) << "rank " << comm->rank() << " invoke Bcast. received "
                 << phi::product(out->dims());
       }
