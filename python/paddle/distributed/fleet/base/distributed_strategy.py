@@ -15,6 +15,7 @@
 
 import google.protobuf
 import google.protobuf.text_format
+from google.protobuf.text_format import _message
 
 import paddle
 from paddle.distributed.fleet.proto import distributed_strategy_pb2
@@ -2498,7 +2499,7 @@ class DistributedStrategy:
                             for ff in config_fields:
                                 if isinstance(
                                     getattr(my_configs, ff.name),
-                                    google.protobuf.pyext._message.RepeatedScalarContainer,
+                                    _message.RepeatedScalarContainer,
                                 ):
                                     values = getattr(my_configs, ff.name)
                                     for i, v in enumerate(values):
