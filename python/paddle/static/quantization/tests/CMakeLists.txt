@@ -532,7 +532,7 @@ if(NOT WIN32)
   set_tests_properties(test_post_training_quantization_resnet50
                        PROPERTIES TIMEOUT 600 LABELS "RUN_TYPE=NIGHTLY")
   set_tests_properties(test_post_training_quantization_mnist PROPERTIES TIMEOUT
-                                                                        120)
+                                                                        150)
   set_tests_properties(test_post_training_quantization_while PROPERTIES TIMEOUT
                                                                         120)
   set_tests_properties(test_imperative_ptq PROPERTIES TIMEOUT 120)

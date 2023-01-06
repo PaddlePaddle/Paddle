@@ -28,11 +28,11 @@ class TestCifar10(unittest.TestCase):
         read_num = 0
         for data in cyclic_reader():
             read_num += 1
-            self.assertEquals(len(data), 2)
+            self.assertEqual(len(data), 2)
             if read_num == sample_num * 2:
                 break
 
-        self.assertEquals(read_num, sample_num * 2)
+        self.assertEqual(read_num, sample_num * 2)
 
 
 if __name__ == '__main__':
