@@ -151,6 +151,16 @@ struct PointerToPointerAndCol {
   PointerToPointer<T> ins_ptr_wrapper;
 };
 
+template <int MovSize>
+struct alignas(MovSize) Packed {
+  __device__ Packed() {
+    // do nothing
+  }
+  union {
+    char buf[MovSize];
+  };
+};
+
 template <typename IndexT, int MovSize, typename PointerAndColWrapperT>
 __global__ void ConcatTensorWithDifferentShape(
     const PointerAndColWrapperT ins_datas,
@@ -158,8 +168,7 @@ __global__ void ConcatTensorWithDifferentShape(
     const IndexT output_rows,
     const IndexT output_cols,
     void* output) {
-  using VecT = typename std::aligned_storage<MovSize, MovSize>::type;
-  VecT* dst = reinterpret_cast<VecT*>(output);
+  Packed<MovSize>* dst = reinterpret_cast<Packed<MovSize>*>(output);
 
   IndexT curr_segment = 0;
   IndexT curr_offset = ins_datas.col_length[0];
@@ -176,8 +185,8 @@ __global__ void ConcatTensorWithDifferentShape(
     IndexT local_col = tid_x - curr_offset;
     IndexT segment_width = curr_col_offset - curr_offset;
 
-    const VecT* input_ptr =
-        reinterpret_cast<const VecT*>(ins_datas[curr_segment]);
+    const Packed<MovSize>* input_ptr =
+        reinterpret_cast<const Packed<MovSize>*>(ins_datas[curr_segment]);
 
     IndexT tid_y = blockIdx.y * blockDim.y + threadIdx.y;
 
@@ -194,12 +203,12 @@ __global__ void ConcatTensorWithSameShape(const PointerWrapperT ins_data,
                                           const IndexT out_rows,
                                           const IndexT out_cols,
                                           void* output_data) {
-  using VecT = typename std::aligned_storage<MovSize, MovSize>::type;
-  VecT* dst = reinterpret_cast<VecT*>(output_data);
+  Packed<MovSize>* dst = reinterpret_cast<Packed<MovSize>*>(output_data);
   CUDA_KERNEL_LOOP_TYPE(tid_x, out_cols, IndexT) {
     IndexT split = tid_x / fixed_in_col;
     IndexT in_offset = tid_x - split * fixed_in_col;
-    const VecT* input_ptr = reinterpret_cast<const VecT*>(ins_data[split]);
+    const Packed<MovSize>* input_ptr =
+        reinterpret_cast<const Packed<MovSize>*>(ins_data[split]);
     IndexT tid_y = blockIdx.y * blockDim.y + threadIdx.y;
     for (; tid_y < out_rows; tid_y += blockDim.y * gridDim.y) {
       dst[tid_y * out_cols + tid_x] =
