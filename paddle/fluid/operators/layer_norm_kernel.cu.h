@@ -353,6 +353,7 @@ __global__ void LayerNormForward(
     const float *dequant_out_scale_data = nullptr,
     const int quant_out_scale_offset = 0,
     const float quant_in_scale = 1.0,
+    const InType *quant_in_scale_gpu = nullptr,
     const int quant_round_type = 1,
     const float quant_max_bound = 127.0,
     const float quant_min_bound = -127.0) {
@@ -401,7 +402,9 @@ __global__ void LayerNormForward(
               static_cast<T>(static_cast<U>(scale[j]) *
                                  (static_cast<U>(x[i]) - mean_val) * invvar +
                              static_cast<U>(bias[j])),
-              quant_in_scale,
+              quant_in_scale_gpu
+                  ? (1.0f / static_cast<float>(quant_in_scale_gpu[0]))
+                  : quant_in_scale,
               quant_round_type,
               quant_max_bound,
               quant_min_bound);
@@ -419,7 +422,9 @@ __global__ void LayerNormForward(
           y[i] = quant_helper(
               static_cast<T>(static_cast<U>(scale[j]) *
                              (static_cast<U>(x[i]) - mean_val) * invvar),
-              quant_in_scale,
+              quant_in_scale_gpu
+                  ? (1.0f / static_cast<float>(quant_in_scale_gpu[0]))
+                  : quant_in_scale,
               quant_round_type,
               quant_max_bound,
               quant_min_bound);
@@ -438,7 +443,9 @@ __global__ void LayerNormForward(
           y[i] = quant_helper(
               static_cast<T>((static_cast<U>(x[i]) - mean_val) * invvar +
                              static_cast<U>(bias[j])),
-              quant_in_scale,
+              quant_in_scale_gpu
+                  ? (1.0f / static_cast<float>(quant_in_scale_gpu[0]))
+                  : quant_in_scale,
               quant_round_type,
               quant_max_bound,
               quant_min_bound);
@@ -454,7 +461,9 @@ __global__ void LayerNormForward(
         if (std::is_same<OutType, int8_t>::value) {
           y[i] = quant_helper(
               static_cast<T>((static_cast<U>(x[i]) - mean_val) * invvar),
-              quant_in_scale,
+              quant_in_scale_gpu
+                  ? (1.0f / static_cast<float>(quant_in_scale_gpu[0]))
+                  : quant_in_scale,
               quant_round_type,
               quant_max_bound,
               quant_min_bound);

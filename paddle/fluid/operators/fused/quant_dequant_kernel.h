@@ -19,7 +19,17 @@ limitations under the License. */
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/float16.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
+#include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/funcs/aligned_vector.h"
+
+#ifdef __NVCC__
+#include "cub/cub.cuh"
+#endif
+
+#ifdef __HIPCC__
+#include <hipcub/hipcub.hpp>
+namespace cub = hipcub;
+#endif
 
 namespace paddle {
 namespace operators {
@@ -50,6 +60,7 @@ template <typename T>
 __global__ void quantize_kernel(const T* input,
                                 char4* output,
                                 const float scale,
+                                const T* quant_in_scale_gpu,
                                 const int m,
                                 const int n,
                                 const int round_type,
@@ -58,17 +69,33 @@ __global__ void quantize_kernel(const T* input,
   int n_id = (blockIdx.x * blockDim.x + threadIdx.x) << 2;
   int m_id = blockIdx.y * blockDim.y + threadIdx.y;
 
+  auto quant_in_scale = quant_in_scale_gpu
+                            ? (1.0f / static_cast<float>(quant_in_scale_gpu[0]))
+                            : scale;
+
   bool check = ((m_id < m) && (n_id < n));
   if (check) {
     char4 tmp;
-    tmp.x = quant_helper(
-        input[m_id * n + n_id], scale, round_type, max_bound, min_bound);
-    tmp.y = quant_helper(
-        input[m_id * n + n_id + 1], scale, round_type, max_bound, min_bound);
-    tmp.z = quant_helper(
-        input[m_id * n + n_id + 2], scale, round_type, max_bound, min_bound);
-    tmp.w = quant_helper(
-        input[m_id * n + n_id + 3], scale, round_type, max_bound, min_bound);
+    tmp.x = quant_helper(input[m_id * n + n_id],
+                         quant_in_scale,
+                         round_type,
+                         max_bound,
+                         min_bound);
+    tmp.y = quant_helper(input[m_id * n + n_id + 1],
+                         quant_in_scale,
+                         round_type,
+                         max_bound,
+                         min_bound);
+    tmp.z = quant_helper(input[m_id * n + n_id + 2],
+                         quant_in_scale,
+                         round_type,
+                         max_bound,
+                         min_bound);
+    tmp.w = quant_helper(input[m_id * n + n_id + 3],
+                         quant_in_scale,
+                         round_type,
+                         max_bound,
+                         min_bound);
     output[(m_id * n + n_id) >> 2] = tmp;
   }
 }
@@ -77,6 +104,7 @@ template <typename T>
 void quantize_kernel_launcher(const T* input,
                               int8_t* output,
                               const float scale,
+                              const T* quant_in_scale_gpu,
                               const int m,
                               const int n,
                               const int round_type,
@@ -90,6 +118,7 @@ void quantize_kernel_launcher(const T* input,
   quantize_kernel<<<grid, block, 0, stream>>>(input,
                                               (char4*)output,  // NOLINT
                                               scale,
+                                              quant_in_scale_gpu,
                                               m,
                                               n,
                                               round_type,
@@ -103,6 +132,7 @@ __global__ void dequantize_kernel(T* output,
                                   const int m,  // batch size
                                   const int n,  // hidden
                                   const float quant_in_scale,
+                                  const T* quant_in_scale_gpu,
                                   const float* dequant_out_scale_data) {
   int numel = m * n;
   int stride = blockDim.x * gridDim.x * VecSize;
@@ -113,14 +143,24 @@ __global__ void dequantize_kernel(T* output,
   phi::AlignedVector<float, VecSize> out_scale_vec;
   phi::AlignedVector<T, VecSize> out_vec;
 
+  float real_quant_in_scale = 0;
+  if (quant_in_scale_gpu) {
+    real_quant_in_scale = static_cast<float>(quant_in_scale_gpu[0]) / 127.0f;
+  }
+
   for (; idx < numel; idx += stride) {
     phi::Load<int32_t, VecSize>(input + idx, &in_vec);
     phi::Load<float, VecSize>(dequant_out_scale_data + col_id, &out_scale_vec);
 
 #pragma unroll
     for (int i = 0; i < VecSize; ++i) {
-      out_vec[i] =
-          static_cast<T>(static_cast<float>(in_vec[i]) * out_scale_vec[i]);
+      if (!quant_in_scale_gpu) {
+        out_vec[i] =
+            static_cast<T>(static_cast<float>(in_vec[i]) * out_scale_vec[i]);
+      } else {
+        out_vec[i] = static_cast<T>(static_cast<float>(in_vec[i]) *
+                                    real_quant_in_scale * out_scale_vec[i]);
+      }
     }
 
     phi::Store<T, VecSize>(out_vec, output + idx);
@@ -135,10 +175,63 @@ void dequantize_kernel_launcher(const int32_t* input,
                                 gpuStream_t stream,
                                 GpuLaunchConfig* gpu_config,
                                 const float quant_in_scale,
+                                const T* quant_in_scale_gpu,
                                 const float* dequant_out_scale_data) {
+  VLOG(1) << "Launch dequantize_kernel";
   dequantize_kernel<T, DequantKernelVecSize>
       <<<gpu_config->block_per_grid, gpu_config->thread_per_block, 0, stream>>>(
-          output, input, m, n, quant_in_scale, dequant_out_scale_data);
+          output,
+          input,
+          m,
+          n,
+          quant_in_scale,
+          quant_in_scale_gpu,
+          dequant_out_scale_data);
+}
+
+template <typename T>
+void max_kernel_launcher(const phi::GPUContext& dev_ctx,
+                         const T* input,
+                         T* output,
+                         int num_items) {
+  auto stream = dev_ctx.stream();
+  size_t temp_storage_bytes = 0;
+  cub::DeviceReduce::Max(
+      nullptr, temp_storage_bytes, input, output, num_items, stream);
+  phi::DenseTensor tmp = phi::Empty<uint8_t, phi::GPUContext>(
+      dev_ctx, {static_cast<int64_t>(temp_storage_bytes)});
+
+  auto* temp_storage = dev_ctx.Alloc<uint8_t>(&tmp);
+
+  cub::DeviceReduce::Max(
+      temp_storage, temp_storage_bytes, input, output, num_items, stream);
+}
+
+template <>
+inline void max_kernel_launcher<platform::float16>(
+    const phi::GPUContext& dev_ctx,
+    const platform::float16* input,
+    platform::float16* output,
+    int num_items) {
+  auto stream = dev_ctx.stream();
+  size_t temp_storage_bytes = 0;
+  cub::DeviceReduce::Max(nullptr,
+                         temp_storage_bytes,
+                         reinterpret_cast<const half*>(input),
+                         reinterpret_cast<half*>(output),
+                         num_items,
+                         stream);
+  phi::DenseTensor tmp = phi::Empty<uint8_t, phi::GPUContext>(
+      dev_ctx, {static_cast<int64_t>(temp_storage_bytes)});
+
+  auto* temp_storage = dev_ctx.Alloc<uint8_t>(&tmp);
+
+  cub::DeviceReduce::Max(temp_storage,
+                         temp_storage_bytes,
+                         reinterpret_cast<const half*>(input),
+                         reinterpret_cast<half*>(output),
+                         num_items,
+                         stream);
 }
 
 }  // namespace operators

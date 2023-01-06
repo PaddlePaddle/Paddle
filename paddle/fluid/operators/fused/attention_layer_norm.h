@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include "paddle/fluid/operators/fused/quant_dequant_kernel.h"
 #include "paddle/fluid/operators/layer_norm_kernel.cu.h"
 
 namespace paddle {
@@ -43,10 +44,19 @@ class AttnLayerNorm {
                       const float* dequant_out_scale_data = nullptr,
                       const int quant_out_scale_offset = 0,
                       const float quant_in_scale = 1.0,
+                      InType* quant_in_scale_gpu = nullptr,
                       const int quant_round_type = 1,
                       const float quant_max_bound = 127.0,
                       const float quant_min_bound = -127.0) {
     auto stream = dev_ctx_.stream();
+
+    if (quant_in_scale_gpu) {
+      VLOG(1) << "ENTER max_kernel_launcher";
+      max_kernel_launcher(dev_ctx_,
+                          x_data,
+                          quant_in_scale_gpu,
+                          batch_size_ * feature_size_);  // max range of input
+    }
 
     switch (GetDesiredBlockDim(feature_size_)) {
       FIXED_BLOCK_DIM_CASE(
@@ -67,6 +77,7 @@ class AttnLayerNorm {
                                                   dequant_out_scale_data,
                                                   quant_out_scale_offset,
                                                   quant_in_scale,
+                                                  quant_in_scale_gpu,
                                                   quant_round_type,
                                                   quant_max_bound,
                                                   quant_min_bound));

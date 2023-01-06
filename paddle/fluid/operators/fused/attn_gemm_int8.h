@@ -53,24 +53,42 @@ class AttnMatmulINT8 {
                       phi::DenseTensor* output_tmp,
                       phi::DenseTensor* bias_out,
                       const float quant_in_scale,
+                      T* quant_in_scale_gpu,
                       const phi::DenseTensor* dequant_out_scale,
                       const int quant_round_type = 1,
                       const float quant_max_bound = 127.0,
                       const float quant_min_bound = -127.0) {
+    if (quant_in_scale_gpu) {
+      VLOG(1) << "enter in max_kernel_launcher";
+      max_kernel_launcher(dev_ctx_,
+                          input->data<T>(),
+                          quant_in_scale_gpu,
+                          m_ * k_);  // max range of input
+      VLOG(1) << "end max_kernel_launcher";
+    }
     quantize_kernel_launcher<T>(input->data<T>(),
                                 input_tmp->data<int8_t>(),
                                 quant_in_scale,
+                                quant_in_scale_gpu,
                                 m_,
                                 k_,
                                 quant_round_type,
                                 quant_max_bound,
                                 quant_min_bound,
                                 dev_ctx_.stream());
+    VLOG(1) << "end quantize_kernel_launcher";
 
     helpers_[0]->GEMM(input_tmp->data<int8_t>(),
                       weight->data<int8_t>(),
                       output_tmp->data<int32_t>(),
                       dev_ctx_.stream());
+    VLOG(1) << "end gemm";
+    VLOG(1) << "output_tmp->data<int32_t>() " << output_tmp->data<int32_t>();
+    VLOG(1) << "output->data<T>() " << output->data<T>();
+    VLOG(1) << "gpu_config_.get() " << gpu_config_.get();
+    VLOG(1) << "quant_in_scale_gpu " << quant_in_scale_gpu;
+    VLOG(1) << "dequant_out_scale->data<float>() "
+            << dequant_out_scale->data<float>();
 
     dequantize_kernel_launcher<T>(output_tmp->data<int32_t>(),
                                   output->data<T>(),
@@ -79,7 +97,9 @@ class AttnMatmulINT8 {
                                   dev_ctx_.stream(),
                                   gpu_config_.get(),
                                   quant_in_scale,
+                                  quant_in_scale_gpu,
                                   dequant_out_scale->data<float>());
+    VLOG(1) << "end dequantize_kernel_launcher";
 
     if (compute_bias_) {
       // bias_out = output + bias
@@ -115,6 +135,7 @@ class AttnMatmulINT8 {
   // INT8 and T.
   void ComputeForwardINT8ToT(const phi::DenseTensor* weight,
                              const float quant_in_scale,
+                             const T* quant_in_scale_gpu,
                              phi::DenseTensor* input,
                              const phi::DenseTensor* bias,
                              phi::DenseTensor* output,
@@ -133,6 +154,7 @@ class AttnMatmulINT8 {
                                   dev_ctx_.stream(),
                                   gpu_config_.get(),
                                   quant_in_scale,
+                                  quant_in_scale_gpu,
                                   dequant_out_scale->data<float>());
 
     if (compute_bias_) {
@@ -154,6 +176,7 @@ class AttnMatmulINT8 {
   // and INT8.
   void ComputeForwardTToINT8(const phi::DenseTensor* weight,
                              const float quant_in_scale,
+                             T* quant_in_scale_gpu,
                              const phi::DenseTensor* input,
                              phi::DenseTensor* input_tmp,
                              const phi::DenseTensor* bias,
@@ -162,9 +185,16 @@ class AttnMatmulINT8 {
                              const int quant_round_type = 1,
                              const float quant_max_bound = 127.0,
                              const float quant_min_bound = -127.0) {
+    if (quant_in_scale_gpu) {
+      max_kernel_launcher(dev_ctx_,
+                          input->data<T>(),
+                          quant_in_scale_gpu,
+                          m_ * k_);  // max range of input
+    }
     quantize_kernel_launcher<T>(input->data<T>(),
                                 input_tmp->data<int8_t>(),
                                 quant_in_scale,
+                                quant_in_scale_gpu,
                                 m_,
                                 k_,
                                 quant_round_type,
