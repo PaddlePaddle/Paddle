@@ -53,10 +53,12 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
                   ${dist_ENVS})
   set_tests_properties(test_pass_recompute
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 50)
+  # NOTE(Ruibiao): Delete this unit test when old Executor is removed
   py_test_modules(test_pass_sharding MODULES test_pass_sharding ENVS
                   ${dist_ENVS})
-  set_tests_properties(test_pass_sharding
-                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 50)
+  set_tests_properties(
+    test_pass_sharding PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 50 ENVS
+                                  FLAGS_USE_STANDALONE_EXECUTOR=0)
   py_test_modules(test_pass_amp MODULES test_pass_amp ENVS ${dist_ENVS})
   set_tests_properties(test_pass_amp PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE"
                                                 TIMEOUT 50)
