@@ -12,10 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
-
-os.environ['FLAGS_prim_enabled'] = 'True'
 
 import autograd
 import autograd.numpy
@@ -23,6 +20,9 @@ import numpy as np
 import parameterized as param
 
 import paddle
+from paddle.fluid import core
+
+core.set_enable_prim(True)
 
 
 @param.parameterized_class(
