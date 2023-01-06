@@ -120,9 +120,9 @@ class DatasetConfig(BaseConfig):
         super().__init__(category, config_dict)
 
 
-class PASSESConfig(BaseConfig):
+class OPFUSIONConfig(BaseConfig):
     def __init__(self, config_dict=None):
-        category = constants.PASSES
+        category = constants.OP_FUSION
         super().__init__(category, config_dict)
 
 
@@ -195,5 +195,5 @@ class Strategy(BaseConfig):
         config_dict = self._config_dict.get(constants.DATASET, None)
         self.dataset = DatasetConfig(config_dict)
 
-        config_dict = self._config_dict.get(constants.PASSES, None)
-        self.passes = PASSESConfig(config_dict)
+        config_dict = self._config_dict.get(constants.OP_FUSION, None)
+        self.op_fusion = OPFUSIONConfig(config_dict)

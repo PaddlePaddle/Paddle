@@ -127,6 +127,7 @@ class Engine:
         metrics=None,
         cluster=None,
         strategy=None,
+        fused_op_list=None,
     ):
 
         if (
@@ -225,6 +226,7 @@ class Engine:
         self._planned_mode = None
         self._dygraph_mode = False
         self._tuning = self._strategy.tuning
+        self.fused_op_list = fused_op_list
 
         self.history = None
 
@@ -700,7 +702,10 @@ class Engine:
         # For now, the completer has to be passed to the planner,
         # because we may use it to complete the annotation of the backwarkward and update.
         parallelizer = Parallelizer(
-            mode, self._planners[mode].completer, self._dist_contexts[mode]
+            mode,
+            self._planners[mode].completer,
+            self._dist_contexts[mode],
+            self.fused_op_list,
         )
         if not all_ranks:
             parallelizer.parallel(self._cur_rank)

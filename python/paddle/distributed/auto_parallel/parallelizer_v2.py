@@ -29,7 +29,7 @@ from .utils import set_grad_var_shape
 
 
 class Parallelizer:
-    def __init__(self, mode, completer, dist_context):
+    def __init__(self, mode, completer, dist_context, fused_op_list=None):
         self._mode = mode
         self._completer = completer
         self._dist_context = dist_context
@@ -37,6 +37,7 @@ class Parallelizer:
         self._pass_context = self._dist_context.pass_context
         self._strategy = self._dist_context.strategy
         self._logger = get_logger(logging.INFO)
+        self.fused_op_list = fused_op_list
 
     def parallel_all(self):
         world_process_group = get_world_process_group()
@@ -330,6 +331,13 @@ class Parallelizer:
                 [main_program], [startup_program], self._pass_context
             )
 
-        if self._mode == "train" and self._strategy.passes.enable:
-            pass_manager = PassManager([new_pass("fuse_gemm_epilogue")])
+        if (
+            self._mode == "train"
+            and self._strategy.op_fusion.enable
+            and self.fused_op_list is not None
+        ):
+            new_pass_list = []
+            for op in self.fused_op_list:
+                new_pass_list.append(new_pass(op))
+            pass_manager = PassManager(new_pass_list)
             pass_manager.apply([main_program], [startup_program])
