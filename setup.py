@@ -1346,6 +1346,7 @@ def main():
     else:
         env_dict_path = TOP_DIR + "/build/python/"
     sys.path.insert(1, env_dict_path)
+    print("sys.path:", sys.path)
     from env_dict import env_dict as env_dict
 
     global env_dict
