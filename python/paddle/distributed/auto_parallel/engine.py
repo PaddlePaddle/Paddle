@@ -228,8 +228,6 @@ class Engine:
 
         self.history = None
 
-        paddle.framework.set_flags({'FLAGS_new_executor_sequential_run': 1})
-
     def _prepare_data_spec(self, data, split, batch_size):
         inputs_spec = []
         labels_spec = []
