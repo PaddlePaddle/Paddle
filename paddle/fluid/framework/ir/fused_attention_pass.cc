@@ -57,9 +57,8 @@ PDNode* FusedAttentionPattern::operator()(PDNode* x,
       pattern->NewNode(fuse_qkv_matmul_op_repr())->assert_is_op("matmul_v2");
   auto* fuse_qkv_matmul_w_node = pattern->NewNode(fuse_qkv_matmul_w_repr())
                                      ->assert_is_op_input("matmul_v2", "Y");
-  auto* fuse_qkv_matmul_out_node =
-      pattern->NewNode(fuse_qkv_matmul_out_repr())
-          ->assert_is_op_output("matmul_v2", "Out");
+  auto* fuse_qkv_matmul_out_node = pattern->NewNode(fuse_qkv_matmul_out_repr())
+                                       ->assert_is_op_output("matmul_v2");
   if (pre_layer_norm) {
     pre_layer_norm_out_node->AsIntermediate()->assert_is_op_input("matmul_v2",
                                                                   "X");
@@ -78,7 +77,7 @@ PDNode* FusedAttentionPattern::operator()(PDNode* x,
           ->assert_is_op_input("elementwise_add", "Y");
   auto* fuse_qkv_ele_add_out_node =
       pattern->NewNode(fuse_qkv_ele_add_out_repr())
-          ->assert_is_op_output("elementwise_add", "Out");
+          ->assert_is_op_output("elementwise_add");
   fuse_qkv_matmul_out_node->AsIntermediate()->assert_is_op_input(
       "elementwise_add", "X");
   fuse_qkv_ele_add_node
@@ -92,7 +91,7 @@ PDNode* FusedAttentionPattern::operator()(PDNode* x,
           ->assert_is_op_output("reshape2", "XShape");
   auto* fuse_qkv_reshape_out_node =
       pattern->NewNode(fuse_qkv_reshape_out_repr())
-          ->assert_is_op_output("reshape2", "Out");
+          ->assert_is_op_output("reshape2");
   fuse_qkv_ele_add_out_node->AsIntermediate()->assert_is_op_input("reshape2",
                                                                   "X");
   fuse_qkv_reshape_node->LinksFrom({fuse_qkv_ele_add_out_node})
@@ -105,7 +104,7 @@ PDNode* FusedAttentionPattern::operator()(PDNode* x,
           ->assert_is_op_output("transpose2", "XShape");
   auto* fuse_qkv_transpose_out_node =
       pattern->NewNode(fuse_qkv_transpose_out_repr())
-          ->assert_is_op_output("transpose2", "Out");
+          ->assert_is_op_output("transpose2");
   fuse_qkv_reshape_out_node->AsIntermediate()->assert_is_op_input("transpose2",
                                                                   "X");
   fuse_qkv_transpose_node->LinksFrom({fuse_qkv_reshape_out_node})
@@ -115,13 +114,13 @@ PDNode* FusedAttentionPattern::operator()(PDNode* x,
       pattern->NewNode(fuse_qkv_split_op_repr())->assert_is_op("split");
   auto* fuse_qkv_split_out_q_node =
       pattern->NewNode(fuse_qkv_split_out_q_repr())
-          ->assert_is_op_output("split", "Out");
+          ->assert_is_op_output("split");
   auto* fuse_qkv_split_out_k_node =
       pattern->NewNode(fuse_qkv_split_out_k_repr())
-          ->assert_is_op_output("split", "Out");
+          ->assert_is_op_output("split");
   auto* fuse_qkv_split_out_v_node =
       pattern->NewNode(fuse_qkv_split_out_v_repr())
-          ->assert_is_op_output("split", "Out");
+          ->assert_is_op_output("split");
   fuse_qkv_transpose_out_node->AsIntermediate()->assert_is_op_input("split",
                                                                     "X");
   fuse_qkv_split_node->LinksFrom({fuse_qkv_transpose_out_node})
@@ -132,8 +131,8 @@ PDNode* FusedAttentionPattern::operator()(PDNode* x,
   // core attention pattern
   auto* qk_matmul_node =
       pattern->NewNode(qk_matmul_op_repr())->assert_is_op("matmul_v2");
-  auto* qk_matmul_out_node = pattern->NewNode(qk_matmul_out_repr())
-                                 ->assert_is_op_output("matmul_v2", "Out");
+  auto* qk_matmul_out_node =
+      pattern->NewNode(qk_matmul_out_repr())->assert_is_op_output("matmul_v2");
   fuse_qkv_split_out_q_node->AsIntermediate()->assert_is_op_input("matmul_v2",
                                                                   "X");
   fuse_qkv_split_out_k_node->AsIntermediate()->assert_is_op_input("matmul_v2",
@@ -144,8 +143,8 @@ PDNode* FusedAttentionPattern::operator()(PDNode* x,
 
   auto* qk_scale_node =
       pattern->NewNode(qk_scale_op_repr())->assert_is_op("scale");
-  auto* qk_scale_out_node = pattern->NewNode(qk_scale_out_repr())
-                                ->assert_is_op_output("scale", "Out");
+  auto* qk_scale_out_node =
+      pattern->NewNode(qk_scale_out_repr())->assert_is_op_output("scale");
   qk_matmul_out_node->AsIntermediate()->assert_is_op_input("scale", "X");
   qk_scale_node->LinksFrom({qk_matmul_out_node}).LinksTo({qk_scale_out_node});
 
@@ -156,9 +155,8 @@ PDNode* FusedAttentionPattern::operator()(PDNode* x,
     auto* add_mask_ele_add_mask_node =
         pattern->NewNode(add_mask_ele_add_mask_repr())
             ->assert_is_op_input("elementwise_add", "Y");
-    add_mask_ele_add_out_node =
-        pattern->NewNode(add_mask_ele_add_out_repr())
-            ->assert_is_op_output("elementwise_add", "Out");
+    add_mask_ele_add_out_node = pattern->NewNode(add_mask_ele_add_out_repr())
+                                    ->assert_is_op_output("elementwise_add");
     qk_scale_out_node->AsIntermediate()->assert_is_op_input("elementwise_add",
                                                             "X");
     add_mask_ele_add_node
@@ -168,8 +166,8 @@ PDNode* FusedAttentionPattern::operator()(PDNode* x,
 
   auto* qk_softmax_node =
       pattern->NewNode(qk_softmax_op_repr())->assert_is_op("softmax");
-  auto* qk_softmax_out_node = pattern->NewNode(qk_softmax_out_repr())
-                                  ->assert_is_op_output("softmax", "Out");
+  auto* qk_softmax_out_node =
+      pattern->NewNode(qk_softmax_out_repr())->assert_is_op_output("softmax");
   if (has_attn_mask) {
     add_mask_ele_add_out_node->AsIntermediate()->assert_is_op_input("softmax",
                                                                     "X");
@@ -188,7 +186,7 @@ PDNode* FusedAttentionPattern::operator()(PDNode* x,
     auto* attn_dropout_mask_node = pattern->NewNode(attn_dropout_mask_repr())
                                        ->assert_is_op_output("dropout", "Mask");
     attn_dropout_out_node = pattern->NewNode(attn_dropout_out_repr())
-                                ->assert_is_op_output("dropout", "Out");
+                                ->assert_is_op_output("dropout");
     qk_softmax_out_node->AsIntermediate()->assert_is_op_input("dropout", "X");
     attn_dropout_node->LinksFrom({qk_softmax_out_node})
         .LinksTo({attn_dropout_mask_node, attn_dropout_out_node});
@@ -196,8 +194,8 @@ PDNode* FusedAttentionPattern::operator()(PDNode* x,
 
   auto* qkv_matmul_node =
       pattern->NewNode(qkv_matmul_op_repr())->assert_is_op("matmul_v2");
-  auto* qkv_matmul_out_node = pattern->NewNode(qkv_matmul_out_repr())
-                                  ->assert_is_op_output("matmul_v2", "Out");
+  auto* qkv_matmul_out_node =
+      pattern->NewNode(qkv_matmul_out_repr())->assert_is_op_output("matmul_v2");
   fuse_qkv_split_out_v_node->AsIntermediate()->assert_is_op_input("matmul_v2",
                                                                   "Y");
   if (do_dropout) {
@@ -218,7 +216,7 @@ PDNode* FusedAttentionPattern::operator()(PDNode* x,
       pattern->NewNode(qkv_transpose_x_shape_repr())
           ->assert_is_op_output("transpose2", "XShape");
   auto* qkv_transpose_out_node = pattern->NewNode(qkv_transpose_out_repr())
-                                     ->assert_is_op_output("transpose2", "Out");
+                                     ->assert_is_op_output("transpose2");
   qkv_matmul_out_node->AsIntermediate()->assert_is_op_input("transpose2", "X");
   qkv_transpose_node->LinksFrom({qkv_matmul_out_node})
       .LinksTo({qkv_transpose_x_shape_node, qkv_transpose_out_node});
@@ -228,8 +226,8 @@ PDNode* FusedAttentionPattern::operator()(PDNode* x,
   auto* qkv_reshape_x_shape_node =
       pattern->NewNode(qkv_reshape_x_shape_repr())
           ->assert_is_op_output("reshape2", "XShape");
-  auto* qkv_reshape_out_node = pattern->NewNode(qkv_reshape_out_repr())
-                                   ->assert_is_op_output("reshape2", "Out");
+  auto* qkv_reshape_out_node =
+      pattern->NewNode(qkv_reshape_out_repr())->assert_is_op_output("reshape2");
   qkv_transpose_out_node->AsIntermediate()->assert_is_op_input("reshape2", "X");
   qkv_reshape_node->LinksFrom({qkv_transpose_out_node})
       .LinksTo({qkv_reshape_x_shape_node, qkv_reshape_out_node});
@@ -241,7 +239,7 @@ PDNode* FusedAttentionPattern::operator()(PDNode* x,
                                        ->assert_is_op_input("matmul_v2", "Y");
   auto* out_linear_matmul_out_node =
       pattern->NewNode(out_linear_matmul_out_repr())
-          ->assert_is_op_output("matmul_v2", "Out");
+          ->assert_is_op_output("matmul_v2");
   qkv_reshape_out_node->AsIntermediate()->assert_is_op_input("matmul_v2", "X");
   out_linear_matmul_node
       ->LinksFrom({qkv_reshape_out_node, out_linear_matmul_w_node})
@@ -254,7 +252,7 @@ PDNode* FusedAttentionPattern::operator()(PDNode* x,
           ->assert_is_op_input("elementwise_add", "Y");
   auto* out_linear_ele_add_out_node =
       pattern->NewNode(out_linear_ele_add_out_repr())
-          ->assert_is_op_output("elementwise_add", "Out");
+          ->assert_is_op_output("elementwise_add");
   out_linear_matmul_out_node->AsIntermediate()->assert_is_op_input(
       "elementwise_add", "X");
   out_linear_ele_add_node
@@ -268,7 +266,7 @@ PDNode* FusedAttentionPattern::operator()(PDNode* x,
           ->assert_is_op_output("dropout", "Mask");
   auto* out_linear_dropout_out_node =
       pattern->NewNode(out_linear_dropout_out_repr())
-          ->assert_is_op_output("dropout", "Out");
+          ->assert_is_op_output("dropout");
   out_linear_ele_add_out_node->AsIntermediate()->assert_is_op_input("dropout",
                                                                     "X");
   out_linear_dropout_node->LinksFrom({out_linear_ele_add_out_node})
@@ -285,9 +283,8 @@ PDNode* FusedAttentionPattern::operator()(PDNode* x,
     // to fix X and Y
     auto* residual_ele_add_node = pattern->NewNode(residual_ele_add_op_repr())
                                       ->assert_is_op("elementwise_add");
-    residual_ele_add_out_node =
-        pattern->NewNode(residual_ele_add_out_repr())
-            ->assert_is_op_output("elementwise_add", "Out");
+    residual_ele_add_out_node = pattern->NewNode(residual_ele_add_out_repr())
+                                    ->assert_is_op_output("elementwise_add");
     out_linear_dropout_out_node->AsIntermediate()->assert_is_op_input(
         "elementwise_add", "Y");
     residual_ele_add_node->LinksFrom({x, out_linear_dropout_out_node})
