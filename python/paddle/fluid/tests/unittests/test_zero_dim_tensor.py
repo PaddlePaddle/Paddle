@@ -454,6 +454,15 @@ class TestSundryAPI(unittest.TestCase):
         paddle.disable_static()
         self.x = paddle.rand([])
 
+    def test_flip(self):
+        x = paddle.rand([])
+        x.stop_gradient = False
+        out = paddle.flip(x, axis=[])
+        out.backward()
+        self.assertEqual(x.shape, [])
+        self.assertEqual(out.shape, [])
+        self.assertEqual(out.grad.shape, [])
+
     def test_linear(self):
         x = paddle.randn([3, 2])
         w = paddle.full(shape=[2, 4], fill_value=0.5)
@@ -712,11 +721,256 @@ class TestSundryAPI(unittest.TestCase):
         self.assertEqual(out.numpy()[3], 2)
         self.assertEqual(out.grad.shape, [5])
 
+    def test_kthvalue(self):
+        places = ['cpu']
+        if paddle.is_compiled_with_cuda():
+            places.append('gpu')
+        for place in places:
+            paddle.set_device(place)
+
+            x = paddle.randn(())
+            x.stop_gradient = False
+
+            out = paddle.kthvalue(x, 1)
+            out[0].backward()
+
+            # check shape of output value and indice
+            self.assertEqual(out[0].shape, [])
+            self.assertEqual(out[1].shape, [])
+
+            # check grad shape and value
+            self.assertEqual(x.grad.shape, [])
+            self.assertTrue(x.grad.numpy() == 1)
+
+    def test_mode(self):
+        places = ['cpu']
+        if paddle.is_compiled_with_cuda():
+            places.append('gpu')
+        for place in places:
+            paddle.set_device(place)
+
+            x = paddle.randn(())
+            x.stop_gradient = False
+
+            out = paddle.mode(x)
+            out[0].backward()
+
+            # check shape of output value and indice
+            self.assertEqual(out[0].shape, [])
+            self.assertEqual(out[1].shape, [])
+
+            # check grad shape and value
+            self.assertEqual(x.grad.shape, [])
+            self.assertTrue(x.grad.numpy() == 1)
+
+    def test_flatten(self):
+        x = paddle.rand([])
+        x.stop_gradient = False
+
+        start_axis = 0
+        stop_axis = -1
+
+        out = paddle.flatten(x, start_axis=start_axis, stop_axis=stop_axis)
+        out.backward()
+
+        self.assertEqual(out.shape, [1])
+        self.assertEqual(x.grad.shape, [])
+
+    def test_scale(self):
+        x = paddle.rand([])
+        x.stop_gradient = False
+        out = paddle.scale(x, scale=2.0, bias=1.0)
+        out.backward()
+
+        self.assertEqual(out.shape, [])
+        self.assertEqual(out.grad.shape, [])
+        self.assertEqual(x.grad.shape, [])
+
+    def test_floor_divide(self):
+        # 1-d // 0-d
+        x = paddle.to_tensor([1, -2, 3], dtype="int64")
+        y = paddle.full([], 2, dtype='int64')
+        out1_1 = paddle.floor_divide(x, y)
+        out1_2 = paddle.Tensor.__floordiv__(x, y)
+
+        np.testing.assert_array_equal(out1_1.numpy(), out1_2.numpy())
+        np.testing.assert_array_equal(out1_1.numpy(), np.asarray([0, -1, 1]))
+
+        # 0-d // 1-d
+        out2_1 = paddle.floor_divide(y, x)
+        out2_2 = paddle.Tensor.__floordiv__(y, x)
+
+        np.testing.assert_array_equal(out2_1.numpy(), out2_2.numpy())
+        np.testing.assert_array_equal(out2_2.numpy(), np.asarray([2, -1, 0]))
+
+        # 0-d // 0-d
+        x = paddle.full([], 3, dtype='int64')
+        out3_1 = paddle.floor_divide(x, y)
+        out3_2 = paddle.Tensor.__floordiv__(x, y)
+
+        np.testing.assert_array_equal(out3_1.numpy(), out3_2.numpy())
+        np.testing.assert_array_equal(out3_2.numpy(), np.asarray(1))
+
+    def test_reshape_list(self):
+        x = paddle.rand([])
+        x.stop_gradient = False
+
+        out = paddle.reshape(x, [])
+        out.backward()
+        self.assertEqual(x.grad.shape, [])
+        self.assertEqual(out.shape, [])
+        self.assertEqual(out.grad.shape, [])
+
+        out = paddle.reshape(x, [1])
+        out.backward()
+        self.assertEqual(x.grad.shape, [])
+        self.assertEqual(out.shape, [1])
+        self.assertEqual(out.grad.shape, [1])
+
+        out = paddle.reshape(x, [-1])
+        out.backward()
+        self.assertEqual(x.grad.shape, [])
+        self.assertEqual(out.shape, [1])
+        self.assertEqual(out.grad.shape, [1])
+
+        out = paddle.reshape(x, [-1, 1])
+        out.backward()
+        self.assertEqual(x.grad.shape, [])
+        self.assertEqual(out.shape, [1, 1])
+        self.assertEqual(out.grad.shape, [1, 1])
+
+    def test_reshape_tensor(self):
+        x = paddle.rand([1, 1])
+        x.stop_gradient = False
+
+        out = paddle.reshape(x, [])
+        out.backward()
+        self.assertEqual(x.grad.shape, [1, 1])
+        self.assertEqual(out.shape, [])
+        self.assertEqual(out.grad.shape, [])
+
+        new_shape = paddle.full([1], 1, "int32")
+        out = paddle.reshape(x, new_shape)
+        out.backward()
+        self.assertEqual(x.grad.shape, [1, 1])
+        self.assertEqual(out.shape, [1])
+        self.assertEqual(out.grad.shape, [1])
+
+        new_shape = paddle.full([1], -1, "int32")
+        out = paddle.reshape(x, new_shape)
+        out.backward()
+        self.assertEqual(x.grad.shape, [1, 1])
+        self.assertEqual(out.shape, [1])
+        self.assertEqual(out.grad.shape, [1])
+
+        new_shape = [paddle.full([], -1, "int32"), paddle.full([], 1, "int32")]
+        out = paddle.reshape(x, new_shape)
+        out.backward()
+        self.assertEqual(x.grad.shape, [1, 1])
+        self.assertEqual(out.shape, [1, 1])
+        self.assertEqual(out.grad.shape, [1, 1])
+
+    def test_reshape__list(self):
+        x = paddle.rand([])
+        out = paddle.reshape_(x, [])
+        self.assertEqual(out.shape, [])
+
+        out = paddle.reshape_(x, [1])
+        self.assertEqual(out.shape, [1])
+
+        out = paddle.reshape_(x, [-1])
+        self.assertEqual(out.shape, [1])
+
+        out = paddle.reshape_(x, [-1, 1])
+        self.assertEqual(out.shape, [1, 1])
+
+    def test_reshape__tensor(self):
+        x = paddle.rand([1, 1])
+        out = paddle.reshape_(x, [])
+        self.assertEqual(out.shape, [])
+
+        new_shape = paddle.full([1], 1, "int32")
+        out = paddle.reshape_(x, new_shape)
+        self.assertEqual(out.shape, [1])
+
+        new_shape = paddle.full([1], -1, "int32")
+        out = paddle.reshape_(x, new_shape)
+        self.assertEqual(out.shape, [1])
+
+        new_shape = [paddle.full([], -1, "int32"), paddle.full([], 1, "int32")]
+        out = paddle.reshape_(x, new_shape)
+        self.assertEqual(out.shape, [1, 1])
+
+    def test_reverse(self):
+        x = paddle.rand([])
+        x.stop_gradient = False
+        out = paddle.reverse(x, axis=[])
+        out.backward()
+        self.assertEqual(x.shape, [])
+        self.assertEqual(out.shape, [])
+        self.assertEqual(out.grad.shape, [])
+
+    def test_sort(self):
+        x1 = paddle.rand([])
+        x2 = paddle.rand([])
+        x1.stop_gradient = False
+        x2.stop_gradient = False
+        out1 = paddle.sort(x1, axis=-1)
+        out2 = paddle.sort(x2, axis=0)
+
+        out1.backward()
+        out2.backward()
+
+        self.assertEqual(out1.shape, [])
+        self.assertEqual(out2.shape, [])
+        self.assertEqual(out1.numpy(), x1.numpy())
+        self.assertEqual(out2.numpy(), x2.numpy())
+        self.assertEqual(out1.grad.shape, [])
+        self.assertEqual(out2.grad.shape, [])
+        self.assertEqual(x1.grad.shape, [])
+        self.assertEqual(x2.grad.shape, [])
+        self.assertEqual(x1.grad.numpy(), 1)
+        self.assertEqual(x2.grad.numpy(), 1)
+
+    def test_argsort(self):
+        x1 = paddle.rand([])
+        x2 = paddle.rand([])
+        x1.stop_gradient = False
+        x2.stop_gradient = False
+        out1 = paddle.argsort(x1, axis=-1)
+        out2 = paddle.argsort(x2, axis=0)
+
+        out1.backward()
+        out2.backward()
+
+        self.assertEqual(out1.shape, [])
+        self.assertEqual(out2.shape, [])
+        self.assertEqual(out1.numpy(), 0)
+        self.assertEqual(out2.numpy(), 0)
+        self.assertEqual(out1.grad.shape, [])
+        self.assertEqual(out2.grad.shape, [])
+        self.assertEqual(x1.grad.shape, [])
+        self.assertEqual(x2.grad.shape, [])
+        self.assertEqual(x1.grad.numpy(), 0)
+        self.assertEqual(x2.grad.numpy(), 0)
+
 
 class TestSundryAPIStatic(unittest.TestCase):
     def setUp(self):
         paddle.enable_static()
         self.exe = paddle.static.Executor()
+
+    @prog_scope()
+    def test_flip(self):
+        x = paddle.rand([])
+        x.stop_gradient = False
+        out = paddle.flip(x, axis=[])
+        paddle.static.append_backward(out)
+
+        program = paddle.static.default_main_program()
+        res1, res2 = self.exe.run(program, fetch_list=[x, out])
+        self.assertEqual(res1.shape, ())
+        self.assertEqual(res2.shape, ())
 
     @prog_scope()
     def test_pow_factor(self):
@@ -914,6 +1168,193 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(res[0].shape, (5,))
         self.assertEqual(res[0][3], 2)
 
+    @prog_scope()
+    def test_kthvalue(self):
+        x = paddle.full([], 1, 'float32')
+        out = paddle.kthvalue(x, 1)
+        paddle.static.append_backward(out[0])
+
+        prog = paddle.static.default_main_program()
+        res = self.exe.run(prog, fetch_list=[out])
+        self.assertEqual(len(res[0].shape), 0)
+        self.assertEqual(len(res[0].shape), 0)
+
+    @prog_scope()
+    def test_mode(self):
+        x = paddle.full([], 1, 'float32')
+        out = paddle.mode(x)
+        paddle.static.append_backward(out[0])
+
+        prog = paddle.static.default_main_program()
+        res = self.exe.run(prog, fetch_list=[out])
+        self.assertEqual(len(res[0].shape), 0)
+        self.assertEqual(len(res[0].shape), 0)
+
+    @prog_scope()
+    def test_flatten(self):
+        x = paddle.full([], 1, 'float32')
+        x.stop_gradient = False
+
+        start_axis = 0
+        stop_axis = -1
+
+        out = paddle.flatten(x, start_axis=start_axis, stop_axis=stop_axis)
+        paddle.static.append_backward(out)
+
+        prog = paddle.static.default_main_program()
+        res = self.exe.run(prog, feed={}, fetch_list=[out])
+
+        self.assertEqual(res[0].shape, (1,))
+
+    @prog_scope()
+    def test_scale(self):
+        x = paddle.rand([])
+        x.stop_gradient = False
+        out = paddle.scale(x, scale=2.0, bias=1.0)
+        paddle.static.append_backward(out)
+
+        prog = paddle.static.default_main_program()
+        res = self.exe.run(prog, fetch_list=[out])
+        self.assertEqual(res[0].shape, ())
+
+    @prog_scope()
+    def test_floor_divide(self):
+        # 1-d // 0-d
+        x = paddle.to_tensor([1, -2, 3], dtype="int64")
+        y = paddle.full([], 2, dtype='int64')
+        out1_1 = paddle.floor_divide(x, y)
+        out1_2 = x // y
+
+        # 0-d // 1-d
+        out2_1 = paddle.floor_divide(y, x)
+        out2_2 = y // x
+
+        # 0-d // 0-d
+        x = paddle.full([], 3, dtype='int64')
+        out3_1 = paddle.floor_divide(x, y)
+        out3_2 = x // y
+
+        prog = paddle.static.default_main_program()
+        res = self.exe.run(
+            prog, fetch_list=[out1_1, out1_2, out2_1, out2_2, out3_1, out3_2]
+        )
+        out1_1, out1_2, out2_1, out2_2, out3_1, out3_2 = res
+
+        np.testing.assert_array_equal(out1_1, out1_2)
+        np.testing.assert_array_equal(out1_1, np.asarray([0, -1, 1]))
+        np.testing.assert_array_equal(out2_1, out2_2)
+        np.testing.assert_array_equal(out2_2, np.asarray([2, -1, 0]))
+        np.testing.assert_array_equal(out3_1, out3_2)
+        np.testing.assert_array_equal(out3_2, np.asarray(1))
+
+    @prog_scope()
+    def test_reshape_list(self):
+        x1 = paddle.rand([])
+        x2 = paddle.rand([])
+        x3 = paddle.rand([])
+        x4 = paddle.rand([])
+        x1.stop_gradient = False
+        x2.stop_gradient = False
+        x3.stop_gradient = False
+        x4.stop_gradient = False
+
+        out1 = paddle.reshape(x1, [])
+        paddle.static.append_backward(out1)
+
+        out2 = paddle.reshape(x2, [1])
+        paddle.static.append_backward(out2)
+
+        out3 = paddle.reshape(x3, [-1])
+        paddle.static.append_backward(out3)
+
+        out4 = paddle.reshape(x4, [-1, 1])
+        paddle.static.append_backward(out4)
+
+        program = paddle.static.default_main_program()
+        res1, res2, res3, res4 = self.exe.run(
+            program, fetch_list=[out1, out2, out3, out4]
+        )
+        self.assertEqual(res1.shape, ())
+        self.assertEqual(res2.shape, (1,))
+        self.assertEqual(res3.shape, (1,))
+        self.assertEqual(res4.shape, (1, 1))
+
+    @prog_scope()
+    def test_reshape_tensor(self):
+        x1 = paddle.rand([])
+        x2 = paddle.rand([])
+        x3 = paddle.rand([])
+        x1.stop_gradient = False
+        x2.stop_gradient = False
+        x3.stop_gradient = False
+
+        new_shape = paddle.full([1], 1, "int32")
+        out1 = paddle.reshape(x1, new_shape)
+        paddle.static.append_backward(out1)
+
+        new_shape = paddle.full([1], -1, "int32")
+        out2 = paddle.reshape(x2, new_shape)
+        paddle.static.append_backward(out2)
+
+        new_shape = [paddle.full([], -1, "int32"), paddle.full([], 1, "int32")]
+        out3 = paddle.reshape(x3, new_shape)
+        paddle.static.append_backward(out3)
+
+        program = paddle.static.default_main_program()
+        res1, res2, res3 = self.exe.run(program, fetch_list=[out1, out2, out3])
+        self.assertEqual(res1.shape, (1,))
+        self.assertEqual(res2.shape, (1,))
+        self.assertEqual(res3.shape, (1, 1))
+
+    @prog_scope()
+    def test_reverse(self):
+        x = paddle.rand([])
+        x.stop_gradient = False
+
+        out = paddle.reverse(x, axis=[])
+        paddle.static.append_backward(out)
+
+        program = paddle.static.default_main_program()
+        res1, res2 = self.exe.run(program, fetch_list=[x, out])
+        self.assertEqual(res1.shape, ())
+        self.assertEqual(res2.shape, ())
+
+    @prog_scope()
+    def test_sort(self):
+        x1 = paddle.rand([])
+        x1.stop_gradient = False
+        out1 = paddle.sort(x1, axis=-1)
+        paddle.static.append_backward(out1)
+
+        x2 = paddle.rand([])
+        x2.stop_gradient = False
+        out2 = paddle.sort(x2, axis=0)
+        paddle.static.append_backward(out2)
+
+        prog = paddle.static.default_main_program()
+        res = self.exe.run(prog, fetch_list=[out1, out2])
+
+        self.assertEqual(res[0].shape, ())
+        self.assertEqual(res[1].shape, ())
+
+    @prog_scope()
+    def test_argsort(self):
+        x1 = paddle.rand([])
+        x1.stop_gradient = False
+        out1 = paddle.argsort(x1, axis=-1)
+        paddle.static.append_backward(out1)
+
+        x2 = paddle.rand([])
+        x2.stop_gradient = False
+        out2 = paddle.argsort(x2, axis=0)
+        paddle.static.append_backward(out2)
+
+        prog = paddle.static.default_main_program()
+        res = self.exe.run(prog, fetch_list=[out1, out2])
+
+        self.assertEqual(res[0].shape, ())
+        self.assertEqual(res[1].shape, ())
+
 
 # Use to test API whose zero-dim input tensors don't have grad and not need to test backward in OpTest.
 class TestNoBackwardAPI(unittest.TestCase):
@@ -1043,6 +1484,24 @@ class TestNoBackwardAPI(unittest.TestCase):
 
         out = paddle.zeros(self.shape)
         self.assertEqual(out.shape, [2, 3, 4])
+
+    def test_embedding(self):
+        ids = paddle.full(shape=[], fill_value=1, dtype='int64')
+        w0 = paddle.arange(3, 9).reshape((3, 2)).astype(paddle.float32)
+        w = paddle.to_tensor(w0, stop_gradient=False)
+        emb = paddle.nn.functional.embedding(
+            x=ids, weight=w, sparse=True, name="embedding"
+        )
+        self.assertEqual(emb.shape, [2])
+        res = [5.0, 6.0]
+        for i in range(len(res)):
+            self.assertEqual(emb.numpy()[i], res[i])
+
+    def test_one_hot_label(self):
+        label = paddle.full(shape=[], fill_value=2, dtype='int64')
+        one_hot_label = paddle.nn.functional.one_hot(label, num_classes=4)
+        self.assertEqual(one_hot_label.shape, [4])
+        self.assertEqual(one_hot_label.numpy()[2], 1)
 
 
 class TestNoBackwardAPIStatic(unittest.TestCase):
@@ -1212,6 +1671,39 @@ class TestNoBackwardAPIStatic(unittest.TestCase):
         self.assertEqual(res[0].shape, ())
         self.assertEqual(res[1].shape, ())
         self.assertEqual(res[2].shape, (2, 3, 4))
+
+    def test_embedding(self):
+        ids = paddle.full(shape=[], fill_value=1, dtype='int64')
+        w0 = paddle.arange(3, 9).reshape((3, 2)).astype(paddle.float32)
+        w = paddle.to_tensor(w0, stop_gradient=False)
+        emb = paddle.nn.functional.embedding(
+            x=ids, weight=w, sparse=True, name="embedding"
+        )
+
+        prog = paddle.static.default_main_program()
+        res = self.exe.run(prog, fetch_list=[emb])
+        self.assertEqual(res[0].shape, (2,))
+        result = [5.0, 6.0]
+        for i in range(len(res)):
+            self.assertEqual(res[0][i], result[i])
+
+    def test_static_embedding(self):
+        ids = paddle.full(shape=[], fill_value=1, dtype='int64')
+        emb = paddle.static.nn.embedding(ids, (20, 3))
+        prog = paddle.static.default_main_program()
+        self.exe.run(paddle.fluid.default_startup_program())
+        res = self.exe.run(prog, fetch_list=[emb])
+        self.assertEqual(res[0].shape, (3,))
+
+    def test_one_hot_label(self):
+        label = paddle.full(shape=[], fill_value=2, dtype='int64')
+        one_hot_label = paddle.nn.functional.one_hot(label, num_classes=4)
+        prog = paddle.static.default_main_program()
+        self.exe.run(paddle.fluid.default_startup_program())
+        res = self.exe.run(prog, fetch_list=[one_hot_label])
+
+        self.assertEqual(res[0].shape, (4,))
+        self.assertEqual(res[0][2], 1)
 
 
 if __name__ == "__main__":

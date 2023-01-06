@@ -20,11 +20,10 @@
 #include <unordered_map>
 #include <vector>
 
-#include "paddle/fluid/distributed/collective/process_group_stream.h"
+#include "paddle/fluid/distributed/collective/process_group.h"
+#include "paddle/fluid/distributed/collective/process_group_with_stream.h"
 #include "paddle/fluid/distributed/store/store.h"
-#include "paddle/fluid/platform/cuda_device_guard.h"
 #include "paddle/fluid/platform/device_event.h"
-#include "paddle/fluid/platform/enforce.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/device_context.h"
 
@@ -41,11 +40,11 @@
 namespace paddle {
 namespace distributed {
 
-using Place = paddle::platform::Place;
+using Place = phi::Place;
 
-class ProcessGroupNCCL final : public ProcessGroupStream {
+class ProcessGroupNCCL final : public ProcessGroupWithStream {
  public:
-  class NCCLTask final : public ProcessGroupStream::TaskStream,
+  class NCCLTask final : public ProcessGroupWithStream::TaskStream,
                          public std::enable_shared_from_this<NCCLTask> {
    public:
     NCCLTask(const Place& place,
@@ -86,10 +85,10 @@ class ProcessGroupNCCL final : public ProcessGroupStream {
 
   std::string GetBackendName() const override { return "NCCL"; }
 
+  phi::DeviceContext* GetDeviceContext(const Place& place) const override;
+
   phi::DeviceContext* GetDeviceContext(const Place& place,
                                        bool use_calc_stream) const override;
-
-  phi::DeviceContext* GetDeviceContext(const Place& place) const override;
 
   std::shared_ptr<ProcessGroup::Task> AllGather(
       phi::DenseTensor* out_tensor,

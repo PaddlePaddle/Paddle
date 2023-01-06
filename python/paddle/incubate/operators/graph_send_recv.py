@@ -189,7 +189,7 @@ def convert_out_size_to_list(out_size):
 def get_out_size_tensor_inputs(inputs, attrs, out_size, op_type):
     """
     Convert out_size(int, np.int32, np.int64, Variable) to inputs
-    and attrs in static mode.
+    and attrs in static graph mode.
     """
     if out_size is None:
         attrs['out_size'] = [0]

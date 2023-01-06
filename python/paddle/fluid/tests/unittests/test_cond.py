@@ -68,6 +68,115 @@ class TestCondInputOutput(unittest.TestCase):
             np.asarray(ret), np.full((3, 2), -1, np.int32), rtol=1e-05
         )
 
+    def test_return_0d_tensor(self):
+        """
+        pseudocode:
+
+        if 0.23 >= 0.1:
+            return 2
+        else:
+            return -1
+        """
+
+        paddle.enable_static()
+
+        def true_func():
+            return paddle.full(shape=[], dtype='int32', fill_value=2)
+
+        def false_func():
+            return paddle.full(shape=[], dtype='int32', fill_value=-1)
+
+        main_program = Program()
+        startup_program = Program()
+        with program_guard(main_program, startup_program):
+            x = paddle.full(shape=[1], dtype='float32', fill_value=0.1)
+            y = paddle.full(shape=[1], dtype='float32', fill_value=0.23)
+            pred = paddle.greater_equal(y, x)
+            out = paddle.static.nn.cond(pred, true_func, false_func)
+            # out is one tensor
+
+        place = (
+            fluid.CUDAPlace(0)
+            if core.is_compiled_with_cuda()
+            else fluid.CPUPlace()
+        )
+        exe = fluid.Executor(place)
+        (ret,) = exe.run(main_program, fetch_list=[out.name])
+        np.testing.assert_allclose(np.asarray(ret), np.array(2), rtol=1e-05)
+
+    def test_0d_tensor_as_cond(self):
+        """
+        pseudocode:
+
+        if 0.23 >= 0.1:
+            return 2
+        else:
+            return -1
+        """
+
+        paddle.enable_static()
+
+        def true_func():
+            return paddle.full(shape=[3, 3], dtype='int32', fill_value=2)
+
+        def false_func():
+            return paddle.full(shape=[3, 3], dtype='int32', fill_value=-1)
+
+        main_program = Program()
+        startup_program = Program()
+        with program_guard(main_program, startup_program):
+            x = paddle.full(shape=[], dtype='float32', fill_value=0.1)
+            y = paddle.full(shape=[], dtype='float32', fill_value=0.23)
+            pred = paddle.greater_equal(y, x)
+            out = paddle.static.nn.cond(pred, true_func, false_func)
+            # out is one tensor
+
+        place = (
+            fluid.CUDAPlace(0)
+            if core.is_compiled_with_cuda()
+            else fluid.CPUPlace()
+        )
+        exe = fluid.Executor(place)
+        (ret,) = exe.run(main_program, fetch_list=[out.name])
+        np.testing.assert_allclose(
+            np.asarray(ret), np.full((3, 3), 2, np.int32), rtol=1e-05
+        )
+
+    def test_0d_tensor_backward(self):
+        """
+        pseudocode:
+
+        a = -2.0
+        if a >= 0:
+            return a
+        else:
+            return -a
+        """
+
+        paddle.enable_static()
+
+        main_program = Program()
+        startup_program = Program()
+        with program_guard(main_program, startup_program):
+            a = paddle.full(shape=[], dtype='float32', fill_value=-2.0)
+            a.stop_gradient = False
+            out = paddle.static.nn.cond(a >= 0, lambda: a, lambda: -a)
+            append_backward(out)
+
+        place = (
+            fluid.CUDAPlace(0)
+            if core.is_compiled_with_cuda()
+            else fluid.CPUPlace()
+        )
+        exe = fluid.Executor(place)
+        ret = exe.run(main_program, fetch_list=[out.name, a.grad_name])
+        np.testing.assert_allclose(
+            np.asarray(ret[0]), np.array(2.0), rtol=1e-05
+        )
+        np.testing.assert_allclose(
+            np.asarray(ret[1]), np.array(-1.0), rtol=1e-05
+        )
+
     def test_return_var_tuple(self):
         """
         pseudocode:
@@ -357,6 +466,70 @@ class TestCondNestedControlFlow(unittest.TestCase):
             )
             self.assertEqual(ret[0][0], expected_ret)
             self.assertEqual(ret[1][0], expected_a_grad)
+
+    def test_cond_inside_cond_0d_tensor(self):
+        """
+        pseudocode:
+            i = 3.0
+            a = 2 * i
+            if i < 5:
+                if i >= 3:
+                    return a + 1
+                else:
+                    return 1 - a
+            else:
+                if i < 8:
+                    return a * 2
+                else:
+                    return a / 2
+        """
+
+        paddle.enable_static()
+
+        def less_than_branch(i, a):
+            return paddle.static.nn.cond(
+                i >= 3.0,
+                lambda: a + 1,
+                lambda: 1 - a,
+            )
+
+        def greater_equal_branch(i, a):
+            return paddle.static.nn.cond(
+                i < 8.0,
+                lambda: a * 2,
+                lambda: a / 2,
+            )
+
+        main_program = Program()
+        startup_program = Program()
+        with program_guard(main_program, startup_program):
+            i = paddle.full(fill_value=3.0, shape=[], dtype='float32')
+            i.stop_gradient = False
+            a = 2.0 * i
+            out = paddle.static.nn.cond(
+                i < 5.0,
+                lambda: less_than_branch(i, a),
+                lambda: greater_equal_branch(i, a),
+            )
+            mean = paddle.mean(out)
+            append_backward(out)
+
+        place = (
+            fluid.CUDAPlace(0)
+            if core.is_compiled_with_cuda()
+            else fluid.CPUPlace()
+        )
+        exe = fluid.Executor(place)
+        ret = exe.run(
+            main_program,
+            fetch_list=[out.name, i.grad_name],
+        )
+        np.testing.assert_allclose(
+            np.asarray(ret[0]), np.array(7.0), rtol=1e-05
+        )
+        np.testing.assert_allclose(
+            np.asarray(ret[1]), np.array(2.0), rtol=1e-05
+        )
 
     def test_cond_op_in_condition(self):
         paddle.enable_static()

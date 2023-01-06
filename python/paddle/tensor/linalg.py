@@ -1018,7 +1018,9 @@ def cond(x, p=None, name=None):
     def empty_tensor(input, shape):
         if in_dygraph_mode():
             return input.reshape(shape)
-        raise ValueError("only support x is nonempty tensor in static mode")
+        raise ValueError(
+            "only support x is nonempty tensor in static graph mode"
+        )
 
     x_shape = list(x.shape)
     if not len(x_shape) >= 2:

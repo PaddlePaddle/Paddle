@@ -547,7 +547,7 @@ def _lower(block, reverse, blacklist):
 def orig2prim(block=None):
     """
     Note:
-        **This API is ONLY available in the static mode.**
+        **This API is ONLY available in the static graph mode.**
         **Args block must be None or current block of main program.**
 
     All operators in the target block are processed as follows.
@@ -572,7 +572,7 @@ def orig2prim(block=None):
 def prim2orig(block=None, blacklist=None):
     """
     Note:
-        **ONLY available in the static mode.**
+        **ONLY available in the static graph mode.**
         **Args block must be None or current block of main program.**
 
     All operators in the target block are processed as follows.
