@@ -38,6 +38,7 @@ from .dirac import Dirac  # noqa: F401
 
 from .common import UniformInitializer  # noqa: F401
 from .common import ConstantInitializer  # noqa: F401
+from .common import NormalInitializer  # noqa: F401
 
 __all__ = [  # noqa
     'Bilinear',
@@ -56,4 +57,5 @@ __all__ = [  # noqa
     'calculate_gain',
     'UniformInitializer',
     'ConstantInitializer',
+    'NormalInitializer',
 ]

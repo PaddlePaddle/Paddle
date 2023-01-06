@@ -1303,7 +1303,9 @@ def prepare_encoder(
             size=[src_vocab_size, src_emb_dim],
             param_attr=fluid.ParamAttr(
                 name=word_emb_param_name,
-                initializer=fluid.initializer.Normal(0.0, src_emb_dim**-0.5),
+                initializer=paddle.nn.initializer.NormalInitializer(
+                    0.0, src_emb_dim**-0.5
+                ),
             ),
         )
 

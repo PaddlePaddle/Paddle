@@ -269,7 +269,7 @@ def prepare_encoder(
         src_word,
         size=[src_vocab_size, src_emb_dim],
         padding_idx=src_pad_idx,
-        param_attr=fluid.initializer.Normal(0.0, 1.0),
+        param_attr=paddle.nn.initializer.NormalInitializer(0.0, 1.0),
     )
     src_pos_enc = layers.embedding(
         src_pos,

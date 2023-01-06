@@ -517,7 +517,9 @@ class PrepareEncoderDecoderLayer(Layer):
             sparse=is_sparse,
             weight_attr=fluid.ParamAttr(
                 name=word_emb_param_name,
-                initializer=fluid.initializer.Normal(0.0, src_emb_dim**-0.5),
+                initializer=paddle.nn.initializer.NormalInitializer(
+                    0.0, src_emb_dim**-0.5
+                ),
             ),
         )
 

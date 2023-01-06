@@ -12,7 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ...fluid.initializer import NormalInitializer, TruncatedNormalInitializer
+from ...fluid.initializer import TruncatedNormalInitializer
+from .common import NormalInitializer
 
 __all__ = []
 

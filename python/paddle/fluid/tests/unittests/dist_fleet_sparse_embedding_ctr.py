@@ -93,7 +93,7 @@ class TestDistCTR2x2(FleetDistRunnerBase):
         elif initializer == 1:
             init = paddle.nn.initializer.UniformInitializer()
         elif initializer == 2:
-            init = fluid.initializer.Normal()
+            init = paddle.nn.initializer.NormalInitializer()
         else:
             raise ValueError("error initializer code: {}".format(initializer))
 

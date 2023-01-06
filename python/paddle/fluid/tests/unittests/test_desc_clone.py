@@ -58,7 +58,7 @@ def cnn_model(data):
         size=SIZE,
         activation="softmax",
         weight_attr=fluid.param_attr.ParamAttr(
-            initializer=fluid.initializer.NormalInitializer(
+            initializer=paddle.nn.initializer.NormalInitializer(
                 loc=0.0, scale=scale
             )
         ),

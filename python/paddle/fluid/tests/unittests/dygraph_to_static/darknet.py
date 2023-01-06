@@ -41,7 +41,7 @@ class ConvBNLayer(fluid.dygraph.Layer):
             padding=padding,
             groups=groups,
             weight_attr=ParamAttr(
-                initializer=fluid.initializer.Normal(0.0, 0.02)
+                initializer=paddle.nn.initializer.NormalInitializer(0.0, 0.02)
             ),
             bias_attr=False,
         )
@@ -49,7 +49,7 @@ class ConvBNLayer(fluid.dygraph.Layer):
             num_channels=ch_out,
             is_test=is_test,
             param_attr=ParamAttr(
-                initializer=fluid.initializer.Normal(0.0, 0.02),
+                initializer=paddle.nn.initializer.NormalInitializer(0.0, 0.02),
                 regularizer=L2Decay(0.0),
             ),
             bias_attr=ParamAttr(

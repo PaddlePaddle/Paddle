@@ -1430,7 +1430,7 @@ class TestRemoteHsigmoid(TestDistLookupTableBase):
             is_sparse=is_sparse,
             size=[3, 3],
             param_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Normal(
+                initializer=paddle.nn.initializer.NormalInitializer(
                     scale=1 / math.sqrt(num_total_classes)
                 )
             ),

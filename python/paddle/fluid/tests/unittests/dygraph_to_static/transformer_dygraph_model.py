@@ -299,7 +299,9 @@ class Embedder(Layer):
             vocab_size,
             emb_dim,
             weight_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Normal(0.0, emb_dim**-0.5)
+                initializer=paddle.nn.initializer.NormalInitializer(
+                    0.0, emb_dim**-0.5
+                )
             ),
         )
 

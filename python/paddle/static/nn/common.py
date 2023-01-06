@@ -28,10 +28,9 @@ from paddle.common_ops_import import (
 from paddle.fluid import core
 from paddle.fluid.data_feeder import check_dtype
 from paddle.fluid.framework import Variable, _non_static_mode, static_only
-from paddle.fluid.initializer import Normal
 from paddle.fluid.layers.layer_function_generator import templatedoc
 from paddle.fluid.param_attr import ParamAttr
-from paddle.nn.initializer import ConstantInitializer
+from paddle.nn.initializer import ConstantInitializer, NormalInitializer
 
 __all__ = []
 
@@ -1015,7 +1014,7 @@ def conv2d(
                 "filter size.".format(filter_elem_num)
             )
         std = (2.0 / filter_elem_num) ** 0.5
-        return Normal(0.0, std, 0)
+        return NormalInitializer(0.0, std, 0)
 
     filter_param = helper.create_parameter(
         attr=helper.param_attr,
@@ -1318,7 +1317,7 @@ def conv3d(
             )
 
         std = (2.0 / filter_elem_num) ** 0.5
-        return Normal(0.0, std, 0)
+        return NormalInitializer(0.0, std, 0)
 
     filter_param = helper.create_parameter(
         attr=helper.param_attr,
@@ -3431,14 +3430,14 @@ def spectral_norm(weight, dim=0, power_iters=1, eps=1e-12, name=None):
         attr=ParamAttr(),
         shape=[h],
         dtype=dtype,
-        default_initializer=Normal(0.0, 1.0),
+        default_initializer=NormalInitializer(0.0, 1.0),
     )
     u.stop_gradient = True
     v = helper.create_parameter(
         attr=ParamAttr(),
         shape=[w],
         dtype=dtype,
-        default_initializer=Normal(0.0, 1.0),
+        default_initializer=NormalInitializer(0.0, 1.0),
     )
     v.stop_gradient = True
 

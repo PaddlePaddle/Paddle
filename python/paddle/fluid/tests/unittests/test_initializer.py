@@ -20,7 +20,7 @@ import numpy as np
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.framework as framework
-import paddle.fluid.initializer as initializer
+import paddle.nn.initializer as initializer
 from paddle.fluid.core import VarDesc
 from paddle.regularizer import L2Decay
 

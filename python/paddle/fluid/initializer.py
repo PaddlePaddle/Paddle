@@ -31,13 +31,11 @@ from paddle import _C_ops, _legacy_C_ops
 import paddle
 
 __all__ = [
-    'Normal',
     'TruncatedNormal',
     'Xavier',
     'Bilinear',
     'MSRA',
     'Initializer',
-    'NormalInitializer',
     'TruncatedNormalInitializer',
     'XavierInitializer',
     'BilinearInitializer',
@@ -132,91 +130,6 @@ class Initializer:
             fan_out = shape[0] * receptive_field_size
 
         return (fan_in, fan_out)
-
-
-class NormalInitializer(Initializer):
-    """Implements the Random Normal(Gaussian) distribution initializer
-
-    Args:
-        loc (float): mean of the normal distribution
-        scale (float): standard deviation of the normal distribution
-        seed (int): random seed
-
-    Examples:
-        .. code-block:: python
-
-            import paddle
-            import paddle.fluid as fluid
-            paddle.enable_static()
-            x = fluid.data(name="data", shape=[None, 32, 32], dtype="float32")
-            fc = paddle.static.nn.fc(x, size=10,
-                weight_attr=fluid.initializer.Normal(loc=0.0, scale=2.0))
-
-    """
-
-    def __init__(self, loc=0.0, scale=1.0, seed=0):
-        assert loc is not None
-        assert scale is not None
-        assert seed is not None
-        super().__init__()
-        self._mean = loc
-        self._std_dev = scale
-        self._seed = seed
-
-    def forward(self, var, block=None):
-        """Initialize the input tensor with Normal distribution.
-
-        Args:
-            var(Tensor): Tensor that needs to be initialized.
-            block(Block, optional): The block in which initialization ops
-                   should be added. Used in static graph only, default None.
-
-        Returns:
-            The initialization op
-        """
-        block = self._check_block(block)
-
-        assert isinstance(block, framework.Block)
-
-        check_variable_and_dtype(
-            var,
-            "Out",
-            ["uint16", "float16", "float32", "float64"],
-            "guassian_random",
-        )
-
-        if self._seed == 0:
-            self._seed = block.program.random_seed
-
-        if in_dygraph_mode():
-            place = _current_expected_place()
-            out_var = _C_ops.gaussian(
-                var.shape,
-                self._mean,
-                self._std_dev,
-                self._seed,
-                var.dtype,
-                place,
-            )
-            out_var._share_underline_tensor_to(var)
-            return None
-
-        else:
-            op = block.append_op(
-                type="gaussian_random",
-                outputs={"Out": var},
-                attrs={
-                    "shape": var.shape,
-                    "dtype": var.dtype,
-                    "mean": self._mean,
-                    "std": self._std_dev,
-                    "seed": self._seed,
-                    "use_mkldnn": False,
-                },
-                stop_gradient=True,
-            )
-            var.op = op
-            return op
 
 
 class TruncatedNormalInitializer(Initializer):
@@ -1096,7 +1009,6 @@ def calculate_gain(nonlinearity, param=None):
 #                          weight_attr=ParamAttr(fluid.initializer.Xavier()))
 #
 # It is no need to add an `Initializer` as the class suffix
-Normal = NormalInitializer
 TruncatedNormal = TruncatedNormalInitializer
 Xavier = XavierInitializer
 MSRA = MSRAInitializer
