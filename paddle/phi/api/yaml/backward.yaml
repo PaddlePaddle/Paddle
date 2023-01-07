@@ -1325,7 +1325,6 @@
   composite : tanh_grad(out, out_grad, x_grad)
   backward : tanh_double_grad
   inplace : (out_grad -> x_grad)
-  composite: tanh_grad(out, out_grad, x_grad)
 
 - backward_op : tanh_shrink_grad
   forward : tanh_shrink (Tensor x) -> Tensor(out)
