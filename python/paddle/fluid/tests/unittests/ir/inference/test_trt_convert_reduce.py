@@ -52,7 +52,7 @@ class TrtConvertReduceTest(TrtLayerAutoScanTest):
             elif dtype == 2:
                 return np.random.random([1, 3, 64, 64]).astype(np.int32)
 
-        for keep_dim in [True, False, None]:
+        for keep_dim in [True, False]:
             for dim in [
                 [],
                 [1],
@@ -64,7 +64,7 @@ class TrtConvertReduceTest(TrtLayerAutoScanTest):
                 [-4, 1],
                 [3, 4, 5],
             ]:
-                for reduce_all in [True, False, None]:
+                for reduce_all in [True, False]:
                     for out_dtype in [-1, 2, 5]:
                         for op_type in [
                             "reduce_max",
@@ -73,7 +73,7 @@ class TrtConvertReduceTest(TrtLayerAutoScanTest):
                             "reduce_sum",
                             "reduce_prod",
                         ]:
-                            dics = [
+                            dics1 = [
                                 {
                                     "keep_dim": keep_dim,
                                     "dim": dim,
@@ -83,36 +83,43 @@ class TrtConvertReduceTest(TrtLayerAutoScanTest):
                                 },
                                 {},
                             ]
-
-                            ops_config = [
+                            dics2 = [
                                 {
-                                    "op_type": op_type,
-                                    "op_inputs": {"X": ["input_data"]},
-                                    "op_outputs": {
-                                        "Out": ["reduce_output_data"]
-                                    },
-                                    "op_attrs": dics[0],
-                                }
-                            ]
-                            ops = self.generate_op_config(ops_config)
-
-                            program_config = ProgramConfig(
-                                ops=ops,
-                                weights={},
-                                inputs={
-                                    "input_data": TensorConfig(
-                                        data_gen=partial(
-                                            generate_input1, out_dtype, dics
-                                        )
-                                    )
+                                    "out_dtype": out_dtype,
+                                    "in_dtype": out_dtype,
                                 },
-                                outputs=["reduce_output_data"],
-                            )
+                                {},
+                            ]
+                            for dics in [dics1, dics2]:
+                                ops_config = [
+                                    {
+                                        "op_type": op_type,
+                                        "op_inputs": {"X": ["input_data"]},
+                                        "op_outputs": {
+                                            "Out": ["reduce_output_data"]
+                                        },
+                                        "op_attrs": dics[0],
+                                    }
+                                ]
+                                ops = self.generate_op_config(ops_config)
 
-                            if not self.is_program_valid(program_config):
-                                continue
+                                program_config = ProgramConfig(
+                                    ops=ops,
+                                    weights={},
+                                    inputs={
+                                        "input_data": TensorConfig(
+                                            data_gen=partial(
+                                                generate_input1, out_dtype, dics
+                                            )
+                                        )
+                                    },
+                                    outputs=["reduce_output_data"],
+                                )
 
-                            yield program_config
+                                if not self.is_program_valid(program_config):
+                                    continue
+
+                                yield program_config
 
     def sample_predictor_configs(
         self, program_config
