@@ -148,7 +148,7 @@ def multiclass_nms(
             'normalized',
             normalized,
         )
-        output, index, nms_rois_num = core.ops.multiclass_nms3(
+        output, index, nms_rois_num = core.eager.ops.legacy.multiclass_nms3(
             bboxes, scores, rois_num, *attrs
         )
         if not return_index:

@@ -676,7 +676,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       if (!has_attrs) return false;
     }
 
-    if (op_type == "arg_max") {
+    if (op_type == "arg_max" || op_type == "arg_min") {
       if (!desc.HasAttr("axis", /*with_attr_var=*/false)) {
         VLOG(3) << "Skip to convert into TRT while found Attribute('axis') is "
                    "Variable type in arg_max.";
@@ -689,21 +689,6 @@ struct SimpleOpTypeSetTeller : public Teller {
       bool flatten = PADDLE_GET_CONST(bool, desc.GetAttr("flatten"));
       int dtype = PADDLE_GET_CONST(int, desc.GetAttr("dtype"));
       if (axis == 0 || flatten || (dtype != 2 && dtype != 3)) return false;
-    }
-
-    if (op_type == "arg_min") {
-      if (!desc.HasAttr("axis", /*with_attr_var=*/false)) {
-        VLOG(3) << "Skip to convert into TRT while found Attribute('axis') is "
-                   "Variable type in arg_min.";
-        return false;
-      }
-
-      int axis = desc.HasAttr("axis")
-                     ? PADDLE_GET_CONST(int64_t, desc.GetAttr("axis"))
-                     : -1;
-      bool flatten = PADDLE_GET_CONST(bool, desc.GetAttr("flatten"));
-      int dtype = PADDLE_GET_CONST(int, desc.GetAttr("dtype"));
-      if (axis == 0 || flatten || dtype != 2) return false;
     }
 
     if (op_type == "affine_channel") {
@@ -836,6 +821,14 @@ struct SimpleOpTypeSetTeller : public Teller {
       auto interp_method =
           PADDLE_GET_CONST(std::string, desc.GetAttr("interp_method"));
       if (interp_method != "nearest") return false;
+
+      auto resize_inputs = desc.Inputs();
+      if (with_dynamic_shape &&
+          resize_inputs.find("SizeTensor") != resize_inputs.end() &&
+          desc.Input("SizeTensor").size() == 2) {
+        return true;
+      }
+
       auto scale = PADDLE_GET_CONST(std::vector<float>, desc.GetAttr("scale"));
       auto out_h = PADDLE_GET_CONST(int, desc.GetAttr("out_h"));
       auto out_w = PADDLE_GET_CONST(int, desc.GetAttr("out_w"));
@@ -2409,18 +2402,6 @@ struct SimpleOpTypeSetTeller : public Teller {
       }
       if (!desc.HasAttr("shape")) {
         return false;
-      }
-      auto expand_v2_inputs = desc.Inputs();
-      if (expand_v2_inputs.find("Shape") != expand_v2_inputs.end()) {
-        if (desc.Input("Shape").size() >= 1) {
-          return false;
-        }
-      }
-      if (expand_v2_inputs.find("expand_shapes_tensor") !=
-          expand_v2_inputs.end()) {
-        if (desc.Input("expand_shapes_tensor").size() >= 1) {
-          return false;
-        }
       }
     }
 
