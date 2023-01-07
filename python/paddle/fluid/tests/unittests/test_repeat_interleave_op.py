@@ -104,6 +104,7 @@ class TestRepeatInterleaveOp2(OpTest):
 
 class TestIndexSelectAPI(unittest.TestCase):
     def input_data(self):
+        self.data_zero_dim_x = np.array(0.5)
         self.data_x = np.array(
             [
                 [1.0, 2.0, 3.0, 4.0],
@@ -170,6 +171,19 @@ class TestIndexSelectAPI(unittest.TestCase):
         expect_out = np.repeat(self.data_x, repeats, axis=0)
         np.testing.assert_allclose(expect_out, np.array(res), rtol=1e-05)
 
+        # case 3 zero_dim:
+        with program_guard(Program(), Program()):
+            x = fluid.layers.data(name='x', shape=[])
+            z = paddle.repeat_interleave(x, repeats)
+            exe = fluid.Executor(fluid.CPUPlace())
+            (res,) = exe.run(
+                feed={'x': self.data_zero_dim_x},
+                fetch_list=[z.name],
+                return_numpy=False,
+            )
+        expect_out = np.repeat(self.data_zero_dim_x, repeats)
+        np.testing.assert_allclose(expect_out, np.array(res), rtol=1e-05)
+
     def test_dygraph_api(self):
         self.input_data()
         # case axis none
@@ -218,6 +232,15 @@ class TestIndexSelectAPI(unittest.TestCase):
             z = paddle.repeat_interleave(x, index, axis=0)
             np_z = z.numpy()
         expect_out = np.repeat(self.data_x, index, axis=0)
+        np.testing.assert_allclose(expect_out, np_z, rtol=1e-05)
+
+        # case 3 zero_dim:
+        with fluid.dygraph.guard():
+            x = fluid.dygraph.to_variable(self.data_zero_dim_x)
+            index = 2
+            z = paddle.repeat_interleave(x, index, None)
+            np_z = z.numpy()
+        expect_out = np.repeat(self.data_zero_dim_x, index, axis=None)
         np.testing.assert_allclose(expect_out, np_z, rtol=1e-05)
 
 
