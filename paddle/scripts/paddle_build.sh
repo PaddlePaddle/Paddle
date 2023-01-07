@@ -3200,9 +3200,9 @@ EOF
     ccache -z
     cd ..
     if [ "${PYTHON_EXECUTABLE}" != "" ];then
-        ${PYTHON_EXECUTABLE} setup.py $2;build_error=$?
+        ${PYTHON_EXECUTABLE} setup.py bdist_wheel;build_error=$?
     else
-        python setup.py $2;build_error=$?
+        python setup.py bdist_wheel;build_error=$?
     fi
     # ci will collect ccache hit rate
     collect_ccache_hits
@@ -4130,8 +4130,7 @@ function main() {
         if [ "${WITH_PYTHON}" == "OFF" ] ; then
             python ${PADDLE_ROOT}/tools/remove_grad_op_and_kernel.py
         fi
-        gen_fluid_lib ${parallel_number}
-        gen_fluid_lib_by_setup
+        gen_fluid_lib_by_setup ${parallel_number} 
         ;;
       gpu_inference)
         test_fluid_lib
