@@ -17,7 +17,7 @@ import unittest
 
 from paddle.fluid import core
 
-core.set_enable_prim(True)
+core.set_prim_enabled(True)
 
 import parameterized as param
 
@@ -77,6 +77,7 @@ class TestGetGradOpDescPrimEnabled(unittest.TestCase):
         )
         print(actual)
         self.assertEquals(actual, self.desired_ops)
+        core.set_prim_enabled(False)
 
 
 if __name__ == '__main__':

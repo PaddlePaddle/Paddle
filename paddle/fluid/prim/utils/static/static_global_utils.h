@@ -56,7 +56,7 @@ class StaticCompositeContext {
     return generator_->Generate(key);
   }
 
-  void SetEnablePrim(bool enable_prim) { enable_prim_ = enable_prim; }
+  void SetPrimEnabled(bool enable_prim) { enable_prim_ = enable_prim; }
 
   bool IsPrimEnabled() { return enable_prim_; }
 

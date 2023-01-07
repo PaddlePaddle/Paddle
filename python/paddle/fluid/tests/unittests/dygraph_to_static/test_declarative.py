@@ -396,17 +396,17 @@ class TestErrorWithInitFromStaticMode(unittest.TestCase):
         paddle.enable_static()
 
         net = SimpleNet()
-        with self.assertRaisesRegexp(
+        with self.assertRaisesRegex(
             RuntimeError, "only available in dynamic mode"
         ):
             net.forward.concrete_program
 
-        with self.assertRaisesRegexp(
+        with self.assertRaisesRegex(
             RuntimeError, "only available in dynamic mode"
         ):
             net.forward.inputs
 
-        with self.assertRaisesRegexp(
+        with self.assertRaisesRegex(
             RuntimeError, "only available in dynamic mode"
         ):
             net.forward.outputs

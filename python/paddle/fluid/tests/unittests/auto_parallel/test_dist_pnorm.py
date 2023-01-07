@@ -91,7 +91,6 @@ def parallelizer(program_func, rank):
             loss, distop_context=dist_context.dist_op_context
         )
     completer.complete_backward_annotation(main_program)
-
     dist_context.block_state.parse_backward_blocks(main_program)
     partitioner = Partitioner(dist_context, rank)
     dist_main_prog, _, _ = partitioner.partition(

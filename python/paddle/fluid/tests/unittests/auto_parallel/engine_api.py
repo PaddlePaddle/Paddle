@@ -158,9 +158,9 @@ def train_high_level(fetch):
     eval_dataset2 = MyDataset(batch_size)
     engine.evaluate(eval_dataset2, batch_size=batch_size)
 
-    # predict
-    test_dataset = MyDataset(batch_size)
-    outputs = engine.predict(test_dataset, batch_size=batch_size)
+    # # predict
+    # test_dataset = MyDataset(batch_size)
+    # outputs = engine.predict(test_dataset, batch_size=batch_size)
 
     # save
     temp_dir = tempfile.TemporaryDirectory()
@@ -498,10 +498,10 @@ def get_cost_by_spec():
 
 if __name__ == "__main__":
     train_high_level(fetch=True)
-    train_high_level(fetch=False)
-    train_low_level()
-    train_builtin_data_vars()
-    train_non_builtin_data_vars()
-    get_cost()
-    get_cost_by_default_program()
-    get_cost_by_spec()
+    # train_high_level(fetch=False)
+    # train_low_level()
+    # train_builtin_data_vars()
+    # train_non_builtin_data_vars()
+    # get_cost()
+    # get_cost_by_default_program()
+    # get_cost_by_spec()

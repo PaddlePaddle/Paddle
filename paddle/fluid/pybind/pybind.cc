@@ -646,8 +646,8 @@ PYBIND11_MODULE(libpaddle, m) {
         return oss.str();
       });
 
-  m.def("set_enable_prim", &paddle::prim::PrimCommonUtils::SetPrimEnable);
-  m.def("is_enable_prim", &paddle::prim::PrimCommonUtils::IsPrimEnabled);
+  m.def("set_prim_enabled", &paddle::prim::PrimCommonUtils::SetPrimEnabled);
+  m.def("is_prim_enabled", &paddle::prim::PrimCommonUtils::IsPrimEnabled);
   m.def("set_num_threads", &platform::SetNumThreads);
 
   m.def("disable_signal_handler", &DisableSignalHandler);
@@ -1244,8 +1244,8 @@ All parameter, weight, gradient are variables in Paddle.
                 type.c_str()));
           }
 
-          // In PrimEnabled mode, the priority of GradCompOpMaker is grater than
-          // GradCompMaker as we need split first-order grad operator into
+          // In PrimEnabled mode, the priority of GradCompOpMaker is greater
+          // than GradCompMaker as we need split first-order grad operator into
           // primitive operators for compiler. In PrimDisabled mode, the
           // priority of GradCompOpMaker is less than GradCompMaker for better
           // performance.
@@ -2594,7 +2594,7 @@ All parameter, weight, gradient are variables in Paddle.
         [] { return phi::autotune::AutoTuneStatus::Instance().Update(); });
 
   m.def("get_low_precision_op_list", [] {
-    return paddle::imperative::AmpOperators::Instance().GetAmpOpList();
+    return phi::KernelFactory::Instance().GetLowPrecisionKernelList();
   });
 
   m.def("autotune_status", [] {
