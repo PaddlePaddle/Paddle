@@ -104,7 +104,7 @@ class TestFusedAttentionPass(unittest.TestCase):
     def setUp(self):
         self.add_residual = True
         self.pre_ln = True
-        self.post_ln = False
+        self.post_ln = True
         self.attn_dropout = True
         self.add_mask = True
 

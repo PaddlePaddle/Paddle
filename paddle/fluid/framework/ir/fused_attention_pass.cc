@@ -336,11 +336,11 @@ PDNode* FusedAttentionGradPattern::operator()(PDNode* x,
 void FusedAttentionsPass::ApplyImpl(Graph* graph) const {
   FusePassBase::Init(name_scope_, graph);
 
-  graph = PreMaskDropResFwd(graph);
-  graph = PreMaskDropResBwd(graph);
+  graph = PreMaskDropResPostFwd(graph);
+  graph = PreMaskDropResPostBwd(graph);
 }
 
-ir::Graph* FusedAttentionsPass::PreMaskDropResFwd(Graph* graph) const {
+ir::Graph* FusedAttentionsPass::PreMaskDropResPostFwd(Graph* graph) const {
   GraphPatternDetector gpd;
   auto* x = gpd.mutable_pattern()
                 ->NewNode(patterns::PDNodeName(name_scope_, "x"))
@@ -351,7 +351,7 @@ ir::Graph* FusedAttentionsPass::PreMaskDropResFwd(Graph* graph) const {
 
   fused_attention_pattern(x,
                           /* pre_layer_norm */ true,
-                          /* post_layer_norm */ false,
+                          /* post_layer_norm */ true,
                           /* has_attn_mask */ true,
                           /* do_dropout */ true,
                           /* add_residual */ true);
@@ -402,6 +402,8 @@ ir::Graph* FusedAttentionsPass::PreMaskDropResFwd(Graph* graph) const {
                               fused_attention_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(
         residual_ele_add_op_node, residual_ele_add_op, fused_attention_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        post_layer_norm_op_node, post_layer_norm_op, fused_attention_pattern);
 
     // TODO(Yuang Liu): finish the handler
 
@@ -423,7 +425,8 @@ ir::Graph* FusedAttentionsPass::PreMaskDropResFwd(Graph* graph) const {
                           out_linear_matmul_op_node,
                           out_linear_ele_add_op_node,
                           out_linear_dropout_op_node,
-                          residual_ele_add_op_node});
+                          residual_ele_add_op_node,
+                          post_layer_norm_op_node});
     found_fused_attention++;
   };
 
@@ -433,7 +436,7 @@ ir::Graph* FusedAttentionsPass::PreMaskDropResFwd(Graph* graph) const {
   return graph;
 }
 
-ir::Graph* FusedAttentionsPass::PreMaskDropResBwd(Graph* graph) const {
+ir::Graph* FusedAttentionsPass::PreMaskDropResPostBwd(Graph* graph) const {
   // TODO(Yuang Liu): finish the pass
   return graph;
 }
