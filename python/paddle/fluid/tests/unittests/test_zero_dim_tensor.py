@@ -721,6 +721,48 @@ class TestSundryAPI(unittest.TestCase):
         self.assertEqual(out.numpy()[3], 2)
         self.assertEqual(out.grad.shape, [5])
 
+    def test_kthvalue(self):
+        places = ['cpu']
+        if paddle.is_compiled_with_cuda():
+            places.append('gpu')
+        for place in places:
+            paddle.set_device(place)
+
+            x = paddle.randn(())
+            x.stop_gradient = False
+
+            out = paddle.kthvalue(x, 1)
+            out[0].backward()
+
+            # check shape of output value and indice
+            self.assertEqual(out[0].shape, [])
+            self.assertEqual(out[1].shape, [])
+
+            # check grad shape and value
+            self.assertEqual(x.grad.shape, [])
+            self.assertTrue(x.grad.numpy() == 1)
+
+    def test_mode(self):
+        places = ['cpu']
+        if paddle.is_compiled_with_cuda():
+            places.append('gpu')
+        for place in places:
+            paddle.set_device(place)
+
+            x = paddle.randn(())
+            x.stop_gradient = False
+
+            out = paddle.mode(x)
+            out[0].backward()
+
+            # check shape of output value and indice
+            self.assertEqual(out[0].shape, [])
+            self.assertEqual(out[1].shape, [])
+
+            # check grad shape and value
+            self.assertEqual(x.grad.shape, [])
+            self.assertTrue(x.grad.numpy() == 1)
+
     def test_flatten(self):
         x = paddle.rand([])
         x.stop_gradient = False
@@ -1125,6 +1167,28 @@ class TestSundryAPIStatic(unittest.TestCase):
         res = self.exe.run(prog, feed={'index': index_data}, fetch_list=[out])
         self.assertEqual(res[0].shape, (5,))
         self.assertEqual(res[0][3], 2)
+
+    @prog_scope()
+    def test_kthvalue(self):
+        x = paddle.full([], 1, 'float32')
+        out = paddle.kthvalue(x, 1)
+        paddle.static.append_backward(out[0])
+
+        prog = paddle.static.default_main_program()
+        res = self.exe.run(prog, fetch_list=[out])
+        self.assertEqual(len(res[0].shape), 0)
+        self.assertEqual(len(res[0].shape), 0)
+
+    @prog_scope()
+    def test_mode(self):
+        x = paddle.full([], 1, 'float32')
+        out = paddle.mode(x)
+        paddle.static.append_backward(out[0])
+
+        prog = paddle.static.default_main_program()
+        res = self.exe.run(prog, fetch_list=[out])
+        self.assertEqual(len(res[0].shape), 0)
+        self.assertEqual(len(res[0].shape), 0)
 
     @prog_scope()
     def test_flatten(self):
