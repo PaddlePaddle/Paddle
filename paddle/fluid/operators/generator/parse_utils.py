@@ -293,7 +293,7 @@ def parse_composite(
     op_name: str,
     composite_config: str,
 ) -> Dict[str, Any]:
-    # composite_config: fun(args1, args2,.....)
+    # composite_config: func(args1, args2,.....)
     fname = r'(.*?)'
     wspace = r'\s*'
     fargs = r'(.*?)'
@@ -302,12 +302,10 @@ def parse_composite(
     m = re.search(pattern, composite_config)
     func_name = m.group(1)
     func_args = m.group(2)
-    func_args = func_args.split(",")
-    fun_inputs = [fun_input.strip() for fun_input in func_args]
 
     composite_dict = {}
-    composite_dict["fun_name"] = func_name
-    composite_dict["inputs"] = fun_inputs
+    composite_dict["func_name"] = func_name
+    composite_dict["func_args"] = func_args
     return composite_dict
 
 
@@ -356,10 +354,6 @@ def parse_op_entry(op_entry: Dict[str, Any], name_field="op"):
     outputs = parse_outputs(op_name, op_entry["output"])
     if "composite" in op_entry:
         composite_dict = parse_composite(op_name, op_entry["composite"])
-        valid_args = [input["name"] for input in inputs]
-        for output in outputs:
-            valid_args.append(output["name"])
-        validate_composite_args(op_name, composite_dict["inputs"], valid_args)
     check_op_config(op_entry, op_name)
     # validate default value of DataType and DataLayout
     for attr in attrs:
@@ -494,13 +488,6 @@ def parse_op_entry(op_entry: Dict[str, Any], name_field="op"):
             forward = None
         op["forward"] = forward
     return op
-
-
-def validate_composite_args(op, composite_args, valid_args):
-    for composite_arg in composite_args:
-        assert (
-            composite_arg in valid_args
-        ), f"Op ({op}) : invalid args \"{composite_arg}\" in composite function "
 
 
 def validate_backward_attrs(op, forward_attrs, backward_attrs):
