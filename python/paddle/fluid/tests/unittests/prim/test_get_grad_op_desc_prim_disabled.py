@@ -17,7 +17,7 @@ import unittest
 
 from paddle.fluid import core
 
-core.set_enable_prim(False)
+core.set_prim_enabled(False)
 
 import parameterized as param
 

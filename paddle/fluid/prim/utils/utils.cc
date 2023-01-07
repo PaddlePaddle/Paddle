@@ -23,8 +23,8 @@ bool PrimCommonUtils::IsPrimEnabled() {
   return StaticCompositeContext::Instance().IsPrimEnabled();
 }
 
-void PrimCommonUtils::SetPrimEnable(bool enable_prim) {
-  return StaticCompositeContext::Instance().SetEnablePrim(enable_prim);
+void PrimCommonUtils::SetPrimEnabled(bool enable_prim) {
+  return StaticCompositeContext::Instance().SetPrimEnabled(enable_prim);
 }
 }  // namespace prim
 }  // namespace paddle

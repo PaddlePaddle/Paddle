@@ -22,7 +22,7 @@ import parameterized as param
 import paddle
 from paddle.fluid import core
 
-core.set_enable_prim(True)
+core.set_prim_enabled(True)
 
 
 @param.parameterized_class(
@@ -66,6 +66,7 @@ class TestTanhGradComp(unittest.TestCase):
             rtol=1e-6,
             atol=0,
         )
+        core.set_prim_enabled(False)
 
 
 if __name__ == '__main__':
