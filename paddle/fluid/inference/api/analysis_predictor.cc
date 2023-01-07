@@ -2352,7 +2352,6 @@ USE_TRT_CONVERTER(reduce_max);
 USE_TRT_CONVERTER(reduce_min);
 USE_TRT_CONVERTER(reduce_sum);
 USE_TRT_CONVERTER(reduce_prod);
-USE_TRT_CONVERTER(reduce_any);
 USE_TRT_CONVERTER(tile);
 USE_TRT_CONVERTER(conv3d);
 USE_TRT_CONVERTER(conv3d_transpose);

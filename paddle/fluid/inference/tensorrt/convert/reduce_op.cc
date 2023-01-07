@@ -105,7 +105,6 @@ const std::unordered_map<std::string, std::vector<nvinfer1::ReduceOperation>>
         {"reduce_max", {nvinfer1::ReduceOperation::kMAX}},
         {"reduce_min", {nvinfer1::ReduceOperation::kMIN}},
         {"reduce_prod", {nvinfer1::ReduceOperation::kPROD}},
-        {"reduce_any", {nvinfer1::ReduceOperation::kMAX}},
 };
 
 
@@ -134,10 +133,7 @@ class ReduceProdOpConverter : public ReduceOpConverter {
   ReduceProdOpConverter() { op_type = "reduce_prod"; }
 };
 
-class ReduceAnyOpConverter : public ReduceOpConverter {
- public:
-  ReduceAnyOpConverter() { op_type = "reduce_any"; }
-};
+
 }  // namespace tensorrt
 }  // namespace inference
 }  // namespace paddle
@@ -147,4 +143,3 @@ REGISTER_TRT_OP_CONVERTER(reduce_mean, ReduceMeanOpConverter);
 REGISTER_TRT_OP_CONVERTER(reduce_max, ReduceMaxOpConverter);
 REGISTER_TRT_OP_CONVERTER(reduce_min, ReduceMinOpConverter);
 REGISTER_TRT_OP_CONVERTER(reduce_prod, ReduceProdOpConverter);
-REGISTER_TRT_OP_CONVERTER(reduce_any, ReduceAnyOpConverter);

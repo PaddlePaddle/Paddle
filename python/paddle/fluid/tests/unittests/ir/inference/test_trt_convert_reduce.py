@@ -72,7 +72,6 @@ class TrtConvertReduceTest(TrtLayerAutoScanTest):
                             "reduce_mean",
                             "reduce_sum",
                             "reduce_prod",
-                            "reduce_any",
                         ]:
                             dics = [
                                 {

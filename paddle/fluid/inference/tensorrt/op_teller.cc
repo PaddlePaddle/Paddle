@@ -2099,7 +2099,7 @@ struct SimpleOpTypeSetTeller : public Teller {
 
     if (op_type == "reduce_sum" || op_type == "reduce_mean" ||
         op_type == "reduce_max" || op_type == "reduce_min" ||
-        op_type == "reduce_prod" || op_type == "reduce_any") {
+        op_type == "reduce_prod") {
       if (!desc.HasAttr("dim", /*with_attr_var=*/false)) {
         VLOG(3) << "Skip to convert into TRT while found Attribute('dim') is "
                    "Variable type in "
