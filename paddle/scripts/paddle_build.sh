@@ -1008,9 +1008,8 @@ function check_whl_size() {
 function generate_upstream_develop_api_spec() {
     set -x
     cp ${PADDLE_ROOT}/python/requirements.txt /tmp
-    pr_whl_size=`du -m ${PADDLE_ROOT}/build/python/dist/*.whl|awk '{print $1}'`
-
     mkdir -p ${PADDLE_ROOT}/build/pr_whl && mv ${PADDLE_ROOT}/build/python/dist/*.whl ${PADDLE_ROOT}/build/pr_whl/
+    pr_whl_size=`du -m ${PADDLE_ROOT}/build/python/dist/*.whl|awk '{print $1}'`
     echo "pr_whl_size: ${pr_whl_size}"
 
     rm -rf ${PADDLE_ROOT}/build/Makefile ${PADDLE_ROOT}/build/CMakeCache.txt ${PADDLE_ROOT}/build/python
@@ -4082,7 +4081,7 @@ function main() {
         ;;
       cpu_cicheck_coverage)
         check_diff_file_for_coverage
-        run_setup ${PYTHON_ABI:-""} bdist_wheel ${parallel_number} 
+        run_setup ${PYTHON_ABI:-""} bdist_wheel ${parallel_number}
         enable_unused_var_check
         check_coverage_build
         ;;
