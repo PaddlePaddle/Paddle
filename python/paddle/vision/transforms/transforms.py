@@ -494,7 +494,40 @@ class RandomResizedCrop(BaseTransform):
         self.ratio = ratio
         self.interpolation = interpolation
 
-    def _get_param(self, image, attempts=10):
+    def _dynamic_get_param(self, image, attempts=10):
+        width, height = _get_image_size(image)
+        area = height * width
+
+        for _ in range(attempts):
+            target_area = np.random.uniform(*self.scale) * area
+            log_ratio = tuple(math.log(x) for x in self.ratio)
+            aspect_ratio = math.exp(np.random.uniform(*log_ratio))
+
+            w = int(round(math.sqrt(target_area * aspect_ratio)))
+            h = int(round(math.sqrt(target_area / aspect_ratio)))
+
+            if 0 < w <= width and 0 < h <= height:
+                i = random.randint(0, height - h)
+                j = random.randint(0, width - w)
+                return i, j, h, w
+
+        # Fallback to central crop
+        in_ratio = float(width) / float(height)
+        if in_ratio < min(self.ratio):
+            w = width
+            h = int(round(w / min(self.ratio)))
+        elif in_ratio > max(self.ratio):
+            h = height
+            w = int(round(h * max(self.ratio)))
+        else:
+            # return whole image
+            w = width
+            h = height
+        i = (height - h) // 2
+        j = (width - w) // 2
+        return i, j, h, w
+
+    def _static_get_param(self, image, attempts=10):
         width, height = _get_image_size(image)
         area = height * width
 
@@ -528,7 +561,10 @@ class RandomResizedCrop(BaseTransform):
         return i, j, h, w
 
     def _apply_image(self, img):
-        i, j, h, w = self._get_param(img)
+        if paddle.in_dynamic_mode():
+            i, j, h, w = self._dynamic_get_param(img)
+        else:
+            i, j, h, w = self._static_get_param(img)
 
         cropped_img = F.crop(img, i, j, h, w)
         return F.resize(cropped_img, self.size, self.interpolation)
