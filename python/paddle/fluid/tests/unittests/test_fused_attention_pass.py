@@ -155,6 +155,9 @@ class TestFusedAttentionPass(unittest.TestCase):
         pass_manager = PassManager([new_pass("fused_attention")])
         pass_manager.apply([main_prog], [startup_prog])
 
+        ops = main_prog.global_block().ops
+        assert ops[0].type == 'reduce_mean'
+
 
 if __name__ == "__main__":
     np.random.seed(0)
