@@ -659,19 +659,19 @@ EOF
         set -ex
 
         if [ "$1" == "cp36-cp36m" ]; then
-            pip3.6 install --user ${INSTALL_PREFIX:-/paddle/build}/opt/paddle/share/wheels/*.whl
+            pip3.6 install --user ${PADDLE_ROOT}/dist/*.whl
             pip3.6 install --user hypothesis
         elif [ "$1" == "cp37-cp37m" ]; then
             pip3.7 install --user ${PADDLE_ROOT}/dist/*.whl
             pip3.7 install --user hypothesis
         elif [ "$1" == "cp38-cp38" ]; then
-            pip3.8 install --user ${INSTALL_PREFIX:-/paddle/build}/opt/paddle/share/wheels/*.whl
+            pip3.8 install --user ${PADDLE_ROOT}/dist/*.whl
             pip3.8 install --user hypothesis
         elif [ "$1" == "cp39-cp39" ]; then
-            pip3.9 install --user ${INSTALL_PREFIX:-/paddle/build}/opt/paddle/share/wheels/*.whl
+            pip3.9 install --user ${PADDLE_ROOT}/dist/*.whl
             pip3.9 install --user hypothesis
         elif [ "$1" == "cp310-cp310" ]; then
-            pip3.10 install --user ${INSTALL_PREFIX:-/paddle/build}/opt/paddle/share/wheels/*.whl
+            pip3.10 install --user ${PADDLE_ROOT}/dist/*.whl
             pip3.10 install --user hypothesis
         fi
         tmpfile_rand=`date +%s%N`
@@ -3217,44 +3217,6 @@ EOF
     build_size "paddle_inference_c"
 }
 
-function gen_fluid_lib_by_setup() {
-    mkdir -p ${PADDLE_ROOT}/build
-    cd ${PADDLE_ROOT}/build
-    cat <<EOF
-    ========================================
-    Generating fluid library for train and inference ...
-    ========================================
-EOF
-    parallel_number=`nproc`
-    if [[ "$1" != "" ]]; then
-      parallel_number=$1
-    fi
-    startTime_s=`date +%s`
-    set +e
-    export MAX_JOBS=${parallel_number}
-    export WITH_DISTRIBUTE=OFF ON_INFER=ON WITH_TENSORRT=ON CUDA_ARCH_NAME=${CUDA_ARCH_NAME:-Auto} WITH_PYTHON=${WITH_PYTHON:-ON} WITH_ONNXRUNTIME=${WITH_ONNXRUNTIME:-OFF}
-    # reset ccache zero stats for collect PR's actual hit rate
-    ccache -z
-    cd ..
-    if [ "${PYTHON_EXECUTABLE}" != "" ];then
-        ${PYTHON_EXECUTABLE} setup.py bdist_wheel;build_error=$?
-    else
-        python setup.py bdist_wheel;build_error=$?
-    fi
-    find ./ -name env_dict.py
-    # ci will collect ccache hit rate
-    collect_ccache_hits
-
-    if [ "$build_error" != 0 ];then
-        exit 7;
-    fi
-    endTime_s=`date +%s`
-    echo "Build Time: $[ $endTime_s - $startTime_s ]s"
-    echo "ipipe_log_param_Build_Time: $[ $endTime_s - $startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt
-
-    build_size "paddle_inference"
-    build_size "paddle_inference_c"
-}
 
 function tar_fluid_lib() {
     cat <<EOF
@@ -3459,7 +3421,6 @@ function trt_convert_test() {
 }
 
 function build_pr_and_develop() {
-    #cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
     run_setup ${PYTHON_ABI:-""} bdist_wheel ${parallel_number} 
     cmake_change=`git diff --name-only upstream/$BRANCH | grep "cmake/external" || true`
     cp ${PADDLE_ROOT}/python/requirements.txt /tmp
@@ -3481,7 +3442,6 @@ function build_pr_and_develop() {
         cp ${PADDLE_ROOT}/build/dev_whl/paddlepaddle_gpu-0.0.0-cp37-cp37m-linux_x86_64.whl ${PADDLE_ROOT}/dist
     else
         git checkout -b develop_base_pr upstream/$BRANCH
-        #cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
         run_setup ${PYTHON_ABI:-""} install ${parallel_number} 
         generate_api_spec "$1" "DEV"
         mkdir ${PADDLE_ROOT}/build/dev_whl && cp ${PADDLE_ROOT}/dist/*.whl ${PADDLE_ROOT}/build/dev_whl
@@ -4133,7 +4093,7 @@ function main() {
         if [ "${WITH_PYTHON}" == "OFF" ] ; then
             python ${PADDLE_ROOT}/tools/remove_grad_op_and_kernel.py
         fi
-        gen_fluid_lib_by_setup ${parallel_number}
+        gen_fluid_lib ${parallel_number}
         ;;
       gpu_inference)
         test_fluid_lib
