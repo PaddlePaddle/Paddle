@@ -16,7 +16,8 @@ set -e
 
 TMP_DIR=patchelf_tmp
 
-if [ $gcc_version == "5.4.0" ];then
+gcc_version=$(gcc --version |awk 'NR==1{print $3}')
+if [ "$gcc_version" == "5.4.0" ];then
     patchelf_version=0.10
 else
     patchelf_version=0.15.0
