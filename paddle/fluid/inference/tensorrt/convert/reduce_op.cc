@@ -107,7 +107,6 @@ const std::unordered_map<std::string, std::vector<nvinfer1::ReduceOperation>>
         {"reduce_prod", {nvinfer1::ReduceOperation::kPROD}},
 };
 
-
 class ReduceSumOpConverter : public ReduceOpConverter {
  public:
   ReduceSumOpConverter() { op_type = "reduce_sum"; }
@@ -132,7 +131,6 @@ class ReduceProdOpConverter : public ReduceOpConverter {
  public:
   ReduceProdOpConverter() { op_type = "reduce_prod"; }
 };
-
 
 }  // namespace tensorrt
 }  // namespace inference
