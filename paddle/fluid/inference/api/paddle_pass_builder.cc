@@ -164,6 +164,7 @@ const std::vector<std::string> kLiteSubgraphPasses({
 const std::vector<std::string> kGpuLowerPrecisionPasses{
     "identity_scale_op_clean_pass",
     "simplify_with_basic_ops_pass",
+    "silu_fuse_pass",
     "delete_quant_dequant_linear_op_pass",
     "delete_weight_dequant_linear_op_pass",
     "map_depthwise_conv_to_conv_pass",
@@ -172,11 +173,13 @@ const std::vector<std::string> kGpuLowerPrecisionPasses{
     "conv_elementwise_add_act_fuse_pass",
     "conv_elementwise_add2_act_fuse_pass",
     "conv_elementwise_add_fuse_pass",
+    "conv2d_fusion_layout_transfer_pass",
     "multihead_matmul_fuse_pass_v2",
     "fused_multi_transformer_encoder_pass",
     "fused_multi_transformer_decoder_pass",
     "fused_multi_transformer_encoder_fuse_qkv_pass",
     "fused_multi_transformer_decoder_fuse_qkv_pass",
+    "multi_devices_fused_multi_transformer_encoder_pass",
     "multi_devices_fused_multi_transformer_encoder_fuse_qkv_pass",
     "multi_devices_fused_multi_transformer_decoder_fuse_qkv_pass",
     "fuse_multi_transformer_layer_pass",
@@ -185,7 +188,7 @@ const std::vector<std::string> kGpuLowerPrecisionPasses{
     "fc_fuse_pass",
     "fc_elementwise_layernorm_fuse_pass",
     "embedding_eltwise_layernorm_fuse_pass",
-};
+    "inplace_op_var_pass"};
 
 const std::vector<std::string> kTrtLowerPrecisionPasses{
     "simplify_with_basic_ops_pass",
@@ -216,6 +219,7 @@ GpuPassStrategy::GpuPassStrategy() : PassStrategy({}) {
         "delete_weight_dequant_linear_op_pass",                         //
         "map_depthwise_conv_to_conv_pass",                              //
         "constant_folding_pass",                                        //
+        "silu_fuse_pass",                                               //
         "conv_bn_fuse_pass",                                            //
         "conv_eltwiseadd_bn_fuse_pass",                                 //
         "embedding_eltwise_layernorm_fuse_pass",                        //
@@ -225,6 +229,7 @@ GpuPassStrategy::GpuPassStrategy() : PassStrategy({}) {
         "fused_multi_transformer_decoder_pass",                         //
         "fused_multi_transformer_encoder_fuse_qkv_pass",                //
         "fused_multi_transformer_decoder_fuse_qkv_pass",                //
+        "multi_devices_fused_multi_transformer_encoder_pass",           //
         "multi_devices_fused_multi_transformer_encoder_fuse_qkv_pass",  //
         "multi_devices_fused_multi_transformer_decoder_fuse_qkv_pass",  //
         "fuse_multi_transformer_layer_pass",                            //
@@ -249,8 +254,9 @@ GpuPassStrategy::GpuPassStrategy() : PassStrategy({}) {
         "conv_elementwise_add_fuse_pass",      //
 #endif                                         //
         "transpose_flatten_concat_fuse_pass",  //
-        "constant_folding_pass",               //
+        "conv2d_fusion_layout_transfer_pass",  //
         "auto_mixed_precision_pass",           //
+        "inplace_op_var_pass",                 // should be the last pass.
   });
 
   use_gpu_ = true;

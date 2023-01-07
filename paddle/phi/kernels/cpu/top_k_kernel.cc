@@ -31,6 +31,14 @@ static void FullTopK(Type input_height,
                      const int& k,
                      const bool& largest,
                      const bool& sorted) {
+  PADDLE_ENFORCE_LE(
+      k,
+      input_width,
+      errors::InvalidArgument("The rank (%d) of the input 'k' for "
+                              "topk op must be less than or equal to %d.",
+                              k,
+                              input_width));
+
   // when the k is small, will the partial sort
   bool partial_sort_flag = (k * 64) < input_width;
 

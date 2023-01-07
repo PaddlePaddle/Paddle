@@ -61,7 +61,7 @@ def simple_depthwise_net(use_feed):
     for _ in range(4):
         hidden = sep_conv(hidden, channel=200, stride=2, filter=5)
         hidden = F.relu(hidden)
-    prediction = fluid.layers.fc(hidden, size=10, act='softmax')
+    prediction = paddle.static.nn.fc(hidden, size=10, activation='softmax')
     loss = paddle.nn.functional.cross_entropy(
         input=prediction, label=label, reduction='none', use_softmax=False
     )
@@ -119,9 +119,9 @@ class TestMNIST(TestParallelExecutorBase):
         )
 
         for loss in zip(not_fuse_op_first_loss, fuse_op_first_loss):
-            self.assertAlmostEquals(loss[0], loss[1], delta=1e-6)
+            self.assertAlmostEqual(loss[0], loss[1], delta=1e-6)
         for loss in zip(not_fuse_op_last_loss, fuse_op_last_loss):
-            self.assertAlmostEquals(loss[0], loss[1], delta=1e-6)
+            self.assertAlmostEqual(loss[0], loss[1], delta=1e-6)
 
     def test_simple_depthwise_with_fuse_op(self):
         self._compare(simple_depthwise_net, DeviceType.CUDA)
