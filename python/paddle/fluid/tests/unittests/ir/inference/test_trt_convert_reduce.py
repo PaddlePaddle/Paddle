@@ -52,7 +52,7 @@ class TrtConvertReduceTest(TrtLayerAutoScanTest):
             elif dtype == 2:
                 return np.random.random([1, 3, 64, 64]).astype(np.int32)
 
-        for keep_dim in [True, False]:
+        for keep_dim in [True, False, None]:
             for dim in [
                 [],
                 [1],
