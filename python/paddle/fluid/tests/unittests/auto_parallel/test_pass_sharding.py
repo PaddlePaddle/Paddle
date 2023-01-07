@@ -44,9 +44,7 @@ class TestShardingPass(unittest.TestCase):
             ]
         )
 
-        process = subprocess.Popen(
-            cmd, env={"FLAGS_USE_STANDALONE_EXECUTOR": "0"}
-        )
+        process = subprocess.Popen(cmd)
         process.wait()
         self.assertEqual(process.returncode, 0)
 
