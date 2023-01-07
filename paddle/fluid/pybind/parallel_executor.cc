@@ -725,7 +725,7 @@ void BindParallelExecutor(pybind11::module &m) {  // NOLINT
                                   "configured again."));
             self.fused_attention_ = b;
           },
-          R"DOC((bool, optional): fused_attention_ indicate whether
+          R"DOC((bool, optional): fused_attention indicate whether
                 to fuse the whole multi head attention part with one op,
                 it may make the execution faster. Default is False.
 
@@ -738,7 +738,7 @@ void BindParallelExecutor(pybind11::module &m) {  // NOLINT
                         paddle.enable_static()
 
                         build_strategy = static.BuildStrategy()
-                        build_strategy.fused_attention_ = True
+                        build_strategy.fused_attention = True
                      )DOC")
       .def_property(
           "fuse_bn_act_ops",
