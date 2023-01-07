@@ -3179,7 +3179,44 @@ EOF
     CMD [${CMD}]
 EOF
 }
+function gen_fluid_lib_by_setup(){
+    mkdir -p ${PADDLE_ROOT}/build
+    cd ${PADDLE_ROOT}/build
+    cat <<EOF
+    ========================================
+    Generating fluid library for train and inference ...
+    ========================================
+EOF
+    parallel_number=`nproc`
+    if [[ "$1" != "" ]]; then
+      parallel_number=$1
+    fi
+    startTime_s=`date +%s`
+    set +e
+    export MAX_JOBS=${parallel_number}
+    export WITH_DISTRIBUTE=OFF ON_INFER=ON WITH_TENSORRT=ON CUDA_ARCH_NAME=${CUDA_ARCH_NAME:-Auto} WITH_PYTHON=${WITH_PYTHON:-ON} WITH_ONNXRUNTIME=${WITH_ONNXRUNTIME:-OFF}
 
+    # reset ccache zero stats for collect PR's actual hit rate
+    ccache -z
+    cd ..
+    if [ "${PYTHON_EXECUTABLE}" != "" ];then
+        ${PYTHON_EXECUTABLE} setup.py $2;build_error=$?
+    else
+        python setup.py $2;build_error=$?
+    fi
+    # ci will collect ccache hit rate
+    collect_ccache_hits
+
+    if [ "$build_error" != 0 ];then
+        exit 7;
+    fi
+    endTime_s=`date +%s`
+    echo "Build Time: $[ $endTime_s - $startTime_s ]s"
+    echo "ipipe_log_param_Build_Time: $[ $endTime_s - $startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt
+
+    build_size "paddle_inference"
+    build_size "paddle_inference_c"
+}
 function gen_fluid_lib() {
     mkdir -p ${PADDLE_ROOT}/build
     cd ${PADDLE_ROOT}/build
@@ -4094,6 +4131,7 @@ function main() {
             python ${PADDLE_ROOT}/tools/remove_grad_op_and_kernel.py
         fi
         gen_fluid_lib ${parallel_number}
+        gen_fluid_lib_by_setup
         ;;
       gpu_inference)
         test_fluid_lib

@@ -1232,7 +1232,6 @@ def get_setup_parameters():
         'paddle.fluid.dygraph',
         'paddle.fluid.proto',
         'paddle.fluid.proto.profiler',
-        'paddle.fluid.distributed',
         'paddle.fluid.layers',
         'paddle.fluid.dataloader',
         'paddle.fluid.contrib',
@@ -1340,6 +1339,9 @@ def main():
     # Execute the build process,cmake and make
     if cmake_and_build:
         build_steps()
+    if os.getenv("WITH_PYTHON") == "OFF":
+        print("only compile, not package")
+        return
     build_dir = os.getenv("BUILD_DIR")
     if build_dir is not None:
         env_dict_path = TOP_DIR + '/' + build_dir + '/python'
