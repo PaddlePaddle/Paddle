@@ -577,8 +577,8 @@ class {{op_name | to_composite_grad_opmaker_name}} : public prim::GradCompositeO
   {% set attrs_length = attrs | length %}
   {% for i in range(attrs_length) %}
     {% set attrs_data_type = fluid_attrs_dict[fluid_attrs[i]]["typename"] | to_op_attr_type %}
-    attrs_data_type {{attrs[i]}} = this->Attr<attrs_data_type>(fluid_attrs[i]);
-  {%- endfor %}
+    {{attrs_data_type}} {{attrs[i]}} = this->Attr<{{attrs_data_type}}>("{{fluid_attrs[i]}}");
+  {% endfor %}
 {%- endmacro %}
 
 {% macro construct_composite_output(composite_op_dict) %}
@@ -637,7 +637,7 @@ class {{op_name | to_composite_grad_opmaker_name}} : public prim::GradCompositeO
   {% set outputs_length = outputs | length %}
   {% for i in range(outputs_length) %}
     this->RecoverOutputName({{outputs[i] + "_t"}}, {{outputs[i] + "_name"}});
-  {%- endfor %}
+  {% endfor %}
 {%- endmacro %}
 
 {% macro extract_input_from_forward(name,
