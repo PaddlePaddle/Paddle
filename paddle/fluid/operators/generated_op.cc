@@ -29,6 +29,7 @@
 #include "paddle/phi/infermeta/nullary.h"
 #include "paddle/phi/infermeta/ternary.h"
 #include "paddle/phi/infermeta/unary.h"
+
 namespace paddle {
 namespace operators {
 
@@ -8550,8 +8551,8 @@ REGISTER_OPERATOR(tanh,
                   ops::TanhOpMaker,
                   ops::TanhGradOpMaker<paddle::framework::OpDesc>,
                   ops::TanhGradOpMaker<paddle::imperative::OpBase>,
-                  ops::TanhCompositeGradOpMaker,
                   ops::TanhInplaceInferer,
+                  ops::TanhCompositeGradOpMaker,
                   ops::TanhInferShapeFunctor);
 
 REGISTER_OPERATOR(tanh_shrink,

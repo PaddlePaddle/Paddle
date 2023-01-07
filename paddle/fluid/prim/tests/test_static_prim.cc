@@ -180,9 +180,9 @@ TEST(StaticPrim, TanhBackwardComposite) {
 }
 
 TEST(StaticPrim, TestFlags) {
-  PrimCommonUtils::SetPrimEnable(true);
+  PrimCommonUtils::SetPrimEnabled(true);
   ASSERT_TRUE(PrimCommonUtils::IsPrimEnabled());
-  PrimCommonUtils::SetPrimEnable(false);
+  PrimCommonUtils::SetPrimEnabled(false);
   ASSERT_FALSE(PrimCommonUtils::IsPrimEnabled());
 }
 }  // namespace prim
