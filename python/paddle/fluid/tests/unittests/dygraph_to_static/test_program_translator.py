@@ -28,7 +28,6 @@ import paddle
 import paddle.fluid as fluid
 import paddle.jit.dy2static as _jst
 from paddle.jit.api import to_static
-from paddle.jit.dy2static.program_translator import ProgramTranslator
 from paddle.jit.dy2static.utils import func_to_source_code
 from paddle.utils import gast
 
@@ -241,7 +240,6 @@ class TestEnableDeclarative(unittest.TestCase):
     def setUp(self):
         self.x = np.random.randn(30, 10, 32).astype('float32')
         self.weight = np.random.randn(32, 64).astype('float32')
-        self.program_translator = ProgramTranslator()
 
     def test_raise_error(self):
         with fluid.dygraph.guard():
