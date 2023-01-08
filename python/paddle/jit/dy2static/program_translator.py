@@ -1479,7 +1479,6 @@ class ProgramTranslator:
         return self._program_cache
 
 
-
 def enable_to_static(enable_to_static_bool):
 
     """
