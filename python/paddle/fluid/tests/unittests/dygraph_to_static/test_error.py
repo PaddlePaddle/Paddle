@@ -363,7 +363,6 @@ class TestErrorStaticLayerCallInRuntime2(TestErrorStaticLayerCallInRuntime):
         ]
 
 
-
 class TestJitSaveInCompiletime(TestErrorBase):
     def setUp(self):
         self.reset_flags_to_default()
