@@ -33,7 +33,6 @@ PD_DECLARE_KERNEL(pow, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(scale, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(multiply, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(concat, CPU, ALL_LAYOUT);
-PD_DECLARE_KERNEL(split_with_num, CPU, ALL_LAYOUT);
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 PD_DECLARE_KERNEL(full, GPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(tanh, GPU, ALL_LAYOUT);
@@ -42,7 +41,6 @@ PD_DECLARE_KERNEL(pow, GPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(scale, GPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(multiply, KPS, ALL_LAYOUT);
 PD_DECLARE_KERNEL(concat, GPU, ALL_LAYOUT);
-PD_DECLARE_KERNEL(split_with_num, GPU, ALL_LAYOUT);
 #endif
 namespace paddle {
 namespace prim {
@@ -97,23 +95,6 @@ struct TestBaseProgram {
     return program_.MutableBlock(id);
   }
 
-  framework::VarDesc* concat(std::vector<framework::VarDesc*> inputs,
-                             int axis,
-                             framework::VarDesc* out) {
-    framework::OpDesc* op = program_.MutableBlock(0)->AppendOp();
-    op->SetType("concat");
-    std::vector<std::string> input_names(inputs.size());
-    for (size_t i = 0; i < inputs.size(); ++i) {
-      input_names[i] = inputs[i]->Name();
-    }
-    op->SetInput("X", input_names);
-    op->SetOutput("Out", {out->Name()});
-    op->SetAttr("axis", axis);
-    op->SetAttr(framework::OpProtoAndCheckerMaker::OpRoleAttrName(),
-                static_cast<int>(framework::OpRole::kForward));
-    return out;
-  }
-
   void concat(std::vector<framework::VarDesc*> inputs,
               int axis,
               framework::VarDesc* out) {
@@ -135,7 +116,7 @@ struct TestBaseProgram {
              int axis,
              std::vector<framework::VarDesc*> outputs) {
     framework::OpDesc* op = program_.MutableBlock(0)->AppendOp();
-    op->SetType("split_with_num");
+    op->SetType("split");
     const std::string input_name = input->Name();
     std::vector<std::string> output_names(outputs.size());
     for (size_t i = 0; i < outputs.size(); ++i) {
@@ -346,10 +327,8 @@ TEST(StaticCompositeGradMaker, TestMutiOutputMethod) {
   for (size_t i = 0; i < fw_out.size(); ++i) {
     fw_out_ptr[i] = &fw_out[i];
   }
-  std::vector<paddle::experimental::Tensor*> fw_out_ptr =
-      test.GetOutputPtr(fw_out_ptr);
+  fw_out_ptr = test.GetOutputPtr(fw_out_ptr);
   std::vector<std::string> fw_out_name = test.GetOutputName(fw_out);
-
   ASSERT_EQ(static_cast<prim::DescTensor*>(fw_input.impl().get())->Name(), "x");
   ASSERT_EQ(static_cast<prim::DescTensor*>(opt_fw_input.get_ptr()->impl().get())
                 ->Name(),

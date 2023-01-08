@@ -249,7 +249,8 @@ class GradCompositeOpMakerBase {
 
   std::vector<paddle::experimental::Tensor*> GetOutputPtr(
       const std::vector<paddle::experimental::Tensor*>& inputs) {
-    std::vector<paddle::experimental::Tensor*> output_ptrs(inputs.size());
+    std::vector<paddle::experimental::Tensor*> output_ptrs;
+    output_ptrs.reserve(inputs.size());
     for (const auto& input : inputs) {
       if (input->defined())
         output_ptrs.emplace_back(input);
@@ -266,9 +267,10 @@ class GradCompositeOpMakerBase {
 
   std::vector<std::string> GetOutputName(
       const std::vector<paddle::experimental::Tensor>& outputs) {
-    std::vector<std::string> out_names(outputs.size());
+    std::vector<std::string> out_names;
+    out_names.reserve(outputs.size());
     for (const auto& output : outputs) {
-      if (output.defined())
+      if (!output.defined())
         out_names.emplace_back(framework::kEmptyVarName);
       else
         out_names.emplace_back(
