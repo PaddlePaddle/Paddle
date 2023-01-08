@@ -288,8 +288,8 @@ class OperatorDistAttr {
   std::string impl_type_ = kDefault;
   int64_t impl_idx_ = 0;
   bool is_recompute_ = false;
-  std::string execution_stream_;
-  int64_t scheduling_priority_;  // lower value, higher priority, default to 0
+  std::string execution_stream_ = kDefault;
+  int64_t scheduling_priority_ = 0;  // lower value, higher priority
   std::map<std::string, bool> annotated_;
 };
 
