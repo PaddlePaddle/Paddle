@@ -1,5 +1,4 @@
 add_subdirectory(manual)
-add_subdirectory(generated)
 if(NOT (NOT WITH_PYTHON AND ON_INFER))
   cc_library(
     prim_api
