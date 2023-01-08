@@ -2180,7 +2180,7 @@ PyMethodDef variable_methods[] = {
      METH_VARARGS | METH_KEYWORDS,
      NULL},
     {"element_size",
-     (PyCFunction)(void (*)(void))tensor_methon_element_size,
+     (PyCFunction)(void (*)(void))tensor_method_element_size,
      METH_VARARGS | METH_KEYWORDS,
      NULL},
     /***the method of sparse tensor****/
