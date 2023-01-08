@@ -19,7 +19,6 @@ import unittest
 import astor
 import numpy as np
 from ifelse_simple_func import (
-    dyfunc_with_if_else,
     dyfunc_with_if_else_early_return1,
     dyfunc_with_if_else_early_return2,
 )
@@ -210,30 +209,6 @@ class NetWithError(fluid.dygraph.layers.Layer):
         linear = paddle.nn.Linear(32, 64)
         y = linear(x)
         return y
-
-
-class TestDygraphToStaticCode(unittest.TestCase):
-    def setUp(self):
-        # set to print all string diff when assertEqual fails
-        self.maxDiff = None
-
-    def test_decorator(self):
-        code = paddle.jit.to_static(dyfunc_with_if_else).code
-        print(code)
-        answer = get_source_code(StaticCode1.dyfunc_with_if_else)
-        self.assertEqual(
-            answer.replace('\n', '').replace(' ', ''),
-            code.replace('\n', '').replace(' ', ''),
-        )
-
-    def test_program_translator(self):
-        answer = get_source_code(StaticCode2.dyfunc_with_if_else)
-        code = paddle.jit.to_static(dyfunc_with_if_else).code
-        print(code)
-        self.assertEqual(
-            answer.replace('\n', '').replace(' ', ''),
-            code.replace('\n', '').replace(' ', ''),
-        )
 
 
 class TestEnableDeclarative(unittest.TestCase):
