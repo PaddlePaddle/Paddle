@@ -394,6 +394,27 @@ def process_invoke_op(forward_op_dict, backward_op_dict):
                     )
 
 
+def parse_drop_empty_grad(op_fluid_list: list, bw_op_dict: dict):
+    for op_op in op_fluid_list:
+        if 'drop_empty_grad' in op_op:
+            bw_names = [
+                bw_name.split('(')[0].strip()
+                for bw_name in op_op['backward'].split(',')
+            ]
+            for bw_name in bw_names:
+                assert (
+                    bw_name in bw_op_dict
+                ), f"backward {bw_name} is not existed"
+                for out_grad in op_op['drop_empty_grad']:
+                    assert (
+                        out_grad in bw_op_dict[bw_name]['output_dict']
+                    ), f'''
+                         {bw_name} with {out_grad} is not existed in output_dict '''
+                    bw_op_dict[bw_name]['output_dict'][out_grad][
+                        'drop_empty_grad'
+                    ] = False
+
+
 def main(
     ops_yaml_path,
     backward_yaml_path,
@@ -429,26 +450,7 @@ def main(
             bw_output['drop_empty_grad'] = True
 
     # deal the drop_empty_grad of bw_op by op_compat.yaml
-    def get_op_bwname(op_item):
-        names = op_item.split('(')
-        if len(names) == 1:
-            return names[0].strip()
-        else:
-            return names[1].split(')')[0].strip()
-
-    for op_op in op_fluid_map_list:
-        if 'drop_empty_grad' in op_op:
-            bw_names = [
-                get_op_bwname(bw_name)
-                for bw_name in op_op['backward'].split(',')
-            ]
-            for bw_name in bw_names:
-                if bw_name in backward_op_dict:
-                    for out_grad in op_op['drop_empty_grad']:
-                        if out_grad in backward_op_dict[bw_name]['output_dict']:
-                            backward_op_dict[bw_name]['output_dict'][out_grad][
-                                'drop_empty_grad'
-                            ] = False
+    parse_drop_empty_grad(op_fluid_map_list, backward_op_dict)
 
     replace_compat_name(op_fluid_map_list, forward_op_dict, backward_op_dict)
 
