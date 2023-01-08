@@ -1064,6 +1064,7 @@ function generate_api_spec() {
         pip --no-cache-dir install ${PADDLE_ROOT}/build/python/dist/*whl
     elif [ -d "${PADDLE_ROOT}/dist/" ];then
         pip --no-cache-dir install ${PADDLE_ROOT}/dist/*whl
+        mkdir ${PADDLE_ROOT}/build/python/dist/ && mv  ${PADDLE_ROOT}/dist/*whl  ${PADDLE_ROOT}/build/python/dist/
     fi
     spec_path=${PADDLE_ROOT}/paddle/fluid/API_${spec_kind}.spec
     python ${PADDLE_ROOT}/tools/print_signatures.py paddle > $spec_path
