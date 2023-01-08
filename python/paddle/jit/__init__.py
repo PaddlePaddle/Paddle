@@ -21,14 +21,14 @@ from .api import enable_to_static
 from .dy2static.logging_utils import set_code_level, set_verbosity
 
 from . import dy2static
-from .dy2static.program_translator import ProgramTranslator
+from .dy2static.program_translator import ProgramTranslator # TODO(RyanHuang): Remove it
 from .translated_layer import TranslatedLayer
 
 __all__ = [  # noqa
     'save',
     'load',
     'to_static',
-    'ProgramTranslator',
+    'ProgramTranslator', # TODO(RyanHuang): Remove it
     'TranslatedLayer',
     'set_code_level',
     'set_verbosity',
