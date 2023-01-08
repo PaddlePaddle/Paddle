@@ -2055,6 +2055,7 @@ set -x
     bash ${PADDLE_ROOT}/cpu_load_average.sh &
 
     precise_card_test_single "^simple_precision_test$" 1
+    wait;
     test_20_start_time=`date +%s`
     precise_card_test_single "$test_20"
     test_20_end_time=`date +%s`
