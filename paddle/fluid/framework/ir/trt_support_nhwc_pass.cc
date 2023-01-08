@@ -109,7 +109,7 @@ void InsertTransposeOp(ir::Graph *graph,
 
 }  // namespace
 
-void NHWC2NCHWPass::ApplyImpl(Graph *graph) const {
+void TrtSupportNHWCPass::ApplyImpl(Graph *graph) const {
   PADDLE_ENFORCE_NOT_NULL(graph,
                           platform::errors::PreconditionNotMet(
                               "During the trt_support_nhwc_pass, the graph "
@@ -204,4 +204,4 @@ void NHWC2NCHWPass::ApplyImpl(Graph *graph) const {
 }  // namespace framework
 }  // namespace paddle
 
-REGISTER_PASS(trt_support_nhwc_pass, paddle::framework::ir::NHWC2NCHWPass);
+REGISTER_PASS(trt_support_nhwc_pass, paddle::framework::ir::TrtSupportNHWCPass);

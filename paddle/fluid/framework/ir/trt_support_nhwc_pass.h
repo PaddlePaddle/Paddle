@@ -21,10 +21,10 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-class NHWC2NCHWPass : public FusePassBase {
+class TrtSupportNHWCPass : public FusePassBase {
  public:
-  NHWC2NCHWPass() = default;
-  ~NHWC2NCHWPass() = default;
+  TrtSupportNHWCPass() = default;
+  ~TrtSupportNHWCPass() = default;
 
  protected:
   void ApplyImpl(Graph* graph) const override;
