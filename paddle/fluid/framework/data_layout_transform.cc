@@ -14,7 +14,7 @@
 
 #include "paddle/fluid/framework/data_layout_transform.h"
 
-#include "paddle/fluid/framework/convert_utils.h"
+#include "paddle/phi/core/utils/data_type.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
@@ -94,8 +94,9 @@ void TransDataLayout(DataLayout from_layout,
   out->Resize(phi::make_ddim(dst_dim));
   out->mutable_data(place, in.dtype());
 
-  framework::VisitDataType(framework::TransToProtoVarType(in.dtype()),
-                           CastDataLayout(pool.Get(place), axis, in, out));
+  framework::VisitDataType(
+      static_cast<proto::VarType::Type>(phi::TransToProtoVarType(in.dtype())),
+      CastDataLayout(pool.Get(place), axis, in, out));
 
   out->set_layout(to_layout);
 }
