@@ -45,6 +45,7 @@ from .dy2static.convert_call_func import (
     CONVERSION_OPTIONS,
 )
 from .dy2static.program_translator import (
+    enable_to_static,
     ProgramTranslator,
     StaticFunction,
     unwrap_decorators,
