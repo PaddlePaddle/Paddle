@@ -21,7 +21,6 @@ from simnet_dygraph_model import BOW, HingeLoss
 
 import paddle
 import paddle.fluid as fluid
-from paddle.jit import ProgramTranslator
 
 SEED = 102
 random.seed(SEED)

@@ -21,7 +21,6 @@ import paddle.fluid as fluid
 from paddle.jit import to_static
 
 
-
 # 1. print Tensor
 @to_static
 def dyfunc_print_variable(x):

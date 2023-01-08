@@ -44,7 +44,6 @@ from ifelse_simple_func import (
 import paddle
 import paddle.fluid.core as core
 import paddle.nn.functional as F
-from paddle.jit.dy2static.program_translator import ProgramTranslator
 from paddle.jit.dy2static.utils import Dygraph2StaticException
 
 np.random.seed(1)
@@ -254,7 +253,6 @@ class TestDygraphIfElseNet(unittest.TestCase):
         return self._run(to_static=False)
 
     def _run(self, to_static=False):
-        prog_trans = ProgramTranslator()
         paddle.jit.enable_to_static(to_static)
 
         with fluid.dygraph.guard(place):
@@ -364,7 +362,6 @@ class TestDiffModeNet(unittest.TestCase):
         self.Net = DiffModeNet1
 
     def _run(self, mode, to_static):
-        prog_trans = ProgramTranslator()
         paddle.jit.enable_to_static(to_static)
 
         net = self.Net(mode)

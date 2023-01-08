@@ -20,7 +20,6 @@ from test_fetch_feed import Linear
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid.layers.utils import flatten
-from paddle.jit import ProgramTranslator
 from paddle.jit.api import to_static
 
 SEED = 2020

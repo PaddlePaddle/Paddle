@@ -21,9 +21,7 @@ from test_program_translator import get_source_code
 import paddle
 import paddle.fluid as fluid
 import paddle.jit.dy2static as _jst
-from paddle.jit import ProgramTranslator
 from paddle.jit.dy2static.convert_call_func import CONVERSION_OPTIONS
-
 
 SEED = 2020
 np.random.seed(SEED)

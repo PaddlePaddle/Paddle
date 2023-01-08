@@ -23,7 +23,6 @@ import paddle.fluid as fluid
 from paddle.static import InputSpec
 
 
-
 # 0. for in range var.numpy()[0]
 @paddle.jit.to_static
 def for_in_range(x):

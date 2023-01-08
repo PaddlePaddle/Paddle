@@ -247,19 +247,19 @@ class TestEnableDeclarative(unittest.TestCase):
 
     def test_raise_error(self):
         with fluid.dygraph.guard():
-            self.program_translator.enable(True)
+            paddle.jit.enable_to_static(True)
             net = NetWithError()
             with self.assertRaises(ValueError):
                 net(fluid.dygraph.to_variable(self.x))
 
     def test_enable_disable_get_output(self):
-        self.program_translator.enable(True)
+        paddle.jit.enable_to_static(True)
         with fluid.dygraph.guard():
             static_output = self.program_translator.get_output(
                 simple_func, self.x, self.weight
             )
 
-        self.program_translator.enable(False)
+        paddle.jit.enable_to_static(False)
         with fluid.dygraph.guard():
             dygraph_output = self.program_translator.get_output(
                 simple_func, self.x, self.weight
@@ -273,14 +273,14 @@ class TestEnableDeclarative(unittest.TestCase):
 
     def test_enable_disable_get_func(self):
 
-        self.program_translator.enable(True)
+        paddle.jit.enable_to_static(True)
         with fluid.dygraph.guard():
             static_func = self.program_translator.get_func(simple_func)
             self.assertTrue(callable(static_func))
             static_output = static_func(self.x, self.weight)
             self.assertTrue(isinstance(static_output, fluid.Variable))
 
-        self.program_translator.enable(False)
+        paddle.jit.enable_to_static(False)
         with fluid.dygraph.guard():
             dygraph_func = self.program_translator.get_func(simple_func)
             self.assertTrue(callable(dygraph_func))
@@ -294,7 +294,7 @@ class TestEnableDeclarative(unittest.TestCase):
 
     def test_enable_disable_get_program(self):
 
-        self.program_translator.enable(True)
+        paddle.jit.enable_to_static(True)
         static_output = self.program_translator.get_program(
             simple_func, self.x, self.weight
         )
@@ -309,7 +309,7 @@ class TestEnableDeclarative(unittest.TestCase):
         for var in static_output[3]:
             self.assertTrue(isinstance(var, fluid.Variable))
 
-        self.program_translator.enable(False)
+        paddle.jit.enable_to_static(False)
         with fluid.dygraph.guard():
             dygraph_output = self.program_translator.get_program(
                 simple_func, self.x, self.weight
@@ -323,11 +323,11 @@ class TestEnableDeclarative(unittest.TestCase):
 
     def test_enable_disable_declarative(self):
 
-        self.program_translator.enable(True)
+        paddle.jit.enable_to_static(True)
         with fluid.dygraph.guard():
             static_output = decorated_simple_func(self.x, self.weight)
 
-        self.program_translator.enable(False)
+        paddle.jit.enable_to_static(False)
         with fluid.dygraph.guard():
             dygraph_output = decorated_simple_func(self.x, self.weight)
             np.testing.assert_allclose(
@@ -356,7 +356,7 @@ class TestErrorWithInitFromStaticMode(unittest.TestCase):
         paddle.enable_static()
         net = Net()
 
-        self.program_translator.enable(True)
+        paddle.jit.enable_to_static(True)
         with self.assertRaisesRegex(
             RuntimeError, "only available in dynamic mode"
         ):

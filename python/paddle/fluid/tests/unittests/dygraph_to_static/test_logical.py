@@ -24,7 +24,6 @@ import paddle.fluid as fluid
 from paddle.jit.dy2static.logical_transformer import cmpop_node_to_str
 from paddle.utils import gast
 
-
 SEED = 2020
 np.random.seed(22)
 

@@ -75,7 +75,15 @@ from paddle.fluid.framework import (
 from paddle.fluid.framework import dygraph_only, _non_static_mode
 from paddle.fluid.wrapped_decorator import wrap_decorator
 
-__all__ = []
+__all__ = [
+    "save",
+    "load",
+    "to_static",
+    "not_to_static",
+    "ProgramTranslator",  # TODO(RyanHuang): Remove it
+    "TranslatedLayer",
+    "enable_to_static",
+]
 
 
 def create_program_from_desc(program_desc):

@@ -24,7 +24,6 @@ import paddle
 import paddle.fluid as fluid
 from paddle.fluid.initializer import MSRA
 from paddle.fluid.param_attr import ParamAttr
-from paddle.jit import ProgramTranslator
 from paddle.jit.api import to_static
 from paddle.jit.translated_layer import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 from paddle.nn import BatchNorm, Linear
