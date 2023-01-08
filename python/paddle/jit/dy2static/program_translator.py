@@ -1157,7 +1157,7 @@ class ProgramTranslator:
         if self._initialized:
             return
         self._initialized = True
-        # self._program_cache = ProgramCache()
+        self._program_cache = ProgramCache()
         self.enable_to_static = True
 
     def enable(self, enable_to_static):
@@ -1221,12 +1221,14 @@ class ProgramTranslator:
 
                 import paddle
 
+
                 def func(x):
                     if paddle.mean(x) > 0:
                         x_v = x - 1
                     else:
                         x_v = x + 1
                     return x_v
+
 
                 prog_trans = paddle.jit.ProgramTranslator()
 
@@ -1302,12 +1304,14 @@ class ProgramTranslator:
 
                 import paddle
 
+
                 def func(x):
                     if paddle.mean(x) > 0:
                         x_v = x - 1
                     else:
                         x_v = x + 1
                     return x_v
+
 
                 prog_trans = paddle.jit.ProgramTranslator()
                 static_func = prog_trans.get_func(func)
@@ -1351,12 +1355,14 @@ class ProgramTranslator:
 
                 import paddle
 
+
                 def func(x):
                     if paddle.mean(x) > 0:
                         x_v = x - 1
                     else:
                         x_v = x + 1
                     return x_v
+
 
                 prog_trans = paddle.jit.ProgramTranslator()
                 x = paddle.ones([1, 2])
@@ -1419,12 +1425,14 @@ class ProgramTranslator:
 
                 import paddle
 
+
                 def func(x):
                     if paddle.mean(x) > 0:
                         x_v = x - 1
                     else:
                         x_v = x + 1
                     return x_v
+
 
                 prog_trans = paddle.jit.ProgramTranslator()
 
@@ -1449,6 +1457,27 @@ class ProgramTranslator:
         # Get source_code
         source_code = ast_to_source_code(root_wrapper.node)
         return source_code
+
+    def get_program_cache(self):
+        """
+        Returns the ProgramCache instance. This method is used by PaddlePaddle
+        developers to manage program cache in ProgramTranslator. Normal users
+        don't have to call this method.
+
+        Returns:
+            ProgramCache: ProgramCache instance of ProgramTranslator.
+
+        Examples:
+            .. code-block:: python
+
+                import paddle
+
+                prog_trans = paddle.jit.ProgramTranslator()
+                prog_cache = prog_trans.get_program_cache()
+
+        """
+        return self._program_cache
+
 
 
 def enable_to_static(enable_to_static_bool):
