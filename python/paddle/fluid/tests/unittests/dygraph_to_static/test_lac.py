@@ -33,7 +33,6 @@ from paddle.jit.translated_layer import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 
 SEED = 2020
 
-program_translator = ProgramTranslator()
 # Add InputSpec to make unittest run faster.
 input_specs = [
     paddle.static.InputSpec([None, None], 'int64'),
@@ -542,7 +541,7 @@ class TestLACModel(unittest.TestCase):
         self.dy_param_path = os.path.join(self.temp_dir.name, 'lac_dy_param')
 
     def train(self, args, to_static):
-        program_translator.enable(to_static)
+        paddle.jit.enable_to_static(to_static)
         place = (
             fluid.CUDAPlace(0)
             if fluid.is_compiled_with_cuda()
@@ -656,7 +655,7 @@ class TestLACModel(unittest.TestCase):
 
     def predict_dygraph(self, batch):
         words, targets, length = batch
-        program_translator.enable(False)
+        paddle.jit.enable_to_static(False)
         with fluid.dygraph.guard(self.place):
             model = LexNet(self.args)
             # load dygraph trained parameters

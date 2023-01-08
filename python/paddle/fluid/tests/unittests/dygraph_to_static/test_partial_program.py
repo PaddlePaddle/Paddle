@@ -130,7 +130,6 @@ class TestWithNestedOutput(unittest.TestCase):
 
 class TestWithTrainAndEval(unittest.TestCase):
     def test_switch_eval_and_train(self):
-        program_translator = ProgramTranslator()
 
         with fluid.dygraph.guard():
             linear_net = Linear()

@@ -1186,8 +1186,7 @@ class ProgramTranslator:
                     return x_v
 
 
-                prog_trans = paddle.jit.ProgramTranslator()
-                prog_trans.enable(False)
+                paddle.jit.enable_to_static(False)
 
                 x = paddle.ones([1, 2])
                 # ProgramTranslator is disabled so the func is run in dygraph

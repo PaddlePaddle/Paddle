@@ -25,7 +25,6 @@ import paddle
 import paddle.fluid as fluid
 from paddle.fluid.dygraph import to_variable
 
-# from paddle.jit import ProgramTranslator
 from paddle.jit.api import to_static
 from paddle.nn import BatchNorm, Linear
 

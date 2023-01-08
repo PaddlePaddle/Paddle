@@ -18,9 +18,8 @@ import numpy
 
 import paddle
 import paddle.fluid as fluid
-from paddle.jit import ProgramTranslator, to_static
+from paddle.jit import to_static
 
-program_translator = ProgramTranslator()
 
 
 # 1. print Tensor
@@ -99,7 +98,7 @@ class TestPrintBase(unittest.TestCase):
         raise NotImplementedError("Print test should implement set_test_func")
 
     def _run(self, to_static):
-        program_translator.enable(to_static)
+        paddle.jit.enable_to_static(to_static)
 
         with fluid.dygraph.guard():
             self.dygraph_func(self.input)

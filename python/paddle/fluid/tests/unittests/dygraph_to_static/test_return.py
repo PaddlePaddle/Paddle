@@ -272,13 +272,12 @@ class TestReturnBase(unittest.TestCase):
             else fluid.CPUPlace()
         )
         self.init_dygraph_func()
-        self.program_translator = ProgramTranslator()
 
     def init_dygraph_func(self):
         self.dygraph_func = test_return_base
 
     def _run(self, to_static=False):
-        self.program_translator.enable(to_static)
+        paddle.jit.enable_to_static(to_static)
         with fluid.dygraph.guard():
             res = self.dygraph_func(self.input)
             if isinstance(res, (tuple, list)):

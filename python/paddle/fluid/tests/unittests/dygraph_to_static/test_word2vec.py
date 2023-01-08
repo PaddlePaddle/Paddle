@@ -21,7 +21,6 @@ import numpy as np
 import paddle
 import paddle.fluid as fluid
 
-# from paddle.jit import ProgramTranslator
 from paddle.jit.api import to_static
 from paddle.nn import Embedding
 

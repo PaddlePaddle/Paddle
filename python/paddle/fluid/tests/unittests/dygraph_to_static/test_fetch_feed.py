@@ -68,8 +68,7 @@ class TestPool2D(unittest.TestCase):
         self.data = np.random.random((1, 2, 4, 4)).astype('float32')
 
     def train(self, to_static=False):
-        program_translator = ProgramTranslator()
-        program_translator.enable(to_static)
+        paddle.jit.enable_to_static(to_static)
 
         with fluid.dygraph.guard():
             dy_layer = self.dygraph_class()

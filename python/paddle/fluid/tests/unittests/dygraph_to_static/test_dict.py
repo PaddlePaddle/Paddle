@@ -136,7 +136,7 @@ class TestNetWithDict(unittest.TestCase):
 
     def train(self, to_static=False):
         prog_trans = ProgramTranslator()
-        prog_trans.enable(to_static)
+        paddle.jit.enable_to_static(to_static)
         with fluid.dygraph.guard(PLACE):
             net = MainNetWithDict(batch_size=self.batch_size)
             ret = net(self.x)
@@ -192,7 +192,7 @@ class TestDictPop(unittest.TestCase):
 
     def _run(self, to_static):
         prog_trans = ProgramTranslator()
-        prog_trans.enable(to_static)
+        paddle.jit.enable_to_static(to_static)
 
         result = self.dygraph_func(self.input)
 
@@ -238,7 +238,7 @@ class TestDictPop3(TestNetWithDict):
 
     def train(self, to_static=False):
         prog_trans = ProgramTranslator()
-        prog_trans.enable(to_static)
+        paddle.jit.enable_to_static(to_static)
         with fluid.dygraph.guard(PLACE):
             net = NetWithDictPop()
             ret = net(z=0, x=self.x, y=True)
