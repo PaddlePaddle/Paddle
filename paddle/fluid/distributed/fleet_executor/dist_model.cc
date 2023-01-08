@@ -436,10 +436,10 @@ bool DistModel::PrepareFleetExe() {
   for (int i = 0; i < config_.nranks; ++i) {
     RankInfo *rank_info = executor_desc_.add_cluster_info();
     rank_info->set_rank(i);
-    VLOG(3) << "start rank_info";
-    // rank_info->set_ip_port(config_.trainer_endpoints[i]);
-    *(rank_info->mutable_ip_port()) = config_.trainer_endpoints[i];
-    VLOG(3) << "stop rank_info";
+    VLOG(1) << "start rank_info";
+    rank_info->set_ip_port(config_.trainer_endpoints[i]);
+    // *(rank_info->mutable_ip_port()) = config_.trainer_endpoints[i];
+    VLOG(1) << "stop rank_info";
     id_to_rank.insert({i, i});
   }
   fleet_exe.reset(new FleetExecutor(executor_desc_));
