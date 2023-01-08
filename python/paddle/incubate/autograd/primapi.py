@@ -217,7 +217,7 @@ def grad(outputs, inputs, grad_outputs=None):
 
 @framework.static_only
 def to_prim(blocks):
-    """Search ops which have be registered composite rules and replace them with primitive ops."""
+    """Search nonbasic ops which have be registered composite rules and replace them with primitive ops."""
     if isinstance(blocks, paddle.fluid.framework.Block):
         logging.info("Atomize composite op to primitive ops begin.")
         primx._lower_composite(blocks)
