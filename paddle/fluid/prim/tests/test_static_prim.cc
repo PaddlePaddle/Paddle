@@ -32,6 +32,8 @@ PD_DECLARE_KERNEL(tanh_grad, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(pow, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(scale, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(multiply, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(concat, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(split_with_num, CPU, ALL_LAYOUT);
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 PD_DECLARE_KERNEL(full, GPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(tanh, GPU, ALL_LAYOUT);
@@ -39,6 +41,8 @@ PD_DECLARE_KERNEL(tanh_grad, GPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(pow, GPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(scale, GPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(multiply, KPS, ALL_LAYOUT);
+PD_DECLARE_KERNEL(concat, GPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(split_with_num, GPU, ALL_LAYOUT);
 #endif
 namespace paddle {
 namespace prim {
@@ -93,9 +97,67 @@ struct TestBaseProgram {
     return program_.MutableBlock(id);
   }
 
+  framework::VarDesc* concat(std::vector<framework::VarDesc*> inputs,
+                             int axis,
+                             framework::VarDesc* out) {
+    framework::OpDesc* op = program_.MutableBlock(0)->AppendOp();
+    op->SetType("concat");
+    std::vector<std::string> input_names(inputs.size());
+    for (size_t i = 0; i < inputs.size(); ++i) {
+      input_names[i] = inputs[i]->Name();
+    }
+    op->SetInput("X", input_names);
+    op->SetOutput("Out", {out->Name()});
+    op->SetAttr("axis", axis);
+    op->SetAttr(framework::OpProtoAndCheckerMaker::OpRoleAttrName(),
+                static_cast<int>(framework::OpRole::kForward));
+    return out;
+  }
+
+  void concat(std::vector<framework::VarDesc*> inputs,
+              int axis,
+              framework::VarDesc* out) {
+    framework::OpDesc* op = program_.MutableBlock(0)->AppendOp();
+    op->SetType("concat");
+    std::vector<std::string> input_names(inputs.size());
+    for (size_t i = 0; i < inputs.size(); ++i) {
+      input_names[i] = inputs[i]->Name();
+    }
+    op->SetInput("X", input_names);
+    op->SetOutput("Out", {out->Name()});
+    op->SetAttr("axis", axis);
+    op->SetAttr(framework::OpProtoAndCheckerMaker::OpRoleAttrName(),
+                static_cast<int>(framework::OpRole::kForward));
+  }
+
+  void split(framework::VarDesc* input,
+             int num,
+             int axis,
+             std::vector<framework::VarDesc*> outputs) {
+    framework::OpDesc* op = program_.MutableBlock(0)->AppendOp();
+    op->SetType("split_with_num");
+    const std::string input_name = input->Name();
+    std::vector<std::string> output_names(outputs.size());
+    for (size_t i = 0; i < outputs.size(); ++i) {
+      output_names[i] = outputs[i]->Name();
+    }
+    op->SetInput("X", {input_name});
+    op->SetOutput("Out", output_names);
+    op->SetAttr("num", num);
+    op->SetAttr("axis", axis);
+    op->SetAttr(framework::OpProtoAndCheckerMaker::OpRoleAttrName(),
+                static_cast<int>(framework::OpRole::kForward));
+  }
+
  private:
   framework::ProgramDesc program_;
   int idx_{0};
+};
+
+class TestGradCompositeGradMaker : public GradCompositeOpMakerBase {
+ public:
+  using prim::GradCompositeOpMakerBase::GradCompositeOpMakerBase;
+  void Apply() override {}
 };
 
 TEST(StaticPrim, TanhBackwardComposite) {
@@ -179,12 +241,133 @@ TEST(StaticPrim, TanhBackwardComposite) {
             static_cast<std::size_t>(1));
 }
 
+TEST(StaticCompositeGradMaker, TestMutiInputMethod) {
+  TestBaseProgram base_program = TestBaseProgram();
+  auto* target_block = base_program.GetBlock(0);
+  std::vector<int64_t> shape = {2, 2};
+  std::vector<int64_t> shape_out = {4, 2};
+  StaticCompositeContext::Instance().SetBlock(target_block);
+  Tensor x0 = prim::empty<prim::DescTensor>(
+      shape, phi::DataType::FLOAT32, paddle::Place());
+  Tensor x1 = prim::empty<prim::DescTensor>(
+      shape, phi::DataType::FLOAT32, paddle::Place());
+  Tensor out = prim::empty<prim::DescTensor>(
+      shape_out, phi::DataType::FLOAT32, paddle::Place());
+  framework::VarDesc* x0_desc =
+      static_cast<prim::DescTensor*>(x0.impl().get())->get_ptr();
+  target_block->RenameVar(x0_desc->Name(), "x0");
+  framework::VarDesc* x1_desc =
+      static_cast<prim::DescTensor*>(x1.impl().get())->get_ptr();
+  target_block->RenameVar(x1_desc->Name(), "x1");
+  framework::VarDesc* out_desc =
+      static_cast<prim::DescTensor*>(out.impl().get())->get_ptr();
+  target_block->RenameVar(out_desc->Name(), "out");
+  std::vector<framework::VarDesc*> inputs = {target_block->FindVar("x0"),
+                                             target_block->FindVar("x1")};
+  framework::VarDesc* output = target_block->FindVar("out");
+  base_program.concat(inputs, 0, output);
+  auto* forward_opdesc = target_block->AllOps()[0];
+  std::unordered_map<std::string, std::string> grad_to_var;
+  std::vector<framework::BlockDesc*> grad_sub_block;
+  auto test = TestGradCompositeGradMaker(*forward_opdesc,
+                                         std::unordered_set<std::string>(),
+                                         &grad_to_var,
+                                         target_block,
+                                         grad_sub_block);
+  test();
+  std::vector<paddle::experimental::Tensor> muti_fw_input =
+      test.GetMultiForwardInput("X");
+  std::vector<paddle::optional<paddle::experimental::Tensor>>
+      opt_muti_fw_input = test.GetOptionalMultiForwardInput("X");
+  paddle::experimental::Tensor fw_out = test.GetSingleForwardOutput("Out");
+  paddle::experimental::Tensor* fw_out_ptr = test.GetOutputPtr(&fw_out);
+  std::string fw_out_name = test.GetOutputName(fw_out);
+
+  ASSERT_EQ(muti_fw_input.size(), static_cast<std::size_t>(2));
+  ASSERT_EQ(
+      static_cast<prim::DescTensor*>(muti_fw_input[0].impl().get())->Name(),
+      "x0");
+  ASSERT_EQ(
+      static_cast<prim::DescTensor*>(muti_fw_input[1].impl().get())->Name(),
+      "x1");
+  ASSERT_EQ(opt_muti_fw_input.size(), static_cast<std::size_t>(2));
+  ASSERT_EQ(static_cast<prim::DescTensor*>(
+                opt_muti_fw_input[0].get_ptr()->impl().get())
+                ->Name(),
+            "x0");
+  ASSERT_EQ(static_cast<prim::DescTensor*>(
+                opt_muti_fw_input[1].get_ptr()->impl().get())
+                ->Name(),
+            "x1");
+  ASSERT_EQ(&fw_out, fw_out_ptr);
+  ASSERT_EQ(fw_out_name, "out");
+}
+
+TEST(StaticCompositeGradMaker, TestMutiOutputMethod) {
+  TestBaseProgram base_program = TestBaseProgram();
+  auto* target_block = base_program.GetBlock(0);
+  std::vector<int64_t> shape = {4, 2};
+  std::vector<int64_t> shape_out = {2, 2};
+  StaticCompositeContext::Instance().SetBlock(target_block);
+  Tensor x = prim::empty<prim::DescTensor>(
+      shape, phi::DataType::FLOAT32, paddle::Place());
+  Tensor out1 = prim::empty<prim::DescTensor>(
+      shape_out, phi::DataType::FLOAT32, paddle::Place());
+  Tensor out2 = prim::empty<prim::DescTensor>(
+      shape_out, phi::DataType::FLOAT32, paddle::Place());
+  framework::VarDesc* x_desc =
+      static_cast<prim::DescTensor*>(x.impl().get())->get_ptr();
+  target_block->RenameVar(x_desc->Name(), "x");
+  framework::VarDesc* out1_desc =
+      static_cast<prim::DescTensor*>(out1.impl().get())->get_ptr();
+  target_block->RenameVar(out1_desc->Name(), "out1");
+  framework::VarDesc* out2_desc =
+      static_cast<prim::DescTensor*>(out2.impl().get())->get_ptr();
+  target_block->RenameVar(out2_desc->Name(), "out2");
+  framework::VarDesc* input = target_block->FindVar("x");
+  std::vector<framework::VarDesc*> outputs = {target_block->FindVar("out1"),
+                                              target_block->FindVar("out2")};
+  base_program.split(input, 2, 0, outputs);
+  auto* forward_opdesc = target_block->AllOps()[0];
+  std::unordered_map<std::string, std::string> grad_to_var;
+  std::vector<framework::BlockDesc*> grad_sub_block;
+  auto test = TestGradCompositeGradMaker(*forward_opdesc,
+                                         std::unordered_set<std::string>(),
+                                         &grad_to_var,
+                                         target_block,
+                                         grad_sub_block);
+  test();
+  paddle::experimental::Tensor fw_input = test.GetSingleForwardInput("X");
+  paddle::optional<paddle::experimental::Tensor> opt_fw_input =
+      test.GetOptionalSingleForwardInput("X");
+  std::vector<paddle::experimental::Tensor> fw_out =
+      test.GetMultiForwardOutput("Out");
+  std::vector<paddle::experimental::Tensor*> fw_out_ptr(fw_out.size());
+  for (size_t i = 0; i < fw_out.size(); ++i) {
+    fw_out_ptr[i] = &fw_out[i];
+  }
+  std::vector<paddle::experimental::Tensor*> fw_out_ptr =
+      test.GetOutputPtr(fw_out_ptr);
+  std::vector<std::string> fw_out_name = test.GetOutputName(fw_out);
+
+  ASSERT_EQ(static_cast<prim::DescTensor*>(fw_input.impl().get())->Name(), "x");
+  ASSERT_EQ(static_cast<prim::DescTensor*>(opt_fw_input.get_ptr()->impl().get())
+                ->Name(),
+            "x");
+  ASSERT_EQ(fw_out.size(), static_cast<std::size_t>(2));
+  ASSERT_EQ(fw_out_ptr[0], &fw_out[0]);
+  ASSERT_EQ(fw_out_ptr[1], &fw_out[1]);
+  ASSERT_EQ(fw_out_name[0], "out1");
+  ASSERT_EQ(fw_out_name[1], "out2");
+}
+
 TEST(StaticPrim, TestFlags) {
   PrimCommonUtils::SetPrimEnabled(true);
   ASSERT_TRUE(PrimCommonUtils::IsPrimEnabled());
   PrimCommonUtils::SetPrimEnabled(false);
   ASSERT_FALSE(PrimCommonUtils::IsPrimEnabled());
 }
+
 }  // namespace prim
 }  // namespace paddle
 USE_OP_ITSELF(tanh);
