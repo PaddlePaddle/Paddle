@@ -157,10 +157,13 @@ def process_int_array(op_item, int_array_configs):
                         ]
 
 
-def parse_composite_info(ops, backward_op_dict):
+def parse_composite_info(ops, backward_ops, backward_op_dict):
     for op in ops:
         if "backward" in op:
             op["phi_backward"] = op["backward"]
+    for backward_op in backward_ops:
+        if "backward" in backward_op:
+            backward_op["phi_backward"] = backward_op["backward"]
     for backward_op_name, op_dict in backward_op_dict.items():
         if "composite" not in op_dict:
             continue
@@ -486,7 +489,7 @@ def main(
     for bw_op in backward_ops:
         bw_op['op_name'] = bw_op['name']
 
-    parse_composite_info(ops, backward_op_dict)
+    parse_composite_info(ops, backward_ops, backward_op_dict)
 
     replace_compat_name(op_fluid_map_list, forward_op_dict, backward_op_dict)
 
