@@ -14,9 +14,9 @@
 
 import collections
 import inspect
+import textwrap
 import threading
 import weakref
-import textwrap
 
 from paddle.fluid import _non_static_mode, framework
 from paddle.fluid.data_feeder import check_type
@@ -25,7 +25,7 @@ from paddle.fluid.dygraph.base import param_guard, switch_to_static_graph
 from paddle.fluid.layers.utils import flatten
 from paddle.utils import gast
 
-from . import error, logging_utils, ast_to_source_code
+from . import ast_to_source_code, error, logging_utils
 from .ast_transformer import DygraphToStaticAst
 from .function_spec import (
     FunctionSpec,

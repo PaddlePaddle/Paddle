@@ -61,7 +61,6 @@ IMAGE_SIZE = 64
 SEED = 2020
 
 
-
 class Cycle_Gan(fluid.dygraph.Layer):
     def __init__(self, input_channel, istrain=True):
         super().__init__()

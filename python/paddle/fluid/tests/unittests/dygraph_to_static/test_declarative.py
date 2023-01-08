@@ -30,7 +30,6 @@ from paddle.jit.dy2static.program_translator import (
 from paddle.static import InputSpec
 
 
-
 class SimpleNet(Layer):
     def __init__(self):
         super().__init__()
