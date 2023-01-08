@@ -14,7 +14,6 @@
 
 import collections
 import inspect
-import textwrap
 import threading
 import weakref
 
@@ -42,7 +41,6 @@ from .partial_program import partial_program_from
 from .utils import (
     ALREADY_D2S,
     ast_to_func,
-    ast_to_source_code,
     func_to_source_code,
     input_specs_compatible,
     make_hashable,
@@ -1222,14 +1220,12 @@ class ProgramTranslator:
 
     #             import paddle
 
-
     #             def func(x):
     #                 if paddle.mean(x) > 0:
     #                     x_v = x - 1
     #                 else:
     #                     x_v = x + 1
     #                 return x_v
-
 
     #             prog_trans = paddle.jit.ProgramTranslator()
 
@@ -1305,14 +1301,12 @@ class ProgramTranslator:
 
     #             import paddle
 
-
     #             def func(x):
     #                 if paddle.mean(x) > 0:
     #                     x_v = x - 1
     #                 else:
     #                     x_v = x + 1
     #                 return x_v
-
 
     #             prog_trans = paddle.jit.ProgramTranslator()
     #             static_func = prog_trans.get_func(func)
@@ -1356,14 +1350,12 @@ class ProgramTranslator:
 
     #             import paddle
 
-
     #             def func(x):
     #                 if paddle.mean(x) > 0:
     #                     x_v = x - 1
     #                 else:
     #                     x_v = x + 1
     #                 return x_v
-
 
     #             prog_trans = paddle.jit.ProgramTranslator()
     #             x = paddle.ones([1, 2])
@@ -1426,14 +1418,12 @@ class ProgramTranslator:
 
     #             import paddle
 
-
     #             def func(x):
     #                 if paddle.mean(x) > 0:
     #                     x_v = x - 1
     #                 else:
     #                     x_v = x + 1
     #                 return x_v
-
 
     #             prog_trans = paddle.jit.ProgramTranslator()
 

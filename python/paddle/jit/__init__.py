@@ -33,5 +33,5 @@ __all__ = [  # noqa
     'set_code_level',
     'set_verbosity',
     'not_to_static',
-    'enable_to_static'
+    'enable_to_static',
 ]
