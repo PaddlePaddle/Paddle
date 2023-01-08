@@ -1947,7 +1947,9 @@ PyMethodDef variable_methods[] = {
     {"numpy",
      (PyCFunction)(void (*)(void))tensor_method_numpy,
      METH_VARARGS | METH_KEYWORDS,
-     NULL},
+     "numpy()\n--\nReturns a numpy array shows the value of current "
+     "Tensor.\nReturns\nndarray: The numpy value of current Tensor.\nReturns "
+     "type\nndarray: dtype is same as current Tensor\nExamples:"},
     {"_is_initialized",
      (PyCFunction)(void (*)(void))tensor_method__is_initialized,
      METH_VARARGS | METH_KEYWORDS,
@@ -1980,7 +1982,28 @@ PyMethodDef variable_methods[] = {
     {"clear_gradient",
      (PyCFunction)(void (*)(void))tensor_clear_gradient,
      METH_VARARGS | METH_KEYWORDS,
-     NULL},
+     R"DOC(
+        clear_gradient()
+        --
+
+        Only for Tensor that has gradient, normally we use this for Parameters since other temporary Tensor doesen't has gradient.
+
+        The Gradient of current Tensor will be set to ``0`` .
+
+        Returns:  None
+
+        Examples:
+             .. code-block:: python
+
+                import paddle
+                input = paddle.uniform([10, 2])
+                linear = paddle.nn.Linear(2, 3)
+                out = linear(input)
+                out.backward()
+                print("Before clear_gradient, linear.weight.grad: {}".format(linear.weight.grad))
+                linear.weight.clear_gradient()
+                print("After clear_gradient, linear.weight.grad: {}".format(linear.weight.grad))
+      )DOC"},
     {"is_dense",
      (PyCFunction)(void (*)(void))tensor_method_is_dense,
      METH_VARARGS | METH_KEYWORDS,
@@ -2008,7 +2031,48 @@ PyMethodDef variable_methods[] = {
     {"detach",
      (PyCFunction)(void (*)(void))tensor_method_detach,
      METH_VARARGS | METH_KEYWORDS,
-     NULL},
+     "detach()\n"
+     "--\n"
+     "Returns a new Tensor, detached from the current graph.\n"
+     "It will share data with origin Tensor and always doesn't have a Tensor "
+     "copy.\n"
+     "In addition, the detached Tensor doesn't provide gradient propagation.\n"
+     "\n"
+     "Returns: The detached Tensor.\n"
+
+     "Examples:\n"
+     "    .. code-block:: python\n"
+
+     "        import paddle\n"
+
+     "        x = paddle.to_tensor(1.0, stop_gradient=False)\n"
+     "        detach_x = x.detach()\n"
+     "        detach_x[:] = 10.0\n"
+     "        print(x)  # Tensor(shape=[1], dtype=float32, place=CPUPlace, "
+     "stop_gradient=False,\n"
+     "                  #        [10.])\n"
+     "        y = x**2\n"
+     "        y.backward()\n"
+     "        print(x.grad)         # [20.0]\n"
+     "        print(detach_x.grad)  # None, 'stop_gradient=True' by default\n"
+
+     "        detach_x.stop_gradient = False # Set stop_gradient to be False, "
+     "supported auto-grad\n"
+     "        z = detach_x**3\n"
+     "        z.backward()\n"
+
+     "        print(x.grad)         # [20.0], detach_x is detached from x's "
+     "graph, not affect each other\n"
+     "        print(detach_x.grad)  # [300.0], detach_x has its own graph\n"
+
+     "        # Due to sharing of data with origin Tensor, There are some "
+     "unsafe operations:\n"
+     "        y = 2 * x\n"
+     "        detach_x[:] = 5.0\n"
+     "        y.backward()\n"
+     "        # It will raise Error:\n"
+     "        #   one of the variables needed for gradient computation has "
+     "been modified by an inplace operation.\n"},
     {"get_tensor",
      (PyCFunction)(void (*)(void))tensor_method_get_underline_tensor,
      METH_VARARGS | METH_KEYWORDS,
@@ -2116,7 +2180,7 @@ PyMethodDef variable_methods[] = {
      METH_VARARGS | METH_KEYWORDS,
      NULL},
     {"element_size",
-     (PyCFunction)(void (*)(void))tensor_method_element_size,
+     (PyCFunction)(void (*)(void))tensor_methon_element_size,
      METH_VARARGS | METH_KEYWORDS,
      NULL},
     /***the method of sparse tensor****/
