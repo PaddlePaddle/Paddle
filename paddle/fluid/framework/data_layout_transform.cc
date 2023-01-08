@@ -61,6 +61,18 @@ void TransDataLayout(const phi::KernelKey& kernel_type_for_var,
       platform::errors::PreconditionNotMet(
           "TransDataLayout only support DataLayout transform on same place."));
 
+  TransDataLayout(kernel_type_for_var.layout(),
+                  expected_kernel_type.layout(),
+                  place,
+                  in,
+                  out);
+}
+
+void TransDataLayout(DataLayout from_layout,
+                     DataLayout to_layout,
+                     phi::Place place,
+                     const phi::DenseTensor& in,
+                     phi::DenseTensor* out) {
   PADDLE_ENFORCE_EQ(
       arity(in.dims()),
       4,
@@ -73,8 +85,7 @@ void TransDataLayout(const phi::KernelKey& kernel_type_for_var,
   auto src_dim = in.dims();
   std::vector<int64_t> dst_dim;
 
-  auto axis =
-      GetAxis(kernel_type_for_var.layout(), expected_kernel_type.layout());
+  auto axis = GetAxis(from_layout, to_layout);
   dst_dim.resize(axis.size());
   for (size_t i = 0; i < axis.size(); i++) {
     dst_dim[i] = src_dim[axis[i]];
@@ -86,7 +97,7 @@ void TransDataLayout(const phi::KernelKey& kernel_type_for_var,
   framework::VisitDataType(framework::TransToProtoVarType(in.dtype()),
                            CastDataLayout(pool.Get(place), axis, in, out));
 
-  out->set_layout(expected_kernel_type.layout());
+  out->set_layout(to_layout);
 }
 
 }  // namespace framework
