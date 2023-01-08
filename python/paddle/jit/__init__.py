@@ -17,6 +17,7 @@ from .api import save
 from .api import load
 from .api import to_static
 from .api import not_to_static
+from .api import enable_to_static
 from .dy2static.logging_utils import set_code_level, set_verbosity
 
 from . import dy2static
@@ -32,4 +33,5 @@ __all__ = [  # noqa
     'set_code_level',
     'set_verbosity',
     'not_to_static',
+    'enable_to_static'
 ]

@@ -48,6 +48,7 @@ from .dy2static.program_translator import (
     ProgramTranslator,
     StaticFunction,
     unwrap_decorators,
+    enable_to_static,
 )
 from paddle.jit.translated_layer import (
     TranslatedLayer,
