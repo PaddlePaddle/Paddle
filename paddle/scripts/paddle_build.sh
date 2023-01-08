@@ -3505,7 +3505,6 @@ function check_coverage_build() {
     pr_coverage_build_size=`echo $buildSize|sed 's#G##g'`
 
     diff_coverage_build_size=`echo $(($pr_coverage_build_size - $dev_coverage_build_size))`
-
     set +x
     if [ ${diff_coverage_build_size} -gt 3 ]; then
        approval_line=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000`
