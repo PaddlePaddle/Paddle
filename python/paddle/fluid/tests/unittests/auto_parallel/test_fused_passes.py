@@ -79,11 +79,16 @@ class TestAMPPass(unittest.TestCase):
 
     def test_passes(self):
         losses = []
-        for use_fused_passes in [True, False]:
-            engine = self.get_engine(use_fused_passes, ["fuse_gemm_epilogue"])
-            history = engine.fit(self.dataset, 3, batch_size=self.batch_size)
-            losses.append(np.array(history.history["loss"]))
-        self.check_results(losses[0], losses[1])
+        if float(paddle.version.cuda()) >= 11.6:
+            for use_fused_passes in [True, False]:
+                engine = self.get_engine(
+                    use_fused_passes, ["fuse_gemm_epilogue"]
+                )
+                history = engine.fit(
+                    self.dataset, 3, batch_size=self.batch_size
+                )
+                losses.append(np.array(history.history["loss"]))
+            self.check_results(losses[0], losses[1])
 
 
 if __name__ == "__main__":
