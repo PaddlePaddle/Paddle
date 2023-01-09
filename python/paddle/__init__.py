@@ -26,6 +26,7 @@ except ImportError:
 from .batch import batch  # noqa: F401
 from .framework import monkey_patch_variable
 from .framework import monkey_patch_math_varbase
+from .tensor.tensor import Tensor
 
 monkey_patch_variable()
 monkey_patch_math_varbase()
@@ -81,7 +82,6 @@ import paddle.geometric  # noqa: F401
 import paddle.sparse  # noqa: F401
 import paddle.quantization  # noqa: F401
 
-from .tensor.tensor import Tensor
 from .tensor.attribute import is_complex  # noqa: F401
 from .tensor.attribute import is_integer  # noqa: F401
 from .tensor.attribute import rank  # noqa: F401
