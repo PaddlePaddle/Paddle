@@ -34,6 +34,7 @@ namespace cub = hipcub;
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #include "paddle/phi/backends/gpu/gpu_dnn.h"
 #include "paddle/phi/common/layout.h"
+#include "paddle/phi/kernels/funcs/norm_utils.cu.h"
 #include "paddle/phi/kernels/funcs/norm_utils.h"
 
 namespace phi {
@@ -163,6 +164,99 @@ __global__ void KeBackwardLocalStats(const T *dy,
       sum_dy_prod[k + C] = out;
     }
   }
+  if (blockIdx.x == 0 && threadIdx.x == 0) {
+    sum_dy_prod[2 * C] = 1.0;
+  }
+}
+
+template <typename T, const int BlockDim, DataLayout layout>
+__global__ void KeBackwardLocalStats2D(const T *dy,
+                                       const T *x,
+                                       const BatchNormParamType<T> *means,
+                                       int N,
+                                       int M,
+                                       int C,
+                                       BatchNormParamType<T> *block_data_ptr,
+                                       int *flag_ptr,
+                                       BatchNormParamType<T> *sum_dy_prod) {
+  // typedef cub::BlockReduce<BatchNormParamType<T>, BlockDim> BlockReduce;
+  // __shared__ typename BlockReduce::TempStorage temp_storage;
+  __shared__ BatchNormParamType<T> smem_sum[BlockDim];
+  __shared__ BatchNormParamType<T> smem_square_sum[BlockDim];
+  for (int k = blockIdx.x * blockDim.x + threadIdx.x; k < C;
+       k += gridDim.x * blockDim.x) {
+    BatchNormParamType<T> sum1 = 0.;
+    BatchNormParamType<T> sum2 = 0.;
+    auto mean = means[k];
+    for (int i = blockIdx.y * blockDim.y + threadIdx.y; i < N * M;
+         i += gridDim.y * blockDim.y) {
+      int id = layout == DataLayout::kNCHW ? (i / M) * C * M + k * M + i % M
+                                           : i * C + k;
+      auto g = static_cast<BatchNormParamType<T>>(dy[id]);
+      sum1 += g;
+      auto x_i = static_cast<BatchNormParamType<T>>(x[id]);
+      sum2 += g * (x_i - mean);
+    }
+    funcs::BlockReduceByVetical<T>(
+        sum1, sum2, &smem_sum[0], &smem_square_sum[0], &sum1, &sum2);
+
+    if (gridDim.y > 1) {
+      volatile BatchNormParamType<T> *staging_sum = block_data_ptr;
+      volatile BatchNormParamType<T> *staging_square_sum =
+          &block_data_ptr[C * gridDim.y];
+      // write block data to global memory
+      if (threadIdx.y == 0) {
+        staging_sum[k + blockIdx.y * C] = sum1;
+        staging_square_sum[k + blockIdx.y * C] = sum2;
+      }
+
+      // make sure write is visible to all blocks
+      __threadfence();
+      __syncthreads();
+
+      __shared__ bool is_last_block_done;
+      // mark block done
+      if (threadIdx.x == 0 && threadIdx.y == 0) {
+        int old = atomicAdd(&flag_ptr[blockIdx.x], 1);
+        is_last_block_done = (old == (gridDim.y - 1));
+      }
+
+      __syncthreads();
+
+      if (is_last_block_done) {
+        sum1 = static_cast<BatchNormParamType<T>>(0);
+        sum2 = static_cast<BatchNormParamType<T>>(0);
+        // thread sum
+        for (int y = threadIdx.y; y < gridDim.y; y += blockDim.y) {
+          sum1 += staging_sum[k + y * C];
+          sum2 += staging_square_sum[k + y * C];
+        }
+
+        // vertical block sum
+        funcs::BlockReduceByVetical<T>(
+            sum1, sum2, &smem_sum[0], &smem_square_sum[0], &sum1, &sum2);
+
+        // final compute
+        if (threadIdx.y == 0) {
+          sum_dy_prod[k] = sum1;
+          sum_dy_prod[k + C] = sum2;
+        }
+      }
+    }
+  }
+  /*
+  __syncthreads();
+  auto out = BlockReduce(temp_storage).Reduce(sum1, cub::Sum());
+  __syncthreads();
+  if (threadIdx.x == 0) {
+    sum_dy_prod[k] = out;
+  }
+  out = BlockReduce(temp_storage).Reduce(sum2, cub::Sum());
+  __syncthreads();
+  if (threadIdx.x == 0) {
+    sum_dy_prod[k + C] = out;
+  }
+  */
   if (blockIdx.x == 0 && threadIdx.x == 0) {
     sum_dy_prod[2 * C] = 1.0;
   }
@@ -410,9 +504,45 @@ void SyncBatchNormGradFunctor(
         <<<grid, threads, 0, stream>>>(
             dy_d, x_d, saved_mean_ptr, N, fsize, C, stats);
   } else {
-    KeBackwardLocalStats<T, threads, DataLayout::kNHWC>
-        <<<grid, threads, 0, stream>>>(
-            dy_d, x_d, saved_mean_ptr, N, fsize, C, stats);
+    if (x_dims.size() == 2) {
+      dim3 block;
+      dim3 grid;
+      const int block_size = 512;
+
+      // init intermediate storage
+      DenseTensor block_data_tensor;
+      DenseTensor flag_tensor;
+      BatchNormParamType<T> *block_data_ptr = nullptr;
+      int *flag_ptr = nullptr;
+
+      funcs::SetLaunchConfigInfoForChannelLast<T>(ctx,
+                                                  &block_data_tensor,
+                                                  &flag_tensor,
+                                                  &block_data_ptr,
+                                                  &flag_ptr,
+                                                  N,
+                                                  H,
+                                                  W,
+                                                  D,
+                                                  C,
+                                                  block_size,
+                                                  &block,
+                                                  &grid);
+      KeBackwardLocalStats2D<T, threads, DataLayout::kNHWC>
+          <<<grid, threads, 0, stream>>>(dy_d,
+                                         x_d,
+                                         saved_mean_ptr,
+                                         N,
+                                         fsize,
+                                         C,
+                                         block_data_ptr,
+                                         flag_ptr,
+                                         stats);
+    } else {
+      KeBackwardLocalStats<T, threads, DataLayout::kNHWC>
+          <<<grid, threads, 0, stream>>>(
+              dy_d, x_d, saved_mean_ptr, N, fsize, C, stats);
+    }
   }
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
