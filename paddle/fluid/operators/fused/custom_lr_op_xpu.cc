@@ -52,5 +52,4 @@ namespace ops = paddle::operators;
 
 REGISTER_OP_XPU_KERNEL(
     custom_lr,
-    ops::CustomLrXPUKernel<phi::XPUContext, float>,
-    ops::CustomLrXPUKernel<phi::XPUContext, paddle::platform::float16>);
+    ops::CustomLrXPUKernel<phi::XPUContext, int64_t>);
