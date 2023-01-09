@@ -55,7 +55,7 @@ class TestGlobalVarGetterSetter(unittest.TestCase):
         self.assertFalse(name in g)
         self.assertFalse(name in g.keys())
         self.assertIsNone(g.get(name, None))
-        self.assertEquals(g.get(name, -1), -1)
+        self.assertEqual(g.get(name, -1), -1)
 
 
 if __name__ == '__main__':

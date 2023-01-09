@@ -59,6 +59,17 @@ class ReshapeOp : public framework::OperatorWithKernel {
                       platform::errors::InvalidArgument(
                           "Output(Out) of ReshapeOp should not be null."));
 
+    if (ctx->IsRuntime()) {
+      auto *x_var =
+          PADDLE_GET(framework::Variable *, ctx->GetInputVarPtrs("X")[0]);
+      auto *out_var =
+          PADDLE_GET(framework::Variable *, ctx->GetOutputVarPtrs("Out")[0]);
+      // inplace, can not to run infer shape.
+      if (x_var == out_var) {
+        return;
+      }
+    }
+
     if (ctx->HasInputs("ShapeTensor")) {
       // top prority shape
       auto ShapeTensor = ctx->Inputs("ShapeTensor");

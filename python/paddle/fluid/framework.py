@@ -124,7 +124,6 @@ def _update_monkey_methods(is_eager):
     assert isinstance(is_eager, bool)
     # switch into eager mode
     if is_eager:
-        _legacy_C_ops.switch_to_eager_ops()
         if not _already_patch_eager_tensor:
             monkey_patch_varbase()
             monkey_patch_math_varbase()
@@ -132,7 +131,6 @@ def _update_monkey_methods(is_eager):
             _already_patch_eager_tensor = True
     # switch back into legacy mode
     else:
-        _legacy_C_ops.switch_to_core_ops()
         if not _already_patch_varbase:
             monkey_patch_varbase()
             monkey_patch_math_varbase()

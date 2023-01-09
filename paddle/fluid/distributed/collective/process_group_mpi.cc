@@ -174,7 +174,9 @@ std::shared_ptr<ProcessGroupMPI> ProcessGroupMPI::CreateProcessGroupMPI(
 }
 
 ProcessGroupMPI::ProcessGroupMPI(int rank, int size, MPI_Comm pg_comm, int gid)
-    : ProcessGroup(rank, size, gid), stop_(false), pg_comm(pg_comm) {
+    : ProcessGroupWithoutStream(rank, size, gid),
+      stop_(false),
+      pg_comm(pg_comm) {
   PADDLE_ENFORCE_EQ(
       pg_comm == MPI_COMM_NULL,
       false,
