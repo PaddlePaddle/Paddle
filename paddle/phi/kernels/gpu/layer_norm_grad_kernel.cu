@@ -34,7 +34,7 @@ void LayerNormGradKernel(const Context &dev_ctx,
                          DenseTensor *x_grad,
                          DenseTensor *scale_grad,
                          DenseTensor *bias_grad) {
-  using U = paddle::operators::LayerNormParamType<T>;
+  using U = phi::funcs::LayerNormParamType<T>;
   // d_x, d_scale, d_bias may be nullptr
   auto *d_x = x_grad;
   auto *d_scale = scale_grad;
