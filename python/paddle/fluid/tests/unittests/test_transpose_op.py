@@ -17,13 +17,13 @@ import unittest
 import gradient_checker
 import numpy as np
 from decorator_helper import prog_scope
+from op_test import OpTest, convert_float_to_uint16
 
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 import paddle.fluid.layers as layers
 from paddle.fluid import Program, program_guard
-from paddle.fluid.tests.unittests.op_test import OpTest, convert_float_to_uint16
 
 paddle.enable_static()
 
@@ -582,6 +582,7 @@ class TestTransposeAPI_ZeroDim(unittest.TestCase):
         x = paddle.rand([])
         x.stop_gradient = False
         out = paddle.transpose(x, [])
+        out.retain_grads()
         out.backward()
 
         self.assertEqual(out.shape, [])
