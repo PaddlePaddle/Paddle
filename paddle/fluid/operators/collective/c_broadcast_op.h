@@ -43,7 +43,6 @@ class CBroadcastOpCPUKernel : public framework::OpKernel<T> {
     auto root = ctx.Attr<int>("root");
 
     int rid = ctx.Attr<int>("ring_id");
-    const auto& place = ctx.GetPlace();
     ctx.device_context().Alloc<T>(out);
 
     const auto& comm_context_manager =
@@ -55,7 +54,7 @@ class CBroadcastOpCPUKernel : public framework::OpKernel<T> {
     } else {
       // NOTE: This will be removed after moving this operator to phi.
       int64_t send_numel = in->numel();
-      T* recv_buff = out->mutable_data<T>(in->dims(), place);
+      T* recv_buff = reinterpret_cast<T*>(out->data());
       auto gloo = paddle::framework::GlooWrapper::GetInstance();
       PADDLE_ENFORCE_EQ(
           gloo->IsInitialized(),

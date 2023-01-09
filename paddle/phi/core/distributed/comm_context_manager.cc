@@ -37,6 +37,8 @@
 #include "paddle/phi/core/distributed/comm_context_manager.h"
 
 #include <chrono>
+#include <cstdlib>
+#include <cstring>
 #include <memory>
 #include <string>
 
