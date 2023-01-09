@@ -167,22 +167,31 @@ def getBaseFnda(rootPath, test):
 def getCovinfo(rootPath, test):
     ut_map_path = '%s/build/ut_map/%s' % (rootPath, test)
     print("start get fluid ===>")
-    cmd_fluid = 'lcov --capture -d ./paddle/fluid/ -o ./paddle/fluid/coverage_fluid.info --rc lcov_branch_coverage=0'
+    cmd_fluid = (
+        'cd %s && lcov --capture -d ./paddle/fluid/ -o ./paddle/fluid/coverage_fluid.info --rc lcov_branch_coverage=0'
+        % ut_map_path
+    )
     p_fluid = subprocess.Popen(cmd_fluid, shell=True, stdout=subprocess.DEVNULL)
 
     print("start get phi ===>")
-    cmd_phi = 'lcov --capture -d ./paddle/phi -o ./paddle/phi/coverage_phi.info --rc lcov_branch_coverage=0'
+    cmd_phi = (
+        'cd %s && lcov --capture -d ./paddle/phi -o ./paddle/phi/coverage_phi.info --rc lcov_branch_coverage=0'
+        % ut_map_path
+    )
     p_phi = subprocess.Popen(cmd_phi, shell=True, stdout=subprocess.DEVNULL)
 
     print("start get utils ===>")
-    cmd_utils = 'lcov --capture -d ./paddle/utils -o ./paddle/utils/coverage_utils.info --rc lcov_branch_coverage=0'
+    cmd_utils = (
+        'cd %s && lcov --capture -d ./paddle/utils -o ./paddle/utils/coverage_utils.info --rc lcov_branch_coverage=0'
+        % ut_map_path
+    )
     p_utils = subprocess.Popen(cmd_utils, shell=True, stdout=subprocess.DEVNULL)
 
-    print("start wiat fluid ===>")
+    print("start wait fluid ===>")
     p_fluid.wait()
-    print("start wiat phi ===>")
+    print("start wait phi ===>")
     p_phi.wait()
-    print("start wiat utils ===>")
+    print("start wait utils ===>")
     p_utils.wait()
     print("end wait...")
     os.system(

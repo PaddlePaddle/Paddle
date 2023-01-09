@@ -318,6 +318,16 @@ class Parallelizer:
                 [main_program], [startup_program], self._pass_context
             )
 
+            # deps for newexe
+            config = {}
+            config["dist_context"] = self._dist_context
+            APSED_pass = new_pass(
+                "auto_parallel_supplement_explicit_dependencies", config
+            )
+            APSED_pass.apply(
+                [main_program], [startup_program], self._pass_context
+            )
+
         # gradient_merge is then train-only optimization
         if self._mode == "train" and self._strategy.gradient_merge.enable:
             config = copy.deepcopy(self._strategy.gradient_merge.to_dict())

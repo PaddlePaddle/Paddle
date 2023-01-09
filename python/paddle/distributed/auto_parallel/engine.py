@@ -228,6 +228,8 @@ class Engine:
 
         self.history = None
 
+        paddle.framework.set_flags({'FLAGS_new_executor_sequential_run': 1})
+
     def _prepare_data_spec(self, data, split, batch_size):
         inputs_spec = []
         labels_spec = []
@@ -525,7 +527,8 @@ class Engine:
                 self._labels_spec,
             )
             # build forward main program
-            self.program_helper.build_program(mode)
+            with utils.unique_name.guard():
+                self.program_helper.build_program(mode)
 
             self.concrete_program = self.program_helper.concrete_program
             serial_main_prog = self.program_helper.main_program

@@ -25,6 +25,7 @@
 #include "paddle/phi/infermeta/unary.h"
 #include "paddle/phi/kernels/scale_kernel.h"
 
+DECLARE_int32(low_precision_op_list);
 namespace paddle {
 namespace experimental {
 
@@ -54,6 +55,10 @@ PADDLE_API Tensor scale_kernel_context(const Tensor& x,
   auto kernel_result = phi::KernelFactory::Instance().SelectKernelOrThrowError(
       "scale", {kernel_backend, kernel_layout, kernel_data_type});
   const auto& kernel = kernel_result.kernel;
+  if (FLAGS_low_precision_op_list) {
+    phi::KernelFactory::Instance().AddToLowPrecisionKernelList(
+        "scale", kernel_data_type);
+  }
   VLOG(6) << "scale API kernel key: [" << kernel_backend << ", "
           << kernel_layout << ", " << kernel_data_type << "]";
   VLOG(6) << "scale API kernel: " << kernel;
@@ -225,6 +230,10 @@ Tensor scale_switch_case(const Tensor& x,
   auto kernel_result = phi::KernelFactory::Instance().SelectKernelOrThrowError(
       "scale", {kernel_backend, kernel_layout, kernel_data_type});
   const auto& kernel = kernel_result.kernel;
+  if (FLAGS_low_precision_op_list) {
+    phi::KernelFactory::Instance().AddToLowPrecisionKernelList(
+        "scale", kernel_data_type);
+  }
   VLOG(6) << "scale API kernel key: [" << kernel_backend << ", "
           << kernel_layout << ", " << kernel_data_type << "]";
   VLOG(6) << "scale API kernel: " << kernel;
