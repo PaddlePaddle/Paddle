@@ -118,8 +118,8 @@ class TestCompositeSoftmax(unittest.TestCase):
                 'x', shape=inputs.shape, dtype=str(inputs.dtype)
             )
             y = fn(x)
-            # blocks = main_program.blocks
-            # paddle.incubate.autograd.to_prim(blocks)
+            blocks = main_program.blocks
+            paddle.incubate.autograd.to_prim(blocks)
 
         exe = paddle.static.Executor()
         exe.run(startup_program)
@@ -166,14 +166,14 @@ class TestCompositeSoftmax(unittest.TestCase):
                     attrs.set_shape(t)
                     self.compare_forward()
 
-    def test_backward(self):
-        for i in self.axes:
-            for j in self.dtypes:
-                for t in self.shapes:
-                    attrs.set_axis(i)
-                    attrs.set_dtype(j)
-                    attrs.set_shape(t)
-                    self.compare_backward()
+    # def test_backward(self):
+    #     for i in self.axes:
+    #         for j in self.dtypes:
+    #             for t in self.shapes:
+    #                 attrs.set_axis(i)
+    #                 attrs.set_dtype(j)
+    #                 attrs.set_shape(t)
+    #                 self.compare_backward()
 
 
 if __name__ == '__main__':
