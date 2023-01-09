@@ -43,7 +43,7 @@ class TestAMPPass(unittest.TestCase):
         self.rtol = 1e-5
         self.atol = 1e-8
         self.batch_size = 1
-        self.batch_num = 10
+        self.batch_num = 1
         self.clip_norm = 0.2
         self.dataset = FakeDataset(self.batch_size * self.batch_num)
 
@@ -60,7 +60,7 @@ class TestAMPPass(unittest.TestCase):
         strategy = apply_pass(use_fused_passes, fused_passes_list)
         clip = paddle.nn.ClipGradByGlobalNorm(self.clip_norm)
         opt = paddle.optimizer.AdamW(learning_rate=0.00001, grad_clip=clip)
-        model, loss = generate_model("mp")
+        model, loss = generate_model("serial")
 
         engine = auto.Engine(model, loss, opt, strategy=strategy)
         self.init(engine)
@@ -78,11 +78,12 @@ class TestAMPPass(unittest.TestCase):
         )
 
     def test_passes(self):
-
-        engine = self.get_engine(True, ["fuse_gemm_epilogue"])
-        history = engine.fit(self.dataset, 3, batch_size=self.batch_size)
-        losses = np.array(history.history["loss"])
-        engine.evaluate(self.dataset, 3, batch_size=self.batch_size)
+        losses = []
+        for use_fused_passes in [True, False]:
+            engine = self.get_engine(use_fused_passes, ["fuse_gemm_epilogue"])
+            history = engine.fit(self.dataset, 3, batch_size=self.batch_size)
+            losses.append(np.array(history.history["loss"]))
+        self.check_results(losses[0], losses[1])
 
 
 if __name__ == "__main__":
