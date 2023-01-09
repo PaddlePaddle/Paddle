@@ -683,6 +683,11 @@ class ShardingPass(PassBase):
         if self.stage <= 1:
             return
 
+        paddle.framework.set_flags({'FLAGS_new_executor_sequential_run': 0})
+        _logger.info(
+            "Disenable Sequential Redundant Dependencies in Sharding Optimization."
+        )
+
         self.grad_coalesce_prefix = 'sharding_coalesce_grad_'
         self.param_coalesce_prefix = 'sharding_coalesce_param_'
         # NOTE PR#49275 for detail

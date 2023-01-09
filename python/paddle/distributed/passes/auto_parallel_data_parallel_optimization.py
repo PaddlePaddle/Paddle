@@ -96,7 +96,7 @@ class DataParallelOptimizationPass(PassBase):
         self.use_sharding = self.get_attr("use_sharding")
         self.coalesce_prefix = 'coalesce_grad'
         if _is_enable_standalone_executor():
-            paddle.framework.set_flags({'FLAGS_new_executor_sequential_run': 1})
+            paddle.framework.set_flags({'FLAGS_new_executor_sequential_run': 0})
             _logger.info(
                 "Disenable Sequential Redundant Dependencies in Data Parallel Optimization."
             )
