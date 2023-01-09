@@ -764,7 +764,7 @@ struct SimpleOpTypeSetTeller : public Teller {
     if (op_type == "nearest_interp") {
       std::vector<std::string> attrs{
           "interp_method", "align_corners", "scale", "out_h", "out_w"};
-      for (auto const attr : attrs) {
+      for (auto const& attr : attrs) {
         if (!desc.HasAttr(attr)) return false;
       }
       if (desc.HasAttr("data_layout")) {
@@ -810,7 +810,7 @@ struct SimpleOpTypeSetTeller : public Teller {
                                      "scale",
                                      "out_h",
                                      "out_w"};
-      for (auto const attr : attrs) {
+      for (auto const& attr : attrs) {
         if (!desc.HasAttr(attr)) return false;
       }
       auto data_layout = phi::StringToDataLayout(
@@ -849,7 +849,7 @@ struct SimpleOpTypeSetTeller : public Teller {
                                      "scale",
                                      "out_h",
                                      "out_w"};
-      for (auto const attr : attrs) {
+      for (auto const& attr : attrs) {
         if (!desc.HasAttr(attr)) {
           VLOG(3) << "The op_type " << op_type << " doesn't have the attr "
                   << attr << " and return false";
@@ -1746,7 +1746,7 @@ struct SimpleOpTypeSetTeller : public Teller {
                                      "spatial_scale",
                                      "sampling_ratio",
                                      "aligned"};
-      for (auto const attr : attrs) {
+      for (auto const& attr : attrs) {
         if (!desc.HasAttr(attr)) return false;
       }
 
