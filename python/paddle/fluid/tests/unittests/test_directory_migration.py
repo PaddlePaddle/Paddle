@@ -96,7 +96,6 @@ class TestDirectory(unittest.TestCase):
             'paddle.static.nn.group_norm',
             'paddle.static.nn.instance_norm',
             'paddle.static.nn.layer_norm',
-            'paddle.static.nn.multi_box_head',
             'paddle.static.nn.nce',
             'paddle.static.nn.prelu',
             'paddle.static.nn.row_conv',

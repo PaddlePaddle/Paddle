@@ -171,6 +171,13 @@ std::unique_ptr<DeviceContext> CreateDeviceContext(
     dev_ctx->SetGenerator(
         framework::DefaultCUDAGenerator(p.GetDeviceId()).get());
 #endif
+  } else if (is_xpu_place(p)) {
+#if defined(PADDLE_WITH_XPU)
+    dev_ctx->SetAllocator(
+        memory::allocation::AllocatorFacade::Instance().GetAllocator(p).get());
+    dev_ctx->SetGenerator(
+        framework::DefaultXPUGenerator(p.GetDeviceId()).get());
+#endif
   } else {
     dev_ctx->SetAllocator(
         memory::allocation::AllocatorFacade::Instance().GetAllocator(p).get());

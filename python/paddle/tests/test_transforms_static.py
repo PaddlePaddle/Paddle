@@ -30,7 +30,7 @@ class TestTransformUnitTestBase(unittest.TestCase):
         self.set_trans_api()
 
     def get_shape(self):
-        return (64, 64, 3)
+        return (3, 64, 64)
 
     def set_trans_api(self):
         self.api = transforms.Resize(size=16)
@@ -60,6 +60,8 @@ class TestTransformUnitTestBase(unittest.TestCase):
 
     def test_transform(self):
         dy_res = self.dynamic_transform()
+        if isinstance(dy_res, paddle.Tensor):
+            dy_res = dy_res.numpy()
         st_res = self.static_transform()
 
         np.testing.assert_almost_equal(dy_res, st_res)
@@ -96,6 +98,64 @@ class TestRandomVerticalFlip0(TestTransformUnitTestBase):
 class TestRandomVerticalFlip1(TestTransformUnitTestBase):
     def set_trans_api(self):
         self.api = transforms.RandomVerticalFlip(prob=1)
+
+
+class TestRandomCrop_random(TestTransformUnitTestBase):
+    def get_shape(self):
+        return (3, 240, 240)
+
+    def set_trans_api(self):
+        self.crop_size = (224, 224)
+        self.api = transforms.RandomCrop(self.crop_size)
+
+    def assert_test_random_equal(self, res, eps=10e-5):
+
+        _, h, w = self.get_shape()
+        c_h, c_w = self.crop_size
+        res_assert = True
+        for y in range(h - c_h):
+            for x in range(w - c_w):
+                diff_abs_sum = np.abs(
+                    (self.img[:, y : y + c_h, x : x + c_w] - res)
+                ).sum()
+                if diff_abs_sum < eps:
+                    res_assert = False
+                    break
+            if not res_assert:
+                break
+        assert not res_assert
+
+    def test_transform(self):
+        dy_res = self.dynamic_transform().numpy()
+        st_res = self.static_transform()
+
+        self.assert_test_random_equal(dy_res)
+        self.assert_test_random_equal(st_res)
+
+
+class TestRandomCrop_same(TestTransformUnitTestBase):
+    def get_shape(self):
+        return (3, 224, 224)
+
+    def set_trans_api(self):
+        self.crop_size = (224, 224)
+        self.api = transforms.RandomCrop(self.crop_size)
+
+
+class TestRandomRotation(TestTransformUnitTestBase):
+    def set_trans_api(self):
+        degree = np.random.uniform(-180, 180)
+        eps = 10e-5
+        degree_tuple = (degree - eps, degree + eps)
+        self.api = transforms.RandomRotation(degree_tuple)
+
+
+class TestRandomRotation_expand_True(TestTransformUnitTestBase):
+    def set_trans_api(self):
+        degree = np.random.uniform(-180, 180)
+        eps = 10e-5
+        degree_tuple = (degree - eps, degree + eps)
+        self.api = transforms.RandomRotation(degree_tuple, expand=True, fill=3)
 
 
 if __name__ == "__main__":

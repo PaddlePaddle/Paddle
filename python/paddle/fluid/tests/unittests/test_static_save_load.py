@@ -118,8 +118,8 @@ class SimpleLSTMRNN(fluid.Layer):
                 gate_input = paddle.matmul(x=nn, y=weight_1)
 
                 gate_input = paddle.add(gate_input, bias)
-                i, j, f, o = fluid.layers.split(
-                    gate_input, num_or_sections=4, dim=-1
+                i, j, f, o = paddle.split(
+                    gate_input, num_or_sections=4, axis=-1
                 )
                 c = pre_cell * paddle.nn.functional.sigmoid(
                     f
@@ -130,10 +130,10 @@ class SimpleLSTMRNN(fluid.Layer):
                 self._input = m
 
                 if self._dropout is not None and self._dropout > 0.0:
-                    self._input = fluid.layers.dropout(
+                    self._input = paddle.nn.functional.dropout(
                         self._input,
-                        dropout_prob=self._dropout,
-                        dropout_implementation='upscale_in_train',
+                        p=self._dropout,
+                        mode='upscale_in_train',
                     )
             res.append(
                 paddle.reshape(self._input, shape=[1, -1, self._hidden_size])
@@ -222,10 +222,10 @@ class PtbModel(fluid.Layer):
             x_emb, shape=[-1, self.num_steps, self.hidden_size]
         )
         if self.dropout is not None and self.dropout > 0.0:
-            x_emb = fluid.layers.dropout(
+            x_emb = paddle.nn.functional.dropout(
                 x_emb,
-                dropout_prob=self.drop_out,
-                dropout_implementation='upscale_in_train',
+                p=self.drop_out,
+                mode='upscale_in_train',
             )
         rnn_out, last_hidden, last_cell = self.simple_lstm_rnn(
             x_emb, init_h, init_c
@@ -423,7 +423,7 @@ class TestSaveLoadPartial(unittest.TestCase):
 
             test_program = fluid.default_main_program().clone(for_test=True)
 
-            add_1 = fluid.layers.fc(
+            add_1 = paddle.static.nn.fc(
                 static_last_hidden,
                 size=hidden_size,
                 num_flatten_dims=2,
@@ -682,7 +682,7 @@ class TestProgramStatePartial(unittest.TestCase):
 
             test_program = fluid.default_main_program().clone(for_test=True)
 
-            add_1 = fluid.layers.fc(
+            add_1 = paddle.static.nn.fc(
                 static_last_hidden,
                 size=hidden_size,
                 num_flatten_dims=2,
@@ -856,8 +856,8 @@ class TestVariableInit(unittest.TestCase):
     def test_variable_init(self):
 
         x = fluid.data(name="x", shape=[10, 10], dtype='float32')
-        y = fluid.layers.fc(x, 10)
-        z = fluid.layers.fc(y, 10)
+        y = paddle.static.nn.fc(x, 10)
+        z = paddle.static.nn.fc(y, 10)
 
         place = self.set_place()
         exe = fluid.Executor(place)
@@ -1479,7 +1479,7 @@ class TestProgramStateOldSave(unittest.TestCase):
 
             test_program = fluid.default_main_program().clone(for_test=True)
 
-            add_1 = fluid.layers.fc(
+            add_1 = paddle.static.nn.fc(
                 static_last_hidden,
                 size=hidden_size,
                 num_flatten_dims=2,
@@ -1651,7 +1651,7 @@ class TestProgramStateOldSaveSingleModel(unittest.TestCase):
 
             test_program = fluid.default_main_program().clone(for_test=True)
 
-            add_1 = fluid.layers.fc(
+            add_1 = paddle.static.nn.fc(
                 static_last_hidden,
                 size=hidden_size,
                 num_flatten_dims=2,
@@ -1759,7 +1759,7 @@ class TestProgramStateOldSaveSingleModel(unittest.TestCase):
 
 class TestStaticSaveLoadPickle(unittest.TestCase):
     def test_pickle_protocol(self):
-        # enable static mode
+        # enable static graph mode
         paddle.enable_static()
 
         with new_program_scope():

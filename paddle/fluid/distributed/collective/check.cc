@@ -14,10 +14,10 @@
 
 #include "paddle/fluid/distributed/collective/check.h"
 
-#include "paddle/fluid/distributed/collective/NCCLTools.h"
-#include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/distributed/collective/nccl_tools.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/errors.h"
 
 #ifdef PADDLE_WITH_HIP

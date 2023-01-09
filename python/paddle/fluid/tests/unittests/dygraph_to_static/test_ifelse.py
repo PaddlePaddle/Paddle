@@ -44,7 +44,6 @@ from ifelse_simple_func import (
 import paddle
 import paddle.fluid.core as core
 import paddle.nn.functional as F
-from paddle.jit.api import declarative
 from paddle.jit.dy2static.program_translator import ProgramTranslator
 from paddle.jit.dy2static.utils import Dygraph2StaticException
 
@@ -66,7 +65,7 @@ class TestDy2staticException(unittest.TestCase):
         if self.dyfunc:
             with self.assertRaisesRegex(Dygraph2StaticException, self.error):
                 ProgramTranslator().enable(True)
-                self.assertTrue(declarative(self.dyfunc)(self.x))
+                self.assertTrue(paddle.jit.to_static(self.dyfunc)(self.x))
         paddle.fluid.dygraph.base._in_declarative_mode_ = False
         ProgramTranslator().enable(False)
 
@@ -89,7 +88,7 @@ class TestDygraphIfElse(unittest.TestCase):
         with fluid.dygraph.guard(place):
             x_v = fluid.dygraph.to_variable(self.x)
             if to_static:
-                ret = declarative(self.dyfunc)(x_v)
+                ret = paddle.jit.to_static(self.dyfunc)(x_v)
             else:
                 ret = self.dyfunc(x_v)
             return ret.numpy()
@@ -293,7 +292,7 @@ class TestAst2FuncWithExternalFunc(TestDygraphIfElse):
 
 
 class NetWithExternalFunc(fluid.dygraph.Layer):
-    @declarative
+    @paddle.jit.to_static
     def forward(self, x, label=None):
         if paddle.mean(x) < 0:
             x_v = x - 1

@@ -113,7 +113,9 @@ def send(tensor, dst=0, group=None, sync_op=True, use_calc_stream=False):
             tensor, dst_rank_in_group, group, sync_op, use_calc_stream
         )
     else:
-        assert group is None, "Group can not be used in static mode for now."
+        assert (
+            group is None
+        ), "Group can not be used in static graph mode for now."
         return _send_in_static_mode(
             tensor, dst, group, sync_op, use_calc_stream
         )

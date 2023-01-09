@@ -202,6 +202,7 @@ struct Argument {
 
   // Passed from config.
   DECL_ARGUMENT_FIELD(use_gpu, UseGPU, bool);
+  DECL_ARGUMENT_FIELD(use_cutlass, UseCutlass, bool);
   DECL_ARGUMENT_FIELD(use_fc_padding, UseFcPadding, bool);
   DECL_ARGUMENT_FIELD(gpu_device_id, GPUDeviceId, int);
 
@@ -365,7 +366,7 @@ struct Argument {
   DECL_ARGUMENT_FIELD(mixed_black_list,
                       MixedBlackList,
                       std::unordered_set<std::string>);
-  DECL_ARGUMENT_FIELD(enable_gpu_half, EnableGPUHalf, bool);
+  DECL_ARGUMENT_FIELD(enable_gpu_mixed, EnableGPUMixed, bool);
   DECL_ARGUMENT_FIELD(mixed_precision_mode, MixedPrecisionMode, int);
 
   // cinn compiler related

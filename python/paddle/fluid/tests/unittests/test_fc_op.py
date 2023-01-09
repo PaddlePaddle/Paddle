@@ -179,26 +179,26 @@ class TestFCOpError(unittest.TestCase):
 
             def test_Variable():
                 # the input type must be Variable
-                fluid.layers.fc(input=input_data, size=1)
+                paddle.static.nn.fc(x=input_data, size=1)
 
             self.assertRaises(TypeError, test_Variable)
 
             def test_input_list():
                 # each of input(list) must be Variable
-                fluid.layers.fc(input=[input_data], size=1)
+                paddle.static.nn.fc(x=[input_data], size=1)
 
             self.assertRaises(TypeError, test_input_list)
 
             def test_type():
                 # dtype must be float32 or float64
                 x2 = fluid.layers.data(name='x2', shape=[4], dtype='int32')
-                fluid.layers.fc(input=x2, size=1)
+                paddle.static.nn.fc(x=x2, size=1)
 
             self.assertRaises(TypeError, test_type)
 
             # The input dtype of fc can be float16 in GPU, test for warning
             x3 = fluid.layers.data(name='x3', shape=[4], dtype='float16')
-            fluid.layers.fc(input=x3, size=1)
+            paddle.static.nn.fc(x=x3, size=1)
 
 
 if __name__ == "__main__":

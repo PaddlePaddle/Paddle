@@ -28,7 +28,7 @@ import paddle
 import paddle.fluid as fluid
 import paddle.jit.dy2static as _jst
 from paddle.jit import ProgramTranslator
-from paddle.jit.api import declarative
+from paddle.jit.api import to_static
 from paddle.jit.dy2static.utils import func_to_source_code
 from paddle.utils import gast
 
@@ -47,7 +47,7 @@ def simple_func(x, weight_numpy):
     return z
 
 
-@declarative
+@to_static
 def decorated_simple_func(x, weight_numpy):
     x = fluid.dygraph.to_variable(x)
     w = fluid.dygraph.to_variable(weight_numpy)
@@ -206,7 +206,7 @@ class StaticCode2:
 
 
 class NetWithError(fluid.dygraph.layers.Layer):
-    @declarative
+    @to_static
     def forward(self, x):
         linear = paddle.nn.Linear(32, 64)
         y = linear(x)
@@ -357,12 +357,12 @@ class TestErrorWithInitFromStaticMode(unittest.TestCase):
         net = Net()
 
         self.program_translator.enable(True)
-        with self.assertRaisesRegexp(
+        with self.assertRaisesRegex(
             RuntimeError, "only available in dynamic mode"
         ):
             self.program_translator.get_output(net.forward, self.x)
 
-        with self.assertRaisesRegexp(
+        with self.assertRaisesRegex(
             RuntimeError, "only available in dynamic mode"
         ):
             self.program_translator.get_program(net.forward, self.x)

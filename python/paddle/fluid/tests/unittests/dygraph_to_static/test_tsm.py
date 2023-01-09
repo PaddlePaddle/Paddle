@@ -25,7 +25,7 @@ import paddle
 import paddle.fluid as fluid
 from paddle.fluid.dygraph import to_variable
 from paddle.jit import ProgramTranslator
-from paddle.jit.api import declarative
+from paddle.jit.api import to_static
 from paddle.nn import BatchNorm, Linear
 
 random.seed(0)
@@ -200,7 +200,7 @@ class TSM_ResNet(fluid.dygraph.Layer):
             ),
         )
 
-    @declarative
+    @to_static
     def forward(self, inputs):
         y = paddle.reshape(inputs, [-1] + self.reshape_list)
         y = self.conv(y)
@@ -208,7 +208,7 @@ class TSM_ResNet(fluid.dygraph.Layer):
         for bottleneck_block in self.bottleneck_block_list:
             y = bottleneck_block(y)
         y = self.pool2d_avg(y)
-        y = fluid.layers.dropout(y, dropout_prob=0.5)
+        y = paddle.nn.functional.dropout(y, p=0.5)
         y = paddle.reshape(y, [-1, self.seg_num, y.shape[1]])
         y = paddle.mean(y, axis=1)
         y = paddle.reshape(y, shape=[-1, 2048])

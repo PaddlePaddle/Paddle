@@ -12,10 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from copy import deepcopy
+
 import numpy as np
 
 import paddle
 from paddle import _legacy_C_ops
+from paddle.amp.auto_cast import _in_amp_guard, _in_pure_fp16_guard
 from paddle.fluid import backward, core, framework, program_guard
 from paddle.fluid.compiler import BuildStrategy
 from paddle.fluid.contrib.mixed_precision.decorator import (
@@ -26,10 +29,6 @@ from paddle.fluid.contrib.mixed_precision.fp16_utils import (
     rewrite_program,
 )
 from paddle.fluid.dygraph import layers
-from paddle.fluid.dygraph.amp.auto_cast import (
-    _in_amp_guard,
-    _in_pure_fp16_guard,
-)
 from paddle.fluid.dygraph.base import switch_to_static_graph
 from paddle.fluid.executor import (
     _is_dy2st_enable_standalone_executor,
@@ -132,7 +131,7 @@ def _change_is_test_status(program, is_test):
 
 class PartialProgramLayer:
     """
-    PartialProgramLayer wraps all the ops from layers decorated by `@declarative`
+    PartialProgramLayer wraps all the ops from layers decorated by `@to_static`
     and execute them as a static subgraph.
 
     .. note::
@@ -143,12 +142,12 @@ class PartialProgramLayer:
 
     Args:
         main_program(Program): The main program that contains ops need to be executed.
-        inputs(list[Variable]): The input list of the decorated function by `@declarative`.
-        outputs(list[Variable]): The output list of the decorated function by `@declarative`.
+        inputs(list[Variable]): The input list of the decorated function by `@to_static`.
+        outputs(list[Variable]): The output list of the decorated function by `@to_static`.
         parameters(list[VarBase]|None): All trainable parameters included in the program. Default None.
 
     Returns:
-        Layer: A Layer object that run all ops internally in static mode.
+        Layer: A Layer object that run all ops internally in static graph mode.
     """
 
     def __init__(
@@ -251,7 +250,7 @@ class PartialProgramLayer:
 
     @switch_to_static_graph
     def _create_forward_backward_train_program(self):
-        whole_program = self._create_program()
+        whole_program = self._train_program
         forward_end_op_index = self._infer_program.desc.block(0).op_size()
         return self._get_forward_backward_program_form(
             whole_program, forward_end_op_index
@@ -259,7 +258,7 @@ class PartialProgramLayer:
 
     @switch_to_static_graph
     def _create_forward_backward_train_amp_program(self):
-        whole_program = self._create_amp_program()
+        whole_program = self._train_amp_program
         forward_end_op_index = self._infer_amp_program.desc.block(0).op_size()
         return self._get_forward_backward_program_form(
             whole_program, forward_end_op_index
@@ -267,7 +266,7 @@ class PartialProgramLayer:
 
     @switch_to_static_graph
     def _create_forward_backward_train_pure_fp16_program(self):
-        whole_program = self._create_pure_fp16_program()
+        whole_program = self._train_pure_fp16_program
         forward_end_op_index = self._infer_pure_fp16_program.desc.block(
             0
         ).op_size()
@@ -402,6 +401,43 @@ class PartialProgramLayer:
     def _infer_pure_fp16_program_id(self):
         return _hash_with_id(self._infer_pure_fp16_program, self)
 
+    @LazyInitialized
+    def _param_grad_names(self):
+        names = []
+        # NOTE: `names` and `self._params` must be in the same order so that
+        # the param grad name can be set correctly in the run_program.
+        for param in self._params:
+            candidate = [
+                var_name
+                for var_name in self._train_program.block(0).vars.keys()
+                if var_name.endswith(param.name + '@GRAD')
+            ]
+            if candidate:
+                names.append(
+                    max(candidate, key=lambda name: name.count('grad/'))
+                )
+            else:
+                names.append(param.name + '@GRAD')
+        return names
+
+    @LazyInitialized
+    def _out_grad_names(self):
+        names = []
+        fwd_end_op_index = self._get_end_op_index()
+        for i in range(
+            fwd_end_op_index + 1,
+            min(
+                fwd_end_op_index + 2 * len(self._outputs.var_ids),
+                len(self.program.block(0).ops),
+            ),
+            2,
+        ):
+            op = self.program.block(0).ops[i]
+            if op.type == 'fill_constant':
+                var_name = op.output('Out')[0]
+                names.append(var_name)
+        return names
+
     @property
     def whole_program_id(self):
         if self.training:
@@ -534,7 +570,7 @@ class PartialProgramLayer:
     def _prune_unused_params(self, program):
         """
         Prune the parameters not used anywhere in the program.
-        The `@declarative` may only decorated a sub function which
+        The `@to_static` may only decorated a sub function which
         contains some unused parameters created in `__init__`.
         So prune these parameters to avoid unnecessary operations in
         `run_program_op`.
@@ -608,6 +644,18 @@ class PartialProgramLayer:
             'program_id',
             self.program_id,
         ]
+        if self.training:
+            # NOTE: In the case of higher-order gradient, the names of the parameter grads may be like
+            # `grad/grad/grad/linear_0.w_0@GRAD` instead of simply `linear_0.w_0@GRAD`, so we get
+            # the correct names of the parameter grads from program. And out grads are similar to above.
+            attrs.extend(
+                (
+                    'param_grad_names',
+                    self._param_grad_names,
+                    'out_grad_names',
+                    self._out_grad_names,
+                )
+            )
         if self._cuda_graph_capture_mode:
             attrs.extend(
                 (
@@ -699,19 +747,36 @@ class PartialProgramLayer:
     def _get_forward_backward_program_form(
         self, whole_program, forward_end_op_index
     ):
-        forward_builded_program = add_build_strategy_for(
-            whole_program, 0, forward_end_op_index, self._build_strategy
-        )
+        # NOTE(dev): We apply build_strategy for backward firstly to
+        # avoid skipping more gc variables.
         backward_start_op_index = forward_end_op_index + 2 * len(
             self._outputs.var_ids
         )
         backward_end_op_index = whole_program.desc.block(0).op_size()
+        # For Backward process in CINN, all param@GRAD shoule be skipped for GC, because
+        # they will be shared in scope and used by optimizer.
+        backward_skip_vars = (
+            self._parse_skip_gc_vars(whole_program) + self._param_grad_names
+        )
         backward_builded_program = add_build_strategy_for(
             whole_program,
             backward_start_op_index,
             backward_end_op_index,
             self._build_strategy,
+            backward_skip_vars,
         )
+
+        forward_skip_vars = self._parse_skip_gc_vars(
+            whole_program, backward_builded_program
+        )
+        forward_builded_program = add_build_strategy_for(
+            whole_program,
+            0,
+            forward_end_op_index,
+            self._build_strategy,
+            forward_skip_vars,
+        )
+
         self._apply_inplace_pass(
             forward_builded_program, backward_builded_program
         )
@@ -726,26 +791,10 @@ class PartialProgramLayer:
         empty_startup_program = paddle.static.Program()
         use_cuda = True if core.is_compiled_with_cuda() else False
         # skip data var
-        forward_mem_opt_skip_vars = []
-        backward_mem_opt_skip_vars = []
-        for var_name, var in forward_program.global_block().vars.items():
-            if var.is_data:
-                forward_mem_opt_skip_vars.append(var_name)
-        for var_name, var in backward_program.global_block().vars.items():
-            if var.is_data:
-                backward_mem_opt_skip_vars.append(var_name)
-        for var in self._inputs:
-            if isinstance(var, paddle.fluid.framework.Variable):
-                forward_mem_opt_skip_vars.append(var.desc.name())
-                backward_mem_opt_skip_vars.append(var.desc.name())
-        for var in self._outputs:
-            if isinstance(var, paddle.fluid.framework.Variable):
-                forward_mem_opt_skip_vars.append(var.desc.name())
-                backward_mem_opt_skip_vars.append(var.desc.name())
-        for var_name in core.parse_safe_eager_deletion_skip_vars(
-            backward_program.desc
-        ):
-            forward_mem_opt_skip_vars.append(var_name)
+        forward_mem_opt_skip_vars = self._parse_skip_gc_vars(
+            forward_program, backward_program
+        )
+        backward_mem_opt_skip_vars = self._parse_skip_gc_vars(forward_program)
         attrs = {
             "use_cuda": use_cuda,
             "mem_opt_skip_vars": forward_mem_opt_skip_vars,
@@ -770,6 +819,38 @@ class PartialProgramLayer:
             attrs,
             attr_types,
         )
+
+    @LazyInitialized
+    def _inout_var_names(self):
+        """
+        Returns Variable Names from self._inputs and self.outputs
+        """
+        var_names = []
+        for var in self._inputs:
+            if isinstance(var, paddle.fluid.framework.Variable):
+                var_names.append(var.desc.name())
+        for var in self._outputs:
+            if isinstance(var, paddle.fluid.framework.Variable):
+                var_names.append(var.desc.name())
+        return var_names
+
+    def _parse_skip_gc_vars(self, program, backward_program=None):
+        """
+        Parse variables that need to skip GC after execute it.
+        If specify backward_program, it will keep the variables used in backward.
+        """
+        # skip data var, DO NOT ignore this deepcopy
+        skip_vars = deepcopy(self._inout_var_names)
+        for var_name, var in program.global_block().vars.items():
+            if var.is_data:
+                skip_vars.append(var_name)
+
+        if backward_program:
+            for var_name in core.parse_safe_eager_deletion_skip_vars(
+                backward_program.desc, True
+            ):
+                skip_vars.append(var_name)
+        return skip_vars
 
     def _prepare(self, inputs):
         """
@@ -1055,13 +1136,16 @@ def partial_program_from(concrete_program):
 
 @switch_to_static_graph
 def add_build_strategy_for(
-    program, start_op_index, end_op_index, build_strategy=None
+    program, start_op_index, end_op_index, build_strategy=None, skip_vars=None
 ):
     if start_op_index < end_op_index:
         compiled_program = paddle.static.CompiledProgram(
             core.Graph(program.desc, start_op_index, end_op_index),
             build_strategy=build_strategy,
         )
+        if skip_vars:
+            # TODO(Aurelius84): Need to unify name with C++, such as kSkipVarNames.
+            compiled_program._graph.set("skip_gc_vars", set(skip_vars))
         compiled_program._compile(
             core.Scope(), framework._current_expected_place()
         )

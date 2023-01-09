@@ -23,6 +23,7 @@
 #include "paddle/phi/core/compat/op_utils.h"
 #include "paddle/utils/string/string_helper.h"
 
+DECLARE_int32(low_precision_op_list);
 DECLARE_bool(enable_api_kernel_fallback);
 
 namespace phi {
@@ -106,9 +107,33 @@ bool KernelFactory::HasKernel(const std::string& kernel_name,
   return true;
 }
 
+void KernelFactory::AddToLowPrecisionKernelList(
+    const std::string& name,
+    const paddle::experimental::DataType& kernel_key_type) {
+  if (FLAGS_low_precision_op_list >= 1) {
+    auto op_name = phi::TransToFluidOpName(name);
+    if (op_name.find("_grad") != std::string::npos) {
+      return;  // only record forward api
+    }
+    bool is_low_precision =
+        (kernel_key_type == paddle::experimental::DataType::FLOAT16 ||
+         kernel_key_type == paddle::experimental::DataType::BFLOAT16);
+    bool need_record =
+        FLAGS_low_precision_op_list == 1 ? is_low_precision : true;
+    if (need_record) {
+      low_precision_kernels_[op_name] += 1;
+    }
+  }
+}
+
+std::map<const std::string, int> KernelFactory::GetLowPrecisionKernelList() {
+  return low_precision_kernels_;
+}
+
 KernelResult KernelFactory::SelectKernelOrThrowError(
     const std::string& kernel_name, const KernelKey& const_kernel_key) const {
   auto iter = kernels_.find(kernel_name);
+
   PADDLE_ENFORCE_NE(
       iter,
       kernels_.end(),
