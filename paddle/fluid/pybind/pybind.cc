@@ -2073,7 +2073,7 @@ All parameter, weight, gradient are variables in Paddle.
           [](const gpuDeviceProp &prop) { return prop.integrated; })
       .def("__repr__", [](const gpuDeviceProp &prop) {
         std::stringstream ostr;
-        ostr << "_gpuDeviceProperties(name='" << prop.name
+        ostr << "_gpuDeticeProperties(name='" << prop.name
              << "', major=" << prop.major << ", minor=" << prop.minor
              << ", total_memory=" << prop.totalGlobalMem / (1024 * 1024)
              << "MB, multi_processor_count=" << prop.multiProcessorCount << ")";
@@ -2546,7 +2546,15 @@ All parameter, weight, gradient are variables in Paddle.
         [] { return phi::autotune::AutoTuneStatus::Instance().Update(); });
 
   m.def("get_low_precision_op_list", [] {
-    return phi::KernelFactory::Instance().GetLowPrecisionKernelList();
+    py::dict op_list;
+    auto list_op = phi::KernelFactory::Instance().GetLowPrecisionKernelList();
+    for (auto iter = list_op.begin(); iter != list_op.end(); iter++) {
+      auto op_name = (iter->first).c_str();
+      auto counts = iter->second;
+      op_list[op_name] = std::to_string(counts.low_precision_called_) + "," +
+                         std::to_string(counts.high_precision_called_);
+    }
+    return op_list;
   });
 
   m.def("autotune_status", [] {

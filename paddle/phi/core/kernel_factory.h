@@ -34,6 +34,15 @@ namespace phi {
 
 using DataType = paddle::experimental::DataType;
 
+struct OpCount {
+  OpCount() {
+    low_precision_called_ = 0;
+    high_precision_called_ = 0;
+  }
+  int low_precision_called_;
+  int high_precision_called_;
+};
+
 /**
  * [ Naming considerations ]
  *
@@ -309,7 +318,7 @@ class KernelFactory {
       const std::string& name,
       const paddle::experimental::DataType& kernel_key_type);
 
-  std::map<const std::string, int> GetLowPrecisionKernelList();
+  std::map<const std::string, OpCount> GetLowPrecisionKernelList();
 
  private:
   KernelFactory() = default;
@@ -317,7 +326,7 @@ class KernelFactory {
   KernelNameMap kernels_;
 
   // Get the low precision kernel list of current module.
-  std::map<const std::string, int> low_precision_kernels_;
+  std::map<const std::string, OpCount> low_precision_kernels_;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const KernelKey& kernel_key) {

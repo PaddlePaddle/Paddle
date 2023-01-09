@@ -30,12 +30,19 @@ class TestAMPList(unittest.TestCase):
             c = a + b
         paddle.amp.low_precision_op_list()
         op_list = paddle.fluid.core.get_low_precision_op_list()
-        if conv.dtype == paddle.float16:
-            self.assertTrue('elementwise_add' in op_list)
-            self.assertTrue('conv2d' in op_list)
-            self.assertTrue(2 == len(op_list))
-        else:
-            self.assertTrue(0 == len(op_list))
+
+        self.assertTrue('elementwise_add' in op_list)
+        self.assertTrue('conv2d' in op_list)
+
+        conv2d_called = op_list['conv2d'].split(',')
+        add_called = op_list['elementwise_add'].split(',')
+
+        self.assertTrue(int(conv2d_called[0]) + int(conv2d_called[1]) == 1)
+        self.assertTrue(int(add_called[0]) + int(add_called[1]) == 1)
+
+        if conv.dtype == "float16":
+            self.assertTrue(int(conv2d_called[0]) == 1)
+            self.assertTrue(int(add_called[0]) == 1)
 
 
 if __name__ == "__main__":
