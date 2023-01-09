@@ -1,4 +1,4 @@
 class Tensor:
     def foo() -> int:
-        """Docstring"""
+        """Document for Tensor.foo"""
         ...

@@ -55,7 +55,6 @@ from .framework.dtype import bool  # noqa: F401
 from .framework.dtype import complex64  # noqa: F401
 from .framework.dtype import complex128  # noqa: F401
 
-from .tensor.tensor import Tensor
 import paddle.distributed  # noqa: F401
 import paddle.sysconfig  # noqa: F401
 import paddle.distribution  # noqa: F401
@@ -82,6 +81,7 @@ import paddle.geometric  # noqa: F401
 import paddle.sparse  # noqa: F401
 import paddle.quantization  # noqa: F401
 
+from .tensor.tensor import Tensor
 from .tensor.attribute import is_complex  # noqa: F401
 from .tensor.attribute import is_integer  # noqa: F401
 from .tensor.attribute import rank  # noqa: F401

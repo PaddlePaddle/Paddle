@@ -12,12 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# TODO: define the basic tensor classes
-from .. import fluid, framework
+"""
+The basic tensor classes
+"""
+
+from .. import fluid
 
 if fluid.framework._in_eager_mode_:
-    Tensor = framework.core.eager.Tensor
+    from ..framework.core.eager import Tensor
 else:
-    from .framework import VarBase as Tensor  # noqa: F401
+    from ..framework import VarBase as Tensor
 
-Tensor.__qualname__ = 'Tensor'  # noqa: F401
+Tensor.__qualname__ = 'Tensor'
