@@ -110,7 +110,7 @@ bool KernelFactory::HasKernel(const std::string& kernel_name,
 void KernelFactory::AddToLowPrecisionKernelList(
     const std::string& name,
     const paddle::experimental::DataType& kernel_key_type) {
-  if (FLAGS_low_precision_op_list) {
+  if (FLAGS_low_precision_op_list >= 1) {
     auto op_name = phi::TransToFluidOpName(name);
     if (op_name.find("_grad") != std::string::npos) {
       return;  // only record forward api
