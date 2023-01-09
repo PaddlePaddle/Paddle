@@ -16,9 +16,8 @@ limitations under the License. */
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 
-namespace paddle {
-namespace operators {
-namespace math {
+namespace phi {
+namespace funcs {
 
 using phi::PADDLE_CUDA_NUM_THREADS;
 
@@ -75,6 +74,5 @@ class ScaleLoDTensorFunctor<phi::GPUContext, T> {
 template class ScaleLoDTensorFunctor<phi::GPUContext, float>;
 template class ScaleLoDTensorFunctor<phi::GPUContext, double>;
 
-}  // namespace math
-}  // namespace operators
-}  // namespace paddle
+}  // namespace funcs
+}  // namespace phi

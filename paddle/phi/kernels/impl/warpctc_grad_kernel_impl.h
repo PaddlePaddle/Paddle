@@ -79,7 +79,7 @@ void WarpctcGradKernel(const Context& dev_ctx,
         paddle::operators::math::kLengthBatchWidth);
 
     const T* loss_grad_data = loss_grad.data<T>();
-    paddle::phi::funcs::ScaleLoDTensorFunctor<Context, T>()(
+    phi::funcs::ScaleLoDTensorFunctor<Context, T>()(
         dev_ctx, loss_grad_data, logits_grad);
   }
 }

@@ -19,9 +19,8 @@ namespace phi {
 class DenseTensor;
 }  // namespace phi
 
-namespace paddle {
-namespace operators {
-namespace math {
+namespace phi {
+namespace funcs {
 
 template <typename T>
 class ScaleLoDTensorFunctor<phi::CPUContext, T> {
@@ -49,6 +48,5 @@ class ScaleLoDTensorFunctor<phi::CPUContext, T> {
 template class ScaleLoDTensorFunctor<phi::CPUContext, float>;
 template class ScaleLoDTensorFunctor<phi::CPUContext, double>;
 
-}  // namespace math
-}  // namespace operators
-}  // namespace paddle
+}  // namespace funcs
+}  // namespace phi
