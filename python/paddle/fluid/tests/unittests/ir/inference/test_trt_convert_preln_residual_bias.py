@@ -174,6 +174,10 @@ class TrtConvertSkipLayernormTest(TrtLayerAutoScanTest):
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, True
         ), 1e-2  # atol=1e-2 while rtol is 1e-8
+        self.trt_param.precision = paddle_infer.PrecisionType.Int8
+        yield self.create_inference_config(), generate_trt_nodes_num(
+            attrs, True
+        ), 1e-2  # atol=1e-2 while rtol is 1e-8
 
     def add_skip_trt_case(self):
         pass

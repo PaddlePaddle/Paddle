@@ -65,7 +65,9 @@ class SkipGroupnormActOpConverter : public OpConverter {
     auto scale_weights = GetWeight(scale_name, &scale_dims);
     auto bias_weights = GetWeight(bias_name, &bias_dims);
     bool with_fp16 = engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
-
+    if (engine_->precision() == AnalysisConfig::Precision::kInt8) {
+      with_fp16 = true;
+    }
     if (engine_->with_dynamic_shape()) {
       plugin::SkipGroupnormActPluginDynamic* plugin =
           new plugin::SkipGroupnormActPluginDynamic(
