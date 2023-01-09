@@ -958,18 +958,27 @@ class TestSundryAPI(unittest.TestCase):
 
     def test_sigmoid_focal_loss(self):
         logit = paddle.to_tensor(
-            [[0.97, 0.91, 0.03], [0.55, 0.43, 0.71]], dtype='float32'
+            [[0.97, 0.91, 0.03], [0.55, 0.43, 0.71]],
+            dtype='float32',
+            stop_gradient=False,
         )
         label = paddle.to_tensor(
             [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0]], dtype='float32'
         )
-        one = paddle.to_tensor([1.0], dtype='float32')
         fg_num_0 = paddle.full([], 2.0)
         fg_num_1 = paddle.full([1], 2.0)
+
+        out0 = F.sigmoid_focal_loss(logit, label, normalizer=fg_num_0)
+        out1 = F.sigmoid_focal_loss(logit, label, normalizer=fg_num_1)
+
         np.testing.assert_array_equal(
-            F.sigmoid_focal_loss(logit, label, normalizer=fg_num_0).numpy(),
-            F.sigmoid_focal_loss(logit, label, normalizer=fg_num_1).numpy(),
+            out0.numpy(),
+            out1.numpy(),
         )
+
+        out0.backward()
+        self.assertEqual(out0.grad.shape, [1])
+        self.assertEqual(logit.grad.shape, [2, 3])
 
     def test_allclose(self):
         x = paddle.full([], 0.5)
