@@ -23,6 +23,7 @@ namespace paddle {
 namespace operators {
 
 using Tensor = phi::DenseTensor;
+namespace p = paddle::platform;
 
 template <typename DeviceContext, typename T>
 class AccMergeXPUKernel : public framework::OpKernel<T> {
@@ -30,15 +31,44 @@ class AccMergeXPUKernel : public framework::OpKernel<T> {
 
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    PADDLE_THROW(platform::errors::Unimplemented(
-        "The acc_merge operator does not support XPU yet."));
-    // auto& dev_ctx = ctx.template device_context<phi::XPUContext>();
+    auto& dev_ctx = ctx.template device_context<phi::XPUContext>();
+    xpu::Context* xpu_ctx = dev_ctx.x_context();
 
-    // const phi::DenseTensor* acc = ctx.Input<phi::DenseTensor>("Acc");
-    // const phi::DenseTensor* total = ctx.Input<phi::DenseTensor>("Total");
+    phi::DenseTensor &step_t = *ctx.Output<phi::DenseTensor>("Step");
+    auto *step = step_t.data<int64_t>();
+    if (step[1] <= 0) return;
 
-    // phi::DenseTensor* out = ctx.Output<phi::DenseTensor>("Out");
-    // phi::DenseTensor* step = ctx.Output<phi::DenseTensor>("Step");
+    const phi::DenseTensor &total_t = *ctx.Input<phi::DenseTensor>("Total");
+    bool is_cpu_place = p::is_cpu_place(total_t.place());
+
+    using Type1 = float;
+    using Type2 = double;
+
+    const phi::DenseTensor &acc_t = *ctx.Input<phi::DenseTensor>("Acc");
+    auto *acc = acc_t.data<Type1>();
+
+    phi::DenseTensor &out_t = *ctx.Output<phi::DenseTensor>("Out");
+    out_t.Resize({2});
+    auto *out = out_t.mutable_data<Type2>(acc_t.place());
+    int r = 0;
+    if (step[0] == 0) {
+      if (is_cpu_place) {
+        r = xpu::acc_merge_cpu<Type1, Type2, false>(xpu_ctx, acc, *total_t.data<int64_t>(), out);
+        PADDLE_ENFORCE_XDNN_SUCCESS(r, "acc_merge_cpu");
+      } else {
+        r = xpu::acc_merge_xpu<Type1, Type2, false>(xpu_ctx, acc, total_t.data<float>(), out);
+        PADDLE_ENFORCE_XDNN_SUCCESS(r, "acc_merge_xpu");
+      }
+    } else {
+      if (is_cpu_place) {
+        r = xpu::acc_merge_cpu<Type1, Type2, true>(xpu_ctx, acc, *total_t.data<int64_t>(), out);
+        PADDLE_ENFORCE_XDNN_SUCCESS(r, "acc_merge_cpu");
+      } else {
+        r = xpu::acc_merge_xpu<Type1, Type2, true>(xpu_ctx, acc, total_t.data<float>(), out);
+        PADDLE_ENFORCE_XDNN_SUCCESS(r, "acc_merge_xpu");
+      }
+    }
+    step[0] = (step[0] + 1) % step[1];
   }
 };
 
