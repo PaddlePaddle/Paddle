@@ -1,4 +1,4 @@
-// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,24 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
+#include "paddle/phi/kernels/einsum_kernel.h"
 
-#include "paddle/fluid/framework/ir/fuse_pass_base.h"
+#include "paddle/phi/backends/xpu/enforce_xpu.h"
+#include "paddle/phi/core/kernel_registry.h"
 
-namespace paddle {
-namespace framework {
-namespace ir {
+#include "paddle/phi/kernels/impl/einsum_impl.h"
 
-class Graph;
+PD_REGISTER_KERNEL(einsum_raw, XPU, ALL_LAYOUT, phi::EinsumKernelRaw, float) {}
 
-class InplaceOpVarPass : public FusePassBase {
- protected:
-  void ApplyImpl(ir::Graph* graph) const override;
-
- private:
-  virtual ~InplaceOpVarPass() = default;
-};
-
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+PD_REGISTER_KERNEL(einsum, XPU, ALL_LAYOUT, phi::EinsumKernel, float) {}

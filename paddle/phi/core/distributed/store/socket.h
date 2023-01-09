@@ -1,4 +1,4 @@
-// Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,21 +16,11 @@
 
 #include <string>
 
-#include "paddle/fluid/framework/ir/fuse_pass_base.h"
+namespace phi {
+namespace distributed {
 
-namespace paddle {
-namespace framework {
-namespace ir {
+int GetSockName(int fd, char* out, int out_len);
 
-class MapDepthwiseConv2ConvPass : public FusePassBase {
- public:
-  MapDepthwiseConv2ConvPass() = default;
-  virtual ~MapDepthwiseConv2ConvPass() = default;
-
- protected:
-  void ApplyImpl(Graph* graph) const override;
-};
-
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+std::string GetSockName(int fd);
+}  // namespace distributed
+}  // namespace phi

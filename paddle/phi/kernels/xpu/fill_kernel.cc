@@ -1,4 +1,4 @@
-// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,24 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
+#include "paddle/phi/kernels/impl/fill_kernel_impl.h"
 
-#include "paddle/fluid/framework/ir/fuse_pass_base.h"
+#include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/phi/core/kernel_registry.h"
 
-namespace paddle {
-namespace framework {
-namespace ir {
-
-class Graph;
-
-class InplaceOpVarPass : public FusePassBase {
- protected:
-  void ApplyImpl(ir::Graph* graph) const override;
-
- private:
-  virtual ~InplaceOpVarPass() = default;
-};
-
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+PD_REGISTER_KERNEL(fill,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::FillKernel,
+                   float,
+                   double,
+                   int64_t,
+                   int,
+                   phi::dtype::float16,
+                   bool) {}
