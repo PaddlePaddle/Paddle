@@ -115,10 +115,30 @@ void TrtSupportNHWCPass::ApplyImpl(Graph *graph) const {
                               "During the trt_support_nhwc_pass, the graph "
                               "should not be null."));
   FusePassBase::Init("trt_support_nhwc_pass", graph);
+  auto *scope = param_scope();
 
   // Ops with "data_format" or "data_layout" attribute value of "NHWC"
-  std::unordered_set<ir::Node *> valid_ops;
+  std::unordered_set<ir::Node *> transposed_ops;
   std::unordered_set<ir::Node *> vars_to_nchw;
+
+  //
+  //
+  // TODO(liuyuanle): Process other op if needed!
+  //
+  //
+  std::unordered_set<std::string> need_trans_weights{"prelu"};
+  // Ops must run under the original layout even though it has
+  // data_format/data_layout attribute, otherwise it will be very troublesome!
+  std::unordered_set<std::string> must_origin_layout_ops{"affine_channel"};
+  // OPs unrelated to layout are consistent according to the layout of input
+  // var！
+  std::unordered_set<std::string> any_layout_ops{"relu", "elementwise_add"};
+  //
+  //
+  // TODO(liuyuanle): Process other op if needed!
+  //
+  //
+
   std::unordered_map<ir::Node *, ir::Node *> cache;
 
   auto op_nodes = TopologySortOperations(*graph);
@@ -137,16 +157,68 @@ void TrtSupportNHWCPass::ApplyImpl(Graph *graph) const {
     } else if (op_desc->HasAttr("data_layout")) {
       data_format = op_desc->GetAttrIfExists<std::string>("data_layout");
     }
-    if (data_format != "NHWC") continue;
 
+    bool input_shape_4{true};
+    auto op_inputs = op_node->inputs;
+    for (auto *in_var_node : op_inputs) {
+      CHECK_EQ(in_var_node->IsVar(), true);
+      if (in_var_node->Var()->Persistable()) continue;
+
+      auto input_shape = in_var_node->Var()->GetShape();
+      input_shape_4 &= (input_shape.size() == 4);
+    }
+
+    if ((data_format != "NHWC" && !any_layout_ops.count(op_desc->Type())) ||
+        !input_shape_4 || must_origin_layout_ops.count(op_desc->Type())) {
+      continue;
+    }
     // Update current op
-    valid_ops.insert(op_node);
+    transposed_ops.insert(op_node);
     if (op_desc->HasAttr("data_format")) {
       op_desc->SetAttr("data_format", std::string{"NCHW"});
+      op_desc->Flush();
     } else if (op_desc->HasAttr("data_layout")) {
       op_desc->SetAttr("data_layout", std::string{"NCHW"});
+      op_desc->Flush();
     }
-    op_desc->Flush();
+
+    if (need_trans_weights.count(op_desc->Type())) {
+      std::vector<std::string> weights;
+      if (op_desc->Type() == "prelu") {
+        weights.push_back("Alpha");
+      }
+      for (auto const &weight : weights) {
+        // transfer weights
+        auto weight_names = op_desc->Input(weight);
+        for (const auto &weight_name : weight_names) {
+          auto *weight_var = scope->FindLocalVar(weight_name);
+          auto *weight_tensor = weight_var->GetMutable<phi::DenseTensor>();
+          if (weight_tensor->dims().size() == 4) {
+            phi::DenseTensor temp_tensor = *weight_tensor;
+            weight_tensor->clear();
+
+            framework::TransDataLayout(phi::DataLayout::kNHWC,
+                                       phi::DataLayout::kNCHW,
+                                       phi::CPUPlace{},
+                                       temp_tensor,
+                                       weight_tensor);
+          }
+        }
+        auto op_inputs = op_node->inputs;
+        for (auto *in_var_node : op_inputs) {
+          CHECK_EQ(in_var_node->IsVar(), true);
+          if (in_var_node->Var()->Persistable()) {
+            if (std::find(weight_names.cbegin(),
+                          weight_names.cend(),
+                          in_var_node->Var()->Name()) != weight_names.cend()) {
+              auto from_shape = in_var_node->Var()->GetShape();
+              in_var_node->Var()->SetShape(
+                  {from_shape[0], from_shape[2], from_shape[3], from_shape[1]});
+            }
+          }
+        }
+      }
+    }
 
     // Update output var of current op
     auto op_outputs = op_node->outputs;
@@ -155,9 +227,11 @@ void TrtSupportNHWCPass::ApplyImpl(Graph *graph) const {
       if (out_var_node->Var()->Persistable()) continue;
 
       auto from_shape = out_var_node->Var()->GetShape();
-      out_var_node->Var()->SetShape(
-          {from_shape[0], from_shape[3], from_shape[1], from_shape[2]});
-      vars_to_nchw.insert(out_var_node);
+      if (from_shape.size() == 4) {
+        out_var_node->Var()->SetShape(
+            {from_shape[0], from_shape[3], from_shape[1], from_shape[2]});
+        vars_to_nchw.insert(out_var_node);
+      }
     }
   }
 
@@ -165,7 +239,7 @@ void TrtSupportNHWCPass::ApplyImpl(Graph *graph) const {
   for (auto *op_node : op_nodes) {
     CHECK_EQ(op_node->IsOp(), true);
 
-    if (valid_ops.count(op_node)) {
+    if (transposed_ops.count(op_node)) {
       auto op_inputs = op_node->inputs;
       for (auto *in_var_node : op_inputs) {
         CHECK_EQ(in_var_node->IsVar(), true);
