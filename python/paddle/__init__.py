@@ -24,9 +24,9 @@ except ImportError:
     )
 
 from .batch import batch  # noqa: F401
+from .tensor.tensor import Tensor
 from .framework import monkey_patch_variable
 from .framework import monkey_patch_math_varbase
-from .tensor.tensor import Tensor
 
 monkey_patch_variable()
 monkey_patch_math_varbase()
