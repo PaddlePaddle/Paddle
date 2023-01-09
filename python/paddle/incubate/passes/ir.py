@@ -16,7 +16,7 @@ import inspect
 from os import path
 
 import paddle
-import paddle.fluid.proto.framework_pb2 as framework_pb2
+from paddle.fluid.proto import framework_pb2
 
 from ...fluid import core, unique_name
 from ...fluid.framework import OpProtoHolder
