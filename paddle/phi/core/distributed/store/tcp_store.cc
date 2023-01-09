@@ -12,17 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/distributed/store/tcp_store.h"
+#include "paddle/phi/core/distributed/store/tcp_store.h"
 
 #include <chrono>
 #include <iostream>
 #include <thread>
 
-#include "paddle/fluid/distributed/store/tcp_utils.h"
-#include "paddle/fluid/platform/enforce.h"
+#include "paddle/phi/core/distributed/store/tcp_utils.h"
 #include "paddle/phi/core/flags.h"
 
-namespace paddle {
+namespace phi {
 namespace distributed {
 
 namespace detail {
@@ -90,7 +89,7 @@ void MasterDaemon::_do_get(SocketType socket) {
   PADDLE_ENFORCE_NE(
       iter,
       _store.end(),
-      platform::errors::InvalidArgument("Key %s not found in TCPStore.", key));
+      phi::errors::InvalidArgument("Key %s not found in TCPStore.", key));
   std::vector<uint8_t> value = iter->second;
   tcputils::send_vector<uint8_t>(socket, value);
 }
@@ -100,7 +99,7 @@ void MasterDaemon::InitControlFd() {
   PADDLE_ENFORCE_NE(
       pipe(_control_fd.data()),
       -1,
-      platform::errors::Fatal("failed to cread control pipe errno:%d", errno));
+      phi::errors::Fatal("failed to cread control pipe errno:%d", errno));
 }
 void MasterDaemon::CloseControlFd() {
   for (int fd : _control_fd) {
@@ -112,10 +111,10 @@ void MasterDaemon::CloseControlFd() {
 void MasterDaemon::StopByControlFd() {
   VLOG(4) << ("begin to run StopByControlFd");
   if (_control_fd[1] != -1) {
-    PADDLE_ENFORCE_NE(::write(_control_fd[1], "\0", 1),
-                      -1,
-                      platform::errors::Fatal(
-                          "failed to write control pipe errno:%d", errno));
+    PADDLE_ENFORCE_NE(
+        ::write(_control_fd[1], "\0", 1),
+        -1,
+        phi::errors::Fatal("failed to write control pipe errno:%d", errno));
     // close the write end of the pipe
     ::close(_control_fd[1]);
     _control_fd[1] = -1;
@@ -125,7 +124,7 @@ void MasterDaemon::StopByControlFd() {
 void MasterDaemon::InitControlFd() {
   ghStopEvent_ = CreateEvent(NULL, TRUE, FALSE, NULL);
   PADDLE_ENFORCE(ghStopEvent_,
-                 platform::errors::Fatal("failed to cread control pipe"));
+                 phi::errors::Fatal("failed to cread control pipe"));
 }
 void MasterDaemon::CloseControlFd() { CloseHandle(ghStopEvent_); }
 void MasterDaemon::StopByControlFd() { SetEvent(ghStopEvent_); }
@@ -231,8 +230,8 @@ void MasterDaemon::run() {
     // The control pipe receive shutdown event, and begin to close it.
     if (fds[1].revents != 0) {
       if (fds[1].revents & ~(POLLIN | POLLHUP)) {
-        PADDLE_THROW(paddle::platform::errors::Fatal("Undefined event type:%d",
-                                                     fds[1].revents));
+        PADDLE_THROW(
+            phi::errors::Fatal("Undefined event type:%d", fds[1].revents));
       }
       VLOG(0)
           << "receive shutdown event and so quit from MasterDaemon run loop";
@@ -312,9 +311,7 @@ TCPStore::TCPStore(std::string host,
     : Store(timeout), _is_master(is_master), _num_workers(num_workers) {
   _timeout = timeout;
   PADDLE_ENFORCE_GT(
-      timeout,
-      0,
-      platform::errors::InvalidArgument("timeout must >= %d", timeout));
+      timeout, 0, phi::errors::InvalidArgument("timeout must >= %d", timeout));
 
   VLOG(3) << "input timeout" << timeout << ", member timeout:" << _timeout;
   if (_is_master) {
@@ -355,7 +352,7 @@ void TCPStore::waitWorkers() {
       PADDLE_ENFORCE_EQ(
           completed,
           _num_workers,
-          platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "TCPStore timeouted and not all workers got ready."));
     }
   } while (true);
@@ -398,4 +395,4 @@ void TCPStore::wait(const std::string& key) {
 TCPStore::~TCPStore() { VLOG(3) << "TCPStore destructure"; }
 
 }  // namespace distributed
-}  // namespace paddle
+}  // namespace phi
