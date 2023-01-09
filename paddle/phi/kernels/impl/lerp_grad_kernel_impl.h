@@ -101,17 +101,18 @@ static void LerpGradFunctionZero(const Context& ctx,
                                  DenseTensor* x_grad,
                                  DenseTensor* y_grad) {
   auto dim = make_ddim(std::vector<int64_t>(1, 1));
-  auto eigen_w = phi::EigenTensor<T, D>::From(weight, dim);
-  auto eigen_dout = phi::EigenTensor<T, D>::From(out_grad, dim);
+  auto eigen_w = phi::EigenTensor<T, 1>::From(weight, dim);
+  auto eigen_dout = phi::EigenTensor<T, 1>::From(out_grad, dim);
 
+  auto& place = *ctx.eigen_device();
   if (x_grad) {
     ctx.template Alloc<T>(x_grad);
-    auto eigen_dx = phi::EigenTensor<T, D>::From(*x_grad, dim);
+    auto eigen_dx = phi::EigenTensor<T, 1>::From(*x_grad, dim);
     eigen_dx.device(place) = (1 - eigen_w) * eigen_dout;
   }
   if (y_grad) {
     ctx.template Alloc<T>(y_grad);
-    auto eigen_dy = phi::EigenTensor<T, D>::From(*y_grad, dim);
+    auto eigen_dy = phi::EigenTensor<T, 1>::From(*y_grad, dim);
     eigen_dy.device(place) = eigen_w * eigen_dout;
   }
 }
