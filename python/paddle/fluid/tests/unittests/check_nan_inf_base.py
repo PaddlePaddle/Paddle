@@ -60,9 +60,9 @@ def net():
     hidden = x
 
     for i in range(2):
-        hidden = fluid.layers.fc(input=hidden, size=400, act="sigmoid")
+        hidden = paddle.static.nn.fc(x=hidden, size=400, activation="sigmoid")
 
-    hidden = fluid.layers.fc(input=hidden, size=3, act=None)
+    hidden = paddle.static.nn.fc(x=hidden, size=3)
     cost, y_predict = paddle.nn.functional.softmax_with_cross_entropy(
         hidden, y, return_softmax=True
     )

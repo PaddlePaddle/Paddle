@@ -16,13 +16,15 @@
 # Temporary disable isort to avoid circular import
 # This can be removed after the circular import is resolved
 # isort: skip_file
+from __future__ import annotations
+
 import os
 import pickle
 import warnings
 from collections import OrderedDict
 import inspect
 import threading
-from typing import Text, Tuple, Any, List
+from typing import Any
 
 import paddle
 from paddle.fluid import core, dygraph
@@ -195,7 +197,7 @@ def to_static(
 ):
     """
     Converts imperative dygraph APIs into declarative function APIs. Decorator
-    @to_static handles the Program and Executor of static mode and returns
+    @to_static handles the Program and Executor of static graph mode and returns
     the result as dygraph Tensor(s). Users could use the returned dygraph
     Tensor(s) to do imperative training, inference, or other operations. If the
     decorated function calls other imperative function, the called one will be
@@ -705,12 +707,12 @@ def _run_save_pre_hooks(func):
     return wrapper
 
 
-def _save_property(filename: Text, property_vals: List[Tuple[Any, Text]]):
+def _save_property(filename: str, property_vals: list[tuple[Any, str]]):
     """class property serialization.
 
     Args:
-        filename (Text): *.meta
-        property_vals (List[Tuple): class property.
+        filename (str): *.meta
+        property_vals (list[tuple[Any, str]]): class property.
     """
 
     def set_property(meta, key, val):

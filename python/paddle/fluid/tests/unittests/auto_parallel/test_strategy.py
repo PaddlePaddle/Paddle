@@ -41,13 +41,24 @@ class TestStrategy(unittest.TestCase):
         self.assertEqual(amp.use_fp16_guard, True)
         self.assertEqual(amp.use_optimizer_fp16, False)
 
+        self.assertEqual(amp.enable_bf16, False)
+        self.assertEqual(amp.custom_bf16_list, [])
+        self.assertEqual(amp.custom_fp32_list, [])
+        self.assertEqual(amp.custom_fp32_varnames, [])
+        self.assertEqual(amp.use_pure_bf16, False)
+        self.assertEqual(amp.use_bf16_guard, False)
+
         sharding = strategy.sharding
         self.assertEqual(sharding.enable, False)
         self.assertEqual(sharding.stage, 1)
         self.assertEqual(sharding.degree, 8)
-        self.assertAlmostEqual(sharding.overlap_grad_comm, False)
-        self.assertAlmostEqual(sharding.bucket_size_numel, -1)
+        self.assertAlmostEqual(sharding.enable_overlap, False)
+        self.assertAlmostEqual(sharding.param_comm_stream_num, 1)
+        self.assertAlmostEqual(sharding.grad_comm_stream_num, 1)
         self.assertAlmostEqual(sharding.partition_algor, "greedy_even")
+        self.assertAlmostEqual(sharding.param_bucket_size_numel, 1)
+        self.assertAlmostEqual(sharding.grad_bucket_size_numel, 1)
+        self.assertAlmostEqual(sharding.enable_hierarchical_comm, False)
         self.assertEqual(sharding.enable_tuning, False)
         self.assertEqual(sharding.tuning_range, [])
 

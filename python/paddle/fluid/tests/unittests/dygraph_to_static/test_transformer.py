@@ -301,13 +301,15 @@ def train_dygraph(args, batch_generator):
                         model_dir = os.path.join(args.save_dygraph_model_path)
                         if not os.path.exists(model_dir):
                             os.makedirs(model_dir)
-                        fluid.save_dygraph(
+                        paddle.save(
                             transformer.state_dict(),
-                            os.path.join(model_dir, "transformer"),
+                            os.path.join(model_dir, "transformer")
+                            + '.pdparams',
                         )
-                        fluid.save_dygraph(
+                        paddle.save(
                             optimizer.state_dict(),
-                            os.path.join(model_dir, "transformer"),
+                            os.path.join(model_dir, "transformer")
+                            + '.pdparams',
                         )
                     break
             time_consumed = time.time() - pass_start_time

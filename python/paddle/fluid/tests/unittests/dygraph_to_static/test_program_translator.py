@@ -357,12 +357,12 @@ class TestErrorWithInitFromStaticMode(unittest.TestCase):
         net = Net()
 
         self.program_translator.enable(True)
-        with self.assertRaisesRegexp(
+        with self.assertRaisesRegex(
             RuntimeError, "only available in dynamic mode"
         ):
             self.program_translator.get_output(net.forward, self.x)
 
-        with self.assertRaisesRegexp(
+        with self.assertRaisesRegex(
             RuntimeError, "only available in dynamic mode"
         ):
             self.program_translator.get_program(net.forward, self.x)
@@ -440,6 +440,42 @@ class TestRemoveCommentInDy2St(unittest.TestCase):
     def test_remove_comment(self):
         code_string = func_to_source_code(self.func_with_comment)
         self.assertEqual('#' not in code_string, True)
+
+
+class Obj:
+    def __init__(self):
+        pass
+
+    def func(self, x):
+        return x + 1
+
+
+obj = Obj()
+
+
+class Net2:
+    def __init__(self):
+        super(Net2, self).__init__()
+        self.layer1 = paddle.nn.Linear(10, 10)
+
+    def forward(self, data):
+        @paddle.jit.to_static
+        def func(ins, x, loss_fn):
+            x = ins.layer1(x)
+            return loss_fn(x)
+
+        def func1(x):
+            return func(self, x, obj.func)
+
+        return func1(data)
+
+
+class TestParameterRecorder(unittest.TestCase):
+    def test_recorder(self):
+        """function calls nn.Layer case."""
+        net = Net()
+        x = paddle.randn([5, 10])
+        out = net.forward(x)
 
 
 if __name__ == '__main__':

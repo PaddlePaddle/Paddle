@@ -40,7 +40,7 @@ class FleetTest(unittest.TestCase):
         feeder = fluid.DataFeeder(
             feed_list=[image, label], place=fluid.CPUPlace()
         )
-        predict = fluid.layers.fc(input=image, size=10, act='softmax')
+        predict = paddle.static.nn.fc(x=image, size=10, activation='softmax')
         loss = paddle.nn.functional.cross_entropy(
             input=predict, label=label, reduction='none', use_softmax=False
         )

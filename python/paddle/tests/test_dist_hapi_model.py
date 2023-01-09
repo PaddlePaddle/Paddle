@@ -133,15 +133,12 @@ class TestMultipleGpus(unittest.TestCase):
 
     def test_hapi_multiple_gpus_static(self):
         self.run_mnist_2gpu('dist_hapi_mnist_static.py')
-        self.run_mnist_2gpu('dist_hapi_mnist_static.py', eager_mode=False)
 
     def test_hapi_multiple_gpus_dynamic(self):
         self.run_mnist_2gpu('dist_hapi_mnist_dynamic.py')
-        self.run_mnist_2gpu('dist_hapi_mnist_dynamic.py', eager_mode=False)
 
     def test_hapi_amp_static(self):
         self.run_mnist_2gpu('dist_hapi_pure_fp16_static.py')
-        self.run_mnist_2gpu('dist_hapi_pure_fp16_static.py', eager_mode=False)
 
 
 if __name__ == "__main__":
