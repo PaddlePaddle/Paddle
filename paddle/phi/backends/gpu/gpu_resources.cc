@@ -14,6 +14,8 @@
 
 #include "paddle/phi/backends/gpu/gpu_resources.h"
 
+#include <set>
+
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/backends/gpu/gpu_decls.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
@@ -60,6 +62,7 @@ void InitGpuProperties(Place place,
   const gpuDeviceProp& prop =
       backends::gpu::GetDeviceProperties(place.GetDeviceId());
 
+#ifdef PADDLE_WITH_CUDA
   static const std::set<int> compiled_archs{CUDA_REAL_ARCHS};
   // Make sure compiled cuda arch is as same as runtime cuda arch.
   if (compiled_archs.find(*compute_capability) == compiled_archs.cend() &&
@@ -76,6 +79,7 @@ void InitGpuProperties(Place place,
                    << ". Please check compiled version of Paddle. ";
     }
   }
+#endif
 
   // TODO(wilber): glog may be replaced in the future?
   LOG_FIRST_N(WARNING, 1) << "Please NOTE: device: "
