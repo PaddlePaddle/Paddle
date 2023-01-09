@@ -632,7 +632,7 @@ class PartialProgramLayer:
         elif _in_pure_fp16_guard():
             infer_program = self._infer_pure_fp16_program
         else:
-            infer_program = self.infer_program
+            infer_program = self._infer_program
         return infer_program.desc.block(0).op_size()
 
     def __call__(self, inputs):
