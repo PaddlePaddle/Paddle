@@ -99,8 +99,8 @@ class TestCompositeSoftmax(unittest.TestCase):
             )
             x.stop_gradient = False
             y = fn(x)
-            blocks = main_program.blocks
-            paddle.incubate.autograd.to_prim(blocks)
+            # blocks = main_program.blocks
+            # paddle.incubate.autograd.to_prim(blocks)
             z = paddle.static.gradients([y], x)
 
         exe = paddle.static.Executor()
@@ -118,8 +118,8 @@ class TestCompositeSoftmax(unittest.TestCase):
                 'x', shape=inputs.shape, dtype=str(inputs.dtype)
             )
             y = fn(x)
-            blocks = main_program.blocks
-            paddle.incubate.autograd.to_prim(blocks)
+            # blocks = main_program.blocks
+            # paddle.incubate.autograd.to_prim(blocks)
 
         exe = paddle.static.Executor()
         exe.run(startup_program)
