@@ -2337,3 +2337,21 @@ def is_dep_skip_op(op):
         return True
 
     return False
+
+
+def enable_newexe_sequential_execution():
+    # NOTE some stragtegies rely on old-executor-sequential execution.
+    # this functions should be remove when all stragtegies are migrated to new exe.
+    paddle.framework.set_flags({'FLAGS_new_executor_sequential_run': 1})
+    logging.info("Set NewEXE Sequential Dep Pass as Default.")
+
+
+def disable_newexe_redundent_deps():
+    # NOTE newexe has some dependency pass added for PE set as default,
+    # which will hurt performance. disable them when the pass is adopted.
+    paddle.framework.set_flags({'FLAGS_new_executor_sequential_run': 0})
+    logging.info("Disable NewEXE Sequential Dep Pass.")
+    paddle.framework.set_flags(
+        {'FLAGS_add_dependency_for_communication_op': False}
+    )
+    logging.info("Disable NewEXE Communication Dep Pass.")

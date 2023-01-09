@@ -24,6 +24,7 @@ from paddle.distributed.auto_parallel.operators.common import (
 from paddle.distributed.auto_parallel.process_group import new_process_group
 from paddle.distributed.auto_parallel.utils import (
     _get_comm_group,
+    disable_newexe_redundent_deps,
     get_logger,
     get_var_numel,
     insert_dependencies_for_vars,
@@ -683,11 +684,7 @@ class ShardingPass(PassBase):
         if self.stage <= 1:
             return
 
-        paddle.framework.set_flags({'FLAGS_new_executor_sequential_run': 0})
-        _logger.info(
-            "Disenable Sequential Redundant Dependencies in Sharding Optimization."
-        )
-
+        disable_newexe_redundent_deps()
         self.grad_coalesce_prefix = 'sharding_coalesce_grad_'
         self.param_coalesce_prefix = 'sharding_coalesce_param_'
         # NOTE PR#49275 for detail

@@ -20,6 +20,7 @@ from paddle.distributed.auto_parallel.operators.common import (
     is_data_parallel_scale_op,
 )
 from paddle.distributed.auto_parallel.utils import (
+    disable_newexe_redundent_deps,
     find_higher_order_backward_op,
     get_logger,
     get_var_numel,
@@ -96,10 +97,7 @@ class DataParallelOptimizationPass(PassBase):
         self.use_sharding = self.get_attr("use_sharding")
         self.coalesce_prefix = 'coalesce_grad'
         if _is_enable_standalone_executor():
-            paddle.framework.set_flags({'FLAGS_new_executor_sequential_run': 0})
-            _logger.info(
-                "Disenable Sequential Redundant Dependencies in Data Parallel Optimization."
-            )
+            disable_newexe_redundent_deps()
             self.gradient_sync_stream = "gradient_sync_stream"
 
         with paddle.static.program_guard(main_program, startup_program):
