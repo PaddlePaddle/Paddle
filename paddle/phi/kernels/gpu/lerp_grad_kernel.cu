@@ -80,6 +80,9 @@ bool XYNeedReduce(const DenseTensor& x,
   auto x_dims = x.dims();
   auto y_dims = y.dims();
   auto out_dims = out.dims();
+  if (out_dims.size() == 0) {
+    return false;
+  }
   int x_rank = x_dims.size();
   int y_rank = y_dims.size();
   int out_rank = out_dims.size();
@@ -166,10 +169,10 @@ void LerpGradKernel(const Context& ctx,
   const int rank = out.dims().size();
   PADDLE_ENFORCE_GE(
       rank,
-      1,
+      0,
       phi::errors::InvalidArgument(
           "The number of dimensions for LerpGradOp must be "
-          "greater than or equal to 1, but the value received is %d.",
+          "greater than or equal to 0, but the value received is %d.",
           rank));
   PADDLE_ENFORCE_LE(
       rank,

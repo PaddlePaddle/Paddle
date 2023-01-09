@@ -91,6 +91,31 @@ static void LerpGradFunction(const Context& ctx,
   }
 }
 
+template <typename Context, typename T>
+static void LerpGradFunctionZero(const Context& ctx,
+                                 const DenseTensor& x,
+                                 const DenseTensor& y,
+                                 const DenseTensor& weight,
+                                 const DenseTensor& out,
+                                 const DenseTensor& out_grad,
+                                 DenseTensor* x_grad,
+                                 DenseTensor* y_grad) {
+  auto dim = make_ddim(std::vector<int64_t>(1, 1));
+  auto eigen_w = phi::EigenTensor<T, D>::From(weight, dim);
+  auto eigen_dout = phi::EigenTensor<T, D>::From(out_grad, dim);
+
+  if (x_grad) {
+    ctx.template Alloc<T>(x_grad);
+    auto eigen_dx = phi::EigenTensor<T, D>::From(*x_grad, dim);
+    eigen_dx.device(place) = (1 - eigen_w) * eigen_dout;
+  }
+  if (y_grad) {
+    ctx.template Alloc<T>(y_grad);
+    auto eigen_dy = phi::EigenTensor<T, D>::From(*y_grad, dim);
+    eigen_dy.device(place) = eigen_w * eigen_dout;
+  }
+}
+
 template <typename T, typename Context>
 void LerpGradKernel(const Context& ctx,
                     const DenseTensor& x,
@@ -103,10 +128,10 @@ void LerpGradKernel(const Context& ctx,
   int rank = out.dims().size();
   PADDLE_ENFORCE_GE(
       rank,
-      1,
+      0,
       phi::errors::InvalidArgument(
           "The number of dimensions for LerpGradOp must be "
-          "greater than or equal to 1, but the value received is %d.",
+          "greater than or equal to 0, but the value received is %d.",
           rank));
   PADDLE_ENFORCE_LE(
       rank,
@@ -116,6 +141,10 @@ void LerpGradKernel(const Context& ctx,
           "less than or equal to 6, but the value received is %d.",
           rank));
   switch (rank) {
+    case 0:
+      LerpGradFunctionZero<Context, T>(
+          ctx, x, y, weight, out, out_grad, x_grad, y_grad);
+      break;
     case 1:
       LerpGradFunction<Context, T, 1>(
           ctx, x, y, weight, out, out_grad, x_grad, y_grad);

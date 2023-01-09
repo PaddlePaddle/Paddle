@@ -283,6 +283,7 @@ binary_api_list = [
     paddle.logical_and,
     paddle.logical_or,
     paddle.logical_xor,
+    paddle.lerp,
 ]
 
 binary_int_api_list = [
