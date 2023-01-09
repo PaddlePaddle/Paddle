@@ -327,9 +327,7 @@ class TestConv3DOp(OpTest):
     def test_check_output(self):
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
         place = core.CUDAPlace(0) if self.has_cudnn() else core.CPUPlace()
-        self.check_output_with_place(
-            place, atol=1e-5, check_dygraph=(not self.use_mkldnn)
-        )
+        self.check_output_with_place(place, atol=1e-5)
 
     def test_check_grad(self):
         if self.dtype == np.float16:
@@ -341,7 +339,6 @@ class TestConv3DOp(OpTest):
             {'Input', 'Filter'},
             'Output',
             max_relative_error=0.03,
-            check_dygraph=(not self.use_mkldnn),
         )
 
     def test_check_grad_no_filter(self):
@@ -355,7 +352,6 @@ class TestConv3DOp(OpTest):
             'Output',
             max_relative_error=0.03,
             no_grad_set=set(['Filter']),
-            check_dygraph=(not self.use_mkldnn),
         )
 
     def test_check_grad_no_input(self):
@@ -369,7 +365,6 @@ class TestConv3DOp(OpTest):
             'Output',
             max_relative_error=0.03,
             no_grad_set=set(['Input']),
-            check_dygraph=(not self.use_mkldnn),
         )
 
     def init_test_case(self):

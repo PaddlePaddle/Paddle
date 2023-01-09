@@ -57,7 +57,6 @@ class TestElementwiseAddBf16MklDNNOp(OpTest):
             core.CPUPlace(),
             ["X", "Y"],
             "Out",
-            check_dygraph=False,
             user_defined_grads=[self.x, self.x],
             user_defined_grad_outputs=[self.x_bf16],
         )
@@ -67,7 +66,6 @@ class TestElementwiseAddBf16MklDNNOp(OpTest):
             core.CPUPlace(),
             ["Y"],
             "Out",
-            check_dygraph=False,
             user_defined_grads=[self.y],
             user_defined_grad_outputs=[self.y_bf16],
         )
@@ -77,7 +75,6 @@ class TestElementwiseAddBf16MklDNNOp(OpTest):
             core.CPUPlace(),
             ["X"],
             "Out",
-            check_dygraph=False,
             user_defined_grads=[self.x],
             user_defined_grad_outputs=[self.x_bf16],
         )
@@ -103,7 +100,6 @@ class TestElementwiseAddBroadCastingBf16MklDNNOp(
             core.CPUPlace(),
             ["X", "Y"],
             "Out",
-            check_dygraph=False,
             user_defined_grads=[self.x, self.compute_reduced_gradients(self.x)],
             user_defined_grad_outputs=[self.x_bf16],
         )
@@ -113,7 +109,6 @@ class TestElementwiseAddBroadCastingBf16MklDNNOp(
             core.CPUPlace(),
             ["Y"],
             "Out",
-            check_dygraph=False,
             user_defined_grads=[self.compute_reduced_gradients(self.x)],
             user_defined_grad_outputs=[self.x_bf16],
         )

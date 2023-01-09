@@ -20,7 +20,7 @@ from op_test import OpTest
 
 class TestIOUSimilarityOp(OpTest):
     def test_check_output(self):
-        self.check_output(check_dygraph=False)
+        self.check_output()
 
     def setUp(self):
         self.op_type = "iou_similarity"
@@ -67,7 +67,7 @@ class TestIOUSimilarityOp(OpTest):
 
 class TestIOUSimilarityOpWithLoD(TestIOUSimilarityOp):
     def test_check_output(self):
-        self.check_output(check_dygraph=False)
+        self.check_output()
 
     def setUp(self):
         super().setUp()
@@ -83,7 +83,7 @@ class TestIOUSimilarityOpWithLoD(TestIOUSimilarityOp):
 
 class TestIOUSimilarityOpWithBoxNormalized(TestIOUSimilarityOp):
     def test_check_output(self):
-        self.check_output(check_dygraph=False)
+        self.check_output()
 
     def setUp(self):
         super().setUp()

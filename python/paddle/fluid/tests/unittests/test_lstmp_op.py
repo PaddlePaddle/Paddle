@@ -222,7 +222,9 @@ class TestLstmpOp(LstmTest.TestLstmOp):
         }
 
     def test_check_output(self):
-        self.check_output(atol=1e-8, check_dygraph=False)
+        self.check_output(
+            atol=1e-8,
+        )
 
     def test_check_grad(self):
         # TODO(qingqing) remove folowing lines after the check_grad is refined.
@@ -236,7 +238,6 @@ class TestLstmpOp(LstmTest.TestLstmOp):
             ['Input', 'Weight', 'ProjWeight', 'Bias'],
             ['Projection'],
             numeric_grad_delta=0.0000005,
-            check_dygraph=False,
         )
 
 
@@ -256,7 +257,6 @@ class TestLstmpOpHasInitial(TestLstmpOp):
             ['Input', 'Weight', 'ProjWeight', 'Bias', 'H0', 'C0'],
             ['Projection'],
             numeric_grad_delta=0.0000005,
-            check_dygraph=False,
         )
 
     def test_check_grad_ingore_bias(self):
@@ -271,7 +271,6 @@ class TestLstmpOpHasInitial(TestLstmpOp):
             ['Projection'],
             numeric_grad_delta=0.0000005,
             no_grad_set=set('Bias'),
-            check_dygraph=False,
         )
 
     def test_check_grad_ingore_weight(self):
@@ -286,7 +285,6 @@ class TestLstmpOpHasInitial(TestLstmpOp):
             ['Projection'],
             numeric_grad_delta=0.0000005,
             no_grad_set=set('Weight'),
-            check_dygraph=False,
         )
 
     def test_check_grad_ingore_proj_weight(self):
@@ -301,7 +299,6 @@ class TestLstmpOpHasInitial(TestLstmpOp):
             ['Projection'],
             numeric_grad_delta=0.0000005,
             no_grad_set=set('ProjWeight'),
-            check_dygraph=False,
         )
 
     def test_check_grad_ingore_input(self):
@@ -316,7 +313,6 @@ class TestLstmpOpHasInitial(TestLstmpOp):
             ['Projection'],
             numeric_grad_delta=0.0000005,
             no_grad_set=set('Input'),
-            check_dygraph=False,
         )
 
     def test_check_grad_ingore_h0(self):
@@ -331,7 +327,6 @@ class TestLstmpOpHasInitial(TestLstmpOp):
             ['Projection'],
             numeric_grad_delta=0.0000005,
             no_grad_set=set('H0'),
-            check_dygraph=False,
         )
 
     def test_check_grad_ingore_c0(self):
@@ -346,7 +341,6 @@ class TestLstmpOpHasInitial(TestLstmpOp):
             ['Projection'],
             numeric_grad_delta=0.0000005,
             no_grad_set=set('C0'),
-            check_dygraph=False,
         )
 
 

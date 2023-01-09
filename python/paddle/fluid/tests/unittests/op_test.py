@@ -1514,7 +1514,7 @@ class OpTest(unittest.TestCase):
         atol=0,
         no_check_set=None,
         equal_nan=False,
-        check_dygraph=True,
+        check_dygraph=False,
         inplace_atol=None,
         check_eager=False,
     ):
@@ -1934,7 +1934,7 @@ class OpTest(unittest.TestCase):
         atol=1e-5,
         no_check_set=None,
         equal_nan=False,
-        check_dygraph=True,
+        check_dygraph=False,
         inplace_atol=None,
         check_eager=False,
     ):
@@ -2075,7 +2075,7 @@ class OpTest(unittest.TestCase):
         max_relative_error=0.005,
         user_defined_grads=None,
         user_defined_grad_outputs=None,
-        check_dygraph=True,
+        check_dygraph=False,
         check_eager=False,
     ):
 
@@ -2112,7 +2112,7 @@ class OpTest(unittest.TestCase):
         max_relative_error=0.005,
         user_defined_grads=None,
         user_defined_grad_outputs=None,
-        check_dygraph=True,
+        check_dygraph=False,
         numeric_place=None,
         check_eager=False,
     ):

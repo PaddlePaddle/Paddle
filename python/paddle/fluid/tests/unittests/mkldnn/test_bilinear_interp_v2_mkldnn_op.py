@@ -155,7 +155,7 @@ class TestBilinearInterpOneDNNOp(OpTest):
         self.outputs = {'Out': output_np}
 
     def test_check_output(self):
-        self.check_output(check_dygraph=False)
+        self.check_output()
 
 
 class TestBilinearInterpOpOneDNNNHWC(TestBilinearInterpOneDNNOp):

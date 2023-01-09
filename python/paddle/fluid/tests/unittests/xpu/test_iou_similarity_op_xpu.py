@@ -91,7 +91,9 @@ class XPUTestIOUSimilarityOp(XPUOpTestWrapper):
 
     class TestXPUIOUSimilarityOpWithLoD(TestXPUIOUSimilarityOp):
         def test_check_output(self):
-            self.check_output_with_place(self.place, check_dygraph=False)
+            self.check_output_with_place(
+                self.place,
+            )
 
         def setUp(self):
             super().setUp()
@@ -109,7 +111,9 @@ class XPUTestIOUSimilarityOp(XPUOpTestWrapper):
 
     class TestXPUIOUSimilarityOpWithBoxNormalized(TestXPUIOUSimilarityOp):
         def test_check_output(self):
-            self.check_output_with_place(self.place, check_dygraph=False)
+            self.check_output_with_place(
+                self.place,
+            )
 
         def setUp(self):
             super().setUp()

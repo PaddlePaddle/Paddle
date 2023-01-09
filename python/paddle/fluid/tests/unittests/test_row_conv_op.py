@@ -64,19 +64,26 @@ class TestRowConvOp1(OpTest):
         self.outputs = {'Out': (out, lod)}
 
     def test_check_output(self):
-        self.check_output(check_dygraph=False)
+        self.check_output()
 
     def test_check_grad_normal(self):
-        self.check_grad(['X', 'Filter'], 'Out', check_dygraph=False)
+        self.check_grad(
+            ['X', 'Filter'],
+            'Out',
+        )
 
     def test_check_grad_ignore_x(self):
         self.check_grad(
-            ['Filter'], 'Out', no_grad_set=set('X'), check_dygraph=False
+            ['Filter'],
+            'Out',
+            no_grad_set=set('X'),
         )
 
     def test_check_grad_ignore_wt(self):
         self.check_grad(
-            ['X'], 'Out', no_grad_set=set('Filter'), check_dygraph=False
+            ['X'],
+            'Out',
+            no_grad_set=set('Filter'),
         )
 
 
@@ -97,14 +104,16 @@ class TestRowConvOp2(OpTest):
         self.outputs = {'Out': (out, lod)}
 
     def test_check_output(self):
-        self.check_output(check_dygraph=False)
+        self.check_output()
 
     # max_relative_error is increased from 0.05 to 0.06 as for higher
     # dimensional input, the dX on CPU for some values has max_rel_error
     # slightly more than 0.05
     def test_check_grad_normal(self):
         self.check_grad(
-            ['X', 'Filter'], 'Out', max_relative_error=0.06, check_dygraph=False
+            ['X', 'Filter'],
+            'Out',
+            max_relative_error=0.06,
         )
 
     def test_check_grad_ignore_x(self):
@@ -113,16 +122,11 @@ class TestRowConvOp2(OpTest):
             'Out',
             max_relative_error=0.06,
             no_grad_set=set('X'),
-            check_dygraph=False,
         )
 
     def test_check_grad_ignore_wt(self):
         self.check_grad(
-            ['X'],
-            'Out',
-            max_relative_error=0.06,
-            no_grad_set=set('Filter'),
-            check_dygraph=False,
+            ['X'], 'Out', max_relative_error=0.06, no_grad_set=set('Filter')
         )
 
 
@@ -159,19 +163,26 @@ class TestRowOpWithTensorInput(OpTest):
         self.outputs = {'Out': out}
 
     def test_check_output(self):
-        self.check_output(check_dygraph=False)
+        self.check_output()
 
     def test_check_grad_ignore_x(self):
         self.check_grad(
-            ['Filter'], 'Out', no_grad_set=set('X'), check_dygraph=False
+            ['Filter'],
+            'Out',
+            no_grad_set=set('X'),
         )
 
     def test_check_grad_normal(self):
-        self.check_grad(['X', 'Filter'], 'Out', check_dygraph=False)
+        self.check_grad(
+            ['X', 'Filter'],
+            'Out',
+        )
 
     def test_check_grad_ignore_wt(self):
         self.check_grad(
-            ['X'], 'Out', no_grad_set=set('Filter'), check_dygraph=False
+            ['X'],
+            'Out',
+            no_grad_set=set('Filter'),
         )
 
 

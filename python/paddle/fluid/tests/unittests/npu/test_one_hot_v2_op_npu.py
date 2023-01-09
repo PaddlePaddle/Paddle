@@ -51,7 +51,7 @@ class TestOneHotOp(OpTest):
         self.outputs = {'Out': (out, x_lod)}
 
     def test_check_output(self):
-        self.check_output_with_place(paddle.NPUPlace(0), check_dygraph=False)
+        self.check_output_with_place(paddle.NPUPlace(0), )
 
 
 class TestOneHotOp_non_lod(OpTest):
@@ -102,7 +102,7 @@ class TestOneHotOp_attr(OpTest):
         self.outputs = {'Out': (out, x_lod)}
 
     def test_check_output(self):
-        self.check_output_with_place(paddle.NPUPlace(0), check_dygraph=False)
+        self.check_output_with_place(paddle.NPUPlace(0), )
 
 
 class TestOneHotOp_default_dtype(OpTest):
@@ -129,7 +129,7 @@ class TestOneHotOp_default_dtype(OpTest):
         self.outputs = {'Out': (out, x_lod)}
 
     def test_check_output(self):
-        self.check_output_with_place(paddle.NPUPlace(0), check_dygraph=False)
+        self.check_output_with_place(paddle.NPUPlace(0), )
 
 
 class TestOneHotOp_default_dtype_attr(OpTest):
@@ -157,7 +157,7 @@ class TestOneHotOp_default_dtype_attr(OpTest):
         self.outputs = {'Out': (out, x_lod)}
 
     def test_check_output(self):
-        self.check_output_with_place(paddle.NPUPlace(0), check_dygraph=False)
+        self.check_output_with_place(paddle.NPUPlace(0), )
 
 
 class TestOneHotOp_out_of_range(OpTest):
@@ -179,7 +179,7 @@ class TestOneHotOp_out_of_range(OpTest):
         self.outputs = {'Out': (out, x_lod)}
 
     def test_check_output(self):
-        self.check_output_with_place(paddle.NPUPlace(0), check_dygraph=False)
+        self.check_output_with_place(paddle.NPUPlace(0), )
 
 
 class TestOneHotOp_dtype_int64(OpTest):
@@ -201,7 +201,7 @@ class TestOneHotOp_dtype_int64(OpTest):
         self.outputs = {'Out': (out, x_lod)}
 
     def test_check_output(self):
-        self.check_output_with_place(paddle.NPUPlace(0), check_dygraph=False)
+        self.check_output_with_place(paddle.NPUPlace(0), )
 
 
 class TestOneHotOpApi(unittest.TestCase):

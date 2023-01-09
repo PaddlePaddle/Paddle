@@ -84,7 +84,9 @@ class TestLookupTableBF16Op(OpTest):
         self.outputs = {'Out': self.out_fp32}
 
     def test_check_output(self):
-        self.check_output_with_place(core.CPUPlace(), check_dygraph=False)
+        self.check_output_with_place(
+            core.CPUPlace(),
+        )
 
     def test_check_grad(self):
         self.check_grad_with_place(
@@ -92,7 +94,6 @@ class TestLookupTableBF16Op(OpTest):
             ['W'],
             'Out',
             no_grad_set=set('Ids'),
-            check_dygraph=False,
             max_relative_error=1.5e-2,
             user_defined_grads=[self.w_grad_fp32],
             user_defined_grad_outputs=[self.out_bf16],
@@ -189,7 +190,9 @@ class TestLookupTableBF16OpWithPadding(TestLookupTableBF16Op):
         padding_idx = np.random.choice(ids, 1)[0]
         self.outputs['Out'][ids == padding_idx] = np.zeros(31)
         self.attrs = {'padding_idx': int(padding_idx)}
-        self.check_output_with_place(core.CPUPlace(), check_dygraph=False)
+        self.check_output_with_place(
+            core.CPUPlace(),
+        )
 
 
 @skip_check_grad_ci(
@@ -207,7 +210,9 @@ class TestLookupTableBF16OpIds4DPadding(TestLookupTableBF16OpIds4D):
         padding_idx = np.random.choice(flatten_idx, 1)[0]
         self.outputs['Out'][np.squeeze(ids == padding_idx)] = np.zeros(31)
         self.attrs = {'padding_idx': int(padding_idx)}
-        self.check_output_with_place(core.CPUPlace(), check_dygraph=False)
+        self.check_output_with_place(
+            core.CPUPlace(),
+        )
 
 
 class TestEmbeddingLayerBF16ConstantInitializer(unittest.TestCase):

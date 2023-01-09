@@ -64,7 +64,9 @@ class XPUTestRangeOp(XPUOpTestWrapper):
 
         def test_check_output(self):
             place = paddle.XPUPlace(0)
-            self.check_output_with_place(place, check_dygraph=False)
+            self.check_output_with_place(
+                place,
+            )
 
     class TestRangeOpCase0(TestRangeOp):
         def init_config(self):

@@ -322,7 +322,6 @@ class XPUTestWarpCTCOp(XPUOpTestWrapper):
                 ["Logits"],
                 "Loss",
                 max_relative_error=0.007,
-                check_dygraph=False,
             )
 
     class TestWarpCTCOpWithPaddingCase1(TestWarpCTCOpWithPadding):

@@ -62,7 +62,6 @@ class TestReshapeBf16Op(OpTest):
             core.CPUPlace(),
             ["X"],
             "Out",
-            check_dygraph=False,
             user_defined_grads=[self.input_data_fp32],
             user_defined_grad_outputs=[
                 self.inputs["X"].reshape(self.infered_shape)

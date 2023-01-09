@@ -57,7 +57,8 @@ class TestPool2DMKLDNNInt8_Op(TestPool2D_Op):
     def test_check_output(self):
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
         self.check_output_with_place(
-            core.CPUPlace(), atol=1e-5, check_dygraph=False
+            core.CPUPlace(),
+            atol=1e-5,
         )
 
     def test_check_grad(self):

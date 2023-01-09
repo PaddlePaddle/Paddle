@@ -55,7 +55,6 @@ class TestElementwiseMulBf16MklDNNOp(OpTest):
             core.CPUPlace(),
             ["X", "Y"],
             "Out",
-            check_dygraph=False,
             user_defined_grads=[
                 np.multiply(self.x, self.y),
                 np.multiply(self.x, self.x),
@@ -68,7 +67,6 @@ class TestElementwiseMulBf16MklDNNOp(OpTest):
             core.CPUPlace(),
             ["Y"],
             "Out",
-            check_dygraph=False,
             user_defined_grads=[np.multiply(self.y, self.x)],
             user_defined_grad_outputs=[self.y_bf16],
         )
@@ -78,7 +76,6 @@ class TestElementwiseMulBf16MklDNNOp(OpTest):
             core.CPUPlace(),
             ["X"],
             "Out",
-            check_dygraph=False,
             user_defined_grads=[np.multiply(self.x, self.y)],
             user_defined_grad_outputs=[self.x_bf16],
         )

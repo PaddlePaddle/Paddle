@@ -27,13 +27,16 @@ class TestLRNMKLDNNOp(TestLRNOp):
         # We cannot validate MidOut as LRN REF has diffrent meaning in it
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
         self.check_output(
-            atol=0.002, no_check_set=['MidOut'], check_dygraph=False
+            atol=0.002,
+            no_check_set=['MidOut'],
         )
 
     def test_check_grad_normal(self):
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
         self.check_grad(
-            ['X'], 'Out', max_relative_error=0.01, check_dygraph=False
+            ['X'],
+            'Out',
+            max_relative_error=0.01,
         )
 
 
@@ -47,7 +50,9 @@ class TestLRNMKLDNNOpWithIsTest(TestLRNMKLDNNOp):
         def check_raise_is_test():
             try:
                 self.check_grad(
-                    ['X'], 'Out', max_relative_error=0.01, check_dygraph=False
+                    ['X'],
+                    'Out',
+                    max_relative_error=0.01,
                 )
             except Exception as e:
                 t = "is_test attribute should be set to False in training phase."

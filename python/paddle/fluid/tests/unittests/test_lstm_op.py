@@ -204,7 +204,9 @@ class TestLstmOp(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(atol=1e-8, check_dygraph=False)
+        self.check_output(
+            atol=1e-8,
+        )
 
     def test_check_grad(self):
         # TODO(qingqing) remove folowing lines after the check_grad is refined.
@@ -217,7 +219,6 @@ class TestLstmOp(OpTest):
             ['Input', 'Weight', 'Bias'],
             ['Hidden'],
             max_relative_error=5e-4,
-            check_dygraph=False,
         )
 
 

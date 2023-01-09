@@ -96,7 +96,7 @@ class TestFusionSeqExpandConcatFCOp(OpTest):
         self.attrs = {'fc_activation': self.fc_act}
 
     def test_check_output(self):
-        self.check_output(check_dygraph=False)
+        self.check_output()
 
 
 class TestFusionSECFCOpNonBias(TestFusionSeqExpandConcatFCOp):

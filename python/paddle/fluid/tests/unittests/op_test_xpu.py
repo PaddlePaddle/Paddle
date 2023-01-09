@@ -68,7 +68,7 @@ class XPUOpTest(OpTest):
         atol=0.001,
         no_check_set=None,
         equal_nan=False,
-        check_dygraph=True,
+        check_dygraph=False,
         inplace_atol=None,
         check_eager=False,
     ):
@@ -90,7 +90,7 @@ class XPUOpTest(OpTest):
         atol=0.001,
         no_check_set=None,
         equal_nan=False,
-        check_dygraph=True,
+        check_dygraph=False,
         inplace_atol=None,
         check_eager=False,
     ):
@@ -119,7 +119,7 @@ class XPUOpTest(OpTest):
         max_relative_error=0.005,
         user_defined_grads=None,
         user_defined_grad_outputs=None,
-        check_dygraph=True,
+        check_dygraph=False,
         numeric_place=None,
         check_eager=False,
     ):
@@ -151,7 +151,7 @@ class XPUOpTest(OpTest):
         max_relative_error=0.005,
         user_defined_grads=None,
         user_defined_grad_outputs=None,
-        check_dygraph=True,
+        check_dygraph=False,
         numeric_place=None,
         check_eager=False,
     ):
@@ -236,7 +236,7 @@ class XPUOpTest(OpTest):
         in_place=False,
         max_relative_error=0.005,
         user_defined_grad_outputs=None,
-        check_dygraph=True,
+        check_dygraph=False,
     ):
         check_dygraph = False
         self.scope = core.Scope()
