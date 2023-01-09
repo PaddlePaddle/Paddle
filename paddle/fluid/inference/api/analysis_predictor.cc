@@ -2420,6 +2420,12 @@ USE_TRT_CONVERTER(logsigmoid)
 USE_TRT_CONVERTER(lookup_table)
 USE_TRT_CONVERTER(expand_v2)
 USE_TRT_CONVERTER(take_along_axis)
+
+#if IS_TRT_VERSION_GE(8522)
+USE_TRT_CONVERTER(flash_multihead_matmul)
+USE_TRT_CONVERTER(cross_multihead_matmul)
+#endif
+
 #if PADDLE_WITH_CUSPARSELT && IS_TRT_VERSION_GE(8000)
 USE_TRT_CONVERTER(sparse_fc)
 USE_TRT_CONVERTER(sparse_multihead_matmul)
