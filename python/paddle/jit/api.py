@@ -27,6 +27,7 @@ import threading
 from typing import Any
 
 import paddle
+from paddle import Tensor
 from paddle.fluid import core, dygraph
 from paddle.fluid.compiler import (
     BuildStrategy,
@@ -363,7 +364,7 @@ class _SaveLoadConfig:
                 % type(input)
             )
             for var in spec:
-                if not isinstance(var, core.VarBase):
+                if not isinstance(var, Tensor):
                     raise TypeError(
                         "The element in config `output_spec` list should be 'Variable', but received element's type is %s."
                         % type(var)
@@ -946,7 +947,7 @@ def save(layer, path, input_spec=None, **configs):
         for var in flatten(input_spec):
             if isinstance(var, paddle.static.InputSpec):
                 inner_input_spec.append(var)
-            elif isinstance(var, (core.VarBase, core.eager.Tensor, Variable)):
+            elif isinstance(var, (Tensor, Variable)):
                 inner_input_spec.append(
                     paddle.static.InputSpec.from_tensor(var)
                 )
