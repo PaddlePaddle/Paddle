@@ -597,8 +597,6 @@ def max_pool1d(
     """
     """NCL to NCHW"""
     data_format = "NCHW"
-    if not in_dynamic_mode():
-        check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'max_pool1d')
     _check_input(x, 3)
     x = unsqueeze(x, [2])
     kernel_size = [1] + utils.convert_to_list(kernel_size, 1, 'pool_size')
@@ -641,6 +639,7 @@ def max_pool1d(
             return squeeze(pool_out, [2])
 
     else:
+        check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'max_pool1d')
         op_type = 'max_pool2d_with_index' if return_mask else "pool2d"
         helper = LayerHelper(op_type, **locals())
         dtype = helper.input_dtype(input_param_name='x')

@@ -132,6 +132,17 @@ def to_int_array_tensors_name(attr):
     return to_pascal_case(attr['name']) + 'TensorList'
 
 
+def to_composite_grad_opmaker_name(backward_op_name):
+    words = backward_op_name.split("_")
+    for i in range(len(words)):
+        words[i] = words[i].strip()
+        words[i] = words[i].capitalize()
+    composite_grad_opmaker_name = words[0] + "Composite"
+    composite_grad_opmaker_name += "".join(word for word in words[1:])
+    composite_grad_opmaker_name += "OpMaker"
+    return composite_grad_opmaker_name
+
+
 def cartesian_prod_attrs(attrs):
     items = []
     for attr in attrs:

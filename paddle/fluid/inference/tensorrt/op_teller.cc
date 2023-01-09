@@ -2390,6 +2390,22 @@ struct SimpleOpTypeSetTeller : public Teller {
       }
     }
 
+    if (op_type == "skip_groupnorm_act") {
+      if (!with_dynamic_shape) {
+        VLOG(3) << "The skip_groupnorm_act op does not support "
+                   "static shape yet";
+        return false;
+      }
+    }
+
+    if (op_type == "preln_groupnorm_act") {
+      if (!with_dynamic_shape) {
+        VLOG(3) << "The preln_groupnorm_act op does not support "
+                   "static shape yet";
+        return false;
+      }
+    }
+
     if (op_type == "lookup_table") {
       if (!with_dynamic_shape) {
         VLOG(3) << "the lookup_table does not support "
@@ -2561,7 +2577,9 @@ struct SimpleOpTypeSetTeller : public Teller {
       "merge_layernorm",
       "skip_merge_layernorm",
       "lookup_table_v2",
-      "expand_v2"};
+      "expand_v2",
+      "skip_groupnorm_act",
+      "preln_groupnorm_act"};
 
   std::unordered_set<std::string> teller_set{
       "mul",
@@ -2709,7 +2727,9 @@ struct SimpleOpTypeSetTeller : public Teller {
       "skip_merge_layernorm",
       "lookup_table",
       "lookup_table_v2",
-      "expand_v2"};
+      "expand_v2",
+      "skip_groupnorm_act",
+      "preln_groupnorm_act"};
 };
 
 struct GenericPluginTeller : public Teller {

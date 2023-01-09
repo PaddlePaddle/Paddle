@@ -24,15 +24,19 @@ from paddle.static.quantization import (
     AddQuantDequantPassV2,
     OutScaleForTrainingPass,
     QuantizationTransformPassV2,
-    utils,
+    quant_config,
 )
 
 from ..auto_parallel.converter import Converter
 from ..auto_parallel.dist_attribute import OperatorDistAttr, TensorDistAttr
 from .pass_base import PassBase, register_pass
 
-TRANSFORM_PASS_OP_TYPES = utils._weight_supported_quantizable_op_type
-QUANT_DEQUANT_PASS_OP_TYPES = utils._act_supported_quantizable_op_type
+TRANSFORM_PASS_OP_TYPES = list(
+    quant_config.SUPPORT_WEIGHT_QUANTIZATION_OP_DICT.keys()
+)
+QUANT_DEQUANT_PASS_OP_TYPES = list(
+    quant_config.SUPPORT_ACT_QUANTIZATION_OP_DICT.keys()
+)
 
 
 def _node_id(node):

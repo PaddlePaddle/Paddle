@@ -563,6 +563,18 @@ class TestSundryAPI(unittest.TestCase):
         self.assertEqual(out.grad.shape, [])
         self.assertEqual(x.grad.shape, [])
 
+    def test_cumprod(self):
+        x = paddle.full([], 1.0, 'float32')
+        x.stop_gradient = False
+        out = paddle.cumprod(x, 0)
+        out.backward()
+
+        with self.assertRaises(ValueError):
+            tmp = paddle.cumprod(x, 2)
+        self.assertEqual(out.shape, [])
+        self.assertEqual(out.grad.shape, [])
+        self.assertEqual(x.grad.shape, [])
+
     def test_clip(self):
         x = paddle.uniform([], None, -10, 10)
         x.stop_gradient = False
@@ -720,6 +732,61 @@ class TestSundryAPI(unittest.TestCase):
         self.assertEqual(out.shape, [5])
         self.assertEqual(out.numpy()[3], 2)
         self.assertEqual(out.grad.shape, [5])
+
+    def test_kthvalue(self):
+        places = ['cpu']
+        if paddle.is_compiled_with_cuda():
+            places.append('gpu')
+        for place in places:
+            paddle.set_device(place)
+
+            x = paddle.randn(())
+            x.stop_gradient = False
+
+            out = paddle.kthvalue(x, 1)
+            out[0].backward()
+
+            # check shape of output value and indice
+            self.assertEqual(out[0].shape, [])
+            self.assertEqual(out[1].shape, [])
+
+            # check grad shape and value
+            self.assertEqual(x.grad.shape, [])
+            self.assertTrue(x.grad.numpy() == 1)
+
+    def test_mode(self):
+        places = ['cpu']
+        if paddle.is_compiled_with_cuda():
+            places.append('gpu')
+        for place in places:
+            paddle.set_device(place)
+
+            x = paddle.randn(())
+            x.stop_gradient = False
+
+            out = paddle.mode(x)
+            out[0].backward()
+
+            # check shape of output value and indice
+            self.assertEqual(out[0].shape, [])
+            self.assertEqual(out[1].shape, [])
+
+            # check grad shape and value
+            self.assertEqual(x.grad.shape, [])
+            self.assertTrue(x.grad.numpy() == 1)
+
+    def test_flatten(self):
+        x = paddle.rand([])
+        x.stop_gradient = False
+
+        start_axis = 0
+        stop_axis = -1
+
+        out = paddle.flatten(x, start_axis=start_axis, stop_axis=stop_axis)
+        out.backward()
+
+        self.assertEqual(out.shape, [1])
+        self.assertEqual(x.grad.shape, [])
 
     def test_scale(self):
         x = paddle.rand([])
@@ -940,6 +1007,19 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(res[0].shape, ())
 
     @prog_scope()
+    def test_cumprod(self):
+        x = paddle.full([], 1.0, 'float32')
+        x.stop_gradient = False
+        out = paddle.cumprod(x, 0)
+        paddle.static.append_backward(out)
+        prog = paddle.static.default_main_program()
+        res = self.exe.run(prog, fetch_list=[out])
+
+        with self.assertRaises(ValueError):
+            tmp = paddle.cumprod(x, 2)
+        self.assertEqual(res[0].shape, ())
+
+    @prog_scope()
     def test_clip(self):
         x = paddle.uniform([], None, -10, 10)
         x.stop_gradient = False
@@ -1112,6 +1192,44 @@ class TestSundryAPIStatic(unittest.TestCase):
         res = self.exe.run(prog, feed={'index': index_data}, fetch_list=[out])
         self.assertEqual(res[0].shape, (5,))
         self.assertEqual(res[0][3], 2)
+
+    @prog_scope()
+    def test_kthvalue(self):
+        x = paddle.full([], 1, 'float32')
+        out = paddle.kthvalue(x, 1)
+        paddle.static.append_backward(out[0])
+
+        prog = paddle.static.default_main_program()
+        res = self.exe.run(prog, fetch_list=[out])
+        self.assertEqual(len(res[0].shape), 0)
+        self.assertEqual(len(res[0].shape), 0)
+
+    @prog_scope()
+    def test_mode(self):
+        x = paddle.full([], 1, 'float32')
+        out = paddle.mode(x)
+        paddle.static.append_backward(out[0])
+
+        prog = paddle.static.default_main_program()
+        res = self.exe.run(prog, fetch_list=[out])
+        self.assertEqual(len(res[0].shape), 0)
+        self.assertEqual(len(res[0].shape), 0)
+
+    @prog_scope()
+    def test_flatten(self):
+        x = paddle.full([], 1, 'float32')
+        x.stop_gradient = False
+
+        start_axis = 0
+        stop_axis = -1
+
+        out = paddle.flatten(x, start_axis=start_axis, stop_axis=stop_axis)
+        paddle.static.append_backward(out)
+
+        prog = paddle.static.default_main_program()
+        res = self.exe.run(prog, feed={}, fetch_list=[out])
+
+        self.assertEqual(res[0].shape, (1,))
 
     @prog_scope()
     def test_scale(self):
@@ -1392,6 +1510,24 @@ class TestNoBackwardAPI(unittest.TestCase):
         out = paddle.zeros(self.shape)
         self.assertEqual(out.shape, [2, 3, 4])
 
+    def test_embedding(self):
+        ids = paddle.full(shape=[], fill_value=1, dtype='int64')
+        w0 = paddle.arange(3, 9).reshape((3, 2)).astype(paddle.float32)
+        w = paddle.to_tensor(w0, stop_gradient=False)
+        emb = paddle.nn.functional.embedding(
+            x=ids, weight=w, sparse=True, name="embedding"
+        )
+        self.assertEqual(emb.shape, [2])
+        res = [5.0, 6.0]
+        for i in range(len(res)):
+            self.assertEqual(emb.numpy()[i], res[i])
+
+    def test_one_hot_label(self):
+        label = paddle.full(shape=[], fill_value=2, dtype='int64')
+        one_hot_label = paddle.nn.functional.one_hot(label, num_classes=4)
+        self.assertEqual(one_hot_label.shape, [4])
+        self.assertEqual(one_hot_label.numpy()[2], 1)
+
 
 class TestNoBackwardAPIStatic(unittest.TestCase):
     def setUp(self):
@@ -1560,6 +1696,39 @@ class TestNoBackwardAPIStatic(unittest.TestCase):
         self.assertEqual(res[0].shape, ())
         self.assertEqual(res[1].shape, ())
         self.assertEqual(res[2].shape, (2, 3, 4))
+
+    def test_embedding(self):
+        ids = paddle.full(shape=[], fill_value=1, dtype='int64')
+        w0 = paddle.arange(3, 9).reshape((3, 2)).astype(paddle.float32)
+        w = paddle.to_tensor(w0, stop_gradient=False)
+        emb = paddle.nn.functional.embedding(
+            x=ids, weight=w, sparse=True, name="embedding"
+        )
+
+        prog = paddle.static.default_main_program()
+        res = self.exe.run(prog, fetch_list=[emb])
+        self.assertEqual(res[0].shape, (2,))
+        result = [5.0, 6.0]
+        for i in range(len(res)):
+            self.assertEqual(res[0][i], result[i])
+
+    def test_static_embedding(self):
+        ids = paddle.full(shape=[], fill_value=1, dtype='int64')
+        emb = paddle.static.nn.embedding(ids, (20, 3))
+        prog = paddle.static.default_main_program()
+        self.exe.run(paddle.fluid.default_startup_program())
+        res = self.exe.run(prog, fetch_list=[emb])
+        self.assertEqual(res[0].shape, (3,))
+
+    def test_one_hot_label(self):
+        label = paddle.full(shape=[], fill_value=2, dtype='int64')
+        one_hot_label = paddle.nn.functional.one_hot(label, num_classes=4)
+        prog = paddle.static.default_main_program()
+        self.exe.run(paddle.fluid.default_startup_program())
+        res = self.exe.run(prog, fetch_list=[one_hot_label])
+
+        self.assertEqual(res[0].shape, (4,))
+        self.assertEqual(res[0][2], 1)
 
 
 if __name__ == "__main__":
