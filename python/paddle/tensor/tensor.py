@@ -19,7 +19,7 @@ The basic tensor classes
 from .. import fluid
 
 if fluid.framework._in_eager_mode_:
-    from ..framework.core.eager import Tensor
+    from ..fluid.core.eager import Tensor
 else:
     from ..framework import VarBase as Tensor
 
