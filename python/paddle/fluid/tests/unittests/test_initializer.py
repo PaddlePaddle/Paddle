@@ -1176,6 +1176,22 @@ class TestDiracInitializer3(TestDiracInitializer1):
             paddle.nn.Conv2D(5, 9, (3, 3), weight_attr=self.weight_attr)
 
 
+class TestKaimingUniform(unittest.TestCase):
+    def func_kaiminguniform_initializer_fan_in_zero(self):
+        paddle.enable_static()
+        x = paddle.static.data(name='x', shape=[1, 0, 0], dtype='float32')
+
+        kaiming = paddle.nn.initializer.KaimingUniform(0)
+        param_attr = paddle.ParamAttr(initializer=kaiming)
+
+        paddle.static.nn.prelu(x, 'all', param_attr=param_attr)
+
+    def test_type_error(self):
+        self.assertRaises(
+            ValueError, self.func_kaiminguniform_initializer_fan_in_zero
+        )
+
+
 if __name__ == '__main__':
     paddle.enable_static()
     unittest.main()

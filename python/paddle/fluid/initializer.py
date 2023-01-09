@@ -772,6 +772,15 @@ class MSRAInitializer(Initializer):
         assert isinstance(block, framework.Block)
         f_in, f_out = self._compute_fans(var)
 
+        if fan_in == 0:
+            if self._fan_in is None:
+                raise ValueError(
+                    "The in_features of the Tensor contain zero, can not initialize the Tensor."
+                )
+            else:
+                raise ValueError(
+                    "fan_in should not be zero, can not initialize the Tensor."
+                )
         # If fan_in is passed, use it
         fan_in = f_in if self._fan_in is None else self._fan_in
 
