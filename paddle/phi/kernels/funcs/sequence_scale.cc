@@ -32,7 +32,7 @@ class ScaleLoDTensorFunctor<phi::CPUContext, T> {
     auto lod = seq->lod();
     const size_t num_seq = lod[level].size() - 1;
     size_t seq_width = seq->dims()[1];
-    framework::LoD abs_offset_lod = framework::ToAbsOffset(lod);
+    paddle::framework::LoD abs_offset_lod = paddle::framework::ToAbsOffset(lod);
 
     T* seq_data = context.template Alloc<T>(seq);
     for (size_t i = 0; i < num_seq; ++i) {
