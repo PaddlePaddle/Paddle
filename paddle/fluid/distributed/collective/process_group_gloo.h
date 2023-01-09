@@ -20,8 +20,8 @@
 
 #include "paddle/fluid/distributed/collective/process_group.h"
 #include "paddle/fluid/distributed/collective/process_group_without_stream.h"
-#include "paddle/fluid/distributed/store/store.h"
-#include "paddle/fluid/distributed/store/tcp_store.h"
+#include "paddle/phi/core/distributed/store/store.h"
+#include "paddle/phi/core/distributed/store/tcp_store.h"
 
 #ifdef PADDLE_WITH_GLOO
 #include "paddle/fluid/framework/fleet/gloo_wrapper.h"
@@ -52,7 +52,7 @@ class ProcessGroupGloo : public ProcessGroupWithoutStream {
 
   class GlooStore : public ::gloo::rendezvous::Store {
    public:
-    explicit GlooStore(const std::shared_ptr<paddle::distributed::Store>& store)
+    explicit GlooStore(const std::shared_ptr<phi::distributed::Store>& store)
         : _store(store) {}
 
     ~GlooStore() = default;
@@ -86,7 +86,7 @@ class ProcessGroupGloo : public ProcessGroupWithoutStream {
     }
 
    protected:
-    std::shared_ptr<paddle::distributed::Store> _store;
+    std::shared_ptr<phi::distributed::Store> _store;
   };
 
   class GlooOptions {
@@ -99,14 +99,14 @@ class ProcessGroupGloo : public ProcessGroupWithoutStream {
     std::shared_ptr<::gloo::transport::Device> device;
   };
 
-  ProcessGroupGloo(const std::shared_ptr<paddle::distributed::Store>& store,
+  ProcessGroupGloo(const std::shared_ptr<phi::distributed::Store>& store,
                    int rank,
                    int world_size,
                    int gid,
                    std::shared_ptr<GlooOptions> options);
 
   static std::shared_ptr<ProcessGroupGloo> CreateProcessGroupGloo(
-      const std::shared_ptr<paddle::distributed::Store>& store,
+      const std::shared_ptr<phi::distributed::Store>& store,
       int rank,
       int world_size,
       int gid);
