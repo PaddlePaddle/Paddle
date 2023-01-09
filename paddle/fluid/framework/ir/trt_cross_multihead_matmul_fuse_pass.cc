@@ -540,8 +540,8 @@ int TrtCrossMultiHeadMatmulFusePass::BuildCrossFusion(
 
 void TrtCrossMultiHeadMatmulFusePass::ApplyImpl(Graph* graph) const {
   FusePassBase::Init(name_scope_, graph);
+#ifdef PADDLE_WITH_TENSORRT
   auto trt_version = paddle::inference::tensorrt::GetTrtRuntimeVersion();
-
   if (std::get<0>(trt_version) * 1000 + std::get<1>(trt_version) * 100 +
           std::get<2>(trt_version) * 10 <
       8520) {
@@ -549,6 +549,10 @@ void TrtCrossMultiHeadMatmulFusePass::ApplyImpl(Graph* graph) const {
                "8.5.2.2. Stop this pass";
     return;
   }
+#else
+  // if no tensorrt, early stop
+  return;
+#endif
   bool with_dynamic_shape = Get<bool>("with_dynamic_shape");
   if (!with_dynamic_shape) {
     VLOG(3) << "Cross attention oss plugin need trt "
