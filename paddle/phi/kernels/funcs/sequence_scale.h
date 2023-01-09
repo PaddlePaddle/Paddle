@@ -44,6 +44,7 @@ namespace funcs {
  * \param num_seq       Number of sequence
  *
  */
+
 template <typename DeviceContext, typename T>
 class ScaleLoDTensorFunctor {
  public:
