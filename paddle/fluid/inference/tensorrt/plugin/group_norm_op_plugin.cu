@@ -179,7 +179,7 @@ void groupNormNHWCSum(const GroupNormNHWCParams &params, cudaStream_t stream) {
       groupNormNHWCSumKernel<64><<<grid, 64, 0, stream>>>(params);
       break;
     case 8:
-      groupNormNHWCSumKernel<4><<<grid, 64, 4, stream>>>(params);
+      groupNormNHWCSumKernel<4><<<grid, 4, 0, stream>>>(params);
       break;
   }
 }
