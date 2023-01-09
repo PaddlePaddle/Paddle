@@ -240,7 +240,7 @@ if(WITH_GPU AND TENSORRT_FOUND)
                          PROPERTIES TIMEOUT 300)
     set_tests_properties(test_mkldnn_conv_hard_swish_fuse_pass
                          PROPERTIES TIMEOUT 300)
-    set_tests_properties(test_mkldnn_batch_norm_act_fuse_pass PROPERTIES TIMEOUT
+    set_tests_properties(test_onednn_batch_norm_act_fuse_pass PROPERTIES TIMEOUT
                                                                          100)
     set_tests_properties(test_mkldnn_matmul_v2_transpose_reshape_fuse_pass
                          PROPERTIES TIMEOUT 100)
