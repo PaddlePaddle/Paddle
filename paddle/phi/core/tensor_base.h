@@ -57,7 +57,6 @@ class TensorBase {
   /// \brief Test whether the storage is allocated.
   /// \return Whether the storage is allocated.
   virtual bool initialized() const = 0;
-
   // TODO(Aurelius84): This interface is under intermediate state now.
   // We will remove DataType argument in the future. Please DO NOT
   // rely on Datatype too much when designing and implementing other features.
