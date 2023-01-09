@@ -1518,9 +1518,9 @@ class OpTest(unittest.TestCase):
         inplace_atol=None,
         check_eager=False,
     ):
-        check_dygraph = False
         # disable legacy dygraph check when check_eager is True
-        if check_eager:
+        if check_eager or check_dygraph:
+            check_eager = True
             check_dygraph = False
 
         def find_imperative_actual(target_name, dygraph_outs, place):
@@ -1938,10 +1938,10 @@ class OpTest(unittest.TestCase):
         inplace_atol=None,
         check_eager=False,
     ):
-        check_dygraph = False
 
         # disable legacy dygraph check when check_eager is True
-        if check_eager:
+        if check_eager or check_dygraph:
+            check_eager = True
             check_dygraph = False
 
         self.__class__.op_type = self.op_type
@@ -2079,9 +2079,9 @@ class OpTest(unittest.TestCase):
         check_eager=False,
     ):
 
-        check_dygraph = False
         # disable legacy dygraph check when check_eager is True
-        if check_eager:
+        if check_eager or check_dygraph:
+            check_eager = True
             check_dygraph = False
 
         self._check_grad_helper()
@@ -2117,10 +2117,9 @@ class OpTest(unittest.TestCase):
         check_eager=False,
     ):
 
-        check_dygraph = False
-
         # disable legacy dygraph check when check_eager is True
-        if check_eager:
+        if check_eager or check_dygraph:
+            check_eager = True
             check_dygraph = False
 
         self.scope = core.Scope()

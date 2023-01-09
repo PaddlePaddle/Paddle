@@ -46,7 +46,6 @@ limitations under the License. */
 
 #if defined(PADDLE_WITH_GLOO)
 #include "paddle/fluid/distributed/collective/process_group_gloo.h"
-#include "paddle/fluid/distributed/store/tcp_store.h"
 #endif
 
 #if defined(PADDLE_WITH_XPU_BKCL)
