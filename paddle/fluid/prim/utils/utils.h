@@ -19,6 +19,7 @@ namespace prim {
 class PrimCommonUtils {
  public:
   static bool IsPrimEnabled();
+  static void SetPrimEnabled(bool enabled);
 };
 }  // namespace prim
 }  // namespace paddle

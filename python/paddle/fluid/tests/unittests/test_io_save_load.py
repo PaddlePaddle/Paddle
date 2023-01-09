@@ -76,7 +76,7 @@ class TestSaveInferenceModelAPIError(unittest.TestCase):
 
         exe = fluid.Executor(fluid.CPUPlace())
         exe.run(start_prog)
-        with self.assertRaisesRegexp(
+        with self.assertRaisesRegex(
             ValueError, "not involved in the target_vars calculation"
         ):
             fluid.io.save_inference_model(

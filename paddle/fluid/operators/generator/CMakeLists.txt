@@ -148,15 +148,16 @@ if(${_result})
   message(FATAL_ERROR "sparse operator codegen failed, exiting.")
 endif()
 
-# set(generated_static_files
-#     "${generated_op_path}"
-#     "${generated_static_op_path}"
-#     "${generated_sparse_ops_path}"
-#     "${generated_argument_mapping_path}"
-#     "${generated_static_argument_mapping_path}"
-#     "${generated_sparse_argument_mapping_path}")
+set(generated_static_files
+    "${generated_op_path}"
+    "${generated_static_op_path}"
+    "${generated_sparse_ops_path}"
+    "${generated_argument_mapping_path}"
+    "${generated_static_argument_mapping_path}"
+    "${generated_sparse_argument_mapping_path}")
 
 set(generated_static_files
+    "${generated_op_path}"
     "${generated_static_op_path}"
     "${generated_sparse_ops_path}"
     "${generated_argument_mapping_path}"

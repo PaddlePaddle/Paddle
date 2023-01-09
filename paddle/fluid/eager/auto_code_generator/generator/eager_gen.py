@@ -875,7 +875,9 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
         backward_grad_outputs_map = self.backward_grad_outputs_map
         backward_attrs_list = self.backward_attrs_list
         optional_inputs = self.optional_inputs
-        is_composite_grad_api = False if self.composite_func_info == [] else True
+        is_composite_grad_api = (
+            False if self.composite_func_info == [] else True
+        )
 
         # Pass Stop Gradient Args
         pass_stop_gradient_args_str = self.GetPassStopGradientArgsList(
@@ -1833,8 +1835,10 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
         is_invoke_forward_api = IsInvokeForwardApi(
             self.grad_api_contents, self.forward_apis_dict
         )
-        is_composite_grad_api = False if self.composite_func_info == [] else True
-        
+        is_composite_grad_api = (
+            False if self.composite_func_info == [] else True
+        )
+
         if next_node_generator is not None:
             has_higher_order_node = True
             return (
@@ -1965,7 +1969,9 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
         namespace = self.namespace
         forward_api_name = self.forward_api_name
         backward_api_name = self.backward_api_name
-        composite_grad_api_name = self.composite_func_info[0] if is_composite_grad_api else None
+        composite_grad_api_name = (
+            self.composite_func_info[0] if is_composite_grad_api else None
+        )
         backward_forward_inputs_map = self.backward_forward_inputs_map
         backward_grad_inputs_map = self.backward_grad_inputs_map
         backward_grad_outputs_map = self.backward_grad_outputs_map
@@ -2246,7 +2252,7 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
   {indent}{autograd_api_out} api_output = paddle::experimental::{self.namespace}{self.grad_api_contents['invoke']};
   {out_assign_str}{indent}}}
   """
-  #TODO(Ruting):using composite only when we don't have backward kernel in the future.
+        # TODO(Ruting):using composite only when we don't have backward kernel in the future.
         elif is_composite_grad_api:
             grad_function_call_str = f"""
   if (paddle::prim::PrimCommonUtils::IsPrimEnabled()) {{

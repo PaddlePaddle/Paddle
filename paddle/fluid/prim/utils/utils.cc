@@ -13,13 +13,18 @@
 // limitations under the License.
 
 #include "paddle/fluid/prim/utils/utils.h"
+#include "paddle/fluid/prim/utils/static/static_global_utils.h"
 #include "paddle/phi/core/flags.h"
 
 PADDLE_DEFINE_EXPORTED_bool(prim_enabled, false, "enable_prim or not");
 namespace paddle {
 namespace prim {
 bool PrimCommonUtils::IsPrimEnabled() {
-  return FLAGS_prim_enabled ? true : false;
+  return StaticCompositeContext::Instance().IsPrimEnabled();
+}
+
+void PrimCommonUtils::SetPrimEnabled(bool enable_prim) {
+  return StaticCompositeContext::Instance().SetPrimEnabled(enable_prim);
 }
 }  // namespace prim
 }  // namespace paddle

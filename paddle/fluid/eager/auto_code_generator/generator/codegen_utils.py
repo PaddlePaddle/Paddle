@@ -408,9 +408,7 @@ def ParseYamlCompositeInfo(string):
     fname = r'(.*?)'
     wspace = r'\s*'
     fargs = r'(.*?)'
-    pattern = (
-        fr'{fname}{wspace}\({wspace}{fargs}{wspace}\)'
-    )
+    pattern = fr'{fname}{wspace}\({wspace}{fargs}{wspace}\)'
 
     m = re.search(pattern, string)
     composite_fun_info = []
@@ -420,6 +418,8 @@ def ParseYamlCompositeInfo(string):
         composite_fun_info.append(fun_arg.strip())
 
     return composite_fun_info
+
+
 ####################
 #  Generator Base  #
 ####################
@@ -455,7 +455,7 @@ class FunctionGeneratorBase:
         # Special Op Attributes
         self.optional_inputs = []  # [name, ...]
         self.no_need_buffers = []  # [name, ...]
-        self.composite_func_info = [] # [func_name, input_name, ...]
+        self.composite_func_info = []  # [func_name, input_name, ...]
         self.intermediate_outputs = []  # [name, ...]
         self.forward_inplace_map = {}  # {name : name, ...}
 
@@ -479,7 +479,7 @@ class FunctionGeneratorBase:
 
     def ParseComposite(self):
         grad_api_contents = self.grad_api_contents
-        
+
         if 'composite' in grad_api_contents.keys():
             composite_str = grad_api_contents['composite']
             self.composite_func_info = ParseYamlCompositeInfo(composite_str)
