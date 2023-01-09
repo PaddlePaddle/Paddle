@@ -19,7 +19,7 @@ from auto_scan_test import PassAutoScanTest
 from program_config import OpConfig, ProgramConfig, TensorConfig
 
 
-class TestConvBiasMkldnnFusePass(PassAutoScanTest):
+class TestConvBiasOneDNNFusePass(PassAutoScanTest):
     def sample_predictor_configs(self, program_config):
         config = self.create_inference_config(use_gpu=False)
         config.enable_mkldnn()
