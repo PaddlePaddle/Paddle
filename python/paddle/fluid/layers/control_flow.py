@@ -47,7 +47,9 @@ from ..data_feeder import (
 )
 from ..backward import _infer_var_data_type_shape_
 import paddle
-from paddle import _C_ops, _legacy_C_ops, Tensor
+from paddle import _C_ops, _legacy_C_ops
+
+Tensor = core.eager.Tensor
 
 __all__ = [
     'Switch',
