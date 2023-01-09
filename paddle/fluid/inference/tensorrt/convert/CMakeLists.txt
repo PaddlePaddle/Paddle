@@ -98,8 +98,6 @@ list(
   fused_lookup_tables_op.cc
   skip_groupnorm_act_op.cc
   preln_groupnorm_act_op.cc
-  flash_multihead_matmul_op.cc
-  cross_multihead_matmul_op.cc
   expand_v2_op.cc)
 
 if(${TENSORRT_MAJOR_VERSION} GREATER_EQUAL 7)
