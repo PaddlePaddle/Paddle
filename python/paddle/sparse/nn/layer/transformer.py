@@ -195,7 +195,11 @@ class SparseSelfAttention(Layer):
 
         # print(q.shape, k.shape, v.shape, sparse_mask.shape)
         attn_out = F.attention(
-            q, k, v, sparse_mask, key_padding_mask=attn_mask.squeeze()
+            # q, k, v, sparse_mask, key_padding_mask=attn_mask.squeeze()
+            q,
+            k,
+            v,
+            sparse_mask,
         )
 
         attn_out = tensor.transpose(attn_out, perm=[0, 2, 1, 3])
