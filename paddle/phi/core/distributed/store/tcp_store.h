@@ -30,11 +30,11 @@
 #include <thread>
 #include <unordered_map>
 
-#include "paddle/fluid/distributed/store/socket.h"
-#include "paddle/fluid/distributed/store/store.h"
-#include "paddle/fluid/distributed/store/tcp_utils.h"
+#include "paddle/phi/core/distributed/store/socket.h"
+#include "paddle/phi/core/distributed/store/store.h"
+#include "paddle/phi/core/distributed/store/tcp_utils.h"
 
-namespace paddle {
+namespace phi {
 namespace distributed {
 
 enum class ReplyType { WAITING, STOP_WAIT };
@@ -143,4 +143,4 @@ class TCPStore : public Store {
 };
 
 }  // namespace distributed
-}  // namespace paddle
+}  // namespace phi

@@ -72,10 +72,11 @@ bool ProcessGroupBKCL::BKCLTask::Wait(std::chrono::milliseconds timeout) {
 // Same as Wait
 void ProcessGroupBKCL::BKCLTask::Synchronize() { Wait(kWaitTimeout); }
 
-ProcessGroupBKCL::ProcessGroupBKCL(const std::shared_ptr<Store>& store,
-                                   int rank,
-                                   int size,
-                                   int gid)
+ProcessGroupBKCL::ProcessGroupBKCL(
+    const std::shared_ptr<phi::distributed::Store>& store,
+    int rank,
+    int size,
+    int gid)
     : ProcessGroupWithStream(rank, size, gid), store_(store) {}
 
 void ProcessGroupBKCL::GroupStart() {
@@ -606,7 +607,10 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::AllGather(
 }
 
 std::shared_ptr<ProcessGroupBKCL> ProcessGroupBKCL::CreateProcessGroupBKCL(
-    const std::shared_ptr<Store>& store, int rank, int size, int gid) {
+    const std::shared_ptr<phi::distributed::Store>& store,
+    int rank,
+    int size,
+    int gid) {
   auto process_group =
       std::make_shared<ProcessGroupBKCL>(store, rank, size, gid);
   ProcessGroupIdMap::GetInstance().emplace(gid, process_group);

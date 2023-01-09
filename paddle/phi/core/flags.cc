@@ -55,16 +55,19 @@ PADDLE_DEFINE_EXPORTED_int32(paddle_num_threads,
 /**
  * Low Precision Op related FLAG
  * Name: FLAGS_low_precision_op_list
- * Since Version: 0.13.0
- * Value Range: bool, default=false
+ * Since Version: 2.5.0
+ * Value Range: int32, default=0
  * Example:
  * Note: Used to debug. Get the low precision op list of current module.
+ * FLAGS_check_nan_inf is set.
+ * - 1, return the low precision op list of current module.
+ * - 2, return the op list of current module.
  */
-PADDLE_DEFINE_EXPORTED_bool(low_precision_op_list,
-                            false,
-                            "Checking whether get the low precision op list of "
-                            "current module. It will be "
-                            "rerun the low precision list after module.");
+PADDLE_DEFINE_EXPORTED_int32(low_precision_op_list,
+                             0,
+                             "Setting the level of low precision op"
+                             "list printing. It will be return the "
+                             "low precision op list of current module.");
 
 /**
  * Operator related FLAG
@@ -1165,3 +1168,16 @@ PADDLE_DEFINE_EXPORTED_bool(enable_cudnn_frontend, false, "");
  */
 PADDLE_DEFINE_EXPORTED_int32(cudnn_cache_saturation_count, 1, "");
 #endif  // PADDLE_WITH_CUDNN_FRONTEND
+
+/**
+ * CI related FLAG
+ * Name: trt_ibuilder_cache
+ * Since Version: 2.5.0
+ * Value Range: bool, default=false
+ * Example:
+ * Note: This FLAG is only enabled when CI is running. If True, a persistent
+ * IBuilder is added to avoid TensorRT unload/reload kernels.
+ */
+PADDLE_DEFINE_EXPORTED_bool(trt_ibuilder_cache,
+                            false,
+                            "Add a persistent ibuilder.");

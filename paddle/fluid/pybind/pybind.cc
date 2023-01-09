@@ -1871,6 +1871,7 @@ All parameter, weight, gradient are variables in Paddle.
   BindGlobalValueGetterSetter(&m);
   BindFleetExecutor(&m);
   BindTCPStore(&m);
+  BindCommContextManager(&m);
   BindAutoParallel(&m);
   BindJitProperty(&m);
 
@@ -2546,7 +2547,7 @@ All parameter, weight, gradient are variables in Paddle.
         [] { return phi::autotune::AutoTuneStatus::Instance().Update(); });
 
   m.def("get_low_precision_op_list", [] {
-    return paddle::imperative::AmpOperators::Instance().GetAmpOpList();
+    return phi::KernelFactory::Instance().GetLowPrecisionKernelList();
   });
 
   m.def("autotune_status", [] {

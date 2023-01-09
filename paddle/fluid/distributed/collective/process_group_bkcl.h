@@ -21,11 +21,11 @@
 
 #include "paddle/fluid/distributed/collective/process_group.h"
 #include "paddle/fluid/distributed/collective/process_group_with_stream.h"
-#include "paddle/fluid/distributed/store/store.h"
 #include "paddle/fluid/platform/device/xpu/xpu_header.h"
 #include "paddle/fluid/platform/gen_comm_id_helper.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/device_context.h"
+#include "paddle/phi/core/distributed/store/store.h"
 
 #if defined(PADDLE_WITH_XPU)
 #include "paddle/fluid/distributed/collective/bkcl_tools.h"
@@ -67,13 +67,16 @@ class ProcessGroupBKCL : public ProcessGroupWithStream {
   };
 
  public:
-  ProcessGroupBKCL(const std::shared_ptr<Store>& store,
+  ProcessGroupBKCL(const std::shared_ptr<phi::distributed::Store>& store,
                    int rank,
                    int size,
                    int gid);
 
   static std::shared_ptr<ProcessGroupBKCL> CreateProcessGroupBKCL(
-      const std::shared_ptr<Store>& store, int rank, int size, int gid);
+      const std::shared_ptr<phi::distributed::Store>& store,
+      int rank,
+      int size,
+      int gid);
 
   std::string GetBackendName() const override {
     return std::string(BKCL_BACKEND_NAME);
@@ -176,7 +179,7 @@ class ProcessGroupBKCL : public ProcessGroupWithStream {
   void SyncCalcStream(const Place& place);
 
  private:
-  std::shared_ptr<Store> store_;
+  std::shared_ptr<phi::distributed::Store> store_;
   std::mutex mutex_;
   std::shared_ptr<XPUEventManager> calc_event_;  // event on calc stream
   std::unordered_map<std::string, phi::XPUContext*> place_to_calc_ctx_;

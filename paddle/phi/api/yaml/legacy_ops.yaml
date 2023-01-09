@@ -441,8 +441,7 @@
   args : (Tensor x,  int dim)
   output : Tensor(out)
   infer_meta :
-    func : UnchangedInferMeta
-    param: [x]
+    func : UnchangedInferMetaCheckAxis
   kernel :
     func : cumprod
   backward : cumprod_grad

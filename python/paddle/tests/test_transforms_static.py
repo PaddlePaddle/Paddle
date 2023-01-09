@@ -190,5 +190,14 @@ class TestRandomErasing(TestTransformUnitTestBase):
         assert self.scale[0] < erasing_area / area < self.scale[1]
 
 
+class TestRandomResizedCrop(TestTransformUnitTestBase):
+    def set_trans_api(self, eps=10e-5):
+        c, h, w = self.get_shape()
+        size = h, w
+        scale = (1 - eps, 1.0)
+        ratio = (1 - eps, 1.0)
+        self.api = transforms.RandomResizedCrop(size, scale=scale, ratio=ratio)
+
+
 if __name__ == "__main__":
     unittest.main()
