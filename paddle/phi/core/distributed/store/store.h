@@ -18,9 +18,7 @@
 #include <string>
 #include <vector>
 
-#include "paddle/fluid/distributed/store/tcp_utils.h"
-
-namespace paddle {
+namespace phi {
 namespace distributed {
 
 class Store {
@@ -29,22 +27,10 @@ class Store {
   explicit Store(const int timeout) : _timeout(timeout) {}
   virtual ~Store() = default;
 
-  virtual int64_t add(const std::string& key, int64_t value) {
-    PADDLE_THROW(platform::errors::InvalidArgument(
-        "Implement the add method in the subclass."));
-  }
-  virtual std::vector<uint8_t> get(const std::string& key) {
-    PADDLE_THROW(platform::errors::InvalidArgument(
-        "Implement the add method in the subclass."));
-  }
-  virtual void wait(const std::string& key) {
-    PADDLE_THROW(platform::errors::InvalidArgument(
-        "Implement the add method in the subclass."));
-  }
-  virtual void set(const std::string& key, const std::vector<uint8_t>& value) {
-    PADDLE_THROW(platform::errors::InvalidArgument(
-        "Implement the add method in the subclass."));
-  }
+  virtual int64_t add(const std::string& key, int64_t value);
+  virtual std::vector<uint8_t> get(const std::string& key);
+  virtual void wait(const std::string& key);
+  virtual void set(const std::string& key, const std::vector<uint8_t>& value);
 
   virtual int timeout() { return _timeout; }
 
@@ -53,4 +39,4 @@ class Store {
 };
 
 }  // namespace distributed
-}  // namespace paddle
+}  // namespace phi

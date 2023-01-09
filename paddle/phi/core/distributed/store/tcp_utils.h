@@ -26,14 +26,15 @@
 #include <sys/socket.h>
 #include <unistd.h>
 #endif
+
 #include <chrono>
 #include <iostream>
 #include <vector>
 
-#include "paddle/fluid/platform/enforce.h"
+#include "paddle/phi/core/enforce.h"
 
 // Utility functions for TCP socket.
-namespace paddle {
+namespace phi {
 namespace distributed {
 
 #ifdef _WIN32
@@ -82,8 +83,8 @@ void send_bytes(SocketType socket, const T* buffer, size_t len) {
     PADDLE_ENFORCE_GT(
         byte_sent,
         0,
-        platform::errors::InvalidArgument("TCP send error. Details: %s.",
-                                          socket_error().message()));
+        phi::errors::InvalidArgument("TCP send error. Details: %s.",
+                                     socket_error().message()));
     to_send -= byte_sent;
     ptr += byte_sent;
   }
@@ -102,8 +103,8 @@ void receive_bytes(SocketType socket, T* buffer, size_t len) {
     PADDLE_ENFORCE_GT(
         byte_received,
         0,
-        platform::errors::InvalidArgument("TCP receive error. Details: %s.",
-                                          socket_error().message()));
+        phi::errors::InvalidArgument("TCP receive error. Details: %s.",
+                                     socket_error().message()));
 
     to_recv -= byte_received;
     ptr += byte_received;
@@ -140,4 +141,4 @@ T receive_value(SocketType socket) {
 
 }  // namespace tcputils
 }  // namespace distributed
-}  // namespace paddle
+}  // namespace phi

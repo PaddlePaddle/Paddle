@@ -13,14 +13,14 @@
 // limitations under the License.
 
 #include "gtest/gtest.h"
-#include "paddle/fluid/distributed/store/tcp_store.h"
-#include "paddle/fluid/distributed/store/tcp_utils.h"
+#include "paddle/phi/core/distributed/store/tcp_store.h"
+#include "paddle/phi/core/distributed/store/tcp_utils.h"
 
 #ifdef _WIN32
 #include <windows.h>
 #endif
 
-namespace paddle {
+namespace phi {
 namespace distributed {
 
 TEST(MasterDaemon, init) {
@@ -48,6 +48,5 @@ TEST(TCPStore, init) {
     paddle::errors::Fatal("result of add is not right"));
 }
 */
-
-};  // namespace distributed
-};  // namespace paddle
+}  // namespace distributed
+}  // namespace phi
