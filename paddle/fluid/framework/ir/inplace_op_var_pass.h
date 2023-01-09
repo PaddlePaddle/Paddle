@@ -28,7 +28,6 @@ class InplaceOpVarPass : public FusePassBase {
 
  private:
   virtual ~InplaceOpVarPass() = default;
-  void MapToReshape(ir::Graph* graph) const;
 };
 
 }  // namespace ir
