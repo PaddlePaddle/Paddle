@@ -35,6 +35,18 @@ void LayerNormKernel(const Context& ctx,
   auto matrix_dim = phi::flatten_to_2d(x_dims, begin_norm_axis);
   int left = static_cast<int>(matrix_dim[0]);
   int right = static_cast<int>(matrix_dim[1]);
+//   if (mean->dtype() == phi::DataType::FLOAT32) {
+//      printf("layer_norm, FLOAT32\n");
+//   } else if (mean->dtype() == phi::DataType::FLOAT16) {
+//      printf("layer_norm, FLOAT16\n");
+//   }
+
+//   if (x.dtype() == phi::DataType::FLOAT32) {
+//      printf("layer_norm x, FLOAT32\n");
+//   } else if (x.dtype() == phi::DataType::FLOAT16) {
+//      printf("layer_norm x, FLOAT16\n");
+//   }
+
   const auto* x_data = x.data<T>();
   const auto* scale_data =
       (scale.get_ptr() == nullptr ? nullptr : scale.get_ptr()->data<float>());

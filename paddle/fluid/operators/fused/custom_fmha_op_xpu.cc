@@ -26,11 +26,26 @@ using Tensor = phi::DenseTensor;
 template <typename T>
 class CustomFMHAXPUKernel : public framework::OpKernel<T> {
  public:
-  using XPUT = typename XPUTypeTrait<T>::Type;
+  using XPUType = typename XPUTypeTrait<T>::Type;
 
   void Compute(const framework::ExecutionContext& ctx) const override {
+#if 0
     PADDLE_THROW(platform::errors::Unimplemented(
         "The custom_fmha operator does not support XPU yet."));
+#endif
+    // output
+    phi::DenseTensor* ctxout = ctx.Output<phi::DenseTensor>("CtxOut");
+    phi::DenseTensor* sout = ctx.Output<phi::DenseTensor>("SOut");
+
+    XPUType* ctxout_ptr =
+        reinterpret_cast<XPUType*>(ctxout->mutable_data<T>(ctx.GetPlace()));
+    XPUType* sout_ptr =
+        reinterpret_cast<XPUType*>(sout->mutable_data<T>(ctx.GetPlace()));
+    VLOG(0) << "==> CustomFMHAXPUKernel";
+
+    (void)(ctxout_ptr);
+    (void)(sout_ptr);
+    
 #if 0
     PADDLE_ENFORCE_EQ(
         platform::is_xpu_place(ctx.GetPlace()),

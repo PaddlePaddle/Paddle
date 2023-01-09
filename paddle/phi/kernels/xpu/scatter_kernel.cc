@@ -27,6 +27,7 @@ void ScatterKernel(const Context &ctx,
                    const DenseTensor &updates,
                    bool overwrite,
                    DenseTensor *out) {
+  using XPUType = typename XPUTypeTrait<T>::Type;
   phi::Copy(ctx, x, ctx.GetPlace(), false, out);
   // Apply ScatterUpdate: Out[index] = Updates[:]
   const auto &index_type = index.dtype();
@@ -71,40 +72,49 @@ void ScatterKernel(const Context &ctx,
   int dim0 = static_cast<int>(x.dims()[0]);
   int dim1 =
       static_cast<int>(phi::product(phi::slice_ddim(x_dims, 1, x_dims.size())));
-  T *out_data = out->data<T>();
-  const T *updates_data = updates.data<T>();
+//   T *out_data = out->data<T>();
+//   const T *updates_data = updates.data<T>();
+  auto out_data = reinterpret_cast<XPUType*>(out->data<T>());
+  auto updates_data = reinterpret_cast<const XPUType*>(updates.data<T>());
 
   DenseTensor indices_cpu(index.type());
   phi::Copy(ctx, index, phi::CPUPlace(), false, &indices_cpu);
 
   int r = 0;
   if (index_type == phi::DataType::INT32) {
-    auto index_data = const_cast<int *>(index.data<int>());
-    xpu::VectorParam<int> indices{
-        indices_cpu.data<int>(), index_size, index_data};
-    r = xpu::scatter(ctx.x_context(),
-                     updates_data,
-                     out_data,
-                     indices,
-                     dim0,
-                     dim1,
-                     overwrite);
+    // auto index_data = const_cast<int *>(index.data<int>());
+    // xpu::VectorParam<int> indices{
+    //     indices_cpu.data<int>(), index_size, index_data};
+    // r = xpu::scatter(ctx.x_context(),
+    //                  updates_data,
+    //                  out_data,
+    //                  indices,
+    //                  dim0,
+    //                  dim1,
+    //                  overwrite);
   } else {
-    auto index_data = const_cast<int64_t *>(index.data<int64_t>());
-    xpu::VectorParam<int64_t> indices{
-        indices_cpu.data<int64_t>(), index_size, index_data};
-    r = xpu::scatter(ctx.x_context(),
-                     updates_data,
-                     out_data,
-                     indices,
-                     dim0,
-                     dim1,
-                     overwrite);
+    // auto index_data = const_cast<int64_t *>(index.data<int64_t>());
+    // xpu::VectorParam<int64_t> indices{
+    //     indices_cpu.data<int64_t>(), index_size, index_data};
+    // r = xpu::scatter(ctx.x_context(),
+    //                  updates_data,
+    //                  out_data,
+    //                  indices,
+    //                  dim0,
+    //                  dim1,
+    //                  overwrite);
   }
+  
+  (void)updates_data;
+  (void)out_data;
+  (void)index_size;
+  (void)dim0;
+  (void)dim1;
+//   (void)dim0;
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "scatter");
 }
 
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
-    scatter, XPU, ALL_LAYOUT, phi::ScatterKernel, float, int64_t) {}
+    scatter, XPU, ALL_LAYOUT, phi::ScatterKernel, float, int64_t, phi::dtype::float16) {}

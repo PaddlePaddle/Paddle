@@ -30,21 +30,46 @@ class CustomFusedDropoutResidualLnXPUKernel : public framework::OpKernel<T> {
 
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    PADDLE_THROW(platform::errors::Unimplemented(
-        "The custom_fused_dropout_residual_ln operator does not support XPU yet."));
-#if 0
+    // PADDLE_THROW(platform::errors::Unimplemented(
+    //     "The custom_fused_dropout_residual_ln operator does not support XPU yet."));
+
   auto& dev_ctx = ctx.template device_context<phi::XPUContext>();
 
-  const phi::DenseTensor* x = ctx.Input<phi::DenseTensor>("X");
-  const phi::DenseTensor* residual = ctx.Input<phi::DenseTensor>("Residual");
-  const phi::DenseTensor* ln_scale = ctx.Input<phi::DenseTensor>("LnScale");
-  const phi::DenseTensor* ln_bias = ctx.Input<phi::DenseTensor>("LnBias");
+//   const phi::DenseTensor* x = ctx.Input<phi::DenseTensor>("X");
+//   const phi::DenseTensor* residual = ctx.Input<phi::DenseTensor>("Residual");
+//   const phi::DenseTensor* ln_scale = ctx.Input<phi::DenseTensor>("LnScale");
+//   const phi::DenseTensor* ln_bias = ctx.Input<phi::DenseTensor>("LnBias");
   
   phi::DenseTensor* final_out = ctx.Output<phi::DenseTensor>("Out");
   phi::DenseTensor* dropout_mask_out = ctx.Output<phi::DenseTensor>("DropoutMask");
   phi::DenseTensor* ln_mean = ctx.Output<phi::DenseTensor>("LnMean");
   phi::DenseTensor* ln_var = ctx.Output<phi::DenseTensor>("LnVar");
   phi::DenseTensor* dropout_residual_out = ctx.Output<phi::DenseTensor>("DropoutResidualOut");
+
+  if (ln_mean->dtype() == phi::DataType::FLOAT32) {
+     printf("layer_norm fusion, FLOAT32\n");
+  } else if (ln_mean->dtype() == phi::DataType::FLOAT16) {
+     printf("layer_norm fusion, FLOAT16\n");
+  }
+
+  XPUType* out_ptr = reinterpret_cast<XPUType*>(final_out->mutable_data<T>(ctx.GetPlace()));
+
+  XPUType* dropout_mask_out_ptr = reinterpret_cast<XPUType*>(dropout_mask_out->mutable_data<T>(ctx.GetPlace()));
+  XPUType* ln_mean_ptr = reinterpret_cast<XPUType*>(ln_mean->mutable_data<T>(ctx.GetPlace()));
+  XPUType* ln_var_ptr = reinterpret_cast<XPUType*>(ln_var->mutable_data<T>(ctx.GetPlace()));
+  XPUType* dropout_out_ptr = reinterpret_cast<XPUType*>(dropout_residual_out->mutable_data<T>(ctx.GetPlace()));
+  
+  VLOG(0) << "==> CustomFusedDropoutResidualLnXPUKernel";
+//   printf("==> %p, %p, %p, %p, %p\n", out_ptr, dropout_mask_out_ptr, ln_mean_ptr, ln_var_ptr, dropout_out_ptr);
+
+  (void)dev_ctx;
+  (void)out_ptr;
+  (void)dropout_mask_out_ptr;
+  (void)ln_mean_ptr;
+  (void)ln_var_ptr;
+  (void)dropout_out_ptr;
+
+#if 0
 
   auto ln_epsilon = ctx.Attr<float>("ln_epsilon");
   auto is_test = ctx.Attr<bool>("is_test");
@@ -114,9 +139,9 @@ class CustomFusedDropoutResidualLnXPUGradKernel : public framework::OpKernel<T> 
     const phi::DenseTensor* dropout_mask_out = *ctx.Input<f::Tensor>("DropoutMask");
     const phi::DenseTensor* ln_mean = *ctx.Input<f::Tensor>("LnMean");
     const phi::DenseTensor* ln_var = *ctx.Input<f::Tensor>("LnVar");
-    const phi::DenseTensor* dropout_residual_out =
-        *ctx.Input<f::Tensor>("DropoutResidualOut");
+    const phi::DenseTensor* dropout_residual_out = *ctx.Input<f::Tensor>("Residual");
     const phi::DenseTensor* grad_out = *ctx.Input<f::Tensor>(f::GradVarName("Out"));
+
     auto &grad_x = *ctx.Output<f::Tensor>(f::GradVarName("X"));
     auto &grad_residual = *ctx.Output<f::Tensor>(f::GradVarName("Residual"));
     auto &grad_ln_scale = *ctx.Output<f::Tensor>(f::GradVarName("LnScale"));
