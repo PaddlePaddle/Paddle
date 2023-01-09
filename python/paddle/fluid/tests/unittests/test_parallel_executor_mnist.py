@@ -28,15 +28,15 @@ def simple_fc_net(use_feed):
     label = fluid.layers.data(name='label', shape=[1], dtype='int64')
     hidden = img
     for _ in range(4):
-        hidden = fluid.layers.fc(
+        hidden = paddle.static.nn.fc(
             hidden,
             size=200,
-            act='tanh',
+            activation='tanh',
             bias_attr=fluid.ParamAttr(
                 initializer=fluid.initializer.Constant(value=1.0)
             ),
         )
-    prediction = fluid.layers.fc(hidden, size=10, act='softmax')
+    prediction = paddle.static.nn.fc(hidden, size=10, activation='softmax')
     loss = paddle.nn.functional.cross_entropy(
         input=prediction, label=label, reduction='none', use_softmax=False
     )
@@ -51,10 +51,10 @@ def fc_with_batchnorm(use_feed):
     hidden = img
     for _ in range(1):
         with fluid.name_scope("hidden"):
-            hidden = fluid.layers.fc(
+            hidden = paddle.static.nn.fc(
                 hidden,
                 size=200,
-                act='tanh',
+                activation='tanh',
                 bias_attr=fluid.ParamAttr(
                     initializer=fluid.initializer.Constant(value=1.0)
                 ),
@@ -62,7 +62,7 @@ def fc_with_batchnorm(use_feed):
 
             hidden = paddle.static.nn.batch_norm(input=hidden)
     with fluid.name_scope("fc_layer"):
-        prediction = fluid.layers.fc(hidden, size=10, act='softmax')
+        prediction = paddle.static.nn.fc(hidden, size=10, activation='softmax')
     with fluid.name_scope("loss"):
         loss = paddle.nn.functional.cross_entropy(
             input=prediction, label=label, reduction='none', use_softmax=False
@@ -174,12 +174,12 @@ class TestMNIST(TestParallelExecutorBase):
             use_parallel_executor=True,
         )
 
-        self.assertAlmostEquals(
+        self.assertAlmostEqual(
             np.mean(parallel_first_loss),
             single_first_loss,
             delta=1e-6,
         )
-        self.assertAlmostEquals(
+        self.assertAlmostEqual(
             np.mean(parallel_last_loss), single_last_loss, delta=1e-6
         )
 

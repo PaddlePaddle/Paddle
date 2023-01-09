@@ -23,18 +23,20 @@
 
 #include "paddle/fluid/distributed/collective/custom_ccl_tools.h"
 #include "paddle/fluid/distributed/collective/process_group.h"
-#include "paddle/fluid/distributed/store/store.h"
+#include "paddle/fluid/distributed/collective/process_group_without_stream.h"
 #include "paddle/fluid/platform/device/npu/npu_stream.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/gen_comm_id_helper.h"
 #include "paddle/fluid/platform/place.h"
+#include "paddle/phi/core/distributed/store/store.h"
 
 namespace paddle {
 namespace distributed {
 using Place = paddle::platform::Place;
 using CustomDeviceContext = paddle::platform::CustomDeviceContext;
-class ProcessGroupCustom : public ProcessGroup {
+
+class ProcessGroupCustom : public ProcessGroupWithoutStream {
  public:
   class CustomTask : public ProcessGroup::Task,
                      public std::enable_shared_from_this<CustomTask> {
@@ -63,14 +65,14 @@ class ProcessGroupCustom : public ProcessGroup {
     const std::string device_type_;
   };
 
-  ProcessGroupCustom(const std::shared_ptr<Store>& store,
+  ProcessGroupCustom(const std::shared_ptr<phi::distributed::Store>& store,
                      const std::string& device_type,
                      int rank,
                      int size,
                      int gid);
 
   static std::shared_ptr<ProcessGroupCustom> CreateProcessGroupCustom(
-      const std::shared_ptr<Store>& store,
+      const std::shared_ptr<phi::distributed::Store>& store,
       const std::string& device_type,
       int rank,
       int size,
@@ -126,7 +128,7 @@ class ProcessGroupCustom : public ProcessGroup {
       CommType opType,
       const std::vector<phi::DenseTensor>& inputs);
 
-  std::shared_ptr<Store> store_;
+  std::shared_ptr<phi::distributed::Store> store_;
   std::shared_ptr<CustomCCLCommManager> custom_comm_;
   std::mutex mutex_;
   std::unordered_map<std::string,

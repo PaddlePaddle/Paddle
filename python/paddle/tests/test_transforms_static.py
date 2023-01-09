@@ -158,5 +158,14 @@ class TestRandomRotation_expand_True(TestTransformUnitTestBase):
         self.api = transforms.RandomRotation(degree_tuple, expand=True, fill=3)
 
 
+class TestRandomResizedCrop(TestTransformUnitTestBase):
+    def set_trans_api(self, eps=10e-5):
+        c, h, w = self.get_shape()
+        size = h, w
+        scale = (1 - eps, 1.0)
+        ratio = (1 - eps, 1.0)
+        self.api = transforms.RandomResizedCrop(size, scale=scale, ratio=ratio)
+
+
 if __name__ == "__main__":
     unittest.main()
