@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import numpy as np
+from op_test import OpTest
 from testsuite import append_loss_ops, create_op, set_input
 from white_list import no_grad_set_white_list, op_threshold_white_list
 from xpu.get_test_cover_info import (
@@ -24,7 +25,6 @@ from xpu.get_test_cover_info import (
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-from op_test import OpTest
 from paddle.fluid.backward import append_backward
 from paddle.fluid.framework import Program, convert_np_dtype_to_dtype_
 

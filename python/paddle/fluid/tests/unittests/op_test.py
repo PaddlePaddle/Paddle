@@ -34,11 +34,7 @@ from paddle.fluid.framework import (
     OpProtoHolder,
     Program,
     _current_expected_place,
-    _disable_legacy_dygraph,
     _dygraph_tracer,
-    _enable_legacy_dygraph,
-    _in_eager_without_dygraph_check,
-    _test_eager_guard,
     in_dygraph_mode,
 )
 from paddle.fluid.op import Operator
@@ -53,15 +49,6 @@ from white_list import (
     no_grad_set_white_list,
     op_accuracy_white_list,
     op_threshold_white_list,
-)
-
-# For switch new eager mode globally
-g_is_in_eager = _in_eager_without_dygraph_check()
-g_enable_legacy_dygraph = (
-    _enable_legacy_dygraph if g_is_in_eager else lambda: None
-)
-g_disable_legacy_dygraph = (
-    _disable_legacy_dygraph if g_is_in_eager else lambda: None
 )
 
 
@@ -1716,17 +1703,14 @@ class OpTest(unittest.TestCase):
 
             def calculate_output(self):
                 # we only check end2end api when check_eager=True
-                with _test_eager_guard():
-                    self.is_python_api_test = True
-                    eager_dygraph_outs = self.op_test._calc_python_api_output(
-                        place
+                self.is_python_api_test = True
+                eager_dygraph_outs = self.op_test._calc_python_api_output(place)
+                if eager_dygraph_outs is None:
+                    self.is_python_api_test = False
+                    # missing KernelSignature, fall back to eager middle output.
+                    eager_dygraph_outs = self.op_test._calc_dygraph_output(
+                        place, no_check_set=no_check_set
                     )
-                    if eager_dygraph_outs is None:
-                        self.is_python_api_test = False
-                        # missing KernelSignature, fall back to eager middle output.
-                        eager_dygraph_outs = self.op_test._calc_dygraph_output(
-                            place, no_check_set=no_check_set
-                        )
                 self.outputs = eager_dygraph_outs
 
             def _compare_numpy(self, name, actual_np, expect_np):
