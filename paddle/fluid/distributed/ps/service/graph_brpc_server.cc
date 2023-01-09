@@ -123,7 +123,7 @@ int32_t GraphBrpcServer::build_peer2peer_connection(int rank) {
 
 int32_t GraphBrpcService::clear_nodes(Table *table,
                                       const PsRequestMessage &request,
-                                      PsResponseMessage &response,
+                                      PsResponseMessage *response,
                                       brpc::Controller *cntl) {
   int type_id = *(int *)(request.params(0).c_str());
   int idx_ = *(int *)(request.params(1).c_str());
@@ -133,7 +133,7 @@ int32_t GraphBrpcService::clear_nodes(Table *table,
 
 int32_t GraphBrpcService::add_graph_node(Table *table,
                                          const PsRequestMessage &request,
-                                         PsResponseMessage &response,
+                                         PsResponseMessage *response,
                                          brpc::Controller *cntl) {
   CHECK_TABLE_EXIST(table, request, response)
   if (request.params_size() < 2) {
@@ -166,7 +166,7 @@ int32_t GraphBrpcService::add_graph_node(Table *table,
 }
 int32_t GraphBrpcService::remove_graph_node(Table *table,
                                             const PsRequestMessage &request,
-                                            PsResponseMessage &response,
+                                            PsResponseMessage *response,
                                             brpc::Controller *cntl) {
   CHECK_TABLE_EXIST(table, request, response)
   if (request.params_size() < 2) {
@@ -269,7 +269,7 @@ void GraphBrpcService::service(google::protobuf::RpcController *cntl_base,
 
 int32_t GraphBrpcService::Barrier(Table *table,
                                   const PsRequestMessage &request,
-                                  PsResponseMessage &response,
+                                  PsResponseMessage *response,
                                   brpc::Controller *cntl) {
   CHECK_TABLE_EXIST(table, request, response)
 
@@ -289,7 +289,7 @@ int32_t GraphBrpcService::Barrier(Table *table,
 
 int32_t GraphBrpcService::PrintTableStat(Table *table,
                                          const PsRequestMessage &request,
-                                         PsResponseMessage &response,
+                                         PsResponseMessage *response,
                                          brpc::Controller *cntl) {
   CHECK_TABLE_EXIST(table, request, response)
   std::pair<int64_t, int64_t> ret = table->PrintTableStat();
@@ -303,7 +303,7 @@ int32_t GraphBrpcService::PrintTableStat(Table *table,
 
 int32_t GraphBrpcService::LoadOneTable(Table *table,
                                        const PsRequestMessage &request,
-                                       PsResponseMessage &response,
+                                       PsResponseMessage *response,
                                        brpc::Controller *cntl) {
   CHECK_TABLE_EXIST(table, request, response)
   if (request.params_size() < 2) {
@@ -322,7 +322,7 @@ int32_t GraphBrpcService::LoadOneTable(Table *table,
 
 int32_t GraphBrpcService::LoadAllTable(Table *table,
                                        const PsRequestMessage &request,
-                                       PsResponseMessage &response,
+                                       PsResponseMessage *response,
                                        brpc::Controller *cntl) {
   auto &table_map = *(_server->GetTable());
   for (auto &itr : table_map) {
@@ -336,7 +336,7 @@ int32_t GraphBrpcService::LoadAllTable(Table *table,
 
 int32_t GraphBrpcService::StopServer(Table *table,
                                      const PsRequestMessage &request,
-                                     PsResponseMessage &response,
+                                     PsResponseMessage *response,
                                      brpc::Controller *cntl) {
   GraphBrpcServer *p_server = (GraphBrpcServer *)_server;
   std::thread t_stop([p_server]() {
@@ -350,7 +350,7 @@ int32_t GraphBrpcService::StopServer(Table *table,
 
 int32_t GraphBrpcService::StopProfiler(Table *table,
                                        const PsRequestMessage &request,
-                                       PsResponseMessage &response,
+                                       PsResponseMessage *response,
                                        brpc::Controller *cntl) {
   platform::DisableProfiler(platform::EventSortingKey::kDefault,
                             string::Sprintf("server_%s_profile", _rank));
@@ -359,7 +359,7 @@ int32_t GraphBrpcService::StopProfiler(Table *table,
 
 int32_t GraphBrpcService::StartProfiler(Table *table,
                                         const PsRequestMessage &request,
-                                        PsResponseMessage &response,
+                                        PsResponseMessage *response,
                                         brpc::Controller *cntl) {
   platform::EnableProfiler(platform::ProfilerState::kCPU);
   return 0;
@@ -367,7 +367,7 @@ int32_t GraphBrpcService::StartProfiler(Table *table,
 
 int32_t GraphBrpcService::pull_graph_list(Table *table,
                                           const PsRequestMessage &request,
-                                          PsResponseMessage &response,
+                                          PsResponseMessage *response,
                                           brpc::Controller *cntl) {
   CHECK_TABLE_EXIST(table, request, response)
   if (request.params_size() < 5) {
@@ -391,7 +391,7 @@ int32_t GraphBrpcService::pull_graph_list(Table *table,
 int32_t GraphBrpcService::graph_random_sample_neighbors(
     Table *table,
     const PsRequestMessage &request,
-    PsResponseMessage &response,
+    PsResponseMessage *response,
     brpc::Controller *cntl) {
   CHECK_TABLE_EXIST(table, request, response)
   if (request.params_size() < 4) {
@@ -423,7 +423,7 @@ int32_t GraphBrpcService::graph_random_sample_neighbors(
 int32_t GraphBrpcService::graph_random_sample_nodes(
     Table *table,
     const PsRequestMessage &request,
-    PsResponseMessage &response,
+    PsResponseMessage *response,
     brpc::Controller *cntl) {
   int type_id = *(int *)(request.params(0).c_str());
   int idx_ = *(int *)(request.params(1).c_str());
@@ -443,7 +443,7 @@ int32_t GraphBrpcService::graph_random_sample_nodes(
 
 int32_t GraphBrpcService::graph_get_node_feat(Table *table,
                                               const PsRequestMessage &request,
-                                              PsResponseMessage &response,
+                                              PsResponseMessage *response,
                                               brpc::Controller *cntl) {
   CHECK_TABLE_EXIST(table, request, response)
   if (request.params_size() < 3) {
@@ -480,7 +480,7 @@ int32_t GraphBrpcService::graph_get_node_feat(Table *table,
 int32_t GraphBrpcService::sample_neighbors_across_multi_servers(
     Table *table,
     const PsRequestMessage &request,
-    PsResponseMessage &response,
+    PsResponseMessage *response,
     brpc::Controller *cntl) {
   // sleep(5);
   CHECK_TABLE_EXIST(table, request, response)
@@ -645,7 +645,7 @@ int32_t GraphBrpcService::sample_neighbors_across_multi_servers(
 }
 int32_t GraphBrpcService::graph_set_node_feat(Table *table,
                                               const PsRequestMessage &request,
-                                              PsResponseMessage &response,
+                                              PsResponseMessage *response,
                                               brpc::Controller *cntl) {
   CHECK_TABLE_EXIST(table, request, response)
   if (request.params_size() < 4) {
