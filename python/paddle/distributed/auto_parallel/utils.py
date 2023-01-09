@@ -58,6 +58,9 @@ def get_logger(log_level, name="auto_parallel"):
     return logger
 
 
+_logger = get_logger(logging.INFO)
+
+
 def is_valid_list_index(list, index):
     if index >= -len(list) and index < len(list):
         return True
@@ -749,7 +752,7 @@ def _save_distributed_attribute(program, dist_attr_path, dist_context):
         "world_size": paddle.distributed.get_world_size(),
     }
     paddle.save(dist_attr_dict, dist_attr_name)
-    logging.info(
+    _logger.info(
         "Already saved distributed attribute to '{}'.".format(dist_attr_path)
     )
 
@@ -782,7 +785,7 @@ def _save_distributed_state_dict(program, addition_info, checkpoint_path):
         "addition_info": addition_info,
     }
     paddle.save(state_dict, ckpt_file_name)
-    logging.info("Already saved model to '{}'.".format(checkpoint_path))
+    _logger.info("Already saved model to '{}'.".format(checkpoint_path))
 
 
 def _load_distributed_state_dict(checkpoint_path):
@@ -876,7 +879,7 @@ def merge_and_slice_parameter(dist_param_dict, pre_dist_attr, cur_dist_attr):
 
     param_not_in_pre = []
     param_not_in_cur = []
-    logging.info("Start to merge and slice parameters.")
+    _logger.info("Start to merge and slice parameters.")
     for var_name in cur_dist_attr.keys():
         if var_name not in pre_dist_attr:
             param_not_in_pre.append(var_name)
@@ -2002,7 +2005,7 @@ def set_recompute_segments(model, losses, strategy, program):
                 )
                 segments.append([min_idx, max_idx + 1])
             else:
-                logging.debug(
+                _logger.debug(
                     "Could not recompute op range [{}] - [{}] ".format(
                         min_idx, max_idx + 1
                     )
@@ -2343,15 +2346,15 @@ def enable_newexe_sequential_execution():
     # NOTE some stragtegies rely on old-executor-sequential execution.
     # this functions should be remove when all stragtegies are migrated to new exe.
     paddle.framework.set_flags({'FLAGS_new_executor_sequential_run': 1})
-    logging.info("Set NewEXE Sequential Dep Pass as Default.")
+    _logger.info("Set NewEXE Sequential Dep Pass as Default.")
 
 
 def disable_newexe_redundent_deps():
     # NOTE newexe has some dependency pass added for PE set as default,
     # which will hurt performance. disable them when the pass is adopted.
     paddle.framework.set_flags({'FLAGS_new_executor_sequential_run': 0})
-    logging.info("Disable NewEXE Sequential Dep Pass.")
+    _logger.info("Disable NewEXE Sequential Dep Pass.")
     paddle.framework.set_flags(
         {'FLAGS_add_dependency_for_communication_op': False}
     )
-    logging.info("Disable NewEXE Communication Dep Pass.")
+    _logger.info("Disable NewEXE Communication Dep Pass.")
