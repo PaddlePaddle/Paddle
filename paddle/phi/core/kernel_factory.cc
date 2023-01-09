@@ -120,13 +120,14 @@ void KernelFactory::AddToLowPrecisionKernelList(
       auto count = OpCount();
       low_precision_kernels_[op_name] = count;
     }
-    bool is_low_precision =
-        (kernel_key_type == paddle::experimental::DataType::FLOAT16 ||
-         kernel_key_type == paddle::experimental::DataType::BFLOAT16);
-    if (is_low_precision) {
-      low_precision_kernels_[op_name].low_precision_called_ += 1;
+    if (kernel_key_type == paddle::experimental::DataType::FLOAT16) {
+      low_precision_kernels_[op_name].fp16_called_ += 1;
+    } else if (kernel_key_type == paddle::experimental::DataType::BFLOAT16) {
+      low_precision_kernels_[op_name].bf16_called_ += 1;
     } else if (kernel_key_type == paddle::experimental::DataType::FLOAT32) {
-      low_precision_kernels_[op_name].high_precision_called_ += 1;
+      low_precision_kernels_[op_name].fp32_called_ += 1;
+    } else {
+      low_precision_kernels_[op_name].other_called_ += 1;
     }
   }
 }

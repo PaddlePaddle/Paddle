@@ -36,11 +36,15 @@ using DataType = paddle::experimental::DataType;
 
 struct OpCount {
   OpCount() {
-    low_precision_called_ = 0;
-    high_precision_called_ = 0;
+    fp16_called_ = 0;
+    bf16_called_ = 0;
+    fp32_called_ = 0;
+    other_called_ = 0;
   }
-  int low_precision_called_;
-  int high_precision_called_;
+  int fp16_called_;
+  int bf16_called_;
+  int fp32_called_;
+  int other_called_;
 };
 
 /**

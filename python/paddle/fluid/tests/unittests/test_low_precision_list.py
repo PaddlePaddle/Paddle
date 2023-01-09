@@ -36,9 +36,14 @@ class TestAMPList(unittest.TestCase):
 
         conv2d_called = op_list['conv2d'].split(',')
         add_called = op_list['elementwise_add'].split(',')
+        add_num = 0
+        conv_num = 0
+        for i in range(4):
+            add_num += int(add_called[i])
+            conv_num += int(add_called[i])
 
-        self.assertTrue(int(conv2d_called[0]) + int(conv2d_called[1]) == 1)
-        self.assertTrue(int(add_called[0]) + int(add_called[1]) == 1)
+        self.assertTrue(conv_num == 1)
+        self.assertTrue(add_num == 1)
 
         if conv.dtype == "float16":
             self.assertTrue(int(conv2d_called[0]) == 1)

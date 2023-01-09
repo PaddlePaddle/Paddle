@@ -2551,8 +2551,10 @@ All parameter, weight, gradient are variables in Paddle.
     for (auto iter = list_op.begin(); iter != list_op.end(); iter++) {
       auto op_name = (iter->first).c_str();
       auto counts = iter->second;
-      op_list[op_name] = std::to_string(counts.low_precision_called_) + "," +
-                         std::to_string(counts.high_precision_called_);
+      op_list[op_name] = std::to_string(counts.fp16_called_) + "," +
+                         std::to_string(counts.bf16_called_) + "," +
+                         std::to_string(counts.fp32_called_) + "," +
+                         std::to_string(counts.other_called_);
     }
     return op_list;
   });
