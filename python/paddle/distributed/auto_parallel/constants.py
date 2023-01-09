@@ -134,7 +134,8 @@ set_field_default_config(DATASET, "enable", False)
 set_field_default_config(DATASET, "num_shards", 1)
 
 #########################################
-# op fusion configuration
+# fused passes configuration
 #########################################
-OP_FUSION = "op_fusion"
-set_field_default_config(OP_FUSION, "enable", False)
+FUSED_PASSES = "fused_passes"
+set_field_default_config(FUSED_PASSES, "enable", False)
+set_field_default_config(FUSED_PASSES, "fused_passes_list", [])
