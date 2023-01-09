@@ -10,6 +10,14 @@ if(WITH_NCCL OR WITH_RCCL)
   list(APPEND COMM_CONTEXT_MANAGER_DEPS nccl_comm_context)
 endif()
 
+if(WITH_GLOO)
+  cc_library(
+    gloo_comm_context
+    SRCS gloo_comm_context.cc
+    DEPS dense_tensor)
+  list(APPEND COMM_CONTEXT_MANAGER_DEPS gloo_comm_context)
+endif()
+
 cc_library(
   comm_context_manager
   SRCS comm_context_manager.cc
