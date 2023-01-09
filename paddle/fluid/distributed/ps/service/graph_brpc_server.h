@@ -141,10 +141,11 @@ class GraphBrpcService : public PsBaseService {
                          PsResponseMessage &response,  // NOLINT
                          brpc::Controller *cntl);
 
-  int32_t sample_neighbors_across_multi_servers(Table *table,
-                                                const PsRequestMessage &request,
-                                                PsResponseMessage &response,  // NOLINT
-                                                brpc::Controller *cntl);
+  int32_t sample_neighbors_across_multi_servers(
+      Table *table,
+      const PsRequestMessage &request,
+      PsResponseMessage &response,  // NOLINT
+      brpc::Controller *cntl);
 
   int32_t use_neighbors_sample_cache(Table *table,
                                      const PsRequestMessage &request,
