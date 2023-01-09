@@ -17,16 +17,12 @@ import unittest
 import gradient_checker
 import numpy as np
 from decorator_helper import prog_scope
+from op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
 
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
 from paddle.fluid import Program, core, program_guard
-from paddle.fluid.tests.unittests.op_test import (
-    OpTest,
-    convert_float_to_uint16,
-    skip_check_grad_ci,
-)
 
 
 class TestConcatOp(OpTest):
@@ -471,7 +467,6 @@ class TestConcatDoubleGradCheck(unittest.TestCase):
             place=place,
             eps=eps,
         )
-        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         gradient_checker.double_grad_check_for_dygraph(
             self.concat_wrapper,
             [data1, data2],
@@ -513,7 +508,6 @@ class TestConcatTripleGradCheck(unittest.TestCase):
             place=place,
             eps=eps,
         )
-        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         gradient_checker.double_grad_check_for_dygraph(
             self.concat_wrapper,
             [data1, data2],

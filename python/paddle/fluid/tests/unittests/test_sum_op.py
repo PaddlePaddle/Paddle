@@ -19,6 +19,7 @@ import unittest
 import gradient_checker
 import numpy as np
 from decorator_helper import prog_scope
+from op_test import OpTest, convert_float_to_uint16, convert_uint16_to_float
 
 import paddle
 import paddle.fluid as fluid
@@ -27,11 +28,6 @@ import paddle.fluid.layers as layers
 import paddle.inference as paddle_infer
 from paddle import enable_static
 from paddle.fluid.op import Operator
-from paddle.fluid.tests.unittests.op_test import (
-    OpTest,
-    convert_float_to_uint16,
-    convert_uint16_to_float,
-)
 
 
 class TestSumOp(OpTest):
@@ -618,7 +614,6 @@ class TestAddNDoubleGradCheck(unittest.TestCase):
             place=place,
             eps=eps,
         )
-        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         gradient_checker.double_grad_check_for_dygraph(
             self.add_n_wrapper,
             [data1, data2],
@@ -661,7 +656,6 @@ class TestAddNTripleGradCheck(unittest.TestCase):
             place=place,
             eps=eps,
         )
-        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         gradient_checker.triple_grad_check_for_dygraph(
             self.add_n_wrapper,
             [data1, data2],
@@ -697,7 +691,6 @@ class TestSumDoubleGradCheck(unittest.TestCase):
         gradient_checker.double_grad_check(
             [data], out, x_init=[data_arr], place=place, eps=eps
         )
-        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         gradient_checker.double_grad_check_for_dygraph(
             self.sum_wrapper, [data], out, x_init=[data_arr], place=place
         )
@@ -729,7 +722,6 @@ class TestSumTripleGradCheck(unittest.TestCase):
         gradient_checker.triple_grad_check(
             [data], out, x_init=[data_arr], place=place, eps=eps
         )
-        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         gradient_checker.triple_grad_check_for_dygraph(
             self.sum_wrapper, [data], out, x_init=[data_arr], place=place
         )
