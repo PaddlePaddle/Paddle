@@ -597,8 +597,6 @@ def max_pool1d(
     """
     """NCL to NCHW"""
     data_format = "NCHW"
-    if not in_dynamic_mode():
-        check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'max_pool1d')
     _check_input(x, 3)
     x = unsqueeze(x, [2])
     kernel_size = [1] + utils.convert_to_list(kernel_size, 1, 'pool_size')
@@ -641,6 +639,7 @@ def max_pool1d(
             return squeeze(pool_out, [2])
 
     else:
+        check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'max_pool1d')
         op_type = 'max_pool2d_with_index' if return_mask else "pool2d"
         helper = LayerHelper(op_type, **locals())
         dtype = helper.input_dtype(input_param_name='x')
@@ -1456,11 +1455,6 @@ def adaptive_avg_pool1d(x, output_size, name=None):
             # pool_out shape: [1, 3, 16])
     """
     pool_type = 'avg'
-    if not in_dynamic_mode():
-        check_variable_and_dtype(
-            x, 'x', ['float16', 'float32', 'float64'], 'adaptive_pool2d'
-        )
-        check_type(output_size, 'pool_size', (int), 'adaptive_pool1d')
     _check_input(x, 3)
     pool_size = [1] + utils.convert_to_list(output_size, 1, 'pool_size')
 
@@ -1483,7 +1477,10 @@ def adaptive_avg_pool1d(x, output_size, name=None):
         return squeeze(pool_out, [2])
     else:
         l_type = "pool2d"
-
+        check_variable_and_dtype(
+            x, 'x', ['float16', 'float32', 'float64'], 'adaptive_pool2d'
+        )
+        check_type(output_size, 'pool_size', (int), 'adaptive_pool1d')
         helper = LayerHelper(l_type, **locals())
         dtype = helper.input_dtype(input_param_name='x')
         pool_out = helper.create_variable_for_type_inference(dtype)
@@ -1562,12 +1559,6 @@ def adaptive_avg_pool2d(x, output_size, data_format='NCHW', name=None):
             # out.shape is [2, 3, 3, 3]
 
     """
-    if not in_dynamic_mode():
-        check_variable_and_dtype(
-            x, 'x', ['float16', 'float32', 'float64'], 'adaptive_avg_pool2d'
-        )
-        check_type(data_format, 'data_format', str, 'adaptive_avg_pool2d')
-
     if data_format not in ["NCHW", "NHWC"]:
         raise ValueError(
             "Attr(data_format) should be 'NCHW' or 'NHWC'. Received "
@@ -1615,7 +1606,10 @@ def adaptive_avg_pool2d(x, output_size, data_format='NCHW', name=None):
 
     else:
         l_type = 'pool2d'
-
+        check_variable_and_dtype(
+            x, 'x', ['float16', 'float32', 'float64'], 'adaptive_avg_pool2d'
+        )
+        check_type(data_format, 'data_format', str, 'adaptive_avg_pool2d')
         helper = LayerHelper(l_type, **locals())
         dtype = helper.input_dtype(input_param_name='x')
         pool_out = helper.create_variable_for_type_inference(dtype)
@@ -1700,12 +1694,6 @@ def adaptive_avg_pool3d(x, output_size, data_format='NCDHW', name=None):
             # out.shape is [2, 3, 3, 3, 3]
 
     """
-    if not in_dynamic_mode():
-        check_variable_and_dtype(
-            x, 'x', ['float32', 'float64'], 'adaptive_avg_pool3d'
-        )
-        check_type(data_format, 'data_format', str, 'adaptive_avg_pool3d')
-
     if data_format not in ["NCDHW", "NDHWC"]:
         raise ValueError(
             "Attr(data_format) should be 'NCDHW' or 'NDHWC'. Received "
@@ -1745,6 +1733,11 @@ def adaptive_avg_pool3d(x, output_size, data_format='NCDHW', name=None):
         )
     else:
         l_type = 'pool3d'
+
+        check_variable_and_dtype(
+            x, 'x', ['float16', 'float32', 'float64'], 'adaptive_avg_pool2d'
+        )
+        check_type(data_format, 'data_format', str, 'adaptive_avg_pool2d')
 
         helper = LayerHelper(l_type, **locals())
         dtype = helper.input_dtype(input_param_name='x')
@@ -1810,13 +1803,6 @@ def adaptive_max_pool1d(x, output_size, return_mask=False, name=None):
               pool_out, indices = F.adaptive_max_pool1d(data, output_size=16, return_mask=True)
               # pool_out shape: [1, 3, 16] indices  shape: [1, 3, 16]
     """
-    pool_type = 'max'
-    if not in_dynamic_mode():
-        check_variable_and_dtype(
-            x, 'x', ['float32', 'float64'], 'adaptive_max_pool1d'
-        )
-        check_type(output_size, 'pool_size', int, 'adaptive_max_pool1d')
-        check_type(return_mask, 'return_mask', bool, 'adaptive_max_pool1d')
     _check_input(x, 3)
 
     pool_size = [1] + utils.convert_to_list(output_size, 1, 'pool_size')
@@ -1834,6 +1820,12 @@ def adaptive_max_pool1d(x, output_size, return_mask=False, name=None):
     else:
         l_type = 'max_pool2d_with_index'
 
+        check_variable_and_dtype(
+            x, 'x', ['float32', 'float64'], 'adaptive_max_pool1d'
+        )
+        check_type(output_size, 'pool_size', int, 'adaptive_max_pool1d')
+        check_type(return_mask, 'return_mask', bool, 'adaptive_max_pool1d')
+
         helper = LayerHelper(l_type, **locals())
         dtype = helper.input_dtype(input_param_name='x')
         pool_out = helper.create_variable_for_type_inference(dtype)
@@ -1846,7 +1838,7 @@ def adaptive_max_pool1d(x, output_size, return_mask=False, name=None):
             inputs={"X": x},
             outputs=outputs,
             attrs={
-                "pooling_type": pool_type,
+                "pooling_type": 'max',
                 "ksize": pool_size,
                 "adaptive": True,
             },
@@ -1899,12 +1891,6 @@ def adaptive_max_pool2d(x, output_size, return_mask=False, name=None):
                         output_size=[3, 3])
           # out.shape is [2, 3, 3, 3]
     """
-    if not in_dynamic_mode():
-        check_variable_and_dtype(
-            x, 'x', ['float32', 'float64'], 'adaptive_max_pool2d'
-        )
-        check_type(return_mask, 'return_mask', bool, 'adaptive_max_pool2d')
-        # check_type(output_size, 'pool_size', (int), 'adaptive_max_pool2d')
     _check_input(x, 4)
 
     in_h, in_w = x.shape[2:4]
@@ -1923,6 +1909,12 @@ def adaptive_max_pool2d(x, output_size, return_mask=False, name=None):
         return pool_out if return_mask else pool_out[0]
     else:
         l_type = 'max_pool2d_with_index'
+
+        check_variable_and_dtype(
+            x, 'x', ['float32', 'float64'], 'adaptive_max_pool2d'
+        )
+        check_type(return_mask, 'return_mask', bool, 'adaptive_max_pool2d')
+        # check_type(output_size, 'pool_size', (int), 'adaptive_max_pool2d')
 
         helper = LayerHelper(l_type, **locals())
         dtype = helper.input_dtype(input_param_name='x')
@@ -1988,13 +1980,6 @@ def adaptive_max_pool3d(x, output_size, return_mask=False, name=None):
                         output_size=[3, 3, 3])
           # out.shape is [2, 3, 3, 3, 3]
     """
-
-    if not in_dynamic_mode():
-        check_variable_and_dtype(
-            x, 'x', ['float32', 'float64'], 'adaptive_max_pool3d'
-        )
-        check_type(return_mask, 'return_mask', bool, 'adaptive_max_pool3d')
-        # check_type(output_size, 'pool_size', (int), 'adaptive_max_pool3d')
     _check_input(x, 5)
 
     in_l, in_h, in_w = x.shape[2:5]
@@ -2017,6 +2002,12 @@ def adaptive_max_pool3d(x, output_size, return_mask=False, name=None):
         return pool_out if return_mask else pool_out[0]
     else:
         l_type = 'max_pool3d_with_index'
+
+        check_variable_and_dtype(
+            x, 'x', ['float32', 'float64'], 'adaptive_max_pool3d'
+        )
+        check_type(return_mask, 'return_mask', bool, 'adaptive_max_pool3d')
+        # check_type(output_size, 'pool_size', (int), 'adaptive_max_pool3d')
 
         helper = LayerHelper(l_type, **locals())
         dtype = helper.input_dtype(input_param_name='x')

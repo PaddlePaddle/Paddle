@@ -26,11 +26,9 @@ from paddle.fluid.framework import Variable
 from paddle.fluid.io import is_belong_to_optimizer, is_parameter
 from paddle.framework import core
 
-from .dist_attribute import (
-    OperatorDistributedAttribute,
-    TensorDistributedAttribute,
-)
+from .dist_attribute import OperatorDistAttr, TensorDistAttr
 from .process_group import get_all_process_groups
+from .process_mesh import ProcessMesh
 
 OpRole = core.op_proto_and_checker_maker.OpRole
 OP_ROLE_KEY = core.op_proto_and_checker_maker.kOpRoleAttrName()
@@ -1184,6 +1182,8 @@ def _get_split_indices(
 
 
 def set_grad_var_shape(program, dist_context):
+    from paddle.distributed.fleet.meta_optimizers.common import OpRole
+
     from .operators.common import infer_shape
 
     block = program.global_block()
@@ -1384,10 +1384,19 @@ def get_loss_op(block):
 
 
 def set_var_dist_attr(dist_context, var, dims_mapping, process_mesh, **kwargs):
-    tensor_dist_attr = TensorDistributedAttribute()
+    tensor_dist_attr = TensorDistAttr()
     tensor_dist_attr.dims_mapping = dims_mapping
     # TODO get global mesh group
-    tensor_dist_attr.process_mesh = process_mesh
+    if isinstance(process_mesh, (list, np.ndarray)):
+        tensor_dist_attr.process_mesh = ProcessMesh(process_mesh)
+    elif isinstance(process_mesh, core.ProcessMesh):
+        tensor_dist_attr.process_mesh = process_mesh
+    else:
+        raise ValueError(
+            "{} must be a instance of ProcessMesh or list, but receive {}".format(
+                process_mesh, type(process_mesh)
+            )
+        )
     if "mark_annotated" in kwargs and kwargs["mark_annotated"]:
         tensor_dist_attr.mark_annotated("dims_mapping")
         tensor_dist_attr.mark_annotated("process_mesh")
@@ -1401,7 +1410,7 @@ def naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
     assert process_mesh is not None
     assert ref_mapping is not None
 
-    new_op_dist_attr = OperatorDistributedAttribute()
+    new_op_dist_attr = OperatorDistAttr()
 
     for input_varname in new_op.desc.input_arg_names():
         new_op_dist_attr.set_input_dims_mapping(input_varname, ref_mapping)
@@ -1420,7 +1429,7 @@ def naive_set_dist_op_attr_for_program_by_mesh(
         return
     assert process_mesh is not None
 
-    new_op_dist_attr = OperatorDistributedAttribute()
+    new_op_dist_attr = OperatorDistAttr()
 
     for input_varname in new_op.desc.input_arg_names():
         var = ctx.serial_main_program.global_block().var(input_varname)
@@ -1955,6 +1964,9 @@ def set_recompute_segments(model, losses, strategy, program):
             and hasattr(model.gpt, "checkpoints")
         ):
             ckpts = model.gpt.checkpoints
+            # last recompute segment is not need to recompute
+            if len(ckpts) > 2:
+                ckpts.pop()
         else:
             ckpts = recompute.checkpoints
     else:
@@ -2073,20 +2085,20 @@ def _copy_tensor_dist_attr_to_cpp(cpp_dist_attr, py_dist_attr):
             ["d" + str(i) for i in range(len(py_process_mesh.shape))],
         )
     cpp_dist_attr.dims_mapping = py_dist_attr.dims_mapping
-    cpp_dist_attr.annotated = py_dist_attr._is_annotated
+    cpp_dist_attr.annotated = py_dist_attr.annotated
 
 
 def _copy_tensor_dist_attr_from_cpp(cpp_dist_attr, py_dist_attr):
     from .process_mesh import ProcessMesh
 
     cpp_process_mesh = cpp_dist_attr.process_mesh
-    if not cpp_process_mesh.empty():
+    if cpp_process_mesh is not None:
         py_dist_attr.process_mesh = ProcessMesh(
             shape=cpp_process_mesh.shape,
             process_ids=cpp_process_mesh.process_ids,
         )
     py_dist_attr.dims_mapping = cpp_dist_attr.dims_mapping
-    py_dist_attr._is_annotated = cpp_dist_attr.annotated
+    py_dist_attr.annotated = cpp_dist_attr.annotated
 
 
 def _copy_op_dist_attr_to_cpp(cpp_dist_attr, py_dist_attr):
@@ -2099,7 +2111,8 @@ def _copy_op_dist_attr_to_cpp(cpp_dist_attr, py_dist_attr):
         )
     cpp_dist_attr.impl_type = py_dist_attr.impl_type
     cpp_dist_attr.impl_idx = py_dist_attr.impl_idx
-    cpp_dist_attr.annotated = py_dist_attr._is_annotated
+    cpp_dist_attr.is_recompute = py_dist_attr.is_recompute
+    cpp_dist_attr.annotated = py_dist_attr.annotated
     for name, py_tensor_dist_attr in py_dist_attr.inputs_dist_attrs.items():
         cpp_tensor_dist_attr = cpp_dist_attr.get_input_dist_attr(name)
         _copy_tensor_dist_attr_to_cpp(cpp_tensor_dist_attr, py_tensor_dist_attr)
@@ -2112,15 +2125,15 @@ def _copy_op_dist_attr_from_cpp(cpp_dist_attr, py_dist_attr):
     from .process_mesh import ProcessMesh
 
     cpp_process_mesh = cpp_dist_attr.process_mesh
-    if not cpp_process_mesh.empty():
+    if cpp_process_mesh is not None:
         py_dist_attr.process_mesh = ProcessMesh(
             shape=cpp_process_mesh.shape,
             process_ids=cpp_process_mesh.process_ids,
         )
     py_dist_attr.impl_type = cpp_dist_attr.impl_type
     py_dist_attr.impl_idx = cpp_dist_attr.impl_idx
-    py_dist_attr._is_annotated = cpp_dist_attr.annotated
-    py_dist_attr.op_type = cpp_dist_attr.op.type()
+    py_dist_attr.is_recompute = cpp_dist_attr.is_recompute
+    py_dist_attr.annotated = cpp_dist_attr.annotated
     for name, cpp_tensor_dist_attr in cpp_dist_attr.inputs_dist_attrs.items():
         py_tensor_dist_attr = py_dist_attr.get_input_dist_attr(name)
         _copy_tensor_dist_attr_from_cpp(
@@ -2189,6 +2202,7 @@ def insert_dependencies_for_two_ops(
     dist_context,
     is_recompute=False,
     sync=False,
+    op_namescope=None,
 ):
     """
     dependency: prior_op should be run before posterior_op
@@ -2233,49 +2247,74 @@ def insert_dependencies_for_two_ops(
         [block.var(name) for name in posterior_op.input_arg_names]
     )
 
-    return insert_dependencies_for_two_vars(
+    return insert_dependencies_for_vars(
         block,
         idx,
         first_var,
         second_var,
         dist_context,
         OpRole.Backward,
-        prior_op_mesh,
-        is_recompute,
-        sync,
+        process_mesh=prior_op_mesh,
+        is_recompute=is_recompute,
+        sync=sync,
+        op_namescope=op_namescope,
+        use_nop=False,
     )
 
 
-def insert_dependencies_for_two_vars(
+def insert_dependencies_for_vars(
     block,
     idx,
-    prior_var,
-    post_var,
+    prior_vars,
+    post_vars,
     dist_context,
     oprole,
     process_mesh=None,
     is_recompute=False,
     sync=False,
+    op_namescope=None,
+    use_nop=False,
 ):
     """
-    dependency: op that generates prior_var should be run before op that generates post_var
+    dependency: op that generates prior_vars should be run before op that generates post_vars
     """
-    assert block.has_var(prior_var.name)
-    assert block.has_var(post_var.name)
+
+    if isinstance(prior_vars, Variable):
+        prior_vars = [prior_vars]
+    if isinstance(post_vars, Variable):
+        post_vars = [post_vars]
+    for prior_var in prior_vars:
+        assert block.has_var(prior_var.name)
+    for post_var in post_vars:
+        assert block.has_var(post_var.name)
+
     if process_mesh is None:
         process_mesh = dist_context.get_tensor_dist_attr_for_program(
-            post_var
+            post_vars[0]
         ).process_mesh
     assert process_mesh is not None
 
-    depend_op = block._insert_op_without_sync(
-        idx,
-        type='nop',
-        inputs={
-            "X": prior_var,
-        },
-        outputs={"Out": post_var},
-    )
+    use_nop = True
+    if use_nop:
+        depend_op = block._insert_op_without_sync(
+            idx,
+            type='nop',
+            inputs={
+                "X": prior_vars,
+            },
+            outputs={"Out": post_vars},
+        )
+    else:
+        depend_op = block._insert_op_without_sync(
+            idx,
+            type='depend',
+            inputs={
+                "X": post_vars,
+                "Dep": prior_vars,
+            },
+            outputs={"Out": post_vars},
+        )
+
     # depend_op.desc.set_type("depend")
     depend_op._set_attr(OP_ROLE_KEY, oprole)
     # depend_op.desc.set_input("Dep", [first_var.name])
@@ -2284,6 +2323,8 @@ def insert_dependencies_for_two_vars(
     naive_set_dist_op_attr_for_program_by_mesh(
         depend_op, process_mesh, dist_context, is_recompute
     )
+    if op_namescope is not None:
+        depend_op._set_attr('op_namescope', "/{}".format(op_namescope))
 
     if sync:
         block._sync_with_cpp()
@@ -2291,11 +2332,8 @@ def insert_dependencies_for_two_vars(
     return depend_op
 
 
-def use_standalone_executor():
-    return os.environ.get('FLAGS_CONVERT_GRAPH_TO_PROGRAM', None) in [
-        1,
-        '1',
-        True,
-        'True',
-        'true',
-    ]
+def is_dep_skip_op(op):
+    if "c_" in op.type:
+        return True
+
+    return False

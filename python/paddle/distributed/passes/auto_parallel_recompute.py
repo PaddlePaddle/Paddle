@@ -24,7 +24,7 @@ from paddle.fluid.backward import (
     _rename_arg_,
 )
 
-from ..auto_parallel.dist_attribute import OperatorDistributedAttribute
+from ..auto_parallel.dist_attribute import OperatorDistAttr
 from ..auto_parallel.utils import (
     get_loss_op,
     insert_dependencies_for_two_ops,
@@ -474,6 +474,7 @@ class RecomputePass(PassBase):
                                 self._dist_context,
                                 is_recompute=True,
                                 sync=False,
+                                op_namescope="recompute_segment_dep",
                             )
         main_program._sync_with_cpp()
 
@@ -494,7 +495,7 @@ class RecomputePass(PassBase):
                 )
 
     def set_op_dist_attr(self, op, old_dist_attr, var_name_dict):
-        new_dist_attr = OperatorDistributedAttribute()
+        new_dist_attr = OperatorDistAttr()
         new_dist_attr.is_recompute = True
         new_dist_attr.impl_idx = old_dist_attr.impl_idx
         new_dist_attr.impl_type = old_dist_attr.impl_type

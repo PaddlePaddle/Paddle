@@ -431,11 +431,20 @@ def build_dp_costs(
             desc = {}
             desc["op"] = op_type
             desc["inputs"] = {}
-            dims_mapping = (
-                dist_attr.get_input_dims_mapping(var_name)
-                if dist_attr.get_input_dims_mapping(var_name) is not None
-                else dist_attr.get_output_dims_mapping(var_name)
-            )
+            if var_name in dist_attr.inputs_dist_attrs:
+                dims_mapping = dist_attr.get_input_dims_mapping(var_name)
+            elif var_name in dist_attr.outputs_dist_attrs:
+                dims_mapping = dist_attr.get_output_dims_mapping(var_name)
+            else:
+                assert False, "cannot find dims_mapping for {} in {}".format(
+                    var_name, dist_attr
+                )
+
+            # dims_mapping = (
+            #     dist_attr.get_input_dims_mapping(var_name)
+            #     if dist_attr.get_input_dims_mapping(var_name) is not None
+            #     else dist_attr.get_output_dims_mapping(var_name)
+            # )
             var = get_var_with_recursion(
                 var_name,
                 dist_op.serial_op.block,
