@@ -1,4 +1,4 @@
-// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,20 +14,21 @@
 
 #pragma once
 
+#include <string>
+
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
 
 namespace paddle {
 namespace framework {
 namespace ir {
 
-class Graph;
+class MapOp2AnotherPass : public FusePassBase {
+ public:
+  MapOp2AnotherPass() = default;
+  virtual ~MapOp2AnotherPass() = default;
 
-class InplaceOpVarPass : public FusePassBase {
  protected:
-  void ApplyImpl(ir::Graph* graph) const override;
-
- private:
-  virtual ~InplaceOpVarPass() = default;
+  void ApplyImpl(Graph* graph) const override;
 };
 
 }  // namespace ir

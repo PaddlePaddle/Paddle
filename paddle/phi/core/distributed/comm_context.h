@@ -1,4 +1,4 @@
-// Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,13 +14,23 @@
 
 #pragma once
 
-#include <string>
+#include "paddle/phi/core/macros.h"
 
-namespace paddle {
+namespace phi {
 namespace distributed {
 
-int GetSockName(int fd, char* out, int out_len);
+class CommContext {
+ public:
+  CommContext(int rank, int size) : rank_(rank), size_(size) {}
+  virtual ~CommContext() = default;
 
-std::string GetSockName(int fd);
-};  // namespace distributed
-};  // namespace paddle
+ protected:
+  int rank_;
+  int size_;
+
+ private:
+  DISABLE_COPY_AND_ASSIGN(CommContext);
+};
+
+}  // namespace distributed
+}  // namespace phi

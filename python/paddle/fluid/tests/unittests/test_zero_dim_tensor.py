@@ -563,6 +563,18 @@ class TestSundryAPI(unittest.TestCase):
         self.assertEqual(out.grad.shape, [])
         self.assertEqual(x.grad.shape, [])
 
+    def test_cumprod(self):
+        x = paddle.full([], 1.0, 'float32')
+        x.stop_gradient = False
+        out = paddle.cumprod(x, 0)
+        out.backward()
+
+        with self.assertRaises(ValueError):
+            tmp = paddle.cumprod(x, 2)
+        self.assertEqual(out.shape, [])
+        self.assertEqual(out.grad.shape, [])
+        self.assertEqual(x.grad.shape, [])
+
     def test_clip(self):
         x = paddle.uniform([], None, -10, 10)
         x.stop_gradient = False
@@ -992,6 +1004,19 @@ class TestSundryAPIStatic(unittest.TestCase):
 
         prog = paddle.static.default_main_program()
         res = self.exe.run(prog, fetch_list=[out])
+        self.assertEqual(res[0].shape, ())
+
+    @prog_scope()
+    def test_cumprod(self):
+        x = paddle.full([], 1.0, 'float32')
+        x.stop_gradient = False
+        out = paddle.cumprod(x, 0)
+        paddle.static.append_backward(out)
+        prog = paddle.static.default_main_program()
+        res = self.exe.run(prog, fetch_list=[out])
+
+        with self.assertRaises(ValueError):
+            tmp = paddle.cumprod(x, 2)
         self.assertEqual(res[0].shape, ())
 
     @prog_scope()
