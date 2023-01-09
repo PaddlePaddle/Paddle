@@ -37,6 +37,7 @@ set(PYBIND_DEPS
     global_utils
     phi_utils
     tcp_store
+    comm_context_manager
     new_profiler
     auto_parallel
     jit_layer

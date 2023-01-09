@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/distributed/store/socket.h"
+#include "paddle/phi/core/distributed/store/socket.h"
 
 #ifndef _WIN32
 #include <arpa/inet.h>
@@ -23,7 +23,7 @@
 #include <errno.h>
 #include <stdio.h>
 
-namespace paddle {
+namespace phi {
 namespace distributed {
 
 #ifdef _WIN32
@@ -75,5 +75,5 @@ std::string GetSockName(int fd) {
   return std::string(out);
 }
 
-};  // namespace distributed
-};  // namespace paddle
+}  // namespace distributed
+}  // namespace phi

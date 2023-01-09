@@ -31,6 +31,7 @@ def apply_pass(use_sharding=False):
     strategy.reinit = True
     if use_sharding:
         sharding = strategy.sharding
+        sharding.enable = True
         sharding.degree = 2
         sharding.stage = 2
     return strategy
