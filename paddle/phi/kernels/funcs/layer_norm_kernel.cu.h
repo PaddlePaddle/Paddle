@@ -397,7 +397,7 @@ __global__ void LayerNormForward(
       for (int64_t i = beg_idx, j = threadIdx.x; i < end_idx;
            i += BlockDim, j += BlockDim) {
         if (std::is_same<OutType, int8_t>::value) {
-          y[i] = quant_helper(
+          y[i] = paddle::operators::quant_helper(
               static_cast<T>(static_cast<U>(scale[j]) *
                                  (static_cast<U>(x[i]) - mean_val) * invvar +
                              static_cast<U>(bias[j])),
@@ -416,7 +416,7 @@ __global__ void LayerNormForward(
       for (int64_t i = beg_idx, j = threadIdx.x; i < end_idx;
            i += BlockDim, j += BlockDim) {
         if (std::is_same<OutType, int8_t>::value) {
-          y[i] = quant_helper(
+          y[i] = paddle::operators::quant_helper(
               static_cast<T>(static_cast<U>(scale[j]) *
                              (static_cast<U>(x[i]) - mean_val) * invvar),
               quant_in_scale,
@@ -435,7 +435,7 @@ __global__ void LayerNormForward(
       for (int64_t i = beg_idx, j = threadIdx.x; i < end_idx;
            i += BlockDim, j += BlockDim) {
         if (std::is_same<OutType, int8_t>::value) {
-          y[i] = quant_helper(
+          y[i] = paddle::operators::quant_helper(
               static_cast<T>((static_cast<U>(x[i]) - mean_val) * invvar +
                              static_cast<U>(bias[j])),
               quant_in_scale,
@@ -452,7 +452,7 @@ __global__ void LayerNormForward(
       for (int64_t i = beg_idx, j = threadIdx.x; i < end_idx;
            i += BlockDim, j += BlockDim) {
         if (std::is_same<OutType, int8_t>::value) {
-          y[i] = quant_helper(
+          y[i] = paddle::operators::quant_helper(
               static_cast<T>((static_cast<U>(x[i]) - mean_val) * invvar),
               quant_in_scale,
               quant_round_type,
