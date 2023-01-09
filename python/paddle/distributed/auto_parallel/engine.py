@@ -229,6 +229,9 @@ class Engine:
         self.history = None
 
         paddle.framework.set_flags({'FLAGS_new_executor_sequential_run': 1})
+        self._logger.debug(
+            "Applied Sequential Redundant Dependencies as Default."
+        )
 
     def _prepare_data_spec(self, data, split, batch_size):
         inputs_spec = []

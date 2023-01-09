@@ -21,6 +21,7 @@ from paddle.distributed.auto_parallel.operators.common import (
 )
 from paddle.distributed.auto_parallel.utils import (
     find_higher_order_backward_op,
+    get_logger,
     get_var_numel,
     insert_dependencies_for_vars,
     is_forward_op,
@@ -34,6 +35,8 @@ from paddle.fluid.executor import _is_enable_standalone_executor
 from paddle.fluid.framework import default_main_program
 
 from .pass_base import PassBase, PassType, register_pass
+
+_logger = get_logger(logging.INFO)
 
 # add new optimizers supporting rescale_grad here
 __rescale_grad_supported_opts__ = [
@@ -93,6 +96,10 @@ class DataParallelOptimizationPass(PassBase):
         self.use_sharding = self.get_attr("use_sharding")
         self.coalesce_prefix = 'coalesce_grad'
         if _is_enable_standalone_executor():
+            paddle.framework.set_flags({'FLAGS_new_executor_sequential_run': 1})
+            _logger.info(
+                "Disenable Sequential Redundant Dependencies in Data Parallel Optimization."
+            )
             self.gradient_sync_stream = "gradient_sync_stream"
 
         with paddle.static.program_guard(main_program, startup_program):
@@ -679,30 +686,17 @@ class DataParallelOptimizationPass(PassBase):
 
     def summary(self, grad_groups=[]):
         # TODO: add logger module
-        import logging
-
-        self._logger = logging.getLogger()
-        self._logger.propagate = False
-        if not self._logger.handlers:
-            self._logger.setLevel(logging.INFO)
-            log_handler = logging.StreamHandler()
-            log_format = logging.Formatter(
-                '[%(levelname)s %(asctime)s %(filename)s:%(lineno)d] %(message)s'
-            )
-            log_handler.setFormatter(log_format)
-            self._logger.addHandler(log_handler)
-
         if len(grad_groups) > 0:
-            self._logger.info("Data Parallel Optimization: ")
-            self._logger.info(
+            _logger.info("Data Parallel Optimization: ")
+            _logger.info(
                 " {} Allreduce ops are fused into {} coalesce allreduce ops.".format(
                     len(self._grad_name_to_group_map.keys()), len(grad_groups)
                 )
             )
-            self._logger.debug("gradient fusing group are following: ")
+            _logger.debug("gradient fusing group are following: ")
             fused_grads = set()
             for i, group in enumerate(grad_groups):
-                self._logger.debug(
+                _logger.debug(
                     "coalesce gradient [{}] is composed by: {}".format(
                         i, [grad.name for grad in group.gradients]
                     )
@@ -711,14 +705,12 @@ class DataParallelOptimizationPass(PassBase):
             individual_grads = set(self._grad_name_to_group_map.keys()) - set(
                 fused_grads
             )
-            self._logger.debug(
+            _logger.debug(
                 "the following [{}] gradients are not fused: ".format(
                     len(individual_grads)
                 )
             )
-            self._logger.debug(
-                "individual gradient {}".format(individual_grads)
-            )
+            _logger.debug("individual gradient {}".format(individual_grads))
 
 
 class GradientsGroup:
