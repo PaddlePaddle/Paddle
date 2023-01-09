@@ -18,6 +18,7 @@ import numpy as np
 
 import paddle
 from paddle import _legacy_C_ops
+from paddle.amp.auto_cast import _in_amp_guard, _in_pure_fp16_guard
 from paddle.fluid import backward, core, framework, program_guard
 from paddle.fluid.compiler import BuildStrategy
 from paddle.fluid.contrib.mixed_precision.decorator import (
@@ -28,10 +29,6 @@ from paddle.fluid.contrib.mixed_precision.fp16_utils import (
     rewrite_program,
 )
 from paddle.fluid.dygraph import layers
-from paddle.fluid.dygraph.amp.auto_cast import (
-    _in_amp_guard,
-    _in_pure_fp16_guard,
-)
 from paddle.fluid.dygraph.base import switch_to_static_graph
 from paddle.fluid.executor import (
     _is_dy2st_enable_standalone_executor,
@@ -253,7 +250,7 @@ class PartialProgramLayer:
 
     @switch_to_static_graph
     def _create_forward_backward_train_program(self):
-        whole_program = self._create_program()
+        whole_program = self._train_program
         forward_end_op_index = self._infer_program.desc.block(0).op_size()
         return self._get_forward_backward_program_form(
             whole_program, forward_end_op_index
@@ -261,7 +258,7 @@ class PartialProgramLayer:
 
     @switch_to_static_graph
     def _create_forward_backward_train_amp_program(self):
-        whole_program = self._create_amp_program()
+        whole_program = self._train_amp_program
         forward_end_op_index = self._infer_amp_program.desc.block(0).op_size()
         return self._get_forward_backward_program_form(
             whole_program, forward_end_op_index
@@ -269,7 +266,7 @@ class PartialProgramLayer:
 
     @switch_to_static_graph
     def _create_forward_backward_train_pure_fp16_program(self):
-        whole_program = self._create_pure_fp16_program()
+        whole_program = self._train_pure_fp16_program
         forward_end_op_index = self._infer_pure_fp16_program.desc.block(
             0
         ).op_size()
@@ -310,6 +307,10 @@ class PartialProgramLayer:
     def _train_amp_forward_backward_program(self):
         program = self._create_forward_backward_train_amp_program()
         return program
+
+    @LazyInitialized
+    def _empty_backward_program_for_eval(self):
+        return paddle.static.Program()
 
     @LazyInitialized
     def _train_pure_fp16_forward_backward_program(self):
@@ -366,7 +367,16 @@ class PartialProgramLayer:
                 program = self._train_forward_backward_program
                 return program[1]
         else:
-            return paddle.static.Program()
+            """
+            Can't just return paddle.static.Program(), because self.backward_program is a property,
+            whenever we call this method, a tmp Program() object is created and is gc immediatly
+            after executed the following line in PartialProgramLayer.__call__.
+
+            >>> self.backward_program.desc.block(0),
+
+            When we access RunProgramAPI, it's possible to get an invalid backward_program address.
+            """
+            return self._empty_backward_program_for_eval
 
     @LazyInitialized
     def _train_program_id(self):
@@ -403,6 +413,43 @@ class PartialProgramLayer:
     @LazyInitialized
     def _infer_pure_fp16_program_id(self):
         return _hash_with_id(self._infer_pure_fp16_program, self)
+
+    @LazyInitialized
+    def _param_grad_names(self):
+        names = []
+        # NOTE: `names` and `self._params` must be in the same order so that
+        # the param grad name can be set correctly in the run_program.
+        for param in self._params:
+            candidate = [
+                var_name
+                for var_name in self._train_program.block(0).vars.keys()
+                if var_name.endswith(param.name + '@GRAD')
+            ]
+            if candidate:
+                names.append(
+                    max(candidate, key=lambda name: name.count('grad/'))
+                )
+            else:
+                names.append(param.name + '@GRAD')
+        return names
+
+    @LazyInitialized
+    def _out_grad_names(self):
+        names = []
+        fwd_end_op_index = self._get_end_op_index()
+        for i in range(
+            fwd_end_op_index + 1,
+            min(
+                fwd_end_op_index + 2 * len(self._outputs.var_ids),
+                len(self.program.block(0).ops),
+            ),
+            2,
+        ):
+            op = self.program.block(0).ops[i]
+            if op.type == 'fill_constant':
+                var_name = op.output('Out')[0]
+                names.append(var_name)
+        return names
 
     @property
     def whole_program_id(self):
@@ -610,6 +657,18 @@ class PartialProgramLayer:
             'program_id',
             self.program_id,
         ]
+        if self.training:
+            # NOTE: In the case of higher-order gradient, the names of the parameter grads may be like
+            # `grad/grad/grad/linear_0.w_0@GRAD` instead of simply `linear_0.w_0@GRAD`, so we get
+            # the correct names of the parameter grads from program. And out grads are similar to above.
+            attrs.extend(
+                (
+                    'param_grad_names',
+                    self._param_grad_names,
+                    'out_grad_names',
+                    self._out_grad_names,
+                )
+            )
         if self._cuda_graph_capture_mode:
             attrs.extend(
                 (
@@ -707,7 +766,11 @@ class PartialProgramLayer:
             self._outputs.var_ids
         )
         backward_end_op_index = whole_program.desc.block(0).op_size()
-        backward_skip_vars = self._parse_skip_gc_vars(whole_program)
+        # For Backward process in CINN, all param@GRAD shoule be skipped for GC, because
+        # they will be shared in scope and used by optimizer.
+        backward_skip_vars = (
+            self._parse_skip_gc_vars(whole_program) + self._param_grad_names
+        )
         backward_builded_program = add_build_strategy_for(
             whole_program,
             backward_start_op_index,
@@ -797,7 +860,7 @@ class PartialProgramLayer:
 
         if backward_program:
             for var_name in core.parse_safe_eager_deletion_skip_vars(
-                backward_program.desc
+                backward_program.desc, True
             ):
                 skip_vars.append(var_name)
         return skip_vars

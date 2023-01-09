@@ -25,12 +25,11 @@ class TestAMPList(unittest.TestCase):
         b = paddle.rand([2, 3])
 
         # amp list conv2d, cast
-        with paddle.amp.auto_cast():
+        with paddle.amp.auto_cast(enable=True, level='O2'):
             conv = conv2d(data)
             c = a + b
-        paddle.fluid.dygraph.amp.auto_cast.low_precision_op_list()
+        paddle.amp.low_precision_op_list()
         op_list = paddle.fluid.core.get_low_precision_op_list()
-        print(conv.dtype)
         if conv.dtype == paddle.float16:
             self.assertTrue('elementwise_add' in op_list)
             self.assertTrue('conv2d' in op_list)

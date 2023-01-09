@@ -161,13 +161,14 @@ class CinnLaunchContext {
 
   std::unique_ptr<framework::ProgramDesc> runtime_program_desc_;
   std::unique_ptr<framework::InterpreterCore> interpreter_core_;
+  // the name list of skip_gc_vars in runtime for InterpreterCore execution
   std::set<std::string> skip_gc_vars_;
 
   // the ir::Graph object converted from the program compiled by CINN
   std::unique_ptr<framework::ir::Graph> runtime_graph_;
   // a ParallelExecutor to execute the runtime graph
   std::unique_ptr<framework::ParallelExecutor> parallel_executor_;
-  // the name list of skip_eager_vars in runtime
+  // the name list of skip_eager_vars in runtime for ParallelExecutor execution
   std::vector<std::string> skip_eager_vars_;
 
   // because a cinn_pod_value_t does not own a cinn_buffer_t object,
@@ -177,6 +178,9 @@ class CinnLaunchContext {
   // this map saves all execution arguments with their cinn names as key,
   // and it is passed to the Execute interface of a cinn runtime program.
   std::map<std::string, cinn_pod_value_t> name2argument_;
+  // this map saves all execution arguments with paddle variables as key,
+  // this map conbine name2argument_ and paddle2cinn_varmap_
+  std::map<std::string, cinn_pod_value_t> paddle2argument_;
 };
 
 }  // namespace operators::details
