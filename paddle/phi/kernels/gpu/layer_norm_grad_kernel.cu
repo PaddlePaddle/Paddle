@@ -84,7 +84,7 @@ void LayerNormGradKernel(const Context &dev_ctx,
                            : dev_ctx.template Alloc<ScaleBiasT>(d_bias));   \
     auto *d_x_data =                                                        \
         (d_x == nullptr ? nullptr : dev_ctx.template Alloc<T>(d_x));        \
-    paddle::operators::LayerNormBackward<T, U, IsScaleBiasSameDTypeWithX>(  \
+    phi::funcs::LayerNormBackward<T, U, IsScaleBiasSameDTypeWithX>(         \
         x_data,                                                             \
         d_y_data,                                                           \
         scale_data,                                                         \
