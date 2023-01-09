@@ -315,8 +315,9 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERER({{op["op_name"] | to_pascal_case}}NoNeedBuff
 {% endif %}
 {% endmacro%}
 
-{% macro register_op_with_components(op) %}
+{% macro register_op_with_components(op, op_dict) %}
 {% set name = op["op_name"] %}
+{% set phi_name = op["name"] %}
 REGISTER_OPERATOR({{name}}, ops::{{name | to_pascal_case}}Op,
 {% if not "forward" in op %}{# it is a forward op #}
                   ops::{{name | to_pascal_case}}OpMaker,
@@ -331,6 +332,9 @@ REGISTER_OPERATOR({{name}}, ops::{{name | to_pascal_case}}Op,
 {% endif %}
 {% if op is supports_inplace %}{# inplace#}
                   ops::{{name | to_pascal_case}}InplaceInferer,
+{% endif %}
+{% if "phi_backward" in op and  op["phi_backward"] is not none and "composite" in op_dict[op["phi_backward"]] %}
+                  ops::{{op["phi_backward"] | to_composite_grad_opmaker_name}},
 {% endif %}
 {% if op is supports_no_need_buffer %}{# no_need_buffer #}
                   ops::{{name | to_pascal_case}}NoNeedBufferVarInferer,
@@ -413,7 +417,8 @@ class {{name | to_pascal_case}}OpMaker : public framework::SingleGradOpMaker<T> 
       forward_input_names,
       forward_output_names,
       forward_input_orig_names,
-      forward_output_orig_names)}});
+      forward_output_orig_names,
+      output['drop_empty_grad'])}});
   {% endfor %}
 
     grad_op->SetAttrMap(this->Attrs());
@@ -476,7 +481,8 @@ class {{name | to_pascal_case}}OpMaker : public framework::SingleGradOpMaker<T> 
       forward_input_names,
       forward_output_names,
       forward_input_orig_names,
-      forward_output_orig_names)}});
+      forward_output_orig_names,
+      true)}});
   {% endfor %}
 
   {% for attr in invoke_op["attrs"] %}
@@ -486,6 +492,155 @@ class {{name | to_pascal_case}}OpMaker : public framework::SingleGradOpMaker<T> 
 };
 {% endmacro %}
 
+{% macro composite_grad_op_maker(composite_op_dict) %}
+  {% set op_name = composite_op_dict["name"] %}
+class {{op_name | to_composite_grad_opmaker_name}} : public prim::GradCompositeOpMakerBase {
+ public:
+  using prim::GradCompositeOpMakerBase::GradCompositeOpMakerBase;
+  void Apply() override {
+    //get inputs
+{{construct_composite_input(composite_op_dict)}}
+    //get attr
+{{construct_composite_attr(composite_op_dict)}}
+    //get output
+{{construct_composite_output(composite_op_dict)}}
+    //get output ptr
+{{construct_composite_output_ptr(composite_op_dict)}}
+    //get output orginal name
+{{get_composite_output_orginal_name(composite_op_dict)}}
+    //call composite backward func
+{{call_composite_backward_api(composite_op_dict)}}
+    //recover output name
+{{recover_composite_output_name(composite_op_dict)}}
+  }
+};
+{%- endmacro %}
+
+{% macro construct_composite_input(composite_op_dict) %}
+  {% set inputs = composite_op_dict["composite"]["phi_inputs"] %}
+  {% set input_dict = composite_op_dict["input_dict"] %}
+  {% set fluid_inputs = composite_op_dict["composite"]["fluid_inputs"] %}
+  {% set forward_fluid_inputs = composite_op_dict["forward"]["inputs"] | map(attribute="name") | list %}
+  {% set forward_fluid_outputs = composite_op_dict["forward"]["outputs"] | map(attribute="name") | list %}
+  {% set inputs_length = inputs | length %}
+  {% for i in range(inputs_length) %}
+    {% set input_typename = input_dict[inputs[i]]["typename"] %}
+    {% set input_optional_flag = input_dict[inputs[i]]["optional"] %}
+    {% if fluid_inputs[i] in forward_fluid_inputs %}
+      {% if input_typename == "Tensor" %}
+        {% if input_optional_flag == True %}
+    paddle::optional<paddle::experimental::Tensor> {{inputs[i]}} = this->GetOptionalSingleForwardInput("{{fluid_inputs[i]}}");
+        {% elif input_optional_flag == False %}
+    paddle::experimental::Tensor {{inputs[i]}} = this->GetSingleForwardInput("{{fluid_inputs[i]}}");
+        {% endif %}
+      {% elif input_typename == "Tensor[]" %}
+        {% if input_optional_flag == True %}
+    std::vector<paddle::optional<paddle::experimental::Tensor>> {{inputs[i]}} = this->GetOptionalMultiForwardInput("{{fluid_inputs[i]}}");
+        {% elif input_optional_flag == False %}
+    std::vector<paddle::experimental::Tensor> {{inputs[i]}} = this->GetMultiForwardInput("{{fluid_inputs[i]}}");
+        {% endif %}
+      {% endif %}
+    {% elif fluid_inputs[i] in forward_fluid_outputs %}
+      {% if input_typename == "Tensor" %}
+        {% if input_optional_flag == True %}
+    paddle::optional<paddle::experimental::Tensor> {{inputs[i]}} = this->GetOptionalSingleForwardOutput("{{fluid_inputs[i]}}");
+        {% elif input_optional_flag == False %}
+    paddle::experimental::Tensor {{inputs[i]}} = this->GetSingleForwardOutput("{{fluid_inputs[i]}}");
+        {% endif %}
+      {% elif input_typename == "Tensor[]" %}
+        {% if input_optional_flag == True %}
+    std::vector<paddle::optional<paddle::experimental::Tensor>> {{inputs[i]}} = this->GetOptionalMultiForwardOutput("{{fluid_inputs[i]}}");
+        {% elif input_optional_flag == False %}
+    std::vector<paddle::experimental::Tensor> {{inputs[i]}} = this->GetMultiForwardOutput("{{fluid_inputs[i]}}");
+        {% endif %}
+      {% endif %}
+    {% elif fluid_inputs[i][:-5] in forward_fluid_outputs %}
+      {% if input_typename == "Tensor" %}
+        {% if input_optional_flag == True %}
+    paddle::optional<paddle::experimental::Tensor> {{inputs[i]}} = this->GetOptionalSingleOutputGrad("{{fluid_inputs[i][:-5]}}");
+        {% elif input_optional_flag == False %}
+    paddle::experimental::Tensor {{inputs[i]}} = this->GetSingleOutputGrad("{{fluid_inputs[i][:-5]}}");
+        {% endif %}
+      {% elif input_typename == "Tensor[]" %}
+        {% if input_optional_flag == True %}
+    std::vector<paddle::optional<paddle::experimental::Tensor>> {{inputs[i]}} = this->GetOptionalMultiOutputGrad("{{fluid_inputs[i][:-5]}}");
+        {% elif input_optional_flag == False %}
+    std::vector<paddle::experimental::Tensor> {{inputs[i]}} = this->GetMultiOutputGrad("{{fluid_inputs[i][:-5]}}");
+        {%- endif %}
+      {%- endif %}
+    {%- endif %}
+  {%- endfor %}
+{%- endmacro %}
+
+{% macro construct_composite_attr(composite_op_dict) %}
+  {% set attrs = composite_op_dict["composite"]["phi_attrs"] %}
+  {% set fluid_attrs = composite_op_dict["composite"]["fluid_attrs"] %}
+  {% set fluid_attrs_dict = composite_op_dict["attr_dict"] %}
+  {% set attrs_length = attrs | length %}
+  {% for i in range(attrs_length) %}
+    {% set attrs_data_type = fluid_attrs_dict[fluid_attrs[i]]["typename"] | to_op_attr_type %}
+    {{attrs_data_type}} {{attrs[i]}} = this->Attr<{{attrs_data_type}}>("{{fluid_attrs[i]}}");
+  {% endfor %}
+{%- endmacro %}
+
+{% macro construct_composite_output(composite_op_dict) %}
+  {% set outputs = composite_op_dict["composite"]["phi_outputs"] %}
+  {% set fluid_outputs = composite_op_dict["composite"]["fluid_outputs"] %}
+  {% set outputs_dict = composite_op_dict["output_dict"] %}
+  {% set outputs_length = outputs | length %}
+  {% for i in range(outputs_length) %}
+    {% set output_typename = outputs_dict[outputs[i]]["typename"] %}
+    {% if output_typename == "Tensor" %}
+    paddle::experimental::Tensor {{outputs[i] + "_t"}} = this->GetSingleInputGrad("{{fluid_outputs[i][:-5]}}");
+    {% elif output_typename == "Tensor[]" %}
+    std::vector<paddle::experimental::Tensor> {{outputs[i] + "_t"}} = this->GetMultiInputGrad("{{fluid_outputs[i][:-5]}}");
+    {%- endif %}    
+  {%- endfor %}
+{%- endmacro %}
+
+{% macro construct_composite_output_ptr(composite_op_dict) %}
+  {% set outputs = composite_op_dict["composite"]["phi_outputs"] %}
+  {% set outputs_dict = composite_op_dict["output_dict"] %}
+  {% set outputs_length = outputs | length %}
+  {% for i in range(outputs_length) %}
+    {% set output_typename = outputs_dict[outputs[i]]["typename"] %}
+    {% if output_typename == "Tensor" %}
+    paddle::experimental::Tensor* {{outputs[i]}} = this->GetOutputPtr(&{{outputs[i]+ "_t"}});
+    {% elif output_typename == "Tensor[]" %}
+    std::vector<paddle::experimental::Tensor*> {{outputs[i]}}({{outputs[i] + "_t"}}.size());
+    for(size_t i = 0; i < {{outputs[i]}}.size(); ++i){
+      {{outputs[i]}}[i] = &{{outputs[i] + "_t"}}[i];
+    }
+    {{outputs[i]}} = this->GetOutputPtr({{outputs[i]}});
+    {%- endif %}    
+  {%- endfor %}
+{%- endmacro %}
+
+{% macro get_composite_output_orginal_name(composite_op_dict) %}
+  {% set outputs = composite_op_dict["composite"]["phi_outputs"] %}
+  {% set outputs_dict = composite_op_dict["output_dict"] %}
+  {% set outputs_length = outputs | length %}
+  {% for i in range(outputs_length) %}
+    {% set output_typename = outputs_dict[outputs[i]]["typename"] %}
+    {% if output_typename == "Tensor" %}
+    std::string {{outputs[i] + "_name"}} = this->GetOutputName({{outputs[i] + "_t"}});
+    {% elif output_typename == "Tensor[]" %}
+    std::vector<std::string> {{outputs[i] + "_name"}} = this->GetOutputName({{outputs[i] + "_t"}});
+    {%- endif %}    
+  {%- endfor %}
+{%- endmacro %}
+
+{% macro call_composite_backward_api(composite_op_dict) %}
+    prim::{{composite_op_dict["composite"]["func_name"]}}<prim::DescTensor>({{composite_op_dict["composite"]["func_args"]}});
+{%- endmacro %}
+
+{% macro recover_composite_output_name(composite_op_dict) %}
+  {% set outputs = composite_op_dict["composite"]["phi_outputs"] %}
+  {% set outputs_length = outputs | length %}
+  {% for i in range(outputs_length) %}
+    this->RecoverOutputName({{outputs[i] + "_t"}}, {{outputs[i] + "_name"}});
+  {% endfor %}
+{%- endmacro %}
 
 {% macro extract_input_from_forward(name,
   input_names, output_names,
@@ -506,11 +661,15 @@ OutputGrad({{name_in_forward_orig | to_opmaker_name}})
 {%- endmacro %}
 
 {% macro extract_output_from_forward(name, input_names, output_names,
-  input_orig_names, output_orig_names) %}{# inline #}
+  input_orig_names, output_orig_names, drop_empty_grad) %}{# inline #}
   {% if name[:-5] in input_names %}
     {% set name_in_forward = name[:-5] %}
     {% set name_in_forward_orig = input_orig_names[input_names.index(name_in_forward)]%}
+      {%- if drop_empty_grad is true -%}
 InputGrad({{name_in_forward_orig | to_opmaker_name}})
+      {%- else -%}
+InputGrad({{name_in_forward_orig | to_opmaker_name}}, false)
+      {%- endif %}
   {%- elif (name) in input_names %}
     {% set name_in_forward_orig = input_orig_names[input_names.index(name)]%}
 Input({{name  | to_opmaker_name}})

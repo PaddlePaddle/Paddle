@@ -95,6 +95,17 @@ static std::tuple<int, int, int> GetTrtCompileVersion() {
       NV_TENSORRT_MAJOR, NV_TENSORRT_MINOR, NV_TENSORRT_PATCH};
 }
 
+template <typename T>
+struct Destroyer {
+  void operator()(T* x) {
+    if (x) {
+      x->destroy();
+    }
+  }
+};
+template <typename T>
+using infer_ptr = std::unique_ptr<T, Destroyer<T>>;
+
 // A logger for create TensorRT infer builder.
 class NaiveLogger : public nvinfer1::ILogger {
  public:

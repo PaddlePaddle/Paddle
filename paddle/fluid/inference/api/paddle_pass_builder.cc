@@ -162,12 +162,12 @@ const std::vector<std::string> kLiteSubgraphPasses({
 // support fp16/bf16 precision, temporarily use low precision pass to prevent
 // running errors. After fusion operator supports low precision, delete this.
 const std::vector<std::string> kGpuLowerPrecisionPasses{
+    "map_op_to_another_pass",
     "identity_scale_op_clean_pass",
     "simplify_with_basic_ops_pass",
     "silu_fuse_pass",
     "delete_quant_dequant_linear_op_pass",
     "delete_weight_dequant_linear_op_pass",
-    "map_depthwise_conv_to_conv_pass",
     "conv_bn_fuse_pass",
     "conv_eltwiseadd_bn_fuse_pass",
     "conv_elementwise_add_act_fuse_pass",
@@ -212,12 +212,12 @@ const std::vector<std::string> kCINNCompilerPasses{
 
 GpuPassStrategy::GpuPassStrategy() : PassStrategy({}) {
   passes_.assign({
-    "identity_scale_op_clean_pass",                                     //
+    "map_op_to_another_pass",                                           //
+        "identity_scale_op_clean_pass",                                 //
         "is_test_pass",                                                 //
         "simplify_with_basic_ops_pass",                                 //
         "delete_quant_dequant_linear_op_pass",                          //
         "delete_weight_dequant_linear_op_pass",                         //
-        "map_depthwise_conv_to_conv_pass",                              //
         "constant_folding_pass",                                        //
         "silu_fuse_pass",                                               //
         "conv_bn_fuse_pass",                                            //
@@ -254,8 +254,6 @@ GpuPassStrategy::GpuPassStrategy() : PassStrategy({}) {
         "conv_elementwise_add_fuse_pass",      //
 #endif                                         //
         "transpose_flatten_concat_fuse_pass",  //
-        "constant_folding_pass",               //
-        "auto_mixed_precision_pass",           //
         "conv2d_fusion_layout_transfer_pass",  //
         "auto_mixed_precision_pass",           //
         "inplace_op_var_pass",                 // should be the last pass.
