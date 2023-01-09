@@ -19,6 +19,7 @@ from .fp16_lists import CustomOpLists, AutoMixedPrecisionLists
 from . import fp16_utils
 from .fp16_utils import fp16_guard, cast_model_to_fp16, cast_parameters_to_fp16
 from . import bf16
+from .bf16 import bf16_guard
 
 __all__ = []
 __all__ += decorator.__all__
