@@ -181,6 +181,10 @@ void groupNormNHWCSum(const GroupNormNHWCParams &params, cudaStream_t stream) {
     case 8:
       groupNormNHWCSumKernel<4><<<grid, 4, 0, stream>>>(params);
       break;
+    default:
+      PADDLE_THROW(platform::errors::Fatal(
+          "The function groupNormNHWCSum of GroupNormPlugin TRT Plugin "
+          "encounter error"));
   }
 }
 
@@ -283,6 +287,10 @@ void groupNormNHWCScale(const GroupNormNHWCParams &params,
     case 8:
       groupNormNHWCScaleKernel<4><<<grid, 4, 0, stream>>>(params);
       break;
+    default:
+      PADDLE_THROW(platform::errors::Fatal(
+          "The function groupNormNHWCScale of GroupNormPlugin TRT Plugin "
+          "encounter error"));
   }
 }
 

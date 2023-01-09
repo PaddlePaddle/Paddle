@@ -264,6 +264,9 @@ void skipGroupNormNHWCSum(GroupNormNHWCParams const &params,
     case 128:
       skipGroupNormNHWCSumKernel<64><<<grid, 64, 0, stream>>>(params);
       break;
+    case 8:
+      skipGroupNormNHWCSumKernel<4><<<grid, 4, 0, stream>>>(params);
+      break;
     default:
       PADDLE_THROW(platform::errors::Fatal(
           "The function groupNormNHWCSum of SkipGroupnormAct TRT Plugin "
@@ -384,6 +387,9 @@ void skipGroupNormNHWCScale(GroupNormNHWCParams const &params,
     case 128:
       skipGroupNormNHWCScaleKernel<64><<<grid, 64, 0, stream>>>(params);
       break;
+    case 8:
+      skipGroupNormNHWCScaleKernel<4><<<grid, 4, 0, stream>>>(params);
+      break;
     default:
       PADDLE_THROW(platform::errors::Fatal(
           "The function groupNormNHWCSum of SkipGroupnormAct TRT Plugin "
@@ -422,6 +428,9 @@ int SkipGroupnormActPluginDynamic::enqueue(
         break;
       default:
         cPerBlock = 320;
+    }
+    if (cPerBlock > input_desc[0].dims.d[1]) {
+      cPerBlock = 8;
     }
     params_.withSwish = true;
     params_.dst = static_cast<half *>(outputs[0]);
