@@ -158,6 +158,11 @@ void CPUQuantizeSquashPass::DequantQuantSquash(
         PADDLE_GET_CONST(float, quant_op->Op()->GetAttr("Scale"));
     float dequant_shift = dequant_op->Op()->GetAttrIfExists<float>("Shift");
     float quant_shift = quant_op->Op()->GetAttrIfExists<float>("Shift");
+    if (quant_op->Op()->GetAttrIfExists<bool>("is_negative_input") !=
+        dequant_op->Op()->GetAttrIfExists<bool>("is_negative_input")) {
+      return;
+    }
+
     PADDLE_ENFORCE_NE(
         nodes_keep_counter->find(dequant_out),
         nodes_keep_counter->end(),
@@ -169,14 +174,13 @@ void CPUQuantizeSquashPass::DequantQuantSquash(
     if (dequant_scale == quant_scale && dequant_shift == quant_shift) {
       // squash dequantize-quantize to nothing
       auto quant_out_var_name = quant_out->Name();
-      auto next_op_inputs = next_op_desc->InputNames();
-      for (const auto& name : next_op_inputs) {
-        auto input_names = next_op_desc->Input(name);
+      for (auto input_name : next_op_desc->InputNames()) {
+        auto& input_names = next_op_desc->MutableInputs()->at(input_name);
         std::replace(input_names.begin(),
                      input_names.end(),
                      quant_out_var_name,
                      dequant_in->Name());
-        next_op_desc->SetInput(name, input_names);
+        next_op_desc->SetInput(input_name, input_names);
       }
 
       if (keep_dequant)
