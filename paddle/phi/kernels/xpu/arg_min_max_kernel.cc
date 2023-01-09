@@ -42,7 +42,7 @@ void ArgMaxKernel(const Context& dev_ctx,
           dtype));
   // TODO(ZHUI): fix dtype of out
   dev_ctx.template Alloc<int64_t>(out);
-  if (x.dims().size == 0) {
+  if (x.dims().size() == 0) {
     phi::funcs::set_constant(dev_ctx, out, 0);
     return;
   }
