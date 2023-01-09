@@ -63,6 +63,10 @@ class FusedMultiTransformerOp : public framework::OperatorWithKernel {
     auto x_dim = ctx->GetInputDim("X");
     auto y_dim = ctx->GetInputsDim("QKVW")[0];
     bool trans_qkvw = ctx->Attrs().Get<bool>("trans_qkvw");
+    bool remove_padding = ctx->Attrs().Get<bool>("remove_padding");
+    if (remove_padding) {
+      CHECK_INPUT(SeqLengths);
+    }
     PADDLE_ENFORCE_EQ(
         x_dim.size(),
         3,
@@ -182,6 +186,8 @@ class FusedMultiTransformerOpOpMaker
     AddInput("TimeStep",
              "(optional, int) The time step for generation inference.")
         .AsDispensable();
+    AddInput("SeqLengths", "(optional) The sequence length tensor of inputs.")
+        .AsDispensable();
     AddInput("SrcMask", "(optional) The attention mask tensor in fmha.")
         .AsDispensable();
     AddInput("OutLinearW", "The out_linear weight tensor.").AsDuplicable();
@@ -214,6 +220,10 @@ class FusedMultiTransformerOpOpMaker
                   "else, uses post_layer_norm architecuture. "
                   "[default true].")
         .SetDefault(true);
+    AddAttr<bool>("remove_padding",
+                  "if true, remove padding in computing. "
+                  "[default false].")
+        .SetDefault(false);
     AddAttr<int>("rotary_emb_dims",
                  "the Attr(dims) for RotaryPosEmb's Computation  [default 0].")
         .SetDefault(0)
