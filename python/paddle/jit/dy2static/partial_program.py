@@ -317,26 +317,6 @@ class PartialProgramLayer:
         program = self._create_forward_backward_train_pure_fp16_program()
         return program
 
-    @LazyInitialized
-    def _infer_builed_program(self):
-        return self._build_infer_program(
-            self._infer_program, self._infer_program.desc.block(0).op_size()
-        )
-
-    @LazyInitialized
-    def _infer_amp_builed_program(self):
-        return self._build_infer_program(
-            self._infer_amp_program,
-            self._infer_amp_program.desc.block(0).op_size(),
-        )
-
-    @LazyInitialized
-    def _infer_pure_fp16_builed_program(self):
-        return self._build_infer_program(
-            self._infer_pure_fp16_program,
-            self._infer_pure_fp16_program.desc.block(0).op_size(),
-        )
-
     @property
     def whole_program(self):
         if self.training:
@@ -367,12 +347,7 @@ class PartialProgramLayer:
                 program = self._train_forward_backward_program
                 return program[0]
         else:
-            if _in_amp_guard():
-                return self._infer_amp_builed_program
-            elif _in_pure_fp16_guard():
-                return self._infer_pure_fp16_builed_program
-            else:
-                return self._infer_builed_program
+            return self.infer_program
 
     @property
     def backward_program(self):
@@ -770,11 +745,14 @@ class PartialProgramLayer:
     @property
     def infer_program(self):
         if _in_amp_guard():
-            return self._infer_amp_program
+            program = self._infer_amp_program
         elif _in_pure_fp16_guard():
-            return self._infer_pure_fp16_program
+            program = self._infer_pure_fp16_program
         else:
-            return self._infer_program
+            program = self._infer_program
+        return self._build_infer_program(
+            program, program.desc.block(0).op_size()
+        )
 
     @switch_to_static_graph
     def _build_infer_program(self, infer_program, forward_end_op_index):
