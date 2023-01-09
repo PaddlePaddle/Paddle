@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import collections
+import logging
 
 import numpy as np
 
@@ -27,11 +28,16 @@ from ...fluid.framework import IrGraph, IrNode
 from ...framework import _get_paddle_place, core
 from ...static import Program, data, program_guard, scope_guard
 from ...utils import unique_name
+from ..log_helper import get_logger
 from . import utils
 from .quant_config import (
     SUPPORT_ACT_QUANTIZATION_OP_DICT,
     SUPPORT_QUANTIZATION_OP_DICT,
     SUPPORT_WEIGHT_QUANTIZATION_OP_DICT,
+)
+
+_logger = get_logger(
+    __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s'
 )
 
 _fake_quant_op_list = [
@@ -3340,9 +3346,17 @@ class AddQuantDequantForInferencePass:
             var_dtype=var_node.dtype(),
         )
         if not self._calibration_range_dict:
-            scale_var_node = graph._find_node_by_name(
-                graph.all_persistable_nodes(), self._scale_name(var_name)
-            )
+            try:
+                scale_var_node = graph._find_node_by_name(
+                    graph.all_persistable_nodes(), self._scale_name(var_name)
+                )
+            except:
+                _logger.warning(
+                    "Cannot find the target node {} in scope, so skip adding quant node.".format(
+                        var_name
+                    )
+                )
+                return None
         elif var_name in self._calibration_range_dict:
             scale_value = self._calibration_range_dict[var_name]
             scale_var_node = graph.create_persistable_node(
