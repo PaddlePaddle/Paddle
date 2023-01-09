@@ -116,7 +116,7 @@ class TestDistCTR2x2(FleetDistRunnerBase):
                 size=dim,
                 activation="relu",
                 weight_attr=fluid.ParamAttr(
-                    initializer=paddle.nn.initializer.ConstantInitialize(
+                    initializer=paddle.nn.initializer.ConstantInitializer(
                         value=0.01
                     )
                 ),
