@@ -117,8 +117,15 @@ class SyncBatchNormMLUKernel : public framework::OpKernel<T> {
     bool test_mode = is_test && (!trainable_stats);
     if (test_mode) {  // inference
       MLUCnnlTensorDesc desc_weight_bias_mean_var(*bias);
+      cnnlActivationMode_t act_mode = CNNL_ACTIVATION_IDENTITY;
+      cnnlBatchNormMode_t mode = CNNL_BATCHNORM_SPATIAL;
+      cnnlBatchNormOps_t bn_ops = CNNL_BATCHNORM_OPS_BN;
+      MLUCnnlActivationDesc activation_desc(act_mode, 1.0f, /*sliced_dim*/ -1);
       MLUCnnl::FusedBatchNorm(ctx,
                               false /*is_training*/,
+                              activation_desc.get(),
+                              mode,
+                              bn_ops,
                               desc_trans.get(),
                               GetBasePtr(&trans_x),
                               desc_weight_bias_mean_var.get(),
