@@ -164,6 +164,7 @@ class GroupShardedOptimizerStage2(Optimizer):
             if (
                 hcg
                 and hcg.get_parallel_mode() is not ParallelMode.DATA_PARALLEL
+                and not offload
             ):
                 self._optim._grad_clip = HybridParallelClipGrad(
                     self._optim._grad_clip, hcg
