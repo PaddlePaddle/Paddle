@@ -83,4 +83,4 @@ void GatherKernel(const Context& dev_ctx,
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
-    gather, XPU, ALL_LAYOUT, phi::GatherKernel, float, phi::dtype::float16) {}
+    gather, XPU, ALL_LAYOUT, phi::GatherKernel, float, int16_t, phi::dtype::float16) {}

@@ -26,6 +26,7 @@ void EmbeddingGradKernel(const Context& ctx,
                          const DenseTensor& out_grad,
                          int64_t padding_idx,
                          DenseTensor* weight_grad) {
+  using XPUType = typename XPUTypeTrait<T>::Type;
   DDim table_dim;
   table_dim = weight.dims();
 
@@ -43,13 +44,16 @@ void EmbeddingGradKernel(const Context& ctx,
 
   auto& dev_ctx = ctx;
   const int64_t* ids_data = ids_t->data<int64_t>();
-  const T* d_output_data = d_output_t->data<T>();
-  T* d_table_data = dev_ctx.template Alloc<T>(d_table_t);
+//   const T* d_output_data = d_output_t->data<T>();
+//   T* d_table_data = dev_ctx.template Alloc<T>(d_table_t);
+  const XPUType* d_output_data = reinterpret_cast<const XPUType*>(d_output_t->data<T>());
+  XPUType* d_table_data = reinterpret_cast<XPUType*>(dev_ctx.template Alloc<T>(d_table_t));
+
   int xm = d_table_t->dims()[0];
   int ym = static_cast<int>(ids_numel);
   int n = d_table_t->dims()[1];
 
-  int r = xpu::embedding_grad<T, int64_t>(dev_ctx.x_context(),
+  int r = xpu::embedding_grad<XPUType, int64_t>(dev_ctx.x_context(),
                                           d_output_data,
                                           ids_data,
                                           d_table_data,
@@ -63,4 +67,4 @@ void EmbeddingGradKernel(const Context& ctx,
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
-    embedding_grad, XPU, ALL_LAYOUT, phi::EmbeddingGradKernel, float) {}
+    embedding_grad, XPU, ALL_LAYOUT, phi::EmbeddingGradKernel, float, phi::dtype::float16) {}

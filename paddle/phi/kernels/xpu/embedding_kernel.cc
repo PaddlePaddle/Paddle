@@ -25,6 +25,7 @@ void EmbeddingKernel(const Context &ctx,
                      const DenseTensor &weight,
                      int64_t padding_idx,
                      DenseTensor *out) {
+  using XPUType = typename XPUTypeTrait<T>::Type;
   auto *ids_t = &inputx;  // int
   auto *output_t = out;   // float
   PADDLE_ENFORCE_EQ(
@@ -39,10 +40,31 @@ void EmbeddingKernel(const Context &ctx,
   auto *table_t = &weight;
   auto &dev_ctx = ctx;
 
-  auto *table = table_t->data<T>();
-  auto *output = dev_ctx.template Alloc<T>(output_t);
+//   auto *table = table_t->data<T>();
+//   auto *output = dev_ctx.template Alloc<T>(output_t);
 
-  const int64_t *ids = ids_t->data<int64_t>();
+  auto table = reinterpret_cast<const XPUType*>(table_t->data<T>());
+  auto output = reinterpret_cast<XPUType*>(dev_ctx.template Alloc<T>(output_t));
+
+  auto* xpu_ctx = dev_ctx.x_context();
+  xpu::ctx_guard RAII_GUARD(xpu_ctx);
+
+//   const int64_t *ids = ids_t->data<int64_t>();
+  const int64_t *ids;
+  if (inputx.dtype() == phi::DataType::INT64) {
+    // printf("embedding, int64\n");
+    ids = ids_t->data<int64_t>();
+  } else if (inputx.dtype() == phi::DataType::INT16) {
+    // printf("embedding, int16\n");
+    int64_t *ids_tmp = RAII_GUARD.alloc_l3_or_gm<int64_t>(ids_t->numel());;
+    int r =
+        xpu::cast<int16_t, int64_t>(xpu_ctx, ids_t->data<int16_t>(), ids_tmp, ids_t->numel());
+    ids = ids_tmp;
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
+  } else {
+    PADDLE_THROW(phi::errors::Unimplemented(
+        "emebdding inputx only support int16, int32 and int64"));
+  }
 
   PADDLE_ENFORCE_EQ(
       ids_numel <= std::numeric_limits<int32_t>::max(),
@@ -56,9 +78,9 @@ void EmbeddingKernel(const Context &ctx,
   size_t xm = table_t->dims()[0];
   size_t n = table_t->dims()[1];
 
-  int r = xpu::embedding<T, int64_t>(dev_ctx.x_context(),
+  int r = xpu::embedding<XPUType, int64_t>(xpu_ctx,
                                      table,
-                                     ids,
+                                     (const int64_t *)ids,
                                      output,
                                      xm,
                                      n,
@@ -70,4 +92,4 @@ void EmbeddingKernel(const Context &ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(embedding, XPU, ALL_LAYOUT, phi::EmbeddingKernel, float) {}
+PD_REGISTER_KERNEL(embedding, XPU, ALL_LAYOUT, phi::EmbeddingKernel, float, phi::dtype::float16) {}
