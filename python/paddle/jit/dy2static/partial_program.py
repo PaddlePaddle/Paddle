@@ -317,6 +317,26 @@ class PartialProgramLayer:
         program = self._create_forward_backward_train_pure_fp16_program()
         return program
 
+    @LazyInitialized
+    def _infer_builed_program(self):
+        return self._build_infer_program(
+            self._infer_program, self._infer_program.desc.block(0).op_size()
+        )
+
+    @LazyInitialized
+    def _infer_amp_builed_program(self):
+        return self._build_infer_program(
+            self._infer_amp_program,
+            self._infer_amp_program.desc.block(0).op_size(),
+        )
+
+    @LazyInitialized
+    def _infer_pure_fp16_builed_program(self):
+        return self._build_infer_program(
+            self._infer_pure_fp16_program,
+            self._infer_pure_fp16_program.desc.block(0).op_size(),
+        )
+
     @property
     def whole_program(self):
         if self.training:
@@ -348,11 +368,11 @@ class PartialProgramLayer:
                 return program[0]
         else:
             if _in_amp_guard():
-                return self._infer_amp_program
+                return self._infer_amp_builed_program
             elif _in_pure_fp16_guard():
-                return self._infer_pure_fp16_program
+                return self._infer_pure_fp16_builed_program
             else:
-                return self._infer_program
+                return self._infer_builed_program
 
     @property
     def backward_program(self):
@@ -757,6 +777,19 @@ class PartialProgramLayer:
             return self._infer_program
 
     @switch_to_static_graph
+    def _build_infer_program(self, infer_program, forward_end_op_index):
+        forward_skip_vars = self._parse_skip_gc_vars(infer_program)
+        builded_infer_program = add_build_strategy_for(
+            infer_program,
+            0,
+            forward_end_op_index,
+            self._build_strategy,
+            forward_skip_vars,
+        )
+        self._apply_inplace_pass(builded_infer_program, None)
+        return builded_infer_program
+
+    @switch_to_static_graph
     def _get_forward_backward_program_form(
         self, whole_program, forward_end_op_index
     ):
@@ -808,30 +841,32 @@ class PartialProgramLayer:
             forward_program, backward_program
         )
         backward_mem_opt_skip_vars = self._parse_skip_gc_vars(forward_program)
-        attrs = {
-            "use_cuda": use_cuda,
-            "mem_opt_skip_vars": forward_mem_opt_skip_vars,
-            "for_partial_block": True,
-        }
-        _apply_pass(
-            forward_program,
-            empty_startup_program,
-            "buffer_shared_inplace_pass",
-            attrs,
-            attr_types,
-        )
-        attrs = {
-            "use_cuda": use_cuda,
-            "mem_opt_skip_vars": backward_mem_opt_skip_vars,
-            "for_partial_block": True,
-        }
-        _apply_pass(
-            backward_program,
-            empty_startup_program,
-            "buffer_shared_inplace_pass",
-            attrs,
-            attr_types,
-        )
+        if forward_program:
+            attrs = {
+                "use_cuda": use_cuda,
+                "mem_opt_skip_vars": forward_mem_opt_skip_vars,
+                "for_partial_block": True,
+            }
+            _apply_pass(
+                forward_program,
+                empty_startup_program,
+                "buffer_shared_inplace_pass",
+                attrs,
+                attr_types,
+            )
+        if backward_program:
+            attrs = {
+                "use_cuda": use_cuda,
+                "mem_opt_skip_vars": backward_mem_opt_skip_vars,
+                "for_partial_block": True,
+            }
+            _apply_pass(
+                backward_program,
+                empty_startup_program,
+                "buffer_shared_inplace_pass",
+                attrs,
+                attr_types,
+            )
 
     @LazyInitialized
     def _inout_var_names(self):
