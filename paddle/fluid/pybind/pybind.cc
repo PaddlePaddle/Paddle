@@ -2073,7 +2073,7 @@ All parameter, weight, gradient are variables in Paddle.
           [](const gpuDeviceProp &prop) { return prop.integrated; })
       .def("__repr__", [](const gpuDeviceProp &prop) {
         std::stringstream ostr;
-        ostr << "_gpuDeticeProperties(name='" << prop.name
+        ostr << "_gpuDeviceProperties(name='" << prop.name
              << "', major=" << prop.major << ", minor=" << prop.minor
              << ", total_memory=" << prop.totalGlobalMem / (1024 * 1024)
              << "MB, multi_processor_count=" << prop.multiProcessorCount << ")";
