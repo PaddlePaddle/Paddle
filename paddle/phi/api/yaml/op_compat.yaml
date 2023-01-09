@@ -60,6 +60,19 @@
   extra :
     attrs : [bool use_cudnn = true]
 
+- op : allclose
+  inputs :
+    {x : Input, y : Other}
+  outputs :
+    out : Out
+  scalar :
+    rtol :
+      data_type : std::string
+      tensor_name : Rtol
+    atol :
+      data_type : std::string
+      tensor_name : Atol
+
 - op : angle
   backward : angle_grad
   inputs :
@@ -180,7 +193,18 @@
     out : Out
 
 - op : clip
-  backward : clip_grad
+  backward : clip_grad, clip_double_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
+  scalar :
+    min :
+      data_type : float
+      tensor_name : Min
+    max :
+      data_type :  float
+      tensor_name : Max
   extra :
     attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32"]
 
@@ -503,6 +527,13 @@
   inputs: {x: X}
   outputs: {out: Out}
 
+- op : fill_diagonal
+  backward : fill_diagonal_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
+
 - op : fill_diagonal_tensor
   inputs :
     {x : X, y : Y}
@@ -629,6 +660,13 @@
 
 - op : hardsigmoid (hard_sigmoid)
   backward : hardsigmoid_grad (hard_sigmoid_grad)
+  inputs :
+    x : X
+  outputs :
+    out : Out
+
+- op : hardtanh (brelu)
+  backward : hardtanh_grad (brelu_grad)
   inputs :
     x : X
   outputs :
@@ -881,6 +919,14 @@
   outputs :
     out : Out
 
+- op : meshgrid
+  backward : meshgrid_grad
+  inputs :
+    inputs : X
+  outputs :
+    out : Out
+  drop_empty_grad : [inputs_grad]
+
 - op : mish
   backward : mish_grad
   extra :
@@ -893,6 +939,14 @@
   outputs :
     {out : Out, indices : Indices}
 
+- op : multi_dot
+  backward : multi_dot_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
+  drop_empty_grad : [x_grad]
+
 - op : multinomial
   inputs :
     {x : X}
@@ -902,6 +956,14 @@
     num_samples :
       data_type : int
       support_tensor : true
+
+- op : multiplex
+  backward : multiplex_grad
+  inputs :
+    {inputs : X, index : Ids}
+  outputs :
+    out : Out
+  drop_empty_grad : [inputs_grad]
 
 - op : multiply (elementwise_mul)
   backward : multiply_grad (elementwise_mul_grad)

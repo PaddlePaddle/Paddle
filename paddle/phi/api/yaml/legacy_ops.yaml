@@ -107,15 +107,6 @@
   kernel :
     func : all
 
-- op : allclose
-  args : (Tensor x, Tensor y, Scalar rtol, Scalar atol, bool equal_nan)
-  output : Tensor(out)
-  infer_meta :
-    func : AllValueCompareInferMeta
-    param: [x, y]
-  kernel :
-    func : allclose
-
 - op : amax
   args : (Tensor x, int64_t[] axis={}, bool keepdim=false)
   output : Tensor(out)
@@ -367,17 +358,6 @@
   kernel :
     func : class_center_sample
 
-- op : clip
-  args : (Tensor x, Scalar(float) min, Scalar(float) max)
-  output : Tensor(out)
-  inplace : (x -> out)
-  infer_meta :
-    func : UnchangedInferMeta
-    param : [x]
-  kernel :
-    func : clip
-  backward : clip_grad
-
 - op : clip_by_norm
   args : (Tensor x, float max_norm)
   output : Tensor(out)
@@ -461,8 +441,7 @@
   args : (Tensor x,  int dim)
   output : Tensor(out)
   infer_meta :
-    func : UnchangedInferMeta
-    param: [x]
+    func : UnchangedInferMetaCheckAxis
   kernel :
     func : cumprod
   backward : cumprod_grad
@@ -692,16 +671,6 @@
   inplace : (x -> out)
   backward: fill_grad
 
-- op : fill_diagonal
-  args : (Tensor x, float value, int offset, bool wrap)
-  output : Tensor(out)
-  infer_meta :
-    func : FillDiagonalInferMeta
-  kernel :
-    func : fill_diagonal
-  inplace : (x -> out)
-  backward : fill_diagonal_grad
-
 - op : flatten
   args : (Tensor x, int start_axis, int stop_axis)
   output : Tensor(out), Tensor(xshape)
@@ -869,16 +838,6 @@
   kernel :
     func : hardswish
   backward : hardswish_grad
-
-- op : hardtanh
-  args : (Tensor x, float t_min, float t_max)
-  output : Tensor
-  infer_meta :
-    func : UnchangedInferMeta
-    param : [x]
-  kernel :
-    func : hardtanh
-  backward : hardtanh_grad
 
 - op : hsigmoid_loss
   args : (Tensor x, Tensor label, Tensor w, Tensor bias, Tensor path, Tensor code, int num_classes, bool remote_prefetch, bool is_sparse)
@@ -1218,15 +1177,6 @@
     data_type : param
   inplace : (param -> param_out), (velocity -> velocity_out), (master_param -> master_param_out)
 
-- op : meshgrid
-  args : (Tensor[] inputs)
-  output : Tensor[]{inputs.size()}
-  infer_meta :
-    func : MeshgridInferMeta
-  kernel :
-    func : meshgrid
-  backward : meshgrid_grad
-
 - op : min
   args : (Tensor x, IntArray axis={}, bool keepdim=false)
   output : Tensor(out)
@@ -1266,15 +1216,6 @@
   optional : master_param
   inplace : (param -> param_out), (velocity -> velocity_out), (master_param -> master_param_out)
 
-- op : multi_dot
-  args : (Tensor[] x)
-  output : Tensor
-  infer_meta :
-    func : MultiDotInferMeta
-  kernel :
-    func : multi_dot
-  backward : multi_dot_grad
-
 - op : multiclass_nms3
   args : (Tensor bboxes, Tensor scores, Tensor rois_num, float score_threshold, int nms_top_k, int keep_top_k, float nms_threshold=0.3, bool normalized=true, float nms_eta=1.0, int background_label=0)
   output : Tensor(out), Tensor(index), Tensor(nms_rois_num)
@@ -1283,16 +1224,6 @@
   kernel :
     func : multiclass_nms3
   optional : rois_num
-
-- op : multiplex
-  args : (Tensor[] inputs, Tensor index)
-  output : Tensor
-  infer_meta :
-    func : MultiplexInferMeta
-  kernel :
-    func : multiplex
-    data_type : inputs
-  backward : multiplex_grad
 
 - op : multiply
   args : (Tensor x, Tensor y)

@@ -26,6 +26,16 @@
     data_type : x
   backward : addmm_grad
 
+- op : allclose
+  args : (Tensor x, Tensor y, Scalar rtol="1e-5", Scalar atol="1e-8", bool equal_nan=false)
+  output : Tensor(out)
+  infer_meta :
+    func : AllValueCompareInferMeta
+    param: [x, y]
+  kernel :
+    func : allclose
+    data_type : x
+
 - op : angle
   args : (Tensor x)
   output : Tensor
@@ -161,6 +171,18 @@
   kernel :
     func : cholesky_solve
   backward : cholesky_solve_grad
+
+- op : clip
+  args : (Tensor x, Scalar(float) min, Scalar(float) max)
+  output : Tensor(out)
+  inplace : (x -> out)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : clip
+    data_type : x
+  backward : clip_grad
 
 - op : complex
   args : (Tensor real, Tensor imag)
@@ -393,6 +415,17 @@
     func : fft_r2c
   backward : fft_r2c_grad
 
+- op : fill_diagonal
+  args : (Tensor x, float value=0, int offset=0, bool wrap=false)
+  output : Tensor(out)
+  infer_meta :
+    func : FillDiagonalInferMeta
+  kernel :
+    func : fill_diagonal
+    data_type : x
+  inplace : (x -> out)
+  backward : fill_diagonal_grad
+
 - op : fill_diagonal_tensor
   args : (Tensor x, Tensor y, int64_t offset = 0, int dim1 = 0, int dim2 = 1)
   output : Tensor(out)
@@ -508,6 +541,16 @@
   kernel :
     func : hard_sigmoid
   backward : hardsigmoid_grad
+
+- op : hardtanh
+  args : (Tensor x, float t_min=0, float t_max=24)
+  output : Tensor
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : hardtanh
+  backward : hardtanh_grad
 
 - op : histogram
   args : (Tensor input, int64_t bins = 100, int min = 0, int max = 0)
@@ -752,6 +795,16 @@
     func : maxout
   backward : maxout_grad
 
+- op : meshgrid
+  args : (Tensor[] inputs)
+  output : Tensor[]{inputs.size()}
+  infer_meta :
+    func : MeshgridInferMeta
+  kernel :
+    func : meshgrid
+    data_type : inputs
+  backward : meshgrid_grad
+
 - op : mode
   args : (Tensor x,  int axis = -1,  bool keepdim = false)
   output : Tensor(out), Tensor(indices)
@@ -761,6 +814,15 @@
     func : mode
   backward : mode_grad
 
+- op : multi_dot
+  args : (Tensor[] x)
+  output : Tensor
+  infer_meta :
+    func : MultiDotInferMeta
+  kernel :
+    func : multi_dot
+  backward : multi_dot_grad
+
 - op : multinomial
   args : (Tensor x, Scalar(int) num_samples = 1, bool replacement = false)
   output : Tensor(out)
@@ -769,6 +831,16 @@
   kernel :
     func : multinomial
     data_type : x
+
+- op : multiplex
+  args : (Tensor[] inputs, Tensor index)
+  output : Tensor
+  infer_meta :
+    func : MultiplexInferMeta
+  kernel :
+    func : multiplex
+    data_type : inputs
+  backward : multiplex_grad
 
 - op : mv
   args : (Tensor x, Tensor vec)

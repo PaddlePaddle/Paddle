@@ -182,6 +182,29 @@
   kernel :
     func : cholesky_solve_grad
 
+- backward_op : clip_double_grad
+  forward : clip_grad (Tensor x, Tensor grad_out, Scalar min = 0., Scalar max = 0.) -> Tensor(grad_x)
+  args : (Tensor x, Tensor grad_x_grad, Scalar min = 0., Scalar max = 0.)
+  output : Tensor(grad_out_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : clip_grad
+    data_type : x
+
+- backward_op : clip_grad
+  forward : clip (Tensor x, Scalar min, Scalar max) -> Tensor(out)
+  args : (Tensor x, Tensor out_grad, Scalar min = 0., Scalar max = 0.)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : clip_grad
+  backward : clip_double_grad
+  inplace : (out_grad -> x_grad)
+
 - backward_op : complex_grad
   forward : complex (Tensor real, Tensor imag) -> Tensor(out)
   args : (Tensor real, Tensor imag, Tensor out_grad)
@@ -452,6 +475,15 @@
     data_type: out_grad
   no_need_buffer: x
 
+- backward_op : fill_diagonal_grad
+  forward : fill_diagonal (Tensor x, float value=0, int offset=0, bool wrap=false) -> Tensor(out)
+  args : (Tensor out_grad, float value, int offset, bool wrap)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : FillDiagonalGradInferMeta
+  kernel :
+    func : fill_diagonal_grad
+
 - backward_op : fill_diagonal_tensor_grad
   forward : fill_diagonal_tensor (Tensor x, Tensor y, int64_t offset, int dim1, int dim2) -> Tensor(out)
   args : (Tensor out_grad, int64_t offset, int dim1, int dim2)
@@ -561,6 +593,17 @@
     param : [out]
   kernel :
     func : hard_sigmoid_grad
+  inplace : (out_grad -> x_grad)
+
+- backward_op : hardtanh_grad
+  forward : hardtanh (Tensor x, float t_min=0, float t_max=24) -> Tensor(out)
+  args : (Tensor x, Tensor out_grad, float t_min, float t_max)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : hardtanh_grad
   inplace : (out_grad -> x_grad)
 
 - backward_op : imag_grad
@@ -798,6 +841,16 @@
   kernel :
     func : maxout_grad
 
+- backward_op : meshgrid_grad
+  forward : meshgrid (Tensor[] inputs) -> Tensor[](outputs)
+  args : (Tensor[] inputs, Tensor[] outputs_grad)
+  output : Tensor[](inputs_grad){inputs.size()}
+  infer_meta :
+    func : MeshgridGradInferMeta
+  kernel :
+    func : meshgrid_grad
+    data_type : outputs_grad
+
 - backward_op : mode_grad
   forward : mode(Tensor x,  int axis = -1,  bool keepdim = false) -> Tensor(out), Tensor(indices)
   args : (Tensor x, Tensor indices, Tensor out_grad,  int axis,  bool keepdim)
@@ -807,6 +860,27 @@
     param: [x]
   kernel :
     func : mode_grad
+
+- backward_op : multi_dot_grad
+  forward : multi_dot (Tensor[] x) -> Tensor(out)
+  args : (Tensor[] x, Tensor out_grad)
+  output : Tensor[](x_grad) {x.size()}
+  infer_meta :
+    func : MultiDotGradInferMeta
+  kernel :
+    func : multi_dot_grad
+
+- backward_op : multiplex_grad
+  forward : multiplex (Tensor[] inputs, Tensor index) -> Tensor(out)
+  args : (Tensor[] inputs, Tensor index, Tensor out_grad)
+  output : Tensor[](inputs_grad){inputs.size()}
+  infer_meta :
+    func : MultiplexGradInferMeta
+    param : [index, out_grad]
+  kernel :
+    func : multiplex_grad
+    param : [index, out_grad]
+    data_type : out_grad
 
 - backward_op : mv_grad
   forward : mv (Tensor x, Tensor vec) -> Tensor(out)
@@ -1279,6 +1353,7 @@
     param : [out]
   kernel :
     func : tanh_grad
+  composite : tanh_grad(out, out_grad, x_grad)
   backward : tanh_double_grad
   inplace : (out_grad -> x_grad)
 
