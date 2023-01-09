@@ -24,7 +24,7 @@ import warnings
 from collections import OrderedDict
 import inspect
 import threading
-from typing import Any
+from typing import Any, List
 
 import paddle
 from paddle.fluid import core, dygraph
@@ -193,26 +193,26 @@ def copy_decorator_attrs(original_func, decorated_obj):
     return decorated_obj
 
 
-def ignore_module(modules: List):
+def ignore_module(modules: List[Any]):
     """
     Adds modules that ignore transcription.
     Builtin modules that have been ignored are collections, pdb, copy, inspect, re, numpy, logging, six
 
     Args:
-        modules (list[]): Ignored modules that you want to add
+        modules (List[Any]): Ignored modules that you want to add
 
     Examples:
         .. code-block:: python
 
             import scipy
-            import pandas
+            import astor
 
             import paddle
             from paddle.jit import ignore_module
 
             modules = [
                scipy,
-               pandas
+               astor
             ]
 
             ignore_module(modules)
