@@ -927,12 +927,15 @@ class Engine:
         )
 
         cbks.on_begin('train')
+        import time
+
         for epoch in range(epochs):
             logs = {}
             cbks.on_epoch_begin(epoch)
             for step, _ in enumerate(train_dataloader):
                 cbks.on_batch_begin('train', step, logs)
                 try:
+                    start_time = time.time()
                     outs = self._executor.run(
                         self.main_program,
                         fetch_list=fetch_names,
@@ -942,6 +945,8 @@ class Engine:
                 except core.EOFException:
                     break
                 lr = auto_utils.get_lr(self._optimizer)
+                end_time = time.time()
+                print("{} step / s".format(1.0 / (end_time - start_time)))
                 logs = self._prepare_logger(
                     outs,
                     epoch,
