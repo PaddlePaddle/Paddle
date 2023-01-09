@@ -86,13 +86,14 @@ void LaunchStackGradCUDAKernel(const Context& ctx,
                                const int64_t dy_pre) {
   auto x_grad = *x_grad_ptr;
   int out_num = out.dims()[axis];
-  PADDLE_ENFORCE_EQ(out_num,
-                    x_grad.size(),
-                    phi::errors::InvalidArgument(
-                        "Output x_grad size should be equal to out_num, but"
-                        " received out_num is:%d x_grad size is:%d.",
-                        out_num,
-                        x_grad.size()));
+  PADDLE_ENFORCE_EQ(
+      out_num,
+      x_grad.size(),
+      phi::errors::InvalidArgument(
+          "Output x_grad size shall be equal to output num, but output num "
+          "received in stack_grad op is:%d, and x_grad size is:%d.",
+          out_num,
+          x_grad.size()));
   std::vector<T*> outputs(out_num);
   for (size_t j = 0; j < out_num; ++j) {
     if (x_grad[j] == nullptr || x_grad[j]->numel() == 0UL) {
