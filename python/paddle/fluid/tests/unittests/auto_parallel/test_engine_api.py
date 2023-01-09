@@ -37,7 +37,7 @@ class TestEngineAPI(unittest.TestCase):
                 "-m",
                 "paddle.distributed.launch",
                 "--devices",
-                "4,5",
+                "0,1",
                 "--log_dir",
                 tmp_dir.name,
                 launch_model_path,
