@@ -235,7 +235,7 @@ struct TestFusedLayernormResidualDropoutBias {
     if (cols % 4 != 0) {
       VecSize = 1;
     }
-    int threads = paddle::operators::GetDesiredBlockDim(cols / VecSize);
+    int threads = phi::funcs::GetDesiredBlockDim(cols / VecSize);
     const int increment = ((cols - 1) / (threads * VecSize) + 1) * VecSize;
 
     T *bias_ptr = nullptr;

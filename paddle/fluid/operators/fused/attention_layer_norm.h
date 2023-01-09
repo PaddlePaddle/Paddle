@@ -14,7 +14,7 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/fluid/operators/layer_norm_kernel.cu.h"
+#include "paddle/phi/kernels/funcs/layer_norm_kernel.cu.h"
 
 namespace paddle {
 namespace operators {

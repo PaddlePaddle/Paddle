@@ -24,8 +24,8 @@
 #include "paddle/fluid/inference/tensorrt/plugin/preln_residual_bias_plugin.h"
 #include "paddle/fluid/operators/fused/fused_dropout_common.h"
 #include "paddle/fluid/operators/fused/fused_layernorm_residual_dropout_bias.h"
-#include "paddle/fluid/operators/layer_norm_kernel.cu.h"
 #include "paddle/fluid/operators/math/bert_encoder_functor.h"
+#include "paddle/phi/kernels/funcs/layer_norm_kernel.cu.h"
 
 namespace paddle {
 namespace inference {

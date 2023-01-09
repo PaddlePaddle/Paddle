@@ -30,8 +30,8 @@ namespace cub = hipcub;
 #include "paddle/phi/core/ddim.h"
 #include "paddle/phi/kernels/funcs/aligned_vector.h"
 
-namespace paddle {
-namespace operators {
+namespace phi {
+namespace funcs {
 
 template <typename T>
 using CudnnDataType = platform::CudnnDataType<T>;
@@ -1959,5 +1959,5 @@ static void LayerNormBackward(
   }
 }
 
-}  // namespace operators
-}  // namespace paddle
+}  // namespace funcs
+}  // namespace phi
