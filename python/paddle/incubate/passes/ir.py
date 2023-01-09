@@ -26,7 +26,7 @@ try:
 except ModuleNotFoundError:
     import sys
 
-    fluid_path = path.dirname(__file__) + '/...fluid'
+    fluid_path = path.dirname(__file__) + '/../../fluid'
     sys.path.append(path.join(fluid_path, 'proto'))
     from paddle.fluid.proto import pass_desc_pb2
 
