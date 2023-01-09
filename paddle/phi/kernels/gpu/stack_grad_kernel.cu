@@ -168,7 +168,7 @@ void StackGradKernel(const Context& dev_ctx,
   bool use_int32 = out.numel() < std::numeric_limits<int32_t>::max();
 
   int64_t dy_pre = 1;
-  for (int i = 0; i < axis; ++i) {
+  for (int i = 0; i < actual_axis; ++i) {
     dy_pre *= dy_dims[i];
   }
   if (use_int32) {
