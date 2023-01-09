@@ -46,6 +46,10 @@ def is_base_op(op):
     return "kernel" in op and "infer_meta" in op
 
 
+def is_composite_op(op):
+    return "composite" in op
+
+
 def supports_selected_rows_kernel(op):
     return is_base_op(op) and len(op["kernel"]["func"]) == 2
 
