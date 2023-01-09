@@ -16,6 +16,7 @@
 #include <vector>
 
 #include "paddle/extension.h"
+#include "paddle/phi/backends/all_context.h"
 
 #define CHECK_CPU_INPUT(x) PD_CHECK(x.is_cpu(), #x " must be a CPU Tensor.")
 #define CHECK_CUSTOM_INPUT(x) \
@@ -191,3 +192,24 @@ PD_BUILD_DOUBLE_GRAD_OP(custom_relu)
     .Outputs({paddle::Grad(paddle::Grad("Out"))})
     .SetKernelFn(PD_KERNEL(ReluDoubleBackward))
     .SetInferShapeFn(PD_INFER_SHAPE(ReluDoubleBackwardInferShape));
+
+std::vector<paddle::Tensor> StreamForward(const paddle::Tensor& x) {
+  CHECK_CUSTOM_INPUT(x);
+
+  auto dev_ctx =
+      paddle::experimental::DeviceContextPool::Instance().Get(x.place());
+  auto custom_ctx = static_cast<const phi::CustomContext*>(dev_ctx);
+  void* stream = custom_ctx->stream();
+
+  PD_CHECK(stream != nullptr);
+  std::cout << "Check stream != nullptr successfully" << std::endl;
+  custom_ctx->Wait();
+  std::cout << "Check Wait successfully" << std::endl;
+
+  return {x};
+}
+
+PD_BUILD_OP(custom_stream)
+    .Inputs({"X"})
+    .Outputs({"Out"})
+    .SetKernelFn(PD_KERNEL(StreamForward));

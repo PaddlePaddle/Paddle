@@ -16,11 +16,11 @@
 
 #include <string>
 
-namespace paddle {
+namespace phi {
 namespace distributed {
 
 int GetSockName(int fd, char* out, int out_len);
 
 std::string GetSockName(int fd);
-};  // namespace distributed
-};  // namespace paddle
+}  // namespace distributed
+}  // namespace phi
