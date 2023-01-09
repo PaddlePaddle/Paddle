@@ -60,6 +60,19 @@
   extra :
     attrs : [bool use_cudnn = true]
 
+- op : allclose
+  inputs :
+    {x : Input, y : Other}
+  outputs :
+    out : Out
+  scalar :
+    rtol :
+      data_type : std::string
+      tensor_name : Rtol
+    atol :
+      data_type : std::string
+      tensor_name : Atol
+
 - op : angle
   backward : angle_grad
   inputs :
@@ -180,7 +193,18 @@
     out : Out
 
 - op : clip
-  backward : clip_grad
+  backward : clip_grad, clip_double_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
+  scalar :
+    min :
+      data_type : float
+      tensor_name : Min
+    max :
+      data_type :  float
+      tensor_name : Max
   extra :
     attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32"]
 
@@ -503,6 +527,13 @@
   inputs: {x: X}
   outputs: {out: Out}
 
+- op : fill_diagonal
+  backward : fill_diagonal_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
+
 - op : fill_diagonal_tensor
   inputs :
     {x : X, y : Y}
@@ -634,6 +665,13 @@
   outputs :
     out : Out
 
+- op : hardtanh (brelu)
+  backward : hardtanh_grad (brelu_grad)
+  inputs :
+    x : X
+  outputs :
+    out : Out
+
 - op : heaviside (elementwise_heaviside)
   backward : heaviside_grad (elementwise_heaviside_grad)
   extra :
@@ -643,6 +681,13 @@
 - op : histogram
   inputs :
     input : X
+  outputs :
+    out : Out
+
+- op : imag
+  backward : imag_grad
+  inputs :
+    x : X
   outputs :
     out : Out
 
@@ -996,6 +1041,13 @@
 - op : quantize_linear
   extra :
     attrs : [float moving_rate = 0.9]
+
+- op : real
+  backward : real_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
 
 - op : reciprocal
   backward : reciprocal_grad

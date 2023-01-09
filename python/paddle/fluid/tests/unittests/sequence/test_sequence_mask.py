@@ -17,6 +17,7 @@ import unittest
 
 import numpy as np
 
+import paddle
 import paddle.fluid as fluid
 from paddle.fluid.framework import (
     Program,
@@ -169,6 +170,15 @@ class TestSequenceMaskOpError(unittest.TestCase):
                 fluid.layers.sequence_mask(input_data, maxlen=4)
 
             self.assertRaises(TypeError, test_Variable)
+
+
+class TestSequenceMaskWithEmptyTensor(unittest.TestCase):
+    def test_empty(self):
+        paddle.disable_static()
+        lengths = paddle.to_tensor(np.array([], dtype=np.int64))
+        mask = paddle.nn.functional.sequence_mask(lengths)
+        self.assertEqual(list(mask.shape), [0, 0])
+        paddle.enable_static()
 
 
 if __name__ == '__main__':

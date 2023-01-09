@@ -101,7 +101,7 @@ class LayerNormOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
 
@@ -113,7 +113,7 @@ class LayerNormOp : public framework::OperatorWithKernel {
     }
     // NOTE(jiahongyu): Above codes originally enclosed by PADDLE_WITH_MKLDNN
 
-    return framework::OpKernelType(input_data_type, ctx.GetPlace());
+    return phi::KernelKey(input_data_type, ctx.GetPlace());
   }
 };
 
@@ -203,7 +203,7 @@ class LayerNormGradOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     const auto *var = ctx.InputVar(framework::GradVarName("Y"));
     PADDLE_ENFORCE_NOT_NULL(
@@ -218,14 +218,8 @@ class LayerNormGradOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_NOT_NULL(
         t, platform::errors::NotFound("Y@GRAD of LayerNorm Op is not found."));
 
-    framework::LibraryType library = framework::LibraryType::kPlain;
-    phi::DataLayout layout = phi::DataLayout::kAnyLayout;
-
-    return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
-        ctx.GetPlace(),
-        layout,
-        library);
+    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+                          ctx.GetPlace());
   }
 };
 

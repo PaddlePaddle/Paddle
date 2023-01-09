@@ -18,8 +18,8 @@
 #include "paddle/fluid/distributed/collective/common.h"
 #include "paddle/fluid/platform/device/xpu/bkcl_helper.h"
 #include "paddle/fluid/platform/device/xpu/xpu_info.h"
-#include "paddle/fluid/platform/device_context.h"
-#include "paddle/fluid/platform/place.h"
+#include "paddle/phi/core/device_context.h"
+#include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/errors.h"
 
 namespace paddle {
@@ -72,11 +72,12 @@ bool ProcessGroupBKCL::BKCLTask::Wait(std::chrono::milliseconds timeout) {
 // Same as Wait
 void ProcessGroupBKCL::BKCLTask::Synchronize() { Wait(kWaitTimeout); }
 
-ProcessGroupBKCL::ProcessGroupBKCL(const std::shared_ptr<Store>& store,
-                                   int rank,
-                                   int size,
-                                   int gid)
-    : ProcessGroupStream(rank, size, gid), store_(store) {}
+ProcessGroupBKCL::ProcessGroupBKCL(
+    const std::shared_ptr<phi::distributed::Store>& store,
+    int rank,
+    int size,
+    int gid)
+    : ProcessGroupWithStream(rank, size, gid), store_(store) {}
 
 void ProcessGroupBKCL::GroupStart() {
   PADDLE_ENFORCE_XPU_SUCCESS(bkcl_group_start());
@@ -606,7 +607,10 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::AllGather(
 }
 
 std::shared_ptr<ProcessGroupBKCL> ProcessGroupBKCL::CreateProcessGroupBKCL(
-    const std::shared_ptr<Store>& store, int rank, int size, int gid) {
+    const std::shared_ptr<phi::distributed::Store>& store,
+    int rank,
+    int size,
+    int gid) {
   auto process_group =
       std::make_shared<ProcessGroupBKCL>(store, rank, size, gid);
   ProcessGroupIdMap::GetInstance().emplace(gid, process_group);
