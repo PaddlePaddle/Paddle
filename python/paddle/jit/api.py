@@ -27,7 +27,6 @@ import threading
 from typing import Any
 
 import paddle
-from paddle import Tensor
 from paddle.fluid import core, dygraph
 from paddle.fluid.compiler import (
     BuildStrategy,
@@ -74,6 +73,8 @@ from paddle.fluid.framework import (
 )
 from paddle.fluid.framework import dygraph_only, _non_static_mode
 from paddle.fluid.wrapped_decorator import wrap_decorator
+
+Tensor = core.eager.Tensor
 
 __all__ = []
 
