@@ -89,8 +89,8 @@ void LaunchStackGradCUDAKernel(const Context& ctx,
   PADDLE_ENFORCE_EQ(out_num,
                     x_grad.size(),
                     phi::errors::InvalidArgument(
-                        "Output x_grad size should be equal to out_num, "
-                        "but received out_num is:%d x_grad size is:%d.",
+                        "Output x_grad size should be equal to out_num, but"
+                        " received out_num is:%d x_grad size is:%d.",
                         out_num,
                         x_grad.size()));
   std::vector<T*> outputs(out_num);
