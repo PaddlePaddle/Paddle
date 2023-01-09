@@ -448,7 +448,7 @@ class DistributedContext:
 
     def add_process_mesh(self, process_mesh):
         assert isinstance(
-            process_mesh, ProcessMesh
+            process_mesh, (ProcessMesh, core.ProcessMesh)
         ), 'The type of dim_mapping must be ProcessMesh.'
         if process_mesh not in self.process_meshes:
             self._process_meshes.append(process_mesh)
@@ -870,8 +870,8 @@ class DistributedContext:
             else:
                 tensor_shape = serial_tensor.shape
             dims_mapping = dist_attr.dims_mapping
-            process_mesh_shape = dist_attr.process_mesh.topology
-            process_mesh_processes = dist_attr.process_mesh.processes
+            process_mesh_shape = dist_attr.process_mesh.shape
+            process_mesh_processes = dist_attr.process_mesh.process_ids
             # If the dimension of tensor is less than the sharding dimension of process mesh,
             # we just amend the dimension mapping to -1. (Is this really OK?)
             for i in range(len(tensor_shape)):
@@ -883,12 +883,13 @@ class DistributedContext:
                     dims_mapping[i] = -1
                 if dims_mapping[i] != -1 and len(process_mesh_processes) == 1:
                     dims_mapping[i] = -1
+            dist_attr.dims_mapping = dims_mapping
 
         for dist_op in self._dist_ops_for_program.values():
             serial_op = dist_op.serial_op
             dist_attr = dist_op.dist_attr
-            process_mesh_shape = dist_attr.process_mesh.topology
-            process_mesh_processes = dist_attr.process_mesh.processes
+            process_mesh_shape = dist_attr.process_mesh.shape
+            process_mesh_processes = dist_attr.process_mesh.process_ids
             for arg_name in serial_op.input_arg_names:
                 if dist_op.get_serial_input(arg_name) is None:
                     tensor_shape = []
@@ -916,6 +917,7 @@ class DistributedContext:
                         and len(process_mesh_processes) == 1
                     ):
                         dims_mapping[i] = -1
+                dist_attr.set_input_dims_mapping(arg_name, dims_mapping)
             for arg_name in serial_op.output_arg_names:
                 if (
                     dist_op.get_serial_output(arg_name).type
@@ -940,6 +942,7 @@ class DistributedContext:
                         and len(process_mesh_processes) == 1
                     ):
                         dims_mapping[i] = -1
+                dist_attr.set_output_dims_mapping(arg_name, dims_mapping)
             if len(process_mesh_processes) == 1:
                 dist_op.dist_attr.impl_type = "default"
                 dist_op.dist_attr.impl_idx = 0

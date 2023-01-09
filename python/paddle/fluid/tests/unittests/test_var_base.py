@@ -21,7 +21,6 @@ import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 import paddle.nn.functional as F
-from paddle.fluid.framework import _in_legacy_dygraph
 
 
 class TestVarBase(unittest.TestCase):
@@ -443,10 +442,7 @@ class TestVarBase(unittest.TestCase):
 
     def test_deep_copy(self):
         with fluid.dygraph.guard():
-            if _in_legacy_dygraph():
-                empty_var = core.VarBase()
-            else:
-                empty_var = core.eager.Tensor()
+            empty_var = core.eager.Tensor()
             empty_var_copy = copy.deepcopy(empty_var)
             self.assertEqual(
                 empty_var.stop_gradient, empty_var_copy.stop_gradient
@@ -484,22 +480,13 @@ class TestVarBase(unittest.TestCase):
             self.assertEqual(id(y_copy), id(y_copy2))
 
             # test copy selected rows
-            if _in_legacy_dygraph():
-                x = core.VarBase(
-                    core.VarDesc.VarType.FP32,
-                    [3, 100],
-                    "selected_rows",
-                    core.VarDesc.VarType.SELECTED_ROWS,
-                    True,
-                )
-            else:
-                x = core.eager.Tensor(
-                    core.VarDesc.VarType.FP32,
-                    [3, 100],
-                    "selected_rows",
-                    core.VarDesc.VarType.SELECTED_ROWS,
-                    True,
-                )
+            x = core.eager.Tensor(
+                core.VarDesc.VarType.FP32,
+                [3, 100],
+                "selected_rows",
+                core.VarDesc.VarType.SELECTED_ROWS,
+                True,
+            )
 
             selected_rows = x.value().get_selected_rows()
             selected_rows.get_tensor().set(
@@ -1247,14 +1234,8 @@ class TestVarBaseSetitem(unittest.TestCase):
         self.dtype = "int32"
 
     def _test(self, value):
-        if _in_legacy_dygraph():
-            self.assertEqual(self.tensor_x.inplace_version, 0)
-
         id_origin = id(self.tensor_x)
         self.tensor_x[0] = value
-        if _in_legacy_dygraph():
-            self.assertEqual(self.tensor_x.inplace_version, 1)
-
         if isinstance(value, (int, float)):
             result = np.zeros((2, 3)).astype(self.dtype) + value
 
@@ -1265,14 +1246,10 @@ class TestVarBaseSetitem(unittest.TestCase):
         self.assertEqual(id_origin, id(self.tensor_x))
 
         self.tensor_x[1:2] = value
-        if _in_legacy_dygraph():
-            self.assertEqual(self.tensor_x.inplace_version, 2)
         np.testing.assert_array_equal(self.tensor_x[1].numpy(), result)
         self.assertEqual(id_origin, id(self.tensor_x))
 
         self.tensor_x[...] = value
-        if _in_legacy_dygraph():
-            self.assertEqual(self.tensor_x.inplace_version, 3)
         np.testing.assert_array_equal(self.tensor_x[3].numpy(), result)
         self.assertEqual(id_origin, id(self.tensor_x))
 
@@ -1476,10 +1453,7 @@ class TestVarBaseShareBufferTo(unittest.TestCase):
         np_src = np.random.random((3, 8, 8))
         src = paddle.to_tensor(np_src, dtype="float64")
         # empty_var
-        if _in_legacy_dygraph():
-            dst = core.VarBase()
-        else:
-            dst = core.eager.Tensor()
+        dst = core.eager.Tensor()
         src._share_buffer_to(dst)
         self.assertEqual(src._is_shared_buffer_with(dst), True)
 
@@ -1553,18 +1527,12 @@ class TestVarBaseInitVarBaseFromTensorWithDevice(unittest.TestCase):
 
         if paddle.fluid.is_compiled_with_cuda():
             device = paddle.CUDAPlace(0)
-            if _in_legacy_dygraph():
-                tmp = fluid.core.VarBase(t, device)
-            else:
-                tmp = fluid.core.eager.Tensor(t, device)
+            tmp = fluid.core.eager.Tensor(t, device)
             self.assertTrue(tmp.place.is_gpu_place())
             self.assertEqual(tmp.numpy().all(), np_x.all())
 
         device = paddle.CPUPlace()
-        if _in_legacy_dygraph():
-            tmp = fluid.core.VarBase(t, device)
-        else:
-            tmp = fluid.core.eager.Tensor(t, device)
+        tmp = fluid.core.eager.Tensor(t, device)
         self.assertEqual(tmp.numpy().all(), np_x.all())
 
 
@@ -1579,10 +1547,7 @@ class TestVarBaseNumel(unittest.TestCase):
 
     def test_numel_without_holder(self):
         paddle.disable_static()
-        if _in_legacy_dygraph():
-            x_without_holder = core.VarBase()
-        else:
-            x_without_holder = core.eager.Tensor()
+        x_without_holder = core.eager.Tensor()
         x_actual_numel = x_without_holder._numel()
         self.assertEqual(x_actual_numel, 0)
 
