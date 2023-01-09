@@ -17,7 +17,7 @@
 #include <vector>
 
 #include "paddle/fluid/operators/one_hot_op.h"
-#include "paddle/fluid/platform/device/device_wrapper.h"
+#include "paddle/phi/backends/device_wrapper.h"
 
 namespace paddle {
 namespace operators {

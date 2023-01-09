@@ -17,8 +17,8 @@
 #include <utility>
 
 #include "paddle/fluid/memory/allocation/allocator_facade.h"
-#include "paddle/fluid/platform/device/device_wrapper.h"
 #include "paddle/fluid/platform/device/gpu/gpu_resource_pool.h"
+#include "paddle/phi/backends/device_wrapper.h"
 
 namespace paddle {
 namespace platform {

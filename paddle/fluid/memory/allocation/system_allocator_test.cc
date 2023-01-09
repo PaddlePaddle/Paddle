@@ -19,7 +19,7 @@ limitations under the License. */
 #include "gflags/gflags.h"
 #include "gtest/gtest.h"
 #include "paddle/fluid/memory/allocation/allocator.h"
-#include "paddle/fluid/platform/device/device_wrapper.h"
+#include "paddle/phi/backends/device_wrapper.h"
 
 DECLARE_bool(use_pinned_memory);
 

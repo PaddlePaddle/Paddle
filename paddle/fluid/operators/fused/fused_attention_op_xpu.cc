@@ -19,7 +19,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/fused/xpu_fused_common_function.h"
 #include "paddle/fluid/operators/matmul_v2_op.h"
 #include "paddle/fluid/operators/xpu_api_wrapper.h"
-#include "paddle/fluid/platform/device/device_wrapper.h"
+#include "paddle/phi/backends/device_wrapper.h"
 
 namespace paddle {
 namespace operators {

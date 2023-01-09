@@ -19,7 +19,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/transform.h"
 
 #if defined(PADDLE_WITH_XPU)
-#include "paddle/fluid/platform/device/device_wrapper.h"
+#include "paddle/phi/backends/device_wrapper.h"
 #endif
 
 namespace paddle {

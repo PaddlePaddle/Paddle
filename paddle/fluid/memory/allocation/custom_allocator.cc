@@ -14,8 +14,8 @@
 
 #include "paddle/fluid/memory/allocation/custom_allocator.h"
 
-#include "paddle/fluid/platform/device/device_wrapper.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/phi/backends/device_wrapper.h"
 
 namespace paddle {
 namespace memory {

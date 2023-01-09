@@ -25,10 +25,10 @@
 #include "paddle/fluid/imperative/op_base.h"
 #include "paddle/fluid/operators/ops_extra_info.h"
 #include "paddle/fluid/platform/denormal.h"
-#include "paddle/fluid/platform/device/device_wrapper.h"
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/fluid/string/string_helper.h"
+#include "paddle/phi/backends/device_wrapper.h"
 #include "paddle/phi/common/place.h"
 
 DECLARE_bool(use_mkldnn);

@@ -15,7 +15,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/selected_rows_functor.h"
 
 #include "paddle/fluid/framework/mixed_vector.h"
-#include "paddle/fluid/platform/device/device_wrapper.h"
+#include "paddle/phi/backends/device_wrapper.h"
 
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/phi/backends/onednn/axpy_handler.h"

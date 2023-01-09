@@ -15,7 +15,7 @@
 #pragma once
 
 #ifdef PADDLE_WITH_XPU
-#include "paddle/fluid/platform/device/device_wrapper.h"
+#include "paddle/phi/backends/device_wrapper.h"
 
 namespace paddle {
 namespace operators {

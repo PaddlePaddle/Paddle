@@ -13,8 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/platform/device/device_wrapper.h"
 #include "paddle/fluid/platform/float16.h"
+#include "paddle/phi/backends/device_wrapper.h"
 
 namespace paddle {
 namespace operators {

@@ -15,9 +15,9 @@
 #include "paddle/fluid/operators/reader/buffered_reader.h"
 
 #include "paddle/fluid/framework/convert_utils.h"
-#include "paddle/fluid/platform/device/device_wrapper.h"
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
+#include "paddle/phi/backends/device_wrapper.h"
 
 #include "paddle/phi/backends/device_guard.h"
 #include "paddle/phi/backends/device_manager.h"
