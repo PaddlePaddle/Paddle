@@ -15,6 +15,7 @@ limitations under the License. */
 #ifdef PADDLE_WITH_XPU
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
+#include "paddle/fluid/operators/matmul_v2_op.h"
 #include "paddle/fluid/operators/xpu_api_wrapper.h"
 #include "paddle/fluid/platform/device/device_wrapper.h"
 #include "paddle/phi/core/ddim.h"
@@ -309,7 +310,7 @@ class FusedFeedForwardXPUKernel : public framework::OpKernel<T> {
 
     auto x_dim = x->dims();
     auto mat_dim_x = phi::funcs::CreateMatrixDescriptor(
-        phi::funcs::RowMatrixFromVector(x_dim), 0, false);
+        RowMatrixFromVector(x_dim), 0, false);
 
     auto dim = linear1_weight->dims();
     int d_model = dim[0];
@@ -773,7 +774,7 @@ class FusedFeedForwardGradXPUKernel : public framework::OpKernel<T> {
 
     auto x_dim = x->dims();
     auto mat_dim_x = phi::funcs::CreateMatrixDescriptor(
-        phi::funcs::RowMatrixFromVector(x_dim), 0, false);
+        RowMatrixFromVector(x_dim), 0, false);
 
     auto linear1_weight_dim = linear1_weight->dims();
     int d_model = linear1_weight_dim[0];

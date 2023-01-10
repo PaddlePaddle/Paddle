@@ -30,9 +30,9 @@ static void MatMulXPUFunction(const DenseTensor& x,
   const auto& y_dims = y.dims();
 
   auto mat_dim_a = phi::funcs::CreateMatrixDescriptor(
-      phi::funcs::RowMatrixFromVector(x_dims), 0, trans_x);
+      RowMatrixFromVector(x_dims), 0, trans_x);
   auto mat_dim_b = phi::funcs::CreateMatrixDescriptor(
-      phi::funcs::ColumnMatrixFromVector(y_dims), 0, trans_y);
+      ColumnMatrixFromVector(y_dims), 0, trans_y);
 
   T* data_c = out->data<T>();
   int m = mat_dim_a.height_;
