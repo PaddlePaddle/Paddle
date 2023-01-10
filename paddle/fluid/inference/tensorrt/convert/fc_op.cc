@@ -275,47 +275,65 @@ class FcOpConverter : public OpConverter {
       }
     };
 
-    bool transpose_y = false;
-    if (op_desc.HasAttr("transpose_Y")) {
-      transpose_y = PADDLE_GET_CONST(bool, op_desc.GetAttr("transpose_Y"));
-    }
+    bool transpose_y =
+        op_desc.HasAttr("transpose_Y")
+            ? PADDLE_GET_CONST(bool, op_desc.GetAttr("transpose_Y"))
+            : false;
     int weight_w, weight_h;
-    auto weight = engine_->GetTrtWeight(op_desc.Input(w_name).front(), *Y_t);
-
-    if (!transpose_y) {
-      if (weight.get().type == nvinfer1::DataType::kFLOAT) {
-        std::vector<float> weight_data_tmp;
-        weight_data_tmp.reserve(Y_t->numel());
-        memcpy(weight_data_tmp.data(),
-               weight.get().values,
-               Y_t->numel() * sizeof(float));
-        tranpose_weight(
-            weight_data_tmp.data(),
-            const_cast<float*>(static_cast<const float*>(weight.get().values)),
-            m,
-            n);
-      } else if (weight.get().type == nvinfer1::DataType::kHALF) {
-        std::vector<float16> weight_data_tmp;
-        weight_data_tmp.reserve(Y_t->numel());
-        memcpy(weight_data_tmp.data(),
-               weight.get().values,
-               Y_t->numel() * sizeof(float16));
-        tranpose_weight(weight_data_tmp.data(),
-                        const_cast<float16*>(
-                            static_cast<const float16*>(weight.get().values)),
-                        m,
-                        n);
-      } else {
-        PADDLE_THROW(paddle::platform::errors::InvalidArgument(
-            "Paddle-TRT fc convert not supporte dtype, now only support fp32 "
-            "and fp16."));
-      }
-      weight_w = n;
-      weight_h = m;
-    } else {
+    TensorRTEngine::Weight weight;
+    if (transpose_y) {
+      weight = engine_->GetTrtWeight(op_desc.Input(w_name).front(), *Y_t);
       weight_w = m;
       weight_h = n;
+    } else {
+      weight_w = n;
+      weight_h = m;
+      std::string trans_weight_name =
+          op_desc.Input(w_name).front() + "_transpose";
+      auto* trans_weight_var = scope.FindVar(trans_weight_name);
+      phi::DenseTensor* trans_weight_tensor = nullptr;
+      if (trans_weight_var) {
+        trans_weight_tensor = trans_weight_var->GetMutable<phi::DenseTensor>();
+        weight = engine_->GetTrtWeight(trans_weight_name, *trans_weight_tensor);
+      } else {
+        auto& new_scope = const_cast<framework::Scope&>(scope);
+        auto* trans_weight_new_var = new_scope.Var(trans_weight_name);
+        trans_weight_tensor =
+            trans_weight_new_var->GetMutable<phi::DenseTensor>();
+        platform::CPUPlace cpu_place;
+        trans_weight_tensor->Resize(Y_t->dims());
+        paddle::framework::TensorCopySync(*Y_t, cpu_place, trans_weight_tensor);
+        weight = engine_->GetTrtWeight(trans_weight_name, *trans_weight_tensor);
+        if (weight.get().type == nvinfer1::DataType::kFLOAT) {
+          std::vector<float> weight_data_tmp;
+          weight_data_tmp.reserve(Y_t->numel());
+          memcpy(weight_data_tmp.data(),
+                 weight.get().values,
+                 Y_t->numel() * sizeof(float));
+          tranpose_weight(weight_data_tmp.data(),
+                          const_cast<float*>(
+                              static_cast<const float*>(weight.get().values)),
+                          m,
+                          n);
+        } else if (weight.get().type == nvinfer1::DataType::kHALF) {
+          std::vector<float16> weight_data_tmp;
+          weight_data_tmp.reserve(Y_t->numel());
+          memcpy(weight_data_tmp.data(),
+                 weight.get().values,
+                 Y_t->numel() * sizeof(float16));
+          tranpose_weight(weight_data_tmp.data(),
+                          const_cast<float16*>(
+                              static_cast<const float16*>(weight.get().values)),
+                          m,
+                          n);
+        } else {
+          PADDLE_THROW(paddle::platform::errors::InvalidArgument(
+              "Paddle-TRT fc convert not supporte dtype, now only support fp32 "
+              "and fp16."));
+        }
+      }
     }
+
     size_t n_output = weight_w;
     weight.dims.assign({weight_w, weight_h});
 
