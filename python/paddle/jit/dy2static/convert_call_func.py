@@ -21,6 +21,7 @@ import logging
 import pdb
 import re
 import types
+from typing import Any, List
 
 import numpy
 
@@ -98,6 +99,16 @@ def builtin_modules():
 
 
 BUILTIN_LIKELY_MODULES = builtin_modules()
+
+
+def add_ignore_module(modules: List[Any]):
+    """
+    Adds modules that ignore transcription
+    """
+    global BUILTIN_LIKELY_MODULES
+    for module in modules:
+        if module not in BUILTIN_LIKELY_MODULES:
+            BUILTIN_LIKELY_MODULES.append(module)
 
 
 def is_unsupported(func):

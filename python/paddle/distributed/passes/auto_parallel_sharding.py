@@ -35,10 +35,10 @@ from paddle.distributed.auto_parallel.utils import (
     set_var_dist_attr,
 )
 from paddle.distributed.fleet.meta_optimizers.sharding.utils import get_var_size
-from paddle.fluid import unique_name
 from paddle.fluid.executor import _is_enable_standalone_executor
-from paddle.fluid.framework import default_main_program, default_startup_program
 from paddle.framework import core
+from paddle.static import default_main_program, default_startup_program
+from paddle.utils import unique_name
 
 from .pass_base import PassBase, register_pass
 

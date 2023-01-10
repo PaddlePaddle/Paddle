@@ -12,17 +12,15 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/math/sequence_scale.h"
-
+#include "paddle/phi/kernels/funcs/sequence_scale.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
 
 namespace phi {
 class DenseTensor;
 }  // namespace phi
 
-namespace paddle {
-namespace operators {
-namespace math {
+namespace phi {
+namespace funcs {
 
 template <typename T>
 class ScaleLoDTensorFunctor<phi::CPUContext, T> {
@@ -34,9 +32,9 @@ class ScaleLoDTensorFunctor<phi::CPUContext, T> {
     auto lod = seq->lod();
     const size_t num_seq = lod[level].size() - 1;
     size_t seq_width = seq->dims()[1];
-    framework::LoD abs_offset_lod = framework::ToAbsOffset(lod);
+    paddle::framework::LoD abs_offset_lod = paddle::framework::ToAbsOffset(lod);
 
-    T* seq_data = seq->mutable_data<T>(context.GetPlace());
+    T* seq_data = context.template Alloc<T>(seq);
     for (size_t i = 0; i < num_seq; ++i) {
       for (size_t j = lod[level][i] * seq_width;
            j < lod[level][i + 1] * seq_width;
@@ -50,6 +48,5 @@ class ScaleLoDTensorFunctor<phi::CPUContext, T> {
 template class ScaleLoDTensorFunctor<phi::CPUContext, float>;
 template class ScaleLoDTensorFunctor<phi::CPUContext, double>;
 
-}  // namespace math
-}  // namespace operators
-}  // namespace paddle
+}  // namespace funcs
+}  // namespace phi

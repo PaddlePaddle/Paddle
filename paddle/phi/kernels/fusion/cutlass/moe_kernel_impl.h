@@ -26,87 +26,6 @@ static inline size_t AlignTo16(const size_t& input) {
   return ALIGNMENT * ((input + ALIGNMENT - 1) / ALIGNMENT);
 }
 
-/*
-WarpReduce multi values.
-TODO(zhengzekang): Add blocksize templates to reduce shared memory usage.
-*/
-template <typename T, int NUM>
-__inline__ __device__ T warpReduceSumV2(T* val) {
-#pragma unroll
-  for (int i = 0; i < NUM; i++) {
-#pragma unroll
-    for (int mask = 16; mask > 0; mask >>= 1)
-      val[i] += __shfl_xor_sync(FINAL_MASK, val[i], mask, 32);
-  }
-  return (T)(0.0f);
-}
-
-template <typename T, int NUM>
-__inline__ __device__ T blockReduceSumV2(T* val) {
-  static __shared__ T shared[NUM][33];
-  int lane = threadIdx.x & 0x1f;
-  int wid = threadIdx.x >> 5;
-
-  warpReduceSumV2<T, NUM>(val);
-
-  if (lane == 0) {
-#pragma unroll
-    for (int i = 0; i < NUM; i++) {
-      shared[i][wid] = val[i];
-    }
-  }
-
-  __syncthreads();
-
-  bool is_mask = threadIdx.x < (blockDim.x / 32.f);
-#pragma unroll
-  for (int i = 0; i < NUM; i++) {
-    val[i] = is_mask ? shared[i][lane] : (T)(0.0f);
-  }
-  warpReduceSumV2<T, NUM>(val);
-  return (T)0.0f;
-}
-
-template <typename T, int NUM>
-__inline__ __device__ T warpReduceMaxV2(T* val) {
-#pragma unroll
-  for (int i = 0; i < NUM; i++) {
-#pragma unroll
-    for (int mask = 16; mask > 0; mask >>= 1)
-      val[i] = max(val[i], __shfl_xor_sync(FINAL_MASK, val[i], mask, 32));
-  }
-  return (T)(0.0f);
-}
-
-template <typename T, int NUM>
-__inline__ __device__ T blockReduceMaxV2(T* val) {
-  static __shared__ T shared[32][NUM];
-  int lane = threadIdx.x & 0x1f;  // in-warp idx
-  int wid = threadIdx.x >> 5;     // warp idx
-
-  warpReduceMaxV2<T, NUM>(val);  // get maxx in each warp
-
-  if (lane == 0) {  // record in-warp maxx by warp Idx
-#pragma unroll
-    for (int i = 0; i < NUM; i++) {
-      shared[wid][i] = val[i];
-    }
-  }
-
-  __syncthreads();
-
-  // Modify from blockDim.x << 5 to blockDim.x / 32. to prevent
-  // blockDim.x is not divided by 32
-  bool is_mask = threadIdx.x < (blockDim.x / 32.f);
-#pragma unroll
-  for (int i = 0; i < NUM; i++) {
-    val[i] = is_mask ? shared[lane][i] : (T)-1e20f;
-  }
-  warpReduceMaxV2<T, NUM>(val);
-
-  return (T)0.0f;
-}
-
 class CubKeyValueSorter {
  public:
   CubKeyValueSorter();
@@ -311,65 +230,57 @@ __global__ void initialize_expert_choice_route_kernel(
 template <int ITEMS_PER_THREAD, typename T>
 __global__ void softmax_kernel_v4(
     T* qk_buf_,
-    const T* qk_buf_src,  // shape [batch_size, head_num, seq_len_1, seq_len_2]
-    const T* attr_mask,   // shape [batch_size, seq_len_1, seq_len_2]
+    const T* qk_buf_src,  // shape [batch_size, seq_len]
+    const T* attr_mask,   // shape [batch_size, seq_len]
     const int batch_size,
-    const int head_num,
-    const int seq_len_1,
-    const int seq_len_2,
-    const T scalar) {
+    const int seq_len) {
 #if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 700
-  for (int seq_id = blockIdx.x; seq_id < seq_len_1; seq_id += gridDim.x) {
-    float data[ITEMS_PER_THREAD];
-    int qk_offset;
-    __shared__ float s_mean, s_max;
-    float local_max = -1e20f;
-    for (int i = 0; blockDim.x * i + threadIdx.x < seq_len_2; i++) {
-      qk_offset = ((blockIdx.y * head_num + blockIdx.z) * seq_len_1 + seq_id) *
-                      seq_len_2 +
-                  blockDim.x * i + threadIdx.x;
-      int mask_offset = (blockIdx.y * seq_len_1 + seq_id) * seq_len_2 +
-                        blockDim.x * i + threadIdx.x;
+  float data[ITEMS_PER_THREAD];
+  int qk_offset;
+  __shared__ float s_mean, s_max;
+  float local_max = -1e20f;
+  for (int i = 0; blockDim.x * i + threadIdx.x < seq_len; i++) {
+    qk_offset =
+        ((blockIdx.y + blockIdx.z)) * seq_len + blockDim.x * i + threadIdx.x;
+    int mask_offset = (blockIdx.y) * seq_len + blockDim.x * i + threadIdx.x;
 
-      float qk = static_cast<float>(qk_buf_src[qk_offset]);
-      float mask_val = static_cast<float>(__ldg(&attr_mask[mask_offset]));
+    float qk = static_cast<float>(qk_buf_src[qk_offset]);
+    float mask_val = static_cast<float>(__ldg(&attr_mask[mask_offset]));
 
-      mask_val = (1.0f - mask_val) * -10000.0f;
+    mask_val = (1.0f - mask_val) * -10000.0f;
 
-      data[i] = qk * static_cast<float>(scalar) + mask_val;
-      local_max = fmax(local_max, data[i]);
-    }
+    data[i] = qk + mask_val;
+    local_max = fmax(local_max, data[i]);
+  }
 
-    float max_val =
-        blockDim.x <= 32
-            ? phi::funcs::warpReduceMax<float>(local_max, 0xFFFFFFFF)
-            : phi::funcs::blockReduceMax<float>(local_max, 0xffffffff);
-    if (threadIdx.x == 0) {
-      s_max = max_val;
-    }
-    __syncthreads();
+  float max_val =
+      blockDim.x <= 32
+          ? phi::funcs::WarpReduceMax<float>(local_max, 0xFFFFFFFF)
+          : phi::funcs::BlockReduceMax<float>(local_max, 0xFFFFFFFF);
+  if (threadIdx.x == 0) {
+    s_max = max_val;
+  }
+  __syncthreads();
 
-    float local_sum = 0;
-    for (int i = 0; blockDim.x * i + threadIdx.x < seq_len_2; i++) {
-      data[i] = __expf(data[i] - s_max);
-      local_sum += data[i];
-    }
-    float sum_val =
-        blockDim.x <= 32
-            ? phi::funcs::warpReduceSum<float>(local_sum, 0xffffffff)
-            : phi::funcs::blockReduceSum<float>(local_sum, 0xffffffff);
-    if (threadIdx.x == 0) {
-      s_mean = sum_val + 1e-6f;
-      s_mean = __fdividef(1.0f, s_mean);
-    }
-    __syncthreads();
+  float local_sum = 0;
+  for (int i = 0; blockDim.x * i + threadIdx.x < seq_len; i++) {
+    data[i] = __expf(data[i] - s_max);
+    local_sum += data[i];
+  }
+  float sum_val =
+      blockDim.x <= 32
+          ? phi::funcs::WarpReduceSum<float>(local_sum, 0xFFFFFFFF)
+          : phi::funcs::BlockReduceSum<float>(local_sum, 0xFFFFFFFF);
+  if (threadIdx.x == 0) {
+    s_mean = sum_val + 1e-6f;
+    s_mean = __fdividef(1.0f, s_mean);
+  }
+  __syncthreads();
 
-    for (int i = 0; blockDim.x * i + threadIdx.x < seq_len_2; i++) {
-      qk_offset = ((blockIdx.y * head_num + blockIdx.z) * seq_len_1 + seq_id) *
-                      seq_len_2 +
-                  blockDim.x * i + threadIdx.x;
-      qk_buf_[qk_offset] = (T)(data[i] * s_mean);
-    }
+  for (int i = 0; blockDim.x * i + threadIdx.x < seq_len; i++) {
+    qk_offset =
+        ((blockIdx.y + blockIdx.z)) * seq_len + blockDim.x * i + threadIdx.x;
+    qk_buf_[qk_offset] = (T)(data[i] * s_mean);
   }
 #endif
 }
@@ -378,77 +289,69 @@ template <typename T, int ITEMS_PER_THREAD>
 __global__ void softmax_kernel_v4_half2(T* qk_buf_,
                                         const T* attr_mask,
                                         const int batch_size,
-                                        const int head_num,
-                                        const int seq_len_1,
-                                        const int seq_len_2,
-                                        const T scalar) {
+                                        const int seq_len) {
 #if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 700
   using T2 = half2;
   T2* qk_buf_half2 = reinterpret_cast<T2*>(qk_buf_);
   const T2* attr_mask_half2 = (const T2*)attr_mask;
 
-  for (int seq_id = blockIdx.x; seq_id < seq_len_1; seq_id += gridDim.x) {
-    T2 data[ITEMS_PER_THREAD];
-    int qk_offset;
-    __shared__ float s_mean, s_max;
-    float local_max = -1e20f;
-    for (int i = 0;
-         blockDim.x * i + threadIdx.x < (seq_len_2 / 2) && i < ITEMS_PER_THREAD;
-         i++) {
-      qk_offset = ((blockIdx.y * head_num + blockIdx.z) * seq_len_1 + seq_id) *
-                      (seq_len_2 / 2) +
-                  blockDim.x * i + threadIdx.x;
-      int mask_offset = (blockIdx.y * seq_len_1 + seq_id) * (seq_len_2 / 2) +
-                        blockDim.x * i + threadIdx.x;
+  T2 data[ITEMS_PER_THREAD];
+  int qk_offset;
+  __shared__ float s_mean, s_max;
+  float local_max = -1e20f;
+  for (int i = 0;
+       blockDim.x * i + threadIdx.x < (seq_len / 2) && i < ITEMS_PER_THREAD;
+       i++) {
+    qk_offset = ((blockIdx.y + blockIdx.z)) * (seq_len / 2) + blockDim.x * i +
+                threadIdx.x;
+    int mask_offset = blockIdx.y * (seq_len / 2) + blockDim.x * i + threadIdx.x;
 
-      T2 qk = qk_buf_half2[qk_offset];
-      T2 mask_val = __ldg(&attr_mask_half2[mask_offset]);
-      mask_val = __hmul2(__hsub2(__float2half2_rn(1.0f), mask_val),
-                         __float2half2_rn(-10000.0f));
+    T2 qk = qk_buf_half2[qk_offset];
+    T2 mask_val = __ldg(&attr_mask_half2[mask_offset]);
+    mask_val = __hmul2(__hsub2(__float2half2_rn(1.0f), mask_val),
+                       __float2half2_rn(-10000.0f));
 
-      data[i] = __hadd2(__hmul2(qk, __half2half2(scalar)), mask_val);
+    data[i] = __hadd2(qk, mask_val);
 
-      local_max = fmax(
-          local_max,
-          fmax(static_cast<float>(data[i].x), static_cast<float>(data[i].y)));
-    }
+    local_max = fmax(
+        local_max,
+        fmax(static_cast<float>(data[i].x), static_cast<float>(data[i].y)));
+  }
 
-    float max_val =
-        blockDim.x <= 32
-            ? phi::funcs::warpReduceMax<float>(local_max, 0xFFFFFFFF)
-            : phi::funcs::blockReduceMax<float>(local_max, 0xFFFFFFFF);
-    if (threadIdx.x == 0) {
-      s_max = max_val;
-    }
-    __syncthreads();
+  float max_val =
+      blockDim.x <= 32
+          ? phi::funcs::WarpReduceMax<float>(local_max, 0xFFFFFFFF)
+          : phi::funcs::BlockReduceMax<float>(local_max, 0xFFFFFFFF);
+  if (threadIdx.x == 0) {
+    s_max = max_val;
+  }
+  __syncthreads();
 
-    float local_sum = 0;
-    for (int i = 0;
-         blockDim.x * i + threadIdx.x < (seq_len_2 / 2) && i < ITEMS_PER_THREAD;
-         i++) {
-      data[i] = h2exp(__hsub2(data[i], __float2half2_rn(s_max)));
-      local_sum += static_cast<float>(data[i].x + data[i].y);
-    }
+  float local_sum = 0;
+  for (int i = 0;
+       blockDim.x * i + threadIdx.x < (seq_len / 2) && i < ITEMS_PER_THREAD;
+       i++) {
+    data[i] = h2exp(__hsub2(data[i], __float2half2_rn(s_max)));
+    local_sum += static_cast<float>(data[i].x + data[i].y);
+  }
 
-    float sum_val =
-        blockDim.x <= 32
-            ? phi::funcs::warpReduceSum<float>(local_sum, 0xFFFFFFFF)
-            : phi::funcs::blockReduceSum<float>(local_sum, 0xFFFFFFFF);
+  float sum_val =
+      blockDim.x <= 32
+          ? phi::funcs::WarpReduceSum<float>(local_sum, 0xFFFFFFFF)
+          : phi::funcs::BlockReduceSum<float>(local_sum, 0xFFFFFFFF);
 
-    if (threadIdx.x == 0) {
-      s_mean = sum_val + 1e-6f;
-      s_mean = __fdividef(1.0f, s_mean);
-    }
-    __syncthreads();
+  if (threadIdx.x == 0) {
+    s_mean = sum_val + 1e-6f;
+    s_mean = __fdividef(1.0f, s_mean);
+  }
+  __syncthreads();
 
-    for (int i = 0;
-         blockDim.x * i + threadIdx.x < (seq_len_2 / 2) && i < ITEMS_PER_THREAD;
-         i++) {
-      qk_offset = ((blockIdx.y * head_num + blockIdx.z) * seq_len_1 + seq_id) *
-                      (seq_len_2 / 2) +
-                  blockDim.x * i + threadIdx.x;
-      qk_buf_half2[qk_offset] = __hmul2(data[i], __float2half2_rn(s_mean));
-    }
+  for (int i = 0;
+       blockDim.x * i + threadIdx.x < (seq_len / 2) && i < ITEMS_PER_THREAD;
+       i++) {
+    qk_offset = ((blockIdx.y + blockIdx.z)) * (seq_len / 2) + blockDim.x * i +
+                threadIdx.x;
+    qk_buf_half2[qk_offset] = __hmul2(data[i], __float2half2_rn(s_mean));
   }
 #endif
 }
@@ -457,131 +360,123 @@ template <typename T, int ITEMS_PER_THREAD, int NUM>
 __global__ void softmax_kernel_v5_half2(T* qk_buf_,
                                         const T* attr_mask,
                                         const int batch_size,
-                                        const int head_num,
-                                        const int seq_len_1,
-                                        const int seq_len_2,
-                                        const T scalar) {
+                                        const int seq_len) {
 #if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 700
   using T2 = half2;
   T2* qk_buf_half2 = reinterpret_cast<T2*>(qk_buf_);
   const T2* attr_mask_half2 = (const T2*)attr_mask;
 
-  for (int seq_id = blockIdx.x; seq_id < seq_len_1; seq_id += gridDim.x * NUM) {
-    T2 data[NUM][ITEMS_PER_THREAD];
+  T2 data[NUM][ITEMS_PER_THREAD];
 
-    int qk_offset[NUM];
+  int qk_offset[NUM];
 
-    __shared__ float s_sum[NUM], s_max[NUM];
-    float local_max[NUM];
+  __shared__ float s_sum[NUM], s_max[NUM];
+  float local_max[NUM];
+#pragma unroll
+  for (int j = 0; j < NUM; j++) {
+    local_max[j] = -1e20f;
+  }
+
+  const int MAX_NUM = min((1 + gridDim.x - 1) / gridDim.x, NUM);
+  for (int i = 0;
+       blockDim.x * i + threadIdx.x < (seq_len / 2) && i < ITEMS_PER_THREAD;
+       i++) {
+    int mask_offset[NUM];
+#pragma unroll
+    for (int j = 0; j < MAX_NUM; j++) {
+      qk_offset[j] =
+          ((blockIdx.y + blockIdx.z) + j * gridDim.x) * (seq_len / 2) +
+          blockDim.x * i + threadIdx.x;
+      mask_offset[j] = (blockIdx.y + j * gridDim.x) * (seq_len / 2) +
+                       blockDim.x * i + threadIdx.x;
+    }
+
+    T2 mask_val[NUM];
+#pragma unroll
+    for (int j = 0; j < MAX_NUM; j++) {
+      mask_val[j] = __ldg(&attr_mask_half2[mask_offset[j]]);
+    }
+
+    T2 qk[NUM];
+#pragma unroll
+    for (int j = 0; j < MAX_NUM; j++) {
+      qk[j] = qk_buf_half2[qk_offset[j]];
+    }
+#pragma unroll
+    for (int j = 0; j < MAX_NUM; j++) {
+      mask_val[j] = __hmul2(__hsub2(__float2half2_rn(1.0f), mask_val[j]),
+                            __float2half2_rn(-10000.0f));
+    }
+#pragma unroll
+    for (int j = 0; j < MAX_NUM; j++) {
+      data[j][i] = __hadd2(qk[j], mask_val[j]);
+      local_max[j] = fmax(local_max[j],
+                          fmax(static_cast<float>(data[j][i].x),
+                               static_cast<float>(data[j][i].y)));
+    }
+  }
+  if (blockDim.x <= 32) {
+    phi::funcs::WarpReduceMaxV2<float, NUM>(local_max);
+  } else {
+    phi::funcs::BlockReduceMaxV2<float, NUM>(local_max);
+  }
+
+  if (threadIdx.x == 0) {
 #pragma unroll
     for (int j = 0; j < NUM; j++) {
-      local_max[j] = -1e20f;
+      s_max[j] = local_max[j];
+    }
+  }
+  __syncthreads();
+  float local_sum[NUM];
+#pragma unroll
+  for (int j = 0; j < NUM; j++) {
+    local_sum[j] = {0.f};
+  }
+
+  for (int i = 0;
+       blockDim.x * i + threadIdx.x < (seq_len / 2) && i < ITEMS_PER_THREAD;
+       i++) {
+#pragma unroll
+    for (int j = 0; j < MAX_NUM; j++) {
+      data[j][i] = h2exp(__hsub2(data[j][i], __float2half2_rn(s_max[j])));
     }
 
-    const int MAX_NUM =
-        min((seq_len_1 - seq_id + gridDim.x - 1) / gridDim.x, NUM);
-    for (int i = 0;
-         blockDim.x * i + threadIdx.x < (seq_len_2 / 2) && i < ITEMS_PER_THREAD;
-         i++) {
-      int mask_offset[NUM];
 #pragma unroll
-      for (int j = 0; j < MAX_NUM; j++) {
-        qk_offset[j] = ((blockIdx.y * head_num + blockIdx.z) * seq_len_1 +
-                        seq_id + j * gridDim.x) *
-                           (seq_len_2 / 2) +
-                       blockDim.x * i + threadIdx.x;
-        mask_offset[j] = (blockIdx.y * seq_len_1 + seq_id + j * gridDim.x) *
-                             (seq_len_2 / 2) +
-                         blockDim.x * i + threadIdx.x;
-      }
-
-      T2 mask_val[NUM];
-#pragma unroll
-      for (int j = 0; j < MAX_NUM; j++) {
-        mask_val[j] = __ldg(&attr_mask_half2[mask_offset[j]]);
-      }
-
-      T2 qk[NUM];
-#pragma unroll
-      for (int j = 0; j < MAX_NUM; j++) {
-        qk[j] = qk_buf_half2[qk_offset[j]];
-      }
-#pragma unroll
-      for (int j = 0; j < MAX_NUM; j++) {
-        mask_val[j] = __hmul2(__hsub2(__float2half2_rn(1.0f), mask_val[j]),
-                              __float2half2_rn(-10000.0f));
-      }
-#pragma unroll
-      for (int j = 0; j < MAX_NUM; j++) {
-        data[j][i] = __hadd2(__hmul2(qk[j], __half2half2(scalar)), mask_val[j]);
-        local_max[j] = fmax(local_max[j],
-                            fmax(static_cast<float>(data[j][i].x),
-                                 static_cast<float>(data[j][i].y)));
-      }
+    for (int j = 0; j < MAX_NUM; j++) {
+      local_sum[j] += static_cast<float>(data[j][i].x + data[j][i].y);
     }
-    if (blockDim.x <= 32) {
-      warpReduceMaxV2<float, NUM>(local_max);
-    } else {
-      blockReduceMaxV2<float, NUM>(local_max);
-    }
+  }
 
-    if (threadIdx.x == 0) {
-#pragma unroll
-      for (int j = 0; j < NUM; j++) {
-        s_max[j] = local_max[j];
-      }
-    }
-    __syncthreads();
-    float local_sum[NUM];
+  if (blockDim.x <= 32) {
+    phi::funcs::WarpReduceSumV2<float, NUM>(local_sum);
+
+  } else {
+    phi::funcs::BlockReduceSumV2<float, NUM>(local_sum);
+  }
+
+  if (threadIdx.x == 0) {
 #pragma unroll
     for (int j = 0; j < NUM; j++) {
-      local_sum[j] = {0.f};
+      s_sum[j] = __fdividef(1.0f, local_sum[j] + 1e-6f);
+    }
+  }
+  __syncthreads();
+
+  for (int i = 0;
+       blockDim.x * i + threadIdx.x < (seq_len / 2) && i < ITEMS_PER_THREAD;
+       i++) {
+#pragma unroll
+    for (int j = 0; j < MAX_NUM; j++) {
+      qk_offset[j] =
+          ((blockIdx.y + blockIdx.z) + j * gridDim.x) * (seq_len / 2) +
+          blockDim.x * i + threadIdx.x;
     }
 
-    for (int i = 0;
-         blockDim.x * i + threadIdx.x < (seq_len_2 / 2) && i < ITEMS_PER_THREAD;
-         i++) {
 #pragma unroll
-      for (int j = 0; j < MAX_NUM; j++) {
-        data[j][i] = h2exp(__hsub2(data[j][i], __float2half2_rn(s_max[j])));
-      }
-
-#pragma unroll
-      for (int j = 0; j < MAX_NUM; j++) {
-        local_sum[j] += static_cast<float>(data[j][i].x + data[j][i].y);
-      }
-    }
-
-    if (blockDim.x <= 32) {
-      warpReduceSumV2<float, NUM>(local_sum);
-    } else {
-      blockReduceSumV2<float, NUM>(local_sum);
-    }
-
-    if (threadIdx.x == 0) {
-#pragma unroll
-      for (int j = 0; j < NUM; j++) {
-        s_sum[j] = __fdividef(1.0f, local_sum[j] + 1e-6f);
-      }
-    }
-    __syncthreads();
-
-    for (int i = 0;
-         blockDim.x * i + threadIdx.x < (seq_len_2 / 2) && i < ITEMS_PER_THREAD;
-         i++) {
-#pragma unroll
-      for (int j = 0; j < MAX_NUM; j++) {
-        qk_offset[j] = ((blockIdx.y * head_num + blockIdx.z) * seq_len_1 +
-                        seq_id + j * gridDim.x) *
-                           (seq_len_2 / 2) +
-                       blockDim.x * i + threadIdx.x;
-      }
-
-#pragma unroll
-      for (int j = 0; j < MAX_NUM; j++) {
-        qk_buf_half2[qk_offset[j]] =
-            __hmul2(data[j][i], __float2half2_rn(s_sum[j]));
-      }
+    for (int j = 0; j < MAX_NUM; j++) {
+      qk_buf_half2[qk_offset[j]] =
+          __hmul2(data[j][i], __float2half2_rn(s_sum[j]));
     }
   }
 #endif

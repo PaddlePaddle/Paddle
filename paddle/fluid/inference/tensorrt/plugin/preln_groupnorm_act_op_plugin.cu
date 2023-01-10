@@ -254,6 +254,9 @@ void prelnGroupNormNHWCSum(GroupNormNHWCParams const &params,
     case 128:
       prelnGroupNormNHWCSumKernel<64><<<grid, 64, 0, stream>>>(params);
       break;
+    case 8:
+      prelnGroupNormNHWCSumKernel<4><<<grid, 4, 0, stream>>>(params);
+      break;
     default:
       PADDLE_THROW(platform::errors::Fatal(
           "The function groupNormNHWCSum of prelnGroupnormAct TRT Plugin "
@@ -375,6 +378,9 @@ void prelnGroupNormNHWCScale(GroupNormNHWCParams const &params,
     case 128:
       prelnGroupNormNHWCScaleKernel<64><<<grid, 64, 0, stream>>>(params);
       break;
+    case 8:
+      prelnGroupNormNHWCScaleKernel<4><<<grid, 4, 0, stream>>>(params);
+      break;
     default:
       PADDLE_THROW(platform::errors::Fatal(
           "The function groupNormNHWCSum of prelnGroupnormAct TRT Plugin "
@@ -414,6 +420,9 @@ int PrelnGroupnormActPluginDynamic::enqueue(
         break;
       default:
         cPerBlock = 320;
+    }
+    if (cPerBlock > input_desc[0].dims.d[1]) {
+      cPerBlock = 8;
     }
     params_.withSwish = true;
     params_.dst = static_cast<half *>(outputs[1]);

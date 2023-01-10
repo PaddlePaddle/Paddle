@@ -29,9 +29,9 @@ from paddle.distributed.auto_parallel.utils import (
     ring_id_to_process_group,
 )
 from paddle.distributed.fleet.meta_optimizers.common import OP_ROLE_KEY, OpRole
-from paddle.fluid import unique_name
 from paddle.fluid.executor import _is_enable_standalone_executor
-from paddle.fluid.framework import default_main_program
+from paddle.static import default_main_program
+from paddle.utils import unique_name
 
 from .pass_base import PassBase, PassType, register_pass
 
