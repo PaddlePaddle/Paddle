@@ -19,6 +19,11 @@
 #include "paddle/phi/kernels/funcs/layer_norm_kernel.cu.h"
 #include "paddle/phi/kernels/funcs/layer_norm_util.h"
 
+template <typename T>
+using CudnnDataType = paddle::platform::CudnnDataType<T>;
+template <typename T>
+using LayerNormParamType = typename CudnnDataType<T>::BatchNormParamType;
+
 namespace phi {
 
 template <typename T, typename Context>
@@ -34,7 +39,7 @@ void LayerNormGradKernel(const Context &dev_ctx,
                          DenseTensor *x_grad,
                          DenseTensor *scale_grad,
                          DenseTensor *bias_grad) {
-  using U = paddle::operators::LayerNormParamType<T>;
+  using U = LayerNormParamType<T>;
   // d_x, d_scale, d_bias may be nullptr
   auto *d_x = x_grad;
   auto *d_scale = scale_grad;
