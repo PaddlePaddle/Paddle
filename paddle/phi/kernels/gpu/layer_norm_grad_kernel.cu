@@ -34,7 +34,7 @@ void LayerNormGradKernel(const Context &dev_ctx,
                          DenseTensor *x_grad,
                          DenseTensor *scale_grad,
                          DenseTensor *bias_grad) {
-  using U = phi::funcs::LayerNormParamType<T>;
+  using U = paddle::operators::LayerNormParamType<T>;
   // d_x, d_scale, d_bias may be nullptr
   auto *d_x = x_grad;
   auto *d_scale = scale_grad;
@@ -84,7 +84,7 @@ void LayerNormGradKernel(const Context &dev_ctx,
                            : dev_ctx.template Alloc<ScaleBiasT>(d_bias));   \
     auto *d_x_data =                                                        \
         (d_x == nullptr ? nullptr : dev_ctx.template Alloc<T>(d_x));        \
-    phi::funcs::LayerNormBackward<T, U, IsScaleBiasSameDTypeWithX>(         \
+    paddle::operators::LayerNormBackward<T, U, IsScaleBiasSameDTypeWithX>(  \
         x_data,                                                             \
         d_y_data,                                                           \
         scale_data,                                                         \

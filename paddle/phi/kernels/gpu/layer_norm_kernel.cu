@@ -16,7 +16,6 @@
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/funcs/layer_norm_kernel.cu.h"
 #include "paddle/phi/kernels/funcs/layer_norm_util.h"
 
 namespace phi {
@@ -36,9 +35,9 @@ void LayerNormDirectCUDAFunctor<T, U>::operator()(gpuStream_t stream,
   auto matrix_dim = phi::flatten_to_2d(x_dims, begin_norm_axis);
   int64_t batch_size = static_cast<int64_t>(matrix_dim[0]);
   int64_t feature_size = static_cast<int64_t>(matrix_dim[1]);
-  switch (phi::funcs::GetDesiredBlockDim(feature_size)) {
+  switch (paddle::operators::GetDesiredBlockDim(feature_size)) {
     FIXED_BLOCK_DIM_CASE(
-        phi::funcs::LayerNormForward<T, U, kBlockDim>
+        paddle::operators::LayerNormForward<T, U, kBlockDim>
         <<<batch_size, kBlockDim, 0, stream>>>(
             input, scale, bias, output, mean, variance, eps, feature_size));
     default:
@@ -109,9 +108,9 @@ void LayerNormKernel(const Context &dev_ctx,
 
 #define PADDLE_LAUNCH_LAYERNORM_FWD(ScaleBiasT, IsScaleBiasSameDTypeWithX) \
   do {                                                                     \
-    switch (phi::funcs::GetDesiredBlockDim(feature_size)) {                \
+    switch (paddle::operators::GetDesiredBlockDim(feature_size)) {         \
       FIXED_BLOCK_DIM_CASE(                                                \
-          phi::funcs::                                                     \
+          paddle::operators::                                              \
               LayerNormForward<T, U, kBlockDim, IsScaleBiasSameDTypeWithX> \
           <<<batch_size, kBlockDim, 0, stream>>>(                          \
               x_data,                                                      \
@@ -140,13 +139,13 @@ void LayerNormKernel(const Context &dev_ctx,
     const int ROWS_PER_CTA = WARPS_M;                                        \
     const int grid = static_cast<int>(                                       \
         std::ceil(batch_size / static_cast<float>(ROWS_PER_CTA)));           \
-    phi::funcs::fast_ln_fwd_kernel<T,                                        \
-                                   U,                                        \
-                                   ScaleT,                                   \
-                                   VecSize,                                  \
-                                   WARPS_M,                                  \
-                                   WARPS_N,                                  \
-                                   BYTES_PER_LDG>                            \
+    paddle::operators::fast_ln_fwd_kernel<T,                                 \
+                                          U,                                 \
+                                          ScaleT,                            \
+                                          VecSize,                           \
+                                          WARPS_M,                           \
+                                          WARPS_N,                           \
+                                          BYTES_PER_LDG>                     \
         <<<grid, THREADS_PER_CTA, 0, stream>>>(                              \
             batch_size,                                                      \
             feature_size,                                                    \
