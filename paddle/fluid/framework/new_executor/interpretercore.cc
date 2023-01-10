@@ -559,7 +559,7 @@ void InterpreterCore::PrepareForCUDAGraphCapture() {
         auto* out_var = op_desc->Block()->FindVarRecursive(out_var_name);
         if (out_var) {
           out_var->SetPersistable(true);
-          VLOG(4) << "Mark Var(" out_var_name << ") as Persistable.";
+          VLOG(4) << "Mark Var(" << out_var_name << ") as Persistable.";
         }
       }
     }
