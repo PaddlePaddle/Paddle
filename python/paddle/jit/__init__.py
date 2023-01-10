@@ -28,7 +28,6 @@ __all__ = [  # noqa
     'load',
     'to_static',
     'ignore_module',
-    'ProgramTranslator',
     'TranslatedLayer',
     'set_code_level',
     'set_verbosity',

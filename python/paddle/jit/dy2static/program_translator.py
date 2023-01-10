@@ -1274,7 +1274,7 @@ def enable_to_static(enable_to_static_bool):
         enable_to_static_bool,
         "enable_to_static_bool",
         bool,
-        "paddle.jit.to_static",
+        "paddle.jit.enable_to_static",
     )
     _program_trans = ProgramTranslator()
     _program_trans.enable(enable_to_static_bool)
