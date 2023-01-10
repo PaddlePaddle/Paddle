@@ -46,7 +46,6 @@ from .dy2static.convert_call_func import (
     add_ignore_module,
 )
 from .dy2static.program_translator import (
-    enable_to_static,
     ProgramTranslator,
     StaticFunction,
     unwrap_decorators,
@@ -75,15 +74,6 @@ from paddle.fluid.framework import (
 )
 from paddle.fluid.framework import dygraph_only, _non_static_mode
 from paddle.fluid.wrapped_decorator import wrap_decorator
-
-__all__ = [
-    "save",
-    "load",
-    "to_static",
-    "not_to_static",
-    "TranslatedLayer",
-    "enable_to_static",
-]
 
 
 def create_program_from_desc(program_desc):
