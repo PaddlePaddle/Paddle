@@ -22,6 +22,7 @@ math_library(vol2col)
 math_library(softmax DEPS math_function)
 math_library(maxouting)
 math_library(matrix_bit_code)
+math_library(sequence_scale)
 
 cc_library(
   phi_data_layout_transform

@@ -873,7 +873,7 @@ def ones(shape, dtype=None, name=None):
             #  [1. 1.]]
     """
     if dtype is None:
-        dtype = 'float32'
+        dtype = core.VarDesc.VarType.FP32
     return fill_constant(value=1.0, shape=shape, dtype=dtype, name=name)
 
 
