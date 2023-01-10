@@ -89,57 +89,57 @@ void CommContextManager::CreateNCCLCommContext(
 class GlooStore : public gloo::rendezvous::Store {
  public:
   explicit GlooStore(const std::shared_ptr<phi::distributed::Store>& store)
-      : _store(store) {}
+      : store_(store) {}
 
   ~GlooStore() = default;
 
   std::vector<char> get(const std::string& key) override {
     VLOG(3) << "GlooStore::get";
-    auto value = _store->get(key);
+    auto value = store_->get(key);
     return std::vector<char>(value.begin(), value.end());
   }
 
   void wait(const std::vector<std::string>& keys) override {
     VLOG(3) << "GlooStore::wait";
     for (auto& key : keys) {
-      _store->wait(key);
+      store_->wait(key);
     }
   }
 
   void set(const std::string& key, const std::vector<char>& value) override {
     VLOG(3) << "GlooStore::set";
     std::vector<uint8_t> tmp(value.begin(), value.end());
-    _store->set(key, tmp);
+    store_->set(key, tmp);
   }
 
   void wait(const std::vector<std::string>& keys,
             const std::chrono::milliseconds& timeout) override {
     VLOG(3) << "GlooStore::wait";
     for (auto& key : keys) {
-      _store->wait(key);
+      store_->wait(key);
     }
   }
 
  protected:
-  std::shared_ptr<phi::distributed::Store> _store;
+  std::shared_ptr<phi::distributed::Store> store_;
 };
 
-std::shared_ptr<gloo::transport::Device> createDeviceForInterface(
+std::shared_ptr<gloo::transport::Device> CreateDeviceForInterface(
     const std::string& ifname) {
   gloo::transport::tcp::attr attr;
   attr.iface = ifname;
   return gloo::transport::tcp::CreateDevice(attr);
 }
 
-std::shared_ptr<gloo::transport::Device> createDeviceForHostname(
+std::shared_ptr<gloo::transport::Device> CreateDeviceForHostname(
     const std::string& hostname) {
   gloo::transport::tcp::attr attr;
   attr.hostname = hostname;
   return gloo::transport::tcp::CreateDevice(attr);
 }
 
-std::shared_ptr<gloo::transport::Device> createDefaultDevice() {
-  std::array<char, HOST_NAME_MAX> hostname{};
+std::shared_ptr<gloo::transport::Device> CreateDefaultDevice() {
+  std::array<char, HOST_NAME_MAX> hostname;
   auto ret = ::gethostname(hostname.data(), HOST_NAME_MAX);
   PADDLE_ENFORCE_EQ(
       ret,
@@ -168,17 +168,17 @@ std::shared_ptr<gloo::transport::Device> createDefaultDevice() {
   }
   freeaddrinfo(result);
   if (cur != nullptr) {
-    return createDeviceForHostname(hostname.data());
+    return CreateDeviceForHostname(hostname.data());
   }
-  return createDeviceForHostname("127.0.0.1");
+  return CreateDeviceForHostname("127.0.0.1");
 }
 
 void CommContextManager::CreateGlooCommContext(
     const std::shared_ptr<Store>& store, int ring_id, int rank, int size) {
   char* ifname = std::getenv("GLOO_SOCKET_IFNAME");
   auto gloo_device = ifname && std::strlen(ifname) > 1
-                         ? createDeviceForInterface(std::string(ifname))
-                         : createDefaultDevice();
+                         ? CreateDeviceForInterface(std::string(ifname))
+                         : CreateDefaultDevice();
 
   GlooStore store_wrapper(store);
   auto gloo_store =
