@@ -30,6 +30,9 @@ namespace paddle {
 namespace memory {
 namespace allocation {
 
+thread_local std::tuple<size_t, std::map<void *, size_t>> allocated_memory(
+    0, std::map<void *, size_t>());
+
 std::string GetIPCName() {
   static std::random_device rd;
   std::string handle = "/paddle_";
@@ -176,14 +179,27 @@ void RefcountedMemoryMapAllocation::close() {
     VLOG(6) << "shm_unlink file: " << ipc_name_;
   }
 
-  PADDLE_ENFORCE_NE(
-      munmap(map_ptr_, map_size_),
-      -1,
-      platform::errors::Unavailable("could not unmap the shared memory file: ",
-                                    strerror(errno),
-                                    " (",
-                                    errno,
-                                    ")"));
+  std::get<1>(allocated_memory)[map_ptr_] = map_size_;
+  std::get<0>(allocated_memory) = std::get<0>(allocated_memory) + map_size_;
+  if (std::get<1>(allocated_memory).size() >= 5) {
+    VLOG(4) << "allocated_memory_num is: "
+            << std::get<1>(allocated_memory).size() << ", munmap them.";
+    std::map<void *, size_t>::iterator iter;
+    for (iter = std::get<1>(allocated_memory).begin();
+         iter != std::get<1>(allocated_memory).end();
+         iter++) {
+      PADDLE_ENFORCE_NE(munmap(iter->first, iter->second),
+                        -1,
+                        platform::errors::Unavailable(
+                            "could not unmap the shared memory file: ",
+                            strerror(errno),
+                            " (",
+                            errno,
+                            ")"));
+    }
+    std::get<1>(allocated_memory).clear();
+    std::get<0>(allocated_memory) = 0;
+  }
 }
 
 MemoryMapWriterAllocation::~MemoryMapWriterAllocation() {
