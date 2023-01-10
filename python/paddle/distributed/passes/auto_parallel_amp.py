@@ -83,7 +83,7 @@ class AMPState:
 
     def _mark_black_white_ops(self, amp_lists):
         """
-        this function is modified from paddle.fluid.contrib.mixed_precision
+        this function is modified from paddle.static.amp
         """
         self._block._sync_with_cpp()
         ops = self._block.ops
@@ -179,7 +179,7 @@ class AMPState:
     ):
         """
         only for forward cast
-        modified from paddle.fluid.contrib.mixed_precision
+        modified from paddle.static.amp
         """
         num_cast_ops = 0
         var_name_dict = {}
