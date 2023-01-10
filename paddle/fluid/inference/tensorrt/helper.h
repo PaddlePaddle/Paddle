@@ -216,10 +216,6 @@ static inline nvinfer1::DataType PhiType2NvType(phi::DataType type) {
   return nv_type;
 }
 
-static inline nvinfer1::DataType ProtoVarTypeToNvType(const int& dtype) {
-  return PhiType2NvType(phi::TransToPhiDataType(dtype));
-}
-
 }  // namespace tensorrt
 }  // namespace inference
 }  // namespace paddle
