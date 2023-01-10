@@ -59,7 +59,9 @@ static void UniqueConsecutiveFlattenedTensor(const Context& context,
   }
   out_vec.resize(output_size);
 
-  out->Resize(phi::make_ddim({output_size}));
+  if (output_size != 1) {
+    out->Resize(phi::make_ddim({output_size}));
+  }
   auto* out_data = context.template Alloc<InT>(out);
   std::copy(out_vec.begin(), out_vec.end(), out_data);
 
