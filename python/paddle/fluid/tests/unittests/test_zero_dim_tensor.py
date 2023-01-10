@@ -1503,6 +1503,12 @@ class TestNoBackwardAPI(unittest.TestCase):
         self.assertEqual(one_hot_label.shape, [4])
         self.assertEqual(one_hot_label.numpy()[2], 1)
 
+    def test_unique_consecutive(self):
+        x = paddle.full([], 1.0, 'float32')
+        x.stop_gradient = True
+        out = paddle.unique_consecutive(x)
+        self.assertEqual(out.shape, [])
+
 
 class TestNoBackwardAPIStatic(unittest.TestCase):
     def setUp(self):
@@ -1704,6 +1710,14 @@ class TestNoBackwardAPIStatic(unittest.TestCase):
 
         self.assertEqual(res[0].shape, (4,))
         self.assertEqual(res[0][2], 1)
+
+    def test_unique_consecutive(self):
+        x = paddle.full(shape=[], fill_value=1.0, dtype='float32')
+        unique_consecutive_out = paddle.unique_consecutive(x)
+        prog = paddle.static.default_main_program()
+        self.exe.run(paddle.fluid.default_startup_program())
+        res = self.exe.run(prog, fetch_list=[unique_consecutive_out])
+        self.assertEqual(res[0].shape, ())
 
 
 if __name__ == "__main__":

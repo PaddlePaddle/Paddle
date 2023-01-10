@@ -74,7 +74,9 @@ static void UniqueConsecutiveFlattenedCUDATensor(const Context& context,
           thrust::device, out_data, out_data + num_input, range_data_ptr, equal)
           .first -
       out_data;
-  out->Resize(phi::make_ddim({num_out}));
+  if (num_out != 1) {
+    out->Resize(phi::make_ddim({num_out}));
+  }
 
   // 2. Calculate inverse index: 'inverse'
   if (return_inverse) {

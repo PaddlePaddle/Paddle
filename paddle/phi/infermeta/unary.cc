@@ -4504,7 +4504,6 @@ void UniqueConsecutiveInferMeta(const MetaTensor& x,
   }
 
   if (axis.empty()) {
-    out->set_dims({-1});
     out->set_dtype(x.dtype());
     if (return_inverse) {
       index->set_dims({phi::product(in_dims)});
