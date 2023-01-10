@@ -18,9 +18,11 @@
 #include "paddle/fluid/distributed/collective/common.h"
 #include "paddle/fluid/distributed/collective/nccl_tools.h"
 #include "paddle/fluid/distributed/collective/utils.h"
+#include "paddle/fluid/platform/cuda_device_guard.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/phi/api/lib/utils/allocator.h"
+#include "paddle/phi/core/enforce.h"
 
 DECLARE_bool(nccl_blocking_wait);
 DECLARE_bool(use_stream_safe_cuda_allocator);
@@ -84,11 +86,12 @@ bool ProcessGroupNCCL::NCCLTask::Wait(std::chrono::milliseconds timeout) {
 // Same as Wait
 void ProcessGroupNCCL::NCCLTask::Synchronize() { Wait(kWaitTimeout); }
 
-ProcessGroupNCCL::ProcessGroupNCCL(const std::shared_ptr<Store>& store,
-                                   int rank,
-                                   int size,
-                                   int gid)
-    : ProcessGroupStream(rank, size, gid), store_(store) {}
+ProcessGroupNCCL::ProcessGroupNCCL(
+    const std::shared_ptr<phi::distributed::Store>& store,
+    int rank,
+    int size,
+    int gid)
+    : ProcessGroupWithStream(rank, size, gid), store_(store) {}
 
 void ProcessGroupNCCL::GroupStart() {
   NCCL_CHECK(phi::dynload::ncclGroupStart());
@@ -112,7 +115,7 @@ phi::DeviceContext* ProcessGroupNCCL::GetDeviceContext(
     PADDLE_ENFORCE_NE(
         iter,
         place_to_comm_ctx_.end(),
-        platform::errors::NotFound(
+        phi::errors::NotFound(
             "Cannot find the device context in this process group."));
     return iter->second.get();
   }
@@ -124,7 +127,7 @@ ncclComm_t ProcessGroupNCCL::NCCLComm(const Place& place) const {
   PADDLE_ENFORCE_NE(
       iter,
       place_to_comm_ctx_.end(),
-      platform::errors::NotFound(
+      phi::errors::NotFound(
           "Cannot find the NCCL commmunicator in this process group."));
   return iter->second->nccl_comm();
 }
@@ -207,7 +210,7 @@ void CheckSizeOnEachRank(const phi::DDim& tensor_dim,
   PADDLE_ENFORCE_EQ(
       length_size_on_each_rank,
       world_size,
-      platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "The length of size_on_each_rank must be equal to world_size."));
 
   int64_t sum_size_on_each_rank =
@@ -215,7 +218,7 @@ void CheckSizeOnEachRank(const phi::DDim& tensor_dim,
   PADDLE_ENFORCE_EQ(
       sum_size_on_each_rank,
       tensor_dim[0],
-      platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "The sum of size_on_each_rank must be equal to tensor's dim[0]."));
 }
 
@@ -289,7 +292,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Barrier(
     const BarrierOptions& opts) {
   PADDLE_ENFORCE_GE(opts.device_id,
                     0,
-                    platform::errors::PreconditionNotMet(
+                    phi::errors::PreconditionNotMet(
                         "The barrier device id must greater or equal than 0."));
   platform::CUDAPlace place(opts.device_id);
   auto allocator = std::unique_ptr<phi::Allocator>(
@@ -681,7 +684,7 @@ void ProcessGroupNCCL::CreateNCCLManagerCache(
     const std::string& places_key, const std::vector<Place>& places) {
   PADDLE_ENFORCE_EQ(places_key.empty(),
                     false,
-                    platform::errors::PreconditionNotMet(
+                    phi::errors::PreconditionNotMet(
                         "Not able to create/get the NCCL Communicator since "
                         "the GPU place are not known"));
 
@@ -837,7 +840,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::AllReduce(
   PADDLE_ENFORCE_EQ(
       CheckTensorsInCudaPlace(in_tensors),
       true,
-      platform::errors::InvalidArgument("All inputs should be in CudaPlace."));
+      phi::errors::InvalidArgument("All inputs should be in CudaPlace."));
   return Collective(
       in_tensors,
       out_tensors,
@@ -864,7 +867,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Broadcast(
   PADDLE_ENFORCE_EQ(
       CheckTensorsInCudaPlace(in_tensors),
       true,
-      platform::errors::InvalidArgument("All inputs should be in CudaPlace."));
+      phi::errors::InvalidArgument("All inputs should be in CudaPlace."));
 
   return Collective(
       in_tensors,
@@ -892,25 +895,25 @@ void CheckTensorsInDifferentDevices(
   PADDLE_ENFORCE_EQ(
       tensors.size() == 0,
       false,
-      platform::errors::InvalidArgument("Tensor list must be nonempty."));
+      phi::errors::InvalidArgument("Tensor list must be nonempty."));
   PADDLE_ENFORCE_LE(
       tensors.size(),
       num_devices,
-      platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "Tensor list mustn't be larger than the number of available GPUs."));
 
   std::set<Place> used_devices;
 
   for (const auto& t : tensors) {
-    PADDLE_ENFORCE_EQ(platform::is_gpu_place(t.place()),
-                      true,
-                      platform::errors::InvalidArgument(
-                          "Tensors must be CUDA and dense tensor."));
+    PADDLE_ENFORCE_EQ(
+        platform::is_gpu_place(t.place()),
+        true,
+        phi::errors::InvalidArgument("Tensors must be CUDA and dense tensor."));
 
     const auto inserted = used_devices.insert(t.place()).second;
     PADDLE_ENFORCE_EQ(inserted,
                       true,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "Tensors must be on distinct GPU devices."));
   }
 }
@@ -965,11 +968,11 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::AllGather(
   PADDLE_ENFORCE_EQ(
       CheckTensorsInCudaPlace(in_tensors),
       true,
-      platform::errors::InvalidArgument("All inputs should be in CudaPlace."));
+      phi::errors::InvalidArgument("All inputs should be in CudaPlace."));
   PADDLE_ENFORCE_EQ(
       CheckTensorsInCudaPlace(out_tensors),
       true,
-      platform::errors::InvalidArgument("All outputs should be in CudaPlace."));
+      phi::errors::InvalidArgument("All outputs should be in CudaPlace."));
   return Collective(
       in_tensors,
       out_tensors,
@@ -1019,7 +1022,7 @@ void* GetPointerByOffset(void* raw_pointer,
     return reinterpret_cast<void*>(reinterpret_cast<uint16_t*>(raw_pointer) +
                                    offset);
   } else {
-    PADDLE_THROW(platform::errors::Unimplemented(
+    PADDLE_THROW(phi::errors::Unimplemented(
         "Datatype %s in NCCL is not supported.", type));
   }
   return nullptr;
@@ -1031,11 +1034,11 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::AllToAll(
   PADDLE_ENFORCE_EQ(
       CheckTensorsInCudaPlace(in_tensors),
       true,
-      platform::errors::InvalidArgument("All inputs should be in CudaPlace."));
+      phi::errors::InvalidArgument("All inputs should be in CudaPlace."));
   PADDLE_ENFORCE_EQ(
       CheckTensorsInCudaPlace(out_tensors),
       true,
-      platform::errors::InvalidArgument("All inputs should be in CudaPlace."));
+      phi::errors::InvalidArgument("All inputs should be in CudaPlace."));
   return Collective(
       in_tensors,
       out_tensors,
@@ -1074,7 +1077,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Reduce(
   PADDLE_ENFORCE_EQ(
       CheckTensorsInCudaPlace(in_tensors),
       true,
-      platform::errors::InvalidArgument("All inputs should be in CudaPlace."));
+      phi::errors::InvalidArgument("All inputs should be in CudaPlace."));
   return Collective(
       in_tensors,
       out_tensors,
@@ -1102,11 +1105,11 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Scatter(
   PADDLE_ENFORCE_EQ(
       CheckTensorsInCudaPlace(in_tensors),
       true,
-      platform::errors::InvalidArgument("All inputs should be in CudaPlace."));
+      phi::errors::InvalidArgument("All inputs should be in CudaPlace."));
   PADDLE_ENFORCE_EQ(
       CheckTensorsInCudaPlace(out_tensors),
       true,
-      platform::errors::InvalidArgument("All inputs should be in CudaPlace."));
+      phi::errors::InvalidArgument("All inputs should be in CudaPlace."));
   return Collective(
       in_tensors,
       out_tensors,
@@ -1149,7 +1152,10 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Scatter(
 }
 
 std::shared_ptr<ProcessGroupNCCL> ProcessGroupNCCL::CreateProcessGroupNCCL(
-    const std::shared_ptr<Store>& store, int rank, int size, int gid) {
+    const std::shared_ptr<phi::distributed::Store>& store,
+    int rank,
+    int size,
+    int gid) {
   auto process_group =
       std::make_shared<ProcessGroupNCCL>(store, rank, size, gid);
   ProcessGroupIdMap::GetInstance().emplace(gid, process_group);

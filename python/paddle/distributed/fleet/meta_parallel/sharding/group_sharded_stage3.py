@@ -428,10 +428,11 @@ class GroupShardedStage3(nn.Layer):
                 place=core.CPUPlace(),
                 name="slice@" + param.name,
             )
-            with device_guard():
-                param.master_weight = paddle.cast(
-                    param.fw_storage, Type.fp32.value
-                )
+            if param.trainable:
+                with device_guard():
+                    param.master_weight = paddle.cast(
+                        param.fw_storage, Type.fp32.value
+                    )
         else:
             param.fw_storage = core.eager.Tensor(
                 value=buffer._slice(start, end), name="slice@" + param.name
