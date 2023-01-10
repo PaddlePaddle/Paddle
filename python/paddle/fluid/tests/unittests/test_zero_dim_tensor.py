@@ -86,6 +86,7 @@ unary_api_list = [
     paddle.lgamma,
     paddle.poisson,
     paddle.bernoulli,
+    paddle.median,
 ]
 
 inplace_api_list = [
@@ -194,7 +195,8 @@ class TestUnaryAPI(unittest.TestCase):
                 self.assertEqual(np.array(result[0]).shape, (device_num,))
                 self.assertEqual(np.array(result[1]).shape, (device_num,))
                 if len(result) == 3:
-                    self.assertEqual(np.array(result[2]).shape, (device_num, 1))
+                    self.assertEqual(
+                        np.array(result[2]).shape, (device_num, 1))
 
         paddle.disable_static()
 
@@ -1071,6 +1073,36 @@ class TestSundryAPI(unittest.TestCase):
         y = paddle.full([], 0.6)
         self.assertFalse(paddle.allclose(x, y))
 
+    def test_where(self):
+        x1 = paddle.full([], 1)
+        x2 = paddle.full([], 2)
+        x1.stop_gradient = False
+        x2.stop_gradient = False
+        out = paddle.where(x1 > x2, x1, x2)
+        out.backward()
+        self.assertEqual(out.shape, [])
+        self.assertEqual(out.numpy(), 2)
+        self.assertEqual(out.grad.shape, [])
+        self.assertEqual(x1.grad.shape, [])
+        self.assertEqual(x2.grad.shape, [])
+        self.assertEqual(x1.grad.numpy(), 0)
+        self.assertEqual(x2.grad.numpy(), 1)
+
+    def test_atan2(self):
+        x1 = paddle.full([], 0)
+        x2 = paddle.full([], 2)
+        x1.stop_gradient = False
+        x2.stop_gradient = False
+        out = paddle.atan2(x1, x2)
+        out.backward()
+        self.assertEqual(out.shape, [])
+        self.assertEqual(out.numpy(), 0)
+        self.assertEqual(out.grad.shape, [])
+        self.assertEqual(x1.grad.shape, [])
+        self.assertEqual(x2.grad.shape, [])
+        self.assertEqual(x1.grad.numpy(), 0.5)
+        self.assertEqual(x2.grad.numpy(), 0)
+
 
 class TestSundryAPIStatic(unittest.TestCase):
     def setUp(self):
@@ -1531,6 +1563,34 @@ class TestSundryAPIStatic(unittest.TestCase):
         prog = paddle.static.default_main_program()
         res = self.exe.run(prog, fetch_list=[out])
         self.assertEqual(res[0].shape, (3,))
+
+    @prog_scope()
+    def test_where(self):
+        x1 = paddle.full([], 1, 'float32')
+        x2 = paddle.full([], 2, 'float32')
+        x1.stop_gradient = False
+        x2.stop_gradient = False
+        out = paddle.where(x1 > x2, x1, x2)
+        paddle.static.append_backward(out)
+
+        prog = paddle.static.default_main_program()
+        res = self.exe.run(prog, feed={}, fetch_list=[out])
+
+        self.assertEqual(res[0].shape, ())
+
+    @prog_scope()
+    def test_atan2(self):
+        x1 = paddle.full([], 0, 'float32')
+        x2 = paddle.full([], 2, 'float32')
+        x1.stop_gradient = False
+        x2.stop_gradient = False
+        out = paddle.atan2(x1, x2)
+        paddle.static.append_backward(out)
+
+        prog = paddle.static.default_main_program()
+        res = self.exe.run(prog, feed={}, fetch_list=[out])
+
+        self.assertEqual(res[0].shape, ())
 
 
 # Use to test API whose zero-dim input tensors don't have grad and not need to test backward in OpTest.
