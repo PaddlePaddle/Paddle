@@ -980,6 +980,34 @@ class TestSundryAPI(unittest.TestCase):
         self.assertEqual(x.grad.shape, [])
         self.assertEqual(y.grad.shape, [])
 
+    def test_repeat_interleave(self):
+        places = ['cpu']
+        if paddle.is_compiled_with_cuda():
+            places.append('gpu')
+        for place in places:
+            paddle.set_device(place)
+
+            x = paddle.randn(())
+            x.stop_gradient = False
+
+            out = paddle.repeat_interleave(x, 2, None)
+            out.backward()
+
+            # check shape of output
+            self.assertEqual(out.shape, [2])
+
+            # check grad shape
+            self.assertEqual(x.grad.shape, [])
+
+            repeats = paddle.to_tensor([3], dtype='int32')
+            out = paddle.repeat_interleave(x, repeats, None)
+
+            # check shape of output with 1D repeats
+            self.assertEqual(out.shape, [3])
+
+            # check grad shape with 1D repeats
+            self.assertEqual(x.grad.shape, [])
+
 
 class TestSundryAPIStatic(unittest.TestCase):
     def setUp(self):
@@ -1401,14 +1429,30 @@ class TestSundryAPIStatic(unittest.TestCase):
         w = paddle.rand([])
         x.stop_gradient = False
         y.stop_gradient = False
-
         out = paddle.lerp(x, y, w)
         paddle.static.append_backward(out)
 
         prog = paddle.static.default_main_program()
         res = self.exe.run(prog, fetch_list=[out])
-
         self.assertEqual(res[0].shape, ())
+
+    @prog_scope()
+    def test_repeat_interleave(self):
+        x = paddle.full([], 1.0, 'float32')
+        out = paddle.repeat_interleave(x, 2, None)
+        paddle.static.append_backward(out)
+
+        prog = paddle.static.default_main_program()
+        res = self.exe.run(prog, fetch_list=[out])
+        self.assertEqual(res[0].shape, (2,))
+
+        repeats = paddle.to_tensor([3], dtype='int32')
+        out = paddle.repeat_interleave(x, repeats, None)
+        paddle.static.append_backward(out)
+
+        prog = paddle.static.default_main_program()
+        res = self.exe.run(prog, fetch_list=[out])
+        self.assertEqual(res[0].shape, (3,))
 
 
 # Use to test API whose zero-dim input tensors don't have grad and not need to test backward in OpTest.
