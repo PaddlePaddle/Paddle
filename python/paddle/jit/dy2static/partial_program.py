@@ -280,7 +280,10 @@ class PartialProgramLayer:
 
     @LazyInitialized
     def _infer_program(self):
-        return self._create_program(is_infer_mode=True)
+        program = self._create_program(is_infer_mode=True)
+        return self._build_infer_program(
+            program, program.desc.block(0).op_size()
+        )
 
     @LazyInitialized
     def _train_amp_program(self):
@@ -288,7 +291,10 @@ class PartialProgramLayer:
 
     @LazyInitialized
     def _infer_amp_program(self):
-        return self._create_amp_program(is_infer_mode=True)
+        program = self._create_amp_program(is_infer_mode=True)
+        return self._build_infer_program(
+            program, program.desc.block(0).op_size()
+        )
 
     @LazyInitialized
     def _train_pure_fp16_program(self):
@@ -296,7 +302,10 @@ class PartialProgramLayer:
 
     @LazyInitialized
     def _infer_pure_fp16_program(self):
-        return self._create_pure_fp16_program(is_infer_mode=True)
+        program = self._create_pure_fp16_program(is_infer_mode=True)
+        return self._build_infer_program(
+            program, program.desc.block(0).op_size()
+        )
 
     @LazyInitialized
     def _train_forward_backward_program(self):
@@ -745,14 +754,11 @@ class PartialProgramLayer:
     @property
     def infer_program(self):
         if _in_amp_guard():
-            program = self._infer_amp_program
+            return self._infer_amp_program
         elif _in_pure_fp16_guard():
-            program = self._infer_pure_fp16_program
+            return self._infer_pure_fp16_program
         else:
-            program = self._infer_program
-        return self._build_infer_program(
-            program, program.desc.block(0).op_size()
-        )
+            return self._infer_program
 
     @switch_to_static_graph
     def _build_infer_program(self, infer_program, forward_end_op_index):
