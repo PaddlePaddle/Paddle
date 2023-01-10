@@ -156,7 +156,7 @@ void TrtSupportNHWCPass::ApplyImpl(Graph *graph) const {
                                                            "softmax"};
   // OPs unrelated to layout are consistent according to the layout of input
   // var！
-  std::unordered_set<std::string> any_layout_ops{"relu", "elementwise_add"};
+  std::unordered_set<std::string> any_layout_ops{"relu"};
   //
   //
   // TODO(liuyuanle): Add other op if needed!
