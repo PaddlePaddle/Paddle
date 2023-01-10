@@ -155,7 +155,7 @@ void Conv2dFusionLayoutTransferPass::ApplyImpl(ir::Graph *graph) const {
   }
 #endif
 
-  if (!(is_fp16_precision && cutlass_enable)) return;
+  if (!is_fp16_precision) return;
 
   PADDLE_ENFORCE_EQ(graph->IsMainGraph(),
                     true,
@@ -230,7 +230,11 @@ void Conv2dFusionLayoutTransferPass::ApplyImpl(ir::Graph *graph) const {
       auto *op_desc = op_node->Op();
       auto nhwc_attr = framework::Attribute(std::string("NHWC"));
       op_desc->SetAttr("data_format", nhwc_attr);
-      op_desc->SetType("conv2d_fusion_cutlass");
+      if (cutlass_enable) {
+        op_desc->SetType("conv2d_fusion_cutlass");
+      } else {
+        op_desc->SetType("conv2d_fusion");
+      }
       op_desc->Flush();
 
       // transfer weights
