@@ -47,6 +47,7 @@ class TensorFillDiagTensor_Test(unittest.TestCase):
                 x = paddle.ones((4, 3), dtype=dtype)
                 x.stop_gradient = False
                 y = x * 2
+                y.retain_grads()
                 ny = y.fill_diagonal_tensor(v, offset=0, dim1=0, dim2=1)
                 loss = ny.sum()
                 loss.backward()
@@ -78,6 +79,7 @@ class TensorFillDiagTensor_Test(unittest.TestCase):
                 x = paddle.ones((4, 3), dtype=dtype)
                 x.stop_gradient = False
                 y = x * 2
+                y.retain_grads()
                 ny = y.fill_diagonal_tensor(v, offset=-1, dim1=0, dim2=1)
                 loss = ny.sum()
                 loss.backward()
@@ -109,6 +111,7 @@ class TensorFillDiagTensor_Test(unittest.TestCase):
                 x = paddle.ones((4, 3), dtype=dtype)
                 x.stop_gradient = False
                 y = x * 2
+                y.retain_grads()
                 ny = y.fill_diagonal_tensor(v, offset=1, dim1=0, dim2=1)
                 loss = ny.sum()
                 loss.backward()
