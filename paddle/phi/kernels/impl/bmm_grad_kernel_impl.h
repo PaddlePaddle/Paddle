@@ -57,7 +57,7 @@ void BmmGradKernel(const Context& dev_ctx,
   DenseTensor x_help = x;
   DenseTensor y_help = y;
   DenseTensor out_grad_help = out_grad;
-  phi::funcs::ReshapeXYOutIntoMatrixSequence(
+  ReshapeXYOutIntoMatrixSequence(
       &x_help, &y_help, &out_grad_help, false, false);
 
   phi::DDim dx_dims;

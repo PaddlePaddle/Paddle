@@ -15,6 +15,7 @@ limitations under the License. */
 #include <memory>
 #include <string>
 
+#include "paddle/fluid/operators/matmul_v2_op.h"
 #include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 
 namespace paddle {

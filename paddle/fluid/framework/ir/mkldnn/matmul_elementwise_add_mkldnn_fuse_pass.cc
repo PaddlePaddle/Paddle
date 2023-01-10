@@ -25,7 +25,7 @@ namespace ir {
 using string::PrettyLogDetail;
 
 void MatmulElementwiseAddMKLDNNFusePass::ApplyImpl(Graph* graph) const {
-  auto matmul_types = {"matmul", "matmul_v2", "fused_matmul"};
+  auto matmul_types = {"fused_matmul", "matmul", "matmul_v2"};
   auto matmul_as_x = {true, false};
 
   for (const auto& matmul_type : matmul_types)
@@ -221,6 +221,7 @@ REGISTER_PASS(matmul_elementwise_add_mkldnn_fuse_pass,
 REGISTER_PASS_CAPABILITY(matmul_elementwise_add_mkldnn_fuse_pass)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination()
+            .EQ("fused_matmul", 0)
             .LE("matmul", 1)
             .EQ("matmul_v2", 0)
             .LE("elementwise_add", 1));

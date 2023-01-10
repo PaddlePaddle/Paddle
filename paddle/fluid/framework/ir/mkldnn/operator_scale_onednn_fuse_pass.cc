@@ -27,9 +27,9 @@ using string::PrettyLogDetail;
 void FuseOperatorScaleOneDNNPass::ApplyImpl(Graph *graph) const {
   const std::vector<std::string> fusable_ops{
       "fc",
+      "fused_matmul",
       "matmul",
       "matmul_v2",
-      "fused_matmul",
       "elementwise_add",
       "elementwise_sub",
       "elementwise_mul",
@@ -126,6 +126,7 @@ REGISTER_PASS_CAPABILITY(operator_scale_onednn_fuse_pass)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination()
             .EQ("fc", 0)
+            .EQ("fused_matmul", 0)
             .LE("matmul", 1)
             .EQ("matmul_v2", 0)
             .LE("elementwise_add", 1)

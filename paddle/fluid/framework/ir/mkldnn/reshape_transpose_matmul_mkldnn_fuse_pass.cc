@@ -102,6 +102,17 @@ void ReshapeTransposeMatmulMkldnnFusePass::Fuse(
                                               matmul_type + " encountered.");
     }
 
+    // Extra check to fuse each input only once
+    if (matmul_type == "fused_matmul") {
+      auto shape_fused_X = paddle::get<std::vector<int>>(
+          matmul_desc->GetAttr("fused_reshape_X"));
+      auto shape_fused_Y = paddle::get<std::vector<int>>(
+          matmul_desc->GetAttr("fused_reshape_Y"));
+
+      if (!shape_fused_X.empty() && matmul_input_name == "X") return;
+      if (!shape_fused_Y.empty() && matmul_input_name == "Y") return;
+    }
+
     auto reshape_shape =
         paddle::get<std::vector<int>>(reshape_op->Op()->GetAttr("shape"));
     auto transpose_axis =
@@ -305,5 +316,6 @@ REGISTER_PASS_CAPABILITY(reshape_transpose_matmul_mkldnn_fuse_pass)
         paddle::framework::compatible::OpVersionComparatorCombination()
             .EQ("reshape2", 0)
             .EQ("transpose2", 0)
+            .EQ("fused_matmul", 0)
             .EQ("matmul", 1)
             .EQ("matmul_v2", 0));
