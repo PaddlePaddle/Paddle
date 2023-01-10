@@ -20,80 +20,11 @@
 
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/distributed/gloo_utils.h"
 #include "paddle/phi/core/enforce.h"
 
 namespace phi {
 namespace distributed {
-
-#ifdef _WIN32
-#define GENERATE_FUNC(type, func, ...)       \
-  switch (type) {                            \
-    case phi::DataType::FLOAT32:             \
-      func<float>(__VA_ARGS__);              \
-      break;                                 \
-    case phi::DataType::FLOAT64:             \
-      func<double>(__VA_ARGS__);             \
-      break;                                 \
-    case phi::DataType::FLOAT16:             \
-      func<gloo::float16>(__VA_ARGS__);      \
-      break;                                 \
-    case phi::DataType::INT32:               \
-      func<int32_t>(__VA_ARGS__);            \
-      break;                                 \
-    case phi::DataType::INT64:               \
-      func<int64_t>(__VA_ARGS__);            \
-      break;                                 \
-    default:                                 \
-      VLOG(0) << "Error: Unknown DataType."; \
-      exit(-1);                              \
-  }
-#else
-#define GENERATE_FUNC(type, func, args...)   \
-  switch (type) {                            \
-    case phi::DataType::FLOAT32:             \
-      func<float>(args);                     \
-      break;                                 \
-    case phi::DataType::FLOAT64:             \
-      func<double>(args);                    \
-      break;                                 \
-    case phi::DataType::FLOAT16:             \
-      func<gloo::float16>(args);             \
-      break;                                 \
-    case phi::DataType::INT32:               \
-      func<int32_t>(args);                   \
-      break;                                 \
-    case phi::DataType::INT64:               \
-      func<int64_t>(args);                   \
-      break;                                 \
-    case phi::DataType::INT8:                \
-      func<int8_t>(args);                    \
-      break;                                 \
-    case phi::DataType::UINT8:               \
-      func<uint8_t>(args);                   \
-      break;                                 \
-    case phi::DataType::BOOL:                \
-      func<bool>(args);                      \
-      break;                                 \
-    case phi::DataType::BFLOAT16:            \
-      func<phi::dtype::bfloat16>(args);      \
-      break;                                 \
-    default:                                 \
-      VLOG(0) << "Error: Unknown DataType."; \
-      exit(-1);                              \
-  }
-#endif
-
-template <typename T, typename P>
-void SetOutput(P* opts, phi::DenseTensor* tensor) {
-  opts->setOutput(reinterpret_cast<T*>(tensor->data()), tensor->numel());
-}
-
-template <typename T, typename P>
-void SetInput(P* opts, const phi::DenseTensor& tensor) {
-  // gloo only support mutable data input
-  opts->setInput(reinterpret_cast<T*>(const_cast<void*>(tensor.data())),
-                 tensor.numel());
-}
 
 GlooCommContext::GlooCommContext(
     int rank,

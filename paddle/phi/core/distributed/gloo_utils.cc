@@ -29,22 +29,6 @@
 
 namespace phi {
 namespace distributed {
-
-// data preparation
-
-template <typename T, typename P>
-void SetOutput(P* opts, phi::DenseTensor* tensor) {
-  opts->setOutput(reinterpret_cast<T*>(tensor->data()), tensor->numel());
-}
-
-template <typename T, typename P>
-void SetInput(P* opts, const phi::DenseTensor& tensor) {
-  // gloo only support mutable data input
-  opts->setInput(reinterpret_cast<T*>(const_cast<void*>(tensor.data())),
-                 tensor.numel());
-}
-
-// env preparation
 std::shared_ptr<gloo::transport::Device> CreateDeviceForInterface(
     const std::string& ifname) {
   gloo::transport::tcp::attr attr;
