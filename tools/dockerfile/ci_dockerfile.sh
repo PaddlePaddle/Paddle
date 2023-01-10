@@ -166,7 +166,7 @@ function make_unbuntu18_cu117_dockerfile(){
 }
 
 function make_ubuntu18_cu112_dockerfile(){
-  dockerfile_name="Dockerfile.cuda11.2_cudnn8.1_trt8.4_gcc82_ubuntu18"
+  dockerfile_name="Dockerfile.cuda11.2_cudnn8.1_trt8.4_gcc8.2_ubuntu18"
   sed "s#<baseimg>#nvidia/cuda:11.2.0-cudnn8-devel-ubuntu18.04#g" ./Dockerfile.ubuntu18 >${dockerfile_name}
   sed -i "s#<setcuda>#ENV LD_LIBRARY_PATH=/usr/local/cuda-11.2/targets/x86_64-linux/lib:\$LD_LIBRARY_PATH #g" ${dockerfile_name}
   sed -i "s#liblzma-dev#liblzma-dev openmpi-bin openmpi-doc libopenmpi-dev#g" ${dockerfile_name} 
