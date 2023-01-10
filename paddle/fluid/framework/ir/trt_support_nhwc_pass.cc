@@ -170,7 +170,7 @@ void TrtSupportNHWCPass::ApplyImpl(Graph *graph) const {
   auto *block_desc = (*iter)->Op()->Block();
 
   for (auto *op_node : op_nodes) {
-    if (!op_node->IsOp()) continue;
+    CHECK_EQ(op_node->IsOp(), true);
     auto *op_desc = op_node->Op();
 
     std::string data_format;
@@ -190,10 +190,13 @@ void TrtSupportNHWCPass::ApplyImpl(Graph *graph) const {
       input_shape_4 &= (input_shape.size() == 4);
     }
 
-    if ((data_format != "NHWC" && !any_layout_ops.count(op_desc->Type())) ||
-        !input_shape_4 || must_origin_layout_ops.count(op_desc->Type())) {
+    if (data_format != "NHWC" || !input_shape_4 ||
+        any_layout_ops.count(op_desc->Type()) ||
+        must_origin_layout_ops.count(op_desc->Type())) {
       continue;
     }
+    // Transpose NHWC --> NCHW
+    //
     // Update current op
     transposed_ops.insert(op_node);
     if (op_desc->HasAttr("data_format")) {
@@ -253,6 +256,34 @@ void TrtSupportNHWCPass::ApplyImpl(Graph *graph) const {
         out_var_node->Var()->SetShape(
             {from_shape[0], from_shape[3], from_shape[1], from_shape[2]});
         vars_to_nchw.insert(out_var_node);
+      }
+    }
+  }
+
+  // Process any layout ops
+  for (auto *op_node : op_nodes) {
+    CHECK_EQ(op_node->IsOp(), true);
+    auto op_inputs = op_node->inputs;
+    for (auto *in_var_node : op_inputs) {
+      CHECK_EQ(in_var_node->IsVar(), true);
+      if (transposed_ops.count(op_node)) continue;
+
+      if (vars_to_nchw.count(in_var_node) &&
+          any_layout_ops.count(op_node->Op()->Type())) {
+        transposed_ops.insert(op_node);
+        // Update output var of current op
+        auto op_outputs = op_node->outputs;
+        for (auto *out_var_node : op_outputs) {
+          CHECK_EQ(out_var_node->IsVar(), true);
+          if (out_var_node->Var()->Persistable()) continue;
+
+          auto from_shape = out_var_node->Var()->GetShape();
+          if (from_shape.size() == 4) {
+            out_var_node->Var()->SetShape(
+                {from_shape[0], from_shape[3], from_shape[1], from_shape[2]});
+            vars_to_nchw.insert(out_var_node);
+          }
+        }
       }
     }
   }
