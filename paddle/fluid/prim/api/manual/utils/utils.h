@@ -13,12 +13,16 @@
 // limitations under the License.
 
 #pragma once
+#include <algorithm>
+#include <execution>
 #include <string>
 #include <vector>
 #include "paddle/fluid/framework/op_proto_maker.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/int_array.h"
 #include "paddle/phi/common/place.h"
+#include "paddle/phi/core/ddim.h"
+using IntArray = paddle::experimental::IntArray;
 namespace paddle {
 namespace prim {
 // We put some api like utils here
@@ -31,6 +35,36 @@ template <typename T>
 paddle::experimental::Tensor empty_like(const paddle::experimental::Tensor& x,
                                         paddle::experimental::DataType dtype,
                                         const paddle::Place& place);
-
+// These method don't need to be specified
+static phi::DDim get_reduce_dims(const phi::DDim& dout_dims,
+                                 const phi::DDim& in_dims) {
+  std::vector<int64_t> result;
+  auto bat = dout_dims.size() - in_dims.size();
+  for (size_t i = 0; i < bat; ++i) {
+    result.push_back(i);
+  }
+  for (size_t i = 0; i < in_dims.size(); ++i) {
+    if (in_dims[i] == 1) {
+      result.push_back(i + bat)
+    } else {
+      PADDLE_ENFORCE_EQ(
+          in_dims[i],
+          dout_dims[i + bat],
+          platform::errors::InvalidArgument(
+              "ReduceDims dimension mismatch. Operands could "
+              "not be broadcast together with the shape of dout = [%s] and "
+              "the shape of in_dims = [%s]. Received [%d] in X is not equal to "
+              "[%d] in Y at i:%d.",
+              dout_dims,
+              in_dims,
+              dout_dims[i + bat],
+              in_dims[i],
+              i));
+    }
+  }
+  auto res_dims = phi::make_ddim(result);
+  VLOG(4) << "Reduce Dims is: " << res_dim;
+  return res_dims;
+}
 }  // namespace prim
 }  // namespace paddle
