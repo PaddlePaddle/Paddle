@@ -478,6 +478,14 @@
   kernel :
     func : histogram
 
+- op : index_put
+  args : (Tensor input, Tensor indices, Tensor value)
+  output : Tensor(out)
+  infer_meta :
+    func : IndexPutInferMeta
+  kernel :
+    func : index_put
+
 - op : index_sample
   args : (Tensor x, Tensor index)
   output : Tensor

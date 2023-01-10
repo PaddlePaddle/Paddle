@@ -12,11 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from operator import index
 import sys
 import numpy as np
 from . import unique_name
 from . import core
 import paddle
+from paddle import _C_ops
 
 MAX_INTEGER = 2**31 - 1
 
@@ -217,6 +219,20 @@ class SliceInfo:
         tensor_origin[:] = out.reshape(tensor_origin.shape)
 
         return tensor_origin
+
+    def set_item_ly(self, tensor_origin, value):
+        if len(value.shape) > 1:
+            value = paddle.flatten(value)
+        if len(self.indexes[0].shape) > 1:
+            for i in range(len(self.indexes)):
+                self.indexes[i] = paddle.flatten(self.indexes[i])
+
+        mask = paddle.stack(self.indexes, 1)  # [348, 4]
+        # tmp = paddle.gather_nd(tensor_origin, mask)
+        # tensor_origin[:] = paddle.scatter_nd_add(tensor_origin, mask, value-tmp)
+        # return tensor_origin
+
+        return _C_ops.index_put(tensor_origin, mask, value)
 
 
 def replace_ellipsis(var, item):
@@ -756,7 +772,8 @@ def _setitem_impl_(var, item, value):
                     item
                 )
             )
-        return slice_info.set_item(var, value)
+        # return slice_info.set_item(var, value)
+        return slice_info.set_item_ly(var, value)
     attrs = {
         'axes': axes,
         'starts': starts,

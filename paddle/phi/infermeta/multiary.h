@@ -523,4 +523,9 @@ void YoloLossInferMeta(const MetaTensor& x,
                        MetaTensor* objectness_mask,
                        MetaTensor* gt_match_mask);
 
+void IndexPutInferMeta(const MetaTensor& x,
+                       const MetaTensor& indices,
+                       const MetaTensor& value,
+                       MetaTensor* out);
+
 }  // namespace phi
