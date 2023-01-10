@@ -210,7 +210,7 @@ class SaveCombineOpKernel : public framework::OpKernel<T> {
               inp_var_names[i]));
 
       if (inp_vars.size() > 0 && inp_vars[0]->IsType<phi::DenseTensor>()) {
-        std::vector<const phi::DenseTensor*> x(inp_vars.size());
+        std::vector<const phi::DenseTensor*> x;
         for (auto inp_var : inp_vars) {
           x.push_back(&(inp_var->Get<phi::DenseTensor>()));
         }
@@ -222,7 +222,7 @@ class SaveCombineOpKernel : public framework::OpKernel<T> {
                                    save_to_memory,
                                    output);
       } else {
-        std::vector<const phi::ExtendedTensor*> x(inp_vars.size());
+        std::vector<const phi::ExtendedTensor*> x;
         for (auto inp_var : inp_vars) {
           x.push_back(&(inp_var->Get<framework::Vocab>()));
         }
