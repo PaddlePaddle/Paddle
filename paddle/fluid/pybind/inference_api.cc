@@ -880,7 +880,9 @@ void BindAnalysisConfig(py::module *m) {
             return dynamic_cast<PaddlePassBuilder *>(self.pass_builder());
           },
           py::return_value_policy::reference)
-      .def("nnadapter", &AnalysisConfig::NNAdapter)
+      .def("nnadapter",
+           &AnalysisConfig::NNAdapter,
+           py::return_value_policy::reference)
       .def("set_dist_config", &AnalysisConfig::SetDistConfig)
       .def("dist_config", &AnalysisConfig::dist_config);
 
