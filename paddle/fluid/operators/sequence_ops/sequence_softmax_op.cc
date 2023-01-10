@@ -36,14 +36,15 @@ class SequenceSoftmaxOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
     phi::DataLayout layout_ = DataLayout::kAnyLayout;
     if (ctx.HasAttr("data_format")) {
       layout_ = phi::StringToDataLayout(ctx.Attr<std::string>("data_format"));
     }
-    return framework::OpKernelType(input_data_type, ctx.GetPlace(), layout_);
+    return phi::KernelKey(
+        ctx.GetPlace(), layout_, phi::TransToPhiDataType(input_data_type));
   }
 };
 
@@ -120,14 +121,15 @@ class SequenceSoftmaxGradOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "Out");
     phi::DataLayout layout_ = DataLayout::kAnyLayout;
     if (ctx.HasAttr("data_format")) {
       layout_ = phi::StringToDataLayout(ctx.Attr<std::string>("data_format"));
     }
-    return framework::OpKernelType(input_data_type, ctx.GetPlace(), layout_);
+    return phi::KernelKey(
+        ctx.GetPlace(), layout_, phi::TransToPhiDataType(input_data_type));
   }
 };
 

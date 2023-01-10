@@ -1403,6 +1403,7 @@ EOF
 set -x
         # set trt_convert ut to run 15% cases.
         export TEST_NUM_PERCENT_CASES=0.15
+        export FLAGS_trt_ibuilder_cache=1
         precison_cases=""
         bash $PADDLE_ROOT/tools/check_added_ut.sh
         if [ ${PRECISION_TEST:-OFF} == "ON" ]; then
@@ -2547,6 +2548,7 @@ EOF
 set -x
         # set trt_convert ut to run 15% cases.
         export TEST_NUM_PERCENT_CASES=0.15
+        export FLAGS_trt_ibuilder_cache=1
         precison_cases=""
         bash $PADDLE_ROOT/tools/check_added_ut.sh
         #check change of pr_unnitests and dev_unnitests
@@ -3188,7 +3190,7 @@ EOF
     startTime_s=`date +%s`
     set +e
 
-    cmake .. -DWITH_DISTRIBUTE=OFF -DON_INFER=ON -DWITH_TENSORRT=ON -DCUDA_ARCH_NAME=${CUDA_ARCH_NAME:-Auto} -DWITH_PYTHON=${WITH_PYTHON:-ON} -DWITH_ONNXRUNTIME=${WITH_ONNXRUNTIME:-OFF};build_error=$?
+    cmake .. -DWITH_DISTRIBUTE=OFF -DON_INFER=ON -DWITH_TENSORRT=ON -DCUDA_ARCH_NAME=${CUDA_ARCH_NAME:-Auto} -DWITH_PYTHON=${WITH_PYTHON:-ON} -DWITH_ONNXRUNTIME=${WITH_ONNXRUNTIME:-OFF} -DWITH_MKL=${WITH_MKL:-ON} -DWITH_MKLDNN=${WITH_MKLDNN:-ON} ;build_error=$?
 
     # reset ccache zero stats for collect PR's actual hit rate
     ccache -z
@@ -3476,13 +3478,16 @@ function check_coverage_build() {
     set -x
 }
 function run_setup(){
+    startTime_s=`date +%s`
+    mkdir -p ${PADDLE_ROOT}/build
+    cd ${PADDLE_ROOT}/build
     # Build script will not fail if *.deb does not exist
     rm *.deb 2>/dev/null || true
     # Delete previous built egg packages
     rm -rf ${PADDLE_ROOT}/dist 2>/dev/null || true
     # Delete previous built paddle cache
     rm -rf ${PADDLE_ROOT}/build/python/paddle 2>/dev/null || true
-    startTime_s=`date +%s`
+
     SYSTEM=`uname -s`
     if [ "$SYSTEM" == "Darwin" ]; then
         echo "Using python abi: $1"
@@ -3640,7 +3645,7 @@ function run_setup(){
     export WITH_MLU=${WITH_MLU:-OFF}
     export WITH_IPU=${WITH_IPU:-OFF}
     export WITH_CNCL=${WITH_CNCL:-OFF}
-    export XPU_SDK_ROOT=${XPU_SDK_ROOT:-}
+    export XPU_SDK_ROOT=${XPU_SDK_ROOT:-""}
     export WITH_LITE=${WITH_LITE:-OFF}
     export WITH_XPU_BKCL=${WITH_XPU_BKCL:-OFF}
     export WITH_ARM=${WITH_ARM:-OFF}
@@ -3657,8 +3662,23 @@ function run_setup(){
     export WITH_ONNXRUNTIME=${WITH_ONNXRUNTIME:-OFF}
     export WITH_CUDNN_FRONTEND=${WITH_CUDNN_FRONTEND:-OFF}
 
+    if [ "$SYSTEM" == "Linux" ];then
+      if [ `nproc` -gt 16 ];then
+          parallel_number=$(expr `nproc` - 8)
+      else
+          parallel_number=`nproc`
+      fi
+    else
+      parallel_number=8
+    fi
+    if [ "$3" != "" ]; then
+      parallel_number=$3
+    fi
+    export MAX_JOBS=${parallel_number}
     # reset ccache zero stats for collect PR's actual hit rate
+
     ccache -z
+    cd ..
     if [ "${PYTHON_EXECUTABLE}" != "" ];then
         ${PYTHON_EXECUTABLE} setup.py $2;build_error=$?
     else
@@ -3672,14 +3692,19 @@ function run_setup(){
         exit 7;
     fi
 
+    endTime_s=`date +%s`
+    [ -n "$startTime_firstBuild" ] && startTime_s=$startTime_firstBuild
+    echo "Build Time: $[ $endTime_s - $startTime_s ]s"
+    echo "ipipe_log_param_Build_Time: $[ $endTime_s - $startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt
 }
+
 function main() {
     local CMD=$1
     local parallel_number=$2
     init
     case $CMD in
       build_only)
-        run_setup ${PYTHON_ABI:-""} bdist_wheel
+        run_setup ${PYTHON_ABI:-""} bdist_wheel ${parallel_number}
         ;;
       build_pr_dev)
         build_pr_and_develop
@@ -3796,7 +3821,7 @@ function main() {
         ;;
       cicheck_coverage)
         check_diff_file_for_coverage
-        run_setup ${PYTHON_ABI:-""} install
+        run_setup ${PYTHON_ABI:-""} install ${parallel_number}
         enable_unused_var_check
         parallel_test
         check_coverage
@@ -3883,7 +3908,7 @@ function main() {
         build_mac
         ;;
       cicheck_py37)
-        run_setup ${PYTHON_ABI:-""} bdist_wheel
+        run_setup ${PYTHON_ABI:-""} bdist_wheel ${parallel_number} 
         run_linux_cpu_test ${PYTHON_ABI:-""} ${PROC_RUN:-1}
         ;;
       test_cicheck_py37)
@@ -3896,7 +3921,7 @@ function main() {
         parallel_test
         ;;
       build_gpubox)
-        run_setup ${PYTHON_ABI:-""} install
+        run_setup ${PYTHON_ABI:-""} install ${parallel_number} 
         ;;
       check_xpu)
         cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}

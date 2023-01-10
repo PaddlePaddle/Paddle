@@ -17,9 +17,8 @@ import logging
 import time
 
 from paddle.distributed.passes import new_pass
-from paddle.fluid import program_guard
-from paddle.fluid.backward import append_backward
-from paddle.fluid.framework import unique_name
+from paddle.static import append_backward, program_guard
+from paddle.utils import unique_name
 
 from ..utils.log_utils import get_logger
 from .partitioner import Partitioner
@@ -315,6 +314,16 @@ class Parallelizer:
                 "auto_parallel_grad_clip", config
             )
             auto_parallel_clip_pass.apply(
+                [main_program], [startup_program], self._pass_context
+            )
+
+            # deps for newexe
+            config = {}
+            config["dist_context"] = self._dist_context
+            APSED_pass = new_pass(
+                "auto_parallel_supplement_explicit_dependencies", config
+            )
+            APSED_pass.apply(
                 [main_program], [startup_program], self._pass_context
             )
 

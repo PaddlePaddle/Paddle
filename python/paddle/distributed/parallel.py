@@ -243,6 +243,7 @@ def init_parallel_env():
     _set_expected_place(place)
 
     group = None
+
     if backend in _valid_backend_list and in_dygraph_mode():
         if _default_group_name in _get_group_map_by_name():
             return _get_group_map_by_name()[_default_group_name]

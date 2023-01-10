@@ -125,8 +125,8 @@ struct FusedMultiTransformerDecoderPattern : public PatternBase {
   PATTERN_DECL_NODE(ffn_eltadd0);    // ELEMENTWISE_ADD
   PATTERN_DECL_NODE(ffn_eltadd0_b);  // ELEMENTWISE_ADD
   PATTERN_DECL_NODE(ffn_eltadd0_out);
-  PATTERN_DECL_NODE(ffn_gelu);
-  PATTERN_DECL_NODE(ffn_gelu_out);
+  PATTERN_DECL_NODE(ffn_act);
+  PATTERN_DECL_NODE(ffn_act_out);
   PATTERN_DECL_NODE(ffn_matmul1);
   PATTERN_DECL_NODE(ffn_matmul1_w);
   PATTERN_DECL_NODE(ffn_matmul1_out);
@@ -223,8 +223,8 @@ struct FusedMultiTransformerDecoderFuseQKVPattern : public PatternBase {
   PATTERN_DECL_NODE(ffn_eltadd0);    // ELEMENTWISE_ADD
   PATTERN_DECL_NODE(ffn_eltadd0_b);  // ELEMENTWISE_ADD
   PATTERN_DECL_NODE(ffn_eltadd0_out);
-  PATTERN_DECL_NODE(ffn_gelu);
-  PATTERN_DECL_NODE(ffn_gelu_out);
+  PATTERN_DECL_NODE(ffn_act);
+  PATTERN_DECL_NODE(ffn_act_out);
   PATTERN_DECL_NODE(ffn_matmul1);
   PATTERN_DECL_NODE(ffn_matmul1_w);
   PATTERN_DECL_NODE(ffn_matmul1_out);
@@ -329,8 +329,8 @@ struct MultiDevicesFusedMultiTransformerDecoderFuseQKVPattern
   PATTERN_DECL_NODE(ffn_eltadd0);    // ELEMENTWISE_ADD
   PATTERN_DECL_NODE(ffn_eltadd0_b);  // ELEMENTWISE_ADD
   PATTERN_DECL_NODE(ffn_eltadd0_out);
-  PATTERN_DECL_NODE(ffn_gelu);
-  PATTERN_DECL_NODE(ffn_gelu_out);
+  PATTERN_DECL_NODE(ffn_act);
+  PATTERN_DECL_NODE(ffn_act_out);
   PATTERN_DECL_NODE(ffn_matmul1);
   PATTERN_DECL_NODE(ffn_matmul1_w);
   PATTERN_DECL_NODE(ffn_matmul1_out);

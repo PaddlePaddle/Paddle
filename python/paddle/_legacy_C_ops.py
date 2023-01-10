@@ -12,45 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.fluid import core
 
-from .fluid import framework
+from paddle.fluid import core
 
 __all__ = []
 
-_already_switch_to_eager_ = False
-
-if not framework._in_eager_mode_:
-    for name in dir(core.ops):
-        globals()[name] = getattr(core.ops, name)
-        __all__.append(name)
-    _already_switch_to_eager_ = False
-else:
-    for name in dir(core.eager.ops.legacy):
-        globals()[name] = getattr(core.eager.ops.legacy, name)
-        __all__.append(name)
-    _already_switch_to_eager_ = True
-
-
-def switch_to_core_ops():
-    global _already_switch_to_eager_
-    if _already_switch_to_eager_:
-        for name in dir(core.eager.ops.legacy):
-            del globals()[name]
-            __all__.remove(name)
-        for name in dir(core.ops):
-            globals()[name] = getattr(core.ops, name)
-            __all__.append(name)
-        _already_switch_to_eager_ = False
-
-
-def switch_to_eager_ops():
-    global _already_switch_to_eager_
-    if not _already_switch_to_eager_:
-        for name in dir(core.ops):
-            del globals()[name]
-            __all__.remove(name)
-        for name in dir(core.eager.ops.legacy):
-            globals()[name] = getattr(core.eager.ops.legacy, name)
-            __all__.append(name)
-        _already_switch_to_eager_ = True
+for name in dir(core.eager.ops.legacy):
+    globals()[name] = getattr(core.eager.ops.legacy, name)
+    __all__.append(name)

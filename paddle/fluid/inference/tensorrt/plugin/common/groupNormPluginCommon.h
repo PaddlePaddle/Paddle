@@ -27,6 +27,8 @@ namespace plugin {
 struct GroupNormNHWCParams {
   // The output buffer. Layout NHWC.
   __half* dst;
+  // The output buffer. Layout NHWC.
+  __half* eleOut;
   // The input buffer. Layout NHWC.
   __half const* srcX;
   // The input buffer. Layout NHWC.

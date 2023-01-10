@@ -75,7 +75,7 @@ class CastOp : public framework::OperatorWithKernel {
     context->ShareLoD("X", "Out");
   }
 
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     // CastOp kernel's device type is decided by input tensor place
     auto *tensor = ctx.Input<phi::DenseTensor>("X");
@@ -86,9 +86,8 @@ class CastOp : public framework::OperatorWithKernel {
     auto &tensor_place = tensor->place();
     // NOTE: cuda pinned tensor need to copy its data to target place
     if (platform::is_cuda_pinned_place(tensor_place)) {
-      return framework::OpKernelType(
-          framework::TransToProtoVarType(tensor->dtype()),
-          ctx.device_context());
+      return phi::KernelKey(framework::TransToProtoVarType(tensor->dtype()),
+                            ctx.device_context().GetPlace());
     }
 
     // NOTE(jiahongyu): Below codes originally enclosed by PADDLE_WITH_MKLDNN
@@ -108,20 +107,19 @@ class CastOp : public framework::OperatorWithKernel {
     auto src_type = static_cast<VT::Type>(ctx.Attr<int>("in_dtype"));
     auto dst_type = static_cast<VT::Type>(ctx.Attr<int>("out_dtype"));
     if (src_type == dst_type || MLUSupportsCast(src_type, dst_type)) {
-      return framework::OpKernelType(
-          framework::TransToProtoVarType(tensor->dtype()), tensor_place);
+      return phi::KernelKey(framework::TransToProtoVarType(tensor->dtype()),
+                            tensor_place);
     } else {
       VLOG(3) << "MLU not support cast type: "
               << framework::DataTypeToString(src_type)
               << " to type: " << framework::DataTypeToString(dst_type)
               << ", fallbacking to CPU one!";
-      return framework::OpKernelType(
-          framework::TransToProtoVarType(tensor->dtype()),
-          platform::CPUPlace());
+      return phi::KernelKey(framework::TransToProtoVarType(tensor->dtype()),
+                            platform::CPUPlace());
     }
 #endif
-    return framework::OpKernelType(
-        framework::TransToProtoVarType(tensor->dtype()), tensor_place);
+    return phi::KernelKey(framework::TransToProtoVarType(tensor->dtype()),
+                          tensor_place);
   }
 };
 
