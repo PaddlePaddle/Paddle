@@ -227,6 +227,7 @@ class TestBinaryAPI(unittest.TestCase):
                 np.testing.assert_array_equal(out_cls.numpy(), out.numpy())
             else:
                 out = api(x, y)
+            out.retain_grads()
             self.assertEqual(out.shape, [2, 3, 4])
 
             out.backward()
@@ -246,6 +247,7 @@ class TestBinaryAPI(unittest.TestCase):
                 np.testing.assert_array_equal(out_cls.numpy(), out.numpy())
             else:
                 out = api(x, y)
+            out.retain_grads()
             self.assertEqual(out.shape, [2, 3, 4])
 
             out.backward()
@@ -395,6 +397,7 @@ class TestSundryAPI(unittest.TestCase):
         x = paddle.uniform([], None, -10, 10)
         x.stop_gradient = False
         out = paddle.clip(x, -5, 5)
+        out.retain_grads()
         out.backward()
 
         self.assertEqual(out.shape, [])
