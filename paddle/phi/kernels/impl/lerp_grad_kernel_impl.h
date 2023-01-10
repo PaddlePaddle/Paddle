@@ -127,13 +127,14 @@ void LerpGradKernel(const Context& ctx,
                     DenseTensor* x_grad,
                     DenseTensor* y_grad) {
   int rank = out.dims().size();
-  PADDLE_ENFORCE_EQ(out.dims().size(),
-                    out_grad.dims().size(),
-                    phi::errors::InvalidArgument(
-                        "The number of dimensions for LerpGradOp must be "
-                        " equal to LerpOut, but the value received is %d != %d",
-                        out_grad.dims().size(),
-                        out.dims().size()));
+  PADDLE_ENFORCE_EQ(
+      out.dims().size(),
+      out_grad.dims().size(),
+      phi::errors::InvalidArgument(
+          "The number of dimensions for LerpOut must be "
+          " equal to LerpGrad, but the value received is %d != %d",
+          out.dims().size(),
+          out_grad.dims().size()));
   PADDLE_ENFORCE_GE(
       rank,
       0,
