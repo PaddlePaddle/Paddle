@@ -13,9 +13,7 @@
 # limitations under the License.
 
 import paddle
-from paddle.distributed.auto_parallel.dist_attribute import (
-    OperatorDistributedAttribute,
-)
+from paddle.distributed.auto_parallel.dist_attribute import OperatorDistAttr
 from paddle.distributed.auto_parallel.process_group import (
     get_world_process_group,
 )
@@ -41,6 +39,7 @@ from paddle.fluid.contrib.mixed_precision.fp16_utils import (
 from paddle.fluid.data_feeder import check_type, check_variable_and_dtype
 from paddle.framework import core
 
+from ..auto_parallel.process_mesh import ProcessMesh
 from ..auto_parallel.utils import is_backward_op, is_forward_op, is_loss_op
 from .pass_base import PassBase, register_pass
 
@@ -596,8 +595,10 @@ def _check_and_update_gradient(params_grads, loss_scaling, dist_context):
         attrs=attrs,
     )
 
-    new_op_dist_attr = OperatorDistributedAttribute()
-    new_op_dist_attr.process_mesh = world_process_group.ranks
+    # Constructing dist attr from op_desc can
+    # give all inputs and outputs default dist attrs
+    new_op_dist_attr = OperatorDistAttr(new_op.desc)
+    new_op_dist_attr.process_mesh = ProcessMesh(world_process_group.ranks)
     new_op_dist_attr.impl_idx = 0
     if len(world_process_group.ranks) > 1:
         new_op_dist_attr.impl_type = "check_finite_and_unscale"
@@ -969,8 +970,10 @@ class AMPPass(PassBase):
             attrs=attrs,
         )
 
-        new_op_dist_attr = OperatorDistributedAttribute()
-        new_op_dist_attr.process_mesh = world_process_group.ranks
+        # Constructing dist attr from op_desc can
+        # give all inputs and outputs default dist attrs
+        new_op_dist_attr = OperatorDistAttr(new_op.desc)
+        new_op_dist_attr.process_mesh = ProcessMesh(world_process_group.ranks)
         new_op_dist_attr.impl_idx = 0
         if len(world_process_group.ranks) > 1:
             new_op_dist_attr.impl_type = "update_loss_scaling"

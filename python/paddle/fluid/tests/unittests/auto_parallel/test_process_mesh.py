@@ -196,6 +196,15 @@ class TestProcessMesh(unittest.TestCase):
         merged_process_mesh = merge_process_meshes([None, process_mesh1])
         self.assertEqual(merged_process_mesh, ProcessMesh([0, 1, 2, 3, 4, 5]))
 
+        merged_process_mesh = merge_process_meshes(
+            [process_mesh1, paddle.fluid.core.ProcessMesh()]
+        )
+        self.assertEqual(merged_process_mesh, ProcessMesh([0, 1, 2, 3, 4, 5]))
+        merged_process_mesh = merge_process_meshes(
+            [paddle.fluid.core.ProcessMesh(), process_mesh1]
+        )
+        self.assertEqual(merged_process_mesh, ProcessMesh([0, 1, 2, 3, 4, 5]))
+
         process_mesh2 = ProcessMesh([[0, 1, 2], [3, 4, 5]])
         merged_process_mesh = merge_process_meshes(
             [process_mesh1, process_mesh2]

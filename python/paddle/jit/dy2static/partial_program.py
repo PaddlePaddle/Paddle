@@ -309,6 +309,10 @@ class PartialProgramLayer:
         return program
 
     @LazyInitialized
+    def _empty_backward_program_for_eval(self):
+        return paddle.static.Program()
+
+    @LazyInitialized
     def _train_pure_fp16_forward_backward_program(self):
         program = self._create_forward_backward_train_pure_fp16_program()
         return program
@@ -343,12 +347,7 @@ class PartialProgramLayer:
                 program = self._train_forward_backward_program
                 return program[0]
         else:
-            if _in_amp_guard():
-                return self._infer_amp_program
-            elif _in_pure_fp16_guard():
-                return self._infer_pure_fp16_program
-            else:
-                return self._infer_program
+            return self.infer_program
 
     @property
     def backward_program(self):
@@ -363,7 +362,16 @@ class PartialProgramLayer:
                 program = self._train_forward_backward_program
                 return program[1]
         else:
-            return paddle.static.Program()
+            """
+            Can't just return paddle.static.Program(), because self.backward_program is a property,
+            whenever we call this method, a tmp Program() object is created and is gc immediatly
+            after executed the following line in PartialProgramLayer.__call__.
+
+            >>> self.backward_program.desc.block(0),
+
+            When we access RunProgramAPI, it's possible to get an invalid backward_program address.
+            """
+            return self._empty_backward_program_for_eval
 
     @LazyInitialized
     def _train_program_id(self):
@@ -409,7 +417,7 @@ class PartialProgramLayer:
         for param in self._params:
             candidate = [
                 var_name
-                for var_name in self.backward_program.block(0).vars.keys()
+                for var_name in self._train_program.block(0).vars.keys()
                 if var_name.endswith(param.name + '@GRAD')
             ]
             if candidate:
@@ -624,7 +632,7 @@ class PartialProgramLayer:
         elif _in_pure_fp16_guard():
             infer_program = self._infer_pure_fp16_program
         else:
-            infer_program = self.infer_program
+            infer_program = self._infer_program
         return infer_program.desc.block(0).op_size()
 
     def __call__(self, inputs):
@@ -737,11 +745,27 @@ class PartialProgramLayer:
     @property
     def infer_program(self):
         if _in_amp_guard():
-            return self._infer_amp_program
+            program = self._infer_amp_program
         elif _in_pure_fp16_guard():
-            return self._infer_pure_fp16_program
+            program = self._infer_pure_fp16_program
         else:
-            return self._infer_program
+            program = self._infer_program
+        return self._build_infer_program(
+            program, program.desc.block(0).op_size()
+        )
+
+    @switch_to_static_graph
+    def _build_infer_program(self, infer_program, forward_end_op_index):
+        forward_skip_vars = self._parse_skip_gc_vars(infer_program)
+        builded_infer_program = add_build_strategy_for(
+            infer_program,
+            0,
+            forward_end_op_index,
+            self._build_strategy,
+            forward_skip_vars,
+        )
+        self._apply_inplace_pass(builded_infer_program, None)
+        return builded_infer_program
 
     @switch_to_static_graph
     def _get_forward_backward_program_form(
@@ -753,7 +777,11 @@ class PartialProgramLayer:
             self._outputs.var_ids
         )
         backward_end_op_index = whole_program.desc.block(0).op_size()
-        backward_skip_vars = self._parse_skip_gc_vars(whole_program)
+        # For Backward process in CINN, all param@GRAD shoule be skipped for GC, because
+        # they will be shared in scope and used by optimizer.
+        backward_skip_vars = (
+            self._parse_skip_gc_vars(whole_program) + self._param_grad_names
+        )
         backward_builded_program = add_build_strategy_for(
             whole_program,
             backward_start_op_index,
@@ -791,30 +819,32 @@ class PartialProgramLayer:
             forward_program, backward_program
         )
         backward_mem_opt_skip_vars = self._parse_skip_gc_vars(forward_program)
-        attrs = {
-            "use_cuda": use_cuda,
-            "mem_opt_skip_vars": forward_mem_opt_skip_vars,
-            "for_partial_block": True,
-        }
-        _apply_pass(
-            forward_program,
-            empty_startup_program,
-            "buffer_shared_inplace_pass",
-            attrs,
-            attr_types,
-        )
-        attrs = {
-            "use_cuda": use_cuda,
-            "mem_opt_skip_vars": backward_mem_opt_skip_vars,
-            "for_partial_block": True,
-        }
-        _apply_pass(
-            backward_program,
-            empty_startup_program,
-            "buffer_shared_inplace_pass",
-            attrs,
-            attr_types,
-        )
+        if forward_program:
+            attrs = {
+                "use_cuda": use_cuda,
+                "mem_opt_skip_vars": forward_mem_opt_skip_vars,
+                "for_partial_block": True,
+            }
+            _apply_pass(
+                forward_program,
+                empty_startup_program,
+                "buffer_shared_inplace_pass",
+                attrs,
+                attr_types,
+            )
+        if backward_program:
+            attrs = {
+                "use_cuda": use_cuda,
+                "mem_opt_skip_vars": backward_mem_opt_skip_vars,
+                "for_partial_block": True,
+            }
+            _apply_pass(
+                backward_program,
+                empty_startup_program,
+                "buffer_shared_inplace_pass",
+                attrs,
+                attr_types,
+            )
 
     @LazyInitialized
     def _inout_var_names(self):
@@ -843,7 +873,7 @@ class PartialProgramLayer:
 
         if backward_program:
             for var_name in core.parse_safe_eager_deletion_skip_vars(
-                backward_program.desc
+                backward_program.desc, True
             ):
                 skip_vars.append(var_name)
         return skip_vars

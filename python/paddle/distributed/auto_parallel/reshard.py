@@ -31,7 +31,7 @@ from .cost import (
     SplitOpCost,
     build_comm_desc,
 )
-from .dist_attribute import TensorDistributedAttribute
+from .dist_attribute import TensorDistAttr
 from .dist_context import DistributedContext
 from .process_group import new_process_group
 from .utils import is_gradient_clip_op
@@ -1989,7 +1989,7 @@ class Resharder:
                 process_mesh = dist_attr[0]
                 dims_mapping = dist_attr[1]
 
-                tensor_attr = TensorDistributedAttribute()
+                tensor_attr = TensorDistAttr()
                 tensor_attr.dims_mapping = dims_mapping
                 tensor_attr.process_mesh = process_mesh
                 self.dist_context.set_tensor_dist_attr_for_program(
@@ -2031,6 +2031,9 @@ class Resharder:
                         if name == var_name and op_dist_attr is not None:
                             if op.desc.id() == matched_op.desc.id():
                                 if matched_op.type == "while":
+                                    op.desc._rename_input(
+                                        name, target_tensor.name
+                                    )
                                     old_name = name
                                     new_name = target_tensor.name
                                     assert old_name != new_name
@@ -2045,13 +2048,16 @@ class Resharder:
                                     op_dist_attr.set_input_dims_mapping(
                                         new_name, dims_mapping
                                     )
-                                    if (
-                                        old_name
-                                        in op_dist_attr._inputs_dist_attrs
-                                    ):
-                                        op_dist_attr.del_input_dist_attr(
-                                            old_name
-                                        )
+                                    # if (
+                                    #     old_name
+                                    #     in op_dist_attr._inputs_dist_attrs
+                                    # ):
+                                    #     op_dist_attr.del_input_dist_attr(
+                                    #         old_name
+                                    #     )
+                                    op_dist_attr.set_input_dims_mapping(
+                                        new_name, dims_mapping
+                                    )
                                     while_op_X_append.append(new_name)
                                     continue
                                 else:
@@ -2072,7 +2078,10 @@ class Resharder:
                                     op_dist_attr.set_input_dims_mapping(
                                         new_name, dims_mapping
                                     )
-                                    op_dist_attr.del_input_dist_attr(old_name)
+                                    # op_dist_attr.del_input_dist_attr(old_name)
+                                    op_dist_attr.set_input_dims_mapping(
+                                        new_name, dims_mapping
+                                    )
                                     continue
 
                             op_process_mesh = op_dist_attr.process_mesh
@@ -2097,7 +2106,10 @@ class Resharder:
                                 op_dist_attr.set_input_dims_mapping(
                                     new_name, dims_mapping
                                 )
-                                op_dist_attr.del_input_dist_attr(old_name)
+                                # op_dist_attr.del_input_dist_attr(old_name)
+                                op_dist_attr.set_input_dims_mapping(
+                                    new_name, dims_mapping
+                                )
 
                     # for while op, the input X should reset
                     if while_op_X_append:
@@ -2273,7 +2285,7 @@ class Resharder:
                             op_dist_attr.set_input_dist_attr(
                                 new_name, op_input_dist_attr
                             )
-                            op_dist_attr.del_input_dist_attr(old_name)
+                            # op_dist_attr.del_input_dist_attr(old_name)
 
                 # the outputs also need to be renamed when the output name is the same with input name in inplace op
                 for var_name in op.output_arg_names:
@@ -2297,7 +2309,7 @@ class Resharder:
                         op_dist_attr.set_output_dist_attr(
                             new_name, op_output_dist_attr
                         )
-                        op_dist_attr.del_output_dist_attr(old_name)
+                        # op_dist_attr.del_output_dist_attr(old_name)
 
     def _reshard_input(self, block):
         idx = 0

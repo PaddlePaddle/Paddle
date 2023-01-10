@@ -1232,7 +1232,6 @@ def get_setup_parameters():
         'paddle.fluid.dygraph',
         'paddle.fluid.proto',
         'paddle.fluid.proto.profiler',
-        'paddle.fluid.distributed',
         'paddle.fluid.layers',
         'paddle.fluid.dataloader',
         'paddle.fluid.contrib',

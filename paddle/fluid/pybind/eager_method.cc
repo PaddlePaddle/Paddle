@@ -1745,14 +1745,6 @@ static PyObject* tensor_method_get_rows(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
-static PyObject* tensor_methon_element_size(TensorObject* self,
-                                            PyObject* args,
-                                            PyObject* kwargs) {
-  EAGER_TRY
-  return ToPyObject(paddle::experimental::SizeOf(self->tensor.dtype()));
-  EAGER_CATCH_AND_THROW_RETURN_NULL
-}
-
 static PyObject* tensor__reset_grad_inplace_version(TensorObject* self,
                                                     PyObject* args,
                                                     PyObject* kwargs) {
@@ -2134,10 +2126,6 @@ PyMethodDef variable_methods[] = {
      NULL},
     {"rows",
      (PyCFunction)(void (*)(void))tensor_method_get_rows,
-     METH_VARARGS | METH_KEYWORDS,
-     NULL},
-    {"element_size",
-     (PyCFunction)(void (*)(void))tensor_methon_element_size,
      METH_VARARGS | METH_KEYWORDS,
      NULL},
     {"_reset_grad_inplace_version",
