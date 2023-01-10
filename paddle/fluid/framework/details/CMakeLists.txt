@@ -382,6 +382,7 @@ set(IR_PASS_DEPS
     graph_to_program_pass
     fix_op_run_order_pass
     fuse_gemm_epilogue_pass
+    fused_attention_pass
     delete_dropout_op_pass)
 
 if(WITH_CINN)
