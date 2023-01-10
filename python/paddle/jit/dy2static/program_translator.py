@@ -57,6 +57,16 @@ __all__ = []
 MAX_TRACED_PROGRAM_COUNT = 10
 
 
+def synchronized(func):
+    func.__lock__ = threading.Lock()
+
+    def lock_func(*args, **kwargs):
+        with func.__lock__:
+            return func(*args, **kwargs)
+
+    return lock_func
+
+
 class FunctionCache:
     """
     Caches the transformed functions to avoid redundant conversions of the same function.
@@ -969,12 +979,7 @@ class ConcreteProgram:
                         [class_instance] + list(static_inputs)
                     )
 
-                # 2. Gets all ParamBases and buffered VarBases in the function
-                all_parameters_and_buffers = _extract_indeed_params_buffers(
-                    class_instance
-                )
-
-                # 3. Builds program only once and returns the output Variables.
+                # 2. Builds program only once and returns the output Variables.
                 with param_guard(
                     get_parameters(class_instance, False)
                 ), param_guard(get_buffers(class_instance, False)):
@@ -993,6 +998,17 @@ class ConcreteProgram:
                         if error_data:
                             error_data.raise_new_exception()
                         raise
+
+                from paddle.jit.dy2static.program_translator import (
+                    ProgramTranslator,
+                )
+
+                # 3. Gets all ParamBases and buffered VarBases in the function
+                all_parameters_and_buffers = (
+                    ProgramTranslator.get_instance()._params_recorder.pop(
+                        main_program
+                    )
+                )
 
                 if outputs is not None:
                     need_wrap_into_list = (
@@ -1024,6 +1040,34 @@ def _extract_indeed_params_buffers(class_instance):
     buffers = [buffer for buffer in buffers if len(buffer.shape) != 0]
 
     return params + buffers
+
+
+class ParametersRecorder:
+    def __init__(self):
+        self.params_dict = {}
+
+    @synchronized
+    def add(self, program, param):
+        """use the default_program as key, append param the parameter list."""
+        key = self._program_hash(program)
+        if key not in self.params_dict:
+            self.params_dict[key] = set()
+        params = self.params_dict[key]
+        params.add(param)
+
+    def pop(self, program):
+        params = self.params_dict.get(self._program_hash(program))
+        if params is None:
+            return []
+        del self.params_dict[self._program_hash(program)]
+        return list(params)
+
+    def _program_hash(self, program):
+        """
+        because program is not deleted while calling from_func_spec.
+        so it's ok to use id(program)
+        """
+        return id(program)
 
 
 class ProgramCache:
@@ -1098,16 +1142,6 @@ class ProgramCache:
         return [cp for key, (cp, _) in self._caches.items()]
 
 
-def synchronized(func):
-    func.__lock__ = threading.Lock()
-
-    def lock_func(*args, **kwargs):
-        with func.__lock__:
-            return func(*args, **kwargs)
-
-    return lock_func
-
-
 class ProgramTranslator:
     """
     Class to translate dygraph function into static graph function. The object
@@ -1159,6 +1193,7 @@ class ProgramTranslator:
             return
         self._initialized = True
         self._program_cache = ProgramCache()
+        self._params_recorder = ParametersRecorder()
         self.enable_to_static = True
 
     def enable(self, enable_to_static):

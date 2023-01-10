@@ -795,6 +795,16 @@
     func : maxout
   backward : maxout_grad
 
+- op : meshgrid
+  args : (Tensor[] inputs)
+  output : Tensor[]{inputs.size()}
+  infer_meta :
+    func : MeshgridInferMeta
+  kernel :
+    func : meshgrid
+    data_type : inputs
+  backward : meshgrid_grad
+
 - op : mode
   args : (Tensor x,  int axis = -1,  bool keepdim = false)
   output : Tensor(out), Tensor(indices)
@@ -804,6 +814,15 @@
     func : mode
   backward : mode_grad
 
+- op : multi_dot
+  args : (Tensor[] x)
+  output : Tensor
+  infer_meta :
+    func : MultiDotInferMeta
+  kernel :
+    func : multi_dot
+  backward : multi_dot_grad
+
 - op : multinomial
   args : (Tensor x, Scalar(int) num_samples = 1, bool replacement = false)
   output : Tensor(out)
@@ -812,6 +831,16 @@
   kernel :
     func : multinomial
     data_type : x
+
+- op : multiplex
+  args : (Tensor[] inputs, Tensor index)
+  output : Tensor
+  infer_meta :
+    func : MultiplexInferMeta
+  kernel :
+    func : multiplex
+    data_type : inputs
+  backward : multiplex_grad
 
 - op : mv
   args : (Tensor x, Tensor vec)
