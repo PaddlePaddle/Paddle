@@ -335,85 +335,85 @@ void MatmulGradKernel(const Context& dev_ctx,
       if (transpose_y) {
         // X'Y': dA = Y'G', dB = G'X'
         if (dx)
-          MatMulFunction<Context, T>(dev_ctx,
-                                     y_conj,
-                                     out_grad,
-                                     y_dims,
-                                     dout_dims,
-                                     &dx_help,
-                                     true,
-                                     true);
+          MatMulFunctionImplWithCuBlas<Context, T>(dev_ctx,
+                                                   y_conj,
+                                                   out_grad,
+                                                   y_dims,
+                                                   dout_dims,
+                                                   &dx_help,
+                                                   true,
+                                                   true);
         if (dy)
-          MatMulFunction<Context, T>(dev_ctx,
-                                     out_grad,
-                                     x_conj,
-                                     dout_dims,
-                                     x_dims,
-                                     &dy_help,
-                                     true,
-                                     true);
+          MatMulFunctionImplWithCuBlas<Context, T>(dev_ctx,
+                                                   out_grad,
+                                                   x_conj,
+                                                   dout_dims,
+                                                   x_dims,
+                                                   &dy_help,
+                                                   true,
+                                                   true);
       } else {
         // X'Y: dX = YG', dY = XG
         if (dx)
-          MatMulFunction<Context, T>(dev_ctx,
-                                     y_conj,
-                                     out_grad,
-                                     y_dims,
-                                     dout_dims,
-                                     &dx_help,
-                                     false,
-                                     true);
+          MatMulFunctionImplWithCuBlas<Context, T>(dev_ctx,
+                                                   y_conj,
+                                                   out_grad,
+                                                   y_dims,
+                                                   dout_dims,
+                                                   &dx_help,
+                                                   false,
+                                                   true);
         if (dy)
-          MatMulFunction<Context, T>(dev_ctx,
-                                     x_conj,
-                                     out_grad,
-                                     x_dims,
-                                     dout_dims,
-                                     &dy_help,
-                                     false,
-                                     false);
+          MatMulFunctionImplWithCuBlas<Context, T>(dev_ctx,
+                                                   x_conj,
+                                                   out_grad,
+                                                   x_dims,
+                                                   dout_dims,
+                                                   &dy_help,
+                                                   false,
+                                                   false);
       }
     } else {
       if (transpose_y) {
         // XY': dX = GY, dY = G'X
         if (dx)
-          MatMulFunction<Context, T>(dev_ctx,
-                                     out_grad,
-                                     y_conj,
-                                     dout_dims,
-                                     y_dims,
-                                     &dx_help,
-                                     false,
-                                     false);
+          MatMulFunctionImplWithCuBlas<Context, T>(dev_ctx,
+                                                   out_grad,
+                                                   y_conj,
+                                                   dout_dims,
+                                                   y_dims,
+                                                   &dx_help,
+                                                   false,
+                                                   false);
         if (dy)
-          MatMulFunction<Context, T>(dev_ctx,
-                                     out_grad,
-                                     x_conj,
-                                     dout_dims,
-                                     x_dims,
-                                     &dy_help,
-                                     true,
-                                     false);
+          MatMulFunctionImplWithCuBlas<Context, T>(dev_ctx,
+                                                   out_grad,
+                                                   x_conj,
+                                                   dout_dims,
+                                                   x_dims,
+                                                   &dy_help,
+                                                   true,
+                                                   false);
       } else {
         // XY: dX = GY', dY = X'G
         if (dx)
-          MatMulFunction<Context, T>(dev_ctx,
-                                     out_grad,
-                                     y_conj,
-                                     dout_dims,
-                                     y_dims,
-                                     &dx_help,
-                                     false,
-                                     true);
+          MatMulFunctionImplWithCuBlas<Context, T>(dev_ctx,
+                                                   out_grad,
+                                                   y_conj,
+                                                   dout_dims,
+                                                   y_dims,
+                                                   &dx_help,
+                                                   false,
+                                                   true);
         if (dy)
-          MatMulFunction<Context, T>(dev_ctx,
-                                     x_conj,
-                                     out_grad,
-                                     x_dims,
-                                     dout_dims,
-                                     &dy_help,
-                                     true,
-                                     false);
+          MatMulFunctionImplWithCuBlas<Context, T>(dev_ctx,
+                                                   x_conj,
+                                                   out_grad,
+                                                   x_dims,
+                                                   dout_dims,
+                                                   &dy_help,
+                                                   true,
+                                                   false);
       }
     }
 
@@ -705,89 +705,89 @@ void MatmulDoubleGradKernel(const Context& dev_ctx,
     if (transpose_x) {
       if (transpose_y) {
         if (dx && ddy) {
-          MatMulFunction<Context, T>(dev_ctx,
-                                     ddy.get(),
-                                     dout_conj,
-                                     y_dims,
-                                     dout_dims,
-                                     &dx_help,
-                                     true,
-                                     true);
+          MatMulFunctionImplWithCuBlas<Context, T>(dev_ctx,
+                                                   ddy.get(),
+                                                   dout_conj,
+                                                   y_dims,
+                                                   dout_dims,
+                                                   &dx_help,
+                                                   true,
+                                                   true);
         }
         if (dy && ddx) {
-          MatMulFunction<Context, T>(dev_ctx,
-                                     dout_conj,
-                                     ddx.get(),
-                                     dout_dims,
-                                     x_dims,
-                                     &dy_help,
-                                     true,
-                                     true);
+          MatMulFunctionImplWithCuBlas<Context, T>(dev_ctx,
+                                                   dout_conj,
+                                                   ddx.get(),
+                                                   dout_dims,
+                                                   x_dims,
+                                                   &dy_help,
+                                                   true,
+                                                   true);
         }
       } else {
         if (dx && ddy) {
-          MatMulFunction<Context, T>(dev_ctx,
-                                     ddy.get(),
-                                     dout_conj,
-                                     y_dims,
-                                     dout_dims,
-                                     &dx_help,
-                                     false,
-                                     true);
+          MatMulFunctionImplWithCuBlas<Context, T>(dev_ctx,
+                                                   ddy.get(),
+                                                   dout_conj,
+                                                   y_dims,
+                                                   dout_dims,
+                                                   &dx_help,
+                                                   false,
+                                                   true);
         }
         if (dy && ddx) {
-          MatMulFunction<Context, T>(dev_ctx,
-                                     ddx.get(),
-                                     dout_conj,
-                                     x_dims,
-                                     dout_dims,
-                                     &dy_help,
-                                     false,
-                                     false);
+          MatMulFunctionImplWithCuBlas<Context, T>(dev_ctx,
+                                                   ddx.get(),
+                                                   dout_conj,
+                                                   x_dims,
+                                                   dout_dims,
+                                                   &dy_help,
+                                                   false,
+                                                   false);
         }
       }
     } else {
       if (transpose_y) {
         if (dx && ddy) {
-          MatMulFunction<Context, T>(dev_ctx,
-                                     dout_conj,
-                                     ddy.get(),
-                                     dout_dims,
-                                     y_dims,
-                                     &dx_help,
-                                     false,
-                                     false);
+          MatMulFunctionImplWithCuBlas<Context, T>(dev_ctx,
+                                                   dout_conj,
+                                                   ddy.get(),
+                                                   dout_dims,
+                                                   y_dims,
+                                                   &dx_help,
+                                                   false,
+                                                   false);
         }
         if (dy && ddx) {
-          MatMulFunction<Context, T>(dev_ctx,
-                                     dout_conj,
-                                     ddx.get(),
-                                     dout_dims,
-                                     x_dims,
-                                     &dy_help,
-                                     true,
-                                     false);
+          MatMulFunctionImplWithCuBlas<Context, T>(dev_ctx,
+                                                   dout_conj,
+                                                   ddx.get(),
+                                                   dout_dims,
+                                                   x_dims,
+                                                   &dy_help,
+                                                   true,
+                                                   false);
         }
       } else {
         if (dx && ddy) {
-          MatMulFunction<Context, T>(dev_ctx,
-                                     dout_conj,
-                                     ddy.get(),
-                                     dout_dims,
-                                     y_dims,
-                                     &dx_help,
-                                     false,
-                                     true);
+          MatMulFunctionImplWithCuBlas<Context, T>(dev_ctx,
+                                                   dout_conj,
+                                                   ddy.get(),
+                                                   dout_dims,
+                                                   y_dims,
+                                                   &dx_help,
+                                                   false,
+                                                   true);
         }
         if (dy && ddx) {
-          MatMulFunction<Context, T>(dev_ctx,
-                                     ddx.get(),
-                                     dout_conj,
-                                     x_dims,
-                                     dout_dims,
-                                     &dy_help,
-                                     true,
-                                     false);
+          MatMulFunctionImplWithCuBlas<Context, T>(dev_ctx,
+                                                   ddx.get(),
+                                                   dout_conj,
+                                                   x_dims,
+                                                   dout_dims,
+                                                   &dy_help,
+                                                   true,
+                                                   false);
         }
       }
     }
@@ -843,26 +843,26 @@ void MatmulDoubleGradKernel(const Context& dev_ctx,
     if (ddout) {
       // Calculate the gradient of OutputGrad(Out)
       if (ddx) {
-        MatMulFunction<Context, T>(dev_ctx,
-                                   ddx.get(),
-                                   y_conj,
-                                   x_dims,
-                                   y_dims,
-                                   ddout,
-                                   transpose_x,
-                                   transpose_y);
+        MatMulFunctionImplWithCuBlas<Context, T>(dev_ctx,
+                                                 ddx.get(),
+                                                 y_conj,
+                                                 x_dims,
+                                                 y_dims,
+                                                 ddout,
+                                                 transpose_x,
+                                                 transpose_y);
       }
 
       if (ddy) {
-        MatMulFunction<Context, T>(dev_ctx,
-                                   x_conj,
-                                   ddy.get(),
-                                   x_dims,
-                                   y_dims,
-                                   ddout,
-                                   transpose_x,
-                                   transpose_y,
-                                   true);
+        MatMulFunctionImplWithCuBlas<Context, T>(dev_ctx,
+                                                 x_conj,
+                                                 ddy.get(),
+                                                 x_dims,
+                                                 y_dims,
+                                                 ddout,
+                                                 transpose_x,
+                                                 transpose_y,
+                                                 true);
       }
     }
   }
@@ -1470,86 +1470,86 @@ void MatmulTripleGradKernel(const Context& dev_ctx,
       if (transpose_y) {
         // dX = ddY' d_ddout’, dY = d_ddout’ ddX'
         if (out_d_x && ddy && d_ddout)
-          MatMulFunction<Context, T>(dev_ctx,
-                                     ddy_conj,
-                                     d_ddout.get(),
-                                     y_dims,
-                                     dout_dims,
-                                     &out_dx_help,
-                                     true,
-                                     true);
+          MatMulFunctionImplWithCuBlas<Context, T>(dev_ctx,
+                                                   ddy_conj,
+                                                   d_ddout.get(),
+                                                   y_dims,
+                                                   dout_dims,
+                                                   &out_dx_help,
+                                                   true,
+                                                   true);
         if (out_d_y && ddx && d_ddout)
-          MatMulFunction<Context, T>(dev_ctx,
-                                     d_ddout.get(),
-                                     ddx_conj,
-                                     dout_dims,
-                                     x_dims,
-                                     &out_dy_help,
-                                     true,
-                                     true);
+          MatMulFunctionImplWithCuBlas<Context, T>(dev_ctx,
+                                                   d_ddout.get(),
+                                                   ddx_conj,
+                                                   dout_dims,
+                                                   x_dims,
+                                                   &out_dy_help,
+                                                   true,
+                                                   true);
       } else {
         // dX = ddY d_ddout', dY = ddX d_ddout
         if (out_d_x && ddy && d_ddout)
-          MatMulFunction<Context, T>(dev_ctx,
-                                     ddy_conj,
-                                     d_ddout.get(),
-                                     y_dims,
-                                     dout_dims,
-                                     &out_dx_help,
-                                     false,
-                                     true);
+          MatMulFunctionImplWithCuBlas<Context, T>(dev_ctx,
+                                                   ddy_conj,
+                                                   d_ddout.get(),
+                                                   y_dims,
+                                                   dout_dims,
+                                                   &out_dx_help,
+                                                   false,
+                                                   true);
         if (out_d_y && ddx && d_ddout)
-          MatMulFunction<Context, T>(dev_ctx,
-                                     ddx_conj,
-                                     d_ddout.get(),
-                                     x_dims,
-                                     dout_dims,
-                                     &out_dy_help,
-                                     false,
-                                     false);
+          MatMulFunctionImplWithCuBlas<Context, T>(dev_ctx,
+                                                   ddx_conj,
+                                                   d_ddout.get(),
+                                                   x_dims,
+                                                   dout_dims,
+                                                   &out_dy_help,
+                                                   false,
+                                                   false);
       }
 
     } else {
       if (transpose_y) {
         // dX = d_ddout ddY, dY = d_ddout’ ddX
         if (out_d_x && ddy && d_ddout)
-          MatMulFunction<Context, T>(dev_ctx,
-                                     d_ddout.get(),
-                                     ddy_conj,
-                                     dout_dims,
-                                     y_dims,
-                                     &out_dx_help,
-                                     false,
-                                     false);
+          MatMulFunctionImplWithCuBlas<Context, T>(dev_ctx,
+                                                   d_ddout.get(),
+                                                   ddy_conj,
+                                                   dout_dims,
+                                                   y_dims,
+                                                   &out_dx_help,
+                                                   false,
+                                                   false);
         if (out_d_y && ddx && d_ddout)
-          MatMulFunction<Context, T>(dev_ctx,
-                                     d_ddout.get(),
-                                     ddx_conj,
-                                     dout_dims,
-                                     x_dims,
-                                     &out_dy_help,
-                                     true,
-                                     false);
+          MatMulFunctionImplWithCuBlas<Context, T>(dev_ctx,
+                                                   d_ddout.get(),
+                                                   ddx_conj,
+                                                   dout_dims,
+                                                   x_dims,
+                                                   &out_dy_help,
+                                                   true,
+                                                   false);
       } else {
         // dX = d_ddout ddY', dY = ddX' d_ddout
         if (out_d_x && ddy && d_ddout)
-          MatMulFunction<Context, T>(dev_ctx,
-                                     d_ddout.get(),
-                                     ddy_conj,
-                                     dout_dims,
-                                     y_dims,
-                                     &out_dx_help,
-                                     false,
-                                     true);
+          MatMulFunctionImplWithCuBlas<Context, T>(dev_ctx,
+                                                   d_ddout.get(),
+                                                   ddy_conj,
+                                                   dout_dims,
+                                                   y_dims,
+                                                   &out_dx_help,
+                                                   false,
+                                                   true);
         if (out_d_y && ddx && d_ddout)
-          MatMulFunction<Context, T>(dev_ctx,
-                                     ddx_conj,
-                                     d_ddout.get(),
-                                     x_dims,
-                                     dout_dims,
-                                     &out_dy_help,
-                                     true,
-                                     false);
+          MatMulFunctionImplWithCuBlas<Context, T>(dev_ctx,
+                                                   ddx_conj,
+                                                   d_ddout.get(),
+                                                   x_dims,
+                                                   dout_dims,
+                                                   &out_dy_help,
+                                                   true,
+                                                   false);
       }
     }
 
@@ -1608,25 +1608,25 @@ void MatmulTripleGradKernel(const Context& dev_ctx,
     // compute d_dout
     if (out_d_dout) {
       if (d_dx && ddy) {
-        MatMulFunction<Context, T>(dev_ctx,
-                                   d_dx.get(),
-                                   ddy_conj,
-                                   x_dims,
-                                   y_dims,
-                                   out_d_dout,
-                                   transpose_x,
-                                   transpose_y);
+        MatMulFunctionImplWithCuBlas<Context, T>(dev_ctx,
+                                                 d_dx.get(),
+                                                 ddy_conj,
+                                                 x_dims,
+                                                 y_dims,
+                                                 out_d_dout,
+                                                 transpose_x,
+                                                 transpose_y);
       }
       if (d_dy && ddx) {
-        MatMulFunction<Context, T>(dev_ctx,
-                                   ddx_conj,
-                                   d_dy.get(),
-                                   x_dims,
-                                   y_dims,
-                                   out_d_dout,
-                                   transpose_x,
-                                   transpose_y,
-                                   true);
+        MatMulFunctionImplWithCuBlas<Context, T>(dev_ctx,
+                                                 ddx_conj,
+                                                 d_dy.get(),
+                                                 x_dims,
+                                                 y_dims,
+                                                 out_d_dout,
+                                                 transpose_x,
+                                                 transpose_y,
+                                                 true);
       }
     }
 
@@ -1635,104 +1635,104 @@ void MatmulTripleGradKernel(const Context& dev_ctx,
       if (transpose_x && transpose_y) {
         // out_d_ddx1 = y' * d_ddout'
         if (d_ddout) {
-          MatMulFunction<Context, T>(dev_ctx,
-                                     y_conj,
-                                     d_ddout.get(),
-                                     y_dims,
-                                     dout_dims,
-                                     &out_d_ddx_help,
-                                     true,
-                                     true);
+          MatMulFunctionImplWithCuBlas<Context, T>(dev_ctx,
+                                                   y_conj,
+                                                   d_ddout.get(),
+                                                   y_dims,
+                                                   dout_dims,
+                                                   &out_d_ddx_help,
+                                                   true,
+                                                   true);
         }
 
         // out_d_ddx2 = D_DY' * DOut'
         if (d_dy) {
-          MatMulFunction<Context, T>(dev_ctx,
-                                     d_dy.get(),
-                                     dout_conj,
-                                     y_dims,
-                                     dout_dims,
-                                     &out_d_ddx_help,
-                                     true,
-                                     true,
-                                     true);
+          MatMulFunctionImplWithCuBlas<Context, T>(dev_ctx,
+                                                   d_dy.get(),
+                                                   dout_conj,
+                                                   y_dims,
+                                                   dout_dims,
+                                                   &out_d_ddx_help,
+                                                   true,
+                                                   true,
+                                                   true);
         }
 
       } else if (transpose_x) {
         // out_d_ddx1 = y * d_ddout'
         if (d_ddout) {
-          MatMulFunction<Context, T>(dev_ctx,
-                                     y_conj,
-                                     d_ddout.get(),
-                                     y_dims,
-                                     dout_dims,
-                                     &out_d_ddx_help,
-                                     false,
-                                     true);
+          MatMulFunctionImplWithCuBlas<Context, T>(dev_ctx,
+                                                   y_conj,
+                                                   d_ddout.get(),
+                                                   y_dims,
+                                                   dout_dims,
+                                                   &out_d_ddx_help,
+                                                   false,
+                                                   true);
         }
 
         // out_d_ddx2 = D_DY * Dout'
         if (d_dy) {
-          MatMulFunction<Context, T>(dev_ctx,
-                                     d_dy.get(),
-                                     dout_conj,
-                                     y_dims,
-                                     dout_dims,
-                                     &out_d_ddx_help,
-                                     false,
-                                     true,
-                                     true);
+          MatMulFunctionImplWithCuBlas<Context, T>(dev_ctx,
+                                                   d_dy.get(),
+                                                   dout_conj,
+                                                   y_dims,
+                                                   dout_dims,
+                                                   &out_d_ddx_help,
+                                                   false,
+                                                   true,
+                                                   true);
         }
 
       } else if (transpose_y) {
         // out_d_ddx1 = d_ddout * y
         if (d_ddout) {
-          MatMulFunction<Context, T>(dev_ctx,
-                                     d_ddout.get(),
-                                     y_conj,
-                                     dout_dims,
-                                     y_dims,
-                                     &out_d_ddx_help,
-                                     false,
-                                     false);
+          MatMulFunctionImplWithCuBlas<Context, T>(dev_ctx,
+                                                   d_ddout.get(),
+                                                   y_conj,
+                                                   dout_dims,
+                                                   y_dims,
+                                                   &out_d_ddx_help,
+                                                   false,
+                                                   false);
         }
 
         // out_d_ddx2 = Dout * D_DY
         if (d_dy) {
-          MatMulFunction<Context, T>(dev_ctx,
-                                     dout_conj,
-                                     d_dy.get(),
-                                     dout_dims,
-                                     y_dims,
-                                     &out_d_ddx_help,
-                                     false,
-                                     false,
-                                     true);
+          MatMulFunctionImplWithCuBlas<Context, T>(dev_ctx,
+                                                   dout_conj,
+                                                   d_dy.get(),
+                                                   dout_dims,
+                                                   y_dims,
+                                                   &out_d_ddx_help,
+                                                   false,
+                                                   false,
+                                                   true);
         }
       } else {
         // out_d_ddx1 = d_ddout * y'
         if (d_ddout) {
-          MatMulFunction<Context, T>(dev_ctx,
-                                     d_ddout.get(),
-                                     y_conj,
-                                     dout_dims,
-                                     y_dims,
-                                     &out_d_ddx_help,
-                                     false,
-                                     true);
+          MatMulFunctionImplWithCuBlas<Context, T>(dev_ctx,
+                                                   d_ddout.get(),
+                                                   y_conj,
+                                                   dout_dims,
+                                                   y_dims,
+                                                   &out_d_ddx_help,
+                                                   false,
+                                                   true);
         }
 
         // out_d_ddx2 = Dout * D_DY'
         if (d_dy) {
-          MatMulFunction<Context, T>(dev_ctx,
-                                     dout_conj,
-                                     d_dy.get(),
-                                     dout_dims,
-                                     y_dims,
-                                     &out_d_ddx_help,
-                                     false,
-                                     true,
-                                     true);
+          MatMulFunctionImplWithCuBlas<Context, T>(dev_ctx,
+                                                   dout_conj,
+                                                   d_dy.get(),
+                                                   dout_dims,
+                                                   y_dims,
+                                                   &out_d_ddx_help,
+                                                   false,
+                                                   true,
+                                                   true);
         }
       }
 
@@ -1750,105 +1750,105 @@ void MatmulTripleGradKernel(const Context& dev_ctx,
       if (transpose_x && transpose_y) {
         // out_d_ddy1 = d_ddout' * x'
         if (d_ddout) {
-          MatMulFunction<Context, T>(dev_ctx,
-                                     d_ddout.get(),
-                                     x_conj,
-                                     dout_dims,
-                                     x_dims,
-                                     &out_d_ddy_help,
-                                     true,
-                                     true);
+          MatMulFunctionImplWithCuBlas<Context, T>(dev_ctx,
+                                                   d_ddout.get(),
+                                                   x_conj,
+                                                   dout_dims,
+                                                   x_dims,
+                                                   &out_d_ddy_help,
+                                                   true,
+                                                   true);
         }
 
         // out_d_ddy2 = dout' * d_dx'
         if (d_dx) {
-          MatMulFunction<Context, T>(dev_ctx,
-                                     dout_conj,
-                                     d_dx.get(),
-                                     dout_dims,
-                                     x_dims,
-                                     &out_d_ddy_help,
-                                     true,
-                                     true,
-                                     true);
+          MatMulFunctionImplWithCuBlas<Context, T>(dev_ctx,
+                                                   dout_conj,
+                                                   d_dx.get(),
+                                                   dout_dims,
+                                                   x_dims,
+                                                   &out_d_ddy_help,
+                                                   true,
+                                                   true,
+                                                   true);
         }
 
       } else if (transpose_x) {
         // out_d_ddy1 = x * d_ddout
         if (d_ddout) {
-          MatMulFunction<Context, T>(dev_ctx,
-                                     x_conj,
-                                     d_ddout.get(),
-                                     x_dims,
-                                     dout_dims,
-                                     &out_d_ddy_help,
-                                     false,
-                                     false);
+          MatMulFunctionImplWithCuBlas<Context, T>(dev_ctx,
+                                                   x_conj,
+                                                   d_ddout.get(),
+                                                   x_dims,
+                                                   dout_dims,
+                                                   &out_d_ddy_help,
+                                                   false,
+                                                   false);
         }
 
         // out_d_ddy2 = d_dx * dout
         if (d_dx) {
-          MatMulFunction<Context, T>(dev_ctx,
-                                     d_dx.get(),
-                                     dout_conj,
-                                     x_dims,
-                                     dout_dims,
-                                     &out_d_ddy_help,
-                                     false,
-                                     false,
-                                     true);
+          MatMulFunctionImplWithCuBlas<Context, T>(dev_ctx,
+                                                   d_dx.get(),
+                                                   dout_conj,
+                                                   x_dims,
+                                                   dout_dims,
+                                                   &out_d_ddy_help,
+                                                   false,
+                                                   false,
+                                                   true);
         }
 
       } else if (transpose_y) {
         // out_d_ddy1 = d_ddout' * x
         if (d_ddout) {
-          MatMulFunction<Context, T>(dev_ctx,
-                                     d_ddout.get(),
-                                     x_conj,
-                                     dout_dims,
-                                     x_dims,
-                                     &out_d_ddy_help,
-                                     true,
-                                     false);
+          MatMulFunctionImplWithCuBlas<Context, T>(dev_ctx,
+                                                   d_ddout.get(),
+                                                   x_conj,
+                                                   dout_dims,
+                                                   x_dims,
+                                                   &out_d_ddy_help,
+                                                   true,
+                                                   false);
         }
 
         // out_d_ddy2 = dout' * d_dx
         if (d_dx) {
-          MatMulFunction<Context, T>(dev_ctx,
-                                     dout_conj,
-                                     d_dx.get(),
-                                     dout_dims,
-                                     x_dims,
-                                     &out_d_ddy_help,
-                                     true,
-                                     false,
-                                     true);
+          MatMulFunctionImplWithCuBlas<Context, T>(dev_ctx,
+                                                   dout_conj,
+                                                   d_dx.get(),
+                                                   dout_dims,
+                                                   x_dims,
+                                                   &out_d_ddy_help,
+                                                   true,
+                                                   false,
+                                                   true);
         }
 
       } else {
         // out_d_ddy1 = x' * d_ddout
         if (d_ddout) {
-          MatMulFunction<Context, T>(dev_ctx,
-                                     x_conj,
-                                     d_ddout.get(),
-                                     x_dims,
-                                     dout_dims,
-                                     &out_d_ddy_help,
-                                     true,
-                                     false);
+          MatMulFunctionImplWithCuBlas<Context, T>(dev_ctx,
+                                                   x_conj,
+                                                   d_ddout.get(),
+                                                   x_dims,
+                                                   dout_dims,
+                                                   &out_d_ddy_help,
+                                                   true,
+                                                   false);
         }
 
         // out_d_ddy2 = d_dx' * dout
         if (d_dx) {
-          MatMulFunction<Context, T>(dev_ctx,
-                                     d_dx.get(),
-                                     dout_conj,
-                                     x_dims,
-                                     dout_dims,
-                                     &out_d_ddy_help,
-                                     true,
-                                     false,
-                                     true);
+          MatMulFunctionImplWithCuBlas<Context, T>(dev_ctx,
+                                                   d_dx.get(),
+                                                   dout_conj,
+                                                   x_dims,
+                                                   dout_dims,
+                                                   &out_d_ddy_help,
+                                                   true,
+                                                   false,
+                                                   true);
         }
       }
 
