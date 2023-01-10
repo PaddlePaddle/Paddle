@@ -28,7 +28,6 @@ class Graph;
 void InplaceOpVarPass::ApplyImpl(ir::Graph* graph) const {
   FusePassBase::Init("inplace_op_var", graph);
   int found_subgraph_count = 0;
-  MapToReshape(graph);
 
   auto nodes = graph->Nodes();
   auto is_valid_reshape = [](Node* node) {
@@ -96,26 +95,6 @@ void InplaceOpVarPass::ApplyImpl(ir::Graph* graph) const {
     op_node->Flush();
   }
   AddStatis(found_subgraph_count);
-}
-
-void InplaceOpVarPass::MapToReshape(ir::Graph* graph) const {
-  // flatten_contiguous_range op map to reshape.
-  for (auto* node : graph->Nodes()) {
-    if (node->IsOp() && node->Op()->Type() == "flatten_contiguous_range") {
-      auto* op_node = node->Op();
-      auto start_axis = PADDLE_GET_CONST(int, op_node->GetAttr("start_axis"));
-      auto stop_axis = PADDLE_GET_CONST(int, op_node->GetAttr("stop_axis"));
-      auto input_name = op_node->Input("X")[0];
-      auto* block = op_node->Block();
-      auto input_shape = block->FindVar(input_name)->GetShape();
-      if (start_axis == 1 && stop_axis == 3 && input_shape.size() == 4 &&
-          input_shape[2] == 1 && input_shape[3] == 1) {
-        op_node->SetType("reshape2");
-        op_node->SetAttr("shape", std::vector<int>{0, -1});
-        op_node->Flush();
-      }
-    }
-  }
 }
 
 }  // namespace ir
