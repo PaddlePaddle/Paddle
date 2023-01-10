@@ -23,6 +23,10 @@ from predictor_utils import PredictorTools
 
 import paddle
 import paddle.fluid as fluid
+
+from paddle.fluid import core
+from paddle.jit import ProgramTranslator
+
 from paddle.jit.translated_layer import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 from paddle.nn import BatchNorm
 
@@ -415,6 +419,21 @@ class TestResnet(unittest.TestCase):
     def test_resnet(self):
         static_loss = self.train(to_static=True)
         dygraph_loss = self.train(to_static=False)
+        np.testing.assert_allclose(
+            static_loss,
+            dygraph_loss,
+            rtol=1e-05,
+            err_msg='static_loss: {} \n dygraph_loss: {}'.format(
+                static_loss, dygraph_loss
+            ),
+        )
+        self.verify_predict()
+
+    def test_resnet_composite(self):
+        static_loss = self.train(to_static=True)
+        core.set_prim_enabled(True)
+        dygraph_loss = self.train(to_static=False)
+        core.set_prim_enabled(False)
         np.testing.assert_allclose(
             static_loss,
             dygraph_loss,
