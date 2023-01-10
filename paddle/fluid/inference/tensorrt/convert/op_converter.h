@@ -366,10 +366,11 @@ class OpConverter {
 
     for (auto& output : outputs) {
       auto* var = block_desc->FindVar(output);
-      PADDLE_ENFORCE_NOT_NULL(
-          var,
-          platform::errors::NotFound("no variable called %s in this block.",
-                                     output.c_str()));
+      if (var != nullptr) {
+        LOG(INFO) << "variable not in this block, name: " << output.c_str();
+        continue;
+      }
+
       PADDLE_ENFORCE_EQ(
           var->GetType(),
           FluidDT::VarType_Type_LOD_TENSOR,
