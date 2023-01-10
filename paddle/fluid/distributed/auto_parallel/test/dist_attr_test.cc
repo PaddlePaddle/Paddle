@@ -67,15 +67,17 @@ TEST(DistAttr, ctor) {
   x_dist_attr.set_dims_mapping(std::vector<int64_t>({0, -1}));
   x_dist_attr.set_batch_dim(0);
   x_dist_attr.set_dynamic_dims(std::vector<bool>({true, false}));
-  x_dist_attr.annotate("process_mesh");
-  x_dist_attr.annotate("dims_mapping");
+  x_dist_attr.mark_annotated("process_mesh");
+  x_dist_attr.mark_annotated("dims_mapping");
   EXPECT_EQ(x_dist_attr.process_mesh(), process_mesh);
   EXPECT_EQ(x_dist_attr.dims_mapping(), std::vector<int64_t>({0, -1}));
   EXPECT_EQ(x_dist_attr.batch_dim(), 0);
   EXPECT_EQ(x_dist_attr.dynamic_dims(), std::vector<bool>({true, false}));
   EXPECT_EQ(x_dist_attr.is_annotated("process_mesh"), true);
   EXPECT_EQ(x_dist_attr.is_annotated("dims_mapping"), true);
-  EXPECT_EQ(x_dist_attr.verify(), true);
+  EXPECT_EQ(x_dist_attr.verify(x), true);
+  x_dist_attr.clear_annotated();
+  EXPECT_EQ(x_dist_attr.annotated().empty(), true);
 
   std::stringstream x_sstream;
   x_sstream << x_dist_attr;
@@ -89,15 +91,15 @@ TEST(DistAttr, ctor) {
   y_dist_attr.set_dims_mapping(std::vector<int64_t>({-1, 0}));
   y_dist_attr.set_batch_dim(-1);
   y_dist_attr.set_dynamic_dims(std::vector<bool>({false, true}));
-  x_dist_attr.annotate("batch_dim");
-  x_dist_attr.annotate("dynamic_dims");
+  x_dist_attr.mark_annotated("batch_dim");
+  x_dist_attr.mark_annotated("dynamic_dims");
   EXPECT_EQ(y_dist_attr.process_mesh(), process_mesh);
   EXPECT_EQ(y_dist_attr.dims_mapping(), std::vector<int64_t>({-1, 0}));
   EXPECT_EQ(y_dist_attr.batch_dim(), 1);
   EXPECT_EQ(y_dist_attr.dynamic_dims(), std::vector<bool>({false, true}));
   EXPECT_EQ(x_dist_attr.is_annotated("batch_dim"), true);
   EXPECT_EQ(x_dist_attr.is_annotated("dynamic_dims"), true);
-  EXPECT_EQ(x_dist_attr.verify(), true);
+  EXPECT_EQ(x_dist_attr.verify(y), true);
 
   out_dist_attr.set_process_mesh(process_mesh);
   out_dist_attr.set_dims_mapping(std::vector<int64_t>({0, 1}));
@@ -107,18 +109,25 @@ TEST(DistAttr, ctor) {
   EXPECT_EQ(out_dist_attr.dims_mapping(), std::vector<int64_t>({0, 1}));
   EXPECT_EQ(out_dist_attr.batch_dim(), 1);
   EXPECT_EQ(out_dist_attr.dynamic_dims(), std::vector<bool>({false, false}));
-  EXPECT_EQ(out_dist_attr.verify(), true);
+  EXPECT_EQ(out_dist_attr.verify(out), true);
 
   OperatorDistAttr mul_dist_attr(*op);
+  EXPECT_EQ(mul_dist_attr.impl_type(), kDefault);
+  EXPECT_EQ(mul_dist_attr.impl_idx(), -1);
+  EXPECT_EQ(mul_dist_attr.is_recompute(), false);
+  EXPECT_EQ(mul_dist_attr.is_annotated("process_mesh"), false);
+  EXPECT_EQ(mul_dist_attr.is_annotated("impl_type"), false);
+  EXPECT_EQ(mul_dist_attr.is_annotated("impl_idx"), false);
   mul_dist_attr.set_input_dist_attr(x->Name(), x_dist_attr);
   mul_dist_attr.set_input_dist_attr(y->Name(), y_dist_attr);
   mul_dist_attr.set_output_dist_attr(out->Name(), out_dist_attr);
   mul_dist_attr.set_process_mesh(process_mesh2);
   mul_dist_attr.set_impl_type("dist_mul");
   mul_dist_attr.set_impl_idx(0);
-  mul_dist_attr.annotate("process_mesh");
-  mul_dist_attr.annotate("impl_type");
-  mul_dist_attr.annotate("impl_idx");
+  mul_dist_attr.set_is_recompute(true);
+  mul_dist_attr.mark_annotated("process_mesh");
+  mul_dist_attr.mark_annotated("impl_type");
+  mul_dist_attr.mark_annotated("impl_idx");
   EXPECT_NE(mul_dist_attr.input_dist_attr(x->Name()), x_dist_attr);
   EXPECT_NE(mul_dist_attr.input_dist_attr(y->Name()), y_dist_attr);
   EXPECT_NE(mul_dist_attr.output_dist_attr(out->Name()), out_dist_attr);
@@ -129,10 +138,13 @@ TEST(DistAttr, ctor) {
             process_mesh2);
   EXPECT_EQ(mul_dist_attr.impl_type(), "dist_mul");
   EXPECT_EQ(mul_dist_attr.impl_idx(), 0);
+  EXPECT_EQ(mul_dist_attr.is_recompute(), true);
   EXPECT_EQ(mul_dist_attr.is_annotated("process_mesh"), true);
   EXPECT_EQ(mul_dist_attr.is_annotated("impl_type"), true);
   EXPECT_EQ(mul_dist_attr.is_annotated("impl_idx"), true);
-  EXPECT_EQ(mul_dist_attr.verify(), true);
+  EXPECT_EQ(mul_dist_attr.verify(op), true);
+  mul_dist_attr.clear_annotated();
+  EXPECT_EQ(mul_dist_attr.annotated().empty(), true);
 
   std::stringstream mul_sstream;
   mul_sstream << mul_dist_attr;

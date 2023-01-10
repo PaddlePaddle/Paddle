@@ -19,8 +19,9 @@ from paddle.distributed.auto_parallel.cost.comm_op_cost import (
     IdentityOpCost,
 )
 from paddle.distributed.fleet.meta_optimizers.common import OP_ROLE_KEY, OpRole
-from paddle.fluid import core, unique_name
 from paddle.fluid.data_feeder import check_dtype, check_variable_and_dtype
+from paddle.framework import core
+from paddle.utils import unique_name
 
 from ..cost import (
     MatmulGradOpCost,
@@ -35,7 +36,7 @@ from ..cost import (
     build_comp_desc_from_dist_op,
     build_dp_costs,
 )
-from ..dist_attribute import OperatorDistributedAttribute
+from ..dist_attribute import OperatorDistAttr
 from ..process_group import new_process_group
 from ..utils import (
     _get_comm_group,
@@ -74,15 +75,28 @@ def trans_x_y_dims_mapping(trans_x, trans_y, x_dims_mapping, y_dims_mapping):
 
 
 def copy_op_with_new_input_output(ctx, block, src_op, **kwargs):
-    dist_op_desc = block.append_op(type='nop').desc
+    pass
+
+    src_dist_attr = ctx.get_op_dist_attr_for_program(src_op)
+    dist_attr = copy.deepcopy(src_dist_attr)
+    dist_op = block.append_op(type='nop')
+    dist_op_desc = dist_op.desc
     dist_op_desc.copy_from(src_op.desc)
     set_dist_op_desc_original_id(dist_op_desc, src_op.desc, ctx)
     for input_name in src_op.desc.input_names():
         assert input_name in kwargs
         dist_op_desc.set_input(input_name, kwargs[input_name])
+        dist_attr.rename_input(
+            src_op.desc.input(input_name)[0], kwargs[input_name][0]
+        )
     for output_name in src_op.desc.output_names():
-        assert input_name in kwargs
+        assert output_name in kwargs
         dist_op_desc.set_output(output_name, kwargs[output_name])
+        dist_attr.rename_output(
+            src_op.desc.output(output_name)[0], kwargs[output_name][0]
+        )
+    # TODO: this call leads to a deepcopy when we init the dist op
+    ctx.set_op_dist_attr_for_program(dist_op, dist_attr)
 
     return dist_op_desc
 
@@ -206,6 +220,11 @@ def _update_dims_mapping_for_matmul(dist_op):
     assert len(x_dims_mapping) == x_dims_mapping_len
     assert len(y_dims_mapping) == y_dims_mapping_len
     assert len(out_dims_mapping) == out_dims_mapping_len
+
+    if changed:
+        op_dist_attr.set_input_dims_mapping(x_name, x_dims_mapping)
+        op_dist_attr.set_input_dims_mapping(y_name, y_dims_mapping)
+        op_dist_attr.set_output_dims_mapping(out_name, out_dims_mapping)
 
     return changed
 
@@ -880,7 +899,7 @@ class DistributedMatmulImpl0(DistributedOperatorImpl):
 
         # set dist op's dist_attr with serial op's dist_attr
         # c_identity
-        identity_op_dist_attr = OperatorDistributedAttribute()
+        identity_op_dist_attr = OperatorDistAttr()
         identity_op_dist_attr.process_mesh = op_dist_attr.process_mesh
         identity_op_dist_attr.impl_type = op_dist_attr.impl_type
         identity_op_dist_attr.impl_idx = op_dist_attr.impl_idx
@@ -902,7 +921,7 @@ class DistributedMatmulImpl0(DistributedOperatorImpl):
         ctx.set_op_dist_attr_for_program(c_identity_op, identity_op_dist_attr)
 
         # matmul
-        matmul_op_dist_attr = OperatorDistributedAttribute()
+        matmul_op_dist_attr = OperatorDistAttr()
         matmul_op_dist_attr.process_mesh = op_dist_attr.process_mesh
         matmul_op_dist_attr.impl_type = op_dist_attr.impl_type
         matmul_op_dist_attr.impl_idx = op_dist_attr.impl_idx
@@ -1253,7 +1272,7 @@ class DistributedMatmulImpl1(DistributedOperatorImpl):
 
         # set dist op's dist_attr with serial op's dist_attr
         # matmul
-        matmul_op_dist_attr = OperatorDistributedAttribute()
+        matmul_op_dist_attr = OperatorDistAttr()
         matmul_op_dist_attr.process_mesh = op_dist_attr.process_mesh
         matmul_op_dist_attr.impl_type = op_dist_attr.impl_type
         matmul_op_dist_attr.impl_idx = op_dist_attr.impl_idx
@@ -1276,7 +1295,7 @@ class DistributedMatmulImpl1(DistributedOperatorImpl):
         ctx.set_op_dist_attr_for_program(matmul_op, matmul_op_dist_attr)
 
         # allreduce
-        allreduce_op_dist_attr = OperatorDistributedAttribute()
+        allreduce_op_dist_attr = OperatorDistAttr()
         allreduce_op_dist_attr.process_mesh = op_dist_attr.process_mesh
         allreduce_op_dist_attr.impl_type = op_dist_attr.impl_type
         allreduce_op_dist_attr.impl_idx = op_dist_attr.impl_idx
@@ -1783,7 +1802,7 @@ class DistributedMatmulV2Impl0(DistributedOperatorImpl):
 
         # set dist op's dist_attr with serial op's dist_attr
         # c_identity
-        identity_op_dist_attr = OperatorDistributedAttribute()
+        identity_op_dist_attr = OperatorDistAttr()
         identity_op_dist_attr.process_mesh = op_dist_attr.process_mesh
         identity_op_dist_attr.impl_type = op_dist_attr.impl_type
         identity_op_dist_attr.impl_idx = op_dist_attr.impl_idx
@@ -1804,7 +1823,7 @@ class DistributedMatmulV2Impl0(DistributedOperatorImpl):
         ctx.set_op_dist_attr_for_program(c_identity_op, identity_op_dist_attr)
 
         # matmulv2
-        matmulv2_op_dist_attr = OperatorDistributedAttribute()
+        matmulv2_op_dist_attr = OperatorDistAttr()
         matmulv2_op_dist_attr.process_mesh = op_dist_attr.process_mesh
         matmulv2_op_dist_attr.impl_type = op_dist_attr.impl_type
         matmulv2_op_dist_attr.impl_idx = op_dist_attr.impl_idx
@@ -2152,7 +2171,7 @@ class DistributedMatmulV2Impl1(DistributedOperatorImpl):
 
         # set dist op's dist_attr with serial op's dist_attr
         # matmulv2
-        matmulv2_op_dist_attr = OperatorDistributedAttribute()
+        matmulv2_op_dist_attr = OperatorDistAttr()
         matmulv2_op_dist_attr.process_mesh = op_dist_attr.process_mesh
         matmulv2_op_dist_attr.impl_type = op_dist_attr.impl_type
         matmulv2_op_dist_attr.impl_idx = op_dist_attr.impl_idx
@@ -2175,7 +2194,7 @@ class DistributedMatmulV2Impl1(DistributedOperatorImpl):
         ctx.set_op_dist_attr_for_program(matmul_v2_op, matmulv2_op_dist_attr)
 
         # allreduce
-        allreduce_op_dist_attr = OperatorDistributedAttribute()
+        allreduce_op_dist_attr = OperatorDistAttr()
         allreduce_op_dist_attr.process_mesh = op_dist_attr.process_mesh
         allreduce_op_dist_attr.impl_type = op_dist_attr.impl_type
         allreduce_op_dist_attr.impl_idx = op_dist_attr.impl_idx
@@ -2688,7 +2707,7 @@ class DistributedMulImpl0(DistributedOperatorImpl):
 
         # set dist op's dist_attr with serial op's dist_attr
         # c_identity
-        identity_op_dist_attr = OperatorDistributedAttribute()
+        identity_op_dist_attr = OperatorDistAttr()
         identity_op_dist_attr.process_mesh = op_dist_attr.process_mesh
         identity_op_dist_attr.impl_type = op_dist_attr.impl_type
         identity_op_dist_attr.impl_idx = op_dist_attr.impl_idx
@@ -2709,7 +2728,7 @@ class DistributedMulImpl0(DistributedOperatorImpl):
         ctx.set_op_dist_attr_for_program(c_identity_op, identity_op_dist_attr)
 
         # matmulv2
-        matmulv2_op_dist_attr = OperatorDistributedAttribute()
+        matmulv2_op_dist_attr = OperatorDistAttr()
         matmulv2_op_dist_attr.process_mesh = op_dist_attr.process_mesh
         matmulv2_op_dist_attr.impl_type = op_dist_attr.impl_type
         matmulv2_op_dist_attr.impl_idx = op_dist_attr.impl_idx
@@ -2854,7 +2873,6 @@ class DistributedMulImpl1(DistributedOperatorImpl):
             parallel_axis=parallel_axis,
         )
 
-        # print("dist_matmul.py dist_op: ", dist_op)
         comm_op_cost_list = build_comm_costs_from_descs(
             AllreduceSumOpCost,
             ctx,
@@ -3067,7 +3085,7 @@ class DistributedMulImpl1(DistributedOperatorImpl):
 
         # set dist op's dist_attr with serial op's dist_attr
         # matmulv2
-        matmulv2_op_dist_attr = OperatorDistributedAttribute()
+        matmulv2_op_dist_attr = OperatorDistAttr()
         matmulv2_op_dist_attr.process_mesh = op_dist_attr.process_mesh
         matmulv2_op_dist_attr.impl_type = op_dist_attr.impl_type
         matmulv2_op_dist_attr.impl_idx = op_dist_attr.impl_idx
@@ -3090,7 +3108,7 @@ class DistributedMulImpl1(DistributedOperatorImpl):
         ctx.set_op_dist_attr_for_program(mul_op, matmulv2_op_dist_attr)
 
         # allreduce
-        allreduce_op_dist_attr = OperatorDistributedAttribute()
+        allreduce_op_dist_attr = OperatorDistAttr()
         allreduce_op_dist_attr.process_mesh = op_dist_attr.process_mesh
         allreduce_op_dist_attr.impl_type = op_dist_attr.impl_type
         allreduce_op_dist_attr.impl_idx = op_dist_attr.impl_idx

@@ -17,8 +17,9 @@ from paddle.distributed.auto_parallel.cost.comm_op_cost import (
     IdentityOpCost,
 )
 from paddle.distributed.fleet.meta_optimizers.common import OP_ROLE_KEY, OpRole
-from paddle.fluid import core, unique_name
 from paddle.fluid.data_feeder import check_dtype, check_variable_and_dtype
+from paddle.framework import core
+from paddle.utils import unique_name
 
 from ..cost import (
     EmbeddingGradOpCost,
@@ -29,7 +30,7 @@ from ..cost import (
     build_comp_desc_from_dist_op,
     build_dp_costs,
 )
-from ..dist_attribute import OperatorDistributedAttribute
+from ..dist_attribute import OperatorDistAttr
 from ..process_group import new_process_group
 from ..utils import (
     _get_comm_group,
@@ -135,7 +136,7 @@ def adopt_lookup_table_v1(ctx, main_block, src_op, Ids_var):
         intermediate_var_0.name, intermediate_var_0_dist_attr
     )
 
-    new_op_dist_attr = OperatorDistributedAttribute()
+    new_op_dist_attr = OperatorDistAttr()
     new_op_dist_attr.process_mesh = Ids_var_dist_attr.process_mesh
     new_op_dist_attr.impl_type = "default"
     new_op_dist_attr.impl_idx = 0
@@ -334,6 +335,11 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
         if dim_changed:
             changed = True
 
+        if changed:
+            op_dist_attr.set_input_dims_mapping(ids_name, ids_dims_mapping)
+            op_dist_attr.set_input_dims_mapping(w_name, w_dims_mapping)
+            op_dist_attr.set_output_dims_mapping(out_name, out_dims_mapping)
+
         return changed
 
     @staticmethod
@@ -482,7 +488,7 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
 
         # set dist op's dist_attr with serial op's dist_attr
         # matmulv2
-        embedding_op_dist_attr = OperatorDistributedAttribute()
+        embedding_op_dist_attr = OperatorDistAttr()
         embedding_op_dist_attr.process_mesh = op_dist_attr.process_mesh
         embedding_op_dist_attr.impl_type = op_dist_attr.impl_type
         embedding_op_dist_attr.impl_idx = op_dist_attr.impl_idx
@@ -505,7 +511,7 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
         ctx.set_op_dist_attr_for_program(c_embedding_op, embedding_op_dist_attr)
 
         # allreduce
-        allreduce_op_dist_attr = OperatorDistributedAttribute()
+        allreduce_op_dist_attr = OperatorDistAttr()
         allreduce_op_dist_attr.process_mesh = op_dist_attr.process_mesh
         allreduce_op_dist_attr.impl_type = op_dist_attr.impl_type
         allreduce_op_dist_attr.impl_idx = op_dist_attr.impl_idx
