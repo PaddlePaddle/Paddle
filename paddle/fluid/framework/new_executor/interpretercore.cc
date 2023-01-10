@@ -31,6 +31,7 @@
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
+#include "paddle/fluid/platform/cuda_graph_with_memory_pool.h"
 #include "paddle/phi/backends/device_manager.h"
 
 PADDLE_DEFINE_EXPORTED_bool(
@@ -47,6 +48,12 @@ PADDLE_DEFINE_EXPORTED_bool(new_executor_use_local_scope,
 PADDLE_DEFINE_EXPORTED_bool(control_flow_use_new_executor,
                             true,
                             "Use new executor in control flow op");
+PADDLE_DEFINE_EXPORTED_bool(new_executor_use_cuda_graph,
+                            false,
+                            "Use CUDA Graph in new executor");
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+DECLARE_bool(sync_nccl_allreduce);
+#endif
 
 DECLARE_bool(check_nan_inf);
 DECLARE_bool(benchmark);
@@ -142,6 +149,8 @@ InterpreterCore::InterpreterCore(const platform::Place& place,
     }
     return lhs_prority > rhs_prority;
   };
+
+  PrepareForCUDAGraphCapture();
 }
 
 InterpreterCore::~InterpreterCore() {
@@ -161,6 +170,7 @@ interpreter::CostInfo InterpreterCore::DryRun(
     const std::vector<std::string>& feed_names,
     const std::vector<phi::DenseTensor>& feed_tensors) {
   SetDeviceId(place_);
+  CheckCUDAGraphBeforeRun(feed_names);
 
   Prepare(feed_names, feed_tensors, true);
   interpreter::CostInfo cost_info;
@@ -221,6 +231,7 @@ paddle::framework::FetchList InterpreterCore::Run(
     const std::vector<std::string>& feed_names,
     const std::vector<phi::DenseTensor>& feed_tensors) {
   SetDeviceId(place_);
+  CheckCUDAGraphBeforeRun(feed_names);
 
 #ifdef PADDLE_WITH_MKLDNN
   platform::AttachPointerHashToMKLDNNKey(this, place_);
@@ -240,7 +251,16 @@ paddle::framework::FetchList InterpreterCore::Run(
   // return Fetch Tensors
   auto* fetch_var = local_scope_->FindVar(interpreter::kFetchVarName);
   if (fetch_var) {
-    return std::move(*fetch_var->GetMutable<framework::FetchList>());
+    auto fetch_list = std::move(*fetch_var->GetMutable<framework::FetchList>());
+#ifdef PADDLE_WITH_CUDA
+    if (platform::IsCUDAGraphCapturing()) {
+      PADDLE_ENFORCE_EQ(fetch_list.empty(),
+                        true,
+                        platform::errors::InvalidArgument(
+                            "Cannot fetch data when using CUDA Graph."));
+    }
+#endif
+    return fetch_list;
   } else {
     return {};
   }
@@ -249,6 +269,7 @@ paddle::framework::FetchList InterpreterCore::Run(
 paddle::framework::FetchList InterpreterCore::Run(
     const std::vector<std::string>& feed_names, bool need_fetch) {
   SetDeviceId(place_);
+  CheckCUDAGraphBeforeRun(feed_names);
 
 #ifdef PADDLE_WITH_MKLDNN
   platform::AttachPointerHashToMKLDNNKey(this, place_);
@@ -290,7 +311,16 @@ paddle::framework::FetchList InterpreterCore::Run(
       HasLocalScope() ? local_scope_ : var_scope_.GetMutableScope();
   auto* fetch_var = inner_scope->FindVar(interpreter::kFetchVarName);
   if (fetch_var && need_fetch) {
-    return std::move(*fetch_var->GetMutable<framework::FetchList>());
+    auto fetch_list = std::move(*fetch_var->GetMutable<framework::FetchList>());
+#ifdef PADDLE_WITH_CUDA
+    if (platform::IsCUDAGraphCapturing()) {
+      PADDLE_ENFORCE_EQ(fetch_list.empty(),
+                        true,
+                        platform::errors::InvalidArgument(
+                            "Cannot fetch data when using CUDA Graph."));
+    }
+#endif
+    return fetch_list;
   } else {
     return {};
   }
@@ -502,6 +532,66 @@ void InterpreterCore::BuildInplace() {
       }
     }
   }
+}
+
+void InterpreterCore::PrepareForCUDAGraphCapture() {
+  if (!FLAGS_new_executor_use_cuda_graph) return;
+#ifdef PADDLE_WITH_CUDA
+  PADDLE_ENFORCE_EQ(
+      platform::IsCUDAGraphCapturing(),
+      false,
+      platform::errors::PermissionDenied("CUDA Graph is not allowed to capture "
+                                         "when running the first batch."));
+  PADDLE_ENFORCE_EQ(platform::is_gpu_place(place_),
+                    true,
+                    platform::errors::InvalidArgument(
+                        "CUDA Graph is only supported on NVIDIA GPU device."));
+  PADDLE_ENFORCE_EQ(FLAGS_sync_nccl_allreduce,
+                    false,
+                    platform::errors::InvalidArgument(
+                        "FLAGS_sync_nccl_allreduce must be False to support "
+                        "CUDA Graph capturing."));
+
+  // All output vars of coalesce_tensor op should be persistable.
+  for (auto& op_desc : block_.AllOps()) {
+    if (op_desc->Type() == kCoalesceTensor) {
+      for (auto& out_var_name : op_desc->OutputArgumentNames()) {
+        auto* out_var = op_desc->Block()->FindVarRecursive(out_var_name);
+        if (out_var) {
+          out_var->SetPersistable(true);
+          VLOG(4) << "Mark Var(" out_var_name << ") as Persistable.";
+        }
+      }
+    }
+  }
+#else
+  PADDLE_THROW(platform::errors::Unimplemented(
+      "CUDA Graph is only supported on NVIDIA GPU device."));
+#endif
+}
+
+void InterpreterCore::CheckCUDAGraphBeforeRun(
+    const std::vector<std::string>& feed_names) {
+#ifdef PADDLE_WITH_CUDA
+  if (platform::IsCUDAGraphCapturing()) {
+    PADDLE_ENFORCE_EQ(
+        feed_names.empty(),
+        true,
+        platform::errors::InvalidArgument(
+            "Feeding data is not permitted when capturing CUDA Graph."));
+    PADDLE_ENFORCE_EQ(
+        FLAGS_new_executor_use_cuda_graph,
+        true,
+        platform::errors::InvalidArgument(
+            "You must turn on FLAGS_new_executor_use_cuda_graph to True "
+            "to enable CUDA Graph capturing."));
+    PADDLE_ENFORCE_EQ(
+        place_,
+        platform::CUDAGraphCapturingPlace(),
+        platform::errors::InvalidArgument("The place to capture CUDAGraph is "
+                                          "not the same as the place to run."));
+  }
+#endif
 }
 
 void InterpreterCore::BuildOperatorDependences() {
