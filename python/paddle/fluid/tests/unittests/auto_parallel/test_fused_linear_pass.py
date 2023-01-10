@@ -12,9 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import random
-import re
+import sys
 import unittest
 
 import numpy as np
@@ -24,17 +23,8 @@ import paddle
 from paddle.distributed.fleet import auto
 from paddle.fluid.dygraph.parallel import ParallelEnv
 
-
-def get_cuda_version():
-    result = os.popen("nvcc --version").read()
-    regex = r'release (\S+),'
-    match = re.search(regex, result)
-    if match:
-        num = str(match.group(1))
-        integer, decimal = num.split('.')
-        return int(integer) * 1000 + int(float(decimal) * 10)
-    else:
-        return -1
+sys.path.append("..")
+from test_sparse_addmm_op import get_cuda_version
 
 
 def apply_pass(use_fused_passes=False, fused_passes_list=[]):
