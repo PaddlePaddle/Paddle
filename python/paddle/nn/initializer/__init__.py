@@ -41,6 +41,8 @@ from .uniform import UniformInitializer  # noqa: F401
 from .constant import ConstantInitializer  # noqa: F401
 from .normal import NormalInitializer  # noqa: F401
 from .normal import TruncatedNormalInitializer  # noqa: F401
+from .xavier import XavierInitializer  # noqa: F401
+from .kaiming import MSRAInitializer  # noqa: F401
 
 __all__ = [  # noqa
     'Bilinear',

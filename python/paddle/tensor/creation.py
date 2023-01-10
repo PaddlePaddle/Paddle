@@ -35,7 +35,6 @@ from ..fluid.framework import (
     _in_eager_without_dygraph_check,
     device_guard,
 )
-from ..fluid.initializer import Initializer
 from ..fluid.layers import utils
 from ..fluid.param_attr import ParamAttr
 from ..framework import (
@@ -217,7 +216,7 @@ def create_parameter(
     check_type(
         default_initializer,
         'default_initializer',
-        (type(None), Initializer),
+        (type(None), paddle.nn.initializer.Initializer),
         'create_parameter',
     )
 

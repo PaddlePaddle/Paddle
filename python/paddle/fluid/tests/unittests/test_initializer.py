@@ -284,7 +284,7 @@ class TestXavierInitializer(unittest.TestCase):
                 shape=[5, 10],
                 lod_level=0,
                 name="param",
-                initializer=initializer.XavierInitializer(),
+                initializer=paddle.nn.initializer.XavierInitializer(),
             )
         self.assertEqual(len(block.ops), 1)
         init_op = block.ops[0]
@@ -306,7 +306,7 @@ class TestXavierInitializer(unittest.TestCase):
                 shape=[5, 10, 15, 20],
                 lod_level=0,
                 name="param",
-                initializer=initializer.XavierInitializer(),
+                initializer=paddle.nn.initializer.XavierInitializer(),
             )
         self.assertEqual(len(block.ops), 1)
         init_op = block.ops[0]
@@ -331,7 +331,9 @@ class TestXavierInitializer(unittest.TestCase):
                 shape=[5, 10],
                 lod_level=0,
                 name="param",
-                initializer=initializer.XavierInitializer(uniform=False),
+                initializer=paddle.nn.initializer.XavierInitializer(
+                    uniform=False
+                ),
             )
         self.assertEqual(len(block.ops), 1)
         init_op = block.ops[0]
@@ -353,7 +355,9 @@ class TestXavierInitializer(unittest.TestCase):
                 shape=[5, 10, 15, 20],
                 lod_level=0,
                 name="param",
-                initializer=initializer.XavierInitializer(uniform=False),
+                initializer=paddle.nn.initializer.XavierInitializer(
+                    uniform=False
+                ),
             )
         self.assertEqual(len(block.ops), 1)
         init_op = block.ops[0]
@@ -378,7 +382,7 @@ class TestXavierInitializer(unittest.TestCase):
                 shape=[5, 10],
                 lod_level=0,
                 name="param",
-                initializer=initializer.XavierInitializer(
+                initializer=paddle.nn.initializer.XavierInitializer(
                     uniform=uniform, fan_in=12, fan_out=23, seed=134
                 ),
             )
@@ -427,7 +431,7 @@ class TestMSRAInitializer(unittest.TestCase):
                 shape=[5, 10],
                 lod_level=0,
                 name="param",
-                initializer=initializer.MSRAInitializer(),
+                initializer=paddle.nn.initializer.MSRAInitializer(),
             )
         self.assertEqual(len(block.ops), 1)
         init_op = block.ops[0]
@@ -449,7 +453,7 @@ class TestMSRAInitializer(unittest.TestCase):
                 shape=[5, 10, 15, 20],
                 lod_level=0,
                 name="param",
-                initializer=initializer.MSRAInitializer(),
+                initializer=paddle.nn.initializer.MSRAInitializer(),
             )
         self.assertEqual(len(block.ops), 1)
         init_op = block.ops[0]
@@ -472,7 +476,9 @@ class TestMSRAInitializer(unittest.TestCase):
                 shape=[5, 10],
                 lod_level=0,
                 name="param",
-                initializer=initializer.MSRAInitializer(uniform=False),
+                initializer=paddle.nn.initializer.MSRAInitializer(
+                    uniform=False
+                ),
             )
         self.assertEqual(len(block.ops), 1)
         init_op = block.ops[0]
@@ -494,7 +500,9 @@ class TestMSRAInitializer(unittest.TestCase):
                 shape=[5, 10, 15, 20],
                 lod_level=0,
                 name="param",
-                initializer=initializer.MSRAInitializer(uniform=False),
+                initializer=paddle.nn.initializer.MSRAInitializer(
+                    uniform=False
+                ),
             )
         self.assertEqual(len(block.ops), 1)
         init_op = block.ops[0]
@@ -515,7 +523,9 @@ class TestMSRAInitializer(unittest.TestCase):
                 shape=[5, 10],
                 lod_level=0,
                 name="param",
-                initializer=initializer.MSRAInitializer(fan_in=12, seed=134),
+                initializer=paddle.nn.initializer.MSRAInitializer(
+                    fan_in=12, seed=134
+                ),
             )
         num_ops = 2 if dtype == "float16" else 1
         self.assertEqual(len(block.ops), num_ops)
@@ -756,7 +766,7 @@ class TestXavierInitializerDygraph(unittest.TestCase):
         tensor = paddle.zeros([1024, 1024, 16])
         tensor.stop_gradient = False
 
-        xavier_ = paddle.fluid.initializer.XavierInitializer(
+        xavier_ = paddle.nn.initializer.XavierInitializer(
             uniform=False, fan_in=3, fan_out=5
         )
         xavier_(tensor)
@@ -781,9 +791,7 @@ class TestMSRAInitializerDygraph(unittest.TestCase):
         tensor = paddle.zeros([1024, 1024, 16])
         tensor.stop_gradient = False
 
-        msra_ = paddle.fluid.initializer.MSRAInitializer(
-            uniform=False, fan_in=4
-        )
+        msra_ = paddle.nn.initializer.MSRAInitializer(uniform=False, fan_in=4)
         msra_(tensor)
 
         hist, _ = output_hist(tensor.numpy())

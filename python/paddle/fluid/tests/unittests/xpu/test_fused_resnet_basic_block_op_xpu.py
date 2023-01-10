@@ -73,15 +73,21 @@ class XPUTestResNetBasicBlockOp(XPUOpTestWrapper):
             paddle.disable_static()
 
             conv1_weight = fluid.ParamAttr(
-                initializer=fluid.initializer.Xavier(uniform=False),
+                initializer=paddle.nn.initializer.XavierInitializer(
+                    uniform=False
+                ),
                 learning_rate=0.001,
             )
             conv2_weight = fluid.ParamAttr(
-                initializer=fluid.initializer.Xavier(uniform=False),
+                initializer=paddle.nn.initializer.XavierInitializer(
+                    uniform=False
+                ),
                 learning_rate=0.001,
             )
             conv3_weight = fluid.ParamAttr(
-                initializer=fluid.initializer.Xavier(uniform=False),
+                initializer=paddle.nn.initializer.XavierInitializer(
+                    uniform=False
+                ),
                 learning_rate=0.001,
             )
             bn1_weight = fluid.ParamAttr(
@@ -173,15 +179,21 @@ class XPUTestResNetBasicBlockOp(XPUOpTestWrapper):
             paddle.disable_static()
 
             fused_conv1_weight = fluid.ParamAttr(
-                initializer=fluid.initializer.Xavier(uniform=False),
+                initializer=paddle.nn.initializer.XavierInitializer(
+                    uniform=False
+                ),
                 learning_rate=0.001,
             )
             fused_conv2_weight = fluid.ParamAttr(
-                initializer=fluid.initializer.Xavier(uniform=False),
+                initializer=paddle.nn.initializer.XavierInitializer(
+                    uniform=False
+                ),
                 learning_rate=0.001,
             )
             fused_conv3_weight = fluid.ParamAttr(
-                initializer=fluid.initializer.Xavier(uniform=False),
+                initializer=paddle.nn.initializer.XavierInitializer(
+                    uniform=False
+                ),
                 learning_rate=0.001,
             )
             fused_bn1_weight = fluid.ParamAttr(

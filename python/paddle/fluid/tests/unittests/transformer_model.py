@@ -76,7 +76,7 @@ def multi_head_attention(
         q = paddle.static.nn.fc(
             x=queries,
             size=d_key * n_head,
-            weight_attr=fluid.initializer.Xavier(
+            weight_attr=paddle.nn.initializer.XavierInitializer(
                 uniform=False, fan_in=d_model * d_key, fan_out=n_head * d_key
             ),
             bias_attr=False,
@@ -85,7 +85,7 @@ def multi_head_attention(
         k = paddle.static.nn.fc(
             x=keys,
             size=d_key * n_head,
-            weight_attr=fluid.initializer.Xavier(
+            weight_attr=paddle.nn.initializer.XavierInitializer(
                 uniform=False, fan_in=d_model * d_key, fan_out=n_head * d_key
             ),
             bias_attr=False,
@@ -94,7 +94,7 @@ def multi_head_attention(
         v = paddle.static.nn.fc(
             x=values,
             size=d_value * n_head,
-            weight_attr=fluid.initializer.Xavier(
+            weight_attr=paddle.nn.initializer.XavierInitializer(
                 uniform=False,
                 fan_in=d_model * d_value,
                 fan_out=n_head * d_value,
@@ -187,7 +187,7 @@ def multi_head_attention(
     proj_out = paddle.static.nn.fc(
         x=out,
         size=d_model,
-        weight_attr=fluid.initializer.Xavier(uniform=False),
+        weight_attr=paddle.nn.initializer.XavierInitializer(uniform=False),
         bias_attr=False,
         num_flatten_dims=2,
     )
@@ -585,7 +585,7 @@ def transformer(
         x=paddle.static.nn.fc(
             x=dec_output,
             size=trg_vocab_size,
-            weight_attr=fluid.initializer.Xavier(uniform=False),
+            weight_attr=paddle.nn.initializer.XavierInitializer(uniform=False),
             bias_attr=False,
             num_flatten_dims=2,
         ),

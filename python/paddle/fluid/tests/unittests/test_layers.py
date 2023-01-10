@@ -2224,13 +2224,17 @@ class TestBook(LayerTest):
                 param_attr=fluid.ParamAttr(
                     learning_rate=1.0,
                     name="w_0",
-                    initializer=fluid.initializer.Xavier(uniform=False),
+                    initializer=paddle.nn.initializer.XavierInitializer(
+                        uniform=False
+                    ),
                 ),
                 bias_size=[16, 10],
                 bias_attr=fluid.ParamAttr(
                     learning_rate=1.0,
                     name="b_0",
-                    initializer=fluid.initializer.Xavier(uniform=False),
+                    initializer=paddle.nn.initializer.XavierInitializer(
+                        uniform=False
+                    ),
                 ),
                 act="relu",
             )
@@ -2249,7 +2253,9 @@ class TestBook(LayerTest):
                 rank_param_attr=fluid.ParamAttr(
                     learning_rate=1.0,
                     name="ubm_rank_param.w_0",
-                    initializer=fluid.initializer.Xavier(uniform=False),
+                    initializer=paddle.nn.initializer.XavierInitializer(
+                        uniform=False
+                    ),
                 ),
                 max_rank=3,
             )

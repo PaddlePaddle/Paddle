@@ -31,12 +31,12 @@ class TestFusedBnAddActAPI(unittest.TestCase):
     def setUp(self):
         self.conv_param_attr1 = fluid.ParamAttr(
             name='conv2d_1.weight',
-            initializer=fluid.initializer.Xavier(uniform=False),
+            initializer=paddle.nn.initializer.XavierInitializer(uniform=False),
             learning_rate=0.001,
         )
         self.conv_param_attr2 = fluid.ParamAttr(
             name='conv2d_2.weight',
-            initializer=fluid.initializer.Xavier(uniform=False),
+            initializer=paddle.nn.initializer.XavierInitializer(uniform=False),
             learning_rate=0.001,
         )
         self.bn_param_attr1 = fluid.ParamAttr(
@@ -57,7 +57,7 @@ class TestFusedBnAddActAPI(unittest.TestCase):
         )
         self.fc_param_attr = fluid.ParamAttr(
             name='fc.weight',
-            initializer=fluid.initializer.Xavier(uniform=False),
+            initializer=paddle.nn.initializer.XavierInitializer(uniform=False),
         )
 
     def build_fused_program(

@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import copy
-
+import paddle
 from .framework import (
     Parameter,
     dtype_is_floating,
@@ -22,7 +22,6 @@ from .framework import (
     _global_flags,
 )
 from . import unique_name
-from paddle.fluid.initializer import Xavier
 from .param_attr import ParamAttr
 from . import core
 
@@ -178,7 +177,7 @@ class LayerHelper(LayerHelperBase):
     # TODO (jiabin): should we remove this since it has never be used
     def _get_default_initializer(self, dtype):
         if dtype is None or dtype_is_floating(dtype) is True:
-            return Xavier()
+            return paddle.nn.initializer.XavierInitializer()
         else:
             # For integer and boolean types, initialize with all zeros
             return paddle.nn.initializer.ConstantInitializer()

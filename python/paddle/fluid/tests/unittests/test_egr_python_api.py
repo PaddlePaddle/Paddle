@@ -923,7 +923,7 @@ class EagerParamBaseUsageTestCase(unittest.TestCase):
             1,
             3,
             bias_attr=False,
-            weight_attr=paddle.fluid.initializer.MSRAInitializer(),
+            weight_attr=paddle.nn.initializer.MSRAInitializer(),
         )
         res = [
             linear1.weight.numpy(),

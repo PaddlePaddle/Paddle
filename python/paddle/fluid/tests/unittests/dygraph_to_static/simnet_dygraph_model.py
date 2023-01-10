@@ -48,7 +48,8 @@ class EmbeddingLayer:
             sparse=True,
             padding_idx=self.padding_idx,
             weight_attr=attr.ParamAttr(
-                name=self.name, initializer=fluid.initializer.Xavier()
+                name=self.name,
+                initializer=paddle.nn.initializer.XavierInitializer(),
             ),
         )
 
