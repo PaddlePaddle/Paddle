@@ -1,0 +1,69 @@
+type: "fused_matmul"
+def {
+  inputs {
+    name: "X"
+  }
+  inputs {
+    name: "Y"
+  }
+  inputs {
+    name: "ResidualData"
+  }
+  outputs {
+    name: "Out"
+  }
+  attrs {
+    name: "trans_x"
+    type: BOOLEAN
+  }
+  attrs {
+    name: "trans_y"
+    type: BOOLEAN
+  }
+}
+extra {
+  attrs {
+    name: "matmul_alpha"
+    type: FLOAT
+  }
+  attrs {
+    name: "fuse_activation"
+    type: STRING
+  }
+  attrs {
+    name: "fuse_alpha"
+    type: FLOAT
+  }
+  attrs {
+    name: "fuse_beta"
+    type: FLOAT
+  }
+  attrs {
+    name: "fused_output_scale"
+    type: FLOAT
+  }
+  attrs {
+    name: "fused_reshape_X"
+    type: INTS
+  }
+  attrs {
+    name: "fused_transpose_X"
+    type: INTS
+  }
+  attrs {
+    name: "fused_reshape_Y"
+    type: INTS
+  }
+  attrs {
+    name: "fused_transpose_Y"
+    type: INTS
+  }
+  attrs {
+    name: "fused_reshape_Out"
+    type: INTS
+  }
+  attrs {
+    name: "fused_transpose_Out"
+    type: INTS
+  }
+}
