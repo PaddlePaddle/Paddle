@@ -31,6 +31,7 @@ XPUOpMap& get_kl2_ops() {
       {"adam", XPUKernelSet({phi::DataType::FLOAT32, phi::DataType::FLOAT16})},
       {"adam_dense_param_sparse_grad",
        XPUKernelSet({phi::DataType::FLOAT32, phi::DataType::FLOAT16})},
+      {"adagrad", XPUKernelSet({phi::DataType::FLOAT32})},
       {"arg_max", XPUKernelSet({phi::DataType::FLOAT32})},
       {"argsort_grad",
        XPUKernelSet({phi::DataType::INT32,
