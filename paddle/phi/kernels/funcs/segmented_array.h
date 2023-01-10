@@ -46,12 +46,10 @@ struct GeneralDivMod<int64_t> {
   int64_t divisor;
 };
 
-#if defined(__CUDACC__)  // NVCC
-#define COMMON_ALIGN __align__(256)
-#elif defined(__GNUC__)  // GCC
-#define COMMON_ALIGN alignas(256)
+#if !defined(_WIN32)
+#define PADDLE_ALIGN(x) __attribute__((aligned(x)))
 #else
-#define COMMON_ALIGN
+#define PADDLE_ALIGN(x) __declspec(align(x))
 #endif
 
 enum class SegmentedArraySize {
@@ -64,7 +62,7 @@ enum class SegmentedArraySize {
 };
 
 template <typename T, SegmentedArraySize Size>
-struct COMMON_ALIGN ConstPointerArray {
+struct PADDLE_ALIGN(256) ConstPointerArray {
  public:
   const T* data[static_cast<int>(Size)];
 
@@ -76,7 +74,8 @@ struct COMMON_ALIGN ConstPointerArray {
 };
 
 template <typename T>
-struct COMMON_ALIGN ConstPointerArray<T, SegmentedArraySize::kVariableLength> {
+struct PADDLE_ALIGN(256)
+    ConstPointerArray<T, SegmentedArraySize::kVariableLength> {
  public:
   const T** data{nullptr};
 
@@ -86,7 +85,7 @@ struct COMMON_ALIGN ConstPointerArray<T, SegmentedArraySize::kVariableLength> {
 };
 
 template <typename T, SegmentedArraySize Size>
-struct COMMON_ALIGN PointerArray {
+struct PADDLE_ALIGN(256) PointerArray {
  public:
   T* data[static_cast<int>(Size)];
 
@@ -98,7 +97,7 @@ struct COMMON_ALIGN PointerArray {
 };
 
 template <typename T>
-struct COMMON_ALIGN PointerArray<T, SegmentedArraySize::kVariableLength> {
+struct PADDLE_ALIGN(256) PointerArray<T, SegmentedArraySize::kVariableLength> {
  public:
   T** data{nullptr};
 
@@ -107,7 +106,7 @@ struct COMMON_ALIGN PointerArray<T, SegmentedArraySize::kVariableLength> {
   }
 };
 
-#undef COMMON_ALIGN
+#undef PADDLE_ALIGN
 
 template <typename Context>
 struct ArraySetterBase {
