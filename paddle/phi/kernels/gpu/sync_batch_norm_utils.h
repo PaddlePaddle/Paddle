@@ -197,7 +197,7 @@ __global__ void KeBackwardLocalStats2D(const T *dy,
       auto x_i = static_cast<BatchNormParamType<T>>(x[id]);
       sum2 += g * (x_i - mean);
     }
-    funcs::BlockReduceByVetical<T>(
+    funcs::BlockReduceByVetical<T, BatchNormParamType<T>>(
         sum1, sum2, &smem_sum[0], &smem_square_sum[0], &sum1, &sum2);
 
     if (gridDim.y > 1) {
@@ -233,7 +233,7 @@ __global__ void KeBackwardLocalStats2D(const T *dy,
         }
 
         // vertical block sum
-        funcs::BlockReduceByVetical<T>(
+        funcs::BlockReduceByVetical<T, BatchNormParamType<T>>(
             sum1, sum2, &smem_sum[0], &smem_square_sum[0], &sum1, &sum2);
 
         // final compute
@@ -515,19 +515,20 @@ void SyncBatchNormGradFunctor(
       BatchNormParamType<T> *block_data_ptr = nullptr;
       int *flag_ptr = nullptr;
 
-      funcs::SetLaunchConfigInfoForChannelLast<T>(ctx,
-                                                  &block_data_tensor,
-                                                  &flag_tensor,
-                                                  &block_data_ptr,
-                                                  &flag_ptr,
-                                                  N,
-                                                  H,
-                                                  W,
-                                                  D,
-                                                  C,
-                                                  block_size,
-                                                  &block,
-                                                  &grid);
+      funcs::SetLaunchConfigInfoForChannelLast<T, BatchNormParamType<T>>(
+          ctx,
+          &block_data_tensor,
+          &flag_tensor,
+          &block_data_ptr,
+          &flag_ptr,
+          N,
+          H,
+          W,
+          D,
+          C,
+          block_size,
+          &block,
+          &grid);
       KeBackwardLocalStats2D<T, threads, DataLayout::kNHWC>
           <<<grid, block, 0, stream>>>(dy_d,
                                        x_d,

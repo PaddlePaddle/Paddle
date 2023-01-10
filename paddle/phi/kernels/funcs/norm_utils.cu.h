@@ -24,7 +24,6 @@ limitations under the License. */
 #include <hipcub/hipcub.hpp>
 namespace cub = hipcub;
 #endif
-#include "paddle/phi/backends/gpu/cuda/cudnn_helper.h"
 #include "paddle/phi/common/layout.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/reduce_function.h"
@@ -37,12 +36,6 @@ namespace cub = hipcub;
 
 namespace phi {
 namespace funcs {
-
-using DataLayout = phi::DataLayout;
-template <typename T>
-using CudnnDataType = phi::backends::gpu::CudnnDataType<T>;
-template <typename T>
-using BatchNormParamType = typename CudnnDataType<T>::BatchNormParamType;
 
 // math: dx = scale * ((x - mean) * inv_var / NxHxW * (np.mean(ddx,
 // axis=(n,h,w)) *
@@ -677,14 +670,13 @@ void NormDoubleGradFunctor(const DeviceContext &ctx,
   }
 }
 
-template <typename T>
-__device__ __forceinline__ void BlockReduceByVetical(
-    BatchNormParamType<T> x_sum,
-    BatchNormParamType<T> x_square_sum,
-    BatchNormParamType<T> *smem_sum,
-    BatchNormParamType<T> *smem_square_sum,
-    BatchNormParamType<T> *x_sum_out,
-    BatchNormParamType<T> *x_square_sum_out) {
+template <typename T, typename BnT>
+__device__ __forceinline__ void BlockReduceByVetical(BnT x_sum,
+                                                     BnT x_square_sum,
+                                                     BnT *smem_sum,
+                                                     BnT *smem_square_sum,
+                                                     BnT *x_sum_out,
+                                                     BnT *x_square_sum_out) {
   int tid = threadIdx.x + threadIdx.y * blockDim.x;
 #pragma unroll
   for (int offset = blockDim.y / 2; offset > 0; offset >>= 1) {
@@ -705,11 +697,11 @@ __device__ __forceinline__ void BlockReduceByVetical(
   }
 }
 
-template <typename T, typename Context>
+template <typename T, typename BnT, typename Context>
 void SetLaunchConfigInfoForChannelLast(const Context &ctx,
                                        DenseTensor *block_data_tensor,
                                        DenseTensor *flag_tensor,
-                                       BatchNormParamType<T> **block_data_ptr,
+                                       BnT **block_data_ptr,
                                        int **flag_ptr,
                                        const int N,
                                        const int H,
@@ -739,11 +731,10 @@ void SetLaunchConfigInfoForChannelLast(const Context &ctx,
   grid->y = grid_y;
 
   if (grid->y > 1) {
-    *block_data_tensor =
-        phi::Empty<BatchNormParamType<T>, Context>(ctx, {2 * C * grid->y});
+    *block_data_tensor = phi::Empty<BnT, Context>(ctx, {2 * C * grid->y});
     *flag_tensor = phi::Empty<int, Context>(ctx, {grid->x});
 
-    *block_data_ptr = block_data_tensor->data<BatchNormParamType<T>>();
+    *block_data_ptr = block_data_tensor->data<BnT>();
     *flag_ptr = flag_tensor->data<int>();
     funcs::SetConstant<Context, int> set_zero;
     set_zero(ctx, flag_tensor, static_cast<int>(0));

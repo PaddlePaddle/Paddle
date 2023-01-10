@@ -281,12 +281,12 @@ static __global__ void BNBackward2DChannelLastStage1(
     }
 
     // vertical block sum
-    funcs::BlockReduceByVetical<T>(x_sum,
-                                   x_square_sum,
-                                   &smem_sum[0],
-                                   &smem_square_sum[0],
-                                   &x_sum,
-                                   &x_square_sum);
+    funcs::BlockReduceByVetical<T, BatchNormParamType<T>>(x_sum,
+                                                          x_square_sum,
+                                                          &smem_sum[0],
+                                                          &smem_square_sum[0],
+                                                          &x_sum,
+                                                          &x_square_sum);
 
     if (gridDim.y > 1) {
       volatile BatchNormParamType<T> *staging_sum = block_data_ptr;
@@ -321,12 +321,13 @@ static __global__ void BNBackward2DChannelLastStage1(
         }
 
         // vertical block sum
-        funcs::BlockReduceByVetical<T>(x_sum,
-                                       x_square_sum,
-                                       &smem_sum[0],
-                                       &smem_square_sum[0],
-                                       &x_sum,
-                                       &x_square_sum);
+        funcs::BlockReduceByVetical<T, BatchNormParamType<T>>(
+            x_sum,
+            x_square_sum,
+            &smem_sum[0],
+            &smem_square_sum[0],
+            &x_sum,
+            &x_square_sum);
 
         // final compute
         if (threadIdx.y == 0) {
@@ -389,7 +390,7 @@ static __global__ void BNBackward2DChannelLastStage2(
     }
 
     // vertical block sum
-    funcs::BlockReduceByVetical<T>(
+    funcs::BlockReduceByVetical<T, BatchNormParamType<T>>(
         ds_sum, db_sum, &smem_ds_sum[0], &smem_db_sum[0], &ds_sum, &db_sum);
 
     if (gridDim.y > 1) {
@@ -425,7 +426,7 @@ static __global__ void BNBackward2DChannelLastStage2(
         }
 
         // vertical block sum
-        funcs::BlockReduceByVetical<T>(
+        funcs::BlockReduceByVetical<T, BatchNormParamType<T>>(
             ds_sum, db_sum, &smem_ds_sum[0], &smem_db_sum[0], &ds_sum, &db_sum);
 
         // final compute
@@ -861,19 +862,20 @@ void BatchNormGradRawKernel(const Context &ctx,
           BatchNormParamType<T> *block_data_ptr = nullptr;
           int *flag_ptr = nullptr;
 
-          funcs::SetLaunchConfigInfoForChannelLast<T>(ctx,
-                                                      &block_data_tensor,
-                                                      &flag_tensor,
-                                                      &block_data_ptr,
-                                                      &flag_ptr,
-                                                      N,
-                                                      H,
-                                                      W,
-                                                      D,
-                                                      C,
-                                                      block_size,
-                                                      &block,
-                                                      &grid);
+          funcs::SetLaunchConfigInfoForChannelLast<T, BatchNormParamType<T>>(
+              ctx,
+              &block_data_tensor,
+              &flag_tensor,
+              &block_data_ptr,
+              &flag_ptr,
+              N,
+              H,
+              W,
+              D,
+              C,
+              block_size,
+              &block,
+              &grid);
 
           // 1. reduce_sum(x) => mean, inv_var
           auto *mean_ptr =
@@ -1224,19 +1226,20 @@ void BatchNormGradRawKernel(const Context &ctx,
         BatchNormParamType<T> *block_data_ptr = nullptr;
         int *flag_ptr = nullptr;
 
-        funcs::SetLaunchConfigInfoForChannelLast<T>(ctx,
-                                                    &block_data_tensor,
-                                                    &flag_tensor,
-                                                    &block_data_ptr,
-                                                    &flag_ptr,
-                                                    N,
-                                                    H,
-                                                    W,
-                                                    D,
-                                                    C,
-                                                    block_size,
-                                                    &block,
-                                                    &grid);
+        funcs::SetLaunchConfigInfoForChannelLast<T, BatchNormParamType<T>>(
+            ctx,
+            &block_data_tensor,
+            &flag_tensor,
+            &block_data_ptr,
+            &flag_ptr,
+            N,
+            H,
+            W,
+            D,
+            C,
+            block_size,
+            &block,
+            &grid);
         BNBackward2DChannelLastStage2<T, block_size>
             <<<grid, block, 0, ctx.stream()>>>(
                 transformed_d_y.template data<T>(),
