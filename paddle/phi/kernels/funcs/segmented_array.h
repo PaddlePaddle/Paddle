@@ -46,12 +46,12 @@ struct GeneralDivMod<int64_t> {
   int64_t divisor;
 };
 
-#if defined(_MSC_VER)  // MSVC
-#define COMMON_ALIGN __declspec(align(256))
-#elif defined(__CUDACC__)  // NVCC
+#if defined(__CUDACC__)  // NVCC
 #define COMMON_ALIGN __align__(256)
-#elif
+#elif defined(__GNUC__)  // GCC
 #define COMMON_ALIGN alignas(256)
+#else
+#define COMMON_ALIGN
 #endif
 
 enum class SegmentedArraySize {
