@@ -252,4 +252,5 @@ if __name__ == "__main__":
     start_getCovinfo = time.time()
     getCovinfo(rootPath, case)
     end_getCovinfo = time.time()
+
     print("getConvinfo time :", end_getCovinfo - start_getCovinfo)
