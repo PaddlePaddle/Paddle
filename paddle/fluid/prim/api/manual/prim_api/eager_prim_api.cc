@@ -35,5 +35,11 @@ template <>
 Tensor multiply<Tensor>(const Tensor& x, const Tensor& y) {
   return ::multiply_ad_func(x, y);
 }
+
+template <>
+Tensor exp<Tensor>(const Tensor& x) {
+  return ::exp_ad_func(x);
+}
+
 }  // namespace prim
 }  // namespace paddle

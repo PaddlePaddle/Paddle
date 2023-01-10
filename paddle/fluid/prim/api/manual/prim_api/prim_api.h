@@ -31,5 +31,7 @@ Tensor scale(const Tensor& X,
 template <typename T>
 Tensor multiply(const Tensor& x, const Tensor& y);
 
+template <typename T>
+Tensor exp(const Tensor& x);
 }  // namespace prim
 }  // namespace paddle
