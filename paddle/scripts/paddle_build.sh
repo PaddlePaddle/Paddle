@@ -2051,51 +2051,49 @@ set -x
     test_25="^lite_subgraph_pass_tester$|^test_cpu_vec$|^dist_multi_trainer_test$|^compute_interceptor_run_op_test$|^test_strings_empty_api$|^phi_test_backend$|^interceptor_ping_pong_test$|^test_fc_rnn_mkldnn_fuse_pass$|^test_table_printer$|^test_intrusive_ptr$|^test_op_utils$|^graph_table_sample_test$|^test_cpu_bfloat16_placement_pass$|^test_egr_ds_tensor_wrapper$|^source_interceptor_test$|^infershape_utils_test$|^test_sparse_csr_tensor$|^aes_cipher_test$|^test_math_function$|^buffered_allocator_test$|^test_conv_elementwise_add_mkldnn_fuse_pass$|^auto_growth_best_fit_allocator_test$|^operator_test$|^buffered_allocator_test$|^test_conv_elementwise_add_mkldnn_fuse_pass$"
     test_30="^lite_subgraph_pass_tester$|^test_cpu_vec$|^dist_multi_trainer_test$|^compute_interceptor_run_op_test$|^test_strings_empty_api$|^phi_test_backend$|^interceptor_ping_pong_test$|^test_fc_rnn_mkldnn_fuse_pass$|^test_table_printer$|^test_intrusive_ptr$|^test_op_utils$|^graph_table_sample_test$|^test_cpu_bfloat16_placement_pass$|^test_egr_ds_tensor_wrapper$|^source_interceptor_test$|^infershape_utils_test$|^test_sparse_csr_tensor$|^aes_cipher_test$|^test_math_function$|^buffered_allocator_test$|^test_conv_elementwise_add_mkldnn_fuse_pass$|^auto_growth_best_fit_allocator_test$|^operator_test$|^buffered_allocator_test$|^test_conv_elementwise_add_mkldnn_fuse_pass$|^auto_growth_best_fit_allocator_test$|^operator_test$|^test_strings_lower_upper_dev_api$|^test_kernel_factory$|^test_ddim$"
     test_35="^lite_subgraph_pass_tester$|^test_cpu_vec$|^dist_multi_trainer_test$|^compute_interceptor_run_op_test$|^test_strings_empty_api$|^phi_test_backend$|^interceptor_ping_pong_test$|^test_fc_rnn_mkldnn_fuse_pass$|^test_table_printer$|^test_intrusive_ptr$|^test_op_utils$|^graph_table_sample_test$|^test_cpu_bfloat16_placement_pass$|^test_egr_ds_tensor_wrapper$|^source_interceptor_test$|^infershape_utils_test$|^test_sparse_csr_tensor$|^aes_cipher_test$|^test_math_function$|^buffered_allocator_test$|^test_conv_elementwise_add_mkldnn_fuse_pass$|^auto_growth_best_fit_allocator_test$|^operator_test$|^buffered_allocator_test$|^test_conv_elementwise_add_mkldnn_fuse_pass$|^auto_growth_best_fit_allocator_test$|^operator_test$|^test_strings_lower_upper_dev_api$|^test_kernel_factory$|^test_ddim$|^assign_op_test$|^test_egr_task_eager_utils$|^exception_holder_test$|^split_test$|^test_sparse_coo_tensor$"
-    
+
     bash ${PADDLE_ROOT}/cpu_load_average.sh &
 
     precise_card_test_single "^simple_precision_test$" 1
     wait;
+    cp ${PADDLE_ROOT}/build/ut_map/simple_precision_test/base_fnda.json ${PADDLE_ROOT}/base_fnda.json
     test_20_start_time=`date +%s`
+    echo "test_20_start_time: $test_20_start_time s"
     precise_card_test_single "$test_20"
+    wait;
     test_20_end_time=`date +%s`
     test_20_average_time=`expr $[ $test_20_end_time - $test_20_start_time ] / 20`
+    echo "test_20_end_time: $test_20_end_time s"
+    echo "test_20_average_time: $test_20_average_time s"
     echo "test_20_average_time: $test_20_average_time s" >> ${PADDLE_ROOT}/build/test_average_time.txt
-    rm -rf ${PADDLE_ROOT}/build/ut_map
-    rm -rf ${PADDLE_ROOT}/build/pytest
-    wait;
-    
-    precise_card_test_single "^simple_precision_test$" 1
+    rm -rf ${PADDLE_ROOT}/build/ut_map/
+    rm -rf ${PADDLE_ROOT}/build/pytest/
+    rm -rf ${PADDLE_ROOT}/build/ut_map/
+    rm -rf ${PADDLE_ROOT}/build/pytest/
+
+    #precise_card_test_single "^simple_precision_test$" 1
+    mkdir ${PADDLE_ROOT}/build/ut_map/simple_precision_test && cp ${PADDLE_ROOT}/base_fnda.json ${PADDLE_ROOT}/build/ut_map/simple_precision_test/
     test_25_start_time=`date +%s`
+    echo "test_25_start_time: $test_20_start_time s"
     precise_card_test_single "$test_25"
+    wait;
     test_25_end_time=`date +%s`
+    echo "test_25_end_time: $test_20_end_time s"
+   
     test_25_average_time=`expr $[ $test_25_end_time - $test_25_start_time ] / 25`
     echo "test_25_average_time: $test_25_average_time s" >> ${PADDLE_ROOT}/build/test_average_time.txt
     rm -rf ${PADDLE_ROOT}/build/ut_map
     rm -rf ${PADDLE_ROOT}/build/pytest
-    wait;
+    rm -rf ${PADDLE_ROOT}/build/ut_map
+    rm -rf ${PADDLE_ROOT}/build/pytest
 
 
-    precise_card_test_single "^simple_precision_test$" 1
+    #precise_card_test_single "^simple_precision_test$" 1
+    mkdir ${PADDLE_ROOT}/build/ut_map/simple_precision_test && cp ${PADDLE_ROOT}/base_fnda.json ${PADDLE_ROOT}/build/ut_map/simple_precision_test/
     test_30_start_time=`date +%s`
     precise_card_test_single "$test_30"
-    test_30_end_time=`date +%s`
-    test_30_average_time=`expr $[ $test_30_end_time - $test_30_start_time ] / 30`
-    echo "test_30_average_time: $test_30_average_time s" >> ${PADDLE_ROOT}/build/test_average_time.txt
-    rm -rf ${PADDLE_ROOT}/build/ut_map
-    rm -rf ${PADDLE_ROOT}/build/pytest
     wait;
 
-    precise_card_test_single "^simple_precision_test$" 1
-    test_35_start_time=`date +%s`
-    precise_card_test_single "$test_35"
-    test_35_end_time=`date +%s`
-    test_35_average_time=`expr $[ $test_35_end_time - $test_35_start_time ] / 30`
-    echo "test_35_average_time: $test_35_average_time s" >> ${PADDLE_ROOT}/build/test_average_time.txt
-    rm -rf ${PADDLE_ROOT}/build/ut_map
-    rm -rf ${PADDLE_ROOT}/build/pytest
-    wait;
-    exit;
     #get notSuccessut including the failed uniitests and not executed unittests
     python ${PADDLE_ROOT}/tools/get_ut_file_map.py 'get_not_success_ut' ${PADDLE_ROOT}
 
