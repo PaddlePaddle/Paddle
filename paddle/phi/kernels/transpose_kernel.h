@@ -28,6 +28,12 @@ void TransposeKernel(const Context& dev_ctx,
                      const std::vector<int>& axis,
                      DenseTensor* out);
 
+template <typename Context>
+void TransposeKernel(const Context& dev_ctx,
+                     const DenseTensor& x,
+                     const std::vector<int>& axis,
+                     DenseTensor* out);
+
 template <typename T, typename Context>
 DenseTensor Transpose(const Context& dev_ctx,
                       const DenseTensor& x,
@@ -35,6 +41,7 @@ DenseTensor Transpose(const Context& dev_ctx,
   DenseTensor dense_out;
   MetaTensor meta_out(&dense_out);
   TransposeInferMeta(x, axis, &meta_out);
+  // TODO(wanghuancoder) call stride kernel with Flag switch
   TransposeKernel<T, Context>(dev_ctx, x, axis, &dense_out);
   return dense_out;
 }

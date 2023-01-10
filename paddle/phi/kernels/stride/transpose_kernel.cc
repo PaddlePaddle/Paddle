@@ -13,11 +13,19 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/transpose_kernel.h"
+#include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/core/tensor_utils.h"
+#include "paddle/phi/infermeta/unary.h"
+#include "paddle/phi/kernels/funcs/common_shape.h"
+#ifdef PADDLE_WITH_XPU
+#include "paddle/phi/backends/xpu/enforce_xpu.h"
+#endif
+#include "paddle/phi/backends/cpu/cpu_context.h"
 
 namespace phi {
 
-template <typename T, typename Context>
+template <typename Context>
 void TransposeKernel(const Context& ctx,
                      const DenseTensor& x,
                      const std::vector<int>& axis,
