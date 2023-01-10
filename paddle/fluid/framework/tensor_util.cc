@@ -470,6 +470,7 @@ void TensorCopySync(const phi::DenseTensor& src,
   src.check_memory_size();
   dst->Resize(src.dims());
   dst->set_layout(src.layout());
+  dst->set_strides(src.strides());
 #ifdef PADDLE_WITH_MKLDNN
   if (src.layout() == DataLayout::ONEDNN) {
     dst->set_mem_desc(src.mem_desc());

@@ -90,6 +90,12 @@ class DenseTensor : public TensorBase,
   /// \return The strides of the tensor.
   const Strides& strides() const noexcept { return meta_.strides; }
 
+  /// \brief Sets the strides of the tensor.
+  /// \param meta The strides of the tensor.
+  void set_strides(const Strides& strides);
+
+  void set_strides(Strides&& strides);
+
   /// \brief Returns the lod of the tensor.
   /// \return The lod of the tensor.
   const LoD& lod() const noexcept { return meta_.lod; }

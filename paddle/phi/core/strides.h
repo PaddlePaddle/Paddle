@@ -28,7 +28,9 @@ class Strides {
  public:
   Strides() {}
 
-  static bool IsOpSupportStrides(const std::string& op_type);
+  explicit Strides(DDim dims);
+
+  void init_with_dims(DDim dims);
 
   inline bool IsValiable() const { return valiable_; }
 

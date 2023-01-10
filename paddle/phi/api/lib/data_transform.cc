@@ -25,6 +25,8 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/tensor_util.h"
 
+DECLARE_bool(use_stride_kernel);
+
 namespace paddle {
 namespace experimental {
 
@@ -57,6 +59,10 @@ inline bool NeedTransformLayout(const DataLayout& input,
                                 const DataLayout& target,
                                 const paddle::platform::Place& place,
                                 const TransformFlag& transform_flag) {
+  if (FLAGS_use_stride_kernel && target == DataLayout::STRIDED) {
+    return false;
+  }
+
   bool ret = transform_flag.need_trans_layout() &&
              (input != DataLayout::ALL_LAYOUT &&
               target != DataLayout::ALL_LAYOUT && input != target);
@@ -68,12 +74,12 @@ inline bool NeedTransformLayout(const DataLayout& input,
 
 inline bool NeedTransform2Contiguous(bool is_stride_kernel,
                                      bool is_contiguous) {
-  return !is_stride_kernel && !is_contiguous;
+  return FLAGS_use_stride_kernel && !is_stride_kernel && !is_contiguous;
 }
 
 inline bool NeedPrepareStrides(bool is_stride_kernel,
                                bool is_strides_valiable) {
-  return is_stride_kernel && !is_strides_valiable;
+  return FLAGS_use_stride_kernel && is_stride_kernel && !is_strides_valiable;
 }
 
 inline phi::DenseTensor TransDataLayout(const phi::DenseTensor& tensor,
@@ -329,18 +335,21 @@ phi::DenseTensor TransformData(phi::DenseTensor* tensor,
                           transform_flag) &&
       tensor->dims().size() != 1) {
     out = TransDataLayout(out, target_args_def.layout);
+    out.set_strides(tensor->strides());
     trans_layout = true;
   }
 
   if (NeedTransformDataType(
           tensor->dtype(), target_args_def.dtype, transform_flag)) {
     out = TransDataType(out, target_args_def.dtype);
+    out.set_strides(tensor->strides());
     trans_dtype = true;
   }
 
   if (NeedTransformPlace(
           out.place(), target_args_def.backend, transform_flag)) {
     out = TransDataPlace(out, phi::TransToPhiPlace(target_args_def.backend));
+    out.set_strides(tensor->strides());
     if (!trans_layout && !trans_dtype &&
         tensor->place().GetType() == AllocationType::GPUPINNED) {
       tensor->ShareBufferWith(out);

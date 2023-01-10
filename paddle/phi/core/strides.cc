@@ -17,10 +17,24 @@
 
 namespace phi {
 
-std::set<std::string> op_support_strides_list = {"transpose"};
+Strides::Strides(DDim dims) {
+  this->rank_ = dims.size();
+  this->strides_[dims.size() - 1] = 1;
+  for (int i = dims.size() - 2; i >= 0; --i) {
+    this->strides_[i] = this->strides_[i + 1] * dims[i + 1];
+  }
+  this->valiable_ = true;
+  this->contiguous_ = true;
+}
 
-bool Strides::IsOpSupportStrides(const std::string& op_type) {
-  return op_support_strides_list.count(op_type) != 0;
+void Strides::init_with_dims(DDim dims) {
+  this->rank_ = dims.size();
+  this->strides_[dims.size() - 1] = 1;
+  for (int i = dims.size() - 2; i >= 0; --i) {
+    this->strides_[i] = this->strides_[i + 1] * dims[i + 1];
+  }
+  this->valiable_ = true;
+  this->contiguous_ = true;
 }
 
 }  // namespace phi

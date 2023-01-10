@@ -15,21 +15,14 @@
 #include "paddle/phi/kernels/transpose_kernel.h"
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/core/tensor_utils.h"
-#include "paddle/phi/infermeta/unary.h"
-#include "paddle/phi/kernels/funcs/common_shape.h"
-#ifdef PADDLE_WITH_XPU
-#include "paddle/phi/backends/xpu/enforce_xpu.h"
-#endif
-#include "paddle/phi/backends/cpu/cpu_context.h"
 
 namespace phi {
 
 template <typename Context>
-void TransposeKernel(const Context& ctx,
-                     const DenseTensor& x,
-                     const std::vector<int>& axis,
-                     DenseTensor* out) {
+void TransposeStrideKernel(const Context& ctx,
+                           const DenseTensor& x,
+                           const std::vector<int>& axis,
+                           DenseTensor* out) {
   auto meta = x.meta();
   int64_t* out_strides = meta.strides.GetMutable();
   const int64_t* in_strides = x.strides().Get();
@@ -48,18 +41,24 @@ void TransposeKernel(const Context& ctx,
 
 }  // namespace phi
 
-PD_REGISTER_GENERAL_KERNEL(
-    transpose, CPU, STRIDED, phi::TransposeKernel<phi::CPUContext>, ALL_DTYPE) {
-}
+PD_REGISTER_GENERAL_KERNEL(transpose,
+                           CPU,
+                           STRIDED,
+                           phi::TransposeStrideKernel<phi::CPUContext>,
+                           ALL_DTYPE) {}
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-PD_REGISTER_GENERAL_KERNEL(
-    transpose, GPU, STRIDED, phi::TransposeKernel<phi::GPUContext>, ALL_DTYPE) {
-}
+PD_REGISTER_GENERAL_KERNEL(transpose,
+                           GPU,
+                           STRIDED,
+                           phi::TransposeStrideKernel<phi::GPUContext>,
+                           ALL_DTYPE) {}
 #endif
 
 #ifdef PADDLE_WITH_XPU
-PD_REGISTER_GENERAL_KERNEL(
-    transpose, XPU, STRIDED, phi::TransposeKernel<phi::XPUContext>, ALL_DTYPE) {
-}
+PD_REGISTER_GENERAL_KERNEL(transpose,
+                           XPU,
+                           STRIDED,
+                           phi::TransposeStrideKernel<phi::XPUContext>,
+                           ALL_DTYPE) {}
 #endif

@@ -1186,7 +1186,7 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
     def gen_kernel_code(self, kernel_name, code_indent, inplace_flag=False):
         kernel_dispatch = self.kernel['dispatch'][kernel_name]
         input_tensors, kernel_args, kernel_signature = self.get_kernel_args(
-            kernel_dispatch, code_indent, kernel_name
+            kernel_dispatch, code_indent
         )
         out_tensor_type_list = kernel_dispatch[1] if kernel_dispatch else None
         outputs_args, kernel_output_names, output_create = self.gene_output(

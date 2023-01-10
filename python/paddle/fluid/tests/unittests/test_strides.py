@@ -13,13 +13,13 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
 
 import paddle
 
 
 class TestStrides(unittest.TestCase):
-
     def call_strides(self):
         x_np = np.random.random(size=[2, 3, 4]).astype('float32')
         x = paddle.to_tensor(x_np)
@@ -28,32 +28,36 @@ class TestStrides(unittest.TestCase):
         x_transposed1 = paddle.transpose(x, perm=[1, 0, 2])
         x_np_transposed1 = x_np.transpose(1, 0, 2)
         self.assertTrue(np.allclose(x_transposed1.numpy(), x_np_transposed1))
-        self.assertTrue(x_transposed1.is_contiguous() == False)
+        self.assertFalse(x_transposed1.is_contiguous())
         self.assertTrue(x._is_shared_buffer_with(x_transposed1))
 
         x_c = x_transposed1.contiguous()
         self.assertTrue(np.allclose(x_c.numpy(), x_np_transposed1))
-        self.assertTrue(x_c._is_shared_buffer_with(x_transposed1) == False)
+        self.assertFalse(x_c._is_shared_buffer_with(x_transposed1))
 
         x_transposed2 = paddle.transpose(x_transposed1, perm=[2, 0, 1])
         x_np_transposed2 = x_np_transposed1.transpose(2, 0, 1)
         self.assertTrue(np.allclose(x_transposed2.numpy(), x_np_transposed2))
-        self.assertTrue(x_transposed2.is_contiguous() == False)
+        self.assertFalse(x_transposed2.is_contiguous())
         self.assertTrue(x._is_shared_buffer_with(x_transposed2))
 
         y = x_transposed2 + 2
         y_np = x_np_transposed2 + 2
         self.assertTrue(np.allclose(y.numpy(), y_np))
         self.assertTrue(y.is_contiguous())
-        self.assertTrue(x._is_shared_buffer_with(y) == False)
+        self.assertFalse(x._is_shared_buffer_with(y))
 
     def test_strides_cpu(self):
+        paddle.fluid.set_flags({"FLAGS_use_stride_kernel": True})
         paddle.set_device('cpu')
         self.call_strides()
+        paddle.fluid.set_flags({"FLAGS_use_stride_kernel": False})
 
     def test_strides_gpu(self):
+        paddle.fluid.set_flags({"FLAGS_use_stride_kernel": True})
         paddle.set_device('gpu')
         self.call_strides()
+        paddle.fluid.set_flags({"FLAGS_use_stride_kernel": False})
 
 
 if __name__ == '__main__':

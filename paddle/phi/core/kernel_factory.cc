@@ -21,7 +21,13 @@
 #include "paddle/phi/core/compat/convert_utils.h"
 #endif
 #include "paddle/phi/core/compat/op_utils.h"
+#include "paddle/phi/core/flags.h"
 #include "paddle/utils/string/string_helper.h"
+
+PADDLE_DEFINE_EXPORTED_bool(
+    use_stride_kernel,
+    false,
+    "Whether to use strdie kernel if op support stride.");
 
 DECLARE_int32(low_precision_op_list);
 DECLARE_bool(enable_api_kernel_fallback);
@@ -69,10 +75,12 @@ const Kernel& KernelFactory::SelectKernel(const std::string& kernel_name,
     return empty_kernel;
   }
 
-  auto stride_kernel_iter = iter->second.find(
-      {kernel_key.backend(), phi::DataLayout::STRIDED, kernel_key.dtype()});
-  if (stride_kernel_iter != iter->second.end()) {
-    return stride_kernel_iter->second;
+  if (FLAGS_use_stride_kernel) {
+    auto stride_kernel_iter = iter->second.find(
+        {kernel_key.backend(), phi::DataLayout::STRIDED, kernel_key.dtype()});
+    if (stride_kernel_iter != iter->second.end()) {
+      return stride_kernel_iter->second;
+    }
   }
 
   auto kernel_iter = iter->second.find(kernel_key);
@@ -146,11 +154,13 @@ KernelResult KernelFactory::SelectKernelOrThrowError(
       kernels_.end(),
       phi::errors::NotFound("The kernel `%s` is not registered.", kernel_name));
 
-  auto stride_kernel_iter = iter->second.find({const_kernel_key.backend(),
-                                               phi::DataLayout::STRIDED,
-                                               const_kernel_key.dtype()});
-  if (stride_kernel_iter != iter->second.end()) {
-    return {stride_kernel_iter->second, false, true};
+  if (FLAGS_use_stride_kernel) {
+    auto stride_kernel_iter = iter->second.find({const_kernel_key.backend(),
+                                                 phi::DataLayout::STRIDED,
+                                                 const_kernel_key.dtype()});
+    if (stride_kernel_iter != iter->second.end()) {
+      return {stride_kernel_iter->second, false, true};
+    }
   }
 
   KernelKey kernel_key = KernelKey(const_kernel_key.backend(),

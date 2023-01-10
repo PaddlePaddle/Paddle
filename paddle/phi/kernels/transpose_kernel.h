@@ -29,10 +29,10 @@ void TransposeKernel(const Context& dev_ctx,
                      DenseTensor* out);
 
 template <typename Context>
-void TransposeKernel(const Context& dev_ctx,
-                     const DenseTensor& x,
-                     const std::vector<int>& axis,
-                     DenseTensor* out);
+void TransposeStrideKernel(const Context& dev_ctx,
+                           const DenseTensor& x,
+                           const std::vector<int>& axis,
+                           DenseTensor* out);
 
 template <typename T, typename Context>
 DenseTensor Transpose(const Context& dev_ctx,

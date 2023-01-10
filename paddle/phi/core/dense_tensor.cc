@@ -204,6 +204,9 @@ void DenseTensor::set_meta(DenseTensorMeta&& meta) {
                      "Only when the original attribute of Tensor is "
                      "incomplete, can it be reset."));
   meta_ = std::move(meta);
+  if (product(meta_.dims) && !meta_.strides.IsValiable()) {
+    meta_.strides.init_with_dims(meta_.dims);
+  }
 }
 
 void DenseTensor::set_meta(const DenseTensorMeta& meta) {
@@ -219,6 +222,9 @@ void DenseTensor::set_meta(const DenseTensorMeta& meta) {
   meta_.offset = meta.offset;
   meta_.strides = meta.strides;
   meta_.use_gpudnn = meta.use_gpudnn;
+  if (product(meta_.dims) && !meta_.strides.IsValiable()) {
+    meta_.strides.init_with_dims(meta_.dims);
+  }
 }
 
 /* @jim19930609: This interface will be further modified until we finalized the
@@ -233,6 +239,9 @@ void DenseTensor::set_meta(const DenseTensorMeta& meta) {
    */
 void DenseTensor::ResizeAndAllocate(const DDim& dims) {
   meta_.dims = dims;
+  if (!meta_.strides.IsValiable()) {
+    meta_.strides.init_with_dims(meta_.dims);
+  }
   if (holder_ != nullptr && place().GetType() != AllocationType::UNDEFINED) {
     mutable_data(place());
   }
@@ -289,6 +298,14 @@ bool DenseTensor::storage_properties_initialized() const {
 void DenseTensor::set_storage_properties(
     std::unique_ptr<StorageProperties>&& storage_properties) {
   storage_properties_ = std::move(storage_properties);
+}
+
+void DenseTensor::set_strides(Strides&& strides) {
+  meta_.strides = std::move(strides);
+}
+
+void DenseTensor::set_strides(const Strides& strides) {
+  meta_.strides = strides;
 }
 
 }  // namespace phi
