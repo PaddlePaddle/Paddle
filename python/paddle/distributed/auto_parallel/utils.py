@@ -22,9 +22,9 @@ from functools import reduce
 import numpy as np
 
 import paddle
-from paddle.fluid.framework import Variable
 from paddle.fluid.io import is_belong_to_optimizer, is_parameter
 from paddle.framework import core
+from paddle.static import Variable
 
 from .dist_attribute import OperatorDistAttr, TensorDistAttr
 from .process_group import get_all_process_groups
@@ -619,7 +619,7 @@ def save_distributed_checkpoint(
     """
     from .dist_context import get_default_distributed_context
 
-    assert isinstance(program, paddle.fluid.framework.Program)
+    assert isinstance(program, paddle.static.Program)
     assert isinstance(is_integrated, bool)
     if dist_context is None:
         dist_context = get_default_distributed_context()
@@ -702,7 +702,7 @@ def load_checkpoint_into_program(
     """
     from .dist_context import get_default_distributed_context
 
-    assert isinstance(program, paddle.fluid.framework.Program)
+    assert isinstance(program, paddle.static.Program)
     assert _check_valid_path(
         checkpoint_path
     ), "'checkpoint_path' cannot be None."
@@ -731,7 +731,7 @@ def load_parameter_into_program(param_dict, program):
         program(Program): the program to be updated
     """
     assert isinstance(param_dict, dict)
-    assert program and isinstance(program, paddle.fluid.framework.Program)
+    assert program and isinstance(program, paddle.static.Program)
     if not param_dict:
         return
     program.set_state_dict(param_dict)
@@ -818,7 +818,7 @@ def get_dist_attr(program, dist_context=None):
     """
     from .dist_context import get_default_distributed_context
 
-    assert isinstance(program, paddle.fluid.framework.Program)
+    assert isinstance(program, paddle.static.Program)
     if dist_context is None:
         dist_context = get_default_distributed_context()
     dist_attr = {}
@@ -1845,7 +1845,7 @@ def get_var_numel(var):
 def get_lr(optimizer):
     if isinstance(optimizer, paddle.optimizer.Optimizer):
         return optimizer.get_lr()
-    elif isinstance(optimizer, paddle.fluid.optimizer.Optimizer):
+    elif isinstance(optimizer, paddle.static.Optimizer):
         if isinstance(optimizer._learning_rate, float):
             return optimizer._learning_rate
         else:
@@ -1853,9 +1853,7 @@ def get_lr(optimizer):
     else:
         raise TypeError(
             "'optimizer' must be object of class `paddle.optimizer.Optimizer`"
-            " or `paddle.fluid.optimizer.Optimizer`, but got {}.".format(
-                type(optimizer)
-            )
+            " or `paddle.static.Optimizer`, but got {}.".format(type(optimizer))
         )
 
 

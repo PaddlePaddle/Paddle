@@ -876,7 +876,7 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
         backward_attrs_list = self.backward_attrs_list
         optional_inputs = self.optional_inputs
         is_composite_grad_api = (
-            False if self.composite_func_info == [] else True
+            False if self.composite_func_info == {} else True
         )
 
         # Pass Stop Gradient Args
@@ -1836,7 +1836,7 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
             self.grad_api_contents, self.forward_apis_dict
         )
         is_composite_grad_api = (
-            False if self.composite_func_info == [] else True
+            False if self.composite_func_info == {} else True
         )
 
         if next_node_generator is not None:
@@ -1970,7 +1970,7 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
         forward_api_name = self.forward_api_name
         backward_api_name = self.backward_api_name
         composite_grad_api_name = (
-            self.composite_func_info[0] if is_composite_grad_api else None
+            self.composite_func_info["name"] if is_composite_grad_api else None
         )
         backward_forward_inputs_map = self.backward_forward_inputs_map
         backward_grad_inputs_map = self.backward_grad_inputs_map
@@ -2257,10 +2257,10 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
             grad_function_call_str = f"""
   if (paddle::prim::PrimCommonUtils::IsPrimEnabled()) {{
   {indent}{composite_grad_api_namespace}{composite_grad_api_name}{composite_template_name}({composite_grad_api_args_str});
-  VLOG(4) << paddle::string::Sprintf("composite api %s is called" , "{composite_grad_api_name}");
+  VLOG(4) << "Composite api {composite_grad_api_name} is called ";
   }}else{{
   {indent}{grad_api_namespace}{backward_api_name}({grad_api_args_str});
-  VLOG(4) << paddle::string::Sprintf("origin api %s is called" , "{backward_api_name}");
+  VLOG(4) << "Fused api {backward_api_name} is called ";
   }}
   """
         else:

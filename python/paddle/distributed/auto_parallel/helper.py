@@ -15,11 +15,10 @@
 import logging
 from collections import defaultdict
 
-from paddle.fluid.executor import global_scope
-from paddle.fluid.framework import Parameter, program_guard
 from paddle.jit import not_to_static, to_static
 from paddle.jit.dy2static.program_translator import StaticFunction
 from paddle.nn import Layer
+from paddle.static import Parameter, global_scope, program_guard
 
 from .converter import Converter
 from .utils import get_logger, to_list
