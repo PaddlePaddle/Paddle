@@ -563,6 +563,18 @@ class TestSundryAPI(unittest.TestCase):
         self.assertEqual(out.grad.shape, [])
         self.assertEqual(x.grad.shape, [])
 
+    def test_cumprod(self):
+        x = paddle.full([], 1.0, 'float32')
+        x.stop_gradient = False
+        out = paddle.cumprod(x, 0)
+        out.backward()
+
+        with self.assertRaises(ValueError):
+            tmp = paddle.cumprod(x, 2)
+        self.assertEqual(out.shape, [])
+        self.assertEqual(out.grad.shape, [])
+        self.assertEqual(x.grad.shape, [])
+
     def test_clip(self):
         x = paddle.uniform([], None, -10, 10)
         x.stop_gradient = False
@@ -720,6 +732,48 @@ class TestSundryAPI(unittest.TestCase):
         self.assertEqual(out.shape, [5])
         self.assertEqual(out.numpy()[3], 2)
         self.assertEqual(out.grad.shape, [5])
+
+    def test_kthvalue(self):
+        places = ['cpu']
+        if paddle.is_compiled_with_cuda():
+            places.append('gpu')
+        for place in places:
+            paddle.set_device(place)
+
+            x = paddle.randn(())
+            x.stop_gradient = False
+
+            out = paddle.kthvalue(x, 1)
+            out[0].backward()
+
+            # check shape of output value and indice
+            self.assertEqual(out[0].shape, [])
+            self.assertEqual(out[1].shape, [])
+
+            # check grad shape and value
+            self.assertEqual(x.grad.shape, [])
+            self.assertTrue(x.grad.numpy() == 1)
+
+    def test_mode(self):
+        places = ['cpu']
+        if paddle.is_compiled_with_cuda():
+            places.append('gpu')
+        for place in places:
+            paddle.set_device(place)
+
+            x = paddle.randn(())
+            x.stop_gradient = False
+
+            out = paddle.mode(x)
+            out[0].backward()
+
+            # check shape of output value and indice
+            self.assertEqual(out[0].shape, [])
+            self.assertEqual(out[1].shape, [])
+
+            # check grad shape and value
+            self.assertEqual(x.grad.shape, [])
+            self.assertTrue(x.grad.numpy() == 1)
 
     def test_flatten(self):
         x = paddle.rand([])
@@ -912,6 +966,34 @@ class TestSundryAPI(unittest.TestCase):
         self.assertEqual(x1.grad.numpy(), 0)
         self.assertEqual(x2.grad.numpy(), 0)
 
+    def test_repeat_interleave(self):
+        places = ['cpu']
+        if paddle.is_compiled_with_cuda():
+            places.append('gpu')
+        for place in places:
+            paddle.set_device(place)
+
+            x = paddle.randn(())
+            x.stop_gradient = False
+
+            out = paddle.repeat_interleave(x, 2, None)
+            out.backward()
+
+            # check shape of output
+            self.assertEqual(out.shape, [2])
+
+            # check grad shape
+            self.assertEqual(x.grad.shape, [])
+
+            repeats = paddle.to_tensor([3], dtype='int32')
+            out = paddle.repeat_interleave(x, repeats, None)
+
+            # check shape of output with 1D repeats
+            self.assertEqual(out.shape, [3])
+
+            # check grad shape with 1D repeats
+            self.assertEqual(x.grad.shape, [])
+
 
 class TestSundryAPIStatic(unittest.TestCase):
     def setUp(self):
@@ -950,6 +1032,19 @@ class TestSundryAPIStatic(unittest.TestCase):
 
         prog = paddle.static.default_main_program()
         res = self.exe.run(prog, fetch_list=[out])
+        self.assertEqual(res[0].shape, ())
+
+    @prog_scope()
+    def test_cumprod(self):
+        x = paddle.full([], 1.0, 'float32')
+        x.stop_gradient = False
+        out = paddle.cumprod(x, 0)
+        paddle.static.append_backward(out)
+        prog = paddle.static.default_main_program()
+        res = self.exe.run(prog, fetch_list=[out])
+
+        with self.assertRaises(ValueError):
+            tmp = paddle.cumprod(x, 2)
         self.assertEqual(res[0].shape, ())
 
     @prog_scope()
@@ -1127,6 +1222,28 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(res[0][3], 2)
 
     @prog_scope()
+    def test_kthvalue(self):
+        x = paddle.full([], 1, 'float32')
+        out = paddle.kthvalue(x, 1)
+        paddle.static.append_backward(out[0])
+
+        prog = paddle.static.default_main_program()
+        res = self.exe.run(prog, fetch_list=[out])
+        self.assertEqual(len(res[0].shape), 0)
+        self.assertEqual(len(res[0].shape), 0)
+
+    @prog_scope()
+    def test_mode(self):
+        x = paddle.full([], 1, 'float32')
+        out = paddle.mode(x)
+        paddle.static.append_backward(out[0])
+
+        prog = paddle.static.default_main_program()
+        res = self.exe.run(prog, fetch_list=[out])
+        self.assertEqual(len(res[0].shape), 0)
+        self.assertEqual(len(res[0].shape), 0)
+
+    @prog_scope()
     def test_flatten(self):
         x = paddle.full([], 1, 'float32')
         x.stop_gradient = False
@@ -1290,6 +1407,24 @@ class TestSundryAPIStatic(unittest.TestCase):
 
         self.assertEqual(res[0].shape, ())
         self.assertEqual(res[1].shape, ())
+
+    @prog_scope()
+    def test_repeat_interleave(self):
+        x = paddle.full([], 1.0, 'float32')
+        out = paddle.repeat_interleave(x, 2, None)
+        paddle.static.append_backward(out)
+
+        prog = paddle.static.default_main_program()
+        res = self.exe.run(prog, fetch_list=[out])
+        self.assertEqual(res[0].shape, (2,))
+
+        repeats = paddle.to_tensor([3], dtype='int32')
+        out = paddle.repeat_interleave(x, repeats, None)
+        paddle.static.append_backward(out)
+
+        prog = paddle.static.default_main_program()
+        res = self.exe.run(prog, fetch_list=[out])
+        self.assertEqual(res[0].shape, (3,))
 
 
 # Use to test API whose zero-dim input tensors don't have grad and not need to test backward in OpTest.

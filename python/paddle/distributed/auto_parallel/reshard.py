@@ -15,11 +15,9 @@
 from functools import reduce
 
 import paddle
-import paddle.fluid.core as core
 import paddle.fluid.layers.utils as utils
 from paddle.distributed.fleet.meta_optimizers.common import OpRole
-from paddle.fluid.framework import OpProtoHolder, Program
-from paddle.fluid.layer_helper import LayerHelper
+from paddle.framework import LayerHelper, OpProtoHolder, Program, core
 from paddle.utils import unique_name
 
 from .cost import (
@@ -310,7 +308,7 @@ class Inserter:
     @staticmethod
     def insert_cast_op(block, idx, tensor, op_role, tensor_type):
         # to avoid name conflict with framework
-        new_var_name = paddle.fluid.unique_name.generate_with_ignorable_key(
+        new_var_name = paddle.utils.unique_name.generate_with_ignorable_key(
             ".".join(["cast@RESHARD", 'tmp'])
         )
         out = block.create_var(
@@ -380,7 +378,7 @@ class Inserter:
     def insert_reset_lod_op(block, idx, X, Y, op_role):
         """Insert reset_lod op into block at the given index."""
 
-        new_var_name = paddle.fluid.unique_name.generate_with_ignorable_key(
+        new_var_name = paddle.utils.unique_name.generate_with_ignorable_key(
             ".".join(["reset_lod@RESHARD", 'tmp'])
         )
         reset_lod_out = block.create_var(
@@ -412,7 +410,7 @@ class Inserter:
         helper = LayerHelper('concat@RESHARD', **locals())
         with paddle.static.program_guard(block.program):
             out = block.create_var(
-                name=paddle.fluid.unique_name.generate_with_ignorable_key(
+                name=paddle.utils.unique_name.generate_with_ignorable_key(
                     ".".join([helper.name, 'tmp'])
                 ),
                 dtype=tensors[0].dtype,
@@ -484,7 +482,7 @@ class Inserter:
             with paddle.static.program_guard(block.program):
                 outs = [
                     block.create_var(
-                        name=paddle.fluid.unique_name.generate_with_ignorable_key(
+                        name=paddle.utils.unique_name.generate_with_ignorable_key(
                             ".".join(['split@RESHARD', 'tmp'])
                         ),
                         dtype=tensor.dtype,
@@ -550,7 +548,7 @@ class Inserter:
         with paddle.static.program_guard(block.program):
             outs = [
                 block.create_var(
-                    name=paddle.fluid.unique_name.generate_with_ignorable_key(
+                    name=paddle.utils.unique_name.generate_with_ignorable_key(
                         ".".join([helper.name, 'tmp'])
                     ),
                     dtype=tensor.dtype,
@@ -576,7 +574,7 @@ class Inserter:
         # use paddle.int64 as dtype
         with paddle.static.program_guard(block.program):
             out = block.create_var(
-                name=paddle.fluid.unique_name.generate_with_ignorable_key(
+                name=paddle.utils.unique_name.generate_with_ignorable_key(
                     ".".join([helper.name, 'tmp'])
                 ),
                 dtype=paddle.int64,
@@ -650,7 +648,7 @@ class Inserter:
         helper = LayerHelper(op_type + "@RESHARD", **locals())
         with paddle.static.program_guard(block.program):
             allgather_out = block.create_var(
-                name=paddle.fluid.unique_name.generate_with_ignorable_key(
+                name=paddle.utils.unique_name.generate_with_ignorable_key(
                     ".".join([helper.name, 'tmp'])
                 ),
                 dtype=tensor.dtype,
@@ -695,7 +693,7 @@ class Inserter:
         helper = LayerHelper(op_type + "@RESHARD", **locals())
         with paddle.static.program_guard(block.program):
             c_concat_out = block.create_var(
-                name=paddle.fluid.unique_name.generate_with_ignorable_key(
+                name=paddle.utils.unique_name.generate_with_ignorable_key(
                     ".".join([helper.name, 'tmp'])
                 ),
                 dtype=tensor.dtype,

@@ -305,6 +305,8 @@ try:
     from .libpaddle import _Profiler, _ProfilerResult, _RecordEvent
     from .libpaddle import _set_current_stream
     from .libpaddle import _get_phi_kernel_name
+    from .libpaddle import set_prim_enabled
+    from .libpaddle import is_prim_enabled
 
     if sys.platform != 'win32':
         from .libpaddle import _set_process_pids

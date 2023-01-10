@@ -307,9 +307,6 @@ def stft(
             y1 = stft(x, n_fft=512, center=False, onesided=False)  # [8, 512, 372]
 
     """
-    check_variable_and_dtype(
-        x, 'x', ['float32', 'float64', 'complex64', 'complex128'], 'stft'
-    )
 
     x_rank = len(x.shape)
     assert x_rank in [
