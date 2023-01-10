@@ -244,19 +244,6 @@ __global__ void KeBackwardLocalStats2D(const T *dy,
       }
     }
   }
-  /*
-  __syncthreads();
-  auto out = BlockReduce(temp_storage).Reduce(sum1, cub::Sum());
-  __syncthreads();
-  if (threadIdx.x == 0) {
-    sum_dy_prod[k] = out;
-  }
-  out = BlockReduce(temp_storage).Reduce(sum2, cub::Sum());
-  __syncthreads();
-  if (threadIdx.x == 0) {
-    sum_dy_prod[k + C] = out;
-  }
-  */
   if (blockIdx.x == 0 && threadIdx.x == 0) {
     sum_dy_prod[2 * C] = 1.0;
   }
@@ -304,6 +291,96 @@ static __global__ void KeBNBackwardScaleBias(
       dbias[i] = ob;
     }
     __syncthreads();
+  }
+}
+
+template <typename T, int BlockDim, DataLayout layout>
+static __global__ void KeBNBackwardScaleBias2D(
+    const T *dy,
+    const T *x,
+    const BatchNormParamType<T> *mean,
+    const BatchNormParamType<T> *inv_variance,
+    const double epsilon,
+    const int N,
+    const int C,
+    const int HxW,
+    BatchNormParamType<T> *block_data_ptr,
+    int *flag_ptr,
+    BatchNormParamType<T> *dscale,
+    BatchNormParamType<T> *dbias) {
+  const int outer_size = C;
+  const int inner_size = N * HxW;
+  __shared__ BatchNormParamType<T> smem_sum[BlockDim];
+  __shared__ BatchNormParamType<T> smem_square_sum[BlockDim];
+
+  for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < outer_size;
+       i += gridDim.x * blockDim.x) {
+    BatchNormParamType<T> ds_sum = 0.;
+    BatchNormParamType<T> db_sum = 0.;
+
+    auto inv_var_i = inv_variance[i];
+    auto mean_i = mean[i];
+    for (int j = blockIdx.y * blockDim.y + threadIdx.y; j < inner_size;
+         j += gridDim.y * blockDim.y) {
+      const int id = layout == DataLayout::kNCHW
+                         ? ((j / HxW) * C + i) * HxW + (j % HxW)
+                         : j * outer_size + i;
+      auto x_i = static_cast<BatchNormParamType<T>>(x[id]);
+      auto dy_i = static_cast<BatchNormParamType<T>>(dy[id]);
+      ds_sum += dy_i * (x_i - mean_i);
+      db_sum += dy_i;
+    }
+    funcs::BlockReduceByVetical<T, BatchNormParamType<T>>(
+        ds_sum, db_sum, &smem_sum[0], &smem_square_sum[0], &ds_sum, &db_sum);
+
+    if (gridDim.y > 1) {
+      volatile BatchNormParamType<T> *staging_sum = block_data_ptr;
+      volatile BatchNormParamType<T> *staging_square_sum =
+          &block_data_ptr[C * gridDim.y];
+      // write block data to global memory
+      if (threadIdx.y == 0) {
+        staging_sum[i + blockIdx.y * C] = ds_sum;
+        staging_square_sum[i + blockIdx.y * C] = db_sum;
+      }
+
+      // make sure write is visible to all blocks
+      __threadfence();
+      __syncthreads();
+
+      __shared__ bool is_last_block_done;
+      // mark block done
+      if (threadIdx.x == 0 && threadIdx.y == 0) {
+        int old = atomicAdd(&flag_ptr[blockIdx.x], 1);
+        is_last_block_done = (old == (gridDim.y - 1));
+      }
+
+      __syncthreads();
+
+      if (is_last_block_done) {
+        ds_sum = static_cast<BatchNormParamType<T>>(0);
+        db_sum = static_cast<BatchNormParamType<T>>(0);
+        // thread sum
+        for (int y = threadIdx.y; y < gridDim.y; y += blockDim.y) {
+          ds_sum += staging_sum[i + y * C];
+          db_sum += staging_square_sum[i + y * C];
+        }
+
+        // vertical block sum
+        funcs::BlockReduceByVetical<T, BatchNormParamType<T>>(
+            ds_sum,
+            db_sum,
+            &smem_sum[0],
+            &smem_square_sum[0],
+            &ds_sum,
+            &db_sum);
+
+        // final compute
+        if (threadIdx.y == 0) {
+          dscale[i] = ds_sum * inv_var_i;
+          dbias[i] = db_sum;
+        }
+      }
+    }
   }
 }
 
@@ -607,8 +684,33 @@ void SyncBatchNormGradFunctor(
     }
   } else {
     if (d_scale && d_bias) {
-      KeBNBackwardScaleBias<T, threads, DataLayout::kNHWC>
-          <<<grid, threads, 0, stream>>>(dy_d,
+      if (x_dims.size() == 2) {
+        dim3 block;
+        dim3 grid;
+        const int block_size = 512;
+
+        // init intermediate storage
+        DenseTensor block_data_tensor;
+        DenseTensor flag_tensor;
+        BatchNormParamType<T> *block_data_ptr = nullptr;
+        int *flag_ptr = nullptr;
+
+        funcs::SetLaunchConfigInfoForChannelLast<T, BatchNormParamType<T>>(
+            ctx,
+            &block_data_tensor,
+            &flag_tensor,
+            &block_data_ptr,
+            &flag_ptr,
+            N,
+            H,
+            W,
+            D,
+            C,
+            block_size,
+            &block,
+            &grid);
+        KeBNBackwardScaleBias2D<T, threads, DataLayout::kNHWC>
+            <<<grid, block, 0, stream>>>(dy_d,
                                          x_d,
                                          saved_mean_ptr,
                                          saved_inv_var,
@@ -616,8 +718,24 @@ void SyncBatchNormGradFunctor(
                                          N,
                                          C,
                                          fsize,
+                                         block_data_ptr,
+                                         flag_ptr,
                                          d_scale->data<BatchNormParamType<T>>(),
                                          d_bias->data<BatchNormParamType<T>>());
+      } else {
+        KeBNBackwardScaleBias<T, threads, DataLayout::kNHWC>
+            <<<grid, threads, 0, stream>>>(
+                dy_d,
+                x_d,
+                saved_mean_ptr,
+                saved_inv_var,
+                epsilon,
+                N,
+                C,
+                fsize,
+                d_scale->data<BatchNormParamType<T>>(),
+                d_bias->data<BatchNormParamType<T>>());
+      }
     }
     if (d_x) {
       KeBNBackwardData<T, DataLayout::kNHWC><<<grid2, block, 0, stream>>>(
