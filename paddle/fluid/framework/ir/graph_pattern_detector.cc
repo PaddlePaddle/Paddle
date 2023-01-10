@@ -980,18 +980,22 @@ PDNode *patterns::OperatorActivation::operator()(
 }
 
 PDNode *patterns::QuantTranspose2::operator()() {
-  auto quant_in = pattern->NewNode(quant_in_repr())
-                      ->AsInput()
-                      ->assert_is_op_input("quantize", "Input");
-  auto quant_op = pattern->NewNode(quant_op_repr())->assert_is_op("quantize");
-  auto transpose2_in = pattern->NewNode(transpose2_in_repr())
-                           ->AsInput()
-                           ->assert_is_op_input("transpose2", "X");
-  auto transpose2_op =
+  auto *quant_in = pattern->NewNode(quant_in_repr())
+                       ->AsInput()
+                       ->assert_is_op_input("quantize", "Input");
+  auto *quant_op = pattern->NewNode(quant_op_repr())->assert_is_op("quantize");
+  auto *quant_out = pattern->NewNode(quant_out_repr())
+                        ->AsOutput()
+                        ->assert_is_op_output("quantize")
+                        ->assert_is_op_input("transpose2", "X");
+  // auto transpose2_in = pattern->NewNode(transpose2_in_repr())
+  //                          ->AsInput()
+  //                          ->assert_is_op_input("transpose2", "X");
+  auto *transpose2_op =
       pattern->NewNode(transpose2_op_repr())->assert_is_op("transpose2");
 
-  quant_op->LinksFrom({quant_in}).LinksTo({transpose2_in});
-  transpose2_op->LinksFrom({transpose2_in});
+  quant_op->LinksFrom({quant_in}).LinksTo({quant_out});
+  transpose2_op->LinksFrom({quant_out});
 
   return transpose2_op;
 }
