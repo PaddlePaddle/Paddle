@@ -1375,7 +1375,7 @@ def nll_loss(
     label_shape = list(label.shape)
     label_dims = len(label_shape)
 
-    if input_shape[-1] < 1:
+    if input_shape[1] < 1:
         raise ValueError(
             "Expected last dimension of input (num classes) >= 1 (got num classes{})".format(
                 input_shape[-1]
