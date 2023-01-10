@@ -1377,7 +1377,7 @@ def nll_loss(
 
     if input_shape[1] < 1:
         raise ValueError(
-            "Expected last dimension of input (num classes) >= 1 (got num classes{})".format(
+            "Expected 1 or more classess (got num classes{})".format(
                 input_shape[1]
             )
         )
