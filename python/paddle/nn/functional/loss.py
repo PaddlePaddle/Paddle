@@ -2882,8 +2882,8 @@ def sigmoid_focal_loss(
             ``logit``. The target label whose value should be numbers between 0 and 1.
             Available dtype is float32, float64.
         normalizer (Tensor, optional): The number normalizes the focal loss. It has to be
-            a 1-D Tensor whose shape is `[1, ]`. The data type is float32, float64.
-            For object detection task, it is the number of positive samples.
+            a 1-D Tensor with shape `[1, ]` or 0-D Tensor with shape `[]`. The data type
+            is float32, float64. For object detection task, it is the number of positive samples.
             If set to None, the focal loss will not be normalized. Default is None.
         alpha(int|float, optional): Hyper-parameter to balance the positive and negative example,
             it should be between 0 and 1.  Default value is set to 0.25.
@@ -2934,7 +2934,7 @@ def sigmoid_focal_loss(
         normalizer_dims = len(normalizer_shape)
         if normalizer_dims > 1:
             raise ValueError(
-                "Expected one dimension of normalizer in sigmoid_focal_loss but got {}.".format(
+                "Expected zero or one dimension of normalizer in sigmoid_focal_loss but got {}.".format(
                     normalizer_dims
                 )
             )
