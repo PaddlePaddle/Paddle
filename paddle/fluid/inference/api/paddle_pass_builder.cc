@@ -256,6 +256,7 @@ GpuPassStrategy::GpuPassStrategy() : PassStrategy({}) {
         "transpose_flatten_concat_fuse_pass",  //
         "constant_folding_pass",               //
         "auto_mixed_precision_pass",           //
+        "conv2d_fusion_cutlass_elementwise",
         "conv2d_fusion_layout_transfer_pass",  //
         "auto_mixed_precision_pass",           //
         "inplace_op_var_pass",                 // should be the last pass.

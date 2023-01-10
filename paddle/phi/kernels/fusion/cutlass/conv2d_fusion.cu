@@ -110,6 +110,9 @@ void Conv2dFusionKernel(const Context& ctx,
     if (activation == "relu") {
       params.residual = reinterpret_cast<const half*>(residual->data<T>());
       Conv2dBiasAddRelu(params);
+    } else if (activation == "swish") {
+      params.residual = reinterpret_cast<const half*>(residual->data<T>());
+      Conv2dBiasSiluAdd(params);
     } else {
       PADDLE_THROW(paddle::platform::errors::InvalidArgument(
           "Cutlass now only support relu activation in a residual block"));

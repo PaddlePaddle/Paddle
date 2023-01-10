@@ -199,7 +199,7 @@ void Conv2dFusionLayoutTransferPass::ApplyImpl(ir::Graph *graph) const {
 
     if (is_residual) {
       if (!cutlass_cbaa_act_set.count(act_type)) {
-        return false;
+        // return false;
       }
     } else {
       if (!cutlass_cba_act_set.count(act_type)) {

@@ -124,6 +124,7 @@ pass_library(matmul_scale_fuse_pass inference)
 pass_library(gpu_cpu_map_matmul_to_mul_pass inference)
 pass_library(dense_fc_to_sparse_pass inference)
 pass_library(dense_multihead_matmul_to_sparse_pass inference)
+pass_library(conv2d_fusion_cutlass_elementwise inference)
 pass_library(generate_pass DEPS pass_desc_proto)
 target_link_libraries(generate_pass pass_desc_proto)
 
