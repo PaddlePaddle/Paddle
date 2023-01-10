@@ -86,7 +86,13 @@ void AllValueCompareInferMeta(const MetaTensor& x,
                               MetaConfig config) {
   detail::BinarySameInputDimsCheck(x, y, config);
 
-  out->set_dims(phi::make_ddim({1}));
+  auto x_dims = x.dims();
+  auto y_dims = y.dims();
+  if (x_dims.size() == 0 && y_dims.size() == 0) {
+    out->set_dims(phi::make_ddim({}));
+  } else {
+    out->set_dims(phi::make_ddim({1}));
+  }
   out->set_dtype(DataType::BOOL);
 }
 
