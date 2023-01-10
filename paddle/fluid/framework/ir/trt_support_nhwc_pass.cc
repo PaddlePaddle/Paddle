@@ -31,13 +31,13 @@ namespace ir {
 
 namespace {
 
-void InsertTransposeOp(ir::Graph *graph,
-                       ir::Node *prev_node,
-                       ir::Node *next_node,
-                       phi::DataLayout from_layout,
-                       phi::DataLayout to_layout,
-                       framework::BlockDesc *block_desc,
-                       std::unordered_map<ir::Node *, ir::Node *> *cache) {
+void DoInsertTransposeOp(ir::Graph *graph,
+                         ir::Node *prev_node,
+                         ir::Node *next_node,
+                         phi::DataLayout from_layout,
+                         phi::DataLayout to_layout,
+                         framework::BlockDesc *block_desc,
+                         std::unordered_map<ir::Node *, ir::Node *> *cache) {
   auto do_insert = [&](const std::string &in_var_name,
                        const std::string &out_var_name) {
     auto update_op_desc = [&](framework::OpDesc &desc,
@@ -149,7 +149,7 @@ void TrtSupportNHWCPass::ApplyImpl(Graph *graph) const {
   std::unordered_set<std::string> need_trans_weights{"prelu"};
   // Ops must run under the original layout even though it has
   // data_format/data_layout attribute, otherwise it will be very troublesome!
-  std::unordered_set<std::string> must_origin_layout_ops{"affine_channel"};
+  std::unordered_set<std::string> must_original_layout_ops{"affine_channel"};
   // OPs unrelated to layout are consistent according to the layout of input
   // var！
   std::unordered_set<std::string> any_layout_ops{"relu", "elementwise_add"};
@@ -192,7 +192,7 @@ void TrtSupportNHWCPass::ApplyImpl(Graph *graph) const {
 
     if (data_format != "NHWC" || !input_shape_4 ||
         any_layout_ops.count(op_desc->Type()) ||
-        must_origin_layout_ops.count(op_desc->Type())) {
+        must_original_layout_ops.count(op_desc->Type())) {
       continue;
     }
     // Transpose NHWC --> NCHW
@@ -260,71 +260,77 @@ void TrtSupportNHWCPass::ApplyImpl(Graph *graph) const {
     }
   }
 
-  // Process any layout ops
-  for (auto *op_node : op_nodes) {
-    CHECK_EQ(op_node->IsOp(), true);
-    auto op_inputs = op_node->inputs;
-    for (auto *in_var_node : op_inputs) {
-      CHECK_EQ(in_var_node->IsVar(), true);
-      if (transposed_ops.count(op_node)) continue;
+  auto ProcessAnyLayoutOps = [&] {
+    // Process any layout ops
+    for (auto *op_node : op_nodes) {
+      CHECK_EQ(op_node->IsOp(), true);
+      auto op_inputs = op_node->inputs;
+      for (auto *in_var_node : op_inputs) {
+        CHECK_EQ(in_var_node->IsVar(), true);
+        if (transposed_ops.count(op_node)) continue;
 
-      if (vars_to_nchw.count(in_var_node) &&
-          any_layout_ops.count(op_node->Op()->Type())) {
-        transposed_ops.insert(op_node);
-        // Update output var of current op
-        auto op_outputs = op_node->outputs;
-        for (auto *out_var_node : op_outputs) {
-          CHECK_EQ(out_var_node->IsVar(), true);
-          if (out_var_node->Var()->Persistable()) continue;
+        if (vars_to_nchw.count(in_var_node) &&
+            any_layout_ops.count(op_node->Op()->Type())) {
+          transposed_ops.insert(op_node);
+          // Update output var of current op
+          auto op_outputs = op_node->outputs;
+          for (auto *out_var_node : op_outputs) {
+            CHECK_EQ(out_var_node->IsVar(), true);
+            if (out_var_node->Var()->Persistable()) continue;
 
-          auto from_shape = out_var_node->Var()->GetShape();
-          if (from_shape.size() == 4) {
-            out_var_node->Var()->SetShape(
-                {from_shape[0], from_shape[3], from_shape[1], from_shape[2]});
-            vars_to_nchw.insert(out_var_node);
+            auto from_shape = out_var_node->Var()->GetShape();
+            if (from_shape.size() == 4) {
+              out_var_node->Var()->SetShape(
+                  {from_shape[0], from_shape[3], from_shape[1], from_shape[2]});
+              vars_to_nchw.insert(out_var_node);
+            }
           }
         }
       }
     }
-  }
+  };
+  ProcessAnyLayoutOps();
 
-  // Insert transpose op
-  for (auto *op_node : op_nodes) {
-    CHECK_EQ(op_node->IsOp(), true);
+  auto InsertTransposeOp = [&] {
+    // Insert transpose op
+    for (auto *op_node : op_nodes) {
+      CHECK_EQ(op_node->IsOp(), true);
 
-    if (transposed_ops.count(op_node)) {
-      auto op_inputs = op_node->inputs;
-      for (auto *in_var_node : op_inputs) {
-        CHECK_EQ(in_var_node->IsVar(), true);
+      if (transposed_ops.count(op_node)) {
+        auto op_inputs = op_node->inputs;
+        for (auto *in_var_node : op_inputs) {
+          CHECK_EQ(in_var_node->IsVar(), true);
 
-        if (in_var_node->Var()->Persistable()) continue;
-        if (vars_to_nchw.count(in_var_node)) continue;
+          if (in_var_node->Var()->Persistable()) continue;
+          if (vars_to_nchw.count(in_var_node)) continue;
 
-        InsertTransposeOp(graph,
-                          in_var_node,
-                          op_node,
-                          phi::DataLayout::kNHWC,
-                          phi::DataLayout::kNCHW,
-                          block_desc,
-                          &cache);
-      }
-    } else {
-      auto op_inputs = op_node->inputs;
-      for (auto *in_var_node : op_inputs) {
-        CHECK_EQ(in_var_node->IsVar(), true);
+          DoInsertTransposeOp(graph,
+                              in_var_node,
+                              op_node,
+                              phi::DataLayout::kNHWC,
+                              phi::DataLayout::kNCHW,
+                              block_desc,
+                              &cache);
+        }
+      } else {
+        auto op_inputs = op_node->inputs;
+        for (auto *in_var_node : op_inputs) {
+          CHECK_EQ(in_var_node->IsVar(), true);
 
-        if (vars_to_nchw.count(in_var_node)) {
-          InsertTransposeOp(graph,
-                            in_var_node,
-                            op_node,
-                            phi::DataLayout::kNCHW,
-                            phi::DataLayout::kNHWC,
-                            block_desc,
-                            &cache);
+          if (vars_to_nchw.count(in_var_node)) {
+            DoInsertTransposeOp(graph,
+                                in_var_node,
+                                op_node,
+                                phi::DataLayout::kNCHW,
+                                phi::DataLayout::kNHWC,
+                                block_desc,
+                                &cache);
+          }
         }
       }
     }
-  }
+  };
+  InsertTransposeOp();
 }
 
 }  // namespace ir
