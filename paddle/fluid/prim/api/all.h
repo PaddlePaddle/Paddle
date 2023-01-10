@@ -12,15 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/core/compat/op_utils.h"
-
-namespace phi {
-
-KernelSignature MultiDotGradOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
-  return KernelSignature("multi_dot_grad", {"X", "Out@GRAD"}, {}, {"X@GRAD"});
-}
-
-}  // namespace phi
-
-PD_REGISTER_ARG_MAPPING_FN(multi_dot_grad, phi::MultiDotGradOpArgumentMapping);
+#pragma once
+#include "paddle/fluid/prim/api/manual/backward/composite_backward_api.h"
+#include "paddle/fluid/prim/api/manual/prim_api/prim_api.h"
+#include "paddle/fluid/prim/api/manual/utils/utils.h"
