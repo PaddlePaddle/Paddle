@@ -16,8 +16,7 @@ import copy
 from collections import defaultdict
 
 from paddle.distributed.passes import PassContext
-from paddle.fluid import core, framework
-from paddle.fluid.framework import set_flags
+from paddle.framework import IrGraph, core, set_flags
 
 from .dist_op import DistributedOperator
 from .dist_tensor import DistributedTensor
@@ -437,7 +436,7 @@ class DistributedContext:
 
             if with_graph:
                 set_flags({"FLAGS_convert_all_blocks": True})
-                self._serial_graph = framework.IrGraph(
+                self._serial_graph = IrGraph(
                     core.Graph(self._serial_main_program.desc)
                 )
                 self._init_dist_attr_for_graph()
