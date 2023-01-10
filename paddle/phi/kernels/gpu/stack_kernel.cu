@@ -87,13 +87,13 @@ void StackKernel(const Context& ctx,
 
   if (out->numel() < std::numeric_limits<int32_t>::max()) {
     switch (funcs::CalcArraySize(num)) {
-      POINTER_ARRAY_KERNEL_HELPER(
+      SEGMENTED_ARRAY_KERNEL_HELPER(
           LaunchStackKernel<Context, T, int32_t, kArraySize>(
               ctx, x_col, x_row, out_col, x, out));
     }
   } else {
     switch (funcs::CalcArraySize(num)) {
-      POINTER_ARRAY_KERNEL_HELPER(
+      SEGMENTED_ARRAY_KERNEL_HELPER(
           LaunchStackKernel<Context, T, int64_t, kArraySize>(
               ctx, x_col, x_row, out_col, x, out));
     }

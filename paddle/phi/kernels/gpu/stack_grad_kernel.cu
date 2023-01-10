@@ -101,13 +101,13 @@ void StackGradKernel(const Context& ctx,
 
   if (out.numel() < std::numeric_limits<int32_t>::max()) {
     switch (funcs::CalcArraySize(split_dim)) {
-      POINTER_ARRAY_KERNEL_HELPER(
+      SEGMENTED_ARRAY_KERNEL_HELPER(
           LaunchStackGradKernel<Context, T, int32_t, kArraySize>(
               ctx, dout_pre, split_dim, dout_suf, split_dim, out, &x_grad));
     }
   } else {
     switch (funcs::CalcArraySize(split_dim)) {
-      POINTER_ARRAY_KERNEL_HELPER(
+      SEGMENTED_ARRAY_KERNEL_HELPER(
           LaunchStackGradKernel<Context, T, int64_t, kArraySize>(
               ctx, dout_pre, split_dim, dout_suf, split_dim, out, &x_grad));
     }

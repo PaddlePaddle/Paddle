@@ -202,30 +202,30 @@ inline SegmentedArraySize CalcArraySize(int n) {
 }
 }  // namespace funcs
 
-#define _POINTER_ARRAY_KERNEL_CASE(size, ...) \
-  case (size): {                              \
-    constexpr auto kArraySize = (size);       \
-    __VA_ARGS__;                              \
+#define _SEGMENTED_ARRAY_KERNEL_CASE(size, ...) \
+  case (size): {                                \
+    constexpr auto kArraySize = (size);         \
+    __VA_ARGS__;                                \
   } break
 
-#define _POINTER_ARRAY_KERNEL_DEFAULT(size, ...) \
-  default: {                                     \
-    constexpr auto kArraySize = (size);          \
-    __VA_ARGS__;                                 \
+#define _SEGMENTED_ARRAY_KERNEL_DEFAULT(size, ...) \
+  default: {                                       \
+    constexpr auto kArraySize = (size);            \
+    __VA_ARGS__;                                   \
   } break
 
-#define POINTER_ARRAY_KERNEL_HELPER(...)                                    \
-  _POINTER_ARRAY_KERNEL_CASE(funcs::SegmentedArraySize::kFixed4,            \
-                             ##__VA_ARGS__);                                \
-  _POINTER_ARRAY_KERNEL_CASE(funcs::SegmentedArraySize::kFixed8,            \
-                             ##__VA_ARGS__);                                \
-  _POINTER_ARRAY_KERNEL_CASE(funcs::SegmentedArraySize::kFixed16,           \
-                             ##__VA_ARGS__);                                \
-  _POINTER_ARRAY_KERNEL_CASE(funcs::SegmentedArraySize::kFixed32,           \
-                             ##__VA_ARGS__);                                \
-  _POINTER_ARRAY_KERNEL_CASE(funcs::SegmentedArraySize::kFixed64,           \
-                             ##__VA_ARGS__);                                \
-  _POINTER_ARRAY_KERNEL_DEFAULT(funcs::SegmentedArraySize::kVariableLength, \
-                                ##__VA_ARGS__);
+#define SEGMENTED_ARRAY_KERNEL_HELPER(...)                                    \
+  _SEGMENTED_ARRAY_KERNEL_CASE(funcs::SegmentedArraySize::kFixed4,            \
+                               ##__VA_ARGS__);                                \
+  _SEGMENTED_ARRAY_KERNEL_CASE(funcs::SegmentedArraySize::kFixed8,            \
+                               ##__VA_ARGS__);                                \
+  _SEGMENTED_ARRAY_KERNEL_CASE(funcs::SegmentedArraySize::kFixed16,           \
+                               ##__VA_ARGS__);                                \
+  _SEGMENTED_ARRAY_KERNEL_CASE(funcs::SegmentedArraySize::kFixed32,           \
+                               ##__VA_ARGS__);                                \
+  _SEGMENTED_ARRAY_KERNEL_CASE(funcs::SegmentedArraySize::kFixed64,           \
+                               ##__VA_ARGS__);                                \
+  _SEGMENTED_ARRAY_KERNEL_DEFAULT(funcs::SegmentedArraySize::kVariableLength, \
+                                  ##__VA_ARGS__);
 
 }  // namespace phi
