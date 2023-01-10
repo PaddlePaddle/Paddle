@@ -99,7 +99,7 @@ about:
             self.python37,
             self.python38,
             self.python39,
-            self.python310
+            self.python310,
         ]
 
         self.cuda101 = r"""
