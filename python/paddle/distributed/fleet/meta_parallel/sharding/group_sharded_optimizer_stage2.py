@@ -149,6 +149,11 @@ class GroupShardedOptimizerStage2(Optimizer):
         self._rank = self._group.rank
         self._global_root_rank = self._group.ranks[0]
 
+        if self._dp_group is not None and self._dp_group.nranks > 1:
+            assert (
+                not offload
+            ), "Not support! when using offload with sharding stage2, please use pure sharding stage2, exclude data parallel."
+
         # Synchronous all ranks models
         if pertrain_sync_models:
             self._sync_params_and_buffers()
