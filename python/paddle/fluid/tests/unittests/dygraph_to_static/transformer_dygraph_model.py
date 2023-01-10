@@ -336,7 +336,7 @@ class WrapEncoder(Layer):
             max_length,
             self.emb_dim,
             weight_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.NumpyArrayInitializer(
+                initializer=paddle.nn.initializer.NumpyArrayInitializer(
                     position_encoding_init(max_length, self.emb_dim)
                 ),
                 trainable=False,
@@ -528,7 +528,7 @@ class WrapDecoder(Layer):
             max_length,
             self.emb_dim,
             weight_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.NumpyArrayInitializer(
+                initializer=paddle.nn.initializer.NumpyArrayInitializer(
                     position_encoding_init(max_length, self.emb_dim)
                 ),
                 trainable=False,

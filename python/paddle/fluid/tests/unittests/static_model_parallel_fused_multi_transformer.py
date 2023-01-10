@@ -25,10 +25,10 @@ paddle.enable_static()
 
 def get_param_attr(weight, bias):
     weight_attr = paddle.ParamAttr(
-        initializer=fluid.initializer.NumpyArrayInitializer(weight)
+        initializer=paddle.nn.initializer.NumpyArrayInitializer(weight)
     )
     bias_attr = paddle.ParamAttr(
-        initializer=fluid.initializer.NumpyArrayInitializer(bias)
+        initializer=paddle.nn.initializer.NumpyArrayInitializer(bias)
     )
     return weight_attr, bias_attr
 

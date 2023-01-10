@@ -533,7 +533,9 @@ class PrepareEncoderDecoderLayer(Layer):
             sparse=is_sparse,
             weight_attr=fluid.ParamAttr(
                 name=pos_enc_param_name,
-                initializer=fluid.initializer.NumpyArrayInitializer(pos_inp),
+                initializer=paddle.nn.initializer.NumpyArrayInitializer(
+                    pos_inp
+                ),
                 trainable=False,
             ),
         )

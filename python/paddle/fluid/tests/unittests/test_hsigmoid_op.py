@@ -20,7 +20,6 @@ from op_test import OpTest, skip_check_grad_ci
 
 import paddle
 import paddle.fluid as fluid
-import paddle.fluid.initializer as I
 import paddle.nn.functional as F
 
 paddle.enable_static()
@@ -557,8 +556,10 @@ class TestHSigmoidLossAPI(unittest.TestCase):
             x, labels, self.num_classes, weight, bias, path_table, path_code
         )
 
-        weight_attr = I.NumpyArrayInitializer(self.weight_np)
-        bias_attr = I.NumpyArrayInitializer(self.bias_np)
+        weight_attr = paddle.nn.initializer.NumpyArrayInitializer(
+            self.weight_np
+        )
+        bias_attr = paddle.nn.initializer.NumpyArrayInitializer(self.bias_np)
         m = paddle.nn.HSigmoidLoss(
             self.feature_size,
             self.num_classes,
@@ -595,10 +596,14 @@ class TestHSigmoidLossAPI(unittest.TestCase):
             )
 
             weight_attr = paddle.framework.ParamAttr(
-                initializer=I.NumpyArrayInitializer(self.weight_np)
+                initializer=paddle.nn.initializer.NumpyArrayInitializer(
+                    self.weight_np
+                )
             )
             bias_attr = paddle.framework.ParamAttr(
-                initializer=I.NumpyArrayInitializer(self.bias_np)
+                initializer=paddle.nn.initializer.NumpyArrayInitializer(
+                    self.bias_np
+                )
             )
             m = paddle.nn.HSigmoidLoss(
                 self.feature_size,
@@ -638,8 +643,12 @@ class TestHSigmoidLossAPI(unittest.TestCase):
             if self.is_custom:
                 path_table = fluid.data('path_table', [-1, -1], 'int64')
                 path_code = fluid.data('path_code', [-1, -1], 'int64')
-            weight_attr = I.NumpyArrayInitializer(self.weight_np)
-            bias_attr = I.NumpyArrayInitializer(self.bias_np)
+            weight_attr = paddle.nn.initializer.NumpyArrayInitializer(
+                self.weight_np
+            )
+            bias_attr = paddle.nn.initializer.NumpyArrayInitializer(
+                self.bias_np
+            )
             loss = paddle.nn.HSigmoidLoss(
                 feature_size=x.shape[1],
                 num_classes=self.num_classes,

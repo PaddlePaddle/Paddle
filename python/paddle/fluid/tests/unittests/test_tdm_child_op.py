@@ -17,6 +17,7 @@ import unittest
 import numpy as np
 from op_test import OpTest
 
+import paddle
 import paddle.fluid as fluid
 
 
@@ -148,7 +149,7 @@ class TestTDMChildShape(unittest.TestCase):
             node_nums=26,
             child_nums=2,
             param_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.NumpyArrayInitializer(
+                initializer=paddle.nn.initializer.NumpyArrayInitializer(
                     tree_info_np
                 )
             ),

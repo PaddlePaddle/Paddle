@@ -38,7 +38,7 @@ class SparseLoadOp(unittest.TestCase):
                 size=[10, 10],
                 param_attr=fluid.ParamAttr(
                     name="embedding",
-                    initializer=fluid.initializer.NumpyArrayInitializer(
+                    initializer=paddle.nn.initializer.NumpyArrayInitializer(
                         emb_array
                     ),
                 ),
@@ -50,7 +50,7 @@ class SparseLoadOp(unittest.TestCase):
                 activation="relu",
                 weight_attr=fluid.ParamAttr(
                     name='fc',
-                    initializer=fluid.initializer.NumpyArrayInitializer(
+                    initializer=paddle.nn.initializer.NumpyArrayInitializer(
                         fc_array
                     ),
                 ),

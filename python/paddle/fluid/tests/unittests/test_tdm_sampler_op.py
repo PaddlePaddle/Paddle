@@ -18,6 +18,7 @@ import unittest
 import numpy as np
 from op_test import OpTest
 
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 
@@ -287,12 +288,14 @@ class TestTDMSamplerShape(unittest.TestCase):
             layer_node_num_list,
             leaf_node_num,
             tree_travel_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.NumpyArrayInitializer(
+                initializer=paddle.nn.initializer.NumpyArrayInitializer(
                     travel_array
                 )
             ),
             tree_layer_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.NumpyArrayInitializer(layer_array)
+                initializer=paddle.nn.initializer.NumpyArrayInitializer(
+                    layer_array
+                )
             ),
             output_positive=True,
             output_list=True,

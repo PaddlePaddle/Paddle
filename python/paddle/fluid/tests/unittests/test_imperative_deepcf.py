@@ -123,7 +123,9 @@ class DeepCF(fluid.Layer):
             shape=matrix.shape,
             dtype=matrix.dtype,
             is_bias=False,
-            default_initializer=fluid.initializer.NumpyArrayInitializer(matrix),
+            default_initializer=paddle.nn.initializer.NumpyArrayInitializer(
+                matrix
+            ),
         )
         self._rating_matrix.stop_gradient = True
 

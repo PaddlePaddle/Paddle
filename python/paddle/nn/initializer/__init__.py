@@ -13,9 +13,10 @@
 # limitations under the License.
 
 # TODO: define the initializers to create a Parameter in neural network
-from ...fluid.initializer import Bilinear  # noqa: F401
-from ...fluid.initializer import set_global_initializer  # noqa: F401
 from ...fluid.initializer import calculate_gain  # noqa: F401
+
+from .initializer import set_global_initializer  # noqa: F401
+from .Bilinear import Bilinear  # noqa: F401
 
 from .constant import Constant  # noqa: F401
 
@@ -43,6 +44,8 @@ from .normal import NormalInitializer  # noqa: F401
 from .normal import TruncatedNormalInitializer  # noqa: F401
 from .xavier import XavierInitializer  # noqa: F401
 from .kaiming import MSRAInitializer  # noqa: F401
+from .Bilinear import BilinearInitializer  # noqa: F401
+from .assign import NumpyArrayInitializer  # noqa: F401
 
 __all__ = [  # noqa
     'Bilinear',

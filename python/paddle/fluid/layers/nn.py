@@ -239,7 +239,7 @@ def embedding(
           w_param_attrs = fluid.ParamAttr(
               name="emb_weight",
               learning_rate=0.5,
-              initializer=fluid.initializer.NumpyArrayInitializer(weight_data),
+              initializer=paddle.nn.initializer.NumpyArrayInitializer(weight_data),
               trainable=True)
           emb_2 = fluid.layers.embedding(input=data, size=(128, 100), param_attr=w_param_attrs, dtype='float32')
     """

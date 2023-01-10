@@ -16,12 +16,12 @@
 import numpy as np
 
 from paddle.fluid.framework import static_only
-from paddle.fluid.initializer import NumpyArrayInitializer
 
 # TODO: define loss functions of neural network
 from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.layers.layer_function_generator import templatedoc
 from paddle.fluid.param_attr import ParamAttr
+from paddle.nn.initializer import NumpyArrayInitializer
 
 from ...fluid.data_feeder import check_variable_and_dtype
 

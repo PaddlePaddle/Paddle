@@ -20,7 +20,6 @@ import numpy as np
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.framework as framework
-import paddle.fluid.initializer as initializer
 from paddle.fluid.core import VarDesc
 from paddle.regularizer import L2Decay
 
@@ -558,7 +557,7 @@ class TestBilinearInitializer(unittest.TestCase):
                 shape=[8, 1, 3, 3],
                 lod_level=0,
                 name="param",
-                initializer=initializer.BilinearInitializer(),
+                initializer=paddle.nn.initializer.BilinearInitializer(),
             )
         num_ops = 2 if dtype in ["float16", "uint16", "float64"] else 1
         self.assertEqual(len(block.ops), num_ops)
@@ -592,7 +591,7 @@ class TestBilinearInitializerDygraphAPI(unittest.TestCase):
         w_attr = paddle.ParamAttr(
             learning_rate=0.0,
             regularizer=L2Decay(0.0),
-            initializer=initializer.BilinearInitializer(),
+            initializer=paddle.nn.initializer.BilinearInitializer(),
         )
         data = paddle.rand([B, 3, H, W], dtype='float32')
         conv_up = paddle.nn.Conv2DTranspose(
@@ -613,7 +612,7 @@ class TestBilinearInitializerDygraphAPI(unittest.TestCase):
         w_attr = paddle.ParamAttr(
             learning_rate=0.0,
             regularizer=L2Decay(0.0),
-            initializer=initializer.BilinearInitializer(),
+            initializer=paddle.nn.initializer.BilinearInitializer(),
         )
         conv2d = paddle.nn.Conv2D(1, 2, 3, weight_attr=w_attr)
         paddle.set_default_dtype("float32")
@@ -648,7 +647,9 @@ class TestNumpyArrayInitializer(unittest.TestCase):
                 shape=np_array.shape,
                 lod_level=0,
                 name="param",
-                initializer=initializer.NumpyArrayInitializer(np_array),
+                initializer=paddle.nn.initializer.NumpyArrayInitializer(
+                    np_array
+                ),
             )
         num_ops = 2 if dtype in ["float16", "uint16"] else 1
         self.assertEqual(len(block.ops), num_ops)
@@ -673,7 +674,7 @@ class TestSetGlobalInitializer(unittest.TestCase):
         """Test Set Global Param initilizer with UniformInitializer"""
         main_prog = framework.Program()
         startup_prog = framework.Program()
-        fluid.set_global_initializer(
+        paddle.nn.initializer.set_global_initializer(
             paddle.nn.initializer.UniformInitializer(low=-0.5, high=0.5)
         )
         with fluid.program_guard(main_prog, startup_prog):
@@ -694,13 +695,13 @@ class TestSetGlobalInitializer(unittest.TestCase):
         self.assertAlmostEqual(param_init_op.attr('min'), -0.5, delta=DELTA)
         self.assertAlmostEqual(param_init_op.attr('max'), 0.5, delta=DELTA)
         self.assertEqual(param_init_op.attr('seed'), 0)
-        fluid.set_global_initializer(None)
+        paddle.nn.initializer.set_global_initializer(None)
 
     def test_set_global_bias_initilizer(self):
         """Test Set Global Bias initilizer with NormalInitializer"""
         main_prog = framework.Program()
         startup_prog = framework.Program()
-        fluid.set_global_initializer(
+        paddle.nn.initializer.set_global_initializer(
             paddle.nn.initializer.UniformInitializer(low=-0.5, high=0.5),
             bias_init=paddle.nn.initializer.NormalInitializer(
                 loc=0.0, scale=2.0
@@ -726,7 +727,7 @@ class TestSetGlobalInitializer(unittest.TestCase):
         self.assertAlmostEqual(param_init_op.attr('min'), -0.5, delta=DELTA)
         self.assertAlmostEqual(param_init_op.attr('max'), 0.5, delta=DELTA)
         self.assertEqual(param_init_op.attr('seed'), 0)
-        fluid.set_global_initializer(None)
+        paddle.nn.initializer.set_global_initializer(None)
 
 
 class TestUniformInitializerDygraph(unittest.TestCase):

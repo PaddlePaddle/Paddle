@@ -44,7 +44,7 @@ def create_model(data, rank):
             axis=0,
             num_partitions=MODEL_PARALLEL_SIZE,
             weight_attr=paddle.ParamAttr(
-                initializer=fluid.initializer.NumpyArrayInitializer(
+                initializer=paddle.nn.initializer.NumpyArrayInitializer(
                     np_weight_part
                 )
             ),
@@ -55,7 +55,9 @@ def create_model(data, rank):
             data,
             size=OUT_SIZE,
             weight_attr=paddle.ParamAttr(
-                initializer=fluid.initializer.NumpyArrayInitializer(np_weight)
+                initializer=paddle.nn.initializer.NumpyArrayInitializer(
+                    np_weight
+                )
             ),
             bias_attr=False,
         )

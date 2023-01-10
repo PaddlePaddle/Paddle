@@ -24,7 +24,6 @@ import paddle
 from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.layers import utils
 from ... import unique_name
-from paddle.fluid.initializer import NumpyArrayInitializer
 from paddle.fluid.data_feeder import (
     check_variable_and_dtype,
     check_type,
@@ -899,7 +898,7 @@ def tdm_child(x, node_nums, child_nums, param_attr=None, dtype='int32'):
         child_nums = 2
         child, leaf_mask  = fluid.contrib.layers.tdm_child(x, node_nums, child_nums,
                                 param_attr=fluid.ParamAttr(
-                                    initializer=fluid.initializer.NumpyArrayInitializer(
+                                    initializer=paddle.nn.initializer.NumpyArrayInitializer(
                                                                             tree_info_np)))
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
@@ -1013,10 +1012,10 @@ def tdm_sampler(
             layer_node_num_list,
             leaf_node_num,
             tree_travel_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.NumpyArrayInitializer(
+                initializer=paddle.nn.initializer.NumpyArrayInitializer(
                     travel_array)),
             tree_layer_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.NumpyArrayInitializer(
+                initializer=paddle.nn.initializer.NumpyArrayInitializer(
                     layer_array)),
             output_positive=True,
             output_list=True,

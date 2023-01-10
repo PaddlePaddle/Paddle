@@ -434,7 +434,7 @@ class TestLayer(LayerTest):
             images = np.ones([2, 3, 5, 5], dtype='float32')
             custom_weight = np.random.randn(3, 3, 2, 2).astype("float32")
             weight_attr = fluid.ParamAttr(
-                initializer=fluid.initializer.NumpyArrayInitializer(
+                initializer=paddle.nn.initializer.NumpyArrayInitializer(
                     custom_weight
                 )
             )
@@ -575,7 +575,7 @@ class TestLayer(LayerTest):
         with self.dynamic_graph():
             custom_weight = np.random.randn(6, 3, 3).astype("float32")
             weight_attr = fluid.ParamAttr(
-                initializer=fluid.initializer.NumpyArrayInitializer(
+                initializer=paddle.nn.initializer.NumpyArrayInitializer(
                     custom_weight
                 )
             )
@@ -644,7 +644,7 @@ class TestLayer(LayerTest):
         with self.dynamic_graph():
             custom_weight = np.random.randn(dict_size, 32).astype("float32")
             weight_attr = fluid.ParamAttr(
-                initializer=fluid.initializer.NumpyArrayInitializer(
+                initializer=paddle.nn.initializer.NumpyArrayInitializer(
                     custom_weight
                 )
             )
@@ -744,7 +744,7 @@ class TestLayer(LayerTest):
             images = np.ones([2, 3, 6, 6, 6], dtype='float32')
             custom_weight = np.random.randn(3, 3, 2, 2, 2).astype("float32")
             weight_attr = fluid.ParamAttr(
-                initializer=fluid.initializer.NumpyArrayInitializer(
+                initializer=paddle.nn.initializer.NumpyArrayInitializer(
                     custom_weight
                 )
             )
@@ -1015,7 +1015,7 @@ class TestLayer(LayerTest):
             images = np.ones([2, 3, 6, 6, 6], dtype='float32')
             custom_weight = np.random.randn(3, 3, 2, 2, 2).astype("float32")
             weight_attr = fluid.ParamAttr(
-                initializer=fluid.initializer.NumpyArrayInitializer(
+                initializer=paddle.nn.initializer.NumpyArrayInitializer(
                     custom_weight
                 )
             )
