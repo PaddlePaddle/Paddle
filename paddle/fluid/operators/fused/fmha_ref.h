@@ -63,15 +63,15 @@ class AttnDropoutParam {
 };
 
 template <typename T, int VecSize>
-__global__ void transpose_removing_padding(const T* input_data,
-                                           T* output_data,
-                                           const int batch_size,
-                                           const int num_head,
-                                           const int seq_len,
-                                           const int head_dim,
-                                           const int token_num,
-                                           const int elem_cnt,
-                                           const int* padding_offset) {
+__global__ void TransposeRemovingPadding(const T* input_data,
+                                         T* output_data,
+                                         const int batch_size,
+                                         const int num_head,
+                                         const int seq_len,
+                                         const int head_dim,
+                                         const int token_num,
+                                         const int elem_cnt,
+                                         const int* padding_offset) {
   // transpose and remove padding
   // [batch_size, num_head, seq_len, head_dim] -> [token_num, num_head,
   // head_dim]
@@ -100,7 +100,7 @@ __global__ void transpose_removing_padding(const T* input_data,
 }
 
 template <typename T>
-void invokeTransposeRemovePadding(const phi::GPUContext& dev_ctx,
+void InvokeTransposeRemovePadding(const phi::GPUContext& dev_ctx,
                                   const T* input_data,
                                   T* output_data,
                                   const int batch_size,
@@ -122,7 +122,7 @@ void invokeTransposeRemovePadding(const phi::GPUContext& dev_ctx,
   const int32_t pack_num = elem_cnt / PackSize;
   const int32_t block_size = 128;
   int32_t grid_size = (pack_num + block_size - 1) / block_size;
-  transpose_removing_padding<T, PackSize>
+  TransposeRemovingPadding<T, PackSize>
       <<<grid_size, block_size, 0, dev_ctx.stream()>>>(input_data,
                                                        output_data,
                                                        batch_size,
@@ -504,7 +504,7 @@ class FMHARef {
       phi::funcs::TransposeGPUKernelDriver<T>(
           dev_ctx_, *qktv_out_tensor, perm_3, fmha_out_tensor);
     } else {
-      invokeTransposeRemovePadding<T>(dev_ctx_,
+      InvokeTransposeRemovePadding<T>(dev_ctx_,
                                       qktv_out_data,
                                       fmha_out_data,
                                       batch_size_,
