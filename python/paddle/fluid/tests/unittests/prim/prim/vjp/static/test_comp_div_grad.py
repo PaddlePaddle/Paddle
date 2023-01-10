@@ -64,7 +64,7 @@ class TestDivGradComp(unittest.TestCase):
                     'cotangent', cotangent.shape, cotangent.dtype
                 )
                 z = paddle.divide(x, y)
-                x_cotangent, y_cotangent = paddle.static.gradients([x, y], z, v)
+                x_cotangent, y_cotangent = paddle.static.gradients([x, y], z)
             exe = paddle.static.Executor()
             exe.run(sp)
             return exe.run(
@@ -89,7 +89,7 @@ class TestDivGradComp(unittest.TestCase):
                     'cotangent', cotangent.shape, cotangent.dtype
                 )
                 z = paddle.divide(x, y)
-                x_cotangent, y_cotangent = paddle.static.gradients([x, y], z, v)
+                x_cotangent, y_cotangent = paddle.static.gradients([x, y], z)
             exe = paddle.static.Executor()
             exe.run(sp)
             return exe.run(
