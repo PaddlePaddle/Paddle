@@ -253,6 +253,15 @@ function cov_rate_judge(){
     fi
 }
 
+function print_usage() {
+    echo -e "\n${RED}Usage${NONE}:
+    ${BOLD}${SCRIPT_NAME}${NONE} [OPTION]"
+
+    echo -e "\n${RED}Options${NONE}:
+    ${BLUE}gen_cov_info${NONE}: generate coverage info
+    ${BLUE}test${NONE}: coverage info combine
+    "
+}
 
 function main () {
     local CMD=$1
@@ -276,5 +285,3 @@ function main () {
 }
 
 main $@
-
-
