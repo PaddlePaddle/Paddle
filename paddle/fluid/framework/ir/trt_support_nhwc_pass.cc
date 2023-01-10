@@ -107,6 +107,24 @@ void InsertTransposeOp(ir::Graph *graph,
   }
 }
 
+bool ModelLayoutIsNHWC(const std::vector<ir::Node *> &op_nodes) {
+  for (auto *op_node : op_nodes) {
+    if (op_node->IsOp()) {
+      auto *op_desc = op_node->Op();
+      std::string data_format;
+      if (op_desc->HasAttr("data_format")) {
+        data_format = op_desc->GetAttrIfExists<std::string>("data_format");
+      } else if (op_desc->HasAttr("data_layout")) {
+        data_format = op_desc->GetAttrIfExists<std::string>("data_layout");
+      }
+      if (data_format == "NHWC") {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
 }  // namespace
 
 void TrtSupportNHWCPass::ApplyImpl(Graph *graph) const {
@@ -117,9 +135,11 @@ void TrtSupportNHWCPass::ApplyImpl(Graph *graph) const {
   FusePassBase::Init("trt_support_nhwc_pass", graph);
   auto *scope = param_scope();
 
-  // Ops with "data_format" or "data_layout" attribute value of "NHWC"
-  std::unordered_set<ir::Node *> transposed_ops;
-  std::unordered_set<ir::Node *> vars_to_nchw;
+  auto op_nodes = TopologySortOperations(*graph);
+
+  if (!ModelLayoutIsNHWC(op_nodes)) {
+    return;
+  }
 
   //
   //
@@ -139,9 +159,11 @@ void TrtSupportNHWCPass::ApplyImpl(Graph *graph) const {
   //
   //
 
-  std::unordered_map<ir::Node *, ir::Node *> cache;
+  // Ops with "data_format" or "data_layout" attribute value of "NHWC"
+  std::unordered_set<ir::Node *> transposed_ops;
+  std::unordered_set<ir::Node *> vars_to_nchw;
 
-  auto op_nodes = TopologySortOperations(*graph);
+  std::unordered_map<ir::Node *, ir::Node *> cache;
 
   // Not support multiple block now
   auto iter = op_nodes.cbegin();
