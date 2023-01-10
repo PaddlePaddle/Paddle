@@ -62,7 +62,7 @@ void LaunchStackKernel(const Context& ctx,
   T* out_ptr = ctx.template Alloc<T>(out);
   auto config = phi::backends::gpu::GetGpuLaunchConfig2D(ctx, out_col, x_row);
 
-  funcs::PointerArraySetter<Context, T, Size> setter(ctx, x);
+  funcs::ConstPointerArraySetter<Context, T, Size> setter(ctx, x);
   funcs::GeneralDivMod<IndexT> divmoder(x_col);
   StackCUDAKernel<T, IndexT, decltype(setter.array)>
       <<<config.block_per_grid, config.thread_per_block, 0, ctx.stream()>>>(

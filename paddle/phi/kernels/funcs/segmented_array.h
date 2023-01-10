@@ -46,6 +46,14 @@ struct GeneralDivMod<int64_t> {
   int64_t divisor;
 };
 
+#if defined(_MSC_VER)  // MSVC
+#define COMMON_ALIGN __declspec(align(256))
+#elif defined(__CUDACC__)  // NVCC
+#define COMMON_ALIGN __align__(256)
+#elif
+#define COMMON_ALIGN alignas(256)
+#endif
+
 enum class SegmentedArraySize {
   kVariableLength = 0,
   kFixed4 = 4,
@@ -56,48 +64,50 @@ enum class SegmentedArraySize {
 };
 
 template <typename T, SegmentedArraySize Size>
-struct alignas(256) ConstPointerArray {
+struct COMMON_ALIGN ConstPointerArray {
  public:
   const T* data[static_cast<int>(Size)];
 
-  void Set(const std::vector<const T*>& x_ptrs, const T** dev_ptr = nullptr) {
-    for (auto i = 0; i < x_ptrs.size(); ++i) {
-      data[i] = x_ptrs[i];
+  void Set(const std::vector<const T*>& ptrs, const T** dev_ptr = nullptr) {
+    for (auto i = 0; i < ptrs.size(); ++i) {
+      data[i] = ptrs[i];
     }
   }
 };
 
 template <typename T>
-struct alignas(256) ConstPointerArray<T, SegmentedArraySize::kVariableLength> {
+struct COMMON_ALIGN ConstPointerArray<T, SegmentedArraySize::kVariableLength> {
  public:
   const T** data{nullptr};
 
-  void Set(const std::vector<const T*>& x_ptrs, const T** dev_ptr = nullptr) {
+  void Set(const std::vector<const T*>& ptrs, const T** dev_ptr = nullptr) {
     data = dev_ptr;
   }
 };
 
 template <typename T, SegmentedArraySize Size>
-struct alignas(256) PointerArray {
+struct COMMON_ALIGN PointerArray {
  public:
   T* data[static_cast<int>(Size)];
 
-  void Set(const std::vector<T*>& x_ptrs, T** dev_ptr = nullptr) {
-    for (auto i = 0; i < x_ptrs.size(); ++i) {
-      data[i] = x_ptrs[i];
+  void Set(const std::vector<T*>& ptrs, T** dev_ptr = nullptr) {
+    for (auto i = 0; i < ptrs.size(); ++i) {
+      data[i] = ptrs[i];
     }
   }
 };
 
 template <typename T>
-struct alignas(256) PointerArray<T, SegmentedArraySize::kVariableLength> {
+struct COMMON_ALIGN PointerArray<T, SegmentedArraySize::kVariableLength> {
  public:
   T** data{nullptr};
 
-  void Set(const std::vector<T*>& x_ptrs, T** dev_ptr = nullptr) {
+  void Set(const std::vector<T*>& ptrs, T** dev_ptr = nullptr) {
     data = dev_ptr;
   }
 };
+
+#undef COMMON_ALIGN
 
 template <typename Context>
 struct ArraySetterBase {
@@ -120,30 +130,59 @@ struct ArraySetterBase {
 };
 
 template <typename Context, typename T, SegmentedArraySize Size>
-struct PointerArraySetter : public ArraySetterBase<Context> {
+struct ConstPointerArraySetter : public ArraySetterBase<Context> {
  public:
   ConstPointerArray<T, Size> array;
 
-  PointerArraySetter(const Context& ctx,
-                     const std::vector<const DenseTensor*>& x) {
-    x_ptrs.resize(x.size());
-    for (int i = 0; i < x.size(); ++i) {
-      x_ptrs[i] = x[i]->data<T>();
+  ConstPointerArraySetter(const Context& ctx,
+                          const std::vector<const DenseTensor*>& t) {
+    ptrs.resize(t.size());
+    for (int i = 0; i < t.size(); ++i) {
+      ptrs[i] = t[i]->data<T>();
     }
 
     const T** dev_ptr = nullptr;
     if (Size == SegmentedArraySize::kVariableLength) {
-      size_t num_bytes = x.size() * sizeof(T*);
+      size_t num_bytes = t.size() * sizeof(T*);
       dev_ptr =
           reinterpret_cast<const T**>(ArraySetterBase<Context>::AllocAndCopy(
-              ctx, reinterpret_cast<void*>(x_ptrs.data()), num_bytes));
+              ctx, reinterpret_cast<void*>(ptrs.data()), num_bytes));
     }
 
-    array.Set(x_ptrs, dev_ptr);
+    array.Set(ptrs, dev_ptr);
   }
 
  private:
-  std::vector<const T*> x_ptrs;
+  std::vector<const T*> ptrs;
+};
+
+template <typename Context, typename T, SegmentedArraySize Size>
+struct PointerArraySetter : public ArraySetterBase<Context> {
+ public:
+  PointerArray<T, Size> array;
+
+  PointerArraySetter(const Context& ctx, std::vector<DenseTensor*>* t) {
+    ptrs.resize(t->size());
+    for (int i = 0; i < t->size(); ++i) {
+      if (t->at(i) && (t->at(i)->numel() > 0)) {
+        ptrs[i] = ctx.template Alloc<T>(t->at(i));
+      } else {
+        ptrs[i] = nullptr;
+      }
+    }
+
+    T** dev_ptr = nullptr;
+    if (Size == SegmentedArraySize::kVariableLength) {
+      size_t num_bytes = t->size() * sizeof(T*);
+      dev_ptr = reinterpret_cast<T**>(ArraySetterBase<Context>::AllocAndCopy(
+          ctx, reinterpret_cast<void*>(ptrs.data()), num_bytes));
+    }
+
+    array.Set(ptrs, dev_ptr);
+  }
+
+ private:
+  std::vector<T*> ptrs;
 };
 
 inline SegmentedArraySize CalcArraySize(int n) {

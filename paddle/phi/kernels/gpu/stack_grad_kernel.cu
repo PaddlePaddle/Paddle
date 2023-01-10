@@ -18,16 +18,17 @@
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/funcs/segmented_array.h"
 
 namespace phi {
 
-template <typename T, typename IntType>
-__global__ void UnStackHelperCUDAKernel(const T* __restrict__ input,
-                                        int pre_dim_size,
-                                        int split_dim_size,
-                                        int suf_dim_size,
-                                        int num_split,
-                                        T** output_ptrs) {
+template <typename T, typename IntType, typename ArrayT>
+__global__ void UnstackCUDAKernel(const T* __restrict__ input,
+                                  int pre_dim_size,
+                                  int split_dim_size,
+                                  int suf_dim_size,
+                                  int num_split,
+                                  ArrayT array) {
   assert(blockDim.y == 1);
   assert(blockDim.z == 1);
   // In this case they are equal
@@ -42,7 +43,7 @@ __global__ void UnStackHelperCUDAKernel(const T* __restrict__ input,
     IntType j = (offset % (split_dim_size * suf_dim_size)) / suf_dim_size;
     IntType k = offset % suf_dim_size;
 
-    T* output = output_ptrs[j / each_dim_size];
+    T* output = array.data[j / each_dim_size];
     if (output == nullptr) {
       return;
     }
@@ -52,82 +53,64 @@ __global__ void UnStackHelperCUDAKernel(const T* __restrict__ input,
   }
 }
 
+template <typename Context,
+          typename T,
+          typename IndexT,
+          funcs::SegmentedArraySize Size>
+void LaunchStackGradKernel(const Context& ctx,
+                           const IndexT pre_dim,
+                           const IndexT split_dim,
+                           const IndexT suf_dim,
+                           const IndexT num_splits,
+                           const DenseTensor& out,
+                           std::vector<DenseTensor*>* x_grad) {
+  // each x_grad should have same shape
+  auto dout_ptr = out.data<T>();
+  auto config = phi::backends::gpu::GetGpuLaunchConfig1D(
+      ctx, pre_dim * split_dim * suf_dim);
+
+  funcs::PointerArraySetter<Context, T, Size> setter(ctx, x_grad);
+  UnstackCUDAKernel<T, IndexT, decltype(setter.array)>
+      <<<config.block_per_grid.x, config.thread_per_block.x, 0, ctx.stream()>>>(
+          dout_ptr, pre_dim, split_dim, suf_dim, num_splits, setter.array);
+}
+
 template <typename T, typename Context>
-void StackGradKernel(const Context& dev_ctx,
+void StackGradKernel(const Context& ctx,
                      const DenseTensor& out,
                      int axis,
                      std::vector<DenseTensor*> x_grad) {
   if (axis < 0) axis += out.dims().size();
 
-  int n = out.dims()[axis];
-  PADDLE_ENFORCE_EQ(n,
-                    x_grad.size(),
-                    phi::errors::InvalidArgument(
-                        "Output x_grad size should be equal to n, but"
-                        " received n is:%d x_grad size is:%d.",
-                        n,
-                        x_grad.size()));
+  int64_t split_dim = out.dims()[axis];
+  PADDLE_ENFORCE_EQ(
+      split_dim,
+      x_grad.size(),
+      phi::errors::InvalidArgument(
+          "Output x_grad size should be equal to the split_dim, but"
+          " received split_dim is:%d x_grad size is:%d.",
+          split_dim,
+          x_grad.size()));
 
-  // x_grad is output, so save each data address, then copy each dy into dx_data
-  std::vector<T*> outputs(n);
-  for (size_t j = 0; j < x_grad.size(); ++j) {
-    if (x_grad[j] == nullptr) {
-      outputs[j] = nullptr;
-      continue;
-    }
-    if (x_grad[j]->numel() != 0UL) {
-      T* ptr = dev_ctx.template Alloc<T>(x_grad[j]);
-      outputs[j] = ptr;
-    } else {
-      outputs[j] = nullptr;
-    }
-  }
-  auto dy_data = out.data<T>();
-  // each x_grad should have same shape
-  int dy_pre = 1, dy_suf = 1;
-  auto dy_dims = out.dims();
-  int split_dim = n;
+  auto dout_dims = out.dims();
+  int64_t dout_pre = 1;
   for (int i = 0; i < axis; ++i) {
-    dy_pre *= dy_dims[i];
+    dout_pre *= dout_dims[i];
   }
-  dy_suf = out.numel() / (split_dim * dy_pre);
-
-  auto tmp_out_data = paddle::memory::Alloc(
-      dev_ctx.GetPlace(),
-      outputs.size() * sizeof(T*),
-      phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
-  paddle::memory::Copy(dev_ctx.GetPlace(),
-                       tmp_out_data->ptr(),
-                       phi::CPUPlace(),
-                       reinterpret_cast<void*>(outputs.data()),
-                       outputs.size() * sizeof(T*),
-                       dev_ctx.stream());
-
-  auto config = phi::backends::gpu::GetGpuLaunchConfig1D(
-      dev_ctx, dy_pre * split_dim * dy_suf);
+  int64_t dout_suf = out.numel() / (split_dim * dout_pre);
 
   if (out.numel() < std::numeric_limits<int32_t>::max()) {
-    UnStackHelperCUDAKernel<T, int32_t>
-        <<<config.block_per_grid.x,
-           config.thread_per_block.x,
-           0,
-           dev_ctx.stream()>>>(dy_data,
-                               dy_pre,
-                               split_dim,
-                               dy_suf,
-                               split_dim,
-                               reinterpret_cast<T**>(tmp_out_data->ptr()));
+    switch (funcs::CalcArraySize(split_dim)) {
+      POINTER_ARRAY_KERNEL_HELPER(
+          LaunchStackGradKernel<Context, T, int32_t, kArraySize>(
+              ctx, dout_pre, split_dim, dout_suf, split_dim, out, &x_grad));
+    }
   } else {
-    UnStackHelperCUDAKernel<T, int64_t>
-        <<<config.block_per_grid.x,
-           config.thread_per_block.x,
-           0,
-           dev_ctx.stream()>>>(dy_data,
-                               dy_pre,
-                               split_dim,
-                               dy_suf,
-                               split_dim,
-                               reinterpret_cast<T**>(tmp_out_data->ptr()));
+    switch (funcs::CalcArraySize(split_dim)) {
+      POINTER_ARRAY_KERNEL_HELPER(
+          LaunchStackGradKernel<Context, T, int64_t, kArraySize>(
+              ctx, dout_pre, split_dim, dout_suf, split_dim, out, &x_grad));
+    }
   }
 }
 
