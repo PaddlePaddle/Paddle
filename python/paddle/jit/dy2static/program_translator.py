@@ -14,6 +14,7 @@
 
 import collections
 import inspect
+import textwrap
 import threading
 import weakref
 
@@ -41,6 +42,7 @@ from .partial_program import partial_program_from
 from .utils import (
     ALREADY_D2S,
     ast_to_func,
+    ast_to_source_code,
     func_to_source_code,
     input_specs_compatible,
     make_hashable,
@@ -1442,6 +1444,54 @@ class ProgramTranslator:
             input_vars,
             output_vars,
         )
+
+    def get_code(self, dygraph_func):
+        """
+        Returns the translated static function string code from dygraph function.
+
+        Args:
+            dygraph_func (callable): the dygraph function.
+
+        Returns:
+            str: the string code of translated static function.
+
+        Examples:
+            .. code-block:: python
+
+                import paddle
+
+
+                def func(x):
+                    if paddle.mean(x) > 0:
+                        x_v = x - 1
+                    else:
+                        x_v = x + 1
+                    return x_v
+
+
+                prog_trans = paddle.jit.ProgramTranslator()
+
+                code = prog_trans.get_code(func)
+                print(type(code)) # <class 'str'>
+
+        """
+        assert callable(
+            dygraph_func
+        ), "Input dygraph_func is not a callable in ProgramTranslator.get_code"
+        # Gets AST from dygraph function
+
+        unwrap_func = unwrap(dygraph_func)
+        raw_code = inspect.getsource(unwrap_func)
+        code = textwrap.dedent(raw_code)
+        root = gast.parse(code)
+
+        # Transform AST
+        dygraph_to_static = DygraphToStaticAst()
+        root_wrapper = dygraph_to_static.get_static_ast(root)
+
+        # Get source_code
+        source_code = ast_to_source_code(root_wrapper.node)
+        return source_code
 
     def get_program_cache(self):
         """
