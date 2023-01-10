@@ -24,6 +24,7 @@
 #include "paddle/fluid/framework/ir/node.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/layout.h"
+#include "paddle/phi/core/errors.h"
 
 namespace paddle {
 namespace framework {
@@ -143,19 +144,22 @@ void TrtSupportNHWCPass::ApplyImpl(Graph *graph) const {
 
   //
   //
-  // TODO(liuyuanle): Process other op if needed!
+  // TODO(liuyuanle): Add other op if needed!
   //
   //
   std::unordered_set<std::string> need_trans_weights{"prelu"};
+  std::unordered_set<std::string> not_trans_weights{
+      "conv2d", "pool2d", "batch_norm", "bilinear_interp_v2", "nearest_interp"};
   // Ops must run under the original layout even though it has
   // data_format/data_layout attribute, otherwise it will be very troublesome!
-  std::unordered_set<std::string> must_original_layout_ops{"affine_channel"};
+  std::unordered_set<std::string> must_original_layout_ops{"affine_channel",
+                                                           "softmax"};
   // OPs unrelated to layout are consistent according to the layout of input
   // var！
   std::unordered_set<std::string> any_layout_ops{"relu", "elementwise_add"};
   //
   //
-  // TODO(liuyuanle): Process other op if needed!
+  // TODO(liuyuanle): Add other op if needed!
   //
   //
 
@@ -207,56 +211,72 @@ void TrtSupportNHWCPass::ApplyImpl(Graph *graph) const {
       op_desc->Flush();
     }
 
-    if (need_trans_weights.count(op_desc->Type())) {
+    auto UpdateOutputVars = [&] {
+      // Update output var of current op
+      auto op_outputs = op_node->outputs;
+      for (auto *out_var_node : op_outputs) {
+        CHECK_EQ(out_var_node->IsVar(), true);
+        if (out_var_node->Var()->Persistable()) continue;
+
+        auto from_shape = out_var_node->Var()->GetShape();
+        if (from_shape.size() == 4) {
+          out_var_node->Var()->SetShape(
+              {from_shape[0], from_shape[3], from_shape[1], from_shape[2]});
+          vars_to_nchw.insert(out_var_node);
+        }
+      }
+    };
+
+    if (not_trans_weights.count(op_desc->Type())) {
+      UpdateOutputVars();
+    } else if (need_trans_weights.count(op_desc->Type())) {
       std::vector<std::string> weights;
       if (op_desc->Type() == "prelu") {
         weights.push_back("Alpha");
       }
-      for (auto const &weight : weights) {
-        // transfer weights
-        auto weight_names = op_desc->Input(weight);
-        for (const auto &weight_name : weight_names) {
-          auto *weight_var = scope->FindLocalVar(weight_name);
-          auto *weight_tensor = weight_var->GetMutable<phi::DenseTensor>();
-          if (weight_tensor->dims().size() == 4) {
-            phi::DenseTensor temp_tensor = *weight_tensor;
-            weight_tensor->clear();
+      auto UpdateWeightVars = [&] {
+        for (auto const &weight : weights) {
+          // transfer weights
+          auto weight_names = op_desc->Input(weight);
+          for (const auto &weight_name : weight_names) {
+            auto *weight_var = scope->FindLocalVar(weight_name);
+            auto *weight_tensor = weight_var->GetMutable<phi::DenseTensor>();
+            if (weight_tensor->dims().size() == 4) {
+              phi::DenseTensor temp_tensor = *weight_tensor;
+              weight_tensor->clear();
 
-            framework::TransDataLayout(phi::DataLayout::kNHWC,
-                                       phi::DataLayout::kNCHW,
-                                       phi::CPUPlace{},
-                                       temp_tensor,
-                                       weight_tensor);
+              framework::TransDataLayout(phi::DataLayout::kNHWC,
+                                         phi::DataLayout::kNCHW,
+                                         phi::CPUPlace{},
+                                         temp_tensor,
+                                         weight_tensor);
+            }
           }
-        }
-        auto op_inputs = op_node->inputs;
-        for (auto *in_var_node : op_inputs) {
-          CHECK_EQ(in_var_node->IsVar(), true);
-          if (in_var_node->Var()->Persistable()) {
-            if (std::find(weight_names.cbegin(),
-                          weight_names.cend(),
-                          in_var_node->Var()->Name()) != weight_names.cend()) {
-              auto from_shape = in_var_node->Var()->GetShape();
-              in_var_node->Var()->SetShape(
-                  {from_shape[0], from_shape[2], from_shape[3], from_shape[1]});
+          auto op_inputs = op_node->inputs;
+          for (auto *in_var_node : op_inputs) {
+            CHECK_EQ(in_var_node->IsVar(), true);
+            if (in_var_node->Var()->Persistable()) {
+              if (std::find(weight_names.cbegin(),
+                            weight_names.cend(),
+                            in_var_node->Var()->Name()) !=
+                  weight_names.cend()) {
+                auto from_shape = in_var_node->Var()->GetShape();
+                in_var_node->Var()->SetShape({from_shape[0],
+                                              from_shape[2],
+                                              from_shape[3],
+                                              from_shape[1]});
+              }
             }
           }
         }
-      }
-    }
-
-    // Update output var of current op
-    auto op_outputs = op_node->outputs;
-    for (auto *out_var_node : op_outputs) {
-      CHECK_EQ(out_var_node->IsVar(), true);
-      if (out_var_node->Var()->Persistable()) continue;
-
-      auto from_shape = out_var_node->Var()->GetShape();
-      if (from_shape.size() == 4) {
-        out_var_node->Var()->SetShape(
-            {from_shape[0], from_shape[3], from_shape[1], from_shape[2]});
-        vars_to_nchw.insert(out_var_node);
-      }
+      };
+      UpdateWeightVars();
+      UpdateOutputVars();
+    } else {
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "During the trt_support_nhwc_pass, %s op not supported. Please "
+          "update the supported op lists.",
+          op_desc->Type()));
     }
   }
 
