@@ -283,7 +283,6 @@ binary_api_list = [
     paddle.logical_and,
     paddle.logical_or,
     paddle.logical_xor,
-    paddle.lerp,
 ]
 
 binary_int_api_list = [
@@ -967,6 +966,20 @@ class TestSundryAPI(unittest.TestCase):
         self.assertEqual(x1.grad.numpy(), 0)
         self.assertEqual(x2.grad.numpy(), 0)
 
+    def test_lerp(self):
+        x = paddle.rand([])
+        y = paddle.rand([])
+        w = paddle.rand([])
+        x.stop_gradient = False
+        y.stop_gradient = False
+
+        out = paddle.lerp(x, y, w)
+        out.backward()
+
+        self.assertEqual(out.shape, [])
+        self.assertEqual(x.grad.shape, [])
+        self.assertEqual(y.grad.shape, [])
+
 
 class TestSundryAPIStatic(unittest.TestCase):
     def setUp(self):
@@ -1380,6 +1393,22 @@ class TestSundryAPIStatic(unittest.TestCase):
 
         self.assertEqual(res[0].shape, ())
         self.assertEqual(res[1].shape, ())
+
+    @prog_scope()
+    def test_lerp(self):
+        x = paddle.rand([])
+        y = paddle.rand([])
+        w = paddle.rand([])
+        x.stop_gradient = False
+        y.stop_gradient = False
+
+        out = paddle.lerp(x, y, w)
+        paddle.static.append_backward(out)
+
+        prog = paddle.static.default_main_program()
+        res = self.exe.run(prog, fetch_list=[out])
+
+        self.assertEqual(res[0].shape, ())
 
 
 # Use to test API whose zero-dim input tensors don't have grad and not need to test backward in OpTest.
