@@ -31,12 +31,9 @@ from paddle import _C_ops, _legacy_C_ops
 import paddle
 
 __all__ = [
-    'TruncatedNormal',
     'Xavier',
     'Bilinear',
     'MSRA',
-    'Initializer',
-    'TruncatedNormalInitializer',
     'XavierInitializer',
     'BilinearInitializer',
     'MSRAInitializer',
@@ -46,194 +43,6 @@ __all__ = [
 
 _global_weight_initializer_ = None
 _global_bias_initializer_ = None
-
-
-class Initializer:
-    """Base class for variable initializers
-
-    Defines the common interface of variable initializers.
-    They add operations to the init program that are used
-    to initialize variables. Users should not use this class
-    directly, but need to use one of its implementations.
-    """
-
-    def __init__(self):
-        pass
-
-    def __call__(self, param, block=None):
-        if not lazy_init_helper().state:
-            return self.forward(param, block)
-
-        return self._lazy_init(param, block)
-
-    def forward(self, param, block=None):
-        """Add corresponding initialization operations to the network"""
-        raise NotImplementedError()
-
-    def _lazy_init(self, param, block=None):
-        """
-        Apply lazy initialization
-        """
-        assert in_dygraph_mode()
-
-        def init_op_creator(forward, param, block):
-            new_var = param._to_static_var(True, block=block)
-            # Record initializer operator
-            with lazy_init_helper():
-                forward(new_var, block)
-
-        # Add hook function for initializing param in dygraph mode
-        param.set_init_func(functools.partial(self.forward, param, block))
-        param._init_op_creator = functools.partial(
-            init_op_creator, self.forward, param
-        )
-
-        return param
-
-    def _check_block(self, block):
-        if block is None:
-            block = default_main_program().global_block()
-
-        return block
-
-    def _compute_fans(self, var):
-        """Compute the fan_in and the fan_out for layers
-
-        This method computes the fan_in and the fan_out
-        for neural network layers, if not specified. It is
-        not possible to perfectly estimate fan_in and fan_out.
-        This method will estimate it correctly for matrix multiply and
-        convolutions.
-
-        Args:
-            var: variable for which fan_in and fan_out have to be computed
-
-        Returns:
-            tuple of two integers (fan_in, fan_out)
-        """
-        shape = var.shape
-        if not shape or len(shape) == 0:
-            fan_in = fan_out = 1
-        elif len(shape) == 1:
-            fan_in = fan_out = shape[0]
-        elif len(shape) == 2:
-            # This is the case for simple matrix multiply
-            fan_in = shape[0]
-            fan_out = shape[1]
-        else:
-            # Assume this to be a convolutional kernel
-            # In PaddlePaddle, the shape of the kernel is like:
-            # [num_filters, num_filter_channels, ...] where the remaining
-            # dimensions are the filter_size
-            receptive_field_size = np.prod(shape[2:])
-            fan_in = shape[1] * receptive_field_size
-            fan_out = shape[0] * receptive_field_size
-
-        return (fan_in, fan_out)
-
-
-class TruncatedNormalInitializer(Initializer):
-    """Implements the Random TruncatedNormal(Gaussian) distribution initializer
-
-    Args:
-        loc (float): mean of the normal distribution
-        scale (float): standard deviation of the normal distribution
-        seed (int): random seed
-
-    Examples:
-        .. code-block:: python
-
-            import paddle
-            import paddle.fluid as fluid
-            paddle.enable_static()
-            x = fluid.data(name='x', shape=[None, 1], dtype='float32')
-            fc = paddle.static.nn.fc(x, size=10,
-                weight_attr=fluid.initializer.TruncatedNormal(loc=0.0, scale=2.0))
-    """
-
-    def __init__(self, loc=0.0, scale=1.0, seed=0):
-        assert loc is not None
-        assert scale is not None
-        assert seed is not None
-        super().__init__()
-        self._mean = loc
-        self._std_dev = scale
-        self._seed = seed
-
-    def forward(self, var, block=None):
-        """Initialize the input tensor with TruncatedNormal distribution.
-
-        Args:
-            var(Tensor): Tensor that needs to be initialized.
-            block(Block, optional): The block in which initialization ops
-                   should be added. Used in static graph only, default None.
-
-        Returns:
-            The initialization op
-        """
-        block = self._check_block(block)
-
-        assert isinstance(var, framework.Variable)
-        assert isinstance(block, framework.Block)
-
-        if self._seed == 0:
-            self._seed = block.program.random_seed
-
-        # to be compatible of fp16 initalizers
-        if var.dtype in [VarDesc.VarType.FP16, VarDesc.VarType.BF16]:
-            out_dtype = VarDesc.VarType.FP32
-            out_var = block.create_var(
-                name=unique_name.generate(
-                    ".".join(['truncated_gaussian_random', var.name, 'tmp'])
-                ),
-                shape=var.shape,
-                dtype=out_dtype,
-                type=VarDesc.VarType.LOD_TENSOR,
-                persistable=False,
-            )
-        else:
-            out_dtype = var.dtype
-            out_var = var
-
-        if in_dygraph_mode():
-            out_var = _C_ops.truncated_gaussian_random(
-                var.shape,
-                self._mean,
-                self._std_dev,
-                self._seed,
-                out_dtype,
-                _current_expected_place(),
-            )
-            if var.dtype in [VarDesc.VarType.FP16, VarDesc.VarType.BF16]:
-                var_tmp = _C_ops.cast(out_var, var.dtype)
-                var_tmp._share_underline_tensor_to(var)
-            else:
-                out_var._share_underline_tensor_to(var)
-            return None
-
-        else:
-            op = block.append_op(
-                type="truncated_gaussian_random",
-                outputs={"Out": out_var},
-                attrs={
-                    "shape": var.shape,
-                    "dtype": out_dtype,
-                    "mean": self._mean,
-                    "std": self._std_dev,
-                    "seed": self._seed,
-                },
-                stop_gradient=True,
-            )
-
-            if var.dtype in [VarDesc.VarType.FP16, VarDesc.VarType.BF16]:
-                block.append_op(
-                    type="cast",
-                    inputs={"X": out_var},
-                    outputs={"Out": var},
-                    attrs={"in_dtype": out_var.dtype, "out_dtype": var.dtype},
-                )
-            var.op = op
-            return op
 
 
 class XavierInitializer(Initializer):
@@ -1009,7 +818,6 @@ def calculate_gain(nonlinearity, param=None):
 #                          weight_attr=ParamAttr(fluid.initializer.Xavier()))
 #
 # It is no need to add an `Initializer` as the class suffix
-TruncatedNormal = TruncatedNormalInitializer
 Xavier = XavierInitializer
 MSRA = MSRAInitializer
 Bilinear = BilinearInitializer

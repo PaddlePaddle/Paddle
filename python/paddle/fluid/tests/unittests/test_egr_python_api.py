@@ -917,7 +917,7 @@ class EagerParamBaseUsageTestCase(unittest.TestCase):
             1,
             3,
             bias_attr=False,
-            weight_attr=paddle.fluid.initializer.TruncatedNormalInitializer(),
+            weight_attr=paddle.nn.initializer.TruncatedNormalInitializer(),
         )
         linear4 = paddle.nn.Linear(
             1,

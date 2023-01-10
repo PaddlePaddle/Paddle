@@ -36,9 +36,11 @@ from .orthogonal import Orthogonal  # noqa: F401
 
 from .dirac import Dirac  # noqa: F401
 
-from .common import UniformInitializer  # noqa: F401
-from .common import ConstantInitializer  # noqa: F401
-from .common import NormalInitializer  # noqa: F401
+from .initializer import Initializer  # noqa: F401
+from .uniform import UniformInitializer  # noqa: F401
+from .constant import ConstantInitializer  # noqa: F401
+from .normal import NormalInitializer  # noqa: F401
+from .normal import TruncatedNormalInitializer  # noqa: F401
 
 __all__ = [  # noqa
     'Bilinear',
@@ -55,7 +57,4 @@ __all__ = [  # noqa
     'Dirac',
     'set_global_initializer',
     'calculate_gain',
-    'UniformInitializer',
-    'ConstantInitializer',
-    'NormalInitializer',
 ]

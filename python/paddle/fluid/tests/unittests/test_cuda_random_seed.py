@@ -120,14 +120,14 @@ class TestGeneratorSeed(unittest.TestCase):
             result_1 = paddle.static.nn.fc(
                 x,
                 size=10,
-                weight_attr=fluid.initializer.TruncatedNormal(
+                weight_attr=paddle.nn.initializer.TruncatedNormalInitializer(
                     loc=0.0, scale=2.0
                 ),
             )
             result_2 = paddle.static.nn.fc(
                 x,
                 size=10,
-                weight_attr=fluid.initializer.TruncatedNormal(
+                weight_attr=paddle.nn.initializer.TruncatedNormalInitializer(
                     loc=0.0, scale=2.0
                 ),
             )
