@@ -594,6 +594,7 @@ class TestSundryAPI(unittest.TestCase):
         x = paddle.rand([])
         x.stop_gradient = False
         x.retain_grads()
+
         out = paddle.reshape(x, [])
         out.retain_grads()
         out.backward()

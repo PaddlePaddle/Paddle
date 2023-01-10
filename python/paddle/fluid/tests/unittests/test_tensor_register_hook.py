@@ -370,8 +370,10 @@ class TestTensorRegisterHook(unittest.TestCase):
             y = paddle.to_tensor([4.0, 5.0, 6.0, 7.0])
             x.stop_gradient = False
             y.stop_gradient = False
+
             x.retain_grads()
             y.retain_grads()
+
             w = x + y
             w.retain_grads()
             w.stop_gradient = False
@@ -394,6 +396,7 @@ class TestTensorRegisterHook(unittest.TestCase):
                 helpers[2].remove()
 
             o.backward()
+
             return z.numpy(), w.grad.numpy(), x.grad.numpy(), y.grad.numpy()
 
         def double_hook(grad):

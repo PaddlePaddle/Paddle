@@ -494,6 +494,7 @@ class TestSoftmaxAPI_ZeroDim(unittest.TestCase):
         x = paddle.rand([])
         x.stop_gradient = False
         x.retain_grads()
+
         out = paddle.nn.functional.softmax(x)
         out.retain_grads()
         out.backward()

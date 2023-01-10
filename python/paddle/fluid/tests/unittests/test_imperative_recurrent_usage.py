@@ -56,7 +56,7 @@ class TestRecurrentFeed(unittest.TestCase):
                 sum_out.backward()
                 dyout = out.gradient()
                 original_in1.stop_gradient = True
-                # rt.clear_gradients()
+                rt.clear_gradients()
 
         with fluid.dygraph.guard():
             fluid.default_startup_program().random_seed = seed

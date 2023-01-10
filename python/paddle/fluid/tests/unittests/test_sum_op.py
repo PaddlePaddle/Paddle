@@ -19,7 +19,6 @@ import unittest
 import gradient_checker
 import numpy as np
 from decorator_helper import prog_scope
-from op_test import OpTest, convert_float_to_uint16, convert_uint16_to_float
 
 import paddle
 import paddle.fluid as fluid
@@ -28,6 +27,11 @@ import paddle.fluid.layers as layers
 import paddle.inference as paddle_infer
 from paddle import enable_static
 from paddle.fluid.op import Operator
+from paddle.fluid.tests.unittests.op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    convert_uint16_to_float,
+)
 
 
 class TestSumOp(OpTest):
