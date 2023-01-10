@@ -12,20 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/core/compat/op_utils.h"
+#include "paddle/phi/kernels/einsum_kernel.h"
 
-namespace phi {
+#include "paddle/phi/backends/xpu/enforce_xpu.h"
+#include "paddle/phi/core/kernel_registry.h"
 
-KernelSignature MeshgridOpArgumentMapping(const ArgumentMappingContext& ctx) {
-  return KernelSignature("meshgrid", {"X"}, {}, {"Out"});
-}
+#include "paddle/phi/kernels/impl/einsum_impl.h"
 
-KernelSignature MeshgridGradOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
-  return KernelSignature("meshgrid_grad", {"X", "Out@GRAD"}, {}, {"X@GRAD"});
-}
+PD_REGISTER_KERNEL(einsum_raw, XPU, ALL_LAYOUT, phi::EinsumKernelRaw, float) {}
 
-}  // namespace phi
-
-PD_REGISTER_ARG_MAPPING_FN(meshgrid, phi::MeshgridOpArgumentMapping);
-PD_REGISTER_ARG_MAPPING_FN(meshgrid_grad, phi::MeshgridGradOpArgumentMapping);
+PD_REGISTER_KERNEL(einsum, XPU, ALL_LAYOUT, phi::EinsumKernel, float) {}

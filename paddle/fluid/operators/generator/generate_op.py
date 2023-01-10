@@ -459,6 +459,27 @@ def process_invoke_op(forward_op_dict, backward_op_dict):
                     )
 
 
+def parse_drop_empty_grad(op_fluid_list: list, bw_op_dict: dict):
+    for op_op in op_fluid_list:
+        if 'drop_empty_grad' in op_op:
+            bw_names = [
+                bw_name.split('(')[0].strip()
+                for bw_name in op_op['backward'].split(',')
+            ]
+            for bw_name in bw_names:
+                assert (
+                    bw_name in bw_op_dict
+                ), f"backward {bw_name} is not existed"
+                for out_grad in op_op['drop_empty_grad']:
+                    assert (
+                        out_grad in bw_op_dict[bw_name]['output_dict']
+                    ), f'''
+                         {bw_name} with {out_grad} is not existed in output_dict '''
+                    bw_op_dict[bw_name]['output_dict'][out_grad][
+                        'drop_empty_grad'
+                    ] = False
+
+
 def main(
     ops_yaml_path,
     backward_yaml_path,
@@ -488,6 +509,11 @@ def main(
         op['op_name'] = op['name']
     for bw_op in backward_ops:
         bw_op['op_name'] = bw_op['name']
+        for bw_output in bw_op['outputs']:
+            bw_output['drop_empty_grad'] = True
+
+    # deal the drop_empty_grad of bw_op by op_compat.yaml
+    parse_drop_empty_grad(op_fluid_map_list, backward_op_dict)
 
     parse_composite_info(ops, backward_ops, backward_op_dict)
 

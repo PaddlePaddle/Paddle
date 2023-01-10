@@ -1,4 +1,4 @@
-// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,15 +12,25 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/core/compat/op_utils.h"
+#pragma once
 
-namespace phi {
+#include <string>
 
-KernelSignature MultiDotGradOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
-  return KernelSignature("multi_dot_grad", {"X", "Out@GRAD"}, {}, {"X@GRAD"});
-}
+#include "paddle/fluid/framework/ir/fuse_pass_base.h"
 
-}  // namespace phi
+namespace paddle {
+namespace framework {
+namespace ir {
 
-PD_REGISTER_ARG_MAPPING_FN(multi_dot_grad, phi::MultiDotGradOpArgumentMapping);
+class MapOp2AnotherPass : public FusePassBase {
+ public:
+  MapOp2AnotherPass() = default;
+  virtual ~MapOp2AnotherPass() = default;
+
+ protected:
+  void ApplyImpl(Graph* graph) const override;
+};
+
+}  // namespace ir
+}  // namespace framework
+}  // namespace paddle
