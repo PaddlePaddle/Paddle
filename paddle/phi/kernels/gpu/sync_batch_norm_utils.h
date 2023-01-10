@@ -529,15 +529,15 @@ void SyncBatchNormGradFunctor(
                                                   &block,
                                                   &grid);
       KeBackwardLocalStats2D<T, threads, DataLayout::kNHWC>
-          <<<grid, threads, 0, stream>>>(dy_d,
-                                         x_d,
-                                         saved_mean_ptr,
-                                         N,
-                                         fsize,
-                                         C,
-                                         block_data_ptr,
-                                         flag_ptr,
-                                         stats);
+          <<<grid, block, 0, stream>>>(dy_d,
+                                       x_d,
+                                       saved_mean_ptr,
+                                       N,
+                                       fsize,
+                                       C,
+                                       block_data_ptr,
+                                       flag_ptr,
+                                       stats);
     } else {
       KeBackwardLocalStats<T, threads, DataLayout::kNHWC>
           <<<grid, threads, 0, stream>>>(
