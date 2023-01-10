@@ -17,9 +17,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/platform/device_context.h"
 
-namespace paddle {
-namespace operators {
-namespace math {
+namespace phi {
+namespace funcs {
 
 /*
  * \brief   Scale a sequence.
@@ -45,6 +44,7 @@ namespace math {
  * \param num_seq       Number of sequence
  *
  */
+
 template <typename DeviceContext, typename T>
 class ScaleLoDTensorFunctor {
  public:
@@ -53,6 +53,5 @@ class ScaleLoDTensorFunctor {
                   phi::DenseTensor* seq);
 };
 
-}  // namespace math
-}  // namespace operators
-}  // namespace paddle
+}  // namespace funcs
+}  // namespace phi
