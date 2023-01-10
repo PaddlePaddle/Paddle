@@ -12,6 +12,11 @@ if(WITH_GPU OR WITH_ROCM)
        gpu/gpu_resources.cc)
   if(WITH_GPU)
     list(APPEND BACKENDS_SRCS gpu/cuda/cuda_info.cc gpu/cuda/cuda_graph.cc)
+    set_source_files_properties(
+      gpu/gpu_resources.cc
+      PROPERTIES COMPILE_FLAGS
+                 "-DCUDA_REAL_ARCHS=\"${NVCC_FLAGS_EXTRA_real_archs}\"")
+
   endif()
   if(WITH_ROCM)
     list(APPEND BACKENDS_SRCS gpu/rocm/rocm_info.cc)
