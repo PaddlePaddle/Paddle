@@ -46,18 +46,15 @@ Tensor full<Tensor>(paddle::experimental::IntArray shape,
                     paddle::experimental::Scalar value,
                     paddle::experimental::DataType dtype,
                     paddle::platform::Place place) {
-  return ::full_ad_func(shape, value, dtype, place)
+  return ::full_ad_func(shape, value, dtype, place);
 }
 template <>
-Tensor sum<Tensor>(Tensor x,
-                   IntArray axis = {},
-                   DataType dtype = DataType::UNDEFINED,
-                   bool keepdim = false) {
+Tensor sum<Tensor>(Tensor x, IntArray axis, DataType dtype, bool keepdim) {
   return ::sum_ad_func(x, axis, dtype, keepdim);
 }
 
 template <>
-Tensor reshape(Tensor x, IntArray shape) {
+Tensor reshape<Tensor>(Tensor x, IntArray shape) {
   return ::reshape_ad_func(x, shape);
 }
 }  // namespace prim

@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #pragma once
+#include "paddle/phi/common/int_array.h"
 #include "paddle/phi/common/scalar.h"
 #include "paddle/utils/optional.h"
 namespace paddle {

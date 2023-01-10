@@ -13,8 +13,6 @@
 // limitations under the License.
 
 #pragma once
-#include <algorithm>
-#include <execution>
 #include <string>
 #include <vector>
 #include "paddle/fluid/framework/op_proto_maker.h"
@@ -39,13 +37,13 @@ paddle::experimental::Tensor empty_like(const paddle::experimental::Tensor& x,
 static phi::DDim get_reduce_dims(const phi::DDim& dout_dims,
                                  const phi::DDim& in_dims) {
   std::vector<int64_t> result;
-  auto bat = dout_dims.size() - in_dims.size();
-  for (size_t i = 0; i < bat; ++i) {
+  int bat = dout_dims.size() - in_dims.size();
+  for (int i = 0; i < bat; ++i) {
     result.push_back(i);
   }
-  for (size_t i = 0; i < in_dims.size(); ++i) {
+  for (int i = 0; i < in_dims.size(); ++i) {
     if (in_dims[i] == 1) {
-      result.push_back(i + bat)
+      result.push_back(i + bat);
     } else {
       PADDLE_ENFORCE_EQ(
           in_dims[i],
@@ -63,7 +61,7 @@ static phi::DDim get_reduce_dims(const phi::DDim& dout_dims,
     }
   }
   auto res_dims = phi::make_ddim(result);
-  VLOG(4) << "Reduce Dims is: " << res_dim;
+  VLOG(4) << "Reduce Dims is: " << res_dims;
   return res_dims;
 }
 }  // namespace prim

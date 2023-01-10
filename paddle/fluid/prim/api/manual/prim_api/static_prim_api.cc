@@ -126,7 +126,7 @@ Tensor full<DescTensor>(paddle::experimental::IntArray shape,
   PADDLE_ENFORCE_EQ(
       dtype,
       paddle::experimental::DataType::FLOAT32,
-      paddle::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "We only support float32 for full, but we got data type: %s",
           phi::DataTypeToString(dtype)));
   op->SetAttr("value", value.to<float>());
@@ -148,12 +148,13 @@ Tensor sum<DescTensor>(Tensor x,
   framework::BlockDesc* block = StaticCompositeContext::Instance().GetBlock();
   framework::OpDesc* op = block->AppendOp();
   op->SetType("reduce_sum");
-  op->SetInput("X");
+  op->SetInput("X",
+               {std::static_pointer_cast<prim::DescTensor>(x.impl())->Name()});
   op->SetAttr("dim", axis.GetData());
   PADDLE_ENFORCE_EQ(
       dtype,
       paddle::experimental::DataType::FLOAT32,
-      paddle::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "We only support float32 for full, but we got data type: %s",
           phi::DataTypeToString(dtype)));
   op->SetAttr("keep_dim", keepdim);
@@ -169,11 +170,12 @@ Tensor sum<DescTensor>(Tensor x,
 template <>
 Tensor reshape<DescTensor>(Tensor x, paddle::experimental::IntArray shape) {
   // Grad infershape
-  Tensor out = empty<DescTensor>({}, dtype, paddle::Place());
+  Tensor out = empty<DescTensor>({}, x.dtype(), paddle::Place());
   framework::BlockDesc* block = StaticCompositeContext::Instance().GetBlock();
   framework::OpDesc* op = block->AppendOp();
   op->SetType("reshape");
-  op->SetInput("X");
+  op->SetInput("X",
+               {std::static_pointer_cast<prim::DescTensor>(x.impl())->Name()});
   op->SetAttr("shape", shape.GetData());
   op->SetOutput(
       "Out", {std::static_pointer_cast<prim::DescTensor>(out.impl())->Name()});
