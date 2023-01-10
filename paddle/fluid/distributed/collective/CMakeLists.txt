@@ -12,7 +12,7 @@ if(WITH_DISTRIBUTE)
   cc_library(
     process_group_gloo
     SRCS process_group_gloo.cc
-    DEPS phi_api eager_api gloo_wrapper)
+    DEPS phi_api eager_api gloo_wrapper tcp_store)
 endif()
 
 if(WITH_NCCL OR WITH_RCCL)
@@ -20,6 +20,7 @@ if(WITH_NCCL OR WITH_RCCL)
     process_group_nccl
     SRCS process_group_nccl.cc nccl_tools.cc common.cc check.cc
     DEPS process_group
+         tcp_store
          place
          enforce
          collective_helper
@@ -32,7 +33,12 @@ if(WITH_XPU_BKCL)
   cc_library(
     process_group_bkcl
     SRCS process_group_bkcl.cc bkcl_tools.cc common.cc
-    DEPS process_group place enforce collective_helper device_context
+    DEPS process_group
+         tcp_store
+         place
+         enforce
+         collective_helper
+         device_context
          dense_tensor)
 endif()
 
@@ -47,6 +53,11 @@ if(WITH_CUSTOM_DEVICE)
   cc_library(
     process_group_custom
     SRCS process_group_custom.cc custom_ccl_tools.cc common.cc
-    DEPS process_group phi_backends place enforce collective_helper
+    DEPS process_group
+         tcp_store
+         phi_backends
+         place
+         enforce
+         collective_helper
          device_context)
 endif()
