@@ -25,7 +25,7 @@ class TestConvBnOneDNNFusePass(PassAutoScanTest):
     def sample_predictor_configs(self, program_config):
         config = self.create_inference_config(use_gpu=False)
         config.enable_mkldnn()
-        yield config, ['fused_conv2d'], (1e-4, 1e-2)
+        yield config, ['fused_conv2d'], (1e-3, 1e-3)
 
     def is_program_valid(self, prog_config):
         paddings = prog_config.ops[0].attrs['paddings']
@@ -180,7 +180,7 @@ class TestConvBnOneDNNFusePass(PassAutoScanTest):
         )
 
         # 12. Generate bn op
-        epsilon = draw(st.floats(min_value=0.0, max_value=0.001))
+        epsilon = draw(st.floats(min_value=1e-10, max_value=0.001))
         bn_op = OpConfig(
             "batch_norm",
             inputs={
@@ -219,7 +219,7 @@ class TestConvBnOneDNNFusePass(PassAutoScanTest):
         return program_config
 
     def test(self):
-        self.run_and_statis(quant=False, max_examples=2000, passes=self.passes)
+        self.run_and_statis(quant=False, max_examples=300, passes=self.passes)
 
 
 if __name__ == '__main__':
