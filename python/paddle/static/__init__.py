@@ -56,11 +56,15 @@ from ..fluid.framework import xpu_places  # noqa: F401
 from ..fluid.framework import mlu_places  # noqa: F401
 from ..fluid.framework import npu_places  # noqa: F401
 from ..fluid.framework import Variable  # noqa: F401
+from ..fluid.framework import Operator  # noqa: F401
+from ..fluid.framework import Parameter  # noqa: F401
 from ..fluid.framework import ipu_shard_guard  # noqa: F401
 from ..fluid.framework import set_ipu_shard  # noqa: F401
 from ..fluid.layers.control_flow import Print  # noqa: F401
 from ..fluid.parallel_executor import ParallelExecutor  # noqa: F401
 from ..fluid.param_attr import WeightNormParamAttr  # noqa: F401
+from ..fluid.optimizer import Optimizer  # noqa: F401
+from ..fluid.optimizer import Adam  # noqa: F401
 from ..fluid.optimizer import ExponentialMovingAverage  # noqa: F401
 from ..fluid.io import save  # noqa: F401
 from ..fluid.io import load  # noqa: F401
