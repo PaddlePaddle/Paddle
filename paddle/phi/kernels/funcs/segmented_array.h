@@ -14,30 +14,28 @@
 
 #pragma once
 
-#include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/funcs/fast_divmod.h"
 
 namespace phi {
 namespace funcs {
 
 template <typename IndexT>
-struct DivmodWarpper {
+struct GeneralDivMod {
  public:
-  explicit DivmodWarpper(IndexT d) { divmoder = phi::funcs::FastDivMod(d); }
+  explicit GeneralDivMod(IndexT d) { divmoder = phi::funcs::FastDivMod(d); }
   __device__ inline phi::funcs::FastDivMod::DivModT div_mod(IndexT val) {
     return divmoder.Divmod(val);
   }
 
- private:
   phi::funcs::FastDivMod divmoder;
 };
 
 template <>
-struct DivmodWarpper<int64_t> {
+struct GeneralDivMod<int64_t> {
  public:
   using DivModT = phi::AlignedVector<int64_t, 2>;
 
-  explicit DivmodWarpper(int64_t d) { divisor = d; }
+  explicit GeneralDivMod(int64_t d) { divisor = d; }
   __device__ inline DivModT div_mod(int64_t val) {
     DivModT data;
     data[0] = val / divisor;
@@ -45,12 +43,12 @@ struct DivmodWarpper<int64_t> {
     return data;
   }
 
- private:
   int64_t divisor;
 };
 
 enum class SegmentedArraySize {
   kVariableLength = 0,
+  kFixed4 = 4,
   kFixed8 = 8,
   kFixed16 = 16,
   kFixed32 = 32,
@@ -58,7 +56,7 @@ enum class SegmentedArraySize {
 };
 
 template <typename T, SegmentedArraySize Size>
-struct ConstPointerArray {
+struct alignas(256) ConstPointerArray {
  public:
   const T* data[static_cast<int>(Size)];
 
@@ -70,7 +68,7 @@ struct ConstPointerArray {
 };
 
 template <typename T>
-struct ConstPointerArray<T, SegmentedArraySize::kVariableLength> {
+struct alignas(256) ConstPointerArray<T, SegmentedArraySize::kVariableLength> {
  public:
   const T** data{nullptr};
 
@@ -80,7 +78,7 @@ struct ConstPointerArray<T, SegmentedArraySize::kVariableLength> {
 };
 
 template <typename T, SegmentedArraySize Size>
-struct PointerArray {
+struct alignas(256) PointerArray {
  public:
   T* data[static_cast<int>(Size)];
 
@@ -92,7 +90,7 @@ struct PointerArray {
 };
 
 template <typename T>
-struct PointerArray<T, SegmentedArraySize::kVariableLength> {
+struct alignas(256) PointerArray<T, SegmentedArraySize::kVariableLength> {
  public:
   T** data{nullptr};
 
@@ -121,10 +119,7 @@ struct ArraySetterBase {
   phi::Allocator::AllocationPtr allocation{nullptr};
 };
 
-template <typename Context,
-          typename T,
-          SegmentedArraySize Size,
-          bool IsConst = true>
+template <typename Context, typename T, SegmentedArraySize Size>
 struct PointerArraySetter : public ArraySetterBase<Context> {
  public:
   ConstPointerArray<T, Size> array;
@@ -152,7 +147,9 @@ struct PointerArraySetter : public ArraySetterBase<Context> {
 };
 
 inline SegmentedArraySize CalcArraySize(int n) {
-  if (n <= 8) {
+  if (n <= 4) {
+    return SegmentedArraySize::kFixed4;
+  } else if (n <= 8) {
     return SegmentedArraySize::kFixed8;
   } else if (n <= 16) {
     return SegmentedArraySize::kFixed16;
@@ -166,21 +163,21 @@ inline SegmentedArraySize CalcArraySize(int n) {
 }
 }  // namespace funcs
 
-#define _POINTER_ARRAY_KERNEL_CASE(size, ...)                         \
-  case (size): {                                                      \
-    constexpr auto kArraySize = (size);                               \
-    funcs::PointerArraySetter<Context, T, kArraySize> setter(ctx, x); \
-    __VA_ARGS__;                                                      \
+#define _POINTER_ARRAY_KERNEL_CASE(size, ...) \
+  case (size): {                              \
+    constexpr auto kArraySize = (size);       \
+    __VA_ARGS__;                              \
   } break
 
-#define _POINTER_ARRAY_KERNEL_DEFAULT(size, ...)                      \
-  default: {                                                          \
-    constexpr auto kArraySize = (size);                               \
-    funcs::PointerArraySetter<Context, T, kArraySize> setter(ctx, x); \
-    __VA_ARGS__;                                                      \
+#define _POINTER_ARRAY_KERNEL_DEFAULT(size, ...) \
+  default: {                                     \
+    constexpr auto kArraySize = (size);          \
+    __VA_ARGS__;                                 \
   } break
 
 #define POINTER_ARRAY_KERNEL_HELPER(...)                                    \
+  _POINTER_ARRAY_KERNEL_CASE(funcs::SegmentedArraySize::kFixed4,            \
+                             ##__VA_ARGS__);                                \
   _POINTER_ARRAY_KERNEL_CASE(funcs::SegmentedArraySize::kFixed8,            \
                              ##__VA_ARGS__);                                \
   _POINTER_ARRAY_KERNEL_CASE(funcs::SegmentedArraySize::kFixed16,           \
