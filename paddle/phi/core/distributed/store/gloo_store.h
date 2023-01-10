@@ -11,36 +11,37 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
 #pragma once
 
+#include <chrono>
 #include <memory>
+#include <vector>
 
-#include "gloo/context.h"
 #include "gloo/rendezvous/store.h"
-#include "gloo/transport/tcp/device.h"
 
-#include "paddle/phi/core/distributed/comm_context.h"
-#include "paddle/phi/core/macros.h"
+#include "paddle/phi/core/distributed/store/store.h"
 
 namespace phi {
-class DenseTensor;
 namespace distributed {
 
-class GlooCommContext final : public CommContext {
+class GlooStore : public gloo::rendezvous::Store {
  public:
-  GlooCommContext(int rank,
-                  int size,
-                  gloo::rendezvous::Store* store,
-                  std::shared_ptr<gloo::transport::Device> device);
+  explicit GlooStore(const std::shared_ptr<phi::distributed::Store>& store);
 
-  void Broadcast(phi::DenseTensor* out_tensor,
-                 const phi::DenseTensor& in_tensor,
-                 int root);
+  ~GlooStore() = default;
 
- private:
-  DISABLE_COPY_AND_ASSIGN(GlooCommContext);
+  std::vector<char> get(const std::string& key) override;
 
-  std::shared_ptr<gloo::Context> gloo_context_;
+  void wait(const std::vector<std::string>& keys) override;
+
+  void set(const std::string& key, const std::vector<char>& value) override;
+
+  void wait(const std::vector<std::string>& keys,
+            const std::chrono::milliseconds& timeout) override;
+
+ protected:
+  std::shared_ptr<phi::distributed::Store> store_;
 };
 
 }  // namespace distributed

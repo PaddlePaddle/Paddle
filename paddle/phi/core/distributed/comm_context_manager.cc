@@ -13,30 +13,15 @@
 // limitations under the License.
 
 #if defined(PADDLE_WITH_GLOO)
-// avoid winsock conflict
-#ifdef _WIN32
-#include <gloo/common/win.h>
-#include <winsock2.h>
-#include <ws2tcpip.h>
-#else
-#include <netdb.h>
-#include <sys/socket.h>
-#include <unistd.h>
-#endif
-
-#include <gloo/rendezvous/context.h>
-#include <gloo/rendezvous/prefix_store.h>
-#include <gloo/rendezvous/store.h>
-#include <gloo/transport/tcp/device.h>
+#include "gloo/rendezvous/prefix_store.h"
 
 #include "paddle/phi/core/distributed/gloo_comm_context.h"
-#include "paddle/phi/core/distributed/store/tcp_utils.h"
-#include "paddle/phi/core/errors.h"
+#include "paddle/phi/core/distributed/gloo_utils.h"
+#include "paddle/phi/core/distributed/store/gloo_store.h"
 #endif
 
 #include "paddle/phi/core/distributed/comm_context_manager.h"
 
-#include <chrono>
 #include <cstdlib>
 #include <cstring>
 #include <memory>
@@ -86,93 +71,6 @@ void CommContextManager::CreateNCCLCommContext(
 #endif
 
 #if defined(PADDLE_WITH_GLOO)
-class GlooStore : public gloo::rendezvous::Store {
- public:
-  explicit GlooStore(const std::shared_ptr<phi::distributed::Store>& store)
-      : store_(store) {}
-
-  ~GlooStore() = default;
-
-  std::vector<char> get(const std::string& key) override {
-    VLOG(3) << "GlooStore::get";
-    auto value = store_->get(key);
-    return std::vector<char>(value.begin(), value.end());
-  }
-
-  void wait(const std::vector<std::string>& keys) override {
-    VLOG(3) << "GlooStore::wait";
-    for (auto& key : keys) {
-      store_->wait(key);
-    }
-  }
-
-  void set(const std::string& key, const std::vector<char>& value) override {
-    VLOG(3) << "GlooStore::set";
-    std::vector<uint8_t> tmp(value.begin(), value.end());
-    store_->set(key, tmp);
-  }
-
-  void wait(const std::vector<std::string>& keys,
-            const std::chrono::milliseconds& timeout) override {
-    VLOG(3) << "GlooStore::wait";
-    for (auto& key : keys) {
-      store_->wait(key);
-    }
-  }
-
- protected:
-  std::shared_ptr<phi::distributed::Store> store_;
-};
-
-std::shared_ptr<gloo::transport::Device> CreateDeviceForInterface(
-    const std::string& ifname) {
-  gloo::transport::tcp::attr attr;
-  attr.iface = ifname;
-  return gloo::transport::tcp::CreateDevice(attr);
-}
-
-std::shared_ptr<gloo::transport::Device> CreateDeviceForHostname(
-    const std::string& hostname) {
-  gloo::transport::tcp::attr attr;
-  attr.hostname = hostname;
-  return gloo::transport::tcp::CreateDevice(attr);
-}
-
-std::shared_ptr<gloo::transport::Device> CreateDefaultDevice() {
-  std::array<char, HOST_NAME_MAX> hostname;
-  auto ret = ::gethostname(hostname.data(), HOST_NAME_MAX);
-  PADDLE_ENFORCE_EQ(
-      ret,
-      0,
-      phi::errors::Fatal("Get hostname error for createDefaultDevice."));
-  ::addrinfo* result;
-  result = phi::distributed::tcputils::get_addr_info(
-      hostname.data(), "", 0, AF_UNSPEC);
-  ::addrinfo* cur;
-  for (cur = result; cur != nullptr; cur = cur->ai_next) {
-    phi::distributed::SocketType socket =
-        ::socket(cur->ai_family, cur->ai_socktype, cur->ai_protocol);
-    if (socket == -1) {
-      continue;
-    }
-    ret = ::bind(socket, cur->ai_addr, cur->ai_addrlen);
-#ifdef _WIN32
-    closesocket(socket);
-#else
-    close(socket);
-#endif
-    if (ret == -1) {
-      continue;
-    }
-    break;
-  }
-  freeaddrinfo(result);
-  if (cur != nullptr) {
-    return CreateDeviceForHostname(hostname.data());
-  }
-  return CreateDeviceForHostname("127.0.0.1");
-}
-
 void CommContextManager::CreateGlooCommContext(
     const std::shared_ptr<Store>& store, int ring_id, int rank, int size) {
   char* ifname = std::getenv("GLOO_SOCKET_IFNAME");
@@ -184,11 +82,8 @@ void CommContextManager::CreateGlooCommContext(
   auto gloo_store =
       gloo::rendezvous::PrefixStore(std::to_string(ring_id), store_wrapper);
 
-  auto gloo_context = std::make_shared<gloo::rendezvous::Context>(rank, size);
-  gloo_context->connectFullMesh(gloo_store, gloo_device);
-
   auto gloo_comm_context =
-      std::make_unique<GlooCommContext>(rank, size, gloo_context);
+      std::make_unique<GlooCommContext>(rank, size, &gloo_store, gloo_device);
   auto& comm_context_manager = CommContextManager::GetInstance();
   // set actual store to manager
   comm_context_manager.SetStore(store);

@@ -15,7 +15,13 @@ if(WITH_GLOO)
     gloo_comm_context
     SRCS gloo_comm_context.cc
     DEPS dense_tensor)
-  list(APPEND COMM_CONTEXT_MANAGER_DEPS gloo_comm_context)
+
+  cc_library(
+    gloo_utils
+    SRCS gloo_utils.cc
+    DEPS gloo)
+
+  list(APPEND COMM_CONTEXT_MANAGER_DEPS gloo_comm_context gloo_store gloo_utils)
 endif()
 
 cc_library(

@@ -12,19 +12,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/core/distributed/gloo_comm_context.h"
+#pragma once
 
-#include "gloo/broadcast.h"
-#include "gloo/rendezvous/context.h"
+#include <climits>
+#include <memory>
+#include <string>
+
+#include "gloo/transport/tcp/device.h"
 #include "gloo/types.h"
 
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/dense_tensor.h"
-#include "paddle/phi/core/enforce.h"
 
 namespace phi {
 namespace distributed {
 
+// data preparation
 #ifdef _WIN32
 #define GENERATE_FUNC(type, func, ...)       \
   switch (type) {                            \
@@ -47,6 +50,7 @@ namespace distributed {
       VLOG(0) << "Error: Unknown DataType."; \
       exit(-1);                              \
   }
+#define HOST_NAME_MAX 256
 #else
 #define GENERATE_FUNC(type, func, args...)   \
   switch (type) {                            \
@@ -84,40 +88,19 @@ namespace distributed {
 #endif
 
 template <typename T, typename P>
-void SetOutput(P* opts, phi::DenseTensor* tensor) {
-  opts->setOutput(reinterpret_cast<T*>(tensor->data()), tensor->numel());
-}
+void SetOutput(P* opts, phi::DenseTensor* tensor);
 
 template <typename T, typename P>
-void SetInput(P* opts, const phi::DenseTensor& tensor) {
-  // gloo only support mutable data input
-  opts->setInput(reinterpret_cast<T*>(const_cast<void*>(tensor.data())),
-                 tensor.numel());
-}
+void SetInput(P* opts, const phi::DenseTensor& tensor);
 
-GlooCommContext::GlooCommContext(
-    int rank,
-    int size,
-    gloo::rendezvous::Store* store,
-    std::shared_ptr<gloo::transport::Device> device)
-    : CommContext(rank, size) {
-  auto context = std::make_shared<gloo::rendezvous::Context>(rank, size);
-  context->connectFullMesh(*store, device);
-  gloo_context_ = context;
-}
+// env preparation
+std::shared_ptr<gloo::transport::Device> CreateDeviceForInterface(
+    const std::string& ifname);
 
-void GlooCommContext::Broadcast(phi::DenseTensor* out_tensor,
-                                const phi::DenseTensor& in_tensor,
-                                int root) {
-  gloo::BroadcastOptions opts(gloo_context_);
-  const auto& dtype = in_tensor.dtype();
-  GENERATE_FUNC(dtype, SetOutput, &opts, out_tensor);
-  if (rank_ == root) {
-    GENERATE_FUNC(dtype, SetInput, &opts, in_tensor);
-  }
-  opts.setRoot(root);
-  gloo::broadcast(opts);
-}
+std::shared_ptr<gloo::transport::Device> CreateDeviceForHostname(
+    const std::string& hostname);
+
+std::shared_ptr<gloo::transport::Device> CreateDefaultDevice();
 
 }  // namespace distributed
 }  // namespace phi
