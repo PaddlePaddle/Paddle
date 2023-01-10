@@ -196,6 +196,7 @@ class TensorFillDiagTensor_Test(unittest.TestCase):
                 y = paddle.ones((bsdim, fsdim, fsdim), dtype=dtype)
                 y.stop_gradient = False
                 y = y * 2
+                y.retain_grads()
                 ny = y.fill_diagonal_tensor(v, offset=0, dim1=1, dim2=2)
                 loss = ny.sum()
                 loss.backward()
