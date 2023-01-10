@@ -178,6 +178,13 @@ void groupNormNHWCSum(const GroupNormNHWCParams &params, cudaStream_t stream) {
     case 128:
       groupNormNHWCSumKernel<64><<<grid, 64, 0, stream>>>(params);
       break;
+    case 8:
+      groupNormNHWCSumKernel<4><<<grid, 4, 0, stream>>>(params);
+      break;
+    default:
+      PADDLE_THROW(platform::errors::Fatal(
+          "The function groupNormNHWCSum of GroupNormPlugin TRT Plugin "
+          "encounter error"));
   }
 }
 
@@ -277,10 +284,13 @@ void groupNormNHWCScale(const GroupNormNHWCParams &params,
     case 128:
       groupNormNHWCScaleKernel<64><<<grid, 64, 0, stream>>>(params);
       break;
+    case 8:
+      groupNormNHWCScaleKernel<4><<<grid, 4, 0, stream>>>(params);
+      break;
     default:
-      PADDLE_THROW(
-          platform::errors::Fatal("The function groupNormNHWCScale of "
-                                  "GroupNorm TRT Plugin encounter error"));
+      PADDLE_THROW(platform::errors::Fatal(
+          "The function groupNormNHWCScale of GroupNormPlugin TRT Plugin "
+          "encounter error"));
   }
 }
 
@@ -609,6 +619,9 @@ int GroupNormPluginDynamic::enqueue(
           break;
         default:
           cPerBlock = 320;
+      }
+      if (cPerBlock > input_desc[0].dims.d[1]) {
+        cPerBlock = 8;
       }
 
       params_.withSwish = false;
