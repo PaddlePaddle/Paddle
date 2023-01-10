@@ -34,7 +34,7 @@ namespace phi {
 namespace funcs {
 
 template <typename T>
-using CudnnDataType = platform::CudnnDataType<T>;
+using CudnnDataType = paddle::platform::CudnnDataType<T>;
 template <typename T>
 using LayerNormParamType = typename CudnnDataType<T>::BatchNormParamType;
 
@@ -955,7 +955,7 @@ void ln_bwd_fast_kernel_driver(const phi::GPUContext &dev_ctx,
 
     if (mask_ptr != nullptr) {
       if (d_dropout_src_ptr == nullptr) {
-        PADDLE_THROW(platform::errors::InvalidArgument(
+        PADDLE_THROW(phi::errors::InvalidArgument(
             "To compute fused_dropout_residual_ln grad, d_dropout_src_ptr "
             "can't be null"));
       }
@@ -1067,8 +1067,8 @@ void ln_bwd_fast_kernel_driver(const phi::GPUContext &dev_ctx,
     // #blocks: 32，#threads_per_block: 512
     // Note: it is not supported for double type.
     if (sizeof(U) > 4) {
-      PADDLE_THROW(platform::errors::InvalidArgument(
-          "Only support float and fp16 type"));
+      PADDLE_THROW(
+          phi::errors::InvalidArgument("Only support float and fp16 type"));
     } else {
       int gridx_2 = 0;
 
@@ -1101,7 +1101,7 @@ void ln_bwd_fast_kernel_driver(const phi::GPUContext &dev_ctx,
 #undef LAUNCH_LN_BWD_BETA_GAMMMA_KERNEL
     }
   } else {
-    PADDLE_THROW(platform::errors::InvalidArgument(
+    PADDLE_THROW(phi::errors::InvalidArgument(
         "Fast layer_norm kernel is only used when feature_size is 1024"));
   }
 }
