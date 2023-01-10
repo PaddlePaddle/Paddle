@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include "paddle/fluid/inference/tensorrt/plugin/preln_groupnorm_act_op_plugin.h"
 #include <cub/cub.cuh>
+#include "paddle/fluid/inference/tensorrt/plugin/common/groupNormPluginCommon.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/layout.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
@@ -155,7 +156,7 @@ __global__ void prelnGroupNormNHWCSumKernel(GroupNormNHWCParams params) {
       // int64_t offsetY = static_cast<int64_t>(ni) * params.c + ci;
       __half2 y = *reinterpret_cast<__half2 const *>(&params.srcY[offset]);
       h2 = *reinterpret_cast<__half2 const *>(&params.srcX[offset]);
-      h2 = __hadd2(h2, y);
+      h2 = __hadd2_with_fallback(h2, y);
       // elementwise_add
       *reinterpret_cast<__half2 *>(&params.eleOut[offset]) = h2;
     }
