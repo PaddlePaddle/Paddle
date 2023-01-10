@@ -15,7 +15,6 @@
 #include "paddle/phi/core/distributed/gloo_comm_context.h"
 
 #include "gloo/broadcast.h"
-#include "gloo/rendezvous/context.h"
 #include "gloo/types.h"
 
 #include "paddle/phi/common/data_type.h"
@@ -29,12 +28,11 @@ namespace distributed {
 GlooCommContext::GlooCommContext(
     int rank,
     int size,
-    gloo::rendezvous::Store* store,
+    std::shared_ptr<gloo::rendezvous::Store> store,
     std::shared_ptr<gloo::transport::Device> device)
     : CommContext(rank, size) {
-  auto context = std::make_shared<gloo::rendezvous::Context>(rank, size);
-  context->connectFullMesh(*store, device);
-  gloo_context_ = context;
+  gloo_context_ = std::make_shared<gloo::rendezvous::Context>(rank, size);
+  gloo_context_->connectFullMesh(*store, device);
 }
 
 void GlooCommContext::Broadcast(phi::DenseTensor* out_tensor,

@@ -22,6 +22,9 @@
 #include <unistd.h>
 #endif
 
+#include <cstdlib>
+#include <cstring>
+
 #include "paddle/phi/core/distributed/gloo_utils.h"
 #include "paddle/phi/core/distributed/store/tcp_utils.h"
 #include "paddle/phi/core/enforce.h"
@@ -76,6 +79,15 @@ std::shared_ptr<gloo::transport::Device> CreateDefaultDevice() {
     return CreateDeviceForHostname(hostname.data());
   }
   return CreateDeviceForHostname("127.0.0.1");
+}
+
+std::shared_ptr<gloo::transport::Device> CreateGlooDevice() {
+  char* ifname = std::getenv("GLOO_SOCKET_IFNAME");
+  if (ifname && std::strlen(ifname) > 1) {
+    return CreateDeviceForInterface(std::string(ifname));
+  } else {
+    return CreateDefaultDevice();
+  }
 }
 
 }  // namespace distributed

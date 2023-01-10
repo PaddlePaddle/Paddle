@@ -100,13 +100,7 @@ void SetInput(P* opts, const phi::DenseTensor& tensor) {
 }
 
 // env preparation
-std::shared_ptr<gloo::transport::Device> CreateDeviceForInterface(
-    const std::string& ifname);
-
-std::shared_ptr<gloo::transport::Device> CreateDeviceForHostname(
-    const std::string& hostname);
-
-std::shared_ptr<gloo::transport::Device> CreateDefaultDevice();
+std::shared_ptr<gloo::transport::Device> CreateGlooDevice();
 
 }  // namespace distributed
 }  // namespace phi

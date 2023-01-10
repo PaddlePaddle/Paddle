@@ -22,8 +22,6 @@
 
 #include "paddle/phi/core/distributed/comm_context_manager.h"
 
-#include <cstdlib>
-#include <cstring>
 #include <memory>
 #include <string>
 
@@ -73,17 +71,14 @@ void CommContextManager::CreateNCCLCommContext(
 #if defined(PADDLE_WITH_GLOO)
 void CommContextManager::CreateGlooCommContext(
     const std::shared_ptr<Store>& store, int ring_id, int rank, int size) {
-  char* ifname = std::getenv("GLOO_SOCKET_IFNAME");
-  auto gloo_device = ifname && std::strlen(ifname) > 1
-                         ? CreateDeviceForInterface(std::string(ifname))
-                         : CreateDefaultDevice();
-
   GlooStore store_wrapper(store);
-  auto gloo_store =
-      gloo::rendezvous::PrefixStore(std::to_string(ring_id), store_wrapper);
+  auto gloo_store = std::make_shared<gloo::rendezvous::PrefixStore>(
+      std::to_string(ring_id), store_wrapper);
+
+  auto gloo_device = CreateGlooDevice();
 
   auto gloo_comm_context =
-      std::make_unique<GlooCommContext>(rank, size, &gloo_store, gloo_device);
+      std::make_unique<GlooCommContext>(rank, size, gloo_store, gloo_device);
   auto& comm_context_manager = CommContextManager::GetInstance();
   // set actual store to manager
   comm_context_manager.SetStore(store);

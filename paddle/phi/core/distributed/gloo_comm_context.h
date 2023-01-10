@@ -15,7 +15,7 @@
 
 #include <memory>
 
-#include "gloo/context.h"
+#include "gloo/rendezvous/context.h"
 #include "gloo/rendezvous/store.h"
 #include "gloo/transport/tcp/device.h"
 
@@ -30,7 +30,7 @@ class GlooCommContext final : public CommContext {
  public:
   GlooCommContext(int rank,
                   int size,
-                  gloo::rendezvous::Store* store,
+                  std::shared_ptr<gloo::rendezvous::Store> store,
                   std::shared_ptr<gloo::transport::Device> device);
 
   void Broadcast(phi::DenseTensor* out_tensor,
@@ -40,7 +40,7 @@ class GlooCommContext final : public CommContext {
  private:
   DISABLE_COPY_AND_ASSIGN(GlooCommContext);
 
-  std::shared_ptr<gloo::Context> gloo_context_;
+  std::shared_ptr<gloo::rendezvous::Context> gloo_context_;
 };
 
 }  // namespace distributed
