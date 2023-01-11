@@ -68,7 +68,7 @@ class PSServer {
 
   virtual int32_t Configure(
       const PSParameter &config,
-      const PSEnvironment &env,
+      PSEnvironment &env,  // NOLINT
       size_t server_rank,
       const std::vector<framework::ProgramDesc> &server_sub_program = {});
 
