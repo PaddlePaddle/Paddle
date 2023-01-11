@@ -575,6 +575,7 @@ void SyncBatchNormGradFunctor(
     }
   }
 
+  std::cout << "call backward.." << layout << " " << x_dims.size() << std::endl;
   if (layout == DataLayout::kNCHW) {
     KeBackwardLocalStats<T, threads, DataLayout::kNCHW>
         <<<grid, threads, 0, stream>>>(
@@ -605,7 +606,7 @@ void SyncBatchNormGradFunctor(
           block_size,
           &block,
           &grid);
-      KeBackwardLocalStats2D<T, threads, DataLayout::kNHWC>
+      KeBackwardLocalStats2D<T, block_size, DataLayout::kNHWC>
           <<<grid, block, 0, stream>>>(dy_d,
                                        x_d,
                                        saved_mean_ptr,
@@ -708,7 +709,7 @@ void SyncBatchNormGradFunctor(
             block_size,
             &block,
             &grid);
-        KeBNBackwardScaleBias2D<T, threads, DataLayout::kNHWC>
+        KeBNBackwardScaleBias2D<T, block_size, DataLayout::kNHWC>
             <<<grid, block, 0, stream>>>(dy_d,
                                          x_d,
                                          saved_mean_ptr,
