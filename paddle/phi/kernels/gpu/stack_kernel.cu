@@ -13,9 +13,7 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/stack_kernel.h"
-
 #include "paddle/fluid/memory/memory.h"
-#include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/fast_divmod.h"
@@ -135,7 +133,7 @@ void LaunchStackCUDAKernelWithIndexType(
   } break;
 
 #define IMPL_STACK_CUDA_KERNEL_HELPER(...)        \
-  IMPL_STACK_CUDA_KERNEL_CASE(2, ##__VA_ARGS__);  \
+  IMPL_STACK_CUDA_KERNEL_CASE(4, ##__VA_ARGS__);  \
   IMPL_STACK_CUDA_KERNEL_CASE(8, ##__VA_ARGS__);  \
   IMPL_STACK_CUDA_KERNEL_CASE(16, ##__VA_ARGS__); \
   IMPL_STACK_CUDA_KERNEL_CASE(32, ##__VA_ARGS__); \
