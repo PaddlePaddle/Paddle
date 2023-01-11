@@ -498,8 +498,5 @@ void TransDataBackend(const phi::SelectedRows* tensor,
     TransDataBackend(&tensor->value(), target_backend, out->mutable_value());
   }
 }
-
-void TransDataStride(phi::DenseTensor* tensor, const phi::Strides& stride) {}
-
 }  // namespace experimental
 }  // namespace paddle

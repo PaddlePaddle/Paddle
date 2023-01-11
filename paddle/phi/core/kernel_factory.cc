@@ -155,9 +155,12 @@ KernelResult KernelFactory::SelectKernelOrThrowError(
       phi::errors::NotFound("The kernel `%s` is not registered.", kernel_name));
 
   if (FLAGS_use_stride_kernel) {
-    auto stride_kernel_iter = iter->second.find({const_kernel_key.backend(),
-                                                 phi::DataLayout::STRIDED,
-                                                 const_kernel_key.dtype()});
+    auto stride_kernel_iter = iter->second.find(
+        {const_kernel_key.backend() == paddle::experimental::Backend::GPUDNN
+             ? paddle::experimental::Backend::GPU
+             : const_kernel_key.backend(),
+         phi::DataLayout::STRIDED,
+         const_kernel_key.dtype()});
     if (stride_kernel_iter != iter->second.end()) {
       return {stride_kernel_iter->second, false, true};
     }

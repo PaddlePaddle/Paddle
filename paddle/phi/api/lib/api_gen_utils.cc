@@ -289,5 +289,42 @@ phi::TensorBase* SetStringsKernelOutput(Tensor* out, TensorType type) {
   return out->impl().get();
 }
 
+void SetDenseTensorContiguousFalse(phi::DenseTensor* tensor) {
+  tensor->set_contiguous(false);
+}
+
+void SetDenseTensorContiguousFalse(
+    const std::vector<phi::DenseTensor*>& tensor) {
+  for (auto t : tensor) {
+    t->set_contiguous(false);
+  }
+}
+
+void SetDenseTensorContiguousFalse(const phi::SelectedRows* tensor) {}
+
+void TransDataStride(phi::DenseTensor* tensor, const phi::Strides& stride) {}
+
+phi::Strides* BackupStride(const phi::DenseTensor* tensor) {
+  if (!tensor->strides().IsContiguous()) {
+    return new phi::Strides(tensor->strides());
+  }
+  return nullptr;
+}
+
+std::vector<phi::Strides*> BackupStride(
+    const std::vector<phi::DenseTensor*>& tensor) {
+  std::vector<phi::Strides*> res;
+  for (auto t : tensor) {
+    if (!t->strides().IsContiguous()) {
+      res.emplace_back(new phi::Strides(t->strides()));
+    } else {
+      res.emplace_back(nullptr);
+    }
+  }
+  return res;
+}
+
+phi::Strides* BackupStride(const phi::SelectedRows* tensor) { return nullptr; }
+
 }  // namespace experimental
 }  // namespace paddle

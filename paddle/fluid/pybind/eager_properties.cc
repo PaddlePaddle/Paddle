@@ -233,9 +233,6 @@ PyObject* tensor_properties_get_strides(TensorObject* self, void* closure) {
 
   auto dense_tensor =
       std::dynamic_pointer_cast<phi::DenseTensor>(self->tensor.impl());
-  if (!dense_tensor->strides().IsValiable()) {
-    paddle::experimental::InitTensorStrides(dense_tensor.get());
-  }
 
   value.resize(dense_tensor->strides().get_rank());
   const int64_t* strides = dense_tensor->strides().Get();
