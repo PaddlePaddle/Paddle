@@ -1559,6 +1559,22 @@ All parameter, weight, gradient are variables in Paddle.
 #endif
     return devices;
   });
+  m.def("get_custom_device_count", [](const std::string &device_type) {
+    size_t device_count;
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+    device_count = phi::DeviceManager::GetDeviceCount(device_type);
+#else
+          VLOG(1) << string::Sprintf(
+              "Cannot use get_custom_device_count because you have "
+              "installed"
+              "CPU/GPU version PaddlePaddle.\n"
+              "If you want to use get_custom_device_count, please try to "
+              "install"
+              "CustomDevice version "
+              "PaddlePaddle by: pip install paddlepaddle\n");
+#endif
+    return device_count;
+  });
 
   py::class_<OperatorBase>(m, "Operator")
       .def_static("create",
