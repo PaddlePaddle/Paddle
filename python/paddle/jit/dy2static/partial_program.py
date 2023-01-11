@@ -408,6 +408,7 @@ class PartialProgramLayer:
         for i in range(
             fwd_end_op_index + 1,
             min(
+<<<<<<< HEAD
                 fwd_end_op_index + 2 * len(self._outputs.var_ids),
                 len(origin_train_program.block(0).ops),
             ),
@@ -415,6 +416,15 @@ class PartialProgramLayer:
         ):
             op = origin_train_program.block(0).ops[i]
             if op.type == 'fill_constant':
+=======
+                fwd_end_op_index + 1 * len(self._outputs.var_ids),
+                len(self.program.block(0).ops),
+            ),
+            2,
+        ):
+            op = self.program.block(0).ops[i]
+            if op.type == 'fill_any_like':
+>>>>>>> fix dy2st error with magic num
                 var_name = op.output('Out')[0]
                 names.append(var_name)
 
@@ -784,7 +794,7 @@ class PartialProgramLayer:
     ):
         # NOTE(dev): We apply build_strategy for backward firstly to
         # avoid skipping more gc variables.
-        backward_start_op_index = forward_end_op_index + 2 * len(
+        backward_start_op_index = forward_end_op_index + 1 * len(
             self._outputs.var_ids
         )
         backward_end_op_index = whole_program.desc.block(0).op_size()
