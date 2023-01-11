@@ -20,7 +20,6 @@ import paddle
 import paddle.fluid as fluid
 from paddle.fluid.dygraph import to_variable
 from paddle.fluid.framework import EagerParamBase, ParamBase, in_dygraph_mode
-from paddle.jit import ProgramTranslator
 
 
 class L1(fluid.Layer):
@@ -339,11 +338,10 @@ class BufferNetWithModification(paddle.nn.Layer):
 class TestModifiedBuffer(unittest.TestCase):
     def funcsetUp(self):
         paddle.disable_static()
-        self.prog_trans = ProgramTranslator()
         self.shape = [10, 16]
 
     def _run(self, to_static=False):
-        self.prog_trans.enable(to_static)
+        paddle.jit.enable_to_static(to_static)
 
         x = paddle.ones([1], 'int32')
         net = BufferNetWithModification(self.shape)
