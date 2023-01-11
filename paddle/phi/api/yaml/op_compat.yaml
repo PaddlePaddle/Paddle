@@ -1364,7 +1364,7 @@
   inputs :
     x : X
   outputs :
-    out : Yx
+    out : Y
   extra :
     attrs : [bool use_mkldnn = false]
   drop_empty_grad : [x_grad]
