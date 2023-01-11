@@ -1207,7 +1207,7 @@ class TestKaimingUniform(unittest.TestCase):
 
     def test_type_error(self):
         self.assertRaises(
-            ValueError, self.func_kaiminguniform_initializer_fan_in_zero
+            ZeroDivisionError, self.func_kaiminguniform_initializer_fan_in_zero
         )
 
 
