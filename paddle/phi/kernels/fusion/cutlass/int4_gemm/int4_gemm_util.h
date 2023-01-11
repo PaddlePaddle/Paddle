@@ -35,6 +35,10 @@ namespace cutlass_gemm_internal {
     }                                                                     \
   }
 
+int ProfileToGetBestConfig(
+    const std::vector<std::function<cutlass::Status(GemmAllParams)>>
+        &gemm_funcs,
+    GemmAllParams params);
 }  // namespace cutlass_gemm_internal
 }  // namespace fusion
 }  // namespace phi

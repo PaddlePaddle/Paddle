@@ -392,6 +392,27 @@ std::vector<std::function<cutlass::Status(GemmAllParams)>>
 
 std::map<std::vector<int>, int> map_problem_int4_gemm;
 std::mutex int4_gemm_mutex;
+
+void Int4Gemm(GemmAllParams params, int sm) {
+  int batch = params.batch;
+  int m = params.m;
+  int n = params.n;
+  int k = params.k;
+  std::vector<int> problem_size = {batch, m, n, k};
+  std::vector<std::function<cutlass::Status(GemmAllParams)>> *gemm_funcs =
+      &int4_gemm_sm75_all_func;
+  if (sm == 80) {
+    gemm_funcs = &int4_gemm_sm80_all_func;
+  }
+  if (map_problem_int4_gemm.count(problem_size)) {
+    gemm_funcs->at(map_problem_int4_gemm.at(problem_size))(params);
+    return;
+  }
+  int best_config_index = ProfileToGetBestConfig(*gemm_funcs, params);
+  std::lock_guard<std::mutex> guard(int4_gemm_mutex);
+  map_problem_int4_gemm[problem_size] = best_config_index;
+  gemm_funcs->at(best_config_index)(params);
+}
 }  // namespace cutlass_gemm_internal
 }  // namespace fusion
 }  // namespace phi

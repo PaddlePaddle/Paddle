@@ -33,9 +33,8 @@ typedef struct {
 } GemmAllParams;
 
 // Below functions are provided by cutlass, they are called bt phi
-void Int4Gemm(GemmAllParams params);
-void Int4GemmRelu(GemmAllParams params);
-void Int4GemmAddRelu(GemmAllParams params);
+void Int4Gemm(GemmAllParams params, int sm);
+void Int4GemmRelu(GemmAllParams params, int sm);
 }  // namespace cutlass_gemm_internal
 }  // namespace fusion
 }  // namespace phi
