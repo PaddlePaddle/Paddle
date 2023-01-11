@@ -29,6 +29,7 @@ from paddle.distributed.auto_parallel.utils import (
     get_var_numel,
     insert_dependencies_for_vars,
     is_backward_op,
+    is_data_parallel_only,
     is_dep_skip_op,
     is_loss_grad_op,
     is_optimize_op,
@@ -172,6 +173,10 @@ class ShardingPass(PassBase):
             self.get_attr("grad_bucket_size_numel")
         )
         self.partition_algor = self.get_attr("partition_algor")
+        self.enable_newexe_based_optimization = (
+            _is_enable_standalone_executor()
+            and is_data_parallel_only(main_program.global_block())
+        )
 
         params_grads = self.get_attr("params_grads")
         main_block, startup_block = (
@@ -681,7 +686,8 @@ class ShardingPass(PassBase):
 
     def _optimization_pass(self, main_program, startup_program):
 
-        if self.stage <= 1:
+        # TODO support hybird parallel
+        if self.stage <= 1 or not (self.enable_newexe_based_optimization):
             return
 
         disable_newexe_redundent_deps()

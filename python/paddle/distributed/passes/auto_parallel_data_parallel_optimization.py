@@ -26,6 +26,7 @@ from paddle.distributed.auto_parallel.utils import (
     get_logger,
     get_var_numel,
     insert_dependencies_for_vars,
+    is_data_parallel_only,
     is_forward_op,
     is_loss_grad_op,
     is_optimize_op,
@@ -97,7 +98,11 @@ class DataParallelOptimizationPass(PassBase):
         self.global_rank = int(self.get_attr("global_rank"))
         self.use_sharding = self.get_attr("use_sharding")
         self.coalesce_prefix = 'coalesce_grad'
-        if _is_enable_standalone_executor():
+        self.enable_newexe_based_optimization = (
+            _is_enable_standalone_executor()
+            and is_data_parallel_only(main_program.global_block())
+        )
+        if self.enable_newexe_based_optimization:
             disable_newexe_redundent_deps()
             self.gradient_sync_stream = "gradient_sync_stream"
 
@@ -319,7 +324,7 @@ class DataParallelOptimizationPass(PassBase):
 
     def _calc_wait_comms(self):
 
-        if _is_enable_standalone_executor():
+        if self.enable_newexe_based_optimization:
             return
 
         block = default_main_program().global_block()
@@ -552,7 +557,7 @@ class DataParallelOptimizationPass(PassBase):
         # multiple stream executor(standalone exe). This function just for standalone exe. Refactor here
         # in future when only one executor stay.
 
-        if not _is_enable_standalone_executor() or len(grad_groups) == 0:
+        if not self.enable_newexe_based_optimization or len(grad_groups) == 0:
             return
         block = default_main_program().global_block()
 
