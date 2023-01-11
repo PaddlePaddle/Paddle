@@ -330,6 +330,8 @@ PADDLE_CAPI_EXPORT extern PD_Bool PD_ConfigIrOptim(
 /// reusing.
 /// \param[in] use_calib_mode Use TRT int8 calibration(post training
 /// quantization).
+/// \param static_path save or reload path for TensorRT engine 
+/// serialization in use_static mode.
 ///
 PADDLE_CAPI_EXPORT extern void PD_ConfigEnableTensorRtEngine(
     __pd_keep PD_Config* pd_config,
@@ -338,7 +340,8 @@ PADDLE_CAPI_EXPORT extern void PD_ConfigEnableTensorRtEngine(
     int32_t min_subgraph_size,
     PD_PrecisionType precision,
     PD_Bool use_static,
-    PD_Bool use_calib_mode);
+    PD_Bool use_calib_mode,
+    const char* static_path = "");
 ///
 /// \brief A boolean state telling whether the TensorRT engine is used.
 ///

@@ -230,6 +230,9 @@ struct Argument {
   DECL_ARGUMENT_FIELD(tensorrt_use_static_engine,
                       TensorRtUseStaticEngine,
                       bool);
+  DECL_ARGUMENT_FIELD(tensorrt_static_path,
+                    TensorRtStaticPath,
+                    std::string);
   DECL_ARGUMENT_FIELD(tensorrt_use_calib_mode, TensorRtUseCalibMode, bool);
   DECL_ARGUMENT_FIELD(tensorrt_use_varseqlen, TensorRtUseOSS, bool);
   DECL_ARGUMENT_FIELD(tensorrt_with_interleaved, TensorRtWithInterleaved, bool);

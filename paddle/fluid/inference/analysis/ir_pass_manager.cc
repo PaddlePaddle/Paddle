@@ -161,6 +161,7 @@ void IRPassManager::CreatePasses(Argument *argument,
       pass->Set("context_memory_sharing",
                 new bool(argument->trt_engine_memory_sharing()));
       bool use_static_engine = argument->tensorrt_use_static_engine();
+      std::string static_path = argument->tensorrt_static_path();
       bool model_from_memory = argument->model_from_memory();
       std::string optim_cache_dir = argument->optim_cache_dir();
       bool int8_valid = !(model_from_memory && optim_cache_dir.empty() &&
@@ -204,6 +205,8 @@ void IRPassManager::CreatePasses(Argument *argument,
             new std::string(GetOrCreateModelOptCacheDir(model_opt_cache_dir)));
       }
       pass->Set("use_static_engine", new bool(use_static_engine));
+      CheckModelStaticPathDir(static_path);
+      pass->Set("static_path", new std::string(static_path));
       pass->Set("model_from_memory", new bool(argument->model_from_memory()));
       pass->Set("use_inspector", new bool(argument->tensorrt_use_inspector()));
 

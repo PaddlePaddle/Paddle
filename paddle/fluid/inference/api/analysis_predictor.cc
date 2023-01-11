@@ -1134,6 +1134,7 @@ void AnalysisPredictor::PrepareArgument() {
     argument_->SetTensorRtUseDLA(config_.trt_use_dla_);
     argument_->SetTensorRtDLACore(config_.trt_dla_core_);
     argument_->SetTensorRtUseStaticEngine(config_.trt_use_static_engine_);
+    argument_->SetTensorRtStaticPath(config_.trt_static_path_);
     argument_->SetTensorRtUseCalibMode(config_.trt_use_calib_mode_);
     argument_->SetCloseTrtPluginFp16(config_.disable_trt_plugin_fp16_);
     argument_->SetTensorRtShapeRangeInfoPath(config_.shape_range_info_path());

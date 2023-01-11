@@ -571,14 +571,16 @@ struct PD_INFER_DECL AnalysisConfig {
   /// \param use_static Serialize optimization information to disk for reusing.
   /// \param use_calib_mode Use TRT int8 calibration(post training
   /// quantization).
-  ///
+  /// \param static_path save or reload path for TensorRT engine 
+  /// serialization in use_static mode.
   ///
   void EnableTensorRtEngine(int64_t workspace_size = 1 << 30,
                             int max_batch_size = 1,
                             int min_subgraph_size = 3,
                             Precision precision = Precision::kFloat32,
                             bool use_static = false,
-                            bool use_calib_mode = true);
+                            bool use_calib_mode = true,
+                            std::string static_path = "");
   ///
   /// \brief A boolean state telling whether the TensorRT engine is used.
   ///
@@ -1096,6 +1098,7 @@ struct PD_INFER_DECL AnalysisConfig {
   int tensorrt_min_subgraph_size_{3};
   Precision tensorrt_precision_mode_{Precision::kFloat32};
   bool trt_use_static_engine_{false};
+  std::string trt_static_path_{""};
   bool trt_use_calib_mode_{true};
   bool trt_use_varseqlen_{false};
   bool trt_with_interleaved_{false};
