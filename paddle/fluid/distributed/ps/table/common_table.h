@@ -90,7 +90,7 @@ class BarrierTable : public Table {
   // only for barrier
   // 0: send_barrier 1: recv_barrier 2: complete
   int32_t Barrier(const uint32_t trainer_id,
-                          const std::string barrier_type) override;
+                  const std::string barrier_type) override;
 
   int32_t SetTableMap(
       std::unordered_map<uint32_t, std::shared_ptr<Table>> *table_map) override;

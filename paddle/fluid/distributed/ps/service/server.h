@@ -182,9 +182,9 @@ class PsBaseService : public PsService {
     return 0;
   }
   void service(::google::protobuf::RpcController *controller,
-                       const PsRequestMessage *request,
-                       PsResponseMessage *response,
-                       ::google::protobuf::Closure *done) override = 0;
+               const PsRequestMessage *request,
+               PsResponseMessage *response,
+               ::google::protobuf::Closure *done) override = 0;
 
   virtual void set_response_code(PsResponseMessage *response,
                                  int err_code,

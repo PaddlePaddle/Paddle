@@ -75,12 +75,12 @@ class CtrDoubleAccessor : public ValueAccessor {
       return val[CtrDoubleFeatureValue::DeltaScoreIndex()];
     }
     static double& Show(float* val) {
-      return (reinterpret_cast<double*>(
-              val + CtrDoubleFeatureValue::ShowIndex()))[0];
+      return (reinterpret_cast<double*>(val +
+                                        CtrDoubleFeatureValue::ShowIndex()))[0];
     }
     static double& Click(float* val) {
       return (reinterpret_cast<double*>(
-              val + CtrDoubleFeatureValue::ClickIndex()))[0];
+          val + CtrDoubleFeatureValue::ClickIndex()))[0];
     }
     static float& Slot(float* val) {
       return val[CtrDoubleFeatureValue::SlotIndex()];
