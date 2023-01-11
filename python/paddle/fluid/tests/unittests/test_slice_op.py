@@ -17,12 +17,12 @@ import unittest
 import gradient_checker
 import numpy as np
 from decorator_helper import prog_scope
-from op_test import OpTest, convert_float_to_uint16
 
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 import paddle.fluid.layers as layers
+from op_test import OpTest, convert_float_to_uint16
 from paddle.tensor.manipulation import tensor_array_to_tensor
 
 paddle.enable_static()
@@ -33,6 +33,7 @@ paddle.enable_static()
 class TestSliceOp(OpTest):
     def setUp(self):
         self.op_type = "slice"
+        self.python_api = paddle.slice
         self.config()
         self.inputs = {'Input': self.input}
         self.outputs = {'Out': self.out}
@@ -52,10 +53,12 @@ class TestSliceOp(OpTest):
         self.out = self.input[1:3, 0:3, 2:4, :]
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad_normal(self):
-        self.check_grad(['Input'], 'Out', max_relative_error=0.006)
+        self.check_grad(
+            ['Input'], 'Out', max_relative_error=0.006, check_eager=True
+        )
 
 
 class TestCase1(TestSliceOp):
