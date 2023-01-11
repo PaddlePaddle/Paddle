@@ -435,13 +435,13 @@ class PartialProgramLayer:
         for i in range(
             fwd_end_op_index + 1,
             min(
-                fwd_end_op_index + 2 * len(self._outputs.var_ids),
+                fwd_end_op_index + 1 * len(self._outputs.var_ids),
                 len(self.program.block(0).ops),
             ),
             2,
         ):
             op = self.program.block(0).ops[i]
-            if op.type == 'fill_constant':
+            if op.type == 'fill_any_like':
                 var_name = op.output('Out')[0]
                 names.append(var_name)
         return names
@@ -773,7 +773,7 @@ class PartialProgramLayer:
     ):
         # NOTE(dev): We apply build_strategy for backward firstly to
         # avoid skipping more gc variables.
-        backward_start_op_index = forward_end_op_index + 2 * len(
+        backward_start_op_index = forward_end_op_index + 1 * len(
             self._outputs.var_ids
         )
         backward_end_op_index = whole_program.desc.block(0).op_size()
