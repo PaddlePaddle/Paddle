@@ -103,7 +103,7 @@ class MSRAInitializer(Initializer):
         if var.dtype == core.VarDesc.VarType.FP16 or (
             var.dtype == core.VarDesc.VarType.BF16 and not self._uniform
         ):
-            out_dtype = core.coreVarDesc.VarType.FP32
+            out_dtype = core.VarDesc.VarType.FP32
             out_var = block.create_var(
                 name=unique_name.generate(
                     ".".join(['masra_init', var.name, 'tmp'])

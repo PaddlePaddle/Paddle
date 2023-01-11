@@ -886,6 +886,7 @@ def tdm_child(x, node_nums, child_nums, param_attr=None, dtype='int32'):
 
     Examples:
         .. code-block:: python
+        import paddle
         import paddle.fluid as fluid
         import numpy as np
         x = fluid.data(name="x", shape=[None, 1], dtype="int32", lod_level=1)
@@ -993,6 +994,7 @@ def tdm_sampler(
 
     Examples:
         .. code-block:: python
+        import paddle
         import paddle.fluid as fluid
         import numpy as np
         x = fluid.data(name="x", shape=[None, 1], dtype="int32", lod_level=1)
