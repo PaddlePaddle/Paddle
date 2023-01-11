@@ -20,9 +20,7 @@ from test_resnet import SEED, ResNet, optimizer_setting
 
 import paddle
 import paddle.fluid as fluid
-
 from paddle.fluid import core
-from paddle.jit import ProgramTranslator
 
 # NOTE: Reduce batch_size from 8 to 2 to avoid unittest timeout.
 batch_size = 2
