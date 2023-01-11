@@ -416,7 +416,6 @@ class PartialProgramLayer:
                 fwd_end_op_index + 1 * len(self._outputs.var_ids),
                 len(origin_train_program.block(0).ops),
             ),
-            2,
         ):
             op = origin_train_program.block(0).ops[i]
             if op.type == 'fill_any_like':
