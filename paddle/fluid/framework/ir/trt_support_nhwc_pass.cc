@@ -148,8 +148,11 @@ void TrtSupportNHWCPass::ApplyImpl(Graph *graph) const {
   //
   //
   std::unordered_set<std::string> need_trans_weights{"prelu"};
-  std::unordered_set<std::string> not_trans_weights{
-      "conv2d", "pool2d", "batch_norm", "bilinear_interp_v2", "nearest_interp"};
+  std::unordered_set<std::string> not_trans_weights{"conv2d",
+                                                    "pool2d",
+                                                    "batch_norm",
+                                                    "bilinear_interp_v2",
+                                                    "nearest_interp_v2"};
   // Ops must run under the original layout even though it has
   // data_format/data_layout attribute, otherwise it will be very troublesome!
   std::unordered_set<std::string> must_original_layout_ops{"affine_channel",
