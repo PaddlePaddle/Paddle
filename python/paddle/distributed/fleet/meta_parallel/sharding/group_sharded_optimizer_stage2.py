@@ -29,7 +29,7 @@ from collections import OrderedDict
 import paddle
 import paddle.distributed as dist
 from paddle.distributed import ParallelMode, fleet
-from paddle.fluid import core
+from paddle.framework import core
 from paddle.nn import ClipGradByGlobalNorm
 from paddle.optimizer import Optimizer
 
