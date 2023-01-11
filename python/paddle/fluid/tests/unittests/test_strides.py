@@ -47,12 +47,20 @@ class TestStrides(unittest.TestCase):
         self.assertTrue(y.is_contiguous())
         self.assertFalse(x._is_shared_buffer_with(y))
 
+
+class TestStridesCPU(TestStrides):
     def test_strides_cpu(self):
         paddle.fluid.set_flags({"FLAGS_use_stride_kernel": True})
         paddle.set_device('cpu')
         self.call_strides()
         paddle.fluid.set_flags({"FLAGS_use_stride_kernel": False})
 
+
+@unittest.skipIf(
+    not paddle.fluid.core.is_compiled_with_cuda(),
+    "core is not compiled with CUDA",
+)
+class TestStridesGPU(TestStrides):
     def test_strides_gpu(self):
         paddle.fluid.set_flags({"FLAGS_use_stride_kernel": True})
         paddle.set_device('gpu')
