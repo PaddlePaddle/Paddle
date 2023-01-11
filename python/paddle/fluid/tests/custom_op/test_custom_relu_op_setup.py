@@ -21,7 +21,6 @@ import numpy as np
 
 import paddle
 import paddle.static as static
-from paddle import fluid
 from paddle.utils.cpp_extension.extension_utils import run_cmd
 from paddle.vision.transforms import Compose, Normalize
 
@@ -259,7 +258,6 @@ class TestNewCustomOpSetUpInstall(unittest.TestCase):
                     )
 
     def test_dynamic(self):
-        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         for device in self.devices:
             for dtype in self.dtypes:
                 if device == 'cpu' and dtype == 'float16':
@@ -286,7 +284,6 @@ class TestNewCustomOpSetUpInstall(unittest.TestCase):
                             x_grad, pd_x_grad
                         ),
                     )
-        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
     def test_static_save_and_load_inference_model(self):
         paddle.enable_static()
@@ -354,7 +351,6 @@ class TestNewCustomOpSetUpInstall(unittest.TestCase):
         paddle.disable_static()
 
     def test_double_grad_dynamic(self):
-        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         for device in self.devices:
             for dtype in self.dtypes:
                 if device == 'cpu' and dtype == 'float16':
@@ -380,7 +376,6 @@ class TestNewCustomOpSetUpInstall(unittest.TestCase):
                         dx_grad, pd_dx_grad
                     ),
                 )
-        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
     def test_with_dataloader(self):
         for device in self.devices:
