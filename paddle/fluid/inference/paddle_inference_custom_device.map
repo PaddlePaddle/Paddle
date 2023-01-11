@@ -44,6 +44,8 @@
 			/* Another question: the ut size will grow from 50M to 80M, why? */
 
 			*paddle::detail*;
+			*paddle::imperative*;
+			*paddle::detailv3*;
 			*paddle::memory*;
 			*paddle::string*;
 			*paddle::operators*;
