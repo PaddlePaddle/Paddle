@@ -20,12 +20,10 @@ from test_lac import DynamicGRU
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid.dygraph import to_variable
-from paddle.jit import ProgramTranslator
 from paddle.jit.api import to_static
 from paddle.nn import Embedding, Linear
 
 SEED = 2020
-program_translator = ProgramTranslator()
 
 # Note: Set True to eliminate randomness.
 #     1. For one operation, cuDNN has several algorithms,
@@ -304,7 +302,7 @@ class Args:
 
 
 def train(args, to_static):
-    program_translator.enable(to_static)
+    paddle.jit.enable_to_static(to_static)
     place = (
         fluid.CUDAPlace(0)
         if fluid.is_compiled_with_cuda()
