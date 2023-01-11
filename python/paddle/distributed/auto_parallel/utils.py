@@ -27,6 +27,7 @@ from paddle.framework import core
 from paddle.static import Variable
 
 from .dist_attribute import OperatorDistAttr, TensorDistAttr
+from .operators.common import is_data_parallel_reduce_op
 from .process_group import get_all_process_groups
 from .process_mesh import ProcessMesh
 
@@ -2338,6 +2339,28 @@ def is_dep_skip_op(op):
         return True
 
     return False
+
+
+def is_data_parallel_only(block):
+    """
+    determinite data parallel is the only parallel mode in layerwise parallel setting.
+    """
+    # NOTE should distinguish case where layerwise_mp8 + layerwise_dp8
+    global_nranks = get_world_process_group().nranks
+    groups = get_all_process_groups()
+
+    for g in groups:
+        if g.nranks != global_nranks:
+            return False
+
+    for op in block.ops:
+        if op.type in [
+            "c_reduce_sum",
+            "c_allreduce_sum",
+        ] and not is_data_parallel_reduce_op(op):
+            return False
+
+    return True
 
 
 def enable_newexe_sequential_execution():

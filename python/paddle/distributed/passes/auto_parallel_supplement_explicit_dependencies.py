@@ -49,6 +49,7 @@ def _get_check_finite_op_depend_var(block, idx):
                 len(op.output_arg_names) > 0
             ), "unexpected backward calculation op, {}".format(str(op))
             return op.output_arg_names[0]
+        idx -= 1
 
     raise RuntimeError("could not found check finite op prior depend op")
 

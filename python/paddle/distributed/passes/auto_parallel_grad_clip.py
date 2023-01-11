@@ -21,19 +21,14 @@ from paddle.distributed.fleet.meta_optimizers.common import OP_ROLE_KEY, OpRole
 from paddle.fluid.executor import _is_enable_standalone_executor
 
 from ..auto_parallel.dist_attribute import OperatorDistAttr, TensorDistAttr
-from ..auto_parallel.operators.common import (
-    SyncMode,
-    is_data_parallel_reduce_op,
-)
-from ..auto_parallel.process_group import (
-    get_all_process_groups,
-    get_world_process_group,
-)
+from ..auto_parallel.operators.common import SyncMode
+from ..auto_parallel.process_group import get_world_process_group
 from ..auto_parallel.process_mesh import ProcessMesh
 from ..auto_parallel.reshard import Resharder
 from ..auto_parallel.utils import (
     _get_comm_group,
     insert_dependencies_for_vars,
+    is_data_parallel_only,
     is_gradient_clip_op,
     is_optimize_op,
 )
@@ -168,7 +163,7 @@ class ClipHelper:
             self.sharding_group = dist_context._sharding_group
 
         self.world_nranks = len(self.world_ranks)
-        self.pure_data_parallel = self._is_pure_data_parallel()
+        self.shard_clip = self._could_shard_clip()
         self.rank_to_params = self._partition_parameters(params)
 
     def is_calcuate_norm(self, name):
@@ -179,7 +174,7 @@ class ClipHelper:
             return False
 
         param = self.params[self.params_name.index(name)]
-        if not self.pure_data_parallel:
+        if not self.shard_clip:
             dist_attr = self._get_dist_attr(name)
             topology = dist_attr.process_mesh.shape
             processes = dist_attr.process_mesh.process_ids
@@ -238,24 +233,12 @@ class ClipHelper:
             op_dist_attr.set_output_dist_attr(out_name, out_dist_attr)
         self.dist_context.set_op_dist_attr_for_program(op, op_dist_attr)
 
-    def _is_pure_data_parallel(self):
+    def _could_shard_clip(self):
         for applied_pass in self.pass_context.passes:
             if isinstance(applied_pass, ShardingPass):
                 return False
 
-        groups = get_all_process_groups()
-        for g in groups:
-            if g.nranks != self.world_nranks:
-                return False
-
-        for op in self.block.ops:
-            if op.type in [
-                "c_reduce_sum",
-                "c_allreduce_sum",
-            ] and not is_data_parallel_reduce_op(op):
-                return False
-
-        return True
+        return is_data_parallel_only(self.block)
 
     def _partition_parameters(self, params):
         """
@@ -263,7 +246,7 @@ class ClipHelper:
         to guarantee params in every rank of dp_group as even as possible.
         """
         mapping = {}
-        if not self.pure_data_parallel:
+        if not self.shard_clip:
             for rank_ in range(self.world_nranks):
                 mapping[rank_] = [p.name for p in params]
         else:
