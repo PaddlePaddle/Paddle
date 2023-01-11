@@ -15,9 +15,13 @@
 #pragma once
 #include "paddle/fluid/prim/api/manual/prim_api/prim_api.h"
 #include "paddle/fluid/prim/api/manual/utils/utils.h"
+#include "paddle/phi/core/ddim.h"
+#include "paddle/phi/common/int_array.h"
 namespace paddle {
 namespace prim {
-
+using Tensor = paddle::experimental::Tensor;
+using IntArray = paddle::experimental::IntArrayBase<paddle::experimental::Tensor>; 
+//using IntArray = paddle::experimental::IntArray;
 // This function should have as same signature as phi, which defined in
 // paddle/phi/api/backward/backward_api.h
 template <typename T>
@@ -26,6 +30,34 @@ void tanh_grad(const Tensor& out, const Tensor& grad_out, Tensor* grad_x) {
   tmp = scale<T>(tmp, -1.0, 1.0, true);
   auto grad_x_tmp = multiply<T>(grad_out, tmp);
   grad_x->set_impl(grad_x_tmp.impl());
+}
+
+template <typename T>
+void sum_grad(const Tensor& x, const Tensor& out_grad, const IntArray& axis, bool keepdim, bool reduce_all, Tensor* x_grad){
+    std::vector<int64_t> x_dim = phi::vectorize(x.dims());
+    if(reduce_all || axis.size() == 0 || axis.size() == x_dim.size()){
+       reduce_all = true;
+    }else{
+       reduce_all = false;
+    }
+    auto x_grad_tmp = Tensor();
+    if (!keepdim) {
+      auto axis_ = std::vector<int64_t>();
+      if(reduce_all){
+         for(size_t i = 0; i < x_dim.size(); i++){
+            axis_.push_back(i);
+         }
+      }else{
+         axis_ = axis.GetData();
+      }
+      auto out_grad_ = unsqueeze<T>(out_grad, axis_);
+      x_grad_tmp = expand<T>(out_grad_, x_dim);
+    }else{
+      x_grad_tmp = expand<T>(out_grad, x_dim);
+    }
+    
+    x_grad->set_impl(x_grad_tmp.impl());  
+    
 }
 }  // namespace prim
 }  // namespace paddle

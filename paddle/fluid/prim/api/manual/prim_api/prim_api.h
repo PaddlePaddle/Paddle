@@ -15,9 +15,11 @@
 #pragma once
 #include "paddle/phi/common/scalar.h"
 #include "paddle/utils/optional.h"
+#include "paddle/phi/common/int_array.h"
 namespace paddle {
 namespace prim {
 using Tensor = paddle::experimental::Tensor;
+using IntArray = paddle::experimental::IntArrayBase<paddle::experimental::Tensor>; 
 
 template <typename T>
 Tensor pow(const Tensor& x, const paddle::experimental::Scalar& y);
@@ -31,5 +33,10 @@ Tensor scale(const Tensor& X,
 template <typename T>
 Tensor multiply(const Tensor& x, const Tensor& y);
 
+template <typename T>
+Tensor expand(const Tensor& x, const IntArray& shape);
+
+template <typename T>
+Tensor unsqueeze(const Tensor& x, const IntArray& axis);
 }  // namespace prim
 }  // namespace paddle
