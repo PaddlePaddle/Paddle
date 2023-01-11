@@ -38,11 +38,17 @@ void AdadeltaInferMeta(const MetaTensor& param,
                        const MetaTensor& grad,
                        const MetaTensor& avg_squared_grad,
                        const MetaTensor& avg_squared_update,
+                       const MetaTensor& learning_rate,
                        float rho,
                        float epsilon,
                        MetaTensor* param_out,
                        MetaTensor* avg_squared_grad_out,
                        MetaTensor* avg_squared_update_out) {
+  auto lr_dims = learning_rate.dims();
+  PADDLE_ENFORCE_EQ(
+      phi::product(lr_dims),
+      1,
+      phi::errors::InvalidArgument("LearningRate should have one element"));
   auto param_dims = param.dims();
   PADDLE_ENFORCE_EQ(
       param_dims,

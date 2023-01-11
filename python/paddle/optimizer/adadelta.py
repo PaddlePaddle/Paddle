@@ -166,6 +166,7 @@ class Adadelta(Optimizer):
                     param_and_grad[1],
                     avg_squared_grad_acc,
                     avg_squared_update_acc,
+                    self._create_param_lr(param_and_grad),
                     self._rho,
                     self._epsilon,
                 )
@@ -182,6 +183,7 @@ class Adadelta(Optimizer):
                     "Grad": param_and_grad[1],
                     "AvgSquaredGrad": avg_squared_grad_acc,
                     "AvgSquaredUpdate": avg_squared_update_acc,
+                    "LearningRate": self._create_param_lr(param_and_grad),
                 },
                 outputs={
                     "ParamOut": param_and_grad[0],

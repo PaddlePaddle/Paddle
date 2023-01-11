@@ -26,6 +26,7 @@ void AdadeltaKernel(const Context& dev_ctx,
                     const DenseTensor& grad,
                     const DenseTensor& avg_squared_grad,
                     const DenseTensor& avg_squared_update,
+                    const DenseTensor& learning_rate,
                     float rho,
                     float epsilon,
                     DenseTensor* param_out,
@@ -59,7 +60,8 @@ void AdadeltaKernel(const Context& dev_ctx,
                 eigen_grad;
   eigen_avg_squared_update_out.device(place) =
       rho_ * eigen_avg_squared_update + (1 - rho_) * update.square();
-  eigen_param_out.device(place) = eigen_param + update;
+  auto* lr = learning_rate.data<T>();
+  eigen_param_out.device(place) = eigen_param + lr[0] * update;
 }
 
 }  // namespace phi
