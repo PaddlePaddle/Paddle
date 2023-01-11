@@ -1460,6 +1460,7 @@ class TestSundryAPIStatic(unittest.TestCase):
         x0.stop_gradient = False
         y0.stop_gradient = False
         out0 = paddle.lerp(x0, y0, w0)
+        paddle.static.append_backward(out0)
 
         # 0D + ND
         x1 = paddle.rand([])
@@ -1468,6 +1469,7 @@ class TestSundryAPIStatic(unittest.TestCase):
         x1.stop_gradient = False
         y1.stop_gradient = False
         out1 = paddle.lerp(x1, y1, w1)
+        paddle.static.append_backward(out1)
 
         # ND + 0D
         x2 = paddle.rand([64, 64])
@@ -1476,6 +1478,7 @@ class TestSundryAPIStatic(unittest.TestCase):
         x2.stop_gradient = False
         y2.stop_gradient = False
         out2 = paddle.lerp(x2, y2, w2)
+        paddle.static.append_backward(out2)
 
         prog = paddle.static.default_main_program()
         res = self.exe.run(prog, fetch_list=[out0, out1, out2])
