@@ -102,6 +102,12 @@ const std::unordered_map<std::string, ExtraAttrPropertySet>
         {"fused_output_scale", ExtraAttrProperty::ONEDNN},
         {"fuse_residual_connection", ExtraAttrProperty::ONEDNN},
         {"fuse_with_relu", ExtraAttrProperty::ONEDNN},
+        {"fused_reshape_Out", ExtraAttrProperty::ONEDNN},
+        {"fused_transpose_Out", ExtraAttrProperty::ONEDNN},
+        {"fused_reshape_X", ExtraAttrProperty::ONEDNN},
+        {"fused_reshape_Y", ExtraAttrProperty::ONEDNN},
+        {"fused_transpose_X", ExtraAttrProperty::ONEDNN},
+        {"fused_transpose_Y", ExtraAttrProperty::ONEDNN},
         {"mkldnn_data_type", ExtraAttrProperty::ONEDNN},
         {"scale_x", ExtraAttrProperty::ONEDNN},
         {"scale_y", ExtraAttrProperty::ONEDNN},
@@ -220,7 +226,8 @@ class ExtraInfoUtils {
   std::unordered_map<std::string, std::vector<std::string>>
       g_extra_input_names_map_ = {{"conv2d", {"Bias", "ResidualData"}},
                                   {"conv2d_transpose", {"Bias"}},
-                                  {"conv2d_grad", {"Bias"}}};
+                                  {"conv2d_grad", {"Bias"}},
+                                  {"matmul_v2", {"ResidualData"}}};
   std::vector<std::string> empty_extra_input_names_;
 };
 

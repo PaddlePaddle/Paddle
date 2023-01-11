@@ -26,7 +26,7 @@ using string::PrettyLogDetail;
 
 void MatmulActivationMkldnnFusePass::ApplyImpl(Graph* graph) const {
   auto act_types = phi::funcs::GetSupportedActivations();
-  auto matmul_types = {"fused_matmul", "matmul", "matmul_v2"};
+  auto matmul_types = {"matmul", "matmul_v2"};
 
   for (const auto& matmul_type : matmul_types)
     for (auto& act_type : act_types) {
@@ -77,14 +77,6 @@ void MatmulActivationMkldnnFusePass::FuseMatmulAct(
               ? "gelu_tanh"
               : "gelu_erf";
     }
-
-    if (matmul_type == "matmul") {
-      matmul_op->SetAttr("trans_x", matmul_op->GetAttr("transpose_X"));
-      matmul_op->SetAttr("trans_y", matmul_op->GetAttr("transpose_Y"));
-      matmul_op->SetAttr("matmul_alpha", matmul_op->GetAttr("alpha"));
-    }
-
-    matmul_op->SetType("fused_matmul");
     matmul_op->SetAttr("fuse_activation", act_type);
     matmul_op->SetOutput("Out", {activation_out->Name()});
 
@@ -112,7 +104,8 @@ MatmulActivationMkldnnFusePass::MatmulActivationMkldnnFusePass() {
       .AddInput("Y")
       .IsTensor()
       .End()
-      .AddInput("ResidualData")
+      .AddInput(
+          "ResidualData")  // Extra tensor used in matmul+elementwise_add fuse
       .IsTensor()
       .IsOptional()
       .End()
@@ -136,28 +129,8 @@ MatmulActivationMkldnnFusePass::MatmulActivationMkldnnFusePass() {
       .AddInput("Y")
       .IsTensor()
       .End()
-      .AddInput("ResidualData")
-      .IsTensor()
-      .IsOptional()
-      .End()
-      .AddOutput("Out")
-      .IsTensor()
-      .End()
-      .AddAttr("trans_x")
-      .IsType<bool>()
-      .End()
-      .AddAttr("trans_y")
-      .IsType<bool>()
-      .End();
-
-  AddOpCompat(OpCompat("fused_matmul"))
-      .AddInput("X")
-      .IsTensor()
-      .End()
-      .AddInput("Y")
-      .IsTensor()
-      .End()
-      .AddInput("ResidualData")
+      .AddInput(
+          "ResidualData")  // Extra tensor used in matmul+elementwise_add fuse
       .IsTensor()
       .IsOptional()
       .End()
@@ -322,7 +295,6 @@ REGISTER_PASS(matmul_activation_mkldnn_fuse_pass,
 REGISTER_PASS_CAPABILITY(matmul_activation_mkldnn_fuse_pass)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination()
-            .EQ("fused_matmul", 0)
             .LE("matmul", 1)
             .EQ("matmul_v2", 0)
             .EQ("abs", 0)

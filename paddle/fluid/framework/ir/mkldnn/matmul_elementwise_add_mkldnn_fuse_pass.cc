@@ -25,7 +25,7 @@ namespace ir {
 using string::PrettyLogDetail;
 
 void MatmulElementwiseAddMKLDNNFusePass::ApplyImpl(Graph* graph) const {
-  auto matmul_types = {"fused_matmul", "matmul", "matmul_v2"};
+  auto matmul_types = {"matmul", "matmul_v2"};
   auto matmul_as_x = {true, false};
 
   for (const auto& matmul_type : matmul_types)
@@ -65,13 +65,6 @@ void MatmulElementwiseAddMKLDNNFusePass::FuseMatmulElementwiseAdd(
       return;
     }
 
-    if (matmul_type == "matmul") {
-      matmul->Op()->SetAttr("trans_x", matmul->Op()->GetAttr("transpose_X"));
-      matmul->Op()->SetAttr("trans_y", matmul->Op()->GetAttr("transpose_Y"));
-      matmul->Op()->SetAttr("matmul_alpha", matmul->Op()->GetAttr("alpha"));
-    }
-
-    matmul->Op()->SetType("fused_matmul");
     matmul->Op()->SetInput("ResidualData", {elementwise_addend->Name()});
     matmul->Op()->SetOutput("Out", {elementwise_add_out->Name()});
 
@@ -132,27 +125,6 @@ MatmulElementwiseAddMKLDNNFusePass::MatmulElementwiseAddMKLDNNFusePass() {
       .IsType<bool>()
       .End();
 
-  AddOpCompat(OpCompat("fused_matmul"))
-      .AddInput("X")
-      .IsTensor()
-      .End()
-      .AddInput("Y")
-      .IsTensor()
-      .End()
-      .AddInput("ResidualData")
-      .IsTensor()
-      .IsOptional()
-      .End()
-      .AddOutput("Out")
-      .IsTensor()
-      .End()
-      .AddAttr("trans_x")
-      .IsType<bool>()
-      .End()
-      .AddAttr("trans_y")
-      .IsType<bool>()
-      .End();
-
   AddOpCompat(OpCompat("elementwise_add"))
       .AddInput("X")
       .IsTensor()
@@ -177,7 +149,6 @@ REGISTER_PASS(matmul_elementwise_add_mkldnn_fuse_pass,
 REGISTER_PASS_CAPABILITY(matmul_elementwise_add_mkldnn_fuse_pass)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination()
-            .EQ("fused_matmul", 0)
             .LE("matmul", 1)
             .EQ("matmul_v2", 0)
             .LE("elementwise_add", 1));

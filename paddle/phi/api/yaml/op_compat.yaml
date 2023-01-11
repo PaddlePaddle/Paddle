@@ -890,8 +890,9 @@
 - op : matmul_with_flatten (mul)
   backward : matmul_with_flatten_grad (mul_grad)
   extra :
-    attrs : [bool use_mkldnn = false, float scale_x = 1.0f, 'float[] scale_y = {1.0f}',
-             float scale_out = 1.0f, bool force_fp32_output = false]
+    attrs : [bool use_mkldnn = false, 'int[] fused_reshape_Out = {}', 'int[] fused_transpose_Out = {}',
+             str mkldnn_data_type = "float32", 'int[] fused_reshape_X = {}', 'int[] fused_reshape_Y = {}',
+             'int[] fused_transpose_X = {}', 'int[] fused_transpose_Y = {}']
 
 - op : matrix_power
   inputs :
