@@ -15,7 +15,7 @@
 import copy
 
 import paddle
-from paddle.fluid.framework import Variable
+from paddle.static import Variable
 
 from .dist_attribute import OperatorDistAttr
 from .utils import (
@@ -303,7 +303,7 @@ class DistributedOperatorHelper:
                 tensor_to_dims_mapping[arg.name] = self._in_dims_mappings[index]
             index += 1
 
-        default_prog = paddle.fluid.default_main_program()
+        default_prog = paddle.static.default_main_program()
         cur_block = default_prog.current_block()
         op_size = len(cur_block.ops)
         output = self._serial_op(*args, **kwargs)

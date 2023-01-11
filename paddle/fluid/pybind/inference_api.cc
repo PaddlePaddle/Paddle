@@ -676,6 +676,8 @@ void BindAnalysisConfig(py::module *m) {
            py::arg("device_id") = 0,
            py::arg("precision_mode") = AnalysisConfig::Precision::kFloat32)
       .def("exp_enable_use_cutlass", &AnalysisConfig::Exp_EnableUseCutlass)
+      .def("exp_disable_mixed_precision_ops",
+           &AnalysisConfig::Exp_DisableMixedPrecisionOps)
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       .def("set_exec_stream",
            [](AnalysisConfig &self, phi::CUDAStream &stream) {

@@ -17,22 +17,26 @@ import logging
 import numpy as np
 
 import paddle
-from paddle.fluid import core, framework
 from paddle.fluid.dygraph.parallel import ParallelEnv
+from paddle.framework import IrGraph, core
 from paddle.static.quantization import (
     AddQuantDequantForInferencePass,
     AddQuantDequantPassV2,
     OutScaleForTrainingPass,
     QuantizationTransformPassV2,
-    utils,
+    quant_config,
 )
 
 from ..auto_parallel.converter import Converter
 from ..auto_parallel.dist_attribute import OperatorDistAttr, TensorDistAttr
 from .pass_base import PassBase, register_pass
 
-TRANSFORM_PASS_OP_TYPES = utils._weight_supported_quantizable_op_type
-QUANT_DEQUANT_PASS_OP_TYPES = utils._act_supported_quantizable_op_type
+TRANSFORM_PASS_OP_TYPES = list(
+    quant_config.SUPPORT_WEIGHT_QUANTIZATION_OP_DICT.keys()
+)
+QUANT_DEQUANT_PASS_OP_TYPES = list(
+    quant_config.SUPPORT_ACT_QUANTIZATION_OP_DICT.keys()
+)
 
 
 def _node_id(node):
@@ -68,7 +72,7 @@ class QuantizationPass(PassBase):
         # TODO: scope and place will be removed,
         # cause params should be initialized by engine module.
         scope = paddle.static.global_scope()
-        place = paddle.fluid.CUDAPlace(ParallelEnv().dev_id)
+        place = paddle.framework.CUDAPlace(ParallelEnv().dev_id)
 
         # 0. record the relation among blocks
         parent_idx_dict = dict()
@@ -77,7 +81,7 @@ class QuantizationPass(PassBase):
 
         is_test = True if mode != "train" else False
         # 1. Program convert to Graph, and this pass is only for train mode
-        main_graph = framework.IrGraph(
+        main_graph = IrGraph(
             core.Graph(main_program.desc), for_test=mode != "train"
         )
 
