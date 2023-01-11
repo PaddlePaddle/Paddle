@@ -860,6 +860,7 @@
     param : [x, y]
   kernel :
     func : multiply_grad
+  composite: multiply_grad(x, y, out_grad, axis, x_grad, y_grad)
   backward : multiply_double_grad
 
 - backward_op : multiply_triple_grad

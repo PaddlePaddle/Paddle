@@ -77,8 +77,10 @@ class ElementwiseMulGradCompositeOpMaker
     auto out_grad = this->GetSingleOutputGrad("Out");
     auto x_grad = this->GetSingleInputGrad("X");
     auto x_grad_p = this->GetOutputPtr(&x_grad);
+    auto x_grad_name = this->GetOutputName(x_grad);
     auto y_grad = this->GetSingleInputGrad("Y");
     auto y_grad_p = this->GetOutputPtr(&y_grad);
+    auto y_grad_name = this->GetOutputName(y_grad);
     prim::multiply_grad<prim::DescTensor>(
         x,
         y,
@@ -86,8 +88,8 @@ class ElementwiseMulGradCompositeOpMaker
         static_cast<int>(this->Attr<int>("axis")),
         x_grad_p,
         y_grad_p);
-    this->RecoverOutputName(x_grad, this->GetOutputName(x_grad));
-    this->RecoverOutputName(y_grad, this->GetOutputName(y_grad));
+    this->RecoverOutputName(x_grad, x_grad_name);
+    this->RecoverOutputName(y_grad, y_grad_name);
   }
 };
 
@@ -151,7 +153,8 @@ REGISTER_OPERATOR(elementwise_mul,
                   ops::ElementwiseMulOpMaker,
                   ops::ElementwiseOpInferVarType,
                   ops::ElementwiseMulOpGradMaker<paddle::framework::OpDesc>,
-                  ops::ElementwiseMulOpGradMaker<paddle::imperative::OpBase>);
+                  ops::ElementwiseMulOpGradMaker<paddle::imperative::OpBase>,
+                  ops::ElementwiseMulGradCompositeOpMaker);
 REGISTER_OPERATOR(
     elementwise_mul_grad,
     ops::ElementwiseOpGrad,
