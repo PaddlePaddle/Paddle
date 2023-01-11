@@ -142,7 +142,6 @@ def custom_relu_static_inference(func, device, np_data, np_label, path_prefix):
 
 
 def custom_relu_double_grad_dynamic(func, device, dtype, np_x, use_func=True):
-    pass
 
     paddle.set_device(device)
 

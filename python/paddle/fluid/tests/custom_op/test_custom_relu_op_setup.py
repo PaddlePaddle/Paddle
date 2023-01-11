@@ -145,8 +145,10 @@ def custom_relu_double_grad_dynamic(func, device, dtype, np_x, use_func=True):
     paddle.set_device(device)
 
     t = paddle.to_tensor(np_x, dtype=dtype, stop_gradient=False)
+    t.retain_grads()
 
     out = func(t) if use_func else paddle.nn.functional.relu(t)
+    out.retain_grads()
     dx = paddle.grad(
         outputs=out,
         inputs=t,

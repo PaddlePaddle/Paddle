@@ -1071,7 +1071,6 @@ class TestSundryAPI(unittest.TestCase):
 
         out0 = F.sigmoid_focal_loss(logit, label, normalizer=fg_num_0)
         out1 = F.sigmoid_focal_loss(logit, label, normalizer=fg_num_1)
-
         out0.retain_grads()
 
         np.testing.assert_array_equal(
