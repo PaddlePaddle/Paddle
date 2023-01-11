@@ -43,6 +43,10 @@ void WhereKernel(const Context& ctx,
 
   int ret = xpu::select(
       ctx.x_context(), cond_data, x_data, y_data, out_data, cond_dims, x_dims);
+
+  if (cond_dims.size() == 0 && x_dims.size() == 0) {
+    out->Resize({});
+  }
   PADDLE_ENFORCE_XDNN_SUCCESS(ret, "select");
 }
 
