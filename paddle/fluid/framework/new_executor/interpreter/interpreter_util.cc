@@ -924,7 +924,6 @@ bool BuildOpFuncList(const platform::Place& place,
 
     interpreter::LogDeviceMemoryStats(place);
   }
-  memory::Release(place);
   return skip_run;
 }
 

@@ -27,7 +27,6 @@ from paddle.framework import core
 from paddle.static import Variable
 
 from .dist_attribute import OperatorDistAttr, TensorDistAttr
-from .operators.common import is_data_parallel_reduce_op
 from .process_group import get_all_process_groups
 from .process_mesh import ProcessMesh
 
@@ -2345,6 +2344,9 @@ def is_data_parallel_only(block):
     """
     determinite data parallel is the only parallel mode in layerwise parallel setting.
     """
+    from .operators.common import is_data_parallel_reduce_op
+    from .process_group import get_world_process_group
+
     # NOTE should distinguish case where layerwise_mp8 + layerwise_dp8
     global_nranks = get_world_process_group().nranks
     groups = get_all_process_groups()
