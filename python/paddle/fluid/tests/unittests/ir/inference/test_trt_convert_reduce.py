@@ -85,6 +85,9 @@ class TrtConvertReduceTest(TrtLayerAutoScanTest):
                             ]
                             dics2 = [
                                 {
+                                    "keep_dim": keep_dim,
+                                    "dim": dim,
+                                    "reduce_all": reduce_all,
                                     "out_dtype": out_dtype,
                                     "in_dtype": out_dtype,
                                 },

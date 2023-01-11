@@ -21,9 +21,8 @@ __all__ = []
 import paddle
 from paddle.common_ops_import import LayerHelper
 from paddle.fluid.dygraph import base as imperative_base
-from paddle.fluid.framework import in_dygraph_mode
 from paddle.fluid.optimizer import Momentum, Optimizer
-from paddle.framework import core
+from paddle.framework import core, in_dygraph_mode
 from paddle.nn.clip import ClipGradByNorm, append_gradient_clip_ops
 from paddle.static import create_global_var
 
@@ -101,7 +100,7 @@ class DGCMomentumOptimizer(Optimizer):
 
         if regularization is not None:
             regular_coeff = regularization._regularization_coeff
-            from paddle.fluid.regularizer import L1Decay, L2Decay
+            from paddle.regularizer import L1Decay, L2Decay
 
             if isinstance(regularization, L1Decay):
                 regular_type = 1
@@ -123,7 +122,7 @@ class DGCMomentumOptimizer(Optimizer):
         return True
 
     def _append_optimize_op(self, block, param_and_grad):
-        assert isinstance(block, paddle.fluid.framework.Block)
+        assert isinstance(block, paddle.framework.Block)
         velocity_acc = self._get_accumulator(
             self._u_velocity_acc_str, param_and_grad[0]
         )
