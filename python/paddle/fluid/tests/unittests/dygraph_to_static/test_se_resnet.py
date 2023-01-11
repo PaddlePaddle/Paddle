@@ -25,7 +25,6 @@ from predictor_utils import PredictorTools
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid.dygraph.base import to_variable
-from paddle.jit import ProgramTranslator
 from paddle.jit.api import to_static
 from paddle.jit.translated_layer import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 from paddle.nn import BatchNorm, Linear
@@ -374,8 +373,7 @@ class TestSeResnet(unittest.TestCase):
         self.temp_dir.cleanup()
 
     def train(self, train_reader, to_static):
-        program_translator = ProgramTranslator()
-        program_translator.enable(to_static)
+        paddle.jit.enable_to_static(to_static)
 
         np.random.seed(SEED)
 
@@ -473,8 +471,7 @@ class TestSeResnet(unittest.TestCase):
             )
 
     def predict_dygraph(self, data):
-        program_translator = ProgramTranslator()
-        program_translator.enable(False)
+        paddle.jit.enable_to_static(False)
         with fluid.dygraph.guard(place):
             se_resnext = SeResNeXt()
 

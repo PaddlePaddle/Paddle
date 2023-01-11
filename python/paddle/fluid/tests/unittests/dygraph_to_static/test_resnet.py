@@ -23,7 +23,6 @@ from predictor_utils import PredictorTools
 
 import paddle
 import paddle.fluid as fluid
-from paddle.jit import ProgramTranslator
 from paddle.jit.translated_layer import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 from paddle.nn import BatchNorm
 
@@ -39,7 +38,6 @@ place = (
     fluid.CUDAPlace(0) if fluid.is_compiled_with_cuda() else fluid.CPUPlace()
 )
 
-program_translator = ProgramTranslator()
 
 if fluid.is_compiled_with_cuda():
     fluid.set_flags({'FLAGS_cudnn_deterministic': True})
@@ -323,7 +321,7 @@ class ResNetHelper:
         return total_loss.numpy()
 
     def predict_dygraph(self, data):
-        program_translator.enable(False)
+        paddle.jit.enable_to_static(False)
         with fluid.dygraph.guard(place):
             resnet = ResNet()
 
@@ -382,7 +380,7 @@ class TestResnet(unittest.TestCase):
         self.resnet_helper = ResNetHelper()
 
     def train(self, to_static):
-        program_translator.enable(to_static)
+        paddle.jit.enable_to_static(to_static)
         return self.resnet_helper.train(to_static)
 
     def verify_predict(self):
