@@ -26,6 +26,7 @@ using IntArray =
 // using IntArray = paddle::experimental::IntArray;
 //  This function should have as same signature as phi, which defined in
 //  paddle/phi/api/backward/backward_api.h
+
 template <typename T>
 void tanh_grad(const Tensor& out, const Tensor& grad_out, Tensor* grad_x) {
   auto tmp = pow<T>(out, 2.0);
@@ -187,7 +188,44 @@ void sqrt_grad(const Tensor& out, const Tensor& out_grad, Tensor* x_grad) {
     auto div_x = full<T>(phi::vectorize(out.dims()), 0.5);
     auto tmp = divide<T>(div_x, out);
     auto x_grad_tmp = multiply<T>(out_grad, tmp);
-    x_grad->set_impl(x_grad_tmp.impl());
+    x_grad->set_impl(x_grad_tmp.impl()); 
+  }
+}
+
+template<typename T>
+void multiply_grad(const Tensor& x,
+                   const Tensor& y,
+                   const Tensor& out_grad,
+                   int axis,
+                   Tensor* x_grad,
+                   Tensor* y_grad) {
+  if (x_grad) {
+    auto x_grad_unreduce = multiply<T>(out_grad, y);
+    if (x.dims() != x_grad_unreduce.dims()) {
+      auto x_grad_reduced = sum<T>(
+          x_grad_unreduce,
+          phi::vectorize(get_reduce_dims(x_grad_unreduce.dims(), x.dims())),
+          x_grad_unreduce.dtype(),
+          false);
+      if (x_grad_unreduce.dims().size() != x.dims().size()) {
+        x_grad_reduced = reshape<T>(x_grad_reduced, x.shape());
+      }
+      x_grad->set_impl(x_grad_reduced.impl());
+    }
+  }
+  if (y_grad) {
+    auto y_grad_unreduce = multiply<T>(out_grad, x);
+    if (y.dims() != y_grad_unreduce.dims()) {
+      auto y_grad_reduced = sum<T>(
+          res,
+          phi::vectorize(get_reduce_dims(y_grad_unreduce.dims(), x.dims())),
+          y_grad_unreduce.dtype(),
+          false);
+      if (y_grad_reduced.dims().size() != x.dims().size()) {
+        y_grad_reduced = reshape<T>(y_grad_reduced, x.shape());
+      }
+      y_grad->set_impl(y_grad_reduced.impl());
+    }
   }
 }
 }  // namespace prim
