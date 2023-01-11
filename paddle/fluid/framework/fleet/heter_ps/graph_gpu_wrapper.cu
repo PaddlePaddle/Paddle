@@ -366,11 +366,13 @@ std::vector<std::string> GraphGpuWrapper::get_ntype_from_etype(
 void GraphGpuWrapper::set_up_types(const std::vector<std::string> &edge_types,
                                    const std::vector<std::string> &node_types) {
   id_to_edge = edge_types;
+  edge_to_id.clear();
   for (size_t table_id = 0; table_id < edge_types.size(); table_id++) {
     int res = edge_to_id.size();
     edge_to_id[edge_types[table_id]] = res;
   }
   id_to_feature = node_types;
+  node_to_id.clear();
   for (size_t table_id = 0; table_id < node_types.size(); table_id++) {
     int res = node_to_id.size();
     node_to_id[node_types[table_id]] = res;
@@ -869,7 +871,6 @@ std::string &GraphGpuWrapper::get_edge_type_size() {
                             ->cpu_graph_table_->edge_type_size;
   std::string delim = ";";
   edge_type_size_str_ = paddle::string::join_strings(edge_type_size, delim);
-  std::cout << "edge_type_size_str: " << edge_type_size_str_ << std::endl;
   return edge_type_size_str_;
 }
 

@@ -2621,12 +2621,12 @@ int GraphDataGenerator::FillWalkBufMultiPath() {
 
   if (!sage_mode_) {
     uint64_t h_uniq_node_num = CopyUniqueNodes();
-    VLOG(0) << "sample_times:" << sample_times << ", d_walk_size:" << buf_size_
+    VLOG(1) << "sample_times:" << sample_times << ", d_walk_size:" << buf_size_
             << ", d_walk_offset:" << i << ", total_rows:" << total_row_
             << ", h_uniq_node_num:" << h_uniq_node_num
             << ", total_samples:" << total_samples;
   } else {
-    VLOG(0) << "sample_times:" << sample_times << ", d_walk_size:" << buf_size_
+    VLOG(1) << "sample_times:" << sample_times << ", d_walk_size:" << buf_size_
             << ", d_walk_offset:" << i << ", total_rows:" << total_row_
             << ", total_samples:" << total_samples;
   }

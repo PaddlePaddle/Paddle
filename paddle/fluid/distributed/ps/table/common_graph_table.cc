@@ -36,6 +36,7 @@ DECLARE_bool(graph_load_in_parallel);
 DECLARE_bool(graph_get_neighbor_id);
 DECLARE_int32(gpugraph_storage_mode);
 DECLARE_uint64(gpugraph_slot_feasign_max_num);
+DECLARE_bool(graph_metapath_split_opt);
 
 namespace paddle {
 namespace distributed {
@@ -540,14 +541,18 @@ void GraphTable::release_graph_edge() {
 
 void GraphTable::release_graph_node() {
   build_graph_type_keys();
-  if (FLAGS_gpugraph_storage_mode != paddle::framework::GpuGraphStorageMode::
-                                         MEM_EMB_FEATURE_AND_GPU_GRAPH &&
-      FLAGS_gpugraph_storage_mode != paddle::framework::GpuGraphStorageMode::
-                                         SSD_EMB_AND_MEM_FEATURE_GPU_GRAPH) {
+  if (FLAGS_graph_metapath_split_opt) {
     clear_feature_shard();
   } else {
-    merge_feature_shard();
-    feature_shrink_to_fit();
+    if (FLAGS_gpugraph_storage_mode != paddle::framework::GpuGraphStorageMode::
+                                           MEM_EMB_FEATURE_AND_GPU_GRAPH &&
+        FLAGS_gpugraph_storage_mode != paddle::framework::GpuGraphStorageMode::
+                                           SSD_EMB_AND_MEM_FEATURE_GPU_GRAPH) {
+      clear_feature_shard();
+    } else {
+      merge_feature_shard();
+      feature_shrink_to_fit();
+    }
   }
 }
 #endif
@@ -1730,7 +1735,7 @@ std::pair<uint64_t, uint64_t> GraphTable::parse_edge_file(
 
     local_valid_count++;
   }
-  VLOG(2) << local_count << " edges are loaded from filepath->" << path;
+  VLOG(2) << local_valid_count << "/" << local_count << " edges are loaded from filepath->" << path;
   return {local_count, local_valid_count};
 }
 
@@ -2205,7 +2210,7 @@ int GraphTable::parse_feature(int idx,
       return 0;
     }
   } else {
-    VLOG(2) << "feature_name[" << name << "] is not in feat_id_map, ntype_id["
+    VLOG(4) << "feature_name[" << name << "] is not in feat_id_map, ntype_id["
             << idx << "] feat_id_map_size[" << feat_id_map.size() << "]";
   }
 
@@ -2523,7 +2528,7 @@ int32_t GraphTable::Initialize(const GraphParameter &graph) {
   auto graph_feature = graph.graph_feature();
   auto node_types = graph.node_types();
   auto edge_types = graph.edge_types();
-  VLOG(0) << "got " << edge_types.size() << "edge types in total";
+  VLOG(0) << "got " << edge_types.size() << " edge types in total";
   feat_id_map.resize(node_types.size());
   for (int k = 0; k < edge_types.size(); k++) {
     VLOG(0) << "in initialize: get a edge_type " << edge_types[k];

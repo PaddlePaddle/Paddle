@@ -1521,6 +1521,9 @@ NeighborSampleResultV2 GpuPsGraphTable::graph_neighbor_sample_all_edge_type(
     for (int idx = 0; idx < edge_type_len; idx++) {
       int table_offset = get_table_offset(i, GraphTableType::EDGE_TABLE, idx);
       int offset = i * graph_table_num_ + idx;
+      if (tables_[table_offset] == NULL) {
+        continue;
+      }
       tables_[table_offset]->get(
           reinterpret_cast<uint64_t*>(node.key_storage),
           reinterpret_cast<uint64_t*>(node_info_base + idx * shard_len),
