@@ -422,7 +422,7 @@ int PrelnGroupnormActPluginDynamic::enqueue(
       default:
         cPerBlock = 320;
     }
-    params_.withSwish = true;
+    params_.withSwish = with_silu_;
     params_.dst = static_cast<half *>(outputs[1]);
     params_.eleOut = static_cast<half *>(outputs[0]);
     params_.srcX = static_cast<half const *>(inputs[0]);
