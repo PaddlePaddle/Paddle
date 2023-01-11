@@ -186,7 +186,7 @@ class PsBaseService : public PsService {
                PsResponseMessage *response,
                ::google::protobuf::Closure *done) override = 0;
 
-  virtual void set_response_code(PsResponseMessage *response,
+  virtual void set_response_code(PsResponseMessage &response,  // NOLINT
                                  int err_code,
                                  const char *err_msg) {
     response->set_err_msg(err_msg);
