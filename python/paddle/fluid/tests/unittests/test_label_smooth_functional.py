@@ -12,12 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import unittest
+
 import numpy as np
+
 import paddle
-from paddle import fluid
 import paddle.fluid.dygraph as dg
 import paddle.nn.functional as F
-import unittest
+from paddle import fluid
 
 
 class LabelSmoothTestCase(unittest.TestCase):

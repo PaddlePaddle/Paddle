@@ -13,10 +13,11 @@
 # limitations under the License.
 
 import ast
-from paddle.utils import gast
 import sys
 import textwrap
 import unittest
+
+from paddle.utils import gast
 
 
 class GastNodeTransformer(gast.NodeTransformer):

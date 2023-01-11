@@ -24,8 +24,7 @@ from paddle.distributed.fleet.meta_parallel.sharding.group_sharded_stage3 import
 from paddle.distributed.fleet.meta_parallel.sharding.group_sharded_utils import (
     GroupShardedScaler,
 )
-from paddle.fluid.dygraph.nn import Linear
-from paddle.fluid.framework import _test_eager_guard
+from paddle.nn import Linear
 
 epoch = 10
 paddle.seed(2022)
@@ -41,6 +40,9 @@ class MLP(fluid.Layer):
 
         self._linear1 = Linear(linear_size, linear_size)
         self._linear2 = Linear(linear_size, linear_size)
+        # test for trainable & untrainable offload
+        self._linear2.weight.stop_gradient = False
+        self._linear2.bias.stop_gradient = False
         self._linear3 = Linear(linear_size, 10)
 
     def forward(self, inputs):
@@ -120,7 +122,7 @@ def train_mlp(
             img, label = data
             label.stop_gradient = True
             img.stop_gradient = True
-            with paddle.amp.auto_cast(True, level='O2'):
+            with paddle.amp.auto_cast(use_pure_fp16, level='O2'):
                 out = model(img)
                 loss = paddle.nn.functional.cross_entropy(
                     input=out, label=label
@@ -220,5 +222,4 @@ def test_stage3_offload():
 
 
 if __name__ == '__main__':
-    with _test_eager_guard():
-        test_stage3_offload()
+    test_stage3_offload()

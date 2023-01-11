@@ -17,12 +17,13 @@ import time
 
 import paddle
 from paddle.hapi.callbacks import (
-    ProgBarLogger,
-    ModelCheckpoint,
-    LRScheduler,
-    CallbackList,
     Callback,
+    CallbackList,
+    LRScheduler,
+    ModelCheckpoint,
+    ProgBarLogger,
 )
+
 from .interface import CollectionNames, get_collection
 
 

@@ -17,12 +17,11 @@ import time
 import unittest
 
 import numpy as np
+
 import paddle
 
 PRINT_STEP = 20
 SEED = 2020
-
-program_translator = paddle.jit.ProgramTranslator()
 
 
 class SimpleLSTMRNN(paddle.nn.Layer):
@@ -149,11 +148,11 @@ class PtbModel(paddle.nn.Layer):
             init_scale=init_scale,
             dropout=dropout,
         )
-        self.embedding = paddle.fluid.dygraph.nn.Embedding(
-            size=[vocab_size, hidden_size],
-            dtype='float32',
-            is_sparse=False,
-            param_attr=paddle.ParamAttr(
+        self.embedding = paddle.nn.Embedding(
+            vocab_size,
+            hidden_size,
+            sparse=False,
+            weight_attr=paddle.ParamAttr(
                 name='embedding_para',
                 initializer=paddle.nn.initializer.Uniform(
                     low=-init_scale, high=init_scale
@@ -214,7 +213,7 @@ class PtbModel(paddle.nn.Layer):
         )
         loss = paddle.reshape(loss, shape=[-1, self.num_steps])
         loss = paddle.mean(loss, axis=[0])
-        loss = paddle.paddle.sum(loss)
+        loss = paddle.sum(loss)
 
         return loss, last_hidden, last_cell
 
@@ -318,12 +317,12 @@ def train(place):
 
 
 def train_dygraph(place):
-    program_translator.enable(False)
+    paddle.jit.enable_to_static(False)
     return train(place)
 
 
 def train_static(place):
-    program_translator.enable(True)
+    paddle.jit.enable_to_static(True)
     return train(place)
 
 

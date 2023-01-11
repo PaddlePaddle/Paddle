@@ -31,6 +31,7 @@ void FuseElewiseAddActPass::ApplyImpl(ir::Graph *graph) const {
   {
     std::unordered_set<std::string> in_place_act_types = {"relu_grad"};
     graph = FuseElewiseAddActInplaceGrad(graph, in_place_act_types);
+    graph = FuseActElewiseAddInplaceGrad(graph, in_place_act_types);
   }
 
   // Remove the removable intermediate_out.
@@ -110,7 +111,7 @@ ir::Graph *FuseElewiseAddActPass::FuseActElewiseAdd(
 
   auto handler = [&](const GraphPatternDetector::subgraph_t &subgraph,
                      Graph *g) {
-    VLOG(4) << "handle FuseElewiseAddAct fuse";
+    VLOG(4) << "handle FuseActElewiseAdd fuse";
     GET_IR_NODE_FROM_SUBGRAPH(act_out, act_out, act_elewise_add_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(ele_x, ele_x, act_elewise_add_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(
@@ -211,6 +212,86 @@ ir::Graph *FuseElewiseAddActPass::FuseElewiseAddActInplaceGrad(
             << ele_add_grad->Name() << " -> " << d_itermediate_out_n;
 
     ReLinkNodes(g, d_itermediate_out, act_grad, ele_add_grad, fused_node);
+    found_elewise_add_act_count++;
+  };
+
+  gpd(graph, handler);
+
+  AddStatis(found_elewise_add_act_count);
+  return graph;
+}
+
+// the backward of act(ele_add(x,y))
+// act_grad: in["Out", "Out@GRAD"], out["X@GRAD"]
+// ele_add_grad: in["Y", "Out@GRAD"], out["X@GRAD", "Y@GRAD"]
+ir::Graph *FuseElewiseAddActPass::FuseActElewiseAddInplaceGrad(
+    ir::Graph *graph, const std::unordered_set<std::string> &act_types) const {
+  PADDLE_ENFORCE_NOT_NULL(
+      graph, platform::errors::InvalidArgument("Graph cannot be nullptr."));
+  FusePassBase::Init("act_elewise_add_grad", graph);
+  GraphPatternDetector gpd;
+  auto *d_out_var =
+      gpd.mutable_pattern()
+          ->NewNode("act_elewise_add_grad_inplace/d_out_var")
+          ->AsInput()
+          ->assert_is_ops_input({"elementwise_add_grad"}, GradVarName("Out"));
+  patterns::ActElewiseAddInplaceGrad act_elewise_add_grad_pattern(
+      gpd.mutable_pattern(), "act_elewise_add_grad_inplace");
+  act_elewise_add_grad_pattern(d_out_var, act_types);
+
+  int found_elewise_add_act_count = 0;
+
+  auto handler = [&](const GraphPatternDetector::subgraph_t &subgraph,
+                     Graph *g) {
+    VLOG(4) << "handle ActFuseElewiseAddGrad1 fuse";
+
+    GET_IR_NODE_FROM_SUBGRAPH(
+        ele_add_grad_op, ele_add_grad_op, act_elewise_add_grad_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        act_grad_op, act_grad_op, act_elewise_add_grad_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        intermediate_var, intermediate_var, act_elewise_add_grad_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        d_intermediate_var, d_intermediate_var, act_elewise_add_grad_pattern);
+
+    std::string d_out_var_n = subgraph.at(d_out_var)->Name();
+    std::string intermediate_var_n = intermediate_var->Name();
+    std::string d_intermediate_var_n = d_intermediate_var->Name();
+
+    OpDesc desc;
+    desc.SetType("fused_elemwise_add_activation_grad");
+    desc.SetInput("IntermediateOut",
+                  std::vector<std::string>({intermediate_var_n}));
+    desc.SetInput("X", {});
+    desc.SetInput("Y", ele_add_grad_op->Op()->Input("X"));
+    desc.SetInput("Out", {});
+    desc.SetInput(GradVarName("Out"), std::vector<std::string>({d_out_var_n}));
+    desc.SetOutput(GradVarName("X"),
+                   act_grad_op->Op()->Output(GradVarName("X")));
+    desc.SetOutput(GradVarName("Y"),
+                   ele_add_grad_op->Op()->Output(GradVarName("X")));
+    desc.SetOutput(GradVarName("IntermediateOut"),
+                   std::vector<std::string>({d_intermediate_var_n}));
+
+    desc.SetAttr("save_intermediate_out", false);
+    desc.SetAttr("functor_list",
+                 std::vector<std::string>({ele_add_grad_op->Op()->Type(),
+                                           act_grad_op->Op()->Type()}));
+
+    for (auto &n : {ele_add_grad_op->Op(), act_grad_op->Op()}) {
+      for (auto &m_ele : n->GetAttrMap()) {
+        desc.SetAttr(m_ele.first, m_ele.second);
+      }
+    }
+
+    auto fused_node = g->CreateOpNode(&desc);
+
+    VLOG(4) << "\n\t " << d_out_var_n << " -> " << ele_add_grad_op->Name()
+            << " -> " << d_intermediate_var_n << "\n\t " << intermediate_var_n
+            << " and " << d_intermediate_var_n << " -> " << act_grad_op->Name();
+
+    ReLinkNodes2(
+        g, d_intermediate_var, ele_add_grad_op, act_grad_op, fused_node);
     found_elewise_add_act_count++;
   };
 
@@ -342,6 +423,52 @@ void FuseElewiseAddActPass::ReLinkNodes(Graph *graph,
                             op_1->Name(),
                             intermediate_out->Name(),
                             out->Name()));
+      IR_OP_VAR_LINK(fused_op, out);
+    }
+  }
+
+  for (auto &in : op_2->inputs) {
+    if (in == intermediate_out || nodes2delete.count(in)) {
+      continue;
+    }
+    fused_op->inputs.emplace_back(in);
+    in->outputs = this->ReplaceNode(op_2, fused_op, in->outputs);
+  }
+
+  for (auto &out : op_2->outputs) {
+    IR_OP_VAR_LINK(fused_op, out);
+  }
+
+  nodes2delete.insert(std::move(op_1));
+  nodes2delete.insert(std::move(op_2));
+
+  GraphSafeRemoveNodes(graph, nodes2delete);
+}
+
+void FuseElewiseAddActPass::ReLinkNodes2(Graph *graph,
+                                         const Node *intermediate_out,
+                                         Node *op_1,
+                                         Node *op_2,
+                                         Node *fused_op) const {  // delete act
+  for (auto &in : op_1->inputs) {
+    fused_op->inputs.emplace_back(in);
+    in->outputs = this->ReplaceNode(op_1, fused_op, in->outputs);
+  }
+
+  std::unordered_set<const Node *> nodes2delete;
+  for (auto &out : op_1->outputs) {
+    if (out->IsCtrlVar()) {
+      auto result_iter = std::find_if(
+          op_2->inputs.begin(),
+          op_2->inputs.end(),
+          [&out](const Node *node) -> bool { return node == out; });
+
+      if (result_iter == op_2->inputs.end()) {
+        IR_OP_VAR_LINK(fused_op, out);
+      } else {
+        nodes2delete.emplace(out);
+      }
+    } else {
       IR_OP_VAR_LINK(fused_op, out);
     }
   }

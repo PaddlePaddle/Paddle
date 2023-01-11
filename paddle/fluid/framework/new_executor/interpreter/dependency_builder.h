@@ -36,7 +36,7 @@ class DependencyBuilder {
   // build op dependencies and return the mapping from op to its downstream-op
   // set
   const std::map<size_t, std::set<size_t>>& Build(
-      const std::vector<Instruction>& instructions, bool is_sequential_run);
+      const std::vector<Instruction>& instructions);
 
   const std::map<size_t, std::set<size_t>>& OpDownstreamMap() const;
 

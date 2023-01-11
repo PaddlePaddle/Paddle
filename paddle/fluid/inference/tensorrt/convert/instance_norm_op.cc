@@ -74,10 +74,16 @@ class InstanceNormOpConverter : public OpConverter {
       bias_v.push_back(bias_d[i]);
     }
 
-    plugin::InstanceNormPlugin* plugin =
-        new plugin::InstanceNormPlugin(eps, scale_v, bias_v);
-    plugin->getPluginType();
-    auto* layer = engine_->AddPlugin(&input, 1, plugin);
+    nvinfer1::IPluginV2* plugin = nullptr;
+    if (engine_->with_dynamic_shape()) {
+      plugin = new plugin::InstanceNormPluginDynamic(eps, scale_v, bias_v);
+    } else {
+      plugin = new plugin::InstanceNormPlugin(eps, scale_v, bias_v);
+    }
+
+    std::vector<nvinfer1::ITensor*> instance_norm_inputs{input};
+    auto* layer = engine_->network()->addPluginV2(
+        instance_norm_inputs.data(), instance_norm_inputs.size(), *plugin);
 
     auto output_name = op_desc.Output("Y")[0];
     RreplenishLayerAndOutput(layer, "instance_norm", {output_name}, test_mode);

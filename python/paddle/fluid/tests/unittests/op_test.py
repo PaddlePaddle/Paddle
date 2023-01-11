@@ -29,7 +29,6 @@ import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid import unique_name
 from paddle.fluid.backward import append_backward
-from paddle.fluid.dygraph.dygraph_to_static.utils import parse_arg_and_kwargs
 from paddle.fluid.executor import Executor
 from paddle.fluid.framework import (
     OpProtoHolder,
@@ -39,10 +38,11 @@ from paddle.fluid.framework import (
     _dygraph_tracer,
     _enable_legacy_dygraph,
     _in_eager_without_dygraph_check,
-    _in_legacy_dygraph,
     _test_eager_guard,
+    in_dygraph_mode,
 )
 from paddle.fluid.op import Operator
+from paddle.jit.dy2static.utils import parse_arg_and_kwargs
 
 sys.path.append(os.path.abspath(os.path.dirname(__file__)))
 from testsuite import append_input_output, append_loss_ops, create_op, set_input
@@ -716,7 +716,7 @@ class OpTest(unittest.TestCase):
 
                 if if_return_inputs_grad_dict:
                     v.stop_gradient = False
-                    if not _in_legacy_dygraph():
+                    if hasattr(v, "retain_grads"):
                         v.retain_grads()
 
                 if has_lod:
@@ -2515,7 +2515,7 @@ class OpTest(unittest.TestCase):
                 for no_grad_val in no_grad_set:
                     del inputs[no_grad_val]
 
-                if not _in_legacy_dygraph():
+                if in_dygraph_mode():
                     core.eager.run_backward(
                         fluid.layers.utils.flatten(outputs), grad_outputs, False
                     )

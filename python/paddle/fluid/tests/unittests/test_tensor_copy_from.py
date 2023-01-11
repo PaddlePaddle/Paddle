@@ -12,9 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
 import unittest
+
 import numpy as np
+
+import paddle
 from paddle.fluid.core import LoDTensor as Tensor
 
 

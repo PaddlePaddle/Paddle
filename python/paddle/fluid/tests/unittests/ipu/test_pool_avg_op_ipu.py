@@ -41,11 +41,9 @@ class TestBase(IPUOpTest):
 
     def set_op_attrs(self):
         self.attrs = {
-            "pool_size": 3,
-            "pool_type": 'avg',
-            "pool_stride": 1,
-            "pool_padding": 0,
-            "global_pooling": False,
+            "kernel_size": 3,
+            "stride": 1,
+            "padding": 0,
             "ceil_mode": False,
             "exclusive": True,
             "data_format": 'NCHW',
@@ -56,7 +54,7 @@ class TestBase(IPUOpTest):
         x = paddle.static.data(
             name=self.feed_list[0], shape=self.feed_shape[0], dtype='float32'
         )
-        out = paddle.fluid.layers.pool2d(x, **self.attrs)
+        out = paddle.nn.functional.avg_pool2d(x, **self.attrs)
         self.fetch_list = [out.name]
 
     def run_model(self, exec_mode):
@@ -73,58 +71,52 @@ class TestBase(IPUOpTest):
 class TestCase1(TestBase):
     def set_attrs(self):
         super().set_attrs()
-        self.attrs['pool_size'] = 3
+        self.attrs['kernel_size'] = 3
 
 
 class TestCase1_2(TestBase):
     def set_attrs(self):
         super().set_attrs()
-        self.attrs['pool_size'] = [3, 1]
+        self.attrs['kernel_size'] = [3, 1]
 
 
 class TestCase2(TestBase):
     def set_attrs(self):
         super().set_attrs()
-        self.attrs['pool_stride'] = 2
+        self.attrs['stride'] = 2
 
 
 class TestCase2_2(TestBase):
     def set_attrs(self):
         super().set_attrs()
-        self.attrs['pool_stride'] = [2, 1]
+        self.attrs['stride'] = [2, 1]
 
 
 class TestCase3(TestBase):
     def set_attrs(self):
         super().set_attrs()
-        self.attrs['pool_padding'] = [1, 1]
+        self.attrs['padding'] = [1, 1]
 
 
 class TestCase3_2(TestBase):
     def set_attrs(self):
         super().set_attrs()
-        self.attrs['pool_padding'] = [1, 1, 2, 2]
+        self.attrs['padding'] = [1, 1, 2, 2]
 
 
 @unittest.skip('the results has a positional offset')
 class TestCase3_3(TestBase):
     def set_attrs(self):
         super().set_attrs()
-        self.attrs['pool_padding'] = [1, 2, 1, 1]
+        self.attrs['padding'] = [1, 2, 1, 1]
 
 
 @unittest.skip('paddle output has nan')
 class TestCase3_4(TestBase):
     def set_attrs(self):
         super().set_attrs()
-        self.attrs['pool_size'] = 1
-        self.attrs['pool_padding'] = 1
-
-
-class TestCase4(TestBase):
-    def set_attrs(self):
-        super().set_attrs()
-        self.attrs['global_pooling'] = True
+        self.attrs['size'] = 1
+        self.attrs['padding'] = 1
 
 
 class TestCase5(TestBase):

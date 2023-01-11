@@ -13,15 +13,17 @@
 # limitations under the License.
 
 import unittest
+
+import gradient_checker
 import numpy as np
+from decorator_helper import prog_scope
 from op_test import OpTest
+
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-from paddle.fluid import Program, program_guard
-import gradient_checker
-from decorator_helper import prog_scope
 import paddle.fluid.layers as layers
+from paddle.fluid import Program, program_guard
 
 
 class TestSignOp(OpTest):
@@ -44,7 +46,7 @@ class TestSignOpError(unittest.TestCase):
         with program_guard(Program(), Program()):
             # The input type of sign_op must be Variable or numpy.ndarray.
             input1 = 12
-            self.assertRaises(TypeError, fluid.layers.sign, input1)
+            self.assertRaises(TypeError, paddle.sign, input1)
             # The input dtype of sign_op must be float16, float32, float64.
             input2 = fluid.layers.data(
                 name='input2', shape=[12, 10], dtype="int32"
@@ -52,12 +54,12 @@ class TestSignOpError(unittest.TestCase):
             input3 = fluid.layers.data(
                 name='input3', shape=[12, 10], dtype="int64"
             )
-            self.assertRaises(TypeError, fluid.layers.sign, input2)
-            self.assertRaises(TypeError, fluid.layers.sign, input3)
+            self.assertRaises(TypeError, paddle.sign, input2)
+            self.assertRaises(TypeError, paddle.sign, input3)
             input4 = fluid.layers.data(
                 name='input4', shape=[4], dtype="float16"
             )
-            fluid.layers.sign(input4)
+            paddle.sign(input4)
 
 
 class TestSignAPI(unittest.TestCase):
@@ -108,7 +110,6 @@ class TestSignDoubleGradCheck(unittest.TestCase):
         gradient_checker.double_grad_check(
             [data], out, x_init=[data_arr], place=place, eps=eps
         )
-        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         gradient_checker.double_grad_check_for_dygraph(
             self.sign_wrapper, [data], out, x_init=[data_arr], place=place
         )
@@ -140,7 +141,6 @@ class TestSignTripleGradCheck(unittest.TestCase):
         gradient_checker.triple_grad_check(
             [data], out, x_init=[data_arr], place=place, eps=eps
         )
-        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         gradient_checker.triple_grad_check_for_dygraph(
             self.sign_wrapper, [data], out, x_init=[data_arr], place=place
         )

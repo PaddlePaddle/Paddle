@@ -13,9 +13,10 @@
 # limitations under the License.
 
 import unittest
-import paddle
 import warnings
-from paddle.fluid.layers.control_flow import cond
+
+import paddle
+from paddle.static.nn import cond
 
 
 @paddle.jit.to_static

@@ -220,7 +220,8 @@ if(APPLE)
       -Werror=uninitialized
       -Werror=tautological-constant-out-of-range-compare
       -Werror=literal-conversion
-      -Werror=pragma-pack)
+      -Werror=pragma-pack
+      -Werror=c++17-extensions)
 endif()
 
 if(WITH_HETERPS AND WITH_PSLIB)

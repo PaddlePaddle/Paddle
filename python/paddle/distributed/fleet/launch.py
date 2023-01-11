@@ -54,36 +54,34 @@ launch a process on each of the given gpu card or cpu machine.
                 your_training_py (arg1 arg2 and all others)
 """
 
+import copy
+import os
+import pathlib
 import shutil
 import sys
 import tempfile
-import os
 import time
-import copy
-import pathlib
-from argparse import ArgumentParser, REMAINDER
+from argparse import REMAINDER, ArgumentParser
+
 import paddle.framework as framework
-from paddle.distributed.fleet import launch_utils
+from paddle.distributed.fleet import ascend_utils, cloud_utils, launch_utils
+from paddle.distributed.fleet.elastic import enable_elastic, launch_elastic
 from paddle.distributed.fleet.launch_utils import (
-    get_host_name_ip,
-    find_free_ports,
-    logger,
-    get_cluster,
     DeviceMode,
-    start_local_trainers,
-    direct_start,
-    watch_local_trainers,
-    terminate_local_procs,
     DistributeMode,
     ParameterServerLauncher,
-    get_logger,
-    check_backend,
     block_windows_and_macos,
+    check_backend,
+    direct_start,
+    find_free_ports,
+    get_cluster,
+    get_host_name_ip,
+    get_logger,
+    logger,
+    start_local_trainers,
+    terminate_local_procs,
+    watch_local_trainers,
 )
-from paddle.distributed.fleet import cloud_utils
-from paddle.distributed.fleet import ascend_utils
-
-from paddle.distributed.fleet.elastic import enable_elastic, launch_elastic
 
 __all__ = []
 

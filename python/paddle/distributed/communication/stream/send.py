@@ -12,13 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle.fluid.framework as framework
 import paddle.fluid.data_feeder as data_feeder
+import paddle.fluid.framework as framework
 import paddle.fluid.layer_helper as layer_helper
 from paddle.distributed.communication.group import (
     _get_global_group,
-    _warn_cur_rank_not_in_group,
     _get_or_throw_group_rank,
+    _warn_cur_rank_not_in_group,
 )
 
 
@@ -113,7 +113,9 @@ def send(tensor, dst=0, group=None, sync_op=True, use_calc_stream=False):
             tensor, dst_rank_in_group, group, sync_op, use_calc_stream
         )
     else:
-        assert group is None, "Group can not be used in static mode for now."
+        assert (
+            group is None
+        ), "Group can not be used in static graph mode for now."
         return _send_in_static_mode(
             tensor, dst, group, sync_op, use_calc_stream
         )

@@ -12,9 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
-import unittest
 import sys
+import unittest
+
+import paddle
 
 sys.path.append("..")
 import numpy as np

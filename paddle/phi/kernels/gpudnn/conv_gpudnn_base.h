@@ -20,6 +20,7 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
+#include "paddle/fluid/memory/memory.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/kernels/autotune/cache.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
@@ -28,11 +29,11 @@ limitations under the License. */
 
 namespace phi {
 
-using GPUDNNDataLayout = paddle::platform::DataLayout;
+using GPUDNNDataLayout = phi::backends::gpu::DataLayout;
 
 template <typename T>
 using ScalingParamType =
-    typename paddle::platform::CudnnDataType<T>::ScalingParamType;
+    typename phi::backends::gpu::CudnnDataType<T>::ScalingParamType;
 
 enum class ConvKind { kForward = 1, kBackwardData = 2, kBackwardFilter = 3 };
 
@@ -96,10 +97,10 @@ static std::ostream& operator<<(std::ostream& out, const std::vector<T>& v) {
 template <typename HandleT, typename DataT>
 struct ConvArgsBase {
   HandleT handle;
-  paddle::platform::TensorDescriptor idesc;
-  paddle::platform::TensorDescriptor odesc;
-  paddle::platform::FilterDescriptor wdesc;
-  paddle::platform::ConvolutionDescriptor cdesc;
+  phi::backends::gpu::TensorDescriptor idesc;
+  phi::backends::gpu::TensorDescriptor odesc;
+  phi::backends::gpu::FilterDescriptor wdesc;
+  phi::backends::gpu::ConvolutionDescriptor cdesc;
 
   const phi::DenseTensor* x = nullptr;
   const phi::DenseTensor* w = nullptr;

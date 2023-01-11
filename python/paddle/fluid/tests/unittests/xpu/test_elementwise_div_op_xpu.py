@@ -15,16 +15,18 @@ import sys
 
 sys.path.append("..")
 import unittest
+
 import numpy as np
-import paddle
-import paddle.fluid as fluid
 from op_test import skip_check_grad_ci
 from op_test_xpu import XPUOpTest
 from xpu.get_test_cover_info import (
+    XPUOpTestWrapper,
     create_test_class,
     get_xpu_op_support_types,
-    XPUOpTestWrapper,
 )
+
+import paddle
+import paddle.fluid as fluid
 
 paddle.enable_static()
 

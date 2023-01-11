@@ -12,16 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
 import os
 import tempfile
+import unittest
 
 import numpy as np
-import paddle.fluid as fluid
-
-from paddle.fluid.dygraph.dygraph_to_static import ProgramTranslator
-from paddle.fluid.optimizer import AdamOptimizer
 from test_fetch_feed import Linear
+
+import paddle
+import paddle.fluid as fluid
+from paddle.fluid.optimizer import AdamOptimizer
 
 np.random.seed(2020)
 
@@ -41,13 +41,12 @@ class TestDyToStaticSaveLoad(unittest.TestCase):
         self.temp_dir.cleanup()
 
     def test_save_load_same_result(self):
-        program_translator = ProgramTranslator()
         x_data = np.random.randn(30, 10, 32).astype('float32')
         batch_num = 3
 
         with fluid.dygraph.guard(place):
 
-            program_translator.enable(True)
+            paddle.jit.enable_to_static(True)
             x = fluid.dygraph.to_variable(x_data)
             net = Linear(32, 64)
             adam = AdamOptimizer(
@@ -62,7 +61,7 @@ class TestDyToStaticSaveLoad(unittest.TestCase):
                 net.clear_gradients()
             # Save parameters
 
-            fluid.save_dygraph(net.state_dict(), self.model_path)
+            paddle.save(net.state_dict(), self.model_path + '.pdparams')
             # minimize() will update parameter, call net() to get output and avg_loss.
             # Switch into eval mode.
             net.eval()
@@ -73,14 +72,14 @@ class TestDyToStaticSaveLoad(unittest.TestCase):
             dygraph_net = Linear(32, 64)
 
             # Load parameters
-            model_dict, _ = fluid.load_dygraph(self.model_path)
+            model_dict = paddle.load(self.model_path + '.pdparams')
             dygraph_net.set_dict(model_dict)
             # Switch into eval mode.
             dygraph_net.eval()
 
             x = fluid.dygraph.to_variable(x_data)
             # predict output
-            program_translator.enable(False)
+            paddle.jit.enable_to_static(False)
             dygraph_out, dygraph_loss = dygraph_net(x)
 
         np.testing.assert_allclose(

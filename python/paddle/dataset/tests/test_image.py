@@ -20,7 +20,9 @@ Description:
 
 import sys
 import unittest
+
 import numpy as np
+
 from paddle.dataset import image
 
 __all__ = []

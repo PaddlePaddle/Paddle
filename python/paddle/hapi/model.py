@@ -12,42 +12,38 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import contextlib
 import inspect
 import os
 import pickle
-import numpy as np
-import warnings
-import time
 import socket
-import contextlib
+import time
+import warnings
+
+import numpy as np
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
-from paddle.fluid.framework import _non_static_mode
-from paddle.fluid.framework import Variable
-from paddle.fluid.framework import _get_paddle_place
-from paddle.fluid.framework import _current_expected_place as _get_device
-from paddle.fluid.executor import global_scope
-from paddle.fluid.io import is_belong_to_optimizer
-from paddle.fluid.dygraph.base import to_variable
-from paddle.fluid.dygraph.parallel import ParallelEnv
-from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX
-from paddle.fluid.dygraph.io import INFER_PARAMS_SUFFIX
-from paddle.fluid.layers.utils import flatten
-from paddle.fluid.layers import collective
-
-from paddle.io import DataLoader
-from paddle.io import Dataset
-from paddle.io import DistributedBatchSampler
-from paddle.metric import Metric
-from paddle.static import InputSpec as Input
 import paddle.distributed as dist
 import paddle.distributed.fleet as fleet
-from paddle.distributed.fleet.base import role_maker
+from paddle import fluid
 from paddle.autograd import no_grad
+from paddle.distributed.fleet.base import role_maker
+from paddle.fluid import core
+from paddle.fluid.dygraph.base import to_variable
+from paddle.fluid.dygraph.parallel import ParallelEnv
+from paddle.fluid.executor import global_scope
+from paddle.fluid.framework import Variable
+from paddle.fluid.framework import _current_expected_place as _get_device
+from paddle.fluid.framework import _get_paddle_place, _non_static_mode
+from paddle.fluid.io import is_belong_to_optimizer
+from paddle.fluid.layers import collective
+from paddle.fluid.layers.utils import flatten
+from paddle.io import DataLoader, Dataset, DistributedBatchSampler
+from paddle.jit.translated_layer import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
+from paddle.metric import Metric
+from paddle.static import InputSpec as Input
 
-from .callbacks import config_callbacks, EarlyStopping
+from .callbacks import EarlyStopping, config_callbacks
 from .model_summary import summary
 
 __all__ = []
@@ -309,7 +305,7 @@ class StaticGraphAdapter:
         self.mode = 'train'
         assert (
             update is True
-        ), "Does not support `update == False` in static mode by now."
+        ), "Does not support `update == False` in static graph mode by now."
         return self._run(inputs, labels)
 
     def eval_batch(self, inputs, labels=None):
@@ -641,7 +637,7 @@ class StaticGraphAdapter:
                     metrics.append(to_list(metric.compute(*(outputs + labels))))
 
             if mode == 'train' and self.model._optimizer:
-                self._loss_endpoint = fluid.layers.sum(losses)
+                self._loss_endpoint = paddle.add_n(losses)
                 if self._nranks > 1:
                     role = role_maker.PaddleCloudRoleMaker(is_collective=True)
                     fleet.init(role)
@@ -799,7 +795,7 @@ class DynamicGraphAdapter:
 
         losses = self.model._loss(*(to_list(outputs) + labels))
         losses = to_list(losses)
-        final_loss = fluid.layers.sum(losses)
+        final_loss = paddle.add_n(losses)
 
         if self._amp_level != "O0":
             scaled = self.model._scaler.scale(final_loss)
@@ -903,11 +899,11 @@ class DynamicGraphAdapter:
 
     def save(self, path):
         params = self.model.network.state_dict()
-        fluid.save_dygraph(params, path)
+        paddle.save(params, path + '.pdparams')
         if self.model._optimizer is not None:
             if self.model._optimizer.state_dict():
                 optim = self.model._optimizer.state_dict()
-                fluid.save_dygraph(optim, path)
+                paddle.save(optim, path + '.pdopt')
         if hasattr(self.model, '_scaler') and self.model._scaler is not None:
             if self.model._scaler.state_dict():
                 scaler = self.model._scaler.state_dict()
@@ -1016,7 +1012,7 @@ class Model:
     must be required for static graph.
 
     When training on GPU, auto mixed precision (AMP O1) and pure float16
-    (AMP O2) training are both supported in static mode and dynamic mode.
+    (AMP O2) training are both supported in static graph mode and dynamic mode.
     In static graph mode, before training with pure float16 (AMP O2),
     `multi_precision` could be set to True when creating optimizer, which can
     avoid poor accuracy or slow convergence in a way, and inputs of dtype float
@@ -1539,7 +1535,7 @@ class Model:
                 assert isinstance(
                     self._optimizer._grad_clip,
                     (paddle.nn.ClipGradByGlobalNorm, paddle.nn.ClipGradByNorm),
-                ), "Only GradientClipByNorm and GradientClipByGlobalNorm are supported in amp training with level=O2 currently."
+                ), "Only ClipGradByNorm and ClipGradByGlobalNorm are supported in amp training with level=O2 currently."
 
         self._adapter._amp_custom_lists = {}
         self._adapter._amp_configs = {}
@@ -1609,7 +1605,7 @@ class Model:
             if 'use_fp16_guard' in amp_config_key_set:
                 if _non_static_mode():
                     raise ValueError(
-                        "'use_fp16_guard' is supported in static mode only."
+                        "'use_fp16_guard' is supported in static graph mode only."
                     )
                 self._adapter._use_fp16_guard = amp_configs['use_fp16_guard']
                 amp_config_key_set.remove('use_fp16_guard')
@@ -1647,7 +1643,7 @@ class Model:
                 'incr_every_n_steps', 'decr_every_n_nan_or_inf',
                 'use_dynamic_loss_scaling', 'custom_white_list',
                 'custom_black_list', and 'custom_black_varnames'or
-                'use_fp16_guard' is only supported in static mode. Mixed
+                'use_fp16_guard' is only supported in static graph mode. Mixed
                 precision API documentations  :ref:`api_paddle_amp_auto_cast`
                 and  :ref:`api_paddle_amp_GradScaler` could be referenced
                 for details. For convenience, 'amp_configs' could be set to

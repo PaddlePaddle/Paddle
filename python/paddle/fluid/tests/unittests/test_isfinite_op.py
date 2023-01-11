@@ -13,11 +13,11 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
-import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
 from op_test import OpTest
+
+import paddle.fluid.core as core
 
 
 class TestInf(OpTest):
@@ -103,23 +103,6 @@ class TestIsfinite(OpTest):
 class TestFP16Isfinite(TestIsfinite):
     def init_dtype(self):
         self.dtype = np.float16
-
-
-class BadInputTest(unittest.TestCase):
-    def test_error(self):
-        with fluid.program_guard(fluid.Program()):
-
-            def test_has_inf_bad_x():
-                data = [1, 2, 3]
-                result = fluid.layers.has_inf(data)
-
-            self.assertRaises(TypeError, test_has_inf_bad_x)
-
-        with fluid.dygraph.guard():
-            data = paddle.zeros([2, 3])
-            result = paddle.fluid.layers.has_inf(data)
-            expect_value = np.array([False])
-            self.assertEqual((result.numpy() == expect_value).all(), True)
 
 
 if __name__ == '__main__':

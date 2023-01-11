@@ -12,17 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
-import unittest
 import os
 import tempfile
+import unittest
+
+import numpy as np
 
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.dygraph.dygraph_to_static import ProgramTranslator
 from paddle.static import InputSpec
-
-program_translator = ProgramTranslator()
 
 
 # 0. for in range var.numpy()[0]
@@ -362,7 +360,7 @@ class TestTransformBase(unittest.TestCase):
         )
 
     def _run(self, to_static):
-        program_translator.enable(to_static)
+        paddle.jit.enable_to_static(to_static)
         with fluid.dygraph.guard():
             return self.dygraph_func(self.input)
 
@@ -389,7 +387,7 @@ class TestTransform(TestTransformBase):
 
 class TestTransformForOriginalList(TestTransform):
     def _run(self, to_static):
-        program_translator.enable(to_static)
+        paddle.jit.enable_to_static(to_static)
         with fluid.dygraph.guard():
             return self.dygraph_func()
 

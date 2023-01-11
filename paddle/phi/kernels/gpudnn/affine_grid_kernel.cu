@@ -15,11 +15,10 @@
 #ifndef PADDLE_WITH_HIP
 
 #include "paddle/phi/kernels/affine_grid_kernel.h"
-#include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
-#include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_device_function.h"
+#include "paddle/phi/backends/gpu/gpu_dnn.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/common/int_array.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -27,7 +26,7 @@
 namespace phi {
 
 using ScopedSpatialTransformerDescriptor =
-    paddle::platform::ScopedSpatialTransformerDescriptor;
+    phi::backends::gpu::ScopedSpatialTransformerDescriptor;
 
 template <typename T, typename Context>
 void AffineGridCudnnKernel(const Context& dev_ctx,

@@ -12,30 +12,36 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import re
 import argparse
 import os
+import re
+
 from codegen_utils import (
-    core_ops_returns_info,
+    AssertMessage,
+    FindForwardName,
+    FunctionGeneratorBase,
+    GeneratorBase,
+    GetAutoGradMetaName,
+    GetAutoGradMetaVectorName,
+    GetConstReference,
+    GetDygraphForwardFunctionName,
+    GetGradNodeName,
+    GetIndent,
+    GetInplacedFunctionName,
+    GetIntermediateAPIFunctionName,
+    GetSavedName,
+    IsPlainTensorType,
+    IsVectorTensorType,
+    ParseYamlBackward,
+    ParseYamlForwardFromBackward,
+    ParseYamlInplaceInfo,
+    ReadBwdFile,
+    RemoveConstAndReference,
     core_ops_args_info,
     core_ops_args_type_info,
+    core_ops_returns_info,
+    ops_to_fill_zero_for_empty_grads,
 )
-from codegen_utils import ReadBwdFile
-from codegen_utils import FindForwardName, GetGradNodeName, GetSavedName
-from codegen_utils import IsPlainTensorType, IsVectorTensorType
-from codegen_utils import GetConstReference, RemoveConstAndReference
-from codegen_utils import (
-    GetDygraphForwardFunctionName,
-    GetIntermediateAPIFunctionName,
-)
-from codegen_utils import GetAutoGradMetaName, GetAutoGradMetaVectorName
-from codegen_utils import GetInplacedFunctionName
-from codegen_utils import ParseYamlForwardFromBackward
-from codegen_utils import ParseYamlBackward
-from codegen_utils import ParseYamlInplaceInfo
-from codegen_utils import FunctionGeneratorBase, GeneratorBase
-from codegen_utils import ops_to_fill_zero_for_empty_grads
-from codegen_utils import AssertMessage, GetIndent
 
 # Note: assign is a inplace api when parameter(output) isn't none,
 # so we should check parameter(output) with rule of inplace.
@@ -224,7 +230,7 @@ FORWARD_FUNCTION_TEMPLATE = """
 
 AFTER_LOG_PRINT_TEMPLATE = """
   if(VLOG_IS_ON(4)){{
-      const char* INPUT_PRINT_TEMPLATE = \"{{ Input: [%s],  Output: [%s] }} \";
+      const char* INPUT_PRINT_TEMPLATE = \"{{ Input: [%s],  \\n Output: [%s] }} \";
       {}
       VLOG(4) << paddle::string::Sprintf(INPUT_PRINT_TEMPLATE, input_str, output_str);
   }}
@@ -326,6 +332,9 @@ NODE_CC_FILE_TEMPLATE = """
 #include "paddle/fluid/eager/nan_inf_utils.h"
 #include "paddle/phi/api/include/sparse_api.h"
 #include "paddle/fluid/eager/api/manual/eager_manual/nodes/nodes.h"
+#include "paddle/fluid/prim/api/manual/backward/composite_backward_api.h"
+#include "paddle/fluid/prim/api/all.h"
+#include "paddle/fluid/prim/utils/utils.h"
 DECLARE_bool(check_nan_inf);
 {}
 """
@@ -540,6 +549,7 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
         # self.forward_outputs_position_map
         # self.optional_inputs
         # self.no_need_buffers
+        # self.composite_func_info
         # self.intermediate_outputs
         # self.forward_inplace_map
         FunctionGeneratorBase.__init__(self, forward_api_contents, namespace)
@@ -733,6 +743,14 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
             self.backward_returns_list,
         ) = ParseYamlBackward(backward_args_str, backward_returns_str)
 
+        # Remove the output which is intermediate
+        if 'intermediate' in grad_api_contents:
+            backward_returns_list_new = []
+            for return_item in self.backward_returns_list:
+                if return_item[0] not in grad_api_contents['intermediate']:
+                    backward_returns_list_new.append(return_item)
+            self.backward_returns_list = backward_returns_list_new
+
     def CollectForwardInfoFromBackwardContents(self):
 
         backward_forward_str = self.backward_forward_str
@@ -857,6 +875,9 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
         backward_grad_outputs_map = self.backward_grad_outputs_map
         backward_attrs_list = self.backward_attrs_list
         optional_inputs = self.optional_inputs
+        is_composite_grad_api = (
+            False if self.composite_func_info == {} else True
+        )
 
         # Pass Stop Gradient Args
         pass_stop_gradient_args_str = self.GetPassStopGradientArgsList(
@@ -1042,6 +1063,8 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
             self.ParseBackwardInplaceInfo()
             # Parse no_need_buffer
             self.ParseNoNeedBuffer()
+            # Parse composite
+            self.ParseComposite()
 
         # Parse optional_inputs
         self.ParseDispensable()
@@ -1812,16 +1835,25 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
         is_invoke_forward_api = IsInvokeForwardApi(
             self.grad_api_contents, self.forward_apis_dict
         )
+        is_composite_grad_api = (
+            False if self.composite_func_info == {} else True
+        )
+
         if next_node_generator is not None:
             has_higher_order_node = True
             return (
                 has_higher_order_node,
                 is_invoke_forward_api,
+                is_composite_grad_api,
                 next_grad_node_creation_str,
                 next_grad_node_out_list,
                 next_node_generator.backward_forward_inputs_map,
             )
-        elif not is_invoke_forward_api:
+        # TODO(Ruting):Integrate invoke and composite as composite so the rest branch canbe covered
+        # TODO(Ruting): modify next_grad_node_creation_str when Flags_prim_enable deleted in the future
+        # if is_composite_grad_api:
+        #     next_grad_node_creation_str = ''
+        elif not is_invoke_forward_api and not is_composite_grad_api:
             next_grad_node_creation_str = f"""  if(trace_backward) {{
     PADDLE_THROW(phi::errors::Unavailable(
     \"The Op {self.backward_api_name} doesn't have any grad\"
@@ -1831,6 +1863,7 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
         return (
             has_higher_order_node,
             is_invoke_forward_api,
+            is_composite_grad_api,
             next_grad_node_creation_str,
             next_grad_node_out_list,
             None,
@@ -1928,6 +1961,7 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
         self,
         has_higher_order_node,
         is_invoke_forward_api,
+        is_composite_grad_api,
         next_grad_node_creation_str,
         next_grad_node_out_list,
         backward_forward_inputs_map_next,
@@ -1935,6 +1969,9 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
         namespace = self.namespace
         forward_api_name = self.forward_api_name
         backward_api_name = self.backward_api_name
+        composite_grad_api_name = (
+            self.composite_func_info["name"] if is_composite_grad_api else None
+        )
         backward_forward_inputs_map = self.backward_forward_inputs_map
         backward_grad_inputs_map = self.backward_grad_inputs_map
         backward_grad_outputs_map = self.backward_grad_outputs_map
@@ -1973,7 +2010,6 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
                         fill_zero_str += f"{indent}egr::EagerUtils::FillZeroForEmptyGradInput(&grads[{fwd_position}], input_metas[{fwd_position}]);\n"
 
         inplace_grad_input_str = ""
-        inplaced_tensor_wrapper = False
         inplace_check_str = ""
         optional_inplace_var_name = []
         # Grad Ins from TensorWrappers
@@ -2120,6 +2156,7 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
         # Grad Function Call String
         slot_num_bwd_outputs = len(self.forward_inputs_position_map.keys())
         grad_api_namespace = f"paddle::experimental::{namespace}"
+        composite_grad_api_namespace = f"paddle::prim::{namespace}"
         grad_function_prepare_str = f"""
   const auto& out_metas = OutputMeta();
   paddle::small_vector<std::vector<paddle::experimental::Tensor>, egr::kSlotSmallVectorSize> returns({slot_num_bwd_outputs});
@@ -2190,6 +2227,8 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
   }}"""
 
         grad_api_args_str = ", ".join(grad_api_args)
+        composite_grad_api_args_str = ", ".join(grad_api_args)
+        composite_template_name = "<paddle::experimental::Tensor>"
 
         if is_invoke_forward_api:
             autograd_api_out = "auto"
@@ -2212,6 +2251,17 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
   {out_assign_str}}} else {{
   {indent}{autograd_api_out} api_output = paddle::experimental::{self.namespace}{self.grad_api_contents['invoke']};
   {out_assign_str}{indent}}}
+  """
+        # TODO(Ruting):using composite only when we don't have backward kernel in the future.
+        elif is_composite_grad_api:
+            grad_function_call_str = f"""
+  if (paddle::prim::PrimCommonUtils::IsPrimEnabled()) {{
+  {indent}{composite_grad_api_namespace}{composite_grad_api_name}{composite_template_name}({composite_grad_api_args_str});
+  VLOG(4) << "Composite api {composite_grad_api_name} is called ";
+  }}else{{
+  {indent}{grad_api_namespace}{backward_api_name}({grad_api_args_str});
+  VLOG(4) << "Fused api {backward_api_name} is called ";
+  }}
   """
         else:
             grad_function_call_str = f"""
@@ -2348,6 +2398,7 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
         (
             has_higher_order_node,
             is_invoke_forward_api,
+            is_composite_grad_api,
             next_grad_node_creation_str,
             next_grad_node_out_list,
             backward_forward_inputs_map,
@@ -2358,6 +2409,7 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
         self.GenerateNodeDefinition(
             has_higher_order_node,
             is_invoke_forward_api,
+            is_composite_grad_api,
             next_grad_node_creation_str,
             next_grad_node_out_list,
             backward_forward_inputs_map,

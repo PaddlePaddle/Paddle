@@ -1107,25 +1107,25 @@ def multi_head_attention(
         """
         Add linear projection to queries, keys, and values.
         """
-        q = layers.fc(
-            input=queries,
+        q = paddle.static.nn.fc(
+            x=queries,
             size=d_key * n_head,
             num_flatten_dims=2,
-            param_attr=const_para_attr,
+            weight_attr=const_para_attr,
             bias_attr=const_bias_attr,
         )
-        k = layers.fc(
-            input=keys,
+        k = paddle.static.nn.fc(
+            x=keys,
             size=d_key * n_head,
             num_flatten_dims=2,
-            param_attr=const_para_attr,
+            weight_attr=const_para_attr,
             bias_attr=const_bias_attr,
         )
-        v = layers.fc(
-            input=values,
+        v = paddle.static.nn.fc(
+            x=values,
             size=d_value * n_head,
             num_flatten_dims=2,
-            param_attr=const_para_attr,
+            weight_attr=const_para_attr,
             bias_attr=const_bias_attr,
         )
         return q, k, v
@@ -1177,7 +1177,7 @@ def multi_head_attention(
         product = layers.matmul(x=scaled_q, y=k, transpose_y=True)
         if attn_bias:
             product += attn_bias
-        weights = layers.softmax(product)
+        weights = paddle.nn.functional.softmax(product)
         if dropout_rate:
             weights = layers.dropout(
                 weights,
@@ -1205,11 +1205,11 @@ def multi_head_attention(
     out = __combine_heads(ctx_multiheads)
 
     # Project back to the model size.
-    proj_out = layers.fc(
-        input=out,
+    proj_out = paddle.static.nn.fc(
+        x=out,
         size=d_model,
         num_flatten_dims=2,
-        param_attr=const_para_attr,
+        weight_attr=const_para_attr,
         bias_attr=const_bias_attr,
     )
     return proj_out
@@ -1221,19 +1221,19 @@ def positionwise_feed_forward(x, d_inner_hid, d_hid):
     This module consists of two linear transformations with a ReLU activation
     in between, which is applied to each position separately and identically.
     """
-    hidden = layers.fc(
-        input=x,
+    hidden = paddle.static.nn.fc(
+        x=x,
         size=d_inner_hid,
         num_flatten_dims=2,
-        act="relu",
-        param_attr=const_para_attr,
+        activation="relu",
+        weight_attr=const_para_attr,
         bias_attr=const_bias_attr,
     )
-    out = layers.fc(
-        input=hidden,
+    out = paddle.static.nn.fc(
+        x=hidden,
         size=d_hid,
         num_flatten_dims=2,
-        param_attr=const_para_attr,
+        weight_attr=const_para_attr,
         bias_attr=const_bias_attr,
     )
     return out
@@ -1585,7 +1585,7 @@ def transformer(
             epsilon=label_smooth_eps,
         )
 
-    cost = layers.softmax_with_cross_entropy(
+    cost = paddle.nn.functional.softmax_with_cross_entropy(
         logits=paddle.reshape(predict, shape=[-1, trg_vocab_size]),
         label=label,
         soft_label=True if label_smooth_eps else False,
@@ -1707,15 +1707,15 @@ def wrap_decoder(
             transpose_y=True,
         )
     else:
-        predict = layers.fc(
-            input=dec_output,
+        predict = paddle.static.nn.fc(
+            x=dec_output,
             size=trg_vocab_size,
             num_flatten_dims=2,
-            param_attr=const_para_attr,
+            weight_attr=const_para_attr,
             bias_attr=const_bias_attr,
         )
     if dec_inputs is None:
-        predict = layers.softmax(predict)
+        predict = paddle.nn.functional.softmax(predict)
     return predict
 
 
@@ -1762,7 +1762,7 @@ def fast_decode(
         step_idx = layers.fill_constant(
             shape=[1], dtype=start_tokens.dtype, value=0
         )
-        cond = layers.less_than(x=step_idx, y=max_len)
+        cond = paddle.less_than(x=step_idx, y=max_len)
         while_op = layers.While(cond)
         # array states will be stored for each step.
         ids = layers.array_write(
@@ -1832,12 +1832,11 @@ def fast_decode(
                 caches=pre_caches,
             )
             logits = paddle.reshape(logits, (-1, trg_vocab_size))
-
-            topk_scores, topk_indices = layers.topk(
-                input=layers.softmax(logits), k=beam_size
+            topk_scores, topk_indices = paddle.topk(
+                x=paddle.nn.functional.softmax(logits), k=beam_size
             )
             accu_scores = layers.elementwise_add(
-                x=layers.log(topk_scores),
+                x=paddle.log(topk_scores),
                 y=paddle.reshape(pre_scores, shape=[-1]),
                 axis=0,
             )
@@ -1861,7 +1860,7 @@ def fast_decode(
             for i in range(n_layer):
                 layers.assign(pre_caches[i]["k"], caches[i]["k"])
                 layers.assign(pre_caches[i]["v"], caches[i]["v"])
-            length_cond = layers.less_than(x=step_idx, y=max_len)
+            length_cond = paddle.less_than(x=step_idx, y=max_len)
             finish_cond = paddle.logical_not(layers.is_empty(x=selected_ids))
             paddle.logical_and(x=length_cond, y=finish_cond, out=cond)
 

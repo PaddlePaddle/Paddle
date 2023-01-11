@@ -173,7 +173,7 @@ class GradNodeBase {
   virtual ~GradNodeBase() { VLOG(7) << "Destruct GradNodeBase"; }
 
   /**
-   * operator() designed to contian the real backward execution logic, it should
+   * operator() designed to contain the real backward execution logic, it should
    * be overrided by derived class defined for each operator. It accepts a
    * vector of Tensor which contains grads input of current operator
    *

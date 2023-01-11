@@ -332,7 +332,7 @@ class FcOpConverter : public OpConverter {
     }
     // If use tensorrt'oss, the x_dim and x_num_col_dims need change, and can
     // not add Shuffle layer in ernie's multihead.
-    if (x_dim.nbDims == 4 && x_num_col_dims == 1) {
+    if (x_dim.nbDims == 4 && x_dim.d[2] == 1 && x_dim.d[3] == 1) {
       if (enable_int8 || support_int8) {
         // add conv1x1 layer
         nvinfer1::DimsHW nv_ksize(1, 1);

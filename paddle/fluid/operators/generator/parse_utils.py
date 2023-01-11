@@ -14,8 +14,10 @@
 
 import re
 from copy import copy
-from typing import Dict, Any, List, Tuple
+from typing import Any, Dict, List, Tuple
+
 from tests import is_attr, is_input, is_output, is_vec
+from type_mapping import opmaker_attr_types_map
 
 
 def to_named_dict(items: List[Dict]) -> Dict[str, Dict]:
@@ -96,6 +98,8 @@ def parse_input_and_attr(
                 ), f"{op_name}: Arguments with default value should not precede those without default value"
             elif "default_value" in item:
                 met_attr_with_default_value = True
+            if typename.startswith('Scalar') or typename == 'IntArray':
+                item['data_type'] = opmaker_attr_types_map[typename]
             attrs.append(item)
         else:
             raise KeyError(f"{op_name}: Invalid argument type {typename}.")
@@ -183,7 +187,20 @@ def parse_kernel(op_name: str, kernel_config: Dict[str, Any]) -> Dict[str, Any]:
         kernel['layout'] = parse_candidates(kernel_config["layout"])
 
     if 'data_type' in kernel_config:
-        kernel['data_type'] = parse_candidates(kernel_config["data_type"])
+        data_type_item = parse_candidates(kernel_config["data_type"])
+        params_num = len(data_type_item['candidates'])
+        data_type_item['to_complex_flag'] = [False] * params_num
+        for i in range(params_num):
+            complex_match_result = re.match(
+                r"complex\((?P<param_name>\w+)\)",
+                data_type_item['candidates'][i],
+            )
+            if complex_match_result:
+                data_type_item['candidates'][i] = complex_match_result.group(
+                    'param_name'
+                )
+                data_type_item['to_complex_flag'][i] = True
+        kernel['data_type'] = data_type_item
 
     kernel_funcs = re.compile(r'([a-zA-Z0-9_]+)\s*({[^}]+})?').findall(
         kernel_config['func']
@@ -272,11 +289,72 @@ def parse_forward(op_name: str, forward_config: str) -> Dict[str, Any]:
     return forward_cfg
 
 
+def parse_composite(
+    op_name: str,
+    composite_config: str,
+) -> Dict[str, Any]:
+    # composite_config: func(args1, args2,.....)
+    fname = r'(.*?)'
+    wspace = r'\s*'
+    fargs = r'(.*?)'
+    pattern = fr'{fname}{wspace}\({wspace}{fargs}{wspace}\)'
+
+    m = re.search(pattern, composite_config)
+    func_name = m.group(1)
+    func_args = m.group(2)
+
+    composite_dict = {}
+    composite_dict["func_name"] = func_name
+    composite_dict["func_args"] = func_args
+    return composite_dict
+
+
+def check_op_config(op_entry, op_name):
+    base_key_set = (
+        'op',
+        'backward_op',
+        'forward',
+        'args',
+        'output',
+        'infer_meta',
+        'kernel',
+        'backward',
+        'invoke',
+        'inplace',
+        'view',
+        'optional',
+        'intermediate',
+        'no_need_buffer',
+        'data_transform',
+        'composite',
+    )
+    infer_meta_key_set = ('func', 'param')
+    kernel_key_set = ('func', 'param', 'data_type', 'layout', 'backend')
+    for key in op_entry.keys():
+        assert (
+            key in base_key_set
+        ), f"Op ({op_name}) : invalid key ({key}) in Yaml."
+
+    if 'infer_meta' in op_entry:
+        for infer_meta_key in op_entry['infer_meta'].keys():
+            assert (
+                infer_meta_key in infer_meta_key_set
+            ), f"Op ({op_name}) : invalid key (infer_meta.{infer_meta_key}) in Yaml."
+
+    if 'kernel' in op_entry:
+        for kernel_key in op_entry['kernel'].keys():
+            assert (
+                kernel_key in kernel_key_set
+            ), f"Op ({op_name}) : invalid key (kernel.{kernel_key}) in Yaml."
+
+
 def parse_op_entry(op_entry: Dict[str, Any], name_field="op"):
     op_name = op_entry[name_field]
     inputs, attrs = parse_input_and_attr(op_name, op_entry["args"])
     outputs = parse_outputs(op_name, op_entry["output"])
-
+    if "composite" in op_entry:
+        composite_dict = parse_composite(op_name, op_entry["composite"])
+    check_op_config(op_entry, op_name)
     # validate default value of DataType and DataLayout
     for attr in attrs:
         if "default_value" in attr:
@@ -383,6 +461,10 @@ def parse_op_entry(op_entry: Dict[str, Any], name_field="op"):
         # invoke
         invoke = parse_invoke(op_name, op_entry["invoke"])
         op["invoke"] = invoke
+
+    # has composite ?
+    if "composite" in op_entry:
+        op.update({"composite": composite_dict})
 
     # backward
     if "backward" in op_entry:

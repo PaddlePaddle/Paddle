@@ -173,4 +173,4 @@ void TopkKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(top_k, XPU, ALL_LAYOUT, phi::TopkKernel, float) {}
+PD_REGISTER_KERNEL(topk, XPU, ALL_LAYOUT, phi::TopkKernel, float) {}

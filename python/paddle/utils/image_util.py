@@ -12,9 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from io import StringIO
+
 import numpy as np
 from PIL import Image
-from io import StringIO
 
 __all__ = []
 

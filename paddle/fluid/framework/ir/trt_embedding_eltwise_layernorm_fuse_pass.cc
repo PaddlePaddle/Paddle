@@ -64,8 +64,6 @@ void TrtEmbedding2Eltwise1Pattern::operator()() {
       create_emb_vars(pattern, lookup_table2_w_repr(), "W", true);
   std::unordered_set<std::string> embedding_ops{"lookup_table",
                                                 "lookup_table_v2"};
-  auto* feed1 = pattern->NewNode(feed1_repr())->assert_is_op("feed");
-  auto* feed2 = pattern->NewNode(feed2_repr())->assert_is_op("feed");
 
   auto* lookup_table1 =
       pattern->NewNode(lookup_table1_repr())->assert_is_ops(embedding_ops);
@@ -79,10 +77,8 @@ void TrtEmbedding2Eltwise1Pattern::operator()() {
       pattern->NewNode(eltwise_add_repr())->assert_is_op("elementwise_add");
   auto* eltwise_add_out = pattern->NewNode(eltwise_add_out_repr())
                               ->assert_is_op_output("elementwise_add");
-  feed1->LinksTo({lookup_table1_x});
   lookup_table1->LinksFrom({lookup_table1_x, lookup_table1_w})
       .LinksTo({lookup_table1_out});
-  feed2->LinksTo({lookup_table2_x});
   lookup_table2->LinksFrom({lookup_table2_x, lookup_table2_w})
       .LinksTo({lookup_table2_out});
   eltwise_add->LinksFrom({lookup_table1_out, lookup_table2_out})
@@ -95,7 +91,6 @@ void TrtEmbedding1Eltwise1Pattern::operator()() {
       create_emb_vars(pattern, lookup_table1_w_repr(), "W", true);
   std::unordered_set<std::string> embedding_ops{"lookup_table",
                                                 "lookup_table_v2"};
-  auto* feed1 = pattern->NewNode(feed1_repr())->assert_is_op("feed");
 
   auto* lookup_table1 =
       pattern->NewNode(lookup_table1_repr())->assert_is_ops(embedding_ops);
@@ -110,7 +105,6 @@ void TrtEmbedding1Eltwise1Pattern::operator()() {
                               ->assert_is_op_output("elementwise_add");
   lookup_table1->LinksFrom({lookup_table1_x, lookup_table1_w})
       .LinksTo({lookup_table1_out});
-  feed1->LinksTo({lookup_table1_x});
   eltwise_add->LinksFrom({lookup_table1_out, eltwise_add_in})
       .LinksTo({eltwise_add_out});
 }
@@ -441,14 +435,14 @@ void TrtEmbeddingEltwiseLayerNormFusePass::ApplyImpl(Graph* graph) const {
     std::string mask_id = Get<std::string>("tensorrt_transformer_maskid");
 
     if ((use_varseqlen && pos_id != "" && mask_id != "") ||
-        (!use_varseqlen && pos_id == "" && mask_id == "")) {
+        (!use_varseqlen && pos_id == "")) {
       VLOG(3) << "start trt_embedding_eltwise_layernorm_fuse_pass";
     } else {
       PADDLE_THROW(
           platform::errors::Fatal("Use transformer'varseqlen need config: "
                                   "use_varseqlen, set pos_id, set "
                                   "mask_id. Or not use varseqlen, do not set "
-                                  "pos_id, set mask_id. Please "
+                                  "pos_id. Please "
                                   "reconfig"));
     }
     graph->Set(kEmbEltwiseLayernormPass, new bool(true));

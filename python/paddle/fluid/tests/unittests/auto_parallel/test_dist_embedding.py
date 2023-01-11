@@ -39,7 +39,7 @@ def make_program_lookup_table_v1_mp_dp():
             dtype="float32",
             is_sparse=False,
         )
-        loss = paddle.fluid.layers.reduce_mean(emb_out)
+        loss = paddle.mean(emb_out)
 
         auto.shard_tensor(
             src_ids,

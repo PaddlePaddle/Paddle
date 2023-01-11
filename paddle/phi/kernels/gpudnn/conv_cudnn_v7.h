@@ -14,8 +14,7 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/fluid/platform/cuda_graph_with_memory_pool.h"
-#include "paddle/fluid/platform/device/gpu/gpu_info.h"
+#include "paddle/phi/backends/gpu/cuda/cuda_graph_with_memory_pool.h"
 #include "paddle/phi/kernels/autotune/switch_autotune.h"
 #include "paddle/phi/kernels/gpudnn/conv_gpudnn_base.h"
 
@@ -466,7 +465,7 @@ struct SearchAlgorithmBase<ConvKind::kBackwardFilter> {
 
   static size_t GetWorkspaceSize(const ConvArgs& args,
                                  cudnnConvolutionBwdFilterAlgo_t algo) {
-    paddle::platform::CUDAGraphCaptureModeGuard guard;
+    phi::backends::gpu::CUDAGraphCaptureModeGuard guard;
     size_t workspace_size = 0;
     PADDLE_ENFORCE_GPU_SUCCESS(
         phi::dynload::cudnnGetConvolutionBackwardFilterWorkspaceSize(
@@ -559,7 +558,7 @@ struct SearchAlgorithmBase<ConvKind::kBackwardFilter> {
     size_t workspace_size_limit =
         CalcWorkspaceLimitInBytes(UseFixedWorkspace());
     auto workspace_handle = ctx.cudnn_workspace_handle();
-    if (paddle::platform::CudnnDataType<T>::type != CUDNN_DATA_HALF) {
+    if (phi::backends::gpu::CudnnDataType<T>::type != CUDNN_DATA_HALF) {
       size_t max_workspace_size =
           GetMaxWorkspaceSize(args, workspace_size_limit);
       VLOG(3) << "max_workspace_size=" << ToMegaBytes(max_workspace_size)
@@ -674,7 +673,7 @@ struct SearchAlgorithm : public SearchAlgorithmBase<CK> {
                                   bool enable_autotune = true) {
     SearchResult<AlgoT> result;
     bool use_autotune = false;
-    auto dtype = paddle::platform::CudnnDataType<T>::type;
+    auto dtype = phi::backends::gpu::CudnnDataType<T>::type;
     SetConvMathType(ctx, dtype, args.cdesc);
 
     if (deterministic) {
@@ -734,7 +733,7 @@ struct SearchAlgorithm : public SearchAlgorithmBase<CK> {
   static void SetConvMathType(
       const phi::GPUContext& ctx,
       cudnnDataType_t dtype,
-      const paddle::platform::ConvolutionDescriptor& cdesc) {
+      const phi::backends::gpu::ConvolutionDescriptor& cdesc) {
 #if CUDA_VERSION >= 9000 && CUDNN_VERSION_MIN(7, 0, 1)
     if (ctx.GetComputeCapability() >= 70 && dtype == CUDNN_DATA_HALF) {
       PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cudnnSetConvolutionMathType(

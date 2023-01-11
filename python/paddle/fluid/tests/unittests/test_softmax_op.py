@@ -13,11 +13,13 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
 from op_test import OpTest, convert_float_to_uint16
-import paddle.fluid.core as core
+
 import paddle
 import paddle.fluid as fluid
+import paddle.fluid.core as core
 import paddle.nn.functional as F
 
 np.random.seed(10)
@@ -489,11 +491,12 @@ class TestSoftmaxAPI(unittest.TestCase):
 class TestSoftmaxAPI_ZeroDim(unittest.TestCase):
     def test_dygraph(self):
         paddle.disable_static()
-        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         x = paddle.rand([])
         x.stop_gradient = False
+        x.retain_grads()
 
         out = paddle.nn.functional.softmax(x)
+        out.retain_grads()
         out.backward()
         self.assertEqual(x.shape, [])
         self.assertEqual(x.grad.shape, [])

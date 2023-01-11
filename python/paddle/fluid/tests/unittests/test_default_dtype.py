@@ -13,8 +13,10 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
-from paddle.framework import set_default_dtype, get_default_dtype
+
+from paddle.framework import get_default_dtype, set_default_dtype
 
 
 class TestDefaultType(unittest.TestCase):

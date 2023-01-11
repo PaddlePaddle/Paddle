@@ -13,13 +13,14 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
+
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid.tests.unittests.op_test import OpTest, convert_uint16_to_float
-from paddle.fluid.framework import _test_eager_guard
-import paddle
+from paddle.tensor import random
 
 
 class TestGaussianRandomOp(OpTest):
@@ -46,10 +47,6 @@ class TestGaussianRandomOp(OpTest):
 
     def test_check_output(self):
         self.check_output_customized(self.verify_output)
-
-    def test_eager(self):
-        with _test_eager_guard():
-            self.test_check_output()
 
     def verify_output(self, outs):
         self.assertEqual(outs[0].shape, (123, 92))
@@ -93,10 +90,6 @@ class TestGaussianRandomBF16Op(OpTest):
         self.check_output_with_place_customized(
             self.verify_output, place=core.CUDAPlace(0)
         )
-
-    def test_eager(self):
-        with _test_eager_guard():
-            self.test_check_output()
 
     def verify_output(self, outs):
         outs = convert_uint16_to_float(outs)
@@ -227,11 +220,11 @@ class TestGaussianRandomAPI(unittest.TestCase):
             name="shape_tensor_int64", shape=[2], dtype="int64"
         )
 
-        out_1 = fluid.layers.gaussian_random(
+        out_1 = random.gaussian(
             shape=[2000, 500], dtype="float32", mean=0.0, std=1.0, seed=10
         )
 
-        out_2 = fluid.layers.gaussian_random(
+        out_2 = random.gaussian(
             shape=[2000, positive_2_int32],
             dtype="float32",
             mean=0.0,
@@ -239,7 +232,7 @@ class TestGaussianRandomAPI(unittest.TestCase):
             seed=10,
         )
 
-        out_3 = fluid.layers.gaussian_random(
+        out_3 = random.gaussian(
             shape=[2000, positive_2_int64],
             dtype="float32",
             mean=0.0,
@@ -247,7 +240,7 @@ class TestGaussianRandomAPI(unittest.TestCase):
             seed=10,
         )
 
-        out_4 = fluid.layers.gaussian_random(
+        out_4 = random.gaussian(
             shape=shape_tensor_int32,
             dtype="float32",
             mean=0.0,
@@ -255,7 +248,7 @@ class TestGaussianRandomAPI(unittest.TestCase):
             seed=10,
         )
 
-        out_5 = fluid.layers.gaussian_random(
+        out_5 = random.gaussian(
             shape=shape_tensor_int64,
             dtype="float32",
             mean=0.0,
@@ -263,7 +256,7 @@ class TestGaussianRandomAPI(unittest.TestCase):
             seed=10,
         )
 
-        out_6 = fluid.layers.gaussian_random(
+        out_6 = random.gaussian(
             shape=shape_tensor_int64,
             dtype=np.float32,
             mean=0.0,

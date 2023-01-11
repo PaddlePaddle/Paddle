@@ -13,16 +13,18 @@
 # limitations under the License.
 
 import os
+
 from dist_test_utils import remove_ps_flag, silentremove
 
 silentremove("test_handle_signal_in_serv_op.flag")
 silentremove("test_list_and_serv_run_empty_optimize_block.flag")
 
-import paddle
-import paddle.fluid as fluid
 import time
 import unittest
 from multiprocessing import Process
+
+import paddle
+import paddle.fluid as fluid
 
 paddle.enable_static()
 
@@ -30,11 +32,11 @@ paddle.enable_static()
 def run_pserver(use_cuda, sync_mode, ip, port, trainers, trainer_id):
     remove_ps_flag(os.getpid())
     x = fluid.layers.data(name='x', shape=[1], dtype='float32')
-    y_predict = fluid.layers.fc(input=x, size=1, act=None)
+    y_predict = paddle.static.nn.fc(x, size=1, activation=None)
     y = fluid.layers.data(name='y', shape=[1], dtype='float32')
 
     # loss function
-    cost = fluid.layers.square_error_cost(input=y_predict, label=y)
+    cost = paddle.nn.functional.square_error_cost(input=y_predict, label=y)
     avg_cost = paddle.mean(cost)
 
     # optimizer
@@ -67,11 +69,11 @@ def run_pserver_with_empty_block(
 ):
     remove_ps_flag(os.getpid())
     x = fluid.layers.data(name='x', shape=[1], dtype='float32')
-    y_predict = fluid.layers.fc(input=x, size=1, act=None, bias_attr=False)
+    y_predict = paddle.static.nn.fc(x, size=1, bias_attr=False)
     y = fluid.layers.data(name='y', shape=[1], dtype='float32')
 
     # loss function
-    cost = fluid.layers.square_error_cost(input=y_predict, label=y)
+    cost = paddle.nn.functional.square_error_cost(input=y_predict, label=y)
     avg_cost = paddle.mean(cost)
 
     # optimizer

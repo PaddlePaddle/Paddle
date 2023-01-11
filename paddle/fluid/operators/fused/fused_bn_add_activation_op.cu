@@ -20,17 +20,16 @@
 #include "paddle/fluid/framework/data_layout.h"
 #include "paddle/fluid/operators/activation_op.h"
 #include "paddle/fluid/operators/fused/fused_bn_add_activation_op.h"
-#include "paddle/fluid/operators/norm_utils.h"
 #include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
 #include "paddle/fluid/platform/float16.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/norm_utils.h"
 
 DECLARE_bool(cudnn_batchnorm_spatial_persistent);
 
 namespace paddle {
 namespace operators {
-using Tensor = phi::DenseTensor;
 template <typename T>
 using CudnnDataType = platform::CudnnDataType<T>;
 template <typename T>
@@ -86,7 +85,7 @@ class FusedBatchNormAddActKernel<phi::GPUContext, T>
 
     int N, C, H, W, D;
     const DataLayout data_layout = DataLayout::kNHWC;
-    ExtractNCWHD(in_dims, data_layout, &N, &C, &H, &W, &D);
+    phi::funcs::ExtractNCWHD(in_dims, data_layout, &N, &C, &H, &W, &D);
 
     // ------------------- cudnn descriptors ---------------------
     auto handle = dev_ctx.cudnn_handle();
@@ -120,7 +119,7 @@ class FusedBatchNormAddActKernel<phi::GPUContext, T>
     size_t reserve_space_size = 0;
     void *reserve_space_ptr = nullptr;
     void *workspace_ptr = nullptr;
-    Tensor workspace_tensor;
+    phi::DenseTensor workspace_tensor;
     // Create reserve space and workspace for batch norm.
     // Create tensor for each batchnorm op, it will be used in the
     // backward. Thus this tensor shouldn't be temp.
@@ -232,7 +231,7 @@ class FusedBatchNormAddActGradKernel<phi::GPUContext, T>
 
     int N, C, H, W, D;
     const DataLayout data_layout = DataLayout::kNHWC;
-    ExtractNCWHD(in_dims, data_layout, &N, &C, &H, &W, &D);
+    phi::funcs::ExtractNCWHD(in_dims, data_layout, &N, &C, &H, &W, &D);
 
     // init output
     auto *d_x = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
@@ -296,7 +295,7 @@ class FusedBatchNormAddActGradKernel<phi::GPUContext, T>
 
     size_t workspace_size = 0;
     void *workspace_ptr = nullptr;
-    Tensor workspace_tensor;
+    phi::DenseTensor workspace_tensor;
     auto reserve_space_size = reserve_space->memory_size();
     cudnnBatchNormOps_t bnOps_ = CUDNN_BATCHNORM_OPS_BN_ADD_ACTIVATION;
     platform::ScopedActivationDescriptor scope_act_desc;

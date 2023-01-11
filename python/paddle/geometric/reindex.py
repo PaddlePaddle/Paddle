@@ -13,10 +13,10 @@
 # limitations under the License.
 
 import paddle
-from paddle.fluid.layer_helper import LayerHelper
-from paddle.fluid.framework import _non_static_mode, Variable
-from paddle.fluid.data_feeder import check_variable_and_dtype
 from paddle import _legacy_C_ops
+from paddle.fluid.data_feeder import check_variable_and_dtype
+from paddle.fluid.framework import Variable, _non_static_mode
+from paddle.fluid.layer_helper import LayerHelper
 
 __all__ = []
 

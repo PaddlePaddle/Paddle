@@ -12,12 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.fluid.framework import dygraph_only
+import copy
+import re
+
 import paddle
 import paddle.distributed as dist
 from paddle.distributed import fleet
-import re
-import copy
+from paddle.fluid.framework import dygraph_only
 
 
 @dygraph_only

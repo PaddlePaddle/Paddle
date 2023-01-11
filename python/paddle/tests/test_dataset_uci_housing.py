@@ -13,9 +13,10 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
 
-from paddle.text.datasets import UCIHousing, WMT14
+from paddle.text.datasets import WMT14, UCIHousing
 
 
 class TestUCIHousingTrain(unittest.TestCase):

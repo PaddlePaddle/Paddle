@@ -26,7 +26,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
 template <typename T,
           int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
@@ -81,7 +80,7 @@ class CenterLossKernel : public framework::OpKernel<T> {
 
     auto loss_data = out_loss->mutable_data<T>(ctx.GetPlace());
 
-    Tensor centers_diffacc;  // used to accumulate all diff
+    phi::DenseTensor centers_diffacc;  // used to accumulate all diff
     auto centers_diffacc_data =
         centers_diffacc.mutable_data<T>(centers_dim, ctx.GetPlace());
     int numel = centers_diffacc.numel();

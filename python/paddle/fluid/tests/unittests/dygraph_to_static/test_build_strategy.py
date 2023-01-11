@@ -12,14 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
 import unittest
-import numpy as np
-from paddle.jit import ProgramTranslator
 
+import numpy as np
 from test_resnet import ResNetHelper
 
-program_translator = ProgramTranslator()
+import paddle
 
 
 class TestResnetWithPass(unittest.TestCase):
@@ -34,7 +32,7 @@ class TestResnetWithPass(unittest.TestCase):
         paddle.fluid.set_flags({"FLAGS_max_inplace_grad_add": 8})
 
     def train(self, to_static):
-        program_translator.enable(to_static)
+        paddle.jit.enable_to_static(to_static)
         return self.resnet_helper.train(to_static, self.build_strategy)
 
     def verify_predict(self):

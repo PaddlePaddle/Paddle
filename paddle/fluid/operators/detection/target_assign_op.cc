@@ -77,11 +77,10 @@ class TargetAssignOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
-        ctx.device_context());
+    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+                          ctx.GetPlace());
   }
 };
 
@@ -89,7 +88,8 @@ class TargetAssignOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("X",
-             "(LoDTensor), This input is a 3D LoDTensor with shape [M, P, K]. "
+             "(phi::DenseTensor), This input is a 3D phi::DenseTensor with "
+             "shape [M, P, K]. "
              "Some elements in X will be assigned to Out based on the "
              "MatchIndices and NegIndices.");
     AddInput("MatchIndices",
@@ -97,7 +97,8 @@ class TargetAssignOpMaker : public framework::OpProtoAndCheckerMaker {
              "with shape [N, P], If MatchIndices[i][j] is -1, the j-th entity "
              "of column is not matched to any entity of row in i-th instance.");
     AddInput("NegIndices",
-             "(LoDTensor, default LoDTensor<int>), The input negative example "
+             "(phi::DenseTensor, default phi::DenseTensor<int>), The input "
+             "negative example "
              "indices are an optional input with shape [Neg, 1], where Neg is "
              "the total number of negative example indices.")
         .AsDispensable();

@@ -478,7 +478,7 @@ void ShardIndexInferMeta(const MetaTensor& in,
                          MetaTensor* out,
                          MetaConfig config = MetaConfig());
 
-void SizeInferMeta(const MetaTensor& input, MetaTensor* out);
+void NumelInferMeta(const MetaTensor& input, MetaTensor* out);
 
 void SliceRawInferMeta(const MetaTensor& input,
                        const std::vector<int64_t>& axes,

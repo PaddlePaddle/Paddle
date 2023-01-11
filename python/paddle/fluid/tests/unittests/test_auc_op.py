@@ -13,11 +13,13 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
 from op_test import OpTest
-from paddle.fluid import metrics
-import paddle.fluid as fluid
+
 import paddle
+import paddle.fluid as fluid
+from paddle.fluid import metrics
 
 
 class TestAucOp(OpTest):
@@ -156,7 +158,7 @@ class TestAucOpError(unittest.TestCase):
                     name="input2", shape=[-1, 2], dtype="float32"
                 )
                 label2 = fluid.data(name="label2", shape=[-1], dtype="float32")
-                result2 = fluid.layers.auc(input=data2, label=label2)
+                result2 = paddle.static.auc(input=data2, label=label2)
 
             self.assertRaises(TypeError, test_type2)
 

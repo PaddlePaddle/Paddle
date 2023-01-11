@@ -12,12 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
-import numpy as np
-import scipy.sparse as sp
-import unittest
 import os
 import re
+import unittest
+
+import numpy as np
+import scipy.sparse as sp
+
+import paddle
 
 paddle.set_default_dtype('float64')
 

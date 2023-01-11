@@ -13,14 +13,14 @@
 # limitations under the License.
 
 import argparse
-import numpy as np
-import paddle
-import paddle.fluid as fluid
 import random
 import unittest
 
-from paddle.fluid.dygraph import ProgramTranslator
+import numpy as np
 from simnet_dygraph_model import BOW, HingeLoss
+
+import paddle
+import paddle.fluid as fluid
 
 SEED = 102
 random.seed(SEED)
@@ -103,8 +103,7 @@ def train(conf_dict, to_static):
     """
     train process
     """
-    program_translator = ProgramTranslator()
-    program_translator.enable(to_static)
+    paddle.jit.enable_to_static(to_static)
 
     # Get device
     if fluid.is_compiled_with_cuda():
@@ -175,6 +174,4 @@ class TestSimnet(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    # switch into new eager mode
-    with fluid.framework._test_eager_guard():
-        unittest.main()
+    unittest.main()

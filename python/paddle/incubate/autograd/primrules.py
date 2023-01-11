@@ -21,6 +21,7 @@ import paddle
 from . import primops
 from .primops import (
     add,
+    bernoulli,
     broadcast,
     concat,
     cos,
@@ -39,6 +40,7 @@ from .primops import (
     neg,
     reduce_sum,
     reshape,
+    rsqrt,
     scatter_add,
     select,
     set_value,
@@ -50,8 +52,6 @@ from .primops import (
     sub,
     tanh,
     transpose,
-    bernoulli,
-    rsqrt,
     uniform_random,
 )
 from .primreg import (

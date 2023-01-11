@@ -12,14 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import math
 import unittest
+
 import numpy as np
+from op_test import OpTest, skip_check_grad_ci
+
 import paddle
 import paddle.fluid as fluid
-import paddle.nn.functional as F
 import paddle.fluid.initializer as I
-import math
-from op_test import OpTest, skip_check_grad_ci
+import paddle.nn.functional as F
 
 paddle.enable_static()
 np.random.seed(100)
@@ -319,7 +321,7 @@ class TestHSigmoidOpWithSparseGrad(unittest.TestCase):
             path_code=path_code,
         )
 
-        avg_cost = fluid.layers.reduce_mean(cost)
+        avg_cost = paddle.mean(cost)
 
         return avg_cost, data_list
 
@@ -732,6 +734,11 @@ class TestHSigmoidLossAPI(unittest.TestCase):
         # test paddle.nn.functional.hsigmoid_loss
         x = paddle.to_tensor(np.reshape(x_arr, (10, 0)), dtype='float32')
         label = paddle.to_tensor([], dtype='int64')
+        weight = paddle.to_tensor([], dtype='float32')
+        self.assertRaises(ValueError, F.hsigmoid_loss, x, label, 2, weight)
+
+        x = paddle.to_tensor(np.reshape(x_arr, [1, 0, 0, 1]), dtype='float32')
+        label = paddle.to_tensor(np.reshape(x_arr, [1, 1, 0]), dtype='int64')
         weight = paddle.to_tensor([], dtype='float32')
         self.assertRaises(ValueError, F.hsigmoid_loss, x, label, 0, weight)
         paddle.enable_static()

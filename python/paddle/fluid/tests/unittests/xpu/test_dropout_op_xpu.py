@@ -16,19 +16,21 @@ import sys
 
 sys.path.append("..")
 import unittest
+
 import numpy as np
-from paddle import _legacy_C_ops
+from op_test_xpu import XPUOpTest
+
 import paddle
 import paddle.fluid as fluid
+from paddle import _legacy_C_ops
 from paddle.fluid import Program, program_guard
-from op_test_xpu import XPUOpTest
 
 paddle.enable_static()
 
 from xpu.get_test_cover_info import (
+    XPUOpTestWrapper,
     create_test_class,
     get_xpu_op_support_types,
-    XPUOpTestWrapper,
 )
 
 
@@ -132,7 +134,7 @@ class XPUTestDropoutOp(XPUOpTestWrapper):
                         [[1, 1, 1, 1]],
                         fluid.CPUPlace(),
                     )
-                    fluid.layers.dropout(x1, dropout_prob=0.5)
+                    paddle.nn.functional.dropout(x1, p=0.5)
 
                 self.assertRaises(TypeError, test_Variable)
 
@@ -142,7 +144,7 @@ class XPUTestDropoutOp(XPUOpTestWrapper):
                     x2 = fluid.layers.data(
                         name='x2', shape=[3, 4, 5, 6], dtype="int32"
                     )
-                    fluid.layers.dropout(x2, dropout_prob=0.5)
+                    paddle.nn.functional.dropout(x2, p=0.5)
 
                 self.assertRaises(TypeError, test_dtype)
 

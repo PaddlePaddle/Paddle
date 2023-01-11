@@ -120,11 +120,11 @@ class TestDistCTR2x2(FleetDistRunnerBase):
         )
         dnn_out = dnn_pool
         for i, dim in enumerate(dnn_layer_dims[1:]):
-            fc = fluid.layers.fc(
-                input=dnn_out,
+            fc = paddle.static.nn.fc(
+                x=dnn_out,
                 size=dim,
-                act="relu",
-                param_attr=fluid.ParamAttr(
+                activation="relu",
+                weight_attr=fluid.ParamAttr(
                     initializer=fluid.initializer.Constant(value=0.01)
                 ),
                 name='dnn-fc-%d' % i,
@@ -147,14 +147,18 @@ class TestDistCTR2x2(FleetDistRunnerBase):
 
         merge_layer = fluid.layers.concat(input=[dnn_out, lr_pool], axis=1)
 
-        predict = fluid.layers.fc(input=merge_layer, size=2, act='softmax')
-        acc = fluid.layers.accuracy(input=predict, label=label)
+        predict = paddle.static.nn.fc(
+            x=merge_layer, size=2, activation='softmax'
+        )
+        acc = paddle.static.accuracy(input=predict, label=label)
 
-        auc_var, batch_auc_var, auc_states = fluid.layers.auc(
+        auc_var, batch_auc_var, auc_states = paddle.static.auc(
             input=predict, label=label
         )
 
-        cost = fluid.layers.cross_entropy(input=predict, label=label)
+        cost = paddle.nn.functional.cross_entropy(
+            input=predict, label=label, reduction='none', use_softmax=False
+        )
         avg_cost = paddle.mean(x=cost)
 
         self.feeds = datas
@@ -391,6 +395,10 @@ class TestDistCTR2x2(FleetDistRunnerBase):
         if patch_dirname:
             fleet.save_persistables(exe, patch_dirname, None, 5)
             fleet.check_save_pre_patch_done()
+
+        # add for gpugrahp
+        fleet.save_cache_table(0, 0)
+        fleet.shrink()
 
 
 if __name__ == "__main__":

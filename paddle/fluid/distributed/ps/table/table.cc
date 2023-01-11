@@ -26,16 +26,15 @@
 #include "paddle/fluid/distributed/ps/table/sparse_accessor.h"
 #include "paddle/fluid/distributed/ps/table/ssd_sparse_table.h"
 #include "paddle/fluid/distributed/ps/table/tensor_accessor.h"
-#include "paddle/fluid/distributed/ps/table/tensor_table.h"
 
 namespace paddle {
 namespace distributed {
 REGISTER_PSCORE_CLASS(Table, GraphTable);
 REGISTER_PSCORE_CLASS(Table, MemoryDenseTable);
 REGISTER_PSCORE_CLASS(Table, BarrierTable);
-REGISTER_PSCORE_CLASS(Table, TensorTable);
-REGISTER_PSCORE_CLASS(Table, DenseTensorTable);
-REGISTER_PSCORE_CLASS(Table, GlobalStepTable);
+// REGISTER_PSCORE_CLASS(Table, TensorTable);
+// REGISTER_PSCORE_CLASS(Table, DenseTensorTable);
+// REGISTER_PSCORE_CLASS(Table, GlobalStepTable);
 REGISTER_PSCORE_CLASS(Table, MemorySparseTable);
 REGISTER_PSCORE_CLASS(Table, SSDSparseTable);
 REGISTER_PSCORE_CLASS(Table, MemorySparseGeoTable);

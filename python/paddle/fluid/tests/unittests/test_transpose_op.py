@@ -13,15 +13,17 @@
 # limitations under the License.
 
 import unittest
+
+import gradient_checker
 import numpy as np
-from paddle.fluid.tests.unittests.op_test import OpTest, convert_float_to_uint16
+from decorator_helper import prog_scope
+
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid import Program, program_guard
 import paddle.fluid.core as core
-import gradient_checker
-from decorator_helper import prog_scope
 import paddle.fluid.layers as layers
+from paddle.fluid import Program, program_guard
+from paddle.fluid.tests.unittests.op_test import OpTest, convert_float_to_uint16
 
 paddle.enable_static()
 
@@ -526,7 +528,6 @@ class TestTransposeDoubleGradCheck(unittest.TestCase):
         gradient_checker.double_grad_check(
             [data], out, x_init=[data_arr], place=place, eps=eps
         )
-        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         gradient_checker.double_grad_check_for_dygraph(
             self.transpose_wrapper, [data], out, x_init=[data_arr], place=place
         )
@@ -558,7 +559,6 @@ class TestTransposeTripleGradCheck(unittest.TestCase):
         gradient_checker.triple_grad_check(
             [data], out, x_init=[data_arr], place=place, eps=eps
         )
-        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         gradient_checker.triple_grad_check_for_dygraph(
             self.transpose_wrapper, [data], out, x_init=[data_arr], place=place
         )
@@ -575,11 +575,11 @@ class TestTransposeTripleGradCheck(unittest.TestCase):
 class TestTransposeAPI_ZeroDim(unittest.TestCase):
     def test_dygraph(self):
         paddle.disable_static()
-        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
 
         x = paddle.rand([])
         x.stop_gradient = False
         out = paddle.transpose(x, [])
+        out.retain_grads()
         out.backward()
 
         self.assertEqual(out.shape, [])

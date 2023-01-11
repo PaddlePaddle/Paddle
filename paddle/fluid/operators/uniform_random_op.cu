@@ -46,7 +46,8 @@ class GPUUniformRandomKernel : public framework::OpKernel<T> {
       if (!new_shape.empty()) tensor->Resize(phi::make_ddim(new_shape));
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
-          "Expected type of Output(out) in uniform_random_op must be Tensor, "
+          "Expected type of Output(out) in uniform_random_op must be "
+          "phi::DenseTensor, "
           "SelectedRows. But got "
           "unsupport type: %s.",
           framework::ToTypeName(out_var->Type())));

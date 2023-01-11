@@ -28,15 +28,10 @@ class WarpCTCOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    framework::LibraryType library_{framework::LibraryType::kPlain};
-    phi::DataLayout layout_ = phi::DataLayout::kAnyLayout;
-    return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "Logits"),
-        ctx.GetPlace(),
-        layout_,
-        library_);
+    return phi::KernelKey(
+        OperatorWithKernel::IndicateVarDataType(ctx, "Logits"), ctx.GetPlace());
   }
 };
 
@@ -44,8 +39,8 @@ class WarpCTCOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("Logits",
-             "(2-D LoDTensor<float>) or (3-D Tensor<float>), the "
-             "unscaled probabilities of variable-length sequences."
+             "(2-D phi::DenseTensor<float>) or (3-D phi::DenseTensor<float>), "
+             "the unscaled probabilities of variable-length sequences."
              "When is a 2-D Tensor with LoD information, "
              "it's shape is [Lp, num_classes + 1], "
              "where Lp is the sum of all input sequences' length "
@@ -56,7 +51,7 @@ class WarpCTCOpMaker : public framework::OpProtoAndCheckerMaker {
              "where max_logit_length is the length of the longest "
              "logit sequence.");
     AddInput("Label",
-             "(2-D LoDTensor<int>) or (2-D Tensor<int>), the "
+             "(2-D phi::DenseTensor<int>), the "
              "ground truth of variable-length sequence. "
              "When it is a 2-D Tensor with LoD information, "
              "it is of the shape [Lg, 1], where Lg is th sum of "
@@ -146,11 +141,11 @@ class WarpCTCGradOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
-                                       ctx, framework::GradVarName("Loss")),
-                                   ctx.GetPlace());
+    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(
+                              ctx, framework::GradVarName("Loss")),
+                          ctx.GetPlace());
   }
 };
 

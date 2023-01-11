@@ -13,8 +13,9 @@
 # limitations under the License.
 
 import json
-import yaml
 import os
+
+import yaml
 from get_compat_kernel_signature import get_compat_kernels_info
 
 # TODO @DannyIsFunny: more attr types need to be supported.

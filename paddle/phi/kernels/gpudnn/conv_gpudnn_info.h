@@ -18,7 +18,7 @@ limitations under the License. */
 #include <unordered_map>
 #include <vector>
 
-#include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
+#include "paddle/phi/backends/gpu/gpu_dnn.h"
 
 DECLARE_int64(conv_workspace_size_limit);
 DECLARE_bool(cudnn_exhaustive_search);

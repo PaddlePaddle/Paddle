@@ -13,8 +13,9 @@
 # limitations under the License.
 
 import unittest
-import paddle.fluid as fluid
+
 import paddle
+import paddle.fluid as fluid
 
 
 class TestNameScope(unittest.TestCase):

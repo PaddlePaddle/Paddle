@@ -20,7 +20,6 @@
 namespace paddle {
 namespace operators {
 namespace math {
-using Tensor = phi::DenseTensor;
 using Node = paddle::operators::math::TreeNode;
 template <typename T>
 __global__ void tree2col(const T* eta,
@@ -65,7 +64,7 @@ class Tree2ColFunctor<phi::GPUContext, T> {
     auto feature_dims = node_features.dims();
     phi::funcs::SetConstant<phi::GPUContext, T> constant;
 
-    Tensor EdgeSet_cpu;
+    phi::DenseTensor EdgeSet_cpu;
     framework::TensorCopy(EdgeSet, cpu_place, &EdgeSet_cpu);
     int64_t feature_size = feature_dims[1];
     size_t patch_elem_size = 3 * static_cast<size_t>(feature_size);
@@ -83,7 +82,7 @@ class Tree2ColFunctor<phi::GPUContext, T> {
     }
 
     size_t patch_size = processing_list.size();
-    Tensor node_cpu, node_gpu, eta_cpu, eta_gpu, index_cpu, index_gpu;
+    phi::DenseTensor node_cpu, node_gpu, eta_cpu, eta_gpu, index_cpu, index_gpu;
     int* node = node_cpu.mutable_data<int>({static_cast<int64_t>(total_size)},
                                            cpu_place);
     T* eta = eta_cpu.mutable_data<T>({static_cast<int64_t>(total_size * 3)},
@@ -142,7 +141,7 @@ class Col2TreeFunctor<phi::GPUContext, T> {
     auto output_dims = patch_grad.dims();
     phi::funcs::SetConstant<phi::GPUContext, T> constant;
 
-    Tensor EdgeSet_cpu;
+    phi::DenseTensor EdgeSet_cpu;
     framework::TensorCopy(EdgeSet, cpu_place, &EdgeSet_cpu);
     int64_t output_size = output_dims[1];
     size_t patch_elem_size = 3 * static_cast<size_t>(output_size);
@@ -168,7 +167,7 @@ class Col2TreeFunctor<phi::GPUContext, T> {
       total_size += tmp.size();
     }
 
-    Tensor node_cpu, node_gpu, eta_cpu, eta_gpu, index_cpu, index_gpu;
+    phi::DenseTensor node_cpu, node_gpu, eta_cpu, eta_gpu, index_cpu, index_gpu;
     int* node = node_cpu.mutable_data<int>({static_cast<int64_t>(total_size)},
                                            cpu_place);
     T* eta = eta_cpu.mutable_data<T>({static_cast<int64_t>(total_size * 3)},

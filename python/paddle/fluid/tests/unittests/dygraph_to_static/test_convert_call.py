@@ -12,21 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import logging
 import unittest
 
-import logging
 import numpy as np
+from test_program_translator import get_source_code
 
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.dygraph import ProgramTranslator
-from paddle.fluid.dygraph.dygraph_to_static.convert_call_func import (
-    CONVERSION_OPTIONS,
-)
-from test_program_translator import get_source_code
 import paddle.jit.dy2static as _jst
-
-program_translator = ProgramTranslator()
+from paddle.jit.dy2static.convert_call_func import CONVERSION_OPTIONS
 
 SEED = 2020
 np.random.seed(SEED)
@@ -70,7 +65,7 @@ class A:
     def add(a, b):
         """
         dygraph mode, return a numpy object.
-        static mode, return a variable object.
+        static graph mode, return a variable object.
         """
         return paddle.to_tensor(a.numpy() + b.numpy())
 
@@ -95,13 +90,13 @@ class TestRecursiveCall1(unittest.TestCase):
         self.dyfunc = nested_func
 
     def get_dygraph_output(self):
-        program_translator.enable(False)
+        paddle.jit.enable_to_static(False)
         with fluid.dygraph.guard():
             res = self.dyfunc(self.input).numpy()
             return res
 
     def get_static_output(self):
-        program_translator.enable(True)
+        paddle.jit.enable_to_static(True)
         with fluid.dygraph.guard():
             res = self.dyfunc(self.input).numpy()
             return res
@@ -155,23 +150,23 @@ class MyLayer(fluid.dygraph.Layer):
         super().__init__()
 
         self.conv = MyConvLayer()
-        self.fc = fluid.dygraph.Linear(
-            input_dim=5,
-            output_dim=1,
-            act='relu',
-            param_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(value=0.99)
+        self.fc = paddle.nn.Linear(
+            in_features=5,
+            out_features=1,
+            weight_attr=paddle.ParamAttr(
+                initializer=paddle.nn.initializer.Constant(value=0.99)
             ),
-            bias_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(value=0.5)
+            bias_attr=paddle.ParamAttr(
+                initializer=paddle.nn.initializer.Constant(value=0.5)
             ),
         )
+        self.act = paddle.nn.ReLU()
 
     @paddle.jit.to_static
     def forward(self, inputs):
         h = self.conv(inputs)
         out = self.fc(h)
-        return out
+        return self.act(out)
 
 
 class TestRecursiveCall2(unittest.TestCase):
@@ -195,11 +190,11 @@ class TestRecursiveCall2(unittest.TestCase):
             return res.numpy()
 
     def get_dygraph_output(self):
-        program_translator.enable(False)
+        paddle.jit.enable_to_static(False)
         return self._run()
 
     def get_static_output(self):
-        program_translator.enable(True)
+        paddle.jit.enable_to_static(True)
         return self._run()
 
     def test_transformed_static_result(self):

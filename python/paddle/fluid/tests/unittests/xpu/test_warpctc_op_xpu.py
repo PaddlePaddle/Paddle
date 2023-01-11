@@ -16,18 +16,20 @@ import sys
 
 sys.path.append("..")
 import unittest
+
 import numpy as np
-from test_softmax_op import stable_softmax
-import paddle.fluid as fluid
-from paddle.fluid import Program, program_guard
-import paddle
-import paddle.nn.functional as F
 from op_test_xpu import XPUOpTest
+from test_softmax_op import stable_softmax
 from xpu.get_test_cover_info import (
+    XPUOpTestWrapper,
     create_test_class,
     get_xpu_op_support_types,
-    XPUOpTestWrapper,
 )
+
+import paddle
+import paddle.fluid as fluid
+import paddle.nn.functional as F
+from paddle.fluid import Program, program_guard
 
 paddle.enable_static()
 
@@ -237,7 +239,6 @@ class XPUTestWarpCTCOp(XPUOpTestWrapper):
             logits = np.random.uniform(
                 0.1, 1.0, [sum(self.logits_length), self.num_classes]
             ).astype(self.dtype)
-            print("logits.shape = ", logits.shape)
             softmax = np.apply_along_axis(stable_softmax, 1, logits)
             # labels should not be blank
             labels = np.random.randint(
@@ -414,7 +415,11 @@ class XPUTestWarpCTCOp(XPUOpTestWrapper):
                 labels = paddle.to_tensor(labels)
 
                 paddle.nn.functional.ctc_loss(
-                    log_probs=softmax, labels=labels, reduction='none'
+                    log_probs=softmax,
+                    labels=labels,
+                    input_lengths=None,
+                    label_lengths=None,
+                    reduction='none',
                 )
 
             paddle.disable_static()
