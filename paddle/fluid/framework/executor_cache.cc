@@ -208,7 +208,7 @@ std::vector<std::set<std::string>> ParseSafeEagerDeletionSkipVarsSet(
   // Filter no_need_buffer vars if it is output from any ops.
   for (const std::string &var_name : buffer_ins_tmp) {
     if (op_outputs.find(var_name) == op_outputs.end()) {
-      VLOG(1) << "remove no_need_buffer var: " << var_name;
+      VLOG(1) << "found no_need_buffer var: " << var_name;
       results[1].insert(var_name);
     }
   }
