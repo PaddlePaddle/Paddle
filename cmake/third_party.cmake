@@ -424,6 +424,18 @@ if(WITH_PSCORE)
   list(APPEND third_party_deps extern_rocksdb)
 endif()
 
+if(WITH_DISTRIBUTE
+   AND NOT WITH_PSLIB
+   AND NOT WITH_PSCORE)
+  include(external/snappy)
+  list(APPEND third_party_deps extern_snappy)
+
+  include(external/leveldb)
+  list(APPEND third_party_deps extern_leveldb)
+  include(external/brpc)
+  list(APPEND third_party_deps extern_brpc)
+endif()
+
 if(WITH_XBYAK)
   include(external/xbyak) # download, build, install xbyak
   list(APPEND third_party_deps extern_xbyak)

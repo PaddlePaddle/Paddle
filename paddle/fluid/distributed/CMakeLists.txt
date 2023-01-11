@@ -29,7 +29,6 @@ if(WITH_PYTHON)
 endif()
 
 if(NOT WITH_PSCORE)
-  add_subdirectory(fleet_executor)
   return()
 endif()
 
@@ -47,4 +46,3 @@ add_subdirectory(common)
 add_subdirectory(ps)
 add_subdirectory(test)
 add_subdirectory(index_dataset)
-add_subdirectory(fleet_executor)
