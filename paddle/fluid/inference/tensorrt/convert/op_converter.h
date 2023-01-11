@@ -366,7 +366,7 @@ class OpConverter {
 
     for (auto& output : outputs) {
       auto* var = block_desc->FindVar(output);
-      if (var != nullptr) {
+      if (var == nullptr) {
         LOG(INFO) << "variable not in this block, name: " << output.c_str();
         continue;
       }
