@@ -34,6 +34,25 @@ def _sharding_pass_applied(pass_ctx):
     return False
 
 
+def _get_check_finite_op_depend_var(block, idx):
+    def is_backward_calc_op(op):
+        if op.type == "sum":
+            return True
+        if op.type.endswith("_grad"):
+            return True
+        return False
+
+    while idx > 0:
+        op = block.ops[idx]
+        if is_backward_calc_op(op):
+            assert (
+                len(op.output_arg_names) > 0
+            ), "unexpected backward calculation op, {}".format(str(op))
+            return op.output_arg_names[0]
+
+    raise RuntimeError("could not found check finite op prior depend op")
+
+
 # NOTE we add the "auto_parallel" prefix to the pass in order to
 # indicate that this pass should obey some constrains by auto_parallel
 # for example all ops and vars should has dist attr before and after pass
@@ -113,8 +132,9 @@ class AutoParalSupplementDepPass(PassBase):
         for idx, op in enumerate(main_block.ops):
             if op.type == "check_finite_and_unscale":
                 if first_check_op:
-                    last_backward_op = main_block.ops[idx - 1]
-                    prior_varname = last_backward_op.output_arg_names[0]
+                    prior_varname = _get_check_finite_op_depend_var(
+                        main_block, idx - 1
+                    )
                     first_check_op = False
                 deps_map[idx] = (
                     prior_varname,
