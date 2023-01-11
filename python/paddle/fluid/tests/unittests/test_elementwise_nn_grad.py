@@ -359,7 +359,6 @@ class TestElementwiseMulTripleGradCheck(unittest.TestCase):
         gradient_checker.triple_grad_check(
             [x, y], out, x_init=[x_arr, y_arr], place=place, eps=eps
         )
-        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         gradient_checker.triple_grad_check_for_dygraph(
             self.multiply_wrapper,
             [x, y],
@@ -367,7 +366,6 @@ class TestElementwiseMulTripleGradCheck(unittest.TestCase):
             x_init=[x_arr, y_arr],
             place=place,
         )
-        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
     def test_grad(self):
         paddle.enable_static()
