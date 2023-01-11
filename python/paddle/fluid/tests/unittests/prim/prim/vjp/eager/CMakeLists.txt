@@ -9,4 +9,4 @@ foreach(TEST_OP ${TEST_OPS})
   py_test_modules(${TEST_OP} MODULES ${TEST_OP} ENVS ${GC_ENVS})
 endforeach()
 
-set_tests_properties(test_eager_tanh_grad_comp PROPERTIES TIMEOUT 60)
+set_tests_properties(test_comp_eager_tanh_grad PROPERTIES TIMEOUT 60)
