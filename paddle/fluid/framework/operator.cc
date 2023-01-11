@@ -1573,6 +1573,8 @@ bool HasSameTensorType(phi::TensorBase* phi_tensor, Variable* var) {
   return false;
 }
 
+// TODO(YuanRisheng): We need collect all `need_prepare_phi_data_`
+// into this function.
 void OperatorWithKernel::CheckWhetherPreparePhiData(
     const VariableNameMap& innames,
     const VariableNameMap& outnames,
