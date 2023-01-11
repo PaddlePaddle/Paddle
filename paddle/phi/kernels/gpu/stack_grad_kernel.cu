@@ -88,20 +88,20 @@ void LaunchUnStackKernel(const Context& ctx,
                          const IndexT split_dim,
                          const IndexT suf_dim,
                          const IndexT num_splits,
-                         const DenseTensor& out,
+                         const DenseTensor& out_grad,
                          std::vector<DenseTensor*>* x_grad) {
   // each x_grad should have same shape
-  auto out_ptr = out.data<T>();
+  auto dout_ptr = out_grad.data<T>();
   funcs::PointerArraySetter<Context, T, Size> setter(ctx, x_grad);
 
   if (suf_dim == 1) {
-    // For the case axis == (out.dims().size() - 1)
+    // For the case axis == (out_grad.dims().size() - 1)
     constexpr int kThreads = 512;
     constexpr int kWarpSize = 32;
     constexpr int kMaxOut = 16;
 
     int tid_x = 0, tid_y = 0, bid_x = 0, bid_y = 1;
-    if (out_num < kMaxOut) {
+    if (split_dim < kMaxOut) {
       tid_y = split_dim;
       tid_x =
           std::min(backends::gpu::RoundToNextHighPowOfTwo(pre_dim, kWarpSize),
@@ -118,7 +118,7 @@ void LaunchUnStackKernel(const Context& ctx,
 
     UnStackCudaKernelForLastDim<T, IndexT, decltype(setter.array)>
         <<<grids, blocks, 0, ctx.stream()>>>(
-            out_ptr, split_dim, pre_dim, tile_x_num, setter.array);
+            dout_ptr, split_dim, pre_dim, tile_x_num, setter.array);
   } else {
     auto config = phi::backends::gpu::GetGpuLaunchConfig1D(
         ctx, pre_dim * split_dim * suf_dim);
@@ -128,18 +128,18 @@ void LaunchUnStackKernel(const Context& ctx,
            config.thread_per_block.x,
            0,
            ctx.stream()>>>(
-            out_ptr, pre_dim, split_dim, suf_dim, num_splits, setter.array);
+            dout_ptr, pre_dim, split_dim, suf_dim, num_splits, setter.array);
   }
 }
 
 template <typename T, typename Context>
 void StackGradKernel(const Context& ctx,
-                     const DenseTensor& out,
+                     const DenseTensor& out_grad,
                      int axis,
                      std::vector<DenseTensor*> x_grad) {
-  if (axis < 0) axis += out.dims().size();
+  if (axis < 0) axis += out_grad.dims().size();
 
-  int64_t split_dim = out.dims()[axis];
+  int64_t split_dim = out_grad.dims()[axis];
   PADDLE_ENFORCE_EQ(
       split_dim,
       x_grad.size(),
@@ -149,24 +149,34 @@ void StackGradKernel(const Context& ctx,
           split_dim,
           x_grad.size()));
 
-  auto out_dims = out.dims();
-  int64_t out_pre = 1;
+  auto dout_dims = out_grad.dims();
+  int64_t dout_pre = 1;
   for (int i = 0; i < axis; ++i) {
-    out_pre *= out_dims[i];
+    dout_pre *= dout_dims[i];
   }
-  int64_t out_suf = out.numel() / (split_dim * out_pre);
+  int64_t dout_suf = out_grad.numel() / (split_dim * dout_pre);
 
-  if (out.numel() < std::numeric_limits<int32_t>::max()) {
+  if (out_grad.numel() < std::numeric_limits<int32_t>::max()) {
     switch (funcs::CalcArraySize(split_dim)) {
       SEGMENTED_ARRAY_KERNEL_HELPER(
-          LaunchUnStackKernel<Context, T, int32_t, kArraySize>(
-              ctx, out_pre, split_dim, out_suf, split_dim, out, &x_grad));
+          LaunchUnStackKernel<Context, T, int32_t, kArraySize>(ctx,
+                                                               dout_pre,
+                                                               split_dim,
+                                                               dout_suf,
+                                                               split_dim,
+                                                               out_grad,
+                                                               &x_grad));
     }
   } else {
     switch (funcs::CalcArraySize(split_dim)) {
       SEGMENTED_ARRAY_KERNEL_HELPER(
-          LaunchUnStackKernel<Context, T, int64_t, kArraySize>(
-              ctx, out_pre, split_dim, out_suf, split_dim, out, &x_grad));
+          LaunchUnStackKernel<Context, T, int64_t, kArraySize>(ctx,
+                                                               dout_pre,
+                                                               split_dim,
+                                                               dout_suf,
+                                                               split_dim,
+                                                               out_grad,
+                                                               &x_grad));
     }
   }
 }
