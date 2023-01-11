@@ -71,6 +71,7 @@ set(COMMON_KERNEL_DEPS
     matrix_solve
     phi_dynload_warpctc
     phi_dynload_warprnnt
+    phi_dynload_flashattn
     sequence_padding
     sequence_scale
     fft

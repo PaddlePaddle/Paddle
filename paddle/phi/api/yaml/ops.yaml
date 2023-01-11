@@ -436,6 +436,16 @@
   inplace : (x -> out)
   backward : fill_diagonal_tensor_grad
 
+- op : flash_attn
+  args : (Tensor q, Tensor k, Tensor v, float dropout = 0.0, bool causal = false)
+  output : Tensor(out), Tensor(softmax_lse), Tensor(softmax)
+  infer_meta :
+    func : FlashAttnInferMeta
+    param : [q, k, v]
+  kernel :
+    func : flash_attn
+  backward : flash_attn_grad
+
 - op : flip
   args : (Tensor x, int[] axis)
   output : Tensor (out)

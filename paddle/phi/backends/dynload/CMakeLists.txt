@@ -77,6 +77,10 @@ else()
     SRCS ${CUDA_SRCS}
     DEPS phi_dynamic_loader)
   cc_library(
+    phi_dynload_flashattn
+    SRCS flashattn.cc
+    DEPS phi_dynamic_loader flashattn)
+  cc_library(
     phi_dynload_warpctc
     SRCS warpctc.cc
     DEPS phi_dynamic_loader warpctc)

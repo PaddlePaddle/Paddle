@@ -256,6 +256,7 @@ include(external/xxhash) # download, build, install xxhash
 include(external/warpctc) # download, build, install warpctc
 include(external/warprnnt) # download, build, install warprnnt
 include(external/utf8proc) # download, build, install utf8proc
+include(external/flashattn) # download, build, install utf8proc
 
 list(APPEND third_party_deps extern_eigen3 extern_gflags extern_glog
      extern_xxhash)
@@ -266,6 +267,7 @@ list(
   extern_dlpack
   extern_warpctc
   extern_warprnnt
+  extern_flashattn
   extern_threadpool
   extern_utf8proc)
 include(external/lapack) # download, build, install lapack
@@ -279,6 +281,7 @@ list(
   extern_dlpack
   extern_warpctc
   extern_warprnnt
+  extern_flashattn
   extern_threadpool
   extern_lapack)
 

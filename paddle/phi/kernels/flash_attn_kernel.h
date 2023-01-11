@@ -15,21 +15,19 @@
 #pragma once
 
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/device_context.h"
 
 namespace phi {
 
 template <typename T, typename Context>
-void ArangeKernel(const Context& dev_ctx,
-                  const DenseTensor& start,
-                  const DenseTensor& end,
-                  const DenseTensor& step,
-                  DenseTensor* out);
-
-template <typename T, typename Context>
-void ArangeNullaryKernel(const Context& dev_ctx,
-                         const T start,
-                         const T end,
-                         const T step,
-                         DenseTensor* out);
+void FlashAttnKernel(const Context& ctx,
+                     const DenseTensor& q,
+                     const DenseTensor& k,
+                     const DenseTensor& v,
+                     float dropout,
+                     bool causal,
+                     DenseTensor* out,
+                     DenseTensor* softmax_lse,
+                     DenseTensor* softmax);
 
 }  // namespace phi
