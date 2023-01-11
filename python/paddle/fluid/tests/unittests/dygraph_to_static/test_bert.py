@@ -25,10 +25,8 @@ from predictor_utils import PredictorTools
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid import core
-from paddle.jit import ProgramTranslator
 from paddle.jit.translated_layer import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 
-program_translator = ProgramTranslator()
 place = (
     fluid.CUDAPlace(0) if fluid.is_compiled_with_cuda() else fluid.CPUPlace()
 )
@@ -128,11 +126,11 @@ class TestBert(unittest.TestCase):
             return loss, ppl
 
     def train_dygraph(self, bert_config, data_reader):
-        program_translator.enable(False)
+        paddle.jit.enable_to_static(False)
         return self.train(bert_config, data_reader, False)
 
     def train_static(self, bert_config, data_reader):
-        program_translator.enable(True)
+        paddle.jit.enable_to_static(True)
         return self.train(bert_config, data_reader, True)
 
     def predict_static(self, data):
@@ -158,7 +156,7 @@ class TestBert(unittest.TestCase):
         return pred_res
 
     def predict_dygraph(self, bert_config, data):
-        program_translator.enable(False)
+        paddle.jit.enable_to_static(False)
         with fluid.dygraph.guard(place):
             bert = PretrainModelLayer(
                 config=bert_config, weight_sharing=False, use_fp16=False
