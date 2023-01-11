@@ -1929,7 +1929,7 @@ def split(x, num_or_sections, axis=0, name=None):
                         num_or_sections[index] = num_or_sections[index].numpy()[
                             0
                         ]
-        else:
+        elif not isinstance(num_or_sections, int):
             raise TypeError(
                 "The type of 'num_or_sections' in split must be int, list or tuple in imperative mode, but "
                 "received %s." % (type(num_or_sections))
