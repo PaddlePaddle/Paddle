@@ -575,7 +575,6 @@ void SyncBatchNormGradFunctor(
     }
   }
 
-  std::cout << "call backward.." << layout << " " << x_dims.size() << std::endl;
   if (layout == DataLayout::kNCHW) {
     KeBackwardLocalStats<T, threads, DataLayout::kNCHW>
         <<<grid, threads, 0, stream>>>(
