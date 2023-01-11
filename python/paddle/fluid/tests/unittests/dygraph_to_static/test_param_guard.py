@@ -17,7 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle.jit import ProgramTranslator, to_static
+from paddle.jit import to_static
 
 
 class NetWithParameterList(paddle.nn.Layer):
@@ -53,12 +53,11 @@ class TestParameterList(unittest.TestCase):
     def setUp(self):
         self.seed = 2021
         self.iter_num = 5
-        self.prog_trans = ProgramTranslator()
 
     def train(self, is_iter, to_static):
         paddle.seed(self.seed)
         np.random.seed(self.seed)
-        self.prog_trans.enable(to_static)
+        paddle.jit.enable_to_static(to_static)
         if is_iter:
             net = NetWithParameterList(10, 3)
         else:
@@ -110,7 +109,6 @@ class TestRawParameterList(unittest.TestCase):
     def setUp(self):
         self.seed = 2021
         self.iter_num = 5
-        self.prog_trans = ProgramTranslator()
 
     def init_net(self):
         self.net = NetWithRawParamList(10, 3)
@@ -118,7 +116,7 @@ class TestRawParameterList(unittest.TestCase):
     def train(self, to_static):
         paddle.seed(self.seed)
         np.random.seed(self.seed)
-        self.prog_trans.enable(to_static)
+        paddle.jit.enable_to_static(to_static)
         self.init_net()
 
         sgd = paddle.optimizer.SGD(0.1, parameters=self.net.parameters())
