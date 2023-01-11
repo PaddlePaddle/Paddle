@@ -66,4 +66,28 @@ extra {
     name: "fused_transpose_Out"
     type: INTS
   }
+  attrs {
+    name: "mkldnn_data_type"
+    type: STRING
+  }
+  attrs {
+    name: "Scale_x"
+    type: FLOAT
+  }
+  attrs {
+    name: "Scale_y"
+    type: FLOAT
+  }
+  attrs {
+    name: "Scale_in_eltwise"
+    type: FLOAT
+  }
+  attrs {
+    name: "Scale_out"
+    type: FLOAT
+  }
+  attrs {
+    name: "force_fp32_output"
+    type: BOOLEAN
+  }
 }

@@ -43,7 +43,12 @@ class FusedMatmulOneDNNHandler
                            const std::string &fuse_activation,
                            const float fuse_alpha,
                            const float fuse_beta,
-                           const float fused_output_scale)
+                           const float fused_output_scale,
+                           const float scale_x,
+                           const float scale_y,
+                           const float scale_in_eltwise,
+                           const float scale_out,
+                           const bool force_fp32_output)
       : funcs::OneDNNHandlerNoCachingT<XT, dnnl::matmul>(dev_ctx.GetEngine(),
                                                          dev_ctx.GetPlace()) {
     // M X K * K X N
@@ -121,26 +126,24 @@ class FusedMatmulOneDNNHandler
                                                 fuse_activation,
                                                 fuse_alpha,
                                                 fuse_beta,
-                                                fused_output_scale);
+                                                fused_output_scale,
+                                                scale_x,
+                                                scale_y,
+                                                scale_in_eltwise,
+                                                scale_out,
+                                                force_fp32_output);
 
     this->AcquireForwardPrimitiveDescriptor(matmul_attrs, x_md, y_md, out_md);
   }
 
-  float ComputeOutputScale(const OneDNNContext &dev_ctx, float matmul_alpha) {
-    if (dev_ctx.HasDnnAttr("Scale_x") && dev_ctx.HasDnnAttr("Scale_y") &&
-        dev_ctx.HasDnnAttr("Scale_out")) {
-      float scale_x = PADDLE_GET_CONST(float, dev_ctx.GetDnnAttr("Scale_x"));
-      float scale_y = PADDLE_GET_CONST(float, dev_ctx.GetDnnAttr("Scale_y"));
-      bool force_fp32_out =
-          dev_ctx.HasDnnAttr("force_fp32_output")
-              ? PADDLE_GET_CONST(bool, dev_ctx.GetDnnAttr("force_fp32_output"))
-              : false;
-      float scale_out =
-          force_fp32_out
-              ? 1.f
-              : PADDLE_GET_CONST(float, dev_ctx.GetDnnAttr("Scale_out"));
-      matmul_alpha *= scale_out / (scale_x * scale_y);
-    }
+  float ComputeOutputScale(float matmul_alpha,
+                           const float scale_x,
+                           const float scale_y,
+                           const float scale_in_eltwise,
+                           const float scale_out,
+                           const bool force_fp32_output) {
+    float f_scale_out = force_fp32_output ? 1.0f : scale_out;
+    matmul_alpha *= f_scale_out / (scale_x * scale_y);
     return matmul_alpha;
   }
 
@@ -150,13 +153,23 @@ class FusedMatmulOneDNNHandler
                                          const std::string &fuse_activation,
                                          const float fuse_alpha,
                                          const float fuse_beta,
-                                         const float fused_output_scale) {
+                                         const float fused_output_scale,
+                                         const float scale_x,
+                                         const float scale_y,
+                                         const float scale_in_eltwise,
+                                         const float scale_out,
+                                         const bool force_fp32_output) {
     dnnl::primitive_attr matmul_attrs;
     dnnl::post_ops post_operations;
 
-    float scale_out = ComputeOutputScale(dev_ctx, matmul_alpha);
-    if (scale_out != 1.0f) {
-      matmul_attrs.set_output_scales(0, {scale_out});
+    float computed_scale_out = ComputeOutputScale(matmul_alpha,
+                                                  scale_x,
+                                                  scale_y,
+                                                  scale_in_eltwise,
+                                                  scale_out,
+                                                  force_fp32_output);
+    if (computed_scale_out != 1.0f) {
+      matmul_attrs.set_output_scales(0, {computed_scale_out});
     }
 
     if (residual_data) {
@@ -166,9 +179,7 @@ class FusedMatmulOneDNNHandler
                                            dnnl::memory::format_tag::any);
       post_operations.append_binary(dnnl::algorithm::binary_add,
                                     residual_data_md);
-      if (dev_ctx.HasDnnAttr("Scale_in_eltwise")) {
-        float scale_in_eltwise =
-            PADDLE_GET_CONST(float, dev_ctx.GetDnnAttr("Scale_in_eltwise"));
+      if (scale_in_eltwise != 0.0f) {
         float sum_scale = scale_out / scale_in_eltwise;
         post_operations.append_sum(sum_scale);
       }
@@ -316,6 +327,11 @@ void ExecuteFusedMatmul(const OneDNNContext &dev_ctx,
                         const float fuse_alpha,
                         const float fuse_beta,
                         const float fused_output_scale,
+                        const float scale_x,
+                        const float scale_y,
+                        const float scale_in_eltwise,
+                        const float scale_out,
+                        const bool force_fp32_output,
                         DenseTensor *out) {
   FusedMatmulOneDNNHandler<T, T, T_out> handler(dev_ctx,
                                                 residual_data,
@@ -330,7 +346,12 @@ void ExecuteFusedMatmul(const OneDNNContext &dev_ctx,
                                                 fuse_activation,
                                                 fuse_alpha,
                                                 fuse_beta,
-                                                fused_output_scale);
+                                                fused_output_scale,
+                                                scale_x,
+                                                scale_y,
+                                                scale_in_eltwise,
+                                                scale_out,
+                                                force_fp32_output);
 
   const auto src_memory_p = handler.AcquireSrcMemory(&x);
   const auto weights_memory_p = handler.AcquireWeightsMemory(&y);
@@ -440,6 +461,12 @@ void FusedMatmulKernel(const Context &dev_ctx,
                        const std::vector<int> &fused_transpose_Y,
                        const std::vector<int> &fused_reshape_Out,
                        const std::vector<int> &fused_transpose_Out,
+                       const std::string &mkldnn_data_type,
+                       const float scale_x,
+                       const float scale_y,
+                       const float scale_in_eltwise,
+                       const float scale_out,
+                       const bool force_fp32_output,
                        DenseTensor *out) {
   if (dev_ctx.HasDnnAttr("head_number")) {
     const auto head_number =
@@ -455,10 +482,6 @@ void FusedMatmulKernel(const Context &dev_ctx,
 
   constexpr bool is_int8 = funcs::is_int8<T>();
   constexpr bool is_bfloat16 = funcs::is_bfloat16<T>();
-  const bool force_fp32_output =
-      dev_ctx.HasDnnAttr("force_fp32_output")
-          ? PADDLE_GET_CONST(bool, dev_ctx.GetDnnAttr("force_fp32_output"))
-          : false;
 
   bool fuse_relu = false;
   if (fuse_activation == "relu" || fuse_activation == "relu6") {
@@ -502,6 +525,11 @@ void FusedMatmulKernel(const Context &dev_ctx,
                                  fuse_alpha,
                                  fuse_beta,
                                  fused_output_scale,
+                                 scale_x,
+                                 scale_y,
+                                 scale_in_eltwise,
+                                 scale_out,
+                                 force_fp32_output,
                                  out);
   } else if (is_bfloat16) {
     ExecuteFusedMatmul<T, phi::dtype::bfloat16>(dev_ctx,
@@ -521,6 +549,11 @@ void FusedMatmulKernel(const Context &dev_ctx,
                                                 fuse_alpha,
                                                 fuse_beta,
                                                 fused_output_scale,
+                                                scale_x,
+                                                scale_y,
+                                                scale_in_eltwise,
+                                                scale_out,
+                                                force_fp32_output,
                                                 out);
   } else if (fuse_relu) {
     ExecuteFusedMatmul<T, uint8_t>(dev_ctx,
@@ -540,6 +573,11 @@ void FusedMatmulKernel(const Context &dev_ctx,
                                    fuse_alpha,
                                    fuse_beta,
                                    fused_output_scale,
+                                   scale_x,
+                                   scale_y,
+                                   scale_in_eltwise,
+                                   scale_out,
+                                   force_fp32_output,
                                    out);
   } else {
     ExecuteFusedMatmul<T, int8_t>(dev_ctx,
@@ -559,6 +597,11 @@ void FusedMatmulKernel(const Context &dev_ctx,
                                   fuse_alpha,
                                   fuse_beta,
                                   fused_output_scale,
+                                  scale_x,
+                                  scale_y,
+                                  scale_in_eltwise,
+                                  scale_out,
+                                  force_fp32_output,
                                   out);
   }
 }

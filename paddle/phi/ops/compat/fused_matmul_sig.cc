@@ -32,7 +32,13 @@ KernelSignature FusedMatmulOpArgumentMapping(
                           "fused_reshape_Y",
                           "fused_transpose_Y",
                           "fused_reshape_Out",
-                          "fused_transpose_Out"},
+                          "fused_transpose_Out",
+                          "mkldnn_data_type",
+                          "Scale_x",
+                          "Scale_y",
+                          "Scale_in_eltwise",
+                          "Scale_out",
+                          "force_fp32_output"},
                          {"Out"});
 }
 

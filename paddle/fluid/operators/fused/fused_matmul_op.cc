@@ -214,6 +214,20 @@ class FusedMatmulOpMaker : public framework::OpProtoAndCheckerMaker {
                               "Transpose's axis attribute from "
                               "matmul_transpose_reshape_mkldnn_fuse_pass")
         .SetDefault({});
+    AddAttr<std::string>("mkldnn_data_type", "oneDNN operator data type")
+        .SetDefault("float32")
+        .InEnum({"float32", "int8", "bfloat16"});
+    AddAttr<float>("Scale_x", "Matmul X input quantization scale")
+        .SetDefault(1.0f);
+    AddAttr<float>("Scale_y", "Matmul Y input quantization scale")
+        .SetDefault(1.0f);
+    AddAttr<float>("Scale_in_eltwise", "Matmul ResidualData quantization scale")
+        .SetDefault(0.0f);
+    AddAttr<float>("Scale_out", "Matmul output quantization scale")
+        .SetDefault(1.0f);
+    AddAttr<bool>("force_fp32_output",
+                  "Flag determining if output should be converted to FP32")
+        .SetDefault(false);
     AddComment(
         R"DOC(Matrix multiplication extended with oneDNN-specific fusion logic.)DOC");
   }
