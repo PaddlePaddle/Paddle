@@ -201,14 +201,14 @@ def getCovinfo(rootPath, test):
     coverage_utils_info_path = (
         "%s/paddle/utils/coverage_utils.info" % ut_map_path
     )
-    if os.path.exists(coverage_utils_info_path) and os.path.getsize(
-        coverage_utils_info_path
+    if (
+        os.path.exists(coverage_utils_info_path)
+        and os.path.getsize(coverage_utils_info_path) != 0
     ):
-        if os.path.getsize("%s/paddle/utils/coverage_utils.info" % ut_map_path):
-            os.system(
-                'cd %s && lcov -a paddle/fluid/coverage_fluid.info -a paddle/phi/coverage_phi.info -a paddle/utils/coverage_utils.info -o coverage.info --rc lcov_branch_coverage=0 > /dev/null 2>&1'
-                % ut_map_path
-            )
+        os.system(
+            'cd %s && lcov -a paddle/fluid/coverage_fluid.info -a paddle/phi/coverage_phi.info -a paddle/utils/coverage_utils.info -o coverage.info --rc lcov_branch_coverage=0 > /dev/null 2>&1'
+            % ut_map_path
+        )
     else:
         os.system(
             'cd %s && lcov -a paddle/fluid/coverage_fluid.info -a paddle/phi/coverage_phi.info -o coverage.info --rc lcov_branch_coverage=0 > /dev/null 2>&1'
