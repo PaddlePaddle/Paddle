@@ -27,5 +27,13 @@ void tanh_grad(const Tensor& out, const Tensor& grad_out, Tensor* grad_x) {
   auto grad_x_tmp = multiply<T>(grad_out, tmp);
   grad_x->set_impl(grad_x_tmp.impl());
 }
+
+void expand_grad(const Tensor& x,
+                 const Tensor& out_grad,
+                 const IntArray& shape,
+                 Tensor* x_grad) {
+  if (!x_grad || shape.GetData().empty()) return;
+  // TODO(cxxly): process empty reduce axes
+}
 }  // namespace prim
 }  // namespace paddle

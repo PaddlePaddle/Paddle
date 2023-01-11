@@ -13,11 +13,14 @@
 // limitations under the License.
 
 #pragma once
+#include "paddle/phi/common/int_array.h"
 #include "paddle/phi/common/scalar.h"
 #include "paddle/utils/optional.h"
+
 namespace paddle {
 namespace prim {
 using Tensor = paddle::experimental::Tensor;
+using IntArray = paddle::experimental::IntArray;
 
 template <typename T>
 Tensor pow(const Tensor& x, const paddle::experimental::Scalar& y);
@@ -30,6 +33,9 @@ Tensor scale(const Tensor& X,
 
 template <typename T>
 Tensor multiply(const Tensor& x, const Tensor& y);
+
+template <typename T>
+Tensor expand(const Tensor& x, const IntArray& shape);
 
 }  // namespace prim
 }  // namespace paddle
