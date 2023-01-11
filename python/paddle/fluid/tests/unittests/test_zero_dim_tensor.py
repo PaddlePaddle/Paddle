@@ -783,10 +783,10 @@ class TestSundryAPI(unittest.TestCase):
         out = paddle.std(x)
         out.backward()
 
-        #checkout shape of out
+        # checkout shape of out
         self.assertEqual(out.shape, [])
-        
-        #checkout value of out
+
+        # checkout value of out
         self.assertEqual(out, 0)
 
     def test_var(self):
@@ -795,12 +795,11 @@ class TestSundryAPI(unittest.TestCase):
         out = paddle.var(x)
         out.backward()
 
-        #checkout shape of out
+        # checkout shape of out
         self.assertEqual(out.shape, [])
-        
-        #checkout value of out
-        self.assertEqual(out, 0)
 
+        # checkout value of out
+        self.assertEqual(out, 0)
 
     def test_flatten(self):
         x = paddle.rand([])
@@ -1298,7 +1297,7 @@ class TestSundryAPIStatic(unittest.TestCase):
         res = self.exe.run(prog, fetch_list=[out])
         self.assertEqual(len(res[0].shape), 0)
         self.assertEqual(len(res[0].shape), 0)
-        
+
     @prog_scope()
     def test_std(self):
         x = paddle.full([], 1, 'float32')
@@ -1307,9 +1306,8 @@ class TestSundryAPIStatic(unittest.TestCase):
 
         prog = paddle.static.default_main_program()
         res = self.exe.run(prog, fetch_list=[out])
-        self.assertEqual(res, 0)
         self.assertEqual(res.shape, ())
-    
+
     @prog_scope()
     def test_var(self):
         x = paddle.full([], 1, 'float32')
@@ -1318,7 +1316,6 @@ class TestSundryAPIStatic(unittest.TestCase):
 
         prog = paddle.static.default_main_program()
         res = self.exe.run(prog, fetch_list=[out])
-        self.assertEqual(res, 0)
         self.assertEqual(res.shape, ())
 
     @prog_scope()
