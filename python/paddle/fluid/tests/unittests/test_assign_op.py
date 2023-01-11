@@ -16,9 +16,9 @@ import unittest
 
 import gradient_checker
 import numpy as np
+import op_test
 from decorator_helper import prog_scope
 
-import op_test
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core

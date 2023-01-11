@@ -17,11 +17,11 @@ import unittest
 import gradient_checker
 import numpy as np
 from decorator_helper import prog_scope
+from op_test import OpTest
 
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
-from op_test import OpTest
 from paddle.fluid import Program, core, program_guard
 
 
