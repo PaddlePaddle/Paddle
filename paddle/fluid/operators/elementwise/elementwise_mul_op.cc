@@ -151,7 +151,8 @@ REGISTER_OPERATOR(elementwise_mul,
                   ops::ElementwiseMulOpMaker,
                   ops::ElementwiseOpInferVarType,
                   ops::ElementwiseMulOpGradMaker<paddle::framework::OpDesc>,
-                  ops::ElementwiseMulOpGradMaker<paddle::imperative::OpBase>);
+                  ops::ElementwiseMulOpGradMaker<paddle::imperative::OpBase>,
+                  ops::ElementwiseMulGradCompositeOpMaker);
 REGISTER_OPERATOR(
     elementwise_mul_grad,
     ops::ElementwiseOpGrad,
