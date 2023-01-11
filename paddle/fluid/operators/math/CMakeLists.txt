@@ -30,7 +30,6 @@ math_library(sampler DEPS generator)
 
 math_library(sequence_padding)
 math_library(sequence_pooling DEPS math_function jit_kernel_helper)
-math_library(sequence_scale)
 if(WITH_ASCEND_CL)
   math_library(beam_search DEPS math_function beam_search_npu)
 elseif(WITH_XPU)

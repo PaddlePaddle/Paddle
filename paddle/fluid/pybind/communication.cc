@@ -43,6 +43,12 @@ void BindCommContextManager(py::module *m) {
               &phi::distributed::CommContextManager::CreateNCCLCommContext,
               py::call_guard<py::gil_scoped_release>())
 #endif
+#if defined(PADDLE_WITH_GLOO)
+          .def_static(
+              "create_gloo_comm_context",
+              &phi::distributed::CommContextManager::CreateGlooCommContext,
+              py::call_guard<py::gil_scoped_release>())
+#endif
           .def("set_store", &phi::distributed::CommContextManager::SetStore);
 }
 

@@ -124,6 +124,7 @@ message BuildStrategy {
   optional int32 reduce_strategy = 15 [ default = 0 ];
   optional bool fuse_gemm_epilogue = 16 [ default = false ];
   optional string debug_graphviz_path = 17;
+  optional bool fused_attention = 18 [ default = false];
 }
 
 message ExecutionStrategy {
