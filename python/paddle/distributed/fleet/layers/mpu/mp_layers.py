@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import paddle
-from paddle.framework import core
+from paddle.fluid import core
 from paddle.nn import Layer
 from paddle.nn import functional as F
 
