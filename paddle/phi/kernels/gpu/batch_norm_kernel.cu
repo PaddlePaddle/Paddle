@@ -722,9 +722,6 @@ void BatchNormKernel(const Context &ctx,
 
   auto handle = ctx.cudnn_handle();
 
-  const size_t CUDNN_PER_ACTIVATION_THRESHOLD = 10240;
-  const size_t CUDNN_SPATIAL_THRESHOLD = 880801;
-
   // Now, depending on whether we are running test or not, we have two paths.
   // It is training mode when it's not reference AND not using pre-trained
   // model.
