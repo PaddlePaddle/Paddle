@@ -59,7 +59,7 @@ std::future<int32_t> GraphBrpcClient::get_node_feat(
     int idx_,
     const std::vector<int64_t> &node_ids,
     const std::vector<std::string> &feature_names,
-    std::vector<std::vector<std::string>> &res) {
+    std::vector<std::vector<std::string>> *res) {
   std::vector<int> request2server;
   std::vector<int> server2request(server_size, -1);
   for (size_t query_idx = 0; query_idx < node_ids.size(); ++query_idx) {
@@ -196,8 +196,8 @@ std::future<int32_t> GraphBrpcClient::clear_nodes(uint32_t table_id,
 std::future<int32_t> GraphBrpcClient::add_graph_node(
     uint32_t table_id,
     int idx_,
-    std::vector<int64_t> &node_id_list,
-    std::vector<bool> &is_weighted_list) {
+    std::vector<int64_t> *node_id_list,
+    std::vector<bool> *is_weighted_list) {
   std::vector<std::vector<int64_t>> request_bucket;
   std::vector<std::vector<bool>> is_weighted_bucket;
   bool add_weight = is_weighted_list.size() > 0;
@@ -269,7 +269,7 @@ std::future<int32_t> GraphBrpcClient::add_graph_node(
   return fut;
 }
 std::future<int32_t> GraphBrpcClient::remove_graph_node(
-    uint32_t table_id, int idx_, std::vector<int64_t> &node_id_list) {
+    uint32_t table_id, int idx_, std::vector<int64_t> *node_id_list) {
   std::vector<std::vector<int64_t>> request_bucket;
   std::vector<int> server_index_arr;
   std::vector<int> index_mapping(server_size, -1);
@@ -333,8 +333,8 @@ std::future<int32_t> GraphBrpcClient::batch_sample_neighbors(
     std::vector<int64_t> node_ids,
     int sample_size,
     // std::vector<std::vector<std::pair<int64_t, float>>> &res,
-    std::vector<std::vector<int64_t>> &res,
-    std::vector<std::vector<float>> &res_weight,
+    std::vector<std::vector<int64_t>> *res,
+    std::vector<std::vector<float>> *res_weight,
     bool need_weight,
     int server_index) {
   if (server_index != -1) {
@@ -519,7 +519,7 @@ std::future<int32_t> GraphBrpcClient::random_sample_nodes(
     int idx_,
     int server_index,
     int sample_size,
-    std::vector<int64_t> &ids) {
+    std::vector<int64_t> *ids) {
   DownpourBrpcClosure *closure = new DownpourBrpcClosure(1, [&](void *done) {
     int ret = 0;
     auto *closure = reinterpret_cast<DownpourBrpcClosure *>(done);
@@ -568,7 +568,7 @@ std::future<int32_t> GraphBrpcClient::pull_graph_list(
     int start,
     int size,
     int step,
-    std::vector<FeatureNode> &res) {
+    std::vector<FeatureNode> *res) {
   DownpourBrpcClosure *closure = new DownpourBrpcClosure(1, [&](void *done) {
     int ret = 0;
     auto *closure = reinterpret_cast<DownpourBrpcClosure *>(done);
