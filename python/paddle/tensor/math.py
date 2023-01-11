@@ -2014,7 +2014,6 @@ def renorm(x, p, axis, max_norm):
 
     """
     input_shape = x.shape
-    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'renorm')
     if not axis < len(input_shape):
         raise ValueError(
             "the axis:{} should be less then the shape's size {}:{}".format(
@@ -2033,6 +2032,7 @@ def renorm(x, p, axis, max_norm):
         out = _C_ops.renorm(x, p, axis, max_norm)
         return out
     else:
+        check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'renorm')
         inputs = {'X': x}
         attrs = {'p': p, 'axis': axis, 'max_norm': max_norm}
 
