@@ -104,7 +104,7 @@ class DistributedJobInfo:
         self.job_info.strategy = dist_strategy
 
 
-ReduceStrategyFluid = paddle.static.BuildStrategy.ReduceStrategy
+ReduceStrategyFluid = paddle.fluid.BuildStrategy.ReduceStrategy
 ReduceStrategyFleet = int
 
 
