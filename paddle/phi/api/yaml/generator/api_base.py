@@ -1200,26 +1200,18 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
         if inplace_flag:
             i = 0
             for kernel_out in outputs_args:
-                pre_save_stride += f"""
-{code_indent}Stride stride{i};
-{code_indent}if (!{kernel_out}->strides().IsContiguous()) {{
-{code_indent}    stride{i} = {kernel_out}->strides();
-{code_indent}}}"""
-                transdata2stride += f"""
-{code_indent}if (!stride{i}.IsContiguous()) {{
-{code_indent}    TransDataStride({kernel_out}, stride{i});
-{code_indent}}}
-"""
+                pre_save_stride += f"""{code_indent}  auto stride{i} = BackupStride({kernel_out});"""
+                transdata2stride += (
+                    f"""{code_indent}  TransStride({kernel_out}, stride{i});"""
+                )
                 i = i + 1
 
         set_contiguous_false = ""
         for kernel_out in outputs_args:
-            set_contiguous_false += f"""
-{code_indent}    {kernel_out}->set_contiguous(false);"""
+            set_contiguous_false += f"""{code_indent}    SetDenseTensorContiguousFalse({kernel_out});"""
         fallback_kernel_output_trans = ""
         for kernel_out in outputs_args:
-            fallback_kernel_output_trans += f"""
-{code_indent}    TransDataBackend({kernel_out}, kernel_backend, {kernel_out});"""
+            fallback_kernel_output_trans += f"""{code_indent}    TransDataBackend({kernel_out}, kernel_backend, {kernel_out});"""
         return f"""
 {code_indent}  VLOG(6) << "{self.api} API kernel key: [" << kernel_backend << ", " << kernel_layout << ", "<< kernel_data_type << "]";
 {code_indent}  auto kernel_result = phi::KernelFactory::Instance().SelectKernelOrThrowError(
@@ -1232,6 +1224,7 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
 {code_indent}  auto* dev_ctx = GetDeviceContextByBackend(kernel_result.has_fallback_cpu ? Backend::CPU : kernel_backend);
 {input_tensors}
 {output_create}
+{pre_save_stride}
 {code_indent}  paddle::platform::RecordEvent *infer_shape_record_event = nullptr;
 {code_indent}  if(paddle::platform::RecordEvent::IsEnabled()){{
 {code_indent}    infer_shape_record_event = new paddle::platform::RecordEvent(\"{self.api} infer_meta\", paddle::platform::TracerEventType::OperatorInner, 1);
@@ -1250,16 +1243,14 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
 {code_indent}  if(kernel_record_event != nullptr){{
 {code_indent}    delete kernel_record_event;
 {code_indent}  }}
+{transdata2stride}
 {code_indent}  if (kernel_result.has_fallback_cpu) {{
 {fallback_kernel_output_trans}
 {code_indent}  }}
+{code_indent}  if (kernel_result.is_stride_kernel) {{
+{set_contiguous_false}
+{code_indent}  }}
 {code_indent}  {self.gene_return_code()}"""
-
-    # {pre_save_stride}
-    # {code_indent}  if (kernel_result.is_stride_kernel) {{
-    # {set_contiguous_false}
-    # {code_indent}  }}
-    # {transdata2stride}
 
     def get_condition_code(self, kernel_name):
         assert self.kernel['dispatch'][

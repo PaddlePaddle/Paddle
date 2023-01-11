@@ -75,14 +75,6 @@ const Kernel& KernelFactory::SelectKernel(const std::string& kernel_name,
     return empty_kernel;
   }
 
-  if (FLAGS_use_stride_kernel) {
-    auto stride_kernel_iter = iter->second.find(
-        {kernel_key.backend(), phi::DataLayout::STRIDED, kernel_key.dtype()});
-    if (stride_kernel_iter != iter->second.end()) {
-      return stride_kernel_iter->second;
-    }
-  }
-
   auto kernel_iter = iter->second.find(kernel_key);
   if (kernel_iter == iter->second.end() &&
       kernel_key.layout() != phi::DataLayout::ALL_LAYOUT) {

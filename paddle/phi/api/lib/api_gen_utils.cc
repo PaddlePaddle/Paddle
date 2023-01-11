@@ -326,5 +326,12 @@ std::vector<phi::Strides*> BackupStride(
 
 phi::Strides* BackupStride(const phi::SelectedRows* tensor) { return nullptr; }
 
+void TransStride(phi::DenseTensor* tensor, const phi::Strides* stride) {
+  // inplace holder
+}
+void TransStride(const std::vector<phi::DenseTensor*>& tensor,
+                 const std::vector<phi::Strides*>& stride) {}
+void TransStride(const phi::SelectedRows* tensor, const phi::Strides* stride) {}
+
 }  // namespace experimental
 }  // namespace paddle

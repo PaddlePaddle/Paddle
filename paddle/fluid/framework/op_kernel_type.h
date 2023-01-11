@@ -23,8 +23,6 @@ limitations under the License. */
 #include "paddle/phi/core/device_context.h"
 #include "paddle/phi/core/kernel_factory.h"
 
-DECLARE_bool(use_stride_kernel);
-
 namespace paddle {
 namespace framework {
 
@@ -101,10 +99,6 @@ inline std::string KernelTypeToString(const OpKernelType& kernel_key) {
 }
 
 inline bool NeedTransformLayout(const DataLayout& l, const DataLayout& r) {
-  if (FLAGS_use_stride_kernel &&
-      (l == DataLayout::STRIDED || r == DataLayout::STRIDED)) {
-    return false;
-  }
   bool ret =
       (l != DataLayout::kAnyLayout && r != DataLayout::kAnyLayout && l != r);
 #ifdef PADDLE_WITH_MKLDNN
