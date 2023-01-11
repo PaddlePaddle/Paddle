@@ -179,8 +179,6 @@ __global__ void KeBackwardLocalStats2D(const T *dy,
                                        BatchNormParamType<T> *block_data_ptr,
                                        int *flag_ptr,
                                        BatchNormParamType<T> *sum_dy_prod) {
-  // typedef cub::BlockReduce<BatchNormParamType<T>, BlockDim> BlockReduce;
-  // __shared__ typename BlockReduce::TempStorage temp_storage;
   __shared__ BatchNormParamType<T> smem_sum[BlockDim];
   __shared__ BatchNormParamType<T> smem_square_sum[BlockDim];
   for (int k = blockIdx.x * blockDim.x + threadIdx.x; k < C;
@@ -244,7 +242,8 @@ __global__ void KeBackwardLocalStats2D(const T *dy,
       }
     }
   }
-  if (blockIdx.x == 0 && threadIdx.x == 0) {
+  if (blockIdx.y == 0 && blockIdx.x == 0 && threadIdx.y == 0 &&
+      threadIdx.x == 0) {
     sum_dy_prod[2 * C] = 1.0;
   }
 }
