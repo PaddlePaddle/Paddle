@@ -49,7 +49,7 @@ struct GeneralDivMod<int64_t> {
 #if !defined(_WIN32)
 #define PADDLE_ALIGN(x) __attribute__((aligned(x)))
 #else
-#define PADDLE_ALIGN(x) __declspec(align(x))
+#define PADDLE_ALIGN(x)
 #endif
 
 enum class SegmentedArraySize {
