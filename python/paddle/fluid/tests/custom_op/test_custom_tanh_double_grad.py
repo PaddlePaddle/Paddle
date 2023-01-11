@@ -53,6 +53,7 @@ def custom_tanh_double_grad_dynamic(func, device, dtype, np_x):
         outputs=[out], inputs=[t], create_graph=True, retain_graph=True
     )
 
+    dx[0].retain_grads()
     dx[0].backward()
 
     assert out.grad is not None

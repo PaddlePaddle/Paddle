@@ -312,6 +312,7 @@ class TestBinaryAPI(unittest.TestCase):
                 np.testing.assert_array_equal(out_cls.numpy(), out.numpy())
             else:
                 out = api(x, y)
+            out.retain_grads()
             self.assertEqual(out.shape, [])
 
             out.backward()
@@ -558,7 +559,9 @@ class TestSundryAPI(unittest.TestCase):
     def test_pow_factor(self):
         x = paddle.rand([])
         x.stop_gradient = False
+        x.retain_grads()
         out = paddle.pow(x, 2.0)
+        out.retain_grads()
         out.backward()
 
         self.assertEqual(out.shape, [])
@@ -641,6 +644,7 @@ class TestSundryAPI(unittest.TestCase):
         x = paddle.to_tensor([1.0, 3.0, 5.0, 7.0, 9.0], stop_gradient=False)
         index = paddle.full([], 2, 'int64')
         out = paddle.gather(x, index)
+        out.retain_grads()
         out.backward()
 
         self.assertEqual(out.shape, [])
@@ -653,6 +657,7 @@ class TestSundryAPI(unittest.TestCase):
         )
         index = paddle.full([], 1, 'int64')
         out = paddle.gather(x, index)
+        out.retain_grads()
         out.backward()
 
         self.assertEqual(out.shape, [3])

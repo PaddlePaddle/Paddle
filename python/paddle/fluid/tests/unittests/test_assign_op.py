@@ -201,8 +201,9 @@ class TestAssignOApi(unittest.TestCase):
 
         x = paddle.ones([2])
         x.stop_gradient = False
+        x.retain_grads()
         clone_x = paddle.clone(x)
-
+        clone_x.retain_grads()
         y = clone_x**3
         y.backward()
 
