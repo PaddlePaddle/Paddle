@@ -28,9 +28,9 @@ class Strides {
  public:
   Strides() {}
 
-  explicit Strides(DDim dims);
+  explicit Strides(const DDim& dims);
 
-  void init_with_dims(DDim dims);
+  void init_with_dims(const DDim& dims);
 
   inline bool IsValiable() const { return valiable_; }
 

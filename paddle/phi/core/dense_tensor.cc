@@ -42,14 +42,26 @@ limitations under the License. */
 namespace phi {
 
 DenseTensor::DenseTensor(Allocator* a, const DenseTensorMeta& meta)
-    : meta_(meta), holder_(a->Allocate(SizeOf(dtype()) * numel())) {}
+    : meta_(meta), holder_(a->Allocate(SizeOf(dtype()) * numel())) {
+  if (!meta_.strides.IsValiable()) {
+    meta_.strides.init_with_dims(meta_.dims);
+  }
+}
 
 DenseTensor::DenseTensor(Allocator* a, DenseTensorMeta&& meta)
-    : meta_(std::move(meta)), holder_(a->Allocate(SizeOf(dtype()) * numel())) {}
+    : meta_(std::move(meta)), holder_(a->Allocate(SizeOf(dtype()) * numel())) {
+  if (!meta_.strides.IsValiable()) {
+    meta_.strides.init_with_dims(meta_.dims);
+  }
+}
 
 DenseTensor::DenseTensor(const std::shared_ptr<phi::Allocation>& holder,
                          const DenseTensorMeta& meta)
-    : meta_(meta), holder_(holder) {}
+    : meta_(meta), holder_(holder) {
+  if (!meta_.strides.IsValiable()) {
+    meta_.strides.init_with_dims(meta_.dims);
+  }
+}
 
 DenseTensor::DenseTensor(const DenseTensor& other) : meta_(other.meta()) {
   holder_ = other.holder_;
@@ -204,7 +216,7 @@ void DenseTensor::set_meta(DenseTensorMeta&& meta) {
                      "Only when the original attribute of Tensor is "
                      "incomplete, can it be reset."));
   meta_ = std::move(meta);
-  if (product(meta_.dims) && !meta_.strides.IsValiable()) {
+  if (!meta_.strides.IsValiable()) {
     meta_.strides.init_with_dims(meta_.dims);
   }
 }
@@ -222,7 +234,7 @@ void DenseTensor::set_meta(const DenseTensorMeta& meta) {
   meta_.offset = meta.offset;
   meta_.strides = meta.strides;
   meta_.use_gpudnn = meta.use_gpudnn;
-  if (product(meta_.dims) && !meta_.strides.IsValiable()) {
+  if (!meta_.strides.IsValiable()) {
     meta_.strides.init_with_dims(meta_.dims);
   }
 }
@@ -238,10 +250,10 @@ void DenseTensor::set_meta(const DenseTensorMeta& meta) {
    call to mutable_data(place)
    */
 void DenseTensor::ResizeAndAllocate(const DDim& dims) {
-  meta_.dims = dims;
-  if (!meta_.strides.IsValiable()) {
-    meta_.strides.init_with_dims(meta_.dims);
+  if (meta_.dims != dims) {
+    meta_.strides.init_with_dims(dims);
   }
+  meta_.dims = dims;
   if (holder_ != nullptr && place().GetType() != AllocationType::UNDEFINED) {
     mutable_data(place());
   }
@@ -306,6 +318,10 @@ void DenseTensor::set_strides(Strides&& strides) {
 
 void DenseTensor::set_strides(const Strides& strides) {
   meta_.strides = strides;
+}
+
+void DenseTensor::set_contiguous(bool contiguous) {
+  meta_.strides.set_contiguous(contiguous);
 }
 
 }  // namespace phi

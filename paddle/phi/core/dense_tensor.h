@@ -96,6 +96,8 @@ class DenseTensor : public TensorBase,
 
   void set_strides(Strides&& strides);
 
+  void set_contiguous(bool contiguous);
+
   /// \brief Returns the lod of the tensor.
   /// \return The lod of the tensor.
   const LoD& lod() const noexcept { return meta_.lod; }

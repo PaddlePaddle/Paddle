@@ -17,7 +17,7 @@
 
 namespace phi {
 
-Strides::Strides(DDim dims) {
+Strides::Strides(const DDim& dims) {
   this->rank_ = dims.size();
   this->strides_[dims.size() - 1] = 1;
   for (int i = dims.size() - 2; i >= 0; --i) {
@@ -27,7 +27,7 @@ Strides::Strides(DDim dims) {
   this->contiguous_ = true;
 }
 
-void Strides::init_with_dims(DDim dims) {
+void Strides::init_with_dims(const DDim& dims) {
   this->rank_ = dims.size();
   this->strides_[dims.size() - 1] = 1;
   for (int i = dims.size() - 2; i >= 0; --i) {

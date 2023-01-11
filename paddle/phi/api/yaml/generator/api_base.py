@@ -701,7 +701,7 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
         input_tensor_code = (
             input_tensor_code
             + f"""
-{code_indent}  auto {PREFIX_TENSOR_NAME}{input_name} = PrepareData({input_name}, kernel.InputAt({kernel_param.index(input_name)}), {trans_flag}, \"kernel_result.is_stride_kernel\");"""
+{code_indent}  auto {PREFIX_TENSOR_NAME}{input_name} = PrepareData({input_name}, kernel.InputAt({kernel_param.index(input_name)}), {trans_flag}, kernel_result.is_stride_kernel);"""
         )
         return input_tensor_code
 
@@ -753,7 +753,7 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
             input_tensor_code = (
                 input_tensor_code
                 + f"""
-{code_indent}  auto {PREFIX_TENSOR_NAME}{input_name}_vec = PrepareData({input_name}, kernel.InputAt({kernel_param.index(input_name)}), {trans_flag}, \"kernel_result.is_stride_kernel\");
+{code_indent}  auto {PREFIX_TENSOR_NAME}{input_name}_vec = PrepareData({input_name}, kernel.InputAt({kernel_param.index(input_name)}), {trans_flag}, kernel_result.is_stride_kernel);
 {code_indent}  paddle::optional<std::vector<const phi::DenseTensor*>> {PREFIX_TENSOR_NAME}{input_name};
 {code_indent}  if ({PREFIX_TENSOR_NAME}{input_name}_vec){{
 {code_indent}    {PREFIX_TENSOR_NAME}{input_name} = paddle::optional<std::vector<const phi::DenseTensor*>>({PREFIX_TENSOR_NAME}{input_name}_vec->size());
@@ -791,7 +791,7 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
             input_tensor_code = (
                 input_tensor_code
                 + f"""
-{code_indent}  auto {PREFIX_TENSOR_NAME}{input_name}_vec = PrepareData({input_name}, kernel.InputAt({kernel_param.index(input_name)}), {trans_flag}, \"kernel_result.is_stride_kernel\");
+{code_indent}  auto {PREFIX_TENSOR_NAME}{input_name}_vec = PrepareData({input_name}, kernel.InputAt({kernel_param.index(input_name)}), {trans_flag}, kernel_result.is_stride_kernel);
 {code_indent}  std::vector<const phi::DenseTensor*> {PREFIX_TENSOR_NAME}{input_name}({PREFIX_TENSOR_NAME}{input_name}_vec->size());
 {code_indent}  for (size_t i = 0; i < {PREFIX_TENSOR_NAME}{input_name}.size(); ++i) {{
 {code_indent}    {PREFIX_TENSOR_NAME}{input_name}[i] = &{PREFIX_TENSOR_NAME}{input_name}_vec->at(i);
@@ -1195,6 +1195,27 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
             code_indent,
             inplace_flag,
         )
+        pre_save_stride = ""
+        transdata2stride = ""
+        if inplace_flag:
+            i = 0
+            for kernel_out in outputs_args:
+                pre_save_stride += f"""
+{code_indent}Stride stride{i};
+{code_indent}if (!{kernel_out}->strides().IsContiguous()) {{
+{code_indent}    stride{i} = {kernel_out}->strides();
+{code_indent}}}"""
+                transdata2stride += f"""
+{code_indent}if (!stride{i}.IsContiguous()) {{
+{code_indent}    TransDataStride({kernel_out}, stride{i});
+{code_indent}}}
+"""
+                i = i + 1
+
+        set_contiguous_false = ""
+        for kernel_out in outputs_args:
+            set_contiguous_false += f"""
+{code_indent}    {kernel_out}->set_contiguous(false);"""
         fallback_kernel_output_trans = ""
         for kernel_out in outputs_args:
             fallback_kernel_output_trans += f"""
@@ -1233,6 +1254,12 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
 {fallback_kernel_output_trans}
 {code_indent}  }}
 {code_indent}  {self.gene_return_code()}"""
+
+    # {pre_save_stride}
+    # {code_indent}  if (kernel_result.is_stride_kernel) {{
+    # {set_contiguous_false}
+    # {code_indent}  }}
+    # {transdata2stride}
 
     def get_condition_code(self, kernel_name):
         assert self.kernel['dispatch'][

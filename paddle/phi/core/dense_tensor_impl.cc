@@ -159,6 +159,9 @@ inline T* DenseTensor::mutable_data(const DDim& dims,
                                     const Place& place,
                                     size_t requested_size) {
   static_assert(std::is_pod<T>::value, "T must be POD");
+  if (meta_.dims != dims) {
+    meta_.strides.init_with_dims(dims);
+  }
   meta_.dims = dims;
   return mutable_data<T>(place, requested_size);
 }
@@ -253,6 +256,9 @@ size_t DenseTensor::NumElements(size_t level) const {
 }
 
 DenseTensor& DenseTensor::Resize(const DDim& dims) {
+  if (meta_.dims != dims) {
+    meta_.strides.init_with_dims(dims);
+  }
   meta_.dims = dims;
   return *this;
 }

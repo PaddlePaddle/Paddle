@@ -17,6 +17,7 @@ limitations under the License. */
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/core/kernel_factory.h"
 #include "paddle/phi/core/selected_rows.h"
+#include "paddle/phi/core/strides.h"
 
 namespace paddle {
 namespace experimental {
@@ -112,6 +113,8 @@ void TransDataBackend(const phi::SelectedRows* tensor,
 phi::DenseTensor Trans2Contiguous(const phi::DenseTensor& tensor);
 
 void InitTensorStrides(phi::DenseTensor* tensor);
+
+void TransDataStride(phi::DenseTensor* tensor, const phi::Strides& stride);
 
 }  // namespace experimental
 }  // namespace paddle
