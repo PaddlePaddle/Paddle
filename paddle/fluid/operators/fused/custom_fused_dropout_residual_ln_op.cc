@@ -157,6 +157,14 @@ class CustomFusedDropoutResidualLnGradOp : public framework::OperatorWithKernel 
                    "LnVar",
                    "FusedBiasDropoutResidualLnGrad");
 
+    if (ctx->HasOutput(framework::GradVarName("X"))) {
+      ctx->SetOutputDim(framework::GradVarName("X"), 
+                        ctx->GetInputDim("X"));
+    }
+    if (ctx->HasOutput(framework::GradVarName("Residual"))) {
+      ctx->SetOutputDim(framework::GradVarName("Residual"),
+                        ctx->GetInputDim("Residual"));
+    }
     if (ctx->HasOutput(framework::GradVarName("LnScale"))) {
       ctx->SetOutputDim(framework::GradVarName("LnScale"),
                         ctx->GetInputDim("LnScale"));
@@ -165,17 +173,10 @@ class CustomFusedDropoutResidualLnGradOp : public framework::OperatorWithKernel 
       ctx->SetOutputDim(framework::GradVarName("LnBias"),
                         ctx->GetInputDim("LnBias"));
     }
-    if (ctx->HasOutput(framework::GradVarName("Residual"))) {
-      ctx->SetOutputDim(framework::GradVarName("Residual"),
-                        ctx->GetInputDim("Residual"));
-    }
     // if (ctx->HasOutput(framework::GradVarName("Bias"))) {
     //   ctx->SetOutputDim(framework::GradVarName("Bias"),
     //                     ctx->GetInputDim("Bias"));
     // }
-    if (ctx->HasOutput(framework::GradVarName("X"))) {
-      ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
-    }
   }
 
  protected:
