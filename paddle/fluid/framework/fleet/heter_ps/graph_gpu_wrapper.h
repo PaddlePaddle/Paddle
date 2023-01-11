@@ -47,6 +47,8 @@ class GraphGpuWrapper {
   void finalize();
   void set_device(std::vector<int> ids);
   void init_service();
+  std::string get_reverse_etype(std::string etype);
+  std::vector<std::string> get_ntype_from_etype(std::string etype);
   void set_up_types(const std::vector<std::string>& edge_type,
                     const std::vector<std::string>& node_type);
   void upload_batch(int type,
