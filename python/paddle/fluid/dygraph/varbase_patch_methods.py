@@ -17,6 +17,8 @@ import numpy as np
 import warnings
 import weakref
 import sys
+import time
+from paddle import _C_ops
 
 import paddle
 from .. import framework
@@ -811,6 +813,11 @@ def monkey_patch_varbase():
             return self._getitem_index_not_tensor(item)
 
     def __setitem__(self, item, value):
+        if framework._in_eager_mode_ and self.__check_index_is_all_tensor__(
+            item, value
+        ):
+            return _C_ops.index_put(self, list(item), value)
+
         def contain_tensor_or_list(item):
             if not isinstance(item, tuple):
                 item = [item]
@@ -844,10 +851,15 @@ def monkey_patch_varbase():
 
             return False
 
+        start = time.time()
         if contain_tensor_or_list(item) and not is_combine_index(item):
             # To reuse code with static graph,
             # Call _setitem_impl_ when item contains tensor or list.
-            return _setitem_impl_(self, item, value)
+            # return _setitem_impl_(self, item, value)
+            _setitem_impl_(self, item, value)
+            end = time.time()
+            print("set_item cost time is " + str(end - start))
+            return
 
         else:
             if framework._in_eager_mode_:

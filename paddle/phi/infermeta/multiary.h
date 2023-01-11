@@ -524,7 +524,7 @@ void YoloLossInferMeta(const MetaTensor& x,
                        MetaTensor* gt_match_mask);
 
 void IndexPutInferMeta(const MetaTensor& x,
-                       const MetaTensor& indices,
+                       const std::vector<const MetaTensor*>& indices,
                        const MetaTensor& value,
                        MetaTensor* out);
 

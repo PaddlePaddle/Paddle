@@ -479,7 +479,7 @@
     func : histogram
 
 - op : index_put
-  args : (Tensor input, Tensor indices, Tensor value)
+  args : (Tensor x, Tensor[] indices, Tensor value)
   output : Tensor(out)
   infer_meta :
     func : IndexPutInferMeta

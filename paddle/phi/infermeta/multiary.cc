@@ -2932,7 +2932,7 @@ void YoloLossInferMeta(const MetaTensor& x,
 }
 
 void IndexPutInferMeta(const MetaTensor& x,
-                       const MetaTensor& indices,
+                       const std::vector<const MetaTensor*>& indices,
                        const MetaTensor& value,
                        MetaTensor* out) {
   auto in_dims = x.dims();

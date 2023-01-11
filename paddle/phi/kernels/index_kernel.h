@@ -23,7 +23,7 @@ namespace phi {
 template <typename T, typename Context>
 void IndexPutKernel(const Context& dev_ctx,
                     const DenseTensor& x,
-                    const DenseTensor& indices,
+                    const std::vector<const DenseTensor*>& indices_v,
                     const DenseTensor& value,
                     DenseTensor* out);
 

@@ -1061,6 +1061,35 @@ static PyObject* tensor__getitem_from_offset(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+static PyObject* tensor_method__check_index_is_all_tensor(TensorObject* self,
+                                                          PyObject* args,
+                                                          PyObject* kwargs) {
+  EAGER_TRY
+  if (PyTuple_GET_SIZE(args) == 0) return nullptr;
+  PyObject* _index = PyTuple_GET_ITEM(args, 0);
+  PyObject* index_ptr =
+      !PyTuple_Check(_index) ? PyTuple_Pack(1, _index) : _index;
+  DEFINE_PADDLE_SCOPE_GUARD([index_ptr, &_index]() {
+    if (!PyTuple_Check(_index)) {
+      Py_DECREF(index_ptr);
+      VLOG(4) << "Call Py_DECREF";
+    }
+  });
+
+  bool isAllTensor = true;
+  const int size = PyTuple_GET_SIZE(index_ptr);
+  for (int dim = 0; dim < size; ++dim) {
+    PyObject* slice_item = PyTuple_GetItem(index_ptr, dim);
+    if (!(PyCheckTensor(slice_item))) {
+      isAllTensor = false;
+      break;
+    }
+  }
+
+  return ToPyObject(isAllTensor);
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
 static PyObject* tensor_method__setitem_eager_tensor(TensorObject* self,
                                                      PyObject* args,
                                                      PyObject* kwargs) {
@@ -2026,6 +2055,10 @@ PyMethodDef variable_methods[] = {
      NULL},
     {"_getitem_from_offset",
      (PyCFunction)(void (*)(void))tensor__getitem_from_offset,
+     METH_VARARGS | METH_KEYWORDS,
+     NULL},
+    {"__check_index_is_all_tensor__",
+     (PyCFunction)(void (*)(void))tensor_method__check_index_is_all_tensor,
      METH_VARARGS | METH_KEYWORDS,
      NULL},
     {"__setitem_eager_tensor__",

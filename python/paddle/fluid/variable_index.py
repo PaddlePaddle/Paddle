@@ -19,6 +19,7 @@ from . import unique_name
 from . import core
 import paddle
 from paddle import _C_ops
+import time
 
 MAX_INTEGER = 2**31 - 1
 
@@ -227,12 +228,16 @@ class SliceInfo:
             for i in range(len(self.indexes)):
                 self.indexes[i] = paddle.flatten(self.indexes[i])
 
-        mask = paddle.stack(self.indexes, 1)  # [348, 4]
+        # mask = paddle.stack(self.indexes, 1)  # [348, 4]
         # tmp = paddle.gather_nd(tensor_origin, mask)
         # tensor_origin[:] = paddle.scatter_nd_add(tensor_origin, mask, value-tmp)
         # return tensor_origin
 
-        return _C_ops.index_put(tensor_origin, mask, value)
+        # return _C_ops.index_put(tensor_origin, mask, value)
+        start = time.time()
+        _C_ops.index_put(tensor_origin, self.indexes, value)
+        end = time.time()
+        print("index_put cost time is " + str(end - start))
 
 
 def replace_ellipsis(var, item):

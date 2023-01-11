@@ -20,6 +20,7 @@
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/utils/array.h"
+#include "paddle/phi/kernels/stack_kernel.h"
 
 namespace phi {
 
@@ -78,10 +79,22 @@ void LaunchIndexPutCudaKernel(const Context& dev_ctx,
 template <typename T, typename Context>
 void IndexPutKernel(const Context& dev_ctx,
                     const DenseTensor& x,
-                    const DenseTensor& indices,
+                    const std::vector<const DenseTensor*>& indices_v,
                     const DenseTensor& value,
                     DenseTensor* out) {
   const size_t total_dims = x.dims().size();
+  PADDLE_ENFORCE_EQ(indices_v.size(),
+                    total_dims,
+                    phi::errors::InvalidArgument(
+                        "The size %d of indices must be equal to the size %d "
+                        "of the dimension of source tensor x.",
+                        indices_v.size(),
+                        total_dims));
+
+  auto indices = DenseTensor(indices_v[0]->dtype());
+  indices.Resize(phi::make_dim(indices_v[0]->numel(), total_dims));
+  StackKernel<int64_t, Context>(dev_ctx, indices_v, 1, &indices);
+
   switch (total_dims) {
     case 1:
       LaunchIndexPutCudaKernel<T, Context, 1>(dev_ctx, x, indices, value, out);
@@ -101,18 +114,9 @@ void IndexPutKernel(const Context& dev_ctx,
     case 6:
       LaunchIndexPutCudaKernel<T, Context, 6>(dev_ctx, x, indices, value, out);
       break;
-    case 7:
-      LaunchIndexPutCudaKernel<T, Context, 7>(dev_ctx, x, indices, value, out);
-      break;
-    case 8:
-      LaunchIndexPutCudaKernel<T, Context, 8>(dev_ctx, x, indices, value, out);
-      break;
-    case 9:
-      LaunchIndexPutCudaKernel<T, Context, 9>(dev_ctx, x, indices, value, out);
-      break;
     default:
       PADDLE_THROW(phi::errors::InvalidArgument(
-          "dims of input tensor should be less than 10, But received"
+          "dims of input tensor should be less than 7, But received"
           "%d",
           x.dims().size()));
   }
@@ -125,6 +129,6 @@ PD_REGISTER_KERNEL(index_put,
                    phi::IndexPutKernel,
                    float,
                    double,
-                   phi::dtype::float16,
                    int,
-                   int64_t) {}
+                   int64_t,
+                   phi::dtype::bfloat16) {}
