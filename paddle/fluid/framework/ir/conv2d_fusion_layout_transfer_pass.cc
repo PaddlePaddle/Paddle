@@ -232,8 +232,6 @@ void Conv2dFusionLayoutTransferPass::ApplyImpl(ir::Graph *graph) const {
       op_desc->SetAttr("data_format", nhwc_attr);
       if (cutlass_enable) {
         op_desc->SetType("conv2d_fusion_cutlass");
-      } else {
-        op_desc->SetType("conv2d_fusion");
       }
       op_desc->Flush();
 
