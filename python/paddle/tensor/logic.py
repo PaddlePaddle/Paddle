@@ -831,12 +831,14 @@ def bitwise_and(x, y, out=None, name=None):
     ${comment}
 
     Args:
-        x (Tensor): ${x_comment}
-        y (Tensor): ${y_comment}
-        out(Tensor): ${out_comment}
+        x (Tensor): ${x_comment}.
+        y (Tensor): ${y_comment}.
+        out(Tensor): ${out_comment}.
+        name(str, optinal): The name of the operation, optional parameters, for specific usage, 
+            please refer to :ref:`api_guide_Name` . generally do not need to be set, the default value is None.
 
     Returns:
-        Tensor: ${out_comment}
+        Tensor: ${out_comment}.
 
     Examples:
         .. code-block:: python
@@ -860,12 +862,14 @@ def bitwise_or(x, y, out=None, name=None):
     ${comment}
 
     Args:
-        x (Tensor): ${x_comment}
-        y (Tensor): ${y_comment}
-        out(Tensor): ${out_comment}
+        x (Tensor): ${x_comment}.
+        y (Tensor): ${y_comment}.
+        out(Tensor): ${out_comment}.
+        name(str, optinal): The name of the operation, optional parameters, for specific usage, 
+            please refer to :ref:`api_guide_Name` . generally do not need to be set, the default value is None.
 
     Returns:
-        Tensor: ${out_comment}
+        Tensor: ${out_comment}.
 
     Examples:
         .. code-block:: python
@@ -890,12 +894,14 @@ def bitwise_xor(x, y, out=None, name=None):
     ${comment}
 
     Args:
-        x (Tensor): ${x_comment}
-        y (Tensor): ${y_comment}
-        out(Tensor): ${out_comment}
+        x (Tensor): ${x_comment}.
+        y (Tensor): ${y_comment}.
+        out(Tensor): ${out_comment}.
+        name(str, optinal): The name of the operation, optional parameters, for specific usage, 
+            please refer to :ref:`api_guide_Name` . generally do not need to be set, the default value is None.
 
     Returns:
-        Tensor: ${out_comment}
+        Tensor: ${out_comment}.
 
     Examples:
         .. code-block:: python
@@ -919,11 +925,13 @@ def bitwise_not(x, out=None, name=None):
     ${comment}
 
     Args:
-        x(Tensor):  ${x_comment}
-        out(Tensor): ${out_comment}
+        x(Tensor):  ${x_comment}.
+        out(Tensor): ${out_comment}.
+        name(str, optinal): The name of the operation, optional parameters, for specific usage, 
+            please refer to :ref:`api_guide_Name` . generally do not need to be set, the default value is None.
 
     Returns:
-        Tensor: ${out_comment}
+        Tensor: ${out_comment}.
 
     Examples:
         .. code-block:: python

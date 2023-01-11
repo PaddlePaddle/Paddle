@@ -2045,9 +2045,9 @@ def _pickle_loads_mac(path, f):
 @static_only
 def load(program, model_path, executor=None, var_list=None):
     """
-    :api_attr: Static Graph
 
     This function get parameters and optimizer information from program, and then get corresponding value from file.
+
     An exception will throw if shape or dtype of the parameters is not match.
 
     This function can also load model file saved with [ save_params, save_persistables, save_vars ].
@@ -2055,18 +2055,19 @@ def load(program, model_path, executor=None, var_list=None):
     ( filename is not None When save_params, save_persistables or save_vars is called ).
 
     Args:
-        program(Program): The program will be loaded
-        model_path(str): The file prefix store the program
+        program( :ref:`api_paddle_static_Program` ): The program will be loaded.
+        model_path(str): The file prefix store the program.
         executor(Executor, optional): The executor used for initialize the parameter
-                                      When startup program is not run.
-        var_list(list|tuple, optional): The Tensor list/tuple to load single model file saved with
-                                  [ save_params, save_persistables, save_vars ].
-                                  Default: None
+                                      When startup program is not run. Default: None.
+        var_list(list, optional): Specifies the list of loaded Tensors, this parameter is only used when loading model 
+                                  files saved by the old interface [save_params,save_persistables,save_vars]. When loading multiple small files, 
+                                  the Tensor list can be a subset of the Tensors in all loaded files; When loading a single large file, 
+                                  the Tensor list must be consistent with the Tensor in the loaded file.
 
     Returns:
-        None
+        None.
 
-     Examples:
+    Examples:
         .. code-block:: python
 
             import paddle
@@ -2447,17 +2448,18 @@ def load_program_state(model_path, var_list=None):
 @static_only
 def set_program_state(program, state_dict):
     """
-    Set program parameter from state_dict
+    Set program parameter from state_dict.
 
     An exception will throw if shape or dtype of the parameters is not match.
 
-    NOTICE: This function MUST called after run start_up_program
+    NOTICE: This function MUST called after run start_up_program.
 
     Args:
-        program(Program): The program to be set
-        state_dict(dict): the dict store Parameter and optimizer information
+        program(Program): The program to be set.
+        state_dict(dict): the dict store Parameter and optimizer information.
+
     Returns:
-        None
+        None.
 
     Examples:
         .. code-block:: python

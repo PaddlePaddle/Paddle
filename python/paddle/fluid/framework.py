@@ -885,7 +885,7 @@ def cuda_places(device_ids=None):
 
 def xpu_places(device_ids=None):
     """
-    **Note**:
+    Note:
         For multi-card tasks, please use `FLAGS_selected_xpus` environment variable to set the visible XPU device.
         This function creates a list of :code:`paddle.XPUPlace` objects.
         If :code:`device_ids` is None, environment variable of
@@ -901,8 +901,10 @@ def xpu_places(device_ids=None):
 
     Parameters:
         device_ids (list or tuple of int, optional): list of XPU device ids.
+        
     Returns:
         list of paddle.XPUPlace: Created XPU place list.
+
     Examples:
         .. code-block:: python
 
@@ -7250,18 +7252,16 @@ _startup_program_._is_start_up_program_ = True
 
 def default_startup_program():
     """
-    Get default/global startup program.
+    Get default/global startup :ref:`api_paddle_static_Program` (Initialize the launcher).
 
-    The :code:`paddle.nn` function will append the initialization operators into startup program.
+    The :code:`paddle.nn` function will append the initialization operators into :code:`startup program` .
     The :code:`startup_program` will initialize the parameters by the OPs.
 
-    This method will return the default or the current startup program. Users can use
-    :ref:`api_paddle_fluid_framework_program_guard`  to switch :ref:`api_paddle_fluid_framework_Program` .
+    This method will return the default or the current :code:`startup program` . Users can use
+    :ref:`api_paddle_static_program_guard` to switch :ref:`api_paddle_static_Program` .
 
     Returns:
-        Program: current default startup program.
-
-    Returns type:
+        :ref:`api_paddle_static_Program` , current global/default :code:`startup program` .
 
     Examples:
         .. code-block:: python

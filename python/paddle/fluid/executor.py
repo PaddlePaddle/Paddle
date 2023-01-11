@@ -44,8 +44,7 @@ InferAnalysisConfig = core.AnalysisConfig
 
 def global_scope():
     """
-    :api_attr: Static Graph
-
+    
     Get the global/default scope instance. There are a lot of APIs use
     :code:`global_scope` as its default value, e.g., :code:`Executor.run`
 

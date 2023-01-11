@@ -144,8 +144,9 @@ def embedding(
     dtype='float32',
 ):
     r"""
-    :api_attr: Static Graph
-
+    
+    **Embedding Layer**
+    
     The operator is used to lookup embeddings vector of ids provided by :attr:`input` .
     It automatically constructs a 2D embedding matrix based on the
     input :attr:`size` (vocab_size, emb_size) and :attr:`dtype` .
@@ -202,8 +203,8 @@ def embedding(
             indicates the size of the dictionary of embeddings and the size of each embedding vector respectively.
         is_sparse(bool): The flag indicating whether to use sparse update. This parameter only
             affects the performance of the backwards gradient update. It is recommended to set
-            True because sparse update is faster. But some optimizer does not support sparse update
-            In these case, is_sparse must be False. Default: False.
+            True because sparse update is faster. But some optimizer does not support sparse update, e.g :ref:`api_paddle_optimizer_Adadelta` , 
+            :ref:`api_paddle_optimizer_Adamax` , In these case, is_sparse must be False. Default: False.
         is_distributed(bool): Whether to store the embedding matrix in a distributed manner. Only used
             in multi-machine distributed CPU training. Default: False.
         padding_idx(int|long|None): padding_idx needs to be in the interval [-vocab_size, vocab_size).
@@ -215,7 +216,8 @@ def embedding(
             default weight parameter property is used. In addition,
             user-defined or pre-trained word vectors can be loaded with the :attr:`param_attr` parameter.
             The local word vector needs to be transformed into numpy format, and the shape of local word
-            vector should be consistent with :attr:`size` .
+            vector should be consistent with :attr:`size` , then initialize with :ref:`api_paddle_to_tensor` , 
+            so that finish loading custom or pre-trained word vectors.
         dtype(str): It refers to the data type of output Tensor.
             It must be float32 or float64. Default: float32.
 
