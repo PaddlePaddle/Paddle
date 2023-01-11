@@ -916,9 +916,11 @@ class ShardingPass(PassBase):
                 )
                 if self.enable_overlap:
                     depend_op.dist_attr.execution_stream = comm_stream
-                    depend_op.dist_attr.scheduling_priority = (
-                        self.comm_op_scheduling_priority
-                    )
+                # FIXME nop op with same priorirty will hurt performance in
+                # this version of newexe
+                #     depend_op.dist_attr.scheduling_priority = (
+                #         self.comm_op_scheduling_priority
+                #     )
 
         main_block._sync_with_cpp()
 
@@ -1285,9 +1287,9 @@ class ShardingPass(PassBase):
                     op_namescope="sharding_grad_comm_dep",
                 )
                 depend_op.dist_attr.execution_stream = comm_stream
-                depend_op.dist_attr.scheduling_priority = (
-                    self.comm_op_scheduling_priority
-                )
+                # depend_op.dist_attr.scheduling_priority = (
+                #     self.comm_op_scheduling_priority
+                # )
 
         # hierarchical grad comm
         if self.enable_hierarchical_comm:
