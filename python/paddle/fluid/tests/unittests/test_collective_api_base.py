@@ -108,7 +108,10 @@ class TestCollectiveAPIRunnerBase:
         rank = args["trainerid"]
         current_endpoint = args["currentendpoint"]
         nranks = 2
-        paddle.distributed.init_parallel_env()
+        if args["use_comm_context"]:
+            paddle.distributed.collective._init_parallel_env(args["backend"])
+        else:
+            paddle.distributed.init_parallel_env()
         if args['backend'] == 'nccl':
             device_id = int(os.getenv("FLAGS_selected_gpus", "0"))
             place = fluid.CUDAPlace(
@@ -150,6 +153,7 @@ def runtime_main(test_class, col_type):
     args["path_id"] = int(os.getenv("PATH_ID"))
     args["static_mode"] = int(os.getenv("STATIC_MODE"))
     args["dtype"] = os.getenv("DTYPE")
+    args["use_comm_context"] = bool(int(os.getenv("USE_COMM_CONTEXT", "0")))
     model.run_trainer(args)
 
 
@@ -162,6 +166,7 @@ class TestDistBase(unittest.TestCase):
             self._find_free_port(),
         )
         self._python_interp = sys.executable
+        self._master_endpoints = "127.0.0.1:%s" % (self._find_free_port())
 
         self.temp_dir = tempfile.TemporaryDirectory()
 
@@ -204,6 +209,7 @@ class TestDistBase(unittest.TestCase):
                 "PADDLE_TRAINERS_NUM": "2",
                 "PADDLE_TRAINER_ENDPOINTS": self._ps_endpoints,
                 "PADDLE_CURRENT_ENDPOINT": w0_ep,
+                "PADDLE_MASTER": self._master_endpoints,
             }
 
             env1 = {
@@ -212,6 +218,7 @@ class TestDistBase(unittest.TestCase):
                 "PADDLE_TRAINERS_NUM": "2",
                 "PADDLE_TRAINER_ENDPOINTS": self._ps_endpoints,
                 "PADDLE_CURRENT_ENDPOINT": w1_ep,
+                "PADDLE_MASTER": self._master_endpoints,
             }
         elif core.is_compiled_with_xpu():
             env0 = {

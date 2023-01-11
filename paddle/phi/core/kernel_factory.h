@@ -14,12 +14,12 @@
 
 #pragma once
 
+#include <map>
 #include <ostream>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
 #include <utility>
-
 #include "paddle/phi/common/backend.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/layout.h"
@@ -33,6 +33,19 @@
 namespace phi {
 
 using DataType = paddle::experimental::DataType;
+
+struct OpCount {
+  OpCount() {
+    fp16_called_ = 0;
+    bf16_called_ = 0;
+    fp32_called_ = 0;
+    other_called_ = 0;
+  }
+  int fp16_called_;
+  int bf16_called_;
+  int fp32_called_;
+  int other_called_;
+};
 
 /**
  * [ Naming considerations ]
@@ -305,10 +318,19 @@ class KernelFactory {
   const KernelArgsDef& GetFirstKernelArgsDef(
       const std::string& kernel_name) const;
 
+  void AddToLowPrecisionKernelList(
+      const std::string& name,
+      const paddle::experimental::DataType& kernel_key_type);
+
+  std::map<const std::string, OpCount> GetLowPrecisionKernelList();
+
  private:
   KernelFactory() = default;
 
   KernelNameMap kernels_;
+
+  // Get the low precision kernel list of current module.
+  std::map<const std::string, OpCount> low_precision_kernels_;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const KernelKey& kernel_key) {

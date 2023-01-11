@@ -1272,7 +1272,7 @@ def broadcast_tensors(input, name=None):
                         last_index = output_shape_r_last_tensor_index[i]
                         raise TypeError(
                             "Input tensors to broadcast_tensors does not follow bcast semantics"
-                            "Tensor {last_index} conflicts with Tensor {j} in reversed dimension {i}"
+                            f"Tensor {last_index} conflicts with Tensor {j} in reversed dimension {i}"
                         )
                     if output_shape_r[i] <= shape[i]:
                         output_shape_r[i] = shape[i]
@@ -1541,41 +1541,49 @@ def flatten(x, start_axis=0, stop_axis=-1, name=None):
     if not (isinstance(x, Variable)):
         raise ValueError("The input x should be a Tensor")
 
-    if not paddle.in_dynamic_mode():
+    x_dim = len(x.shape)
+    if x_dim == 0:
+        if not (isinstance(start_axis, int)) or start_axis not in [0, -1]:
+            raise ValueError(
+                "The start_axis should be int, and should be 0 or -1 when the input tensor is a 0D-Tensor"
+            )
+        if not (isinstance(stop_axis, int)) or stop_axis not in [0, -1]:
+            raise ValueError(
+                "The stop_axis should be int, and should be 0 or -1 when the input tensor is a 0D-Tensor"
+            )
+    else:
+        if (
+            not (isinstance(start_axis, int))
+            or (start_axis > x_dim - 1)
+            or start_axis < -x_dim
+        ):
+            raise ValueError(
+                "The start_axis should be a int, and in range [-rank(x), rank(x))"
+            )
+        if (
+            not (isinstance(stop_axis, int))
+            or (stop_axis > x_dim - 1)
+            or stop_axis < -x_dim
+        ):
+            raise ValueError(
+                "The stop_axis should be a int, and in range [-rank(x), rank(x))"
+            )
+        if start_axis < 0:
+            start_axis = start_axis + x_dim
+        if stop_axis < 0:
+            stop_axis = stop_axis + x_dim
+        if start_axis > stop_axis:
+            raise ValueError("The stop_axis should be larger than stat_axis")
+
+    if in_dygraph_mode():
+        return _C_ops.flatten(x, start_axis, stop_axis)
+    else:
         check_variable_and_dtype(
             x,
             'x',
             ['float32', 'float64', 'int8', 'int16', 'int32', 'int64', 'uint8'],
             'flatten',
         )
-
-    x_dim = len(x.shape)
-    if (
-        not (isinstance(start_axis, int))
-        or (start_axis > x_dim - 1)
-        or start_axis < -x_dim
-    ):
-        raise ValueError(
-            "The start_axis should be a int, and in range [-rank(x), rank(x))"
-        )
-    if (
-        not (isinstance(stop_axis, int))
-        or (stop_axis > x_dim - 1)
-        or stop_axis < -x_dim
-    ):
-        raise ValueError(
-            "The stop_axis should be a int, and in range [-rank(x), rank(x))"
-        )
-    if start_axis < 0:
-        start_axis = start_axis + x_dim
-    if stop_axis < 0:
-        stop_axis = stop_axis + x_dim
-    if start_axis > stop_axis:
-        raise ValueError("The stop_axis should be larger than stat_axis")
-
-    if in_dygraph_mode():
-        return _C_ops.flatten(x, start_axis, stop_axis)
-    else:
         helper = LayerHelper('flatten', **locals())
         out = helper.create_variable_for_type_inference(x.dtype)
         x_shape = helper.create_variable_for_type_inference(x.dtype)
