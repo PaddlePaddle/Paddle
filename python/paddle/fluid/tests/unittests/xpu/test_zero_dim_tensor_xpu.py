@@ -755,6 +755,7 @@ class TestSundryAPI(unittest.TestCase):
             dtype='float32',
             stop_gradient=False,
         )
+        logit.retain_grads()
         label = paddle.to_tensor(
             [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0]], dtype='float32'
         )
@@ -762,6 +763,7 @@ class TestSundryAPI(unittest.TestCase):
         fg_num_1 = paddle.full([1], 2.0)
 
         out0 = F.sigmoid_focal_loss(logit, label, normalizer=fg_num_0)
+        out0.retain_grads()
         out1 = F.sigmoid_focal_loss(logit, label, normalizer=fg_num_1)
 
         np.testing.assert_array_equal(
