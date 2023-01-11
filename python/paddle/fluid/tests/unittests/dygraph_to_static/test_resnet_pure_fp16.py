@@ -20,6 +20,7 @@ from test_resnet import SEED, ResNet, optimizer_setting
 
 import paddle
 import paddle.fluid as fluid
+from paddle.fluid import core
 from paddle.jit import ProgramTranslator
 
 # NOTE: Reduce batch_size from 8 to 2 to avoid unittest timeout.
@@ -124,6 +125,23 @@ class TestResnet(unittest.TestCase):
     def test_resnet(self):
         if fluid.is_compiled_with_cuda():
             static_loss = self.train(to_static=True)
+            dygraph_loss = self.train(to_static=False)
+            # NOTE: In pure fp16 training, loss is not stable, so we enlarge atol here.
+            np.testing.assert_allclose(
+                static_loss,
+                dygraph_loss,
+                rtol=1e-05,
+                atol=0.001,
+                err_msg='static_loss: {} \n dygraph_loss: {}'.format(
+                    static_loss, dygraph_loss
+                ),
+            )
+
+    def test_resnet_composite(self):
+        if fluid.is_compiled_with_cuda():
+            core.set_prim_enabled(True)
+            static_loss = self.train(to_static=True)
+            core.set_prim_enabled(False)
             dygraph_loss = self.train(to_static=False)
             # NOTE: In pure fp16 training, loss is not stable, so we enlarge atol here.
             np.testing.assert_allclose(
