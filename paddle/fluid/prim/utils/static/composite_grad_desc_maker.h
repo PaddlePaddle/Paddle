@@ -333,8 +333,10 @@ class GradCompositeOpMakerBase {
     auto grad_var_name = framework::GradVarName(var_name);
     (*this->grad_to_var_)[grad_var_name] = var_name;
     VLOG(8) << "Valid gradients: " << grad_var_name;
+    VLOG(3) << "out_grad name: " << grad_var_name;
     if (original_block_->HasVar(grad_var_name)) {
       // Copy Var from original block to active block, or create a new one.
+      VLOG(3) << "in block: " << grad_var_name;
       CopyVarFromOrig(grad_var_name);
       return StaticCompositeContext::Instance().GetBlock()->FindVar(
           grad_var_name);
