@@ -273,6 +273,7 @@ paddle::framework::FetchList InterpreterCore::Run(
     Convert(&op_func_nodes);
     is_build_ = true;
     UpdateSyncOpNum();
+    platform::DeviceContextPool::Instance().Get(place_)->Wait();
     if (skip_run) {
       VLOG(4) << "RUN impl";
       RunImpl();
@@ -1194,6 +1195,7 @@ void InterpreterCore::Prepare(const std::vector<std::string>& feed_names,
     Convert(&op_func_nodes);
     UpdateSyncOpNum();
     is_build_ = true;
+    platform::DeviceContextPool::Instance().Get(place_)->Wait();
     if (skip_run) {
       VLOG(4) << "RUN impl";
       RunImpl();
