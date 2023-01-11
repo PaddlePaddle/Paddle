@@ -439,6 +439,7 @@ class TestResnet(unittest.TestCase):
                 static_loss, dygraph_loss
             ),
         )
+        core.set_prim_enabled(False)
 
     def test_in_static_mode_mkldnn(self):
         fluid.set_flags({'FLAGS_use_mkldnn': True})
