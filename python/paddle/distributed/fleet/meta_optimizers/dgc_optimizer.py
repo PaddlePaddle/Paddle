@@ -171,8 +171,8 @@ class DGCMomentumOptimizer(Optimizer):
         if is_new_var:
             helper.set_variable_initializer(
                 counter,
-                initializer=paddle.nn.initializer.Constant(
-                    value=float(begin - 1)
+                initializer=paddle.fluid.initializer.Constant(
+                    value=float(begin - 1), force_cpu=True
                 ),
             )
             helper.main_program.global_block()._prepend_op(
@@ -194,7 +194,9 @@ class DGCMomentumOptimizer(Optimizer):
         if is_new_var:
             helper.set_variable_initializer(
                 counter,
-                initializer=paddle.nn.initializer.Constant(value=float(value)),
+                initializer=paddle.fluid.initializer.Constant(
+                    value=float(value), force_cpu=True
+                ),
             )
             counter.stop_gradient = True
 
