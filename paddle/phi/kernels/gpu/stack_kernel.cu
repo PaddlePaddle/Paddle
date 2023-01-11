@@ -13,6 +13,8 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/stack_kernel.h"
+#include "paddle/phi/kernels/unstack_grad_kernel.h"
+
 #include "paddle/fluid/memory/memory.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/core/dense_tensor.h"
@@ -22,7 +24,7 @@
 namespace phi {
 
 template <typename T, typename IndexT, typename ArrayT>
-__global__ void StackCUDAKernel(ArrayT array,
+__global__ void StackCudaKernel(ArrayT array,
                                 funcs::GeneralDivMod<IndexT> divmoder,
                                 IndexT split_size,
                                 IndexT rows,
@@ -62,20 +64,21 @@ void LaunchStackKernel(const Context& ctx,
 
   funcs::ConstPointerArraySetter<Context, T, Size> setter(ctx, x);
   funcs::GeneralDivMod<IndexT> divmoder(x_col);
-  StackCUDAKernel<T, IndexT, decltype(setter.array)>
+  StackCudaKernel<T, IndexT, decltype(setter.array)>
       <<<config.block_per_grid, config.thread_per_block, 0, ctx.stream()>>>(
           setter.array, divmoder, x_col, x_row, out_col, out_ptr);
 }
 
 template <typename T, typename Context>
-void StackKernel(const Context& ctx,
-                 const std::vector<const DenseTensor*>& x,
-                 int axis,
-                 DenseTensor* out) {
+void StackRawKernel(const Context& ctx,
+                    const std::vector<const DenseTensor*>& x,
+                    int axis,
+                    DenseTensor* out) {
   if (axis < 0) axis += (x[0]->dims().size() + 1);
   int num = static_cast<int>(x.size());
 
-  // Split x dim from axis to matrix
+  // Split x dim from axis to matrix of shape [x_row, x_col], and the output
+  // tensor's shape is [x_row, out_col].
   int64_t x_row = 1;
   for (int i = 0; i < axis; ++i) {
     x_row *= x[0]->dims()[i];
@@ -98,6 +101,22 @@ void StackKernel(const Context& ctx,
   }
 }
 
+template <typename T, typename Context>
+void StackKernel(const Context& ctx,
+                 const std::vector<const DenseTensor*>& x,
+                 int axis,
+                 DenseTensor* out) {
+  StackRawKernel<T, Context>(ctx, x, axis, out);
+}
+
+template <typename T, typename Context>
+void UnStackGradKernel(const Context& ctx,
+                       const std::vector<const DenseTensor*>& out_grad,
+                       int axis,
+                       DenseTensor* x_grad) {
+  StackRawKernel<T, Context>(ctx, out_grad, axis, x_grad);
+}
+
 }  // namespace phi
 
 PD_REGISTER_KERNEL(stack,
@@ -111,5 +130,16 @@ PD_REGISTER_KERNEL(stack,
                    int,
                    uint8_t,
                    int8_t,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
+
+PD_REGISTER_KERNEL(unstack_grad,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::UnStackGradKernel,
+                   float,
+                   double,
+                   int64_t,
+                   int,
                    phi::dtype::float16,
                    phi::dtype::bfloat16) {}
