@@ -33,10 +33,6 @@ from paddle.fluid.layers.utils import _hash_with_id, flatten, pack_sequence_as
 from . import logging_utils
 from .return_transformer import RETURN_NO_VALUE_MAGIC_NUM
 
-# from paddle.static.amp.fp16_lists import AutoMixedPrecisionLists
-# from paddle.static.amp.fp16_utils import cast_model_to_fp16, rewrite_program
-
-
 __all__ = []
 
 
