@@ -19,6 +19,9 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/elementwise/elementwise_op.h"
 #include "paddle/fluid/platform/complex.h"
+#include "paddle/fluid/prim/api/manual/backward/composite_backward_api.h"
+#include "paddle/fluid/prim/utils/static/composite_grad_desc_maker.h"
+#include "paddle/fluid/prim/utils/static/desc_tensor.h"
 
 namespace paddle {
 namespace operators {
@@ -60,6 +63,31 @@ class ElementwiseMulOpGradMaker : public framework::SingleGradOpMaker<T> {
     op->SetAttrMap(this->Attrs());
     op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
     op->SetOutput(framework::GradVarName("Y"), this->InputGrad("Y"));
+  }
+};
+
+class ElementwiseMulGradCompositeOpMaker
+    : public prim::GradCompositeOpMakerBase {
+  using prim::GradCompositeOpMakerBase::GradCompositeOpMakerBase;
+
+ public:
+  void Apply() override {
+    auto x = this->GetSingleForwardInput("X");
+    auto y = this->GetSingleForwardInput("Y");
+    auto out_grad = this->GetSingleOutputGrad("Out");
+    auto x_grad = this->GetSingleInputGrad("X");
+    auto x_grad_p = this->GetOutputPtr(&x_grad);
+    auto y_grad = this->GetSingleInputGrad("Y");
+    auto y_grad_p = this->GetOutputPtr(&y_grad);
+    prim::multiply_grad<prim::DescTensor>(
+        x,
+        y,
+        out_grad,
+        static_cast<int>(this->Attr<int>("axis")),
+        x_grad_p,
+        y_grad_p);
+    this->RecoverOutputName(x_grad, this->GetOutputName(x_grad));
+    this->RecoverOutputName(y_grad, this->GetOutputName(y_grad));
   }
 };
 
