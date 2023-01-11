@@ -69,8 +69,8 @@ class GraphBrpcClient : public BrpcPsClient {
       int idx,
       std::vector<int64_t> node_ids,
       int sample_size,
-      std::vector<std::vector<int64_t>>& res, // NOLINT
-      std::vector<std::vector<float>>& res_weight,  // NOLINT
+      std::vector<std::vector<int64_t>>* res,
+      std::vector<std::vector<float>>* res_weight,
       bool need_weight,
       int server_index = -1);
 

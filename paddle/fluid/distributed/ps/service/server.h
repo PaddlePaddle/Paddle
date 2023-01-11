@@ -189,8 +189,8 @@ class PsBaseService : public PsService {
   virtual void set_response_code(PsResponseMessage &response,  // NOLINT
                                  int err_code,
                                  const char *err_msg) {
-    response->set_err_msg(err_msg);
-    response->set_err_code(err_code);
+    response.set_err_msg(err_msg);
+    response.set_err_code(err_code);
     LOG(WARNING) << "Resonse err_code:" << err_code << " msg:" << err_msg;
   }
 
