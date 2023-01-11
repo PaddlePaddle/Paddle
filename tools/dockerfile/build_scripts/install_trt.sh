@@ -42,7 +42,7 @@ elif [[ "$1" == "trt8406" ]];then
    cp -rf /usr/local/TensorRT-8.4.0.6/include/* /usr/include/ && cp -rf /usr/local/TensorRT-8.4.0.6/lib/* /usr/lib/
    rm -f TensorRT-8.4.0.6.Linux.x86_64-gnu.cuda-11.6.cudnn8.3.tar.gz
 elif [[ "$1" == "trt8431" ]];then
-   wget -q https://paddle-ci.gz.bcebos.com/TRT/TensorRT-8.4.3.1.Linux.x86_64-gnu.cuda-11.6.cudnn8.4.tar.gz --no-check-certificate
+   wget -q https://paddle-ci.gz.bcebos.com/TRT/TensorRT-8.4.3.1.Linux.x86_64-gnu.cuda-11.6.cudnn8.4.tar.gz --no-check-certificate --no-proxy
    tar -zxf TensorRT-8.4.3.1.Linux.x86_64-gnu.cuda-11.6.cudnn8.4.tar.gz -C /usr/local
    cp -rf /usr/local/TensorRT-8.4.3.1/include/* /usr/include/ && cp -rf /usr/local/TensorRT-8.4.3.1/lib/* /usr/lib/
    rm -f TensorRT-8.4.3.1.Linux.x86_64-gnu.cuda-11.6.cudnn8.4.tar.gz
