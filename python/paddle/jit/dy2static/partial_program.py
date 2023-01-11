@@ -406,7 +406,7 @@ class PartialProgramLayer:
         origin_train_program = self._train_program
         fwd_end_op_index = len(origin_infer_program.block(0).ops)
         for i in range(
-            fwd_end_op_index + 1,
+            fwd_end_op_index,
             min(
 <<<<<<< HEAD
                 fwd_end_op_index + 2 * len(self._outputs.var_ids),
