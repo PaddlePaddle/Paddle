@@ -148,13 +148,17 @@ void AppendSkipDeletionVars(const std::vector<std::string> &append_vars,
   }
 }
 
-std::set<std::string> ParseSafeEagerDeletionSkipVarsSet(
+std::vector<std::set<std::string>> ParseSafeEagerDeletionSkipVarsSet(
     const ProgramDesc &backward_program, bool skip_no_need_buffer) {
-  std::set<std::string> skip_eager_delete_vars;
+  // skip_gc_vars and no_need_buffer_vars
+  std::vector<std::set<std::string>> results;
+  results.resize(2);
+
   auto backward_ops = backward_program.Block(0).AllOps();
   auto &op_info_map = OpInfoMap::Instance();
   std::unordered_set<std::string> op_outputs;
   std::unordered_set<std::string> op_inputs;
+  std::unordered_set<std::string> buffer_ins_tmp;
   std::unordered_set<std::string> no_need_buffer_ins;
   for (size_t i = 0; i < backward_ops.size(); ++i) {
     framework::OpDesc *op = backward_ops[i];
@@ -167,35 +171,48 @@ std::set<std::string> ParseSafeEagerDeletionSkipVarsSet(
     auto &op_info = op_info_map.Get(op->Type());
     auto &inferer = op_info.NoNeedBufferVarsInferer();
     no_need_buffer_ins.clear();
-    // TODO(Aurelius84): Need remove skip_no_need_buffer after cinn fix this
-    // problem.
-    if (inferer != nullptr && !skip_no_need_buffer) {
+
+    if (inferer != nullptr) {
       no_need_buffer_ins =
           inferer(op->Inputs(), op->Outputs(), op->GetAttrMap());
     }
     for (auto &in_names : op->Inputs()) {
-      if (no_need_buffer_ins.count(in_names.first) == 0) {
+      bool is_no_need_buff = no_need_buffer_ins.count(in_names.first) != 0;
+      if (skip_no_need_buffer || !is_no_need_buff) {
         for (auto &in_name : in_names.second) {
           op_inputs.emplace(in_name);
         }
-      } else {
-        VLOG(2) << op->Type() << " has no_need_buffer_in: " << in_names.first
-                << " , skip it.";
+      }
+      if (is_no_need_buff) {
+        for (auto &in_name : in_names.second) {
+          VLOG(2) << op->Type() << " has no_need_buffer_in: " << in_name
+                  << " , skip it.";
+          buffer_ins_tmp.insert(in_name);
+        }
       }
     }
     for (const std::string &out_arg_name : op->OutputArgumentNames()) {
       op_outputs.emplace(out_arg_name);
     }
   }
+  // Filter input vars if it is output from any ops.
   for (const std::string &var_name : op_inputs) {
     VLOG(4) << "parse op.input: " << var_name;
     if (op_outputs.find(var_name) == op_outputs.end()) {
       VLOG(1) << "skip eager var: " << var_name;
-      skip_eager_delete_vars.insert(var_name);
+      results[0].insert(var_name);
     }
   }
-  VLOG(1) << "Found skip_eager_delete_vars: " << skip_eager_delete_vars.size();
-  return skip_eager_delete_vars;
+  VLOG(1) << "Found skip_eager_delete_vars: " << results[0].size();
+
+  // Filter no_need_buffer vars if it is output from any ops.
+  for (const std::string &var_name : buffer_ins_tmp) {
+    if (op_outputs.find(var_name) == op_outputs.end()) {
+      VLOG(1) << "remove no_need_buffer var: " << var_name;
+      results[1].insert(var_name);
+    }
+  }
+  return results;
 }
 }  // namespace details
 

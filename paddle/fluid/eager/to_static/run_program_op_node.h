@@ -366,9 +366,10 @@ inline void RunProgramAPI(
           program_id,
           global_inner_scope);
       // Step 3. get all eager gc vars
-      std::set<std::string> skip_eager_delete_vars =
+      auto eager_vars_info =
           paddle::framework::details::ParseSafeEagerDeletionSkipVarsSet(
               *backward_program);
+      std::set<std::string> &skip_eager_delete_vars = eager_vars_info[0];
       // all out_vars are skip_eager_var
       skip_eager_delete_vars.insert(output_names.begin(), output_names.end());
       skip_eager_delete_vars.insert(dout_names.begin(), dout_names.end());
