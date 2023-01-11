@@ -12,13 +12,12 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/math/sequence_scale.h"
+#include "paddle/phi/kernels/funcs/sequence_scale.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 
-namespace paddle {
-namespace operators {
-namespace math {
+namespace phi {
+namespace funcs {
 
 using phi::PADDLE_CUDA_NUM_THREADS;
 
@@ -45,8 +44,8 @@ class ScaleLoDTensorFunctor<phi::GPUContext, T> {
     auto lod = seq->lod();
     const size_t num_seq = lod[level].size() - 1;
     const size_t seq_width = seq->numel() / seq->dims()[0];
-    auto abs_offset_lod = framework::ToAbsOffset(lod);
-    T* seq_data = seq->mutable_data<T>(context.GetPlace());
+    auto abs_offset_lod = paddle::framework::ToAbsOffset(lod);
+    T* seq_data = context.template Alloc<T>(seq);
     paddle::framework::MixVector<size_t> mix_vector(&(abs_offset_lod[level]));
 
 #ifdef PADDLE_WITH_HIP
@@ -75,6 +74,5 @@ class ScaleLoDTensorFunctor<phi::GPUContext, T> {
 template class ScaleLoDTensorFunctor<phi::GPUContext, float>;
 template class ScaleLoDTensorFunctor<phi::GPUContext, double>;
 
-}  // namespace math
-}  // namespace operators
-}  // namespace paddle
+}  // namespace funcs
+}  // namespace phi
