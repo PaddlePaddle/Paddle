@@ -119,6 +119,8 @@ def _elementwise_op_in_dygraph(
                 OP_NAMEMAPPING[op_name] if not is_inplace(op_name) else op_name,
             )
             out = op(x, y)
+    if act is None:
+        return out
     return dygraph_utils._append_activation_in_dygraph(
         out, act, use_mkldnn=use_mkldnn
     )
