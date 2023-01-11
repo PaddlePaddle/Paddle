@@ -195,8 +195,7 @@ class TestUnaryAPI(unittest.TestCase):
                 self.assertEqual(np.array(result[0]).shape, (device_num,))
                 self.assertEqual(np.array(result[1]).shape, (device_num,))
                 if len(result) == 3:
-                    self.assertEqual(
-                        np.array(result[2]).shape, (device_num, 1))
+                    self.assertEqual(np.array(result[2]).shape, (device_num, 1))
 
         paddle.disable_static()
 
