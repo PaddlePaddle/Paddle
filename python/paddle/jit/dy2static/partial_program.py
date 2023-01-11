@@ -567,7 +567,7 @@ class PartialProgramLayer:
         if targets and self._params:
             backward.gradients(targets=targets, inputs=[])
 
-        start_idx = len(main_program.block(0).ops) + 2 * len(
+        start_idx = len(main_program.block(0).ops) + 1 * len(
             self._outputs.tolist()
         )
 
