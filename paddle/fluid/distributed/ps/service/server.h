@@ -161,7 +161,7 @@ class PServerClosure : public google::protobuf::Closure {
       promise->set_value(value);
     }
   }
-  void add_promise(std::shared_ptr<std::promise<int32_t>> *promise) {
+  void add_promise(const std::shared_ptr<std::promise<int32_t>> &promise) {
     _promises.push_back(promise);
   }
 
@@ -189,8 +189,8 @@ class PsBaseService : public PsService {
   virtual void set_response_code(PsResponseMessage *response,
                                  int err_code,
                                  const char *err_msg) {
-    response.set_err_msg(err_msg);
-    response.set_err_code(err_code);
+    response->set_err_msg(err_msg);
+    response->set_err_code(err_code);
     LOG(WARNING) << "Resonse err_code:" << err_code << " msg:" << err_msg;
   }
 
