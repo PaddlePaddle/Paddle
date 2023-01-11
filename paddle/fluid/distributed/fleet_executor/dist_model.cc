@@ -437,8 +437,8 @@ bool DistModel::PrepareFleetExe() {
     RankInfo *rank_info = executor_desc_.add_cluster_info();
     rank_info->set_rank(i);
     VLOG(1) << "start rank_info";
-    rank_info->set_ip_port(config_.trainer_endpoints[i]);
-    // *(rank_info->mutable_ip_port()) = config_.trainer_endpoints[i];
+    // rank_info->set_ip_port(config_.trainer_endpoints[i]);
+    *(rank_info->mutable_ip_port()) = config_.trainer_endpoints[i];
     VLOG(1) << "stop rank_info";
     id_to_rank.insert({i, i});
   }
