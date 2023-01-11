@@ -1,4 +1,4 @@
-// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,43 +14,10 @@
 
 #pragma once
 
-#include <chrono>
 #include <cstdint>
-#include <vector>
 
-#include "paddle/phi/common/place.h"
-
-namespace paddle {
+namespace phi {
 namespace distributed {
-
-// TODO(shenliang03): To support AVG for reduce
 enum class ReduceOp : std::uint8_t { SUM = 0, AVG, MAX, MIN, PRODUCT };
-
-struct AllreduceOptions {
-  ReduceOp reduce_op = ReduceOp::SUM;
-};
-
-struct BroadcastOptions {
-  int source_rank = 0;
-  int source_root = 0;
-};
-
-struct BarrierOptions {
-  int8_t device_id;
-};
-
-struct ReduceOptions {
-  ReduceOp reduce_op = ReduceOp::SUM;
-  int root_rank = 0;
-};
-
-struct ScatterOptions {
-  int root_rank = 0;
-};
-
-struct ReduceScatterOptions {
-  ReduceOp reduce_op = ReduceOp::SUM;
-};
-
-}  //  namespace distributed
-}  //  namespace paddle
+}  // namespace distributed
+}  // namespace phi

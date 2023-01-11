@@ -1,4 +1,4 @@
-// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,25 +14,11 @@
 
 #pragma once
 
-#include <cstdint>
-#include <vector>
-
-#include "paddle/phi/backends/gpu/forwards.h"
-
-#ifdef PADDLE_WITH_HIP
-using gpuStream_t = hipStream_t;
-#else
-using gpuStream_t = cudaStream_t;
-#endif
-
-// forward declarations
 namespace phi {
+// forward declaration
 class DenseTensor;
-}
 
-namespace paddle {
 namespace distributed {
-
 struct CommStaticCheck {
   static void CheckRank(int rank, int world_size);
 
@@ -84,32 +70,5 @@ struct CommStaticCheck {
                               int world_size);
 };
 
-struct CommDynamicCheck {
-  static void CheckDataType(const phi::DenseTensor& tensor, int64_t dtype);
-
-  static void CheckDataType(const phi::DenseTensor& tensor,
-                            int root_rank,
-                            int cur_rank,
-                            ncclComm_t comm);
-
-  static void CheckShape(const phi::DenseTensor& tensor, int64_t shape);
-
-  static void CheckShape(const phi::DenseTensor& tensor,
-                         int root_rank,
-                         int cur_rank,
-                         ncclComm_t comm);
-
-  static void CheckShape(const phi::DenseTensor& out_tensor,
-                         const phi::DenseTensor& in_tensor,
-                         const std::vector<int64_t>& in_size_each_rank,
-                         int cur_rank,
-                         int world_size,
-                         ncclComm_t comm);
-
- private:
-  // `0` represents default stream for both cuda & hip
-  static constexpr gpuStream_t kDefaultStream = 0;
-};
-
-}  // namespace distributed
-}  // namespace paddle
+}  //  namespace distributed
+}  //  namespace phi
