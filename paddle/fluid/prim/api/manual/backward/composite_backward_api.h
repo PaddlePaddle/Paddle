@@ -18,6 +18,19 @@
 namespace paddle {
 namespace prim {
 
+// template <typename T>
+// Tensor reduce_as(const Tensor& x, const Tensor& ref) {
+//   auto res = empty<DescTensor>({}, x.dtype, paddle::Place());
+//   if (x.dims() != ref.dims()) {
+//     res = sum<T>(res, phi::vectorize(get_reduce_dims(x_grad_no_reduce.dims(),
+//     x.dims())), x.dtype(), false); if (res.dims().size() !=
+//     ref.dims().size()) {
+//       res = reshape<T>(res, phi::vectorize(ref.dims()));
+//     }
+//   }
+//   return res;
+// }
+
 // This function should have as same signature as phi, which defined in
 // paddle/phi/api/backward/backward_api.h
 template <typename T>
@@ -135,6 +148,43 @@ void divide_grad(const Tensor& x,
       dx->set_impl(dx_res.impl());
     }
   }  // indicate we will compute dx
+}
+
+template <typename T>
+void multiply_grad(const Tensor& x,
+                   const Tensor& y,
+                   const Tensor& out_grad,
+                   int axis,
+                   Tensor* x_grad,
+                   Tensor* y_grad) {
+  if (x_grad) {
+    auto x_grad_unreduce = multiply<T>(out_grad, y);
+    if (x.dims() != x_grad_unreduce.dims()) {
+      auto x_grad_reduced = sum<T>(
+          res,
+          phi::vectorize(get_reduce_dims(x_grad_unreduce.dims(), x.dims())),
+          x_grad_unreduce.dtype(),
+          false);
+      if (x_grad_reduced.dims().size() != x.dims().size()) {
+        x_grad_reduced = reshape<T>(x_grad_reduced, x.shape());
+      }
+      x_grad->set_impl(x_grad_reduced.impl());
+    }
+  }
+  if (y_grad) {
+    auto y_grad_unreduce = multiply<T>(out_grad, x);
+    if (y.dims() != y_grad_unreduce.dims()) {
+      auto y_grad_reduced = sum<T>(
+          res,
+          phi::vectorize(get_reduce_dims(y_grad_unreduce.dims(), x.dims())),
+          y_grad_unreduce.dtype(),
+          false);
+      if (y_grad_reduced.dims().size() != x.dims().size()) {
+        y_grad_reduced = reshape<T>(y_grad_reduced, x.shape());
+      }
+      y_grad->set_impl(y_grad_reduced.impl());
+    }
+  }
 }
 }  // namespace prim
 }  // namespace paddle
