@@ -129,6 +129,7 @@ void ConcatDenseTensorWithType(const DeviceContext &dev_ctx,
   }
 }
 
+#ifdef PADDLE_WITH_XPU
 template <>
 void ConcatDenseTensorWithType(const phi::XPUContext &dev_ctx,
                                const std::vector<phi::DenseTensor> &t_list,
@@ -147,6 +148,7 @@ void ConcatDenseTensorWithType(const phi::XPUContext &dev_ctx,
           "Data type (%s) is not supported when it concats tensors.", type));
   }
 }
+#endif
 
 template <typename DeviceContext>
 void SplitDenseTensorWithType(const DeviceContext &dev_ctx,
@@ -189,6 +191,7 @@ void SplitDenseTensorWithType(const DeviceContext &dev_ctx,
   }
 }
 
+#ifdef PADDLE_WITH_XPU
 template <>
 void SplitDenseTensorWithType(const phi::XPUContext &dev_ctx,
                               const phi::DenseTensor &t_in,
@@ -207,6 +210,7 @@ void SplitDenseTensorWithType(const phi::XPUContext &dev_ctx,
           "Data type (%s) is not supported when it splits tensors.", type));
   }
 }
+#endif
 
 void ConcatTensor(const phi::DeviceContext &dev_ctx,
                   const std::vector<phi::DenseTensor> &tensor_list,
