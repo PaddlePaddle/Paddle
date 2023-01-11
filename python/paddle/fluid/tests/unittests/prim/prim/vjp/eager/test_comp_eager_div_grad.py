@@ -20,6 +20,8 @@ import parameterized as param
 import paddle
 from paddle.fluid import core
 
+core.set_prim_enabled(True)
+
 
 @param.parameterized_class(
     ('primal0', 'primal1', 'dtype'),
@@ -41,7 +43,7 @@ from paddle.fluid import core
         ),
     ],
 )
-class TestDivGradComp(unittest.TestCase):
+class TestTanhGradComp(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.primal0 = cls.primal0.astype(cls.dtype)
@@ -56,51 +58,25 @@ class TestDivGradComp(unittest.TestCase):
     def test_tanh_grad_comp(self):
         def actual(primal0, primal1):
             core.set_prim_enabled(True)
-            mp, sp = paddle.static.Program(), paddle.static.Program()
-            with paddle.static.program_guard(mp, sp):
-                x = paddle.static.data('primal0', primal0.shape, primal0.dtype)
-                y = paddle.static.data('primal1', primal1.shape, primal1.dtype)
-                x.stop_gradient = False
-                y.stop_gradient = False
-                z = paddle.divide(x, y)
-                res = paddle.static.gradients([z], [x, y])
-            exe = paddle.static.Executor()
-            exe.run(sp)
-            out = exe.run(
-                program=mp,
-                feed={
-                    'primal0': primal0,
-                    'primal1': primal1,
-                },
-                fetch_list=[res[0].name, res[1].name],
-            )
-            return out[0], out[1]
+            paddle.disable_static()
+            x = paddle.to_tensor(primal0, dtype='float32', stop_gradient=False)
+            y = paddle.to_tensor(primal1, dtype='float32', stop_gradient=False)
+            x.stop_gradient = False
+            y.stop_gradient = False
+            out = paddle.divide(x, y)
+            res = paddle.grad(out, [x, y], create_graph=True, retain_graph=True)
+            return res[0].numpy(), res[1].numpy()
 
         def desired(primal0, primal1):
             core.set_prim_enabled(False)
-            mp, sp = paddle.static.Program(), paddle.static.Program()
-            with paddle.static.program_guard(mp, sp):
-                x = paddle.static.data(
-                    'primal0', self.primal0.shape, self.primal0.dtype
-                )
-                y = paddle.static.data(
-                    'primal1', self.primal1.shape, self.primal1.dtype
-                )
-                x.stop_gradient = False
-                y.stop_gradient = False
-                z = paddle.divide(x, y)
-                res = paddle.static.gradients([z], [x, y])
-            exe = paddle.static.Executor()
-            exe.run(sp)
-            out = exe.run(
-                program=mp,
-                feed={
-                    'primal0': self.primal0,
-                    'primal1': self.primal1,
-                },
-                fetch_list=[res[0].name, res[1].name],
-            )
-            return out[0], out[1]
+            paddle.disable_static()
+            x = paddle.to_tensor(primal0, dtype='float32', stop_gradient=False)
+            y = paddle.to_tensor(primal1, dtype='float32', stop_gradient=False)
+            x.stop_gradient = False
+            y.stop_gradient = False
+            out = paddle.divide(x, y)
+            res = paddle.grad(out, [x, y], create_graph=True, retain_graph=True)
+            return res[0].numpy(), res[1].numpy()
 
         dx, dy = actual(self.primal0, self.primal1)
 

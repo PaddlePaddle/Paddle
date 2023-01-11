@@ -150,7 +150,11 @@ Tensor sum<DescTensor>(Tensor x,
   op->SetType("reduce_sum");
   op->SetInput("X",
                {std::static_pointer_cast<prim::DescTensor>(x.impl())->Name()});
-  op->SetAttr("dim", axis.GetData());
+  std::vector<int> res;
+  for (auto value : axis.GetData()) {
+    res.push_back(static_cast<int>(value));
+  }
+  op->SetAttr("dim", res);
   PADDLE_ENFORCE_EQ(
       dtype,
       paddle::experimental::DataType::FLOAT32,
@@ -176,7 +180,12 @@ Tensor reshape<DescTensor>(Tensor x, paddle::experimental::IntArray shape) {
   op->SetType("reshape");
   op->SetInput("X",
                {std::static_pointer_cast<prim::DescTensor>(x.impl())->Name()});
-  op->SetAttr("shape", shape.GetData());
+  std::vector<int> res;
+  for (auto value : shape.GetData()) {
+    // TODO(jiabin): This cast is not safe for now, find a way to handle this.
+    res.push_back(static_cast<int>(value));
+  }
+  op->SetAttr("shape", res);
   op->SetOutput(
       "Out", {std::static_pointer_cast<prim::DescTensor>(out.impl())->Name()});
   op->CheckAttrs();

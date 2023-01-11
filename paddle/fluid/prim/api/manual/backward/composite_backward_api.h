@@ -42,39 +42,46 @@ void tanh_grad(const Tensor& out, const Tensor& grad_out, Tensor* grad_x) {
 }
 
 template <typename T>
-void divide_grad(
-    Tensor x, Tensor y, Tensor out_grad, int axis, Tensor* dx, Tensor* dy) {
+void divide_grad(const Tensor& x,
+                 const Tensor& y,
+                 const Tensor& out,
+                 const Tensor& out_grad,
+                 int axis,
+                 Tensor* dx,
+                 Tensor* dy) {
   if (dy) {
     // dy = -(x/y^2) * dout
     auto tmp0 = pow<T>(y, 2.0);
     auto tmp1 = divide<T>(x, tmp0);
     auto tmp2 = scale<T>(tmp1, -1.0, 0.0, true);
-    auto res = multiply<T>(tmp2, out_grad);
+    auto dy_res = multiply<T>(tmp2, out_grad);
+    VLOG(3) << "dy_res dims: " << dy_res.dims();
     if (out_grad.dims() != y.dims()) {
       // Maybe need reduce here
-      phi::DDim reduce_dim = get_reduce_dims(res.dims(), y.dims());
-      auto reduce_res =
-          sum<T>(res, phi::vectorize(reduce_dim), y.dtype(), false);
-      auto dy_tmp = reshape<T>(reduce_res, phi::vectorize(y.dims()));
+      phi::DDim reduce_dim = get_reduce_dims(dy_res.dims(), y.dims());
+      auto dy_reduce_res =
+          sum<T>(dy_res, phi::vectorize(reduce_dim), y.dtype(), false);
+      auto dy_tmp = reshape<T>(dy_reduce_res, phi::vectorize(y.dims()));
       dy->set_impl(dy_tmp.impl());
     } else {
-      dy->set_impl(res.impl());
+      dy->set_impl(dy_res.impl());
     }
   }  // indicate we will compute dy
   if (dx) {
     // dx = (1/y) * dout
     auto one_tensor = full<T>(phi::vectorize(y.dims()), 1.0);
     auto tmp0 = divide<T>(one_tensor, y);
-    auto res = multiply<T>(tmp0, out_grad);
+    auto dx_res = multiply<T>(tmp0, out_grad);
+    VLOG(3) << "dx_res dims: " << dx_res.dims();
     if (out_grad.dims() != x.dims()) {
       // Maybe need reduce here
-      auto reduce_dim = get_reduce_dims(res.dims(), x.dims());
-      auto reduce_res =
-          sum<T>(res, phi::vectorize(reduce_dim), x.dtype(), false);
-      auto dx_tmp = reshape<T>(reduce_res, phi::vectorize(x.dims()));
+      auto reduce_dim = get_reduce_dims(dx_res.dims(), x.dims());
+      auto dx_reduce_res =
+          sum<T>(dx_res, phi::vectorize(reduce_dim), x.dtype(), false);
+      auto dx_tmp = reshape<T>(dx_reduce_res, phi::vectorize(x.dims()));
       dx->set_impl(dx_tmp.impl());
     } else {
-      dx->set_impl(res.impl());
+      dx->set_impl(dx_res.impl());
     }
   }  // indicate we will compute dx
 }
@@ -90,7 +97,7 @@ void multiply_grad(const Tensor& x,
     auto x_grad_unreduce = multiply<T>(out_grad, y);
     if (x.dims() != x_grad_unreduce.dims()) {
       auto x_grad_reduced = sum<T>(
-          res,
+          x_grad_unreduce,
           phi::vectorize(get_reduce_dims(x_grad_unreduce.dims(), x.dims())),
           x_grad_unreduce.dtype(),
           false);
@@ -104,7 +111,7 @@ void multiply_grad(const Tensor& x,
     auto y_grad_unreduce = multiply<T>(out_grad, x);
     if (y.dims() != y_grad_unreduce.dims()) {
       auto y_grad_reduced = sum<T>(
-          res,
+          y_grad_unreduce,
           phi::vectorize(get_reduce_dims(y_grad_unreduce.dims(), x.dims())),
           y_grad_unreduce.dtype(),
           false);
