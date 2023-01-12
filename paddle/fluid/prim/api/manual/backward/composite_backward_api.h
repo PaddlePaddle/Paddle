@@ -41,6 +41,9 @@ void sum_grad(const Tensor& x,
               bool keepdim,
               bool reduce_all,
               Tensor* x_grad) {
+  if (!x_grad) {
+    return;
+  }
   std::vector<int> x_dim = phi::vectorize<int>(x.dims());
   std::cout << "*****x_dim = " << x_dim.size() << std::endl;
   std::cout << " ******out_grad.shape : "

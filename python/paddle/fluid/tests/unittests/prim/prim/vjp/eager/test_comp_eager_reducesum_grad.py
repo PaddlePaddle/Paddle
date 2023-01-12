@@ -26,7 +26,6 @@ def actual(primal, cotangent, axis, keep_dim):
     v = paddle.to_tensor(cotangent, dtype='float32', stop_gradient=False)
     y = paddle.sum(x, axis=axis, keepdim=keep_dim)
     x_cotangent = paddle.grad(y, x, v, create_graph=True, retain_graph=True)
-    # print("compiste :", x_cotangent[0])
     return x_cotangent[0]
 
 
@@ -36,7 +35,6 @@ def desired(primal, cotangent, axis, keep_dim):
     v = paddle.to_tensor(cotangent, dtype='float32', stop_gradient=False)
     y = paddle.sum(x, axis=axis, keepdim=keep_dim)
     x_cotangent = paddle.grad(y, x, v, create_graph=True, retain_graph=True)
-    # print("fused :", x_cotangent[0])
     return x_cotangent[0]
 
 

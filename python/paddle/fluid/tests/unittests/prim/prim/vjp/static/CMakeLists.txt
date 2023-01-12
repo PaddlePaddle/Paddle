@@ -11,3 +11,4 @@ endforeach()
 
 set_tests_properties(test_comp_tanh_grad PROPERTIES TIMEOUT 60)
 set_tests_properties(test_comp_div_grad PROPERTIES TIMEOUT 60)
+set_tests_properties(test_comp_reducesum_grad PROPERTIES TIMEOUT 60)
