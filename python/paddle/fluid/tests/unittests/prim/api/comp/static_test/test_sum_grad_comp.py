@@ -13,9 +13,12 @@
 # limitations under the License.
 
 import unittest
-from paddle.fluid import core
+
 import numpy as np
+
 import paddle
+from paddle.fluid import core
+
 
 def actual(primal, cotangent, axis, keep_dim):
     core.set_prim_enabled(False)
@@ -23,18 +26,19 @@ def actual(primal, cotangent, axis, keep_dim):
     with paddle.static.program_guard(mp, sp):
         x = paddle.static.data('primal', primal.shape, primal.dtype)
         x.stop_gradient = False
-        v = paddle.static.data(
-            'cotangent', cotangent.shape, cotangent.dtype
-        )
-        y = paddle.sum(x, axis = axis, keepdim = keep_dim)
-        x_cotangent = paddle.static.gradients(y, x)
+        v = paddle.static.data('cotangent', cotangent.shape, cotangent.dtype)
+        y = paddle.sum(x, axis=axis, keepdim=keep_dim)
+        x_cotangent = paddle.static.gradients(y, x, None)
     exe = paddle.static.Executor()
     exe.run(sp)
-    return exe.run(
+    result = exe.run(
         program=mp,
         feed={'primal': primal, 'cotangent': cotangent},
-        fetch_list=mp.blocks[0].ops[-1].output('Out')[0],
+        fetch_list=[x_cotangent],
     )[0]
+    print("fused", result)
+    return result
+
 
 def desired(primal, cotangent, axis, keep_dim):
     core.set_prim_enabled(True)
@@ -42,46 +46,44 @@ def desired(primal, cotangent, axis, keep_dim):
     with paddle.static.program_guard(mp, sp):
         x = paddle.static.data('primal', primal.shape, primal.dtype)
         x.stop_gradient = False
-        v = paddle.static.data(
-            'cotangent', cotangent.shape, cotangent.dtype
-        )
-        y = paddle.sum(x, axis = axis, keepdim=keep_dim)
-        x_cotangent = paddle.static.gradients(y, x)
+        v = paddle.static.data('cotangent', cotangent.shape, cotangent.dtype)
+        y = paddle.sum(x, axis=axis, keepdim=keep_dim)
+        x_cotangent = paddle.static.gradients(y, x, None)
     exe = paddle.static.Executor()
     exe.run(sp)
-    return exe.run(
+    result = exe.run(
         program=mp,
         feed={'primal': primal, 'cotangent': cotangent},
-        fetch_list=mp.blocks[0].ops[-1].output('Out')[0],
+        fetch_list=[x_cotangent],
     )[0]
+    print("compoiste", result)
 
 
 class TestSumGradComp(unittest.TestCase):
 
-    def test_sum_grad_comp_1(self):
-        self.primal = np.random.rand(10, 10)
-        self.cotangent = np.random.rand(1)
-        paddle.enable_static()
-
-        np.testing.assert_allclose(
-            actual=actual(self.primal, self.cotangent, [], True),
-            desired=desired(self.primal, self.cotangent, [], True),
-            rtol=1e-6,
-            atol=0,
-        )
-
-    # def test_sum_grad_comp_2(self):
-    #     self.primal = np.random.rand(4, 3, 2)
-    #     self.cotangent = np.random.rand(4, 2)
+    # def test_sum_grad_comp_1(self):
+    #     self.primal = np.random.rand(10, 10)
+    #     self.cotangent = np.random.rand(1, 1)
     #     paddle.enable_static()
 
     #     np.testing.assert_allclose(
-    #         actual=actual(self.primal, self.cotangent, 1, False),
-    #         desired=desired(self.primal, self.cotangent, 1, False),
+    #         actual=actual(self.primal, self.cotangent, [], True),
+    #         desired=desired(self.primal, self.cotangent, [], True),
     #         rtol=1e-6,
     #         atol=0,
     #     )
 
+    def test_sum_grad_comp_2(self):
+        self.primal = np.random.rand(4, 3, 2)
+        self.cotangent = np.random.rand(4, 2)
+        paddle.enable_static()
+
+        np.testing.assert_allclose(
+            actual=actual(self.primal, self.cotangent, 1, False),
+            desired=desired(self.primal, self.cotangent, 1, False),
+            rtol=1e-6,
+            atol=0,
+        )
 
     # def test_sum_grad_comp_3(self):
     #     self.primal = np.random.rand(4, 3, 2)
@@ -95,7 +97,6 @@ class TestSumGradComp(unittest.TestCase):
     #         atol=0,
     #     )
 
-
     # def test_sum_grad_comp_4(self):
     #     self.primal = np.random.rand(4, 3, 2, 5)
     #     self.cotangent = np.random.rand(4, 1, 2, 1)
@@ -107,7 +108,6 @@ class TestSumGradComp(unittest.TestCase):
     #         rtol=1e-6,
     #         atol=0,
     #     )
-
 
     # def test_sum_grad_comp_5(self):
     #     self.primal = np.random.rand(4, 3, 2, 5)

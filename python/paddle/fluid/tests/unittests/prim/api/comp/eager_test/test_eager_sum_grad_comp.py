@@ -13,7 +13,9 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
+
 import paddle
 from paddle.fluid import core
 
@@ -21,40 +23,32 @@ from paddle.fluid import core
 def actual(primal, cotangent, axis, keep_dim):
     core.set_prim_enabled(False)
     x = paddle.to_tensor(primal, dtype='float32', stop_gradient=False)
-    v = paddle.to_tensor(
-        cotangent, dtype='float32', stop_gradient=False
-    )
-    y = paddle.sum(x, axis = axis, keepdim = keep_dim)
-    x_cotangent = paddle.grad(
-        y, x, v, create_graph=True, retain_graph=True
-    )
-    #print("compiste :", x_cotangent[0])
+    v = paddle.to_tensor(cotangent, dtype='float32', stop_gradient=False)
+    y = paddle.sum(x, axis=axis, keepdim=keep_dim)
+    x_cotangent = paddle.grad(y, x, v, create_graph=True, retain_graph=True)
+    # print("compiste :", x_cotangent[0])
     return x_cotangent[0]
 
 
 def desired(primal, cotangent, axis, keep_dim):
     core.set_prim_enabled(True)
     x = paddle.to_tensor(primal, dtype='float32', stop_gradient=False)
-    v = paddle.to_tensor(
-        cotangent, dtype='float32', stop_gradient=False
-    )
-    y = paddle.sum(x, axis = axis, keepdim = keep_dim)
-    x_cotangent = paddle.grad(
-        y, x, v, create_graph=True, retain_graph=True
-    )
-    #print("fused :", x_cotangent[0])
+    v = paddle.to_tensor(cotangent, dtype='float32', stop_gradient=False)
+    y = paddle.sum(x, axis=axis, keepdim=keep_dim)
+    x_cotangent = paddle.grad(y, x, v, create_graph=True, retain_graph=True)
+    # print("fused :", x_cotangent[0])
     return x_cotangent[0]
 
-class TestSumGradComp(unittest.TestCase):
 
+class TestSumGradComp(unittest.TestCase):
     def test_sum_grad_comp_1(self):
         self.primal = np.random.rand(10, 10)
         self.cotangent = np.random.rand(1)
         paddle.disable_static()
 
         np.testing.assert_allclose(
-            actual=actual(self.primal, self.cotangent, [], True),
-            desired=desired(self.primal, self.cotangent, [], True),
+            actual=actual(self.primal, self.cotangent, [], False),
+            desired=desired(self.primal, self.cotangent, [], False),
             rtol=1e-6,
             atol=0,
         )
@@ -71,7 +65,6 @@ class TestSumGradComp(unittest.TestCase):
             atol=0,
         )
 
-
     def test_sum_grad_comp_3(self):
         self.primal = np.random.rand(4, 3, 2)
         self.cotangent = np.random.rand(4, 1, 2)
@@ -83,7 +76,6 @@ class TestSumGradComp(unittest.TestCase):
             rtol=1e-6,
             atol=0,
         )
-
 
     def test_sum_grad_comp_4(self):
         self.primal = np.random.rand(4, 3, 2, 5)
@@ -97,7 +89,6 @@ class TestSumGradComp(unittest.TestCase):
             atol=0,
         )
 
-
     def test_sum_grad_comp_5(self):
         self.primal = np.random.rand(4, 3, 2, 5)
         self.cotangent = np.random.rand(4, 2)
@@ -109,7 +100,6 @@ class TestSumGradComp(unittest.TestCase):
             rtol=1e-6,
             atol=0,
         )
-
 
 
 if __name__ == '__main__':

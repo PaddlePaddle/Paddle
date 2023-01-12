@@ -92,7 +92,7 @@ Tensor multiply<DescTensor>(const Tensor& x, const Tensor& y) {
 }
 
 template <>
-Tensor expand<DescTensor>(const Tensor& x, const IntArray& shape){
+Tensor expand<DescTensor>(const Tensor& x, const IntArray& shape) {
   Tensor out = empty<DescTensor>({}, phi::DataType::FLOAT32, paddle::Place());
   framework::BlockDesc* block = StaticCompositeContext::Instance().GetBlock();
   framework::OpDesc* op = block->AppendOp();
@@ -101,15 +101,20 @@ Tensor expand<DescTensor>(const Tensor& x, const IntArray& shape){
                {std::static_pointer_cast<prim::DescTensor>(x.impl())->Name()});
   op->SetOutput(
       "Out", {std::static_pointer_cast<prim::DescTensor>(out.impl())->Name()});
-  op->SetAttr("shape", shape.GetData());
+  std::vector<int> new_shape(shape.GetData().begin(), shape.GetData().end());
+  for (auto i = new_shape.begin(); i != new_shape.end(); i++) {
+    std::cout << "new_shape[]" << *i << std::endl;
+  }
+
+  op->SetAttr("shape", new_shape);
   op->CheckAttrs();
   op->InferVarType(block);
   op->InferShape(*block);
-  return out;  
+  return out;
 }
 
 template <>
-Tensor unsqueeze<DescTensor>(const Tensor& x, const IntArray& axis){
+Tensor unsqueeze<DescTensor>(const Tensor& x, const IntArray& axis) {
   Tensor out = empty<DescTensor>({}, phi::DataType::FLOAT32, paddle::Place());
   framework::BlockDesc* block = StaticCompositeContext::Instance().GetBlock();
   framework::OpDesc* op = block->AppendOp();
@@ -118,7 +123,8 @@ Tensor unsqueeze<DescTensor>(const Tensor& x, const IntArray& axis){
                {std::static_pointer_cast<prim::DescTensor>(x.impl())->Name()});
   op->SetOutput(
       "Out", {std::static_pointer_cast<prim::DescTensor>(out.impl())->Name()});
-  op->SetAttr("axes", axis.GetData());
+  std::vector<int> new_shape(axis.GetData().begin(), axis.GetData().end());
+  op->SetAttr("axes", new_shape);
   op->CheckAttrs();
   op->InferVarType(block);
   op->InferShape(*block);
