@@ -93,6 +93,8 @@ inline DataLayout StringToDataLayout(const std::string& str) {
     return DataLayout::PSTRING_UNION;
   } else if (s == "NCDHW") {
     return DataLayout::kNCDHW;
+  } else if (s == "STRIDED") {
+    return DataLayout::STRIDED;
   } else {
     PD_THROW("Unknown data layout type string: ", s, ".");
   }
