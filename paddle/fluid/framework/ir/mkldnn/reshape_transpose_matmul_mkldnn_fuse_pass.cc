@@ -22,7 +22,7 @@ namespace framework {
 namespace ir {
 
 void ReshapeTransposeMatmulMkldnnFusePass::ApplyImpl(Graph *graph) const {
-  auto matmul_types = {"matmul", "matmul_v2"};
+  auto matmul_types = {"matmul", "matmul_v2", "fused_matmul"};
 
   for (const auto &matmul_type : matmul_types) {
     Fuse(graph,
@@ -102,6 +102,24 @@ void ReshapeTransposeMatmulMkldnnFusePass::Fuse(
                                               matmul_type + " encountered.");
     }
 
+    // Extra check to fuse each input only once
+    if (matmul_type == "fused_matmul") {
+      auto shape_fused_X =
+          matmul_desc->HasAttr("fused_reshape_X")
+              ? PADDLE_GET_CONST(std::vector<int>,
+                                 matmul_desc->GetAttr("fused_reshape_X"))
+              : std::vector<int>();
+
+      auto shape_fused_Y =
+          matmul_desc->HasAttr("fused_reshape_Y")
+              ? PADDLE_GET_CONST(std::vector<int>,
+                                 matmul_desc->GetAttr("fused_reshape_Y"))
+              : std::vector<int>();
+
+      if (!shape_fused_X.empty() && matmul_input_name == "X") return;
+      if (!shape_fused_Y.empty() && matmul_input_name == "Y") return;
+    }
+
     auto reshape_shape =
         paddle::get<std::vector<int>>(reshape_op->Op()->GetAttr("shape"));
     auto transpose_axis =
@@ -123,6 +141,12 @@ void ReshapeTransposeMatmulMkldnnFusePass::Fuse(
       return;
     }
 
+    matmul_desc->SetType("fused_matmul");
+    if (matmul_type == "matmul") {
+      matmul_desc->SetAttr("trans_x", matmul_desc->GetAttr("transpose_X"));
+      matmul_desc->SetAttr("trans_y", matmul_desc->GetAttr("transpose_Y"));
+      matmul_desc->SetAttr("matmul_alpha", matmul_desc->GetAttr("alpha"));
+    }
     matmul_desc->SetInput(matmul_input_name, {(reshape_in)->Name()});
     matmul_desc->SetAttr("fused_reshape_" + matmul_input_name, reshape_shape);
     matmul_desc->SetAttr("fused_transpose_" + matmul_input_name,
@@ -220,6 +244,71 @@ ReshapeTransposeMatmulMkldnnFusePass::ReshapeTransposeMatmulMkldnnFusePass() {
       .AddAttr("trans_y")
       .IsType<bool>()
       .End();
+
+  AddOpCompat(OpCompat("fused_matmul"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddInput("Y")
+      .IsTensor()
+      .End()
+      .AddInput("ResidualData")
+      .IsTensor()
+      .IsOptional()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddAttr("trans_x")
+      .IsType<bool>()
+      .End()
+      .AddAttr("trans_y")
+      .IsType<bool>()
+      .End()
+      .AddAttr("matmul_alpha")
+      .IsType<float>()
+      .IsOptional()
+      .End()
+      .AddAttr("fuse_activation")
+      .IsType<std::string>()
+      .IsOptional()
+      .End()
+      .AddAttr("fuse_alpha")
+      .IsType<float>()
+      .IsOptional()
+      .End()
+      .AddAttr("fuse_beta")
+      .IsType<float>()
+      .IsOptional()
+      .End()
+      .AddAttr("fused_output_scale")
+      .IsType<float>()
+      .IsOptional()
+      .End()
+      .AddAttr("fused_reshape_X")
+      .IsType<std::vector<int>>()
+      .IsOptional()
+      .End()
+      .AddAttr("fused_transpose_X")
+      .IsType<std::vector<int>>()
+      .IsOptional()
+      .End()
+      .AddAttr("fused_reshape_Y")
+      .IsType<std::vector<int>>()
+      .IsOptional()
+      .End()
+      .AddAttr("fused_transpose_Y")
+      .IsType<std::vector<int>>()
+      .IsOptional()
+      .End()
+      .AddAttr("fused_reshape_Out")
+      .IsType<std::vector<int>>()
+      .IsOptional()
+      .End()
+      .AddAttr("fused_transpose_Out")
+      .IsType<std::vector<int>>()
+      .IsOptional()
+      .End();
 }
 
 }  // namespace ir
@@ -234,5 +323,6 @@ REGISTER_PASS_CAPABILITY(reshape_transpose_matmul_mkldnn_fuse_pass)
         paddle::framework::compatible::OpVersionComparatorCombination()
             .EQ("reshape2", 0)
             .EQ("transpose2", 0)
+            .EQ("fused_matmul", 0)
             .EQ("matmul", 1)
             .EQ("matmul_v2", 0));
