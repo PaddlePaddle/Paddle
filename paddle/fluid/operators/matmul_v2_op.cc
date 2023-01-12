@@ -164,28 +164,26 @@ class MatMulV2Op : public framework::OperatorWithKernel {
   }
 };
 
-class MatMulV2OpMaker : public framework::OpProtoAndCheckerMaker {
- public:
-  void Make() override {
-    AddInput("X", "tensor of shape (d0, d1 ... M, K)");
-    AddInput("Y", "tensor of shape (d0, d1 ... K, N)");
-    AddOutput("Out", "tensor of shape (d0, d1 ... M, N)");
-    AddAttr<bool>("trans_x",
-                  "Set true to transpose the last two dimensions of X before "
-                  "doing multiplication")
-        .SetDefault(false);
-    AddAttr<bool>("trans_y",
-                  "Set true to transpose the last two dimensions of Y before "
-                  "doing multiplication")
-        .SetDefault(false);
-    AddComment(
-        R"DOC(Matrix multiplication Out = X * Y. A has shape (d0, d1 ... M, K),
+void MatMulV2OpMaker::Make() {
+  AddInput("X", "tensor of shape (d0, d1 ... M, K)");
+  AddInput("Y", "tensor of shape (d0, d1 ... K, N)");
+  AddOutput("Out", "tensor of shape (d0, d1 ... M, N)");
+  AddAttr<bool>("trans_x",
+                "Set true to transpose the last two dimensions of X before "
+                "doing multiplication")
+      .SetDefault(false);
+  AddAttr<bool>("trans_y",
+                "Set true to transpose the last two dimensions of Y before "
+                "doing multiplication")
+      .SetDefault(false);
+  AddComment(
+      R"DOC(Matrix multiplication Out = X * Y. A has shape (d0, d1 ... M, K),
         B has shape (d0, d1 ... K, N), Out has shape ((d0, d1 ... M, N)).
         In addition, it also follows the broadcast rule which is similar as
         numpy.matmul.
 )DOC");
-  }
-};
+  Apply();
+}
 
 class MatMulV2OpGrad : public framework::OperatorWithKernel {
  public:

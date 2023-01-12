@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/operators/matmul_v2_op.h"
 #include "paddle/phi/core/infermeta_utils.h"
 
 namespace paddle {
@@ -159,22 +160,13 @@ class FusedMatmulOp : public framework::OperatorWithKernel {
   }
 };
 
-class FusedMatmulOpMaker : public framework::OpProtoAndCheckerMaker {
- public:
-  void Make() override {
-    AddInput("X", "Matmul first input");
-    AddInput("Y", "Matmul second input");
+class FusedMatmulOpMaker : public MatMulV2OpMaker {
+ protected:
+  void Apply() override {
     AddInput("ResidualData",
              "Extra input from matmul_elementwise_add_mkldnn_fuse_pass")
         .AsDispensable()
         .AsExtra();
-    AddOutput("Out", "Matmul output");
-    AddAttr<bool>("trans_x",
-                  "Transpose the last two dims of X before multiplication")
-        .SetDefault(false);
-    AddAttr<bool>("trans_y",
-                  "Transpose the last two dims of Y before multiplication")
-        .SetDefault(false);
     AddAttr<float>("matmul_alpha", "Output scale used in matmul_v1")
         .SetDefault(1.0f);
     AddAttr<std::string>(
