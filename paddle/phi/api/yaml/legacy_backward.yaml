@@ -42,6 +42,7 @@
   kernel :
     func : add_grad
   no_need_buffer : x, y
+  composite : add_grad(Tensor x, Tensor y, Tensor out_grad, int axis)
   backward : add_double_grad
   inplace : (out_grad -> x_grad)
 

@@ -27,6 +27,40 @@ void tanh_grad(const Tensor& out, const Tensor& grad_out, Tensor* grad_x) {
   auto grad_x_tmp = multiply<T>(grad_out, tmp);
   grad_x->set_impl(grad_x_tmp.impl());
 }
+template <typename T>
+void add_grad(const Tensor& x,
+              const Tensor& y,
+              const Tensor& out_grad,
+              int axis,
+              Tensor* dx,
+              Tensor* dy) {
+  if (dy) {
+    VLOG(3) << "out_grad dims: " << out_grad.dims();
+    if (out_grad.dims() != y.dims()) {
+      // Maybe need reduce here
+      phi::DDim reduce_dim = get_reduce_dims(out_grad.dims(), y.dims());
+      auto dy_reduce_res =
+          sum<T>(out_grad, phi::vectorize(reduce_dim), y.dtype(), false);
+      auto dy_tmp = reshape<T>(dy_reduce_res, phi::vectorize(y.dims()));
+      dy->set_impl(dy_tmp.impl());
+    } else {
+      by_pass<T>(out_grad, dy);
+    }
+  }
+  if (dx) {
+    VLOG(3) << "out_grad dims: " << out_grad.dims();
+    if (out_grad.dims() != x.dims()) {
+      // Maybe need reduce here
+      auto reduce_dim = get_reduce_dims(out_grad.dims(), x.dims());
+      auto dx_reduce_res =
+          sum<T>(out_grad, phi::vectorize(reduce_dim), x.dtype(), false);
+      auto dx_tmp = reshape<T>(dx_reduce_res, phi::vectorize(x.dims()));
+      dx->set_impl(dx_tmp.impl());
+    } else {
+      by_pass<T>(out_grad, dx);
+    }
+  }
+}
 
 template <typename T>
 void divide_grad(const Tensor& x,

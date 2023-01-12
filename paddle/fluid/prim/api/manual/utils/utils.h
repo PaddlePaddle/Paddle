@@ -33,6 +33,9 @@ template <typename T>
 paddle::experimental::Tensor empty_like(const paddle::experimental::Tensor& x,
                                         paddle::experimental::DataType dtype,
                                         const paddle::Place& place);
+template <typename T>
+void by_pass(const paddle::experimental::Tensor& x,
+             paddle::experimental::Tensor* out);
 // These method don't need to be specified
 static phi::DDim get_reduce_dims(const phi::DDim& dout_dims,
                                  const phi::DDim& in_dims) {
