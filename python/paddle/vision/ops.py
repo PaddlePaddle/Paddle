@@ -705,10 +705,11 @@ def box_coder(
         return output_box
 
     else:
-        helper = LayerHelper("prior_box", **locals())
-        dtype = helper.input_dtype()
         check_variable_and_dtype(
-            input, 'input', ['uint8', 'int8', 'float32', 'float64'], 'prior_box'
+            prior_box, 'prior_box', ['float32', 'float64'], 'box_coder'
+        )
+        check_variable_and_dtype(
+            target_box, 'target_box', ['float32', 'float64'], 'box_coder'
         )
         helper = LayerHelper("box_coder", **locals())
 
