@@ -136,7 +136,7 @@ class ReduceProdOpConverter : public ReduceOpConverter {
 
 class ReduceAnyOpConverter : public ReduceOpConverter {
  public:
-  ReduceMaxOpConverter() { op_type = "reduce_any"; }
+  ReduceAnyOpConverter() { op_type = "reduce_any"; }
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope,
                   bool test_mode) override {
