@@ -2311,24 +2311,28 @@ def insert_dependencies_for_vars(
         )
     depend_op._set_attr(OP_ROLE_KEY, oprole)
 
-    depend_op_dist_attr = OperatorDistAttr()
-    depend_op_dist_attr.impl_idx = 0
-    depend_op_dist_attr.impl_type = "default"
-    depend_op_dist_attr.process_mesh = process_mesh
-    depend_op_dist_attr.is_recompute = is_recompute
-    for input_varname in depend_op.desc.input_arg_names():
-        var = block.var(input_varname)
-        mapping = dist_context.get_tensor_dist_attr_for_program(
-            var
-        ).dims_mapping
-        depend_op_dist_attr.set_input_dims_mapping(input_varname, mapping)
-    for output_varname in depend_op.desc.output_arg_names():
-        var = block.var(output_varname)
-        mapping = dist_context.get_tensor_dist_attr_for_program(
-            var
-        ).dims_mapping
-        depend_op_dist_attr.set_output_dims_mapping(output_varname, mapping)
-    dist_context.set_op_dist_attr_for_program(depend_op, depend_op_dist_attr)
+    # TODO: condition can be removed when add correct dist_attr for coalesce vars and ops in sharding_pass
+    if is_recompute or process_mesh != [-1]:
+        depend_op_dist_attr = OperatorDistAttr()
+        depend_op_dist_attr.impl_idx = 0
+        depend_op_dist_attr.impl_type = "default"
+        depend_op_dist_attr.process_mesh = process_mesh
+        depend_op_dist_attr.is_recompute = is_recompute
+        for input_varname in depend_op.desc.input_arg_names():
+            var = block.var(input_varname)
+            mapping = dist_context.get_tensor_dist_attr_for_program(
+                var
+            ).dims_mapping
+            depend_op_dist_attr.set_input_dims_mapping(input_varname, mapping)
+        for output_varname in depend_op.desc.output_arg_names():
+            var = block.var(output_varname)
+            mapping = dist_context.get_tensor_dist_attr_for_program(
+                var
+            ).dims_mapping
+            depend_op_dist_attr.set_output_dims_mapping(output_varname, mapping)
+        dist_context.set_op_dist_attr_for_program(
+            depend_op, depend_op_dist_attr
+        )
 
     if op_namescope is not None:
         depend_op._set_attr('op_namescope', "/{}".format(op_namescope))
