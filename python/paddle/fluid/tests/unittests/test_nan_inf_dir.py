@@ -74,9 +74,7 @@ class TestNanInfDirCheckResult(unittest.TestCase):
                                         elif "num_inf" in err_str:
                                             num_inf = int(err_str.split("=")[1])
                 print(
-                    "[asfasfpaddle] num_nan={}, num_inf={}".format(
-                        num_nan, num_inf
-                    )
+                    "[paddle] num_nan={}, num_inf={}".format(num_nan, num_inf)
                 )
         return num_nan, num_inf
 
@@ -101,6 +99,9 @@ class TestNanInfDirCheckResult(unittest.TestCase):
         _check_num_nan_inf(use_cuda=False)
         if paddle.fluid.core.is_compiled_with_cuda():
             _check_num_nan_inf(use_cuda=True)
+        x = paddle.to_tensor([2, 3, 4], 'float32')
+        y = paddle.to_tensor([1, 5, 2], 'float32')
+        z = paddle.add(x, y)
 
 
 if __name__ == '__main__':
