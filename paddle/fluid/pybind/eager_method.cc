@@ -1939,7 +1939,7 @@ PyMethodDef variable_methods[] = {
     {"numpy",
      (PyCFunction)(void (*)(void))tensor_method_numpy,
      METH_VARARGS | METH_KEYWORDS,
-     R"DOC(numpy()
+     R"DOC(numpy($self, /)
 --
 
 Returns a numpy array shows the value of current Tensor.
@@ -1979,7 +1979,7 @@ Examples:
     {"clone",
      (PyCFunction)(void (*)(void))tensor_method_clone,
      METH_VARARGS | METH_KEYWORDS,
-     R"DOC(clone()
+     R"DOC(clone($self, /)
 --
 
 Returns a new Tensor, which is clone of origin Tensor, and it remains in the current graph.
@@ -2024,7 +2024,7 @@ Examples:
     {"clear_gradient",
      (PyCFunction)(void (*)(void))tensor_clear_gradient,
      METH_VARARGS | METH_KEYWORDS,
-     R"DOC(clear_gradient(set_to_zero=True)
+     R"DOC(clear_gradient($self, set_to_zero=True, /)
 --
 
 Only for Tensor that has gradient, normally we use this for Parameters since
@@ -2079,7 +2079,7 @@ Examples:
     {"detach",
      (PyCFunction)(void (*)(void))tensor_method_detach,
      METH_VARARGS | METH_KEYWORDS,
-     R"DOC(detach()
+     R"DOC(detach($self, /)
 --
 
 Returns a new Tensor, detached from the current graph.
@@ -2227,7 +2227,7 @@ Examples:
     {"element_size",
      (PyCFunction)(void (*)(void))tensor_method_element_size,
      METH_VARARGS | METH_KEYWORDS,
-     R"DOC(element_size()
+     R"DOC(element_size($self, /)
 --
 
 Returns the size in bytes of an element in the Tensor.
