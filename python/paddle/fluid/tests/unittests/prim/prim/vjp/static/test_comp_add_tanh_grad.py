@@ -63,8 +63,7 @@ class TestDivGradComp(unittest.TestCase):
                 x.stop_gradient = False
                 y.stop_gradient = False
                 z = paddle.add(x, y)
-                out = paddle.tanh(z)
-                res = paddle.static.gradients([out], [x, y])
+                res = paddle.static.gradients([z], [x, y])
             exe = paddle.static.Executor()
             exe.run(sp)
             out = exe.run(
@@ -90,8 +89,7 @@ class TestDivGradComp(unittest.TestCase):
                 x.stop_gradient = False
                 y.stop_gradient = False
                 z = paddle.add(x, y)
-                out = paddle.tanh(z)
-                res = paddle.static.gradients([out], [x, y])
+                res = paddle.static.gradients([z], [x, y])
             exe = paddle.static.Executor()
             exe.run(sp)
             out = exe.run(
