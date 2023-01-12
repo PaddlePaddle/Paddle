@@ -17,7 +17,6 @@
 #include <cstdlib>
 #include <cstring>
 
-#include "paddle/phi/common/place.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/errors.h"
@@ -36,33 +35,19 @@ void CommStaticCheck::CheckRank(int rank, int world_size) {
       phi::errors::InvalidArgument("Rank is out of the process group."));
 }
 
-void CommStaticCheck::CheckPlace(const phi::DenseTensor& tensor) {
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-  auto expect_type = phi::AllocationType::GPU;
-#else
-  auto expect_type = phi::AllocationType::CPU;
-#endif
-
-#if defined(PADDLE_WITH_GLOO)
-  // gloo only use CPU now
-  char* with_gloo = std::getenv("PADDLE_WITH_GLOO");
-  bool use_gloo = with_gloo && std::strcmp(with_gloo, "0") != 0;
-  if (use_gloo) {
-    expect_type = phi::AllocationType::CPU;
-  }
-#endif
-
-  auto actual_type = tensor.place().GetType();
+void CommStaticCheck::CheckPlace(const phi::DenseTensor& tensor,
+                                 phi::AllocationType place) {
   PADDLE_ENFORCE_EQ(
-      actual_type,
-      expect_type,
+      tensor.place().GetType(),
+      place,
       phi::errors::InvalidArgument("Tensor should be in backend's place."));
 }
 
 void CommStaticCheck::CheckPlace(const phi::DenseTensor& out_tensor,
-                                 const phi::DenseTensor& in_tensor) {
-  CheckPlace(out_tensor);
-  CheckPlace(in_tensor);
+                                 const phi::DenseTensor& in_tensor,
+                                 phi::AllocationType place) {
+  CheckPlace(out_tensor, place);
+  CheckPlace(in_tensor, place);
   PADDLE_ENFORCE_EQ(
       out_tensor.place(),
       in_tensor.place(),
@@ -106,11 +91,12 @@ void CommStaticCheck::CheckShape(const phi::DenseTensor& out_tensor,
                                  int cur_rank,
                                  int world_size,
                                  int out_size_factor,
-                                 int in_size_factor) {
+                                 int in_size_factor,
+                                 phi::AllocationType place) {
   CheckRank(dst_rank, world_size);
   CheckRank(cur_rank, world_size);
 
-  CheckPlace(out_tensor, in_tensor);
+  CheckPlace(out_tensor, in_tensor, place);
   CheckDataType(out_tensor, in_tensor);
 
   if (dst_rank == cur_rank) {
@@ -123,8 +109,9 @@ void CommStaticCheck::CheckShape(const phi::DenseTensor& out_tensor,
 
 void CommStaticCheck::CheckShape(const phi::DenseTensor& tensor,
                                  int rank,
-                                 int world_size) {
-  CheckPlace(tensor);
+                                 int world_size,
+                                 phi::AllocationType place) {
+  CheckPlace(tensor, place);
   CheckRank(rank, world_size);
 }
 
@@ -132,42 +119,48 @@ void CommStaticCheck::SameShape(const phi::DenseTensor& out_tensor,
                                 const phi::DenseTensor& in_tensor,
                                 int dst_rank,
                                 int cur_rank,
-                                int world_size) {
+                                int world_size,
+                                phi::AllocationType place) {
   CheckShape(out_tensor,
              in_tensor,
              dst_rank,
              cur_rank,
              world_size,
              /*out_size_factor*/ 1,
-             /*in_size_factor*/ 1);
+             /*in_size_factor*/ 1,
+             place);
 }
 
 void CommStaticCheck::ScatterLikeShape(const phi::DenseTensor& out_tensor,
                                        const phi::DenseTensor& in_tensor,
                                        int dst_rank,
                                        int cur_rank,
-                                       int world_size) {
+                                       int world_size,
+                                       phi::AllocationType place) {
   CheckShape(out_tensor,
              in_tensor,
              dst_rank,
              cur_rank,
              world_size,
              /*out_size_factor*/ world_size,
-             /*in_size_factor*/ 1);
+             /*in_size_factor*/ 1,
+             place);
 }
 
 void CommStaticCheck::GatherLikeShape(const phi::DenseTensor& out_tensor,
                                       const phi::DenseTensor& in_tensor,
                                       int dst_rank,
                                       int cur_rank,
-                                      int world_size) {
+                                      int world_size,
+                                      phi::AllocationType place) {
   CheckShape(out_tensor,
              in_tensor,
              dst_rank,
              cur_rank,
              world_size,
              /*out_size_factor*/ 1,
-             /*in_size_factor*/ world_size);
+             /*in_size_factor*/ world_size,
+             place);
 }
 
 }  //  namespace distributed

@@ -14,6 +14,8 @@
 
 #pragma once
 
+#include "paddle/phi/common/place.h"
+
 namespace phi {
 // forward declaration
 class DenseTensor;
@@ -22,10 +24,12 @@ namespace distributed {
 struct CommStaticCheck {
   static void CheckRank(int rank, int world_size);
 
-  static void CheckPlace(const phi::DenseTensor& tensor);
+  static void CheckPlace(const phi::DenseTensor& tensor,
+                         phi::AllocationType place);
 
   static void CheckPlace(const phi::DenseTensor& out_tensor,
-                         const phi::DenseTensor& in_tensor);
+                         const phi::DenseTensor& in_tensor,
+                         phi::AllocationType place);
 
   static void CheckDataType(const phi::DenseTensor& out_tensor,
                             const phi::DenseTensor& in_tensor);
@@ -43,31 +47,38 @@ struct CommStaticCheck {
                          int cur_rank,
                          int world_size,
                          int out_size_factor,
-                         int in_size_factor);
+                         int in_size_factor,
+                         phi::AllocationType place = phi::AllocationType::GPU);
 
   // for p2p
   static void CheckShape(const phi::DenseTensor& tensor,
                          int rank,
-                         int world_size);
+                         int world_size,
+                         phi::AllocationType place = phi::AllocationType::GPU);
 
   // for collective
   static void SameShape(const phi::DenseTensor& out_tensor,
                         const phi::DenseTensor& in_tensor,
                         int dst_rank,
                         int cur_rank,
-                        int world_size);
+                        int world_size,
+                        phi::AllocationType place = phi::AllocationType::GPU);
 
-  static void ScatterLikeShape(const phi::DenseTensor& out_tensor,
-                               const phi::DenseTensor& in_tensor,
-                               int dst_rank,
-                               int cur_rank,
-                               int world_size);
+  static void ScatterLikeShape(
+      const phi::DenseTensor& out_tensor,
+      const phi::DenseTensor& in_tensor,
+      int dst_rank,
+      int cur_rank,
+      int world_size,
+      phi::AllocationType place = phi::AllocationType::GPU);
 
-  static void GatherLikeShape(const phi::DenseTensor& out_tensor,
-                              const phi::DenseTensor& in_tensor,
-                              int dst_rank,
-                              int cur_rank,
-                              int world_size);
+  static void GatherLikeShape(
+      const phi::DenseTensor& out_tensor,
+      const phi::DenseTensor& in_tensor,
+      int dst_rank,
+      int cur_rank,
+      int world_size,
+      phi::AllocationType place = phi::AllocationType::GPU);
 };
 
 }  //  namespace distributed
