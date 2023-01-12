@@ -103,7 +103,7 @@ class SpecialModel(paddle.nn.Layer):
 
 
 class RandomDataset(paddle.io.Dataset):
-    def __init__(self, num_samples=2000, linear_size=1000):
+    def __init__(self, num_samples=2000, linear_size=1024):
         self.num_samples = num_samples
         self.linear_size = linear_size
 
