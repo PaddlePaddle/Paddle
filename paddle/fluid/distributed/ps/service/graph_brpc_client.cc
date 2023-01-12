@@ -338,9 +338,9 @@ std::future<int32_t> GraphBrpcClient::batch_sample_neighbors(
     bool need_weight,
     int server_index) {
   if (server_index != -1) {
-    res->resize(node_ids.size());
+    res.resize(node_ids.size());
     if (need_weight) {
-      res_weight->resize(node_ids.size());
+      res_weight.resize(node_ids.size());
     }
     DownpourBrpcClosure *closure = new DownpourBrpcClosure(1, [&](void *done) {
       int ret = 0;
@@ -405,8 +405,8 @@ std::future<int32_t> GraphBrpcClient::batch_sample_neighbors(
   }
   std::vector<int> request2server;
   std::vector<int> server2request(server_size, -1);
-  res->clear();
-  res_weight->clear();
+  res.clear();
+  res_weight.clear();
   for (size_t query_idx = 0; query_idx < node_ids.size(); ++query_idx) {
     int server_index = get_server_index_by_id(node_ids[query_idx]);
     if (server2request[server_index] == -1) {
@@ -414,9 +414,9 @@ std::future<int32_t> GraphBrpcClient::batch_sample_neighbors(
       request2server.push_back(server_index);
     }
     // res.push_back(std::vector<std::pair<int64_t, float>>());
-    res->push_back({});
+    res.push_back({});
     if (need_weight) {
-      res_weight->push_back({});
+      res_weight.push_back({});
     }
   }
   size_t request_call_num = request2server.size();
@@ -586,7 +586,7 @@ std::future<int32_t> GraphBrpcClient::pull_graph_list(
         FeatureNode node;
         node.recover_from_buffer(buffer + index);
         index += node.get_size(false);
-        res->push_back(node);
+        res.push_back(node);
       }
       delete[] buffer;
     }
