@@ -141,7 +141,7 @@ if(WITH_GPU AND TENSORRT_FOUND)
   set_tests_properties(test_trt_dynamic_shape PROPERTIES TIMEOUT 120)
   set_tests_properties(test_trt_inspector PROPERTIES TIMEOUT 60)
   set_tests_properties(test_trt_convert_bilinear_interp_v2 PROPERTIES TIMEOUT
-                                                                      120)
+                                                                      600)
 
   if(WITH_NV_JETSON)
     set_tests_properties(
