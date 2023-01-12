@@ -854,13 +854,11 @@
     out : Out
 
 - op : logsigmoid
+  backward : logsigmoid_grad
   inputs :
     x : X
   outputs :
     out : Out
-
-- op : logsigmoid
-  backward : logsigmoid_grad
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 

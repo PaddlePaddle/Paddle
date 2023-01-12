@@ -35,6 +35,7 @@ from jinja2 import Environment, FileSystemLoader, StrictUndefined
 from parse_utils import to_named_dict
 from tests import (
     is_base_op,
+    is_composite_op,
     is_initializer_list,
     is_scalar,
     is_vec,
@@ -63,6 +64,7 @@ env.filters["cartesian_prod_mapping"] = cartesian_prod_mapping
 env.filters["to_composite_grad_opmaker_name"] = to_composite_grad_opmaker_name
 env.filters["to_variable_names"] = to_variable_names
 env.tests["base_op"] = is_base_op
+env.tests["composite_op"] = is_composite_op
 env.tests["vec"] = is_vec
 env.tests["scalar"] = is_scalar
 env.tests["initializer_list"] = is_initializer_list
@@ -150,7 +152,6 @@ def main(op_yaml_path, backward_yaml_path, output_op_path, output_arg_map_path):
             ops=ops,
             backward_ops=backward_ops,
             op_dict=op_dict,
-            composite_gen_flag=False,
         )
         f.write(msg)
 
