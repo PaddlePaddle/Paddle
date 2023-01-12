@@ -75,8 +75,12 @@ class MemoryMapAllocation : public Allocation {
 
 class RefcountedMemoryMapAllocation : public MemoryMapAllocation {
  public:
-  RefcountedMemoryMapAllocation(
-      void *ptr, size_t size, std::string ipc_name, int flags, int fd);
+  RefcountedMemoryMapAllocation(void *ptr,
+                                size_t size,
+                                std::string ipc_name,
+                                int flags,
+                                int fd,
+                                int buffer_id = -1);
 
   void incref();
   int decref();
@@ -84,6 +88,7 @@ class RefcountedMemoryMapAllocation : public MemoryMapAllocation {
   virtual ~RefcountedMemoryMapAllocation() { close(); }
 
  protected:
+  int buffer_id_ = -1;
   void initializeRefercount();
   void resetBaseptr();
 };
@@ -94,7 +99,8 @@ void AllocateMemoryMap(
 std::shared_ptr<RefcountedMemoryMapAllocation>
 AllocateRefcountedMemoryMapAllocation(std::string filename,
                                       int flags,
-                                      size_t size);
+                                      size_t size,
+                                      int buffer_id = -1);
 
 class MemoryMapWriterAllocation : public Allocation {
  public:
@@ -150,6 +156,62 @@ class MemoryMapFdSet {
   MemoryMapFdSet() = default;
 
   std::unordered_set<std::string> fd_set_;
+  std::mutex mtx_;
+};
+
+class MemoryMap {
+ public:
+  explicit MemoryMap(int flags,
+                     size_t data_size,
+                     bool is_using,
+                     std::string file_name,
+                     void *mmap_ptr,
+                     int fd)
+      : flags_(flags),
+        data_size_(data_size),
+        is_using_(is_using),
+        file_name_(file_name),
+        mmap_ptr_(mmap_ptr),
+        fd_(fd) {}
+
+  int flags_ = 0;
+  size_t data_size_ = 0;
+  bool is_using_ = false;
+  std::string file_name_;
+  void *mmap_ptr_ = nullptr;
+  int fd_ = -1;
+
+  bool operator==(const MemoryMap &other) {
+    return (flags_ == other.flags_) && (data_size_ == other.data_size_) &&
+           (is_using_ == other.is_using_);
+  }
+};
+
+class MemoryMapAllocationPool {
+ public:
+  static MemoryMapAllocationPool &Instance();  // NOLINT
+
+  void Insert(const MemoryMap &memory_map);
+
+  void RemoveById(int id);
+
+  int GetAndUse(const MemoryMap &memory_map);
+
+  int GetAndReset(const MemoryMap &memory_map);
+
+  const MemoryMap &GetById(int id);
+
+  void ResetById(int id);
+
+  size_t BufferSize() { return memory_map_allocations_.size(); }
+
+  void Clear();
+
+  ~MemoryMapAllocationPool();
+
+ private:
+  MemoryMapAllocationPool() = default;
+  std::vector<MemoryMap> memory_map_allocations_;
   std::mutex mtx_;
 };
 

@@ -1181,3 +1181,7 @@ PADDLE_DEFINE_EXPORTED_int32(cudnn_cache_saturation_count, 1, "");
 PADDLE_DEFINE_EXPORTED_bool(trt_ibuilder_cache,
                             false,
                             "Add a persistent ibuilder.");
+
+PADDLE_DEFINE_EXPORTED_bool(use_shm_cache,
+                            true,
+                            "Use shm cache in dataloader.");

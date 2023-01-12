@@ -26,6 +26,11 @@
 #include "glog/logging.h"
 #include "paddle/fluid/platform/enforce.h"
 
+PADDLE_DEFINE_EXPORTED_int32(memory_map_allocation_pool_max_size,
+                             4,
+                             "Use inplace in new executor");
+DECLARE_bool(use_shm_cache);
+
 namespace paddle {
 namespace memory {
 namespace allocation {
@@ -114,20 +119,40 @@ void AllocateMemoryMap(
 std::shared_ptr<RefcountedMemoryMapAllocation>
 AllocateRefcountedMemoryMapAllocation(std::string filename,
                                       int flags,
-                                      size_t size) {
+                                      size_t size,
+                                      int buffer_id) {
   int fd = -1;
   void *base_ptr = nullptr;
-  AllocateMemoryMap(filename, flags, size + mmap_alignment, &base_ptr, &fd);
+  if (buffer_id == -1) {
+    AllocateMemoryMap(filename, flags, size + mmap_alignment, &base_ptr, &fd);
+    VLOG(4) << "** No cache, mmap a new shm: "
+            << "(flags: " << flags << ",size: " << size
+            << ",filname: " << filename << ",base_ptr: " << base_ptr
+            << ",fd: " << fd << ")";
+  } else {
+    base_ptr = MemoryMapAllocationPool::Instance().GetById(buffer_id).mmap_ptr_;
+    fd = MemoryMapAllocationPool::Instance().GetById(buffer_id).fd_;
+    VLOG(4) << "** Get cache of " << buffer_id << "(flags: " << flags
+            << ",size: " << size << ",filname: " << filename
+            << ",base_ptr: " << base_ptr << ",fd: " << fd << ")";
+  }
   void *aliged_base_ptr =
       static_cast<void *>(static_cast<char *>(base_ptr) + mmap_alignment);
+  VLOG(4) << "** aliged_base_ptr: " << aliged_base_ptr;
   return std::make_shared<RefcountedMemoryMapAllocation>(
-      aliged_base_ptr, size, filename, flags, fd);
+      aliged_base_ptr, size, filename, flags, fd, buffer_id);
 }
 
 RefcountedMemoryMapAllocation::RefcountedMemoryMapAllocation(
-    void *ptr, size_t size, std::string ipc_name, int fd, int flags)
+    void *ptr,
+    size_t size,
+    std::string ipc_name,
+    int fd,
+    int flags,
+    int buffer_id)
     : MemoryMapAllocation(ptr, size, ipc_name, fd, flags) {
   // must reset base ptr first.
+  buffer_id_ = buffer_id;
   resetBaseptr();
   initializeRefercount();
 }
@@ -168,27 +193,35 @@ void RefcountedMemoryMapAllocation::initializeRefercount() {
 }
 
 void RefcountedMemoryMapAllocation::close() {
+  VLOG(4) << "** close a RefcountedMemoryMapAllocation: "
+          << "(buffer_id: " << buffer_id_ << ",flags: " << flags_
+          << ",size: " << map_size_ << ",filname: " << ipc_name_
+          << ",base_ptr: " << map_ptr_ << ",fd: " << fd_ << ")";
   if (closed_) {
     return;
   }
   closed_ = true;
-  void *data = map_ptr_;
-  CountInfo *info = reinterpret_cast<CountInfo *>(data);
-  if (--info->refcount == 0) {
-    shm_unlink(ipc_name_.c_str());
-    VLOG(6) << "shm_unlink file: " << ipc_name_;
-  }
+  if (buffer_id_ != -1 && FLAGS_use_shm_cache) {
+    MemoryMapAllocationPool::Instance().ResetById(buffer_id_);
+  } else {
+    VLOG(4) << "BufferSize is: "
+            << MemoryMapAllocationPool::Instance().BufferSize()
+            << ", max size is: " << FLAGS_memory_map_allocation_pool_max_size;
+    if (MemoryMapAllocationPool::Instance().BufferSize() <
+            FLAGS_memory_map_allocation_pool_max_size &&
+        FLAGS_use_shm_cache) {
+      MemoryMapAllocationPool::Instance().Insert(MemoryMap(
+          flags_, map_size_ - mmap_alignment, false, ipc_name_, map_ptr_, fd_));
+    } else {
+      VLOG(4) << "** delete this shm";
+      void *data = map_ptr_;
+      CountInfo *info = reinterpret_cast<CountInfo *>(data);
+      if (--info->refcount == 0) {
+        shm_unlink(ipc_name_.c_str());
+        VLOG(4) << "shm_unlink file: " << ipc_name_;
+      }
 
-  std::get<1>(allocated_memory)[map_ptr_] = map_size_;
-  std::get<0>(allocated_memory) = std::get<0>(allocated_memory) + map_size_;
-  if (std::get<1>(allocated_memory).size() >= 5) {
-    VLOG(4) << "allocated_memory_num is: "
-            << std::get<1>(allocated_memory).size() << ", munmap them.";
-    std::map<void *, size_t>::iterator iter;
-    for (iter = std::get<1>(allocated_memory).begin();
-         iter != std::get<1>(allocated_memory).end();
-         iter++) {
-      PADDLE_ENFORCE_NE(munmap(iter->first, iter->second),
+      PADDLE_ENFORCE_NE(munmap(map_ptr_, map_size_),
                         -1,
                         platform::errors::Unavailable(
                             "could not unmap the shared memory file: ",
@@ -197,8 +230,6 @@ void RefcountedMemoryMapAllocation::close() {
                             errno,
                             ")"));
     }
-    std::get<1>(allocated_memory).clear();
-    std::get<0>(allocated_memory) = 0;
   }
 }
 
@@ -314,6 +345,106 @@ void MemoryMapFdSet::Clear() {
 }
 
 MemoryMapFdSet::~MemoryMapFdSet() { Clear(); }
+
+MemoryMapAllocationPool &MemoryMapAllocationPool::Instance() {  // NOLINT
+  static MemoryMapAllocationPool pool;
+  return pool;
+}
+
+void MemoryMapAllocationPool::Insert(const MemoryMap &memory_map) {
+  std::lock_guard<std::mutex> guard(mtx_);
+  memory_map_allocations_.push_back(memory_map);
+  VLOG(4) << this << " intset a new shm";
+  VLOG(4) << "===================================";
+  for (auto idx = 0; idx < memory_map_allocations_.size(); idx++) {
+    VLOG(4) << idx << "(flags: " << memory_map_allocations_.at(idx).flags_
+            << ", data_size:" << memory_map_allocations_.at(idx).data_size_
+            << ", is_using: " << memory_map_allocations_.at(idx).is_using_
+            << ",file_name: " << memory_map_allocations_.at(idx).file_name_
+            << ",mmap_ptr: " << memory_map_allocations_.at(idx).mmap_ptr_
+            << ",fd: " << memory_map_allocations_.at(idx).fd_ << ")";
+  }
+  VLOG(4) << "===================================";
+}
+
+void MemoryMapAllocationPool::RemoveById(int id) {
+  std::lock_guard<std::mutex> guard(mtx_);
+  memory_map_allocations_.erase(std::begin(memory_map_allocations_) + id);
+  VLOG(4) << "PID: " << getpid() << "remove id: " << id
+          << " from MemoryMapAllocationPool, now mmap_allocation pool size is: "
+          << memory_map_allocations_.size();
+}
+
+int MemoryMapAllocationPool::GetAndUse(const MemoryMap &memory_map) {
+  std::lock_guard<std::mutex> guard(mtx_);
+  VLOG(4) << " GetAndUse from: " << this;
+  VLOG(4) << "===================================";
+  for (auto idx = 0; idx < memory_map_allocations_.size(); idx++) {
+    VLOG(4) << idx << "(flags: " << memory_map_allocations_.at(idx).flags_
+            << ", data_size:" << memory_map_allocations_.at(idx).data_size_
+            << ", is_using: " << memory_map_allocations_.at(idx).is_using_
+            << ",file_name: " << memory_map_allocations_.at(idx).file_name_
+            << ",mmap_ptr: " << memory_map_allocations_.at(idx).mmap_ptr_
+            << ",fd: " << memory_map_allocations_.at(idx).fd_ << ")";
+  }
+  VLOG(4) << "===================================";
+  for (auto idx = 0; idx < memory_map_allocations_.size(); idx++) {
+    if (memory_map_allocations_.at(idx) == memory_map) {
+      VLOG(4) << "** match at: " << idx;
+      memory_map_allocations_.at(idx).is_using_ = true;
+      return idx;
+    }
+  }
+  return -1;
+}
+
+int MemoryMapAllocationPool::GetAndReset(const MemoryMap &memory_map) {
+  std::lock_guard<std::mutex> guard(mtx_);
+  VLOG(4) << " GetAndReset from: " << this;
+  for (auto idx = 0; idx < memory_map_allocations_.size(); idx++) {
+    if (memory_map_allocations_.at(idx) == memory_map) {
+      VLOG(4) << "** match at: " << idx;
+      memory_map_allocations_.at(idx).is_using_ = false;
+      return idx;
+    }
+  }
+  return -1;
+}
+
+const MemoryMap &MemoryMapAllocationPool::GetById(int id) {
+  std::lock_guard<std::mutex> guard(mtx_);
+  return memory_map_allocations_.at(id);
+}
+
+void MemoryMapAllocationPool::ResetById(int id) {
+  std::lock_guard<std::mutex> guard(mtx_);
+  memory_map_allocations_.at(id).is_using_ = false;
+  VLOG(4) << this << " set " << id << " can use";
+  VLOG(4) << "===================================";
+  for (auto idx = 0; idx < memory_map_allocations_.size(); idx++) {
+    VLOG(4) << idx << "(flags: " << memory_map_allocations_.at(idx).flags_
+            << ", data_size:" << memory_map_allocations_.at(idx).data_size_
+            << ", is_using: " << memory_map_allocations_.at(idx).is_using_
+            << ",file_name: " << memory_map_allocations_.at(idx).file_name_
+            << ",mmap_ptr: " << memory_map_allocations_.at(idx).mmap_ptr_
+            << ",fd: " << memory_map_allocations_.at(idx).fd_ << ")";
+  }
+  VLOG(4) << "===================================";
+}
+
+void MemoryMapAllocationPool::Clear() {
+  std::lock_guard<std::mutex> guard(mtx_);
+  for (auto mmap : memory_map_allocations_) {
+    int rlt = shm_unlink(mmap.file_name_.c_str());
+    if (rlt == 0) {
+      VLOG(3) << "PID: " << getpid() << ", MemoryMapAllocationPool: clear "
+              << mmap.file_name_;
+    }
+  }
+  memory_map_allocations_.clear();
+}
+
+MemoryMapAllocationPool::~MemoryMapAllocationPool() { Clear(); }
 
 }  // namespace allocation
 }  // namespace memory
