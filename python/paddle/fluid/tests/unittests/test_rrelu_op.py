@@ -311,10 +311,8 @@ class TestFunctionalRReluAPI(unittest.TestCase):
         self.assertRaises(ValueError, error_lower_upper)
 
 
-def rrelu(x, lower=1.0 / 8.0, upper=1.0 / 3.0, training=True, name=None):
-    return paddle.nn.functional.rrelu(
-        x, lower, upper, training=not training, name=None
-    )
+def rrelu(x, lower, upper, training):
+    return paddle.nn.functional.rrelu(x, lower, upper, training=not training)
 
 
 class RReluTest(OpTest):
