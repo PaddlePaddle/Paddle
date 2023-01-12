@@ -14,6 +14,7 @@
 
 import collections
 import copy
+from typing import List
 import numpy as np
 from ..framework import Block, Variable, _non_static_mode
 from ..data_feeder import (
@@ -111,18 +112,18 @@ def is_sequence(seq):
 
 
 class UniqueIdMap(WeakKeyDictionary):
-    def __init__(self, dict=None):
+    def __init__(self):
         super().__init__(self)
         self.data = defaultdict(uuid4)
-        if dict is not None:
-            self.update(dict)
 
 
 uniqueidmap = UniqueIdMap()
 
 
 def uniqueid(obj):
-    return uniqueidmap[obj].int
+    if isinstance(obj, list):
+        return tuple(uniqueidmap[v].int for v in obj)
+    return (uniqueidmap[obj].int,)
 
 
 def _hash_with_id(*args):
@@ -130,8 +131,11 @@ def _hash_with_id(*args):
     Return int hash value calculated by id(arg) or tuple(id1,id2, ...).
     """
     assert len(args) > 0
-    info = tuple([uniqueid(v) for v in args])
-    return hash(info) & 0xFFFFFFF
+    info = ()
+    for v in args:
+        info = info + uniqueid(v)
+    # info = tuple([uniqueid(v) for v in args])
+    return hash(info)
 
 
 def _sorted(dict_):
