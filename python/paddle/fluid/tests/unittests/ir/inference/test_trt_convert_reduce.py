@@ -65,14 +65,22 @@ class TrtConvertReduceTest(TrtLayerAutoScanTest):
                 [3, 4, 5],
             ]:
                 for reduce_all in [True, False]:
-                    for out_dtype in [-1, 2, 5]:
-                        for op_type in [
-                            "reduce_max",
-                            "reduce_min",
-                            "reduce_mean",
-                            "reduce_sum",
-                            "reduce_prod",
-                        ]:
+                    for out_dtype in [-1, 0, 2, 5]:
+                        if out_dtype != 0:
+                            reduce_type_list = [
+                                "reduce_max",
+                                "reduce_min",
+                                "reduce_mean",
+                                "reduce_sum",
+                                "reduce_prod",
+                            ]
+                        else:
+                            reduce_type_list = [
+                                "reduce_all",
+                                "reduce_any",
+                            ]
+
+                        for op_type in reduce_type_list:
                             dics1 = [
                                 {
                                     "keep_dim": keep_dim,
@@ -85,9 +93,6 @@ class TrtConvertReduceTest(TrtLayerAutoScanTest):
                             ]
                             dics2 = [
                                 {
-                                    "keep_dim": keep_dim,
-                                    "dim": dim,
-                                    "reduce_all": reduce_all,
                                     "out_dtype": out_dtype,
                                     "in_dtype": out_dtype,
                                 },
