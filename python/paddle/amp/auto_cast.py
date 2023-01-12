@@ -59,6 +59,7 @@ BLACK_LIST = {
     'trilinear_interp_v2',
 }
 
+
 AMP_RELATED_FLAGS = [
     'FLAGS_cudnn_exhaustive_search',
     'FLAGS_conv_workspace_size_limit',
@@ -127,7 +128,7 @@ def amp_state():
     return _g_amp_state_
 
 
-# NOTE(zhiqiu): similar as paddle.fluid.contrib.mixed_precision.fp16_lists.AutoMixedPrecisionLists._update_list
+# NOTE(zhiqiu): similar as paddle.static.amp.fp16_lists.AutoMixedPrecisionLists._update_list
 # The reason why not use AutoMixedPrecisionLists is that custom_black_varnames is not suitable for imperative mode.
 def _update_list(
     custom_white_list, custom_black_list, level='O1', dtype='float16'
