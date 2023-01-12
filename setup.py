@@ -1342,7 +1342,7 @@ def main():
     if cmake_and_build:
         build_steps()
 
-    if os.get("WITH_PYTHON") == "OFF":
+    if os.getenv("WITH_PYTHON") == "OFF":
         print("only compile, not package")
         return
 
