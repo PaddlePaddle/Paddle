@@ -45,6 +45,7 @@ class PrelnGroupnormActOpConverter : public OpConverter {
 
     int groups = PADDLE_GET_CONST(int, op_desc.GetAttr("groups"));
     float epsilon = PADDLE_GET_CONST(float, op_desc.GetAttr("epsilon"));
+    bool with_silu = PADDLE_GET_CONST(bool, op_desc.GetAttr("with_silu"));
 
     std::string scale_name = op_desc.Input("Scale").front();
     std::string bias_name = op_desc.Input("Bias").front();
@@ -75,6 +76,7 @@ class PrelnGroupnormActOpConverter : public OpConverter {
               bias_weights.get().count,
               epsilon,
               groups,
+              with_silu,
               with_fp16);
       nvinfer1::ILayer* groupnorm_layer =
           engine_->AddDynamicPlugin(inputs.data(), 2, plugin);
