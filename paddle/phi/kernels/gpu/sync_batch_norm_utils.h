@@ -580,7 +580,7 @@ void SyncBatchNormGradFunctor(
         <<<grid, threads, 0, stream>>>(
             dy_d, x_d, saved_mean_ptr, N, fsize, C, stats);
   } else {
-    if (x_dims.size() == 2) {
+    if (x_dims.size() == 2 && N >= 65535) {
       dim3 block;
       dim3 grid;
       const int block_size = 512;
@@ -683,7 +683,7 @@ void SyncBatchNormGradFunctor(
     }
   } else {
     if (d_scale && d_bias) {
-      if (x_dims.size() == 2) {
+      if (x_dims.size() == 2 && N >= 65535) {
         dim3 block;
         dim3 grid;
         const int block_size = 512;
