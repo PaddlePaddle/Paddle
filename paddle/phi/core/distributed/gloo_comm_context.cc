@@ -14,11 +14,12 @@
 
 #include "paddle/phi/core/distributed/gloo_comm_context.h"
 
-#include "gloo/broadcast.h"
-#include "gloo/types.h"
+#include <gloo/broadcast.h>
+#include <gloo/types.h>
 
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/distributed/check/static_check.h"
 #include "paddle/phi/core/distributed/gloo_utils.h"
 #include "paddle/phi/core/enforce.h"
 
@@ -38,6 +39,13 @@ GlooCommContext::GlooCommContext(
 void GlooCommContext::Broadcast(phi::DenseTensor* out_tensor,
                                 const phi::DenseTensor& in_tensor,
                                 int root) {
+  // gloo only uses CPU now
+  CommStaticCheck::SameShape(*out_tensor,
+                             in_tensor,
+                             /*dst_rank*/ rank_,
+                             /*cur_rank*/ rank_,
+                             size_,
+                             phi::AllocationType::CPU);
   gloo::BroadcastOptions opts(gloo_context_);
   const auto& dtype = in_tensor.dtype();
   GENERATE_FUNC(dtype, SetOutput, &opts, out_tensor);
