@@ -155,7 +155,14 @@ __global__ void prelnGroupNormNHWCSumKernel(GroupNormNHWCParams params) {
       // int64_t offsetY = static_cast<int64_t>(ni) * params.c + ci;
       __half2 y = *reinterpret_cast<__half2 const *>(&params.srcY[offset]);
       h2 = *reinterpret_cast<__half2 const *>(&params.srcX[offset]);
+#if __CUDA_ARCH__ >= 530
       h2 = __hadd2(h2, y);
+#else
+      float2 out{};
+      out.x = __half2float(h2.x) + __half2float(y.x);
+      out.y = __half2float(h2.y) + __half2float(y.y);
+      h2 = __float22half2_rn(out);
+#endif
       // elementwise_add
       *reinterpret_cast<__half2 *>(&params.eleOut[offset]) = h2;
     }

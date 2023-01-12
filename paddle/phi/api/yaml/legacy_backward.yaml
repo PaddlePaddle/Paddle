@@ -375,6 +375,7 @@
     param : [x, y]
   kernel :
     func : divide_grad
+  composite : divide_grad(Tensor x, Tensor y, Tensor out, Tensor out_grad, int axis = -1)
   backward : divide_double_grad
 
 - backward_op : dropout_grad
