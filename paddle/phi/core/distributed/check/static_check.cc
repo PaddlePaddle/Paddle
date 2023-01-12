@@ -14,6 +14,9 @@
 
 #include "paddle/phi/core/distributed/check/static_check.h"
 
+#include <cstdlib>
+#include <cstring>
+
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/enforce.h"
@@ -35,16 +38,25 @@ void CommStaticCheck::CheckRank(int rank, int world_size) {
 
 void CommStaticCheck::CheckPlace(const phi::DenseTensor& tensor) {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-  PADDLE_ENFORCE_EQ(
-      tensor.place().GetType(),
-      phi::AllocationType::GPU,
-      phi::errors::InvalidArgument("Tensor should be in GPU place."));
+  auto expect_type = phi::AllocationType::GPU;
 #else
-  PADDLE_ENFORCE_EQ(
-      tensor.place().GetType(),
-      phi::AllocationType::CPU,
-      phi::errors::InvalidArgument("Tensor should be in CPU place."));
+  auto expect_type = phi::AllocationType::CPU;
 #endif
+
+#if defined(PADDLE_WITH_GLOO)
+  // gloo only use CPU now
+  char* with_gloo = std::getenv("PADDLE_WITH_GLOO");
+  bool use_gloo = with_gloo && std::strcmp(with_gloo, "0") != 0;
+  if (use_gloo) {
+    expect_type = phi::AllocationType::CPU;
+  }
+#endif
+
+  auto actual_type = tensor.place().GetType();
+  PADDLE_ENFORCE_EQ(
+      actual_type,
+      expect_type,
+      phi::errors::InvalidArgument("Tensor should be in backend's place."));
 }
 
 void CommStaticCheck::CheckPlace(const phi::DenseTensor& out_tensor,

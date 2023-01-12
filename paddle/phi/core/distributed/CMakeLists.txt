@@ -21,7 +21,7 @@ if(WITH_GLOO)
   cc_library(
     gloo_comm_context
     SRCS gloo_comm_context.cc
-    DEPS gloo_utils)
+    DEPS gloo_utils comm_static_check)
 
   list(APPEND COMM_CONTEXT_MANAGER_DEPS gloo_comm_context gloo_store)
 endif()

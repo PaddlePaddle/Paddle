@@ -39,6 +39,11 @@ GlooCommContext::GlooCommContext(
 void GlooCommContext::Broadcast(phi::DenseTensor* out_tensor,
                                 const phi::DenseTensor& in_tensor,
                                 int root) {
+  CommStaticCheck::SameShape(*out_tensor,
+                             in_tensor,
+                             /*dst_rank*/ rank_,
+                             /*cur_rank*/ rank_,
+                             size_);
   gloo::BroadcastOptions opts(gloo_context_);
   const auto& dtype = in_tensor.dtype();
   GENERATE_FUNC(dtype, SetOutput, &opts, out_tensor);
