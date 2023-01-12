@@ -113,6 +113,15 @@ static_cast<int>(phi::Place({{"phi::" if not default_value is initializer_list}}
 
 {# --------------------------------------- name mapping ---------------------------------------------- #}
 {% macro name_map(op) %}
+/*
+******************************************************************
+NOTE: The following codes are for 'get_compat_kernel_signature.py'
+All possible KernelSignatures returned by {{op["name"] | to_pascal_case }}OpArgumentMapping:
+
+{{op | cartesian_prod_mapping}}
+******************************************************************
+*/
+
 KernelSignature {{op["op_name"] | to_pascal_case }}OpArgumentMapping(const ArgumentMappingContext& ctx) {
   {% set kernel_args = op["kernel"]["param"] %}
   {{get_input_list(op["inputs"], kernel_args)}};
@@ -132,15 +141,6 @@ KernelSignature {{op["op_name"] | to_pascal_case }}OpArgumentMapping(const Argum
   return sig;
   {%endif%}
 }
-
-/*
-******************************************************************
-NOTE: The following codes are for 'get_compat_kernel_signature.py'
-All possible KernelSignatures returned by {{op["name"] | to_pascal_case }}OpArgumentMapping:
-
-{{op | cartesian_prod_mapping}}
-******************************************************************
-*/
 {% endmacro %}
 
 {% macro get_kernel_dispatch(inputs, kernel_config) %}{# inline #}
@@ -168,6 +168,15 @@ ctx.IsSparseCsrTensorInput("{{input["name"]}}"){{" && " if not loop.last}}
 {%- endmacro %}
 
 {% macro sparse_op_name_map(op) %}
+/*
+******************************************************************
+NOTE: The following codes are for 'get_compat_kernel_signature.py'
+All possible KernelSignatures returned by {{op["name"] | to_pascal_case }}OpArgumentMapping:
+
+{{op | cartesian_prod_mapping}}
+******************************************************************
+*/
+
 KernelSignature {{op["op_name"] | to_pascal_case }}OpArgumentMapping(const ArgumentMappingContext& ctx) {
   {% set kernel_args = op["kernel"]["param"] %}
   {{get_input_list(op["inputs"], kernel_args)}};
@@ -184,15 +193,6 @@ KernelSignature {{op["op_name"] | to_pascal_case }}OpArgumentMapping(const Argum
   KernelSignature sig (kernel_name, std::move(inputs), std::move(attrs), std::move(outputs));
   return sig;
 }
-
-/*
-******************************************************************
-NOTE: The following codes are for 'get_compat_kernel_signature.py'
-All possible KernelSignatures returned by {{op["name"] | to_pascal_case }}OpArgumentMapping:
-
-{{op | cartesian_prod_mapping}}
-******************************************************************
-*/
 {% endmacro %}
 
 {% macro register_base_kernel_name(op) %}
@@ -280,6 +280,17 @@ phi::KernelKey GetExpectedKernelType(
 }
 {% endmacro %}
 
+{% macro get_kernel_for_var(op) %} {# only for data_transform #}
+phi::KernelKey GetKernelTypeForVar(
+    const std::string& var_name,
+    const phi::DenseTensor& tensor,
+    const phi::KernelKey& expected_kernel_type) const override {
+    return phi::KernelKey(phi::Backend::ALL_BACKEND,
+                          expected_kernel_type.layout(),
+                          expected_kernel_type.dtype());
+    }
+{% endmacro %}
+
 {# --------------------------------------- operator  ---------------------------------------------- #}
 {% macro operator(op) %}
 class {{op["op_name"] | to_pascal_case}}Op : public framework::OperatorWithKernel {
@@ -289,9 +300,17 @@ class {{op["op_name"] | to_pascal_case}}Op : public framework::OperatorWithKerne
   {% set kernel = op["kernel"] %}
   {% if kernel["data_type"] is not none %}
  protected:
-  {% filter indent(2, True)%}
+    {% filter indent(2, True)%}
 {{get_expected_kernel(op)}}
-  {% endfilter %}
+    {% endfilter %}
+    {%- if "data_transform" in op and op["data_transform"] is not none -%}
+      {%- if "skip_transform" in op["data_transform"] -%}
+        {% filter indent(2, True) %}
+{{get_kernel_for_var(op)}}
+        {% endfilter %}
+      {%- endif %}
+    {%- endif -%}
+{# TODO(lizhiyu): add the 'support_trans_dtype' #}
   {% endif %}
 };
 
