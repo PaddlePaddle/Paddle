@@ -1453,38 +1453,32 @@ class TestSundryAPIStatic(unittest.TestCase):
 
     @prog_scope()
     def test_lerp(self):
-        # 0D + 0D
-        x0 = paddle.rand([])
-        y0 = paddle.rand([])
-        w0 = paddle.rand([])
-        x0.stop_gradient = False
-        y0.stop_gradient = False
-        out0 = paddle.lerp(x0, y0, w0)
-        paddle.static.append_backward(out0)
+        shapes = [
+            [(), (), (), ()],
+            [(), (64, 64), (), (64, 64)],
+            [(64, 64), (), (), (64, 64)],
+        ]
+        for shape in shapes:
+            x = paddle.rand(shape[0])
+            y = paddle.rand(shape[1])
+            w = paddle.rand(shape[2])
 
-        # 0D + ND
-        x1 = paddle.rand([])
-        y1 = paddle.rand([64, 64])
-        w1 = paddle.rand([])
-        x1.stop_gradient = False
-        y1.stop_gradient = False
-        out1 = paddle.lerp(x1, y1, w1)
-        paddle.static.append_backward(out1)
+            x.stop_gradient = False
+            y.stop_gradient = False
+            out = paddle.lerp(x, y, w)
+            paddle.static.append_backward(out.sum())
 
-        # ND + 0D
-        x2 = paddle.rand([64, 64])
-        y2 = paddle.rand([])
-        w2 = paddle.rand([])
-        x2.stop_gradient = False
-        y2.stop_gradient = False
-        out2 = paddle.lerp(x2, y2, w2)
-        paddle.static.append_backward(out2)
+            prog = paddle.static.default_main_program()
+            block = prog.global_block()
+            x_grad = block.var(fluid.framework.grad_var_name(x.name))
+            y_grad = block.var(fluid.framework.grad_var_name(y.name))
+            out_grad = block.var(fluid.framework.grad_var_name(out.name))
 
-        prog = paddle.static.default_main_program()
-        res = self.exe.run(prog, fetch_list=[out0, out1, out2])
-        self.assertEqual(res[0].shape, ())
-        self.assertEqual(res[1].shape, (64, 64))
-        self.assertEqual(res[2].shape, (64, 64))
+            res = self.exe.run(prog, fetch_list=[out, out_grad, y_grad, x_grad])
+            self.assertEqual(res[0].shape, shape[3])
+            self.assertEqual(res[1].shape, shape[3])
+            self.assertEqual(res[2].shape, shape[1])
+            self.assertEqual(res[3].shape, shape[0])
 
     @prog_scope()
     def test_repeat_interleave(self):
