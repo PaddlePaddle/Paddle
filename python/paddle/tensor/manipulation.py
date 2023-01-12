@@ -1541,14 +1541,6 @@ def flatten(x, start_axis=0, stop_axis=-1, name=None):
     if not (isinstance(x, Variable)):
         raise ValueError("The input x should be a Tensor")
 
-    if not paddle.in_dynamic_mode():
-        check_variable_and_dtype(
-            x,
-            'x',
-            ['float32', 'float64', 'int8', 'int16', 'int32', 'int64', 'uint8'],
-            'flatten',
-        )
-
     x_dim = len(x.shape)
     if x_dim == 0:
         if not (isinstance(start_axis, int)) or start_axis not in [0, -1]:
@@ -1586,6 +1578,12 @@ def flatten(x, start_axis=0, stop_axis=-1, name=None):
     if in_dygraph_mode():
         return _C_ops.flatten(x, start_axis, stop_axis)
     else:
+        check_variable_and_dtype(
+            x,
+            'x',
+            ['float32', 'float64', 'int8', 'int16', 'int32', 'int64', 'uint8'],
+            'flatten',
+        )
         helper = LayerHelper('flatten', **locals())
         out = helper.create_variable_for_type_inference(x.dtype)
         x_shape = helper.create_variable_for_type_inference(x.dtype)

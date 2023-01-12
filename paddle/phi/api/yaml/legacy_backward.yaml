@@ -806,15 +806,6 @@
   backward : mean_double_grad
   no_need_buffer : x
 
-- backward_op : meshgrid_grad
-  forward : meshgrid (Tensor[] inputs) -> Tensor[](outputs)
-  args : (Tensor[] inputs, Tensor[] outputs_grad)
-  output : Tensor[](inputs_grad){inputs.size()}
-  infer_meta :
-    func : MeshgridGradInferMeta
-  kernel :
-    func : meshgrid_grad
-
 - backward_op : min_grad
   forward: min (Tensor x,  IntArray axis={},  bool keepdim=false) -> Tensor(out)
   args : (Tensor x, Tensor out, Tensor out_grad, IntArray axis={}, bool keepdim=false, bool reduce_all=false)
@@ -845,26 +836,6 @@
   kernel :
     func : mish_grad
   inplace : (out_grad -> x_grad)
-
-- backward_op : multi_dot_grad
-  forward : multi_dot (Tensor[] x) -> Tensor(out)
-  args : (Tensor[] x, Tensor out_grad)
-  output : Tensor[](x_grad) {x.size()}
-  infer_meta :
-    func : MultiDotGradInferMeta
-  kernel :
-    func : multi_dot_grad
-
-- backward_op : multiplex_grad
-  forward : multiplex (Tensor[] inputs, Tensor index) -> Tensor(out)
-  args : (Tensor[] inputs, Tensor index, Tensor out_grad)
-  output : Tensor[](inputs_grad){inputs.size()}
-  infer_meta :
-    func : MultiplexGradInferMeta
-    param : [index, out_grad]
-  kernel :
-    func : multiplex_grad
-    param : [index, out_grad]
 
 - backward_op : multiply_double_grad
   forward : multiply_grad (Tensor x, Tensor y, Tensor grad_out, int axis = -1) -> Tensor(grad_x), Tensor(grad_y)
