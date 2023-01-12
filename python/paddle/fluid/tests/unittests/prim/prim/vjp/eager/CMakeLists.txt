@@ -10,3 +10,5 @@ foreach(TEST_OP ${TEST_OPS})
 endforeach()
 
 set_tests_properties(test_comp_eager_tanh_grad PROPERTIES TIMEOUT 60)
+set_tests_properties(test_comp_eager_div_grad PROPERTIES TIMEOUT 60)
+set_tests_properties(test_comp_eager_sum_grad PROPERTIES TIMEOUT 60)
