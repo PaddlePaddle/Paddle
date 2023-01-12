@@ -66,5 +66,5 @@ env_dict={
     'ORIGIN':'@ORIGIN@',
     'WIN32':'@WIN32@',
     'JIT_RELEASE_WHL':'@JIT_RELEASE_WHL@',
-    'WITH_PSLIB':'@WITH_PSLIB@',
+    'WITH_PSLIB':'@WITH_PSLIB@'
 }
