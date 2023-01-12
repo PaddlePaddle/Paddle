@@ -36,7 +36,9 @@ void FlashAttnKernel(const Context& ctx,
                      bool causal,
                      DenseTensor* out,
                      DenseTensor* softmax_lse,
-                     DenseTensor* softmax) {
+                     DenseTensor* softmax,
+                     uint64_t* seed,
+                     uint64_t* offset) {
   cudaStream_t stream = ctx.stream();
   bool is_bf16 = q.dtype() == DataType::BFLOAT16 ? true : false;
 
@@ -77,51 +79,40 @@ void FlashAttnKernel(const Context& ctx,
 
   float scale = 1.0f / std::sqrt(head_size);
   int num_splits = 1;  // always 1 for now
+  bool zero_tensors = true;
 
-  // auto tp = is_bf16 ? phi::dtype::float16 : phi::dtype::bfloat16;
+  auto gen = ctx.GetGenerator();
+  uint64_t inc = batch_size * num_heads * 32;
+  auto seed_offset = gen->IncrementOffset(inc);
+  seed = seed_offset.first;
+  offset = seed_offset.second - inc;  // offset before increment
 
   if (is_bf16) {
-    flash_attn_fwd(
-        q_t_s.data<phi::dtype::bfloat16>(),  // const void *q,              //
-                                             // total_q x num_heads x head_size,
-                                             // total_q := \sum_{i=0}^{b} s_i
-        k_t_s.data<phi::dtype::bfloat16>(),  // const void *k,              //
-                                             // total_k x num_heads x head_size,
-                                             // total_k := \sum_{i=0}^{b} s_i
-        v_t_s.data<phi::dtype::bfloat16>(),  // const void *v,              //
-                                             // total_k x num_heads x head_size,
-                                             // total_k := \sum_{i=0}^{b} s_i
-        out->data<phi::dtype::bfloat16>(),   // void *out,                  //
-                                             // total_q x num_heads x head_size,
-                                             // total_k := \sum_{i=0}^{b} s_i
-        cu_seqlens_q
-            .data<int64_t>(),  // const void *cu_seqlens_q,   // int32,
-                               // batch_size+1, starting offset of each sequence
-        cu_seqlens_k
-            .data<int64_t>(),  // const void *cu_seqlens_k,   // int32,
-                               // batch_size+1, starting offset of each sequence
-        total_q,               // const int total_q,
-        total_k,               // const int total_k,
-        batch_size,            // const int batch_size,
-        num_heads,             // const int num_heads,
-        head_size,             // const int head_size,
-        seq_len_q,             // const int max_seqlen_q_,
-        seq_len_k,             // const int max_seqlen_k_,
-        dropout,               // const float p_dropout,
-        scale,                 // const float softmax_scale,
-        true,                  // const bool zero_tensors,
-        causal,                // const bool is_causal,
-        is_bf16,               // const bool is_bf16,
-        num_splits,  // const int num_splits,        // SMs per attention
-                     // matrix, can be 1
-        softmax_lse->data<float>(),  // void *softmax_lse_ptr,       // softmax
-                                     // log_sum_exp
-        softmax == nullptr
-            ? nullptr
-            : softmax->data<phi::dtype::float16>(),  // void *softmax_ptr,
-        stream,                                      // cudaStream_t stream,
-        0                                            // int seed // TODO
-    );
+    phi::dynload::flash_attn_fwd(
+        q_t_s.data<phi::dtype::bfloat16>(),
+        k_t_s.data<phi::dtype::bfloat16>(),
+        v_t_s.data<phi::dtype::bfloat16>(),
+        out->data<phi::dtype::bfloat16>(),
+        cu_seqlens_q.data<int64_t>(),
+        cu_seqlens_k.data<int64_t>(),
+        total_q,
+        total_k,
+        batch_size,
+        num_heads,
+        head_size,
+        seq_len_q,
+        seq_len_k,
+        dropout,
+        scale,
+        zero_tensors,
+        causal,
+        is_bf16,
+        num_splits,
+        softmax_lse->data<float>(),
+        softmax == nullptr ? nullptr : softmax->data<phi::dtype::float16>(),
+        stream,
+        seed,
+        offset);
   } else {
   }
 }
