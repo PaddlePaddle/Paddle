@@ -165,7 +165,8 @@ class GraphPyClient : public GraphPyService {
   std::shared_ptr<paddle::distributed::GraphBrpcClient> get_ps_client() {
     return worker_ptr;
   }
-  void bind_local_server(int local_channel_index, const GraphPyServer& server) {
+  void bind_local_server(int local_channel_index,
+                         GraphPyServer& server) {  // NOLINT
     worker_ptr->set_local_channel(local_channel_index);
     worker_ptr->set_local_graph_service(
         (paddle::distributed::GraphBrpcService*)server.get_ps_server()

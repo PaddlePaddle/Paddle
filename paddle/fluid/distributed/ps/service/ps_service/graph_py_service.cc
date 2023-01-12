@@ -72,8 +72,8 @@ void add_graph_node(std::string name,
 void remove_graph_node(std::string name, std::vector<int64_t> node_ids) {}
 void GraphPyService::set_up(std::string ips_str,
                             int shard_num,
-                            std::vector<std::string> node_types,
-                            std::vector<std::string> edge_types) {
+                            const std::vector<std::string> node_types,
+                            const std::vector<std::string> edge_types) {
   set_shard_num(shard_num);
   set_num_node_types(node_types.size());
   /*
@@ -312,8 +312,8 @@ void GraphPyClient::clear_nodes(std::string name) {
 }
 
 void GraphPyClient::add_graph_node(std::string name,
-                                   std::vector<int64_t>& node_ids,
-                                   std::vector<bool>& weight_list) {
+                                   const std::vector<int64_t>& node_ids,
+                                   const std::vector<bool>& weight_list) {
   // if (this->table_id_map.count(name)) {
   //   uint32_t table_id = this->table_id_map[name];
   //   auto status =
