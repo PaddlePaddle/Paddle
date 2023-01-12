@@ -2030,11 +2030,12 @@ Examples:
 Only for Tensor that has gradient, normally we use this for Parameters since
 other temporary Tensor doesen't has gradient.
 
-The Gradient of current Tensor will be set to ``0``.
+The Gradient of current Tensor will be set to ``0`` elementwise or ``None``.
 
 Args:
-    set_to_zero(bool, optional): If set to ``True``, the gradient will be set
-        to ``0``, otherwise the gradient will be set to ``None``. Default: ``True``.
+    set_to_zero (bool, optional): If set to ``True``, the gradient will be set
+        to ``0`` elementwise, otherwise the gradient will be set to ``None``.
+        Default: ``True``.
 
 Returns:
     None.
