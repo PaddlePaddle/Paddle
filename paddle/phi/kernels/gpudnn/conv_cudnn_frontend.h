@@ -102,6 +102,33 @@ class CudnnFrontendConvHelper {
         .build();
   }
 
+  static inline cudnn_frontend::Tensor GetGeneralTensorDescriptor(
+      std::vector<int64_t> dims,
+      cudnnTensorFormat_t layout,
+      int64_t id,
+      int64_t alignment,
+      cudnnDataType_t dtype,
+      bool is_virtual = false,
+      int64_t group_count = 0) {
+    std::vector<int64_t> strides = GenerateStrides(dims, layout);
+    if (group_count > 0) {
+      int64_t c_per_group = dims[1];
+      int64_t c_stride = strides[1];
+      dims.insert(dims.begin() + 1, group_count);
+      strides.insert(strides.begin() + 1, c_stride * c_per_group);
+    }
+    cudnn_frontend::TensorBuilder builder;
+    builder.setDim(dims.size(), dims.data())
+        .setStride(strides.size(), strides.data())
+        .setId(id)
+        .setAlignment(alignment)
+        .setDataType(dtype);
+    if (is_virtual) {
+      builder.setVirtual();
+    }
+    return builder.build();
+  }
+
   static cudnn_frontend::ConvDesc_v8 GetConvDescriptor(
       cudnnDataType_t dataType,
       const std::vector<int>& padding,
@@ -248,6 +275,84 @@ class CudnnFrontendConvHelper {
         });
 
     return plans;
+  }
+
+  static cudnn_frontend::ExecutionPlan GetPlanByHeuristics(
+      cudnn_frontend::OperationGraph&& op_graph, cudnnHandle_t handle_) {
+    cudnn_frontend::EngineConfigList filtered_configs;
+    auto statuses = cudnn_frontend::get_heuristics_list<2>(
+        {"heuristics_instant", "heuristics_fallback"},
+        op_graph,
+        AllowAll,
+        filtered_configs,
+        true);
+
+    VLOG(6) << "Filter config list has " << filtered_configs.size()
+            << " configurations ";
+
+    auto plan_builder = [&filtered_configs, &op_graph, &handle_]() {
+      for (size_t i = 0; i < filtered_configs.size(); i++) {
+        try {
+          auto plan =
+              cudnn_frontend::ExecutionPlanBuilder()
+                  .setHandle(handle_)
+                  .setEngineConfig(filtered_configs[i], op_graph.getTag())
+                  .build();
+          return plan;
+        } catch (cudnn_frontend::cudnnException&) {
+          continue;
+        }
+      }
+    };
+
+    auto plan = plan_builder();
+    VLOG(6) << "Plan tag: " << plan.getTag();
+    return plan;
+  }
+
+  static void ExecutePlan(cudnnHandle_t handle_,
+                          phi::DnnWorkspaceHandle* workspace_handle,
+                          std::vector<void*>* data_ptrs,
+                          std::vector<int64_t>* uids,
+                          cudnnBackendDescriptor_t plan_desc,
+                          int64_t workspace_size) {
+    workspace_handle->RunFunc(
+        [&](void* workspace_ptr) {
+          auto variant_pack =
+              cudnn_frontend::VariantPackBuilder()
+                  .setWorkspacePointer(workspace_ptr)
+                  .setDataPointers(data_ptrs->size(), data_ptrs->data())
+                  .setUids(uids->size(), uids->data())
+                  .build();
+          PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cudnnBackendExecute(
+              handle_, plan_desc, variant_pack.get_raw_desc()));
+        },
+        workspace_size);
+  }
+
+  static cudnn_frontend::Operation MakePointwiseOp(
+      cudnnPointwiseMode_t mode,
+      cudnnDataType_t dtype,
+      cudnn_frontend::Tensor const& x_desc,
+      cudnn_frontend::Tensor const& b_desc,
+      cudnn_frontend::Tensor const& y_desc,
+      float alpha1 = 1.0,
+      float alpha2 = 1.0) {
+    auto op_desc = cudnn_frontend::PointWiseDescBuilder()
+                       .setMode(mode)
+                       .setComputeType(dtype)
+                       .build();
+    auto op = cudnn_frontend::OperationBuilder(
+                  CUDNN_BACKEND_OPERATION_POINTWISE_DESCRIPTOR)
+                  .setxDesc(x_desc)
+                  .setbDesc(b_desc)
+                  .setyDesc(y_desc)
+                  .setpwDesc(op_desc)
+                  .setAlpha(alpha1)
+                  .setAlpha2(alpha2)
+                  .build();
+    VLOG(6) << op.describe();
+    return op;
   }
 };  // class CudnnFrontendConvHelper
 

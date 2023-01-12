@@ -80,6 +80,13 @@ list(REMOVE_ITEM TEST_OPS test_fused_gemm_epilogue_op)
 list(REMOVE_ITEM TEST_OPS test_fused_gemm_epilogue_grad_op)
 list(REMOVE_ITEM TEST_OPS test_fuse_gemm_epilogue_pass)
 
+list(REMOVE_ITEM TEST_OPS test_fused_bn_finalize_op)
+list(REMOVE_ITEM TEST_OPS test_fused_conv_bn_wgrad_op)
+list(REMOVE_ITEM TEST_OPS test_fused_dbn_apply_op)
+list(REMOVE_ITEM TEST_OPS test_fused_dgrad_drelu_bnbwdweight_op)
+list(REMOVE_ITEM TEST_OPS test_fused_scale_bias_add_relu_op)
+list(REMOVE_ITEM TEST_OPS test_fused_scale_bias_relu_conv_bnstats_op)
+
 if(((NOT WITH_ROCM) AND (NOT WITH_GPU)) OR WIN32)
   list(REMOVE_ITEM TEST_OPS test_c_comm_init_all_op)
   list(REMOVE_ITEM TEST_OPS test_c_embedding_op)
@@ -547,6 +554,19 @@ if((WITH_GPU) AND (CUDA_VERSION GREATER_EQUAL 11.6))
     FLAGS_cublaslt_exhaustive_search_times=30)
   py_test_modules(test_fuse_gemm_epilogue_pass MODULES
                   test_fuse_gemm_epilogue_pass)
+endif()
+
+if((WITH_GPU) AND (WITH_CUDNN_FRONTEND))
+  py_test_modules(test_fused_bn_finalize_op MODULES test_fused_bn_finalize_op)
+  py_test_modules(test_fused_conv_bn_wgrad_op MODULES
+                  test_fused_conv_bn_wgrad_op)
+  py_test_modules(test_fused_dbn_apply_op MODULES test_fused_dbn_apply_op)
+  py_test_modules(test_fused_dgrad_drelu_bnbwdweight_op MODULES
+                  test_fused_dgrad_drelu_bnbwdweight_op)
+  py_test_modules(test_fused_scale_bias_add_relu_op MODULES
+                  test_fused_scale_bias_add_relu_op)
+  py_test_modules(test_fused_scale_bias_relu_conv_bnstats_op MODULES
+                  test_fused_scale_bias_relu_conv_bnstats_op)
 endif()
 
 set_tests_properties(test_conv2d_op PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
