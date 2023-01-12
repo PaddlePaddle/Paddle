@@ -145,9 +145,8 @@ class ReduceAnyOpConverter : public ReduceOpConverter {
     auto reduce_type = ops_.find(op_type);
     auto* x = engine_->GetITensor(op_desc.Input("X").front());
     // Cast the DataType to float
-    nvinfer1::IReduceLayer *cast_layer = nullptr, reduce_layer = nullptr,
-                           layer = nullptr;
-    cast_layer = TRT_ENGINE_ADD_LAYER(engine_, Identity, *x);
+    nvinfer1::IReduceLayer* reduce_layer = nullptr;
+    auto* cast_layer = TRT_ENGINE_ADD_LAYER(engine_, Identity, *x);
     cast_layer->setOutputType(0, nvinfer1::DataType::kFLOAT);
     cast_layer->getOutput(0)->setType(nvinfer1::DataType::kFLOAT);
     int input_dims = input_shape.nbDims;
@@ -191,7 +190,7 @@ class ReduceAnyOpConverter : public ReduceOpConverter {
 
     auto output_name = op_desc.Output("Out")[0];
 
-    layer =
+    auto* layer =
         TRT_ENGINE_ADD_LAYER(engine_, Identity, *reduce_layer->getOutput(0));
     layer->setOutputType(0, nvinfer1::DataType::kBOOL);
     layer->getOutput(0)->setType(nvinfer1::DataType::kBOOL);
