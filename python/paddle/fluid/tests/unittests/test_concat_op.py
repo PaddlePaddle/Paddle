@@ -470,7 +470,6 @@ class TestConcatDoubleGradCheck(unittest.TestCase):
             place=place,
             eps=eps,
         )
-        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         gradient_checker.double_grad_check_for_dygraph(
             self.concat_wrapper,
             [data1, data2],
@@ -512,7 +511,6 @@ class TestConcatTripleGradCheck(unittest.TestCase):
             place=place,
             eps=eps,
         )
-        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         gradient_checker.double_grad_check_for_dygraph(
             self.concat_wrapper,
             [data1, data2],
