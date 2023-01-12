@@ -186,7 +186,7 @@ void Conv2dFusionLayoutTransferPass::ApplyImpl(ir::Graph *graph) const {
         op_node->Op()->GetAttrIfExists<std::string>("data_format");
     if (data_format != "NCHW") return false;
     auto filter_names = op_node->Op()->Input("Filter");
-    constexpr int CUTLASS_NHWC_ALIGNMENT = 8;
+    constexpr int CUDNN_NHWC_ALIGNMENT = 8;
     // If filter's channel is not multiple of 8, conv2d_fusion not run at nhwc.
     for (const auto &filter_name : filter_names) {
       auto *filter_var = scope->FindLocalVar(filter_name);
@@ -194,9 +194,9 @@ void Conv2dFusionLayoutTransferPass::ApplyImpl(ir::Graph *graph) const {
       CHECK_EQ(filter_tensor.dims().size() == 4UL, true);
       int oc = filter_tensor.dims()[0];
       int ic = filter_tensor.dims()[1];
-      bool cutlass_can_support =
-          oc % CUTLASS_NHWC_ALIGNMENT == 0 && ic % CUTLASS_NHWC_ALIGNMENT == 0;
-      if (!cutlass_can_support) {
+      bool cudnn_can_support =
+          oc % CUDNN_NHWC_ALIGNMENT == 0 && ic % CUDNN_NHWC_ALIGNMENT == 0;
+      if (!cudnn_can_support) {
         return false;
       }
     }
