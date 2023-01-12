@@ -561,7 +561,7 @@
     func : EinsumRawInferMeta
     param : [x, equation]
   kernel :
-    func : einsum_raw
+    func : einsum
   backward : einsum_grad
 
 - op : elementwise_pow
@@ -677,7 +677,7 @@
   infer_meta :
     func : FlattenWithXShapeInferMeta
   kernel :
-    func : flatten_with_xshape
+    func : flatten
     backend : x
   inplace : (x -> out)
   view : (x -> out)
@@ -1391,7 +1391,7 @@
   infer_meta :
     func : ReduceIntArrayAxisInferMetaBase
   kernel :
-    func : prod_raw
+    func : prod
   backward : prod_grad
 
 - op : psroi_pool
@@ -1473,7 +1473,7 @@
   infer_meta :
     func : ReshapeWithXShapeInferMeta
   kernel :
-    func : reshape_with_xshape
+    func : reshape
   inplace : (x -> out)
   view: (x -> out)
   intermediate : xshape
