@@ -32,7 +32,6 @@ class CSplitOpXPUKernel : public framework::OpKernel<T> {
 
     int nranks = ctx.Attr<int>("nranks");
     int rank = ctx.Attr<int>("rank");
-    auto place = ctx.GetPlace();
 
     PADDLE_ENFORCE_GE(rank,
                       0,
@@ -65,10 +64,8 @@ class CSplitOpXPUKernel : public framework::OpKernel<T> {
     int64_t remain_numel = phi::product(remain_ddim);
 
     dims[dims_size - 1] /= nranks;
-    out->mutable_data<T>(dims, place);
-
-    phi::DenseTensor input_2d;
-    input_2d.ShareDataWith(*x).Resize(phi::DDim({remain_numel, end_size}));
+    out->Resize(dims);
+    dev_ctx.template Alloc(out, x->dtype());
 
     std::vector<XPUType*> output_list(nranks, nullptr);
     output_list.at(rank) = reinterpret_cast<XPUType*>(out->data<T>());
@@ -76,7 +73,7 @@ class CSplitOpXPUKernel : public framework::OpKernel<T> {
     int axis = 1;
 
     auto ret = xpu::split(dev_ctx.x_context(),
-                          reinterpret_cast<const XPUType*>(input_2d.data<T>()),
+                          reinterpret_cast<const XPUType*>(x->data<T>()),
                           output_list,
                           {remain_numel, end_size},
                           split_list,

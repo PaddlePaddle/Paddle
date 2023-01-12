@@ -40,7 +40,6 @@ class CConcatOpXPUKernel : public framework::OpKernel<T> {
     int nranks = ctx.Attr<int>("nranks");
     int rank = ctx.Attr<int>("rank");
     int rid = ctx.Attr<int>("ring_id");
-    auto place = ctx.GetPlace();
     PADDLE_ENFORCE_GE(rank,
                       0,
                       platform::errors::PreconditionNotMet(
@@ -62,10 +61,12 @@ class CConcatOpXPUKernel : public framework::OpKernel<T> {
                           nranks));
 
 #if defined(PADDLE_WITH_XPU_BKCL)
+    auto& dev_ctx = ctx.template device_context<phi::XPUContext>();
     phi::DenseTensor temp_out;
     framework::DDim temp_out_dims = x->dims();
     temp_out_dims[0] *= nranks;
-    temp_out.mutable_data<T>(temp_out_dims, place);
+    temp_out.Resize(temp_out_dims);
+    dev_ctx.template Alloc(&temp_out, x->dtype());
 
     auto map = distributed::ProcessGroupMapFromGid::getInstance();
     if (map->has(rid)) {
@@ -78,7 +79,6 @@ class CConcatOpXPUKernel : public framework::OpKernel<T> {
       auto task = pg->AllGather(in_tensor, out_tensor);
       task->Wait();
     } else {
-      auto& dev_ctx = ctx.template device_context<phi::XPUContext>();
       auto comm = dev_ctx.bkcl_context();
 
       int64_t send_numel = x->numel();
@@ -103,9 +103,9 @@ class CConcatOpXPUKernel : public framework::OpKernel<T> {
     }
 
     phi::funcs::ConcatFunctor<phi::XPUContext, T> functor;
-    out->mutable_data<T>(out_dims, place);
-    auto& dev_ctx2 = ctx.template device_context<phi::XPUContext>();
-    functor(dev_ctx2, inputs, axis, out);
+    out->Resize(out_dims);
+    dev_ctx.template Alloc(out, x->dtype());
+    functor(dev_ctx, inputs, axis, out);
 #else
     PADDLE_THROW(platform::errors::PreconditionNotMet(
         "PaddlePaddle should compile with XPU."));
