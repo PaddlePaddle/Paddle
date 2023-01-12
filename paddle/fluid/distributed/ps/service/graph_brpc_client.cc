@@ -333,8 +333,8 @@ std::future<int32_t> GraphBrpcClient::batch_sample_neighbors(
     std::vector<int64_t> node_ids,
     int sample_size,
     // std::vector<std::vector<std::pair<int64_t, float>>> &res,
-    std::vector<std::vector<int64_t>> *res,
-    std::vector<std::vector<float>> *res_weight,
+    std::vector<std::vector<int64_t>> &res,
+    std::vector<std::vector<float>> &res_weight,
     bool need_weight,
     int server_index) {
   if (server_index != -1) {
@@ -519,7 +519,7 @@ std::future<int32_t> GraphBrpcClient::random_sample_nodes(
     int idx_,
     int server_index,
     int sample_size,
-    std::vector<int64_t> *ids) {
+    std::vector<int64_t> &ids) {
   DownpourBrpcClosure *closure = new DownpourBrpcClosure(1, [&](void *done) {
     int ret = 0;
     auto *closure = reinterpret_cast<DownpourBrpcClosure *>(done);
@@ -532,7 +532,7 @@ std::future<int32_t> GraphBrpcClient::random_sample_nodes(
       char *buffer = new char[bytes_size];
       size_t index = 0;
       while (index < bytes_size) {
-        ids->push_back(*reinterpret_cast<int64_t *>(buffer + index));
+        ids.push_back(*reinterpret_cast<int64_t *>(buffer + index));
         index += GraphNode::id_size;
       }
       delete[] buffer;
@@ -568,7 +568,7 @@ std::future<int32_t> GraphBrpcClient::pull_graph_list(
     int start,
     int size,
     int step,
-    std::vector<FeatureNode> *res) {
+    std::vector<FeatureNode> &res) {
   DownpourBrpcClosure *closure = new DownpourBrpcClosure(1, [&](void *done) {
     int ret = 0;
     auto *closure = reinterpret_cast<DownpourBrpcClosure *>(done);

@@ -69,8 +69,8 @@ class GraphBrpcClient : public BrpcPsClient {
       int idx,
       std::vector<int64_t> node_ids,
       int sample_size,
-      std::vector<std::vector<int64_t>>* res,
-      std::vector<std::vector<float>>* res_weight,
+      std::vector<std::vector<int64_t>>& res,  // NOLINT
+      std::vector<std::vector<float>>& res_weight,  // NOLINT
       bool need_weight,
       int server_index = -1);
 
@@ -81,13 +81,13 @@ class GraphBrpcClient : public BrpcPsClient {
                                                int start,
                                                int size,
                                                int step,
-                                               std::vector<FeatureNode>* res);
+                                               std::vector<FeatureNode>& res);  // NOLINT
   virtual std::future<int32_t> random_sample_nodes(uint32_t table_id,
                                                    int type_id,
                                                    int idx,
                                                    int server_index,
                                                    int sample_size,
-                                                   std::vector<int64_t>* ids);
+                                                   std::vector<int64_t>& ids);  // NOLINT
   virtual std::future<int32_t> get_node_feat(
       const uint32_t& table_id,
       int idx,
