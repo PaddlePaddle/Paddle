@@ -26,8 +26,8 @@ void SampleUniqueNeighbors(
     bidiiter begin,
     bidiiter end,
     int num_samples,
-    std::mt19937& rng,                                              // NOLINT
-    const std::uniform_int_distribution<int>& dice_distribution) {  // NOLINT
+    std::mt19937& rng,                                        // NOLINT
+    std::uniform_int_distribution<int>& dice_distribution) {  // NOLINT
   int left_num = std::distance(begin, end);
   for (int i = 0; i < num_samples; i++) {
     bidiiter r = begin;
