@@ -176,7 +176,8 @@ class TestIndexSelectAPI(unittest.TestCase):
 
         # case 3 zero_dim:
         with program_guard(Program(), Program()):
-            x = fluid.layers.data(name='x', shape=[])
+            x = paddle.static.data(name='x', shape=[-1], dtype="float32")
+            x.desc.set_need_check_feed(False)
             z = paddle.repeat_interleave(x, repeats)
             exe = fluid.Executor(fluid.CPUPlace())
             (res,) = exe.run(
