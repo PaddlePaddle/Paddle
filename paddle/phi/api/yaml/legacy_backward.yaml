@@ -1328,6 +1328,7 @@
   kernel :
     func : subtract_grad
   no_need_buffer : x, y
+  composite : subtract_grad(Tensor x, Tensor y, Tensor out_grad, int axis)
   backward : subtract_double_grad
   inplace : (out_grad -> x_grad)
 
