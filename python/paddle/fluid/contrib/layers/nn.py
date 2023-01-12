@@ -889,6 +889,7 @@ def tdm_child(x, node_nums, child_nums, param_attr=None, dtype='int32'):
         import paddle
         import paddle.fluid as fluid
         import numpy as np
+        paddle.enable_static()
         x = fluid.data(name="x", shape=[None, 1], dtype="int32", lod_level=1)
         tree_info = [[0,0,0,1,2],
                      [0,1,0,3,4],[0,1,0,5,6],
@@ -997,6 +998,7 @@ def tdm_sampler(
         import paddle
         import paddle.fluid as fluid
         import numpy as np
+        paddle.enable_static()
         x = fluid.data(name="x", shape=[None, 1], dtype="int32", lod_level=1)
         travel_list = [[1, 3], [1, 4], [2, 5], [2, 6]] # leaf node's travel path, shape(leaf_node_num, layer_num)
         layer_list_flat = [[1], [2], [3], [4], [5], [6]] # shape(node_nums, 1)
