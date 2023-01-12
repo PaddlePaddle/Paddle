@@ -2524,6 +2524,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "flatten",
       "gather",
       "gather_nd",
+      "group_norm",
       "yolo_box",
       "yolo_box_head",
       "arg_max",

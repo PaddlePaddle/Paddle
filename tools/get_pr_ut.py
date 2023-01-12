@@ -441,7 +441,9 @@ class PRChecker:
                                 ut_list.append('comment_placeholder')
                                 onlyCommentsFilesOrXpu.append(f_judge)
                             if self.file_is_unnit_test(f_judge):
-                                ut_list.append(f_judge.split(".")[0])
+                                ut_list.append(
+                                    os.path.split(f_judge)[1].split(".")[0]
+                                )
                             else:
                                 notHitMapFiles.append(f_judge)
                     else:
