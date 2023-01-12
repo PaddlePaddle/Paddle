@@ -20,9 +20,13 @@ import paddle.nn as nn
 from paddle.nn import Layer
 
 from .factory import QuanterFactory
+from .wrapper import ObserveWrapper
 
 # TODO: Implement quanted layer and fill the mapping dict
-DEFAULT_QAT_LAYER_MAPPINGS: Dict[Layer, Layer] = {}
+DEFAULT_QAT_LAYER_MAPPINGS: Dict[Layer, Layer] = {
+    nn.Linear: nn.quant.qat.QuantedLinear,
+    nn.Conv2D: nn.quant.qat.QuantedConv2D,
+}
 
 DEFAULT_LEAVES = [nn.ReLU, nn.AvgPool2D]
 
@@ -289,6 +293,10 @@ class QuantConfig(object):
         """
         return self._is_leaf(layer) and self._has_observer_config(layer)
 
+    def _get_qat_layer(self, layer: Layer):
+        q_config = self._get_config_by_layer(layer)
+        return self.qat_layer_mappings[type(layer)](layer, q_config)
+
     def _has_observer_config(self, layer: Layer):
         r"""
         Whether the layer has been configured for activation quantization.
@@ -323,6 +331,10 @@ class QuantConfig(object):
         _config = self._get_config_by_layer(layer)
         _observer = None if _config is None else _config.activation
         return None if _observer is None else _observer._instance(layer)
+
+    def _get_observe_wrapper(self, layer: Layer):
+        _observer = self._get_observer(layer)
+        return ObserveWrapper(_observer, layer)
 
     @property
     def qat_layer_mappings(self):
@@ -395,6 +407,8 @@ class QuantConfig(object):
         r"""
         Get the formated details of current config.
         """
+        if self._model is None:
+            return self.__str__()
         return self._details_helper(self._model)
 
     def _details_helper(self, layer: Layer):
