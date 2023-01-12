@@ -71,6 +71,7 @@ void divide_grad(const Tensor& x,
       dx->set_impl(dx_res.impl());
     }
   }  // indicate we will compute dx
+}
 
 template <typename T>
 void sqrt_grad(const Tensor& out, const Tensor& out_grad, Tensor* x_grad) {
