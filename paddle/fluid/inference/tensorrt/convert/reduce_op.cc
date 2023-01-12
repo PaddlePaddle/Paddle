@@ -149,6 +149,8 @@ class ReduceAnyOpConverter : public ReduceOpConverter {
     auto* cast_layer = TRT_ENGINE_ADD_LAYER(engine_, Identity, *x);
     cast_layer->setOutputType(0, nvinfer1::DataType::kFLOAT);
     cast_layer->getOutput(0)->setType(nvinfer1::DataType::kFLOAT);
+
+    nvinfer1::Dims input_shape = x->getDimensions();
     int input_dims = input_shape.nbDims;
     // Discriminate DataType between int and bool.
     bool keep_dim = PADDLE_GET_CONST(bool, op_desc.GetAttr("keep_dim"));
