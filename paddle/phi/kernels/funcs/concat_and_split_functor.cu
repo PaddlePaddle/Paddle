@@ -485,7 +485,7 @@ void DispatchConcatKernel(const phi::GPUContext& ctx,
       break;
     }
   }
-  printf("Dispatch vec size is: %d \n", dispatch_vec_size);
+
   const int64_t vectorized_out_col = out_col / dispatch_vec_size;
   for (IndexT idx = 0; idx < in_num + 1; idx++) {
     inputs_col[idx] /= dispatch_vec_size;
