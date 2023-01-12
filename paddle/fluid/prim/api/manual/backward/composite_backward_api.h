@@ -76,7 +76,7 @@ void divide_grad(const Tensor& x,
 template <typename T>
 void sqrt_grad(const Tensor& out, const Tensor& out_grad, Tensor* x_grad) {
   if (x_grad) {
-    auto tmp = divide<T>(0.5, out);
+    auto tmp = divide<T>(paddle::prim::Tensor(0.5), out);
     auto x_grad_tmp = multiply<T>(out_grad, tmp);
     x_grad->set_impl(x_grad_tmp.impl());
   }
