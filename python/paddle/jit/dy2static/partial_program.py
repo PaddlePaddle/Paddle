@@ -21,6 +21,13 @@ from paddle import _legacy_C_ops
 from paddle.amp.auto_cast import _in_amp_guard, _in_pure_fp16_guard
 from paddle.fluid import backward, core, framework, program_guard
 from paddle.fluid.compiler import BuildStrategy
+from paddle.fluid.contrib.mixed_precision.decorator import (
+    AutoMixedPrecisionLists,
+)
+from paddle.fluid.contrib.mixed_precision.fp16_utils import (
+    cast_model_to_fp16,
+    rewrite_program,
+)
 from paddle.fluid.dygraph import layers
 from paddle.fluid.dygraph.base import switch_to_static_graph
 from paddle.fluid.executor import (
@@ -141,19 +148,16 @@ class PartialProgramLayer:
     """
     PartialProgramLayer wraps all the ops from layers decorated by `@to_static`
     and execute them as a static subgraph.
-
     .. note::
         **1. This is a very low level API. Users should not use this API
              directly. Please use `partial_program_from(concrete_program)`
              to create it.
         **2. LoDTensorArray is not currently supported in the output.
-
     Args:
         main_program(Program): The main program that contains ops need to be executed.
         inputs(list[Variable]): The input list of the decorated function by `@to_static`.
         outputs(list[Variable]): The output list of the decorated function by `@to_static`.
         parameters(list[VarBase]|None): All trainable parameters included in the program. Default None.
-
     Returns:
         Layer: A Layer object that run all ops internally in static graph mode.
     """
@@ -182,7 +186,7 @@ class PartialProgramLayer:
         if tracer:
             custom_white_list, custom_black_list = tracer._get_amp_op_list()
         # For AMP training
-        self._amp_list = paddle.static.amp.fp16_lists.AutoMixedPrecisionLists(
+        self._amp_list = AutoMixedPrecisionLists(
             custom_white_list=custom_white_list,
             custom_black_list=custom_black_list,
         )
@@ -231,9 +235,7 @@ class PartialProgramLayer:
     def _create_amp_program(self, is_infer_mode=False):
         amp_program = self._origin_main_program.clone(for_test=is_infer_mode)
         with program_guard(amp_program):
-            paddle.static.amp.fp16_utils.rewrite_program(
-                amp_program, self._amp_list
-            )
+            rewrite_program(amp_program, self._amp_list)
         if is_infer_mode:
             return amp_program
         else:
@@ -247,7 +249,7 @@ class PartialProgramLayer:
             for_test=is_infer_mode
         )
         with program_guard(pure_fp16_program):
-            paddle.static.amp.fp16_utils.cast_model_to_fp16(
+            cast_model_to_fp16(
                 pure_fp16_program, self._amp_list, use_fp16_guard=False
             )
         if is_infer_mode:
@@ -408,22 +410,12 @@ class PartialProgramLayer:
         for i in range(
             fwd_end_op_index,
             min(
-<<<<<<< HEAD
-                fwd_end_op_index + 2 * len(self._outputs.var_ids),
+                fwd_end_op_index + 1 * len(self._outputs.var_ids),
                 len(origin_train_program.block(0).ops),
             ),
         ):
             op = origin_train_program.block(0).ops[i]
-            if op.type == 'fill_constant':
-=======
-                fwd_end_op_index + 1 * len(self._outputs.var_ids),
-                len(self.program.block(0).ops),
-            ),
-            2,
-        ):
-            op = self.program.block(0).ops[i]
             if op.type == 'fill_any_like':
->>>>>>> fix dy2st error with magic num
                 var_name = op.output('Out')[0]
                 names.append(var_name)
 
@@ -505,9 +497,7 @@ class PartialProgramLayer:
             Can't just return paddle.static.Program(), because self.backward_program is a property,
             whenever we call this method, a tmp Program() object is created and is gc immediatly
             after executed the following line in PartialProgramLayer.__call__.
-
             >>> self.backward_program.desc.block(0),
-
             When we access RunProgramAPI, it's possible to get an invalid backward_program address.
             """
             return self._empty_backward_program_for_eval
@@ -534,7 +524,6 @@ class PartialProgramLayer:
             x = 2 * in  # <---- x is a non-leaf node in program.
             y = x + 3
             return x, y
-
         loss = forward(in)[0].sum()
         loss.backward()  # <----- x@grad will be overwrited by elementwise_add_grad Op
         """

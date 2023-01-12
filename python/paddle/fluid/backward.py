@@ -1649,9 +1649,7 @@ def _append_backward_vars_(block, start_op_idx, grad_to_var, grad_info_map):
         block.desc._remove_op(op_idx, op_idx + 1)
 
 
-def _rename_grad_(
-    block, start_op_idx, grad_to_var, target_grad_map, skip_rename_var_list
-):
+def _rename_grad_(block, start_op_idx, grad_to_var, target_grad_map):
     var_map = copy.copy(target_grad_map)
     for op_idx in range(start_op_idx, block.desc.op_size()):
         op_desc = block.desc.op(op_idx)
@@ -1663,8 +1661,6 @@ def _rename_grad_(
             if "@GRAD" not in name:
                 continue
             if block.desc.find_var(name.encode("ascii")):
-                if name in skip_rename_var_list:
-                    continue
                 new_name = unique_name.generate(name)
                 op_desc._rename_output(name, new_name)
                 var_map[name] = new_name
@@ -1991,8 +1987,7 @@ def append_backward(
     # Because append_backward may be called multiple times,
     # we need rename the internal gradient variables so that they have
     # different names.
-
-    _rename_grad_(target_grad_block, fwd_op_num, grad_to_var, {}, [])
+    _rename_grad_(target_grad_block, fwd_op_num, grad_to_var, {})
 
     _append_backward_vars_(
         target_grad_block, fwd_op_num, grad_to_var, grad_info_map
@@ -2296,40 +2291,32 @@ def calc_gradient(targets, inputs, target_gradients=None, no_grad_set=None):
 
     target_grad_map = {}
     rename_var_map = {}
-    skip_rename_var_list = []
     for i, grad in enumerate(target_gradients):
         target = targets[i]
         grad_name = _append_grad_suffix_(target.name)
         if grad is None:
-            output = block.create_var(
-                name=grad_name,
-                dtype=target.dtype,
-                type=target.type,
-                persistable=target.persistable,
-                stop_gradient=False,
-            )
-            skip_rename_var_list.append(grad_name)
-            op = block.append_op(
-                type="fill_any_like",
-                inputs={'X': [target]},
-                outputs={'Out': [output]},
-                attrs={'value': 1.0, 'dtype': target.dtype},
-            )
-
-            op_role_attr_name = (
-                core.op_proto_and_checker_maker.kOpRoleAttrName()
-            )
-            op_device_attr_name = (
-                core.op_proto_and_checker_maker.kOpDeviceAttrName()
-            )
-
-            if not op.has_attr(op_role_attr_name):
-                op._set_attr(
-                    op_role_attr_name,
-                    core.op_proto_and_checker_maker.OpRole.Backward,
+            target_shape = target.name + '_shape'
+            block.desc.append_op().copy_from(
+                _create_op_desc_(
+                    "shape",
+                    {'Input': [target.name]},
+                    {"Out": [target_shape]},
+                    {},
                 )
-            if not op.has_attr(op_device_attr_name):
-                op._set_attr(op_device_attr_name, "")
+            )
+            input_grad_names_set.add(target_shape)
+            op_desc = _create_op_desc_(
+                "fill_constant",
+                {"ShapeTensor": [target_shape]},
+                {"Out": [grad_name]},
+                {
+                    "shape": target.shape,
+                    "value": 1.0,
+                    "dtype": target.dtype,
+                },
+            )
+
+            block.desc.append_op().copy_from(op_desc)
             input_grad_names_set.add(grad_name)
         else:
             if target.block.idx != block_idx or target.block.program != prog:
@@ -2385,9 +2372,7 @@ def calc_gradient(targets, inputs, target_gradients=None, no_grad_set=None):
     # Because calc_gradient may be called multiple times,
     # we need rename the internal gradient variables so that they have
     # different names.
-    _rename_grad_(
-        block, fwd_op_num, grad_to_var, target_grad_map, skip_rename_var_list
-    )
+    _rename_grad_(block, fwd_op_num, grad_to_var, target_grad_map)
 
     _append_backward_vars_(block, fwd_op_num, grad_to_var, grad_info_map)
     prog._sync_with_cpp()
