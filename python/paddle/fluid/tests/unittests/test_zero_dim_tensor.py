@@ -285,6 +285,9 @@ binary_api_list = [
     paddle.logical_xor,
     paddle.maximum,
     paddle.minimum,
+    paddle.fmax,
+    paddle.fmin,
+    paddle.complex,
 ]
 
 binary_int_api_list = [
