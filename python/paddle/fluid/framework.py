@@ -57,7 +57,6 @@ __all__ = [
     'is_compiled_with_rocm',
     'is_compiled_with_xpu',
     'is_compiled_with_npu',
-    'is_compiled_with_custom_device',
     'Variable',
     'require_version',
     'device_guard',
@@ -786,23 +785,6 @@ def is_compiled_with_npu():
             support_npu = fluid.is_compiled_with_npu()
     """
     return core.is_compiled_with_npu()
-
-
-def is_compiled_with_custom_device(device_type):
-    """
-    Whether this whl package can be used to run the model on given device type.
-
-    Args (string) : The custom device type, such as NPU.
-
-    Returns (bool): support device_type or not.
-
-    Examples:
-        .. code-block:: python
-
-            import paddle.fluid as fluid
-            support_npu = fluid.is_compiled_with_custom_device("npu")
-    """
-    return core.is_compiled_with_custom_device(device_type)
 
 
 def disable_signal_handler():
