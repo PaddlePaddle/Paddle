@@ -17,7 +17,7 @@
 namespace paddle {
 namespace operators {
 
-class FusedMatmulV2OpMaker : public MatMulV2OpMaker {
+class FusedMatmulOpMaker : public MatMulV2OpMaker {
  protected:
   void Apply() override {
     AddInput("ResidualData",
@@ -89,6 +89,6 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(
     fused_matmul,
     ops::MatMulV2Op,
-    ops::FusedMatmulV2OpMaker,
+    ops::FusedMatmulOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);

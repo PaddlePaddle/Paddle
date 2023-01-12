@@ -51,8 +51,7 @@ void CalculateMatrixDims(const std::vector<int64_t> &x_dims,
                          const std::vector<int64_t> &y_dims,
                          std::vector<int64_t> *x_bd_dims,
                          std::vector<int64_t> *y_bd_dims,
-                         DenseTensor *out,
-                         const bool is_output_fused) {
+                         DenseTensor *out) {
   if (x_dims.size() == 1) {
     (*x_bd_dims)[(*x_bd_dims).size() - 1] = x_dims[0];
   } else if (x_dims.size() == 2) {
@@ -74,7 +73,7 @@ void CalculateMatrixDims(const std::vector<int64_t> &x_dims,
     }
   }
 
-  if (!is_output_fused && x_dims.size() > 2 && y_dims.size() > 2) {
+  if (x_dims.size() > 2 && y_dims.size() > 2) {
     auto out_dims = vectorize(out->dims());
     for (size_t i = 0; i < (*x_bd_dims).size() - 2; ++i) {
       PADDLE_ENFORCE_EQ(
@@ -139,12 +138,7 @@ void MatmulKernel(const Context &dev_ctx,
   std::vector<int64_t> x_bd_dims(ndims, 1);
   std::vector<int64_t> y_bd_dims(ndims, 1);
 
-  CalculateMatrixDims(x_dims,
-                      y_dims,
-                      &x_bd_dims,
-                      &y_bd_dims,
-                      out,
-                      funcs::IsOutputFused(dev_ctx));
+  CalculateMatrixDims(x_dims, y_dims, &x_bd_dims, &y_bd_dims, out);
 
   if (force_fp32_output || ((!is_int8) && (!is_bfloat16))) {
     funcs::ExecuteMatmul<T, float>(

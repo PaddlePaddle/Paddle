@@ -1,4 +1,4 @@
-type: "fused_matmul_v2"
+type: "fused_matmul"
 def {
   inputs {
     name: "X"
