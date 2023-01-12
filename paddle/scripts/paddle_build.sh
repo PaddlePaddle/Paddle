@@ -3480,7 +3480,7 @@ function build_pr_and_develop() {
         cp ${PADDLE_ROOT}/build/dev_whl/paddlepaddle_gpu-0.0.0-cp37-cp37m-linux_x86_64.whl ${PADDLE_ROOT}/build/python/dist
     else
         git checkout -b develop_base_pr upstream/$BRANCH
-        run_setup ${PYTHON_ABI:-""} install ${parallel_number} 
+        run_setup ${PYTHON_ABI:-""} bdist_wheel ${parallel_number} 
         mkdir ${PADDLE_ROOT}/build/python/dist/ && mv ${PADDLE_ROOT}/dist/*.whl ${PADDLE_ROOT}/build/python/dist/
         generate_api_spec "$1" "DEV"
         mkdir ${PADDLE_ROOT}/build/dev_whl && cp ${PADDLE_ROOT}/build/python/dist/*.whl ${PADDLE_ROOT}/build/dev_whl

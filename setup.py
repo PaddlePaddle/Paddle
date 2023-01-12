@@ -1340,9 +1340,6 @@ def main():
     # Execute the build process,cmake and make
     if cmake_and_build:
         build_steps()
-    if os.getenv("WITH_PYTHON") == "OFF":
-        print("only compile, not package")
-        return
     build_dir = os.getenv("BUILD_DIR")
     if build_dir is not None:
         env_dict_path = TOP_DIR + '/' + build_dir + '/python'
@@ -1353,6 +1350,9 @@ def main():
 
     global env_dict
     global paddle_binary_dir, paddle_source_dir
+    if env_dict.get("WITH_PYTHON") == "OFF":
+        print("only compile, not package")
+        return
     paddle_binary_dir = env_dict.get("PADDLE_BINARY_DIR")
     paddle_source_dir = env_dict.get("PADDLE_SOURCE_DIR")
 
