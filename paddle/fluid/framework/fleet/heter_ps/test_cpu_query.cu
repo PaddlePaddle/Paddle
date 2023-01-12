@@ -28,8 +28,7 @@
 using namespace paddle::framework;  // NOLINT
 namespace platform = paddle::platform;
 
-std::string edges[] = {
-    // NOLINT
+const char *edges[] = {
     std::string("0\t1"),
     std::string("0\t9"),
     std::string("1\t2"),
@@ -49,7 +48,7 @@ std::string edges[] = {
 };
 char edge_file_name[] = "edges1.txt";
 
-std::string nodes[] = {  // NOLINT
+const char *nodes[] = {
     std::string("user\t37\ta 0.34\tb 13 14\tc hello\td abc"),
     std::string("user\t96\ta 0.31\tb 15 10\tc 96hello\td abcd"),
     std::string("user\t59\ta 0.11\tb 11 14"),
