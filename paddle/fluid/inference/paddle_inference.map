@@ -35,6 +35,9 @@
 			*paddle::MakeCipher*;
 			*paddle::DistConfig*;
 			*paddle::DefaultGPUPlace*;
+			*paddle::ResourceManager*;
+			*paddle::GPUContextResource*;
+			*paddle::CPUContextResource*;
 
 			*paddle::LoadCustomOperatorLib*;
 			*paddle::RegisterAllCustomOperator*;
