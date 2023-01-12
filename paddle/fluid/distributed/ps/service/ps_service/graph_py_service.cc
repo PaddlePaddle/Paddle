@@ -312,8 +312,8 @@ void GraphPyClient::clear_nodes(std::string name) {
 }
 
 void GraphPyClient::add_graph_node(std::string name,
-                                   const std::vector<int64_t>& node_ids,
-                                   const std::vector<bool>& weight_list) {
+                                   std::vector<int64_t>& node_ids,    // NOLINT
+                                   std::vector<bool>& weight_list) {  // NOLINT
   // if (this->table_id_map.count(name)) {
   //   uint32_t table_id = this->table_id_map[name];
   //   auto status =
