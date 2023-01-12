@@ -19,6 +19,7 @@
 
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/distributed/check/static_check.h"
 #include "paddle/phi/core/distributed/gloo_utils.h"
 #include "paddle/phi/core/enforce.h"
 

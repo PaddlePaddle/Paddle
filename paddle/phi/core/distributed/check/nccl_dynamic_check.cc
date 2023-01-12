@@ -15,17 +15,24 @@
 #include "paddle/phi/core/distributed/check/nccl_dynamic_check.h"
 
 #include "paddle/phi/core/dense_tensor.h"
-#include "paddle/phi/core/distributed/nccl_utils.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/errors.h"
 
-#ifdef PADDLE_WITH_HIP
+#if defined(PADDLE_WITH_RCCL)
+#include <hip/hip_runtime.h>
+
+#include "paddle/phi/backends/dynload/rccl.h"
+
 #define gpuMalloc hipMalloc
 #define gpuMemcpy hipMemcpy
 #define gpuMemcpyDeviceToHost hipMemcpyDeviceToHost
 #define gpuMemcpyHostToDevice hipMemcpyHostToDevice
 #define gpuFree hipFree
 #else
+#include <cuda_runtime.h>
+
+#include "paddle/phi/backends/dynload/nccl.h"
+
 #define gpuMalloc cudaMalloc
 #define gpuMemcpy cudaMemcpy
 #define gpuMemcpyDeviceToHost cudaMemcpyDeviceToHost
@@ -55,13 +62,13 @@ void NCCLDynamicCheck::CheckDataType(const phi::DenseTensor& tensor,
   PADDLE_ENFORCE_GPU_SUCCESS(
       gpuMemcpy(dtype_device, &dtype_host, kSize, gpuMemcpyHostToDevice));
 
-  NCCL_CHECK(phi::dynload::ncclBroadcast(dtype_device,
-                                         dtype_device,
-                                         kSize,
-                                         ncclInt64,
-                                         root_rank,
-                                         comm,
-                                         kDefaultStream));
+  PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclBroadcast(dtype_device,
+                                                         dtype_device,
+                                                         kSize,
+                                                         ncclInt64,
+                                                         root_rank,
+                                                         comm,
+                                                         kDefaultStream));
 
   if (root_rank == cur_rank) {
     VLOG(3) << "Dynamic check broadcast metadata, dtype: " << dtype_host;
@@ -97,13 +104,13 @@ void NCCLDynamicCheck::CheckShape(const phi::DenseTensor& tensor,
   PADDLE_ENFORCE_GPU_SUCCESS(
       gpuMemcpy(shape_device, &shape_host, kSize, gpuMemcpyHostToDevice));
 
-  NCCL_CHECK(phi::dynload::ncclBroadcast(shape_device,
-                                         shape_device,
-                                         kSize,
-                                         ncclInt64,
-                                         root_rank,
-                                         comm,
-                                         kDefaultStream));
+  PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclBroadcast(shape_device,
+                                                         shape_device,
+                                                         kSize,
+                                                         ncclInt64,
+                                                         root_rank,
+                                                         comm,
+                                                         kDefaultStream));
 
   if (root_rank == cur_rank) {
     VLOG(3) << "Dynamic check broadcast metadata, shape: " << shape_host;
@@ -135,14 +142,14 @@ void NCCLDynamicCheck::CheckShape(const phi::DenseTensor& out_tensor,
     PADDLE_ENFORCE_GPU_SUCCESS(gpuMemcpy(
         in_shape_device, &in_shape_host, kSize, gpuMemcpyHostToDevice));
 
-    NCCL_CHECK(phi::dynload::ncclReduce(in_shape_device,
-                                        in_shape_device,
-                                        kSize,
-                                        ncclInt64,
-                                        ncclSum,
-                                        rank,
-                                        comm,
-                                        kDefaultStream));
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclReduce(in_shape_device,
+                                                        in_shape_device,
+                                                        kSize,
+                                                        ncclInt64,
+                                                        ncclSum,
+                                                        rank,
+                                                        comm,
+                                                        kDefaultStream));
     if (rank == cur_rank) {
       PADDLE_ENFORCE_GPU_SUCCESS(gpuMemcpy(
           &in_shape_host, in_shape_device, kSize, gpuMemcpyDeviceToHost));

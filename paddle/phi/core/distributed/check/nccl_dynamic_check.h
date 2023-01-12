@@ -19,7 +19,7 @@
 
 #include "paddle/phi/backends/gpu/forwards.h"
 
-#ifdef PADDLE_WITH_HIP
+#if defined(PADDLE_WITH_RCCL)
 using gpuStream_t = hipStream_t;
 #else
 using gpuStream_t = cudaStream_t;
