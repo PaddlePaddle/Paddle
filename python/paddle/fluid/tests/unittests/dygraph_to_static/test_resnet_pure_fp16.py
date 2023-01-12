@@ -20,13 +20,11 @@ from test_resnet import SEED, ResNet, optimizer_setting
 
 import paddle
 import paddle.fluid as fluid
-from paddle.jit import ProgramTranslator
 
 # NOTE: Reduce batch_size from 8 to 2 to avoid unittest timeout.
 batch_size = 2
 epoch_num = 1
 
-program_translator = ProgramTranslator()
 
 if fluid.is_compiled_with_cuda():
     fluid.set_flags({'FLAGS_cudnn_deterministic': True})
@@ -34,7 +32,7 @@ if fluid.is_compiled_with_cuda():
 
 def train(to_static, build_strategy=None):
     """
-    Tests model decorated by `dygraph_to_static_output` in static mode. For users, the model is defined in dygraph mode and trained in static mode.
+    Tests model decorated by `dygraph_to_static_output` in static graph mode. For users, the model is defined in dygraph mode and trained in static graph mode.
     """
     np.random.seed(SEED)
     paddle.seed(SEED)
@@ -114,7 +112,7 @@ def train(to_static, build_strategy=None):
 
 class TestResnet(unittest.TestCase):
     def train(self, to_static):
-        program_translator.enable(to_static)
+        paddle.jit.enable_to_static(to_static)
         build_strategy = paddle.static.BuildStrategy()
         # Why set `build_strategy.enable_inplace = False` here?
         # Because we find that this PASS strategy of PE makes dy2st training loss unstable.

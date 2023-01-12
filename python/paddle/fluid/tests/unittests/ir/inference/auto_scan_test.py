@@ -74,6 +74,8 @@ class IgnoreReasons(enum.Enum):
     PASS_ACCURACY_ERROR = 2
     # Accuracy is abnormal after enabling mkldnn.
     MKLDNN_ACCURACY_ERROR = 3
+    # Accuracy is abnormal after enabling cutlass.
+    CUTLASS_ACCURACY_ERROR = 3
 
 
 # TODO(wilber): just for backward compatible
@@ -877,3 +879,96 @@ class TrtLayerAutoScanTest(AutoScanTest):
         note: str,
     ):
         self.ignore_cases.append((teller, reason, note))
+
+
+class CutlassAutoScanTest(AutoScanTest):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    def run_test(self, quant=False, *args, **kwargs):
+        status = True
+
+        for prog_config in self.sample_program_configs(*args, **kwargs):
+            # if program is invalid, we should skip that cases.
+            if not self.is_program_valid(prog_config):
+                continue
+
+            model, params = create_fake_model(prog_config)
+            feed_data = {}
+            for name, tensor_config in prog_config.inputs.items():
+                feed_data[name] = {
+                    'data': tensor_config.data,
+                    'lod': tensor_config.lod,
+                }
+            results: List[Dict[str, np.ndarray]] = []
+
+            # baseline: gpu no ir_optim run
+            base_config = self.create_inference_config(
+                ir_optim=False, use_gpu=True
+            )
+            logging.info('RUN program_config: ' + str(prog_config))
+            results.append(
+                self.run_test_config(
+                    model, params, prog_config, base_config, feed_data
+                )
+            )
+            self.success_log('RUN_GPU_BASELINE done')
+
+            for pred_config, (atol, rtol) in self.sample_predictor_configs(
+                prog_config
+            ):
+                # skip info
+                ignore_flag = False
+                for ignore_info in self.ignore_cases:
+                    if ignore_info[0](prog_config, pred_config):
+                        ignore_flag = True
+                        if (
+                            ignore_info[1]
+                            == IgnoreReasons.CUTLASS_ACCURACY_ERROR
+                        ):
+                            self.ignore_log(
+                                "[CUTLASS_ACCURACY_ERROR] "
+                                + ignore_info[2]
+                                + ' '
+                                + ' vs '
+                                + self.inference_config_str(pred_config)
+                            )
+                        else:
+                            raise NotImplementedError
+                        break
+
+                if os.path.exists(self.cache_dir):
+                    shutil.rmtree(self.cache_dir)
+                if not os.path.exists(self.cache_dir):
+                    os.mkdir(self.cache_dir)
+
+                try:
+                    results.append(
+                        self.run_test_config(
+                            model, params, prog_config, pred_config, feed_data
+                        )
+                    )
+                    self.assert_tensors_near(
+                        atol, rtol, results[-1], results[0]
+                    )
+                except Exception as e:
+                    self.fail_log(
+                        self.inference_config_str(pred_config)
+                        + '\033[1;31m \nERROR INFO: {}\033[0m'.format(str(e))
+                    )
+                    if not ignore_flag:
+                        status = False
+                    continue
+                self.success_log(
+                    'RUN predictor_config '
+                    + self.inference_config_str(pred_config)
+                    + ' done'
+                )
+
+        self.assertTrue(status)
+
+    def inference_config_str(self, config) -> str:
+        dic = {}
+        enable_gpu = config.use_gpu()
+        dic['use_gpu'] = enable_gpu
+        return str(dic)

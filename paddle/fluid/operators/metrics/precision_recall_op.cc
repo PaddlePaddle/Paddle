@@ -143,11 +143,11 @@ class PrecisionRecallOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return framework::OpKernelType(
+    return phi::KernelKey(
         OperatorWithKernel::IndicateVarDataType(ctx, "MaxProbs"),
-        ctx.device_context());
+        ctx.GetPlace());
   }
 };
 

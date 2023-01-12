@@ -15,11 +15,9 @@
 from functools import reduce
 
 import paddle
-import paddle.fluid.core as core
 import paddle.fluid.layers.utils as utils
 from paddle.distributed.fleet.meta_optimizers.common import OpRole
-from paddle.fluid.framework import OpProtoHolder, Program
-from paddle.fluid.layer_helper import LayerHelper
+from paddle.framework import LayerHelper, OpProtoHolder, Program, core
 from paddle.utils import unique_name
 
 from .cost import (
@@ -31,7 +29,7 @@ from .cost import (
     SplitOpCost,
     build_comm_desc,
 )
-from .dist_attribute import TensorDistributedAttribute
+from .dist_attribute import TensorDistAttr
 from .dist_context import DistributedContext
 from .process_group import new_process_group
 from .utils import is_gradient_clip_op
@@ -310,7 +308,7 @@ class Inserter:
     @staticmethod
     def insert_cast_op(block, idx, tensor, op_role, tensor_type):
         # to avoid name conflict with framework
-        new_var_name = paddle.fluid.unique_name.generate_with_ignorable_key(
+        new_var_name = paddle.utils.unique_name.generate_with_ignorable_key(
             ".".join(["cast@RESHARD", 'tmp'])
         )
         out = block.create_var(
@@ -380,7 +378,7 @@ class Inserter:
     def insert_reset_lod_op(block, idx, X, Y, op_role):
         """Insert reset_lod op into block at the given index."""
 
-        new_var_name = paddle.fluid.unique_name.generate_with_ignorable_key(
+        new_var_name = paddle.utils.unique_name.generate_with_ignorable_key(
             ".".join(["reset_lod@RESHARD", 'tmp'])
         )
         reset_lod_out = block.create_var(
@@ -412,7 +410,7 @@ class Inserter:
         helper = LayerHelper('concat@RESHARD', **locals())
         with paddle.static.program_guard(block.program):
             out = block.create_var(
-                name=paddle.fluid.unique_name.generate_with_ignorable_key(
+                name=paddle.utils.unique_name.generate_with_ignorable_key(
                     ".".join([helper.name, 'tmp'])
                 ),
                 dtype=tensors[0].dtype,
@@ -484,7 +482,7 @@ class Inserter:
             with paddle.static.program_guard(block.program):
                 outs = [
                     block.create_var(
-                        name=paddle.fluid.unique_name.generate_with_ignorable_key(
+                        name=paddle.utils.unique_name.generate_with_ignorable_key(
                             ".".join(['split@RESHARD', 'tmp'])
                         ),
                         dtype=tensor.dtype,
@@ -550,7 +548,7 @@ class Inserter:
         with paddle.static.program_guard(block.program):
             outs = [
                 block.create_var(
-                    name=paddle.fluid.unique_name.generate_with_ignorable_key(
+                    name=paddle.utils.unique_name.generate_with_ignorable_key(
                         ".".join([helper.name, 'tmp'])
                     ),
                     dtype=tensor.dtype,
@@ -576,7 +574,7 @@ class Inserter:
         # use paddle.int64 as dtype
         with paddle.static.program_guard(block.program):
             out = block.create_var(
-                name=paddle.fluid.unique_name.generate_with_ignorable_key(
+                name=paddle.utils.unique_name.generate_with_ignorable_key(
                     ".".join([helper.name, 'tmp'])
                 ),
                 dtype=paddle.int64,
@@ -650,7 +648,7 @@ class Inserter:
         helper = LayerHelper(op_type + "@RESHARD", **locals())
         with paddle.static.program_guard(block.program):
             allgather_out = block.create_var(
-                name=paddle.fluid.unique_name.generate_with_ignorable_key(
+                name=paddle.utils.unique_name.generate_with_ignorable_key(
                     ".".join([helper.name, 'tmp'])
                 ),
                 dtype=tensor.dtype,
@@ -695,7 +693,7 @@ class Inserter:
         helper = LayerHelper(op_type + "@RESHARD", **locals())
         with paddle.static.program_guard(block.program):
             c_concat_out = block.create_var(
-                name=paddle.fluid.unique_name.generate_with_ignorable_key(
+                name=paddle.utils.unique_name.generate_with_ignorable_key(
                     ".".join([helper.name, 'tmp'])
                 ),
                 dtype=tensor.dtype,
@@ -1989,7 +1987,7 @@ class Resharder:
                 process_mesh = dist_attr[0]
                 dims_mapping = dist_attr[1]
 
-                tensor_attr = TensorDistributedAttribute()
+                tensor_attr = TensorDistAttr()
                 tensor_attr.dims_mapping = dims_mapping
                 tensor_attr.process_mesh = process_mesh
                 self.dist_context.set_tensor_dist_attr_for_program(
@@ -2031,6 +2029,9 @@ class Resharder:
                         if name == var_name and op_dist_attr is not None:
                             if op.desc.id() == matched_op.desc.id():
                                 if matched_op.type == "while":
+                                    op.desc._rename_input(
+                                        name, target_tensor.name
+                                    )
                                     old_name = name
                                     new_name = target_tensor.name
                                     assert old_name != new_name
@@ -2045,13 +2046,16 @@ class Resharder:
                                     op_dist_attr.set_input_dims_mapping(
                                         new_name, dims_mapping
                                     )
-                                    if (
-                                        old_name
-                                        in op_dist_attr._inputs_dist_attrs
-                                    ):
-                                        op_dist_attr.del_input_dist_attr(
-                                            old_name
-                                        )
+                                    # if (
+                                    #     old_name
+                                    #     in op_dist_attr._inputs_dist_attrs
+                                    # ):
+                                    #     op_dist_attr.del_input_dist_attr(
+                                    #         old_name
+                                    #     )
+                                    op_dist_attr.set_input_dims_mapping(
+                                        new_name, dims_mapping
+                                    )
                                     while_op_X_append.append(new_name)
                                     continue
                                 else:
@@ -2072,7 +2076,10 @@ class Resharder:
                                     op_dist_attr.set_input_dims_mapping(
                                         new_name, dims_mapping
                                     )
-                                    op_dist_attr.del_input_dist_attr(old_name)
+                                    # op_dist_attr.del_input_dist_attr(old_name)
+                                    op_dist_attr.set_input_dims_mapping(
+                                        new_name, dims_mapping
+                                    )
                                     continue
 
                             op_process_mesh = op_dist_attr.process_mesh
@@ -2097,7 +2104,10 @@ class Resharder:
                                 op_dist_attr.set_input_dims_mapping(
                                     new_name, dims_mapping
                                 )
-                                op_dist_attr.del_input_dist_attr(old_name)
+                                # op_dist_attr.del_input_dist_attr(old_name)
+                                op_dist_attr.set_input_dims_mapping(
+                                    new_name, dims_mapping
+                                )
 
                     # for while op, the input X should reset
                     if while_op_X_append:
@@ -2137,6 +2147,36 @@ class Resharder:
                         input_attrs.append([process_mesh, input_dims_mapping])
         return input_attrs
 
+    def _get_subblock_output_attrs(self, op, var_name):
+        # NOTE: Multi while loop is not supported
+        assert op.type in _g_subblock_ops
+        sub_block = self.auto_parallel_main_prog.blocks[op.attr("sub_block").id]
+        ops = sub_block.ops
+        output_attrs = []
+
+        for op in ops:
+            dist_op = self.dist_context.get_dist_op_for_program(op)
+            if not dist_op:
+                continue
+            dist_attr = dist_op.dist_attr
+            for name in op.output_arg_names:
+                if name == var_name:
+                    process_mesh = dist_attr.process_mesh
+                    output_dims_mapping = dist_attr.get_output_dims_mapping(
+                        var_name
+                    )
+                    has_exist = False
+                    for output_attr in output_attrs:
+                        if (
+                            process_mesh == output_attrs[0]
+                            and output_dims_mapping == output_attrs[1]
+                        ):
+                            has_exist = True
+                            break
+                    if not has_exist:
+                        output_attrs.append([process_mesh, output_dims_mapping])
+        return output_attrs
+
     def _get_common_op_input_attrs(self, op, var_name):
         process_meshes = []
         dist_op = self.dist_context.get_dist_op_for_program(op)
@@ -2166,6 +2206,11 @@ class Resharder:
 
         if op.type in _g_subblock_ops:
             op_input_attrs = self._get_subblock_input_attrs(op, var_name)
+            if not op_input_attrs:
+                # NOTE: [hack method]
+                # Adapt to quantization pass, which presist_vars, including inputs and outputs, all are in global_block.
+                # Therefore, the while_op's inputs will contain the all persist_vars, which will be inputs or output of the quantization op in subblock.
+                op_input_attrs = self._get_subblock_output_attrs(op, var_name)
         else:
             op_input_attrs = self._get_common_op_input_attrs(op, var_name)
 
@@ -2238,7 +2283,7 @@ class Resharder:
                             op_dist_attr.set_input_dist_attr(
                                 new_name, op_input_dist_attr
                             )
-                            op_dist_attr.del_input_dist_attr(old_name)
+                            # op_dist_attr.del_input_dist_attr(old_name)
 
                 # the outputs also need to be renamed when the output name is the same with input name in inplace op
                 for var_name in op.output_arg_names:
@@ -2262,7 +2307,7 @@ class Resharder:
                         op_dist_attr.set_output_dist_attr(
                             new_name, op_output_dist_attr
                         )
-                        op_dist_attr.del_output_dist_attr(old_name)
+                        # op_dist_attr.del_output_dist_attr(old_name)
 
     def _reshard_input(self, block):
         idx = 0

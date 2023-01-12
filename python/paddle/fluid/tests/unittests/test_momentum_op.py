@@ -530,7 +530,7 @@ class TestMomentumV2(unittest.TestCase):
         with fluid.program_guard(main):
             x = fluid.layers.data(name='x', shape=[13], dtype='float32')
             y = fluid.layers.data(name='y', shape=[1], dtype='float32')
-            y_predict = fluid.layers.fc(input=x, size=1, act=None)
+            y_predict = paddle.static.nn.fc(x, size=1, activation=None)
             cost = paddle.nn.functional.square_error_cost(
                 input=y_predict, label=y
             )
@@ -668,7 +668,7 @@ class TestMomentumOpWithDecayAPI(unittest.TestCase):
         with fluid.program_guard(main):
             x = fluid.layers.data(name='x', shape=[13], dtype='float32')
             y = fluid.layers.data(name='y', shape=[1], dtype='float32')
-            y_predict = fluid.layers.fc(input=x, size=1, act=None)
+            y_predict = paddle.static.nn.fc(x, size=1, activation=None)
             cost = paddle.nn.functional.square_error_cost(
                 input=y_predict, label=y
             )

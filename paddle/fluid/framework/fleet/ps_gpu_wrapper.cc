@@ -151,7 +151,7 @@ void PSGPUWrapper::add_key_to_local(const std::vector<uint64_t>& vec_data) {
          iter++) {
       uint64_t cur_key = *iter;
       int shard_id = cur_key % thread_keys_shard_num_;
-      // TODO: feasign <-> slot <-> multi_dim
+      // TODO(lxsbupt): feasign <-> slot <-> multi_dim
       this->thread_dim_keys_[i][shard_id][0].insert(cur_key);
     }
   };
@@ -1642,9 +1642,11 @@ void PSGPUWrapper::dump_cache_array() {
 
 void PSGPUWrapper::BeginPass() {
   platform::Timer timer;
+#if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
   if (FLAGS_gpugraph_storage_mode == GpuGraphStorageMode::WHOLE_HBM) {
     return;
   }
+#endif
   timer.Start();
   if (current_task_) {
     PADDLE_THROW(

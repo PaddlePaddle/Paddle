@@ -69,12 +69,12 @@ class RecvOpV2 : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     int dtype = ctx.Attr<int>("dtype");
     framework::proto::VarType::Type type =
         framework::proto::VarType::Type(dtype);
-    return framework::OpKernelType(type, ctx.GetPlace());
+    return phi::KernelKey(type, ctx.GetPlace());
   }
 };
 
