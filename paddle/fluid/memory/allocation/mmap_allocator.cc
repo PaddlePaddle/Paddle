@@ -368,7 +368,7 @@ void MemoryMapAllocationPool::RemoveById(int id) {
 int MemoryMapAllocationPool::GetAndUse(const MemoryMap &memory_map) {
   std::lock_guard<std::mutex> guard(mtx_);
   VLOG(4) << " GetAndUse from: " << this;
-  for (auto idx = 0; idx < memory_map_allocations_.size(); idx++) {
+  for (size_t idx = 0; idx < memory_map_allocations_.size(); idx++) {
     if (memory_map_allocations_.at(idx) == memory_map) {
       VLOG(4) << "** match at: " << idx;
       memory_map_allocations_.at(idx).is_using_ = true;
@@ -381,7 +381,7 @@ int MemoryMapAllocationPool::GetAndUse(const MemoryMap &memory_map) {
 int MemoryMapAllocationPool::GetAndReset(const MemoryMap &memory_map) {
   std::lock_guard<std::mutex> guard(mtx_);
   VLOG(4) << " GetAndReset from: " << this;
-  for (auto idx = 0; idx < memory_map_allocations_.size(); idx++) {
+  for (size_t idx = 0; idx < memory_map_allocations_.size(); idx++) {
     if (memory_map_allocations_.at(idx) == memory_map) {
       VLOG(4) << "** match at: " << idx;
       memory_map_allocations_.at(idx).is_using_ = false;
