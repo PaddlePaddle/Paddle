@@ -2194,6 +2194,9 @@ Examples:
 
 Returns the size in bytes of an element in the Tensor.
 
+Returns:
+    int, The size in bytes of an element in the Tensor.
+
 Examples:
     .. code-block:: python
 
