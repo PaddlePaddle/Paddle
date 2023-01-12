@@ -57,6 +57,7 @@ __all__ = [
     'is_compiled_with_rocm',
     'is_compiled_with_xpu',
     'is_compiled_with_npu',
+    'is_compiled_with_custom_device',
     'Variable',
     'require_version',
     'device_guard',
@@ -646,28 +647,19 @@ def _current_expected_place():
                     "You are using MLU version Paddle, but your MLU device is not set properly. CPU device will be used by default."
                 )
                 _global_expected_place_ = core.CPUPlace()
-        elif core.get_all_custom_device_type() is not None:
-            if "npu" in core.get_all_custom_device_type():
-                try:
-                    device_count = core.get_custom_device_count("npu")
-                except Exception as e:
-                    device_count = 0
-                if device_count > 0:
-                    _global_expected_place_ = core.CustomPlace(
-                        "npu", _npu_ids()[0]
-                    )
-                else:
-                    warnings.warn(
-                        "You are using NPU version Paddle, but your NPU device is not set properly. CPU device will be used by default."
-                    )
-                    _global_expected_place_ = core.CPUPlace()
+        elif core.is_compiled_with_custom_device("npu"):
+            try:
+                device_count = core.get_custom_device_count("npu")
+            except Exception as e:
+                device_count = 0
+            if device_count > 0:
+                _global_expected_place_ = core.CustomPlace(
+                    "npu", _custom_device_ids("npu")[0]
+                )
             else:
-                for device in core.get_all_custom_device_type():
-                    warnings.warn(
-                        "The device {} is not supported in _current_expected_place API currently. CPU device will be used by default.".format(
-                            device
-                        )
-                    )
+                warnings.warn(
+                    "You are using NPU version Paddle, but your NPU device is not set properly. CPU device will be used by default."
+                )
                 _global_expected_place_ = core.CPUPlace()
         else:
             _global_expected_place_ = core.CPUPlace()
@@ -744,7 +736,16 @@ def _npu_ids():
     if npus_env:
         device_ids = [int(s) for s in npus_env.split(",")]
     else:
-        device_ids = range(core.get_custom_device_count("npu"))
+        device_ids = range(core.get_npu_device_count())
+    return device_ids
+
+
+def _custom_device_ids(device_type):
+    custom_devices_env = os.getenv("FLAGS_selected_" + device_type + "s")
+    if custom_devices_env:
+        device_ids = [int(s) for s in custom_devices_env.split(",")]
+    else:
+        device_ids = range(core.get_custom_device_count(device_type))
     return device_ids
 
 
@@ -785,6 +786,23 @@ def is_compiled_with_npu():
             support_npu = fluid.is_compiled_with_npu()
     """
     return core.is_compiled_with_npu()
+
+
+def is_compiled_with_custom_device(device_type):
+    """
+    Whether this whl package can be used to run the model on given device type.
+
+    Args (string) : The custom device type, such as NPU.
+
+    Returns (bool): support device_type or not.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+            support_npu = fluid.is_compiled_with_custom_device("npu")
+    """
+    return core.is_compiled_with_custom_device(device_type)
 
 
 def disable_signal_handler():

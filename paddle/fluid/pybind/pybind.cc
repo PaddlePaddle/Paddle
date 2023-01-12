@@ -284,6 +284,20 @@ bool IsCompiledWithNPU() {
 #endif
 }
 
+bool IsCompiledWithCustomDevice(std::string device_type) {
+#ifndef PADDLE_WITH_CUSTOM_DEVICE
+  return false;
+#else
+  std::vector<std::string> device_types;
+  device_types = phi::DeviceManager::GetAllCustomDeviceTypes();
+  if (std::count(device_types.begin(), device_types.end(), device_type)) {
+    return true;
+  } else {
+    return false;
+  }
+#endif
+}
+
 bool IsCompiledWithIPU() {
 #ifndef PADDLE_WITH_IPU
   return false;
@@ -1822,6 +1836,7 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("is_compiled_with_ascend", IsCompiledWithAscend);
   m.def("is_compiled_with_rocm", IsCompiledWithROCM);
   m.def("is_compiled_with_npu", IsCompiledWithNPU);
+  m.def("is_compiled_with_custom_device", IsCompiledWithCustomDevice);
   m.def("is_compiled_with_ipu", IsCompiledWithIPU);
   m.def("is_compiled_with_xpu", IsCompiledWithXPU);
   m.def("is_compiled_with_mkldnn", IsCompiledWithMKLDNN);
