@@ -43,7 +43,6 @@ class ReduceOpConverter : public OpConverter {
     VLOG(4) << "convert a paddle " << op_type << " op to tensorrt reduce layer";
     framework::OpDesc op_desc(op, nullptr);
     auto reduce_type = ops_.find(op_type);
-
     auto* x = engine_->GetITensor(op_desc.Input("X").front());
     nvinfer1::Dims input_shape = x->getDimensions();
     int input_dims = input_shape.nbDims;
@@ -104,6 +103,8 @@ const std::unordered_map<std::string, std::vector<nvinfer1::ReduceOperation>>
         {"reduce_mean", {nvinfer1::ReduceOperation::kAVG}},
         {"reduce_sum", {nvinfer1::ReduceOperation::kSUM}},
         {"reduce_max", {nvinfer1::ReduceOperation::kMAX}},
+        {"reduce_min", {nvinfer1::ReduceOperation::kMIN}},
+        {"reduce_prod", {nvinfer1::ReduceOperation::kPROD}},
 };
 
 class ReduceSumOpConverter : public ReduceOpConverter {
@@ -120,6 +121,17 @@ class ReduceMaxOpConverter : public ReduceOpConverter {
  public:
   ReduceMaxOpConverter() { op_type = "reduce_max"; }
 };
+
+class ReduceMinOpConverter : public ReduceOpConverter {
+ public:
+  ReduceMinOpConverter() { op_type = "reduce_min"; }
+};
+
+class ReduceProdOpConverter : public ReduceOpConverter {
+ public:
+  ReduceProdOpConverter() { op_type = "reduce_prod"; }
+};
+
 }  // namespace tensorrt
 }  // namespace inference
 }  // namespace paddle
@@ -127,3 +139,5 @@ class ReduceMaxOpConverter : public ReduceOpConverter {
 REGISTER_TRT_OP_CONVERTER(reduce_sum, ReduceSumOpConverter);
 REGISTER_TRT_OP_CONVERTER(reduce_mean, ReduceMeanOpConverter);
 REGISTER_TRT_OP_CONVERTER(reduce_max, ReduceMaxOpConverter);
+REGISTER_TRT_OP_CONVERTER(reduce_min, ReduceMinOpConverter);
+REGISTER_TRT_OP_CONVERTER(reduce_prod, ReduceProdOpConverter);

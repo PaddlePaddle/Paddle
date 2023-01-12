@@ -159,7 +159,7 @@ def auc(stat_pos, stat_neg, scope=None, util=None):
         .. code-block:: python
 
           # in model.py
-          similarity_norm = fluid.layers.sigmoid(fluid.layers.clip(output, min=-15.0, max=15.0))
+          similarity_norm = fluid.layers.sigmoid(paddle.clip(output, min=-15.0, max=15.0))
           binary_predict = fluid.layers.concat(
               input=[paddle.subtract(fluid.layers.ceil(similarity_norm), similarity_norm), similarity_norm], axis=1)
           self.auc, batch_auc, [batch_stat_pos, batch_stat_neg, stat_pos, stat_neg] =

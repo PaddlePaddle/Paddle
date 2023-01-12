@@ -444,7 +444,7 @@ class TestGlooWithCloudRoleMaker(unittest.TestCase):
 
         def net():
             x = paddle.fluid.layers.data(name='x', shape=[13], dtype='float32')
-            y_predict = paddle.fluid.layers.fc(input=x, size=1, act=None)
+            y_predict = paddle.static.nn.fc(x, size=1, activation=None)
             y = paddle.fluid.layers.data(name='y', shape=[1], dtype='float32')
             cost = paddle.nn.functional.square_error_cost(
                 input=y_predict, label=y

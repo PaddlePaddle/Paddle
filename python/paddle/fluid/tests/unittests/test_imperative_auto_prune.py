@@ -193,7 +193,6 @@ class TestImperativeAutoPrune(unittest.TestCase):
 
     # TODO(jiabin): Support this when we support better split tensor
     def test_auto_prune3(self):
-        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         with fluid.dygraph.guard():
             case3 = AutoPruneLayer3(input_size=784)
             value1 = np.arange(784).reshape(1, 784).astype("float32")
@@ -201,13 +200,12 @@ class TestImperativeAutoPrune(unittest.TestCase):
             v1 = fluid.dygraph.to_variable(value1)
             v2 = fluid.dygraph.to_variable(value2)
             loss, part2 = case3(v1, v2, 1)
+            part2.retain_grads()
             loss.backward()
             self.assertIsNotNone(case3.linear.weight._grad_ivar())
             self.assertTrue((part2.gradient() == 0).all())
-        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
     def test_auto_prune4(self):
-        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         with fluid.dygraph.guard():
             case4 = AutoPruneLayer3(input_size=784)
             value1 = np.arange(784).reshape(1, 784).astype("float32")
@@ -215,13 +213,12 @@ class TestImperativeAutoPrune(unittest.TestCase):
             v1 = fluid.dygraph.to_variable(value1)
             v2 = fluid.dygraph.to_variable(value2)
             loss, part2 = case4(v1, v2, 1)
+            part2.retain_grads()
             part2.backward()
             self.assertIsNotNone(case4.linear.weight._grad_ivar())
             self.assertTrue((part2.gradient() == 1).all())
-        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
     def test_auto_prune5(self):
-        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         with fluid.dygraph.guard():
             case4 = AutoPruneLayer3(input_size=784)
             value1 = np.arange(784).reshape(1, 784).astype("float32")
@@ -229,10 +226,10 @@ class TestImperativeAutoPrune(unittest.TestCase):
             v1 = fluid.dygraph.to_variable(value1)
             v2 = fluid.dygraph.to_variable(value2)
             loss, part1, part2 = case4(v1, v2, 2)
+            part2.retain_grads()
             part1.backward()
             self.assertIsNotNone(case4.linear.weight._grad_ivar())
             self.assertTrue((part2.gradient() == 0).all())
-        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
     def test_auto_prune6(self):
         with fluid.dygraph.guard():
@@ -361,7 +358,7 @@ class TestImperativeAutoPrune(unittest.TestCase):
         place = fluid.CPUPlace()
         with fluid.dygraph.guard(place):
             model = MyLayer(size, vocab_size, size)
-            grad_clip = fluid.clip.GradientClipByGlobalNorm(0.001)
+            grad_clip = paddle.nn.ClipGradByGlobalNorm(0.001)
             optimizer = fluid.optimizer.AdamOptimizer(
                 0.001, parameter_list=model.parameters(), grad_clip=grad_clip
             )
@@ -372,15 +369,15 @@ class TestImperativeAutoPrune(unittest.TestCase):
             loss = model.embed_linear0(indices)
             loss.backward()
             _, params_grads = optimizer.minimize(loss)
-            for items in params_grads:
-                assert items[0].name is not model.embed1.weight.name
-                assert items[0].name is not model.linear_1.weight.name
+            for (items_0, *items_len) in params_grads:
+                assert items_0.name is not model.embed1.weight.name
+                assert items_0.name is not model.linear_1.weight.name
             assert model.embed1.weight._grad_ivar() is None
             assert model.linear_1.weight._grad_ivar() is None
 
         with fluid.dygraph.guard(place):
             model = MyLayer2(size, vocab_size, size)
-            grad_clip = fluid.clip.GradientClipByGlobalNorm(0.001)
+            grad_clip = paddle.nn.ClipGradByGlobalNorm(0.001)
             optimizer = fluid.optimizer.AdamOptimizer(
                 0.001, parameter_list=model.parameters(), grad_clip=grad_clip
             )

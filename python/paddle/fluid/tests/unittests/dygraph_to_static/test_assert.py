@@ -18,7 +18,6 @@ import numpy
 
 import paddle
 import paddle.fluid as fluid
-from paddle.jit import ProgramTranslator
 from paddle.jit.api import to_static
 
 
@@ -35,7 +34,7 @@ def dyfunc_assert_non_variable(x=True):
 
 class TestAssertVariable(unittest.TestCase):
     def _run(self, func, x, with_exception, to_static):
-        ProgramTranslator().enable(to_static)
+        paddle.jit.enable_to_static(to_static)
         if with_exception:
             with self.assertRaises(BaseException):
                 with fluid.dygraph.guard():

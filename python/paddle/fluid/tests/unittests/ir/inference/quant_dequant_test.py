@@ -21,16 +21,16 @@ import numpy as np
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid import Program, Variable, core
-from paddle.fluid.contrib.slim.quantization import (
+from paddle.fluid.core import AnalysisConfig, create_paddle_predictor
+from paddle.fluid.framework import IrGraph
+from paddle.fluid.io import append_fetch_ops, prepend_feed_ops
+from paddle.static.quantization import (
     AddQuantDequantPass,
     OutScaleForInferencePass,
     OutScaleForTrainingPass,
     QuantizationFreezePass,
     QuantizationTransformPass,
 )
-from paddle.fluid.core import AnalysisConfig, create_paddle_predictor
-from paddle.fluid.framework import IrGraph
-from paddle.fluid.io import append_fetch_ops, prepend_feed_ops
 
 
 class QuantDequantTest(unittest.TestCase):

@@ -144,23 +144,24 @@ class UnsqueezeOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return framework::OpKernelType(
-        framework::TransToProtoVarType(
-            ctx.Input<phi::DenseTensor>("X")->type()),
-        ctx.device_context());
+    return phi::KernelKey(framework::TransToProtoVarType(
+                              ctx.Input<phi::DenseTensor>("X")->type()),
+                          ctx.GetPlace());
   }
 
-  framework::OpKernelType GetKernelTypeForVar(
+  phi::KernelKey GetKernelTypeForVar(
       const std::string &var_name,
       const phi::DenseTensor &tensor,
-      const framework::OpKernelType &expected_kernel_type) const override {
+      const phi::KernelKey &expected_kernel_type) const override {
     if (var_name == "AxesTensor" || var_name == "AxesTensorList") {
-      return expected_kernel_type;
+      return phi::KernelKey(phi::Backend::ALL_BACKEND,
+                            expected_kernel_type.layout(),
+                            expected_kernel_type.dtype());
     }
-    return framework::OpKernelType(
-        expected_kernel_type.data_type_, tensor.place(), tensor.layout());
+    return phi::KernelKey(
+        tensor.place(), tensor.layout(), expected_kernel_type.dtype());
   }
 };
 
@@ -225,11 +226,11 @@ class UnsqueezeGradOp : public framework::OperatorWithKernel {
     ctx->ShareLoD("X", framework::GradVarName("X"));
   }
 
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
-                                       ctx, framework::GradVarName("Out")),
-                                   ctx.device_context());
+    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(
+                              ctx, framework::GradVarName("Out")),
+                          ctx.GetPlace());
   }
 };
 
@@ -260,83 +261,6 @@ class UnsqueezeDoubleGradOpMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
-// FIXME(zcd): unsqueeze2 adds an intermediate output(XShape) based on
-// unsqueeze, the XShape is used to carry the shape and lod of X which
-// will be used in unsqueeze_grad, in this way, the framework can reuse
-// the memory of X immediately the unsqueeze2_op is finished.
-// Considering compatibility issues, we could not fix unsqueeze2_op
-class Unsqueeze2Op : public UnsqueezeOp {
- public:
-  using UnsqueezeOp::UnsqueezeOp;
-};
-
-class Unsqueeze2OpMaker : public UnsqueezeOpMaker {
- public:
-  void Make() override {
-    UnsqueezeOpMaker::Make();
-    AddOutput("XShape",
-              "XShape is just used to store the shape and lod of X, which will "
-              "be used in UnsqueezeGradOp.")
-        .AsIntermediate()
-        .AsExtra();
-  }
-};
-
-template <typename T>
-class Unsqueeze2GradOpMaker : public framework::SingleGradOpMaker<T> {
- public:
-  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
-
-  void Apply(GradOpPtr<T> grad_op) const override {
-    grad_op->SetType("unsqueeze2_grad");
-    grad_op->SetInput("XShape", this->Output("XShape"));
-    grad_op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
-    grad_op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
-    grad_op->SetAttrMap(this->Attrs());
-  }
-};
-
-class Unsqueeze2GradOp : public framework::OperatorWithKernel {
- public:
-  using framework::OperatorWithKernel::OperatorWithKernel;
-  void InferShape(framework::InferShapeContext *context) const override {
-    PADDLE_ENFORCE_EQ(
-        context->HasInput("XShape"),
-        true,
-        platform::errors::InvalidArgument("Input(XShape) shouldn't be null."));
-    PADDLE_ENFORCE_EQ(context->HasInput(framework::GradVarName("Out")),
-                      true,
-                      platform::errors::InvalidArgument(
-                          "Input(Out@GRAD) shouldn't be null."));
-    auto xshape_dims = context->GetInputDim("XShape");
-    auto x_dims = phi::slice_ddim(xshape_dims, 1, xshape_dims.size());
-    context->SetOutputDim(framework::GradVarName("X"), x_dims);
-    context->ShareLoD("XShape", framework::GradVarName("X"));
-  }
-
- protected:
-  framework::OpKernelType GetExpectedKernelType(
-      const framework::ExecutionContext &ctx) const override {
-    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
-                                       ctx, framework::GradVarName("Out")),
-                                   ctx.device_context());
-  }
-};
-
-template <typename T>
-class Unsqueeze2DoubleGradOpMaker : public framework::SingleGradOpMaker<T> {
- public:
-  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
-
-  void Apply(GradOpPtr<T> grad_op) const override {
-    grad_op->SetType("unsqueeze2");
-    grad_op->SetInput("X", this->OutputGrad(framework::GradVarName("X")));
-    grad_op->SetOutput("Out", this->InputGrad(framework::GradVarName("Out")));
-    grad_op->SetOutput("XShape", this->Input("XShape"));
-    grad_op->SetAttrMap(this->Attrs());
-  }
-};
-
 DECLARE_INPLACE_OP_INFERER(UnsqueezeInplaceInferer, {"X", "Out"});
 DECLARE_INPLACE_OP_INFERER(UnsqueezeGradInplaceInferer,
                            {framework::GradVarName("Out"),
@@ -344,10 +268,6 @@ DECLARE_INPLACE_OP_INFERER(UnsqueezeGradInplaceInferer,
 DECLARE_NO_NEED_BUFFER_VARS_INFERER(UnsqueezeGradOpNoNeedBufferVarInferer, "X");
 }  // namespace operators
 }  // namespace paddle
-
-DECLARE_INFER_SHAPE_FUNCTOR(unsqueeze2,
-                            Unsqueeze2InferShapeFunctor,
-                            PD_INFER_META(phi::UnsqueezeWithXShapeInferMeta));
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(unsqueeze,
@@ -361,20 +281,6 @@ REGISTER_OPERATOR(unsqueeze_grad,
                   ops::UnsqueezeDoubleGradOpMaker<paddle::framework::OpDesc>,
                   ops::UnsqueezeDoubleGradOpMaker<paddle::imperative::OpBase>,
                   ops::UnsqueezeGradOpNoNeedBufferVarInferer);
-
-REGISTER_OPERATOR(unsqueeze2,
-                  ops::Unsqueeze2Op,
-                  ops::Unsqueeze2OpMaker,
-                  ops::Unsqueeze2GradOpMaker<paddle::framework::OpDesc>,
-                  ops::Unsqueeze2GradOpMaker<paddle::imperative::OpBase>,
-                  Unsqueeze2InferShapeFunctor,
-                  ops::UnsqueezeInplaceInferer);
-
-REGISTER_OPERATOR(unsqueeze2_grad,
-                  ops::Unsqueeze2GradOp,
-                  ops::Unsqueeze2DoubleGradOpMaker<paddle::framework::OpDesc>,
-                  ops::Unsqueeze2DoubleGradOpMaker<paddle::imperative::OpBase>,
-                  ops::UnsqueezeGradInplaceInferer);
 
 REGISTER_OP_CPU_KERNEL(
     unsqueeze,

@@ -76,7 +76,7 @@ pass_library(embedding_fc_lstm_fuse_pass inference)
 pass_library(fc_gru_fuse_pass inference)
 pass_library(seq_concat_fc_fuse_pass inference)
 pass_library(multi_batch_merge_pass base)
-pass_library(map_depthwise_conv_to_conv_pass inference)
+pass_library(map_op_to_another_pass inference)
 pass_library(conv_bn_fuse_pass inference)
 pass_library(seqconv_eltadd_relu_fuse_pass inference)
 pass_library(seqpool_concat_fuse_pass inference)
@@ -88,6 +88,7 @@ pass_library(conv_elementwise_add_act_fuse_pass inference)
 pass_library(conv_elementwise_add2_act_fuse_pass inference)
 pass_library(conv_elementwise_add_fuse_pass inference)
 pass_library(transpose_flatten_concat_fuse_pass inference)
+pass_library(inplace_op_var_pass inference)
 pass_library(identity_scale_op_clean_pass base)
 pass_library(sync_batch_norm_pass base)
 pass_library(runtime_context_cache_pass base)
@@ -105,6 +106,7 @@ pass_library(delete_fill_constant_op_pass inference)
 pass_library(constant_folding_pass inference)
 pass_library(auto_mixed_precision_pass inference)
 pass_library(conv2d_fusion_layout_transfer_pass inference)
+pass_library(silu_fuse_pass inference)
 pass_library(simplify_with_basic_ops_pass base)
 pass_library(fc_elementwise_layernorm_fuse_pass base)
 pass_library(skip_layernorm_fuse_pass base)
@@ -137,6 +139,8 @@ if(WITH_TENSORRT)
   pass_library(layernorm_shift_partition_fuse_pass inference)
   pass_library(reverse_roll_fuse_pass inference)
   pass_library(preln_layernorm_x_fuse_pass inference)
+  pass_library(elementwise_groupnorm_act_pass inference)
+  pass_library(preln_elementwise_groupnorm_act_pass inference)
 endif()
 
 if(WITH_TENSORRT)
@@ -218,6 +222,10 @@ cc_library(
 cc_library(
   fuse_gemm_epilogue_pass
   SRCS fuse_gemm_epilogue_pass.cc
+  DEPS pass graph_pattern_detector)
+cc_library(
+  fused_attention_pass
+  SRCS fused_attention_pass.cc
   DEPS pass graph_pattern_detector)
 cc_library(
   fuse_relu_depthwise_conv_pass
@@ -402,10 +410,6 @@ if(WITH_MKLDNN)
     test_params_quantization_mkldnn_pass SRCS
     mkldnn/params_quantization_mkldnn_pass_tester.cc DEPS
     params_quantization_mkldnn_pass)
-  cc_test_old(
-    test_batch_norm_act_fuse_pass SRCS
-    mkldnn/batch_norm_act_fuse_pass_tester.cc DEPS batch_norm_act_fuse_pass
-    pass_test_util)
   set(TEST_CONV_BN_PASS_DEPS
       conv_bn_fuse_pass
       graph_to_program_pass
@@ -429,10 +433,6 @@ if(WITH_MKLDNN)
     test_conv_batch_norm_mkldnn_fuse_pass
     SRCS mkldnn/mkldnn_conv_bn_fuse_pass_tester.cc
     DEPS ${TEST_CONV_BN_PASS_DEPS})
-  cc_test(
-    test_scale_matmul_fuse_pass
-    SRCS mkldnn/scale_matmul_fuse_pass_tester.cc
-    DEPS scale_matmul_fuse_pass)
   cc_test(
     test_mkldnn_placement_pass
     SRCS mkldnn/mkldnn_placement_pass_tester.cc

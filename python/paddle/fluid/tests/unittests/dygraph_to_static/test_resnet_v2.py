@@ -35,7 +35,6 @@ place = (
     paddle.CUDAPlace(0) if paddle.is_compiled_with_cuda() else paddle.CPUPlace()
 )
 
-program_translator = paddle.jit.ProgramTranslator()
 
 if paddle.is_compiled_with_cuda():
     paddle.fluid.set_flags({'FLAGS_cudnn_deterministic': True})
@@ -243,7 +242,7 @@ class TestResnet(unittest.TestCase):
 
     def do_train(self, to_static):
         """
-        Tests model decorated by `dygraph_to_static_output` in static mode. For users, the model is defined in dygraph mode and trained in static mode.
+        Tests model decorated by `dygraph_to_static_output` in static graph mode. For users, the model is defined in dygraph mode and trained in static graph mode.
         """
         paddle.disable_static(place)
         np.random.seed(SEED)
@@ -307,8 +306,9 @@ class TestResnet(unittest.TestCase):
                     if to_static:
                         paddle.jit.save(resnet, self.model_save_prefix)
                     else:
-                        paddle.fluid.dygraph.save_dygraph(
-                            resnet.state_dict(), self.dy_state_dict_save_path
+                        paddle.save(
+                            resnet.state_dict(),
+                            self.dy_state_dict_save_path + '.pdparams',
                         )
                         # avoid dataloader throw abort signaal
                     data_loader._reset()
@@ -318,13 +318,11 @@ class TestResnet(unittest.TestCase):
         return total_loss.numpy()
 
     def predict_dygraph(self, data):
-        program_translator.enable(False)
+        paddle.jit.enable_to_static(False)
         paddle.disable_static(place)
         resnet = ResNet()
 
-        model_dict, _ = paddle.fluid.dygraph.load_dygraph(
-            self.dy_state_dict_save_path
-        )
+        model_dict = paddle.load(self.dy_state_dict_save_path + '.pdparams')
         resnet.set_dict(model_dict)
         resnet.eval()
 
@@ -381,7 +379,7 @@ class TestResnet(unittest.TestCase):
         return out
 
     def train(self, to_static):
-        program_translator.enable(to_static)
+        paddle.jit.enable_to_static(to_static)
         return self.do_train(to_static)
 
     def verify_predict(self):
