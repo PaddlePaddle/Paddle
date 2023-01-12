@@ -206,10 +206,11 @@ static std::string GetOrCreateModelOptCacheDir(const std::string &model_root) {
 static void CheckModelStaticPathDir(const std::string &static_path) {
   if (static_path == "") return;
   auto static_path_dir = GetDirRoot(static_path);
-  PADDLE_ENFORCE_EQ(PathExists(static_path_dir), true,
-                    platform::errors::PreconditionNotMet(
-                      "static_path directory[%s] not exists",
-                      static_path_dir));
+  PADDLE_ENFORCE_EQ(
+      PathExists(static_path_dir),
+      true,
+      platform::errors::PreconditionNotMet(
+          "static_path directory[%s] not exists", static_path_dir));
 }
 
 static std::string GetTrtCalibPath(const std::string &model_root,
@@ -235,19 +236,20 @@ static std::string GetTrtCalibTableData(const std::string &model_opt_cache_dir,
   return "";
 }
 
-static std::string GetTrtEngineSerializedPath(const std::string &model_root,
-                                              const std::string &engine_key,
-                                              const std::string &static_path = "") {
+static std::string GetTrtEngineSerializedPath(
+    const std::string &model_root,
+    const std::string &engine_key,
+    const std::string &static_path = "") {
   if (static_path != "") return static_path;
   return model_root + "/trt_serialized_" + engine_key;
 }
 
 static std::string GetTrtEngineSerializedData(
-    const std::string &model_opt_cache_dir, const std::string &engine_key,
+    const std::string &model_opt_cache_dir,
+    const std::string &engine_key,
     const std::string &static_path = "") {
   std::string trt_serialized_path =
-      GetTrtEngineSerializedPath(model_opt_cache_dir, engine_key,
-                                 static_path);
+      GetTrtEngineSerializedPath(model_opt_cache_dir, engine_key, static_path);
   if (FileExists(trt_serialized_path)) {
     VLOG(3) << "Trt serialized file: " << trt_serialized_path
             << "is found here";

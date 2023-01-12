@@ -104,23 +104,31 @@ TEST(AnalysisPredictor, trt_static_engine) {
   config2.EnableUseGpu(100, 0);
   config2.SetModel(model_dir);
   config2.EnableTunedTensorRtDynamicShape("shape_range.pbtxt", true);
-  config2.EnableTensorRtEngine(
-      1 << 30, 1, 3, AnalysisConfig::Precision::kFloat32,
-      true, false, static_path);
+  config2.EnableTensorRtEngine(1 << 30,
+                               1,
+                               3,
+                               AnalysisConfig::Precision::kFloat32,
+                               true,
+                               false,
+                               static_path);
   auto predictor2 = CreatePaddlePredictor(config2);
   for (auto &input : inputs_all) {
     ASSERT_TRUE(predictor2->Run(input, &outputs));
     predictor2->ClearIntermediateTensor();
   }
-  
+
   // step 3: load TensorRT engine
   AnalysisConfig config3;
   config3.EnableUseGpu(100, 0);
   config3.SetModel(model_dir);
   config3.EnableTunedTensorRtDynamicShape("shape_range.pbtxt", true);
-  config3.EnableTensorRtEngine(
-      1 << 30, 1, 3, AnalysisConfig::Precision::kFloat32,
-      true, false, static_path);
+  config3.EnableTensorRtEngine(1 << 30,
+                               1,
+                               3,
+                               AnalysisConfig::Precision::kFloat32,
+                               true,
+                               false,
+                               static_path);
   auto predictor3 = CreatePaddlePredictor(config3);
   for (auto &input : inputs_all) {
     ASSERT_TRUE(predictor3->Run(input, &outputs));

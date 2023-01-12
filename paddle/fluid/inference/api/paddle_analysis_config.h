@@ -571,7 +571,7 @@ struct PD_INFER_DECL AnalysisConfig {
   /// \param use_static Serialize optimization information to disk for reusing.
   /// \param use_calib_mode Use TRT int8 calibration(post training
   /// quantization).
-  /// \param static_path save or reload path for TensorRT engine 
+  /// \param static_path save or reload path for TensorRT engine
   /// serialization in use_static mode.
   ///
   void EnableTensorRtEngine(int64_t workspace_size = 1 << 30,
