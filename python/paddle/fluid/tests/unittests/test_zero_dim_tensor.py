@@ -1306,7 +1306,7 @@ class TestSundryAPIStatic(unittest.TestCase):
 
         prog = paddle.static.default_main_program()
         res = self.exe.run(prog, fetch_list=[out])
-        self.assertEqual(res.shape, ())
+        self.assertEqual(res[0].shape, ())
 
     @prog_scope()
     def test_var(self):
@@ -1316,7 +1316,7 @@ class TestSundryAPIStatic(unittest.TestCase):
 
         prog = paddle.static.default_main_program()
         res = self.exe.run(prog, fetch_list=[out])
-        self.assertEqual(res.shape, ())
+        self.assertEqual(res[0].shape, ())
 
     @prog_scope()
     def test_flatten(self):
