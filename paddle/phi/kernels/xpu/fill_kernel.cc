@@ -12,15 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/core/compat/op_utils.h"
+#include "paddle/phi/kernels/impl/fill_kernel_impl.h"
 
-namespace phi {
+#include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/phi/core/kernel_registry.h"
 
-KernelSignature MultiDotGradOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
-  return KernelSignature("multi_dot_grad", {"X", "Out@GRAD"}, {}, {"X@GRAD"});
-}
-
-}  // namespace phi
-
-PD_REGISTER_ARG_MAPPING_FN(multi_dot_grad, phi::MultiDotGradOpArgumentMapping);
+PD_REGISTER_KERNEL(fill,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::FillKernel,
+                   float,
+                   double,
+                   int64_t,
+                   int,
+                   phi::dtype::float16,
+                   bool) {}
