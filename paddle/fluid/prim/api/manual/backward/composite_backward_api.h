@@ -35,12 +35,6 @@ void add_grad(const Tensor& x,
               Tensor* dx,
               Tensor* dy) {
   if (dy) {
-    VLOG(3) << "out_grad dims: " << out_grad.dims();
-    PADDLE_ENFORCE_GT(
-        out_grad.dims().size(),
-        0,
-        phi::errors::InvalidArgument("All inputs should have shape, we failed "
-                                     "in add_grad composite func."));
     if (phi::product(x.dims()) > phi::product(y.dims())) {
       // Maybe need reduce here
       phi::DDim reduce_dim = get_reduce_dims(x.dims(), y.dims());
@@ -53,12 +47,6 @@ void add_grad(const Tensor& x,
     }
   }
   if (dx) {
-    VLOG(3) << "out_grad dims: " << out_grad.dims();
-    PADDLE_ENFORCE_GT(
-        out_grad.dims().size(),
-        0,
-        phi::errors::InvalidArgument("All inputs should have shape, we failed "
-                                     "in add_grad composite func."));
     if (phi::product(y.dims()) > phi::product(x.dims())) {
       // Maybe need reduce here
       auto reduce_dim = get_reduce_dims(y.dims(), x.dims());
@@ -86,12 +74,6 @@ void divide_grad(const Tensor& x,
     auto tmp1 = divide<T>(x, tmp0);
     auto tmp2 = scale<T>(tmp1, -1.0, 0.0, true);
     auto dy_res = multiply<T>(tmp2, out_grad);
-    VLOG(3) << "dy_res dims: " << dy_res.dims();
-    PADDLE_ENFORCE_GT(
-        out_grad.dims().size(),
-        0,
-        phi::errors::InvalidArgument("All inputs should have shape, we failed "
-                                     "in div_grad composite func."));
     if (phi::product(x.dims()) > phi::product(y.dims())) {
       // Maybe need reduce here
       phi::DDim reduce_dim = get_reduce_dims(x.dims(), y.dims());
@@ -108,12 +90,6 @@ void divide_grad(const Tensor& x,
     auto one_tensor = full<T>(phi::vectorize(y.dims()), 1.0);
     auto tmp0 = divide<T>(one_tensor, y);
     auto dx_res = multiply<T>(tmp0, out_grad);
-    PADDLE_ENFORCE_GT(
-        out_grad.dims().size(),
-        0,
-        phi::errors::InvalidArgument("All inputs should have shape, we failed "
-                                     "in div_grad composite func."));
-    VLOG(3) << "dx_res dims: " << dx_res.dims();
     if (phi::product(y.dims()) > phi::product(x.dims())) {
       // Maybe need reduce here
       auto reduce_dim = get_reduce_dims(y.dims(), x.dims());
