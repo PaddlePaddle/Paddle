@@ -67,7 +67,8 @@ class GraphGpuWrapper {
   void load_edge_file(std::string etype2files,
                       std::string graph_data_local_path,
                       int part_num,
-                      bool reverse);
+                      bool reverse,
+                      const std::vector<bool>& is_reverse_edge_map);
 
   int load_node_file(std::string name, std::string filepath);
   int load_node_file(std::string ntype2files,
@@ -77,7 +78,8 @@ class GraphGpuWrapper {
                           std::string ntype2files,
                           std::string graph_data_local_path,
                           int part_num,
-                          bool reverse);
+                          bool reverse,
+                          const std::vector<bool>& is_reverse_edge_map);
   int32_t load_next_partition(int idx);
   int32_t get_partition_num(int idx);
   void load_node_weight(int type_id, int idx, std::string path);

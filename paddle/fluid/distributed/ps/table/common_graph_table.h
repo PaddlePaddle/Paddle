@@ -564,11 +564,13 @@ class GraphTable : public Table {
                                   std::string ntype2files,
                                   std::string graph_data_local_path,
                                   int part_num,
-                                  bool reverse);
+                                  bool reverse,
+                                  const std::vector<bool> &is_reverse_edge_map);
   int32_t parse_edge_and_load(std::string etype2files,
                               std::string graph_data_local_path,
                               int part_num,
-                              bool reverse);
+                              bool reverse,
+                              const std::vector<bool> &is_reverse_edge_map);
   int32_t parse_node_and_load(std::string ntype2files,
                               std::string graph_data_local_path,
                               int part_num);

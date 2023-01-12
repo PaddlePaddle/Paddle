@@ -445,13 +445,18 @@ void GraphGpuWrapper::load_edge_file(std::string name,
   }
 }
 
-void GraphGpuWrapper::load_edge_file(std::string etype2files,
-                                     std::string graph_data_local_path,
-                                     int part_num,
-                                     bool reverse) {
+void GraphGpuWrapper::load_edge_file(
+    std::string etype2files,
+    std::string graph_data_local_path,
+    int part_num,
+    bool reverse,
+    const std::vector<bool> &is_reverse_edge_map) {
   reinterpret_cast<GpuPsGraphTable *>(graph_table)
-      ->cpu_graph_table_->parse_edge_and_load(
-          etype2files, graph_data_local_path, part_num, reverse);
+      ->cpu_graph_table_->parse_edge_and_load(etype2files,
+                                              graph_data_local_path,
+                                              part_num,
+                                              reverse,
+                                              is_reverse_edge_map);
 }
 
 int GraphGpuWrapper::load_node_file(std::string name, std::string filepath) {
@@ -474,14 +479,20 @@ int GraphGpuWrapper::load_node_file(std::string ntype2files,
           ntype2files, graph_data_local_path, part_num);
 }
 
-void GraphGpuWrapper::load_node_and_edge(std::string etype2files,
-                                         std::string ntype2files,
-                                         std::string graph_data_local_path,
-                                         int part_num,
-                                         bool reverse) {
+void GraphGpuWrapper::load_node_and_edge(
+    std::string etype2files,
+    std::string ntype2files,
+    std::string graph_data_local_path,
+    int part_num,
+    bool reverse,
+    const std::vector<bool> &is_reverse_edge_map) {
   reinterpret_cast<GpuPsGraphTable *>(graph_table)
-      ->cpu_graph_table_->load_node_and_edge_file(
-          etype2files, ntype2files, graph_data_local_path, part_num, reverse);
+      ->cpu_graph_table_->load_node_and_edge_file(etype2files,
+                                                  ntype2files,
+                                                  graph_data_local_path,
+                                                  part_num,
+                                                  reverse,
+                                                  is_reverse_edge_map);
 }
 
 void GraphGpuWrapper::add_table_feat_conf(std::string table_name,
