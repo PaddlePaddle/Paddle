@@ -639,8 +639,12 @@ struct SimpleOpTypeSetTeller : public Teller {
       int axis = desc.HasAttr("axis")
                      ? PADDLE_GET_CONST(int64_t, desc.GetAttr("axis"))
                      : -1;
-      bool flatten = PADDLE_GET_CONST(bool, desc.GetAttr("flatten"));
-      int dtype = PADDLE_GET_CONST(int, desc.GetAttr("dtype"));
+      bool flatten = desc.HasAttr("flatten")
+                         ? PADDLE_GET_CONST(bool, desc.GetAttr("flatten"))
+                         : false;
+      int dtype = desc.HasAttr("dtype")
+                      ? PADDLE_GET_CONST(int, desc.GetAttr("dtype"))
+                      : 3;
       if (axis == 0 || flatten || dtype != 2) return false;
     }
 
