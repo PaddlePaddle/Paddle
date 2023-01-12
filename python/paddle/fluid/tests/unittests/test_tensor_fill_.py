@@ -49,7 +49,6 @@ class TensorFill_Test(unittest.TestCase):
                 self.assertEqual((tensor.numpy() == target).all(), True)
 
     def test_tensor_fill_backward(self):
-        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         typelist = ['float32']
         places = [fluid.CPUPlace()]
         if fluid.core.is_compiled_with_cuda():
@@ -69,12 +68,12 @@ class TensorFill_Test(unittest.TestCase):
                 tensor = paddle.to_tensor(np_arr, place=p, dtype=dtype)
                 tensor.stop_gradient = False
                 y = tensor * 2
+                y.retain_grads()
                 y.fill_(var)
                 loss = y.sum()
                 loss.backward()
 
                 self.assertEqual((y.grad.numpy() == 0).all().item(), True)
-        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
     def test_errors(self):
         def test_list():

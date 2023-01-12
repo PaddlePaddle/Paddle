@@ -86,10 +86,11 @@ bool ProcessGroupNCCL::NCCLTask::Wait(std::chrono::milliseconds timeout) {
 // Same as Wait
 void ProcessGroupNCCL::NCCLTask::Synchronize() { Wait(kWaitTimeout); }
 
-ProcessGroupNCCL::ProcessGroupNCCL(const std::shared_ptr<Store>& store,
-                                   int rank,
-                                   int size,
-                                   int gid)
+ProcessGroupNCCL::ProcessGroupNCCL(
+    const std::shared_ptr<phi::distributed::Store>& store,
+    int rank,
+    int size,
+    int gid)
     : ProcessGroupWithStream(rank, size, gid), store_(store) {}
 
 void ProcessGroupNCCL::GroupStart() {
@@ -1151,7 +1152,10 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Scatter(
 }
 
 std::shared_ptr<ProcessGroupNCCL> ProcessGroupNCCL::CreateProcessGroupNCCL(
-    const std::shared_ptr<Store>& store, int rank, int size, int gid) {
+    const std::shared_ptr<phi::distributed::Store>& store,
+    int rank,
+    int size,
+    int gid) {
   auto process_group =
       std::make_shared<ProcessGroupNCCL>(store, rank, size, gid);
   ProcessGroupIdMap::GetInstance().emplace(gid, process_group);
