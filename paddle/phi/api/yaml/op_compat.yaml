@@ -1290,6 +1290,8 @@
 
 - op : softmax
   backward : softmax_grad
+  inputs :
+    x : X
   extra :
     attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32", bool is_test = false]
 
