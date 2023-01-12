@@ -69,7 +69,7 @@ class TestMultiplyGradComp(unittest.TestCase):
     def as_tuple(self, x):
         return (x,) if isinstance(x, framework.Variable) else x
 
-    def vjp(self):
+    def net(self):
         primals, cotangents = self.primals, self.cotangents
         mp, sp = paddle.static.Program(), paddle.static.Program()
         with paddle.static.program_guard(mp, sp):
@@ -83,7 +83,7 @@ class TestMultiplyGradComp(unittest.TestCase):
                 paddle.static.data(f'cotangent{i}', co.shape, co.dtype)
                 for i, co in enumerate(cotangents)
             )
-            out = self.as_tuple(paddle.multiply(*primals))
+            out = self.as_tuple(paddle.tanh(paddle.multiply(*primals)))
             grads = paddle.static.gradients(out, primals)
         exe = paddle.static.Executor()
         exe.run(sp)
@@ -102,10 +102,10 @@ class TestMultiplyGradComp(unittest.TestCase):
     def test_comp(self):
 
         core.set_prim_enabled(True)
-        actual = self.vjp()
+        actual = self.net()
 
         core.set_prim_enabled(False)
-        desired = self.vjp()
+        desired = self.net()
 
         self.assertEqual(len(actual), len(desired))
         for i, j in zip(actual, desired):
