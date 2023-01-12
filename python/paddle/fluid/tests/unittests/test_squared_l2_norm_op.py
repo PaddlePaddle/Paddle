@@ -30,37 +30,45 @@ def test_squared_l2_norm(x):
         return _legacy_C_ops.squared_l2_norm(x)
 
 
-class TestSquaredL2NormF16Op(OpTest):
+class TestSquaredL2NormF16Op(unittest.TestCase):
     def init_test_case(self):
         self.max_relative_error = 0.1
-        X = np.random.uniform(-0.1, 0.1, (8, 5, 10)).astype('float16')
+        X = np.random.uniform(-0.1, 0.1, (8, 5, 10)).astype('float32')
         X[np.abs(X) < self.max_relative_error] = 0.1
         return X
 
-    def setUp(self):
-        self.python_api = test_squared_l2_norm
-        self.op_type = "squared_l2_norm"
-        X = self.init_test_case()
-        self.inputs = {'X': X}
-        self.target = np.square(LA.norm(X))
-        self.outputs = {'Out': np.array([self.target])}
+    def check_main(self, x_np, dtype):
+        paddle.disable_static()
+        x = paddle.to_tensor(x_np)
 
-    def test_check_output(self):
-        self.check_output(atol=0.05, check_eager=True)
+        if dtype == "bfloat16":
+            x = x.cast(paddle.fluid.core.VarDesc.VarType.BF16)
 
-    def test_check_grad(self):
-        self.check_grad(
-            ['X'],
-            'Out',
-            max_relative_error=self.max_relative_error,
-            check_eager=True,
-        )
+        x.stop_gradient = False
+        y = test_squared_l2_norm(x)
+        x_g = paddle.grad(y, [x])
+        # y_np = y.numpy().astype('float32')
+        # x_g_np = x_g.numpy().astype('float32')
+
+        paddle.enable_static()
+        return y, x_g
+
+    def test_main(self):
+        x_np = self.init_test_case()
+        y_np_1, x_g_np_1 = self.check_main(x_np, 'float32')
+        y_np_2, x_g_np_2 = self.check_main(x_np, 'float16')
+
+        def assert_equal(x, y):
+            np.testing.assert_allclose(x, y, rtol=1e-05, atol=0.1)
+
+        assert_equal(y_np_1, y_np_2)
+        assert_equal(x_g_np_1, x_g_np_2)
 
 
 class TestSquaredL2NormF16Op1(TestSquaredL2NormF16Op):
     def init_test_case(self):
         self.max_relative_error = 0.65
-        X = np.random.uniform(-2.0, 2.0, (3, 10)).astype('float16')
+        X = np.random.uniform(-2.0, 2.0, (3, 10)).astype('float32')
         X[np.abs(X) < self.max_relative_error] = 0.1
         return X
 
@@ -68,7 +76,7 @@ class TestSquaredL2NormF16Op1(TestSquaredL2NormF16Op):
 class TestSquaredL2NormF16Op2(TestSquaredL2NormF16Op):
     def init_test_case(self):
         self.max_relative_error = 0.5
-        X = np.random.uniform(-1.0, 1.0, (10, 10)).astype('float16')
+        X = np.random.uniform(-1.0, 1.0, (10, 10)).astype('float32')
         X[np.abs(X) < self.max_relative_error] = 0.1
         return X
 
