@@ -1254,6 +1254,7 @@
     param : [out]
   kernel :
     func : sqrt_grad
+  composite : sqrt_grad(out, out_grad, x_grad)
   backward : sqrt_double_grad
   inplace : (out_grad -> x_grad)
 

@@ -27,5 +27,15 @@ void tanh_grad(const Tensor& out, const Tensor& grad_out, Tensor* grad_x) {
   auto grad_x_tmp = multiply<T>(grad_out, tmp);
   grad_x->set_impl(grad_x_tmp.impl());
 }
+
+template <typename T>
+void sqrt_grad(const Tensor& out, const Tensor& out_grad, Tensor* x_grad) {
+  if (x_grad) {
+    auto tmp = pow<T>(out, -1.0);
+    tmp = multiply<T>(tmp, 0.5);
+    auto x_grad_tmp = multiply<T>(out_grad, tmp);
+    x_grad->set_impl(x_grad_tmp.impl());
+  }
+}
 }  // namespace prim
 }  // namespace paddle
