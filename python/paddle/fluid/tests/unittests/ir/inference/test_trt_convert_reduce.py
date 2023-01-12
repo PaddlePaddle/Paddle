@@ -51,6 +51,8 @@ class TrtConvertReduceTest(TrtLayerAutoScanTest):
                 return np.random.random([1, 3, 64, 64]).astype(np.float32)
             elif dtype == 2:
                 return np.random.random([1, 3, 64, 64]).astype(np.int32)
+            elif dtype == 0:
+                return np.random.random([1, 3, 64, 64]).astype(np.bool)
 
         for keep_dim in [True, False]:
             for dim in [
@@ -100,6 +102,9 @@ class TrtConvertReduceTest(TrtLayerAutoScanTest):
                                         "Out": ["reduce_output_data"]
                                     },
                                     "op_attrs": dics[0],
+                                    "outputs_dtype": {
+                                        "reduce_output_data": np.bool
+                                    },
                                 }
                             ]
                             ops = self.generate_op_config(ops_config)
