@@ -32,7 +32,7 @@ import paddle
         (np.random.rand(10, 10), np.random.rand(10, 10), np.float32),
     ],
 )
-class TestTanhGradComp(unittest.TestCase):
+class TestSqrtGradComp(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.primal = cls.primal.astype(cls.dtype)
@@ -44,7 +44,7 @@ class TestTanhGradComp(unittest.TestCase):
     def tearDown(self):
         paddle.disable_static()
 
-    def test_tanh_grad_comp(self):
+    def test_sqrt_grad_comp(self):
         def actual(primal, cotangent):
             mp, sp = paddle.static.Program(), paddle.static.Program()
             with paddle.static.program_guard(mp, sp):
@@ -60,7 +60,7 @@ class TestTanhGradComp(unittest.TestCase):
             return exe.run(
                 program=mp,
                 feed={'primal': primal, 'cotangent': cotangent},
-                fetch_list=mp.blocks[0].ops[-1].output('Out')[0],
+                fetch_list=[x_cotangent[0].name],
             )[0]
 
         def desired(primal, cotangent):
