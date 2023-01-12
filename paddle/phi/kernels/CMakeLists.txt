@@ -103,8 +103,7 @@ file(
   "selected_rows/gpu/*.cu"
   "sparse/gpu/*.cu"
   "strings/gpu/*.cu"
-  "fusion/gpu/*.cu"
-  "stride/*.cc")
+  "fusion/gpu/*.cu")
 
 if(WITH_CUTLASS)
   file(GLOB cutlass_cu "fusion/cutlass/conv2d/*.cu" "fusion/cutlass/*.cu")
@@ -126,7 +125,8 @@ if(WITH_MKLDNN)
     "onednn/*.cc"
     "fusion/*.cc"
     "fusion/onednn/*.cc"
-    "fusion/cpu/*.cc")
+    "fusion/cpu/*.cc"
+    "stride/*.cc")
 else()
   file(
     GLOB
@@ -140,7 +140,8 @@ else()
     "strings/*.cc"
     "strings/cpu/*.cc"
     "fusion/*.cc"
-    "fusion/cpu/*.cc")
+    "fusion/cpu/*.cc"
+    "stride/*.cc")
 endif()
 
 file(GLOB kernel_xpu "xpu/*.cc" "selected_rows/xpu/*.cc" "fusion/xpu/*.cc")
