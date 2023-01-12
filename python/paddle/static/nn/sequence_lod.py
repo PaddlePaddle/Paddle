@@ -19,24 +19,7 @@ from paddle.fluid.framework import Variable, _non_static_mode
 from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.layers.layer_function_generator import templatedoc
 
-__all__ = [
-    'sequence_conv',
-    'sequence_softmax',
-    'sequence_pool',
-    'sequence_concat',
-    'sequence_first_step',
-    'sequence_last_step',
-    'sequence_slice',
-    'sequence_expand',
-    'sequence_expand_as',
-    'sequence_pad',
-    'sequence_unpad',
-    'sequence_reshape',
-    'sequence_scatter',
-    'sequence_enumerate',
-    'sequence_mask',
-    'sequence_reverse',
-]
+__all__ = []
 
 
 @templatedoc()
@@ -108,8 +91,8 @@ def sequence_conv(
         num_filters (int): the number of filters.
         filter_size (int): the height of filter. Specified filter width is not supported, the width is
             hidden_size by default. Default: 3.
-        filter_stride (int): stride of the filter. Currently only supports :attr:`stride` = 1.
-        padding (bool): the parameter :attr:`padding` take no effect and will be discarded in the
+        filter_stride (int, optional): stride of the filter. Currently only supports :attr:`stride` = 1.
+        padding (bool, optional): the parameter :attr:`padding` take no effect and will be discarded in the
             future. Currently, it will always pad input to make sure the length of the output is
             the same as input whether :attr:`padding` is set true or false. Because the length of
             input sequence may be shorter than :attr:`filter\_size`, which will cause the convolution
