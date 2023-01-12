@@ -208,7 +208,7 @@ void RefcountedMemoryMapAllocation::close() {
             << MemoryMapAllocationPool::Instance().BufferSize()
             << ", max size is: " << FLAGS_memory_map_allocation_pool_max_size;
     if (MemoryMapAllocationPool::Instance().BufferSize() <
-            FLAGS_memory_map_allocation_pool_max_size &&
+            static_cast<size_t>(FLAGS_memory_map_allocation_pool_max_size) &&
         FLAGS_use_shm_cache) {
       MemoryMapAllocationPool::Instance().Insert(MemoryMap(
           flags_, map_size_ - mmap_alignment, false, ipc_name_, map_ptr_, fd_));
@@ -355,16 +355,6 @@ void MemoryMapAllocationPool::Insert(const MemoryMap &memory_map) {
   std::lock_guard<std::mutex> guard(mtx_);
   memory_map_allocations_.push_back(memory_map);
   VLOG(4) << this << " intset a new shm";
-  VLOG(4) << "===================================";
-  for (auto idx = 0; idx < memory_map_allocations_.size(); idx++) {
-    VLOG(4) << idx << "(flags: " << memory_map_allocations_.at(idx).flags_
-            << ", data_size:" << memory_map_allocations_.at(idx).data_size_
-            << ", is_using: " << memory_map_allocations_.at(idx).is_using_
-            << ",file_name: " << memory_map_allocations_.at(idx).file_name_
-            << ",mmap_ptr: " << memory_map_allocations_.at(idx).mmap_ptr_
-            << ",fd: " << memory_map_allocations_.at(idx).fd_ << ")";
-  }
-  VLOG(4) << "===================================";
 }
 
 void MemoryMapAllocationPool::RemoveById(int id) {
@@ -378,16 +368,6 @@ void MemoryMapAllocationPool::RemoveById(int id) {
 int MemoryMapAllocationPool::GetAndUse(const MemoryMap &memory_map) {
   std::lock_guard<std::mutex> guard(mtx_);
   VLOG(4) << " GetAndUse from: " << this;
-  VLOG(4) << "===================================";
-  for (auto idx = 0; idx < memory_map_allocations_.size(); idx++) {
-    VLOG(4) << idx << "(flags: " << memory_map_allocations_.at(idx).flags_
-            << ", data_size:" << memory_map_allocations_.at(idx).data_size_
-            << ", is_using: " << memory_map_allocations_.at(idx).is_using_
-            << ",file_name: " << memory_map_allocations_.at(idx).file_name_
-            << ",mmap_ptr: " << memory_map_allocations_.at(idx).mmap_ptr_
-            << ",fd: " << memory_map_allocations_.at(idx).fd_ << ")";
-  }
-  VLOG(4) << "===================================";
   for (auto idx = 0; idx < memory_map_allocations_.size(); idx++) {
     if (memory_map_allocations_.at(idx) == memory_map) {
       VLOG(4) << "** match at: " << idx;
@@ -420,16 +400,6 @@ void MemoryMapAllocationPool::ResetById(int id) {
   std::lock_guard<std::mutex> guard(mtx_);
   memory_map_allocations_.at(id).is_using_ = false;
   VLOG(4) << this << " set " << id << " can use";
-  VLOG(4) << "===================================";
-  for (auto idx = 0; idx < memory_map_allocations_.size(); idx++) {
-    VLOG(4) << idx << "(flags: " << memory_map_allocations_.at(idx).flags_
-            << ", data_size:" << memory_map_allocations_.at(idx).data_size_
-            << ", is_using: " << memory_map_allocations_.at(idx).is_using_
-            << ",file_name: " << memory_map_allocations_.at(idx).file_name_
-            << ",mmap_ptr: " << memory_map_allocations_.at(idx).mmap_ptr_
-            << ",fd: " << memory_map_allocations_.at(idx).fd_ << ")";
-  }
-  VLOG(4) << "===================================";
 }
 
 void MemoryMapAllocationPool::Clear() {
