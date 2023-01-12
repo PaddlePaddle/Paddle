@@ -1337,6 +1337,7 @@ def _append_backward_ops_(
     assert isinstance(rename_var_map, dict)
 
     # add grad_op_desc by reversed ops
+    composite_block = program.clone().current_block()
     for op in reversed(ops):
         grad_sub_block_list = []
         # If the op has its own sub-block, deal with the sub-block first
@@ -1365,10 +1366,27 @@ def _append_backward_ops_(
             program._rollback()
             grad_sub_block_list.append(grad_sub_block.desc)
 
-        # Getting op's corresponding grad_op
-        grad_op_desc, op_grad_to_var = core.get_grad_op_desc(
-            op.desc, no_grad_dict[block.idx], grad_sub_block_list
-        )
+        if core.is_prim_enabled():
+
+            def find_op_index(block_desc, cur_op_desc):
+                for idx in range(block_desc.op_size()):
+                    if cur_op_desc == block_desc.op(idx):
+                        return idx
+                return -1
+
+            grad_op_desc, op_grad_to_var = core.get_grad_op_desc(
+                composite_block.desc.op(find_op_index(block.desc, op.desc)),
+                no_grad_dict[composite_block.idx],
+                grad_sub_block_list,
+            )
+
+            for desc in grad_op_desc:
+                infershape_for_composite(composite_block, desc)
+        else:
+            # Getting op's corresponding grad_op
+            grad_op_desc, op_grad_to_var = core.get_grad_op_desc(
+                op.desc, no_grad_dict[block.idx], grad_sub_block_list
+            )
 
         # record the mapping between fwd and bwd
         if grad_op_id_to_fwd_op is not None:
@@ -1647,6 +1665,34 @@ def _append_backward_vars_(block, start_op_idx, grad_to_var, grad_info_map):
 
     for op_idx in reversed(ops_to_remove):
         block.desc._remove_op(op_idx, op_idx + 1)
+
+
+def infershape_for_composite(block, grad_op_desc):
+
+    op_desc = block.desc.append_op()
+    op_desc.copy_from(grad_op_desc)
+    op_desc._set_attr(
+        core.op_proto_and_checker_maker.kOpRoleAttrName(),
+        core.op_proto_and_checker_maker.OpRole.Backward,
+    )
+
+    new_vars = set()
+    # create new gradient variables
+    for grad_var_name in op_desc.output_arg_names():
+        if not (
+            block.desc.has_var_recursive(grad_var_name.encode())
+            or grad_var_name == core.empty_var_name()
+        ):
+            block.desc.var(grad_var_name.encode())
+            new_vars.add(grad_var_name)
+    # infer_shape and infer_type
+    op_desc.check_attrs()
+    op_desc.infer_var_type(block.desc)
+    op_desc.infer_shape(block.desc)
+
+    for arg in op_desc.output_arg_names():
+        if arg in new_vars:
+            _infer_var_data_type_shape_(arg, block)
 
 
 def _rename_grad_(
