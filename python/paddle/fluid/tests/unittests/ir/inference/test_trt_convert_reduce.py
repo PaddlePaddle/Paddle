@@ -94,6 +94,7 @@ class TrtConvertReduceTest(TrtLayerAutoScanTest):
                                 },
                                 {},
                             ]
+
                             ops_config = [
                                 {
                                     "op_type": op_type,
@@ -102,11 +103,12 @@ class TrtConvertReduceTest(TrtLayerAutoScanTest):
                                         "Out": ["reduce_output_data"]
                                     },
                                     "op_attrs": dics[0],
-                                    "outputs_dtype": {
-                                        "reduce_output_data": np.bool
-                                    },
                                 }
                             ]
+                            if op_type in ["reduce_any", "reduce_all"]:
+                                ops_config[0]["outputs_dtype"] = {
+                                    "reduce_output_data": np.bool
+                                }
                             ops = self.generate_op_config(ops_config)
 
                             program_config = ProgramConfig(
