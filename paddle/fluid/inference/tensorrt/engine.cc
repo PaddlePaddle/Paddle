@@ -207,21 +207,6 @@ void TensorRTEngine::FreezeNetwork() {
     }
   }
 
-  for (int i = 0; i < network()->getNbInputs(); ++i) {
-    auto *input = network()->getInput(i);
-    switch (input->getType()) {
-      case nvinfer1::DataType::kINT32:
-      case nvinfer1::DataType::kBOOL:
-      case nvinfer1::DataType::kHALF:
-        break;
-      case nvinfer1::DataType::kFLOAT:
-      case nvinfer1::DataType::kINT8:
-        input->setType(nvinfer1::DataType::kFLOAT);
-        break;
-    }
-    // TODO(zhangjun): optimize setAllowedFormats() usage to avoid reformat
-  }
-
   if (use_dla_) {
     if (!enable_int8 && !enable_fp16) {
       LOG(WARNING) << "TensorRT DLA must be used with int8 or fp16, but you "
@@ -429,18 +414,7 @@ void TensorRTEngine::DeclareOutput(const std::string &name) {
 void TensorRTEngine::DeclareOutput(const std::string &name,
                                    nvinfer1::DataType dtype) {
   auto *output = TensorRTEngine::GetITensor(name);
-  PADDLE_ENFORCE_NOT_NULL(
-      output,
-      platform::errors::InvalidArgument(
-          "The output %s of TRT engine should not be null.", name));
-  output->setName(name.c_str());
-  PADDLE_ENFORCE_EQ(output->isNetworkInput(),
-                    false,
-                    platform::errors::InvalidArgument(
-                        "The output %s of TRT engine should not be the input "
-                        "of the network at the same time.",
-                        name));
-  network()->markOutput(*output);
+  DeclareOutput(name);
   output->setType(dtype);
 }
 
