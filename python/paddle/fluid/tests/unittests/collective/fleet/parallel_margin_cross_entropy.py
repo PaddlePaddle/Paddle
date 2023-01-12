@@ -92,6 +92,7 @@ class TestParallelMarginSoftmaxCrossEntropyOp(unittest.TestCase):
                         norm_weight = paddle.divide(weight, weight_l2)
 
                         data = paddle.matmul(norm_input, norm_weight)
+                        data.retain_grads()
                         data.stop_gradient = False
 
                         sta = (
@@ -117,6 +118,7 @@ class TestParallelMarginSoftmaxCrossEntropyOp(unittest.TestCase):
                             group=check_group,
                         )
                         integral_data = integral_data.detach().clone()
+                        integral_data.retain_grads()
                         integral_data.stop_gradient = False
 
                         # add arcface margin to logit
