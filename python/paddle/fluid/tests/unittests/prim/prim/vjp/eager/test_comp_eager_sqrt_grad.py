@@ -52,13 +52,10 @@ class TestSqrtGradComp(unittest.TestCase):
                 cotangent, dtype='float32', stop_gradient=False
             )
             y = paddle.sqrt(x)
-            x_cotangent = paddle.grad(
-                y, x, v, create_graph=True, retain_graph=True
-            )
-            return x_cotangent[0]
+            return paddle.grad(y, x, v, create_graph=True, retain_graph=True)[0]
 
         def desired(primal, cotangent):
-            return autograd.make_vjp(autograd.numpy.tanh)(primal)[0](cotangent)
+            return autograd.make_vjp(autograd.numpy.sqrt)(primal)[0](cotangent)
 
         np.testing.assert_allclose(
             actual=actual(self.primal, self.cotangent),
