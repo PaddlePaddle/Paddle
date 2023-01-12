@@ -118,6 +118,8 @@ inline std::string DataLayoutToString(const DataLayout& layout) {
       return "NCDHW";
     case DataLayout::PSTRING_UNION:
       return "PSTRING_UNION";
+    case DataLayout::STRIDED:
+      return "STRIDED";
     default:
       PD_THROW("Unknown Data Layout type ", static_cast<int>(layout), ".");
   }
