@@ -345,9 +345,7 @@ class RReluTest(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(
-            no_check_set=['Noise'], check_eager=True
-        )  # no_check_set=['Noise'],
+        self.check_output(no_check_set=['Noise'], check_eager=True)
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out', check_eager=True)
