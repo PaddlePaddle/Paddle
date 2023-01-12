@@ -1576,6 +1576,9 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("get_custom_device_count", [](const std::string &device_type) {
     size_t device_count = 0;
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
+    // TODO(duanyanhui): Optimize DeviceManager::GetDeviceCount to support
+    // returning default device when only one device is registered in
+    // DeviceManager.
     device_count = phi::DeviceManager::GetDeviceCount(device_type);
 #else
           VLOG(1) << string::Sprintf(

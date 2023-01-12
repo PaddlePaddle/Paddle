@@ -647,6 +647,7 @@ def _current_expected_place():
                 )
                 _global_expected_place_ = core.CPUPlace()
         elif core.is_compiled_with_custom_device("npu"):
+            # TODO(duanyanhui): Optimize DeviceManager and Return all expected places when device registered in DeviceManager is greater than 1.
             try:
                 device_count = core.get_custom_device_count("npu")
             except Exception as e:
