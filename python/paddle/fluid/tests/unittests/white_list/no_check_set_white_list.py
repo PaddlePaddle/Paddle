@@ -39,4 +39,5 @@ no_check_set_white_list = [
     'rmsprop',
     'rrelu',
     'layer_norm',
+    'fused_scale_bias_relu_conv_bnstats',
 ]
