@@ -28,8 +28,9 @@ from filters import (
     to_opmaker_name_cstr,
     to_pascal_case,
     to_scalar_tensor_name,
+    to_variable_names,
 )
-from generate_op import replace_compat_name
+from generate_op import add_compat_name, add_fluid_name
 from jinja2 import Environment, FileSystemLoader, StrictUndefined
 from parse_utils import to_named_dict
 from tests import (
@@ -60,6 +61,7 @@ env.filters["to_input_name"] = to_input_name
 env.filters["to_opmaker_name_cstr"] = to_opmaker_name_cstr
 env.filters["cartesian_prod_mapping"] = cartesian_prod_mapping
 env.filters["to_composite_grad_opmaker_name"] = to_composite_grad_opmaker_name
+env.filters["to_variable_names"] = to_variable_names
 env.tests["base_op"] = is_base_op
 env.tests["vec"] = is_vec
 env.tests["scalar"] = is_scalar
@@ -100,8 +102,11 @@ def main(
 
     for op in ops:
         op['op_name'] = op['name']
+        add_fluid_name(op["inputs"])
+        add_fluid_name(op["attrs"])
+        add_fluid_name(op["outputs"])
 
-    replace_compat_name(op_op_map, forward_op_dict, {})
+    add_compat_name(op_op_map, forward_op_dict, {})
 
     if len(ops) == 0:
         if os.path.isfile(output_op_path):

@@ -14,6 +14,7 @@
 
 import itertools
 import re
+from typing import Dict, List
 
 from type_mapping import (
     attr_types_map,
@@ -137,10 +138,16 @@ def to_composite_grad_opmaker_name(backward_op_name):
     for i in range(len(words)):
         words[i] = words[i].strip()
         words[i] = words[i].capitalize()
-    composite_grad_opmaker_name = words[0] + "Composite"
-    composite_grad_opmaker_name += "".join(word for word in words[1:])
-    composite_grad_opmaker_name += "OpMaker"
+    composite_grad_opmaker_name = "".join(word for word in words)
+    composite_grad_opmaker_name += "CompositeGradOpMaker"
     return composite_grad_opmaker_name
+
+
+def to_variable_names(dict_list: List[Dict], key: str) -> List[str]:
+    names = []
+    for var in dict_list:
+        names.append(var[key])
+    return names
 
 
 def cartesian_prod_attrs(attrs):
