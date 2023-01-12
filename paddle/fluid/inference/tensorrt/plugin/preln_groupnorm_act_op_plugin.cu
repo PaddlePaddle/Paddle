@@ -431,7 +431,7 @@ int PrelnGroupnormActPluginDynamic::enqueue(
     if (cPerBlock > input_desc[0].dims.d[1]) {
       cPerBlock = 8;
     }
-    params_.withSwish = true;
+    params_.withSwish = with_silu_;
     params_.dst = static_cast<half *>(outputs[1]);
     params_.eleOut = static_cast<half *>(outputs[0]);
     params_.srcX = static_cast<half const *>(inputs[0]);
