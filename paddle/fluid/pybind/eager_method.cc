@@ -1939,9 +1939,26 @@ PyMethodDef variable_methods[] = {
     {"numpy",
      (PyCFunction)(void (*)(void))tensor_method_numpy,
      METH_VARARGS | METH_KEYWORDS,
-     "numpy()\n--\nReturns a numpy array shows the value of current "
-     "Tensor.\nReturns\nndarray: The numpy value of current Tensor.\nReturns "
-     "type\nndarray: dtype is same as current Tensor\nExamples:"},
+     R"DOC(numpy()
+--
+
+Returns a numpy array shows the value of current Tensor.
+
+Returns:
+    ndarray, The numpy value of current Tensor, dtype is
+    same as current Tensor.
+
+Examples:
+    .. code-block:: python
+
+        import paddle
+
+        data = paddle.uniform([30, 10, 32], dtype="float32", min=-1, max=1)
+        linear = paddle.nn.Linear(32, 64)
+        data = paddle.to_tensor(data)
+        x = linear(data)
+        print(x.numpy())
+)DOC"},
     {"_is_initialized",
      (PyCFunction)(void (*)(void))tensor_method__is_initialized,
      METH_VARARGS | METH_KEYWORDS,
@@ -1962,7 +1979,40 @@ PyMethodDef variable_methods[] = {
     {"clone",
      (PyCFunction)(void (*)(void))tensor_method_clone,
      METH_VARARGS | METH_KEYWORDS,
-     NULL},
+     R"DOC(clone()
+--
+
+Returns a new Tensor, which is clone of origin Tensor, and it remains in the current graph.
+It will always have a Tensor copy.
+Tn addition, the cloned Tensor provides gradient propagation.
+
+Returns:
+    Tensor, The cloned Tensor.
+
+Examples:
+    .. code-block:: python
+
+        import paddle
+
+        x = paddle.to_tensor(1.0, stop_gradient=False)
+        clone_x = x.clone()
+        y = clone_x**2
+        y.backward()
+        print(clone_x.stop_gradient) # False
+        print(clone_x.grad)          # [2.0], support gradient propagation
+        print(x.stop_gradient)       # False
+        print(x.grad)                # [2.0], clone_x support gradient propagation for x
+
+        x = paddle.to_tensor(1.0)
+        clone_x = x.clone()
+        clone_x.stop_gradient = False
+        z = clone_x**3
+        z.backward()
+        print(clone_x.stop_gradient) # False
+        print(clone_x.grad)          # [3.0], support gradient propagation
+        print(x.stop_gradient) # True
+        print(x.grad)          # None
+)DOC"},
     {"reconstruct_from_",
      (PyCFunction)(void (*)(void))tensor_method_reconstruct_from_,
      METH_VARARGS | METH_KEYWORDS,
@@ -1974,28 +2024,33 @@ PyMethodDef variable_methods[] = {
     {"clear_gradient",
      (PyCFunction)(void (*)(void))tensor_clear_gradient,
      METH_VARARGS | METH_KEYWORDS,
-     R"DOC(
-        clear_gradient()
-        --
+     R"DOC(clear_gradient(set_to_zero=True)
+--
 
-        Only for Tensor that has gradient, normally we use this for Parameters since other temporary Tensor doesen't has gradient.
+Only for Tensor that has gradient, normally we use this for Parameters since
+other temporary Tensor doesen't has gradient.
 
-        The Gradient of current Tensor will be set to ``0`` .
+The Gradient of current Tensor will be set to ``0``.
 
-        Returns:  None
+Args:
+    set_to_zero(bool, optional): If set to ``True``, the gradient will be set
+        to ``0``, otherwise the gradient will be set to ``None``. Default: ``True``.
 
-        Examples:
-             .. code-block:: python
+Returns:
+    None.
 
-                import paddle
-                input = paddle.uniform([10, 2])
-                linear = paddle.nn.Linear(2, 3)
-                out = linear(input)
-                out.backward()
-                print("Before clear_gradient, linear.weight.grad: {}".format(linear.weight.grad))
-                linear.weight.clear_gradient()
-                print("After clear_gradient, linear.weight.grad: {}".format(linear.weight.grad))
-      )DOC"},
+Examples:
+    .. code-block:: python
+
+        import paddle
+        input = paddle.uniform([10, 2])
+        linear = paddle.nn.Linear(2, 3)
+        out = linear(input)
+        out.backward()
+        print("Before clear_gradient, linear.weight.grad: {}".format(linear.weight.grad))
+        linear.weight.clear_gradient()
+        print("After clear_gradient, linear.weight.grad: {}".format(linear.weight.grad))
+)DOC"},
     {"is_dense",
      (PyCFunction)(void (*)(void))tensor_method_is_dense,
      METH_VARARGS | METH_KEYWORDS,
@@ -2023,48 +2078,7 @@ PyMethodDef variable_methods[] = {
     {"detach",
      (PyCFunction)(void (*)(void))tensor_method_detach,
      METH_VARARGS | METH_KEYWORDS,
-     "detach()\n"
-     "--\n"
-     "Returns a new Tensor, detached from the current graph.\n"
-     "It will share data with origin Tensor and always doesn't have a Tensor "
-     "copy.\n"
-     "In addition, the detached Tensor doesn't provide gradient propagation.\n"
-     "\n"
-     "Returns: The detached Tensor.\n"
-
-     "Examples:\n"
-     "    .. code-block:: python\n"
-
-     "        import paddle\n"
-
-     "        x = paddle.to_tensor(1.0, stop_gradient=False)\n"
-     "        detach_x = x.detach()\n"
-     "        detach_x[:] = 10.0\n"
-     "        print(x)  # Tensor(shape=[1], dtype=float32, place=CPUPlace, "
-     "stop_gradient=False,\n"
-     "                  #        [10.])\n"
-     "        y = x**2\n"
-     "        y.backward()\n"
-     "        print(x.grad)         # [20.0]\n"
-     "        print(detach_x.grad)  # None, 'stop_gradient=True' by default\n"
-
-     "        detach_x.stop_gradient = False # Set stop_gradient to be False, "
-     "supported auto-grad\n"
-     "        z = detach_x**3\n"
-     "        z.backward()\n"
-
-     "        print(x.grad)         # [20.0], detach_x is detached from x's "
-     "graph, not affect each other\n"
-     "        print(detach_x.grad)  # [300.0], detach_x has its own graph\n"
-
-     "        # Due to sharing of data with origin Tensor, There are some "
-     "unsafe operations:\n"
-     "        y = 2 * x\n"
-     "        detach_x[:] = 5.0\n"
-     "        y.backward()\n"
-     "        # It will raise Error:\n"
-     "        #   one of the variables needed for gradient computation has "
-     "been modified by an inplace operation.\n"},
+     NULL},
     {"get_tensor",
      (PyCFunction)(void (*)(void))tensor_method_get_underline_tensor,
      METH_VARARGS | METH_KEYWORDS,
@@ -2174,7 +2188,31 @@ PyMethodDef variable_methods[] = {
     {"element_size",
      (PyCFunction)(void (*)(void))tensor_method_element_size,
      METH_VARARGS | METH_KEYWORDS,
-     NULL},
+     R"DOC(element_size()
+--
+
+Returns the size in bytes of an element in the Tensor.
+
+Examples:
+    .. code-block:: python
+
+        import paddle
+
+        x = paddle.to_tensor(1, dtype='bool')
+        x.element_size() # 1
+
+        x = paddle.to_tensor(1, dtype='float16')
+        x.element_size() # 2
+
+        x = paddle.to_tensor(1, dtype='float32')
+        x.element_size() # 4
+
+        x = paddle.to_tensor(1, dtype='float64')
+        x.element_size() # 8
+
+        x = paddle.to_tensor(1, dtype='complex128')
+        x.element_size() # 16
+)DOC"},
     /***the method of sparse tensor****/
     {"_inplace_version",
      (PyCFunction)(void (*)(void))tensor__inplace_version,
