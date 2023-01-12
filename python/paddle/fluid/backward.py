@@ -2295,28 +2295,35 @@ def calc_gradient(targets, inputs, target_gradients=None, no_grad_set=None):
         target = targets[i]
         grad_name = _append_grad_suffix_(target.name)
         if grad is None:
-            target_shape = target.name + '_shape'
-            block.desc.append_op().copy_from(
-                _create_op_desc_(
-                    "shape",
-                    {'Input': [target.name]},
-                    {"Out": [target_shape]},
-                    {},
-                )
-            )
-            input_grad_names_set.add(target_shape)
-            op_desc = _create_op_desc_(
-                "fill_constant",
-                {"ShapeTensor": [target_shape]},
-                {"Out": [grad_name]},
-                {
-                    "shape": target.shape,
-                    "value": 1.0,
-                    "dtype": target.dtype,
-                },
+            output = block.create_var(
+                name=grad_name,
+                dtype=target.dtype,
+                type=target.type,
+                persistable=target.persistable,
+                stop_gradient=False,
             )
 
-            block.desc.append_op().copy_from(op_desc)
+            op = block.append_op(
+                type="fill_any_like",
+                inputs={'X': [target]},
+                outputs={'Out': [output]},
+                attrs={'value': 1.0, 'dtype': target.dtype},
+            )
+
+            op_role_attr_name = (
+                core.op_proto_and_checker_maker.kOpRoleAttrName()
+            )
+            op_device_attr_name = (
+                core.op_proto_and_checker_maker.kOpDeviceAttrName()
+            )
+
+            if not op.has_attr(op_role_attr_name):
+                op._set_attr(
+                    op_role_attr_name,
+                    core.op_proto_and_checker_maker.OpRole.Backward,
+                )
+            if not op.has_attr(op_device_attr_name):
+                op._set_attr(op_device_attr_name, "")
             input_grad_names_set.add(grad_name)
         else:
             if target.block.idx != block_idx or target.block.program != prog:

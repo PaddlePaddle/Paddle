@@ -411,15 +411,14 @@ class PartialProgramLayer:
         origin_train_program = self._train_program
         fwd_end_op_index = len(origin_infer_program.block(0).ops)
         for i in range(
-            fwd_end_op_index + 1,
+            fwd_end_op_index,
             min(
-                fwd_end_op_index + 2 * len(self._outputs.var_ids),
+                fwd_end_op_index + 1 * len(self._outputs.var_ids),
                 len(origin_train_program.block(0).ops),
             ),
-            2,
         ):
             op = origin_train_program.block(0).ops[i]
-            if op.type == 'fill_constant':
+            if op.type == 'fill_any_like':
                 var_name = op.output('Out')[0]
                 names.append(var_name)
 
@@ -612,7 +611,7 @@ class PartialProgramLayer:
         if targets and self._params:
             backward.gradients(targets=targets, inputs=[])
 
-        start_idx = len(main_program.block(0).ops) + 2 * len(
+        start_idx = len(main_program.block(0).ops) + 1 * len(
             self._outputs.tolist()
         )
 
@@ -789,7 +788,7 @@ class PartialProgramLayer:
     ):
         # NOTE(dev): We apply build_strategy for backward firstly to
         # avoid skipping more gc variables.
-        backward_start_op_index = forward_end_op_index + 2 * len(
+        backward_start_op_index = forward_end_op_index + 1 * len(
             self._outputs.var_ids
         )
         backward_end_op_index = whole_program.desc.block(0).op_size()
