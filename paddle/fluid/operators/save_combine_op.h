@@ -211,8 +211,8 @@ class SaveCombineOpKernel : public framework::OpKernel<T> {
 
       if (inp_vars.size() > 0 && inp_vars[0]->IsType<phi::DenseTensor>()) {
         std::vector<const phi::DenseTensor*> x(inp_vars.size());
-        for (auto inp_var : inp_vars) {
-          x.push_back(&(inp_var->Get<phi::DenseTensor>()));
+        for (size_t i = 0; i < inp_vars.size(); i++) {
+          x[i] = (&(inp_vars[i]->Get<phi::DenseTensor>()));
         }
         SaveCombineTensorKernel<T>(dev_ctx,
                                    x,
@@ -223,8 +223,8 @@ class SaveCombineOpKernel : public framework::OpKernel<T> {
                                    output);
       } else {
         std::vector<const phi::ExtendedTensor*> x(inp_vars.size());
-        for (auto inp_var : inp_vars) {
-          x.push_back(&(inp_var->Get<framework::Vocab>()));
+        for (size_t i = 0; i < inp_vars.size(); i++) {
+          x[i] = (&(inp_vars[i]->Get<framework::Vocab>()));
         }
         SaveCombineVocabKernel<T>(dev_ctx,
                                   x,
