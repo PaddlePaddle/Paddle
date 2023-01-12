@@ -45,9 +45,6 @@ void sum_grad(const Tensor& x,
     return;
   }
   std::vector<int> x_dim = phi::vectorize<int>(x.dims());
-  std::cout << "*****x_dim = " << x_dim.size() << std::endl;
-  std::cout << " ******out_grad.shape : "
-            << phi::vectorize<int>(out_grad.dims()).size() << std::endl;
   int64_t axis_size = axis.size();
   int64_t x_dim_size = x_dim.size();
   reduce_all = false;
@@ -66,16 +63,11 @@ void sum_grad(const Tensor& x,
     } else {
       axis_ = axis.GetData();
     }
-    std::cout << "******axis_.shape : " << axis_.size() << std::endl;
     auto out_grad_ = unsqueeze<T>(out_grad, axis_);
-    std::cout << "*******out_grad_.shape : "
-              << phi::vectorize<int>(out_grad_.dims()).size() << std::endl;
     x_grad_tmp = expand<T>(out_grad_, x_dim);
   } else {
     x_grad_tmp = expand<T>(out_grad, x_dim);
   }
-  std::cout << "*******x_grad_tmp.shape : "
-            << phi::vectorize<int>(x_grad_tmp.dims()).size() << std::endl;
 
   x_grad->set_impl(x_grad_tmp.impl());
 }

@@ -104,9 +104,6 @@ Tensor expand<DescTensor>(const Tensor& x, const IntArray& shape) {
   op->SetOutput(
       "Out", {std::static_pointer_cast<prim::DescTensor>(out.impl())->Name()});
   std::vector<int> new_shape(shape.GetData().begin(), shape.GetData().end());
-  for (auto i = new_shape.begin(); i != new_shape.end(); i++) {
-    std::cout << "new_shape[]" << *i << std::endl;
-  }
   op->SetAttr("shape", new_shape);
   op->CheckAttrs();
   op->InferVarType(block);
