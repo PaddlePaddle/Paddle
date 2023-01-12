@@ -1150,7 +1150,7 @@
   infer_meta :
     func : SqueezeWithXShapeInferMeta
   kernel :
-    func : squeeze_with_xshape
+    func : squeeze
     data_type : x
   inplace : (x -> out)
   view: (x -> out)
@@ -1258,7 +1258,7 @@
   infer_meta :
     func : UnsqueezeWithXShapeInferMeta
   kernel :
-    func : unsqueeze_with_xshape
+    func : unsqueeze
     data_type : x
   inplace : (x -> out)
   view: (x -> out)
