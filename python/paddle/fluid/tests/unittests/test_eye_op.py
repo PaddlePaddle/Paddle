@@ -42,7 +42,7 @@ class TestEyeOp(OpTest):
         self.outputs = {'Out': np.eye(219, 319, dtype=np.int32)}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_dygraph=True)
 
 
 class TestEyeOp1(OpTest):
@@ -58,7 +58,7 @@ class TestEyeOp1(OpTest):
         self.outputs = {'Out': np.eye(50, dtype=float)}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_dygraph=True)
 
 
 class TestEyeOp2(OpTest):
@@ -74,7 +74,7 @@ class TestEyeOp2(OpTest):
         self.outputs = {'Out': np.eye(99, 1, dtype=float)}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_dygraph=True)
 
 
 class API_TestTensorEye(unittest.TestCase):

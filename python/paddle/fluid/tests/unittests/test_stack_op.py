@@ -61,10 +61,10 @@ class TestStackOpBase(OpTest):
         self.attrs = {'axis': self.axis}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_dygraph=True)
 
     def test_check_grad(self):
-        self.check_grad(self.get_x_names(), 'Y', check_eager=True)
+        self.check_grad(self.get_x_names(), 'Y', check_dygraph=True)
 
 
 class TestStackOp1(TestStackOpBase):
@@ -141,10 +141,10 @@ class TestStackBF16Op(OpTest):
         self.attrs = {'axis': self.axis}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_dygraph=True)
 
     def test_check_grad(self):
-        self.check_grad(self.get_x_names(), 'Y', check_eager=True)
+        self.check_grad(self.get_x_names(), 'Y', check_dygraph=True)
 
 
 class TestStackAPIWithLoDTensorArray(unittest.TestCase):

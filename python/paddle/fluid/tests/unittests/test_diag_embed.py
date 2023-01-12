@@ -30,7 +30,7 @@ class TestDiagEmbedOp(OpTest):
         self.outputs = {'Out': self.target}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_dygraph=True)
 
     def init_config(self):
         self.case = np.random.randn(2, 3).astype('float32')

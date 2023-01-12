@@ -42,10 +42,12 @@ class TestLgammaOp(OpTest):
         self.dtype = np.float64
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_dygraph=True)
 
     def test_check_grad_normal(self):
-        self.check_grad(['X'], 'Out', numeric_grad_delta=1e-7, check_eager=True)
+        self.check_grad(
+            ['X'], 'Out', numeric_grad_delta=1e-7, check_dygraph=True
+        )
 
 
 class TestLgammaOpFp32(TestLgammaOp):
@@ -54,7 +56,7 @@ class TestLgammaOpFp32(TestLgammaOp):
 
     def test_check_grad_normal(self):
         self.check_grad(
-            ['X'], 'Out', numeric_grad_delta=0.005, check_eager=True
+            ['X'], 'Out', numeric_grad_delta=0.005, check_dygraph=True
         )
 
 

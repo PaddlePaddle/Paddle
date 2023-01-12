@@ -168,10 +168,10 @@ class TestLU_UnpackOp(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_dygraph=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], ['L', 'U'], check_eager=True)
+        self.check_grad(['X'], ['L', 'U'], check_dygraph=True)
 
 
 # m = n

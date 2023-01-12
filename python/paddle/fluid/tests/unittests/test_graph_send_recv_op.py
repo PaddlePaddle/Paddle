@@ -49,11 +49,11 @@ class TestGraphSendRecvMaxOp(OpTest):
         self.outputs = {'Out': out}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_dygraph=True)
 
     def test_check_grad(self):
         self.check_grad(
-            ['X'], 'Out', user_defined_grads=[self.gradient], check_eager=True
+            ['X'], 'Out', user_defined_grads=[self.gradient], check_dygraph=True
         )
 
 
@@ -79,11 +79,11 @@ class TestGraphSendRecvMinOp(OpTest):
         self.outputs = {'Out': out}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_dygraph=True)
 
     def test_check_grad(self):
         self.check_grad(
-            ['X'], 'Out', user_defined_grads=[self.gradient], check_eager=True
+            ['X'], 'Out', user_defined_grads=[self.gradient], check_dygraph=True
         )
 
 
@@ -107,10 +107,10 @@ class TestGraphSendRecvSumOp(OpTest):
         self.outputs = {'Out': out}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_dygraph=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_eager=True)
+        self.check_grad(['X'], 'Out', check_dygraph=True)
 
 
 class TestGraphSendRecvMeanOp(OpTest):
@@ -135,10 +135,10 @@ class TestGraphSendRecvMeanOp(OpTest):
         self.outputs = {'Out': out, 'Dst_count': dst_count}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_dygraph=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_eager=True)
+        self.check_grad(['X'], 'Out', check_dygraph=True)
 
 
 def compute_graph_send_recv_for_sum_mean(inputs, attributes):

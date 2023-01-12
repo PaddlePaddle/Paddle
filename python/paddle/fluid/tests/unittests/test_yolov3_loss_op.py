@@ -272,12 +272,12 @@ class TestYolov3LossOp(OpTest):
 
     def test_check_output(self):
         place = core.CPUPlace()
-        self.check_output_with_place(place, atol=2e-3, check_eager=True)
+        self.check_output_with_place(place, atol=2e-3, check_dygraph=True)
 
     def test_check_grad_ignore_gtbox(self):
         place = core.CPUPlace()
         self.check_grad_with_place(
-            place, ['X'], 'Loss', max_relative_error=0.2, check_eager=True
+            place, ['X'], 'Loss', max_relative_error=0.2, check_dygraph=True
         )
 
     def initTestCase(self):

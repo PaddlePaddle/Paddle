@@ -44,7 +44,7 @@ class TestCheckFiniteAndUnscaleOp(OpTest):
         self.dtype = np.float32
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_dygraph=True)
 
 
 class TestCheckFiniteAndUnscaleOpWithNan(OpTest):
@@ -69,7 +69,7 @@ class TestCheckFiniteAndUnscaleOpWithNan(OpTest):
     def test_check_output(self):
         # When input contains nan, do not check the output,
         # since the output may be nondeterministic and will be discarded.
-        self.check_output(no_check_set=['Out'], check_eager=True)
+        self.check_output(no_check_set=['Out'], check_dygraph=True)
 
 
 class TestCheckFiniteAndUnscaleOpWithInf(OpTest):
@@ -94,7 +94,7 @@ class TestCheckFiniteAndUnscaleOpWithInf(OpTest):
     def test_check_output(self):
         # When input contains inf, do not check the output,
         # since the output may be nondeterministic and will be discarded.
-        self.check_output(no_check_set=['Out'], check_eager=True)
+        self.check_output(no_check_set=['Out'], check_dygraph=True)
 
 
 if __name__ == '__main__':

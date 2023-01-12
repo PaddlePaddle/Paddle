@@ -42,10 +42,10 @@ class TestScatterOp(OpTest):
         self.outputs = {'Out': output_np}
 
     def test_check_output(self):
-        self.check_output_with_place(self.place, check_eager=False)
+        self.check_output_with_place(self.place, check_dygraph=False)
 
     def test_check_grad(self):
-        self.check_grad(["X", "Updates"], "Out", check_eager=False)
+        self.check_grad(["X", "Updates"], "Out", check_dygraph=False)
 
 
 class TestScatterOp0(OpTest):
@@ -64,10 +64,10 @@ class TestScatterOp0(OpTest):
         self.outputs = {'Out': output_np}
 
     def test_check_output(self):
-        self.check_output_with_place(self.place, check_eager=False)
+        self.check_output_with_place(self.place, check_dygraph=False)
 
     def test_check_grad(self):
-        self.check_grad(["X", "Updates"], "Out", check_eager=False)
+        self.check_grad(["X", "Updates"], "Out", check_dygraph=False)
 
 
 class TestScatterOp1(OpTest):
@@ -89,10 +89,10 @@ class TestScatterOp1(OpTest):
         self.outputs = {'Out': output_np}
 
     def test_check_output(self):
-        self.check_output_with_place(self.place, check_eager=False)
+        self.check_output_with_place(self.place, check_dygraph=False)
 
     def test_check_grad(self):
-        self.check_grad(["X", "Updates"], "Out", check_eager=False)
+        self.check_grad(["X", "Updates"], "Out", check_dygraph=False)
 
 
 class TestScatterOp2(OpTest):
@@ -110,10 +110,10 @@ class TestScatterOp2(OpTest):
         self.outputs = {'Out': output_np}
 
     def test_check_output(self):
-        self.check_output_with_place(self.place, check_eager=False)
+        self.check_output_with_place(self.place, check_dygraph=False)
 
     def test_check_grad(self):
-        self.check_grad(['X', 'Updates'], 'Out', check_eager=False)
+        self.check_grad(['X', 'Updates'], 'Out', check_dygraph=False)
 
 
 class TestScatterAPI(unittest.TestCase):
@@ -241,10 +241,10 @@ class TestScatterOpFp16(OpTest):
         self.outputs = {'Out': output_np}
 
     def test_check_output(self):
-        self.check_output_with_place(self.place, check_eager=False)
+        self.check_output_with_place(self.place, check_dygraph=False)
 
     def test_check_grad(self):
-        self.check_grad(["X", "Updates"], "Out", check_eager=False)
+        self.check_grad(["X", "Updates"], "Out", check_dygraph=False)
 
 
 class TestScatterInplaceAPI(TestScatterAPI):

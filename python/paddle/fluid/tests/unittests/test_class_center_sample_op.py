@@ -115,7 +115,7 @@ class TestClassCenterSampleOp(OpTest):
 
     def test_check_output(self):
         self.check_output(
-            no_check_set=['SampledLocalClassCenter'], check_eager=True
+            no_check_set=['SampledLocalClassCenter'], check_dygraph=True
         )
 
 

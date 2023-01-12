@@ -33,7 +33,7 @@ def create_test_not_equal_class(op_type, typename, callback):
             self.op_type = op_type
 
         def test_output(self):
-            self.check_output(check_eager=True)
+            self.check_output(check_dygraph=True)
 
     cls_name = "{0}_{1}_{2}".format(op_type, typename, 'not_equal_all')
     Cls.__name__ = cls_name
@@ -52,7 +52,7 @@ def create_test_not_shape_equal_class(op_type, typename, callback):
             self.op_type = op_type
 
         def test_output(self):
-            self.check_output(check_eager=True)
+            self.check_output(check_dygraph=True)
 
     cls_name = "{0}_{1}_{2}".format(op_type, typename, 'not_shape_equal_all')
     Cls.__name__ = cls_name
@@ -70,7 +70,7 @@ def create_test_equal_class(op_type, typename, callback):
             self.op_type = op_type
 
         def test_output(self):
-            self.check_output(check_eager=True)
+            self.check_output(check_dygraph=True)
 
     cls_name = "{0}_{1}_{2}".format(op_type, typename, 'equal_all')
     Cls.__name__ = cls_name
@@ -90,7 +90,7 @@ def create_test_dim1_class(op_type, typename, callback):
             self.op_type = op_type
 
         def test_output(self):
-            self.check_output(check_eager=True)
+            self.check_output(check_dygraph=True)
 
     cls_name = "{0}_{1}_{2}".format(op_type, typename, 'equal_all')
     Cls.__name__ = cls_name

@@ -42,7 +42,7 @@ class TestSearchSorted(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_dygraph=True)
 
     def init_test_case(self):
         self.sorted_sequence = np.array([1, 3, 5, 7, 9]).astype("float32")

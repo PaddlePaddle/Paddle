@@ -314,10 +314,10 @@ class TestGraphSendUERecvSumOp(OpTest):
         self.message_op = 'ADD'
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_dygraph=True)
 
     def test_check_grad(self):
-        self.check_grad(['X', 'Y'], 'Out', check_eager=True)
+        self.check_grad(['X', 'Y'], 'Out', check_dygraph=True)
 
 
 class TestSumCase1(TestGraphSendUERecvSumOp):
@@ -420,10 +420,10 @@ class TestGraphSendUERecvMeanOp(OpTest):
         self.message_op = 'ADD'
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_dygraph=True)
 
     def test_check_grad(self):
-        self.check_grad(['X', 'Y'], 'Out', check_eager=True)
+        self.check_grad(['X', 'Y'], 'Out', check_dygraph=True)
 
 
 class TestMeanCase1(TestGraphSendUERecvMeanOp):
@@ -526,14 +526,14 @@ class TestGraphSendUERecvMaxOp(OpTest):
         self.message_op = 'ADD'
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_dygraph=True)
 
     def test_check_grad(self):
         self.check_grad(
             ['X', 'Y'],
             'Out',
             user_defined_grads=self.gradients,
-            check_eager=True,
+            check_dygraph=True,
         )
 
 
@@ -637,14 +637,14 @@ class TestGraphSendUERecvMinOp(OpTest):
         self.message_op = 'ADD'
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_dygraph=True)
 
     def test_check_grad(self):
         self.check_grad(
             ['X', 'Y'],
             'Out',
             user_defined_grads=self.gradients,
-            check_eager=True,
+            check_dygraph=True,
         )
 
 

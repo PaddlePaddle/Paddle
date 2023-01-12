@@ -62,10 +62,10 @@ class TestBilinearTensorProductOp(OpTest):
         self.outputs = {'Out': output + bias}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_dygraph=True)
 
     def test_check_grad_normal(self):
-        self.check_grad(['X', 'Y', 'Weight', 'Bias'], 'Out', check_eager=True)
+        self.check_grad(['X', 'Y', 'Weight', 'Bias'], 'Out', check_dygraph=True)
 
 
 if __name__ == "__main__":

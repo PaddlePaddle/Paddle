@@ -45,10 +45,10 @@ class TestExpandV2OpRank1(OpTest):
         self.expand_times = [1]
 
     def test_check_output(self):
-        self.check_output_with_place(self.place, check_eager=False)
+        self.check_output_with_place(self.place, check_dygraph=False)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_eager=True)
+        self.check_grad(['X'], 'Out', check_dygraph=True)
 
 
 class TestExpandV2OpRank2_DimExpanding(TestExpandV2OpRank1):
@@ -121,7 +121,7 @@ class TestExpandV2OpRank1_tensor_attr(OpTest):
         self.infer_expand_shape = [-1]
 
     def test_check_output(self):
-        self.check_output_with_place(self.place, check_eager=False)
+        self.check_output_with_place(self.place, check_dygraph=False)
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out')
@@ -157,7 +157,7 @@ class TestExpandV2OpRank1_tensor(OpTest):
         self.expand_shape = [2, 100]
 
     def test_check_output(self):
-        self.check_output_with_place(self.place, check_eager=False)
+        self.check_output_with_place(self.place, check_dygraph=False)
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out')
@@ -177,7 +177,7 @@ class TestExpandV2OpInteger(OpTest):
         self.outputs = {'Out': output}
 
     def test_check_output(self):
-        self.check_output_with_place(self.place, check_eager=False)
+        self.check_output_with_place(self.place, check_dygraph=False)
 
 
 # Situation 5: input x is Bool
@@ -192,7 +192,7 @@ class TestExpandV2OpBoolean(OpTest):
         self.outputs = {'Out': output}
 
     def test_check_output(self):
-        self.check_output_with_place(self.place, check_eager=False)
+        self.check_output_with_place(self.place, check_dygraph=False)
 
 
 # Situation 56: input x is Integer
@@ -209,7 +209,7 @@ class TestExpandV2OpInt64_t(OpTest):
         self.outputs = {'Out': output}
 
     def test_check_output(self):
-        self.check_output_with_place(self.place, check_eager=False)
+        self.check_output_with_place(self.place, check_dygraph=False)
 
 
 class TestExpandV2Error(unittest.TestCase):

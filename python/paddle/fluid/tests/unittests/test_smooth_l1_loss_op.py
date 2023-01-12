@@ -46,11 +46,11 @@ class TestSmoothL1LossOp1(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_dygraph=True)
 
     def test_check_grad_normal(self):
         self.check_grad(
-            ['X', 'Y'], 'Out', max_relative_error=0.02, check_eager=True
+            ['X', 'Y'], 'Out', max_relative_error=0.02, check_dygraph=True
         )
 
     def test_check_grad_ingore_x(self):
@@ -59,7 +59,7 @@ class TestSmoothL1LossOp1(OpTest):
             'Out',
             max_relative_error=0.03,
             no_grad_set=set("X"),
-            check_eager=True,
+            check_dygraph=True,
         )
 
     def test_check_grad_ingore_y(self):
@@ -68,7 +68,7 @@ class TestSmoothL1LossOp1(OpTest):
             'Out',
             max_relative_error=0.03,
             no_grad_set=set('Y'),
-            check_eager=True,
+            check_dygraph=True,
         )
 
 
@@ -96,11 +96,11 @@ class TestSmoothL1LossOp2(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_dygraph=True)
 
     def test_check_grad_normal(self):
         self.check_grad(
-            ['X', 'Y'], 'Out', max_relative_error=0.03, check_eager=True
+            ['X', 'Y'], 'Out', max_relative_error=0.03, check_dygraph=True
         )
 
     def test_check_grad_ingore_x(self):
@@ -109,7 +109,7 @@ class TestSmoothL1LossOp2(OpTest):
             'Out',
             max_relative_error=0.03,
             no_grad_set=set(['X', 'InsideWeight', 'OutsideWeight']),
-            check_eager=True,
+            check_dygraph=True,
         )
 
     def test_check_grad_ingore_y(self):
@@ -118,7 +118,7 @@ class TestSmoothL1LossOp2(OpTest):
             'Out',
             max_relative_error=0.03,
             no_grad_set=set(['Y', 'InsideWeight', 'OutsideWeight']),
-            check_eager=True,
+            check_dygraph=True,
         )
 
 

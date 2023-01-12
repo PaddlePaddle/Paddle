@@ -150,7 +150,7 @@ class TestBincountOp(OpTest):
         self.Out = np.bincount(self.np_input, minlength=self.minlength)
 
     def test_check_output(self):
-        self.check_output(check_eager=False)
+        self.check_output(check_dygraph=False)
 
 
 class TestCase1(TestBincountOp):

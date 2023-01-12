@@ -50,10 +50,10 @@ class TestSolveOp(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_dygraph=True)
 
     def test_check_grad_normal(self):
-        self.check_grad(['X', 'Y'], 'Out', check_eager=True)
+        self.check_grad(['X', 'Y'], 'Out', check_dygraph=True)
 
 
 # x broadcast + 3D batch case
@@ -71,11 +71,11 @@ class TestSolveOpBatched_case0(OpTest):
         self.outputs = {'Out': result}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_dygraph=True)
 
     def test_check_grad_normal(self):
         self.check_grad(
-            ['X', 'Y'], 'Out', max_relative_error=1e-1, check_eager=True
+            ['X', 'Y'], 'Out', max_relative_error=1e-1, check_dygraph=True
         )
 
 
@@ -94,11 +94,11 @@ class TestSolveOpBatched_case1(OpTest):
         self.outputs = {'Out': result}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_dygraph=True)
 
     def test_check_grad_normal(self):
         self.check_grad(
-            ['X', 'Y'], 'Out', max_relative_error=0.04, check_eager=True
+            ['X', 'Y'], 'Out', max_relative_error=0.04, check_dygraph=True
         )
 
 
@@ -117,11 +117,11 @@ class TestSolveOpBatched_case2(OpTest):
         self.outputs = {'Out': result}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_dygraph=True)
 
     def test_check_grad_normal(self):
         self.check_grad(
-            ['X', 'Y'], 'Out', max_relative_error=0.02, check_eager=True
+            ['X', 'Y'], 'Out', max_relative_error=0.02, check_dygraph=True
         )
 
 
@@ -140,11 +140,11 @@ class TestSolveOpBatched_case3(OpTest):
         self.outputs = {'Out': result}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_dygraph=True)
 
     def test_check_grad_normal(self):
         self.check_grad(
-            ['X', 'Y'], 'Out', max_relative_error=0.02, check_eager=True
+            ['X', 'Y'], 'Out', max_relative_error=0.02, check_dygraph=True
         )
 
 
@@ -163,10 +163,10 @@ class TestSolveOpBatched_case4(OpTest):
         self.outputs = {'Out': result}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_dygraph=True)
 
     def test_check_grad_normal(self):
-        self.check_grad(['X', 'Y'], 'Out', check_eager=True)
+        self.check_grad(['X', 'Y'], 'Out', check_dygraph=True)
 
 
 # 4D normal batch case
@@ -184,10 +184,10 @@ class TestSolveOpBatched_case5(OpTest):
         self.outputs = {'Out': result}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_dygraph=True)
 
     def test_check_grad_normal(self):
-        self.check_grad(['X', 'Y'], 'Out', check_eager=True)
+        self.check_grad(['X', 'Y'], 'Out', check_dygraph=True)
 
 
 # 4D batch + y broadcast case
@@ -205,10 +205,10 @@ class TestSolveOpBatched_case6(OpTest):
         self.outputs = {'Out': result}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_dygraph=True)
 
     def test_check_grad_normal(self):
-        self.check_grad(['X', 'Y'], 'Out', check_eager=True)
+        self.check_grad(['X', 'Y'], 'Out', check_dygraph=True)
 
 
 # 5D normal batch case
@@ -226,11 +226,11 @@ class TestSolveOpBatched_case7(OpTest):
         self.outputs = {'Out': result}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_dygraph=True)
 
     def test_check_grad_normal(self):
         self.check_grad(
-            ['X', 'Y'], 'Out', max_relative_error=0.04, check_eager=True
+            ['X', 'Y'], 'Out', max_relative_error=0.04, check_dygraph=True
         )
 
 
@@ -249,11 +249,11 @@ class TestSolveOpBatched_case8(OpTest):
         self.outputs = {'Out': result}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_dygraph=True)
 
     def test_check_grad_normal(self):
         self.check_grad(
-            ['X', 'Y'], 'Out', max_relative_error=0.04, check_eager=True
+            ['X', 'Y'], 'Out', max_relative_error=0.04, check_dygraph=True
         )
 
 

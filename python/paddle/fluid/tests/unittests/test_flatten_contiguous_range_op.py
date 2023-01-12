@@ -36,10 +36,10 @@ class TestFlattenOp(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(no_check_set=["XShape"], check_eager=True)
+        self.check_output(no_check_set=["XShape"], check_dygraph=True)
 
     def test_check_grad(self):
-        self.check_grad(["X"], "Out", check_eager=True)
+        self.check_grad(["X"], "Out", check_dygraph=True)
 
     def init_test_case(self):
         self.in_shape = (3, 2, 5, 4)

@@ -124,7 +124,7 @@ class TestMKLDNNSwishDim2(TestSwish):
         super().setUp()
 
         self.attrs["use_mkldnn"] = True
-        self.check_eager = False
+        self.check_dygraph = False
 
     def init_dtype(self):
         self.dtype = np.float32
@@ -294,7 +294,7 @@ class TestMKLDNNSwishDim4(TestSwish):
         self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
         self.outputs = {'Out': out}
         self.attrs = {"use_mkldnn": True, "beta": beta}
-        self.check_eager = False
+        self.check_dygraph = False
 
     def init_dtype(self):
         self.dtype = np.float32

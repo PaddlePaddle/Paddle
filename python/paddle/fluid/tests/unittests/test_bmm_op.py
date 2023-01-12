@@ -32,10 +32,10 @@ class TestBmmOp(OpTest):
         self.outputs = {'Out': Out}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_dygraph=True)
 
     def test_checkout_grad(self):
-        self.check_grad(['X', 'Y'], 'Out', check_eager=True)
+        self.check_grad(['X', 'Y'], 'Out', check_dygraph=True)
 
 
 class API_TestBmm(unittest.TestCase):

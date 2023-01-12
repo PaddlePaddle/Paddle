@@ -102,10 +102,10 @@ class TestFrobeniusNormOp(OpTest):
         self.outputs = {'Out': norm}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_dygraph=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_eager=True)
+        self.check_grad(['X'], 'Out', check_dygraph=True)
 
     def init_test_case(self):
         self.shape = [2, 3, 4, 5]
@@ -122,7 +122,7 @@ class TestFrobeniusNormOp2(TestFrobeniusNormOp):
         self.dtype = "float32"
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_eager=True)
+        self.check_grad(['X'], 'Out', check_dygraph=True)
 
 
 class TestPnormOp(OpTest):
@@ -144,10 +144,10 @@ class TestPnormOp(OpTest):
         self.gradient = self.calc_gradient()
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_dygraph=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_eager=True)
+        self.check_grad(['X'], 'Out', check_dygraph=True)
 
     def init_test_case(self):
         self.shape = [2, 3, 4, 5]
@@ -334,7 +334,7 @@ class TestPnormBF16Op(OpTest):
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
-        self.check_output_with_place(place, atol=1e-3, check_eager=True)
+        self.check_output_with_place(place, atol=1e-3, check_dygraph=True)
 
     def test_check_grad(self):
         place = core.CUDAPlace(0)
@@ -343,7 +343,7 @@ class TestPnormBF16Op(OpTest):
             ['X'],
             'Out',
             user_defined_grads=self.gradient,
-            check_eager=True,
+            check_dygraph=True,
         )
 
     def init_test_case(self):

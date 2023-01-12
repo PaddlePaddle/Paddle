@@ -67,7 +67,7 @@ class TestComplexOp(OpTest):
         self.outputs = {'Out': out_ref}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_dygraph=True)
 
     def test_check_grad(self):
         dout = self.out_grad
@@ -79,7 +79,7 @@ class TestComplexOp(OpTest):
             'Out',
             user_defined_grads=[dx, dy],
             user_defined_grad_outputs=[dout],
-            check_eager=True,
+            check_dygraph=True,
         )
 
     def test_check_grad_ignore_x(self):
@@ -95,7 +95,7 @@ class TestComplexOp(OpTest):
             no_grad_set=set('X'),
             user_defined_grads=[dy],
             user_defined_grad_outputs=[dout],
-            check_eager=True,
+            check_dygraph=True,
         )
 
     def test_check_grad_ignore_y(self):
@@ -109,7 +109,7 @@ class TestComplexOp(OpTest):
             no_grad_set=set('Y'),
             user_defined_grads=[dx],
             user_defined_grad_outputs=[dout],
-            check_eager=True,
+            check_dygraph=True,
         )
 
 

@@ -149,12 +149,12 @@ class TestMarginCrossEntropyOp(OpTest):
 
     def test_check_output(self):
         self.check_output_with_place(
-            core.CUDAPlace(0), atol=1e-5, check_eager=True
+            core.CUDAPlace(0), atol=1e-5, check_dygraph=True
         )
 
     def test_check_grad(self):
         self.check_grad_with_place(
-            core.CUDAPlace(0), ["Logits"], "Loss", check_eager=True
+            core.CUDAPlace(0), ["Logits"], "Loss", check_dygraph=True
         )
 
 
@@ -172,7 +172,7 @@ class TestMarginCrossEntropyOpFP32(TestMarginCrossEntropyOp):
             "Loss",
             numeric_grad_delta=5e-2,
             max_relative_error=5e-2,
-            check_eager=True,
+            check_dygraph=True,
         )
 
 
@@ -185,7 +185,7 @@ class TestMarginCrossEntropyOpFP16(TestMarginCrossEntropyOp):
 
     def test_check_output(self):
         self.check_output_with_place(
-            core.CUDAPlace(0), atol=5e-2, check_eager=True
+            core.CUDAPlace(0), atol=5e-2, check_dygraph=True
         )
 
     def test_check_grad(self):
@@ -195,7 +195,7 @@ class TestMarginCrossEntropyOpFP16(TestMarginCrossEntropyOp):
             "Loss",
             numeric_grad_delta=6e-1,
             max_relative_error=6e-1,
-            check_eager=True,
+            check_dygraph=True,
         )
 
 
@@ -225,7 +225,7 @@ class TestMarginCrossEntropyOpCPU(TestMarginCrossEntropyOp):
     def test_check_output(self):
         try:
             self.check_output_with_place(
-                core.CPUPlace(), atol=1e-5, check_eager=True
+                core.CPUPlace(), atol=1e-5, check_dygraph=True
             )
         except RuntimeError:
             pass
@@ -233,7 +233,7 @@ class TestMarginCrossEntropyOpCPU(TestMarginCrossEntropyOp):
     def test_check_grad(self):
         try:
             self.check_grad_with_place(
-                core.CPUPlace(), ["Logits"], "Loss", check_eager=True
+                core.CPUPlace(), ["Logits"], "Loss", check_dygraph=True
             )
         except RuntimeError:
             pass

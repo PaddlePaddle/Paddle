@@ -63,10 +63,10 @@ class TestGraphSendUVOp(OpTest):
         self.outputs = {'out': out}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_dygraph=True)
 
     def test_check_grad(self):
-        self.check_grad(['x', 'y'], 'out', check_eager=True)
+        self.check_grad(['x', 'y'], 'out', check_dygraph=True)
 
     def set_config(self):
         self.x = np.random.random((10, 20)).astype("float64")

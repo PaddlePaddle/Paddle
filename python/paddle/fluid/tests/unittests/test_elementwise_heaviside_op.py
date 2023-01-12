@@ -181,7 +181,7 @@ class TestHeavisideAPI_float16(OpTest):
             user_defined_grads=Heaviside_grad(
                 self.inputs['X'], self.inputs['Y'], 1 / self.inputs['X'].size
             ),
-            check_eager=True,
+            check_dygraph=True,
         )
 
 

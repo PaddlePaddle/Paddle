@@ -995,7 +995,7 @@ class OpTest(unittest.TestCase):
             if not kernel_sig:
                 return None
             assert hasattr(self, "python_api"), (
-                "Detect there is KernelSignature for `%s` op, please set the `self.python_api` if you set check_eager = True"
+                "Detect there is KernelSignature for `%s` op, please set the `self.python_api` if you set check_dygraph = True"
                 % self.op_type
             )
             args = prepare_python_api_arguments(
@@ -1516,13 +1516,7 @@ class OpTest(unittest.TestCase):
         equal_nan=False,
         check_dygraph=True,
         inplace_atol=None,
-        check_eager=False,
     ):
-        # disable legacy dygraph check when check_eager is True
-        if check_eager or check_dygraph:
-            check_eager = True
-            check_dygraph = False
-
         def find_imperative_actual(target_name, dygraph_outs, place):
             for name in dygraph_outs:
                 if name == target_name:
@@ -1697,12 +1691,12 @@ class OpTest(unittest.TestCase):
                     "Output (" + name + ") has different lod at " + str(place),
                 )
 
-        class EagerChecker(Checker):
+        class DygraphChecker(Checker):
             def init(self):
                 self.checker_name = "eager checker"
 
             def calculate_output(self):
-                # we only check end2end api when check_eager=True
+                # we only check end2end api when check_dygraph=True
                 self.is_python_api_test = True
                 eager_dygraph_outs = self.op_test._calc_python_api_output(place)
                 if eager_dygraph_outs is None:
@@ -1800,7 +1794,6 @@ class OpTest(unittest.TestCase):
         if self.is_bfloat16_op():
             if self.is_mkldnn_op():
                 check_dygraph = False
-                check_eager = False
                 if hasattr(self, 'force_fp32_output') and getattr(
                     self, 'force_fp32_output'
                 ):
@@ -1822,8 +1815,8 @@ class OpTest(unittest.TestCase):
         static_checker.check()
         outs, fetch_list = static_checker.outputs, static_checker.fetch_list
 
-        if check_eager:
-            eager_checker = EagerChecker(self, self.outputs)
+        if check_dygraph:
+            eager_checker = DygraphChecker(self, self.outputs)
             eager_checker.check()
             eager_dygraph_outs = eager_checker.outputs
 
@@ -1851,8 +1844,7 @@ class OpTest(unittest.TestCase):
                 place, no_check_set=no_check_set, inplace_atol=inplace_atol
             )
 
-        if check_eager:
-            assert not check_dygraph
+        if check_dygraph:
             return outs, eager_dygraph_outs, fetch_list
         else:
             return outs, fetch_list
@@ -1936,13 +1928,7 @@ class OpTest(unittest.TestCase):
         equal_nan=False,
         check_dygraph=True,
         inplace_atol=None,
-        check_eager=False,
     ):
-
-        # disable legacy dygraph check when check_eager is True
-        if check_eager or check_dygraph:
-            check_eager = True
-            check_dygraph = False
 
         self.__class__.op_type = self.op_type
         if self.is_mkldnn_op():
@@ -1960,10 +1946,8 @@ class OpTest(unittest.TestCase):
                 equal_nan,
                 check_dygraph,
                 inplace_atol,
-                check_eager=check_eager,
             )
-            if check_eager:
-                assert not check_dygraph
+            if check_dygraph:
                 outs, eager_dygraph_outs, fetch_list = res
             else:
                 outs, fetch_list = res
@@ -2076,13 +2060,7 @@ class OpTest(unittest.TestCase):
         user_defined_grads=None,
         user_defined_grad_outputs=None,
         check_dygraph=True,
-        check_eager=False,
     ):
-
-        # disable legacy dygraph check when check_eager is True
-        if check_eager or check_dygraph:
-            check_eager = True
-            check_dygraph = False
 
         self._check_grad_helper()
         places = self._get_places()
@@ -2098,7 +2076,6 @@ class OpTest(unittest.TestCase):
                 user_defined_grads,
                 user_defined_grad_outputs,
                 check_dygraph,
-                check_eager=check_eager,
             )
 
     def check_grad_with_place(
@@ -2114,13 +2091,7 @@ class OpTest(unittest.TestCase):
         user_defined_grad_outputs=None,
         check_dygraph=True,
         numeric_place=None,
-        check_eager=False,
     ):
-
-        # disable legacy dygraph check when check_eager is True
-        if check_eager or check_dygraph:
-            check_eager = True
-            check_dygraph = False
 
         self.scope = core.Scope()
         op_inputs = self.inputs if hasattr(self, "inputs") else dict()
@@ -2130,7 +2101,6 @@ class OpTest(unittest.TestCase):
         self._check_grad_helper()
         if self.is_bfloat16_op() and self.is_mkldnn_op():
             check_dygraph = False
-            check_eager = False
 
         if (
             self.dtype == np.float64
@@ -2245,7 +2215,7 @@ class OpTest(unittest.TestCase):
             "Gradient Check On %s" % str(place),
         )
 
-        if check_eager:
+        if check_dygraph:
             with fluid.dygraph.base.guard(place):
                 eager_dygraph_grad = self._get_dygraph_grad(
                     inputs_to_check,
@@ -2253,7 +2223,6 @@ class OpTest(unittest.TestCase):
                     output_names,
                     user_defined_grad_outputs,
                     no_grad_set,
-                    check_eager,
                 )
                 fp32_grads = []
                 for grad in eager_dygraph_grad:
@@ -2288,9 +2257,9 @@ class OpTest(unittest.TestCase):
         inputs_to_check,
         place,
         output_names,
+        check_dygraph=True,
         user_defined_grad_outputs=None,
         no_grad_set=None,
-        check_eager=False,
     ):
         with fluid.dygraph.base.guard(place=place):
             block = fluid.default_main_program().global_block()
@@ -2314,12 +2283,12 @@ class OpTest(unittest.TestCase):
                     if self.attrs[attrs_name] is not None:
                         attrs_outputs[attrs_name] = self.attrs[attrs_name]
 
-            if check_eager:
+            if check_dygraph:
                 eager_outputs = self._calc_python_api_output(
                     place, inputs, outputs
                 )
             # if outputs is None, kernel sig is empty or other error is happens.
-            if not check_eager or eager_outputs is None:
+            if not check_dygraph or eager_outputs is None:
                 block.append_op(
                     type=self.op_type,
                     inputs=inputs,

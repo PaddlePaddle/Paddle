@@ -44,10 +44,10 @@ class TestAtan2(OpTest):
         self.outputs = {'Out': out}
 
     def test_check_grad(self):
-        self.check_grad(['X1', 'X2'], 'Out', check_eager=True)
+        self.check_grad(['X1', 'X2'], 'Out', check_dygraph=True)
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_dygraph=True)
 
     def init_dtype(self):
         self.dtype = np.float64
@@ -67,7 +67,7 @@ class TestAtan2_float(TestAtan2):
                     self.inputs['X2'],
                     1 / self.inputs['X1'].size,
                 ),
-                check_eager=True,
+                check_dygraph=True,
             )
 
 

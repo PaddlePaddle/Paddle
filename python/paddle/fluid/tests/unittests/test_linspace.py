@@ -37,7 +37,7 @@ class TestLinspaceOpCommonCase(OpTest):
         self.outputs = {'Out': np.arange(0, 11).astype(dtype)}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_dygraph=True)
 
 
 class TestLinspaceOpReverseCase(OpTest):
@@ -55,7 +55,7 @@ class TestLinspaceOpReverseCase(OpTest):
         self.outputs = {'Out': np.arange(10, -1, -1).astype(dtype)}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_dygraph=True)
 
 
 class TestLinspaceOpNumOneCase(OpTest):
@@ -73,7 +73,7 @@ class TestLinspaceOpNumOneCase(OpTest):
         self.outputs = {'Out': np.array(10, dtype=dtype)}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_dygraph=True)
 
 
 class TestLinspaceAPI(unittest.TestCase):

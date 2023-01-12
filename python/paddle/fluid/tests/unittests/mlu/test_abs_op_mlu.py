@@ -56,7 +56,7 @@ class TestAbs(OpTest):
 
     def test_check_grad(self):
         self.check_grad_with_place(
-            self.place, ['X'], ['Out'], check_eager=False
+            self.place, ['X'], ['Out'], check_dygraph=False
         )
 
 
@@ -88,7 +88,7 @@ class TestAbsHalf(OpTest):
 
     def test_check_grad(self):
         self.check_grad_with_place(
-            self.place, ['X'], ['Out'], check_eager=False
+            self.place, ['X'], ['Out'], check_dygraph=False
         )
 
 

@@ -65,10 +65,10 @@ class TestTemporalShift(OpTest):
         self.python_out_sig = ["Out"]
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_dygraph=True)
 
     def test_check_grad_ignore_uv(self):
-        self.check_grad(['X'], 'Out', check_eager=True)
+        self.check_grad(['X'], 'Out', check_dygraph=True)
 
     def initTestCase(self):
         self.x_shape = (6, 4, 4, 4)

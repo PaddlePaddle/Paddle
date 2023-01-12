@@ -219,10 +219,10 @@ class TestBilinearInterpOp(OpTest):
         self.outputs = {'Out': output_np}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_dygraph=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', in_place=True, check_eager=True)
+        self.check_grad(['X'], 'Out', in_place=True, check_dygraph=True)
 
     def init_test_case(self):
         self.interp_method = 'bilinear'
@@ -410,7 +410,7 @@ class TestBilinearInterpOpUint8(OpTest):
 
     def test_check_output(self):
         self.check_output_with_place(
-            place=core.CPUPlace(), atol=1, check_eager=True
+            place=core.CPUPlace(), atol=1, check_dygraph=True
         )
 
     def init_test_case(self):
@@ -585,10 +585,10 @@ class TestBilinearInterpOp_attr_tensor(OpTest):
         self.outputs = {'Out': output_np}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_dygraph=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', in_place=True, check_eager=True)
+        self.check_grad(['X'], 'Out', in_place=True, check_dygraph=True)
 
     def init_test_case(self):
         self.interp_method = 'bilinear'

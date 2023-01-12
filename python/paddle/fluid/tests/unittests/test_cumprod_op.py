@@ -109,7 +109,7 @@ class TestCumprod(OpTest):
         for dim in range(-len(self.shape), len(self.shape)):
             for zero_num in self.zero_nums:
                 self.prepare_inputs_outputs_attrs(dim, zero_num)
-                self.check_output(check_eager=True)
+                self.check_output(check_dygraph=True)
 
     # test backward.
     def test_check_grad(self):
@@ -118,14 +118,14 @@ class TestCumprod(OpTest):
                 self.prepare_inputs_outputs_attrs(dim, zero_num)
                 self.init_grad_input_output(dim)
                 if self.dtype == np.float64:
-                    self.check_grad(['X'], 'Out', check_eager=True)
+                    self.check_grad(['X'], 'Out', check_dygraph=True)
                 else:
                     self.check_grad(
                         ['X'],
                         'Out',
                         user_defined_grads=[self.grad_x],
                         user_defined_grad_outputs=[self.grad_out],
-                        check_eager=True,
+                        check_dygraph=True,
                     )
 
 

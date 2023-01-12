@@ -57,10 +57,12 @@ class TestLookupTableOp(OpTest):
         return "int64"
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_dygraph=True)
 
     def test_check_grad(self):
-        self.check_grad(['W'], 'Out', no_grad_set=set('Ids'), check_eager=True)
+        self.check_grad(
+            ['W'], 'Out', no_grad_set=set('Ids'), check_dygraph=True
+        )
 
 
 class TestLookupTableOpInt16(OpTest):

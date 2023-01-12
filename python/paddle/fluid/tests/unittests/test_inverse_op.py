@@ -40,10 +40,10 @@ class TestInverseOp(OpTest):
         self.outputs = {'Output': inverse}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_dygraph=True)
 
     def test_grad(self):
-        self.check_grad(['Input'], 'Output', check_eager=True)
+        self.check_grad(['Input'], 'Output', check_dygraph=True)
 
 
 class TestInverseOpBatched(TestInverseOp):
@@ -61,7 +61,7 @@ class TestInverseOpLarge(TestInverseOp):
 
     def test_grad(self):
         self.check_grad(
-            ['Input'], 'Output', max_relative_error=1e-6, check_eager=True
+            ['Input'], 'Output', max_relative_error=1e-6, check_dygraph=True
         )
 
 
@@ -73,7 +73,7 @@ class TestInverseOpFP32(TestInverseOp):
 
     def test_grad(self):
         self.check_grad(
-            ['Input'], 'Output', max_relative_error=1e-2, check_eager=True
+            ['Input'], 'Output', max_relative_error=1e-2, check_dygraph=True
         )
 
 

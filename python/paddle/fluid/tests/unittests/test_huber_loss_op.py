@@ -53,10 +53,10 @@ class TestHuberLossOp(OpTest):
         return (100, 1)
 
     def test_check_output(self):
-        self.check_output(check_eager=False)
+        self.check_output(check_dygraph=False)
 
     def test_check_grad_normal(self):
-        self.check_grad(['X', 'Y'], 'Out', check_eager=False)
+        self.check_grad(['X', 'Y'], 'Out', check_dygraph=False)
 
     def test_check_grad_ingore_x(self):
         self.check_grad(

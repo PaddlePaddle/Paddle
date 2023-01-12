@@ -58,7 +58,7 @@ class TestRealOp(OpTest):
         )
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_dygraph=True)
 
     def test_check_grad(self):
         self.check_grad(
@@ -66,7 +66,7 @@ class TestRealOp(OpTest):
             'Out',
             user_defined_grads=[self.grad_x],
             user_defined_grad_outputs=[self.grad_out],
-            check_eager=True,
+            check_dygraph=True,
         )
 
 

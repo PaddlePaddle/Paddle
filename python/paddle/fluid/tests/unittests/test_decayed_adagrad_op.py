@@ -46,7 +46,7 @@ class TestDecayedAdagradOp1(OpTest):
         self.outputs = {'ParamOut': param_out, 'MomentOut': moment_out}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_dygraph=True)
 
 
 class TestDecayedAdagradOp2(OpTest):
@@ -77,7 +77,7 @@ class TestDecayedAdagradOp2(OpTest):
         self.outputs = {'ParamOut': param_out, 'MomentOut': moment_out}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_dygraph=True)
 
 
 if __name__ == "__main__":

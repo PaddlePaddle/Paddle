@@ -47,7 +47,7 @@ class TestSqrt(OpTest):
         self.place = paddle.device.MLUPlace(0)
 
     def test_check_grad(self):
-        self.check_grad_with_place(self.place, ['X'], 'Out', check_eager=False)
+        self.check_grad_with_place(self.place, ['X'], 'Out', check_dygraph=False)
 
     def test_check_output(self):
         self.check_output_with_place(self.place)
@@ -73,7 +73,7 @@ class TestSqrtHalf(OpTest):
 
     def test_check_grad(self):
         self.check_grad_with_place(
-            self.place, ['X'], 'Out', check_eager=False, max_relative_error=0.85
+            self.place, ['X'], 'Out', check_dygraph=False, max_relative_error=0.85
         )
 
     def test_check_output(self):

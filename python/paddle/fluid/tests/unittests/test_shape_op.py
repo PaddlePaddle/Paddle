@@ -36,7 +36,7 @@ class TestShapeOp(OpTest):
         self.shape = [2, 3]
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_dygraph=True)
 
 
 class case1(TestShapeOp):

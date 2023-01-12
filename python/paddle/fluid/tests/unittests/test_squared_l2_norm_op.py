@@ -44,14 +44,14 @@ class TestL2LossOp(OpTest):
         self.outputs = {'Out': np.square(LA.norm(X))}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_dygraph=True)
 
     def test_check_grad(self):
         self.check_grad(
             ['X'],
             'Out',
             max_relative_error=self.max_relative_error,
-            check_eager=True,
+            check_dygraph=True,
         )
 
 

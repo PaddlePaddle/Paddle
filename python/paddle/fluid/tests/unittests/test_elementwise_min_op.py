@@ -40,15 +40,15 @@ class TestElementwiseOp(OpTest):
 
     def test_check_output(self):
         if hasattr(self, 'attrs'):
-            self.check_output(check_eager=False)
+            self.check_output(check_dygraph=False)
         else:
-            self.check_output(check_eager=True)
+            self.check_output(check_dygraph=True)
 
     def test_check_grad_normal(self):
         if hasattr(self, 'attrs'):
-            self.check_grad(['X', 'Y'], 'Out', check_eager=False)
+            self.check_grad(['X', 'Y'], 'Out', check_dygraph=False)
         else:
-            self.check_grad(['X', 'Y'], 'Out', check_eager=True)
+            self.check_grad(['X', 'Y'], 'Out', check_dygraph=True)
 
     def test_check_grad_ingore_x(self):
         self.check_grad(

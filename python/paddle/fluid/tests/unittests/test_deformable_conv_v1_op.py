@@ -188,14 +188,14 @@ class TestModulatedDeformableConvOp(OpTest):
         self.outputs = {'Output': output}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_dygraph=True)
 
     def test_check_grad(self):
         self.check_grad(
             ['Input', 'Offset', 'Filter'],
             'Output',
             max_relative_error=0.05,
-            check_eager=True,
+            check_dygraph=True,
         )
 
     def test_check_grad_no_filter(self):
@@ -204,7 +204,7 @@ class TestModulatedDeformableConvOp(OpTest):
             'Output',
             max_relative_error=0.1,
             no_grad_set=set(['Filter']),
-            check_eager=True,
+            check_dygraph=True,
         )
 
     def init_test_case(self):

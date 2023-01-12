@@ -293,7 +293,7 @@ class TestMatrixNMSOp(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_dygraph=True)
 
 
 class TestMatrixNMSOpNoOutput(TestMatrixNMSOp):

@@ -176,7 +176,7 @@ class TestSparseMomentumOp(OpTest):
 
     def test_check_output(self):
         self.check_output(
-            atol=5e-3 if self.multi_precision else 1e-5, check_eager=True
+            atol=5e-3 if self.multi_precision else 1e-5, check_dygraph=True
         )
 
 

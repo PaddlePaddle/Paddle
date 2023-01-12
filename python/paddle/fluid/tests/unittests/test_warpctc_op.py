@@ -381,7 +381,7 @@ class TestWarpCTCOpWithPadding(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(check_eager=False)
+        self.check_output(check_dygraph=False)
 
     def test_check_grad(self):
         self.outputs['WarpCTCGrad'] = self.gradient
@@ -502,11 +502,11 @@ class TestWarpCTCOpFp64(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(check_eager=False)
+        self.check_output(check_dygraph=False)
 
     def test_check_grad(self):
         self.outputs['WarpCTCGrad'] = self.gradient
-        self.check_grad(["Logits"], "Loss", check_eager=False)
+        self.check_grad(["Logits"], "Loss", check_dygraph=False)
 
 
 class TestWarpCTCOpError(unittest.TestCase):

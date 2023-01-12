@@ -81,10 +81,10 @@ class TestFlipOp(OpTest):
         self.attrs = {"axis": self.axis}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_dygraph=True)
 
     def test_check_grad(self):
-        self.check_grad(["X"], "Out", check_eager=True)
+        self.check_grad(["X"], "Out", check_dygraph=True)
 
     def init_test_case(self):
         self.in_shape = (6, 4, 2, 3)

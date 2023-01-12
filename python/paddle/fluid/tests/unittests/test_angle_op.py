@@ -49,7 +49,7 @@ class TestAngleOpFloat(OpTest):
         self.outputs = {'Out': out_ref}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_dygraph=True)
 
     def test_check_grad(self):
         self.check_grad(
@@ -58,7 +58,7 @@ class TestAngleOpFloat(OpTest):
             user_defined_grads=[
                 angle_grad(self.x, np.ones_like(self.x) / self.x.size)
             ],
-            check_eager=True,
+            check_dygraph=True,
         )
 
 
@@ -75,7 +75,7 @@ class TestAngleOpComplex(OpTest):
         self.outputs = {'Out': out_ref}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_dygraph=True)
 
     def test_check_grad(self):
         self.check_grad(
@@ -84,7 +84,7 @@ class TestAngleOpComplex(OpTest):
             user_defined_grads=[
                 angle_grad(self.x, np.ones_like(self.x) / self.x.size)
             ],
-            check_eager=True,
+            check_dygraph=True,
         )
 
 

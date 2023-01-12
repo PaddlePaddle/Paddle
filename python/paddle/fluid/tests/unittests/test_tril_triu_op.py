@@ -45,10 +45,10 @@ class TrilTriuOpDefaultTest(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_dygraph=True)
 
     def test_check_grad_normal(self):
-        self.check_grad(['X'], 'Out', check_eager=True)
+        self.check_grad(['X'], 'Out', check_dygraph=True)
 
     def initTestCase(self):
         self.real_op_type = np.random.choice(['triu', 'tril'])

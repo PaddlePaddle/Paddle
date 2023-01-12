@@ -73,10 +73,10 @@ class TestEigvalshOp(OpTest):
 
     def test_check_output(self):
         # Vectors in posetive or negative is equivalent
-        self.check_output(no_check_set=['Eigenvectors'], check_eager=True)
+        self.check_output(no_check_set=['Eigenvectors'], check_dygraph=True)
 
     def test_grad(self):
-        self.check_grad(["X"], ["Eigenvalues"], check_eager=True)
+        self.check_grad(["X"], ["Eigenvalues"], check_dygraph=True)
 
 
 class TestEigvalshUPLOCase(TestEigvalshOp):

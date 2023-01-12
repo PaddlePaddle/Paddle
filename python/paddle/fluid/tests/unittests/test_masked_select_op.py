@@ -40,10 +40,10 @@ class TestMaskedSelectOp(OpTest):
         self.outputs = {'Y': out}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_dygraph=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Y', check_eager=True)
+        self.check_grad(['X'], 'Y', check_dygraph=True)
 
     def init(self):
         self.shape = (50, 3)

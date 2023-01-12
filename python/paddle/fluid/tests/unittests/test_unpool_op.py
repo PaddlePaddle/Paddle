@@ -130,10 +130,10 @@ class TestUnpoolOp(OpTest):
         self.outputs = {'Out': output.astype('float64')}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_dygraph=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_eager=True)
+        self.check_grad(['X'], 'Out', check_dygraph=True)
 
     def init_test_case(self):
         self.unpool2d_forward_naive = unpool2dmax_forward_naive

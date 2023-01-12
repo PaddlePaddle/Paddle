@@ -43,19 +43,19 @@ class TestAddMMOp(OpTest):
         pass
 
     def test_check_output(self):
-        self.check_output(check_eager=False)
+        self.check_output(check_dygraph=False)
 
     def test_check_grad_normal(self):
-        self.check_grad(['Input', 'X', 'Y'], 'Out', check_eager=False)
+        self.check_grad(['Input', 'X', 'Y'], 'Out', check_dygraph=False)
 
     def test_check_grad_x(self):
-        self.check_grad(['X'], 'Out', no_grad_set=None, check_eager=False)
+        self.check_grad(['X'], 'Out', no_grad_set=None, check_dygraph=False)
 
     def test_check_grad_y(self):
-        self.check_grad(['Y'], 'Out', no_grad_set=None, check_eager=False)
+        self.check_grad(['Y'], 'Out', no_grad_set=None, check_dygraph=False)
 
     def test_check_grad_input(self):
-        self.check_grad(['Input'], 'Out', no_grad_set=None, check_eager=False)
+        self.check_grad(['Input'], 'Out', no_grad_set=None, check_dygraph=False)
 
 
 class TestAddMMOpError(unittest.TestCase):

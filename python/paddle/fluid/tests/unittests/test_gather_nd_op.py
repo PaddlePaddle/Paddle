@@ -34,10 +34,10 @@ class TestGatherNdOpWithEmptyIndex(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(check_eager=False)
+        self.check_output(check_dygraph=False)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_eager=False)
+        self.check_grad(['X'], 'Out', check_dygraph=False)
 
 
 class TestGatherNdOpWithIndex1(OpTest):
@@ -49,10 +49,10 @@ class TestGatherNdOpWithIndex1(OpTest):
         self.outputs = {'Out': self.inputs["X"][self.inputs["Index"]]}
 
     def test_check_output(self):
-        self.check_output(check_eager=False)
+        self.check_output(check_dygraph=False)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_eager=False)
+        self.check_grad(['X'], 'Out', check_dygraph=False)
 
 
 class TestGatherNdOpWithLowIndex(OpTest):
@@ -71,10 +71,10 @@ class TestGatherNdOpWithLowIndex(OpTest):
         }  # [[14, 25, 1], [76, 22, 3]]
 
     def test_check_output(self):
-        self.check_output(check_eager=False)
+        self.check_output(check_dygraph=False)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_eager=False)
+        self.check_grad(['X'], 'Out', check_dygraph=False)
 
 
 class TestGatherNdOpIndex1(OpTest):
@@ -91,10 +91,10 @@ class TestGatherNdOpIndex1(OpTest):
         self.outputs = {'Out': xnp[tuple(index.T)]}
 
     def test_check_output(self):
-        self.check_output(check_eager=False)
+        self.check_output(check_dygraph=False)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_eager=False)
+        self.check_grad(['X'], 'Out', check_dygraph=False)
 
 
 class TestGatherNdOpWithSameIndexAsX(OpTest):
@@ -110,10 +110,10 @@ class TestGatherNdOpWithSameIndexAsX(OpTest):
         self.outputs = {'Out': xnp[tuple(index.T)]}  # [25, 22]
 
     def test_check_output(self):
-        self.check_output(check_eager=False)
+        self.check_output(check_dygraph=False)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_eager=False)
+        self.check_grad(['X'], 'Out', check_dygraph=False)
 
 
 class TestGatherNdOpWithHighRankSame(OpTest):
@@ -130,10 +130,10 @@ class TestGatherNdOpWithHighRankSame(OpTest):
         self.outputs = {'Out': xnp[tuple(index.T)]}
 
     def test_check_output(self):
-        self.check_output(check_eager=False)
+        self.check_output(check_dygraph=False)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_eager=False)
+        self.check_grad(['X'], 'Out', check_dygraph=False)
 
 
 class TestGatherNdOpWithHighRankDiff(OpTest):
@@ -151,10 +151,10 @@ class TestGatherNdOpWithHighRankDiff(OpTest):
         self.outputs = {'Out': xnp[tuple(index.T)].reshape([20, 5, 2])}
 
     def test_check_output(self):
-        self.check_output(check_eager=False)
+        self.check_output(check_dygraph=False)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_eager=False)
+        self.check_grad(['X'], 'Out', check_dygraph=False)
 
 
 # Test Python API

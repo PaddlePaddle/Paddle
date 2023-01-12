@@ -96,10 +96,10 @@ class TestStrideSliceOp(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_dygraph=True)
 
     def test_check_grad(self):
-        self.check_grad(set(['Input']), 'Out', check_eager=True)
+        self.check_grad(set(['Input']), 'Out', check_dygraph=True)
 
     def initTestCase(self):
         self.input = np.random.rand(100)

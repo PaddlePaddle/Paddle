@@ -31,10 +31,10 @@ class TestTraceOp(OpTest):
         self.outputs = {'Out': self.target}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_dygraph=True)
 
     def test_check_grad(self):
-        self.check_grad(['Input'], 'Out', check_eager=True)
+        self.check_grad(['Input'], 'Out', check_dygraph=True)
 
     def init_config(self):
         self.case = np.random.randn(20, 6).astype('float64')

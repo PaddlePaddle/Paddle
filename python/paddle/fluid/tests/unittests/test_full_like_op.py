@@ -119,7 +119,7 @@ class TestFullLikeOp1(OpTest):
         self.dtype = np.float32
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_dygraph=True)
 
 
 class TestFullLikeOp2(TestFullLikeOp1):

@@ -70,9 +70,7 @@ class XPUOpTest(OpTest):
         equal_nan=False,
         check_dygraph=True,
         inplace_atol=None,
-        check_eager=False,
     ):
-        check_dygraph = False
         place = paddle.XPUPlace(0)
         self.check_output_with_place(
             place,
@@ -81,7 +79,6 @@ class XPUOpTest(OpTest):
             equal_nan,
             check_dygraph,
             inplace_atol,
-            check_eager,
         )
 
     def check_output_with_place(
@@ -92,9 +89,7 @@ class XPUOpTest(OpTest):
         equal_nan=False,
         check_dygraph=True,
         inplace_atol=None,
-        check_eager=False,
     ):
-        check_dygraph = False
         self.infer_dtype_from_inputs_outputs(self.inputs, self.outputs)
         if self.dtype == np.float64:
             return
@@ -121,9 +116,7 @@ class XPUOpTest(OpTest):
         user_defined_grad_outputs=None,
         check_dygraph=True,
         numeric_place=None,
-        check_eager=False,
     ):
-        check_dygraph = False
         place = paddle.XPUPlace(0)
         self.check_grad_with_place(
             place,
@@ -137,7 +130,6 @@ class XPUOpTest(OpTest):
             user_defined_grad_outputs,
             check_dygraph,
             numeric_place,
-            check_eager,
         )
 
     def check_grad_with_place(
@@ -153,9 +145,7 @@ class XPUOpTest(OpTest):
         user_defined_grad_outputs=None,
         check_dygraph=True,
         numeric_place=None,
-        check_eager=False,
     ):
-        check_dygraph = False
         if hasattr(self, 'op_type_need_check_grad'):
             xpu_version = core.get_xpu_device_version(0)
             if is_empty_grad_op_type(
@@ -238,7 +228,6 @@ class XPUOpTest(OpTest):
         user_defined_grad_outputs=None,
         check_dygraph=True,
     ):
-        check_dygraph = False
         self.scope = core.Scope()
         op_inputs = self.inputs if hasattr(self, "inputs") else dict()
         op_outputs = self.outputs if hasattr(self, "outputs") else dict()

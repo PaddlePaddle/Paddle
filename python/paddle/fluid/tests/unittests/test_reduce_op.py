@@ -33,10 +33,10 @@ class TestSumOp(OpTest):
         self.attrs = {'dim': [0]}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_dygraph=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_eager=True)
+        self.check_grad(['X'], 'Out', check_dygraph=True)
 
 
 class TestSumOp_ZeroDim(OpTest):
@@ -48,10 +48,10 @@ class TestSumOp_ZeroDim(OpTest):
         self.attrs = {'dim': [], 'reduce_all': True}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_dygraph=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_eager=True)
+        self.check_grad(['X'], 'Out', check_dygraph=True)
 
 
 class TestSumOp_fp16(OpTest):
@@ -68,7 +68,7 @@ class TestSumOp_fp16(OpTest):
         self.gradient = self.calc_gradient()
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_dygraph=True)
 
     def calc_gradient(self):
         x = self.inputs["X"]
@@ -77,7 +77,7 @@ class TestSumOp_fp16(OpTest):
 
     def test_check_grad(self):
         self.check_grad(
-            ['X'], 'Out', user_defined_grads=self.gradient, check_eager=True
+            ['X'], 'Out', user_defined_grads=self.gradient, check_dygraph=True
         )
 
 
@@ -101,7 +101,7 @@ class TestSumOp_bf16(OpTest):
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
-        self.check_output_with_place(place, check_eager=True)
+        self.check_output_with_place(place, check_dygraph=True)
 
     def test_check_grad(self):
         place = core.CUDAPlace(0)
@@ -110,7 +110,7 @@ class TestSumOp_bf16(OpTest):
             ['X'],
             'Out',
             user_defined_grads=self.gradient,
-            check_eager=True,
+            check_dygraph=True,
         )
 
     def calc_gradient(self):
@@ -135,7 +135,7 @@ class TestSumOp_fp16_withInt(OpTest):
         self.gradient = self.calc_gradient()
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_dygraph=True)
 
     def calc_gradient(self):
         x = self.inputs["X"]
@@ -144,7 +144,7 @@ class TestSumOp_fp16_withInt(OpTest):
 
     def test_check_grad(self):
         self.check_grad(
-            ['X'], 'Out', user_defined_grads=self.gradient, check_eager=True
+            ['X'], 'Out', user_defined_grads=self.gradient, check_dygraph=True
         )
 
 
@@ -159,10 +159,10 @@ class TestSumOp5D(OpTest):
         self.outputs = {'Out': self.inputs['X'].sum(axis=0)}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_dygraph=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_eager=True)
+        self.check_grad(['X'], 'Out', check_dygraph=True)
 
 
 class TestSumOp6D(OpTest):
@@ -176,10 +176,10 @@ class TestSumOp6D(OpTest):
         self.outputs = {'Out': self.inputs['X'].sum(axis=0)}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_dygraph=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_eager=True)
+        self.check_grad(['X'], 'Out', check_dygraph=True)
 
 
 class TestSumOp8D(OpTest):
@@ -193,10 +193,10 @@ class TestSumOp8D(OpTest):
         self.outputs = {'Out': self.inputs['X'].sum(axis=(0, 3))}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_dygraph=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_eager=True)
+        self.check_grad(['X'], 'Out', check_dygraph=True)
 
 
 @skip_check_grad_ci(
@@ -216,7 +216,7 @@ class TestMaxOp(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_dygraph=True)
 
 
 class TestMaxOp_ZeroDim(OpTest):
@@ -232,7 +232,7 @@ class TestMaxOp_ZeroDim(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_dygraph=True)
 
 
 @skip_check_grad_ci(
@@ -252,7 +252,7 @@ class TestMinOp(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_dygraph=True)
 
 
 class TestMinOp_ZeroDim(OpTest):
@@ -268,7 +268,7 @@ class TestMinOp_ZeroDim(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_dygraph=True)
 
 
 class TestMin6DOp(OpTest):
@@ -286,7 +286,7 @@ class TestMin6DOp(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_dygraph=True)
 
 
 class TestMin8DOp(OpTest):
@@ -304,7 +304,7 @@ class TestMin8DOp(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_dygraph=True)
 
 
 def raw_reduce_prod(x, dim=[0], keep_dim=False):
@@ -325,10 +325,10 @@ class TestProdOp(OpTest):
         )
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_dygraph=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_eager=True)
+        self.check_grad(['X'], 'Out', check_dygraph=True)
 
 
 class TestProdOp_ZeroDim(OpTest):
@@ -340,10 +340,10 @@ class TestProdOp_ZeroDim(OpTest):
         self.attrs = {'dim': [], 'reduce_all': True}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_dygraph=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_eager=True)
+        self.check_grad(['X'], 'Out', check_dygraph=True)
 
 
 class TestProd6DOp(OpTest):
@@ -365,10 +365,10 @@ class TestProd6DOp(OpTest):
         )
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_dygraph=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_eager=True)
+        self.check_grad(['X'], 'Out', check_dygraph=True)
 
 
 class TestProd8DOp(OpTest):
@@ -392,10 +392,10 @@ class TestProd8DOp(OpTest):
         )
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_dygraph=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_eager=True)
+        self.check_grad(['X'], 'Out', check_dygraph=True)
 
 
 class TestAllOp(OpTest):
@@ -407,7 +407,7 @@ class TestAllOp(OpTest):
         self.attrs = {'reduce_all': True}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_dygraph=True)
 
 
 class TestAllOp_ZeroDim(OpTest):
@@ -419,7 +419,7 @@ class TestAllOp_ZeroDim(OpTest):
         self.attrs = {'dim': [], 'reduce_all': True}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_dygraph=True)
 
 
 class TestAll8DOp(OpTest):
@@ -435,7 +435,7 @@ class TestAll8DOp(OpTest):
         self.outputs = {'Out': self.inputs['X'].all(axis=self.attrs['dim'])}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_dygraph=True)
 
 
 class TestAllOpWithDim(OpTest):
@@ -447,7 +447,7 @@ class TestAllOpWithDim(OpTest):
         self.outputs = {'Out': self.inputs['X'].all(axis=self.attrs['dim'])}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_dygraph=True)
 
 
 class TestAll8DOpWithDim(OpTest):
@@ -463,7 +463,7 @@ class TestAll8DOpWithDim(OpTest):
         self.outputs = {'Out': self.inputs['X'].all(axis=self.attrs['dim'])}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_dygraph=True)
 
 
 class TestAllOpWithKeepDim(OpTest):
@@ -477,7 +477,7 @@ class TestAllOpWithKeepDim(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_dygraph=True)
 
 
 class TestAll8DOpWithKeepDim(OpTest):
@@ -497,7 +497,7 @@ class TestAll8DOpWithKeepDim(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_dygraph=True)
 
 
 class TestAllOpError(unittest.TestCase):
@@ -522,7 +522,7 @@ class TestAnyOp(OpTest):
         self.attrs = {'reduce_all': True}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_dygraph=True)
 
 
 class TestAnyOp_ZeroDim(OpTest):
@@ -534,7 +534,7 @@ class TestAnyOp_ZeroDim(OpTest):
         self.attrs = {'dim': [], 'reduce_all': True}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_dygraph=True)
 
 
 class TestAny8DOp(OpTest):
@@ -550,7 +550,7 @@ class TestAny8DOp(OpTest):
         self.outputs = {'Out': self.inputs['X'].any(axis=self.attrs['dim'])}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_dygraph=True)
 
 
 class TestAnyOpWithDim(OpTest):
@@ -562,7 +562,7 @@ class TestAnyOpWithDim(OpTest):
         self.outputs = {'Out': self.inputs['X'].any(axis=1)}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_dygraph=True)
 
 
 class TestAny8DOpWithDim(OpTest):
@@ -578,7 +578,7 @@ class TestAny8DOpWithDim(OpTest):
         self.outputs = {'Out': self.inputs['X'].any(axis=self.attrs['dim'])}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_dygraph=True)
 
 
 class TestAnyOpWithKeepDim(OpTest):
@@ -594,7 +594,7 @@ class TestAnyOpWithKeepDim(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_dygraph=True)
 
 
 class TestAny8DOpWithKeepDim(OpTest):
@@ -614,7 +614,7 @@ class TestAny8DOpWithKeepDim(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_dygraph=True)
 
 
 class TestAnyOpError(unittest.TestCase):
@@ -756,7 +756,7 @@ class TestReduceMaxOpMultiAxises(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_dygraph=True)
 
 
 @skip_check_grad_ci(
@@ -776,7 +776,7 @@ class TestReduceMinOpMultiAxises(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_dygraph=True)
 
 
 class TestKeepDimReduceSumMultiAxises(OpTest):

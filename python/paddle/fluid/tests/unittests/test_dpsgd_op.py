@@ -43,7 +43,7 @@ class TestDpsgdOp(OpTest):
         self.outputs = {'ParamOut': param_out}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_dygraph=True)
 
 
 def dpsgd_step(inputs, attributes):

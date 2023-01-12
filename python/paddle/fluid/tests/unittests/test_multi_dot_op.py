@@ -42,11 +42,11 @@ class TestMultiDotOp(OpTest):
         self.outputs = {'Out': multi_dot([self.A, self.B])}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_dygraph=True)
 
     def test_check_grad(self):
-        self.check_grad(['x0'], 'Out', check_eager=True)
-        self.check_grad(['x1'], 'Out', check_eager=True)
+        self.check_grad(['x0'], 'Out', check_dygraph=True)
+        self.check_grad(['x1'], 'Out', check_dygraph=True)
 
 
 # (A*B)*C
@@ -59,9 +59,9 @@ class TestMultiDotOp3Mat(TestMultiDotOp):
         self.outputs = {'Out': multi_dot([self.A, self.B, self.C])}
 
     def test_check_grad(self):
-        self.check_grad(['x0'], 'Out', check_eager=True)
-        self.check_grad(['x1'], 'Out', check_eager=True)
-        self.check_grad(['x2'], 'Out', check_eager=True)
+        self.check_grad(['x0'], 'Out', check_dygraph=True)
+        self.check_grad(['x1'], 'Out', check_dygraph=True)
+        self.check_grad(['x2'], 'Out', check_dygraph=True)
 
 
 # A*(B*C)
@@ -74,9 +74,9 @@ class TestMultiDotOp3Mat2(TestMultiDotOp):
         self.outputs = {'Out': multi_dot([self.A, self.B, self.C])}
 
     def test_check_grad(self):
-        self.check_grad(['x0'], 'Out', check_eager=True)
-        self.check_grad(['x1'], 'Out', check_eager=True)
-        self.check_grad(['x2'], 'Out', check_eager=True)
+        self.check_grad(['x0'], 'Out', check_dygraph=True)
+        self.check_grad(['x1'], 'Out', check_dygraph=True)
+        self.check_grad(['x2'], 'Out', check_dygraph=True)
 
 
 class TestMultiDotOp4Mat(TestMultiDotOp):
@@ -96,10 +96,10 @@ class TestMultiDotOp4Mat(TestMultiDotOp):
         self.outputs = {'Out': multi_dot([self.A, self.B, self.C, self.D])}
 
     def test_check_grad(self):
-        self.check_grad(['x0'], 'Out', check_eager=True)
-        self.check_grad(['x1'], 'Out', check_eager=True)
-        self.check_grad(['x2'], 'Out', check_eager=True)
-        self.check_grad(['x3'], 'Out', check_eager=True)
+        self.check_grad(['x0'], 'Out', check_dygraph=True)
+        self.check_grad(['x1'], 'Out', check_dygraph=True)
+        self.check_grad(['x2'], 'Out', check_dygraph=True)
+        self.check_grad(['x3'], 'Out', check_dygraph=True)
 
 
 class TestMultiDotOpFirst1D(TestMultiDotOp):
@@ -153,9 +153,9 @@ class TestMultiDotOp3MatLast1D(TestMultiDotOp3Mat):
         self.outputs = {'Out': multi_dot([self.A, self.B, self.C])}
 
     def test_check_grad(self):
-        self.check_grad(['x0'], 'Out', check_eager=True)
-        self.check_grad(['x1'], 'Out', check_eager=True)
-        self.check_grad(['x2'], 'Out', check_eager=True)
+        self.check_grad(['x0'], 'Out', check_dygraph=True)
+        self.check_grad(['x1'], 'Out', check_dygraph=True)
+        self.check_grad(['x2'], 'Out', check_dygraph=True)
 
 
 class TestMultiDotOp4MatLast1D(TestMultiDotOp4Mat):

@@ -54,10 +54,10 @@ class TestMeanOp(OpTest):
         pass
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_dygraph=True)
 
     def test_checkout_grad(self):
-        self.check_grad(['X'], 'Out', check_eager=True)
+        self.check_grad(['X'], 'Out', check_dygraph=True)
 
 
 class TestMeanOp_ZeroDim(OpTest):
@@ -69,10 +69,10 @@ class TestMeanOp_ZeroDim(OpTest):
         self.outputs = {'Out': np.mean(self.inputs["X"])}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_dygraph=True)
 
     def test_checkout_grad(self):
-        self.check_grad(['X'], 'Out', check_eager=True)
+        self.check_grad(['X'], 'Out', check_dygraph=True)
 
 
 class TestMeanOpError(unittest.TestCase):
@@ -103,7 +103,7 @@ class TestFP16MeanOp(TestMeanOp):
     def test_check_output(self):
         place = core.CUDAPlace(0)
         if core.is_float16_supported(place):
-            self.check_output_with_place(place, check_eager=True)
+            self.check_output_with_place(place, check_dygraph=True)
 
     def test_checkout_grad(self):
         place = core.CUDAPlace(0)
@@ -127,11 +127,11 @@ class TestBF16MeanOp(TestMeanOp):
 
     def test_check_output(self):
         paddle.enable_static()
-        self.check_output_with_place(core.CPUPlace(), check_eager=True)
+        self.check_output_with_place(core.CPUPlace(), check_dygraph=True)
 
     def test_checkout_grad(self):
         place = core.CPUPlace()
-        self.check_grad_with_place(place, ['X'], 'Out', check_eager=True)
+        self.check_grad_with_place(place, ['X'], 'Out', check_dygraph=True)
 
 
 def ref_reduce_mean(x, axis=None, keepdim=False, reduce_all=False):
@@ -182,7 +182,7 @@ class TestReduceMeanOp(OpTest):
 
     def test_check_output(self):
         if self.dtype != 'float16':
-            self.check_output(check_eager=True)
+            self.check_output(check_dygraph=True)
         else:
             if not core.is_compiled_with_cuda():
                 return
@@ -191,7 +191,7 @@ class TestReduceMeanOp(OpTest):
 
     def test_check_grad(self):
         if self.dtype != 'float16':
-            self.check_grad(['X'], ['Out'], check_eager=True)
+            self.check_grad(['X'], ['Out'], check_dygraph=True)
         else:
             if not core.is_compiled_with_cuda():
                 return

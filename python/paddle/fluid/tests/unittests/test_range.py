@@ -47,7 +47,7 @@ class TestRangeOp(OpTest):
         self.case = (0, 1, 0.2)
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_dygraph=True)
 
 
 class TestFloatRangeOpCase0(TestRangeOp):

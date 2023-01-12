@@ -45,7 +45,7 @@ class TestClipByNormOp(OpTest):
         self.outputs = {'Out': output}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_dygraph=True)
 
     def initTestCase(self):
         self.shape = (100,)
@@ -82,7 +82,7 @@ class TestClipByNormOpFp16(TestClipByNormOp):
             place = core.CUDAPlace(0)
             if core.is_float16_supported(place):
                 self.check_output_with_place(
-                    place, atol=0.001, check_eager=True
+                    place, atol=0.001, check_dygraph=True
                 )
 
 

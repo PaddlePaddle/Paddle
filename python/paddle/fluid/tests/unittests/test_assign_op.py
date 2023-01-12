@@ -38,14 +38,14 @@ class TestAssignOp(op_test.OpTest):
     def test_forward(self):
         paddle.enable_static()
         fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
-        self.check_output(check_eager=True)
+        self.check_output(check_dygraph=True)
         fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
         paddle.disable_static()
 
     def test_backward(self):
         paddle.enable_static()
         fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
-        self.check_grad(['X'], 'Out', check_eager=True)
+        self.check_grad(['X'], 'Out', check_dygraph=True)
         fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
         paddle.disable_static()
 
@@ -61,14 +61,14 @@ class TestAssignFP16Op(op_test.OpTest):
     def test_forward(self):
         paddle.enable_static()
         fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
-        self.check_output(check_eager=True)
+        self.check_output(check_dygraph=True)
         fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
         paddle.disable_static()
 
     def test_backward(self):
         paddle.enable_static()
         fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
-        self.check_grad(['X'], 'Out', check_eager=True)
+        self.check_grad(['X'], 'Out', check_dygraph=True)
         fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
         paddle.disable_static()
 

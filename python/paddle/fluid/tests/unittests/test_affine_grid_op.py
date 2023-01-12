@@ -133,11 +133,11 @@ class TestAffineGridOp(OpTest):
             }
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_dygraph=True)
 
     def test_check_grad_normal(self):
         self.check_grad(
-            ['Theta'], 'Output', no_grad_set=['OutputShape'], check_eager=True
+            ['Theta'], 'Output', no_grad_set=['OutputShape'], check_dygraph=True
         )
 
     def initTestCase(self):

@@ -94,7 +94,7 @@ class TestUpdateLossScalingOp(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(no_check_set=['Out'], check_eager=True)
+        self.check_output(no_check_set=['Out'], check_dygraph=True)
 
 
 class TestUpdateLossScalingOpBad(TestUpdateLossScalingOp):
@@ -131,7 +131,7 @@ class TestUpdateLossScalingOpBad(TestUpdateLossScalingOp):
         }
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_dygraph=True)
 
 
 class TestUpdateLossScalingLayer(unittest.TestCase):

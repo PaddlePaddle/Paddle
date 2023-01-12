@@ -47,10 +47,10 @@ class TestCrossOp(OpTest):
         self.outputs = {'Out': np.array(z_list).reshape(self.shape)}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_dygraph=True)
 
     def test_check_grad_normal(self):
-        self.check_grad(['X', 'Y'], 'Out', check_eager=True)
+        self.check_grad(['X', 'Y'], 'Out', check_dygraph=True)
 
 
 class TestCrossOpCase1(TestCrossOp):

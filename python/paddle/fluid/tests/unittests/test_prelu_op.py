@@ -227,10 +227,10 @@ class PReluTest(OpTest):
         self.attrs = {'mode': "channel", "data_format": "NCHW"}
 
     def test_check_output(self):
-        self.check_output(check_eager=self.eager_mode)
+        self.check_output(check_dygraph=self.eager_mode)
 
     def test_check_grad(self):
-        self.check_grad(['X', 'Alpha'], 'Out', check_eager=self.eager_mode)
+        self.check_grad(['X', 'Alpha'], 'Out', check_dygraph=self.eager_mode)
 
 
 @skip_check_grad_ci(
@@ -394,7 +394,7 @@ def create_test_fp16_class(
                 place = core.CUDAPlace(0)
                 if core.is_float16_supported(place):
                     self.check_output_with_place(
-                        place, atol=atol, check_eager=self.eager_mode
+                        place, atol=atol, check_dygraph=self.eager_mode
                     )
 
         def test_check_grad(self):
@@ -405,7 +405,7 @@ def create_test_fp16_class(
                     ['X', 'Alpha'],
                     'Out',
                     max_relative_error=max_relative_error,
-                    check_eager=self.eager_mode,
+                    check_dygraph=self.eager_mode,
                 )
 
     cls_name = "{0}_{1}".format(parent.__name__, "Fp16Op")

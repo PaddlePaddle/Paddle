@@ -44,7 +44,7 @@ class TestElementwiseModOp(OpTest):
         self.outputs = {'Out': self.out}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_dygraph=True)
 
     def init_input_output(self):
         self.x = np.random.uniform(0, 10000, [10, 10]).astype(self.dtype)

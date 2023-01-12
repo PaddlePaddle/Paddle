@@ -150,7 +150,7 @@ class TestHistogramOp(OpTest):
         self.attrs = {"bins": self.bins, "min": self.min, "max": self.max}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_dygraph=True)
 
 
 if __name__ == "__main__":

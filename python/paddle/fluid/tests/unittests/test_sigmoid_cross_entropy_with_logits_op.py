@@ -50,10 +50,10 @@ class TestSigmoidCrossEntropyWithLogitsOp1(OpTest):
         self.outputs = {'Out': -term1 - term2}
 
     def test_check_output(self):
-        self.check_output(check_eager=False)
+        self.check_output(check_dygraph=False)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_eager=False)
+        self.check_grad(['X'], 'Out', check_dygraph=False)
 
 
 class TestSigmoidCrossEntropyWithLogitsOp2(OpTest):
@@ -88,10 +88,10 @@ class TestSigmoidCrossEntropyWithLogitsOp2(OpTest):
         self.outputs = {'Out': out}
 
     def test_check_output(self):
-        self.check_output(check_eager=False)
+        self.check_output(check_dygraph=False)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_eager=False)
+        self.check_grad(['X'], 'Out', check_dygraph=False)
 
 
 class TestSigmoidCrossEntropyWithLogitsOp3(OpTest):
@@ -121,10 +121,10 @@ class TestSigmoidCrossEntropyWithLogitsOp3(OpTest):
         self.outputs = {'Out': -term1 - term2}
 
     def test_check_output(self):
-        self.check_output(check_eager=False)
+        self.check_output(check_dygraph=False)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_eager=False)
+        self.check_grad(['X'], 'Out', check_dygraph=False)
 
 
 class TestSigmoidCrossEntropyWithNorm(OpTest):
@@ -156,10 +156,10 @@ class TestSigmoidCrossEntropyWithNorm(OpTest):
         self.outputs = {'Out': out}
 
     def test_check_output(self):
-        self.check_output(check_eager=False)
+        self.check_output(check_dygraph=False)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_eager=False)
+        self.check_grad(['X'], 'Out', check_dygraph=False)
 
 
 class TestSigmoidCrossEntropyWithLogitsOp5(OpTest):
@@ -189,10 +189,10 @@ class TestSigmoidCrossEntropyWithLogitsOp5(OpTest):
         self.outputs = {'Out': -term1 - term2}
 
     def test_check_output(self):
-        self.check_output(check_eager=False)
+        self.check_output(check_dygraph=False)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_eager=False)
+        self.check_grad(['X'], 'Out', check_dygraph=False)
 
 
 class TestSigmoidCrossEntropyWithNorm2(OpTest):
@@ -224,10 +224,10 @@ class TestSigmoidCrossEntropyWithNorm2(OpTest):
         self.outputs = {'Out': out}
 
     def test_check_output(self):
-        self.check_output(check_eager=False)
+        self.check_output(check_dygraph=False)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_eager=False)
+        self.check_grad(['X'], 'Out', check_dygraph=False)
 
     class TestSigmoidCrossEntropyWithLogitsOp6(OpTest):
         """Test sigmoid_cross_entropy_with_logit_op with binary label"""
@@ -256,10 +256,10 @@ class TestSigmoidCrossEntropyWithNorm2(OpTest):
             self.outputs = {'Out': -term1 - term2}
 
         def test_check_output(self):
-            self.check_output(check_eager=False)
+            self.check_output(check_dygraph=False)
 
         def test_check_grad(self):
-            self.check_grad(['X'], 'Out', check_eager=False)
+            self.check_grad(['X'], 'Out', check_dygraph=False)
 
     class TestSigmoidCrossEntropyWithLogitsOpError(unittest.TestCase):
         def test_errors(self):

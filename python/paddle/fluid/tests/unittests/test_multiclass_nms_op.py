@@ -791,7 +791,7 @@ class TestMulticlassNMS3Op(TestMulticlassNMS2Op):
         }
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_dygraph=True)
 
 
 class TestMulticlassNMS3OpNoOutput(TestMulticlassNMS3Op):

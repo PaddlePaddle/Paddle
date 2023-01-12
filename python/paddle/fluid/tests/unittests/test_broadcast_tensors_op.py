@@ -121,7 +121,7 @@ class TestCPUBroadcastTensorsOp(OpTest):
     def test_check_output(self):
         self.run_dual_test(
             self.check_output_with_place,
-            {"place": self.place, "atol": 1e-1, "check_eager": True},
+            {"place": self.place, "atol": 1e-1, "check_dygraph": True},
         )
 
     def test_check_grad_normal(self):
@@ -132,7 +132,7 @@ class TestCPUBroadcastTensorsOp(OpTest):
                 "inputs_to_check": ['x0', 'x1'],
                 "output_names": ['out0', 'out1'],
                 "max_relative_error": 0.05,
-                "check_eager": True,
+                "check_dygraph": True,
             },
         )
         self.run_triple_in_test(
@@ -142,7 +142,7 @@ class TestCPUBroadcastTensorsOp(OpTest):
                 "inputs_to_check": ['x0', 'x1', 'x2'],
                 "output_names": ['out0', 'out1', "out2"],
                 "max_relative_error": 0.05,
-                "check_eager": True,
+                "check_dygraph": True,
             },
         )
 

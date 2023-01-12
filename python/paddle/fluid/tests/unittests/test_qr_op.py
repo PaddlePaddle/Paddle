@@ -71,13 +71,13 @@ class TestQrOp(OpTest):
         return a, q, r
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_dygraph=True)
 
     def test_check_grad_normal(self):
         self.check_grad(
             ['X'],
             ['Q', 'R'],
-            check_eager=True,
+            check_dygraph=True,
             numeric_grad_delta=1e-5,
             max_relative_error=1e-6,
         )

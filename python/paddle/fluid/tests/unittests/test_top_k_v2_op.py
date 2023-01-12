@@ -57,10 +57,10 @@ class TestTopkOp(OpTest):
         self.outputs = {'Out': output, 'Indices': indices}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_dygraph=True)
 
     def test_check_grad(self):
-        self.check_grad(set(['X']), 'Out', check_eager=True)
+        self.check_grad(set(['X']), 'Out', check_dygraph=True)
 
 
 class TestTopkOp1(TestTopkOp):

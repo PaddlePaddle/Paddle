@@ -46,7 +46,7 @@ class TestViewAsComplexOp(OpTest):
         self.outputs = {'Out': out_ref}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_dygraph=True)
 
     def test_check_grad(self):
         self.check_grad(
@@ -54,7 +54,7 @@ class TestViewAsComplexOp(OpTest):
             'Out',
             user_defined_grads=[ref_view_as_real(self.out_grad)],
             user_defined_grad_outputs=[self.out_grad],
-            check_eager=True,
+            check_dygraph=True,
         )
 
 
@@ -71,7 +71,7 @@ class TestViewAsRealOp(OpTest):
         self.out_grad = np.ones([10, 10, 2], dtype="float64")
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_dygraph=True)
 
     def test_check_grad(self):
         self.check_grad(
@@ -79,7 +79,7 @@ class TestViewAsRealOp(OpTest):
             'Out',
             user_defined_grads=[ref_view_as_complex(self.out_grad)],
             user_defined_grad_outputs=[self.out_grad],
-            check_eager=True,
+            check_dygraph=True,
         )
 
 

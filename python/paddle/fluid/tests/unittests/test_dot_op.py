@@ -38,7 +38,7 @@ class DotOp(OpTest):
         self.attrs = {}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_dygraph=True)
 
     def test_check_grad_normal(self):
         if core.is_compiled_with_rocm():
@@ -46,10 +46,10 @@ class DotOp(OpTest):
                 ['X', 'Y'],
                 'Out',
                 user_defined_grads=[self.inputs['Y'], self.inputs['X']],
-                check_eager=True,
+                check_dygraph=True,
             )
         else:
-            self.check_grad(['X', 'Y'], 'Out', check_eager=True)
+            self.check_grad(['X', 'Y'], 'Out', check_dygraph=True)
 
     def test_check_grad_ingore_x(self):
         if core.is_compiled_with_rocm():
@@ -58,11 +58,11 @@ class DotOp(OpTest):
                 'Out',
                 no_grad_set=set("X"),
                 user_defined_grads=[self.inputs['X']],
-                check_eager=True,
+                check_dygraph=True,
             )
         else:
             self.check_grad(
-                ['Y'], 'Out', no_grad_set=set("X"), check_eager=True
+                ['Y'], 'Out', no_grad_set=set("X"), check_dygraph=True
             )
 
     def test_check_grad_ingore_y(self):
@@ -72,11 +72,11 @@ class DotOp(OpTest):
                 'Out',
                 no_grad_set=set('Y'),
                 user_defined_grads=[self.inputs['Y']],
-                check_eager=True,
+                check_dygraph=True,
             )
         else:
             self.check_grad(
-                ['X'], 'Out', no_grad_set=set('Y'), check_eager=True
+                ['X'], 'Out', no_grad_set=set('Y'), check_dygraph=True
             )
 
     def init_input_output(self):
@@ -181,7 +181,7 @@ class TestComplexDotOp(OpTest):
         self.grad_y = self.grad_out * np.conj(self.x)
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_dygraph=True)
 
     def test_check_grad_normal(self):
         self.check_grad(
@@ -189,7 +189,7 @@ class TestComplexDotOp(OpTest):
             'Out',
             user_defined_grads=[self.grad_x, self.grad_y],
             user_defined_grad_outputs=[self.grad_out],
-            check_eager=True,
+            check_dygraph=True,
         )
 
     def test_check_grad_ingore_x(self):
@@ -199,7 +199,7 @@ class TestComplexDotOp(OpTest):
             no_grad_set=set("X"),
             user_defined_grads=[self.grad_y],
             user_defined_grad_outputs=[self.grad_out],
-            check_eager=True,
+            check_dygraph=True,
         )
 
     def test_check_grad_ingore_y(self):
@@ -209,7 +209,7 @@ class TestComplexDotOp(OpTest):
             no_grad_set=set('Y'),
             user_defined_grads=[self.grad_x],
             user_defined_grad_outputs=[self.grad_out],
-            check_eager=True,
+            check_dygraph=True,
         )
 
 

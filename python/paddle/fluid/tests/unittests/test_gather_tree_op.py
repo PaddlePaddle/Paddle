@@ -37,7 +37,7 @@ class TestGatherTreeOp(OpTest):
         self.outputs = {'Out': self.backtrace(ids, parents)}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_dygraph=True)
 
     @staticmethod
     def backtrace(ids, parents):

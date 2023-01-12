@@ -30,10 +30,10 @@ class TestDeterminantOp(OpTest):
         self.outputs = {'Out': self.target}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_dygraph=True)
 
     def test_check_grad(self):
-        self.check_grad(['Input'], ['Out'], check_eager=True)
+        self.check_grad(['Input'], ['Out'], check_dygraph=True)
 
     def init_data(self):
         np.random.seed(0)
@@ -95,12 +95,12 @@ class TestSlogDeterminantOp(OpTest):
         self.outputs = {'Out': self.target}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_dygraph=True)
 
     def test_check_grad(self):
         # the slog det's grad value is always huge
         self.check_grad(
-            ['Input'], ['Out'], max_relative_error=0.1, check_eager=True
+            ['Input'], ['Out'], max_relative_error=0.1, check_dygraph=True
         )
 
     def init_data(self):

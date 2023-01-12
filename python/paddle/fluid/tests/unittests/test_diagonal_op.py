@@ -30,10 +30,10 @@ class TestDiagonalOp(OpTest):
         self.outputs = {'Out': self.target}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_dygraph=True)
 
     def test_check_grad(self):
-        self.check_grad(['Input'], 'Out', check_eager=True)
+        self.check_grad(['Input'], 'Out', check_dygraph=True)
 
     def init_config(self):
         self.case = np.random.randn(10, 5, 2).astype('float64')
@@ -80,7 +80,7 @@ class TestDiagonalOpCase2(TestDiagonalOp):
             'Out',
             user_defined_grads=[self.grad_x],
             user_defined_grad_outputs=[self.grad_out],
-            check_eager=True,
+            check_dygraph=True,
         )
 
 

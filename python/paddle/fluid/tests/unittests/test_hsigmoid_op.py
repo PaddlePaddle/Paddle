@@ -220,14 +220,14 @@ class TestHSigmoidOp(OpTest):
         self.user_grads = hsigmoid_grad(x, w, label, bias, num_classes)
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_dygraph=True)
 
     def test_check_grad(self):
         self.check_grad(
             ['X', 'W', 'Bias'],
             ['Out'],
             user_defined_grads=self.user_grads,
-            check_eager=True,
+            check_dygraph=True,
         )
 
 
@@ -281,7 +281,7 @@ class TestHSigmoidOpSparse(OpTest):
         self.outputs = {'PreOut': pre_output, 'Out': out}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_dygraph=True)
 
 
 class TestHSigmoidOpWithSparseGrad(unittest.TestCase):
@@ -417,14 +417,14 @@ class TestHSigmoidOpWithCostumTree(OpTest):
         self.outputs = {'PreOut': pre_output, 'Out': out}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_dygraph=True)
 
     def test_check_grad(self):
         self.check_grad(
             ['Bias', 'X', 'W'],
             ['Out'],
             no_grad_set=set('Label'),
-            check_eager=True,
+            check_dygraph=True,
         )
 
 
@@ -483,11 +483,11 @@ class TestHSigmoidOpWithCostumTreeWithoutBias(OpTest):
         self.outputs = {'PreOut': pre_output, 'Out': out}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_dygraph=True)
 
     def test_check_grad(self):
         self.check_grad(
-            ['X', 'W'], ['Out'], no_grad_set=set('Label'), check_eager=True
+            ['X', 'W'], ['Out'], no_grad_set=set('Label'), check_dygraph=True
         )
 
 

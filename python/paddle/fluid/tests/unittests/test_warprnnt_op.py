@@ -229,7 +229,7 @@ class TestWarpRNNTOp(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_dygraph=True)
 
     def test_check_grad(self):
         self.outputs["warprnntgrad"] = self.gradient
@@ -238,21 +238,21 @@ class TestWarpRNNTOp(OpTest):
                 ["input"],
                 "loss",
                 numeric_grad_delta=0.009,
-                check_eager=True,
+                check_dygraph=True,
             )
         else:
             self.check_grad(
                 ["input"],
                 "loss",
                 numeric_grad_delta=0.009,
-                check_eager=True,
+                check_dygraph=True,
             )
 
 
 class TestWarpRNNTFP64Op(TestWarpRNNTOp):
     def test_check_output(self):
         self.acts.astype(np.float64)
-        self.check_output(check_eager=True)
+        self.check_output(check_dygraph=True)
 
     def test_check_grad(self):
         self.acts.astype(np.float64)
@@ -262,14 +262,14 @@ class TestWarpRNNTFP64Op(TestWarpRNNTOp):
                 ["input"],
                 "loss",
                 numeric_grad_delta=0.009,
-                check_eager=True,
+                check_dygraph=True,
             )
         else:
             self.check_grad(
                 ["input"],
                 "loss",
                 numeric_grad_delta=0.009,
-                check_eager=True,
+                check_dygraph=True,
             )
 
 

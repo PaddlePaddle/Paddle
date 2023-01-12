@@ -55,10 +55,10 @@ class TestIndexSelectOp(OpTest):
         self.index_size = 100
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_dygraph=True)
 
     def test_check_grad_normal(self):
-        self.check_grad(['X'], 'Out', check_eager=True)
+        self.check_grad(['X'], 'Out', check_dygraph=True)
 
 
 class TestIndexSelectOpCase2(TestIndexSelectOp):
