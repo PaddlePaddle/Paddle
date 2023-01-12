@@ -1649,7 +1649,9 @@ def _append_backward_vars_(block, start_op_idx, grad_to_var, grad_info_map):
         block.desc._remove_op(op_idx, op_idx + 1)
 
 
-def _rename_grad_(block, start_op_idx, grad_to_var, target_grad_map):
+def _rename_grad_(
+    block, start_op_idx, grad_to_var, target_grad_map, skip_rename_var_list
+):
     var_map = copy.copy(target_grad_map)
     for op_idx in range(start_op_idx, block.desc.op_size()):
         op_desc = block.desc.op(op_idx)
@@ -1661,6 +1663,8 @@ def _rename_grad_(block, start_op_idx, grad_to_var, target_grad_map):
             if "@GRAD" not in name:
                 continue
             if block.desc.find_var(name.encode("ascii")):
+                if name in skip_rename_var_list:
+                    continue
                 new_name = unique_name.generate(name)
                 op_desc._rename_output(name, new_name)
                 var_map[name] = new_name
@@ -1987,7 +1991,8 @@ def append_backward(
     # Because append_backward may be called multiple times,
     # we need rename the internal gradient variables so that they have
     # different names.
-    _rename_grad_(target_grad_block, fwd_op_num, grad_to_var, {})
+
+    _rename_grad_(target_grad_block, fwd_op_num, grad_to_var, {}, [])
 
     _append_backward_vars_(
         target_grad_block, fwd_op_num, grad_to_var, grad_info_map
@@ -2291,6 +2296,7 @@ def calc_gradient(targets, inputs, target_gradients=None, no_grad_set=None):
 
     target_grad_map = {}
     rename_var_map = {}
+    skip_rename_var_list = []
     for i, grad in enumerate(target_gradients):
         target = targets[i]
         grad_name = _append_grad_suffix_(target.name)
@@ -2302,7 +2308,7 @@ def calc_gradient(targets, inputs, target_gradients=None, no_grad_set=None):
                 persistable=target.persistable,
                 stop_gradient=False,
             )
-
+            skip_rename_var_list.append(grad_name)
             op = block.append_op(
                 type="fill_any_like",
                 inputs={'X': [target]},
@@ -2379,7 +2385,9 @@ def calc_gradient(targets, inputs, target_gradients=None, no_grad_set=None):
     # Because calc_gradient may be called multiple times,
     # we need rename the internal gradient variables so that they have
     # different names.
-    _rename_grad_(block, fwd_op_num, grad_to_var, target_grad_map)
+    _rename_grad_(
+        block, fwd_op_num, grad_to_var, target_grad_map, skip_rename_var_list
+    )
 
     _append_backward_vars_(block, fwd_op_num, grad_to_var, grad_info_map)
     prog._sync_with_cpp()
