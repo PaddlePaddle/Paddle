@@ -64,8 +64,10 @@ void FuseQuantizeTranspose2OneDNNPass::ApplyImpl(Graph *graph) const {
     transpose2_op->Op()->SetAttr("scale", scale);
     transpose2_op->Op()->SetAttr("shift", shift);
 
-    bool is_negative_output = quant_op->Op()->HasAttr("is_negative_input")
-            ? PADDLE_GET_CONST(bool, quant_op->Op()->GetAttr("is_negative_input"))
+    bool is_negative_output =
+        quant_op->Op()->HasAttr("is_negative_input")
+            ? PADDLE_GET_CONST(bool,
+                               quant_op->Op()->GetAttr("is_negative_input"))
             : false;
     bool is_bfloat =
         quant_op->Op()->HasAttr("bfloat16")
@@ -73,13 +75,11 @@ void FuseQuantizeTranspose2OneDNNPass::ApplyImpl(Graph *graph) const {
             : false;
 
     std::string output_dtype;
-    if (is_bfloat){
+    if (is_bfloat) {
       output_dtype = "bf16";
-    }
-    else if (is_negative_output) {
+    } else if (is_negative_output) {
       output_dtype = "int8";
-    }
-    else{
+    } else {
       output_dtype = "uint8";
     }
     transpose2_op->Op()->SetAttr("output_data_type", output_dtype);

@@ -99,7 +99,8 @@ void TransposeKernel(const Context& dev_ctx,
           : 0.0f;
   const auto output_data_type =
       dev_ctx.HasDnnAttr("output_data_type")
-          ? PADDLE_GET_CONST(std::string, dev_ctx.GetDnnAttr("output_data_type"))
+          ? PADDLE_GET_CONST(std::string,
+                             dev_ctx.GetDnnAttr("output_data_type"))
           : "";
   const bool with_scale = quantization_scale != 1.0f;
   const bool with_shift = quantization_shift != 0.0f;
@@ -115,13 +116,12 @@ void TransposeKernel(const Context& dev_ctx,
 
   DataType out_dtype;
   if (output_data_type == "bf16") {
-      out_dtype = DataType::BFLOAT16;
+    out_dtype = DataType::BFLOAT16;
   } else if (output_data_type == "int8") {
     out_dtype = DataType::INT8;
-  } else if(output_data_type == "uint8"){
+  } else if (output_data_type == "uint8") {
     out_dtype = DataType::UINT8;
-  }
-  else{
+  } else {
     out_dtype = x.dtype();
   }
   auto out_type = phi::funcs::ToOneDNNDataType(out_dtype);
@@ -140,8 +140,7 @@ void TransposeKernel(const Context& dev_ctx,
     fake_strides[axis[i]] = total_stride;
     total_stride *= x_vec_dims[axis[i]];
   }
-  auto dst_md =
-      dnnl::memory::desc(x_vec_dims, out_type, fake_strides);
+  auto dst_md = dnnl::memory::desc(x_vec_dims, out_type, fake_strides);
   auto dst_data = dev_ctx.template Alloc<T>(out);
   auto reorder_dst_memory_p =
       std::make_shared<dnnl::memory>(dst_md, dev_ctx.GetEngine(), dst_data);
