@@ -1,4 +1,4 @@
-# Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,19 +11,15 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from .functional import Hessian, Jacobian, jvp, vjp
-from .primapi import forward_grad, grad, to_prim
-from .primx import prim2orig
-from .utils import disable_prim, enable_prim, prim_enabled
 
-__all__ = [  # noqa
-    'vjp',
-    'jvp',
-    'Jacobian',
-    'Hessian',
-    'enable_prim',
-    'disable_prim',
-    'forward_grad',
-    'grad',
-    'to_prim',
-]
+
+TOLERANCE = {
+    "float32": {
+        "forward": {"rtol": 1e-6, "atol": 1e-6},
+        "backward": {"rtol": 1e-6, "atol": 1e-6},
+    },
+    "float64": {
+        "forward": {"rtol": 1e-7, "atol": 1e-7},
+        "backward": {"rtol": 1e-7, "atol": 1e-7},
+    },
+}

@@ -646,6 +646,21 @@ def _current_expected_place():
                     "You are using MLU version Paddle, but your MLU device is not set properly. CPU device will be used by default."
                 )
                 _global_expected_place_ = core.CPUPlace()
+        elif core.is_compiled_with_custom_device("npu"):
+            # TODO(duanyanhui): Optimize DeviceManager and Return all expected places when device registered in DeviceManager is greater than 1.
+            try:
+                device_count = core.get_custom_device_count("npu")
+            except Exception as e:
+                device_count = 0
+            if device_count > 0:
+                _global_expected_place_ = core.CustomPlace(
+                    "npu", _custom_device_ids("npu")[0]
+                )
+            else:
+                warnings.warn(
+                    "You are using NPU version Paddle, but your NPU device is not set properly. CPU device will be used by default."
+                )
+                _global_expected_place_ = core.CPUPlace()
         else:
             _global_expected_place_ = core.CPUPlace()
 
@@ -722,6 +737,15 @@ def _npu_ids():
         device_ids = [int(s) for s in npus_env.split(",")]
     else:
         device_ids = range(core.get_npu_device_count())
+    return device_ids
+
+
+def _custom_device_ids(device_type):
+    custom_devices_env = os.getenv("FLAGS_selected_" + device_type + "s")
+    if custom_devices_env:
+        device_ids = [int(s) for s in custom_devices_env.split(",")]
+    else:
+        device_ids = range(core.get_custom_device_count(device_type))
     return device_ids
 
 
