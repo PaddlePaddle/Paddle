@@ -999,6 +999,8 @@ class BatchNorm(Layer):
                 self._use_global_stats,
                 self._trainable_statistics,
             )
+            if self._act is None:
+                return batch_norm_out
             return dygraph_utils._append_activation_in_dygraph(
                 batch_norm_out, act=self._act, use_mkldnn=self._use_mkldnn
             )

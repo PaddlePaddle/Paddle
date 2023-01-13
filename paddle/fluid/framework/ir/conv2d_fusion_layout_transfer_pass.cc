@@ -155,7 +155,7 @@ void Conv2dFusionLayoutTransferPass::ApplyImpl(ir::Graph *graph) const {
   }
 #endif
 
-  if (!(is_fp16_precision && cutlass_enable)) return;
+  if (!is_fp16_precision) return;
 
   PADDLE_ENFORCE_EQ(graph->IsMainGraph(),
                     true,
@@ -180,33 +180,13 @@ void Conv2dFusionLayoutTransferPass::ApplyImpl(ir::Graph *graph) const {
   std::string target_op_type = "conv2d_fusion";
   std::unordered_set<ir::Node *> valid_ops;
 
-  auto OpIsValid = [&](ir::Node *op_node) -> bool {
+  auto cuDNNIsValid = [&](ir::Node *op_node) -> bool {
     if (op_node->Op()->Type() != target_op_type) return false;
-
     auto data_format =
         op_node->Op()->GetAttrIfExists<std::string>("data_format");
     if (data_format != "NCHW") return false;
-
     auto filter_names = op_node->Op()->Input("Filter");
-    auto act_type = op_node->Op()->GetAttrIfExists<std::string>("activation");
     constexpr int CUTLASS_NHWC_ALIGNMENT = 8;
-    // conv2d_fusion has two forms: conv + bias + act, conv + bias +
-    // elmentwise_add + act.
-    std::unordered_set<std::string> cutlass_cba_act_set = {
-        "relu", "swish", "identity", "leaky_relu"};
-    std::unordered_set<std::string> cutlass_cbaa_act_set = {"relu"};
-    bool is_residual = op_node->Op()->Input("ResidualData").size() >= 1UL;
-
-    if (is_residual) {
-      if (!cutlass_cbaa_act_set.count(act_type)) {
-        return false;
-      }
-    } else {
-      if (!cutlass_cba_act_set.count(act_type)) {
-        return false;
-      }
-    }
-
     // If filter's channel is not multiple of 8, conv2d_fusion not run at nhwc.
     for (const auto &filter_name : filter_names) {
       auto *filter_var = scope->FindLocalVar(filter_name);
@@ -223,14 +203,37 @@ void Conv2dFusionLayoutTransferPass::ApplyImpl(ir::Graph *graph) const {
     return true;
   };
 
+  auto CutlassIsValid = [&](ir::Node *op_node) -> bool {
+    auto act_type = op_node->Op()->GetAttrIfExists<std::string>("activation");
+    // conv2d_fusion has two forms: conv + bias + act, conv + bias +
+    // elmentwise_add + act.
+    std::unordered_set<std::string> cutlass_cba_act_set = {
+        "relu", "swish", "identity", "leaky_relu"};
+    std::unordered_set<std::string> cutlass_cbaa_act_set = {"relu"};
+    bool is_residual = op_node->Op()->Input("ResidualData").size() >= 1UL;
+
+    if (is_residual) {
+      if (!cutlass_cbaa_act_set.count(act_type)) {
+        return false;
+      }
+    } else {
+      if (!cutlass_cba_act_set.count(act_type)) {
+        return false;
+      }
+    }
+    return true;
+  };
+
   for (auto *op_node : op_nodes) {
     CHECK_EQ(op_node->IsOp(), true);
-    if (OpIsValid(op_node)) {
+    if (cuDNNIsValid(op_node)) {
       valid_ops.insert(op_node);
       auto *op_desc = op_node->Op();
       auto nhwc_attr = framework::Attribute(std::string("NHWC"));
       op_desc->SetAttr("data_format", nhwc_attr);
-      op_desc->SetType("conv2d_fusion_cutlass");
+      if (cutlass_enable && CutlassIsValid(op_node)) {
+        op_desc->SetType("conv2d_fusion_cutlass");
+      }
       op_desc->Flush();
 
       // transfer weights
