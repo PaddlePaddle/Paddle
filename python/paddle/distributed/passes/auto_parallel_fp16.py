@@ -15,6 +15,7 @@
 from collections import defaultdict
 
 import paddle
+from paddle.common_ops_import import check_type, check_variable_and_dtype
 from paddle.distributed.auto_parallel.dist_attribute import OperatorDistAttr
 from paddle.distributed.auto_parallel.process_group import (
     get_world_process_group,
@@ -33,7 +34,6 @@ from paddle.fluid.contrib.mixed_precision.fp16_utils import (
     _need_keep_fp32,
     _valid_types,
 )
-from paddle.fluid.data_feeder import check_type, check_variable_and_dtype
 from paddle.framework import core
 from paddle.static import default_main_program, default_startup_program
 from paddle.utils import unique_name
