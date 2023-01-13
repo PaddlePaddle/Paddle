@@ -1004,7 +1004,7 @@ std::vector<paddle::experimental::Tensor> GetTensorListFromArgs(
     bool dispensable) {
   PyObject* list = PyTuple_GET_ITEM(args, arg_idx);
 
-  if (list == nullptr || PyList_Size(list) == 0) {
+  if (list == nullptr) {
     if (!dispensable) {
       PADDLE_THROW(platform::errors::InvalidArgument(
           "%s(): argument '%s' (position %d) must be list of Tensor, but got "
@@ -1171,7 +1171,7 @@ std::vector<paddle::experimental::Tensor*> GetTensorPtrListFromArgs(
     bool dispensable) {
   PyObject* list = PyTuple_GET_ITEM(args, arg_idx);
 
-  if (list == nullptr || PyList_Size(list) == 0) {
+  if (list == nullptr) {
     if (!dispensable) {
       PADDLE_THROW(platform::errors::InvalidArgument(
           "%s(): argument '%s' (position %d) must be list of Tensor, but got "

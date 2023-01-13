@@ -199,10 +199,6 @@ class PartialProgramLayer:
             return core.Scope()
 
     @LazyInitialized
-    def __fake_vars(self):
-        return _create_fake_var()
-
-    @LazyInitialized
     def _double_grads(self):
         return self._get_double_grads(self._origin_main_program)
 
@@ -580,7 +576,7 @@ class PartialProgramLayer:
                             False,
                         )
                     double_grads.append(var_base)
-        return double_grads
+        return self._valid_vars(double_grads)
 
     def _get_end_op_index(self):
         if _in_amp_guard():
@@ -634,9 +630,9 @@ class PartialProgramLayer:
             )
 
             _legacy_C_ops.run_program(
-                in_vars,
-                self._params,
-                out_vars,
+                self._valid_vars(in_vars),
+                self._valid_vars(self._params),
+                self._valid_vars(out_vars),
                 self._create_scope_vec(
                     program_id=self.program_id, use_scope_cache=True
                 ),
@@ -646,9 +642,9 @@ class PartialProgramLayer:
             )
         else:
             _legacy_C_ops.run_program(
-                in_vars,
-                self._params,
-                out_vars,
+                self._valid_vars(in_vars),
+                self._valid_vars(self._params),
+                self._valid_vars(out_vars),
                 self._create_scope_vec(),
                 self._double_grads,
                 self._cuda_graph_vec,
@@ -1003,6 +999,14 @@ class PartialProgramLayer:
                             "\n\t\t2. Please use nn.ParameterList and nn.LayerList as container instead of using a native Python container such as List"
                             % name
                         )
+
+    def _valid_vars(self, vars):
+        """
+        Note: run_program_op.InferShape requires `X`/'Out' not be null.
+        But it's common in dy2static, fake varBase is created to handle the
+        problem.
+        """
+        return vars if vars else None
 
 
 def _create_fake_var():
