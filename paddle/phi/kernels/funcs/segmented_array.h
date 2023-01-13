@@ -116,9 +116,8 @@ struct ConstPointerArraySetter : public ArraySetterBase<Context> {
     const T** dev_ptr = nullptr;
     if (Size == SegmentedArraySize::kVariableLength) {
       size_t num_bytes = t.size() * sizeof(T*);
-      dev_ptr =
-          reinterpret_cast<const T**>(this->AllocAndCopy(
-              ctx, reinterpret_cast<void*>(ptrs.data()), num_bytes));
+      dev_ptr = reinterpret_cast<const T**>(this->AllocAndCopy(
+          ctx, reinterpret_cast<void*>(ptrs.data()), num_bytes));
     }
 
     array.Set(ptrs, dev_ptr);
@@ -172,6 +171,7 @@ inline SegmentedArraySize CalcArraySize(int n) {
     return SegmentedArraySize::kVariableLength;
   }
 }
+
 }  // namespace funcs
 
 #define _SEGMENTED_ARRAY_KERNEL_CASE(size, ...) \

@@ -35,6 +35,7 @@ struct FastDivMod {
   HOSTDEVICE FastDivMod(uint32_t d) : divisor(d) {
     static_assert(sizeof(unsigned int) == 4,
                   "Only Support 32-bit unsigned int.");
+
     for (shift_val = 0; shift_val < INT_BITS; ++shift_val) {
       auto shift_limit = 1 << shift_val;
       if (shift_limit >= divisor) break;
