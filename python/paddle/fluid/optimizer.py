@@ -4414,7 +4414,7 @@ class PipelineOptimizer:
         valid_optimizers = (
             Optimizer,
             paddle.optimizer.Optimizer,
-            paddle.fluid.contrib.mixed_precision.decorator.OptimizerWithMixedPrecision,
+            paddle.static.amp.decorator.OptimizerWithMixedPrecision,
         )
         if not isinstance(optimizer, valid_optimizers):
             raise ValueError(

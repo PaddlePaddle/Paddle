@@ -521,8 +521,7 @@ def edit_distance(
             # [4]
 
     """
-    check_variable_and_dtype(input, 'input', ['int64'], 'edit_distance')
-    check_variable_and_dtype(label, 'label', ['int64'], 'edit_distance')
+
     helper = LayerHelper("edit_distance", **locals())
 
     # remove some tokens from input and labels
@@ -551,6 +550,8 @@ def edit_distance(
             input, label, input_length, label_length, normalized
         )
 
+    check_variable_and_dtype(input, 'input', ['int64'], 'edit_distance')
+    check_variable_and_dtype(label, 'label', ['int64'], 'edit_distance')
     this_inputs = {"Hyps": [input], "Refs": [label]}
     if input_length is not None and label_length is not None:
         this_inputs['HypsLength'] = [input_length]
@@ -1075,16 +1076,16 @@ def smooth_l1_loss(input, label, reduction='mean', delta=1.0, name=None):
             print(output)
             # [0.068004]
     """
-    check_variable_and_dtype(
-        input, 'input', ['float32', 'float64'], 'smooth_l1_loss'
-    )
-    check_variable_and_dtype(
-        label, 'label', ['float32', 'float64'], 'smooth_l1_loss'
-    )
 
     if in_dygraph_mode():
         out, residual = _C_ops.huber_loss(input, label, delta)
     else:
+        check_variable_and_dtype(
+            input, 'input', ['float32', 'float64'], 'smooth_l1_loss'
+        )
+        check_variable_and_dtype(
+            label, 'label', ['float32', 'float64'], 'smooth_l1_loss'
+        )
         helper = LayerHelper('huber_loss', **locals())
         residual = helper.create_variable_for_type_inference(
             dtype=helper.input_dtype()

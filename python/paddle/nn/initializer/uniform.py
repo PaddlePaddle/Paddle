@@ -72,12 +72,13 @@ class UniformInitializer(Initializer):
         block = self._check_block(block)
 
         assert isinstance(block, framework.Block)
-        check_variable_and_dtype(
-            var,
-            "Out",
-            ["uint16", "float16", "float32", "float64"],
-            "uniform_random",
-        )
+        if not in_dygraph_mode():
+            check_variable_and_dtype(
+                var,
+                "Out",
+                ["uint16", "float16", "float32", "float64"],
+                "uniform_random",
+            )
 
         if self._seed == 0:
             self._seed = block.program.random_seed
