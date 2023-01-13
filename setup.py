@@ -676,7 +676,12 @@ def build_run(args, build_path, envrion_var):
 
 
 def run_cmake_build(build_path):
-    build_args = ["--build", ".", "--target", "install", "--config", 'Release']
+    build_type = (
+        os.getenv("CMAKE_BUILD_TYPE")
+        if os.getenv("CMAKE_BUILD_TYPE") is not None
+        else "release"
+    )
+    build_args = ["--build", ".", "--target", "install", "--config", build_type]
     max_jobs = os.getenv("MAX_JOBS")
     if max_jobs is not None:
         max_jobs = max_jobs or str(multiprocessing.cpu_count())
