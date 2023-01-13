@@ -913,7 +913,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
                std::string handle = memory::allocation::GetIPCName();
                int find_id = -1;
                if (FLAGS_use_shm_cache) {
-                 find_id = memory::allocation::MemoryMapAllocationPool::Instance().GetAndUse(memory::allocation::MemoryMap(flags, data_size, false, "", nullptr, -1)); // NOLINT
+                 find_id = memory::allocation::MemoryMapAllocationPool::Instance().FindFromCache(flags, data_size); // NOLINT
                }
                if (find_id != -1) {
                  handle = memory::allocation::MemoryMapAllocationPool::Instance().GetById(find_id).file_name_; // NOLINT
@@ -971,7 +971,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
                          memory::allocation::MAPPED_NOCREATE;
              int find_id = -1;
              if (FLAGS_use_shm_cache) {
-               find_id = memory::allocation::MemoryMapAllocationPool::Instance().GetAndUse(memory::allocation::MemoryMap(flags, size, false, ipc_name, nullptr, -1)); // NOLINT
+               find_id = memory::allocation::MemoryMapAllocationPool::Instance().FindFromCache(flags, size, ipc_name, /*check_refcount*/ false); // NOLINT
              }
              auto shared_holder =
                  memory::allocation::AllocateRefcountedMemoryMapAllocation(

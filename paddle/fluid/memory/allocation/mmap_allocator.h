@@ -163,28 +163,17 @@ class MemoryMap {
  public:
   explicit MemoryMap(int flags,
                      size_t data_size,
-                     bool is_using,
                      std::string file_name,
-                     void *mmap_ptr,
-                     int fd)
+                     void *mmap_ptr)
       : flags_(flags),
         data_size_(data_size),
-        is_using_(is_using),
         file_name_(file_name),
-        mmap_ptr_(mmap_ptr),
-        fd_(fd) {}
+        mmap_ptr_(mmap_ptr) {}
 
   int flags_ = 0;
   size_t data_size_ = 0;
-  bool is_using_ = false;
   std::string file_name_;
   void *mmap_ptr_ = nullptr;
-  int fd_ = -1;
-
-  bool operator==(const MemoryMap &other) {
-    return (flags_ == other.flags_) && (data_size_ == other.data_size_) &&
-           (is_using_ == other.is_using_);
-  }
 };
 
 class MemoryMapAllocationPool {
@@ -193,15 +182,12 @@ class MemoryMapAllocationPool {
 
   void Insert(const MemoryMap &memory_map);
 
-  void RemoveById(int id);
-
-  int GetAndUse(const MemoryMap &memory_map);
-
-  int GetAndReset(const MemoryMap &memory_map);
+  int FindFromCache(const int &flag,
+                    const size_t &data_size,
+                    const std::string &file_name = "",
+                    bool check_refcount = true);
 
   const MemoryMap &GetById(int id);
-
-  void ResetById(int id);
 
   size_t BufferSize() { return memory_map_allocations_.size(); }
 
