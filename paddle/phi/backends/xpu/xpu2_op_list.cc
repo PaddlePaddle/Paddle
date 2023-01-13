@@ -313,6 +313,7 @@ XPUOpMap& get_kl2_ops() {
        XPUKernelSet({phi::DataType::INT64,
                      phi::DataType::INT32,
                      phi::DataType::FLOAT32})},
+      {"grid_sampler_grad", XPUKernelSet({phi::DataType::FLOAT32})},
       {"grid_sampler", XPUKernelSet({phi::DataType::FLOAT32})},
       {"hard_sigmoid_grad", XPUKernelSet({phi::DataType::FLOAT32})},
       {"hard_sigmoid", XPUKernelSet({phi::DataType::FLOAT32})},
