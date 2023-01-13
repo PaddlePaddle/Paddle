@@ -72,6 +72,9 @@ void Carrier::Init(
     microbatch_scopes_[i] = &minibatch_scope_->NewScope();
     CopyParameters(i, program, inference_root_scope_vars);
   }
+  // Add source and sink interceptor id to rank
+  interceptor_id_to_rank_.emplace(SOURCE_ID, rank);
+  interceptor_id_to_rank_.emplace(SINK_ID, rank);
 
   // TODO(fleet_exe dev): thread pool
   thread_num_ = 1;
@@ -161,16 +164,10 @@ void Carrier::Start() {
                     true,
                     platform::errors::PreconditionNotMet(
                         "Using carrier before initialized."));
-  for (int64_t id : source_interceptor_ids_) {
-    VLOG(3) << "Carrier Start is sending start to source interceptor " << id
-            << ".";
-    InterceptorMessage start_msg;
-    // source node data_is_ready is send by carrier, so set src_id=-1
-    start_msg.set_src_id(-1);
-    start_msg.set_dst_id(id);
-    start_msg.set_message_type(DATA_IS_READY);
-    Send(start_msg);
-  }
+  InterceptorMessage start_msg;
+  start_msg.set_dst_id(SOURCE_ID);
+  start_msg.set_message_type(START);
+  Send(start_msg);
   // TODO(wangxi): async step
   Wait();
   dev_ctx_->Wait();
@@ -272,6 +269,38 @@ void Carrier::CreateInterceptors() {
 
   auto gc = GetGC(place_);
 
+  // create source and sink task node
+  auto max_run_times = microbatch_scopes_.size();
+  TaskNode* source = new TaskNode(
+      rank_, SOURCE_ID, max_run_times);  // rank, task_id, max_run_times
+  TaskNode* sink = new TaskNode(rank_, SINK_ID, max_run_times);
+  // find nodes without upstreams or without downstreams
+  std::vector<TaskNode*> origin_sources, origin_sinks;
+  for (const auto& item : interceptor_id_to_node_) {
+    TaskNode* task_node = item.second;
+    if (task_node->upstream().empty()) {
+      origin_sources.emplace_back(task_node);
+    }
+    if (task_node->downstream().empty()) {
+      origin_sinks.emplace_back(task_node);
+    }
+  }
+  // link source node with origin source
+  for (const auto& node : origin_sources) {
+    source->AddDownstreamTask(node->task_id(),
+                              std::numeric_limits<int64_t>::max());
+    node->AddUpstreamTask(SOURCE_ID, std::numeric_limits<int64_t>::max());
+  }
+  // link sink node with origin sink
+  for (const auto& node : origin_sinks) {
+    sink->AddUpstreamTask(node->task_id(), std::numeric_limits<int64_t>::max());
+    node->AddDownstreamTask(SINK_ID, std::numeric_limits<int64_t>::max());
+  }
+  // create source and sink interceptor
+  SetInterceptor(SOURCE_ID,
+                 InterceptorFactory::Create("Source", SOURCE_ID, source));
+  SetInterceptor(SINK_ID, InterceptorFactory::Create("Sink", SINK_ID, sink));
+
   // create each Interceptor
   // no auto init since there is no config
   for (const auto& item : interceptor_id_to_node_) {
@@ -305,9 +334,15 @@ void Carrier::CreateInterceptors() {
     VLOG(3) << "Create Interceptor with interceptor id: " << interceptor_id
             << " with type: " << task_node->type() << ".";
 
-    if (task_node->upstream().empty()) {
-      source_interceptor_ids_.emplace_back(interceptor_id);
-    }
+    PADDLE_ENFORCE_EQ(
+        task_node->upstream().empty(),
+        false,
+        platform::errors::PreconditionNotMet(
+            "There should not have normal nodes as source nodes"));
+    PADDLE_ENFORCE_EQ(task_node->downstream().empty(),
+                      false,
+                      platform::errors::PreconditionNotMet(
+                          "There should not have normal nodes as sink nodes"));
   }
 }
 
