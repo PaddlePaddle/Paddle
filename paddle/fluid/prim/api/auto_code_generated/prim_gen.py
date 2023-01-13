@@ -20,6 +20,7 @@ from prim_base import EagerPrimAPI
 
 def header_include():
     return """
+#include "paddle/phi/common/int_array.h"
 #include "paddle/phi/common/scalar.h"
 #include "paddle/utils/optional.h"
 """
