@@ -254,5 +254,12 @@ void expand_grad(const Tensor& x,
   }
 }
 
+template <typename T>
+void exp_grad(const Tensor& out, const Tensor& out_grad, Tensor* x_grad) {
+  if (x_grad) {
+    x_grad->set_impl(multiply<T>(out_grad, out).impl());
+  }
+}
+
 }  // namespace prim
 }  // namespace paddle
