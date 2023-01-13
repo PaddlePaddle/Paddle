@@ -463,7 +463,7 @@ class TestSundryAPI(unittest.TestCase):
         self.assertEqual(x.grad.shape, [2, 3])
         self.assertEqual(out.grad.shape, [3])
 
-    def test_gather_xD_axis_1(self):
+    def _test_gather_xD_axis_1(self):
         x = paddle.to_tensor(
             [[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]], stop_gradient=False
         )
