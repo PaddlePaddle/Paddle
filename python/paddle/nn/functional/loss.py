@@ -521,8 +521,7 @@ def edit_distance(
             # [4]
 
     """
-    check_variable_and_dtype(input, 'input', ['int64'], 'edit_distance')
-    check_variable_and_dtype(label, 'label', ['int64'], 'edit_distance')
+
     helper = LayerHelper("edit_distance", **locals())
 
     # remove some tokens from input and labels
@@ -551,6 +550,8 @@ def edit_distance(
             input, label, input_length, label_length, normalized
         )
 
+    check_variable_and_dtype(input, 'input', ['int64'], 'edit_distance')
+    check_variable_and_dtype(label, 'label', ['int64'], 'edit_distance')
     this_inputs = {"Hyps": [input], "Refs": [label]}
     if input_length is not None and label_length is not None:
         this_inputs['HypsLength'] = [input_length]
@@ -953,6 +954,11 @@ def hsigmoid_loss(
             #  [2.11009121]
             #  [1.92374969]]
     """
+    if num_classes < 2:
+        raise ValueError(
+            'Expected num_classes >= 2 (got {})'.format(num_classes)
+        )
+
     if in_dygraph_mode():
         out, _, _ = _C_ops.hsigmoid_loss(
             input,
@@ -1070,16 +1076,16 @@ def smooth_l1_loss(input, label, reduction='mean', delta=1.0, name=None):
             print(output)
             # [0.068004]
     """
-    check_variable_and_dtype(
-        input, 'input', ['float32', 'float64'], 'smooth_l1_loss'
-    )
-    check_variable_and_dtype(
-        label, 'label', ['float32', 'float64'], 'smooth_l1_loss'
-    )
 
     if in_dygraph_mode():
         out, residual = _C_ops.huber_loss(input, label, delta)
     else:
+        check_variable_and_dtype(
+            input, 'input', ['float32', 'float64'], 'smooth_l1_loss'
+        )
+        check_variable_and_dtype(
+            label, 'label', ['float32', 'float64'], 'smooth_l1_loss'
+        )
         helper = LayerHelper('huber_loss', **locals())
         residual = helper.create_variable_for_type_inference(
             dtype=helper.input_dtype()
@@ -1372,10 +1378,29 @@ def nll_loss(
 
     input_shape = list(input.shape)
     input_dims = len(input_shape)
+    label_shape = list(label.shape)
+    label_dims = len(label_shape)
+
+    if input_dims - 1 != label_dims and input_dims != label_dims:
+        raise ValueError(
+            "Expected input_dims - 1 = label_dims or input_dims == label_dims\
+             (got input_dims{}, label_dims{})".format(
+                input_dims, label_dims
+            )
+        )
+
     if input_dims < 2:
         raise ValueError(
             'Expected 2 or more dimensions (got {})'.format(input_dims)
         )
+
+    if input_shape[1] < 1:
+        raise ValueError(
+            "Expected 1 or more classess (got num classes{})".format(
+                input_shape[1]
+            )
+        )
+
     n = input_shape[0]
     c = input_shape[1]
     if in_dygraph_mode():

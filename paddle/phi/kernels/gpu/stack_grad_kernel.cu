@@ -16,16 +16,17 @@
 #include "paddle/fluid/memory/memory.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/funcs/segmented_array.h"
 
 namespace phi {
 
-template <typename T, typename IndexT>
-__global__ void UnStackHelperCUDAKernel(const T* __restrict__ input,
-                                        int pre_dim_size,
-                                        int split_dim_size,
-                                        int suf_dim_size,
-                                        int num_split,
-                                        T** output_ptrs) {
+template <typename T, typename IndexT, typename ArrayT>
+__global__ void UnStackCudaKernel(const T* __restrict__ input,
+                                  IndexT pre_dim_size,
+                                  IndexT split_dim_size,
+                                  IndexT suf_dim_size,
+                                  IndexT num_split,
+                                  ArrayT array) {
   assert(blockDim.y == 1);
   assert(blockDim.z == 1);
   // In this case they are equal
@@ -40,7 +41,7 @@ __global__ void UnStackHelperCUDAKernel(const T* __restrict__ input,
     IndexT j = (offset % (split_dim_size * suf_dim_size)) / suf_dim_size;
     IndexT k = offset % suf_dim_size;
 
-    T* output = output_ptrs[j / each_dim_size];
+    T* output = array.data[j / each_dim_size];
     if (output == nullptr) {
       return;
     }
@@ -50,12 +51,12 @@ __global__ void UnStackHelperCUDAKernel(const T* __restrict__ input,
   }
 }
 
-template <typename T, typename IndexT>
-__global__ void StackGradKernelForLastDim(const T* __restrict__ in_data,
-                                          const IndexT cols,
-                                          const IndexT rows,
-                                          const IndexT tile_x_num,
-                                          T** out_datas) {
+template <typename T, typename IndexT, typename ArrayT>
+__global__ void UnStackCudaKernelForLastDim(const T* __restrict__ in_data,
+                                            const IndexT cols,
+                                            const IndexT rows,
+                                            const IndexT tile_x_num,
+                                            ArrayT array) {
   constexpr int buffer_size = 512;
   __shared__ T s_buf[buffer_size];
 
@@ -71,112 +72,112 @@ __global__ void StackGradKernelForLastDim(const T* __restrict__ in_data,
     }
     __syncthreads();
     if (is_valid) {
-      if (out_datas[col_idx] != nullptr) {
-        out_datas[col_idx][row_idx] = s_buf[s_idx];
+      if (array.data[col_idx]) {
+        array.data[col_idx][row_idx] = s_buf[s_idx];
       }
     }
   }
 }
 
-template <typename Context, typename T, typename IndexT>
-void LaunchStackGradCUDAKernel(const Context& ctx,
-                               const DenseTensor& out,
-                               std::vector<DenseTensor*>* x_grad_ptr,
-                               const int axis,
-                               const int64_t dy_pre) {
-  auto x_grad = *x_grad_ptr;
-  int out_num = out.dims()[axis];
-  PADDLE_ENFORCE_EQ(
-      out_num,
-      x_grad.size(),
-      phi::errors::InvalidArgument(
-          "Output x_grad size shall be equal to output num, but output num "
-          "received in stack_grad op is:%d, and x_grad size is:%d.",
-          out_num,
-          x_grad.size()));
-  std::vector<T*> outputs(out_num);
-  for (size_t j = 0; j < out_num; ++j) {
-    if (x_grad[j] == nullptr || x_grad[j]->numel() == 0UL) {
-      outputs[j] = nullptr;
-    } else {
-      outputs[j] = ctx.template Alloc<T>(x_grad[j]);
-    }
-  }
+template <typename Context,
+          typename T,
+          typename IndexT,
+          funcs::SegmentedArraySize Size>
+void LaunchUnStackKernel(const Context& ctx,
+                         const IndexT pre_dim,
+                         const IndexT split_dim,
+                         const IndexT suf_dim,
+                         const IndexT num_splits,
+                         const DenseTensor& out_grad,
+                         std::vector<DenseTensor*>* x_grad) {
+  // each x_grad should have same shape
+  auto dout_ptr = out_grad.data<T>();
+  funcs::PointerArraySetter<Context, T, Size> setter(ctx, x_grad);
 
-  auto tmp_out_data = paddle::memory::Alloc(
-      ctx.GetPlace(),
-      out_num * sizeof(T*),
-      phi::Stream(reinterpret_cast<phi::StreamId>(ctx.stream())));
-  paddle::memory::Copy(ctx.GetPlace(),
-                       tmp_out_data->ptr(),
-                       phi::CPUPlace(),
-                       reinterpret_cast<void*>(outputs.data()),
-                       out_num * sizeof(T*),
-                       ctx.stream());
-
-  if (axis == (out.dims().size() - 1)) {
+  if (suf_dim == 1) {
+    // For the case axis == (out_grad.dims().size() - 1)
     constexpr int kThreads = 512;
     constexpr int kWarpSize = 32;
     constexpr int kMaxOut = 16;
-    int tid_x = 0, tid_y = 0, bid_x = 0, bid_y = 1;
-    bool is_small_num = out_num < kMaxOut;
 
-    if (is_small_num) {
-      tid_y = out_num;
+    int tid_x = 0, tid_y = 0, bid_x = 0, bid_y = 1;
+    if (split_dim < kMaxOut) {
+      tid_y = split_dim;
       tid_x =
-          std::min(backends::gpu::RoundToNextHighPowOfTwo(dy_pre, kWarpSize),
+          std::min(backends::gpu::RoundToNextHighPowOfTwo(pre_dim, kWarpSize),
                    kThreads / backends::gpu::RoundToNextHighPowOfTwo(tid_y));
     } else {
       tid_y = kMaxOut;
       tid_x = kWarpSize;
-      bid_y = backends::gpu::DivUp<int>(out_num, kMaxOut);
+      bid_y = backends::gpu::DivUp<int>(split_dim, kMaxOut);
     }
-    int tile_x_num = backends::gpu::DivUp<int>(dy_pre, tid_x);
+    int tile_x_num = backends::gpu::DivUp<int>(pre_dim, tid_x);
     bid_x = std::min(tile_x_num, backends::gpu::kMultiDimslimit);
     dim3 blocks(tid_x, tid_y, 1);
     dim3 grids(bid_x, bid_y, 1);
 
-    StackGradKernelForLastDim<T, IndexT><<<grids, blocks, 0, ctx.stream()>>>(
-        out.data<T>(),
-        out_num,
-        dy_pre,
-        tile_x_num,
-        reinterpret_cast<T**>(tmp_out_data->ptr()));
+    UnStackCudaKernelForLastDim<T, IndexT, decltype(setter.array)>
+        <<<grids, blocks, 0, ctx.stream()>>>(
+            dout_ptr, split_dim, pre_dim, tile_x_num, setter.array);
   } else {
-    int dy_suf = out.numel() / (out_num * dy_pre);
-    auto config =
-        backends::gpu::GetGpuLaunchConfig1D(ctx, dy_pre * out_num * dy_suf);
+    auto config = phi::backends::gpu::GetGpuLaunchConfig1D(
+        ctx, pre_dim * split_dim * suf_dim);
 
-    UnStackHelperCUDAKernel<T, IndexT>
-        <<<config.block_per_grid, config.thread_per_block, 0, ctx.stream()>>>(
-            out.data<T>(),
-            dy_pre,
-            out_num,
-            dy_suf,
-            out_num,
-            reinterpret_cast<T**>(tmp_out_data->ptr()));
+    UnStackCudaKernel<T, IndexT, decltype(setter.array)>
+        <<<config.block_per_grid.x,
+           config.thread_per_block.x,
+           0,
+           ctx.stream()>>>(
+            dout_ptr, pre_dim, split_dim, suf_dim, num_splits, setter.array);
   }
 }
 
 template <typename T, typename Context>
-void StackGradKernel(const Context& dev_ctx,
-                     const DenseTensor& out,
+void StackGradKernel(const Context& ctx,
+                     const DenseTensor& out_grad,
                      int axis,
                      std::vector<DenseTensor*> x_grad) {
-  const auto& dy_dims = out.dims();
-  int actual_axis = axis < 0 ? axis + dy_dims.size() : axis;
-  bool use_int32 = out.numel() < std::numeric_limits<int32_t>::max();
+  if (axis < 0) axis += out_grad.dims().size();
 
-  int64_t dy_pre = 1;
-  for (int i = 0; i < actual_axis; ++i) {
-    dy_pre *= dy_dims[i];
+  int64_t split_dim = out_grad.dims()[axis];
+  PADDLE_ENFORCE_EQ(
+      split_dim,
+      x_grad.size(),
+      phi::errors::InvalidArgument(
+          "Output x_grad size should be equal to the split_dim, but"
+          " received split_dim is:%d x_grad size is:%d.",
+          split_dim,
+          x_grad.size()));
+
+  auto dout_dims = out_grad.dims();
+  int64_t dout_pre = 1;
+  for (int i = 0; i < axis; ++i) {
+    dout_pre *= dout_dims[i];
   }
-  if (use_int32) {
-    LaunchStackGradCUDAKernel<Context, T, int32_t>(
-        dev_ctx, out, &x_grad, actual_axis, dy_pre);
+  int64_t dout_suf = out_grad.numel() / (split_dim * dout_pre);
+
+  if (out_grad.numel() < std::numeric_limits<int32_t>::max()) {
+    switch (funcs::CalcArraySize(split_dim)) {
+      SEGMENTED_ARRAY_KERNEL_HELPER(
+          LaunchUnStackKernel<Context, T, int32_t, kArraySize>(ctx,
+                                                               dout_pre,
+                                                               split_dim,
+                                                               dout_suf,
+                                                               split_dim,
+                                                               out_grad,
+                                                               &x_grad));
+    }
   } else {
-    LaunchStackGradCUDAKernel<Context, T, int64_t>(
-        dev_ctx, out, &x_grad, actual_axis, dy_pre);
+    switch (funcs::CalcArraySize(split_dim)) {
+      SEGMENTED_ARRAY_KERNEL_HELPER(
+          LaunchUnStackKernel<Context, T, int64_t, kArraySize>(ctx,
+                                                               dout_pre,
+                                                               split_dim,
+                                                               dout_suf,
+                                                               split_dim,
+                                                               out_grad,
+                                                               &x_grad));
+    }
   }
 }
 
