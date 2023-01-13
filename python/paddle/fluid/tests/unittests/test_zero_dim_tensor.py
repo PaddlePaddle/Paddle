@@ -370,6 +370,7 @@ class TestBinaryAPI(unittest.TestCase):
             y = 0.5
             if isinstance(api, dict):
                 out = getattr(paddle.Tensor, api['cls_method'])(x, y)
+                out.retain_grads()
                 out.backward()
 
                 self.assertEqual(x.shape, [])
@@ -901,6 +902,7 @@ class TestSundryAPI(unittest.TestCase):
         stop_axis = -1
 
         out = paddle.flatten(x, start_axis=start_axis, stop_axis=stop_axis)
+        out.retain_grads()
         out.backward()
 
         self.assertEqual(out.shape, [1])
