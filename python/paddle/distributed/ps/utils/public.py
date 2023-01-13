@@ -21,6 +21,7 @@ from functools import reduce
 import paddle.fluid as fluid
 import paddle.fluid.framework as framework
 from paddle.framework import core
+from paddle.distributed.io import is_persistable
 
 # logging.basicConfig(
 #    format='%(levelname)s - %(asctime)s - %(pathname)s: %(lineno)s - %(message)s', level=logging.INFO)
@@ -1253,7 +1254,7 @@ def screen_persistables(program, var_list):
         else:
             var = program.global_block().vars[var_name]
 
-        if fluid.io.is_persistable(var):
+        if is_persistable(var):
             need_remove.append(var_name)
 
     for var_name in need_remove:
