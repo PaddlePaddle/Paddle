@@ -30,5 +30,4 @@ NEED_TO_FIX_OP_LIST = [
     'rnn',
     'multi_dot',
     'index_add',
-    'squared_l2_norm',
 ]
