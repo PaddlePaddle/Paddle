@@ -422,7 +422,7 @@ void TCPStore::wait(const std::string& key) {
   reply = _client->receive_value<ReplyType>();
   PADDLE_ENFORCE(
       reply == ReplyType::STOP_WAIT,
-      platform::errors::InvalidArgument("Stop_waiting response is expected"));
+      phi::errors::InvalidArgument("Stop_waiting response is expected"));
 }
 
 TCPStore::~TCPStore() { VLOG(3) << "TCPStore destructure"; }
