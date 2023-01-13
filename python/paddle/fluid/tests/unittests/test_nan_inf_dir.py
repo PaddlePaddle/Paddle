@@ -94,7 +94,7 @@ class TestNanInfDirCheckResult(unittest.TestCase):
                 assert num_nan == num_nan_np and num_inf == num_inf_np
 
         paddle.set_flags(
-            {"FLAGS_check_nan_inf": 1, "FLAGS_check_nan_inf_level": 0}
+            {"FLAGS_check_nan_inf": 1, "FLAGS_check_nan_inf_level": 3}
         )
         _check_num_nan_inf(use_cuda=False)
         if paddle.fluid.core.is_compiled_with_cuda():
