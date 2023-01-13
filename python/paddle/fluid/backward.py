@@ -1329,8 +1329,9 @@ def _append_backward_ops_(
         rename_var_map = {}
     assert isinstance(rename_var_map, dict)
 
+    if core.is_prim_enabled():
+        composite_block = program.clone().current_block()
     # add grad_op_desc by reversed ops
-    composite_block = program.clone().current_block()
     for op in reversed(ops):
         grad_sub_block_list = []
         # If the op has its own sub-block, deal with the sub-block first
@@ -1673,6 +1674,7 @@ def _append_backward_vars_(block, start_op_idx, grad_to_var, grad_info_map):
 
 
 def infershape_for_composite(block, grad_op_desc):
+
     op_desc = block.desc.append_op()
     op_desc.copy_from(grad_op_desc)
     op_desc._set_attr(
@@ -1680,7 +1682,7 @@ def infershape_for_composite(block, grad_op_desc):
         core.op_proto_and_checker_maker.OpRole.Backward,
     )
 
-    vars = set()
+    new_vars = set()
     # create new gradient variables
     for grad_var_name in op_desc.output_arg_names():
         if not (
@@ -1688,14 +1690,14 @@ def infershape_for_composite(block, grad_op_desc):
             or grad_var_name == core.empty_var_name()
         ):
             block.desc.var(grad_var_name.encode())
-            vars.add(grad_var_name)
+            new_vars.add(grad_var_name)
     # infer_shape and infer_type
     op_desc.check_attrs()
     op_desc.infer_var_type(block.desc)
     op_desc.infer_shape(block.desc)
 
     for arg in op_desc.output_arg_names():
-        if arg in vars:
+        if arg in new_vars:
             _infer_var_data_type_shape_(arg, block)
 
 

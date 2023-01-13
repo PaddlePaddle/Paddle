@@ -63,5 +63,9 @@ Tensor exp<Tensor>(const Tensor& x) {
   return ::exp_ad_func(x);
 }
 
+template <typename T>
+Tensor expand(const Tensor& x, const IntArray& shape) {
+  return ::expand_ad_func(x, shape);
+}
 }  // namespace prim
 }  // namespace paddle

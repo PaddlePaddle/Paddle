@@ -147,9 +147,6 @@ void multiply_grad(const Tensor& x,
                    Tensor* y_grad) {
   if (x_grad) {
     auto x_grad_unreduce = multiply<T>(out_grad, y);
-    VLOG(3) << "x_grad_unreduce dims: " << x_grad_unreduce.dims();
-    VLOG(3) << "out_grad dims: " << out_grad.dims();
-    VLOG(3) << "x dims: " << x.dims();
     if (x.dims() != out_grad.dims()) {
       auto x_grad_reduced =
           sum<T>(x_grad_unreduce,
