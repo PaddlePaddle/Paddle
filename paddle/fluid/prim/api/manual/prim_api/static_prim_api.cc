@@ -108,7 +108,6 @@ Tensor expand<DescTensor>(const Tensor& x, const IntArray& shape) {
   op->SetAttr("shape", new_shape);
   op->CheckAttrs();
   op->InferVarType(block);
-  op->InferShape(*block);
   return out;
 }
 
@@ -145,7 +144,6 @@ Tensor unsqueeze<DescTensor>(const Tensor& x, const IntArray& axis) {
   op->SetAttr("axes", new_shape);
   op->CheckAttrs();
   op->InferVarType(block);
-  op->InferShape(*block);
   return out;
 }
 
