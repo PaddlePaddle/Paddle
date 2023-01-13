@@ -42,6 +42,7 @@ namespace prim {
         """
 using Tensor = paddle::experimental::Tensor;
 using Scalar = paddle::experimental::Scalar;
+using IntArray = paddle::experimental::IntArray;
 """,
         """
 }  // namespace prim

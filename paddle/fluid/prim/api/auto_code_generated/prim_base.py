@@ -18,6 +18,13 @@ white_ops_list = [
     "pow",
     "scale",
     "multiply",
+    "unsqueese",
+    "expand",
+    "full",
+    "reshape",
+    "unsqueeze",
+    "divide",
+    "sum",
 ]
 
 inplace_out_type_map = {
@@ -99,6 +106,13 @@ class BaseAPI:
             declare_args.append(
                 self.attrs['attr_info'][name][0] + ' ' + name + default_value
             )
+
+        return ", ".join(declare_args)
+
+    def get_declare_args_nodefault(self, inplace_flag=False):
+        declare_args = self.get_input_tensor_args(inplace_flag)
+        for name in self.attrs['names']:
+            declare_args.append(self.attrs['attr_info'][name][0] + ' ' + name)
 
         return ", ".join(declare_args)
 
@@ -227,6 +241,8 @@ class BaseAPI:
         out_name_list = []
         out_size_expr_list = []
         for output_dict in outputs_list:
+            if output_dict['intermediate']:
+                continue
             out_type_list.append(output_dict['typename'])
             out_name_list.append(output_dict['name'])
             if 'size' in output_dict.keys():
@@ -310,12 +326,12 @@ return {dygraph_ad_func_name}({dygraph_ad_func_parameters});
         if api_func_name[-1] != '_':
             api_code = f"""
 template <>
-{self.get_return_type()} {api_func_name}{template}({self.get_declare_args()})
+{self.get_return_type()} {api_func_name}{template}({self.get_declare_args_nodefault()})
 """
         else:
             api_code = f"""
 template <>
-{self.get_return_type(inplace_flag=True)} {api_func_name}{template}({self.get_declare_args(inplace_flag=True)})
+{self.get_return_type(inplace_flag=True)} {api_func_name}{template}({self.get_declare_args_nodefault(inplace_flag=True)})
 """
         # func code
 
