@@ -103,7 +103,7 @@ DenseTensor PerformTileAndReduction(const Context& dev_ctx,
   // undiagonalize by einsum equation. only contain undiagonal operations.
   DenseTensor out;
   VLOG(5) << "Undiagonal by einsum with args: " << op_label + "->" + equ;
-  EinsumKernel<T, Context>(dev_ctx, {&ret}, op_label + "->" + equ, &out);
+  EinsumInferKernel<T, Context>(dev_ctx, {&ret}, op_label + "->" + equ, &out);
   return out;
 }
 
@@ -157,7 +157,8 @@ void EinsumGradKernel(const Context& dev_ctx,
     new_operands.push_back(&out_grad);
     DenseTensor before_tile;
     VLOG(5) << "new_equation is " << new_equation;
-    EinsumKernel<T, Context>(dev_ctx, new_operands, new_equation, &before_tile);
+    EinsumInferKernel<T, Context>(
+        dev_ctx, new_operands, new_equation, &before_tile);
     *(x_grad[0]) = PerformTileAndReduction<T, Context>(dev_ctx,
                                                        labeltype,
                                                        labelshape,

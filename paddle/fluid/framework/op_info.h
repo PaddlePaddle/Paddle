@@ -43,6 +43,7 @@ class OpInfo {
  public:
   OpCreator creator_;
   GradOpMakerFN grad_op_maker_;
+  GradCompositeOpMakerFN grad_comp_op_maker_;
   proto::OpProto* proto_{nullptr};
   OpAttrChecker* checker_{nullptr};
   InferVarTypeFN infer_var_type_;
@@ -81,20 +82,10 @@ class OpInfo {
     return creator_;
   }
 
-  const GradOpMakerFN& GradOpMaker() const {
-    // Normally, proto_ should not be null, except some special operators, such
-    // as LeaklyReluDoubleGrad op.
-    std::string type = proto_ ? proto_->type() : "unknown";
-    PADDLE_ENFORCE_NOT_NULL(
-        grad_op_maker_,
-        platform::errors::NotFound(
-            "Operator %s's GradOpMaker has not been "
-            "registered.\nPlease check whether (%s) operator has "
-            "gradient operator.\nIf not, please set stop_gradient to be True "
-            "for its input and output variables using var.stop_gradient=True.",
-            type.c_str(),
-            type.c_str()));
-    return grad_op_maker_;
+  const GradOpMakerFN& GradOpMaker() const { return grad_op_maker_; }
+
+  const GradCompositeOpMakerFN& GradCompOpMaker() const {
+    return grad_comp_op_maker_;
   }
 
   // some ops don't have grad_op_maker, add check before use GradOpMaker()

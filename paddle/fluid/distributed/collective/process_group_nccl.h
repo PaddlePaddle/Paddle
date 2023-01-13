@@ -22,20 +22,11 @@
 
 #include "paddle/fluid/distributed/collective/process_group.h"
 #include "paddle/fluid/distributed/collective/process_group_with_stream.h"
-#include "paddle/fluid/distributed/store/store.h"
 #include "paddle/fluid/platform/device_event.h"
+#include "paddle/phi/backends/gpu/forwards.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/device_context.h"
-
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-#include "paddle/fluid/distributed/collective/nccl_tools.h"
-#endif
-
-#ifdef PADDLE_WITH_RCCL
-#include "paddle/phi/backends/dynload/rccl.h"
-#elif PADDLE_WITH_NCCL
-#include "paddle/phi/backends/dynload/nccl.h"
-#endif
+#include "paddle/phi/core/distributed/store/store.h"
 
 namespace paddle {
 namespace distributed {
@@ -76,9 +67,12 @@ class ProcessGroupNCCL final : public ProcessGroupWithStream {
 
  public:
   static std::shared_ptr<ProcessGroupNCCL> CreateProcessGroupNCCL(
-      const std::shared_ptr<Store>& store, int rank, int size, int gid);
+      const std::shared_ptr<phi::distributed::Store>& store,
+      int rank,
+      int size,
+      int gid);
 
-  ProcessGroupNCCL(const std::shared_ptr<Store>& store,
+  ProcessGroupNCCL(const std::shared_ptr<phi::distributed::Store>& store,
                    int rank,
                    int size,
                    int gid);
@@ -243,7 +237,7 @@ class ProcessGroupNCCL final : public ProcessGroupWithStream {
                               const std::vector<Place>& places);
 
  private:
-  std::shared_ptr<Store> store_;
+  std::shared_ptr<phi::distributed::Store> store_;
 
   std::unordered_map<std::string, platform::DeviceEvent>
       place_to_calc_event_;  // event on calc stream
