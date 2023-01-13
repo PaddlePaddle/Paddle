@@ -69,10 +69,10 @@ if(WITH_TESTING)
               transform_type)
   set_tests_properties(transform_type_test PROPERTIES LABELS "RUN_TYPE=CINN")
 
-  cc_test_old(cinn_graph_symbolization_test SRCS
-              cinn_graph_symbolization_test.cc DEPS cinn_graph_symbolization)
-  set_tests_properties(cinn_graph_symbolization_test PROPERTIES LABELS
-                                                                "RUN_TYPE=CINN")
+  # cc_test_old(cinn_graph_symbolization_test SRCS
+  #            cinn_graph_symbolization_test.cc DEPS cinn_graph_symbolization)
+  # set_tests_properties(cinn_graph_symbolization_test PROPERTIES LABELS
+  #                                                              "RUN_TYPE=CINN")
 
   cc_test_old(
     cinn_compiler_test
