@@ -18,9 +18,8 @@ from _collections import defaultdict
 
 import paddle
 from paddle.distributed.passes.pass_base import PassBase, register_pass
-from paddle.fluid.framework import Parameter
 from paddle.framework import core
-from paddle.static import Program
+from paddle.static import Program, Parameter
 
 from ..ps.utils.collective_transpiler import SingleProcessMultiThread
 from ..ps.utils.public import *  # noqa: F403
@@ -757,7 +756,7 @@ class PsGpuPass(PassBase):
                 )
                 new_op_desc.copy_from(op_desc)
                 new_op_desc._set_attr(op_role_attr_name, backward)
-                new_op = paddle.fluid.framework.Operator(
+                new_op = paddle.static.Operator(
                     program.global_block(), new_op_desc
                 )
                 program.global_block().ops.insert(insert_index + 1, new_op)
