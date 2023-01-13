@@ -1001,11 +1001,6 @@ class PartialProgramLayer:
                         )
 
     def _valid_vars(self, vars):
-        """
-        Note: run_program_op.InferShape requires `X`/'Out' not be null.
-        But it's common in dy2static, fake varBase is created to handle the
-        problem.
-        """
         return vars if vars else None
 
 
