@@ -137,7 +137,7 @@ class ParameterServerRuntime(RuntimeBase):
         executor.run(load_prog)
 
     def _load_distributed_params(self, dirname, varnames):
-        from paddle.fluid.communicator import LargeScaleKV
+        from paddle.distributed.communicator import LargeScaleKV
         from paddle.fluid.incubate.fleet.parameter_server.ir.public import (
             _get_varname_parts,
         )
@@ -291,7 +291,7 @@ class ParameterServerRuntime(RuntimeBase):
                 recv_type=1
             )
 
-        from paddle.fluid.communicator import Communicator
+        from paddle.distributed.communicator import Communicator
 
         self._communicator = Communicator(
             trainer_config.mode, kwargs, trainer_config.get_communicator_flags()
