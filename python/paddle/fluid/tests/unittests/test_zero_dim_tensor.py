@@ -283,6 +283,11 @@ binary_api_list = [
     paddle.logical_and,
     paddle.logical_or,
     paddle.logical_xor,
+    paddle.maximum,
+    paddle.minimum,
+    paddle.fmax,
+    paddle.fmin,
+    paddle.complex,
 ]
 
 binary_int_api_list = [
@@ -966,6 +971,49 @@ class TestSundryAPI(unittest.TestCase):
         self.assertEqual(x1.grad.numpy(), 0)
         self.assertEqual(x2.grad.numpy(), 0)
 
+    def test_lerp(self):
+        # 0D + 0D
+        x0 = paddle.rand([])
+        y0 = paddle.rand([])
+        w0 = paddle.rand([])
+        x0.stop_gradient = False
+        y0.stop_gradient = False
+
+        out0 = paddle.lerp(x0, y0, w0)
+        out0.backward()
+
+        self.assertEqual(out0.shape, [])
+        self.assertEqual(x0.grad.shape, [])
+        self.assertEqual(y0.grad.shape, [])
+
+        # 0D + ND
+        x1 = paddle.rand([])
+        y1 = paddle.rand([64, 64])
+        w1 = paddle.rand([])
+        x1.stop_gradient = False
+        y1.stop_gradient = False
+
+        out1 = paddle.lerp(x1, y1, w1)
+        out1.backward()
+
+        self.assertEqual(out1.shape, [64, 64])
+        self.assertEqual(x1.grad.shape, [])
+        self.assertEqual(y1.grad.shape, [64, 64])
+
+        # ND + 0D
+        x2 = paddle.rand([64, 64])
+        y2 = paddle.rand([])
+        w2 = paddle.rand([])
+        x2.stop_gradient = False
+        y2.stop_gradient = False
+
+        out2 = paddle.lerp(x2, y2, w2)
+        out2.backward()
+
+        self.assertEqual(out2.shape, [64, 64])
+        self.assertEqual(x2.grad.shape, [64, 64])
+        self.assertEqual(y2.grad.shape, [])
+
     def test_repeat_interleave(self):
         places = ['cpu']
         if paddle.is_compiled_with_cuda():
@@ -993,6 +1041,35 @@ class TestSundryAPI(unittest.TestCase):
 
             # check grad shape with 1D repeats
             self.assertEqual(x.grad.shape, [])
+
+    def test_sigmoid_focal_loss(self):
+        logit = paddle.to_tensor(
+            [[0.97, 0.91, 0.03], [0.55, 0.43, 0.71]],
+            dtype='float32',
+            stop_gradient=False,
+        )
+        label = paddle.to_tensor(
+            [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0]], dtype='float32'
+        )
+        fg_num_0 = paddle.full([], 2.0)
+        fg_num_1 = paddle.full([1], 2.0)
+
+        out0 = F.sigmoid_focal_loss(logit, label, normalizer=fg_num_0)
+        out1 = F.sigmoid_focal_loss(logit, label, normalizer=fg_num_1)
+
+        np.testing.assert_array_equal(
+            out0.numpy(),
+            out1.numpy(),
+        )
+
+        out0.backward()
+        self.assertEqual(out0.grad.shape, [1])
+        self.assertEqual(logit.grad.shape, [2, 3])
+
+    def test_allclose(self):
+        x = paddle.full([], 0.5)
+        y = paddle.full([], 0.6)
+        self.assertFalse(paddle.allclose(x, y))
 
 
 class TestSundryAPIStatic(unittest.TestCase):
@@ -1407,6 +1484,35 @@ class TestSundryAPIStatic(unittest.TestCase):
 
         self.assertEqual(res[0].shape, ())
         self.assertEqual(res[1].shape, ())
+
+    @prog_scope()
+    def test_lerp(self):
+        shapes = [
+            [(), (), (), ()],
+            [(), (64, 64), (), (64, 64)],
+            [(64, 64), (), (), (64, 64)],
+        ]
+        for shape in shapes:
+            x = paddle.rand(shape[0])
+            y = paddle.rand(shape[1])
+            w = paddle.rand(shape[2])
+
+            x.stop_gradient = False
+            y.stop_gradient = False
+            out = paddle.lerp(x, y, w)
+            paddle.static.append_backward(out.sum())
+
+            prog = paddle.static.default_main_program()
+            block = prog.global_block()
+            x_grad = block.var(fluid.framework.grad_var_name(x.name))
+            y_grad = block.var(fluid.framework.grad_var_name(y.name))
+            out_grad = block.var(fluid.framework.grad_var_name(out.name))
+
+            res = self.exe.run(prog, fetch_list=[out, out_grad, y_grad, x_grad])
+            self.assertEqual(res[0].shape, shape[3])
+            self.assertEqual(res[1].shape, shape[3])
+            self.assertEqual(res[2].shape, shape[1])
+            self.assertEqual(res[3].shape, shape[0])
 
     @prog_scope()
     def test_repeat_interleave(self):

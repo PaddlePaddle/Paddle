@@ -382,15 +382,21 @@ def parse_op_entry(op_entry: Dict[str, Any], name_field="op"):
     # add optional tag for every input
     for input in inputs:
         input["optional"] = False
+    for output in outputs:
+        output["optional"] = False
+
     if "optional" in op_entry:
         optional_args = parse_plain_list(op_entry["optional"])
         for name in optional_args:
             assert (
-                name in input_names
-            ), f"{op_name} has an optional input: '{name}' which is not an input."
+                name in input_names or name in output_names
+            ), f"{op_name} has an optional tensor: '{name}' which is not in input or output."
         for input in inputs:
             if input["name"] in optional_args:
                 input["optional"] = True
+        for output in outputs:
+            if output["name"] in optional_args:
+                output["optional"] = True
 
     # add intermediate tag for every output
     for output in outputs:

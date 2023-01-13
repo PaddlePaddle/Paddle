@@ -213,6 +213,8 @@ def scale(x, scale=1.0, bias=0.0, bias_after_scale=True, act=None, name=None):
     """
 
     if in_dygraph_mode():
+        if act is None:
+            return _C_ops.scale(x, scale, float(bias), bias_after_scale)
         out = _C_ops.scale(x, scale, float(bias), bias_after_scale)
         return dygraph_utils._append_activation_in_dygraph(out, act)
     else:
@@ -495,9 +497,12 @@ def _elementwise_op_in_dygraph(
                 OP_NAMEMAPPING[op_name] if not is_inplace(op_name) else op_name,
             )
             out = op(x, y)
-    return dygraph_utils._append_activation_in_dygraph(
-        out, act, use_mkldnn=use_mkldnn
-    )
+    if act is None:
+        return out
+    else:
+        return dygraph_utils._append_activation_in_dygraph(
+            out, act, use_mkldnn=use_mkldnn
+        )
 
 
 def _elementwise_op(helper):
@@ -4209,7 +4214,6 @@ def lerp(x, y, weight, name=None):
 
     """
     if in_dygraph_mode():
-        check_type(weight, 'weight', (float, paddle.Tensor, Variable), 'lerp')
         if isinstance(weight, float):
             weight = paddle.to_tensor(weight, dtype=x.dtype)
 
