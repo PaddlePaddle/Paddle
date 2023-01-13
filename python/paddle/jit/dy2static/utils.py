@@ -170,6 +170,9 @@ class UndefinedVar:
             "local variable '{}' should be created before using it."
         )
 
+    def __getattr__(self, name):
+        return UndefinedVar('{}.{}'.format(self.name, name))
+
 
 class Dygraph2StaticException(Exception):
     def __init__(self, message):

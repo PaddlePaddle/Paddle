@@ -1213,16 +1213,15 @@ def select_input_with_buildin_type(inputs, mask, name):
         isinstance(true_var, UndefinedVar)
         and isinstance(false_var, (Variable,) + support_ret_buildin_type)
     ):
-
-        def create_var_if_not_undefined_var(a):
-            if isinstance(a, UndefinedVar):
-                return a
-            return to_static_variable(a)
-
-        true_var, false_var = to_static_variable(true_var), to_static_variable(
-            false_var
-        )
-        inputs = [false_var, true_var]
+        if isinstance(false_var, support_ret_buildin_type):
+            return false_var
+        elif isinstance(true_var, support_ret_buildin_type):
+            return true_var
+        else:
+            true_var, false_var = to_static_variable(
+                true_var
+            ), to_static_variable(false_var)
+            inputs = [false_var, true_var]
     else:
         raise TypeError(
             "Unsupported return type of true_fn and false_fn in cond: false_var "

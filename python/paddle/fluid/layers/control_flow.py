@@ -1227,7 +1227,11 @@ def _deal_with_undefined_var(output_vars, loop_vars):
 
     results = []
     for o_var, l_var in zip(output_vars, loop_vars):
-        if isinstance(l_var, UndefinedVar) or l_var is None:
+        if isinstance(l_var, UndefinedVar) and isinstance(
+            o_var, support_ret_buildin_type
+        ):
+            results.append(o_var)
+        elif isinstance(l_var, UndefinedVar) or l_var is None:
             results.append(create_var_like(o_var))
         else:
             results.append(l_var)
