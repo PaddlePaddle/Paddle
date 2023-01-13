@@ -462,7 +462,6 @@ class TestCumsumDoubleGradCheck(unittest.TestCase):
         gradient_checker.double_grad_check(
             [data], out, x_init=[data_arr], place=place, eps=eps
         )
-        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         gradient_checker.double_grad_check_for_dygraph(
             self.cumsum_wrapper, [data], out, x_init=[data_arr], place=place
         )
@@ -494,7 +493,6 @@ class TestCumsumTripleGradCheck(unittest.TestCase):
         gradient_checker.triple_grad_check(
             [data], out, x_init=[data_arr], place=place, eps=eps
         )
-        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         gradient_checker.triple_grad_check_for_dygraph(
             self.cumsum_wrapper, [data], out, x_init=[data_arr], place=place
         )

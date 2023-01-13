@@ -327,6 +327,8 @@ from .tensor.einsum import einsum  # noqa: F401
 from .framework.random import seed  # noqa: F401
 from .framework.random import get_cuda_rng_state  # noqa: F401
 from .framework.random import set_cuda_rng_state  # noqa: F401
+from .framework.random import get_rng_state  # noqa: F401
+from .framework.random import set_rng_state  # noqa: F401
 from .framework import ParamAttr  # noqa: F401
 from .framework import CPUPlace  # noqa: F401
 from .framework import IPUPlace  # noqa: F401
@@ -366,6 +368,7 @@ from .device import is_compiled_with_mlu  # noqa: F401
 from .device import is_compiled_with_cinn  # noqa: F401
 from .device import is_compiled_with_cuda  # noqa: F401
 from .device import is_compiled_with_rocm  # noqa: F401
+from .device import is_compiled_with_custom_device  # noqa: F401
 from .device import XPUPlace  # noqa: F401
 
 # high-level api
@@ -424,6 +427,7 @@ __all__ = [  # noqa
     'save',
     'multinomial',
     'get_cuda_rng_state',
+    'get_rng_state',
     'rank',
     'empty_like',
     'eye',
@@ -606,6 +610,7 @@ __all__ = [  # noqa
     'unique',
     'unique_consecutive',
     'set_cuda_rng_state',
+    'set_rng_state',
     'set_printoptions',
     'std',
     'flatten',

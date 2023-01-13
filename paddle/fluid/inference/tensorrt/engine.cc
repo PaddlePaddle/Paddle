@@ -75,7 +75,6 @@ void TensorRTEngine::InitNetwork() {
   }
 
   infer_builder_config_.reset(infer_builder_->createBuilderConfig());
-  // optim_profile_ = infer_builder_->createOptimizationProfile();
   optim_profiles_.resize(max_profile_num_);
   for (int i = 0; i < max_profile_num_; i++)
     optim_profiles_[i] = infer_builder_->createOptimizationProfile();
@@ -205,18 +204,6 @@ void TensorRTEngine::FreezeNetwork() {
                   << ", this might be ok when trt does not need this range";
         }
       }
-    }
-  }
-
-  // If model is mixed precision, then we should cast all float output to
-  // float32 precision. Otherwise, we can not confirm the output precision of
-  // the trt engine.
-  if (model_precision_ != phi::DataType::FLOAT32) {
-    for (int i = 0; i < network()->getNbOutputs(); ++i) {
-      network()->getOutput(i)->setAllowedFormats(
-          static_cast<nvinfer1::TensorFormats>(
-              1 << static_cast<int>(nvinfer1::TensorFormat::kLINEAR)));
-      network()->getOutput(i)->setType(nvinfer1::DataType::kFLOAT);
     }
   }
 
@@ -423,6 +410,14 @@ void TensorRTEngine::DeclareOutput(const std::string &name) {
                         name));
   network()->markOutput(*output);
 }
+
+void TensorRTEngine::DeclareOutput(const std::string &name,
+                                   nvinfer1::DataType dtype) {
+  auto *output = TensorRTEngine::GetITensor(name);
+  DeclareOutput(name);
+  output->setType(dtype);
+}
+
 void TensorRTEngine::DeleteITensor(const std::string &name,
                                    nvinfer1::ITensor *tensor) {
   PADDLE_ENFORCE_NOT_NULL(

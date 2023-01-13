@@ -49,7 +49,7 @@ class Adadelta(Optimizer):
             different parameter groups such as the learning rate, weight decay, etc, \
             then the parameters are list of dict. Note that the learning_rate in paramter groups \
             represents the scale of base learning_rate. \
-            The default value is None in static mode, at this time all parameters will be updated.
+            The default value is None in static graph mode, at this time all parameters will be updated.
         weight_decay (float|WeightDecayRegularizer, optional): The strategy of regularization. \
             It canbe a float value as coeff of L2 regularization or \
             :ref:`api_fluid_regularizer_L1Decay`, :ref:`api_fluid_regularizer_L2Decay`.
@@ -170,29 +170,29 @@ class Adadelta(Optimizer):
                     self._epsilon,
                 )
             return None
+        else:
+            if not isinstance(block, framework.Block):
+                raise TypeError("block is not instance of framework.Block.")
 
-        if not isinstance(block, framework.Block):
-            raise TypeError("block is not instance of framework.Block.")
+            # Create the adadelta optimizer op
+            adadelta_op = block.append_op(
+                type=self.type,
+                inputs={
+                    "Param": param_and_grad[0],
+                    "Grad": param_and_grad[1],
+                    "AvgSquaredGrad": avg_squared_grad_acc,
+                    "AvgSquaredUpdate": avg_squared_update_acc,
+                },
+                outputs={
+                    "ParamOut": param_and_grad[0],
+                    "AvgSquaredGradOut": avg_squared_grad_acc,
+                    "AvgSquaredUpdateOut": avg_squared_update_acc,
+                },
+                attrs={"epsilon": self._epsilon, "rho": self._rho},
+                stop_gradient=True,
+            )
 
-        # Create the adadelta optimizer op
-        adadelta_op = block.append_op(
-            type=self.type,
-            inputs={
-                "Param": param_and_grad[0],
-                "Grad": param_and_grad[1],
-                "AvgSquaredGrad": avg_squared_grad_acc,
-                "AvgSquaredUpdate": avg_squared_update_acc,
-            },
-            outputs={
-                "ParamOut": param_and_grad[0],
-                "AvgSquaredGradOut": avg_squared_grad_acc,
-                "AvgSquaredUpdateOut": avg_squared_update_acc,
-            },
-            attrs={"epsilon": self._epsilon, "rho": self._rho},
-            stop_gradient=True,
-        )
-
-        return adadelta_op
+            return adadelta_op
 
     def _update_param_group(self, parameters):
         self._epsilon = parameters.get('epsilon', self._default_dict['epsilon'])

@@ -202,6 +202,7 @@ struct Argument {
 
   // Passed from config.
   DECL_ARGUMENT_FIELD(use_gpu, UseGPU, bool);
+  DECL_ARGUMENT_FIELD(use_cutlass, UseCutlass, bool);
   DECL_ARGUMENT_FIELD(use_fc_padding, UseFcPadding, bool);
   DECL_ARGUMENT_FIELD(gpu_device_id, GPUDeviceId, int);
 
