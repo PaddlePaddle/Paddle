@@ -15,16 +15,14 @@
 import os
 import tempfile
 import unittest
+
 import numpy as np
 
 import paddle
 import paddle.fluid as fluid
-from paddle.jit import ProgramTranslator
-from paddle.jit.api import declarative
-from paddle.fluid.dygraph.dygraph_to_static.partial_program import (
-    partial_program_from,
-)
-from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
+from paddle.jit.api import to_static
+from paddle.jit.dy2static.partial_program import partial_program_from
+from paddle.jit.translated_layer import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 
 SEED = 2020
 
@@ -33,15 +31,14 @@ np.random.seed(SEED)
 place = (
     fluid.CUDAPlace(0) if fluid.is_compiled_with_cuda() else fluid.CPUPlace()
 )
-program_translator = ProgramTranslator()
 
 
 class SimpleFcLayer(fluid.dygraph.Layer):
     def __init__(self, fc_size):
         super().__init__()
-        self._linear = fluid.dygraph.Linear(fc_size, fc_size)
+        self._linear = paddle.nn.Linear(fc_size, fc_size)
 
-    @declarative
+    @to_static
     def forward(self, x):
         y = self._linear(x)
         z = self._linear(y)
@@ -149,8 +146,7 @@ class TestDyToStaticSaveInferenceModel(unittest.TestCase):
 
 class TestPartialProgramRaiseError(unittest.TestCase):
     def test_param_type(self):
-        program_translator = ProgramTranslator()
-        program_translator.enable(True)
+        paddle.jit.enable_to_static(True)
         x_data = np.random.random((20, 20)).astype('float32')
 
         with fluid.dygraph.guard(fluid.CPUPlace()):

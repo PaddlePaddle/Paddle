@@ -14,13 +14,15 @@
 
 import copy
 import math
-import numpy as np
 import unittest
 
+import numpy as np
+
+import paddle
 import paddle.fluid as fluid
-import paddle.fluid.layers as layers
-import paddle.fluid.framework as framework
 import paddle.fluid.core as core
+import paddle.fluid.framework as framework
+import paddle.fluid.layers as layers
 
 
 def exponential_decay(
@@ -120,7 +122,7 @@ class TestLearningRateDecayDygraph(unittest.TestCase):
     def test_LR_state_dict(self):
         with fluid.dygraph.guard():
             x = np.random.uniform(-1, 1, [3, 10]).astype("float32")
-            linear = fluid.dygraph.Linear(10, 10)
+            linear = paddle.nn.Linear(10, 10)
             input = fluid.dygraph.to_variable(x)
 
             Exponential_scheduler = fluid.dygraph.ExponentialDecay(
@@ -149,7 +151,7 @@ class TestLearningRateDecayDygraph(unittest.TestCase):
 
             for epoch in range(10):
                 out = linear(input)
-                loss = fluid.layers.reduce_mean(out)
+                loss = paddle.mean(out)
                 loss.backward()
                 adam1.minimize(loss)
                 adam2.minimize(loss)
@@ -159,7 +161,7 @@ class TestLearningRateDecayDygraph(unittest.TestCase):
                 Step_scheduler.epoch()
                 Reducelr_scheduler.step(loss)
 
-            fluid.dygraph.save_dygraph(linear.state_dict(), "save_path")
+            paddle.save(linear.state_dict(), "save_path.pdparams")
 
             Exponential_scheduler_test = fluid.dygraph.ExponentialDecay(
                 learning_rate=0.1,
@@ -172,8 +174,8 @@ class TestLearningRateDecayDygraph(unittest.TestCase):
                 learning_rate=1.0, decay_rate=0.5, patience=5, cooldown=3
             )
 
-            fluid.dygraph.save_dygraph(adam1.state_dict(), "save_path")
-            _, opt_state = fluid.dygraph.load_dygraph("save_path")
+            paddle.save(adam1.state_dict(), "save_path.pdopt")
+            opt_state = paddle.load("save_path.pdopt")
             adam_test = fluid.optimizer.Adam(
                 learning_rate=Exponential_scheduler_test,
                 parameter_list=linear.parameters(),
@@ -185,8 +187,8 @@ class TestLearningRateDecayDygraph(unittest.TestCase):
                 "epoch_num is different before and after set_dict",
             )
 
-            fluid.dygraph.save_dygraph(adam2.state_dict(), "save_path")
-            _, opt_state = fluid.dygraph.load_dygraph("save_path")
+            paddle.save(adam2.state_dict(), "save_path.pdopt")
+            opt_state = paddle.load("save_path.pdopt")
             adam_test = fluid.optimizer.Adam(
                 learning_rate=Step_scheduler_test,
                 parameter_list=linear.parameters(),
@@ -203,8 +205,8 @@ class TestLearningRateDecayDygraph(unittest.TestCase):
                 "current learning rate is different before and after set_dict",
             )
 
-            fluid.dygraph.save_dygraph(adam3.state_dict(), "save_path")
-            _, opt_state = fluid.dygraph.load_dygraph("save_path")
+            paddle.save(adam3.state_dict(), "save_path.pdopt")
+            opt_state = paddle.load("save_path.pdopt")
             adam_test = fluid.optimizer.Adam(
                 learning_rate=Reducelr_scheduler_test,
                 parameter_list=linear.parameters(),
@@ -291,7 +293,7 @@ class TestLearningRateDecayDygraph(unittest.TestCase):
             learning_rate = 0.5
             milestones = [2, 4, 8]
             decay_rate = 0.2
-            linear = fluid.dygraph.Linear(10, 10)
+            linear = paddle.nn.Linear(10, 10)
 
             scheduler = fluid.dygraph.MultiStepDecay(
                 learning_rate, milestones, decay_rate
@@ -364,7 +366,7 @@ class TestLearningRateDecayDygraph(unittest.TestCase):
             lr_lambda = lambda x: 0.95**x
             scheduler = fluid.dygraph.LambdaDecay(learning_rate, lr_lambda)
 
-            linear = fluid.dygraph.nn.Linear(10, 10)
+            linear = paddle.nn.Linear(10, 10)
             adam = fluid.optimizer.Adam(
                 scheduler, parameter_list=linear.parameters()
             )

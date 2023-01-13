@@ -12,16 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import numpy as np
-import paddle
 import sys
+import unittest
+
+import numpy as np
+
+import paddle
 
 sys.path.append("..")
+from numpy.random import random as rand
 from op_test import OpTest
+
 import paddle.fluid.dygraph as dg
 import paddle.static as static
-from numpy.random import random as rand
 
 paddle.enable_static()
 

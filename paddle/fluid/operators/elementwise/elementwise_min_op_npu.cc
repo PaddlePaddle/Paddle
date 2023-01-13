@@ -22,8 +22,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
-
 template <typename DeviceContext, typename T>
 class ElementwiseMinNPUKernel : public framework::OpKernel<T> {
  public:
@@ -48,7 +46,7 @@ class ElementwiseMinNPUKernel : public framework::OpKernel<T> {
     } else {
       direct_compute = x_dims == phi::slice_ddim(y_dims, axis, y_dims.size());
     }
-    Tensor transformed_x, transformed_y;
+    phi::DenseTensor transformed_x, transformed_y;
     if (direct_compute) {
       transformed_x.ShareDataWith(*x);
       transformed_y.ShareDataWith(*y);
@@ -82,7 +80,7 @@ class ElementwiseMinGradNPUKernel : public framework::OpKernel<T> {
     if (dx && dy) {
       // dx
       dx->mutable_data<T>(ctx.GetPlace());
-      Tensor tmp_x;
+      phi::DenseTensor tmp_x;
       tmp_x.ShareDataWith(*dx);
       if (dx->dims() != dout->dims()) {
         std::vector<int> dst_dims_vec_x;
@@ -105,7 +103,7 @@ class ElementwiseMinGradNPUKernel : public framework::OpKernel<T> {
       }
       // dy
       dy->mutable_data<T>(ctx.GetPlace());
-      Tensor tmp_y;
+      phi::DenseTensor tmp_y;
       tmp_y.ShareDataWith(*dy);
       if (dy->dims() != dout->dims()) {
         std::vector<int> dst_dims_vec_y;
@@ -134,12 +132,12 @@ class ElementwiseMinGradNPUKernel : public framework::OpKernel<T> {
       runner.Run(stream);
 
     } else if (dx) {
-      Tensor zero_tensor(dout->type());
+      phi::DenseTensor zero_tensor(dout->type());
       zero_tensor.mutable_data<T>(y->dims(), ctx.GetPlace());
       FillNpuTensorWithConstant<T>(&zero_tensor, static_cast<T>(0));
       // dx
       dx->mutable_data<T>(ctx.GetPlace());
-      Tensor tmp_x;
+      phi::DenseTensor tmp_x;
       tmp_x.ShareDataWith(*dx);
       if (dx->dims() != dout->dims()) {
         std::vector<int> dst_dims_vec_x;
@@ -168,13 +166,13 @@ class ElementwiseMinGradNPUKernel : public framework::OpKernel<T> {
       runner.Run(stream);
 
     } else if (dy) {
-      Tensor zero_tensor(dout->type());
+      phi::DenseTensor zero_tensor(dout->type());
       zero_tensor.mutable_data<T>(x->dims(), ctx.GetPlace());
       FillNpuTensorWithConstant<T>(&zero_tensor, static_cast<T>(0));
 
       // dy
       dy->mutable_data<T>(ctx.GetPlace());
-      Tensor tmp_y;
+      phi::DenseTensor tmp_y;
       tmp_y.ShareDataWith(*dy);
       if (dy->dims() != dout->dims()) {
         std::vector<int> dst_dims_vec_y;

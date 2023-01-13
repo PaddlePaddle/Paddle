@@ -43,7 +43,7 @@ class TestBase(IPUOpTest):
             name=self.feed_list[0], shape=self.feed_shape[0], dtype='float32'
         )
         x = paddle.assign(x)
-        out = paddle.fluid.layers.elementwise_add(x, x)
+        out = paddle.add(x, x)
         self.fetch_list = [out.name]
 
     def run_model(self, exec_mode):
@@ -72,7 +72,7 @@ class TestAssignFp32Value(TestBase):
             name=self.feed_list[0], shape=self.feed_shape[0], dtype='float32'
         )
         assign = paddle.assign(self.assign_fp32)
-        out = paddle.fluid.layers.elementwise_add(x, assign)
+        out = paddle.add(x, assign)
         self.fetch_list = [out.name]
 
 

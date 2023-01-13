@@ -12,15 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
+import unittest
+from unittest import TestCase
+
 import numpy as np
+
+import paddle
 import paddle.fluid.dygraph as dg
 import paddle.fluid.initializer as I
 import paddle.nn.functional as F
-import unittest
 from paddle import fluid
-from paddle.fluid.framework import _test_eager_guard
-from unittest import TestCase
 
 
 class TestFunctionalConv3DTranspose(TestCase):
@@ -186,23 +187,12 @@ class TestFunctionalConv3DTranspose(TestCase):
         self.place = fluid.CPUPlace()
         self._test_identity()
 
-    def test_identity_cpu_check_eager(self):
-        with _test_eager_guard():
-            self.test_identity_cpu()
-
     @unittest.skipIf(
         not fluid.core.is_compiled_with_cuda(), "core is not compiled with CUDA"
     )
     def test_identity_gpu(self):
         self.place = fluid.CUDAPlace(0)
         self._test_identity()
-
-    @unittest.skipIf(
-        not fluid.core.is_compiled_with_cuda(), "core is not compiled with CUDA"
-    )
-    def test_identity_gpu_check_eager(self):
-        with _test_eager_guard():
-            self.test_identity_gpu()
 
 
 class TestFunctionalConv3DTransposeError(TestCase):
@@ -593,10 +583,6 @@ class TestFunctionalConv3DTransposeErrorCase10(TestCase):
     def test_dygraph_exception(self):
         with self.assertRaises(ValueError):
             self.dygraph_case()
-
-    def test_dygraph_exception_check_eager(self):
-        with _test_eager_guard():
-            self.test_dygraph_exception()
 
     def test_static_exception(self):
         with self.assertRaises(ValueError):

@@ -13,12 +13,12 @@
 # limitations under the License.
 
 from .hapi.callbacks import Callback  # noqa: F401
-from .hapi.callbacks import ProgBarLogger  # noqa: F401
-from .hapi.callbacks import ModelCheckpoint  # noqa: F401
-from .hapi.callbacks import VisualDL  # noqa: F401
-from .hapi.callbacks import LRScheduler  # noqa: F401
 from .hapi.callbacks import EarlyStopping  # noqa: F401
+from .hapi.callbacks import LRScheduler  # noqa: F401
+from .hapi.callbacks import ModelCheckpoint  # noqa: F401
+from .hapi.callbacks import ProgBarLogger  # noqa: F401
 from .hapi.callbacks import ReduceLROnPlateau  # noqa: F401
+from .hapi.callbacks import VisualDL  # noqa: F401
 from .hapi.callbacks import WandbCallback  # noqa: F401
 
 __all__ = [  # noqa

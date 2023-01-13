@@ -13,10 +13,10 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
-from scipy.special import logit
-from scipy.special import expit
 from op_test import OpTest
+from scipy.special import expit, logit
 
 import paddle
 from paddle.fluid import core

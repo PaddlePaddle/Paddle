@@ -16,18 +16,20 @@
 """basic collective operations in python"""
 """remote file system"""
 
+import os
+import subprocess
+from collections import OrderedDict
+
+import numpy as np
+from google.protobuf import text_format
+
 import paddle
-from ..utils.fs import FS
+import paddle.framework as framework
+from paddle.fluid import core, debugger
 from paddle.fluid.proto import framework_pb2
 from paddle.static import Program
-from paddle.fluid import debugger
-from google.protobuf import text_format
-import paddle.framework as framework
-from collections import OrderedDict
-from paddle.fluid import core
-import subprocess
-import os
-import numpy as np
+
+from ..utils.fs import FS
 
 __all__ = []
 
@@ -496,7 +498,7 @@ class UtilBase:
                 inference_program,
                 feed_target_names,
                 fetch_targets,
-            ) = paddle.fluid.io.load_inference_model(
+            ) = paddle.distributed.io.load_inference_model_distributed(
                 config.dump_model_dir,
                 exe,
                 model_filename=model_filename,

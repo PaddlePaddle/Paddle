@@ -13,23 +13,27 @@
 # limitations under the License.
 
 import datetime
-from ..fluid.framework import in_dygraph_mode
-from ..fluid.framework import _non_static_mode
+import os
+
 import paddle
+
+# (TODO: GhostScreaming) It will be removed later.
 import paddle.fluid.core as core
-from .fleet.layers.mpu.mp_ops import split  # noqa: F401
-from .fleet.layers.mpu.mp_ops import _c_identity  # noqa: F401
-from .fleet.layers.mpu.mp_ops import _c_concat  # noqa: F401
-from .fleet.layers.mpu.mp_ops import _c_split  # noqa: F401
-from .fleet.layers.mpu.mp_ops import _mp_allreduce  # noqa: F401
-from .fleet.layers.mpu.mp_ops import _c_lookup_table  # noqa: F401
-from .fleet.layers.mpu.mp_ops import _Linear  # noqa: F401
-from .fleet.layers.mpu.mp_ops import _set_var_distributed  # noqa: F401
-from .fleet.layers.mpu.mp_ops import _c_softmax_with_cross_entropy  # noqa: F401
-from .fleet.layers.mpu.mp_ops import _linear  # noqa: F401
-from .fleet.layers.mpu.mp_ops import _parallel_linear  # noqa: F401
-from .fleet.layers.mpu.mp_ops import _parallel_embedding  # noqa: F401
+from paddle.framework import in_dygraph_mode
+
 from .communication.group import Group, _add_new_group, is_initialized
+from .fleet.layers.mpu.mp_ops import _c_concat  # noqa: F401
+from .fleet.layers.mpu.mp_ops import _c_identity  # noqa: F401
+from .fleet.layers.mpu.mp_ops import _c_lookup_table  # noqa: F401
+from .fleet.layers.mpu.mp_ops import _c_softmax_with_cross_entropy  # noqa: F401
+from .fleet.layers.mpu.mp_ops import _c_split  # noqa: F401
+from .fleet.layers.mpu.mp_ops import _Linear  # noqa: F401
+from .fleet.layers.mpu.mp_ops import _linear  # noqa: F401
+from .fleet.layers.mpu.mp_ops import _mp_allreduce  # noqa: F401
+from .fleet.layers.mpu.mp_ops import _parallel_embedding  # noqa: F401
+from .fleet.layers.mpu.mp_ops import _parallel_linear  # noqa: F401
+from .fleet.layers.mpu.mp_ops import _set_var_distributed  # noqa: F401
+from .fleet.layers.mpu.mp_ops import split  # noqa: F401
 
 __all__ = []
 
@@ -159,7 +163,7 @@ def _new_process_group_impl(
 
 # _custom_gid provides a way for users to
 # set the group id, which is usually useful
-# to be compatible with the static mode.
+# to be compatible with the static graph mode.
 _custom_gid = None
 
 
@@ -298,9 +302,53 @@ def new_group(ranks=None, backend=None, timeout=_default_timeout):
     # hang caused by cross-creation of new_group
     tmp = (
         paddle.to_tensor([1], dtype="int32")
-        if _non_static_mode()
+        if in_dygraph_mode()
         else paddle.full([0], 1, dtype="int32")
     )
     paddle.distributed.all_reduce(tmp, sync_op=True)
     paddle.distributed.wait(tmp)
     return gp
+
+
+def is_available():
+    """
+    Check whether the distributed package is available.
+
+    Returns:
+        Returns True if the distributed package is available, otherwise False.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            print(paddle.distributed.is_available())
+
+    """
+    return core.is_compiled_with_dist()
+
+
+def _init_parallel_env(backend):
+    master_endpoint = os.getenv("PADDLE_MASTER", None)
+    if master_endpoint:
+        master_addr = master_endpoint.split(":")[0]
+        master_port = int(master_endpoint.split(":")[1])
+        global_env = _get_global_env()
+        rank = global_env.rank
+        world_size = global_env.world_size
+        dev_id = global_env.device_id
+        is_master = rank == 0
+        store = core.TCPStore(
+            master_addr,
+            master_port,
+            is_master,
+            world_size,
+        )
+        if backend == "gloo":
+            core.CommContextManager.create_gloo_comm_context(
+                store, 0, rank, world_size
+            )
+        elif backend == "nccl":
+            core.CommContextManager.create_nccl_comm_context(
+                store, dev_id, 0, rank, world_size
+            )

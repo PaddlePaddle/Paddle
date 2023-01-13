@@ -21,7 +21,8 @@ class CRFDecodingOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput(
         "Emission",
-        "(Tensor/LoDTensor). For a LoDTensor input, its shape is [N x D] "
+        "(Tensor/phi::DenseTensor). For a phi::DenseTensor input, its shape is "
+        "[N x D] "
         "where N is the total sequence length of the mini-batch and D is "
         "the total tag number. While for a tensor input, its shape is "
         "[B X S X D] with B the batch size and S the sequence length of each "
@@ -39,14 +40,14 @@ class CRFDecodingOpMaker : public framework::OpProtoAndCheckerMaker {
         "The data type is the same as Input(Emission).");
     AddInput(
         "Label",
-        "(Tensor/LoDTensor). The ground truth with shape "
-        "[N x 1] (for LoDTensor) or [B x S] (for Tensor). This input is "
+        "(phi::DenseTensor). The ground truth with shape "
+        "[N x 1] (for phi::DenseTensor) or [B x S] (for Tensor). This input is "
         "optional. See more details in the operator's comments. The data type "
         "is int64.")
         .AsDispensable();
     AddOutput(
         "ViterbiPath",
-        "(Tensor/LoDTensor). The decoding results. What to "
+        "(phi::DenseTensor). The decoding results. What to "
         "return changes depending on whether the Input(Label) (the ground "
         "truth) is given. See more details in the operator's comment. "
         "The data type is int64.");
@@ -201,9 +202,9 @@ class CRFDecodingOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
+    return phi::KernelKey(
         OperatorWithKernel::IndicateVarDataType(ctx, "Emission"),
         platform::CPUPlace());
   }

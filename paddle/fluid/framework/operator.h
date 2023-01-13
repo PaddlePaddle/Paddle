@@ -612,8 +612,9 @@ class OperatorWithKernel : public OperatorBase {
   OperatorWithKernel(const std::string& type,
                      const VariableNameMap& inputs,
                      const VariableNameMap& outputs,
-                     const AttributeMap& attrs)
-      : OperatorBase(type, inputs, outputs, attrs) {}
+                     const AttributeMap& attrs);
+
+  virtual ~OperatorWithKernel();
 
   static paddle::flat_hash_map<std::string /* op_type */, OpKernelMap>&
   AllOpKernels() {
@@ -637,15 +638,21 @@ class OperatorWithKernel : public OperatorBase {
 
   bool SupportXPU() const override;
 
-  bool SupportsMKLDNN(proto::VarType::Type data_type) const;
+  bool SupportsMKLDNN(phi::DataType data_type) const;
 
-  bool SupportsCUDNN(proto::VarType::Type data_type) const;
+  bool SupportsCUDNN(phi::DataType data_type) const;
 
   bool SupportsKernelType(const OpKernelType& kernel_type,
                           const ExecutionContext& exe_ctx) const;
 
   bool CanMKLDNNBeUsed(const framework::ExecutionContext& ctx,
+                       phi::DataType data_type) const;
+
+  bool CanMKLDNNBeUsed(const framework::ExecutionContext& ctx,
                        proto::VarType::Type data_type) const;
+
+  bool CanCUDNNBeUsed(const framework::ExecutionContext& ctx,
+                      phi::DataType data_type) const;
 
   bool CanCUDNNBeUsed(const framework::ExecutionContext& ctx,
                       proto::VarType::Type data_type) const;
@@ -664,14 +671,15 @@ class OperatorWithKernel : public OperatorBase {
       const std::string& name1,
       const std::string& name2) const;
 
-  virtual OpKernelType GetExpectedKernelType(const ExecutionContext& ctx) const;
+  virtual phi::KernelKey GetExpectedKernelType(
+      const ExecutionContext& ctx) const;
 
   // change this to public so that in dygraph mode we can call it to check if we
   // need transform data
-  virtual OpKernelType GetKernelTypeForVar(
+  virtual phi::KernelKey GetKernelTypeForVar(
       const std::string& var_name,
       const phi::DenseTensor& tensor,
-      const OpKernelType& expected_kernel_type) const;
+      const phi::KernelKey& expected_kernel_type) const;
 
   platform::Place GetExecutionPlace(
       const platform::Place& platform) const override {
@@ -733,9 +741,10 @@ class OperatorWithKernel : public OperatorBase {
    * transfered_inplace_vars is a output vector.
    */
   Scope* PrepareData(const Scope& scope,
-                     const OpKernelType& expected_kernel_key,
+                     const phi::KernelKey& expected_kernel_key,
                      std::vector<std::string>* transfered_inplace_vars,
-                     RuntimeContext* ctx) const;
+                     RuntimeContext* ctx,
+                     const phi::Place& place) const;
 
   void TransferInplaceVarsBack(const Scope& scope,
                                const std::vector<std::string>& inplace_vars,
@@ -785,8 +794,9 @@ class OperatorWithKernel : public OperatorBase {
   mutable std::unique_ptr<phi::Kernel> phi_kernel_;
   mutable std::unique_ptr<phi::ArgumentMappingFn> arg_map_fn_;
 
+ private:
   struct CacheImpl;
-  mutable CacheImpl* impl_{nullptr};
+  mutable std::unique_ptr<CacheImpl> impl_;
 };
 
 extern bool OpSupportGPU(const std::string& op_type);

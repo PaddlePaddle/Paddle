@@ -48,16 +48,16 @@ void* GetDataFromTensor(const DenseTensor& tensor,
     case dnnl::memory::data_type::bf16:
       return to_void_cast(tensor.data<dtype::bfloat16>());
     default:
-      PADDLE_THROW(errors::InvalidArgument("Wrong mkldnn type provided."));
+      PADDLE_THROW(errors::InvalidArgument("Wrong oneDNN type provided."));
   }
 }
 
-void innerTransDataLayoutFromOneDNN(DataLayout in_layout,
-                                    DataLayout out_layout,
-                                    const DenseTensor& in,
-                                    DenseTensor* out,
-                                    Place place,
-                                    bool always_copy) {
+void TransDataLayoutFromOneDNN(DataLayout in_layout,
+                               DataLayout out_layout,
+                               const DenseTensor& in,
+                               DenseTensor* out,
+                               Place place,
+                               bool always_copy) {
   // Set default as NCHW in case not specified
   out_layout = out_layout == DataLayout::ANY ? DataLayout::NCHW : out_layout;
 
@@ -101,7 +101,7 @@ void innerTransDataLayoutFromOneDNN(DataLayout in_layout,
     ::paddle::platform::RecordEvent record_reorder(
         "ext_reorder",
         ::paddle::platform::TracerEventType::UserDefined,
-        2,
+        1,
         ::paddle::platform::EventRole::kUniqueOp);
     reorder_p->execute(astream, *reorder_src_memory_p, *reorder_dst_memory_p);
     astream.wait();

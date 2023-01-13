@@ -13,13 +13,15 @@
 # limitations under the License.
 
 import multiprocessing
-import numpy as np
 import os
+import unittest
+
+import numpy as np
+
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.compiler as compiler
 import paddle.fluid.core as core
-import unittest
 
 os.environ['CPU_NUM'] = str(4)
 np.random.seed(123)
@@ -61,11 +63,18 @@ class TestFeedData(unittest.TestCase):
 
         hidden = in_data
         for hidden_size in hidden_sizes:
-            hidden = fluid.layers.fc(hidden, size=hidden_size)
+            hidden = paddle.static.nn.fc(hidden, size=hidden_size)
 
-        predict_label = fluid.layers.fc(hidden, size=class_num, act='softmax')
+        predict_label = paddle.static.nn.fc(
+            hidden, size=class_num, activation='softmax'
+        )
         loss = paddle.mean(
-            fluid.layers.cross_entropy(input=predict_label, label=label)
+            paddle.nn.functional.cross_entropy(
+                input=predict_label,
+                label=label,
+                reduction='none',
+                use_softmax=False,
+            )
         )
 
         optimizer = fluid.optimizer.Adam()

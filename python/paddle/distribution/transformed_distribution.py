@@ -14,9 +14,7 @@
 
 import typing
 
-from paddle.distribution import distribution
-from paddle.distribution import transform
-from paddle.distribution import independent
+from paddle.distribution import distribution, independent, transform
 
 
 class TransformedDistribution(distribution.Distribution):

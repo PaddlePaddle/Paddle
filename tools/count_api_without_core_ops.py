@@ -12,11 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import collections
+import hashlib
 import importlib
 import inspect
-import collections
 import sys
-import hashlib
 
 __all__ = [
     'get_apis_with_and_without_core_ops',

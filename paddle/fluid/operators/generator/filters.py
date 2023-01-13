@@ -16,18 +16,16 @@ import itertools
 import re
 
 from type_mapping import (
-    input_types_map,
-    optional_input_types_map,
     attr_types_map,
-    opmaker_attr_types_map,
-    output_type_map,
-)
-from type_mapping import (
     dense_input_types_map,
     dense_optional_input_types_map,
     dense_output_types_map,
-    sr_output_types_map,
+    input_types_map,
+    opmaker_attr_types_map,
+    optional_input_types_map,
+    output_type_map,
     phi_attr_types_map,
+    sr_output_types_map,
 )
 
 
@@ -116,17 +114,55 @@ def to_input_name(s):
     return match.group(2)
 
 
+def to_scalar_tensor_name(attr):
+    if 'tensor_name' in attr:
+        return attr['tensor_name']
+    return to_pascal_case(attr['name']) + 'Tensor'
+
+
+def to_int_array_tensor_name(attr):
+    if 'tensor_name' in attr:
+        return attr['tensor_name']
+    return to_pascal_case(attr['name']) + 'Tensor'
+
+
+def to_int_array_tensors_name(attr):
+    if 'tensors_name' in attr:
+        return attr['tensors_name']
+    return to_pascal_case(attr['name']) + 'TensorList'
+
+
+def to_composite_grad_opmaker_name(backward_op_name):
+    words = backward_op_name.split("_")
+    for i in range(len(words)):
+        words[i] = words[i].strip()
+        words[i] = words[i].capitalize()
+    composite_grad_opmaker_name = words[0] + "Composite"
+    composite_grad_opmaker_name += "".join(word for word in words[1:])
+    composite_grad_opmaker_name += "OpMaker"
+    return composite_grad_opmaker_name
+
+
 def cartesian_prod_attrs(attrs):
     items = []
     for attr in attrs:
         type_name = attr["typename"]
         name = attr["name"]
         if type_name == "Scalar":
-            items.append((name, "{}Tensor".format(name)))
+            items.append((name, to_scalar_tensor_name(attr)))
         elif type_name == "IntArray":
-            items.append(
-                (name, "{}Tensor".format(name), "{}TensorList".format(name))
-            )
+            if 'tensor_name' not in attr and 'manual_flag' in attr:
+                items.append((name, to_int_array_tensors_name(attr)))
+            elif 'tensors_name' not in attr and 'manual_flag' in attr:
+                items.append((name, to_int_array_tensor_name(attr)))
+            else:
+                items.append(
+                    (
+                        name,
+                        to_int_array_tensor_name(attr),
+                        to_int_array_tensors_name(attr),
+                    )
+                )
         else:
             items.append((name,))
 

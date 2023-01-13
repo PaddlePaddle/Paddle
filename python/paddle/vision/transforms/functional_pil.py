@@ -13,12 +13,12 @@
 # limitations under the License.
 
 import numbers
-from PIL import Image, ImageOps, ImageEnhance
+from collections.abc import Iterable, Sequence
 
 import numpy as np
-import paddle
+from PIL import Image, ImageEnhance, ImageOps
 
-from collections.abc import Sequence, Iterable
+import paddle
 
 try:
     # PIL version >= "9.1.0"

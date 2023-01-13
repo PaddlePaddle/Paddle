@@ -12,9 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import yaml
 import argparse
 
+import yaml
 from api_gen import ForwardAPI
 
 kernel_func_set = set()
@@ -181,7 +181,7 @@ def main():
         '--api_yaml_path',
         help='path to api yaml file',
         nargs='+',
-        default='paddle/phi/api/yaml/ops.yaml',
+        default=['paddle/phi/api/yaml/ops.yaml'],
     )
     parser.add_argument(
         '--wrapped_infermeta_header_path',

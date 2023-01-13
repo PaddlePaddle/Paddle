@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import unittest
+
 import paddle.fluid.core as core
 from paddle.fluid import debugger
 from paddle.fluid.framework import Program

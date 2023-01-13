@@ -14,7 +14,6 @@
 
 import paddle
 import paddle.nn as nn
-
 from paddle.utils.download import get_weights_path_from_url
 
 __all__ = []

@@ -41,6 +41,7 @@
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/string/printf.h"
 #include "paddle/phi/core/ddim.h"
+#include "paddle/utils/string/string_helper.h"
 
 namespace paddle {
 namespace operators::details {
@@ -50,6 +51,7 @@ using framework::Scope;
 using CinnInstruction = ::cinn::hlir::framework::Instruction;
 using CinnRuntimeProgram = ::cinn::hlir::framework::Program;
 using framework::paddle2cinn::kMemOptVarInfoFromMainGraph;
+using framework::paddle2cinn::kSkipGcVarNames;
 using framework::paddle2cinn::Name2VarInfoMap;
 
 CinnLaunchContext::CinnLaunchContext(const framework::ir::Graph& graph,
@@ -88,18 +90,30 @@ CinnLaunchContext::CinnLaunchContext(const framework::ir::Graph& graph,
   }
 
   // Convert the CINN runtime program to a Paddle graph
-  runtime_graph_ = std::make_unique<framework::ir::Graph>(
-      BuildCompiledProgram(graph, compiled_obj));
+  runtime_program_desc_ = BuildCompiledProgram(graph, compiled_obj);
+  runtime_graph_ =
+      std::make_unique<framework::ir::Graph>(*runtime_program_desc_.get());
   auto& outer_varinfo = graph.Get<Name2VarInfoMap>(kMemOptVarInfoFromMainGraph);
   runtime_graph_->SetNotOwned<Name2VarInfoMap>(kMemOptVarInfoFromMainGraph,
                                                &outer_varinfo);
-  // collect skip_eager_vars
+  // use kSkipGcVarNames attr of graph to initialize skip_gc_vars_
+  if (graph.Has(kSkipGcVarNames)) {
+    const auto& skip_gc_vars =
+        graph.Get<std::unordered_set<std::string>>(kSkipGcVarNames);
+    skip_gc_vars_.insert(skip_gc_vars.begin(), skip_gc_vars.end());
+    VLOG(4) << "Append skip_gc_vars:["
+            << string::join_strings(skip_gc_vars, ',') << "]";
+  }
+
+  // collect variables name list to be skipped in GC
   skip_eager_vars_.reserve(input_var_names.size() + output_var_names.size());
   auto add_skip_var_fn = [&outer_varinfo, this](const std::string& var_name) {
-    // if a var exists at outer_varinfo map,
-    // that means it can be erased after graph execution
+    // if a var exists at the outer_varinfo map, that means it will be
+    // erased by the following eager_deletion_op of current cinn_launch op
     if (!outer_varinfo.count(var_name)) {
       skip_eager_vars_.emplace_back(var_name);
+      skip_gc_vars_.insert(var_name);
+      VLOG(4) << "Append a skip_gc_var:" << var_name;
     }
   };
   std::for_each(
@@ -110,12 +124,13 @@ CinnLaunchContext::CinnLaunchContext(const framework::ir::Graph& graph,
       "Distribution of variables in the graph compiled:"
       "input[%lu],internal[%lu],output[%lu],"
       "outer_eager_deletion[%lu],skip_eager_deletion[%lu],"
-      "initialized_beforehand[%lu]",
+      "skip_gc_vars_[%lu],initialized_beforehand[%lu]",
       input_var_names.size(),
       internal_var_names_.size(),
       output_var_names.size(),
       outer_varinfo.size(),
       skip_eager_vars_.size(),
+      skip_gc_vars_.size(),
       initialized_beforehand_vars_.size());
 }
 
@@ -253,6 +268,8 @@ void CinnLaunchContext::InitializeArguments() {
         framework::DDim(cinn_buffer->dims, cinn_buffer->dimensions).to_str(),
         cinn_tensor->type());
     name2argument_.emplace(arg, cinn_buffer.get());
+    auto pdvar2cinnbuf_ = cinn2paddle_varmap_.at(arg);
+    paddle2argument_.emplace(pdvar2cinnbuf_, cinn_buffer.get());
     hold_buffers_.emplace_back(std::move(cinn_buffer));
   }
   VLOG(4) << "Total argument size:" << name2argument_.size();
@@ -313,12 +330,14 @@ void CinnLaunchContext::AssignInternalVariable(const std::string& var_name) {
       });
 }
 
-framework::ProgramDesc CinnLaunchContext::BuildCompiledProgram(
+std::unique_ptr<framework::ProgramDesc> CinnLaunchContext::BuildCompiledProgram(
     const framework::ir::Graph& graph, const CinnCompiledObject& compiled_obj) {
   CinnRuntimeProgram* runtime_program = compiled_obj.runtime_program.get();
   // Step 0: Create an empty program_desc, there will be only one block
-  framework::ProgramDesc program_desc;
-  auto* block = program_desc.MutableBlock(0);
+  // framework::ProgramDesc program_desc;
+  std::unique_ptr<framework::ProgramDesc> program_desc(
+      new framework::ProgramDesc());
+  auto* block = program_desc->MutableBlock(0);
   const std::vector<std::unique_ptr<CinnInstruction>>& instructions =
       runtime_program->GetRunInstructions();
 
@@ -445,19 +464,54 @@ ParallelExecutor* CinnLaunchContext::InitializePE(const platform::Place& place,
   return parallel_executor_.get();
 }
 
+framework::InterpreterCore* CinnLaunchContext::InitializeInterpreterCore(
+    const platform::Place& place, framework::Scope* scope) {
+  if (!interpreter_core_ || scope != cached_scope_) {
+    VLOG(1) << "interpreter_core_ is null or scope != cached_scope_: "
+               "interpreter_core_: "
+            << interpreter_core_.get() << "; scope: " << scope
+            << "; cached_scope_: " << cached_scope_;
+    for (auto&& var_name : internal_var_names_) {
+      auto* var = scope->FindVar(var_name);
+      if (var != nullptr) {
+        continue;
+      }
+      framework::InitializeVariable(scope->Var(var_name),
+                                    framework::proto::VarType::LOD_TENSOR);
+    }
+    if (!interpreter_core_) {
+      interpreter_core_ = std::make_unique<framework::InterpreterCore>(
+          place,
+          runtime_program_desc_->Block(0),
+          skip_gc_vars_,
+          scope,
+          /*used_for_jit*/ false,
+          /*used_for_control_flow_op*/ false,
+          /*used_for_cinn*/ true);
+    } else {
+      interpreter_core_->reset_scope(scope);
+    }
+    UpdateCapturedEnv(*scope, place);
+  }
+  for (auto&& var_name : initialized_beforehand_vars_) {
+    auto* var = scope->GetVar(var_name);
+    auto* buffer = GetCinnBufferOfVar(var_name);
+    auto dim = framework::DDim(buffer->dims, buffer->dimensions);
+    var->GetMutable<phi::DenseTensor>()->Resize(dim);
+    var->GetMutable<phi::DenseTensor>()->mutable_data(
+        place, framework::paddle2cinn::TransToPaddleDataType(buffer->type));
+  }
+  return interpreter_core_.get();
+}
+
 cinn_buffer_t* CinnLaunchContext::GetCinnBufferOfVar(
     const std::string& var_name) {
-  auto it = paddle2cinn_varmap_.find(var_name);
+  auto res = paddle2argument_.find(var_name);
   PADDLE_ENFORCE_NE(
-      it,
-      paddle2cinn_varmap_.end(),
-      platform::errors::InvalidArgument(
-          "Variable(%s) not found in compilation result", var_name));
-  auto res = name2argument_.find(it->second);
-  PADDLE_ENFORCE_NE(res,
-                    name2argument_.end(),
-                    platform::errors::NotFound(
-                        "Argument(%s) not be initialized", it->second));
+      res,
+      paddle2argument_.end(),
+      platform::errors::NotFound("Variable(%s) not found in compilation result",
+                                 var_name));
   return static_cast<cinn_buffer_t*>(res->second);
 }
 

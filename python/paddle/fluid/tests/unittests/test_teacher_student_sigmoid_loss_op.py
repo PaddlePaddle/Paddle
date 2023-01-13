@@ -12,9 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from math import exp, log
+
 import numpy as np
-from math import log
-from math import exp
 from op_test import OpTest
 from scipy.special import logit
 

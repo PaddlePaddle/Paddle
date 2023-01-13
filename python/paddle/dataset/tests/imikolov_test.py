@@ -12,8 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle.dataset.imikolov
 import unittest
+
+import paddle.dataset.imikolov
 
 WORD_DICT = paddle.dataset.imikolov.build_dict()
 

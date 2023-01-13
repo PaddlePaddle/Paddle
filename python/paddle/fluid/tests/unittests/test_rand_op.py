@@ -13,13 +13,14 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
 
+import paddle
+import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle import rand
-import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
-import paddle
 
 
 class TestRandOpError(unittest.TestCase):

@@ -57,7 +57,7 @@ BackendSet GetTensorBackendSet(const phi::TensorBase& t) {
     phi::Backend backend_key = phi::TransToPhiBackend(t.place());
     BackendSet backend_set(backend_key);
     if (backend_key == Backend::GPU && phi::DenseTensor::classof(&t) &&
-        static_cast<const phi::DenseTensor&>(t).meta().use_cudnn) {
+        static_cast<const phi::DenseTensor&>(t).meta().use_gpudnn) {
       backend_set = backend_set | BackendSet(Backend::GPUDNN);
     }
     return backend_set;
@@ -126,7 +126,7 @@ Backend ParseBackend(const Tensor& tensor) {
   Backend backend_key = phi::TransToPhiBackend(tensor.place());
   if (backend_key == Backend::GPU &&
       phi::DenseTensor::classof(tensor.impl().get()) &&
-      static_cast<phi::DenseTensor*>(tensor.impl().get())->meta().use_cudnn) {
+      static_cast<phi::DenseTensor*>(tensor.impl().get())->meta().use_gpudnn) {
     return Backend::GPUDNN;
   }
   return backend_key;

@@ -16,7 +16,6 @@ limitations under the License.*/
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
 class CollectFpnProposalsOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -88,11 +87,11 @@ class CollectFpnProposalsOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     auto data_type =
         OperatorWithKernel::IndicateVarDataType(ctx, "MultiLevelRois");
-    return framework::OpKernelType(data_type, ctx.GetPlace());
+    return phi::KernelKey(data_type, ctx.GetPlace());
   }
 };
 

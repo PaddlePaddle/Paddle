@@ -12,9 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
 import signal
 import subprocess
+import unittest
 
 SignalsToTest = {
     signal.SIGTERM,

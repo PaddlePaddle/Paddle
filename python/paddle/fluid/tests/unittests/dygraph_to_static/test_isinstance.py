@@ -23,8 +23,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 
-import numpy as np
 import unittest
+
+import numpy as np
 
 import paddle
 import paddle.nn as nn
@@ -74,8 +75,7 @@ class SequentialLayer(nn.Layer):
 
 
 def train(model, to_static):
-    prog_trans = paddle.jit.ProgramTranslator.get_instance()
-    prog_trans.enable(to_static)
+    paddle.jit.enable_to_static(to_static)
 
     x = paddle.ones(shape=[2, 3], dtype='int32')
     out = model(x)

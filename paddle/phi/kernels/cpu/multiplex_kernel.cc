@@ -37,7 +37,7 @@ void MultiplexKernel(const Context& ctx,
   auto rows = ins[0]->dims()[0];
   auto cols = ins[0]->numel() / rows;
   auto index = ids.data<int32_t>();
-  for (auto i = 0; i < rows; i++) {
+  for (auto i = 0; i < ids.dims()[0]; i++) {
     int32_t k = index[i];
     PADDLE_ENFORCE_GE(
         k, 0, errors::PreconditionNotMet("index must be nonnegative."));

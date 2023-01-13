@@ -20,10 +20,6 @@ import numpy as np
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-from paddle.fluid.contrib.slim.quantization import (
-    QuantizationFreezePass,
-    QuantizationTransformPass,
-)
 from paddle.fluid.executor import global_scope
 from paddle.fluid.framework import (
     IrGraph,
@@ -32,6 +28,10 @@ from paddle.fluid.framework import (
     convert_np_dtype_to_dtype_,
 )
 from paddle.fluid.initializer import NumpyArrayInitializer
+from paddle.static.quantization import (
+    QuantizationFreezePass,
+    QuantizationTransformPass,
+)
 
 
 class TensorConfig:
@@ -282,7 +282,6 @@ def create_fake_model(program_config):
         var_desc.set_type(core.VarDesc.VarType.LOD_TENSOR)
         var_desc.set_dtype(convert_np_dtype_to_dtype_(tensor_config.dtype))
         var_desc.set_shape(tensor_config.shape)
-        print(f"name: {name}; shape: {tensor_config.shape}")
         var_desc.set_need_check_feed(True)
         if tensor_config.lod is not None:
             var_desc.set_lod_level(len(tensor_config.lod))

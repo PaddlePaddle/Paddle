@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import paddle
+
 from ...fluid.data_feeder import check_type
 from ...fluid.initializer import NumpyArrayInitializer
 

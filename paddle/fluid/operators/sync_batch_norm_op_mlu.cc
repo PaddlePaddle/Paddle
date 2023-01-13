@@ -26,7 +26,6 @@ namespace operators {
 #define NO_USE_CNCL 0
 #define GET_LAYOUT_OFFSET 2
 
-using Tensor = phi::DenseTensor;
 static std::vector<cnnlTensorLayout_t> supported_input_layout = {
     CNNL_LAYOUT_NC, CNNL_LAYOUT_NLC, CNNL_LAYOUT_NHWC, CNNL_LAYOUT_NDHWC};
 
@@ -73,7 +72,7 @@ class SyncBatchNormMLUKernel : public framework::OpKernel<T> {
                           "The Input dim size should be less than 6."));
 
     int N, C, H, W, D;
-    ExtractNCWHD(x_dims, layout, &N, &C, &H, &W, &D);
+    phi::funcs::ExtractNCWHD(x_dims, layout, &N, &C, &H, &W, &D);
 
     y->mutable_data<T>(ctx.GetPlace());
     mean_out->mutable_data<MPDType>(ctx.GetPlace());
@@ -81,8 +80,8 @@ class SyncBatchNormMLUKernel : public framework::OpKernel<T> {
     saved_mean->mutable_data<MPDType>(ctx.GetPlace());
     saved_variance->mutable_data<MPDType>(ctx.GetPlace());
 
-    Tensor trans_x;
-    Tensor trans_y;
+    phi::DenseTensor trans_x;
+    phi::DenseTensor trans_y;
     std::vector<int> forward_perm;
     std::vector<int> backward_perm;
     std::vector<int> trans_shape;
@@ -137,13 +136,13 @@ class SyncBatchNormMLUKernel : public framework::OpKernel<T> {
     } else {  // training
       if (ctx.HasInput("MomentumTensor")) {
         const auto *mom_tensor = ctx.Input<phi::DenseTensor>("MomentumTensor");
-        Tensor mom_cpu;
+        phi::DenseTensor mom_cpu;
         paddle::framework::TensorCopySync(
             *mom_tensor, platform::CPUPlace(), &mom_cpu);
         momentum = mom_cpu.data<float>()[0];
       }
 
-      Tensor local_mean, local_var;
+      phi::DenseTensor local_mean, local_var;
       local_mean.mutable_data<MPDType>(mean->dims(), ctx.GetPlace());
       local_var.mutable_data<MPDType>(variance->dims(), ctx.GetPlace());
       MLUCnnlTensorDesc desc_mean_var(*mean_out);
@@ -158,14 +157,14 @@ class SyncBatchNormMLUKernel : public framework::OpKernel<T> {
                                   desc_mean_var.get(),
                                   GetBasePtr(&local_var));
 
-      Tensor input_count;
+      phi::DenseTensor input_count;
       input_count.mutable_data<MPDType>(phi::make_ddim({1}), ctx.GetPlace());
       FillMLUTensorWithHostValue<MPDType>(
           ctx, static_cast<MPDType>(x->numel() / C), &input_count);
 
-      Tensor count_all;
-      Tensor mean_all(mean->dtype());
-      Tensor invstd_all(variance->dtype());
+      phi::DenseTensor count_all;
+      phi::DenseTensor mean_all(mean->dtype());
+      phi::DenseTensor invstd_all(variance->dtype());
 
 #ifdef PADDLE_WITH_CNCL
       auto &dev_ctx =
@@ -300,7 +299,7 @@ class SyncBatchNormMLUGradKernel : public framework::OpKernel<T> {
     const auto *saved_mean = ctx.Input<phi::DenseTensor>("SavedMean");
     const auto *saved_inv_var = ctx.Input<phi::DenseTensor>("SavedVariance");
 
-    const Tensor *x;
+    const phi::DenseTensor *x;
     if (ctx.HasInput("Y")) {
       PADDLE_ENFORCE_EQ(true,
                         false,
@@ -321,7 +320,7 @@ class SyncBatchNormMLUGradKernel : public framework::OpKernel<T> {
                           "The Input X dim size should be less than 6."));
 
     int N, C, H, W, D;
-    ExtractNCWHD(x_dims, layout, &N, &C, &H, &W, &D);
+    phi::funcs::ExtractNCWHD(x_dims, layout, &N, &C, &H, &W, &D);
     PADDLE_ENFORCE_EQ(scale->dims()[0],
                       C,
                       platform::errors::InvalidArgument(
@@ -342,9 +341,9 @@ class SyncBatchNormMLUGradKernel : public framework::OpKernel<T> {
                           "OP(sync_batch_norm) be (1), but given (%d).",
                           scale->dims().size()));
 
-    Tensor trans_x;
-    Tensor trans_dy;
-    Tensor trans_dx;
+    phi::DenseTensor trans_x;
+    phi::DenseTensor trans_dy;
+    phi::DenseTensor trans_dx;
     std::vector<int> forward_perm;
     std::vector<int> backward_perm;
     std::vector<int> trans_shape;
@@ -384,7 +383,7 @@ class SyncBatchNormMLUGradKernel : public framework::OpKernel<T> {
         supported_input_layout[x_dims.size() - GET_LAYOUT_OFFSET],
         ToCnnlDataType<T>());
 
-    Tensor sum_dy, sum_dy_xmu;
+    phi::DenseTensor sum_dy, sum_dy_xmu;
     sum_dy.mutable_data<MPDType>(bias->dims(), ctx.GetPlace());
     sum_dy_xmu.mutable_data<MPDType>(bias->dims(), ctx.GetPlace());
     MLUCnnlTensorDesc desc_other_param(*bias);
@@ -411,7 +410,7 @@ class SyncBatchNormMLUGradKernel : public framework::OpKernel<T> {
         d_scale ? true : false /*compute d_scale*/,
         d_bias ? true : false /*compute d_bias*/);
 
-    Tensor numel_count;
+    phi::DenseTensor numel_count;
     numel_count.mutable_data<int32_t>(phi::make_ddim({1}), ctx.GetPlace());
     FillMLUTensorWithHostValue<int32_t>(
         ctx, static_cast<int32_t>(x->numel() / C), &numel_count);

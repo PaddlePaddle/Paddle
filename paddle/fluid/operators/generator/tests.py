@@ -13,7 +13,8 @@
 # limitations under the License.
 
 import re
-from type_mapping import input_types_map, attr_types_map, output_type_map
+
+from type_mapping import attr_types_map, input_types_map, output_type_map
 
 
 # tests for typename
@@ -43,6 +44,10 @@ def is_initializer_list(s):
 
 def is_base_op(op):
     return "kernel" in op and "infer_meta" in op
+
+
+def is_composite_op(op):
+    return "composite" in op
 
 
 def supports_selected_rows_kernel(op):

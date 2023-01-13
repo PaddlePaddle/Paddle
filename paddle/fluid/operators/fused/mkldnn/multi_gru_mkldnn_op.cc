@@ -18,19 +18,20 @@ limitations under the License. */
 
 #include "dnnl.hpp"  // NOLINT
 #include "paddle/fluid/framework/mixed_vector.h"
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/operators/fused/multi_gru_op.h"
-#include "paddle/fluid/platform/errors.h"
-#include "paddle/fluid/platform/mkldnn_reuse.h"
+#include "paddle/phi/backends/onednn/onednn_reuse.h"
 
 namespace paddle {
 namespace operators {
 
-using paddle::platform::CreateKey;
 using phi::vectorize;
 using phi::funcs::OneDNNGetDataType;
 using phi::funcs::OneDNNMemDesc;
 using Direction = dnnl::rnn_direction;
+using phi::OneDNNContext;
+using OneDNNMemoryFormat = dnnl::memory::format_tag;
 
 namespace {
 
@@ -52,7 +53,7 @@ template <typename T, typename T_out = T>
 class MultiGRUHandler {
  public:
   MultiGRUHandler(const paddle::framework::ExecutionContext& ctx,
-                  const platform::MKLDNNDeviceContext& dev_ctx)
+                  const OneDNNContext& dev_ctx)
       : dev_ctx_(dev_ctx),
         engine_(dev_ctx.GetEngine()),
         place_(ctx.GetPlace()),
@@ -112,8 +113,9 @@ class MultiGRUHandler {
     const std::string unique_name = ctx.OutputName("Hidden");
     // Create memory key without Ti because weights, bias and h0 memories
     // do not depend on Ti size but primitive and input/output memory do
-    memory_key_ = platform::ExtendKeyWithThreadInfoIfNeeded(
-        dev_ctx, CreateKey(dev_ctx, unique_name, OneDNNGetDataType<T>()));
+    memory_key_ = phi::funcs::ExtendKeyWithThreadInfoIfNeeded(
+        dev_ctx,
+        phi::funcs::CreateKey(dev_ctx, unique_name, OneDNNGetDataType<T>()));
     key_ = memory_key_;
     key_.append("T").append(std::to_string(Ti_));
 
@@ -320,7 +322,7 @@ class MultiGRUHandler {
 
     auto gru_forward_p0 = AcquireGruPrimitive(layer, dir);
 
-    auto& astream = paddle::platform::MKLDNNDeviceContext::tls().get_stream();
+    auto& astream = OneDNNContext::tls().get_stream();
     gru_forward_p0->execute(astream, gru_args);
     astream.wait();
     return out_mem;
@@ -343,7 +345,7 @@ class MultiGRUHandler {
       memory_p = std::make_shared<dnnl::memory>(
           gru_pds_[{layer, dir}]->src_iter_desc(), engine_);
 
-      auto& astream = paddle::platform::MKLDNNDeviceContext::tls().get_stream();
+      auto& astream = OneDNNContext::tls().get_stream();
       dnnl::reorder(user_h0_memory, *memory_p, attrs_[2 * layer + (dir == R2L)])
           .execute(astream, user_h0_memory, *memory_p);
 
@@ -383,7 +385,7 @@ class MultiGRUHandler {
       memory_p = std::make_shared<dnnl::memory>(
           gru_pds_[{layer, dir}]->weights_layer_desc(), engine_);
 
-      auto& astream = paddle::platform::MKLDNNDeviceContext::tls().get_stream();
+      auto& astream = OneDNNContext::tls().get_stream();
       dnnl::reorder(user_memory, *memory_p, attrs_[2 * layer + (dir == R2L)])
           .execute(astream, user_memory, *memory_p);
 
@@ -440,7 +442,7 @@ class MultiGRUHandler {
       memory_p = std::make_shared<dnnl::memory>(
           gru_pds_[{layer, dir}]->weights_iter_desc(), engine_);
 
-      auto& astream = paddle::platform::MKLDNNDeviceContext::tls().get_stream();
+      auto& astream = OneDNNContext::tls().get_stream();
       dnnl::reorder(user_memory, *memory_p, attrs_[2 * layer + (dir == R2L)])
           .execute(astream, user_memory, *memory_p);
 
@@ -547,7 +549,7 @@ class MultiGRUHandler {
 
     auto concat_p = AcquireConcatPrimitive(layer);
 
-    auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
+    auto& astream = OneDNNContext::tls().get_stream();
     concat_p->execute(astream, concat_args);
     astream.wait();
     return out_mem;
@@ -654,7 +656,7 @@ class MultiGRUHandler {
   int64_t N_, Ti_;
   std::vector<int64_t> ICs, OCs;
 
-  const platform::MKLDNNDeviceContext& dev_ctx_;
+  const OneDNNContext& dev_ctx_;
   const dnnl::engine engine_;
   const platform::Place place_;
   const bool origin_mode_;
@@ -695,8 +697,7 @@ class MultiGRUMKLDNNKernel : public framework::OpKernel<T> {
 
   template <typename Tout = T>
   void RunKernel(const framework::ExecutionContext& ctx) const {
-    auto& dev_ctx =
-        ctx.template device_context<platform::MKLDNNDeviceContext>();
+    auto& dev_ctx = ctx.template device_context<OneDNNContext>();
     MultiGRUHandler<T, Tout> handler(ctx, dev_ctx);
 
     int layers = handler.getLayers();
@@ -721,6 +722,6 @@ class MultiGRUMKLDNNKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 REGISTER_OP_KERNEL(multi_gru,
                    MKLDNN,
-                   paddle::platform::CPUPlace,
+                   phi::CPUPlace,
                    ops::MultiGRUMKLDNNKernel<float>,
                    ops::MultiGRUMKLDNNKernel<uint8_t>);

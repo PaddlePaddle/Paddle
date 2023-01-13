@@ -15,10 +15,11 @@
 import os
 import tempfile
 import unittest
+
+import paddle
+import paddle.fluid as fluid
 from paddle.dataset.common import download
 from paddle.distributed.fleet.dataset import TreeIndex
-import paddle.fluid as fluid
-import paddle
 
 paddle.enable_static()
 
@@ -102,8 +103,8 @@ class TestTreeIndex(unittest.TestCase):
             node.id() for node in tree.get_nodes(travel_path_codes)
         ]
 
-        self.assertEquals(travel_path_ids + [travel_ids[-1]], travel_ids)
-        self.assertEquals(travel_path_codes + [travel_codes[-1]], travel_codes)
+        self.assertEqual(travel_path_ids + [travel_ids[-1]], travel_ids)
+        self.assertEqual(travel_path_codes + [travel_codes[-1]], travel_codes)
 
         # get_children
         children_codes = tree.get_children_codes(travel_codes[1], height - 1)

@@ -34,8 +34,7 @@ from paddle.distributed.fleet.meta_parallel.sharding.group_sharded_stage3 import
 from paddle.distributed.fleet.meta_parallel.sharding.group_sharded_utils import (
     GroupShardedScaler,
 )
-from paddle.fluid.dygraph.nn import Linear
-from paddle.fluid.framework import _test_eager_guard
+from paddle.nn import Linear
 
 epoch = 10
 paddle.seed(2022)
@@ -64,14 +63,18 @@ class MLP(fluid.Layer):
         return y
 
 
-def reader_decorator(linear_size=1000):
-    def __reader__():
-        for _ in range(100):
-            img = np.random.rand(linear_size).astype('float32')
-            label = np.ones(1).astype('int64')
-            yield img, label
+class RandomDataset(paddle.io.Dataset):
+    def __init__(self, num_samples=2000, linear_size=1000):
+        self.num_samples = num_samples
+        self.linear_size = linear_size
 
-    return __reader__
+    def __getitem__(self, idx):
+        img = np.random.rand(self.linear_size).astype('float32')
+        label = np.ones(1).astype('int64')
+        return img, label
+
+    def __len__(self):
+        return self.num_samples
 
 
 def optimizer_setting(model, use_pure_fp16, opt_group=False):
@@ -142,18 +145,15 @@ def train_mlp(
             )
         return
 
-    train_reader = paddle.batch(
-        reader_decorator(), batch_size=batch_size, drop_last=True
+    paddle.seed(2023)
+    np.random.seed(2023)
+    train_loader = paddle.io.DataLoader(
+        RandomDataset(),
+        batch_size=batch_size,
+        shuffle=False,
+        drop_last=True,
+        num_workers=0,
     )
-
-    train_loader = paddle.io.DataLoader.from_generator(
-        capacity=32,
-        use_double_buffer=True,
-        iterable=True,
-        return_list=True,
-        use_multiprocess=True,
-    )
-    train_loader.set_sample_list_generator(train_reader)
 
     for eop in range(epoch):
         model.train()
@@ -331,5 +331,4 @@ def test_stage2_stage3():
 
 
 if __name__ == '__main__':
-    with _test_eager_guard():
-        test_stage2_stage3()
+    test_stage2_stage3()

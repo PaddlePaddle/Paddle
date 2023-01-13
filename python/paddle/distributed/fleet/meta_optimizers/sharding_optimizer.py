@@ -13,36 +13,47 @@
 # limitations under the License.
 
 import os
-from paddle.fluid import core
-from paddle.utils import unique_name
-from paddle.fluid.optimizer import PipelineOptimizer
-from paddle.static import default_startup_program, device_guard
-from paddle.static import create_global_var
 
-from .common import OpRole, OP_ROLE_VAR_KEY, CollectiveHelper, OP_ROLE_KEY
-from .common import is_backward_op, is_optimizer_op, is_update_op
+from paddle.fluid import core
+from paddle.fluid.optimizer import PipelineOptimizer
+from paddle.static import (
+    create_global_var,
+    default_startup_program,
+    device_guard,
+)
+from paddle.utils import unique_name
+
+from ..utils.log_util import logger
+from .common import (
+    OP_ROLE_KEY,
+    OP_ROLE_VAR_KEY,
+    CollectiveHelper,
+    OpRole,
+    is_backward_op,
+    is_optimizer_op,
+    is_update_op,
+)
 from .meta_optimizer_base import MetaOptimizerBase
-from .sharding.shard import Shard, ProgramSegment
+from .sharding import utils
 from .sharding.fp16_helper import FP16Utils
-from .sharding.weight_decay_helper import WeightDecayHelper
 from .sharding.gradient_clip_helper import GradientClipHelper
 from .sharding.offload_helper import OffloadHelper
 from .sharding.prune import ProgramDeps
-from .sharding import utils
+from .sharding.shard import ProgramSegment, Shard
 from .sharding.utils import (
+    get_first_optimize_op_idx,
+    get_grad_device,
+    get_var_size,
+    insert_allreduce_ops,
+    insert_broadcast_ops,
+    insert_cast_ops,
+    insert_fill_constant_ops,
+    insert_reduce_ops,
+    insert_scale_loss_grad_ops,
     insert_sync_calc_op,
     insert_sync_comm_ops,
-    insert_fill_constant_ops,
-    insert_cast_ops,
-    insert_allreduce_ops,
-    insert_reduce_ops,
-    get_grad_device,
-    get_first_optimize_op_idx,
-    insert_broadcast_ops,
-    get_var_size,
-    insert_scale_loss_grad_ops,
 )
-from ..utils.log_util import logger
+from .sharding.weight_decay_helper import WeightDecayHelper
 
 __all__ = []
 

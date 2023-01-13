@@ -931,6 +931,7 @@ int MultiHeadMatmulV2FusePass::BuildFusionV2(Graph* graph,
 
     scope->EraseVars({mul1_w->Name(), mul2_w->Name()});
     scope->EraseVars({eltadd1_b->Name(), eltadd2_b->Name()});
+    paddle::memory::Release(platform::CPUPlace());
 
     auto reshape_desc = reshape2->Op();
     int head_number =
@@ -1398,6 +1399,7 @@ int MultiHeadMatmulV3FusePass::BuildFusionV3(Graph* graph,
            sizeof(float) * wq_tensor->numel());
 
     scope->EraseVars({mul1_w->Name(), mul2_w->Name()});
+    paddle::memory::Release(platform::CPUPlace());
 
     phi::DenseTensor tmp_combined_bias_tensor;
     tmp_combined_bias_tensor.Resize(combined_bias_dims);

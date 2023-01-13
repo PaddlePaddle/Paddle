@@ -15,12 +15,10 @@
 import tempfile
 import unittest
 
+import paddle
 import paddle.vision.transforms as T
 from paddle.static import InputSpec
 from paddle.vision.datasets import MNIST
-
-import paddle
-from paddle.fluid.framework import _test_eager_guard
 
 
 class MnistDataset(MNIST):
@@ -32,7 +30,7 @@ class TestWandbCallbacks(unittest.TestCase):
     def setUp(self):
         self.save_dir = tempfile.mkdtemp()
 
-    def func_wandb_callback(self):
+    def test_wandb_callback(self):
         inputs = [InputSpec([-1, 1, 28, 28], 'float32', 'image')]
         labels = [InputSpec([None, 1], 'int64', 'label')]
 
@@ -59,11 +57,6 @@ class TestWandbCallbacks(unittest.TestCase):
         model.fit(
             train_dataset, eval_dataset, batch_size=64, callbacks=callback
         )
-
-    def test_wandb_callback(self):
-        with _test_eager_guard():
-            self.func_wandb_callback()
-        self.func_wandb_callback()
 
 
 if __name__ == '__main__':

@@ -41,10 +41,8 @@ taskkill /f /im python.exe /t 2>NUL
 taskkill /f /im nvcc.exe /t 2>NUL
 taskkill /f /im cicc.exe /t 2>NUL
 taskkill /f /im ptxas.exe /t 2>NUL
-taskkill /f /im op_function_generator.exe /t 2>NUL
 taskkill /f /im eager_generator.exe /t 2>NUL
 taskkill /f /im eager_legacy_op_function_generator.exe /t 2>NUL
-wmic process where name="op_function_generator.exe" call terminate 2>NUL
 wmic process where name="eager_generator.exe" call terminate 2>NUL
 wmic process where name="eager_legacy_op_function_generator.exe" call terminate 2>NUL
 wmic process where name="cvtres.exe" call terminate 2>NUL
@@ -99,6 +97,10 @@ set PYTHON_VENV_ROOT=%cache_dir%\python_venv
 set PYTHON_EXECUTABLE=!PYTHON_VENV_ROOT!\Scripts\python.exe
 %PYTHON_ROOT%\python.exe -m venv --clear !PYTHON_VENV_ROOT!
 call !PYTHON_VENV_ROOT!\Scripts\activate.bat
+if %ERRORLEVEL% NEQ 0 (
+    echo activate python virtual environment failed!
+    exit /b 5
+)
 
 if "%WITH_PYTHON%" == "ON" (
     where python
@@ -529,10 +531,8 @@ taskkill /f /im csc.exe /t 2>NUL
 taskkill /f /im nvcc.exe /t 2>NUL
 taskkill /f /im cicc.exe /t 2>NUL
 taskkill /f /im ptxas.exe /t 2>NUL
-taskkill /f /im op_function_generator.exe /t 2>NUL
 taskkill /f /im eager_generator.exe /t 2>NUL
 taskkill /f /im eager_legacy_op_function_generator.exe /t 2>NUL
-wmic process where name="op_function_generator.exe" call terminate 2>NUL
 wmic process where name="eager_generator.exe" call terminate 2>NUL
 wmic process where name="eager_legacy_op_function_generator.exe" call terminate 2>NUL
 wmic process where name="cmake.exe" call terminate 2>NUL
@@ -640,7 +640,6 @@ pip uninstall -y paddlepaddle
 pip uninstall -y paddlepaddle-gpu
 pip install %PADDLE_WHL_FILE_WIN%
 if %ERRORLEVEL% NEQ 0 (
-    call paddle_winci\Scripts\deactivate.bat 2>NUL
     echo pip install whl package failed!
     exit /b 1
 )
@@ -933,10 +932,8 @@ taskkill /f /im python.exe /t 2>NUL
 taskkill /f /im nvcc.exe /t 2>NUL
 taskkill /f /im cicc.exe /t 2>NUL
 taskkill /f /im ptxas.exe /t 2>NUL
-taskkill /f /im op_function_generator.exe /t 2>NUL
 taskkill /f /im eager_generator.exe /t 2>NUL
 taskkill /f /im eager_legacy_op_function_generator.exe /t 2>NUL
-wmic process where name="op_function_generator.exe" call terminate 2>NUL
 wmic process where name="eager_generator.exe" call terminate 2>NUL
 wmic process where name="eager_legacy_op_function_generator.exe" call terminate 2>NUL
 wmic process where name="cvtres.exe" call terminate 2>NUL

@@ -12,28 +12,29 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
 import sys
+
+import numpy as np
 
 sys.path.append("..")
 
-import paddle
-import paddle.nn.functional as F
-import paddle.incubate.nn.functional as incubate_f
-from paddle.nn.layer.norm import LayerNorm
-from paddle.nn.layer.common import Linear, Dropout
-from paddle.nn.layer.transformer import _convert_attention_mask
-from paddle import tensor
-from paddle.fluid import layers
 import unittest
-from op_test_xpu import XPUOpTest
-from paddle.fluid.framework import default_main_program
 
+from op_test_xpu import XPUOpTest
 from xpu.get_test_cover_info import (
+    XPUOpTestWrapper,
     create_test_class,
     get_xpu_op_support_types,
-    XPUOpTestWrapper,
 )
+
+import paddle
+import paddle.incubate.nn.functional as incubate_f
+import paddle.nn.functional as F
+from paddle import tensor
+from paddle.fluid.framework import default_main_program
+from paddle.nn.layer.common import Dropout, Linear
+from paddle.nn.layer.norm import LayerNorm
+from paddle.nn.layer.transformer import _convert_attention_mask
 
 default_main_program().random_seed = 42
 
@@ -162,7 +163,7 @@ class XPUTestFusedAttentionOp(XPUOpTestWrapper):
 
             # [B, n_head, seq_len, head_dim] * [B, n_head, out_seq_len, head_dim]
             # --> [B, n_head, seq_len, out_seq_len]
-            qk_out = layers.matmul(
+            qk_out = tensor.matmul(
                 x=q_out * self.head_dim**-0.5, y=k_out, transpose_y=True
             )
 

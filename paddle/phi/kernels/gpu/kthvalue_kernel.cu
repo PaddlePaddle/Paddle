@@ -67,7 +67,7 @@ bool SortKthvalue(const phi::GPUContext& dev_ctx,
   DenseTensor temp_values, temp_indices;
   const T* input = input_tensor->data<T>();
   T* values = out_tensor->data<T>();
-  int64_t* indices = indices_tensor->mutable_data<int64_t>(dev_ctx.GetPlace());
+  int64_t* indices = dev_ctx.template Alloc<int64_t>(indices_tensor);
   temp_values.Resize(dim);
   temp_indices.Resize(dim);
   sorted_values_ptr = dev_ctx.template Alloc<T>(&temp_values);
@@ -167,6 +167,19 @@ void KthvalueKernel(const Context& dev_ctx,
   T* output_data = dev_ctx.template Alloc<T>(output);
   int64_t* indices_data = dev_ctx.template Alloc<int64_t>(indices);
 
+  // For 0D Tensor
+  if (in_dims.size() == 0) {
+    PADDLE_ENFORCE_EQ(k,
+                      1,
+                      phi::errors::InvalidArgument(
+                          "the k in the kthvalue must less equal than the "
+                          "elemenents number of the input X, but received %d .",
+                          k));
+
+    phi::Copy<Context>(dev_ctx, x, dev_ctx.GetPlace(), false, output);
+    phi::funcs::set_constant(dev_ctx, indices, 0);
+    return;
+  }
   if (axis == in_dims.size() - 1) {
     const int64_t& input_height =
         phi::product(phi::slice_ddim(in_dims, 0, in_dims.size() - 1));
@@ -208,13 +221,16 @@ void KthvalueKernel(const Context& dev_ctx,
     }
     trans_out_dims[in_dims.size() - 1] = 1;
     DenseTensor trans_input;
-    trans_input.mutable_data<T>(trans_dims, dev_ctx.GetPlace());
+    trans_input.Resize(trans_dims);
+    dev_ctx.template Alloc<T>(&trans_input);
     int ndims = trans.size();
     funcs::TransCompute<phi::GPUContext, T>(
         ndims, dev_ctx, x, &trans_input, trans);
     DenseTensor trans_ind, trans_out;
-    trans_ind.mutable_data<int64_t>(trans_out_dims, dev_ctx.GetPlace());
-    trans_out.mutable_data<T>(trans_out_dims, dev_ctx.GetPlace());
+    trans_ind.Resize(trans_out_dims);
+    trans_out.Resize(trans_out_dims);
+    dev_ctx.template Alloc<int64_t>(&trans_ind);
+    dev_ctx.template Alloc<T>(&trans_out);
     const int64_t input_height =
         phi::product(phi::slice_ddim(trans_dims, 0, trans_dims.size() - 1));
     const int64_t input_width = trans_dims[trans_dims.size() - 1];

@@ -13,6 +13,7 @@
 # limitations under the License
 
 import copy
+
 from . import constants
 
 
@@ -72,6 +73,10 @@ class BaseConfig:
             setattr(result, k, copy.deepcopy(v, memo))
         return result
 
+    def get(self, k, d=None):
+        result_dict = self.to_dict()
+        return result_dict.get(k, d)
+
 
 class RecomputeConfig(BaseConfig):
     def __init__(self, config_dict=None):
@@ -112,6 +117,12 @@ class TuningConfig(BaseConfig):
 class DatasetConfig(BaseConfig):
     def __init__(self, config_dict=None):
         category = constants.DATASET
+        super().__init__(category, config_dict)
+
+
+class FusedPassesConfig(BaseConfig):
+    def __init__(self, config_dict=None):
+        category = constants.FUSED_PASSES
         super().__init__(category, config_dict)
 
 
@@ -183,3 +194,6 @@ class Strategy(BaseConfig):
 
         config_dict = self._config_dict.get(constants.DATASET, None)
         self.dataset = DatasetConfig(config_dict)
+
+        config_dict = self._config_dict.get(constants.FUSED_PASSES, None)
+        self.fused_passes = FusedPassesConfig(config_dict)

@@ -29,6 +29,7 @@ typedef SSIZE_T ssize_t;
 #include "paddle/fluid/eager/hooks.h"
 #include "paddle/fluid/eager/utils.h"
 #include "paddle/fluid/framework/convert_utils.h"
+#include "paddle/fluid/framework/string_array.h"
 #include "paddle/fluid/memory/allocation/allocator.h"
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -85,10 +86,6 @@ Py_ssize_t GetSliceIndexFromPyObject(PyObject* obj) {
         "We should only get paddle::experimental::Tensor or VarBase in this "
         "method, when you reach this means we got another type index."));
   }
-}
-
-bool PyCheckTensor(PyObject* obj) {
-  return PyObject_IsInstance(obj, reinterpret_cast<PyObject*>(p_tensor_type));
 }
 
 static PyObject* tensor_method_numpy(TensorObject* self,
@@ -1227,7 +1224,6 @@ static PyObject* tensor_method__setitem_eager_tensor(TensorObject* self,
             Py_TYPE(value_obj)));
       }
     }
-
     {
       // Release gil and do tracing
       py::gil_scoped_release release;
@@ -1242,6 +1238,9 @@ static PyObject* tensor_method__setitem_eager_tensor(TensorObject* self,
             self->tensor.name(), self->tensor, amp_dtype, "set_value");
         value_tensor = egr::EagerAmpAutoCast(
             value_tensor.name(), value_tensor, amp_dtype, "set_value");
+        if (self->tensor.dtype() != value_tensor.dtype()) {
+          value_tensor = cast_ad_func(value_tensor, self->tensor.dtype());
+        }
       }
       self->tensor = set_value__dygraph_function(
           self->tensor, value_tensor, {}, {}, {}, attrs);
@@ -1450,28 +1449,28 @@ static PyObject* tensor__copy_gradient_from(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
-static PyObject* tensor__use_cudnn(TensorObject* self,
-                                   PyObject* args,
-                                   PyObject* kwargs) {
+static PyObject* tensor__use_gpudnn(TensorObject* self,
+                                    PyObject* args,
+                                    PyObject* kwargs) {
   EAGER_TRY
   PADDLE_ENFORCE(self->tensor.defined() && self->tensor.is_dense_tensor(),
                  paddle::platform::errors::Fatal(
-                     "function _use_cudnn is only effective for DenseTensor"));
+                     "function _use_gpudnn is only effective for DenseTensor"));
 
-  bool use_cudnn = pybind::CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 0), 0);
+  bool use_gpudnn = pybind::CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 0), 0);
 
-  // Set the same use_cudnn attribute, return directly
+  // Set the same use_gpudnn attribute, return directly
   phi::DenseTensor* dense_tensor =
       static_cast<phi::DenseTensor*>(self->tensor.impl().get());
   phi::DenseTensorMeta* dense_tensor_meta =
       phi::DenseTensorUtils::GetMutableMeta(dense_tensor);
-  if (use_cudnn == dense_tensor_meta->use_cudnn) {
+  if (use_gpudnn == dense_tensor_meta->use_gpudnn) {
     return ToPyObject(self->tensor);
   }
 
-  // Share all other members of Tensor except use_cudnn
+  // Share all other members of Tensor except use_gpudnn
   phi::DenseTensorMeta target_dense_meta = *dense_tensor_meta;
-  target_dense_meta.use_cudnn = use_cudnn;
+  target_dense_meta.use_gpudnn = use_gpudnn;
   phi::DenseTensor target_dense_tensor;
   target_dense_tensor.ShareDataWith(*dense_tensor);
   target_dense_tensor.set_meta(target_dense_meta);
@@ -1481,7 +1480,7 @@ static PyObject* tensor__use_cudnn(TensorObject* self,
       self->tensor.name());
   target_tensor.set_autograd_meta(self->tensor.mutable_autograd_meta());
   VLOG(4) << "Tensor: " << target_tensor.name()
-          << " set use_cudnn = " << use_cudnn;
+          << " set use_gpudnn = " << use_gpudnn;
 
   return ToPyObject(target_tensor);
   EAGER_CATCH_AND_THROW_RETURN_NULL
@@ -1491,7 +1490,7 @@ static PyObject* tensor_method_set_vocab(TensorObject* self,
                                          PyObject* args,
                                          PyObject* kwargs) {
   EAGER_TRY
-  using Vocab = std::unordered_map<std::wstring, int>;
+  using Vocab = paddle::framework::Vocab;
   auto vocab = CastPyArg2Vocab(PyTuple_GET_ITEM(args, 0), 0);
   auto var_tensor = std::make_shared<egr::VariableCompatTensor>();
   *var_tensor->GetMutable<Vocab>() = vocab;
@@ -1522,7 +1521,7 @@ static PyObject* tensor_method_get_map_tensor(TensorObject* self,
       true,
       paddle::platform::errors::Fatal(
           "this method is only effective for VariableCompatTensor"));
-  using Vocab = std::unordered_map<std::wstring, int>;
+  using Vocab = paddle::framework::Vocab;
   auto* var_tensor =
       static_cast<const egr::VariableCompatTensor*>(self->tensor.impl().get());
   return ToPyObject(var_tensor->Get<Vocab>());
@@ -1742,14 +1741,6 @@ static PyObject* tensor_method_get_rows(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
-static PyObject* tensor_methon_element_size(TensorObject* self,
-                                            PyObject* args,
-                                            PyObject* kwargs) {
-  EAGER_TRY
-  return ToPyObject(paddle::experimental::SizeOf(self->tensor.dtype()));
-  EAGER_CATCH_AND_THROW_RETURN_NULL
-}
-
 static PyObject* tensor__reset_grad_inplace_version(TensorObject* self,
                                                     PyObject* args,
                                                     PyObject* kwargs) {
@@ -1893,9 +1884,10 @@ static PyObject* tensor_data_ptr(TensorObject* self,
                                  PyObject* kwargs) {
   EAGER_TRY
   if (self->tensor.initialized() && self->tensor.is_dense_tensor()) {
-    ToPyObject((int64_t)std::dynamic_pointer_cast<phi::DenseTensor>(  // NOLINT
-                   self->tensor.impl())
-                   ->data());
+    return ToPyObject(
+        (int64_t)std::dynamic_pointer_cast<phi::DenseTensor>(  // NOLINT
+            self->tensor.impl())
+            ->data());
   }
   RETURN_PY_NONE
   EAGER_CATCH_AND_THROW_RETURN_NULL
@@ -2053,8 +2045,8 @@ PyMethodDef variable_methods[] = {
      (PyCFunction)(void (*)(void))tensor__copy_gradient_from,
      METH_VARARGS | METH_KEYWORDS,
      NULL},
-    {"_tensor_use_cudnn",
-     (PyCFunction)(void (*)(void))tensor__use_cudnn,
+    {"_tensor_use_gpudnn",
+     (PyCFunction)(void (*)(void))tensor__use_gpudnn,
      METH_VARARGS | METH_KEYWORDS,
      NULL},
     /** the methods to adapt old dygraph, will be removed in the future **/
@@ -2130,10 +2122,6 @@ PyMethodDef variable_methods[] = {
      NULL},
     {"rows",
      (PyCFunction)(void (*)(void))tensor_method_get_rows,
-     METH_VARARGS | METH_KEYWORDS,
-     NULL},
-    {"element_size",
-     (PyCFunction)(void (*)(void))tensor_methon_element_size,
      METH_VARARGS | METH_KEYWORDS,
      NULL},
     {"_reset_grad_inplace_version",

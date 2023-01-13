@@ -21,13 +21,12 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/operators/math/sample_prob.h"
-#include "paddle/fluid/operators/math/softmax.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/softmax.h"
 
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
 template <typename T,
           int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
@@ -212,7 +211,6 @@ static void compute_remove_accidental_hits(const platform::DeviceContext& ctx,
 template <typename T>
 class SampleLogitsKernel : public framework::OpKernel<T> {
  public:
-  using Tensor = phi::DenseTensor;
   void Compute(const framework::ExecutionContext& context) const override {
     PADDLE_ENFORCE_EQ(
         platform::is_cpu_place(context.GetPlace()),
@@ -264,16 +262,17 @@ class SampleLogitsKernel : public framework::OpKernel<T> {
           context.Input<phi::DenseTensor>("CustomizedSamples");
       const phi::DenseTensor* customized_probabilities =
           context.Input<phi::DenseTensor>("CustomizedProbabilities");
-      PADDLE_ENFORCE_EQ(customized_samples,
-                        samples,
-                        platform::errors::InvalidArgument(
-                            "CustomizedSamples must be the same Tensor with "
-                            "Samples when use_customized_samples = True"));
+      PADDLE_ENFORCE_EQ(
+          customized_samples,
+          samples,
+          platform::errors::InvalidArgument(
+              "CustomizedSamples must be the same phi::DenseTensor with "
+              "Samples when use_customized_samples = True"));
       PADDLE_ENFORCE_EQ(
           customized_probabilities,
           probabilities,
           platform::errors::InvalidArgument(
-              "CustomizedProbabilities must be the same Tensor with "
+              "CustomizedProbabilities must be the same phi::DenseTensor with "
               "Probabilities when use_customized_samples = True"));
     } else {
       samples->mutable_data<int64_t>(context.GetPlace());
@@ -308,7 +307,6 @@ class SampleLogitsKernel : public framework::OpKernel<T> {
 template <typename T>
 class SampleLogitsGradKernel : public framework::OpKernel<T> {
  public:
-  using Tensor = phi::DenseTensor;
   void Compute(const framework::ExecutionContext& context) const override {
     auto logits_grad =
         context.Output<phi::DenseTensor>(framework::GradVarName("Logits"));

@@ -18,7 +18,6 @@
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
 using NPUDeviceContext = platform::NPUDeviceContext;
 static void CastToFP16(const framework::ExecutionContext& ctx,
                        const aclrtStream& stream,
@@ -104,7 +103,7 @@ class DepthwiseConvNPUKernel : public framework::OpKernel<T> {
     std::vector<int> strides(4, 1);
     std::vector<int> dilations(4, 1);
 
-    Tensor input_tensor, output_tensor;
+    phi::DenseTensor input_tensor, output_tensor;
     input_tensor.ShareDataWith(*input);
     output_tensor.ShareDataWith(*output);
 
@@ -125,7 +124,7 @@ class DepthwiseConvNPUKernel : public framework::OpKernel<T> {
     auto stream = ctx.template device_context<NPUDeviceContext>().stream();
 
     // Transform filter (n, 1, h, w) --> (1, n, h, w)
-    Tensor transformed_filter(filter->type());
+    phi::DenseTensor transformed_filter(filter->type());
     transformed_filter.mutable_data<T>({filter->dims()[1],
                                         filter->dims()[0],
                                         filter->dims()[2],
@@ -189,7 +188,7 @@ class DepthwiseConvGradNPUKernel : public framework::OpKernel<T> {
     auto stream = ctx.template device_context<NPUDeviceContext>().stream();
 
     // Transform filter (n, 1, h, w) --> (1, n, h, w)
-    Tensor transformed_filter(filter->type());
+    phi::DenseTensor transformed_filter(filter->type());
     transformed_filter.mutable_data<T>({filter->dims()[1],
                                         filter->dims()[0],
                                         filter->dims()[2],
@@ -204,7 +203,7 @@ class DepthwiseConvGradNPUKernel : public framework::OpKernel<T> {
     std::vector<int> strides(4, 1);
     std::vector<int> dilations(4, 1);
 
-    Tensor input_tensor, output_grad_tensor;
+    phi::DenseTensor input_tensor, output_grad_tensor;
     input_tensor.ShareDataWith(*input);
     output_grad_tensor.ShareDataWith(*output_grad);
     if (channel_last) {
@@ -247,7 +246,7 @@ class DepthwiseConvGradNPUKernel : public framework::OpKernel<T> {
     }
     if (input_grad) {
       input_grad->mutable_data<T>(ctx.GetPlace());
-      Tensor input_grad_tensor;
+      phi::DenseTensor input_grad_tensor;
       input_grad_tensor.ShareDataWith(*input_grad);
       if (channel_last) {
         input_grad_tensor.set_layout(DataLayout::kNHWC);
@@ -305,7 +304,7 @@ class NPUConvOpKernel : public framework::OpKernel<T> {
     std::vector<int> strides_vec(4, 1);
     std::vector<int> dilations_vec(4, 1);
 
-    Tensor input_tensor, output_tensor;
+    phi::DenseTensor input_tensor, output_tensor;
     input_tensor.ShareDataWith(*input);
     output_tensor.ShareDataWith(*output);
     if (channel_last) {
@@ -378,7 +377,7 @@ class NPUConvGradOpKernel : public framework::OpKernel<T> {
     std::vector<int> strides_vec(4, 1);
     std::vector<int> dilations_vec(4, 1);
 
-    Tensor input_tensor, output_grad_tensor;
+    phi::DenseTensor input_tensor, output_grad_tensor;
     input_tensor.ShareDataWith(*input);
     output_grad_tensor.ShareDataWith(*output_grad);
     if (channel_last) {
@@ -400,7 +399,7 @@ class NPUConvGradOpKernel : public framework::OpKernel<T> {
       filter_grad->mutable_data<T>(ctx.GetPlace());
       std::vector<int> filter_shape_vec = phi::vectorize<int>(filter->dims());
 
-      Tensor filter_grad_fp32(experimental::DataType::FLOAT32);
+      phi::DenseTensor filter_grad_fp32(experimental::DataType::FLOAT32);
       filter_grad_fp32.Resize(filter_grad->dims());
 
       if (framework::TransToProtoVarType(input->dtype()) ==
@@ -430,7 +429,7 @@ class NPUConvGradOpKernel : public framework::OpKernel<T> {
       input_grad->mutable_data<T>(ctx.GetPlace());
       std::vector<int> input_shape_vec = phi::vectorize<int>(input->dims());
 
-      Tensor input_grad_tensor;
+      phi::DenseTensor input_grad_tensor;
       input_grad_tensor.ShareDataWith(*input_grad);
       if (channel_last) {
         input_grad_tensor.set_layout(DataLayout::kNHWC);
@@ -617,8 +616,9 @@ class NPUConv3dGradKernel : public framework::OpKernel<T> {
       filter_grad->mutable_data<T>(ctx.GetPlace());
       std::vector<int> filter_shape_vec = phi::vectorize<int>(filter->dims());
 
-      Tensor filter_grad_tensor = ctx.AllocateTmpTensor<T, NPUDeviceContext>(
-          filter_grad->dims(), dev_ctx);
+      phi::DenseTensor filter_grad_tensor =
+          ctx.AllocateTmpTensor<T, NPUDeviceContext>(filter_grad->dims(),
+                                                     dev_ctx);
       filter_grad_tensor.ShareDataWith(*filter_grad);
       filter_grad_tensor.set_layout(DataLayout::kNCDHW);
 
@@ -638,8 +638,9 @@ class NPUConv3dGradKernel : public framework::OpKernel<T> {
       input_grad->mutable_data<T>(ctx.GetPlace());
       std::vector<int> input_shape_vec = phi::vectorize<int>(input->dims());
 
-      Tensor input_grad_tensor = ctx.AllocateTmpTensor<T, NPUDeviceContext>(
-          input_grad->dims(), dev_ctx);
+      phi::DenseTensor input_grad_tensor =
+          ctx.AllocateTmpTensor<T, NPUDeviceContext>(input_grad->dims(),
+                                                     dev_ctx);
       input_grad_tensor.ShareDataWith(*input_grad);
       input_grad_tensor.set_layout(DataLayout::kNCDHW);
 

@@ -12,23 +12,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import numpy as np
 import sys
+import unittest
+
+import numpy as np
 
 sys.path.append("..")
 from op_test_xpu import XPUOpTest
+
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
 
 np.random.seed(10)
 
-from op_test_xpu import XPUOpTest
 from xpu.get_test_cover_info import (
+    XPUOpTestWrapper,
     create_test_class,
     get_xpu_op_support_types,
-    XPUOpTestWrapper,
 )
 
 paddle.enable_static()
@@ -97,7 +98,7 @@ class TestMeanOpError(unittest.TestCase):
             input3 = fluid.layers.data(
                 name='input3', shape=[4], dtype="float16"
             )
-            fluid.layers.softmax(input3)
+            paddle.nn.functional.softmax(input3)
 
 
 support_types = get_xpu_op_support_types('mean')

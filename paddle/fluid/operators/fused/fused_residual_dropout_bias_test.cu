@@ -258,14 +258,14 @@ struct FusedResidualDropoutBiasTester {
     std::vector<T> fused_out(n);
     std::vector<uint8_t> fused_mask(n);
     framework::TensorToVector(out, *ctx, &fused_out);
-    if (!is_test) {
+    if (!is_test && dropout_prob != 0.0f) {
       framework::TensorToVector<uint8_t>(mask, *ctx, &fused_mask);
     }
     ctx->Wait();
 
     for (int i = 0; i < n; i++) {
       EXPECT_LT(std::abs(fused_out[i] - correct_out[i]), diff);
-      if (!is_test) {
+      if (!is_test && dropout_prob != 0.0f) {
         EXPECT_EQ(fused_mask[i], correct_mask[i]);
       }
     }

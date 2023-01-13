@@ -12,8 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
 import unittest
+
+import numpy as np
 
 import paddle
 
@@ -57,5 +58,4 @@ class TestDuplicateOutput(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    with paddle.fluid.framework._test_eager_guard():
-        unittest.main()
+    unittest.main()

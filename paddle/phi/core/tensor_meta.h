@@ -65,9 +65,9 @@ struct DenseTensorMeta {
   bool valid() const noexcept;
 
   bool is_scalar{false};
-  /// \brief Determine whether using CuDNN speed-up library in the new dygraph.
+  /// \brief Determine whether using gpudnn speed-up library in the new dygraph.
   /// It maybe also support MKLDNN library in the near future.
-  bool use_cudnn{true};
+  bool use_gpudnn{true};
   DDim dims;
   DataType dtype{DataType::UNDEFINED};
   DataLayout layout{DataLayout::NCHW};
@@ -76,7 +76,7 @@ struct DenseTensorMeta {
 };
 
 inline bool operator==(const DenseTensorMeta& lhs, const DenseTensorMeta& rhs) {
-  return (lhs.is_scalar == rhs.is_scalar) && lhs.use_cudnn == rhs.use_cudnn &&
+  return (lhs.is_scalar == rhs.is_scalar) && lhs.use_gpudnn == rhs.use_gpudnn &&
          (lhs.dims == rhs.dims) && (lhs.dtype == rhs.dtype) &&
          (lhs.layout == rhs.layout) && (lhs.lod == rhs.lod) &&
          (lhs.offset == rhs.offset);

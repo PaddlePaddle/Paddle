@@ -19,7 +19,7 @@
 #include "paddle/fluid/framework/ir/mkldnn/cpu_quantize_pass.h"  // NOLINT
 #include "paddle/fluid/framework/naive_executor.h"
 #include "paddle/fluid/imperative/type_defs.h"
-#include "paddle/fluid/platform/place.h"
+#include "paddle/phi/common/place.h"
 
 namespace paddle {
 namespace framework {
@@ -146,7 +146,7 @@ void PreparePass(std::unique_ptr<ir::Graph>* graph,
                  int* current_nodes_num,
                  std::string var_without_scale = "",
                  std::string var_signed = "") {
-  auto place = paddle::platform::CPUPlace();
+  auto place = phi::CPUPlace();
   NaiveExecutor exe{place};
   Scope scope;
   exe.CreateVariables(prog, 0, true, &scope);
@@ -174,7 +174,7 @@ void PreparePass(std::unique_ptr<ir::Graph>* graph,
 void CheckScales(const OpDesc* op, float scale, float shift) {
   std::string type = op->Type();
   std::vector<std::string> scale_names;
-  if (type == "conv2d" || type == "fc") {
+  if (type == "conv2d" || type == "fused_conv2d" || type == "fc") {
     EXPECT_EQ(op->GetAttrIfExists<std::vector<float>>("Scale_weights")[0],
               scale);
     scale_names.push_back("Scale_in");
@@ -330,7 +330,7 @@ TEST(CpuQuantizePass, quantize) {
   // Insert nodes: 8 Quant + 8 IN + 7 OUT + 7 DEQUANT
   int added_nodes = 8 + 8 + 7 + 7;
   std::unordered_map<std::string, int> expected_operators = {
-      {"conv2d", 4}, {"pool2d", 2}, {"quantize", 8}, {"dequantize", 7}};
+      {"fused_conv2d", 4}, {"pool2d", 2}, {"quantize", 8}, {"dequantize", 7}};
   MainTest(BuildProgramDesc(use_mkldnn, mkldnn_data_type),
            variable_names,
            expected_operators,
@@ -343,7 +343,7 @@ TEST(CpuQuantizePass, do_not_quantize) {
   std::string mkldnn_data_type = "float32";
   int added_nodes = 0;
   std::unordered_map<std::string, int> expected_operators = {
-      {"conv2d", 4}, {"pool2d", 2}, {"quantize", 0}, {"dequantize", 0}};
+      {"fused_conv2d", 4}, {"pool2d", 2}, {"quantize", 0}, {"dequantize", 0}};
   MainTest(BuildProgramDesc(use_mkldnn, mkldnn_data_type),
            variable_names,
            expected_operators,
@@ -879,6 +879,45 @@ TEST(CpuQuantizePass, multi_gru_2) {
 TEST(CpuQuantizePass, multi_gru_3) {
   int layers = 3;
   MainTestMultiGru(layers);
+}
+
+static const std::initializer_list<std::string>
+    variable_names_multi_inputs_outputs = {"a", "b", "c1", "c2", "d", "e"};
+
+// a->Pool->b
+// b->Split->c1, c2
+// (c1, c2, c1, c2)->Concat->d
+// d->Pool->e
+ProgramDesc BuildProgramDescMulti() {
+  ProgramDesc prog;
+  for (auto& v : variable_names_multi_inputs_outputs) {
+    prog.MutableBlock(0)->Var(v)->SetDataType(proto::VarType::FP32);
+  }
+
+  SetOp(&prog, "pool2d", "Pool", {"a"}, {"b"}, true, "float32");
+  SetOp(&prog, "split", "Split", {"b"}, {"c1", "c2"}, true, "int8");
+  SetOp(
+      &prog, "concat", "Concat", {"c1", "c2", "c1", "c2"}, {"d"}, true, "int8");
+  SetOp(&prog, "pool2d", "Pool2", {"d"}, {"e"}, true, "float32");
+
+  return prog;
+}
+
+TEST(CpuQuantizePass, multi_inputs_outputs_ops) {
+  // a->QUANT1->Split
+  //               b1->DEQUANT->OUT->QUANT
+  //               b2->DEQUANT->OUT->QUANT
+  // (b1, b2, b1, b2)->Concat->c->DEQUANT->Pool->d
+  int added_nodes = 6 * 2;
+  std::unordered_map<std::string, int> expected_operators = {{"pool2d", 2},
+                                                             {"concat", 1},
+                                                             {"split", 1},
+                                                             {"quantize", 3},
+                                                             {"dequantize", 3}};
+  MainTest(BuildProgramDescMulti(),
+           variable_names_multi_inputs_outputs,
+           expected_operators,
+           added_nodes);
 }
 
 }  // namespace ir

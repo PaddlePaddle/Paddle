@@ -16,16 +16,18 @@ import sys
 
 sys.path.append("..")
 import unittest
+
 import numpy as np
-import paddle.fluid.core as core
-import paddle
-import paddle.fluid as fluid
-import paddle.nn.functional as F
 from xpu.get_test_cover_info import (
+    XPUOpTestWrapper,
     create_test_class,
     get_xpu_op_support_types,
-    XPUOpTestWrapper,
 )
+
+import paddle
+import paddle.fluid as fluid
+import paddle.fluid.core as core
+import paddle.nn.functional as F
 
 paddle.enable_static()
 
@@ -364,7 +366,7 @@ class XPUTestBatchNormOp(XPUOpTestWrapper):
             for p in self.places:
                 with fluid.dygraph.guard(p):
                     x = paddle.randn([2, 6, 6, 4])
-                    net1 = paddle.fluid.dygraph.BatchNorm(
+                    net1 = paddle.nn.BatchNorm(
                         6,
                         param_attr=fluid.ParamAttr(
                             initializer=fluid.initializer.Constant(1.0)

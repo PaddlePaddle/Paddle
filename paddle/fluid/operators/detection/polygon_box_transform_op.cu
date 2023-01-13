@@ -19,7 +19,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
 using phi::PADDLE_CUDA_NUM_THREADS;
 #define CUDA_BLOCK_SIZE 16
 

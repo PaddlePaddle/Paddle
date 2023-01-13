@@ -262,7 +262,7 @@ class MultiSlotStringDataGenerator(DataGenerator):
         Returns:
             Return a string data that can be read directly by the MultiSlotDataFeed.
         '''
-        if sys.version > '3' and isinstance(line, zip):
+        if isinstance(line, zip):
             line = list(line)
 
         if not isinstance(line, list) and not isinstance(line, tuple):
@@ -311,7 +311,7 @@ class MultiSlotDataGenerator(DataGenerator):
         Returns:
             Return a string data that can be read directly by the MultiSlotDataFeed.
         '''
-        if sys.version > '3' and isinstance(line, zip):
+        if isinstance(line, zip):
             line = list(line)
 
         if not isinstance(line, list) and not isinstance(line, tuple):

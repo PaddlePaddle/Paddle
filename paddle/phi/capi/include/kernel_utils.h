@@ -564,18 +564,24 @@ namespace capi {
       static_assert(out_idx == 0,                                            \
                     "Kernel's Input should appear before Outputs.");         \
       auto arg = PD_MultiInputAt(ctx, in_idx);                               \
-      auto arg_wrapper = PD_GetPointerVector(&arg);                          \
+      std::vector<const tensor_type *> tensor_ptr_vec;                       \
+      for (auto &tensor : arg) {                                             \
+        tensor_ptr_vec.push_back(tensor.raw_data() ? &tensor : nullptr);     \
+      }                                                                      \
       CustomKernelCallHelper<Tail...>::                                      \
           template Compute<dev_ctx_idx, in_idx + 1, attr_idx, out_idx>(      \
-              ctx, pargs..., arg_wrapper);                                   \
+              ctx, pargs..., tensor_ptr_vec);                                \
     }                                                                        \
     template <int idx, typename... PreviousArgs>                             \
     static void VariadicCompute(const std::tuple<DevCtx, Args &...> &ctx,    \
                                 PreviousArgs &...pargs) {                    \
       auto &arg = std::get<idx>(ctx);                                        \
-      auto tensor = PD_TensorVector(reinterpret_cast<PD_Tensor *>(           \
+      auto tensor_vec = PD_TensorVector(reinterpret_cast<PD_Tensor *>(       \
           const_cast<std::vector<const tensor_type *> *>(&arg)));            \
-      auto tensor_ptr_vec = PD_GetPointerVector(&arg);                       \
+      std::vector<const tensor_type *> tensor_ptr_vec;                       \
+      for (auto &tensor : tensor_vec) {                                      \
+        tensor_ptr_vec.push_back(tensor.raw_data() ? &tensor : nullptr);     \
+      }                                                                      \
       return CustomKernelCallHelper<Tail...>::template VariadicCompute<idx + \
                                                                        1>(   \
           ctx, pargs..., tensor_ptr_vec);                                    \
@@ -681,7 +687,7 @@ namespace capi {
         tensor_ptr_vec.push_back(tensor.raw_data() ? &tensor : nullptr);     \
       }                                                                      \
       CustomKernelCallHelper<Tail...>::                                      \
-          template Compute<dev_ctx_idx, in_idx + 1, attr_idx, out_idx>(      \
+          template Compute<dev_ctx_idx, in_idx, attr_idx, out_idx + 1>(      \
               ctx, pargs..., tensor_ptr_vec);                                \
     }                                                                        \
     template <int idx, typename... PreviousArgs>                             \

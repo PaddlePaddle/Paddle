@@ -74,19 +74,19 @@ def conv_net(
         ),
     )
 
-    fc_0 = fluid.layers.fc(
-        input=[conv_3],
+    fc_0 = paddle.static.nn.fc(
+        x=[conv_3],
         size=fc0_dim,
-        param_attr=fluid.ParamAttr(
+        weight_attr=fluid.ParamAttr(
             initializer=fluid.initializer.Constant(value=0.01)
         ),
     )
 
-    prediction = fluid.layers.fc(
-        input=[fc_0],
+    prediction = paddle.static.nn.fc(
+        x=[fc_0],
         size=class_dim,
-        act="softmax",
-        param_attr=fluid.ParamAttr(
+        activation="softmax",
+        weight_attr=fluid.ParamAttr(
             initializer=fluid.initializer.Constant(value=0.01)
         ),
     )
@@ -132,9 +132,11 @@ class TestDistTextClassification2x2(TestDistRunnerBase):
 
         # Train program
         predict = conv_net(data, dict_dim)
-        cost = fluid.layers.cross_entropy(input=predict, label=label)
+        cost = paddle.nn.functional.cross_entropy(
+            input=predict, label=label, reduction='none', use_softmax=False
+        )
         avg_cost = paddle.mean(x=cost)
-        acc = fluid.layers.accuracy(input=predict, label=label)
+        acc = paddle.static.accuracy(input=predict, label=label)
         inference_program = fluid.default_main_program().clone()
 
         # Optimization

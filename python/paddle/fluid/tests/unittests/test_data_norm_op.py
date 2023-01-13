@@ -14,12 +14,15 @@
 """This is unit test of Test data_norm Op."""
 
 import unittest
+
 import numpy as np
-import paddle.fluid.core as core
-from paddle.fluid.op import Operator
-import paddle.fluid as fluid
 from op_test import OpTest
+
+import paddle
+import paddle.fluid as fluid
+import paddle.fluid.core as core
 from paddle.fluid import Program, program_guard
+from paddle.fluid.op import Operator
 
 
 def _reference_testing(x, batch_size, batch_sum, batch_square_sum, slot_dim=-1):
@@ -517,7 +520,7 @@ class TestDataNormOpErrorr(unittest.TestCase):
         with program_guard(Program(), Program()):
             x2 = fluid.layers.data(name='x2', shape=[3, 4], dtype="int32")
             # self.assertRaises(TypeError, fluid.data_norm, x2)
-            fluid.layers.data_norm(
+            paddle.static.nn.data_norm(
                 input=x2, param_attr={}, enable_scale_and_shift=True
             )
 

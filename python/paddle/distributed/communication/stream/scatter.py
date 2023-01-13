@@ -13,15 +13,15 @@
 # limitations under the License.
 
 import warnings
+
 import paddle
 import paddle.distributed as dist
-import paddle.fluid.framework as framework
 import paddle.fluid.data_feeder as data_feeder
-import paddle.fluid.layer_helper as layer_helper
+import paddle.framework as framework
 from paddle.distributed.communication.group import (
     _get_global_group,
-    _warn_cur_rank_not_in_group,
     _get_or_throw_group_rank,
+    _warn_cur_rank_not_in_group,
 )
 
 
@@ -112,7 +112,7 @@ def _scatter_in_static_mode(
     )
 
     op_type = 'c_scatter'
-    helper = layer_helper.LayerHelper(op_type, **locals())
+    helper = framework.LayerHelper(op_type, **locals())
     helper.append_op(
         type=op_type,
         inputs={'X': [input_tensor]},
@@ -219,7 +219,9 @@ def scatter(
                 use_calc_stream,
             )
     else:
-        assert group is None, "Group can not be used in static mode for now."
+        assert (
+            group is None
+        ), "Group can not be used in static graph mode for now."
 
         return _scatter_in_static_mode(
             tensor,

@@ -17,12 +17,11 @@ import logging
 import os
 import sys
 import unittest
-
-from paddle.utils import gast
+from unittest import mock
 
 import paddle
-from paddle.fluid.dygraph.dygraph_to_static import logging_utils
-from unittest import mock
+from paddle.jit.dy2static import logging_utils
+from paddle.utils import gast
 
 
 class TestLoggingUtils(unittest.TestCase):

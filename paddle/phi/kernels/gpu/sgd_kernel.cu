@@ -82,9 +82,8 @@ void SGDDenseKernel(const Context& dev_ctx,
   const MPDType* master_in_data =
       multi_precision ? master_param->data<MPDType>() : nullptr;
   MPDType* master_out_data =
-      multi_precision
-          ? master_param_out->mutable_data<MPDType>(dev_ctx.GetPlace())
-          : nullptr;
+      multi_precision ? dev_ctx.template Alloc<MPDType>(master_param_out)
+                      : nullptr;
 
   int block = 512;
   int grid = (param.numel() + block - 1) / block;
@@ -94,7 +93,7 @@ void SGDDenseKernel(const Context& dev_ctx,
       grad.data<T>(),
       learning_rate.data<T>(),
       param.numel(),
-      param_out->mutable_data<T>(dev_ctx.GetPlace()),
+      dev_ctx.template Alloc<T>(param_out),
       master_in_data,
       master_out_data);
 }
@@ -119,9 +118,8 @@ void SGDDenseParamSparseGradKernel(
   const MPDType* master_in_data =
       multi_precision ? master_param->data<MPDType>() : nullptr;
   MPDType* master_out_data =
-      multi_precision
-          ? master_param_out->mutable_data<MPDType>(dev_ctx.GetPlace())
-          : nullptr;
+      multi_precision ? dev_ctx.template Alloc<MPDType>(master_param_out)
+                      : nullptr;
 
   PADDLE_ENFORCE_EQ(
       &param,

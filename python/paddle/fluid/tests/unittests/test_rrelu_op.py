@@ -13,11 +13,13 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
+from op_test import OpTest
+
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-from op_test import OpTest
-import paddle
 import paddle.nn.functional as F
 from paddle.fluid import dygraph
 
@@ -309,15 +311,23 @@ class TestFunctionalRReluAPI(unittest.TestCase):
         self.assertRaises(ValueError, error_lower_upper)
 
 
+def rrelu(x, lower, upper, training):
+    return paddle.nn.functional.rrelu(x, lower, upper, training=not training)
+
+
 class RReluTest(OpTest):
     def setUp(self):
         self.op_type = "rrelu"
         self.lower = 0.1
         self.upper = 0.3
         self.is_test = True
-        self.init_prams()
+        self.init_params()
+        self.python_api = rrelu
+        self.python_out_sig = [
+            "Out"
+        ]  # python out sig is customized output signature.
 
-    def init_prams(self):
+    def init_params(self):
         self.dtype = "float64"
         self.x_shape = [2, 3, 4, 5]
 
@@ -335,28 +345,23 @@ class RReluTest(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(no_check_set=['Noise'], check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_eager=True)
 
 
-class RReluTrainingTest(OpTest):
+class RReluTrainingTest(RReluTest):
     def setUp(self):
         self.op_type = "rrelu"
         self.lower = 0.3
-        self.upper = 0.3000009
+        self.upper = 0.300000009
         self.is_test = False
-        self.init_prams()
-
-
-class RReluTrainingTest(OpTest):
-    def setUp(self):
-        self.op_type = "rrelu"
-        self.lower = 0.3
-        self.upper = 0.3000009
-        self.is_test = False
-        self.init_prams()
+        self.init_params()
+        self.python_api = rrelu
+        self.python_out_sig = [
+            "Out"
+        ]  # python out sig is customized output signature.
 
 
 if __name__ == "__main__":

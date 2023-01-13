@@ -16,18 +16,19 @@ import sys
 
 sys.path.append("..")
 import unittest
-import numpy as np
-import paddle
-import paddle.fluid.core as core
-import paddle.fluid as fluid
-from paddle.fluid import Program, program_guard
-from op_test_xpu import XPUOpTest
 
+import numpy as np
+from op_test_xpu import XPUOpTest
 from xpu.get_test_cover_info import (
+    XPUOpTestWrapper,
     create_test_class,
     get_xpu_op_support_types,
-    XPUOpTestWrapper,
 )
+
+import paddle
+import paddle.fluid as fluid
+import paddle.fluid.core as core
+from paddle.fluid import Program, program_guard
 
 typeid_dict = {
     'int32': int(core.VarDesc.VarType.INT32),

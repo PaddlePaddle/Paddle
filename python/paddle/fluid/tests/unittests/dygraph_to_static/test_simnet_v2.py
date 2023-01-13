@@ -13,12 +13,13 @@
 # limitations under the License.
 
 import argparse
-import numpy as np
-import paddle
 import random
 import unittest
 
+import numpy as np
 from simnet_dygraph_model_v2 import BOW, HingeLoss
+
+import paddle
 
 SEED = 102
 random.seed(SEED)
@@ -101,8 +102,7 @@ def train(conf_dict, to_static):
     """
     train process
     """
-    program_translator = paddle.jit.ProgramTranslator()
-    program_translator.enable(to_static)
+    paddle.jit.enable_to_static(to_static)
 
     # Get device
     if paddle.is_compiled_with_cuda():

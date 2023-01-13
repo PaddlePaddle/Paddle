@@ -13,12 +13,13 @@
 # limitations under the License.
 
 import paddle
-from . import mp_ops
 from paddle.fluid import core
 from paddle.nn import Layer
-from .random import get_rng_state_tracker
 from paddle.nn import functional as F
+
 from ...base import topology as tp
+from . import mp_ops
+from .random import get_rng_state_tracker
 
 __all__ = []
 
@@ -28,10 +29,7 @@ __all__ = []
 
 
 def is_fused_matmul_bias_supported():
-    if paddle.is_compiled_with_cuda() and not paddle.is_compiled_with_rocm():
-        return hasattr(core.ops, 'fused_gemm_epilogue')
-    else:
-        return False
+    return hasattr(core.eager.ops.legacy, 'fused_gemm_epilogue')
 
 
 class VocabParallelEmbedding(Layer):

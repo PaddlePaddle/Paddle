@@ -12,17 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from threading import Thread
+import itertools
+import logging
 import multiprocessing
+import random
 import sys
 import warnings
-import logging
-
-from queue import Queue
 from itertools import zip_longest
-
-import itertools
-import random
+from queue import Queue
+from threading import Thread
 
 from paddle.fluid.reader import QUEUE_GET_TIMEOUT
 

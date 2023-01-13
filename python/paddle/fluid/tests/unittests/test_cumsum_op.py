@@ -13,17 +13,19 @@
 # limitations under the License.
 
 import os
-import unittest
 import tempfile
-import numpy as np
-from op_test import OpTest
-import paddle
-import paddle.fluid.core as core
-import paddle.fluid as fluid
-import paddle.inference as paddle_infer
+import unittest
+
 import gradient_checker
+import numpy as np
 from decorator_helper import prog_scope
+from op_test import OpTest
+
+import paddle
+import paddle.fluid as fluid
+import paddle.fluid.core as core
 import paddle.fluid.layers as layers
+import paddle.inference as paddle_infer
 
 
 class TestCumsumOp(unittest.TestCase):
@@ -460,7 +462,6 @@ class TestCumsumDoubleGradCheck(unittest.TestCase):
         gradient_checker.double_grad_check(
             [data], out, x_init=[data_arr], place=place, eps=eps
         )
-        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         gradient_checker.double_grad_check_for_dygraph(
             self.cumsum_wrapper, [data], out, x_init=[data_arr], place=place
         )
@@ -492,7 +493,6 @@ class TestCumsumTripleGradCheck(unittest.TestCase):
         gradient_checker.triple_grad_check(
             [data], out, x_init=[data_arr], place=place, eps=eps
         )
-        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         gradient_checker.triple_grad_check_for_dygraph(
             self.cumsum_wrapper, [data], out, x_init=[data_arr], place=place
         )
