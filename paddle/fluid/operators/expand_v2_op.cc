@@ -203,9 +203,8 @@ class ExpandV2GradCompositeOpMaker : public prim::GradCompositeOpMakerBase {
     auto x_grad = this->GetSingleInputGrad("X");
     auto x_grad_p = this->GetOutputPtr(&x_grad);
     auto x_grad_name = this->GetOutputName(x_grad);
-    auto shape = this->Attr<IntArray>("shape");
-
-    prim::expand_grad<prim::DescTensor>(x, out_grad, shape, x_grad_p);
+    auto shape = this->Attr<std::vector<int64_t>>("shape");
+    prim::expand_grad<prim::DescTensor>(x, out_grad, IntArray(shape), x_grad_p);
     this->RecoverOutputName(x_grad, x_grad_name);
   }
 };
