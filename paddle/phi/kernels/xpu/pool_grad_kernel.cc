@@ -179,41 +179,32 @@ void MaxPool2dWithIndexGradKernel(const Context& ctx,
   if (global_pooling) {
     for (size_t i = 0; i < ksize.size(); ++i) {
       paddings[i] = 0;
-      ksize[i] = static_cast<int>(x.dims()[i + 2]);
+      ksize[i] = static_cast<int>(dx->dims()[i + 2]);
     }
   }
-  if (!dx) {
-    return;
-  }
-  const int n = x.dims()[0];
-  const int c = x.dims()[1];
-  const int in_h = x.dims()[2];
-  const int in_w = x.dims()[3];
-  auto input = reinterpret_cast<const XPUType*>(x.data<T>());
+  const int n = dx->dims()[0];
+  const int c = dx->dims()[1];
+  const int in_h = dx->dims()[2];
+  const int in_w = dx->dims()[3];
   auto output_grad = reinterpret_cast<const XPUType*>(dout.data<T>());
 
   int r = xpu::Error_t::SUCCESS;
-  r = xpu::max_pool2d_grad<XPUType>(
-      ctx.x_context(),
-      input,
-      nullptr /*expect api catches all excepts...*/,
-      index_data,
-      output_grad,
-      input_grad,
-      n,
-      c,
-      in_h,
-      in_w,
-      ksize,
-      strides,
-      paddings,
-      true);
-  PADDLE_ENFORCE_EQ(
-      r,
-      xpu::Error_t::SUCCESS,
-      phi::errors::External("The Pool2dGrad XPU OP return wrong value[%d %s]",
-                            r,
-                            XPUAPIErrorMsg[r]));
+  // pass a nullptr as input to XDNN is fine as long as index_data exists
+  r = xpu::max_pool2d_grad<XPUType>(ctx.x_context(),
+                                    /*input*/ nullptr,
+                                    /*output*/ nullptr,
+                                    index_data,
+                                    output_grad,
+                                    input_grad,
+                                    n,
+                                    c,
+                                    in_h,
+                                    in_w,
+                                    ksize,
+                                    strides,
+                                    paddings,
+                                    true);
+  PADDLE_ENFORCE_XDNN_SUCCESS(r, "max_pool2d_with_index_grad");
 }
 }  // namespace phi
 

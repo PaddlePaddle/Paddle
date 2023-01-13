@@ -210,13 +210,7 @@ void MaxPool2dWithIndexKernel(const Context& ctx,
                                strides,
                                paddings,
                                true);
-  PADDLE_ENFORCE_EQ(
-      r,
-      xpu::Error_t::SUCCESS,
-      phi::errors::External(
-          "The max_pool2d with index XPU API return wrong value[%d %s]",
-          r,
-          XPUAPIErrorMsg[r]));
+  PADDLE_ENFORCE_XDNN_SUCCESS(r, "max_pool2d_with_index");
 }
 }  // namespace phi
 
