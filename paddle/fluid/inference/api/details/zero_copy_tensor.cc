@@ -263,7 +263,9 @@ void Tensor::CopyFromCpu(const T *data) {
     paddle::platform::DeviceContextPool &pool =
         paddle::platform::DeviceContextPool::Instance();
     paddle::platform::CustomPlace custom_place(
-        phi::GetGlobalDeviceType(device_type_id), device_);
+        phi::CustomRegisteredDeviceMap::Instance().GetGlobalDeviceType(
+            device_type_id),
+        device_);
     auto *t_data = tensor->mutable_data<T>(custom_place);
     auto *dev_ctx = static_cast<const paddle::platform::CustomDeviceContext *>(
         pool.Get(custom_place));

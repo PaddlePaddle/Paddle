@@ -305,6 +305,7 @@ PD_REGISTER_GENERAL_KERNEL(
     ALL_LAYOUT,
     paddle::operators::FeedStringsKernel<phi::CustomContext>,
     ALL_DTYPE) {}
+
 #elif defined(PADDLE_WITH_CUSTOM_DEVICE)
 PD_REGISTER_GENERAL_KERNEL(
     feed_dense_tensor,
