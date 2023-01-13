@@ -17,23 +17,15 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "paddle/phi/backends/dynload/cublas.h"
-#include "paddle/phi/backends/dynload/cublasLt.h"
-#include "paddle/phi/kernels/flash_attn_grad_kernel.h"
-
-#include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/funcs/complex_functors.h"
-#include "paddle/phi/kernels/funcs/elementwise_base.h"
+#include "paddle/phi/kernels/arange_kernel.h"
+#include "paddle/phi/kernels/flash_attn_grad_kernel.h"
+#include "paddle/phi/kernels/reshape_kernel.h"
 
-/*
-#include <cublas_v2.h>
-#include <cuda_runtime.h>
-#if defined(CUBLAS_VERSION) && CUBLAS_VERSION >= 11000
-#include <cublasLt.h>
-#endif
-*/
+#include "paddle/phi/backends/dynload/flashattn.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
 
 namespace phi {
 
@@ -42,13 +34,89 @@ void FlashAttnGradKernel(const Context& ctx,
                          const DenseTensor& q,
                          const DenseTensor& k,
                          const DenseTensor& v,
+                         const DenseTensor& out,
+                         const DenseTensor& softmax_lse,
+                         const DenseTensor& seed_offset,
                          const DenseTensor& dout,
                          float dropout,
-                         float scale,
                          bool causal,
                          DenseTensor* dq,
                          DenseTensor* dk,
-                         DenseTensor* dv) {}
+                         DenseTensor* dv) {
+  ctx.template Alloc<T>(dq);
+  ctx.template Alloc<T>(dk);
+  ctx.template Alloc<T>(dv);
+
+  cudaStream_t stream = ctx.stream();
+  bool is_bf16 = q.dtype() == DataType::BFLOAT16 ? true : false;
+
+  // q,k,v [batch_size, seq_len, num_heads, head_dim]
+
+  auto dims = q.dims();
+  int64_t batch_size = dims[0];
+  int64_t seq_len_q = dims[1];
+  int64_t num_heads = dims[2];
+  int64_t head_size = dims[3];
+
+  int64_t seq_len_k = k.dims()[1];
+
+  int64_t total_q = batch_size * seq_len_q;
+  int64_t total_k = batch_size * seq_len_k;
+
+  DenseTensor q_t_s =
+      Reshape<T, Context>(ctx, q, {total_q, num_heads, head_size});
+  DenseTensor k_t_s =
+      Reshape<T, Context>(ctx, k, {total_k, num_heads, head_size});
+  DenseTensor v_t_s =
+      Reshape<T, Context>(ctx, v, {total_k, num_heads, head_size});
+
+  // q,k,v [total_*, num_heads, head_dim]
+
+  DenseTensor cu_seqlens_q;
+  DenseTensor cu_seqlens_k;
+  ArangeNullaryKernel<int64_t, Context>(
+      ctx, 0, (batch_size + 1) * seq_len_q, seq_len_q, &cu_seqlens_q);
+  ArangeNullaryKernel<int64_t, Context>(
+      ctx, 0, (batch_size + 1) * seq_len_k, seq_len_k, &cu_seqlens_k);
+
+  float scale = 1.0f / std::sqrt(head_size);
+  int num_splits = 1;  // always 1 for now
+  bool zero_tensors = true;
+
+  std::vector<int64_t> seed_offset_vec;
+  paddle::framework::TensorToVector<int64_t>(seed_offset, &seed_offset_vec);
+  uint64_t seed = seed_offset_vec[0];
+  uint64_t offset = seed_offset_vec[1];
+
+  phi::dynload::flash_attn_bwd(q_t_s.data(),
+                               k_t_s.data(),
+                               v_t_s.data(),
+                               dq->data(),
+                               dk->data(),
+                               dv->data(),
+                               out.data(),
+                               dout.data(),
+                               cu_seqlens_q.data<int64_t>(),
+                               cu_seqlens_k.data<int64_t>(),
+                               total_q,
+                               total_k,
+                               batch_size,
+                               num_heads,
+                               head_size,
+                               seq_len_q,
+                               seq_len_k,
+                               dropout,
+                               scale,
+                               zero_tensors,
+                               causal,
+                               is_bf16,
+                               num_splits,
+                               const_cast<float*>(softmax_lse.data<float>()),
+                               nullptr,
+                               stream,
+                               seed,
+                               offset);
+}
 
 }  // namespace phi
 
@@ -57,4 +125,6 @@ PD_REGISTER_KERNEL(flash_attn_grad,
                    ALL_LAYOUT,
                    phi::FlashAttnGradKernel,
                    phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::dtype::bfloat16) {
+  kernel->InputAt(5).SetBackend(phi::Backend::CPU);  // seed_offset
+}

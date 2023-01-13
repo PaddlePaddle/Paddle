@@ -260,12 +260,11 @@ void FlashAttnInferMeta(const MetaTensor& q,
                         const MetaTensor& v,
                         MetaTensor* out,
                         MetaTensor* softmax_lse,
-                        MetaTensor* softmax) {
+                        MetaTensor* softmax,
+                        MetaTensor* seed_offset) {
   out->set_dims(q.dims());
   out->set_dtype(q.dtype());
   out->set_layout(q.layout());
-
-  // TODO(xx) softmax
 }
 
 void FlashAttnGradInferMeta(const MetaTensor& q,

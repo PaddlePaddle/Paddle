@@ -68,7 +68,8 @@ void FlashAttnInferMeta(const MetaTensor& q,
                         const MetaTensor& v,
                         MetaTensor* out,
                         MetaTensor* softmax_lse,
-                        MetaTensor* softmax);
+                        MetaTensor* softmax,
+                        MetaTensor* seed_offset);
 
 void FlashAttnGradInferMeta(const MetaTensor& q,
                             const MetaTensor& k,

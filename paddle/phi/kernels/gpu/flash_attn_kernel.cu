@@ -14,6 +14,7 @@
 
 #include "paddle/phi/kernels/flash_attn_kernel.h"
 
+#include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/infrt/dialect/phi/data_type.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/bfloat16.h"
@@ -21,7 +22,6 @@
 
 #include "paddle/phi/kernels/arange_kernel.h"
 #include "paddle/phi/kernels/reshape_kernel.h"
-#include "paddle/phi/kernels/transpose_kernel.h"
 
 #include "paddle/phi/backends/dynload/flashattn.h"
 
@@ -37,36 +37,33 @@ void FlashAttnKernel(const Context& ctx,
                      DenseTensor* out,
                      DenseTensor* softmax_lse,
                      DenseTensor* softmax,
-                     uint64_t* seed,
-                     uint64_t* offset) {
+                     DenseTensor* seed_offset) {
+  ctx.template Alloc<T>(out);
+  ctx.template Alloc<float>(
+      softmax_lse);  // batch_size, num_heads, max_seqlen_q}
+
   cudaStream_t stream = ctx.stream();
   bool is_bf16 = q.dtype() == DataType::BFLOAT16 ? true : false;
 
-  // q,k,v [batch_size, num_heads, seq_len, head_dim]
+  // q,k,v [batch_size, seq_len, num_heads, head_dim]
 
   auto dims = q.dims();
-  auto batch_size = dims[0];
-  auto num_heads = dims[1];
-  auto head_size = dims[3];
+  int64_t batch_size = dims[0];
+  int64_t seq_len_q = dims[1];
+  int64_t num_heads = dims[2];
+  int64_t head_size = dims[3];
 
-  int64_t seq_len_q = dims[2];
-  int64_t seq_len_k = k.dims()[2];
-
-  auto q_t = Transpose<T, Context>(ctx, q, {0, 2, 1, 3});
-  auto k_t = Transpose<T, Context>(ctx, k, {0, 2, 1, 3});
-  auto v_t = Transpose<T, Context>(ctx, v, {0, 2, 1, 3});
-
-  // q,k,v [batch_size, seq_len, num_heads, head_dim]
+  int64_t seq_len_k = k.dims()[1];
 
   int64_t total_q = batch_size * seq_len_q;
   int64_t total_k = batch_size * seq_len_k;
 
   DenseTensor q_t_s =
-      Reshape<T, Context>(ctx, q_t, {total_q, num_heads, head_size});
+      Reshape<T, Context>(ctx, q, {total_q, num_heads, head_size});
   DenseTensor k_t_s =
-      Reshape<T, Context>(ctx, k_t, {total_k, num_heads, head_size});
+      Reshape<T, Context>(ctx, k, {total_k, num_heads, head_size});
   DenseTensor v_t_s =
-      Reshape<T, Context>(ctx, v_t, {total_k, num_heads, head_size});
+      Reshape<T, Context>(ctx, v, {total_k, num_heads, head_size});
 
   // q,k,v [total_*, num_heads, head_dim]
 
@@ -83,38 +80,38 @@ void FlashAttnKernel(const Context& ctx,
 
   auto gen = ctx.GetGenerator();
   uint64_t inc = batch_size * num_heads * 32;
-  auto seed_offset = gen->IncrementOffset(inc);
-  seed = seed_offset.first;
-  offset = seed_offset.second - inc;  // offset before increment
+  auto seed_offset_pair = gen->IncrementOffset(inc);
+  uint64_t seed = seed_offset_pair.first;
+  uint64_t offset = seed_offset_pair.second - inc;  // offset before increment
 
-  if (is_bf16) {
-    phi::dynload::flash_attn_fwd(
-        q_t_s.data<phi::dtype::bfloat16>(),
-        k_t_s.data<phi::dtype::bfloat16>(),
-        v_t_s.data<phi::dtype::bfloat16>(),
-        out->data<phi::dtype::bfloat16>(),
-        cu_seqlens_q.data<int64_t>(),
-        cu_seqlens_k.data<int64_t>(),
-        total_q,
-        total_k,
-        batch_size,
-        num_heads,
-        head_size,
-        seq_len_q,
-        seq_len_k,
-        dropout,
-        scale,
-        zero_tensors,
-        causal,
-        is_bf16,
-        num_splits,
-        softmax_lse->data<float>(),
-        softmax == nullptr ? nullptr : softmax->data<phi::dtype::float16>(),
-        stream,
-        seed,
-        offset);
-  } else {
-  }
+  std::vector<int64_t> seed_offset_vec{int64_t(seed), int64_t(offset)};
+  paddle::framework::TensorFromVector<int64_t>(seed_offset_vec, seed_offset);
+
+  phi::dynload::flash_attn_fwd(
+      q_t_s.data(),
+      k_t_s.data(),
+      v_t_s.data(),
+      out->data(),
+      cu_seqlens_q.data<int64_t>(),
+      cu_seqlens_k.data<int64_t>(),
+      total_q,
+      total_k,
+      batch_size,
+      num_heads,
+      head_size,
+      seq_len_q,
+      seq_len_k,
+      dropout,
+      scale,
+      zero_tensors,
+      causal,
+      is_bf16,
+      num_splits,
+      softmax_lse->data<float>(),
+      nullptr,  // softmax->data<phi::dtype::float16>(),
+      stream,
+      seed,
+      offset);
 }
 
 }  // namespace phi

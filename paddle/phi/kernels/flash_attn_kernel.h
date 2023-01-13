@@ -28,6 +28,7 @@ void FlashAttnKernel(const Context& ctx,
                      bool causal,
                      DenseTensor* out,
                      DenseTensor* softmax_lse,
-                     DenseTensor* softmax);
+                     DenseTensor* softmax,
+                     DenseTensor* seed_offset);
 
 }  // namespace phi

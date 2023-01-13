@@ -438,7 +438,7 @@
 
 - op : flash_attn
   args : (Tensor q, Tensor k, Tensor v, float dropout = 0.0, bool causal = false)
-  output : Tensor(out), Tensor(softmax_lse), Tensor(softmax)
+  output : Tensor(out), Tensor(softmax_lse), Tensor(softmax), Tensor(seed_offset)
   infer_meta :
     func : FlashAttnInferMeta
     param : [q, k, v]
