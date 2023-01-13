@@ -206,8 +206,8 @@ PD_REGISTER_ARG_MAPPING_FN({{op["op_name"]}}, phi::{{op["op_name"] | to_pascal_c
 {% macro get_input_list(inputs, kernel_args) %}{# inline #}
 paddle::small_vector<const char*> inputs {
 {%- for input in inputs %}
-{%- if input["name"] in kernel_args %}
-{{input["name"] | to_opmaker_name_cstr}}{{", " if not loop.last}}
+{%- if input["fluid_name"] in kernel_args %}
+{{input["fluid_name"] | to_opmaker_name_cstr}}{{", " if not loop.last}}
 {%- endif %}
 {%- endfor %}
 }
