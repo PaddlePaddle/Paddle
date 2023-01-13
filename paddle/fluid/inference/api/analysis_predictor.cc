@@ -2386,7 +2386,7 @@ USE_TRT_CONVERTER(rsqrt);
 USE_TRT_CONVERTER(fused_preln_embedding_eltwise_layernorm)
 USE_TRT_CONVERTER(fused_embedding_eltwise_layernorm);
 USE_TRT_CONVERTER(preln_skip_layernorm)
-USE_TRT_CONVERTER(preln_residual_bias)
+USE_TRT_CONVERTER(fused_bias_dropout_residual_layer_norm)
 USE_TRT_CONVERTER(c_allreduce_sum)
 USE_TRT_CONVERTER(roll)
 USE_TRT_CONVERTER(strided_slice)

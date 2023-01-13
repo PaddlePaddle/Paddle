@@ -39,10 +39,10 @@ class FusedBiasDropoutResidualLnOp : public framework::OperatorWithKernel {
                    "Output",
                    "BiasDropoutResidualOut",
                    "FusedBiasDropoutResidualLnOp");
-    OP_INOUT_CHECK(ctx->HasOutput("DropoutMaskOut"),
-                   "Output",
-                   "DropoutMaskOut",
-                   "FusedBiasDropoutResidualLnOp");
+    // OP_INOUT_CHECK(ctx->HasOutput("DropoutMaskOut"),
+    //                "Output",
+    //                "DropoutMaskOut",
+    //                "FusedBiasDropoutResidualLnOp");
     OP_INOUT_CHECK(
         ctx->HasOutput("Y"), "Output", "Y", "FusedBiasDropoutResidualLnOp");
     auto x_dim = ctx->GetInputDim("X");
@@ -86,10 +86,10 @@ class FusedBiasDropoutResidualLnOpMaker
     AddOutput("BiasDropoutResidualOut", "Output of bias + dropout + residual.")
         .AsIntermediate();
     AddOutput("DropoutMaskOut", "The random sampled dropout mask.")
-        .AsIntermediate();
-    AddOutput("LnMean", "Mean of the current mini batch.").AsIntermediate();
+        .AsDispensable();
+    AddOutput("LnMean", "Mean of the current mini batch.").AsDispensable();
     AddOutput("LnVariance", "Variance of the current mini batch.")
-        .AsIntermediate();
+        .AsDispensable();
     AddOutput("Y", "Result.");
     AddAttr<float>("dropout_rate", "Probability of setting units to zero.")
         .SetDefault(.5f)
