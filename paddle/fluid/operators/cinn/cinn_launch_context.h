@@ -129,7 +129,8 @@ class CinnLaunchContext {
   void InitializeArguments();
 
   // Assign tensor buffer to input or output variables
-  void AssignExternalVariable(const std::string& var_name);
+  void AssignExternalVariable(const std::string& var_name,
+                              bool is_input = true);
 
   // Assign tensor buffer to internal variables
   void AssignInternalVariable(const std::string& var_name);

@@ -285,7 +285,7 @@ std::unique_ptr<CinnCompiledObject> CinnCompiler::CompileGraph(
   GraphCompiler::CompileOptions options;
   options.with_instantiate_variables = false;
   if (!FLAGS_enable_pe_launch_cinn) {
-    options.with_buffer_handle_instruction_inserted = true;
+    options.with_buffer_handle_instruction_inserted = false;
   }
   std::unique_ptr<AutoTuner> auto_tuner;
   if (FLAGS_enable_cinn_auto_tune) {

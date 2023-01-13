@@ -79,11 +79,11 @@ CinnLaunchContext::CinnLaunchContext(const framework::ir::Graph& graph,
   // DEPRECATED(CtfGo): following callback assignment will be deprecated soon
   for (auto&& var_name : input_var_names) {
     if (IsVariableUsed(var_name)) {
-      AssignExternalVariable(var_name);
+      AssignExternalVariable(var_name, true);
     }
   }
   for (auto&& var_name : output_var_names) {
-    AssignExternalVariable(var_name);
+    AssignExternalVariable(var_name, false);
   }
   for (auto&& var_name : internal_var_names_) {
     AssignInternalVariable(var_name);
@@ -275,12 +275,18 @@ void CinnLaunchContext::InitializeArguments() {
   VLOG(4) << "Total argument size:" << name2argument_.size();
 }
 
-void CinnLaunchContext::AssignExternalVariable(const std::string& var_name) {
+void CinnLaunchContext::AssignExternalVariable(const std::string& var_name,
+                                               bool is_input) {
   PADDLE_ENFORCE_EQ(IsVariableUsed(var_name),
                     true,
                     platform::errors::InvalidArgument(
                         "Variable(%s) not applied in cinn", var_name));
-  auto* cinn_buffer = GetCinnBufferOfVar(var_name);
+  cinn_buffer_t* cinn_buffer = nullptr;
+  if (is_input && var_name == "batch_norm_0.w_2") {
+    cinn_buffer = name2argument_.at("batch_norm_0__w_2");
+  } else {
+    cinn_buffer = GetCinnBufferOfVar(var_name);
+  }
   // assign external malloc/free callbacks of cinn_buffer_t
   cinn_buffer->external_malloc = new std::function<int(void*, cinn_buffer_t*)>(
       [this, var_name](void* ctx, cinn_buffer_t* buffer) {
@@ -306,6 +312,9 @@ void CinnLaunchContext::AssignInternalVariable(const std::string& var_name) {
                     true,
                     platform::errors::InvalidArgument(
                         "Variable(%s) not applied in cinn", var_name));
+  if (var_name == "batch_norm_0__w_2") {
+    return;
+  }
   auto* cinn_buffer = GetCinnBufferOfVar(var_name);
   // assign external malloc/free callbacks of cinn_buffer_t
   cinn_buffer->external_malloc = new std::function<int(void*, cinn_buffer_t*)>(
