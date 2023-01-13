@@ -894,15 +894,7 @@ void CPUQuantizePass::QuantizeMatmul(Graph* graph, bool with_residual) const {
       LogQuantizationDisabled(matmul_op);
       return;
     }
-    GET_IR_NODE_FROM_SUBGRAPH(prev_op_x, prev_op_x, matmul_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(prev_op_y, prev_op_y, matmul_pattern);
 
-    // skip if prev ops are not quantized
-    if (!IsOpDequantized(prev_op_x) && !IsOpDequantized(prev_op_y)) {
-      MarkAndLogCannotQuantizeOp(matmul_op,
-                                 "No other quantizable operators nearby");
-      return;
-    }
     GET_IR_NODE_FROM_SUBGRAPH(matmul_in_x, matmul_in_x, matmul_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(matmul_in_y, matmul_in_y, matmul_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(matmul_out, matmul_out, matmul_pattern);
@@ -933,6 +925,11 @@ void CPUQuantizePass::QuantizeMatmul(Graph* graph, bool with_residual) const {
                           "are different: x(%d), y(%d).",
                           is_x_unsigned,
                           is_y_unsigned));
+
+    if (matmul_op->Op()->Type() == "matmul" ||
+        matmul_op->Op()->Type() == "matmul_v2") {
+      matmul_op->Op()->SetType("fused_matmul");
+    }
 
     if (with_residual) {
       GET_IR_NODE_FROM_SUBGRAPH(

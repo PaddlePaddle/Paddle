@@ -1288,8 +1288,6 @@ struct MatmulWithInputOps : public PatternBase {
       : PatternBase(pattern, name_scope, "matmul_with_input_ops") {}
 
   PDNode* operator()(bool with_residual);
-  PATTERN_DECL_NODE(prev_op_x);
-  PATTERN_DECL_NODE(prev_op_y);
   PATTERN_DECL_NODE(matmul_in_x);
   PATTERN_DECL_NODE(matmul_in_y);
   PATTERN_DECL_NODE(matmul_op);
