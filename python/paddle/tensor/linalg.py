@@ -2378,10 +2378,6 @@ def eigvals(x, name=None):
             # [(-0.27078833542132674+0j), (0.29962280156230725+0j), (0.8824477020120244+0j)] #complex128
     """
 
-    check_variable_and_dtype(
-        x, 'dtype', ['float32', 'float64', 'complex64', 'complex128'], 'eigvals'
-    )
-
     x_shape = list(x.shape)
     if len(x_shape) < 2:
         raise ValueError(
@@ -2400,6 +2396,12 @@ def eigvals(x, name=None):
     if in_dygraph_mode():
         return _C_ops.eigvals(x)
     else:
+        check_variable_and_dtype(
+            x,
+            'dtype',
+            ['float32', 'float64', 'complex64', 'complex128'],
+            'eigvals',
+        )
         helper = LayerHelper('eigvals', **locals())
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
         helper.append_op(type='eigvals', inputs={'X': x}, outputs={'Out': out})

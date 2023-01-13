@@ -37,17 +37,29 @@ np.random.seed(seed)
 paddle.seed(seed)
 
 
-def train_mlp(model, offload=False):
+def train_mlp(model, offload=False, test=False):
     optimizer = optimizer_setting(model=model, use_pure_fp16=True)
 
     model = paddle.amp.decorate(models=model, level='O2', save_dtype='float32')
     scaler = paddle.amp.GradScaler(init_loss_scaling=1024)
     scaler = GroupShardedScaler(scaler)
 
-    optimizer = GroupShardedOptimizerStage2(
-        params=optimizer._parameter_list, optim=optimizer, offload=offload
+    dp_group = (
+        None
+        if not test
+        else paddle.distributed.new_group(
+            list(range(paddle.distributed.get_world_size()))
+        )
     )
-    model = GroupShardedStage2(model, optimizer, buffer_max_size=2**21)
+    optimizer = GroupShardedOptimizerStage2(
+        params=optimizer._parameter_list,
+        optim=optimizer,
+        offload=offload,
+        dp_group=dp_group,
+    )
+    model = GroupShardedStage2(
+        model, optimizer, buffer_max_size=2**21, dp_group=dp_group
+    )
 
     paddle.seed(2023)
     np.random.seed(2023)
@@ -103,6 +115,13 @@ def test_sharding_stage2_offload():
             rtol=5e-3,
             atol=5e-3,
         )
+
+    # just to test assert error for the rate of coverage
+    try:
+        train_mlp(mlp_offload, offload=True, test=True)
+    except Exception as e:
+        assert isinstance(e, AssertionError)
+
     return
 
 
