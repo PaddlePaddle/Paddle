@@ -87,6 +87,7 @@ unary_api_list = [
     paddle.lgamma,
     paddle.poisson,
     paddle.bernoulli,
+    paddle.median,
 ]
 
 inplace_api_list = [
@@ -759,6 +760,8 @@ class TestSundryAPI(unittest.TestCase):
 
 
 # Use to test API whose zero-dim input tensors don't have grad and not need to test backward in OpTest.
+
+
 class TestNoBackwardAPI(unittest.TestCase):
     def setUp(self):
         paddle.disable_static()
@@ -904,6 +907,13 @@ class TestNoBackwardAPI(unittest.TestCase):
         one_hot_label = paddle.nn.functional.one_hot(label, num_classes=4)
         self.assertEqual(one_hot_label.shape, [4])
         self.assertEqual(one_hot_label.numpy()[2], 1)
+
+    def test_where(self):
+        x1 = paddle.full([], 1)
+        x2 = paddle.full([], 2)
+        out = paddle.where(x1 > x2, x1, x2)
+        self.assertEqual(out.shape, [])
+        self.assertEqual(out.numpy(), 2)
 
 
 if __name__ == "__main__":
