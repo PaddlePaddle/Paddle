@@ -38,7 +38,7 @@ ProcessGroupIdMap& ProcessGroupIdMap::GetInstance() {
 
 void ProcessGroupIdMap::DestroyProcessGroup(int gid) {
   int use_count = ProcessGroupIdMap::GetInstance()[gid].use_count();
-  for (int i = 0; i < use_count; ++i) {
+  for (int i = 0; i < use_count; ++i) { 
     ProcessGroupIdMap::GetInstance()[gid].reset();
   }
 }
