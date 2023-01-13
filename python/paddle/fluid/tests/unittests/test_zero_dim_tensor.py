@@ -1071,6 +1071,24 @@ class TestSundryAPI(unittest.TestCase):
         y = paddle.full([], 0.6)
         self.assertFalse(paddle.allclose(x, y))
 
+    def test_maseked_select(self):
+        x1 = paddle.full([], 1.0)
+        x2 = paddle.full([], 1.0)
+        x1.stop_gradient = False
+        x2.stop_gradient = False
+        mask1 = paddle.full([], False, dtype='bool')
+        mask2 = paddle.full([], True, dtype='bool')
+        y1 = paddle.masked_select(x1, mask1)
+        y2 = paddle.masked_select(x2, mask2)
+
+        y1.backward()
+        y2.backward()
+
+        self.assertEqual(y1.shape, [0])
+        self.assertEqual(y2.shape, [1])
+        self.assertEqual(x1.grad.shape, [])
+        self.assertEqual(x2.grad.shape, [])
+
 
 class TestSundryAPIStatic(unittest.TestCase):
     def setUp(self):
@@ -1531,6 +1549,22 @@ class TestSundryAPIStatic(unittest.TestCase):
         prog = paddle.static.default_main_program()
         res = self.exe.run(prog, fetch_list=[out])
         self.assertEqual(res[0].shape, (3,))
+
+    @prog_scope()
+    def test_maseked_select(self):
+        x1 = paddle.full([], 1.0)
+        x2 = paddle.full([], 1.0)
+        mask1 = paddle.full([], False, dtype='bool')
+        mask2 = paddle.full([], True, dtype='bool')
+        y1 = paddle.masked_select(x1, mask1)
+        y2 = paddle.masked_select(x2, mask2)
+        paddle.static.append_backward(y1)
+        paddle.static.append_backward(y2)
+
+        prog = paddle.static.default_main_program()
+        res = self.exe.run(prog, fetch_list=[y1, y2])
+        self.assertEqual(res[0].shape, (0,))
+        self.assertEqual(res[1].shape, (1,))
 
 
 # Use to test API whose zero-dim input tensors don't have grad and not need to test backward in OpTest.
