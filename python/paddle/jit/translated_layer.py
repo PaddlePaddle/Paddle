@@ -173,18 +173,15 @@ def _rename_var_program_desc(program_desc, include=None, exclude=None):
     """
     Change the name of the loaded variables.Use 'unique_name.generate' to avoid duplication.
     It is used when loading multiple program during inference.
-
     e.g. linear_0.tmp_3 ==> linear_0.tmp_1, x ==> x_0. For double grad, x@GRAD ==> x_0@GRAD
     If 'include' is not `None`,variables in include and the corresponding
       double grad variables (if exist) are renamed.
     If 'exclude' is not `None`,variables that are in exclude and the
       corresponding double grad variables (if exist) are not renamed.
-
     Args:
         program_desc(ProgramDesc):the variables in it will be modified.
         include(List):list of names of variables.
         exclude(List):list of names of variables.
-
     Returns:
         tuple of (dict_rename_var_new_old, dict_rename_var_old_new)
         dict_rename_var_new_old is a dict mapping from new name to old name
@@ -324,11 +321,9 @@ def _change_is_test_status(program_desc, is_test):
 class _ProgramHolder:
     """
     Holds the execution information of a Program.
-
     _ProgramHolder is the execution unit of TranslatedLayer,
     if TranslatedLayer contains multiple _ProgramHolder,
     it can execute multiple methods
-
     _ProgramHolder is an internal concept.
     """
 
@@ -371,7 +366,7 @@ class _ProgramHolder:
     @switch_to_static_graph
     def _create_backward_train_program(self):
         whole_program = _build_program_by_desc(self._train_program_desc)
-        start_op_index = self._infer_program_desc.block(0).op_size() + 2 * len(
+        start_op_index = self._infer_program_desc.block(0).op_size() + 1 * len(
             self._output_descs
         )
         end_op_index = whole_program.desc.block(0).op_size()
@@ -1118,11 +1113,9 @@ def _run_static_graph(input, program_holder, trace_program):
 def _collect_current_and_parent_var(program, block_idx):
     '''
     Get variables in current block and its parent block.
-
     Args:
         program(Program): The program containing the current block.
         block_idx(int): index of current block.
-
     Returns:
         List: list of variables.
     '''
@@ -1146,7 +1139,6 @@ def _append_block(
 ):
     '''
     Append Variables and Operators in 'src_program_desc' to dest_program.
-
     Args:
         dest_program(Program): Variables and Operators are appended to it.
         src_program_desc(ProgramDesc): Variables in it will be appended to 'dest_program'.
@@ -1244,11 +1236,9 @@ def _get_output_from_program(
 def append_op_from_block_desc_static(block, src_block_desc):
     """
     Append Operators of 'src_block_desc' to current block.
-
     Args:
         block(Block): append OP of  'src_block_desc' to it.
         src_block_desc(BlockDesc): append var of  'src_block_desc'
-
     Returns:
         List: list of the OP that are append to current block.
     """
@@ -1261,11 +1251,9 @@ def append_op_from_block_desc_static(block, src_block_desc):
 def append_op_from_desc_static(block, op_desc):
     """
     Append Operators to 'block' according to 'op_desc'.
-
     Args:
         block(Block): append OP of  'src_block_desc' to it.
         op_desc(OpDesc): create OP according to it.
-
     Returns:
         Operator: OP appended to 'block'.
     """
@@ -1291,13 +1279,11 @@ def append_var_from_block_desc_static(
     Append Variables of 'src_block_desc' to current block.
     If 'include' is not `None`,variables that are not in include are not append.
     If 'exclude' is not `None`,variables that are in exclude will are not append.
-
     Args:
         block(Block): append Variables of  'src_block_desc' to it.
         src_block_desc(BlockDesc): append var of  'src_block_desc'
         include(List):list of names of variables
         exclude(List):list of names of variables
-
     Returns:
         List: list of the variables that are append to current block.
     """
@@ -1351,47 +1337,36 @@ class TranslatedLayer(layers.Layer):
     TranslatedLayer is a ``paddle.nn.Layer`` for holding the model
     loaded by :ref:`api_paddle_jit_load` . It can be used like a
     general Layer object in eval or train mode.
-
     .. note:
         The TranslatedLayer objects should not be created by constructor, it only can be loaded and constructed by :ref:`api_paddle_jit_load` .
-
     Examples:
         .. code-block:: python
-
             import numpy as np
             import paddle
             import paddle.nn as nn
             import paddle.optimizer as opt
-
             BATCH_SIZE = 16
             BATCH_NUM = 4
             EPOCH_NUM = 4
-
             IMAGE_SIZE = 784
             CLASS_NUM = 10
-
             # define a random dataset
             class RandomDataset(paddle.io.Dataset):
                 def __init__(self, num_samples):
                     self.num_samples = num_samples
-
                 def __getitem__(self, idx):
                     image = np.random.random([IMAGE_SIZE]).astype('float32')
                     label = np.random.randint(0, CLASS_NUM - 1, (1, )).astype('int64')
                     return image, label
-
                 def __len__(self):
                     return self.num_samples
-
             class LinearNet(nn.Layer):
                 def __init__(self):
                     super().__init__()
                     self._linear = nn.Linear(IMAGE_SIZE, CLASS_NUM)
-
                 @paddle.jit.to_static
                 def forward(self, x):
                     return self._linear(x)
-
             def train(layer, loader, loss_fn, opt):
                 for epoch_id in range(EPOCH_NUM):
                     for batch_id, (image, label) in enumerate(loader()):
@@ -1402,14 +1377,11 @@ class TranslatedLayer(layers.Layer):
                         opt.clear_grad()
                         print("Epoch {} batch {}: loss = {}".format(
                             epoch_id, batch_id, np.mean(loss.numpy())))
-
             # 1. train & save model.
-
             # create network
             layer = LinearNet()
             loss_fn = nn.CrossEntropyLoss()
             adam = opt.Adam(learning_rate=0.001, parameters=layer.parameters())
-
             # create data loader
             dataset = RandomDataset(BATCH_NUM * BATCH_SIZE)
             loader = paddle.io.DataLoader(dataset,
@@ -1417,29 +1389,22 @@ class TranslatedLayer(layers.Layer):
                 shuffle=True,
                 drop_last=True,
                 num_workers=2)
-
             # train
             train(layer, loader, loss_fn, adam)
-
             # save
             model_path = "linear.example.model"
             paddle.jit.save(layer, model_path)
-
             # 2. load model as TranslatedLayer
-
             # load
             translated_layer = paddle.jit.load(model_path)
-
             # inference
             translated_layer.eval()
             x = paddle.randn([1, IMAGE_SIZE], 'float32')
             pred = translated_layer(x)
-
             # fine-tune
             translated_layer.train()
             adam = opt.Adam(learning_rate=0.001, parameters=translated_layer.parameters())
             train(translated_layer, loader, loss_fn, adam)
-
     """
 
     def __init__(self, programs, persistable_vars):
@@ -1560,51 +1525,39 @@ class TranslatedLayer(layers.Layer):
     def program(self, method_name='forward'):
         """
         Gets translated program of specified method.
-
         Args:
             - method_name (string): mehtod name corresponding to the program
                 to be obtained. Default: 'forward'.
-
         Returns:
             Program
-
         Examples:
             .. code-block:: python
-
                 import numpy as np
                 import paddle
                 import paddle.nn as nn
                 import paddle.optimizer as opt
-
                 BATCH_SIZE = 16
                 BATCH_NUM = 4
                 EPOCH_NUM = 4
-
                 IMAGE_SIZE = 784
                 CLASS_NUM = 10
-
                 # define a random dataset
                 class RandomDataset(paddle.io.Dataset):
                     def __init__(self, num_samples):
                         self.num_samples = num_samples
-
                     def __getitem__(self, idx):
                         image = np.random.random([IMAGE_SIZE]).astype('float32')
                         label = np.random.randint(0, CLASS_NUM - 1, (1, )).astype('int64')
                         return image, label
-
                     def __len__(self):
                         return self.num_samples
-
                 class LinearNet(nn.Layer):
                     def __init__(self):
                         super().__init__()
                         self._linear = nn.Linear(IMAGE_SIZE, CLASS_NUM)
-
                     @paddle.jit.to_static
                     def forward(self, x):
                         return self._linear(x)
-
                 def train(layer, loader, loss_fn, opt):
                     for epoch_id in range(EPOCH_NUM):
                         for batch_id, (image, label) in enumerate(loader()):
@@ -1615,12 +1568,10 @@ class TranslatedLayer(layers.Layer):
                             opt.clear_grad()
                             print("Epoch {} batch {}: loss = {}".format(
                                 epoch_id, batch_id, np.mean(loss.numpy())))
-
                 # create network
                 layer = LinearNet()
                 loss_fn = nn.CrossEntropyLoss()
                 adam = opt.Adam(learning_rate=0.001, parameters=layer.parameters())
-
                 # create data loader
                 dataset = RandomDataset(BATCH_NUM * BATCH_SIZE)
                 loader = paddle.io.DataLoader(dataset,
@@ -1628,17 +1579,13 @@ class TranslatedLayer(layers.Layer):
                     shuffle=True,
                     drop_last=True,
                     num_workers=2)
-
                 # train
                 train(layer, loader, loss_fn, adam)
-
                 # save
                 model_path = "linear.example.model"
                 paddle.jit.save(layer, model_path)
-
                 # load
                 translated_layer = paddle.jit.load(model_path)
-
                 # get program
                 program = translated_layer.program()
         """
