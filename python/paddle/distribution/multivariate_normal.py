@@ -71,7 +71,7 @@ class MultivariateNormal(distribution.Distribution):
     """
 
     def __init__(self, loc, covariance_matrix):
-        if loc.dim() < 1:
+        if len(loc.shape) < 1:
             raise ValueError("loc must be at least one-dimensional.")
         if (covariance_matrix is not None) != 1:
             raise ValueError("Exactly covariance_matrix may be specified.")
