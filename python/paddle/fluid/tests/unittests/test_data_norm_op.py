@@ -269,13 +269,15 @@ class TestDataNormOp(OpTest):
         """
         test check forward, check output
         """
-        self.check_output()
+        # data_norm for static only
+        self.check_output(check_dygraph=False)
 
     def test_check_grad(self):
         """
         test check backward, check grad
         """
-        self.check_grad(['X'], 'Y', no_grad_set=set([]))
+        # data_norm for static only
+        self.check_grad(['X'], 'Y', no_grad_set=set([]), check_dygraph=False)
 
 
 class TestDataNormOpWithEnableScaleAndShift(OpTest):
@@ -331,13 +333,14 @@ class TestDataNormOpWithEnableScaleAndShift(OpTest):
         """
         test check forward, check output
         """
-        self.check_output()
+        # data_norm for static only
+        self.check_output(check_dygraph=False)
 
     def test_check_grad(self):
         """
         test check backward, check grad
         """
-        self.check_grad(['X'], 'Y', no_grad_set=set([]))
+        self.check_grad(['X'], 'Y', no_grad_set=set([]), check_dygraph=False)
 
 
 class TestDataNormOpWithoutEnableScaleAndShift(OpTest):
@@ -388,13 +391,15 @@ class TestDataNormOpWithoutEnableScaleAndShift(OpTest):
         """
         test check forward, check output
         """
-        self.check_output()
+        # data_norm for static only
+        self.check_output(check_dygraph=False)
 
     def test_check_grad(self):
         """
         test check backward, check grad
         """
-        self.check_grad(['X'], 'Y', no_grad_set=set([]))
+        # data_norm for static only
+        self.check_grad(['X'], 'Y', no_grad_set=set([]), check_dygraph=False)
 
 
 class TestDataNormOpWithEnableScaleAndShift_1(OpTest):
@@ -450,13 +455,15 @@ class TestDataNormOpWithEnableScaleAndShift_1(OpTest):
         """
         test check forward, check output
         """
-        self.check_output()
+        # data_norm for static only
+        self.check_output(check_dygraph=False)
 
     def test_check_grad(self):
         """
         test check backward, check grad
         """
-        self.check_grad(['X'], 'Y', no_grad_set=set([]))
+        # data_norm for static only
+        self.check_grad(['X'], 'Y', no_grad_set=set([]), check_dygraph=False)
 
 
 class TestDataNormOpWithSlotDim(OpTest):
@@ -506,13 +513,19 @@ class TestDataNormOpWithSlotDim(OpTest):
         """
         test check forward, check output
         """
-        self.check_output()
+        # data_norm for static only
+        self.check_output(check_dygraph=False)
 
     def test_check_grad(self):
         """
         test check backward, check grad
         """
-        self.check_grad(['X'], 'Y', no_grad_set=set([]))
+        # data_norm for static only
+        self.check_grad(
+            ['X'],
+            'Y',
+            no_grad_set=set([]),
+        )
 
 
 class TestDataNormOpErrorr(unittest.TestCase):

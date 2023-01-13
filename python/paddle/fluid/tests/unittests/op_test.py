@@ -1007,6 +1007,10 @@ class OpTest(unittest.TestCase):
             )
             if not kernel_sig:
                 return None
+            if not hasattr(self, "python_api") and hasattr(
+                paddle, self.op_type
+            ):
+                self.python_api = getattr(paddle, self.op_type)
             assert hasattr(self, "python_api"), (
                 "Detect there is KernelSignature for `%s` op, please set the `self.python_api` if you set check_dygraph = True"
                 % self.op_type
