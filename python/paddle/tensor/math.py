@@ -1022,11 +1022,6 @@ def _add_with_axis(x, y, axis=-1, name=None):
                 x, y, axis=axis, act=act, op_name=op_type
             )
         else:
-            if x.dtype != y.dtype:
-                raise TypeError(
-                    'Input tensors must be same type, but received type of x: %s, type of y: %s '
-                    % (x.dtype, y.dtype)
-                )
             return _elementwise_op(LayerHelper(op_type, **locals()))
 
 
@@ -1044,11 +1039,6 @@ def _subtract_with_axis(x, y, axis=-1, name=None):
                 x, y, axis=axis, act=act, op_name=op_type
             )
         else:
-            if x.dtype != y.dtype:
-                raise TypeError(
-                    'Input tensors must be same type, but received type of x: %s, type of y: %s '
-                    % (x.dtype, y.dtype)
-                )
             return _elementwise_op(LayerHelper(op_type, **locals()))
 
 
@@ -1066,11 +1056,6 @@ def _multiply_with_axis(x, y, axis=-1, name=None):
                 x, y, axis=axis, act=act, op_name=op_type
             )
         else:
-            if x.dtype != y.dtype:
-                raise TypeError(
-                    'Input tensors must be same type, but received type of x: %s, type of y: %s '
-                    % (x.dtype, y.dtype)
-                )
             return _elementwise_op(LayerHelper(op_type, **locals()))
 
 
@@ -1086,11 +1071,6 @@ def _divide_with_axis(x, y, axis=-1, name=None):
                 x, y, axis=axis, act=act, op_name=op_type
             )
         else:
-            if x.dtype != y.dtype:
-                raise TypeError(
-                    'Input tensors must be same type, but received type of x: %s, type of y: %s '
-                    % (x.dtype, y.dtype)
-                )
             return _elementwise_op(LayerHelper(op_type, **locals()))
 
 

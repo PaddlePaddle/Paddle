@@ -16,7 +16,8 @@
 
 namespace phi {
 
-KernelSignature GatherNdGradArgumentMapping(const ArgumentMappingContext& ctx) {
+KernelSignature GatherNdGradArgumentMapping(
+    const ArgumentMappingContext& /*ctx*/) {
   return KernelSignature(
       "gather_nd_grad", {"X", "Index", "Out@GRAD"}, {}, {"X@GRAD"});
 }

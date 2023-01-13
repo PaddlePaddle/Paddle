@@ -16,13 +16,14 @@
 
 namespace phi {
 
-KernelSignature HuberLossOpArgumentMapping(const ArgumentMappingContext& ctx) {
+KernelSignature HuberLossOpArgumentMapping(
+    const ArgumentMappingContext& /*ctx*/) {
   return KernelSignature(
       "huber_loss", {"X", "Y"}, {"delta"}, {"Out", "Residual"});
 }
 
 KernelSignature HuberLossGradOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
+    const ArgumentMappingContext& /*ctx*/) {
   return KernelSignature("huber_loss_grad",
                          {"Residual", "Out@GRAD"},
                          {"delta"},

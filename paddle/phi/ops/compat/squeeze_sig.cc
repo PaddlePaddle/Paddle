@@ -17,13 +17,14 @@
 
 namespace phi {
 
-KernelSignature SqueezeOpArgumentMapping(const ArgumentMappingContext& ctx) {
+KernelSignature SqueezeOpArgumentMapping(
+    const ArgumentMappingContext& /*ctx*/) {
   return KernelSignature(
       "squeeze_with_xshape", {"X"}, {"axes"}, {"Out", "XShape"});
 }
 
 KernelSignature SqueezeGradOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
+    const ArgumentMappingContext& /*ctx*/) {
   return KernelSignature(
       "squeeze_grad", {"XShape", "Out@GRAD"}, {"axes"}, {"X@GRAD"});
 }

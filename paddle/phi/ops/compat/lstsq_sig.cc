@@ -16,7 +16,7 @@
 
 namespace phi {
 
-KernelSignature LstsqOpArgumentMapping(const ArgumentMappingContext& ctx) {
+KernelSignature LstsqOpArgumentMapping(const ArgumentMappingContext& /*ctx*/) {
   return KernelSignature("lstsq",
                          {"X", "Y"},
                          {"rcond", "driver"},

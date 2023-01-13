@@ -20,7 +20,6 @@ from op_test import OpTest
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-from paddle.fluid.framework import _test_eager_guard
 from paddle.fluid.op import Operator
 
 paddle.enable_static()
@@ -202,7 +201,7 @@ class TestSGDOpWithLargeInput(unittest.TestCase):
             shape=[1, 150], value=0.5, dtype='float32'
         )
         emb = fluid.embedding(input=data, size=(10000000, 150), dtype='float32')
-        out = fluid.layers.l2_normalize(x=emb, axis=-1)
+        out = paddle.nn.functional.normalize(x=emb, axis=-1)
 
         cost = paddle.nn.functional.square_error_cost(input=out, label=label)
         avg_cost = paddle.mean(cost)
@@ -306,11 +305,6 @@ class TestSGDV2(unittest.TestCase):
         out.backward()
         adam.step()
         adam.clear_gradients()
-
-    def test_eager(self):
-        with _test_eager_guard():
-            self.test_sgd_dygraph()
-            self.test_sgd_group_dygraph()
 
 
 class TestSGDMultiPrecision2_0(unittest.TestCase):

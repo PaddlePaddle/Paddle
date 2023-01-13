@@ -16,7 +16,8 @@
 
 namespace phi {
 
-KernelSignature WhereIndexOpArgumentMapping(const ArgumentMappingContext& ctx) {
+KernelSignature WhereIndexOpArgumentMapping(
+    const ArgumentMappingContext& /*ctx*/) {
   return KernelSignature("nonzero", {"Condition"}, {}, {"Out"});
 }
 

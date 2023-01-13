@@ -16,22 +16,17 @@
 
 namespace phi {
 
-KernelSignature RealGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
+KernelSignature RealGradOpArgumentMapping(
+    const ArgumentMappingContext& /*ctx*/) {
   return KernelSignature("real_grad", {"Out@GRAD"}, {}, {"X@GRAD"});
 }
 
-KernelSignature ImagGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
+KernelSignature ImagGradOpArgumentMapping(
+    const ArgumentMappingContext& /*ctx*/) {
   return KernelSignature("imag_grad", {"Out@GRAD"}, {}, {"X@GRAD"});
-}
-
-KernelSignature ComplexGradOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
-  return KernelSignature(
-      "complex_grad", {"X", "Y", "Out@GRAD"}, {}, {"X@GRAD", "Y@GRAD"});
 }
 
 }  // namespace phi
 
 PD_REGISTER_ARG_MAPPING_FN(real_grad, phi::RealGradOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(imag_grad, phi::ImagGradOpArgumentMapping);
-PD_REGISTER_ARG_MAPPING_FN(complex_grad, phi::ComplexGradOpArgumentMapping);

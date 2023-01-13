@@ -311,12 +311,7 @@ void BindOpDesc(pybind11::module *m) {
            [](pd::OpDesc &self, const std::string &name) {
              return self.Input(name);
            })
-      .def(
-          "input_names",
-          [](pd::OpDesc &self, bool with_attr_var) {
-            return self.InputNames(with_attr_var);
-          },
-          py::arg("with_attr_var") = false)
+      .def("input_names", &pd::OpDesc::InputNames)
       .def("output", &pd::OpDesc::Output)
       .def("output_names", &pd::OpDesc::OutputNames)
       .def("set_input",

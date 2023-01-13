@@ -17,7 +17,7 @@
 namespace phi {
 
 KernelSignature TriangularSolveGradOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
+    const ArgumentMappingContext& /*ctx*/) {
   return KernelSignature("triangular_solve_grad",
                          {"X", "Y", "Out", "Out@GRAD"},
                          {"upper", "transpose", "unitriangular"},

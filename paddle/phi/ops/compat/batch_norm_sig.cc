@@ -55,7 +55,7 @@ KernelSignature BatchNormOpArgumentMapping(const ArgumentMappingContext& ctx) {
 }
 
 KernelSignature BatchNormGradOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
+    const ArgumentMappingContext& /*ctx*/) {
   return KernelSignature("batch_norm_grad",
                          {
                              "X",
@@ -78,7 +78,7 @@ KernelSignature BatchNormGradOpArgumentMapping(
 }
 
 KernelSignature BatchNormGradGradOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
+    const ArgumentMappingContext& /*ctx*/) {
   return KernelSignature("batch_norm_grad_grad",
                          {"X",
                           "Scale",

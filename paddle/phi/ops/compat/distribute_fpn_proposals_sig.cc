@@ -17,7 +17,7 @@ limitations under the License. */
 namespace phi {
 
 KernelSignature DistributeFpnProposalsOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
+    const ArgumentMappingContext& /*ctx*/) {
   return KernelSignature(
       "distribute_fpn_proposals",
       {"FpnRois", "RoisNum"},

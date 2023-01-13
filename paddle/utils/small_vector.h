@@ -220,6 +220,8 @@ class small_vector_template_common
     assert(isSafeToReferenceAfterResize(Elt, NewSize) &&
            "Attempting to reference an element of the vector in an operation "
            "that invalidates it");
+    (void)Elt;
+    (void)NewSize;
   }
 
   /// Check whether Elt will be invalidated by increasing the size of the

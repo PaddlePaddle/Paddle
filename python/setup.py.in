@@ -346,7 +346,6 @@ packages=['paddle',
           'paddle.fluid.contrib.mixed_precision',
           'paddle.fluid.contrib.mixed_precision.bf16',
           'paddle.fluid.contrib.layers',
-          'paddle.fluid.contrib.sparsity',
           'paddle.fluid.transpiler',
           'paddle.fluid.transpiler.details',
           'paddle.fluid.incubate',
@@ -387,6 +386,8 @@ packages=['paddle',
           'paddle.incubate.distributed.models',
           'paddle.incubate.distributed.models.moe',
           'paddle.incubate.distributed.models.moe.gate',
+          'paddle.quantization',
+          'paddle.quantization.quanters',
           'paddle.sparse',
           'paddle.sparse.nn',
           'paddle.sparse.nn.layer',
@@ -404,7 +405,6 @@ packages=['paddle',
           'paddle.static',
           'paddle.static.nn',
           'paddle.static.amp',
-          'paddle.static.sparsity',
           'paddle.tensor',
           'paddle.onnx',
           'paddle.autograd',
@@ -458,8 +458,12 @@ package_dir={
 libs_path='${PADDLE_BINARY_DIR}/python/paddle/libs'
 
 package_data['paddle.libs']= []
-package_data['paddle.libs']=[('libwarpctc' if os.name != 'nt' else 'warpctc') + ext_name]
+package_data['paddle.libs']=[
+    ('libwarpctc' if os.name != 'nt' else 'warpctc') + ext_name,
+    ('libwarprnnt' if os.name != 'nt' else 'warprnnt') + ext_name,
+]
 shutil.copy('${WARPCTC_LIBRARIES}', libs_path)
+shutil.copy('${WARPRNNT_LIBRARIES}', libs_path)
 
 package_data['paddle.libs']+=[
     os.path.basename('${LAPACK_LIB}'), 

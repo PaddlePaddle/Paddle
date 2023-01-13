@@ -15,7 +15,8 @@
 #include "paddle/phi/core/compat/op_utils.h"
 
 namespace phi {
-KernelSignature PNormGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
+KernelSignature PNormGradOpArgumentMapping(
+    const ArgumentMappingContext& /*ctx*/) {
   return KernelSignature("p_norm_grad",
                          {"X", "Out", "Out@GRAD"},
                          {"porder", "axis", "epsilon", "keepdim", "asvector"},

@@ -17,7 +17,7 @@
 namespace phi {
 
 KernelSignature SigmoidCrossEntropyWithLogitsKernelGradOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
+    const ArgumentMappingContext& /*ctx*/) {
   return KernelSignature("sigmoid_cross_entropy_with_logits_grad",
                          {"X", "Label", "Out@GRAD"},
                          {"normalize", "ignore_index"},

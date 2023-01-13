@@ -16,6 +16,16 @@
     func : acosh
   backward : acosh_grad
 
+- op : addmm
+  args : (Tensor input, Tensor x, Tensor y, float beta=1.0, float alpha=1.0)
+  output : Tensor
+  infer_meta :
+    func : AddmmInferMeta
+  kernel :
+    func : addmm
+    data_type : x
+  backward : addmm_grad
+
 - op : angle
   args : (Tensor x)
   output : Tensor
@@ -151,6 +161,16 @@
   kernel :
     func : cholesky_solve
   backward : cholesky_solve_grad
+
+- op : complex
+  args : (Tensor real, Tensor imag)
+  output : Tensor
+  infer_meta :
+    func : ComplexInferMeta
+  kernel :
+    func : complex
+    data_type : real
+  backward : complex_grad
 
 - op : conj
   args : (Tensor x)
@@ -801,6 +821,16 @@
     func : renorm
   backward : renorm_grad
 
+- op : roll
+  args : (Tensor x, IntArray shifts={}, int64_t[] axis={})
+  output : Tensor(out)
+  infer_meta :
+    func : RollInferMeta
+  kernel :
+    func : roll
+    data_type : x
+  backward : roll_grad
+
 - op : round
   args : (Tensor x)
   output : Tensor(out)
@@ -1071,6 +1101,15 @@
     func : unfold
   backward : unfold_grad
 
+- op : unstack
+  args : (Tensor x, int axis=0, int num=0)
+  output : Tensor[](out){num}
+  infer_meta :
+    func : UnStackInferMeta
+  kernel :
+    func : unstack
+  backward : unstack_grad
+
 - op : viterbi_decode
   args : (Tensor potentials, Tensor transition_params, Tensor lengths, bool include_bos_eos_tag = true)
   output : Tensor(scores), Tensor(path)
@@ -1079,6 +1118,17 @@
   kernel :
     func : viterbi_decode
     data_type : potentials
+
+- op : warprnnt
+  args : (Tensor input, Tensor label, Tensor input_lengths, Tensor label_lengths, int blank = 0, float fastemit_lambda = 0.0)
+  output :  Tensor(loss), Tensor(warprnntgrad)
+  infer_meta :
+    func : WarprnntInferMeta
+  kernel :
+    func : warprnnt
+    data_type: input
+  intermediate: warprnntgrad
+  backward : warprnnt_grad
 
 - op : where
   args : (Tensor condition, Tensor x, Tensor y)

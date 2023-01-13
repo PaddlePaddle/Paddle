@@ -56,16 +56,6 @@
     func : add_triple_grad
   inplace : (grad_grad_out_grad -> grad_grad_x_grad)
 
-- backward_op : addmm_grad
-  forward : addmm (Tensor input, Tensor x, Tensor y, float beta, float alpha) -> Tensor(out)
-  args : (Tensor input, Tensor x, Tensor y, Tensor out_grad, float alpha, float beta)
-  output : Tensor(input_grad), Tensor(x_grad), Tensor(y_grad)
-  infer_meta :
-    func : GeneralTernaryGradInferMeta
-    param : [input, x, y]
-  kernel :
-    func : addmm_grad
-
 - backward_op : affine_grid_grad
   forward : affine_grid (Tensor input, IntArray outputShape, bool align_corners=true) -> Tensor(output)
   args : (Tensor input, Tensor output_grad, IntArray outputShape, bool align_corners=true)
@@ -224,16 +214,6 @@
     func : clip_grad
   backward : clip_double_grad
   inplace : (out_grad -> x_grad)
-
-- backward_op : complex_grad
-  forward : complex (Tensor real, Tensor imag) -> Tensor(out)
-  args : (Tensor real, Tensor imag, Tensor out_grad)
-  output : Tensor(real_grad), Tensor(imag_grad)
-  infer_meta :
-    func : ComplexGradInferMeta
-  kernel :
-    func : complex_grad
-    data_type : real
 
 - backward_op : concat_double_grad
   forward : concat_grad (Tensor[] x, Tensor grad_out, Scalar axis) -> Tensor[](grad_x)
@@ -1294,18 +1274,6 @@
     data_type : x
   optional : boxes_num
 
-- backward_op : roll_grad
-  forward : roll(Tensor x, IntArray shifts, int64_t[] axis) -> Tensor(out)
-  args : (Tensor x, Tensor out_grad, IntArray shifts, int64_t[] axis)
-  output : Tensor(x_grad)
-  infer_meta :
-    func : UnchangedInferMeta
-    param : [x]
-  kernel :
-    func : roll_grad
-    data_type : x
-  no_need_buffer : x
-
 - backward_op : scale_grad
   forward : scale (Tensor x, Scalar scale, float bias, bool bias_after_scale) -> Tensor(out)
   args : (Tensor out_grad, Scalar scale=1.0, bool bias_after_scale=true)
@@ -1664,16 +1632,6 @@
     param: [xshape, out_grad]
   inplace : (out_grad -> x_grad)
   backward : unsqueeze_double_grad
-
-- backward_op : unstack_grad
-  forward : unstack (Tensor x, int axis, int num) -> Tensor[](out)
-  args : (Tensor[] out_grad, int axis)
-  output : Tensor(x_grad)
-  infer_meta :
-    func : UnStackGradInferMeta
-    param : [out_grad, axis]
-  kernel :
-    func : unstack_grad
 
 - backward_op : warpctc_grad
   forward : warpctc (Tensor logits, Tensor label, Tensor logits_length, Tensor labels_length, int blank, bool norm_by_times) -> Tensor(loss), Tensor(warpctcgrad)

@@ -1706,6 +1706,7 @@ class Completer:
                         "elementwise_max",
                         "elementwise_div",
                     ]:
+                        # complete op dist_attr with global world ranks
                         op_dist_attr = OperatorDistributedAttribute()
                         op_dist_attr.process_mesh = world_ranks
                         for in_name in op.input_arg_names:
@@ -1713,8 +1714,8 @@ class Completer:
                             in_dist_attr = self._dist_context.get_tensor_dist_attr_for_program(
                                 in_var
                             )
-                            op_dist_attr.set_input_dist_attr(
-                                in_name, in_dist_attr
+                            op_dist_attr.set_input_dims_mapping(
+                                in_name, in_dist_attr.dims_mapping
                             )
                         for out_name in op.output_arg_names:
                             out_var = vars[out_name]
@@ -1726,10 +1727,11 @@ class Completer:
                             self._dist_context.set_tensor_dist_attr_for_program(
                                 out_var, out_dist_attr
                             )
-                            op_dist_attr.set_output_dist_attr(
-                                out_name, out_dist_attr
+                            op_dist_attr.set_output_dims_mapping(
+                                out_name, out_dist_attr.dims_mapping
                             )
                     else:
+                        # get ref_process_mesh and ref_dims_mapping from input_var
                         in_var = vars[op.input("X")[0]]
                         in_dist_attr = (
                             self._dist_context.get_tensor_dist_attr_for_program(
@@ -1751,6 +1753,7 @@ class Completer:
                             assert ref_dist_attr is not None
                             ref_process_mesh = ref_dist_attr.process_mesh
 
+                        # complete out_var's tensor_dist_attr
                         out_var = vars[op.output("Out")[0]]
                         out_dist_attr = TensorDistributedAttribute()
                         out_dist_attr.process_mesh = ref_process_mesh
@@ -1766,14 +1769,26 @@ class Completer:
                             out_var, out_dist_attr
                         )
 
+                        # complete op'd dist_attr
+                        # complete op process_mesh with input_var's process_mesh
                         op_dist_attr = OperatorDistributedAttribute()
                         op_dist_attr.process_mesh = ref_process_mesh
-                        op_dist_attr.set_input_dist_attr(
-                            in_var.name, in_dist_attr
-                        )
-                        op_dist_attr.set_output_dist_attr(
-                            out_var.name, out_dist_attr
-                        )
+                        for in_name in op.input_arg_names:
+                            in_var = vars[in_name]
+                            in_dist_attr = self._dist_context.get_tensor_dist_attr_for_program(
+                                in_var
+                            )
+                            op_dist_attr.set_input_dims_mapping(
+                                in_name, in_dist_attr.dims_mapping
+                            )
+                        for out_name in op.output_arg_names:
+                            out_var = vars[out_name]
+                            out_dist_attr = self._dist_context.get_tensor_dist_attr_for_program(
+                                out_var
+                            )
+                            op_dist_attr.set_output_dims_mapping(
+                                out_name, out_dist_attr.dims_mapping
+                            )
 
                     self._dist_context.set_op_dist_attr_for_program(
                         op, op_dist_attr

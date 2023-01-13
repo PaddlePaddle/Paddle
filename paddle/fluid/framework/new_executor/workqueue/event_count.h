@@ -251,6 +251,7 @@ class EventCount {
     assert(!waiter || waiters > 0);
     (void)waiters;
     (void)signals;
+    (void)waiter;
   }
 
   void Park(Waiter* w) {

@@ -16,13 +16,13 @@
 
 namespace phi {
 
-KernelSignature RReluOpArgumentMapping(const ArgumentMappingContext& ctx) {
+KernelSignature RReluOpArgumentMapping(const ArgumentMappingContext& /*ctx*/) {
   return KernelSignature(
       "rrelu", {"X"}, {"lower", "upper", "is_test"}, {"Out", "Noise"});
 }
 
 KernelSignature RReluGradGradOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
+    const ArgumentMappingContext& /*ctx*/) {
   return KernelSignature(
       "rrelu_grad", {"X", "Noise", "Out@GRAD"}, {}, {"X@GRAD"});
 }

@@ -462,8 +462,6 @@ class EagerPyLayerContext:
         Examples:
             .. code-block:: python
 
-                import os
-                os.environ['FLAGS_enable_eager_mode'] = '1'
                 import paddle
                 from paddle.autograd import PyLayer
                 import numpy as np
@@ -503,8 +501,6 @@ class EagerPyLayerContext:
         Examples:
             .. code-block:: python
 
-                import os
-                os.environ['FLAGS_enable_eager_mode'] = '1'
                 import paddle
                 from paddle.autograd import PyLayer
                 import numpy as np

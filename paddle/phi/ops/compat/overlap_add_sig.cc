@@ -17,7 +17,7 @@
 namespace phi {
 
 KernelSignature OverlapAddGradOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
+    const ArgumentMappingContext& /*ctx*/) {
   return KernelSignature("overlap_add_grad",
                          {"X", "Out@GRAD"},
                          {"hop_length", "axis"},

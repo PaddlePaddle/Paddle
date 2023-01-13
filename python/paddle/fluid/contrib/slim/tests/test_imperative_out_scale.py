@@ -25,10 +25,10 @@ import paddle.fluid as fluid
 import paddle.fluid.layers as layers
 from paddle.fluid import core
 from paddle.fluid.optimizer import AdamOptimizer
-from paddle.fluid.framework import IrGraph, _test_eager_guard
+from paddle.fluid.framework import IrGraph
 from paddle.fluid.contrib.slim.quantization import ImperativeQuantAware
 from paddle.nn import Sequential
-from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
+from paddle.jit.translated_layer import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 from paddle.nn.layer import ReLU, LeakyReLU, Sigmoid, Softmax, PReLU
 from paddle.nn import Linear, Conv2D, Softmax, BatchNorm2D, MaxPool2D
 from paddle.fluid.log_helper import get_logger
@@ -139,7 +139,7 @@ class TestImperativeOutSclae(unittest.TestCase):
     def tearDown(self):
         self.root_path.cleanup()
 
-    def func_out_scale_acc(self):
+    def test_out_scale_acc(self):
         seed = 1000
         lr = 0.001
 
@@ -207,11 +207,6 @@ class TestImperativeOutSclae(unittest.TestCase):
                 loss_list[i] > loss_list[i + 1],
                 msg='Failed to do the imperative qat.',
             )
-
-    def test_out_scale_acc(self):
-        with _test_eager_guard():
-            self.func_out_scale_acc()
-        self.func_out_scale_acc()
 
 
 if __name__ == '__main__':

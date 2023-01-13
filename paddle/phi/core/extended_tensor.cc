@@ -51,9 +51,9 @@ bool ExtendedTensor::initialized() const {
       "ExtendedTensor does not support `initialized` method."));
 }
 
-void* ExtendedTensor::AllocateFrom(Allocator* allocator,
-                                   DataType dtype,
-                                   size_t requested_size) {
+void* ExtendedTensor::AllocateFrom(Allocator* /*allocator*/,
+                                   DataType /*dtype*/,
+                                   size_t /*requested_size*/) {
   PADDLE_THROW(phi::errors::Unavailable(
       "ExtendedTensor does not support `AllocateFrom` method."));
 }

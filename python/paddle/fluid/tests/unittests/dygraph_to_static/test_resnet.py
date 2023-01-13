@@ -23,8 +23,8 @@ from predictor_utils import PredictorTools
 
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 from paddle.jit import ProgramTranslator
+from paddle.jit.translated_layer import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 from paddle.nn import BatchNorm
 
 SEED = 2020

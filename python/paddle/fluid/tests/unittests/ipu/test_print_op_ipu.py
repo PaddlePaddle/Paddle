@@ -54,7 +54,7 @@ class TestBase(IPUOpTest):
             shape=self.feed_shape[0],
             dtype=self.feed_dtype[0],
         )
-        out = paddle.fluid.layers.conv2d(x, num_filters=3, filter_size=3)
+        out = paddle.static.nn.conv2d(x, num_filters=3, filter_size=3)
         out = paddle.fluid.layers.Print(out, **self.attrs)
 
         if self.is_training:

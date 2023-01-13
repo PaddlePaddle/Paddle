@@ -17,7 +17,7 @@
 namespace phi {
 
 KernelSignature LogSoftmaxGradOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
+    const ArgumentMappingContext& /*ctx*/) {
   return KernelSignature(
       "log_softmax_grad", {"Out", "Out@GRAD"}, {"axis"}, {"X@GRAD"});
 }

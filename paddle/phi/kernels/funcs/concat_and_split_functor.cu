@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include "paddle/phi/kernels/funcs/concat_and_split_functor.h"
 #include "paddle/fluid/memory/malloc.h"
-#include "paddle/fluid/platform/cuda_graph_with_memory_pool.h"
+#include "paddle/phi/backends/gpu/cuda/cuda_graph_with_memory_pool.h"
 
 namespace phi {
 namespace funcs {
@@ -319,7 +319,7 @@ struct ConcatFunctor<phi::GPUContext, T> {
           context.GetPlace(),
           in_num * sizeof(T*),
           phi::Stream(reinterpret_cast<phi::StreamId>(context.stream())));
-      auto* restored = paddle::platform::RestoreHostMemIfCapturingCUDAGraph(
+      auto* restored = phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
           inputs_data, in_num);
       paddle::memory::Copy(context.GetPlace(),
                            tmp_dev_ins_data->ptr(),
@@ -368,7 +368,7 @@ struct ConcatFunctor<phi::GPUContext, T> {
           inputs_col_num * sizeof(int64_t),
           phi::Stream(reinterpret_cast<phi::StreamId>(context.stream())));
 
-      auto* restored = paddle::platform::RestoreHostMemIfCapturingCUDAGraph(
+      auto* restored = phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
           inputs_col, inputs_col_num);
       paddle::memory::Copy(context.GetPlace(),
                            tmp_dev_ins_col_data->ptr(),
@@ -484,7 +484,7 @@ class SplitFunctor<phi::GPUContext, T> {
           context.GetPlace(),
           o_num * sizeof(T*),
           phi::Stream(reinterpret_cast<phi::StreamId>(context.stream())));
-      auto* restored = paddle::platform::RestoreHostMemIfCapturingCUDAGraph(
+      auto* restored = phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
           outputs_data, o_num);
       paddle::memory::Copy(context.GetPlace(),
                            tmp_dev_outs_data->ptr(),
@@ -535,7 +535,7 @@ class SplitFunctor<phi::GPUContext, T> {
               context.GetPlace(),
               outputs_cols_num * sizeof(int64_t),
               phi::Stream(reinterpret_cast<phi::StreamId>(context.stream())));
-      auto* restored = paddle::platform::RestoreHostMemIfCapturingCUDAGraph(
+      auto* restored = phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
           outputs_cols, outputs_cols_num);
       paddle::memory::Copy(context.GetPlace(),
                            tmp_dev_ins_col_data->ptr(),

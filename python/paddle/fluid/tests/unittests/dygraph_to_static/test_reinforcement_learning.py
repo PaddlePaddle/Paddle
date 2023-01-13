@@ -24,7 +24,7 @@ import paddle.fluid as fluid
 import paddle.nn.functional as F
 from paddle.fluid.dygraph import Layer, to_variable
 from paddle.jit import ProgramTranslator
-from paddle.jit.api import declarative
+from paddle.jit.api import to_static
 
 SEED = 2020
 program_translator = ProgramTranslator()
@@ -41,7 +41,7 @@ class Policy(Layer):
         self.saved_log_probs = []
         self.rewards = []
 
-    @declarative
+    @to_static
     def forward(self, x):
         x = paddle.reshape(x, shape=[1, 4])
         x = self.affine1(x)

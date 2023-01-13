@@ -326,6 +326,7 @@ class TensorRTEngine {
     std::unique_lock<std::mutex> lock(mutex_);
     infer_context_[predictor_id_per_thread].reset(nullptr);
     infer_context_.erase(predictor_id_per_thread);
+    cur_profile_num_ = 0;
   }
 
   nvinfer1::IHostMemory* Serialize() {
@@ -852,6 +853,15 @@ class TRTEngineManager {
   size_t max_ctx_mem_size_{0};
   std::unordered_map<PredictorID, AllocationPtr> context_memorys_;
   std::unordered_map<std::string, std::unique_ptr<TensorRTEngine>> engines_;
+  // createInferBuilder loads trt kernels and take a few second
+  // But as long as one IBuilder lives, trt kernel will not be unloaded
+  // Hence, a persistent IBuilder to avoid TensorRT unload/reload kernels
+  std::unique_ptr<nvinfer1::IBuilder, std::function<void(nvinfer1::IBuilder*)>>
+      holder{createInferBuilder(&NaiveLogger::Global()), [](auto* ptr) {
+               if (ptr) {
+                 ptr->destroy();
+               }
+             }};
 };
 
 }  // namespace tensorrt

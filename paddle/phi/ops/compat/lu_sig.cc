@@ -16,11 +16,11 @@
 
 namespace phi {
 
-KernelSignature LUOpArgumentMapping(const ArgumentMappingContext& ctx) {
+KernelSignature LUOpArgumentMapping(const ArgumentMappingContext& /*ctx*/) {
   return KernelSignature("lu", {"X"}, {"pivots"}, {"Out", "Pivots", "Infos"});
 }
 
-KernelSignature LUGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
+KernelSignature LUGradOpArgumentMapping(const ArgumentMappingContext& /*ctx*/) {
   return KernelSignature(
       "lu_grad", {"X", "Out", "Pivots", "Out@GRAD"}, {"pivots"}, {"X@GRAD"});
 }

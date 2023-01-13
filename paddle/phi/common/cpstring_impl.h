@@ -181,7 +181,7 @@ HOSTDEVICE static inline size_t PD_PString_ToInternalSizeT(
 /*
  * Need to implement in other source file.
  */
-HOSTDEVICE static inline void PD_Free(void *ptr, size_t size) { free(ptr); }
+HOSTDEVICE static inline void PD_Free(void *ptr) { free(ptr); }
 
 HOSTDEVICE static inline void *PD_Memset(void *src, int ch, size_t size) {
   char *dst = (char *)src;  // NOLINT
@@ -214,6 +214,7 @@ HOSTDEVICE static inline void *PD_Realloc(void *ptr,
   free(ptr);
   return new_ptr;
 #else
+  (void)old_size;                                       // unused
   return realloc(ptr, new_size);
 #endif
 }
@@ -263,7 +264,7 @@ HOSTDEVICE static inline void PD_PString_Init(PD_PString *str) {
 HOSTDEVICE static inline void PD_PString_Dealloc(PD_PString *str) {
   if (PD_PString_GetType(str) == PD_PSTR_LARGE &&
       str->u.large.ptr != NULL) {  // NOLINT
-    PD_Free(str->u.large.ptr, str->u.large.cap + 1);
+    PD_Free(str->u.large.ptr);
     PD_PString_Init(str);
   }
 }
@@ -331,7 +332,7 @@ HOSTDEVICE static inline char *PD_PString_ResizeUninitialized(PD_PString *str,
     }
 
     if (curr_type == PD_PSTR_LARGE) {
-      PD_Free((void *)curr_ptr, str->u.large.cap + 1);  // NOLINT
+      PD_Free((void *)curr_ptr);  // NOLINT
     }
 
     return str->u.smll.str;

@@ -1776,10 +1776,13 @@ class OutScaleForInferencePass:
                     in_node = graph._find_node_by_name(
                         op_node.outputs, var_name
                     )
-                    if in_node.dtype() not in [
-                        core.VarDesc.VarType.FP64,
-                        core.VarDesc.VarType.FP32,
-                    ]:
+                    if (in_node.node.var() is None) or (
+                        in_node.dtype()
+                        not in [
+                            core.VarDesc.VarType.FP64,
+                            core.VarDesc.VarType.FP32,
+                        ]
+                    ):
                         continue
 
                     scale_name = self._scale_name(var_name)

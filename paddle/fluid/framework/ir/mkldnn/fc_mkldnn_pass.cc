@@ -14,8 +14,8 @@
 
 #include "paddle/fluid/framework/ir/mkldnn/fc_mkldnn_pass.h"
 
-#include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/string/pretty_log.h"
+#include "paddle/phi/core/enforce.h"
+#include "paddle/utils/string/pretty_log.h"
 
 namespace paddle {
 namespace framework {

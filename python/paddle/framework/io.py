@@ -27,12 +27,6 @@ import paddle
 # deprecated module import
 from paddle import fluid
 from paddle.fluid import core
-from paddle.fluid.dygraph.io import (
-    INFER_MODEL_SUFFIX,
-    INFER_PARAMS_SUFFIX,
-    _construct_params_and_buffers,
-    _construct_program_holders,
-)
 from paddle.fluid.framework import (
     EagerParamBase,
     ParamBase,
@@ -52,6 +46,12 @@ from paddle.fluid.io import (
     _unpack_saved_dict,
 )
 from paddle.jit.api import _SaveLoadConfig
+from paddle.jit.translated_layer import (
+    INFER_MODEL_SUFFIX,
+    INFER_PARAMS_SUFFIX,
+    _construct_params_and_buffers,
+    _construct_program_holders,
+)
 
 __all__ = []
 

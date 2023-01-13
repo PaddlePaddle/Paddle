@@ -16,7 +16,8 @@
 
 namespace phi {
 
-KernelSignature WarpctcOpArgumentMapping(const ArgumentMappingContext& ctx) {
+KernelSignature WarpctcOpArgumentMapping(
+    const ArgumentMappingContext& /*ctx*/) {
   return KernelSignature("warpctc",
                          {"Logits", "Label", "LogitsLength", "LabelLength"},
                          {"blank", "norm_by_times"},
@@ -24,7 +25,7 @@ KernelSignature WarpctcOpArgumentMapping(const ArgumentMappingContext& ctx) {
 }
 
 KernelSignature WarpctcGradOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
+    const ArgumentMappingContext& /*ctx*/) {
   return KernelSignature("warpctc_grad",
                          {"Logits", "LogitsLength", "WarpCTCGrad", "Loss@GRAD"},
                          {"blank", "norm_by_times"},

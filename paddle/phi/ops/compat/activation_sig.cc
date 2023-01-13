@@ -18,21 +18,21 @@ namespace phi {
 
 #define DEFINE_ACT_GRAD_DEPX_OP_ARGMAP(func_name, op_name, attrs) \
   KernelSignature func_name##GradOpArgumentMapping(               \
-      const ArgumentMappingContext& ctx) {                        \
+      const ArgumentMappingContext& /*ctx*/) {                    \
     return KernelSignature(                                       \
         op_name "_grad", {"X", "Out@GRAD"}, {attrs}, {"X@GRAD"}); \
   }
 
 #define DEFINE_ACT_GRAD_DEPOUT_OP_ARGMAP(func_name, op_name, attrs) \
   KernelSignature func_name##GradOpArgumentMapping(                 \
-      const ArgumentMappingContext& ctx) {                          \
+      const ArgumentMappingContext& /*ctx*/) {                      \
     return KernelSignature(                                         \
         op_name "_grad", {"Out", "Out@GRAD"}, {attrs}, {"X@GRAD"}); \
   }
 
 #define DEFINE_ACT_GRAD_NODEP_OP_ARGMAP(func_name, op_name, attrs) \
   KernelSignature func_name##GradOpArgumentMapping(                \
-      const ArgumentMappingContext& ctx) {                         \
+      const ArgumentMappingContext& /*ctx*/) {                     \
     return KernelSignature(                                        \
         op_name "_grad", {"Out@GRAD"}, {attrs}, {"X@GRAD"});       \
   }
@@ -53,16 +53,17 @@ DEFINE_ACT_GRAD_DEPX_OP_ARGMAP(STanh,
 
 DEFINE_ACT_GRAD_DEPOUT_OP_ARGMAP(Relu6, "relu6", "threshold");  // NOLINT
 
-KernelSignature HardSwishOpArgumentMapping(const ArgumentMappingContext& ctx) {
+KernelSignature HardSwishOpArgumentMapping(
+    const ArgumentMappingContext& /*ctx*/) {
   return KernelSignature(
       "hardswish_raw", {"X"}, {"threshold", "scale", "offset"}, {"Out"});
 }
 
-KernelSignature SwishOpArgumentMapping(const ArgumentMappingContext& ctx) {
+KernelSignature SwishOpArgumentMapping(const ArgumentMappingContext& /*ctx*/) {
   return KernelSignature("swish_raw", {"X"}, {"beta"}, {"Out"});
 }
 
-KernelSignature Relu6OpArgumentMapping(const ArgumentMappingContext& ctx) {
+KernelSignature Relu6OpArgumentMapping(const ArgumentMappingContext& /*ctx*/) {
   return KernelSignature("relu6_raw", {"X"}, {"threshold"}, {"Out"});
 }
 

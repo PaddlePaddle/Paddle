@@ -17,7 +17,7 @@
 namespace phi {
 
 KernelSignature TruncatedGaussianRandomOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
+    const ArgumentMappingContext& /*ctx*/) {
   return KernelSignature("truncated_gaussian_random",
                          {},
                          {"shape", "mean", "std", "seed", "dtype"},

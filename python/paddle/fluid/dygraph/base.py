@@ -44,13 +44,13 @@ __all__ = [
     'to_variable',
 ]
 
-# Flag that indicates whether running code under `@declarative`
+# Flag that indicates whether running code under `@to_static`
 _in_declarative_mode_ = False
 
 
 def in_declarative_mode():
     """
-    Return a bool value that indicates whether running code under `@declarative`
+    Return a bool value that indicates whether running code under `@to_static`
 
     """
     return _in_declarative_mode_

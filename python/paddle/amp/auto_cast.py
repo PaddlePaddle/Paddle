@@ -94,9 +94,9 @@ def decorate(
     Commonly, it is used together with `auto_cast` to achieve Pure float16/bfloat16 in imperative mode.
 
     Args:
-        models(Layer|list of Layer, optional): The defined models by user, models must be either a single model or a list of models. Default is None.
+        models(Layer|list of Layer): The defined models by user, models must be either a single model or a list of models. Default is None.
         optimizers(Optimizer|list of Optimizer, optional): The defined optimizers by user, optimizers must be either a single optimizer or a list of optimizers. Default is None.
-        level(str, optional): Auto mixed precision level. Accepted values are "O1" and "O2": O1 represent mixed precision, the decorator will do nothing;
+        level(str, optional): Auto mixed precision level. Accepted values are 'O1' and 'O2': O1 represent mixed precision, the decorator will do nothing;
              O2 represent Pure float16/bfloat16, the decorator will cast all parameters of models to float16/bfloat16, except BatchNorm and LayerNorm. Default is O1(amp)
         dtype(str, optional): Whether to use 'float16' or 'bfloat16'. Default is 'float16'.
         master_weight(bool, optinal): For level='O2', whether to use multi-precision during weight updating. If master_weight is None, in O2 level optimizer will use multi-precision. Default is None.

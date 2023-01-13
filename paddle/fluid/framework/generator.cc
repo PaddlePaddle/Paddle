@@ -20,12 +20,46 @@ limitations under the License. */
 #include <utility>
 
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
+#include "paddle/fluid/platform/device/xpu/xpu_info.h"
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace framework {
 
-const std::shared_ptr<Generator>& DefaultCUDAGenerator(int64_t device_id) {
+const std::shared_ptr<Generator>& DefaultXPUGenerator(
+    int64_t UNUSED device_id) {
+#if defined(PADDLE_WITH_XPU)
+
+  static int64_t num_xpu_devices = -1;
+  static std::once_flag num_devices_init_flag;
+  static std::deque<std::once_flag> xpu_device_flags;
+  static std::vector<std::shared_ptr<Generator>> default_xpu_generators;
+
+  std::call_once(num_devices_init_flag, []() {
+    num_xpu_devices = paddle::platform::GetXPUDeviceCount();
+    xpu_device_flags.resize(num_xpu_devices);
+    default_xpu_generators.resize(num_xpu_devices);
+  });
+  if (device_id < 0) {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "xpu device id shoule be greater than 0"));
+  }
+
+  std::call_once(xpu_device_flags[device_id], [device_id]() {
+    default_xpu_generators[device_id] =
+        std::make_shared<Generator>(GetRandomSeed(), device_id);
+    VLOG(4) << "initial seed: "
+            << default_xpu_generators[device_id]->GetCurrentSeed();
+  });
+  return default_xpu_generators[device_id];
+#else
+  PADDLE_THROW(platform::errors::PermissionDenied(
+      "getDefaultXPUGenerator only support in XPU place"));
+#endif
+}
+
+const std::shared_ptr<Generator>& DefaultCUDAGenerator(
+    int64_t UNUSED device_id) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 
   static int64_t num_cuda_devices = -1;
@@ -192,7 +226,7 @@ uint64_t Generator::Random64() {
 }
 
 std::pair<uint64_t, uint64_t> Generator::IncrementOffset(
-    uint64_t increament_offset) {
+    uint64_t UNUSED increament_offset) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   std::lock_guard<std::mutex> lock(this->mu_);
   uint64_t cur_offset = this->state_.thread_offset;

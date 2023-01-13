@@ -16,7 +16,8 @@ limitations under the License. */
 
 namespace phi {
 
-KernelSignature FrameGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
+KernelSignature FrameGradOpArgumentMapping(
+    const ArgumentMappingContext& /*ctx*/) {
   return KernelSignature("frame_grad",
                          {"X", "Out@GRAD"},
                          {"frame_length", "hop_length", "axis"},

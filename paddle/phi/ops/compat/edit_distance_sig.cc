@@ -17,7 +17,7 @@
 namespace phi {
 
 KernelSignature EditDistanceOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
+    const ArgumentMappingContext& /*ctx*/) {
   return KernelSignature("edit_distance",
                          {"Hyps", "Refs", "HypsLength", "RefsLength"},
                          {"normalized"},

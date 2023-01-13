@@ -16,13 +16,14 @@
 
 namespace phi {
 
-KernelSignature NanmedianOpArgumentMapping(const ArgumentMappingContext& ctx) {
+KernelSignature NanmedianOpArgumentMapping(
+    const ArgumentMappingContext& /*ctx*/) {
   return KernelSignature(
       "nanmedian", {"X"}, {"axis", "keepdim"}, {"Out", "MedianIndex"});
 }
 
 KernelSignature NanmedianGradOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
+    const ArgumentMappingContext& /*ctx*/) {
   return KernelSignature("nanmedian_grad",
                          {"X", "MedianIndex", "Out@GRAD"},
                          {"axis", "keepdim"},

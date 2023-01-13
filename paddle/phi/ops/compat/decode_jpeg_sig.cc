@@ -16,7 +16,8 @@
 
 namespace phi {
 
-KernelSignature DecodeJpegOpArgumentMapping(const ArgumentMappingContext& ctx) {
+KernelSignature DecodeJpegOpArgumentMapping(
+    const ArgumentMappingContext& /*ctx*/) {
   return KernelSignature("decode_jpeg", {"X"}, {"mode"}, {"Out"});
 }
 

@@ -16,7 +16,8 @@
 
 namespace phi {
 
-KernelSignature BoxCoderOpArgumentMapping(const ArgumentMappingContext& ctx) {
+KernelSignature BoxCoderOpArgumentMapping(
+    const ArgumentMappingContext& /*ctx*/) {
   return KernelSignature("box_coder",
                          {"PriorBox", "PriorBoxVar", "TargetBox"},
                          {"code_type", "box_normalized", "axis", "variance"},

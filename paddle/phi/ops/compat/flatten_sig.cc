@@ -29,7 +29,7 @@ KernelSignature FlattenOpArgumentMapping(const ArgumentMappingContext& ctx) {
 }
 
 KernelSignature FlattenGradOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
+    const ArgumentMappingContext& /*ctx*/) {
   return KernelSignature(
       "flatten_grad", {"XShape", "Out@GRAD"}, {}, {"X@GRAD"});
 }

@@ -16,7 +16,7 @@
 
 namespace phi {
 
-KernelSignature Conv3dOpArgumentMapping(const ArgumentMappingContext& ctx) {
+KernelSignature Conv3dOpArgumentMapping(const ArgumentMappingContext& /*ctx*/) {
   return KernelSignature("conv3d",
                          {"Input", "Filter"},
                          {
@@ -30,7 +30,8 @@ KernelSignature Conv3dOpArgumentMapping(const ArgumentMappingContext& ctx) {
                          {"Output"});
 }
 
-KernelSignature Conv3dGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
+KernelSignature Conv3dGradOpArgumentMapping(
+    const ArgumentMappingContext& /*ctx*/) {
   return KernelSignature("conv3d_grad",
                          {"Input", "Filter", "Output@GRAD"},
                          {"strides",
@@ -43,7 +44,7 @@ KernelSignature Conv3dGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
 }
 
 KernelSignature Conv3dDoubleGradOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
+    const ArgumentMappingContext& /*ctx*/) {
   return KernelSignature("conv3d_double_grad",
                          {"Input", "Filter", "DOutput", "DDInput", "DDFilter"},
                          {"strides",

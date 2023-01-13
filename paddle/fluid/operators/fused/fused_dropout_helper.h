@@ -15,10 +15,10 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/fluid/framework/generator.h"
-#include "paddle/fluid/operators/dropout_impl_util.h"
 #include "paddle/fluid/operators/fused/fused_dropout_act_bias.h"
 #include "paddle/fluid/operators/fused/fused_layernorm_residual_dropout_bias.h"
 #include "paddle/fluid/operators/fused/fused_residual_dropout_bias.h"
+#include "paddle/phi/kernels/funcs/dropout_impl_util.h"
 #include "paddle/phi/kernels/funcs/functors.h"
 #include "paddle/phi/kernels/layer_norm_kernel.h"
 
@@ -106,7 +106,7 @@ struct DropoutParam {
 
   int UpdateSeedAndIncrement(const phi::GPUContext& ctx, const int offset) {
     uint64_t tmp_increment;
-    GetSeedDataAndIncrement(
+    phi::funcs::GetSeedDataAndIncrement(
         ctx, tensor_seed, fix_seed, seed_val, offset, &seed, &tmp_increment);
     increment = static_cast<int>(tmp_increment);
     return increment;

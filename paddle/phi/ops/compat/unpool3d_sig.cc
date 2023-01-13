@@ -15,7 +15,8 @@
 #include "paddle/phi/core/compat/op_utils.h"
 namespace phi {
 
-KernelSignature Unpool3dOpArgumentMapping(const ArgumentMappingContext& ctx) {
+KernelSignature Unpool3dOpArgumentMapping(
+    const ArgumentMappingContext& /*ctx*/) {
   return KernelSignature(
       "unpool3d",
       {"X", "Indices"},
@@ -24,7 +25,7 @@ KernelSignature Unpool3dOpArgumentMapping(const ArgumentMappingContext& ctx) {
 }
 
 KernelSignature Unpool3dGradOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
+    const ArgumentMappingContext& /*ctx*/) {
   return KernelSignature(
       "unpool3d_grad",
       {"X", "Indices", "Out", "Out@GRAD"},

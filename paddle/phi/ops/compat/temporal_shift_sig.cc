@@ -17,7 +17,7 @@
 namespace phi {
 
 KernelSignature TemporalShiftOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
+    const ArgumentMappingContext& /*ctx*/) {
   return KernelSignature("temporal_shift",
                          {"X"},
                          {"seg_num", "shift_ratio", "data_format"},
@@ -25,7 +25,7 @@ KernelSignature TemporalShiftOpArgumentMapping(
 }
 
 KernelSignature TemporalShiftGradOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
+    const ArgumentMappingContext& /*ctx*/) {
   return KernelSignature("temporal_shift_grad",
                          {"Out@GRAD"},
                          {"seg_num", "shift_ratio", "data_format"},

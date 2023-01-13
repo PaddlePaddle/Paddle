@@ -16,7 +16,7 @@
 
 namespace phi {
 
-KernelSignature EyeOpArgumentMapping(const ArgumentMappingContext& ctx) {
+KernelSignature EyeOpArgumentMapping(const ArgumentMappingContext& /*ctx*/) {
   return KernelSignature(
       "eye", {}, {"num_rows", "num_columns", "dtype"}, {"Out"});
 }

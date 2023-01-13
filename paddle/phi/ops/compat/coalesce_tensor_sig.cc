@@ -16,7 +16,7 @@
 
 namespace phi {
 KernelSignature CoalesceTensorOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
+    const ArgumentMappingContext& /*ctx*/) {
   return KernelSignature("coalesce_tensor",
                          {"Input"},
                          {"dtype",

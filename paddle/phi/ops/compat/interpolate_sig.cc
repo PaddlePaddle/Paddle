@@ -17,7 +17,7 @@ limitations under the License. */
 namespace phi {
 
 KernelSignature BilinearInterpOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
+    const ArgumentMappingContext& /*ctx*/) {
   return KernelSignature("bilinear_interp",
                          {"X", "OutSize", "SizeTensor", "Scale"},
                          {"data_layout",
@@ -32,7 +32,7 @@ KernelSignature BilinearInterpOpArgumentMapping(
 }
 
 KernelSignature NearestInterpOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
+    const ArgumentMappingContext& /*ctx*/) {
   return KernelSignature("nearest_interp",
                          {"X", "OutSize", "SizeTensor", "Scale"},
                          {"data_layout",
@@ -46,7 +46,7 @@ KernelSignature NearestInterpOpArgumentMapping(
                          {"Out"});
 }
 KernelSignature TrilinearInterpOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
+    const ArgumentMappingContext& /*ctx*/) {
   return KernelSignature("trilinear_interp",
                          {"X", "OutSize", "SizeTensor", "Scale"},
                          {"data_layout",
@@ -61,7 +61,7 @@ KernelSignature TrilinearInterpOpArgumentMapping(
 }
 
 KernelSignature LinearInterpOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
+    const ArgumentMappingContext& /*ctx*/) {
   return KernelSignature("linear_interp",
                          {"X", "OutSize", "SizeTensor", "Scale"},
                          {"data_layout",
@@ -76,7 +76,7 @@ KernelSignature LinearInterpOpArgumentMapping(
 }
 
 KernelSignature BicubicInterpOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
+    const ArgumentMappingContext& /*ctx*/) {
   return KernelSignature("bicubic_interp",
                          {"X", "OutSize", "SizeTensor", "Scale"},
                          {"data_layout",
@@ -91,7 +91,7 @@ KernelSignature BicubicInterpOpArgumentMapping(
 }
 
 KernelSignature BilinearInterpGradOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
+    const ArgumentMappingContext& /*ctx*/) {
   return KernelSignature("bilinear_interp_grad",
                          {"X", "OutSize", "SizeTensor", "Scale", "Out@GRAD"},
                          {"data_layout",
@@ -106,7 +106,7 @@ KernelSignature BilinearInterpGradOpArgumentMapping(
 }
 
 KernelSignature NearestInterpGradOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
+    const ArgumentMappingContext& /*ctx*/) {
   return KernelSignature("nearest_interp_grad",
                          {"X", "OutSize", "SizeTensor", "Scale", "Out@GRAD"},
                          {"data_layout",
@@ -120,7 +120,7 @@ KernelSignature NearestInterpGradOpArgumentMapping(
                          {"X@GRAD"});
 }
 KernelSignature TrilinearInterpGradOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
+    const ArgumentMappingContext& /*ctx*/) {
   return KernelSignature("trilinear_interp_grad",
                          {"X", "OutSize", "SizeTensor", "Scale", "Out@GRAD"},
                          {"data_layout",
@@ -135,7 +135,7 @@ KernelSignature TrilinearInterpGradOpArgumentMapping(
 }
 
 KernelSignature LinearInterpGradOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
+    const ArgumentMappingContext& /*ctx*/) {
   return KernelSignature("linear_interp_grad",
                          {"X", "OutSize", "SizeTensor", "Scale", "Out@GRAD"},
                          {"data_layout",
@@ -150,7 +150,7 @@ KernelSignature LinearInterpGradOpArgumentMapping(
 }
 
 KernelSignature BicubicInterpGradOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
+    const ArgumentMappingContext& /*ctx*/) {
   return KernelSignature("bicubic_interp_grad",
                          {"X", "OutSize", "SizeTensor", "Scale", "Out@GRAD"},
                          {"data_layout",

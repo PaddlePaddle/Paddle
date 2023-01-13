@@ -79,7 +79,7 @@ def group_sharded_parallel(
         buffer_max_size (int, optional): The max size of the buffer used to integrate gradient in `os_g`. The larger the size, the more GPU memory will be used. Defaults to 2**23, which means that the dimension of the buffer is 2**23.
         segment_size (int, optional): The smallest size of parameter to be sharded in `p_g_os`. Defaults to 2**20, indicating that the dimension of the minimum segmented parameter is 2**20.
         sync_comm (bool, optional): Whether to use synchronous communication, only in `p_g_os` used. Defaults to False, indicating that asynchronous communication is used.
-        dp_group(Group, optional): dp communication group, only support to combine stage2 and dp hybrid communication now.
+        dp_group(Group, optional): dp communication group, support to combine stage2 or stage3 with dp hybrid communication.
 
     Returns:
         model: A wrapper for group sharded given model.
@@ -192,6 +192,7 @@ def group_sharded_parallel(
                 segment_size=segment_size,
                 offload=offload,
                 sync_comm=sync_comm,
+                dp_group=dp_group,
                 device=device,
             )
         else:

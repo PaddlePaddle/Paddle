@@ -266,18 +266,13 @@ def stft(
     windows of the input using this formula:
 
     .. math::
-        X_t[\omega] = \sum_{n = 0}^{N-1}%
-                      \text{window}[n]\ x[t \times H + n]\ %
-                      e^{-{2 \pi j \omega n}/{N}}
+        X_t[f] = \sum_{n = 0}^{N-1} \text{window}[n]\ x[t \times H + n]\ e^{-{2 \pi j f n}/{N}}
 
     Where:
     - :math:`t`: The :math:`t`-th input window.
-
-    - :math:`\omega`: Frequency :math:`0 \leq \omega < \text{n\_fft}` for `onesided=False`,
-      or :math:`0 \leq \omega < \lfloor \text{n\_fft} / 2 \rfloor + 1` for `onesided=True`.
-
+    - :math:`f`: Frequency :math:`0 \leq f < \text{n_fft}` for `onesided=False`,
+    or :math:`0 \leq f < \lfloor \text{n_fft} / 2 \rfloor + 1` for `onesided=True`.
     - :math:`N`: Value of `n_fft`.
-
     - :math:`H`: Value of `hop_length`.
 
     Args:
@@ -285,11 +280,11 @@ def stft(
             shape `[..., seq_length]`. It can be a real-valued or a complex Tensor.
         n_fft (int): The number of input samples to perform Fourier transform.
         hop_length (int, optional): Number of steps to advance between adjacent windows
-            and `0 < hop_length`. Default: `None`(treated as equal to `n_fft//4`)
-        win_length (int, optional): The size of window. Default: `None`(treated as equal
+            and `0 < hop_length`. Default: `None` (treated as equal to `n_fft//4`)
+        win_length (int, optional): The size of window. Default: `None` (treated as equal
             to `n_fft`)
         window (Tensor, optional): A 1-dimensional tensor of size `win_length`. It will
-            be center padded to length `n_fft` if `win_length < n_fft`. Default: `None`(
+            be center padded to length `n_fft` if `win_length < n_fft`. Default: `None` (
             treated as a rectangle window with value equal to 1 of size `win_length`).
         center (bool, optional): Whether to pad `x` to make that the
             :math:`t \times hop\_length` at the center of :math:`t`-th frame. Default: `True`.
@@ -438,21 +433,20 @@ def istft(
     Inverse short-time Fourier transform (ISTFT).
 
     Reconstruct time-domain signal from the giving complex input and window tensor when
-        nonzero overlap-add (NOLA) condition is met:
+    nonzero overlap-add (NOLA) condition is met:
 
     .. math::
-        \sum_{t = -\infty}^{\infty}%
-            \text{window}^2[n - t \times H]\ \neq \ 0, \ \text{for } all \ n
+        \sum_{t = -\infty}^{\infty} \text{window}^2[n - t \times H]\ \neq \ 0, \ \text{for } all \ n
 
     Where:
     - :math:`t`: The :math:`t`-th input window.
     - :math:`N`: Value of `n_fft`.
     - :math:`H`: Value of `hop_length`.
 
-    Result of `istft` expected to be the inverse of `paddle.signal.stft`, but it is
+        Result of `istft` expected to be the inverse of `paddle.signal.stft`, but it is
         not guaranteed to reconstruct a exactly realizible time-domain signal from a STFT
         complex tensor which has been modified (via masking or otherwise). Therefore, `istft`
-        gives the [Griffin-Lim optimal estimate](https://ieeexplore.ieee.org/document/1164317)
+        gives the `[Griffin-Lim optimal estimate] <https://ieeexplore.ieee.org/document/1164317>`_
         (optimal in a least-squares sense) for the corresponding signal.
 
     Args:
@@ -460,9 +454,9 @@ def istft(
             Tensor with shape `[..., n_fft, num_frames]`.
         n_fft (int): The size of Fourier transform.
         hop_length (int, optional): Number of steps to advance between adjacent windows
-            from time-domain signal and `0 < hop_length < win_length`. Default: `None`(
+            from time-domain signal and `0 < hop_length < win_length`. Default: `None` (
             treated as equal to `n_fft//4`)
-        win_length (int, optional): The size of window. Default: `None`(treated as equal
+        win_length (int, optional): The size of window. Default: `None` (treated as equal
             to `n_fft`)
         window (Tensor, optional): A 1-dimensional tensor of size `win_length`. It will
             be center padded to length `n_fft` if `win_length < n_fft`. It should be a
@@ -470,7 +464,7 @@ def istft(
             a rectangle window with value equal to 1 of size `win_length`).
         center (bool, optional): It means that whether the time-domain signal has been
             center padded. Default: `True`.
-        normalized (bool, optional): Control whether to scale the output by `1/sqrt(n_fft)`.
+        normalized (bool, optional): Control whether to scale the output by :math:`1/sqrt(n_{fft})`.
             Default: `False`
         onesided (bool, optional): It means that whether the input STFT tensor is a half
             of the conjugate symmetry STFT tensor transformed from a real-valued signal
@@ -486,7 +480,7 @@ def istft(
 
     Returns:
         A tensor of least squares estimation of the reconstructed signal(s) with shape
-            `[..., seq_length]`
+        `[..., seq_length]`
 
     Examples:
         .. code-block:: python

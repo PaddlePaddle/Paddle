@@ -15,11 +15,12 @@
 #include "paddle/phi/core/compat/op_utils.h"
 
 namespace phi {
-KernelSignature FillOpArgumentMapping(const ArgumentMappingContext& ctx) {
+KernelSignature FillOpArgumentMapping(const ArgumentMappingContext& /*ctx*/) {
   return KernelSignature("fill", {"X"}, {"value_float"}, {"Out"});
 }
 
-KernelSignature FillGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
+KernelSignature FillGradOpArgumentMapping(
+    const ArgumentMappingContext& /*ctx*/) {
   return KernelSignature(
       "fill_grad", {"Out@GRAD"}, {"value_float"}, {"X@GRAD"});
 }

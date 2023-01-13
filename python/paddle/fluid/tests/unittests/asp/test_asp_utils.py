@@ -25,22 +25,22 @@ import paddle
 class TestASPUtils(unittest.TestCase):
     def test_get_check_method(self):
         self.assertEqual(
-            paddle.fluid.contrib.sparsity.CheckMethod.get_checking_method(
-                paddle.fluid.contrib.sparsity.MaskAlgo.MASK_1D
+            paddle.incubate.asp.CheckMethod.get_checking_method(
+                paddle.incubate.asp.MaskAlgo.MASK_1D
             ),
-            paddle.fluid.contrib.sparsity.CheckMethod.CHECK_1D,
+            paddle.incubate.asp.CheckMethod.CHECK_1D,
         )
         self.assertEqual(
-            paddle.fluid.contrib.sparsity.CheckMethod.get_checking_method(
-                paddle.fluid.contrib.sparsity.MaskAlgo.MASK_2D_GREEDY
+            paddle.incubate.asp.CheckMethod.get_checking_method(
+                paddle.incubate.asp.MaskAlgo.MASK_2D_GREEDY
             ),
-            paddle.fluid.contrib.sparsity.CheckMethod.CHECK_2D,
+            paddle.incubate.asp.CheckMethod.CHECK_2D,
         )
         self.assertEqual(
-            paddle.fluid.contrib.sparsity.CheckMethod.get_checking_method(
-                paddle.fluid.contrib.sparsity.MaskAlgo.MASK_2D_BEST
+            paddle.incubate.asp.CheckMethod.get_checking_method(
+                paddle.incubate.asp.MaskAlgo.MASK_2D_BEST
             ),
-            paddle.fluid.contrib.sparsity.CheckMethod.CHECK_2D,
+            paddle.incubate.asp.CheckMethod.CHECK_2D,
         )
 
     def test_density(self):
@@ -67,26 +67,22 @@ class TestASPUtils(unittest.TestCase):
                 [0.0, 1.0, 0.0, 0.0, 1.0],
             ]
         )
-        self.assertTrue(paddle.fluid.contrib.sparsity.check_mask_1d(x, 2, 4))
-        self.assertFalse(paddle.fluid.contrib.sparsity.check_mask_1d(x, 3, 4))
-        self.assertTrue(paddle.fluid.contrib.sparsity.check_mask_1d(x, 2, 5))
-        self.assertFalse(paddle.fluid.contrib.sparsity.check_mask_1d(x, 3, 5))
-        self.assertTrue(paddle.fluid.contrib.sparsity.check_mask_1d(x, 3, 6))
-        self.assertFalse(paddle.fluid.contrib.sparsity.check_mask_1d(x, 4, 6))
+        self.assertTrue(paddle.incubate.asp.check_mask_1d(x, 2, 4))
+        self.assertFalse(paddle.incubate.asp.check_mask_1d(x, 3, 4))
+        self.assertTrue(paddle.incubate.asp.check_mask_1d(x, 2, 5))
+        self.assertFalse(paddle.incubate.asp.check_mask_1d(x, 3, 5))
+        self.assertTrue(paddle.incubate.asp.check_mask_1d(x, 3, 6))
+        self.assertFalse(paddle.incubate.asp.check_mask_1d(x, 4, 6))
 
     def test_get_mask_1d(self):
         for _ in range(10):
             x = np.random.randint(10, size=(5, 5))
-            x = paddle.fluid.contrib.sparsity.get_mask_1d(x, 2, 4)
-            self.assertTrue(
-                paddle.fluid.contrib.sparsity.check_mask_1d(x, 2, 4)
-            )
+            x = paddle.incubate.asp.get_mask_1d(x, 2, 4)
+            self.assertTrue(paddle.incubate.asp.check_mask_1d(x, 2, 4))
 
             x = np.random.randn(5, 4)
-            x = paddle.fluid.contrib.sparsity.get_mask_1d(x, 2, 4)
-            self.assertTrue(
-                paddle.fluid.contrib.sparsity.check_mask_1d(x, 2, 4)
-            )
+            x = paddle.incubate.asp.get_mask_1d(x, 2, 4)
+            self.assertTrue(paddle.incubate.asp.check_mask_1d(x, 2, 4))
 
     def test_check_mask_2d(self):
         x = np.array(
@@ -98,40 +94,32 @@ class TestASPUtils(unittest.TestCase):
                 [0.0, 1.0, 0.0, 0.0, 1.0],
             ]
         )
-        self.assertTrue(paddle.fluid.contrib.sparsity.check_mask_2d(x, 2, 4))
-        self.assertFalse(paddle.fluid.contrib.sparsity.check_mask_2d(x, 3, 4))
-        self.assertTrue(paddle.fluid.contrib.sparsity.check_mask_2d(x, 2, 5))
-        self.assertFalse(paddle.fluid.contrib.sparsity.check_mask_2d(x, 3, 5))
-        self.assertTrue(paddle.fluid.contrib.sparsity.check_mask_2d(x, 3, 6))
-        self.assertFalse(paddle.fluid.contrib.sparsity.check_mask_2d(x, 4, 6))
+        self.assertTrue(paddle.incubate.asp.check_mask_2d(x, 2, 4))
+        self.assertFalse(paddle.incubate.asp.check_mask_2d(x, 3, 4))
+        self.assertTrue(paddle.incubate.asp.check_mask_2d(x, 2, 5))
+        self.assertFalse(paddle.incubate.asp.check_mask_2d(x, 3, 5))
+        self.assertTrue(paddle.incubate.asp.check_mask_2d(x, 3, 6))
+        self.assertFalse(paddle.incubate.asp.check_mask_2d(x, 4, 6))
 
     def test_get_mask_2d_greedy(self):
         for _ in range(10):
             x = np.random.randint(10, size=(5, 5))
-            x = paddle.fluid.contrib.sparsity.get_mask_2d_greedy(x, 2, 4)
-            self.assertTrue(
-                paddle.fluid.contrib.sparsity.check_mask_2d(x, 2, 4)
-            )
+            x = paddle.incubate.asp.get_mask_2d_greedy(x, 2, 4)
+            self.assertTrue(paddle.incubate.asp.check_mask_2d(x, 2, 4))
 
             x = np.random.randn(5, 4)
-            x = paddle.fluid.contrib.sparsity.get_mask_2d_greedy(x, 2, 4)
-            self.assertTrue(
-                paddle.fluid.contrib.sparsity.check_mask_2d(x, 2, 4)
-            )
+            x = paddle.incubate.asp.get_mask_2d_greedy(x, 2, 4)
+            self.assertTrue(paddle.incubate.asp.check_mask_2d(x, 2, 4))
 
     def test_get_mask_2d_best(self):
         for _ in range(10):
             x = np.random.randint(10, size=(5, 5))
-            x = paddle.fluid.contrib.sparsity.get_mask_2d_best(x, 2, 4)
-            self.assertTrue(
-                paddle.fluid.contrib.sparsity.check_mask_2d(x, 2, 4)
-            )
+            x = paddle.incubate.asp.get_mask_2d_best(x, 2, 4)
+            self.assertTrue(paddle.incubate.asp.check_mask_2d(x, 2, 4))
 
             x = np.random.randn(5, 4)
-            x = paddle.fluid.contrib.sparsity.get_mask_2d_best(x, 2, 4)
-            self.assertTrue(
-                paddle.fluid.contrib.sparsity.check_mask_2d(x, 2, 4)
-            )
+            x = paddle.incubate.asp.get_mask_2d_best(x, 2, 4)
+            self.assertTrue(paddle.incubate.asp.check_mask_2d(x, 2, 4))
 
     def test_threadsafe_valid_2d_patterns(self):
         def get_reference(m=4, n=2):
@@ -154,12 +142,12 @@ class TestASPUtils(unittest.TestCase):
 
         for _ in range(4):
             computing_thread = threading.Thread(
-                target=paddle.fluid.contrib.sparsity.utils._compute_valid_2d_patterns,
+                target=paddle.incubate.asp.utils._compute_valid_2d_patterns,
                 args=(2, 4),
             )
             computing_thread.start()
         time.sleep(3)
-        patterns_map = paddle.fluid.contrib.sparsity.utils._valid_2d_patterns
+        patterns_map = paddle.incubate.asp.utils._valid_2d_patterns
         reference_patterns = get_reference()
         reference_key = '4_2'
 
@@ -202,66 +190,66 @@ class TestASPUtils(unittest.TestCase):
             self.__test_1D_2D_sparse_mask_generation_methods(x)
 
     def __test_1D_2D_sparsity_checking_methods(self, x_2d):
-        mask = paddle.fluid.contrib.sparsity.get_mask_1d(x_2d, 2, 4)
+        mask = paddle.incubate.asp.get_mask_1d(x_2d, 2, 4)
         self.assertEqual(
-            paddle.fluid.contrib.sparsity.check_sparsity(
+            paddle.incubate.asp.check_sparsity(
                 mask,
-                func_name=paddle.fluid.contrib.sparsity.CheckMethod.CHECK_1D,
+                func_name=paddle.incubate.asp.CheckMethod.CHECK_1D,
                 n=2,
                 m=4,
             ),
-            paddle.fluid.contrib.sparsity.check_mask_1d(mask, 2, 4),
+            paddle.incubate.asp.check_mask_1d(mask, 2, 4),
         )
-        mask = paddle.fluid.contrib.sparsity.get_mask_2d_best(x_2d, 2, 4)
+        mask = paddle.incubate.asp.get_mask_2d_best(x_2d, 2, 4)
         self.assertEqual(
-            paddle.fluid.contrib.sparsity.check_sparsity(
+            paddle.incubate.asp.check_sparsity(
                 mask,
-                func_name=paddle.fluid.contrib.sparsity.CheckMethod.CHECK_2D,
+                func_name=paddle.incubate.asp.CheckMethod.CHECK_2D,
                 n=2,
                 m=4,
             ),
-            paddle.fluid.contrib.sparsity.check_mask_2d(mask, 2, 4),
+            paddle.incubate.asp.check_mask_2d(mask, 2, 4),
         )
 
     def __test_1D_2D_sparse_mask_generation_methods(self, x):
-        mask = paddle.fluid.contrib.sparsity.create_mask(
+        mask = paddle.incubate.asp.create_mask(
             x,
-            func_name=paddle.fluid.contrib.sparsity.MaskAlgo.MASK_1D,
+            func_name=paddle.incubate.asp.MaskAlgo.MASK_1D,
             n=2,
             m=4,
         )
         self.assertTrue(
-            paddle.fluid.contrib.sparsity.check_sparsity(
+            paddle.incubate.asp.check_sparsity(
                 mask,
-                func_name=paddle.fluid.contrib.sparsity.CheckMethod.CHECK_1D,
+                func_name=paddle.incubate.asp.CheckMethod.CHECK_1D,
                 n=2,
                 m=4,
             )
         )
-        mask = paddle.fluid.contrib.sparsity.create_mask(
+        mask = paddle.incubate.asp.create_mask(
             x,
-            func_name=paddle.fluid.contrib.sparsity.MaskAlgo.MASK_2D_GREEDY,
+            func_name=paddle.incubate.asp.MaskAlgo.MASK_2D_GREEDY,
             n=2,
             m=4,
         )
         self.assertTrue(
-            paddle.fluid.contrib.sparsity.check_sparsity(
+            paddle.incubate.asp.check_sparsity(
                 mask,
-                func_name=paddle.fluid.contrib.sparsity.CheckMethod.CHECK_2D,
+                func_name=paddle.incubate.asp.CheckMethod.CHECK_2D,
                 n=2,
                 m=4,
             )
         )
-        mask = paddle.fluid.contrib.sparsity.create_mask(
+        mask = paddle.incubate.asp.create_mask(
             x,
-            func_name=paddle.fluid.contrib.sparsity.MaskAlgo.MASK_2D_BEST,
+            func_name=paddle.incubate.asp.MaskAlgo.MASK_2D_BEST,
             n=2,
             m=4,
         )
         self.assertTrue(
-            paddle.fluid.contrib.sparsity.check_sparsity(
+            paddle.incubate.asp.check_sparsity(
                 mask,
-                func_name=paddle.fluid.contrib.sparsity.CheckMethod.CHECK_2D,
+                func_name=paddle.incubate.asp.CheckMethod.CHECK_2D,
                 n=2,
                 m=4,
             )

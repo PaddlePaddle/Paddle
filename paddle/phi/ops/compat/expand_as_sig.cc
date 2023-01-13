@@ -16,12 +16,13 @@
 
 namespace phi {
 
-KernelSignature ExpandAsOpArgumentMapping(const ArgumentMappingContext& ctx) {
+KernelSignature ExpandAsOpArgumentMapping(
+    const ArgumentMappingContext& /*ctx*/) {
   return KernelSignature("expand_as", {"X", "Y"}, {"target_shape"}, {"Out"});
 }
 
 KernelSignature ExpandAsGradOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
+    const ArgumentMappingContext& /*ctx*/) {
   return KernelSignature(
       "expand_as_grad", {"X", "Out@GRAD"}, {"target_shape"}, {"X@GRAD"});
 }

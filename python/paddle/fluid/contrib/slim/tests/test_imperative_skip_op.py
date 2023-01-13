@@ -23,7 +23,7 @@ import paddle.fluid.layers as layers
 from paddle.fluid import core
 from paddle.fluid.optimizer import AdamOptimizer
 from paddle.fluid.contrib.slim.quantization import ImperativeQuantAware
-from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
+from paddle.jit.translated_layer import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 from paddle.nn.layer import ReLU, LeakyReLU, Sigmoid, Softmax, ReLU6
 from paddle.nn import Linear, Conv2D, Softmax, BatchNorm
 from paddle.fluid.log_helper import get_logger
@@ -33,7 +33,6 @@ from imperative_test_utils import (
     train_lenet,
     ImperativeLenetWithSkipQuant,
 )
-from paddle.fluid.framework import _test_eager_guard
 
 os.environ["CPU_NUM"] = "1"
 if core.is_compiled_with_cuda():
@@ -45,7 +44,7 @@ _logger = get_logger(
 
 
 class TestImperativeOutSclae(unittest.TestCase):
-    def func_out_scale_acc(self):
+    def test_out_scale_acc(self):
         paddle.disable_static()
         seed = 1000
         lr = 0.1
@@ -140,11 +139,6 @@ class TestImperativeOutSclae(unittest.TestCase):
             self.assertTrue(conv2d_skip_count == 1)
         if find_matmul:
             self.assertTrue(matmul_skip_count == 1)
-
-    def test_out_scale_acc(self):
-        with _test_eager_guard():
-            self.func_out_scale_acc()
-        self.func_out_scale_acc()
 
 
 if __name__ == '__main__':

@@ -169,8 +169,21 @@ void TrtSkipLayerNormFusePass::ApplyImpl(ir::Graph *graph) const {
 
     // attrs
     new_desc.SetAttr("epsilon", layer_norm->Op()->GetAttr("epsilon"));
-    new_desc.SetAttr("begin_norm_axis",
-                     layer_norm->Op()->GetAttr("begin_norm_axis"));
+
+    if (new_desc.HasAttr("begin_norm_axis")) {
+      int32_t begin_norm_axis = PADDLE_GET_CONST(
+          int32_t, layer_norm->Op()->GetAttr("begin_norm_axis"));
+      int32_t input_rank =
+          static_cast<int32_t>(elementwise_out->Var()->GetShape().size());
+      if ((begin_norm_axis != -1) && (begin_norm_axis != input_rank - 1)) {
+        LOG(WARNING) << "skip_layernorm pass only support "
+                        "layer_norm'begin_norm_axis == input_rank - 1.";
+        return;
+      }
+      new_desc.SetAttr("begin_norm_axis", begin_norm_axis);
+    }
+    int32_t hidden_size = layer_norm_scale->Var()->GetShape()[0];
+    new_desc.SetAttr("hidden_size", hidden_size);
 
     auto fused_node = graph->CreateOpNode(&new_desc);  // OpDesc will be copied.
 

@@ -17,13 +17,13 @@
 namespace phi {
 
 KernelSignature BilinearTensorProductOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
+    const ArgumentMappingContext& /*ctx*/) {
   return KernelSignature(
       "bilinear_tensor_product", {"X", "Y", "Weight", "Bias"}, {}, {"Out"});
 }
 
 KernelSignature BilinearTensorProductGradOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
+    const ArgumentMappingContext& /*ctx*/) {
   return KernelSignature("bilinear_tensor_product_grad",
                          {"X", "Y", "Weight", "Out@GRAD"},
                          {},

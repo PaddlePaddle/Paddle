@@ -113,7 +113,7 @@ DECLARE_BLAS_JITCODE(VAddBias, operand_type::ADD, 1, false);
 class NCHW16CMulNCJitCode : public JitCode {
  public:
   DECLARE_JIT_CODE(NCHW16CMulNCJitCode);
-  explicit NCHW16CMulNCJitCode(int d /*unused*/,
+  explicit NCHW16CMulNCJitCode(int /*d*/ /*unused*/,
                                size_t code_size,
                                void* code_ptr = nullptr)
       : JitCode(code_size, code_ptr) {

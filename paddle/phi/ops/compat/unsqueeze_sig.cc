@@ -34,7 +34,7 @@ KernelSignature UnsqueezeOpArgumentMapping(const ArgumentMappingContext& ctx) {
 }
 
 KernelSignature UnsqueezeGradOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
+    const ArgumentMappingContext& /*ctx*/) {
   return KernelSignature(
       "unsqueeze_grad", {"XShape", "Out@GRAD"}, {}, {"X@GRAD"});
 }

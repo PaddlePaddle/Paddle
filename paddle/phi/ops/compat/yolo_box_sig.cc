@@ -16,7 +16,8 @@
 
 namespace phi {
 
-KernelSignature YoloBoxOpArgumentMapping(const ArgumentMappingContext& ctx) {
+KernelSignature YoloBoxOpArgumentMapping(
+    const ArgumentMappingContext& /*ctx*/) {
   return KernelSignature("yolo_box",
                          {"X", "ImgSize"},
                          {"anchors",

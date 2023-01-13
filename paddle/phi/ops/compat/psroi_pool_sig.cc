@@ -16,7 +16,8 @@
 
 namespace phi {
 
-KernelSignature PsroiPoolOpArgumentMapping(const ArgumentMappingContext& ctx) {
+KernelSignature PsroiPoolOpArgumentMapping(
+    const ArgumentMappingContext& /*ctx*/) {
   return KernelSignature(
       "psroi_pool",
       {"X", "ROIs", "RoisNum"},
@@ -25,7 +26,7 @@ KernelSignature PsroiPoolOpArgumentMapping(const ArgumentMappingContext& ctx) {
 }
 
 KernelSignature PsroiPoolGradOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
+    const ArgumentMappingContext& /*ctx*/) {
   return KernelSignature(
       "psroi_pool_grad",
       {"X", "ROIs", "RoisNum", "Out@GRAD"},

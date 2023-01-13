@@ -17,7 +17,7 @@
 namespace phi {
 
 KernelSignature DeformableConvOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
+    const ArgumentMappingContext& /*ctx*/) {
   return KernelSignature("deformable_conv",
                          {"Input", "Offset", "Filter", "Mask"},
                          {"strides",
@@ -30,7 +30,7 @@ KernelSignature DeformableConvOpArgumentMapping(
 }
 
 KernelSignature DeformableConvGradOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
+    const ArgumentMappingContext& /*ctx*/) {
   return KernelSignature(
       "deformable_conv_grad",
       {"Input", "Offset", "Filter", "Mask", "Output@GRAD"},

@@ -215,7 +215,7 @@ class PtbModel(paddle.nn.Layer):
         )
         loss = paddle.reshape(loss, shape=[-1, self.num_steps])
         loss = paddle.mean(loss, axis=[0])
-        loss = paddle.paddle.sum(loss)
+        loss = paddle.sum(loss)
 
         return loss, last_hidden, last_cell
 

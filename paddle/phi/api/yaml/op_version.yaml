@@ -16,6 +16,20 @@
           comment : In order to specify interpolation mode
           default : std::string("bilinear")
 
+- op : roll
+  version :
+    - checkpoint : Upgrade roll add 1 attribute [axis], delete 1 attribute[dims].
+      action :
+        - add_attr : axis
+          comment : Axis along which to roll. It must have the same size with shifts, or size = 0.
+          default : std::vector<float>()
+        - delete_attr : dims
+          comment : Dims along which to roll. It must have the same size with shifts, or size = 0
+    - checkpoint : Upgrade roll add a dispensable input "ShiftsTensor"
+      action :
+        - add_input : ShiftsTensor
+          comment : The number of places by which the elements of the tensor are shifted.
+
 - op : trace
   version :
     - checkpoint : Upgrade trace add a new attribute [axis2]

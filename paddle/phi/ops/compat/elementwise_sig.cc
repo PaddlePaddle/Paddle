@@ -26,7 +26,7 @@ KernelSignature ElementwiseAddOpArgumentMapping(
 }
 
 KernelSignature ElementwiseGradAddOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
+    const ArgumentMappingContext& /*ctx*/) {
   return KernelSignature("grad_add", {"X", "Y"}, {}, {"Out"});
 }
 
@@ -120,19 +120,19 @@ KernelSignature ElementwisePowOpArgumentMapping(
 }
 
 KernelSignature ElementwiseAddGradOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
+    const ArgumentMappingContext& /*ctx*/) {
   return KernelSignature(
       "add_grad", {"X", "Y", "Out@GRAD"}, {"axis"}, {"X@GRAD", "Y@GRAD"});
 }
 
 KernelSignature ElementwiseAddDoubleGradOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
+    const ArgumentMappingContext& /*ctx*/) {
   return KernelSignature(
       "add_double_grad", {"Y", "DOut", "DDX", "DDY"}, {"axis"}, {"DDOut"});
 }
 
 KernelSignature ElementwiseAddTripleGradOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
+    const ArgumentMappingContext& /*ctx*/) {
   return KernelSignature("add_triple_grad",
                          {"DDX", "DDY", "D_DDOut"},
                          {"axis"},
@@ -140,19 +140,19 @@ KernelSignature ElementwiseAddTripleGradOpArgumentMapping(
 }
 
 KernelSignature ElementwiseSubGradOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
+    const ArgumentMappingContext& /*ctx*/) {
   return KernelSignature(
       "subtract_grad", {"X", "Y", "Out@GRAD"}, {"axis"}, {"X@GRAD", "Y@GRAD"});
 }
 
 KernelSignature ElementwiseSubDoubleGradOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
+    const ArgumentMappingContext& /*ctx*/) {
   return KernelSignature(
       "subtract_double_grad", {"Y", "DOut", "DDX", "DDY"}, {"axis"}, {"DDOut"});
 }
 
 KernelSignature ElementwiseDivGradOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
+    const ArgumentMappingContext& /*ctx*/) {
   return KernelSignature("divide_grad",
                          {"X", "Y", "Out", "Out@GRAD"},
                          {"axis"},
@@ -160,13 +160,13 @@ KernelSignature ElementwiseDivGradOpArgumentMapping(
 }
 
 KernelSignature ElementwiseFMinGradOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
+    const ArgumentMappingContext& /*ctx*/) {
   return KernelSignature(
       "fmin_grad", {"X", "Y", "Out@GRAD"}, {"axis"}, {"X@GRAD", "Y@GRAD"});
 }
 
 KernelSignature ElementwiseDivDoubleGradOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
+    const ArgumentMappingContext& /*ctx*/) {
   return KernelSignature("divide_double_grad",
                          {"Y", "Out", "DX", "DDX", "DDY"},
                          {"axis"},
@@ -174,29 +174,29 @@ KernelSignature ElementwiseDivDoubleGradOpArgumentMapping(
 }
 
 KernelSignature ElementwiseMulGradOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
+    const ArgumentMappingContext& /*ctx*/) {
   return KernelSignature(
       "multiply_grad", {"X", "Y", "Out@GRAD"}, {"axis"}, {"X@GRAD", "Y@GRAD"});
 }
 
 KernelSignature ElementwiseFMaxOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
+    const ArgumentMappingContext& /*ctx*/) {
   return KernelSignature("fmax_raw", {"X", "Y"}, {"axis"}, {"Out"});
 }
 
 KernelSignature ElementwiseFMinOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
+    const ArgumentMappingContext& /*ctx*/) {
   return KernelSignature("fmin_raw", {"X", "Y"}, {"axis"}, {"Out"});
 }
 
 KernelSignature ElementwiseFMaxGradOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
+    const ArgumentMappingContext& /*ctx*/) {
   return KernelSignature(
       "fmax_grad", {"X", "Y", "Out@GRAD"}, {"axis"}, {"X@GRAD", "Y@GRAD"});
 }
 
 KernelSignature ElementwiseMulDoubleGradOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
+    const ArgumentMappingContext& /*ctx*/) {
   return KernelSignature("multiply_double_grad",
                          {"X", "Y", "DOut", "DDX", "DDY"},
                          {"axis"},
@@ -204,7 +204,7 @@ KernelSignature ElementwiseMulDoubleGradOpArgumentMapping(
 }
 
 KernelSignature ElementwiseMulTripleGradOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
+    const ArgumentMappingContext& /*ctx*/) {
   return KernelSignature(
       "multiply_triple_grad",
       {"X", "Y", "DOut", "DDX", "DDY", "D_DX", "D_DY", "D_DDOut"},
@@ -213,19 +213,19 @@ KernelSignature ElementwiseMulTripleGradOpArgumentMapping(
 }
 
 KernelSignature ElementwiseMaxGradOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
+    const ArgumentMappingContext& /*ctx*/) {
   return KernelSignature(
       "maximum_grad", {"X", "Y", "Out@GRAD"}, {"axis"}, {"X@GRAD", "Y@GRAD"});
 }
 
 KernelSignature ElementwiseMinGradOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
+    const ArgumentMappingContext& /*ctx*/) {
   return KernelSignature(
       "minimum_grad", {"X", "Y", "Out@GRAD"}, {"axis"}, {"X@GRAD", "Y@GRAD"});
 }
 
 KernelSignature ElementwiseHeavisideGradOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
+    const ArgumentMappingContext& /*ctx*/) {
   return KernelSignature("elementwise_heaviside_grad",
                          {"X", "Y", "Out@GRAD"},
                          {"axis"},
@@ -233,7 +233,7 @@ KernelSignature ElementwiseHeavisideGradOpArgumentMapping(
 }
 
 KernelSignature ElementwisePowGradOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
+    const ArgumentMappingContext& /*ctx*/) {
   return KernelSignature("elementwise_pow_grad",
                          {"X", "Y", "Out@GRAD"},
                          {"axis"},

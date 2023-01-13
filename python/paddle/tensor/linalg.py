@@ -3261,7 +3261,7 @@ def eigvalsh(x, UPLO='L', name=None):
     complex Hermitian (conjugate symmetric) or a real symmetric matrix.
 
     Args:
-        x (Tensor): A tensor with shape :math:`[_, M, M]` , The data type of the input Tensor x
+        x (Tensor): A tensor with shape :math:`[*, M, M]` , where * is zero or greater batch dimension. The data type of the input Tensor x
             should be one of float32, float64, complex64, complex128.
         UPLO(str, optional): Lower triangular part of a (‘L’, default) or the upper triangular part (‘U’).
         name(str, optional): The default value is None.  Normally there is no need for user to set this

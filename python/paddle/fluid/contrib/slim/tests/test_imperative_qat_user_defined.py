@@ -26,7 +26,6 @@ from paddle.nn import Sequential
 from paddle.nn import Linear
 from paddle.nn.quant.quant_layers import QuantizedConv2DTranspose
 from paddle.fluid.log_helper import get_logger
-from paddle.fluid.framework import _test_eager_guard
 
 os.environ["CPU_NUM"] = "1"
 
@@ -161,7 +160,7 @@ class TestUserDefinedActPreprocess(unittest.TestCase):
         _logger.info("test act_preprocess")
         self.imperative_qat = ImperativeQuantAware(act_preprocess_layer=PACT)
 
-    def func_quant_aware_training(self):
+    def test_quant_aware_training(self):
         imperative_qat = self.imperative_qat
         seed = 1
         np.random.seed(seed)
@@ -262,11 +261,6 @@ class TestUserDefinedActPreprocess(unittest.TestCase):
         test_reader = paddle.batch(paddle.dataset.mnist.test(), batch_size=512)
         train(lenet)
         test(lenet)
-
-    def test_quant_aware_training(self):
-        with _test_eager_guard():
-            self.func_quant_aware_training()
-        self.func_quant_aware_training()
 
 
 class TestUserDefinedWeightPreprocess(TestUserDefinedActPreprocess):

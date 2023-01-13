@@ -164,7 +164,7 @@ class SE_ResNeXt:
     def conv_bn_layer(
         self, input, num_filters, filter_size, stride=1, groups=1, act=None
     ):
-        conv = fluid.layers.conv2d(
+        conv = paddle.static.nn.conv2d(
             input=input,
             num_filters=num_filters,
             filter_size=filter_size,

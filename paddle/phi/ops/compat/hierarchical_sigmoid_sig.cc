@@ -17,7 +17,7 @@
 namespace phi {
 
 KernelSignature HierarchicalSigmoidOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
+    const ArgumentMappingContext& /*ctx*/) {
   return KernelSignature("hsigmoid_loss",
                          {"X", "Label", "W", "Bias", "PathTable", "PathCode"},
                          {"num_classes", "remote_prefetch", "is_sparse"},

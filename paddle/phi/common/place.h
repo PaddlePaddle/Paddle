@@ -117,7 +117,7 @@ class CPUPlace : public Place {
   CPUPlace() : Place(AllocationType::CPU) {}
 
   CPUPlace(const CPUPlace&) = default;
-  CPUPlace(const Place& place) : Place(AllocationType::CPU) {}  // NOLINT
+  CPUPlace(const Place&) : Place(AllocationType::CPU) {}  // NOLINT
 };
 
 class GPUPlace : public Place {
@@ -135,8 +135,7 @@ class GPUPinnedPlace : public Place {
   GPUPinnedPlace() : Place(AllocationType::GPUPINNED) {}
 
   GPUPinnedPlace(const GPUPinnedPlace&) = default;
-  GPUPinnedPlace(const Place& place)  // NOLINT
-      : Place(AllocationType::GPUPINNED) {}
+  GPUPinnedPlace(const Place&) : Place(AllocationType::GPUPINNED) {}  // NOLINT
 };
 
 class XPUPlace : public Place {
@@ -164,8 +163,7 @@ class NPUPinnedPlace : public Place {
   NPUPinnedPlace() : Place(AllocationType::NPUPINNED) {}
 
   NPUPinnedPlace(const NPUPinnedPlace&) = default;
-  NPUPinnedPlace(const Place& place)  // NOLINT
-      : Place(AllocationType::NPUPINNED) {}
+  NPUPinnedPlace(const Place&) : Place(AllocationType::NPUPINNED) {}  // NOLINT
 };
 
 class IPUPlace : public Place {

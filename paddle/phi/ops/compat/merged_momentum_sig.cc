@@ -17,7 +17,7 @@
 namespace phi {
 
 KernelSignature MergedMomentumOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
+    const ArgumentMappingContext& /*ctx*/) {
   return KernelSignature(
       "merged_momentum",
       {"Param", "Grad", "Velocity", "LearningRate", "MasterParam"},

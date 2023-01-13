@@ -48,7 +48,9 @@ void BufferRequestedCallback(uint64_t** buffer,
   *max_num_records = 0;
 }
 
-void BufferCompletedCallback(uint64_t* buffer, size_t size, size_t valid_size) {
+void BufferCompletedCallback(uint64_t* buffer,
+                             size_t /*size*/,
+                             size_t valid_size) {
   if (buffer == nullptr || valid_size == 0) {
     return;
   }
@@ -115,7 +117,8 @@ void MluTracer::CollectTraceData(TraceEventCollector* collector) {
   collector_.ClearAll();
 }
 
-void MluTracer::ProcessCnpapiActivity(uint64_t* buffer, size_t valid_size) {
+void MluTracer::ProcessCnpapiActivity(uint64_t UNUSED* buffer,
+                                      size_t UNUSED valid_size) {
 #ifdef PADDLE_WITH_MLU
   cnpapiActivity* record = nullptr;
   while (true) {

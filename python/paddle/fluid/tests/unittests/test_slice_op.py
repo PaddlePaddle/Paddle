@@ -23,6 +23,7 @@ import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 import paddle.fluid.layers as layers
+from paddle.tensor.manipulation import tensor_array_to_tensor
 
 paddle.enable_static()
 
@@ -703,7 +704,7 @@ class TestSliceApiWithLoDTensorArray(unittest.TestCase):
                     paddle.tensor.array_length(arr) - 1
                 )  # dtype of end is int64
                 self.sliced_arr = slice_arr = arr[self.start : end]
-                output, _ = fluid.layers.tensor_array_to_tensor(
+                output, _ = tensor_array_to_tensor(
                     slice_arr, axis=self.axis, use_stack=True
                 )
             elif case_num == 3:
@@ -711,7 +712,7 @@ class TestSliceApiWithLoDTensorArray(unittest.TestCase):
                     [1], "int64", 2147483648
                 )
                 self.sliced_arr = slice_arr = arr[self.start : value_int64]
-                output, _ = fluid.layers.tensor_array_to_tensor(
+                output, _ = tensor_array_to_tensor(
                     slice_arr, axis=self.axis, use_stack=True
                 )
 

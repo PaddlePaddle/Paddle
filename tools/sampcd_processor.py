@@ -16,7 +16,7 @@ please make sure to run in the tools path
 usage: python sample_test.py {cpu or gpu}
     {cpu or gpu}: running in cpu version or gpu version
 
-for example, you can run cpu version python2 testing like this:
+for example, you can run cpu version testing like this:
 
     python sampcd_processor.py cpu
 

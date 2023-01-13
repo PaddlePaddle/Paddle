@@ -17,7 +17,7 @@
 namespace phi {
 
 KernelSignature UniqueConsecutiveOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
+    const ArgumentMappingContext& /*ctx*/) {
   return KernelSignature("unique_consecutive",
                          {"X"},
                          {"return_inverse", "return_counts", "axis", "dtype"},

@@ -17,7 +17,7 @@
 namespace phi {
 
 KernelSignature SegmentPoolGradOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
+    const ArgumentMappingContext& /*ctx*/) {
   return KernelSignature("segment_pool_grad",
                          {
                              "X",

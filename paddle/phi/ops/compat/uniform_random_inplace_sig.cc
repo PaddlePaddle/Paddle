@@ -16,7 +16,7 @@ limitations under the License. */
 
 namespace phi {
 KernelSignature UniformRandomInplaceOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
+    const ArgumentMappingContext& /*ctx*/) {
   return KernelSignature(
       "uniform_inplace",
       {"X"},
@@ -25,7 +25,7 @@ KernelSignature UniformRandomInplaceOpArgumentMapping(
 }
 
 KernelSignature UniformRandomInplaceGradOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
+    const ArgumentMappingContext& /*ctx*/) {
   return KernelSignature(
       "uniform_inplace_grad",
       {"Out@GRAD"},

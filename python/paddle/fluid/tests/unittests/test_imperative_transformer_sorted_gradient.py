@@ -22,7 +22,7 @@ import paddle.fluid as fluid
 import paddle.nn.functional as F
 from paddle.fluid import Layer, core
 from paddle.fluid.dygraph import guard, to_variable
-from paddle.fluid.framework import _in_legacy_dygraph, _test_eager_guard
+from paddle.fluid.framework import _in_legacy_dygraph
 from paddle.nn import Linear
 
 np.set_printoptions(suppress=True)
@@ -1085,8 +1085,8 @@ class TransFormer(Layer):
         predict = self._wrap_decoder_layer(dec_inputs, enc_output)
         if self._label_smooth_eps:
             label_out = F.label_smooth(
-                label=fluid.layers.one_hot(
-                    input=label, depth=self._trg_vocab_size
+                label=paddle.squeeze(
+                    paddle.nn.functional.one_hot(label, self._trg_vocab_size)
                 ),
                 epsilon=self._label_smooth_eps,
             )
@@ -1328,15 +1328,14 @@ class TestDygraphTransformerSortGradient(unittest.TestCase):
             ) = run_dygraph()
 
         with guard():
-            with _test_eager_guard():
-                (
-                    eager_avg_cost_value,
-                    eager_sum_cost_value,
-                    eager_predict_value,
-                    eager_token_num_value,
-                    eager_param_init,
-                    eager_param_updated,
-                ) = run_dygraph()
+            (
+                eager_avg_cost_value,
+                eager_sum_cost_value,
+                eager_predict_value,
+                eager_token_num_value,
+                eager_param_init,
+                eager_param_updated,
+            ) = run_dygraph()
         np.testing.assert_allclose(
             dy_avg_cost_value, eager_avg_cost_value, rtol=1e-05
         )

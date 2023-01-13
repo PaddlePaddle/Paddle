@@ -242,9 +242,9 @@ class OperatorBase {
 
   void SetIsCalledByExecutor(bool x) { run_by_executor_ = x; }
 
-  virtual void RuntimeInferShape(const Scope& scope,
-                                 const platform::Place& place,
-                                 const RuntimeContext& ctx) const {}
+  virtual void RuntimeInferShape(const Scope& /*scope*/,
+                                 const platform::Place& /*place*/,
+                                 const RuntimeContext& /*ctx*/) const {}
 
   virtual platform::Place GetExecutionPlace(
       const platform::Place& place) const {

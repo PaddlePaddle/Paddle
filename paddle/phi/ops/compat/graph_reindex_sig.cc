@@ -17,7 +17,7 @@ limitations under the License. */
 namespace phi {
 
 KernelSignature GraphReindexOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
+    const ArgumentMappingContext& /*ctx*/) {
   return KernelSignature(
       "graph_reindex",
       {"X", "Neighbors", "Count", "HashTable_Value", "HashTable_Index"},

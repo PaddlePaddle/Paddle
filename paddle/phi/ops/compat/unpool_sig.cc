@@ -15,7 +15,7 @@
 #include "paddle/phi/core/compat/op_utils.h"
 namespace phi {
 
-KernelSignature UnpoolOpArgumentMapping(const ArgumentMappingContext& ctx) {
+KernelSignature UnpoolOpArgumentMapping(const ArgumentMappingContext& /*ctx*/) {
   return KernelSignature(
       "unpool",
       {"X", "Indices"},
@@ -23,7 +23,8 @@ KernelSignature UnpoolOpArgumentMapping(const ArgumentMappingContext& ctx) {
       {"Out"});
 }
 
-KernelSignature UnpoolGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
+KernelSignature UnpoolGradOpArgumentMapping(
+    const ArgumentMappingContext& /*ctx*/) {
   return KernelSignature(
       "unpool_grad",
       {"X", "Indices", "Out", "Out@GRAD"},

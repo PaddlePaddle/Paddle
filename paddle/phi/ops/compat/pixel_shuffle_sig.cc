@@ -17,13 +17,13 @@
 namespace phi {
 
 KernelSignature PixelShuffleOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
+    const ArgumentMappingContext& /*ctx*/) {
   return KernelSignature(
       "pixel_shuffle", {"X"}, {"upscale_factor", "data_format"}, {"Out"});
 }
 
 KernelSignature PixelShuffleGradOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
+    const ArgumentMappingContext& /*ctx*/) {
   return KernelSignature("pixel_shuffle_grad",
                          {"Out@GRAD"},
                          {"upscale_factor", "data_format"},

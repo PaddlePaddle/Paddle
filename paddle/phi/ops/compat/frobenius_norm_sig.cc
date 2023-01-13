@@ -17,13 +17,13 @@ limitations under the License. */
 namespace phi {
 
 KernelSignature FrobeniusNormOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
+    const ArgumentMappingContext& /*ctx*/) {
   return KernelSignature(
       "frobenius_norm", {"X"}, {"dim", "keep_dim", "reduce_all"}, {"Out"});
 }
 
 KernelSignature FrobeniusNormGradOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
+    const ArgumentMappingContext& /*ctx*/) {
   return KernelSignature("frobenius_norm_grad",
                          {"X", "Out", "Out@GRAD"},
                          {"dim", "keep_dim", "reduce_all"},

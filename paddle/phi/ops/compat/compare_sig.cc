@@ -16,27 +16,30 @@
 
 namespace phi {
 
-KernelSignature LessThanArgumentMapping(const ArgumentMappingContext& ctx) {
+KernelSignature LessThanArgumentMapping(const ArgumentMappingContext& /*ctx*/) {
   return KernelSignature("less_than_raw", {"X", "Y"}, {"axis"}, {"Out"});
 }
 
-KernelSignature LessEqualArgumentMapping(const ArgumentMappingContext& ctx) {
+KernelSignature LessEqualArgumentMapping(
+    const ArgumentMappingContext& /*ctx*/) {
   return KernelSignature("less_equal_raw", {"X", "Y"}, {"axis"}, {"Out"});
 }
 
-KernelSignature GreaterThanArgumentMapping(const ArgumentMappingContext& ctx) {
+KernelSignature GreaterThanArgumentMapping(
+    const ArgumentMappingContext& /*ctx*/) {
   return KernelSignature("greater_than_raw", {"X", "Y"}, {"axis"}, {"Out"});
 }
 
-KernelSignature GreaterEqualArgumentMapping(const ArgumentMappingContext& ctx) {
+KernelSignature GreaterEqualArgumentMapping(
+    const ArgumentMappingContext& /*ctx*/) {
   return KernelSignature("greater_equal_raw", {"X", "Y"}, {"axis"}, {"Out"});
 }
 
-KernelSignature EqualArgumentMapping(const ArgumentMappingContext& ctx) {
+KernelSignature EqualArgumentMapping(const ArgumentMappingContext& /*ctx*/) {
   return KernelSignature("equal_raw", {"X", "Y"}, {"axis"}, {"Out"});
 }
 
-KernelSignature NotEqualArgumentMapping(const ArgumentMappingContext& ctx) {
+KernelSignature NotEqualArgumentMapping(const ArgumentMappingContext& /*ctx*/) {
   return KernelSignature("not_equal_raw", {"X", "Y"}, {"axis"}, {"Out"});
 }
 

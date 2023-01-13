@@ -272,12 +272,12 @@ def create_tensor(dtype, name=None, persistable=False):
 
 def linspace(start, stop, num, dtype=None, name=None):
     r"""
-    Return fixed number of evenly spaced values within a given interval.
+    Return fixed number of evenly spaced values within a given interval. Note: no gradient calculation is performed.
 
     Args:
         start(int|float|Tensor): The input :attr:`start` is start of range. It is a int, float, \
             or a 0-D Tensor with data type int32, int64, float32 or float64.
-        stop(int|float|Tensor): The input :attr:`stop` is start variable of range. It is a int, float, \
+        stop(int|float|Tensor): The input :attr:`stop` is end of range. It is a int, float, \
             or a 0-D Tensor with data type int32, int64, float32 or float64.
         num(int|Tensor): The input :attr:`num` is given num of the sequence. It is an int, \
             or a 0-D Tensor with data type int32.

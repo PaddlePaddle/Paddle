@@ -249,7 +249,7 @@ class AnalysisPredictor : public PaddlePredictor {
   ///
   /// \return the argument obtained by config
   ///
-  Argument &analysis_argument() { return argument_; }
+  Argument &analysis_argument() { return *argument_; }
   ///
   /// \brief Clone to get the new predictor. thread safe.
   ///
@@ -275,6 +275,13 @@ class AnalysisPredictor : public PaddlePredictor {
   /// \return the serialized program
   ///
   std::string GetSerializedProgram() const override;
+
+  ///
+  /// \brief Get the fusion_statis_t
+  ///
+  /// \return the fusion_statis_t
+  ///
+  Argument::fusion_statis_t fusion_statis() { return fusion_statis_; }
 
   ///
   /// \brief Register a output hook function to operate the intermediate tensor
@@ -484,7 +491,8 @@ class AnalysisPredictor : public PaddlePredictor {
 
  private:
   AnalysisConfig config_;
-  Argument argument_;
+  std::unique_ptr<Argument> argument_;
+  Argument::fusion_statis_t fusion_statis_;
   std::unique_ptr<NaiveExecutor> executor_;
   platform::Place place_;
   std::shared_ptr<framework::Scope> scope_;

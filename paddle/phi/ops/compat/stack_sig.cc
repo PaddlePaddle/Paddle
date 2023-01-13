@@ -13,7 +13,8 @@ limitations under the License. */
 
 namespace phi {
 
-KernelSignature StackGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
+KernelSignature StackGradOpArgumentMapping(
+    const ArgumentMappingContext& /*ctx*/) {
   return KernelSignature("stack_grad", {"Y@GRAD"}, {"axis"}, {"X@GRAD"});
 }
 

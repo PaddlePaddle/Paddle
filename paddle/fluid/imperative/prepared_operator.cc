@@ -393,8 +393,7 @@ PreparedOp PrepareImpl(
 #endif
   ) {
     if (has_phi_kernel) {
-      auto phi_cpu_kernel_key =
-          FallBackToCpu(expected_kernel_key, phi_kernel_key, op);
+      auto phi_cpu_kernel_key = FallBackToCpu(phi_kernel_key, op);
       auto& phi_cpu_kernel =
           phi_kernel_factory.SelectKernel(phi_kernel_name, phi_cpu_kernel_key);
       if (phi_cpu_kernel.IsValid()) {

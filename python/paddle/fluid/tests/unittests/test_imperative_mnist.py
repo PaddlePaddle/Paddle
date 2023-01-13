@@ -21,7 +21,6 @@ from utils import DyGraphProgramDescTracerTestHelper
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid import core
-from paddle.fluid.framework import _test_eager_guard
 from paddle.fluid.optimizer import SGDOptimizer
 from paddle.nn import Linear
 
@@ -113,7 +112,7 @@ class TestImperativeMnist(unittest.TestCase):
 
         return _reader_imple
 
-    def func_test_mnist_float32(self):
+    def test_mnist_float32(self):
         seed = 90
         epoch_num = 1
         batch_size = 128
@@ -268,11 +267,6 @@ class TestImperativeMnist(unittest.TestCase):
             np.testing.assert_allclose(
                 value, dy_param_value[key], rtol=1e-05, atol=1e-05
             )
-
-    def test_mnist_float32(self):
-        with _test_eager_guard():
-            self.func_test_mnist_float32()
-        self.func_test_mnist_float32()
 
 
 if __name__ == '__main__':

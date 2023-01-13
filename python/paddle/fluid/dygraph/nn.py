@@ -119,7 +119,7 @@ class BatchNorm(layers.Layer):
              is not set, the bias is initialized zero. Default: None.
         dtype(str, optional): Indicate the data type of the input ``Tensor``,
              which can be float32 or float64. Default: float32.
-        data_layout(str, optional): Specify the input data format, the data format can be "NCHW" or "NHWC". Default: NCHW.
+        data_layout(str, optional): Specify the input data format, the data format can be "NCHW" or "NHWC", where `N` is batch size, `C` is the number of the feature map, `H` is the height of the feature map, `W` is the width of the feature map. Default: NCHW.
         in_place(bool, optional): Make the input and output of batch norm reuse memory. Default: False.
         moving_mean_name(str, optional): The name of moving_mean which store the global Mean. Default: None.
         moving_variance_name(str, optional): The name of the moving_variance which store the global Variance. Default: None.
@@ -140,11 +140,11 @@ class BatchNorm(layers.Layer):
     Examples:
         .. code-block:: python
 
+          import paddle
           import paddle.fluid as fluid
           from paddle.fluid.dygraph.base import to_variable
-          import numpy as np
 
-          x = np.random.random(size=(3, 10, 3, 7)).astype('float32')
+          x = paddle.rand([3, 10, 3, 7], 'float32')
           with fluid.dygraph.guard():
               x = to_variable(x)
               batch_norm = fluid.BatchNorm(10)
