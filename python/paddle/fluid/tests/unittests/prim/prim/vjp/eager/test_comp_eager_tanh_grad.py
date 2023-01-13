@@ -14,8 +14,6 @@
 
 import unittest
 
-import autograd
-import autograd.numpy
 import numpy as np
 import parameterized as param
 
@@ -26,16 +24,22 @@ core.set_prim_enabled(True)
 
 
 @param.parameterized_class(
-    ('primal', 'cotangent', 'dtype'),
+    ('primal', 'dtype'),
     [
-        (np.random.rand(10, 10), np.random.rand(10, 10), np.float32),
+        (
+            np.random.rand(2, 3, 4),
+            np.float32,
+        ),
+        (
+            np.random.rand(2, 3, 3, 4),
+            np.float32,
+        ),
     ],
 )
 class TestTanhGradComp(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.primal = cls.primal.astype(cls.dtype)
-        cls.cotangent = cls.cotangent.astype(cls.dtype)
 
     def setUp(self):
         paddle.enable_static()
@@ -44,25 +48,29 @@ class TestTanhGradComp(unittest.TestCase):
         paddle.disable_static()
 
     def test_tanh_grad_comp(self):
-        def actual(primal, cotangent):
+        def actual(primal):
             paddle.disable_static()
             x = paddle.to_tensor(primal, dtype='float32', stop_gradient=False)
             x.stop_gradient = False
-            v = paddle.to_tensor(
-                cotangent, dtype='float32', stop_gradient=False
-            )
             y = paddle.tanh(x)
             x_cotangent = paddle.grad(
-                y, x, v, create_graph=True, retain_graph=True
+                y, x, create_graph=True, retain_graph=True
             )
             return x_cotangent[0]
 
-        def desired(primal, cotangent):
-            return autograd.make_vjp(autograd.numpy.tanh)(primal)[0](cotangent)
+        def desired(primal):
+            paddle.disable_static()
+            x = paddle.to_tensor(primal, dtype='float32', stop_gradient=False)
+            x.stop_gradient = False
+            y = paddle.tanh(x)
+            x_cotangent = paddle.grad(
+                y, x, create_graph=True, retain_graph=True
+            )
+            return x_cotangent[0]
 
         np.testing.assert_allclose(
-            actual=actual(self.primal, self.cotangent),
-            desired=desired(self.primal, self.cotangent),
+            actual=actual(self.primal),
+            desired=desired(self.primal),
             rtol=1e-6,
             atol=0,
         )
