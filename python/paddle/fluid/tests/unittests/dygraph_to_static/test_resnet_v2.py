@@ -35,7 +35,6 @@ place = (
     paddle.CUDAPlace(0) if paddle.is_compiled_with_cuda() else paddle.CPUPlace()
 )
 
-program_translator = paddle.jit.ProgramTranslator()
 
 if paddle.is_compiled_with_cuda():
     paddle.fluid.set_flags({'FLAGS_cudnn_deterministic': True})
@@ -319,7 +318,7 @@ class TestResnet(unittest.TestCase):
         return total_loss.numpy()
 
     def predict_dygraph(self, data):
-        program_translator.enable(False)
+        paddle.jit.enable_to_static(False)
         paddle.disable_static(place)
         resnet = ResNet()
 
@@ -380,7 +379,7 @@ class TestResnet(unittest.TestCase):
         return out
 
     def train(self, to_static):
-        program_translator.enable(to_static)
+        paddle.jit.enable_to_static(to_static)
         return self.do_train(to_static)
 
     def verify_predict(self):
