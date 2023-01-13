@@ -201,13 +201,13 @@ void multiply_grad(const Tensor& x,
                    Tensor* y_grad) {
   if (x_grad) {
     auto x_grad_unreduce = multiply<T>(out_grad, y);
-    if (x.dims() != x_grad_unreduce.dims()) {
-      auto x_grad_reduced = sum<T>(
-          x_grad_unreduce,
-          phi::vectorize(get_reduce_dims(x_grad_unreduce.dims(), x.dims())),
-          x_grad_unreduce.dtype(),
-          false);
-      if (x_grad_unreduce.dims().size() != x.dims().size()) {
+    if (x.dims() != out_grad.dims()) {
+      auto x_grad_reduced =
+          sum<T>(x_grad_unreduce,
+                 phi::vectorize(get_reduce_dims(out_grad.dims(), x.dims())),
+                 x_grad_unreduce.dtype(),
+                 false);
+      if (x_grad_reduced.dims().size() != x.dims().size()) {
         x_grad_reduced = reshape<T>(x_grad_reduced, x.shape());
       }
       x_grad->set_impl(x_grad_reduced.impl());
