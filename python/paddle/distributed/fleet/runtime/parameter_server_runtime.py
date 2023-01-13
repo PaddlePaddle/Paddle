@@ -17,10 +17,13 @@ import warnings
 
 import paddle.fluid as fluid
 from paddle.fluid import core
-from paddle.static import CompiledProgram
-from paddle.static import Executor
-from paddle.static import Program, Variable
-from paddle.static import ParallelExecutor
+from paddle.static import (
+    CompiledProgram,
+    Executor,
+    ParallelExecutor,
+    Program,
+    Variable,
+)
 
 from ..base.private_helper_function import wait_server_ready
 from .runtime_base import RuntimeBase

@@ -19,7 +19,7 @@ from _collections import defaultdict
 import paddle
 from paddle.distributed.passes.pass_base import PassBase, register_pass
 from paddle.framework import core
-from paddle.static import Program, Parameter
+from paddle.static import Parameter, Program
 
 from ..ps.utils.collective_transpiler import SingleProcessMultiThread
 from ..ps.utils.public import *  # noqa: F403
