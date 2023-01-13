@@ -51,8 +51,6 @@ unary_api_list = [
     paddle.sinh,
     paddle.abs,
     paddle.acos,
-    paddle.argmax,
-    paddle.argmin,
     paddle.asin,
     paddle.atan,
     paddle.ceil,
@@ -133,6 +131,8 @@ reduce_api_list = [
     paddle.logsumexp,
     paddle.all,
     paddle.any,
+    paddle.argmax,
+    paddle.argmin,
 ]
 
 
@@ -153,9 +153,10 @@ class TestReduceAPI(unittest.TestCase):
                 out.backward()
 
                 self.assertEqual(x.shape, [])
-                self.assertEqual(x.grad.shape, [])
                 self.assertEqual(out.shape, [])
-                self.assertEqual(out.grad.shape, [])
+                if x.grad is not None:
+                    self.assertEqual(x.grad.shape, [])
+                    self.assertEqual(out.grad.shape, [])
 
         paddle.enable_static()
 
