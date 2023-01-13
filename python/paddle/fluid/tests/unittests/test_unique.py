@@ -29,7 +29,7 @@ class TestUniqueOp(OpTest):
 
     def test_check_output(self):
         paddle.enable_static()
-        self.check_output()
+        self.check_output(check_dygraph=False)
         paddle.disable_static()
 
     def init_config(self):
@@ -134,7 +134,7 @@ class TestRandomGPU(TestUniqueOp):
         if core.is_compiled_with_cuda():
             paddle.enable_static()
             place = core.CUDAPlace(0)
-            self.check_output_with_place(place, atol=1e-5)
+            self.check_output_with_place(place, atol=1e-5, check_dygraph=False)
             paddle.disable_static()
 
 

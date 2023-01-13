@@ -52,10 +52,14 @@ class TestSumOp(OpTest):
         self.dtype = np.float64
 
     def test_check_output(self):
-        self.check_output()
+        # static only
+        # this test just for mkldnn
+        self.check_output(check_dygraph=False)
 
     def test_check_grad(self):
-        self.check_grad(['x0'], 'Out')
+        # static only
+        # this test just for mkldnn
+        self.check_grad(['x0'], 'Out', check_dygraph=False)
 
 
 class TestSelectedRowsSumOp(unittest.TestCase):
@@ -342,10 +346,13 @@ class TestSumBF16Op(OpTest):
         self.dtype = np.uint16
 
     def test_check_output(self):
-        self.check_output()
+        # static only
+        self.check_output(check_dygraph=False)
 
     def test_check_grad(self):
-        self.check_grad(['x0'], 'Out', numeric_grad_delta=0.5)
+        self.check_grad(
+            ['x0'], 'Out', numeric_grad_delta=0.5, check_dygraph=False
+        )
 
 
 class API_Test_Add_n(unittest.TestCase):

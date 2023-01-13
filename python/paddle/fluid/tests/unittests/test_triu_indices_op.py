@@ -24,6 +24,7 @@ import paddle.fluid as fluid
 class TestTriuIndicesOp(OpTest):
     def setUp(self):
         self.op_type = "triu_indices"
+        self.python_api = paddle.tril_indices
         self.inputs = {}
         self.init_config()
         self.outputs = {'out': self.target}

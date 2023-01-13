@@ -34,7 +34,8 @@ class TestTransferLayoutOpkNCHWTokNHWC(OpTest):
         self.op_type = 'transfer_layout'
 
     def test_check_output(self):
-        self.check_output()
+        # static only
+        self.check_output(check_dygraph=False)
 
 
 def softmax_with_data_format(x, data_format, axis=-1, dtype=None, name=None):

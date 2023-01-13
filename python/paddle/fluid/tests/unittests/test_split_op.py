@@ -25,6 +25,7 @@ from paddle.fluid import Program, core, program_guard
 class TestSplitOp(OpTest):
     def setUp(self):
         self._set_op_type()
+        self.python_api = paddle.split
         self.dtype = self.get_dtype()
         axis = 1
         if self.dtype == np.uint16:
@@ -63,6 +64,7 @@ class TestSplitOp(OpTest):
 class TestSplitOp_2(OpTest):
     def setUp(self):
         self._set_op_type()
+        self.python_api = paddle.split
         self.dtype = self.get_dtype()
         self.init_data()
         self.inputs = {'X': self.x}
@@ -99,6 +101,7 @@ class TestSplitOp_2(OpTest):
 class TestSplitOp_AxisTensor(OpTest):
     def setUp(self):
         self._set_op_type()
+        self.python_api = paddle.split
         self.dtype = self.get_dtype()
         self.init_data()
         self.inputs = {
@@ -134,6 +137,7 @@ class TestSplitOp_AxisTensor(OpTest):
 class TestSplitOp_SectionsTensor(OpTest):
     def setUp(self):
         self._set_op_type()
+        self.python_api = paddle.split
         self.dtype = self.get_dtype()
         self.init_data()
         self.inputs = {'X': self.x}
@@ -179,6 +183,7 @@ class TestSplitOp_SectionsTensor(OpTest):
 class TestSplitOp_unk_section(OpTest):
     def setUp(self):
         self._set_op_type()
+        self.python_api = paddle.split
         self.dtype = self.get_dtype()
         self.init_data()
         self.inputs = {'X': self.x}

@@ -123,6 +123,7 @@ class TestUnfoldOp(OpTest):
 
     def setUp(self):
         self.op_type = 'unfold'
+        self.python_api = paddle.nn.functional.unfold
         self.set_data()
 
     def test_check_output(self):

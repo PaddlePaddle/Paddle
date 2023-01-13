@@ -162,6 +162,7 @@ class TestTransposeBF16Op(OpTest):
     def setUp(self):
         self.init_op_type()
         self.initTestCase()
+        self.python_api = paddle.transpose
         self.dtype = np.uint16
         x = np.random.random(self.shape).astype("float32")
 

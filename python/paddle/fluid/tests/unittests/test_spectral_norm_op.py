@@ -78,7 +78,8 @@ class TestSpectralNormOpNoGrad(OpTest):
         self.outputs = {"Out": output}
 
     def test_check_output(self):
-        self.check_output()
+        # static only
+        self.check_output(check_dygraph=False)
 
     def initTestCase(self):
         self.weight_shape = (10, 12)

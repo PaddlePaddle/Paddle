@@ -52,6 +52,7 @@ class TestSoftmaxOp(OpTest):
 
     def setUp(self):
         self.op_type = "softmax"
+        self.python_api = F.softmax
         self.use_cudnn = False
         self.use_mkldnn = False
         # explicilty use float32 for ROCm, as MIOpen does not yet support float64
@@ -366,6 +367,7 @@ class TestSoftmaxFP16CUDNNOp2(TestSoftmaxFP16CUDNNOp):
 class TestSoftmaxBF16Op(OpTest):
     def setUp(self):
         self.op_type = "softmax"
+        self.python_api = F.softmax
         self.use_cudnn = self.init_cudnn()
         self.use_mkldnn = False
         self.dtype = np.uint16

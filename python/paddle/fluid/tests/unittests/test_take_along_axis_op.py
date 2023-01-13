@@ -41,10 +41,11 @@ class TestTakeAlongAxisOp(OpTest):
         self.outputs = {'Result': self.target}
 
     def test_check_output(self):
-        self.check_output()
+        # static only
+        self.check_output(check_dygraph=False)
 
     def test_check_grad(self):
-        self.check_grad(['Input'], 'Result')
+        self.check_grad(['Input'], 'Result', check_dygraph=False)
 
     def init_data(self):
         self.x_type = "float64"

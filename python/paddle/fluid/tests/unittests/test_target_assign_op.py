@@ -135,7 +135,8 @@ class TestTargetAssginFloatType(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        # static only
+        self.check_output(check_dygraph=False)
 
 
 class TestTargetAssginIntType(OpTest):
@@ -182,7 +183,8 @@ class TestTargetAssginIntType(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        # static only
+        self.check_output(check_dygraph=False)
 
 
 if __name__ == '__main__':

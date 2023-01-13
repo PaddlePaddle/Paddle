@@ -29,6 +29,7 @@ from paddle.fluid import Program, core, program_guard
 class TestTileOpRank1(OpTest):
     def setUp(self):
         self.op_type = "tile"
+        self.python_api = paddle.tile
         self.init_data()
 
         self.inputs = {'X': np.random.random(self.ori_shape).astype("float64")}
@@ -106,6 +107,7 @@ class TestTileOpRank4(TestTileOpRank1):
 class TestTileOpRank1_tensor_attr(OpTest):
     def setUp(self):
         self.op_type = "tile"
+        self.python_api = paddle.tile
         self.init_data()
         repeat_times_tensor = []
         for index, ele in enumerate(self.repeat_times):
@@ -151,6 +153,7 @@ class TestTileOpRank2_attr_tensor(TestTileOpRank1_tensor_attr):
 class TestTileOpRank1_tensor(OpTest):
     def setUp(self):
         self.op_type = "tile"
+        self.python_api = paddle.tile
         self.init_data()
 
         self.inputs = {
@@ -182,6 +185,7 @@ class TestTileOpRank2_tensor(TestTileOpRank1_tensor):
 class TestTileOpInteger(OpTest):
     def setUp(self):
         self.op_type = "tile"
+        self.python_api = paddle.tile
         self.inputs = {
             'X': np.random.randint(10, size=(4, 4, 5)).astype("int32")
         }
@@ -197,6 +201,7 @@ class TestTileOpInteger(OpTest):
 class TestTileOpBoolean(OpTest):
     def setUp(self):
         self.op_type = "tile"
+        self.python_api = paddle.tile
         self.inputs = {'X': np.random.randint(2, size=(2, 4, 5)).astype("bool")}
         self.attrs = {'repeat_times': [2, 1, 4]}
         output = np.tile(self.inputs['X'], (2, 1, 4))
@@ -210,6 +215,7 @@ class TestTileOpBoolean(OpTest):
 class TestTileOpInt64_t(OpTest):
     def setUp(self):
         self.op_type = "tile"
+        self.python_api = paddle.tile
         self.inputs = {
             'X': np.random.randint(10, size=(2, 4, 5)).astype("int64")
         }
