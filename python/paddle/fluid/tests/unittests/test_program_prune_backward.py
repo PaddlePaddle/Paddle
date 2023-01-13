@@ -29,39 +29,6 @@ import paddle.fluid as fluid
 import paddle.fluid.core as core
 
 
-def lstm_net(use_feed):
-    dict_dim = 5147
-    emb_dim = 128
-    hid_dim = 128
-    hid_dim2 = 96
-    class_dim = 2
-    emb_lr = 30.0
-    data = fluid.layers.data(
-        name="words", shape=[1], dtype="int64", lod_level=1
-    )
-    label = fluid.layers.data(name="label", shape=[1], dtype="int64")
-    emb = fluid.layers.embedding(
-        input=data,
-        size=[dict_dim, emb_dim],
-        param_attr=fluid.ParamAttr(learning_rate=emb_lr),
-    )
-    fc0 = fluid.layers.fc(input=emb, size=hid_dim * 4)
-    lstm_h, c = fluid.layers.dynamic_lstm(
-        input=fc0, size=hid_dim * 4, is_reverse=False
-    )
-    lstm_max = paddle.static.nn.sequence_lod.sequence_pool(
-        input=lstm_h, pool_type='max'
-    )
-    lstm_max_tanh = paddle.tanh(lstm_max)
-    fc1 = fluid.layers.fc(input=lstm_max_tanh, size=hid_dim2, act='tanh')
-    prediction = fluid.layers.fc(input=fc1, size=class_dim, act='softmax')
-    cost = paddle.nn.functional.cross_entropy(
-        input=prediction, label=label, reduction='none', use_softmax=False
-    )
-    avg_cost = paddle.mean(x=cost)
-    return avg_cost
-
-
 def simple_fc_net_with_accuracy(use_feed):
     img = fluid.layers.data(name='image', shape=[784], dtype='float32')
     label = fluid.layers.data(name='label', shape=[1], dtype='int64')
