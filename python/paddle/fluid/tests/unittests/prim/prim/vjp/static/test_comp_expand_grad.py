@@ -40,14 +40,14 @@ from paddle.fluid import core
         ),
         (
             'same_rank',
-            np.random.rand(10, 1, 5, 1),
+            np.random.rand(10, 1, 10, 1),
             np.random.rand(10, 10, 10, 10),
             (10, 10, 10, 10),
             np.float32,
         ),
         (
             'diff_rank',
-            np.random.rand(1, 5, 1),
+            np.random.rand(1, 10, 1),
             np.random.rand(10, 10, 10, 10),
             (10, 10, 10, 10),
             np.float32,
@@ -76,7 +76,7 @@ class TestExpandGradComp(unittest.TestCase):
                     'cotangent', cotangent.shape, cotangent.dtype
                 )
                 y = paddle.expand(x, shape)
-                x_cotangent = paddle.static.gradients(y, x, v)
+                x_cotangent = paddle.static.gradients(y, x)
             exe = paddle.static.Executor()
             exe.run(sp)
             return exe.run(
