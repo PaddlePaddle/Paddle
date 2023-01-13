@@ -14,8 +14,8 @@
 
 #include "paddle/fluid/framework/ir/mkldnn/fc_act_mkldnn_fuse_pass.h"
 
+#include "paddle/fluid/framework/ir/mkldnn/activation_onednn_fuse_pass.h"
 #include "paddle/fluid/framework/op_version_registry.h"
-#include "paddle/phi/backends/onednn/activation_fuse_pass.h"
 #include "paddle/utils/string/pretty_log.h"
 
 namespace paddle {
@@ -25,7 +25,7 @@ namespace ir {
 using string::PrettyLogDetail;
 
 void FuseFCActOneDNNPass::ApplyImpl(Graph *graph) const {
-  auto act_types = phi::funcs::GetSupportedActivations();
+  auto act_types = GetSupportedActivations();
 
   for (auto act_type : act_types) FuseFCAct(graph, act_type);
 }
@@ -50,7 +50,7 @@ void FuseFCActOneDNNPass::FuseFCAct(Graph *graph,
     GET_IR_NODE_FROM_SUBGRAPH(act, activation, fc_act_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(act_out, activation_out, fc_act_pattern);
 
-    phi::funcs::SetActivationAttrs(fc->Op(), act->Op(), act_type);
+    SetActivationAttrs(fc->Op(), act->Op(), act_type);
     fc->Op()->SetOutput("Out", {act_out->Name()});
 
     IR_OP_VAR_LINK(fc, act_out);

@@ -15,8 +15,8 @@
 #include "paddle/fluid/framework/ir/mkldnn/elt_act_mkldnn_fuse_pass.h"
 
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
+#include "paddle/fluid/framework/ir/mkldnn/activation_onednn_fuse_pass.h"
 #include "paddle/fluid/framework/op_version_registry.h"
-#include "paddle/phi/backends/onednn/activation_fuse_pass.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/utils/string/pretty_log.h"
 
@@ -27,7 +27,7 @@ namespace ir {
 using string::PrettyLogDetail;
 
 void ElementwiseActivationOneDNNPass::ApplyImpl(Graph *graph) const {
-  auto act_types = phi::funcs::GetSupportedActivations();
+  auto act_types = GetSupportedActivations();
   std::vector<std::string> elt_types = {
       "elementwise_add", "elementwise_sub", "elementwise_mul"};
 
@@ -62,8 +62,7 @@ void ElementwiseActivationOneDNNPass::FuseElementwiseAct(
     GET_IR_NODE_FROM_SUBGRAPH(
         activation_out, activation_out, elementwise_act_pattern);
 
-    phi::funcs::SetActivationAttrs(
-        elementwise->Op(), activation->Op(), act_type);
+    SetActivationAttrs(elementwise->Op(), activation->Op(), act_type);
     elementwise->Op()->SetOutput("Out", {activation_out->Name()});
 
     IR_OP_VAR_LINK(elementwise, activation_out);

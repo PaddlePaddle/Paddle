@@ -14,8 +14,8 @@
 
 #include "paddle/fluid/framework/ir/mkldnn/conv_activation_mkldnn_fuse_pass.h"
 
+#include "paddle/fluid/framework/ir/mkldnn/activation_onednn_fuse_pass.h"
 #include "paddle/fluid/framework/op_version_registry.h"
-#include "paddle/phi/backends/onednn/activation_fuse_pass.h"
 #include "paddle/utils/string/pretty_log.h"
 
 namespace paddle {
@@ -25,7 +25,7 @@ namespace ir {
 using string::PrettyLogDetail;
 
 void ConvActivationMkldnnFusePass::ApplyImpl(Graph* graph) const {
-  auto act_types = phi::funcs::GetSupportedActivations();
+  auto act_types = GetSupportedActivations();
   std::vector<std::string> conv_types = {"fused_conv2d", "conv2d"};
 
   for (auto& act_type : act_types) {
@@ -67,7 +67,7 @@ void ConvActivationMkldnnFusePass::FuseConvAct(Graph* graph,
       conv_op->SetType("fused_conv2d");
     }
 
-    phi::funcs::SetActivationAttrs(conv_op, activation->Op(), act_type);
+    SetActivationAttrs(conv_op, activation->Op(), act_type);
 
     conv_op->SetOutput("Output", {activation_out->Name()});
 
@@ -139,7 +139,7 @@ void ConvActivationMkldnnFusePass::FuseConvConcatAct(
         conv_op->SetType("fused_conv2d");
       }
 
-      phi::funcs::SetActivationAttrs(conv_op, activation_op->Op(), act_type);
+      SetActivationAttrs(conv_op, activation_op->Op(), act_type);
     }
 
     concat_op->Op()->SetOutput("Out", {activation_out->Name()});

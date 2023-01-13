@@ -15,8 +15,9 @@
 #pragma once
 #include "paddle/fluid/framework/op_desc.h"
 
-namespace phi {
-namespace funcs {
+namespace paddle {
+namespace framework {
+namespace ir {
 
 static std::vector<std::string> GetSupportedActivations() {
   return std::vector<std::string>{"abs",
@@ -64,7 +65,7 @@ static void SetActivationAttrs(paddle::framework::OpDesc* fused_op,
   }
   fused_op->SetAttr("use_mkldnn", true);
 
-  auto attr_map = phi::funcs::GetAttributeMap(act_type);
+  auto attr_map = GetAttributeMap(act_type);
   for (const auto& attr : attr_map) {
     if (act_op->HasAttr(attr.first)) {
       fused_op->SetAttr(attr.second, act_op->GetAttr(attr.first));
@@ -81,5 +82,6 @@ static void SetActivationAttrs(paddle::framework::OpDesc* fused_op,
   }
 }
 
-}  // namespace funcs
-}  // namespace phi
+}  // namespace ir
+}  // namespace framework
+}  // namespace paddle

@@ -15,8 +15,8 @@
 #include "paddle/fluid/framework/ir/mkldnn/softplus_activation_mkldnn_fuse_pass.h"
 
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
+#include "paddle/fluid/framework/ir/mkldnn/activation_onednn_fuse_pass.h"
 #include "paddle/fluid/framework/op_version_registry.h"
-#include "paddle/phi/backends/onednn/activation_fuse_pass.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/utils/string/pretty_log.h"
 
@@ -27,7 +27,7 @@ namespace ir {
 using string::PrettyLogDetail;
 
 void SoftplusActivationOneDNNPass::ApplyImpl(Graph *graph) const {
-  auto act_types = phi::funcs::GetSupportedActivations();
+  auto act_types = GetSupportedActivations();
 
   // Currently softplus can't be fused with hard_sigmoid
   act_types.erase(
@@ -63,7 +63,7 @@ void SoftplusActivationOneDNNPass::FuseSoftplusActivation(
     GET_IR_NODE_FROM_SUBGRAPH(
         activation, activation, softplus_activation_pattern);
 
-    phi::funcs::SetActivationAttrs(softplus->Op(), activation->Op(), act_type);
+    SetActivationAttrs(softplus->Op(), activation->Op(), act_type);
     softplus->Op()->SetOutput("Out", {activation_out->Name()});
 
     IR_OP_VAR_LINK(softplus, activation_out);

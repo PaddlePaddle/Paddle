@@ -14,8 +14,8 @@
 
 #include "paddle/fluid/framework/ir/mkldnn/matmul_activation_mkldnn_fuse_pass.h"
 
+#include "paddle/fluid/framework/ir/mkldnn/activation_onednn_fuse_pass.h"
 #include "paddle/fluid/framework/op_version_registry.h"
-#include "paddle/phi/backends/onednn/activation_fuse_pass.h"
 #include "paddle/utils/string/pretty_log.h"
 
 namespace paddle {
@@ -25,7 +25,7 @@ namespace ir {
 using string::PrettyLogDetail;
 
 void MatmulActivationMkldnnFusePass::ApplyImpl(Graph* graph) const {
-  auto act_types = phi::funcs::GetSupportedActivations();
+  auto act_types = GetSupportedActivations();
   auto matmul_types = {"matmul", "matmul_v2"};
 
   for (const auto& matmul_type : matmul_types)
@@ -61,7 +61,7 @@ void MatmulActivationMkldnnFusePass::FuseMatmulAct(
     GET_IR_NODE_FROM_SUBGRAPH(
         activation_out, activation_out, matmul_act_pattern);
 
-    phi::funcs::SetActivationAttrs(matmul->Op(), activation->Op(), act_type);
+    SetActivationAttrs(matmul->Op(), activation->Op(), act_type);
     matmul->Op()->SetOutput("Out", {activation_out->Name()});
 
     IR_NODE_LINK_TO(matmul, activation_out);
