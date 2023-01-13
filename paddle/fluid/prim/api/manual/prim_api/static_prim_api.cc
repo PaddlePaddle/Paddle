@@ -31,6 +31,7 @@
 #include "paddle/fluid/prim/utils/static/desc_tensor.h"
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/common/data_type.h"
+#include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/enforce.h"
 namespace paddle {
 namespace prim {
@@ -160,10 +161,11 @@ Tensor full<DescTensor>(paddle::experimental::IntArray shape,
   op->SetType("fill_constant");
   op->SetAttr("shape", shape.GetData());
   PADDLE_ENFORCE_EQ(
-      dtype,
-      paddle::experimental::DataType::FLOAT32,
+      ((dtype == paddle::experimental::DataType::FLOAT32) ||
+       (dtype == paddle::experimental::DataType::FLOAT16)),
+      true,
       phi::errors::InvalidArgument(
-          "We only support float32 for full, but we got data type: %s",
+          "We only support float32/float16 for full, but we got data type: %s",
           phi::DataTypeToString(dtype)));
   op->SetAttr("value", value.to<float>());
   op->SetAttr("dtype", paddle::framework::TransToProtoVarType(dtype));
@@ -192,19 +194,13 @@ Tensor sum<DescTensor>(Tensor x,
     res.push_back(static_cast<int>(value));
   }
   op->SetAttr("dim", res);
-  PADDLE_ENFORCE_EQ(
-      dtype,
-      paddle::experimental::DataType::FLOAT32,
-      phi::errors::InvalidArgument(
-          "We only support float32 for full, but we got data type: %s",
-          phi::DataTypeToString(dtype)));
   op->SetAttr("keep_dim", keepdim);
   op->SetAttr("dtype", paddle::framework::TransToProtoVarType(dtype));
   op->SetOutput(
       "Out", {std::static_pointer_cast<prim::DescTensor>(out.impl())->Name()});
   op->CheckAttrs();
   op->InferVarType(block);
-  op->InferShape(*block);
+  // TODO(jiabin): This may have runtime shape skip infershape for now.
   return out;
 }
 
@@ -227,7 +223,7 @@ Tensor reshape<DescTensor>(Tensor x, paddle::experimental::IntArray shape) {
       "Out", {std::static_pointer_cast<prim::DescTensor>(out.impl())->Name()});
   op->CheckAttrs();
   op->InferVarType(block);
-  op->InferShape(*block);
+  // TODO(jiabin): This may have runtime shape skip infershape for now.
   return out;
 }
 }  // namespace prim
