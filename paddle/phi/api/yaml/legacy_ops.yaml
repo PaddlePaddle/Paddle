@@ -1701,15 +1701,6 @@
     func : squared_l2_norm
   backward : squared_l2_norm_grad
 
-- op : stack
-  args : (Tensor[] x, int axis)
-  output : Tensor
-  infer_meta :
-    func : StackInferMeta
-  kernel :
-    func : stack
-  backward : stack_grad
-
 - op : strided_slice
   args : (Tensor x, int[] axes, IntArray starts, IntArray ends, IntArray strides)
   output : Tensor
@@ -1770,8 +1761,8 @@
   backward : temporal_shift_grad
 
 - op : tile
-  args : (Tensor x, IntArray repeat_times)
-  output : Tensor
+  args : (Tensor x, IntArray repeat_times = {})
+  output : Tensor(out)
   infer_meta :
     func : TileInferMeta
   kernel :
@@ -1863,15 +1854,6 @@
     backend : place
     data_type : dtype
 
-- op : unbind
-  args : (Tensor input, int axis)
-  output : Tensor[] {axis<0 ? input.dims()[input.dims().size()+axis]:input.dims()[axis]}
-  infer_meta :
-    func : UnbindInferMeta
-  kernel :
-    func : unbind
-  backward : unbind_grad
-
 - op : uniform
   args : (IntArray shape,  DataType dtype,  Scalar min,  Scalar max,  int seed, Place place={})
   output : Tensor(out)
@@ -1903,15 +1885,6 @@
     func : UniqueInferMeta
   kernel :
     func : unique
-    data_type : x
-
-- op : unique_consecutive
-  args : (Tensor x, bool return_inverse, bool return_counts, int[] axis, int dtype)
-  output : Tensor(out), Tensor(index), Tensor(counts)
-  infer_meta :
-      func : UniqueConsecutiveInferMeta
-  kernel :
-    func : unique_consecutive
     data_type : x
 
 - op : unpool
