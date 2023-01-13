@@ -180,5 +180,28 @@ void multiply_grad(const Tensor& x,
     }
   }
 }
+
+template <typename T>
+void expand_grad(const Tensor& x,
+                 const Tensor& out_grad,
+                 const IntArray& shape,
+                 Tensor* x_grad) {
+  if (x_grad) {
+    if (out_grad.dims() != x.dims()) {
+      auto reduced =
+          sum<T>(out_grad,
+                 phi::vectorize(get_reduce_dims(out_grad.dims(), x.dims())),
+                 x.dtype(),
+                 false);
+      if (reduced.dims().size() != x.dims().size()) {
+        reduced = reshape<T>(reduced, x.shape());
+      }
+      x_grad->set_impl(reduced.impl());
+    } else {
+      x_grad->set_impl(out_grad.impl());
+    }
+  }
+}
+
 }  // namespace prim
 }  // namespace paddle
