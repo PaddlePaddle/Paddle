@@ -88,10 +88,6 @@ Py_ssize_t GetSliceIndexFromPyObject(PyObject* obj) {
   }
 }
 
-bool PyCheckTensor(PyObject* obj) {
-  return PyObject_IsInstance(obj, reinterpret_cast<PyObject*>(p_tensor_type));
-}
-
 static PyObject* tensor_method_numpy(TensorObject* self,
                                      PyObject* args,
                                      PyObject* kwargs) {

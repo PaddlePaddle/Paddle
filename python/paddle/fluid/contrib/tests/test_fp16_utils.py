@@ -15,7 +15,7 @@
 import unittest
 import paddle.fluid as fluid
 from paddle.fluid import core
-from paddle.fluid.contrib.mixed_precision import fp16_utils
+from paddle.static.amp import fp16_utils
 import paddle
 
 paddle.enable_static()
