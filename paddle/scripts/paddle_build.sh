@@ -3190,7 +3190,7 @@ EOF
     startTime_s=`date +%s`
     set +e
 
-    cmake .. -DWITH_DISTRIBUTE=OFF -DON_INFER=ON -DWITH_TENSORRT=ON -DCUDA_ARCH_NAME=${CUDA_ARCH_NAME:-Auto} -DWITH_PYTHON=${WITH_PYTHON:-ON} -DWITH_ONNXRUNTIME=${WITH_ONNXRUNTIME:-OFF};build_error=$?
+    cmake .. -DWITH_DISTRIBUTE=OFF -DON_INFER=ON -DWITH_TENSORRT=ON -DCUDA_ARCH_NAME=${CUDA_ARCH_NAME:-Auto} -DWITH_PYTHON=${WITH_PYTHON:-ON} -DWITH_ONNXRUNTIME=${WITH_ONNXRUNTIME:-OFF} -DWITH_MKL=${WITH_MKL:-ON} -DWITH_MKLDNN=${WITH_MKLDNN:-ON} ;build_error=$?
 
     # reset ccache zero stats for collect PR's actual hit rate
     ccache -z
@@ -3680,9 +3680,17 @@ function run_setup(){
     ccache -z
     cd ..
     if [ "${PYTHON_EXECUTABLE}" != "" ];then
-        ${PYTHON_EXECUTABLE} setup.py $2;build_error=$?
+        if [ "$SYSTEM" == "Darwin" ]; then
+            ${PYTHON_EXECUTABLE} setup.py $2 --plat-name=macosx_10_9_x86_64;build_error=$?
+        else
+            ${PYTHON_EXECUTABLE} setup.py $2;build_error=$?
+        fi
     else
-        python setup.py $2;build_error=$?
+        if [ "$SYSTEM" == "Darwin" ]; then
+            python setup.py $2 --plat-name=macosx_10_9_x86_64;build_error=$?
+        else
+            python setup.py $2;build_error=$?
+        fi
     fi
     
     # ci will collect ccache hit rate

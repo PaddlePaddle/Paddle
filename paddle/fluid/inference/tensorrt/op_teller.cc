@@ -686,8 +686,12 @@ struct SimpleOpTypeSetTeller : public Teller {
       int axis = desc.HasAttr("axis")
                      ? PADDLE_GET_CONST(int64_t, desc.GetAttr("axis"))
                      : -1;
-      bool flatten = PADDLE_GET_CONST(bool, desc.GetAttr("flatten"));
-      int dtype = PADDLE_GET_CONST(int, desc.GetAttr("dtype"));
+      bool flatten = desc.HasAttr("flatten")
+                         ? PADDLE_GET_CONST(bool, desc.GetAttr("flatten"))
+                         : false;
+      int dtype = desc.HasAttr("dtype")
+                      ? PADDLE_GET_CONST(int, desc.GetAttr("dtype"))
+                      : 3;
       if (axis == 0 || flatten || (dtype != 2 && dtype != 3)) return false;
     }
 
@@ -764,7 +768,7 @@ struct SimpleOpTypeSetTeller : public Teller {
     if (op_type == "nearest_interp") {
       std::vector<std::string> attrs{
           "interp_method", "align_corners", "scale", "out_h", "out_w"};
-      for (auto const attr : attrs) {
+      for (auto const& attr : attrs) {
         if (!desc.HasAttr(attr)) return false;
       }
       if (desc.HasAttr("data_layout")) {
@@ -810,7 +814,7 @@ struct SimpleOpTypeSetTeller : public Teller {
                                      "scale",
                                      "out_h",
                                      "out_w"};
-      for (auto const attr : attrs) {
+      for (auto const& attr : attrs) {
         if (!desc.HasAttr(attr)) return false;
       }
       auto data_layout = phi::StringToDataLayout(
@@ -849,7 +853,7 @@ struct SimpleOpTypeSetTeller : public Teller {
                                      "scale",
                                      "out_h",
                                      "out_w"};
-      for (auto const attr : attrs) {
+      for (auto const& attr : attrs) {
         if (!desc.HasAttr(attr)) {
           VLOG(3) << "The op_type " << op_type << " doesn't have the attr "
                   << attr << " and return false";
@@ -1746,7 +1750,7 @@ struct SimpleOpTypeSetTeller : public Teller {
                                      "spatial_scale",
                                      "sampling_ratio",
                                      "aligned"};
-      for (auto const attr : attrs) {
+      for (auto const& attr : attrs) {
         if (!desc.HasAttr(attr)) return false;
       }
 
@@ -2088,7 +2092,8 @@ struct SimpleOpTypeSetTeller : public Teller {
     }
 
     if (op_type == "reduce_sum" || op_type == "reduce_mean" ||
-        op_type == "reduce_max") {
+        op_type == "reduce_max" || op_type == "reduce_min" ||
+        op_type == "reduce_prod") {
       if (!desc.HasAttr("dim", /*with_attr_var=*/false)) {
         VLOG(3) << "Skip to convert into TRT while found Attribute('dim') is "
                    "Variable type in "
@@ -2390,6 +2395,22 @@ struct SimpleOpTypeSetTeller : public Teller {
       }
     }
 
+    if (op_type == "skip_groupnorm_act") {
+      if (!with_dynamic_shape) {
+        VLOG(3) << "The skip_groupnorm_act op does not support "
+                   "static shape yet";
+        return false;
+      }
+    }
+
+    if (op_type == "preln_groupnorm_act") {
+      if (!with_dynamic_shape) {
+        VLOG(3) << "The preln_groupnorm_act op does not support "
+                   "static shape yet";
+        return false;
+      }
+    }
+
     if (op_type == "lookup_table") {
       if (!with_dynamic_shape) {
         VLOG(3) << "the lookup_table does not support "
@@ -2507,6 +2528,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "flatten",
       "gather",
       "gather_nd",
+      "group_norm",
       "yolo_box",
       "yolo_box_head",
       "arg_max",
@@ -2561,7 +2583,9 @@ struct SimpleOpTypeSetTeller : public Teller {
       "merge_layernorm",
       "skip_merge_layernorm",
       "lookup_table_v2",
-      "expand_v2"};
+      "expand_v2",
+      "skip_groupnorm_act",
+      "preln_groupnorm_act"};
 
   std::unordered_set<std::string> teller_set{
       "mul",
@@ -2709,7 +2733,9 @@ struct SimpleOpTypeSetTeller : public Teller {
       "skip_merge_layernorm",
       "lookup_table",
       "lookup_table_v2",
-      "expand_v2"};
+      "expand_v2",
+      "skip_groupnorm_act",
+      "preln_groupnorm_act"};
 };
 
 struct GenericPluginTeller : public Teller {
