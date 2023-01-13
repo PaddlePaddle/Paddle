@@ -1359,6 +1359,20 @@ def _append_backward_ops_(
             program._rollback()
             grad_sub_block_list.append(grad_sub_block.desc)
 
+        # In primitive mode, raw phi GradOp will be split into multiple small
+        # primitive operators, and the split rules are defined in c++ level,
+        # see detials: paddle/fluid/prim/api/manual/backward/composite_backward_api.h
+        # It means that the output's shape and dtype of previous operators which
+        # maybe used as the input of next operators must be known. Therefore,
+        # we infer shape and dtype in a sandbox block(named composite_block) for
+        # used in c++ level.
+        # For example:
+        #   forward:
+        #       z = multiply(x, y) //maybe broadcast in kernel
+        #   bcckward:
+        #       x_grad_unreduce = z_grad * y // maybe unreduce
+        #       reduced_axes = get_reduced_axes(x_grad.shape, x.shape) // need known shape
+        #       x_grad = reduce_sum(x_grad_unreduce)
         if core.is_prim_enabled():
 
             def find_op_index(block_desc, cur_op_desc):
@@ -1372,7 +1386,6 @@ def _append_backward_ops_(
                 no_grad_dict[composite_block.idx],
                 grad_sub_block_list,
             )
-
             for desc in grad_op_desc:
                 infershape_for_composite(composite_block, desc)
         else:
@@ -1660,7 +1673,6 @@ def _append_backward_vars_(block, start_op_idx, grad_to_var, grad_info_map):
 
 
 def infershape_for_composite(block, grad_op_desc):
-
     op_desc = block.desc.append_op()
     op_desc.copy_from(grad_op_desc)
     op_desc._set_attr(
@@ -1668,7 +1680,7 @@ def infershape_for_composite(block, grad_op_desc):
         core.op_proto_and_checker_maker.OpRole.Backward,
     )
 
-    new_vars = set()
+    vars = set()
     # create new gradient variables
     for grad_var_name in op_desc.output_arg_names():
         if not (
@@ -1676,14 +1688,14 @@ def infershape_for_composite(block, grad_op_desc):
             or grad_var_name == core.empty_var_name()
         ):
             block.desc.var(grad_var_name.encode())
-            new_vars.add(grad_var_name)
+            vars.add(grad_var_name)
     # infer_shape and infer_type
     op_desc.check_attrs()
     op_desc.infer_var_type(block.desc)
     op_desc.infer_shape(block.desc)
 
     for arg in op_desc.output_arg_names():
-        if arg in new_vars:
+        if arg in vars:
             _infer_var_data_type_shape_(arg, block)
 
 
