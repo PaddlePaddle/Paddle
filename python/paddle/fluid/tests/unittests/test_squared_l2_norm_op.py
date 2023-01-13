@@ -41,9 +41,6 @@ class TestSquaredL2NormF16Op(unittest.TestCase):
         paddle.disable_static()
         x = paddle.to_tensor(x_np)
 
-        if dtype == "bfloat16":
-            x = x.cast(paddle.fluid.core.VarDesc.VarType.BF16)
-
         x.stop_gradient = False
         y = test_squared_l2_norm(x)
         x_g = paddle.grad(y, [x])
