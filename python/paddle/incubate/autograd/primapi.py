@@ -220,11 +220,19 @@ def to_prim(blocks):
     """Search nonbasic ops which have be registered composite rules and replace them with primitive ops."""
     if isinstance(blocks, paddle.fluid.framework.Block):
         logging.info("Atomize composite op to primitive ops begin.")
-        primx._lower_composite(blocks)
+        main_program = blocks.program
         return
     elif isinstance(blocks, typing.Sequence):
         for item in blocks:
-            to_prim(item)
-        return
+            if not isinstance(item, paddle.fluid.framework.Block):
+                raise TypeError(
+                    f"Expect block or sequence of blocks, but sequence contains {type(item)}."
+                )
+        main_program = blocks[0].program
     else:
-        raise TypeError
+        raise TypeError(
+            f"Expect block or sequence of blocks, but got {type(blocks)}."
+        )
+    with framework.program_guard(main_program):
+        primx._lower_composite(blocks)
+    return

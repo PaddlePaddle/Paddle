@@ -81,7 +81,7 @@ class PrimeNet(paddle.nn.Layer):
         self.fc = paddle.nn.Linear(4, 4)
 
     def forward(self, x):
-        x = self.fc(x)
+        y = self.fc(x)
         y = paddle.tan(x)
         out = F.softmax(y)
         return out
@@ -132,7 +132,9 @@ class TestPrime(unittest.TestCase):
         cinn_res = self.train(use_prim=True)
 
         for i in range(len(dy_res)):
-            np.testing.assert_allclose(cinn_res[i], dy_res[i], rtol=1e-6)
+            np.testing.assert_allclose(
+                cinn_res[i], dy_res[i], rtol=1e-7, atol=1e-7
+            )
 
 
 if __name__ == '__main__':

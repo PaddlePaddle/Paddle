@@ -15,7 +15,19 @@
 import unittest
 
 import numpy as np
-from utils import TOLERANCE
+
+# from utils import TOLERANCE
+
+TOLERANCE = {
+    "float32": {
+        "forward": {"rtol": 1e-7, "atol": 1e-7},
+        "backward": {"rtol": 1e-7, "atoil": 1e-7},
+    },
+    "float64": {
+        "forward": {"rtol": 1e-7, "atol": 1e-7},
+        "backward": {"rtol": 1e-7, "atol": 1e-7},
+    },
+}
 
 import paddle
 import paddle.nn.functional as F
@@ -57,8 +69,7 @@ attrs = Attr()
 
 
 def fn(x):
-    y = paddle.tan(x)
-    return F.softmax(y, axis=attrs.axis, dtype=attrs.dtype)
+    return F.softmax(x, axis=attrs.axis, dtype=attrs.dtype)
 
 
 def expect_forward(inputs):

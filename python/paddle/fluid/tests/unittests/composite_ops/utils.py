@@ -15,8 +15,8 @@
 
 TOLERANCE = {
     "float32": {
-        "forward": {"rtol": 1e-6, "atol": 1e-6},
-        "backward": {"rtol": 1e-6, "atol": 1e-6},
+        "forward": {"rtol": 1e-7, "atol": 1e-7},
+        "backward": {"rtol": 1e-7, "atol": 1e-7},
     },
     "float64": {
         "forward": {"rtol": 1e-7, "atol": 1e-7},
