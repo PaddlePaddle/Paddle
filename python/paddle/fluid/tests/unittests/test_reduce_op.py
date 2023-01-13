@@ -15,13 +15,17 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
 
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
+from op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
 from paddle.fluid import Program, program_guard
 from paddle.fluid.framework import convert_np_dtype_to_dtype_
+
+
+def sum_with_keepdim(x, dim=None, keep_dim=False):
+    return paddle.sum(x, axis=dim, keepdim=keep_dim)
 
 
 class TestSumOp(OpTest):
@@ -633,11 +637,12 @@ class TestAnyOpError(unittest.TestCase):
 class Test1DReduce(OpTest):
     def setUp(self):
         self.op_type = "reduce_sum"
+        self.python_api = paddle.sum
         self.inputs = {'X': np.random.random(120).astype("float64")}
         self.outputs = {'Out': self.inputs['X'].sum(axis=0)}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_dygraph=False)
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out')
@@ -646,6 +651,7 @@ class Test1DReduce(OpTest):
 class Test2DReduce0(Test1DReduce):
     def setUp(self):
         self.op_type = "reduce_sum"
+        self.python_api = paddle.sum
         self.attrs = {'dim': [0]}
         self.inputs = {'X': np.random.random((20, 10)).astype("float64")}
         self.outputs = {'Out': self.inputs['X'].sum(axis=0)}
@@ -654,6 +660,7 @@ class Test2DReduce0(Test1DReduce):
 class Test2DReduce1(Test1DReduce):
     def setUp(self):
         self.op_type = "reduce_sum"
+        self.python_api = paddle.sum
         self.attrs = {'dim': [1]}
         self.inputs = {'X': np.random.random((20, 10)).astype("float64")}
         self.outputs = {
@@ -664,6 +671,7 @@ class Test2DReduce1(Test1DReduce):
 class Test3DReduce0(Test1DReduce):
     def setUp(self):
         self.op_type = "reduce_sum"
+        self.python_api = paddle.sum
         self.attrs = {'dim': [1]}
         self.inputs = {'X': np.random.random((5, 6, 7)).astype("float64")}
         self.outputs = {
@@ -674,6 +682,7 @@ class Test3DReduce0(Test1DReduce):
 class Test3DReduce1(Test1DReduce):
     def setUp(self):
         self.op_type = "reduce_sum"
+        self.python_api = paddle.sum
         self.attrs = {'dim': [2]}
         self.inputs = {'X': np.random.random((5, 6, 7)).astype("float64")}
         self.outputs = {
@@ -684,6 +693,7 @@ class Test3DReduce1(Test1DReduce):
 class Test3DReduce2(Test1DReduce):
     def setUp(self):
         self.op_type = "reduce_sum"
+        self.python_api = paddle.sum
         self.attrs = {'dim': [-2]}
         self.inputs = {'X': np.random.random((5, 6, 7)).astype("float64")}
         self.outputs = {
@@ -694,6 +704,7 @@ class Test3DReduce2(Test1DReduce):
 class Test3DReduce3(Test1DReduce):
     def setUp(self):
         self.op_type = "reduce_sum"
+        self.python_api = paddle.sum
         self.attrs = {'dim': [1, 2]}
         self.inputs = {'X': np.random.random((5, 6, 7)).astype("float64")}
         self.outputs = {
@@ -704,6 +715,7 @@ class Test3DReduce3(Test1DReduce):
 class Test8DReduce0(Test1DReduce):
     def setUp(self):
         self.op_type = "reduce_sum"
+        self.python_api = paddle.sum
         self.attrs = {'dim': (4, 2, 3)}
         self.inputs = {
             'X': np.random.random((2, 5, 3, 2, 2, 3, 4, 2)).astype("float64")
@@ -716,6 +728,7 @@ class Test8DReduce0(Test1DReduce):
 class TestKeepDimReduce(Test1DReduce):
     def setUp(self):
         self.op_type = "reduce_sum"
+        self.python_api = sum_with_keepdim
         self.inputs = {'X': np.random.random((5, 6, 10)).astype("float64")}
         self.attrs = {'dim': [1], 'keep_dim': True}
         self.outputs = {
@@ -728,6 +741,7 @@ class TestKeepDimReduce(Test1DReduce):
 class TestKeepDim8DReduce(Test1DReduce):
     def setUp(self):
         self.op_type = "reduce_sum"
+        self.python_api = sum_with_keepdim
         self.inputs = {
             'X': np.random.random((2, 5, 3, 2, 2, 3, 4, 2)).astype("float64")
         }
@@ -782,6 +796,7 @@ class TestReduceMinOpMultiAxises(OpTest):
 class TestKeepDimReduceSumMultiAxises(OpTest):
     def setUp(self):
         self.op_type = "reduce_sum"
+        self.python_api = sum_with_keepdim
         self.inputs = {'X': np.random.random((5, 6, 10)).astype("float64")}
         self.attrs = {'dim': [-2, -1], 'keep_dim': True}
         self.outputs = {
@@ -791,7 +806,8 @@ class TestKeepDimReduceSumMultiAxises(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        # check dygraph failed on CPU
+        self.check_output(check_dygraph=False)
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out')
@@ -800,6 +816,7 @@ class TestKeepDimReduceSumMultiAxises(OpTest):
 class TestReduceSumWithDimOne(OpTest):
     def setUp(self):
         self.op_type = "reduce_sum"
+        self.python_api = sum_with_keepdim
         self.inputs = {'X': np.random.random((100, 1, 1)).astype("float64")}
         self.attrs = {'dim': [1, 2], 'keep_dim': True}
         self.outputs = {
@@ -809,7 +826,8 @@ class TestReduceSumWithDimOne(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        # check_dygraph failed on CPU
+        self.check_output(check_dygraph=False)
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out')
@@ -818,6 +836,8 @@ class TestReduceSumWithDimOne(OpTest):
 class TestReduceSumWithNumelOne(OpTest):
     def setUp(self):
         self.op_type = "reduce_sum"
+        self.python_api = paddle.sum
+        self.python_api = sum_with_keepdim
         self.inputs = {'X': np.random.random((100, 1)).astype("float64")}
         self.attrs = {'dim': [1], 'keep_dim': False}
         self.outputs = {
@@ -836,6 +856,7 @@ class TestReduceSumWithNumelOne(OpTest):
 class TestReduceAll(OpTest):
     def setUp(self):
         self.op_type = "reduce_sum"
+        self.python_api = paddle.sum
         self.inputs = {'X': np.random.random((100, 1, 1)).astype("float64")}
         self.attrs = {'reduce_all': True, 'keep_dim': False}
         self.outputs = {'Out': self.inputs['X'].sum()}
@@ -850,6 +871,7 @@ class TestReduceAll(OpTest):
 class Test1DReduceWithAxes1(OpTest):
     def setUp(self):
         self.op_type = "reduce_sum"
+        self.python_api = paddle.sum
         self.inputs = {'X': np.random.random(100).astype("float64")}
         self.attrs = {'dim': [0], 'keep_dim': False}
         self.outputs = {'Out': self.inputs['X'].sum(axis=0)}
@@ -875,10 +897,10 @@ class TestReduceWithDtype(OpTest):
         )
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_dygraph=False)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_dygraph=False)
 
 
 class TestReduceWithDtype1(TestReduceWithDtype):

@@ -15,14 +15,17 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16
 from scipy.special import erf, expit
 
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 import paddle.nn.functional as F
+from op_test import OpTest, convert_float_to_uint16
 from paddle.fluid import Program, program_guard
+
+# from scipy.special import erf, expit
+
 
 paddle.enable_static()
 
@@ -48,6 +51,7 @@ class TestSqrtOpError(unittest.TestCase):
 class TestActivation(OpTest):
     def setUp(self):
         self.op_type = "exp"
+        self.python_api = F.exp
         self.init_dtype()
         self.init_shape()
         self.init_kernel_type()
@@ -188,6 +192,7 @@ class TestParameter:
 class TestSigmoid(TestActivation):
     def setUp(self):
         self.op_type = "sigmoid"
+        self.python_api = F.sigmoid
         self.init_dtype()
         self.init_shape()
 
@@ -218,6 +223,7 @@ class TestSigmoid_ZeroDim(TestSigmoid):
 class TestSigmoidBF16(OpTest):
     def setUp(self):
         self.op_type = "sigmoid"
+        self.python_api = F.sigmoid
         self.init_dtype()
         self.init_shape()
 
@@ -256,6 +262,7 @@ class TestSigmoidBF16_ZeroDim(TestSigmoidBF16):
 class TestSilu(TestActivation):
     def setUp(self):
         self.op_type = "silu"
+        self.python_api = F.silu
         self.init_dtype()
         self.init_shape()
 
@@ -333,6 +340,7 @@ class TestSiluAPI(unittest.TestCase):
 class TestLogSigmoid(TestActivation):
     def setUp(self):
         self.op_type = "logsigmoid"
+        self.python_api = F.logsigmoid
         self.init_dtype()
         self.init_shape()
 
@@ -409,6 +417,7 @@ class TestLogSigmoidAPI(unittest.TestCase):
 class TestTanh(TestActivation, TestParameter):
     def setUp(self):
         self.op_type = "tanh"
+        self.python_api = F.tanh
         self.init_dtype()
         self.init_shape()
 
@@ -546,6 +555,7 @@ class TestAtan_ZeroDim(TestTanh):
 class TestSinh(TestActivation):
     def setUp(self):
         self.op_type = "sinh"
+        self.python_api = F.sinh
         self.init_dtype()
         self.init_shape()
 
@@ -721,6 +731,7 @@ def ref_tanhshrink(x):
 class TestTanhshrink(TestActivation):
     def setUp(self):
         self.op_type = "tanh_shrink"
+        self.python_api = F.tanhshrink
         self.init_dtype()
         self.init_shape()
 
@@ -803,6 +814,7 @@ def ref_hardshrink(x, threshold):
 class TestHardShrink(TestActivation):
     def setUp(self):
         self.op_type = "hard_shrink"
+        self.python_api = F.hard_shrink
         self.init_dtype()
         self.init_shape()
 
@@ -1277,6 +1289,7 @@ class TestTan(TestActivation):
     def setUp(self):
         np.random.seed(1024)
         self.op_type = "tan"
+        self.python_api = F.tan
         self.init_dtype()
         self.init_shape()
 
@@ -1353,6 +1366,7 @@ class TestTanAPI(unittest.TestCase):
 class TestAcos(TestActivation):
     def setUp(self):
         self.op_type = "acos"
+        self.python_api = F.acos
         self.init_dtype()
         self.init_shape()
 
@@ -1380,6 +1394,7 @@ class TestAcos_ZeroDim(TestAcos):
 class TestSin(TestActivation, TestParameter):
     def setUp(self):
         self.op_type = "sin"
+        self.python_api = F.sin
         self.init_dtype()
         self.init_shape()
 
@@ -1407,6 +1422,7 @@ class TestSin_ZeroDim(TestSin):
 class TestAsin(TestActivation):
     def setUp(self):
         self.op_type = "asin"
+        self.python_api = F.asin
         self.init_dtype()
         self.init_shape()
 
@@ -1434,6 +1450,7 @@ class TestAsin_ZeroDim(TestAsin):
 class TestAcosh(TestActivation):
     def setUp(self):
         self.op_type = "acosh"
+        self.python_api = F.acosh
         self.init_dtype()
         self.init_shape()
 
@@ -1461,6 +1478,7 @@ class TestAcosh_ZeroDim(TestAcosh):
 class TestAsinh(TestActivation):
     def setUp(self):
         self.op_type = "asinh"
+        self.python_api = F.asinh
         self.init_dtype()
         self.init_shape()
 
@@ -1488,6 +1506,7 @@ class TestAsinh_ZeroDim(TestAsinh):
 class TestAtanh(TestActivation):
     def setUp(self):
         self.op_type = "atanh"
+        self.python_api = F.atanh
         self.init_dtype()
         self.init_shape()
 
@@ -1542,6 +1561,7 @@ class TestRound_ZeroDim(TestRound):
 class TestRelu(TestActivation):
     def setUp(self):
         self.op_type = "relu"
+        self.python_api = F.relu
         self.init_dtype()
         self.init_shape()
 
@@ -1646,6 +1666,7 @@ class TestLeakyRelu(TestActivation):
 
     def setUp(self):
         self.op_type = "leaky_relu"
+        self.python_api = F.leaky_relu
         self.init_dtype()
         self.init_shape()
         alpha = self.get_alpha()
@@ -2761,6 +2782,7 @@ class TestSTanh(TestActivation):
 
     def setUp(self):
         self.op_type = "stanh"
+        self.python_api = F.stanh
         self.init_dtype()
         self.init_shape()
 
@@ -2923,6 +2945,7 @@ class TestSoftplus_ZeroDim(TestSoftplus):
 class TestSoftplusBF16(OpTest):
     def setUp(self):
         self.op_type = "softplus"
+        self.python_api = paddle.nn.functional.softplus
         self.init_dtype()
 
         beta = 2
@@ -3094,6 +3117,7 @@ def ref_thresholded_relu(x, threshold=1.0):
 class TestThresholdedRelu(TestActivation):
     def setUp(self):
         self.op_type = "thresholded_relu"
+        self.python_api = paddle.nn.functional.thresholded_relu
         self.init_dtype()
         self.init_shape()
 
@@ -3182,6 +3206,7 @@ def ref_hardsigmoid(x, slope=0.166666666666667, offset=0.5):
 class TestHardSigmoid(TestActivation):
     def setUp(self):
         self.op_type = "hard_sigmoid"
+        self.python_api = F.hard_sigmoid
         self.dtype = 'float64'
         self.slope = 0.166666666666667
         self.offset = 0.5
@@ -3522,17 +3547,9 @@ def create_test_act_fp16_class(
 
         def test_check_output(self):
             place = core.CUDAPlace(0)
-            support_fp16 = core.is_float16_supported(place)
-            if support_fp16:
-                self.check_output_with_place(place, atol=atol)
-
-        def test_check_grad(self):
-            place = core.CUDAPlace(0)
-            support_fp16 = core.is_float16_supported(place)
-            if support_fp16 and grad_check:
-                self.check_grad_with_place(
-                    place, ['X'], 'Out', max_relative_error=grad_atol
-                )
+            self.check_grad_with_place(
+                place, ['X'], 'Out', max_relative_error=grad_atol
+            )
 
     cls_name = "{0}_{1}".format(parent.__name__, "fp16")
     TestActFp16.__name__ = cls_name

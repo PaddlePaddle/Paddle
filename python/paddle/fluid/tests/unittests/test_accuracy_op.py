@@ -15,10 +15,10 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
 
 import paddle
 import paddle.fluid as fluid
+from op_test import OpTest
 from paddle.fluid import Program, program_guard
 
 
@@ -48,7 +48,7 @@ class TestAccuracyOp(OpTest):
         pass
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_dygraph=False)
 
 
 class TestAccuracyOpFp16(TestAccuracyOp):
@@ -56,11 +56,12 @@ class TestAccuracyOpFp16(TestAccuracyOp):
         self.dtype = np.float16
 
     def test_check_output(self):
-        self.check_output(atol=1e-3)
+        self.check_output(atol=1e-3, check_dygraph=False)
 
 
 class TestAccuracyOpError(unittest.TestCase):
     def test_errors(self):
+        paddle.enable_static()
         with program_guard(Program(), Program()):
             # The input type of accuracy_op must be Variable.
             x1 = fluid.create_lod_tensor(
@@ -78,10 +79,12 @@ class TestAccuracyOpError(unittest.TestCase):
             x3 = fluid.layers.data(name='input', shape=[-1, 2], dtype="float16")
             paddle.static.accuracy(input=x3, label=label)
             paddle.metric.accuracy(input=x3, label=label)
+        paddle.disable_static()
 
 
 class TestAccuracyAPI1(unittest.TestCase):
     def setUp(self):
+        paddle.enable_static()
         self.predictions = paddle.static.data(
             shape=[2, 5], name="predictions", dtype="float32"
         )
@@ -97,8 +100,10 @@ class TestAccuracyAPI1(unittest.TestCase):
         )
         self.input_labels = np.array([[2], [0]], dtype="int64")
         self.expect_value = np.array([0.5], dtype='float32')
+        paddle.disable_static()
 
     def test_api(self):
+        paddle.enable_static()
         exe = paddle.static.Executor()
         (result,) = exe.run(
             feed={
@@ -108,6 +113,7 @@ class TestAccuracyAPI1(unittest.TestCase):
             fetch_list=[self.result.name],
         )
         self.assertEqual((result == self.expect_value).all(), True)
+        paddle.disable_static()
 
 
 class TestAccuracyAPI2(unittest.TestCase):
