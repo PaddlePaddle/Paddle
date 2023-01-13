@@ -1354,8 +1354,9 @@ struct SimpleOpTypeSetTeller : public Teller {
         op_type == "logical_or" || op_type == "logical_xor" ||
         op_type == "logical_and" || op_type == "less_equal") {
 #if IS_TRT_VERSION_GE(8400)
+      // TRT does not support kEQUAL/kGREATER/kLESS work with implicit batch
       if (!with_dynamic_shape) {
-        VLOG(3) << "these ops do not support static shape yet";
+        VLOG(3) << "Ops(" << op_type << ") do not support static shape yet.";
         return false;
       }
       if (op_type == "logical_or" || op_type == "logical_xor" ||
@@ -2277,24 +2278,15 @@ struct SimpleOpTypeSetTeller : public Teller {
       }
       int in_dtype = PADDLE_GET_CONST(int, desc.GetAttr("in_dtype"));
       int out_dtype = PADDLE_GET_CONST(int, desc.GetAttr("out_dtype"));
-      if ((in_dtype == 4 || in_dtype == 5) && out_dtype == 4) {
-        VLOG(3) << "unsupport data type conversion";
-        return false;
-      }
-#if IS_TRT_VERSION_GE(8400)
+
       if (in_dtype == 0 || out_dtype == 0) {
+#if IS_TRT_VERSION_GE(8400)
         if (with_dynamic_shape) {
           VLOG(3) << "the cast op supports inputs and outputs of BOOL by "
                      "trt8.4 above ";
           return true;
         }
-      }
 #endif
-      if (!((in_dtype == 5 || in_dtype == 4 || in_dtype == 3 ||
-             in_dtype == 2) &&
-            (out_dtype == 5 || out_dtype == 4 || out_dtype == 2))) {
-        VLOG(3) << "only valid conversions are: "
-                   "(kFLOAT | kHALF | kINT32) -> (kFLOAT | kHALF | kINT32)";
         return false;
       }
     }
@@ -2339,9 +2331,15 @@ struct SimpleOpTypeSetTeller : public Teller {
 
     if (op_type == "equal" || op_type == "not_equal") {
 #if !IS_TRT_VERSION_GE(8000)
-      VLOG(3) << "compare is not supported when TensorRT < 8.0";
+      VLOG(3) << "equal is not supported when TensorRT < 8.0";
       return false;
 #else
+      // TRT does not support kEQUAL/kGREATER/kLESS work with implicit batch
+      if (!with_dynamic_shape) {
+        VLOG(3) << "the equal does not support "
+                   "static shape yet";
+        return false;
+      }
       int axis = PADDLE_GET_CONST(int, desc.GetAttr("axis"));
       if (axis == 0) {
         return false;
