@@ -40,14 +40,14 @@ from paddle.fluid import core
         ),
         (
             'same_rank',
-            np.random.rand(10, 1, 5, 1),
+            np.random.rand(10, 1, 10, 1),
             np.random.rand(10, 10, 10, 10),
             (10, 10, 10, 10),
             np.float32,
         ),
         (
             'diff_rank',
-            np.random.rand(1, 5, 1),
+            np.random.rand(1, 10, 1),
             np.random.rand(10, 10, 10, 10),
             (10, 10, 10, 10),
             np.float32,

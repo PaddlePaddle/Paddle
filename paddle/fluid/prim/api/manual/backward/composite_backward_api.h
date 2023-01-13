@@ -28,6 +28,7 @@ using IntArray =
 //  paddle/phi/api/backward/backward_api.h
 template <typename T>
 void tanh_grad(const Tensor& out, const Tensor& grad_out, Tensor* grad_x) {
+  if (!grad_x) return;
   auto tmp = pow<T>(out, 2.0);
   tmp = scale<T>(tmp, -1.0, 1.0, true);
   auto grad_x_tmp = multiply<T>(grad_out, tmp);
@@ -249,7 +250,7 @@ void expand_grad(const Tensor& x,
       }
       x_grad->set_impl(reduced.impl());
     } else {
-      x_grad->set_impl(out_grad.impl());
+      by_pass<T>(out_grad, x_grad);
     }
   }
 }
