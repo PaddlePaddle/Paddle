@@ -1,9 +1,15 @@
 # compatible utils used for fluid op system
 add_subdirectory(compat)
+add_subdirectory(distributed)
 
 if(WITH_GPU)
   proto_library(external_error_proto SRCS external_error.proto)
 endif()
+
+cc_library(
+  flags
+  SRCS flags.cc
+  DEPS gflags)
 
 cc_library(errors SRCS errors.cc)
 set(phi_enforce_deps errors flags)
@@ -76,6 +82,11 @@ cc_library(
   tensor_array
   SRCS tensor_array.cc
   DEPS dense_tensor tensor_base)
+
+cc_library(
+  extended_tensor
+  SRCS extended_tensor.cc
+  DEPS tensor_base)
 
 cc_library(
   meta_tensor

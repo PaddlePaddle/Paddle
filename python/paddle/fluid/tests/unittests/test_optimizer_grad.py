@@ -99,7 +99,7 @@ class SimpleNetWithCond:
 
         sum_xy = paddle.add(param_x, param_y, name='sum_xy')
         sub_yz = paddle.subtract(param_y, param_z, name='sub_yz')
-        useless = fluid.layers.fc(param_x, size=1, name='fc_useless')
+        useless = paddle.static.nn.fc(param_x, size=1, name='fc_useless')
 
         def cond_true():
             cond_yz = paddle.add(param_y, param_z, name='sum_cond_yz')
@@ -115,7 +115,7 @@ class SimpleNetWithCond:
             return cond_res
 
         cond_i = fluid.layers.assign(np.array([cond_i], dtype='float32'))
-        sum_cond = fluid.layers.cond(cond_i > 1.0, cond_true, cond_false)
+        sum_cond = paddle.static.nn.cond(cond_i > 1.0, cond_true, cond_false)
         sum_all = paddle.add_n([sum_xy, sub_yz, sum_cond])
         mean_out = paddle.mean(sum_all)
         if use_bf16:
@@ -251,7 +251,7 @@ class TestOptimizer(unittest.TestCase):
 )
 class TestSGDOptimizer(TestOptimizer):
     def test_optimizer_multiblock_except(self):
-        with self.assertRaisesRegexp(
+        with self.assertRaisesRegex(
             ValueError, "var param_y not in this block"
         ):
             self._check_grads(use_bf16=True)

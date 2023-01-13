@@ -121,7 +121,7 @@ class TestIncrementInplace(unittest.TestCase):
 
         with paddle.static.program_guard(main_prog, startup_prog):
             a = paddle.static.data(name="a", shape=[1], dtype='float32')
-            b = fluid.layers.increment(a)
+            b = paddle.increment(a)
 
         place = paddle.NPUPlace(NPUPlace)
 

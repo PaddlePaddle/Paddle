@@ -305,6 +305,7 @@ class WhileOp : public framework::OperatorBase {
         cond_data = GetCondData(
             scope.FindVar(Input(kCondition))->Get<phi::DenseTensor>());
       }
+
       scope.DeleteScope(&current_scope);
     }
   }
@@ -367,6 +368,7 @@ class WhileGradOp : public framework::OperatorBase {
 
     auto *block = Attr<framework::BlockDesc *>(kStepBlock);
     auto *program = block->Program();
+    auto *parent_block = block->ParentBlock();
 
     auto &skip_vars = Attr<std::vector<std::string>>(kSkipEagerDeletionVars);
     VLOG(2) << GetSkipEagerDeletionVarsDebugString(skip_vars);
@@ -426,6 +428,35 @@ class WhileGradOp : public framework::OperatorBase {
                 << inside_og_name;
         if (scope.FindVar(outside_og_name) == nullptr) {
           continue;
+        }
+
+        if (cur_scope_iter == step_scopes->rbegin()) {
+          auto &og_outside = *scope.FindVar(outside_og_name);
+          if (og_outside.IsType<phi::DenseTensor>() &&
+              !og_outside.GetMutable<phi::DenseTensor>()->IsInitialized()) {
+            auto *var_desc = parent_block->FindVarRecursive(outside_og_name);
+            PADDLE_ENFORCE_NOT_NULL(var_desc,
+                                    platform::errors::PreconditionNotMet(
+                                        "Var `%s` is not found in parent "
+                                        "block, can't fill constant.",
+                                        outside_og_name));
+            auto shape = var_desc->GetShape();
+            VLOG(8) << "Found uninitialized tensor " << outside_og_name
+                    << " in step 0, fill it with 0.0f. dims="
+                    << phi::make_ddim(shape);
+            framework::AttributeMap attrs;
+            attrs["dtype"] = var_desc->GetDataType();
+            attrs["shape"] = phi::vectorize<int>(phi::make_ddim(shape));
+            attrs["value"] = 0.0f;
+
+            auto var_name = outside_og_name;
+            auto zero_op =
+                framework::OpRegistry::CreateOp("fill_constant",
+                                                framework::VariableNameMap{},
+                                                {{"Out", {var_name}}},
+                                                attrs);
+            zero_op->Run(scope, dev_place);
+          }
         }
 
         auto &og_outside = *scope.FindVar(outside_og_name);
@@ -534,9 +565,10 @@ class WhileGradOp : public framework::OperatorBase {
         //    continue;
         //  }
 
-        auto var_iter = std::find(outside_og_names.begin(),
-                                  outside_og_names.end(),
-                                  pg_ig_names[param_id]);
+        auto is_var_input_and_output =
+            std::find(outside_og_names.begin(),
+                      outside_og_names.end(),
+                      pg_ig_names[param_id]) != outside_og_names.end();
 
         // zero gradient variable in step 0
         if (cur_scope_iter == step_scopes->rbegin()) {
@@ -555,8 +587,7 @@ class WhileGradOp : public framework::OperatorBase {
                   inside_grad_name,
                   framework::ToTypeName(var->Type())));
 
-          if ((var_iter == outside_og_names.end()) &&
-              var->IsType<phi::DenseTensor>()) {
+          if (!is_var_input_and_output && var->IsType<phi::DenseTensor>()) {
             auto &inside_tensor = var->Get<phi::DenseTensor>();
             framework::AttributeMap attrs;
             attrs["dtype"] =
@@ -575,10 +606,7 @@ class WhileGradOp : public framework::OperatorBase {
                 inside_tensor.lod());
           }
         }
-        auto var_outside = scope.FindVar(pg_ig_names[param_id]);
-        if ((var_iter == outside_og_names.end()) ||
-            ((var_iter != outside_og_names.end()) &&
-             var_outside->IsType<framework::LoDTensorArray>())) {
+        if (!is_var_input_and_output) {
           auto new_inside_name = cur_scope.Rename(inside_grad_name);
           auto sum_op = framework::OpRegistry::CreateOp(
               "sum",
@@ -587,12 +615,37 @@ class WhileGradOp : public framework::OperatorBase {
               framework::AttributeMap{{"use_mkldnn", {false}}});
           sum_op->Run(cur_scope, dev_place);
           cur_scope.Rename(new_inside_name, inside_grad_name);
+        } else {
+          ShareVariable(cur_scope, scope, pg_ig_names[param_id]);
         }
       }
       dev_ctx.Wait();
       const_cast<framework::Scope &>(scope).DeleteScope(&cur_scope);
     }
     step_scopes->clear();
+  }
+
+  void ShareVariable(const framework::Scope &source,
+                     const framework::Scope &dest,
+                     std::string name) const {
+    auto from_var = source.FindVar(name);
+    auto to_var = dest.FindVar(name);
+    if (from_var->IsType<phi::DenseTensor>()) {
+      if (from_var->Get<phi::DenseTensor>().IsInitialized()) {
+        to_var->GetMutable<phi::DenseTensor>()->ShareDataWith(
+            from_var->Get<phi::DenseTensor>());
+      }
+    } else if (from_var->IsType<framework::LoDTensorArray>()) {
+      auto from_arr = from_var->GetMutable<framework::LoDTensorArray>();
+      auto to_arr = to_var->GetMutable<framework::LoDTensorArray>();
+      to_arr->clear();
+      to_arr->resize(from_arr->size());
+      for (size_t i = 0; i < to_arr->size(); ++i) {
+        if (from_arr->at(i).IsInitialized()) {
+          to_arr->at(i).ShareDataWith(from_arr->at(i));
+        }
+      }
+    }
   }
 
  private:
@@ -646,6 +699,7 @@ class WhileGradOpMaker : public framework::SingleGradOpMaker<T> {
       block_ins.insert(o);
     }
     std::unordered_set<std::string> output_grads;
+
     for (const auto *op : grad_block->AllOps()) {
       for (auto &input_name : op->InputArgumentNames()) {
         // If the input of Op has been recorded or is generated by the forward
@@ -658,7 +712,6 @@ class WhileGradOpMaker : public framework::SingleGradOpMaker<T> {
              parent_block->FindVarRecursive(input_name) != nullptr)) {
           continue;
         }
-
         output_grads.insert(input_name);
       }
       for (auto &output_name : op->OutputArgumentNames()) {

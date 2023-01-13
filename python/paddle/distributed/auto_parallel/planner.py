@@ -25,10 +25,7 @@ import paddle
 from paddle.distributed.fleet import auto
 
 from .cost_model import estimate_cost
-from .dist_attribute import (
-    OperatorDistributedAttribute,
-    TensorDistributedAttribute,
-)
+from .dist_attribute import OperatorDistAttr, TensorDistAttr
 from .dist_context import DistributedContext, DistributedOperatorContext
 from .dist_op import DistributedOperator
 from .operators.common import (
@@ -74,7 +71,7 @@ class PlanFilter:
         for var_name in op.input_arg_names:
             dims_mapping = op_dist_attr.get_input_dims_mapping(var_name)
             if not PlanFilter.check_dims_mapping_for_tensor(
-                process_mesh.topology, vars[var_name].shape, dims_mapping
+                process_mesh.shape, vars[var_name].shape, dims_mapping
             ):
                 return False
             if vars[var_name].is_data and len(dims_mapping) > 1:
@@ -85,7 +82,7 @@ class PlanFilter:
         for var_name in op.output_arg_names:
             dims_mapping = op_dist_attr.get_output_dims_mapping(var_name)
             if not PlanFilter.check_dims_mapping_for_tensor(
-                process_mesh.topology, vars[var_name].shape, dims_mapping
+                process_mesh.shape, vars[var_name].shape, dims_mapping
             ):
                 return False
 
@@ -217,13 +214,13 @@ class PlanSpace:
         for var_name in chain(op.input_arg_names, op.output_arg_names):
             visited = [
                 False
-                for _ in range(len(list(range(-1, len(process_mesh.topology)))))
+                for _ in range(len(list(range(-1, len(process_mesh.shape)))))
             ]
             depth = 0
             path = []
             dims_mapping_list = []
             PlanSpace._enum_dims_mapping(
-                process_mesh.topology,
+                process_mesh.shape,
                 visited,
                 path,
                 depth,
@@ -239,7 +236,7 @@ class PlanSpace:
             )
         )
         for composed_dims_mapping in composed_dims_mapping_list:
-            op_dist_attr = OperatorDistributedAttribute()
+            op_dist_attr = OperatorDistAttr()
             op_dist_attr.process_mesh = process_mesh
             var_names = list(dims_mapping_dict.keys())
 
@@ -299,7 +296,6 @@ class PlanSpace:
                             dist_op.dist_attr.impl_idx = 0
                             op_valid_dist_attrs.append(dist_op.dist_attr)
                     continue
-
             # if op has distributed implements, find all valid dist attr of this op
             impls = dist_op_impl_container.impls
             for idx, impl in enumerate(impls):
@@ -313,17 +309,18 @@ class PlanSpace:
 
         # set default dist attr for some special ops whose distributed attributes can not be enumerated
         if not op_valid_dist_attrs:
-            op_dist_attr = OperatorDistributedAttribute()
+            op_dist_attr = OperatorDistAttr()
             op_dist_attr.process_mesh = process_mesh
-            dist_op = DistributedOperator(op, op_dist_attr)
             for var_name in op.input_arg_names:
                 op_dist_attr.set_input_dims_mapping(
-                    vars[var_name], [-1 for i in vars[var_name].shape]
+                    vars[var_name].name, [-1 for i in vars[var_name].shape]
                 )
             for var_name in op.output_arg_names:
                 op_dist_attr.set_output_dims_mapping(
-                    vars[var_name], [-1 for i in vars[var_name].shape]
+                    vars[var_name].name, [-1 for i in vars[var_name].shape]
                 )
+            # The dist op must be built after the dist attr has been completely constructed
+            dist_op = DistributedOperator(op, op_dist_attr)
             dist_op.dist_attr.impl_type = "default"
             dist_op.dist_attr.impl_idx = 0
             op_valid_dist_attrs.append(dist_op.dist_attr)
@@ -395,7 +392,7 @@ class PlanSpace:
                 op_process_mesh = pipeline_process_meshes[pipeline_stage]
 
             if op.type in PlanSpace.not_enum_ops:
-                op_dist_attr = OperatorDistributedAttribute()
+                op_dist_attr = OperatorDistAttr()
                 op_dist_attr.process_mesh = op_process_mesh
                 for var_name in op.input_arg_names:
                     if var_name in PlanSpace.special_vars:
@@ -498,9 +495,7 @@ class MCMC(SearchAlgorithm):
                                         search_op, op_dist_attr
                                     )
                                     for name in search_op.output_arg_names:
-                                        tensor_dist_attr = (
-                                            TensorDistributedAttribute()
-                                        )
+                                        tensor_dist_attr = TensorDistAttr()
                                         tensor_dist_attr.process_mesh = (
                                             op_dist_attr.process_mesh
                                         )
@@ -546,7 +541,7 @@ class MCMC(SearchAlgorithm):
                     )
                     is None
                 ):
-                    tensor_dist_attr = TensorDistributedAttribute()
+                    tensor_dist_attr = TensorDistAttr()
                     tensor_dist_attr.process_mesh = (
                         init_op_dist_attr.process_mesh
                     )
@@ -558,7 +553,7 @@ class MCMC(SearchAlgorithm):
                     )
 
             for var_name in op.output_arg_names:
-                tensor_dist_attr = TensorDistributedAttribute()
+                tensor_dist_attr = TensorDistAttr()
                 tensor_dist_attr.process_mesh = init_op_dist_attr.process_mesh
                 tensor_dist_attr.dims_mapping = (
                     init_op_dist_attr.get_output_dims_mapping(var_name)
@@ -590,7 +585,10 @@ class MCMC(SearchAlgorithm):
             self.serial_program_info, dist_context, self.parallelizer
         )
         pipeline_config = (
-            [process_mesh.processes for process_mesh in pipeline_process_meshes]
+            [
+                process_mesh.process_ids
+                for process_mesh in pipeline_process_meshes
+            ]
             if pipeline_process_meshes is not None
             else None
         )
@@ -624,7 +622,7 @@ class MCMC(SearchAlgorithm):
         # set output tensor distributed attribute
         for var_name in op.output_arg_names:
             process_mesh = op_dist_attr.process_mesh
-            tensor_dist_attr = TensorDistributedAttribute()
+            tensor_dist_attr = TensorDistAttr()
             tensor_dist_attr.process_mesh = process_mesh
             tensor_dist_attr.dims_mapping = (
                 op_dist_attr.get_output_dims_mapping(var_name)
@@ -637,7 +635,7 @@ class MCMC(SearchAlgorithm):
         for var_name in op.input_arg_names:
             if vars[var_name].is_parameter or vars[var_name].is_data:
                 process_mesh = op_dist_attr.process_mesh
-                tensor_dist_attr = TensorDistributedAttribute()
+                tensor_dist_attr = TensorDistAttr()
                 tensor_dist_attr.process_mesh = process_mesh
                 tensor_dist_attr.dims_mapping = (
                     op_dist_attr.get_input_dims_mapping(var_name)
@@ -1060,7 +1058,7 @@ class MCMC(SearchAlgorithm):
         # rebuild g_process_group
         pg0 = get_process_group(0)
         for process_mesh in searched_dist_context._process_meshes:
-            pg0.add_ranks(process_mesh.processes)
+            pg0.add_ranks(process_mesh.process_ids)
         end_time = time.time()
         print(
             "End MCMC searching: the min cost is {} and the search time is {}s.".format(

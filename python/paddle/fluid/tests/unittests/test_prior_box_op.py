@@ -36,7 +36,7 @@ def python_prior_box(
     min_max_aspect_ratios_order=False,
     name=None,
 ):
-    return paddle.fluid.layers.detection.prior_box(
+    return paddle.vision.ops.prior_box(
         input,
         image,
         min_sizes=min_sizes,

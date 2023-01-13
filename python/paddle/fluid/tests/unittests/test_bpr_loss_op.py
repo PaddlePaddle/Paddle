@@ -42,7 +42,9 @@ class TestBprLossOp1(OpTest):
         self.outputs = {"Y": bpr_loss}
 
     def test_check_output(self):
+        paddle.enable_static()
         self.check_output()
+        paddle.disable_static()
 
     def test_check_grad(self):
         self.check_grad(["X"], "Y", numeric_grad_delta=0.001)

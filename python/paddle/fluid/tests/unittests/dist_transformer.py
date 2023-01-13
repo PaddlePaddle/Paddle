@@ -1107,25 +1107,25 @@ def multi_head_attention(
         """
         Add linear projection to queries, keys, and values.
         """
-        q = layers.fc(
-            input=queries,
+        q = paddle.static.nn.fc(
+            x=queries,
             size=d_key * n_head,
             num_flatten_dims=2,
-            param_attr=const_para_attr,
+            weight_attr=const_para_attr,
             bias_attr=const_bias_attr,
         )
-        k = layers.fc(
-            input=keys,
+        k = paddle.static.nn.fc(
+            x=keys,
             size=d_key * n_head,
             num_flatten_dims=2,
-            param_attr=const_para_attr,
+            weight_attr=const_para_attr,
             bias_attr=const_bias_attr,
         )
-        v = layers.fc(
-            input=values,
+        v = paddle.static.nn.fc(
+            x=values,
             size=d_value * n_head,
             num_flatten_dims=2,
-            param_attr=const_para_attr,
+            weight_attr=const_para_attr,
             bias_attr=const_bias_attr,
         )
         return q, k, v
@@ -1174,7 +1174,7 @@ def multi_head_attention(
         Scaled Dot-Product Attention
         """
         scaled_q = paddle.scale(x=q, scale=d_model**-0.5)
-        product = paddle.matmul(x=scaled_q, y=k, transpose_y=True)
+        product = layers.matmul(x=scaled_q, y=k, transpose_y=True)
         if attn_bias:
             product += attn_bias
         weights = paddle.nn.functional.softmax(product)
@@ -1185,7 +1185,7 @@ def multi_head_attention(
                 seed=ModelHyperParams.dropout_seed,
                 is_test=False,
             )
-        out = paddle.matmul(weights, v)
+        out = layers.matmul(weights, v)
         return out
 
     q, k, v = __compute_qkv(queries, keys, values, n_head, d_key, d_value)
@@ -1205,11 +1205,11 @@ def multi_head_attention(
     out = __combine_heads(ctx_multiheads)
 
     # Project back to the model size.
-    proj_out = layers.fc(
-        input=out,
+    proj_out = paddle.static.nn.fc(
+        x=out,
         size=d_model,
         num_flatten_dims=2,
-        param_attr=const_para_attr,
+        weight_attr=const_para_attr,
         bias_attr=const_bias_attr,
     )
     return proj_out
@@ -1221,19 +1221,19 @@ def positionwise_feed_forward(x, d_inner_hid, d_hid):
     This module consists of two linear transformations with a ReLU activation
     in between, which is applied to each position separately and identically.
     """
-    hidden = layers.fc(
-        input=x,
+    hidden = paddle.static.nn.fc(
+        x=x,
         size=d_inner_hid,
         num_flatten_dims=2,
-        act="relu",
-        param_attr=const_para_attr,
+        activation="relu",
+        weight_attr=const_para_attr,
         bias_attr=const_bias_attr,
     )
-    out = layers.fc(
-        input=hidden,
+    out = paddle.static.nn.fc(
+        x=hidden,
         size=d_hid,
         num_flatten_dims=2,
-        param_attr=const_para_attr,
+        weight_attr=const_para_attr,
         bias_attr=const_bias_attr,
     )
     return out
@@ -1701,17 +1701,17 @@ def wrap_decoder(
     )
     # Return logits for training and probs for inference.
     if weight_sharing:
-        predict = paddle.matmul(
+        predict = layers.matmul(
             x=dec_output,
             y=fluid.framework._get_var(word_emb_param_names[0]),
             transpose_y=True,
         )
     else:
-        predict = layers.fc(
-            input=dec_output,
+        predict = paddle.static.nn.fc(
+            x=dec_output,
             size=trg_vocab_size,
             num_flatten_dims=2,
-            param_attr=const_para_attr,
+            weight_attr=const_para_attr,
             bias_attr=const_bias_attr,
         )
     if dec_inputs is None:
@@ -1763,7 +1763,7 @@ def fast_decode(
             shape=[1], dtype=start_tokens.dtype, value=0
         )
         cond = paddle.less_than(x=step_idx, y=max_len)
-        while_op = paddle.static.nn.control_flow.While(cond)
+        while_op = layers.While(cond)
         # array states will be stored for each step.
         ids = layers.array_write(
             paddle.reshape(start_tokens, (-1, 1)), step_idx
@@ -1832,7 +1832,6 @@ def fast_decode(
                 caches=pre_caches,
             )
             logits = paddle.reshape(logits, (-1, trg_vocab_size))
-
             topk_scores, topk_indices = paddle.topk(
                 x=paddle.nn.functional.softmax(logits), k=beam_size
             )

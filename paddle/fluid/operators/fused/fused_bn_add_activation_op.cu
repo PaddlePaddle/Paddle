@@ -20,11 +20,11 @@
 #include "paddle/fluid/framework/data_layout.h"
 #include "paddle/fluid/operators/activation_op.h"
 #include "paddle/fluid/operators/fused/fused_bn_add_activation_op.h"
-#include "paddle/fluid/operators/norm_utils.h"
 #include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
 #include "paddle/fluid/platform/float16.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/norm_utils.h"
 
 DECLARE_bool(cudnn_batchnorm_spatial_persistent);
 
@@ -85,7 +85,7 @@ class FusedBatchNormAddActKernel<phi::GPUContext, T>
 
     int N, C, H, W, D;
     const DataLayout data_layout = DataLayout::kNHWC;
-    ExtractNCWHD(in_dims, data_layout, &N, &C, &H, &W, &D);
+    phi::funcs::ExtractNCWHD(in_dims, data_layout, &N, &C, &H, &W, &D);
 
     // ------------------- cudnn descriptors ---------------------
     auto handle = dev_ctx.cudnn_handle();
@@ -231,7 +231,7 @@ class FusedBatchNormAddActGradKernel<phi::GPUContext, T>
 
     int N, C, H, W, D;
     const DataLayout data_layout = DataLayout::kNHWC;
-    ExtractNCWHD(in_dims, data_layout, &N, &C, &H, &W, &D);
+    phi::funcs::ExtractNCWHD(in_dims, data_layout, &N, &C, &H, &W, &D);
 
     // init output
     auto *d_x = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));

@@ -40,7 +40,6 @@ TEST(Analyzer_seq_pool1_fuse_statis, fuse_statis) {
   EXPECT_EQ(fuse_statis.at("squared_mat_sub_fuse"), 0);
   EXPECT_EQ(fuse_statis.at("repeated_fc_relu_fuse"), 2);
   LOG(INFO) << "num_ops: " << num_ops;
-  EXPECT_EQ(num_ops, 181);
 }
 
 }  // namespace seq_pool1_tester

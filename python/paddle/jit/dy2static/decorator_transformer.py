@@ -13,21 +13,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.utils import gast
-from .static_analysis import (
-    AstNodeWrapper,
-)
-from .base_transformer import (
-    BaseTransformer,
-)
-from .utils import (
-    RE_PYNAME,
-    RE_PYMODULE,
-    ast_to_source_code,
-)
+import re
 import warnings
 
-import re
+from paddle.utils import gast
+
+from .base_transformer import BaseTransformer
+from .static_analysis import AstNodeWrapper
+from .utils import RE_PYMODULE, RE_PYNAME, ast_to_source_code
 
 __all__ = []
 

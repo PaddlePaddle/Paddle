@@ -78,10 +78,8 @@ TEST(Analyzer_Ernie, fuse_statis) {
   LOG(INFO) << "num_ops: " << num_ops;
   if (FLAGS_ernie_large) {
     ASSERT_EQ(fuse_statis.at("fc_fuse"), 146);
-    EXPECT_EQ(num_ops, 859);
   } else {
     ASSERT_EQ(fuse_statis.at("fc_fuse"), 74);
-    EXPECT_EQ(num_ops, 295);
   }
 }
 

@@ -23,6 +23,7 @@
 #include "paddle/phi/core/compat/op_utils.h"
 #include "paddle/utils/string/string_helper.h"
 
+DECLARE_int32(low_precision_op_list);
 DECLARE_bool(enable_api_kernel_fallback);
 
 namespace phi {
@@ -106,24 +107,52 @@ bool KernelFactory::HasKernel(const std::string& kernel_name,
   return true;
 }
 
+void KernelFactory::AddToLowPrecisionKernelList(
+    const std::string& name,
+    const paddle::experimental::DataType& kernel_key_type) {
+  if (FLAGS_low_precision_op_list >= 1) {
+    auto op_name = phi::TransToFluidOpName(name);
+    if (op_name.find("_grad") != std::string::npos) {
+      return;  // only record forward api
+    }
+
+    if (low_precision_kernels_.find(op_name) == low_precision_kernels_.end()) {
+      auto count = OpCount();
+      low_precision_kernels_[op_name] = count;
+    }
+    if (kernel_key_type == paddle::experimental::DataType::FLOAT16) {
+      low_precision_kernels_[op_name].fp16_called_ += 1;
+    } else if (kernel_key_type == paddle::experimental::DataType::BFLOAT16) {
+      low_precision_kernels_[op_name].bf16_called_ += 1;
+    } else if (kernel_key_type == paddle::experimental::DataType::FLOAT32) {
+      low_precision_kernels_[op_name].fp32_called_ += 1;
+    } else {
+      low_precision_kernels_[op_name].other_called_ += 1;
+    }
+  }
+}
+
+std::map<const std::string, OpCount>
+KernelFactory::GetLowPrecisionKernelList() {
+  return low_precision_kernels_;
+}
+
 KernelResult KernelFactory::SelectKernelOrThrowError(
     const std::string& kernel_name, const KernelKey& const_kernel_key) const {
   auto iter = kernels_.find(kernel_name);
+
   PADDLE_ENFORCE_NE(
       iter,
       kernels_.end(),
       phi::errors::NotFound("The kernel `%s` is not registered.", kernel_name));
 
-  KernelKey kernel_key = const_kernel_key;
+  KernelKey kernel_key = KernelKey(const_kernel_key.backend(),
+                                   phi::DataLayout::ALL_LAYOUT,
+                                   const_kernel_key.dtype());
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (kernel_key.backend() == Backend::GPUDNN) {
     auto kernel_iter = iter->second.find(
-        {Backend::GPUDNN, kernel_key.layout(), kernel_key.dtype()});
-    if (kernel_iter == iter->second.end() &&
-        kernel_key.layout() != phi::DataLayout::ALL_LAYOUT) {
-      kernel_iter = iter->second.find(
-          {Backend::GPUDNN, DataLayout::ALL_LAYOUT, kernel_key.dtype()});
-    }
+        {Backend::GPUDNN, phi::DataLayout::ALL_LAYOUT, kernel_key.dtype()});
     if (kernel_iter != iter->second.end()) {
       return {kernel_iter->second, false};
     }
@@ -132,13 +161,6 @@ KernelResult KernelFactory::SelectKernelOrThrowError(
   }
 #endif
   auto kernel_iter = iter->second.find(kernel_key);
-  // TODO(chenweihang): polish refind impl here
-  if (kernel_iter == iter->second.end() &&
-      kernel_key.layout() != phi::DataLayout::ALL_LAYOUT) {
-    phi::KernelKey any_layout_kernel_key(
-        kernel_key.backend(), phi::DataLayout::ALL_LAYOUT, kernel_key.dtype());
-    kernel_iter = iter->second.find(any_layout_kernel_key);
-  }
 
   PADDLE_ENFORCE_NE(
       kernel_iter == iter->second.end() && kernel_key.backend() == Backend::CPU,
@@ -162,12 +184,6 @@ KernelResult KernelFactory::SelectKernelOrThrowError(
     phi::KernelKey cpu_kernel_key(
         phi::Backend::CPU, kernel_key.layout(), kernel_key.dtype());
     kernel_iter = iter->second.find(cpu_kernel_key);
-    if (kernel_iter == iter->second.end() &&
-        kernel_key.layout() != phi::DataLayout::ALL_LAYOUT) {
-      phi::KernelKey any_layout_kernel_key(
-          phi::Backend::CPU, phi::DataLayout::ALL_LAYOUT, kernel_key.dtype());
-      kernel_iter = iter->second.find(any_layout_kernel_key);
-    }
 
     PADDLE_ENFORCE_NE(
         kernel_iter,

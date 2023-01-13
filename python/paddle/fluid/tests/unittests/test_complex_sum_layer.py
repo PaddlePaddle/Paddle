@@ -21,7 +21,6 @@ import paddle
 import paddle.fluid as fluid
 import paddle.fluid.dygraph as dg
 from paddle import tensor
-from paddle.fluid.framework import _test_eager_guard
 
 
 class TestComplexSumLayer(unittest.TestCase):
@@ -42,10 +41,6 @@ class TestComplexSumLayer(unittest.TestCase):
                     result = tensor.sum(var_x, axis=[1, 2]).numpy()
                     target = np.sum(input, axis=(1, 2))
                     np.testing.assert_allclose(result, target, rtol=1e-05)
-
-    def test_eager(self):
-        with _test_eager_guard():
-            self.test_complex_basic_api()
 
 
 if __name__ == '__main__':

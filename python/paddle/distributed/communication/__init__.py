@@ -13,11 +13,11 @@
 # limitations under the License.
 from .all_gather import all_gather, all_gather_object
 from .all_reduce import all_reduce
-from .broadcast import broadcast
+from .broadcast import broadcast, broadcast_object_list
 from .reduce import reduce, ReduceOp
 from .send import send, isend
 from .recv import recv, irecv
-from .scatter import scatter
+from .scatter import scatter, scatter_object_list
 from .batch_isend_irecv import batch_isend_irecv, P2POp
 from .reduce_scatter import reduce_scatter
 from .all_to_all import alltoall, alltoall_single
@@ -27,4 +27,5 @@ from .group import (
     get_group,
     wait,
     barrier,
+    get_backend,
 )

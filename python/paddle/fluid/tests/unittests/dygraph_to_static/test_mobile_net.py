@@ -22,13 +22,11 @@ from predictor_utils import PredictorTools
 
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
-from paddle.fluid.dygraph.nn import BatchNorm
 from paddle.fluid.initializer import MSRA
 from paddle.fluid.param_attr import ParamAttr
-from paddle.jit import ProgramTranslator
-from paddle.jit.api import declarative
-from paddle.nn import Linear
+from paddle.jit.api import to_static
+from paddle.jit.translated_layer import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
+from paddle.nn import BatchNorm, Linear
 
 # Note: Set True to eliminate randomness.
 #     1. For one operation, cuDNN has several algorithms,
@@ -37,7 +35,6 @@ if fluid.is_compiled_with_cuda():
     fluid.set_flags({'FLAGS_cudnn_deterministic': True})
 
 SEED = 2020
-program_translator = ProgramTranslator()
 
 
 class ConvBNLayer(fluid.dygraph.Layer):
@@ -267,7 +264,7 @@ class MobileNetV1(fluid.dygraph.Layer):
             bias_attr=ParamAttr(name="fc7_offset"),
         )
 
-    @declarative
+    @to_static
     def forward(self, inputs):
         y = self.conv1(inputs)
         for dws in self.dwsl:
@@ -433,7 +430,7 @@ class MobileNetV2(fluid.dygraph.Layer):
             bias_attr=ParamAttr(name="fc10_offset"),
         )
 
-    @declarative
+    @to_static
     def forward(self, inputs):
         y = self._conv1(inputs, if_act=True)
         for inv in self._invl:
@@ -495,7 +492,7 @@ class Args:
 
 
 def train_mobilenet(args, to_static):
-    program_translator.enable(to_static)
+    paddle.jit.enable_to_static(to_static)
     with fluid.dygraph.guard(args.place):
 
         np.random.seed(SEED)
@@ -532,8 +529,11 @@ def train_mobilenet(args, to_static):
 
                 t_end = time.time()
                 softmax_out = paddle.nn.functional.softmax(out)
-                loss = fluid.layers.cross_entropy(
-                    input=softmax_out, label=label
+                loss = paddle.nn.functional.cross_entropy(
+                    input=softmax_out,
+                    label=label,
+                    reduction='none',
+                    use_softmax=False,
                 )
                 avg_loss = paddle.mean(x=loss)
                 acc_top1 = paddle.static.accuracy(input=out, label=label, k=1)
@@ -569,8 +569,9 @@ def train_mobilenet(args, to_static):
                     if to_static:
                         paddle.jit.save(net, args.model_save_prefix)
                     else:
-                        fluid.dygraph.save_dygraph(
-                            net.state_dict(), args.dy_state_dict_save_path
+                        paddle.save(
+                            net.state_dict(),
+                            args.dy_state_dict_save_path + '.pdparams',
                         )
                     break
 
@@ -602,14 +603,14 @@ def predict_static(args, data):
 
 
 def predict_dygraph(args, data):
-    program_translator.enable(False)
+    paddle.jit.enable_to_static(False)
     with fluid.dygraph.guard(args.place):
         if args.model == "MobileNetV1":
             model = MobileNetV1(class_dim=args.class_dim, scale=1.0)
         elif args.model == "MobileNetV2":
             model = MobileNetV2(class_dim=args.class_dim, scale=1.0)
         # load dygraph trained parameters
-        model_dict, _ = fluid.load_dygraph(args.dy_state_dict_save_path)
+        model_dict = paddle.load(args.dy_state_dict_save_path + '.pdparams')
         model.set_dict(model_dict)
         model.eval()
 
