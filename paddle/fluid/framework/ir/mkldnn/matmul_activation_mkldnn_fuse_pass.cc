@@ -15,7 +15,7 @@
 #include "paddle/fluid/framework/ir/mkldnn/matmul_activation_mkldnn_fuse_pass.h"
 
 #include "paddle/fluid/framework/op_version_registry.h"
-#include "paddle/phi/backends/onednn/onednn_reuse.h"
+#include "paddle/phi/backends/onednn/activation_fuse_pass.h"
 #include "paddle/utils/string/pretty_log.h"
 
 namespace paddle {
@@ -37,7 +37,7 @@ void MatmulActivationMkldnnFusePass::ApplyImpl(Graph* graph) const {
 void MatmulActivationMkldnnFusePass::FuseMatmulAct(
     Graph* graph, const std::string& matmul_type, std::string& act_type) const {
   PADDLE_ENFORCE_NOT_NULL(
-      graph, platform::errors::InvalidArgument("Graph cannot be nullptr."));
+      graph, phi::errors::InvalidArgument("Graph cannot be nullptr."));
   FusePassBase::Init(matmul_type + "_" + act_type + "_mkldnn_fuse_pass", graph);
 
   GraphPatternDetector gpd;
@@ -61,24 +61,8 @@ void MatmulActivationMkldnnFusePass::FuseMatmulAct(
     GET_IR_NODE_FROM_SUBGRAPH(
         activation_out, activation_out, matmul_act_pattern);
 
-    OpDesc* matmul_op = matmul->Op();
-    OpDesc* act_op = activation->Op();
-
-    auto attr_map = phi::funcs::GetAttributeMap(act_type);
-    for (const auto& attrs : attr_map) {
-      if (act_op->HasAttr(attrs.first)) {
-        matmul_op->SetAttr(attrs.second, act_op->GetAttr(attrs.first));
-      }
-    }
-
-    if (act_type == "gelu" && activation->Op()->HasAttr("approximate")) {
-      act_type =
-          PADDLE_GET_CONST(bool, activation->Op()->GetAttr("approximate"))
-              ? "gelu_tanh"
-              : "gelu_erf";
-    }
-    matmul_op->SetAttr("fuse_activation", act_type);
-    matmul_op->SetOutput("Out", {activation_out->Name()});
+    phi::funcs::SetActivationAttrs(matmul->Op(), activation->Op(), act_type);
+    matmul->Op()->SetOutput("Out", {activation_out->Name()});
 
     IR_NODE_LINK_TO(matmul, activation_out);
     GraphSafeRemoveNodes(graph, {activation, matmul_out});
