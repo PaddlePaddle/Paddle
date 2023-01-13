@@ -45,6 +45,8 @@ class DescTensor : public phi::ExtendedTensor,
 
   framework::VarDesc* get_ptr() { return desc_ptr_; }
 
+  const phi::Place& place() const override { return place_; }
+
   // TODO(jiabin): override more operators here.
 
  private:
@@ -55,6 +57,7 @@ class DescTensor : public phi::ExtendedTensor,
   // we can inherient from ExtendedTensor Rmove this when we make VarDesc's as
   // same as Tensor, or make Tensor's dims more lightly.
   mutable phi::DDim dims_;
+  phi::Place place_;
 };
 
 }  // namespace prim
