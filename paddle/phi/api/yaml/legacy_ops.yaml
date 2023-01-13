@@ -338,6 +338,15 @@
     data_type : x
   backward : cast_grad
 
+- op : channel_shuffle
+  args : (Tensor x, int groups, str data_format="NCHW")
+  output : Tensor(out)
+  infer_meta :
+    func : ChannelShuffleInferMeta
+  kernel :
+    func : channel_shuffle
+  backward : channel_shuffle_grad
+
 - op : check_finite_and_unscale_
   args : (Tensor[] x, Tensor scale, Tensor input_found_infinite)
   output : Tensor[](out){x.size()}, Tensor(output_found_infinite)
