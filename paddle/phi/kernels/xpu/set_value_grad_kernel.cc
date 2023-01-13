@@ -143,7 +143,13 @@ void SetValueGradImpl(const Context& dev_ctx,
 
   if (x_grad) {
     // Set gradient of `Input`
-    Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
+    x_grad->Resize(out_grad.dims());
+    dev_ctx.template Alloc<T>(x_grad);
+    r = xpu::copy(dev_ctx.x_context(),
+                  reinterpret_cast<const XPUType*>(out_grad.data<T>()),
+                  reinterpret_cast<XPUType*>(x_grad->data<T>()),
+                  out_grad.numel());
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "copy");
 
     DenseTensor tmp = Full<T>(dev_ctx, out_dims_vector, static_cast<T>(0));
 

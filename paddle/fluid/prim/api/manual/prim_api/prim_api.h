@@ -19,10 +19,9 @@
 namespace paddle {
 namespace prim {
 using Tensor = paddle::experimental::Tensor;
-// using IntArray =
-// paddle::experimental::IntArrayBase<paddle::experimental::Tensor>;
 using IntArray = paddle::experimental::IntArray;
 using Scalar = paddle::experimental::Scalar;
+
 template <typename T>
 Tensor pow(const Tensor& x, const Scalar& y);
 
