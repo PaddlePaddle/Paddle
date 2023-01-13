@@ -12,11 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.fluid.data_feeder import check_variable_and_dtype, check_type
-from paddle.fluid.layer_helper import LayerHelper
-from paddle.fluid.framework import Variable, in_dygraph_mode
-from paddle.fluid import core
 from paddle import _C_ops
+from paddle.fluid import core
+from paddle.fluid.data_feeder import check_type, check_variable_and_dtype
+from paddle.fluid.framework import Variable, in_dygraph_mode
+from paddle.fluid.layer_helper import LayerHelper
 
 __all__ = ['check_finite_and_unscale', 'update_loss_scaling']
 
@@ -37,14 +37,6 @@ def check_finite_and_unscale(x, scale, name=None, float_status=None):
         scale: The scale of check_finite_and_unscale operator.
         float_status(Tensor): (Only used on NPU) The float status to check overflow.
     """
-    check_type(x, 'x', (tuple, list), 'check_finite_and_unscale')
-    for e in x:
-        check_variable_and_dtype(
-            e,
-            "x",
-            ['float16', 'float32', 'float64'],
-            'check_finite_and_unscale',
-        )
 
     helper = LayerHelper("check_finite_and_unscale", **locals())
 
@@ -53,6 +45,15 @@ def check_finite_and_unscale(x, scale, name=None, float_status=None):
     if in_dygraph_mode():
         _C_ops.check_finite_and_unscale_(x, scale, found_inf)
         return x, found_inf
+
+    check_type(x, 'x', (tuple, list), 'check_finite_and_unscale')
+    for e in x:
+        check_variable_and_dtype(
+            e,
+            "x",
+            ['float16', 'float32', 'float64'],
+            'check_finite_and_unscale',
+        )
 
     inputs = {'X': x, 'Scale': scale}
     if core.is_compiled_with_npu():
@@ -110,6 +111,20 @@ def update_loss_scaling(
         decr_ratio(float): The less-than-one-multiplier to use when decreasing
                            loss scaling.
     """
+    if in_dygraph_mode():
+        _C_ops.update_loss_scaling_(
+            x,
+            found_inf,
+            prev_loss_scaling,
+            num_good_steps,
+            num_bad_steps,
+            incr_every_n_steps,
+            decr_every_n_nan_or_inf,
+            incr_ratio,
+            decr_ratio,
+            stop_update,
+        )
+        return x
 
     check_variable_and_dtype(
         prev_loss_scaling,
@@ -130,21 +145,6 @@ def update_loss_scaling(
             assert (
                 prev_loss_scaling.dtype == e.dtype
             ), "The dtype of prev_loss_scaling should be equal to the dtype of x."
-
-    if in_dygraph_mode():
-        _C_ops.update_loss_scaling_(
-            x,
-            found_inf,
-            prev_loss_scaling,
-            num_good_steps,
-            num_bad_steps,
-            incr_every_n_steps,
-            decr_every_n_nan_or_inf,
-            incr_ratio,
-            decr_ratio,
-            stop_update,
-        )
-        return x
 
     helper = LayerHelper("update_loss_scaling", **locals())
 

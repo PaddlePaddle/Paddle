@@ -60,7 +60,7 @@ class TestTanhGradComp(unittest.TestCase):
             return exe.run(
                 program=mp,
                 feed={'primal': primal, 'cotangent': cotangent},
-                fetch_list=mp.blocks[0].ops[-1].output('Out')[0],
+                fetch_list=[x_cotangent[0].name],
             )[0]
 
         def desired(primal, cotangent):

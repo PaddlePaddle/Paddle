@@ -3437,11 +3437,11 @@ void FillSplitOutDims(const MetaTensor& x,
       (*out)[i]->set_dtype(x.dtype());
       (*out)[i]->set_dims(out_dims[i]);
       (*out)[i]->set_layout(x.layout());
+      (*out)[i]->share_lod(x);
     } else {
       (*out)[i]->set_dtype(x.dtype());
       (*out)[i]->set_dims(out_dims[i]);
       (*out)[i]->set_layout(x.layout());
-      (*out)[i]->share_lod(x);
     }
   }
 }
@@ -3472,11 +3472,11 @@ void SplitInferMeta(const MetaTensor& x,
         out[i]->set_dtype(x.dtype());
         out[i]->set_dims(out_dims[i]);
         out[i]->set_layout(x.layout());
+        out[i]->share_lod(x);
       } else {
         out[i]->set_dtype(x.dtype());
         out[i]->set_dims(out_dims[i]);
         out[i]->set_layout(x.layout());
-        out[i]->share_lod(x);
       }
     }
   } else {
@@ -3563,11 +3563,11 @@ void SplitWithNumInferMeta(const MetaTensor& x,
         out[i]->set_dtype(x.dtype());
         out[i]->set_dims(out_dims[i]);
         out[i]->set_layout(x.layout());
+        out[i]->share_lod(x);
       } else {
         out[i]->set_dtype(x.dtype());
         out[i]->set_dims(out_dims[i]);
         out[i]->set_layout(x.layout());
-        out[i]->share_lod(x);
       }
     }
   } else {
