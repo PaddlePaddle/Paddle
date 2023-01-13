@@ -289,46 +289,17 @@ static __global__ void BNBackward2DChannelLastStage1(
                                                           &x_square_sum);
 
     if (gridDim.y > 1) {
-      volatile BatchNormParamType<T> *staging_sum = block_data_ptr;
-      volatile BatchNormParamType<T> *staging_square_sum =
-          &block_data_ptr[C * gridDim.y];
-      // write block data to global memory
-      if (threadIdx.y == 0) {
-        staging_sum[i + blockIdx.y * C] = x_sum;
-        staging_square_sum[i + blockIdx.y * C] = x_square_sum;
-      }
-
-      // make sure write is visible to all blocks
-      __threadfence();
-      __syncthreads();
-
       __shared__ bool is_last_block_done;
-      // mark block done
-      if (threadIdx.x == 0 && threadIdx.y == 0) {
-        int old = atomicAdd(&flag_ptr[blockIdx.x], 1);
-        is_last_block_done = (old == (gridDim.y - 1));
-      }
-
-      __syncthreads();
-
+      funcs::ReduceSumPost<T, BatchNormParamType<T>>(C,
+                                                     i,
+                                                     &x_sum,
+                                                     &x_square_sum,
+                                                     &is_last_block_done,
+                                                     smem_sum,
+                                                     smem_square_sum,
+                                                     block_data_ptr,
+                                                     flag_ptr);
       if (is_last_block_done) {
-        x_sum = static_cast<BatchNormParamType<T>>(0);
-        x_square_sum = static_cast<BatchNormParamType<T>>(0);
-        // thread sum
-        for (int y = threadIdx.y; y < gridDim.y; y += blockDim.y) {
-          x_sum += staging_sum[i + y * C];
-          x_square_sum += staging_square_sum[i + y * C];
-        }
-
-        // vertical block sum
-        funcs::BlockReduceByVetical<T, BatchNormParamType<T>>(
-            x_sum,
-            x_square_sum,
-            &smem_sum[0],
-            &smem_square_sum[0],
-            &x_sum,
-            &x_square_sum);
-
         // final compute
         if (threadIdx.y == 0) {
           BatchNormParamType<T> compute_mean_val = x_sum / inner_size;
@@ -394,41 +365,17 @@ static __global__ void BNBackward2DChannelLastStage2(
         ds_sum, db_sum, &smem_ds_sum[0], &smem_db_sum[0], &ds_sum, &db_sum);
 
     if (gridDim.y > 1) {
-      volatile BatchNormParamType<T> *staging_ds_sum = block_data_ptr;
-      volatile BatchNormParamType<T> *staging_db_sum =
-          &block_data_ptr[C * gridDim.y];
-      // write block data to global memory
-      if (threadIdx.y == 0) {
-        staging_ds_sum[i + blockIdx.y * C] = ds_sum;
-        staging_db_sum[i + blockIdx.y * C] = db_sum;
-      }
-
-      // make sure write is visible to all blocks
-      __threadfence();
-      __syncthreads();
-
       __shared__ bool is_last_block_done;
-      // mark block done
-      if (threadIdx.x == 0 && threadIdx.y == 0) {
-        int old = atomicAdd(&flag_ptr[blockIdx.x], 1);
-        is_last_block_done = (old == (gridDim.y - 1));
-      }
-
-      __syncthreads();
-
+      funcs::ReduceSumPost<T, BatchNormParamType<T>>(C,
+                                                     i,
+                                                     &ds_sum,
+                                                     &db_sum,
+                                                     &is_last_block_done,
+                                                     smem_ds_sum,
+                                                     smem_db_sum,
+                                                     block_data_ptr,
+                                                     flag_ptr);
       if (is_last_block_done) {
-        ds_sum = static_cast<BatchNormParamType<T>>(0);
-        db_sum = static_cast<BatchNormParamType<T>>(0);
-        // thread sum
-        for (int y = threadIdx.y; y < gridDim.y; y += blockDim.y) {
-          ds_sum += staging_ds_sum[i + y * C];
-          db_sum += staging_db_sum[i + y * C];
-        }
-
-        // vertical block sum
-        funcs::BlockReduceByVetical<T, BatchNormParamType<T>>(
-            ds_sum, db_sum, &smem_ds_sum[0], &smem_db_sum[0], &ds_sum, &db_sum);
-
         // final compute
         if (threadIdx.y == 0) {
           dscale[i] = ds_sum * inv_var_val;

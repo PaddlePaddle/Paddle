@@ -697,6 +697,51 @@ __device__ __forceinline__ void BlockReduceByVetical(BnT x_sum,
   }
 }
 
+template <typename T, typename BnT>
+__device__ __forceinline__ void ReduceSumPost(const int C,  // channels
+                                              const int c,  // channel index
+                                              BnT *sum1,
+                                              BnT *sum2,
+                                              bool *is_last_block_done,
+                                              BnT *cache1,
+                                              BnT *cache2,
+                                              BnT *block_data_ptr,
+                                              int *flag_ptr) {
+  volatile BnT *staging_sum = block_data_ptr;
+  volatile BnT *staging_sum2 = &block_data_ptr[C * gridDim.y];
+  // write block data to global memory
+  if (threadIdx.y == 0) {
+    staging_sum[c + blockIdx.y * C] = *sum1;
+    staging_sum2[c + blockIdx.y * C] = *sum2;
+  }
+
+  // make sure write is visible to all blocks
+  __threadfence();
+  __syncthreads();
+
+  // mark block done
+  if (threadIdx.x == 0 && threadIdx.y == 0) {
+    int old = atomicAdd(&flag_ptr[blockIdx.x], 1);
+    *is_last_block_done = (old == (gridDim.y - 1));
+  }
+
+  __syncthreads();
+
+  if (*is_last_block_done) {
+    *sum1 = static_cast<BnT>(0);
+    *sum2 = static_cast<BnT>(0);
+    // thread sum
+    for (int y = threadIdx.y; y < gridDim.y; y += blockDim.y) {
+      *sum1 += staging_sum[c + y * C];
+      *sum2 += staging_sum2[c + y * C];
+    }
+
+    // vertical block sum
+    funcs::BlockReduceByVetical<T, BnT>(
+        *sum1, *sum2, &cache1[0], &cache2[0], sum1, sum2);
+  }
+}
+
 template <typename T, typename BnT, typename Context>
 void SetLaunchConfigInfoForChannelLast(const Context &ctx,
                                        DenseTensor *block_data_tensor,
