@@ -1570,12 +1570,23 @@ class TestSundryAPIStatic(unittest.TestCase):
         x1.stop_gradient = False
         x2.stop_gradient = False
         out = paddle.where(x1 > x2, x1, x2)
-        paddle.static.append_backward(out)
+        loss = paddle.mean(out)
+        paddle.static.append_backward(loss)
 
         prog = paddle.static.default_main_program()
-        res = self.exe.run(prog, feed={}, fetch_list=[out])
+        res = self.exe.run(
+            prog,
+            feed={},
+            fetch_list=[out, out.grad_name, x1.grad_name, x2.grad_name],
+        )
 
         self.assertEqual(res[0].shape, ())
+        self.assertEqual(res[0], 2)
+        self.assertEqual(res[1].shape, ())
+        self.assertEqual(res[2].shape, ())
+        self.assertEqual(res[2], 0)
+        self.assertEqual(res[3].shape, ())
+        self.assertEqual(res[3], 1)
 
     @prog_scope()
     def test_atan2(self):
