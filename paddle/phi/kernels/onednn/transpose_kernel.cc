@@ -141,9 +141,9 @@ void TransposeKernel(const Context& dev_ctx,
     total_stride *= x_vec_dims[axis[i]];
   }
   auto dst_md = dnnl::memory::desc(x_vec_dims, out_type, fake_strides);
-  auto dst_data = dev_ctx.template Alloc<T>(out);
   auto reorder_dst_memory_p =
-      std::make_shared<dnnl::memory>(dst_md, dev_ctx.GetEngine(), dst_data);
+      reorder_handler.AcquireDstMemory(out, dst_md, dev_ctx.GetPlace());
+
   auto reorder_p = reorder_handler.AcquireReorder(
       reorder_dst_memory_p, reorder_src_memory_p, attrs);
 
