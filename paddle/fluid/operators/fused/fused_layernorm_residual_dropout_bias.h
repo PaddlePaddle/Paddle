@@ -854,7 +854,7 @@ void LaunchLayernormResidualDropoutBias(
                  residual,
                  rows * cols * sizeof(T),
                  ctx.stream());
-    if(mask_data!=nullptr){
+    if (mask_data != nullptr) {
       PADDLE_ENFORCE_GPU_SUCCESS(cudaMemsetAsync(
           mask_data, 0, rows * cols * sizeof(MaskType), ctx.stream()));
     }

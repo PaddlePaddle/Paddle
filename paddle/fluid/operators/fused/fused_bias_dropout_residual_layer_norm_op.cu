@@ -48,14 +48,18 @@ class FusedBiasDropoutResidualLnOpKernel : public framework::OpKernel<T> {
     auto *residual_data = (residual == nullptr) ? nullptr : residual->data<T>();
     auto *ln_scale_data = (ln_scale == nullptr ? nullptr : ln_scale->data<U>());
     auto *ln_bias_data = (ln_bias == nullptr ? nullptr : ln_bias->data<U>());
-    auto *bias_dropout_residual_out_data = 
+    auto *bias_dropout_residual_out_data =
         dev_ctx.Alloc<T>(bias_dropout_residual_out,
                          bias_dropout_residual_out->numel() * sizeof(T));
     auto *ln_mean_data =
         dev_ctx.Alloc<U>(ln_mean, ln_mean->numel() * sizeof(U));
     auto *ln_var_data = dev_ctx.Alloc<U>(ln_var, ln_var->numel() * sizeof(U));
-    auto *dropout_mask_out_data = (dropout_mask_out == nullptr) ? nullptr :
-        dev_ctx.Alloc<uint8_t>(dropout_mask_out, dropout_mask_out->numel() * sizeof(uint8_t));
+    auto *dropout_mask_out_data =
+        (dropout_mask_out == nullptr)
+            ? nullptr
+            : dev_ctx.Alloc<uint8_t>(
+                  dropout_mask_out,
+                  dropout_mask_out->numel() * sizeof(uint8_t));
     auto *y_data = dev_ctx.Alloc<T>(y, y->numel() * sizeof(T));
 
     const auto input_x_dims = input_x->dims();

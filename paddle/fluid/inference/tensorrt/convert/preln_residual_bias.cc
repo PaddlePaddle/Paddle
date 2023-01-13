@@ -26,7 +26,8 @@ class PrelnResidualBiasOpConverter : public OpConverter {
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope,
                   bool test_mode) override {
-    VLOG(4) << "convert fused_bias_dropout_residual_layer_norm op with drop_rate = 0 to preln_residual_bias tensorrt layer";
+    VLOG(4) << "convert fused_bias_dropout_residual_layer_norm op with "
+               "drop_rate = 0 to preln_residual_bias tensorrt layer";
     if (!engine_->with_dynamic_shape()) {
       PADDLE_THROW(
           platform::errors::Fatal("Unsupported static graph mode. Please set "
@@ -62,9 +63,12 @@ class PrelnResidualBiasOpConverter : public OpConverter {
     int scale_size = phi::product(scale_dims);
     int ele_bias_size = has_bias ? phi::product(ele_bias_dims) : 0;
     float epsilon = PADDLE_GET_CONST(float, op_desc.GetAttr("ln_epsilon"));
-    float dropout_rate = PADDLE_GET_CONST(float, op_desc.GetAttr("dropout_rate"));
-    if (dropout_rate != 0.0f){
-      VLOG(4)<<"preln_residual_bias trt layer can not work with fused_bias_dropout_residual_layer_norm op in which the dropout_rate != 0, stop convert";
+    float dropout_rate =
+        PADDLE_GET_CONST(float, op_desc.GetAttr("dropout_rate"));
+    if (dropout_rate != 0.0f) {
+      VLOG(4) << "preln_residual_bias trt layer can not work with "
+                 "fused_bias_dropout_residual_layer_norm op in which the "
+                 "dropout_rate != 0, stop convert";
       return;
     }
     bool with_fp16 = engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
@@ -118,4 +122,5 @@ class PrelnResidualBiasOpConverter : public OpConverter {
 }  // namespace inference
 }  // namespace paddle
 
-REGISTER_TRT_OP_CONVERTER(fused_bias_dropout_residual_layer_norm, PrelnResidualBiasOpConverter);
+REGISTER_TRT_OP_CONVERTER(fused_bias_dropout_residual_layer_norm,
+                          PrelnResidualBiasOpConverter);
