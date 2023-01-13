@@ -747,6 +747,7 @@ class TestSundryAPI(unittest.TestCase):
             out1.numpy(),
         )
 
+        out0.retain_grads()
         out0.backward()
         self.assertEqual(out0.grad.shape, [1])
         self.assertEqual(logit.grad.shape, [2, 3])
