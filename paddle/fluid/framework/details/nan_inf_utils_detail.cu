@@ -216,9 +216,9 @@ __device__ void BlockReduceMaxMinAndWrite(const T max_value,
   if (max_ptr && min_ptr && mean_ptr) {
     __syncthreads();
 
-    T block_max_value = phi::funcs::blockReduceMax<T>(max_value, FINAL_MASK);
-    T block_min_value = phi::funcs::blockReduceMin<T>(min_value, FINAL_MASK);
-    T block_mean_value = phi::funcs::blockReduceSum<T>(mean_value, FINAL_MASK);
+    T block_max_value = phi::funcs::BlockReduceMax<T>(max_value, FINAL_MASK);
+    T block_min_value = phi::funcs::BlockReduceMin<T>(min_value, FINAL_MASK);
+    T block_mean_value = phi::funcs::BlockReduceSum<T>(mean_value, FINAL_MASK);
 
     if (threadIdx.x == 0) {
       max_ptr[offset] = block_max_value;

@@ -43,6 +43,14 @@ class TestCollectiveBroadcastAPI(TestDistBase):
             "collective_broadcast_api.py", "broadcast", "gloo", "0"
         )
 
+    def test_broadcast_gloo_with_comm_context(self):
+        self.check_with_place(
+            "collective_broadcast_api.py",
+            "broadcast",
+            "gloo",
+            need_envs={"USE_COMM_CONTEXT": "1"},
+        )
+
     def test_broadcast_nccl_dygraph(self):
         dtypes_to_test = [
             "float16",

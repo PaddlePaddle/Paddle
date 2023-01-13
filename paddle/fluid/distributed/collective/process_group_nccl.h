@@ -23,19 +23,10 @@
 #include "paddle/fluid/distributed/collective/process_group.h"
 #include "paddle/fluid/distributed/collective/process_group_with_stream.h"
 #include "paddle/fluid/platform/device_event.h"
+#include "paddle/phi/backends/gpu/forwards.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/device_context.h"
 #include "paddle/phi/core/distributed/store/store.h"
-
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-#include "paddle/fluid/distributed/collective/nccl_tools.h"
-#endif
-
-#ifdef PADDLE_WITH_RCCL
-#include "paddle/phi/backends/dynload/rccl.h"
-#else
-#include "paddle/phi/backends/dynload/nccl.h"
-#endif
 
 namespace paddle {
 namespace distributed {

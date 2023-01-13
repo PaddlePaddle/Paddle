@@ -130,6 +130,8 @@ target_link_libraries(generate_pass pass_desc_proto)
 if(WITH_TENSORRT)
   pass_library(trt_map_matmul_to_mul_pass inference)
   pass_library(trt_multihead_matmul_fuse_pass inference)
+  pass_library(trt_flash_multihead_matmul_fuse_pass inference)
+  pass_library(trt_cross_multihead_matmul_fuse_pass inference)
   pass_library(trt_skip_layernorm_fuse_pass inference)
   pass_library(merge_layernorm_fuse_pass inference)
   pass_library(preln_skip_layernorm_fuse_pass inference)
@@ -222,6 +224,10 @@ cc_library(
 cc_library(
   fuse_gemm_epilogue_pass
   SRCS fuse_gemm_epilogue_pass.cc
+  DEPS pass graph_pattern_detector)
+cc_library(
+  fused_attention_pass
+  SRCS fused_attention_pass.cc
   DEPS pass graph_pattern_detector)
 cc_library(
   fuse_relu_depthwise_conv_pass
