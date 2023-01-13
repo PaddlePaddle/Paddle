@@ -16,7 +16,7 @@ from paddle.distributed.auto_parallel.process_group import (
     get_world_process_group,
 )
 from paddle.distributed.fleet.meta_optimizers.common import OP_ROLE_KEY, OpRole
-from paddle.fluid import core
+from paddle.framework import core
 
 from ..dist_attribute import OperatorDistAttr
 from ..process_group import new_process_group

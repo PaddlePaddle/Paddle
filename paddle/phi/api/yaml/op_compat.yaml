@@ -854,13 +854,11 @@
     out : Out
 
 - op : logsigmoid
+  backward : logsigmoid_grad
   inputs :
     x : X
   outputs :
     out : Out
-
-- op : logsigmoid
-  backward : logsigmoid_grad
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
@@ -919,6 +917,14 @@
   outputs :
     out : Out
 
+- op : meshgrid
+  backward : meshgrid_grad
+  inputs :
+    inputs : X
+  outputs :
+    out : Out
+  drop_empty_grad : [inputs_grad]
+
 - op : mish
   backward : mish_grad
   extra :
@@ -931,6 +937,14 @@
   outputs :
     {out : Out, indices : Indices}
 
+- op : multi_dot
+  backward : multi_dot_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
+  drop_empty_grad : [x_grad]
+
 - op : multinomial
   inputs :
     {x : X}
@@ -940,6 +954,14 @@
     num_samples :
       data_type : int
       support_tensor : true
+
+- op : multiplex
+  backward : multiplex_grad
+  inputs :
+    {inputs : X, index : Ids}
+  outputs :
+    out : Out
+  drop_empty_grad : [inputs_grad]
 
 - op : multiply (elementwise_mul)
   backward : multiply_grad (elementwise_mul_grad)
@@ -1339,13 +1361,13 @@
 
 - op : stack
   backward : stack_grad
+  inputs :
+    x : X
+  outputs :
+    out : Y
   extra :
     attrs : [bool use_mkldnn = false]
-
-- op : stack
-  backward : stack_grad
-  extra :
-    attrs : [bool use_mkldnn = false]
+  drop_empty_grad : [x_grad]
 
 - op : subtract (elementwise_sub)
   backward : subtract_grad (elementwise_sub_grad)
@@ -1412,6 +1434,18 @@
   outputs :
     out : Out
 
+- op : tile
+  backward : tile_grad, tile_double_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
+  int_array:
+    repeat_times :
+      data_type : int
+      tensor_name : RepeatTimes
+      tensors_name : repeat_times_tensor
+
 - op : topk (top_k_v2)
   backward : topk_grad (top_k_v2_grad)
   inputs :
@@ -1446,11 +1480,23 @@
   outputs :
     out : Out
 
+- op : unbind
+  inputs :
+    input : X
+  outputs :
+    out : Out
+
 - op : unfold
   inputs :
     x : X
   outputs :
     out : Y
+
+- op : unique_consecutive
+  inputs :
+    x : X
+  outputs :
+    {out : Out, index : Index, counts : Counts}
 
 - op : unsqueeze (unsqueeze2)
   backward : unsqueeze_grad (unsqueeze2_grad), unsqueeze_double_grad(unsqueeze2_double_grad)

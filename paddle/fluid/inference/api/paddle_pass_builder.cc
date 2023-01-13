@@ -106,8 +106,8 @@ const std::vector<std::string> kTRTSubgraphPasses({
       "vit_attention_fuse_pass",                      //
 #if defined _WIN32  // Windows CI is TensorRT7.0. Remove this after upgrading.
 #else
-      "trt_skip_layernorm_fuse_pass",    //
-      "preln_skip_layernorm_fuse_pass",  //
+      "trt_skip_layernorm_fuse_pass",          //
+      "preln_skip_layernorm_fuse_pass",        //
 #endif
       "layernorm_shift_partition_fuse_pass",         //
       "merge_layernorm_fuse_pass",                   //
@@ -128,8 +128,13 @@ const std::vector<std::string> kTRTSubgraphPasses({
       // "yolo_box_fuse_pass",      //
       "dense_fc_to_sparse_pass",                //
       "dense_multihead_matmul_to_sparse_pass",  //
-      "tensorrt_subgraph_pass",                 //
-      "conv_bn_fuse_pass",                      //
+#if defined _WIN32  // Windows CI is TensorRT7.0. Remove this after upgrading.
+#else
+      "elementwise_groupnorm_act_pass",        //
+      "preln_elementwise_groupnorm_act_pass",  //
+#endif
+      "tensorrt_subgraph_pass",  //
+      "conv_bn_fuse_pass",       //
 #if CUDNN_VERSION >= 7100  // To run conv_fusion, the version of cudnn must be
                            // guaranteed at least v7
 // cudnn8.0 has memory leak problem in conv + eltwise + act, so we
