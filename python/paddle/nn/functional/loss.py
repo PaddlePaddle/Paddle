@@ -953,6 +953,11 @@ def hsigmoid_loss(
             #  [2.11009121]
             #  [1.92374969]]
     """
+    if num_classes < 2:
+        raise ValueError(
+            'Expected num_classes >= 2 (got {})'.format(num_classes)
+        )
+
     if in_dygraph_mode():
         out, _, _ = _C_ops.hsigmoid_loss(
             input,
@@ -1372,10 +1377,29 @@ def nll_loss(
 
     input_shape = list(input.shape)
     input_dims = len(input_shape)
+    label_shape = list(label.shape)
+    label_dims = len(label_shape)
+
+    if input_dims - 1 != label_dims and input_dims != label_dims:
+        raise ValueError(
+            "Expected input_dims - 1 = label_dims or input_dims == label_dims\
+             (got input_dims{}, label_dims{})".format(
+                input_dims, label_dims
+            )
+        )
+
     if input_dims < 2:
         raise ValueError(
             'Expected 2 or more dimensions (got {})'.format(input_dims)
         )
+
+    if input_shape[1] < 1:
+        raise ValueError(
+            "Expected 1 or more classess (got num classes{})".format(
+                input_shape[1]
+            )
+        )
+
     n = input_shape[0]
     c = input_shape[1]
     if in_dygraph_mode():
@@ -2882,8 +2906,8 @@ def sigmoid_focal_loss(
             ``logit``. The target label whose value should be numbers between 0 and 1.
             Available dtype is float32, float64.
         normalizer (Tensor, optional): The number normalizes the focal loss. It has to be
-            a 1-D Tensor whose shape is `[1, ]`. The data type is float32, float64.
-            For object detection task, it is the number of positive samples.
+            a 1-D Tensor with shape `[1, ]` or 0-D Tensor with shape `[]`. The data type
+            is float32, float64. For object detection task, it is the number of positive samples.
             If set to None, the focal loss will not be normalized. Default is None.
         alpha(int|float, optional): Hyper-parameter to balance the positive and negative example,
             it should be between 0 and 1.  Default value is set to 0.25.
@@ -2934,7 +2958,7 @@ def sigmoid_focal_loss(
         normalizer_dims = len(normalizer_shape)
         if normalizer_dims > 1:
             raise ValueError(
-                "Expected one dimension of normalizer in sigmoid_focal_loss but got {}.".format(
+                "Expected zero or one dimension of normalizer in sigmoid_focal_loss but got {}.".format(
                     normalizer_dims
                 )
             )

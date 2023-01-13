@@ -686,8 +686,12 @@ struct SimpleOpTypeSetTeller : public Teller {
       int axis = desc.HasAttr("axis")
                      ? PADDLE_GET_CONST(int64_t, desc.GetAttr("axis"))
                      : -1;
-      bool flatten = PADDLE_GET_CONST(bool, desc.GetAttr("flatten"));
-      int dtype = PADDLE_GET_CONST(int, desc.GetAttr("dtype"));
+      bool flatten = desc.HasAttr("flatten")
+                         ? PADDLE_GET_CONST(bool, desc.GetAttr("flatten"))
+                         : false;
+      int dtype = desc.HasAttr("dtype")
+                      ? PADDLE_GET_CONST(int, desc.GetAttr("dtype"))
+                      : 3;
       if (axis == 0 || flatten || (dtype != 2 && dtype != 3)) return false;
     }
 
@@ -2088,7 +2092,8 @@ struct SimpleOpTypeSetTeller : public Teller {
     }
 
     if (op_type == "reduce_sum" || op_type == "reduce_mean" ||
-        op_type == "reduce_max") {
+        op_type == "reduce_max" || op_type == "reduce_min" ||
+        op_type == "reduce_prod") {
       if (!desc.HasAttr("dim", /*with_attr_var=*/false)) {
         VLOG(3) << "Skip to convert into TRT while found Attribute('dim') is "
                    "Variable type in "
@@ -2523,6 +2528,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "flatten",
       "gather",
       "gather_nd",
+      "group_norm",
       "yolo_box",
       "yolo_box_head",
       "arg_max",
