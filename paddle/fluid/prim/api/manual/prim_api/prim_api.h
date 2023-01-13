@@ -53,5 +53,8 @@ Tensor reshape(Tensor x, IntArray shape);
 
 template <typename T>
 Tensor expand(const Tensor& x, const IntArray& shape);
+
+template <typename T>
+Tensor exp(const Tensor& x);
 }  // namespace prim
 }  // namespace paddle

@@ -57,5 +57,11 @@ template <>
 Tensor reshape<Tensor>(Tensor x, IntArray shape) {
   return ::reshape_ad_func(x, shape);
 }
+
+template <>
+Tensor exp<Tensor>(const Tensor& x) {
+  return ::exp_ad_func(x);
+}
+
 }  // namespace prim
 }  // namespace paddle
