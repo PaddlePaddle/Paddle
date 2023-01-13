@@ -204,8 +204,8 @@ void RunServer2() {
   pserver_ptr2->build_peer2peer_connection(1);
 }
 
-void RunClient(std::map<uint64_t, std::vector<paddle::distributed::Region>>
-                   &dense_regions,  // NOLINT
+void RunClient(std::map<uint64_t, std::vector<paddle::distributed::Region>>&
+                   dense_regions,  // NOLINT
                int index,
                paddle::distributed::PsBaseService* service) {
   ::paddle::distributed::PSParameter worker_proto = GetWorkerProto();
