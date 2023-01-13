@@ -94,7 +94,8 @@ PADDLE_CAPI_EXPORT extern void PD_IOInfoDestroy(__pd_take PD_IOInfo* io_info);
 ///
 /// \param[in] cstr pointer to the PD_IOInfos object.
 ///
-PADDLE_CAPI_EXPORT extern void PD_IOInfosDestroy(__pd_take PD_IOInfos* io_infos);
+PADDLE_CAPI_EXPORT extern void PD_IOInfosDestroy(
+    __pd_take PD_IOInfos* io_infos);
 
 #ifdef __cplusplus
 }  // extern "C"

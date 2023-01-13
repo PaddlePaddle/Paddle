@@ -642,10 +642,10 @@ PADDLE_CAPI_EXPORT extern void PD_ConfigEnableGpuMultiStream(
 ///
 PADDLE_CAPI_EXPORT extern PD_Bool PD_ConfigThreadLocalStreamEnabled(
     __pd_keep PD_Config* pd_config);
-  ///
-  /// \brief Set execution stream. If not set a stream will be created
-  /// internally.
-  ///
+///
+/// \brief Set execution stream. If not set a stream will be created
+/// internally.
+///
 PADDLE_CAPI_EXPORT extern void PD_ConfigSetExecStream(
     __pd_keep PD_Config* pd_config, void* stream);
 ///

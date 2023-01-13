@@ -120,7 +120,8 @@ void PD_ConfigEnableUseGpu(__pd_keep PD_Config* pd_config,
                            int32_t device_id,
                            PD_PrecisionType precision_mode) {
   CHECK_AND_CONVERT_PD_CONFIG;
-  config->EnableUseGpu(memory_pool_init_size_mb, device_id,
+  config->EnableUseGpu(memory_pool_init_size_mb,
+                       device_id,
                        ConvertToCxxPrecisionType(precision_mode));
 }
 void PD_ConfigDisableGpu(__pd_keep PD_Config* pd_config) {

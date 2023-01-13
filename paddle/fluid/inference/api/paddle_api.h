@@ -244,7 +244,8 @@ class PD_INFER_DECL PaddlePredictor {
   virtual std::vector<std::string> GetOutputNames() { return {}; }
 
   /// \brief Get the output shape of the model.
-  /// \return A map contains all the output names and shape defined in the model.
+  /// \return A map contains all the output names and shape defined in the
+  /// model.
   virtual std::map<std::string, std::vector<int64_t>> GetOutputTensorShape() {
     return {};
   }

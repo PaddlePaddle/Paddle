@@ -1612,9 +1612,9 @@ AnalysisPredictor::GetOutputTensorShape() {
   std::vector<std::string> names = GetOutputNames();
   for (std::string name : names) {
     auto *var = inference_program_->Block(0).FindVar(name);
-    PADDLE_ENFORCE_NOT_NULL(
-        var,
-        platform::errors::PreconditionNotMet("Output %s does not exist.", name));
+    PADDLE_ENFORCE_NOT_NULL(var,
+                            platform::errors::PreconditionNotMet(
+                                "Output %s does not exist.", name));
     output_shapes[name] = var->GetShape();
   }
   return output_shapes;
@@ -1650,7 +1650,6 @@ AnalysisPredictor::GetOutputTypes() {
   }
   return output_type;
 }
-
 
 std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetInputTensor(
     const std::string &name) {
@@ -2510,8 +2509,7 @@ std::vector<std::string> Predictor::GetInputNames() {
   return predictor_->GetInputNames();
 }
 
-std::map<std::string, std::vector<int64_t>>
-Predictor::GetInputTensorShape() {
+std::map<std::string, std::vector<int64_t>> Predictor::GetInputTensorShape() {
   return predictor_->GetInputTensorShape();
 }
 
@@ -2531,8 +2529,7 @@ std::unique_ptr<Tensor> Predictor::GetOutputHandle(const std::string &name) {
   return predictor_->GetOutputTensor(name);
 }
 
-std::map<std::string, std::vector<int64_t>>
-Predictor::GetOutputTensorShape() {
+std::map<std::string, std::vector<int64_t>> Predictor::GetOutputTensorShape() {
   return predictor_->GetOutputTensorShape();
 }
 

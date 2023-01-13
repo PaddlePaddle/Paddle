@@ -66,8 +66,8 @@ PD_PredictorGetInputNames(__pd_keep PD_Predictor* pd_predictor);
 /// \param[in] pd_predictor predictor
 /// \return input infos(name/shape/dtype)
 ///
-PADDLE_CAPI_EXPORT extern __pd_give PD_IOInfos*
-PD_PredictorGetInputInfos(__pd_keep PD_Predictor* pd_predictor);
+PADDLE_CAPI_EXPORT extern __pd_give PD_IOInfos* PD_PredictorGetInputInfos(
+    __pd_keep PD_Predictor* pd_predictor);
 ///
 /// \brief Get the output names
 ///
@@ -82,8 +82,8 @@ PD_PredictorGetOutputNames(__pd_keep PD_Predictor* pd_predictor);
 /// \param[in] pd_predictor predictor
 /// \return output infos(name/shape/dtype)
 ///
-PADDLE_CAPI_EXPORT extern __pd_give PD_IOInfos*
-PD_PredictorGetOutputInfos(__pd_keep PD_Predictor* pd_predictor);
+PADDLE_CAPI_EXPORT extern __pd_give PD_IOInfos* PD_PredictorGetOutputInfos(
+    __pd_keep PD_Predictor* pd_predictor);
 ///
 /// \brief Get the input number
 ///
