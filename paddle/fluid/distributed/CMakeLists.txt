@@ -1,5 +1,6 @@
 add_subdirectory(auto_parallel)
 add_subdirectory(collective)
+add_subdirectory(fleet_executor)
 if(WITH_PYTHON)
   py_proto_compile(ps_py_proto SRCS the_one_ps.proto)
   add_custom_target(
@@ -32,7 +33,6 @@ if(WITH_RPC)
 endif()
 
 if(NOT WITH_PSCORE)
-  add_subdirectory(fleet_executor)
   return()
 endif()
 
@@ -49,4 +49,3 @@ add_subdirectory(common)
 add_subdirectory(ps)
 add_subdirectory(test)
 add_subdirectory(index_dataset)
-add_subdirectory(fleet_executor)
