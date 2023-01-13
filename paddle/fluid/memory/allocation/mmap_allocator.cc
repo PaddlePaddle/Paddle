@@ -207,7 +207,7 @@ void RefcountedMemoryMapAllocation::close() {
   } else {
     if (FLAGS_use_shm_cache &&
         MemoryMapAllocationPool::Instance().BufferSize() <
-            FLAGS_memory_map_allocation_pool_max_size) {
+            static_cast<size_t>(FLAGS_memory_map_allocation_pool_max_size)) {
       MemoryMapAllocationPool::Instance().Insert(
           MemoryMap(flags_, map_size_ - mmap_alignment, ipc_name_, map_ptr_));
     } else {
