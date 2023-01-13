@@ -907,15 +907,12 @@ void BatchNormGradRawKernel(const Context &ctx,
 #else
     }
     // CUDNN only support small batch size
-    // const size_t CUDNN_PER_ACTIVATION_THRESHOLD = 131070;
-    const size_t CUDNN_PER_ACTIVATION_THRESHOLD = 10240;
-    const size_t CUDNN_SPATIAL_THRESHOLD = 880801;
     bool use_native_nhwc =
         d_x ? (x_dims.size() == 4 && compute_format == DataLayout::kNHWC)
             : false;
     const bool use_native_kernel =
         ((x_dims.size() == 2 && N >= CUDNN_PER_ACTIVATION_THRESHOLD) ||
-         (x_dims.size() == 3 && N >= CUDNN_SPATIAL_THRESHOLD));
+         (x_dims.size() == 3 && N >= CUDNN_SPATIAL_THRESHOLD_TRAIN));
     if (use_native_nhwc || (d_x && d_scale && d_bias)) {
       if (use_native_kernel || use_native_nhwc) {
         if (x_dims.size() == 2 || use_native_nhwc) {

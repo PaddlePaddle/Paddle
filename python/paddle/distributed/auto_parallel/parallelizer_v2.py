@@ -16,7 +16,7 @@ import copy
 import logging
 import time
 
-from paddle.distributed.passes import new_pass
+from paddle.distributed.passes import PassManager, new_pass
 from paddle.static import append_backward, program_guard
 from paddle.utils import unique_name
 
@@ -338,3 +338,11 @@ class Parallelizer:
             auto_parallel_gradient_merge_pass.apply(
                 [main_program], [startup_program], self._pass_context
             )
+
+        if self._mode == "train" and self._strategy.fused_passes.enable:
+            if len(self._strategy.fused_passes.fused_passes_list) > 0:
+                new_pass_list = []
+                for op in self._strategy.fused_passes.fused_passes_list:
+                    new_pass_list.append(new_pass(op))
+                pass_manager = PassManager(new_pass_list)
+                pass_manager.apply([main_program], [startup_program])

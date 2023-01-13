@@ -23,7 +23,9 @@ from paddle.distributed.auto_parallel.utils import (
     set_var_dist_attr,
 )
 from paddle.distributed.fleet.meta_optimizers.common import OpRole
-from paddle.fluid.contrib.mixed_precision.fp16_utils import (
+from paddle.fluid.data_feeder import check_type, check_variable_and_dtype
+from paddle.framework import core
+from paddle.static.amp.fp16_utils import (
     AutoMixedPrecisionLists,
     _dtype_to_str,
     _is_in_black_varnames,
@@ -35,8 +37,6 @@ from paddle.fluid.contrib.mixed_precision.fp16_utils import (
     find_true_post_op,
     find_true_prev_op,
 )
-from paddle.fluid.data_feeder import check_type, check_variable_and_dtype
-from paddle.framework import core
 from paddle.utils import unique_name
 
 from ..auto_parallel.process_mesh import ProcessMesh
@@ -83,7 +83,7 @@ class AMPState:
 
     def _mark_black_white_ops(self, amp_lists):
         """
-        this function is modified from paddle.fluid.contrib.mixed_precision
+        this function is modified from paddle.static.amp
         """
         self._block._sync_with_cpp()
         ops = self._block.ops
@@ -179,7 +179,7 @@ class AMPState:
     ):
         """
         only for forward cast
-        modified from paddle.fluid.contrib.mixed_precision
+        modified from paddle.static.amp
         """
         num_cast_ops = 0
         var_name_dict = {}
