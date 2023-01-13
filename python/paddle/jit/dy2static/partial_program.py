@@ -610,7 +610,13 @@ class PartialProgramLayer:
                 targets.append(program.global_block().var(out.name))
 
         if targets and self._params:
-            backward.gradients(targets=targets, inputs=[])
+            enable_prim = self._build_strategy.build_cinn_pass
+            if enable_prim:
+                core.set_prim_enabled(True)
+                backward.gradients(targets=targets, inputs=[])
+                core.set_prim_enabled(False)
+            else:
+                backward.gradients(targets=targets, inputs=[])
 
         start_idx = len(main_program.block(0).ops) + 2 * len(
             self._outputs.tolist()
