@@ -27,7 +27,7 @@ from xpu.get_test_cover_info import (
 
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid import Program, program_guard
+from paddle.fluid import Program, core, program_guard
 
 
 class XPUTestClipOp(XPUOpTestWrapper):
@@ -51,7 +51,7 @@ class XPUTestClipOp(XPUOpTestWrapper):
 
         def set_xpu(self):
             self.__class__.use_xpu = True
-            self.__class__.no_need_check_grad = True
+            self.__class__.no_need_check_grad = False
             self.__class__.op_type = self.dtype
 
         def init_data(self):
@@ -90,6 +90,16 @@ class XPUTestClipOp(XPUOpTestWrapper):
             paddle.enable_static()
             self.check_output_with_place(self.place)
             paddle.disable_static()
+
+        def test_check_grad(self):
+            if hasattr(self, "no_need_check_grad") and self.no_need_check_grad:
+                return
+            if core.is_compiled_with_xpu():
+                paddle.enable_static()
+                self.check_grad_with_place(
+                    self.place, ['X'], 'Out', check_eager=True
+                )
+                paddle.disable_static()
 
     class TestClipOp1(TestClipOp):
         def init_data(self):
