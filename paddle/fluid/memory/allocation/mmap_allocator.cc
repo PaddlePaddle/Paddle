@@ -357,7 +357,7 @@ int MemoryMapAllocationPool::FindFromCache(const int &flag,
                                            const std::string &file_name,
                                            bool check_refcount) {
   std::lock_guard<std::mutex> guard(mtx_);
-  for (auto idx = 0; idx < memory_map_allocations_.size(); idx++) {
+  for (size_t idx = 0; idx < memory_map_allocations_.size(); idx++) {
     if (memory_map_allocations_.at(idx).flags_ == flag &&
         memory_map_allocations_.at(idx).data_size_ == data_size) {
       if (file_name == "" ||
