@@ -39,10 +39,6 @@ class FusedBiasDropoutResidualLnOp : public framework::OperatorWithKernel {
                    "Output",
                    "BiasDropoutResidualOut",
                    "FusedBiasDropoutResidualLnOp");
-    // OP_INOUT_CHECK(ctx->HasOutput("DropoutMaskOut"),
-    //                "Output",
-    //                "DropoutMaskOut",
-    //                "FusedBiasDropoutResidualLnOp");
     OP_INOUT_CHECK(
         ctx->HasOutput("Y"), "Output", "Y", "FusedBiasDropoutResidualLnOp");
     auto x_dim = ctx->GetInputDim("X");

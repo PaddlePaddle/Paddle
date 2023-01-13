@@ -230,8 +230,8 @@ int PrelnResidualBiasFusePass::ApplyPattern(ir::Graph *graph,
     // outputs
     new_desc.SetOutput("Y", {layer_norm_out->Name()});
     new_desc.SetOutput("BiasDropoutResidualOut", {elementwise1_out->Name()});
-    new_desc.SetOutput("LnMean",{layer_norm_mean->Name()});
-    new_desc.SetOutput("LnVariance",{layer_norm_variance->Name()});
+    new_desc.SetOutput("LnMean", {layer_norm_mean->Name()});
+    new_desc.SetOutput("LnVariance", {layer_norm_variance->Name()});
     // attrs
     new_desc.SetAttr("ln_epsilon", layer_norm->Op()->GetAttr("epsilon"));
     new_desc.SetAttr("dropout_rate", 0.0f);
@@ -245,8 +245,6 @@ int PrelnResidualBiasFusePass::ApplyPattern(ir::Graph *graph,
     }
     del_node_set.insert(elementwise1);
     del_node_set.insert(layer_norm);
-    // del_node_set.insert(layer_norm_mean);
-    // del_node_set.insert(layer_norm_variance);
     GraphSafeRemoveNodes(graph, del_node_set);
     IR_NODE_LINK_TO(subgraph.at(x), fused_node);
     IR_NODE_LINK_TO(subgraph.at(y), fused_node);
@@ -268,7 +266,8 @@ int PrelnResidualBiasFusePass::ApplyPattern(ir::Graph *graph,
 }
 
 void PrelnResidualBiasFusePass::ApplyImpl(ir::Graph *graph) const {
-  VLOG(1)<<"Fuse PrelnResidualBias into fused_bias_dropout_residual_layer_norm op with dropout rate = 0";
+  VLOG(1) << "Fuse PrelnResidualBias into "
+             "fused_bias_dropout_residual_layer_norm op with dropout rate = 0";
   PADDLE_ENFORCE_NOT_NULL(
       graph, platform::errors::PreconditionNotMet("graph should not be null."));
   FusePassBase::Init("preln_residual_bias_fuse", graph);
