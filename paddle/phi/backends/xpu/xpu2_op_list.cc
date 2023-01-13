@@ -144,7 +144,6 @@ XPUOpMap& get_kl2_ops() {
       {"dropout",
        XPUKernelSet({phi::DataType::FLOAT32, phi::DataType::FLOAT16})},
       {"einsum", XPUKernelSet({phi::DataType::FLOAT32})},
-      {"einsum_raw", XPUKernelSet({phi::DataType::FLOAT32})},
       {"einsum_grad", XPUKernelSet({phi::DataType::FLOAT32})},
       {"elementwise_add_grad",
        XPUKernelSet({phi::DataType::FLOAT32, phi::DataType::FLOAT16})},

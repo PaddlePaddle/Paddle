@@ -13,24 +13,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .... import core
-from .... import framework
-from .... import global_scope
-from ....log_helper import get_logger
-from ....wrapped_decorator import signature_safe_contextmanager
-from .amp_lists import AutoMixedPrecisionListsBF16
-from ..fp16_utils import (
-    find_true_prev_op,
-    find_true_post_op,
-    _rename_arg,
-    find_op_index,
-    _rename_op_input,
-)
-
 import collections
-import struct
 import logging
+import struct
+
 import numpy as np
+
+from paddle.fluid import core, framework, global_scope
+from paddle.fluid.log_helper import get_logger
+from paddle.fluid.wrapped_decorator import signature_safe_contextmanager
+
+from ..fp16_utils import (
+    _rename_arg,
+    _rename_op_input,
+    find_true_post_op,
+    find_true_prev_op,
+)
+from .amp_lists import AutoMixedPrecisionListsBF16
 
 __all__ = [
     "bf16_guard",

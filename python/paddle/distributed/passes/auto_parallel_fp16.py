@@ -27,15 +27,15 @@ from paddle.distributed.auto_parallel.utils import (
     set_var_dist_attr,
 )
 from paddle.distributed.fleet.meta_optimizers.common import OP_ROLE_KEY, OpRole
-from paddle.fluid.contrib.mixed_precision.fp16_utils import (
+from paddle.framework import core
+from paddle.static import default_main_program, default_startup_program
+from paddle.static.amp.fp16_utils import (
     AutoMixedPrecisionLists,
     _dtype_to_str,
     _keep_layer_norm_scale_bias_to_fp32,
     _need_keep_fp32,
     _valid_types,
 )
-from paddle.framework import core
-from paddle.static import default_main_program, default_startup_program
 from paddle.utils import unique_name
 
 from ..auto_parallel.process_mesh import ProcessMesh

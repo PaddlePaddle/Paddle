@@ -15,11 +15,7 @@
 # limitations under the License.
 
 import numpy as np
-from dygraph_group_sharded_stage2 import (
-    MLP,
-    optimizer_setting,
-    reader_decorator,
-)
+from dygraph_group_sharded_stage2 import MLP, RandomDataset, optimizer_setting
 
 import paddle
 from paddle.distributed.fleet.meta_parallel.sharding.group_sharded_optimizer_stage2 import (
@@ -53,18 +49,15 @@ def train_mlp(model, offload=False):
     )
     model = GroupShardedStage2(model, optimizer, buffer_max_size=2**21)
 
-    train_reader = paddle.batch(
-        reader_decorator(linear_size), batch_size=batch_size, drop_last=True
+    paddle.seed(2023)
+    np.random.seed(2023)
+    train_loader = paddle.io.DataLoader(
+        RandomDataset(),
+        batch_size=batch_size,
+        shuffle=False,
+        drop_last=True,
+        num_workers=0,
     )
-
-    train_loader = paddle.io.DataLoader.from_generator(
-        capacity=32,
-        use_double_buffer=True,
-        iterable=True,
-        return_list=True,
-        use_multiprocess=True,
-    )
-    train_loader.set_sample_list_generator(train_reader)
 
     for eop in range(epoch):
         model.train()

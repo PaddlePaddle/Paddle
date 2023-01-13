@@ -277,7 +277,8 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::Reduce(
           const phi::DenseTensor& input,
           BKCLContext_t comm,
           const XPUStream& stream) {
-        phi::DenseTensor output_t(*output);
+        phi::DenseTensor output_t;
+        paddle::framework::TensorCopy(*output, platform::XPUPlace(), &output_t);
         const auto& place = input.place();
         auto* calc_ctx = static_cast<phi::XPUContext*>(
             platform::DeviceContextPool::Instance().Get(place));
