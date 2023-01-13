@@ -157,7 +157,8 @@ void GetDownpourSparseTableProto(
 
 /*-------------------------------------------------------------------------*/
 
-std::string ip_ = "127.0.0.1", ip2 = "127.0.0.1";
+const char* ip_ = "127.0.0.1";
+const char* ip2 = "127.0.0.1";
 uint32_t port_ = 5209, port2 = 5210;
 
 std::vector<std::string> host_sign_list_;
@@ -204,7 +205,7 @@ void RunServer2() {
 }
 
 void RunClient(
-    std::map<uint64_t, std::vector<paddle::distributed::Region>>& dense_regions,
+    std::map<uint64_t, std::vector<paddle::distributed::Region>>& dense_regions,  // NOLINT
     int index,
     paddle::distributed::PsBaseService* service) {
   ::paddle::distributed::PSParameter worker_proto = GetWorkerProto();

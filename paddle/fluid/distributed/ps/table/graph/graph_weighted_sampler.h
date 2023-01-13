@@ -56,9 +56,9 @@ class WeightedSampler : public Sampler {
 
  private:
   int sample(float query_weight,
-             std::unordered_map<WeightedSampler *, float> &subtract_weight_map,
-             std::unordered_map<WeightedSampler *, int> &subtract_count_map,
-             float &subtract);
+             std::unordered_map<WeightedSampler *, float> &subtract_weight_map,  // NOLINT
+             std::unordered_map<WeightedSampler *, int> &subtract_count_map,     // NOLINT
+             float &subtract);                                                   // NOLINT
 };
 }  // namespace distributed
 }  // namespace paddle
