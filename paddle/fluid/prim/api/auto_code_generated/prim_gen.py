@@ -21,7 +21,9 @@ from prim_base import EagerPrimAPI
 def header_include():
     return """
 #include "paddle/phi/common/int_array.h"
+#include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/scalar.h"
+#include "paddle/phi/common/place.h"
 #include "paddle/utils/optional.h"
 """
 
@@ -44,6 +46,7 @@ namespace prim {
 using Tensor = paddle::experimental::Tensor;
 using Scalar = paddle::experimental::Scalar;
 using IntArray = paddle::experimental::IntArray;
+using DataType = paddle::experimental::DataType;
 """,
         """
 }  // namespace prim

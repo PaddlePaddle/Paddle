@@ -114,10 +114,10 @@ Tensor divide<DescTensor>(const Tensor& x, const Tensor& y) {
 }
 
 template <>
-Tensor full<DescTensor>(paddle::experimental::IntArray shape,
-                        paddle::experimental::Scalar value,
-                        paddle::experimental::DataType dtype,
-                        paddle::platform::Place place) {
+Tensor full<DescTensor>(const IntArray& shape,
+                        const Scalar& value,
+                        DataType dtype,
+                        const Place& place) {
   // Grad infershape
   Tensor out = empty<DescTensor>({}, dtype, place);
   framework::BlockDesc* block = StaticCompositeContext::Instance().GetBlock();
@@ -125,8 +125,7 @@ Tensor full<DescTensor>(paddle::experimental::IntArray shape,
   op->SetType("fill_constant");
   op->SetAttr("shape", shape.GetData());
   PADDLE_ENFORCE_EQ(
-      ((dtype == paddle::experimental::DataType::FLOAT32) ||
-       (dtype == paddle::experimental::DataType::FLOAT16)),
+      ((dtype == DataType::FLOAT32) || (dtype == DataType::FLOAT16)),
       true,
       phi::errors::InvalidArgument(
           "We only support float32/float16 for full, but we got data type: %s",
@@ -141,9 +140,9 @@ Tensor full<DescTensor>(paddle::experimental::IntArray shape,
   return out;
 }
 template <>
-Tensor sum<DescTensor>(Tensor x,
-                       paddle::experimental::IntArray axis,
-                       paddle::experimental::DataType dtype,
+Tensor sum<DescTensor>(const Tensor& x,
+                       const IntArray& axis,
+                       DataType dtype,
                        bool keepdim) {
   // Grad infershape
   Tensor out = empty<DescTensor>({}, dtype, paddle::Place());
@@ -168,7 +167,7 @@ Tensor sum<DescTensor>(Tensor x,
 }
 
 template <>
-Tensor reshape<DescTensor>(Tensor x, paddle::experimental::IntArray shape) {
+Tensor reshape<DescTensor>(const Tensor& x, const IntArray& shape) {
   // Grad infershape
   Tensor out = empty<DescTensor>({}, x.dtype(), paddle::Place());
   framework::BlockDesc* block = StaticCompositeContext::Instance().GetBlock();
