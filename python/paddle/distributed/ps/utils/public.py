@@ -19,8 +19,8 @@ import warnings
 from functools import reduce
 
 import paddle.fluid as fluid
-import paddle.fluid.framework as framework
 from paddle.framework import core
+from paddle.fluid.framework import generate_control_dev_var_name
 from paddle.distributed.io import is_persistable
 
 # logging.basicConfig(
@@ -1678,7 +1678,7 @@ def add_send_op(program, block, _vars):
 
     for table_id in table_dict:
         dummy_output = block.create_var(
-            name=framework.generate_control_dev_var_name()
+            name=generate_control_dev_var_name()
         )
         send_input_vars = [
             block.vars[union_var]
