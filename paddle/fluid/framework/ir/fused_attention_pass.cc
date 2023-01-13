@@ -684,6 +684,14 @@ PDNode* FusedAttentionGradPattern::operator()(PDNode* x,
   auto* fuse_qkv_matmul_grad_w_grad_node =
       pattern->NewNode(fuse_qkv_matmul_grad_w_grad_repr())
           ->assert_is_op_output("matmul_v2_grad");
+  fuse_qkv_ele_add_grad_x_grad_node->assert_is_op_input("matmul_v2_grad",
+                                                        "Out@GRAD");
+  fuse_qkv_matmul_grad_node
+      ->LinksFrom({fuse_qkv_ele_add_grad_x_grad_node,
+                   fuse_qkv_matmul_grad_x_node,
+                   fuse_qkv_matmul_grad_w_node})
+      .LinksTo(
+          {fuse_qkv_matmul_grad_x_grad_node, fuse_qkv_matmul_grad_w_grad_node});
 
   if (!pre_layer_norm) {
     return fuse_qkv_matmul_grad_x_grad_node;
