@@ -164,7 +164,7 @@ __global__ void bias_relu_v4_half2(const int num,
         data_vec[unroll_idx] = __hmax2(__half2(0, 0), data_vec[unroll_idx]);
 #elif __CUDA_ARCH__ >= 530
         data_vec[unroll_idx] = __hmul2(
-            __hgt2(__half2(0, 0), data_vec[unroll_idx]), data_vec[unroll_idx]);
+            __hgt2(data_vec[unroll_idx], __half2(0, 0)), data_vec[unroll_idx]);
 #else
         data_vec[unroll_idx].x =
             static_cast<int>(static_cast<float>(data_vec[unroll_idx].x) > 0) *
@@ -345,19 +345,16 @@ void FCFunctor<DeviceContext, T>::operator()(const DeviceContext& context,
                     errors::PermissionDenied(
                         "Weight padding in fc can not be used in GPU scope."));
   auto blas = phi::funcs::GetBlas<DeviceContext, T>(context);
-  blas.GEMM(false,
-            false,
+  blas.GEMM(CblasNoTrans,
+            CblasNoTrans,
             M,
             N,
             K,
             static_cast<T>(1.0),
             X,
-            K,
             W,
-            N,
             static_cast<T>(0.0),
-            Y,
-            N);
+            Y);
   if (B == NULL) {
     return;
   }

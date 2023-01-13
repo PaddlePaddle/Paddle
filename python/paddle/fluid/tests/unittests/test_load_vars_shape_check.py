@@ -16,6 +16,7 @@ import os
 import shutil
 import unittest
 
+import paddle
 import paddle.fluid as fluid
 from paddle.fluid.executor import Executor
 
@@ -30,7 +31,7 @@ class TestLoadVarsShapeCheck(unittest.TestCase):
 
         with fluid.program_guard(program_1, startup_program_1):
             input = fluid.layers.data(name="x", shape=[-1, 10], dtype='float32')
-            out = fluid.layers.fc(input, 20)
+            out = paddle.static.nn.fc(input, 20)
         place = fluid.CPUPlace()
         exe = Executor(place)
         exe.run(startup_program_1)

@@ -23,8 +23,6 @@ import paddle
 PRINT_STEP = 20
 SEED = 2020
 
-program_translator = paddle.jit.ProgramTranslator()
-
 
 class SimpleLSTMRNN(paddle.nn.Layer):
     def __init__(
@@ -319,12 +317,12 @@ def train(place):
 
 
 def train_dygraph(place):
-    program_translator.enable(False)
+    paddle.jit.enable_to_static(False)
     return train(place)
 
 
 def train_static(place):
-    program_translator.enable(True)
+    paddle.jit.enable_to_static(True)
     return train(place)
 
 

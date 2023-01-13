@@ -157,7 +157,7 @@ class ProcessMesh(core.ProcessMesh):
 
     def __enter__(self):
         set_current_process_mesh(self)
-        default_prog = paddle.fluid.default_main_program()
+        default_prog = paddle.static.default_main_program()
         cur_block = default_prog.current_block()
         self._old_var_names = list(cur_block.vars.keys())
         self._old_op_size = len(cur_block.ops)
@@ -166,7 +166,7 @@ class ProcessMesh(core.ProcessMesh):
         from .dist_op import DistributedOperator
         from .dist_tensor import DistributedTensor
 
-        default_prog = paddle.fluid.default_main_program()
+        default_prog = paddle.static.default_main_program()
         cur_block = default_prog.current_block()
         new_var_names = list(cur_block.vars.keys())
         new_op_size = len(cur_block.ops)
@@ -211,7 +211,7 @@ class ProcessMesh(core.ProcessMesh):
         return new_process_mesh
 
     def __eq__(self, other):
-        if not isinstance(other, ProcessMesh):
+        if not isinstance(other, (ProcessMesh, core.ProcessMesh)):
             return False
         if self.shape != other.shape or self.process_ids != other.process_ids:
             return False

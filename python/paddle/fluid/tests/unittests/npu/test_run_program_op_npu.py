@@ -311,12 +311,12 @@ class TestRunProgramOpWithFC(RunProgramNPUOpTest):
             ),
             trainable=True,
         )
-        pred = fluid.layers.fc(
-            input=img,
+        pred = paddle.static.nn.fc(
+            x=img,
             size=10,
-            param_attr=weight_attr,
+            weight_attr=weight_attr,
             bias_attr=bias_attr,
-            act='relu',
+            activation='relu',
         )
         # 2. get forward op num
         fwd_op_num = fluid.default_main_program().global_block().desc.op_size()
