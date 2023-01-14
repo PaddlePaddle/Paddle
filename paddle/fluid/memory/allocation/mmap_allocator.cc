@@ -35,9 +35,6 @@ namespace paddle {
 namespace memory {
 namespace allocation {
 
-thread_local std::tuple<size_t, std::map<void *, size_t>> allocated_memory(
-    0, std::map<void *, size_t>());
-
 std::string GetIPCName() {
   static std::random_device rd;
   std::string handle = "/paddle_";
@@ -125,15 +122,10 @@ AllocateRefcountedMemoryMapAllocation(std::string filename,
   void *base_ptr = nullptr;
   if (buffer_id == -1) {
     AllocateMemoryMap(filename, flags, size + mmap_alignment, &base_ptr, &fd);
-    VLOG(4) << "** No cache, mmap a new shm: "
-            << "(flags: " << flags << ",size: " << size
-            << ",filname: " << filename << ",base_ptr: " << base_ptr
-            << ",fd: " << fd << ")";
+    VLOG(4) << "Create and mmap a new shm: " << filename;
   } else {
     base_ptr = MemoryMapAllocationPool::Instance().GetById(buffer_id).mmap_ptr_;
-    VLOG(4) << "** Get cache of " << buffer_id << "(flags: " << flags
-            << ",size: " << size << ",filname: " << filename
-            << ",base_ptr: " << base_ptr << ")";
+    VLOG(4) << "Get a cached shm " << filename;
   }
   void *aliged_base_ptr =
       static_cast<void *>(static_cast<char *>(base_ptr) + mmap_alignment);
@@ -191,10 +183,7 @@ void RefcountedMemoryMapAllocation::initializeRefercount() {
 }
 
 void RefcountedMemoryMapAllocation::close() {
-  VLOG(4) << "** close a RefcountedMemoryMapAllocation: "
-          << "(buffer_id: " << buffer_id_ << ",flags: " << flags_
-          << ",size: " << map_size_ << ",filname: " << ipc_name_
-          << ",base_ptr: " << map_ptr_ << ",fd: " << fd_ << ")";
+  VLOG(4) << "Close a RefcountedMemoryMapAllocation: " << ipc_name_;
   if (closed_) {
     return;
   }
@@ -394,8 +383,7 @@ void MemoryMapAllocationPool::Clear() {
   for (auto mmap : memory_map_allocations_) {
     int rlt = shm_unlink(mmap.file_name_.c_str());
     if (rlt == 0) {
-      VLOG(4) << "PID: " << getpid() << ", MemoryMapAllocationPool: clear "
-              << mmap.file_name_;
+      VLOG(4) << "MemoryMapAllocationPool: clear " << mmap.file_name_;
     }
   }
   memory_map_allocations_.clear();
