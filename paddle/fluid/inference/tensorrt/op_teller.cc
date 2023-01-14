@@ -2142,8 +2142,6 @@ struct SimpleOpTypeSetTeller : public Teller {
 #if IS_TRT_VERSION_GE(7000)
         if (dtype != framework::proto::VarType::INT32 &&
             dtype != framework::proto::VarType::FP32) {
-          std::cout << "reduce op input data type must be int32 or float32"
-                    << std::endl;
           VLOG(3) << "reduce op input data type must be int32 or float32";
           return false;
         }
