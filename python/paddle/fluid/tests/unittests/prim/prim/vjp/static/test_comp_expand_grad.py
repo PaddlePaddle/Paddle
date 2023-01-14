@@ -52,6 +52,13 @@ from paddle.fluid import core
             (10, 10, 10, 10),
             np.float32,
         ),
+        (
+            'single_direction_broadcast',
+            np.random.rand(10, 10, 10, 10),
+            np.random.rand(1, 10, 1),
+            (10, 10, 10, 10),
+            np.float32,
+        ),
     ),
 )
 class TestExpandGradComp(unittest.TestCase):
