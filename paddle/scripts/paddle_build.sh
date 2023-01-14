@@ -4162,7 +4162,7 @@ function main() {
         cmake_gen_and_build_mac ${PYTHON_ABI:-""}
         run_mac_test ${PYTHON_ABI:-""} ${PROC_RUN:-1}
         ;;
-      maccheck_py35)
+      maccheck_py3)
         run_setup_mac ${PYTHON_ABI:-""} bdist_wheel 
         run_mac_test ${PYTHON_ABI:-""} ${PROC_RUN:-1}
         ;;
