@@ -127,6 +127,7 @@ const std::vector<std::string> kTRTSubgraphPasses({
       "trt_map_matmul_to_mul_pass",                  //
       "fc_fuse_pass",                                //
       "conv_elementwise_add_fuse_pass",              //
+      "trans_layernorm_fuse_pass",                   //
       "remove_padding_recover_padding_pass",         //
       "delete_remove_padding_recover_padding_pass",  //
       // "yolo_box_fuse_pass",      //

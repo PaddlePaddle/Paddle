@@ -2480,7 +2480,7 @@ FusedMultiTransformerDecoderFuseQKVPass::
       .IsOptional()
       .IsTensor()
       .End()
-      .AddAttr("shape")  // -->(B, S, H, N)  <--(B, S, N*H)
+      .AddAttr("shape")
       .IsType<std::vector<int>>()
       .End();
 
