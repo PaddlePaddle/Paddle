@@ -147,10 +147,10 @@ void multiply_grad(const Tensor& x,
                    Tensor* y_grad) {
   if (x_grad) {
     auto x_grad_unreduce = multiply<T>(out_grad, y);
-    if (x.dims() != out_grad.dims()) {
+    if (phi::product(x.dims()) < phi::product(y.dims())) {
       auto x_grad_reduced =
           sum<T>(x_grad_unreduce,
-                 phi::vectorize(get_reduce_dims(out_grad.dims(), x.dims())),
+                 phi::vectorize(get_reduce_dims(y.dims(), x.dims())),
                  x_grad_unreduce.dtype(),
                  false);
       if (x_grad_reduced.dims().size() != x.dims().size()) {
@@ -163,10 +163,10 @@ void multiply_grad(const Tensor& x,
   }
   if (y_grad) {
     auto y_grad_unreduce = multiply<T>(out_grad, x);
-    if (y.dims() != out_grad.dims()) {
+    if (phi::product(y.dims()) < phi::product(x.dims())) {
       auto y_grad_reduced =
           sum<T>(y_grad_unreduce,
-                 phi::vectorize(get_reduce_dims(out_grad.dims(), y.dims())),
+                 phi::vectorize(get_reduce_dims(x.dims(), y.dims())),
                  y_grad_unreduce.dtype(),
                  false);
       if (y_grad_reduced.dims().size() != y.dims().size()) {
@@ -185,12 +185,12 @@ void expand_grad(const Tensor& x,
                  const IntArray& shape,
                  Tensor* x_grad) {
   if (x_grad) {
-    if (out_grad.dims() != x.dims()) {
-      auto reduced =
-          sum<T>(out_grad,
-                 phi::vectorize(get_reduce_dims(out_grad.dims(), x.dims())),
-                 x.dtype(),
-                 false);
+    auto out_dims = phi::make_ddim(shape.GetData());
+    if (phi::product(out_dims) > phi::product(x.dims())) {
+      auto reduced = sum<T>(out_grad,
+                            phi::vectorize(get_reduce_dims(out_dims, x.dims())),
+                            x.dtype(),
+                            false);
       if (reduced.dims().size() != x.dims().size()) {
         reduced = reshape<T>(reduced, x.shape());
       }
