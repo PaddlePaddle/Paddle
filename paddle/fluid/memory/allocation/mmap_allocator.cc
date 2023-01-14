@@ -27,7 +27,7 @@
 #include "paddle/fluid/platform/enforce.h"
 
 PADDLE_DEFINE_EXPORTED_int32(memory_map_allocation_pool_max_size,
-                             4,
+                             50,
                              "Use inplace in new executor");
 DECLARE_bool(use_shm_cache);
 
@@ -357,6 +357,16 @@ int MemoryMapAllocationPool::FindFromCache(const int &flag,
                                            const std::string &file_name,
                                            bool check_refcount) {
   std::lock_guard<std::mutex> guard(mtx_);
+  for (std::vector<MemoryMap>::iterator it = memory_map_allocations_.begin();
+       it != memory_map_allocations_.end();) {
+    if (shm_open(it->file_name_.c_str(), O_RDWR, (mode_t)0600) == -1) {
+      VLOG(4) << it->file_name_ << " has been closed, delete from cache";
+      it = memory_map_allocations_.erase(it);
+    } else {
+      ++it;
+    }
+  }
+
   for (size_t idx = 0; idx < memory_map_allocations_.size(); idx++) {
     if (memory_map_allocations_.at(idx).flags_ == flag &&
         memory_map_allocations_.at(idx).data_size_ == data_size) {
@@ -365,7 +375,7 @@ int MemoryMapAllocationPool::FindFromCache(const int &flag,
         if (!check_refcount || reinterpret_cast<CountInfo *>(
                                    memory_map_allocations_.at(idx).mmap_ptr_)
                                        ->refcount == 0) {
-          VLOG(0) << "** match at: " << idx;
+          VLOG(4) << "** match at: " << idx;
           return idx;
         }
       }
@@ -384,7 +394,7 @@ void MemoryMapAllocationPool::Clear() {
   for (auto mmap : memory_map_allocations_) {
     int rlt = shm_unlink(mmap.file_name_.c_str());
     if (rlt == 0) {
-      VLOG(3) << "PID: " << getpid() << ", MemoryMapAllocationPool: clear "
+      VLOG(4) << "PID: " << getpid() << ", MemoryMapAllocationPool: clear "
               << mmap.file_name_;
     }
   }
