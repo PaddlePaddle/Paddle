@@ -2091,7 +2091,6 @@ struct SimpleOpTypeSetTeller : public Teller {
         op_type == "reduce_max" || op_type == "reduce_min" ||
         op_type == "reduce_prod" || op_type == "reduce_any" ||
         op_type == "reduce_all") {
-      VLOG(3) << op_type << "=====================================";
       if (!desc.HasAttr("dim", /*with_attr_var=*/false)) {
         VLOG(3) << "Skip to convert into TRT while found Attribute('dim') is "
                    "Variable type in "
