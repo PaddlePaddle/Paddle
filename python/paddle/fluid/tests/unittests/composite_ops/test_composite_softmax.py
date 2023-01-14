@@ -14,6 +14,10 @@
 
 import unittest
 
+from paddle.fluid import core
+
+core.set_prim_enabled(True)
+
 import numpy as np
 
 # from utils import TOLERANCE

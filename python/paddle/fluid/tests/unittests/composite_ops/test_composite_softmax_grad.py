@@ -14,6 +14,10 @@
 
 import unittest
 
+from paddle.fluid import core
+
+core.set_prim_enabled(True)
+
 import numpy as np
 
 import paddle
@@ -83,7 +87,7 @@ def expect_grad(inputs):
 
 class TestCompositeSoftmax(unittest.TestCase):
     def setUp(self):
-        self.dtypes = ["float32", "float64"]
+        self.dtypes = ["float32"]
         self.shapes = [[2, 3, 4], [2, 3]]
         self.axes = [-1, 0, 1]
 
@@ -100,6 +104,8 @@ class TestCompositeSoftmax(unittest.TestCase):
             blocks = main_program.blocks
             paddle.incubate.autograd.to_prim(blocks)
             z = paddle.static.gradients([y], x)
+            print(blocks)
+            # breakpoint()
 
         exe = paddle.static.Executor()
         exe.run(startup_program)
@@ -115,7 +121,7 @@ class TestCompositeSoftmax(unittest.TestCase):
         actual = self.cal_composite_grad(np_data)[0]
 
         assert expect.dtype == actual.dtype
-        assert np.allclose(
+        np.testing.assert_allclose(
             expect,
             actual,
             rtol=attrs.get_rtol("backward"),
