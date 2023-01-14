@@ -52,6 +52,13 @@ from paddle.fluid import core, framework
             (np.random.rand(2, 3, 3, 4),),
             np.float32,
         ),
+        (
+            'test_reduce_axe_empty',
+            (np.random.rand(2, 3, 3, 4), np.random.rand(2, 1, 3, 4)),
+            (False, False),
+            (np.random.rand(2, 1, 3, 1),),
+            np.float32,
+        ),
     ),
 )
 class TestMultiplyGradComp(unittest.TestCase):

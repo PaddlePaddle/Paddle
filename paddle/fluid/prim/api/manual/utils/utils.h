@@ -36,43 +36,48 @@ paddle::experimental::Tensor empty_like(const paddle::experimental::Tensor& x,
 template <typename T>
 void by_pass(const paddle::experimental::Tensor& x,
              paddle::experimental::Tensor* out);
-// These method don't need to be specified
-static phi::DDim get_reduce_dims(const phi::DDim& x_dims,
-                                 const phi::DDim& y_dims) {
+
+// Returns reduced axes for param@shape, which broadcast with or broadcast to
+// param@ref_shape.
+// Note: Broadcast semantics is bidirectional. This method only returns reduced
+// axes for direction shape to ref_shape.
+static phi::DDim get_reduce_dims(const phi::DDim& shape,
+                                 const phi::DDim& ref_shape) {
   std::vector<int64_t> result;
-  PADDLE_ENFORCE_GE(phi::product(x_dims),
-                    phi::product(y_dims),
-                    phi::errors::InvalidArgument(
-                        "Only x_dims >= y_dims is accepted for "
-                        "get_reduce_dims, but we got x_dims: %s, y_dims: %s",
-                        x_dims,
-                        y_dims));
-  int bat = x_dims.size() - y_dims.size();
-  for (int i = 0; i < bat; ++i) {
-    result.push_back(i);
-  }
-  for (int i = 0; i < y_dims.size(); ++i) {
-    if (y_dims[i] == 1) {
-      result.push_back(i + bat);
-    } else {
-      PADDLE_ENFORCE_EQ(
-          y_dims[i],
-          x_dims[i + bat],
-          platform::errors::InvalidArgument(
-              "ReduceDims dimension mismatch. Operands could "
-              "not be broadcast together with the shape of x_dims = [%s] and "
-              "the shape of y_dims = [%s]. Received [%d] in X is not equal to "
-              "[%d] in Y at i:%d.",
-              x_dims,
-              y_dims,
-              x_dims[i + bat],
-              y_dims[i],
-              i));
+  auto src_shape = phi::vectorize(shape);
+  auto dst_shape = phi::vectorize(ref_shape);
+
+  // Align rank
+  if (src_shape.size() > dst_shape.size()) {
+    auto size = src_shape.size() - dst_shape.size();
+    for (std::size_t i = 0; i < size; i++) {
+      dst_shape.insert(std::begin(dst_shape), 1);
+    }
+  } else {
+    auto size = dst_shape.size() - src_shape.size();
+    for (std::size_t i = 0; i < size; i++) {
+      src_shape.insert(std::begin(src_shape), 1);
     }
   }
-  auto res_dims = phi::make_ddim(result);
-  VLOG(4) << "Reduce Dims is: " << res_dims;
-  return res_dims;
+
+  // Reduced axes
+  for (std::size_t i = 0; i < src_shape.size(); i++) {
+    if (src_shape[i] == 1 && dst_shape[i] > 1) {
+      result.push_back(i);
+    } else if (src_shape[i] != dst_shape[i] && src_shape[i] != 1 &&
+               dst_shape[i] != 1) {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "The input arguments of GetReduceDims are not broadcastable. The "
+          "size of parameter shape[%d]:%d can not broadcast with the size "
+          "of parameter ref_shape[%d]:%d.",
+          i,
+          src_shape[i],
+          i,
+          dst_shape[i]));
+    }
+  }
+  return phi::make_ddim(result);
 }
+
 }  // namespace prim
 }  // namespace paddle
