@@ -41,9 +41,24 @@ core.set_prim_enabled(True)
             np.random.rand(2, 3, 1, 4),
             np.float32,
         ),
+        (
+            np.random.rand(2, 1, 3, 4),
+            np.random.rand(2, 3, 1, 4),
+            np.float32,
+        ),
+        (
+            np.random.rand(2, 3, 3, 4),
+            np.random.rand(2, 1, 1, 4),
+            np.float32,
+        ),
+        (
+            np.random.rand(2, 1, 2),
+            np.random.rand(2),
+            np.float32,
+        ),
     ],
 )
-class TestTanhGradComp(unittest.TestCase):
+class TestSubGradComp(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.primal0 = cls.primal0.astype(cls.dtype)
@@ -55,7 +70,7 @@ class TestTanhGradComp(unittest.TestCase):
     def tearDown(self):
         paddle.disable_static()
 
-    def test_tanh_grad_comp(self):
+    def test_sub_grad_comp(self):
         def actual(primal0, primal1):
             core.set_prim_enabled(True)
             paddle.disable_static()

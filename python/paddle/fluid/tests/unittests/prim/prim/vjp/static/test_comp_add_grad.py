@@ -49,6 +49,11 @@ from paddle.fluid import core
             np.random.rand(2, 1, 1, 4),
             np.float32,
         ),
+        (
+            np.random.rand(2, 1, 2),
+            np.random.rand(2),
+            np.float32,
+        ),
     ],
 )
 class TestAddGradComp(unittest.TestCase):

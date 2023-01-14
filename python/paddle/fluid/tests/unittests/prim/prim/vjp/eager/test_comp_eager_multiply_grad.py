@@ -59,6 +59,13 @@ from paddle.fluid import core
             (np.random.rand(2, 3, 3, 4),),
             np.float32,
         ),
+        (
+            'test_diff_rank_over_1',
+            (np.random.rand(2, 1, 2), np.random.rand(2)),
+            (False, False),
+            (np.random.rand(2, 1, 2),),
+            np.float32,
+        ),
     ),
 )
 class TestMultiplyGradComp(unittest.TestCase):
