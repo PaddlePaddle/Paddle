@@ -172,7 +172,7 @@ Tensor full<DescTensor>(paddle::experimental::IntArray shape,
       "Out", {std::static_pointer_cast<prim::DescTensor>(out.impl())->Name()});
   op->CheckAttrs();
   op->InferVarType(block);
-  op->InferShape(*block);
+  // TODO(jiabin, cxxly): This may have runtime shape skip infershape for now.
   return out;
 }
 
@@ -199,7 +199,7 @@ Tensor sum<DescTensor>(Tensor x,
       "Out", {std::static_pointer_cast<prim::DescTensor>(out.impl())->Name()});
   op->CheckAttrs();
   op->InferVarType(block);
-  op->InferShape(*block);
+  // TODO(jiabin, cxxly): This may have runtime shape skip infershape for now.
   return out;
 }
 

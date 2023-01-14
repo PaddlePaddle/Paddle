@@ -141,16 +141,19 @@ class PartialProgramLayer:
     """
     PartialProgramLayer wraps all the ops from layers decorated by `@to_static`
     and execute them as a static subgraph.
+
     .. note::
         **1. This is a very low level API. Users should not use this API
              directly. Please use `partial_program_from(concrete_program)`
              to create it.
         **2. LoDTensorArray is not currently supported in the output.
+
     Args:
         main_program(Program): The main program that contains ops need to be executed.
         inputs(list[Variable]): The input list of the decorated function by `@to_static`.
         outputs(list[Variable]): The output list of the decorated function by `@to_static`.
         parameters(list[VarBase]|None): All trainable parameters included in the program. Default None.
+
     Returns:
         Layer: A Layer object that run all ops internally in static graph mode.
     """
@@ -403,14 +406,15 @@ class PartialProgramLayer:
         origin_train_program = self._train_program
         fwd_end_op_index = len(origin_infer_program.block(0).ops)
         for i in range(
-            fwd_end_op_index,
+            fwd_end_op_index + 1,
             min(
-                fwd_end_op_index + 1 * len(self._outputs.var_ids),
+                fwd_end_op_index + 2 * len(self._outputs.var_ids),
                 len(origin_train_program.block(0).ops),
             ),
+            2,
         ):
             op = origin_train_program.block(0).ops[i]
-            if op.type == 'fill_any_like':
+            if op.type == 'fill_constant':
                 var_name = op.output('Out')[0]
                 names.append(var_name)
 
@@ -492,7 +496,9 @@ class PartialProgramLayer:
             Can't just return paddle.static.Program(), because self.backward_program is a property,
             whenever we call this method, a tmp Program() object is created and is gc immediatly
             after executed the following line in PartialProgramLayer.__call__.
+
             >>> self.backward_program.desc.block(0),
+
             When we access RunProgramAPI, it's possible to get an invalid backward_program address.
             """
             return self._empty_backward_program_for_eval
@@ -519,6 +525,7 @@ class PartialProgramLayer:
             x = 2 * in  # <---- x is a non-leaf node in program.
             y = x + 3
             return x, y
+
         loss = forward(in)[0].sum()
         loss.backward()  # <----- x@grad will be overwrited by elementwise_add_grad Op
         """
@@ -600,7 +607,7 @@ class PartialProgramLayer:
         if targets and self._params:
             backward.gradients(targets=targets, inputs=[])
 
-        start_idx = len(main_program.block(0).ops) + 1 * len(
+        start_idx = len(main_program.block(0).ops) + 2 * len(
             self._outputs.tolist()
         )
 
@@ -777,7 +784,7 @@ class PartialProgramLayer:
     ):
         # NOTE(dev): We apply build_strategy for backward firstly to
         # avoid skipping more gc variables.
-        backward_start_op_index = forward_end_op_index + 1 * len(
+        backward_start_op_index = forward_end_op_index + 2 * len(
             self._outputs.var_ids
         )
         backward_end_op_index = whole_program.desc.block(0).op_size()

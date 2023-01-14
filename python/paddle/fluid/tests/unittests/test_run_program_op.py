@@ -131,7 +131,7 @@ class RunProgramOpTest(unittest.TestCase):
         forward_program = _add_build_strategy_for(program, 0, forward_op_num)
         backward_program = _add_build_strategy_for(
             program,
-            forward_op_num + 1 * output_num,
+            forward_op_num + 2 * output_num,
             program.desc.block(0).op_size(),
         )
         return forward_program.desc, backward_program.desc
