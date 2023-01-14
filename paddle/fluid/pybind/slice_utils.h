@@ -30,7 +30,6 @@ namespace py = pybind11;
 namespace paddle {
 namespace pybind {
 
-static bool PyCheckTensor(PyObject* obj);
 static Py_ssize_t GetSliceIndexFromPyObject(PyObject* obj);
 // Slice related methods
 static bool PyCheckInteger(PyObject* obj) {
