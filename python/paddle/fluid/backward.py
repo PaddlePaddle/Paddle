@@ -390,7 +390,7 @@ def _create_loss_op_desc_(loss):
         {},
         {"Out": [_append_grad_suffix_(loss.name)]},
         {
-            "shape": [1],
+            "shape": list(loss.shape),
             "value": 1.0,
             "dtype": loss.dtype,
             "force_cpu": False,

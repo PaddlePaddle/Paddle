@@ -51,7 +51,9 @@ void Copy(const Context& dev_ctx,
   VLOG(3) << "TensorCopy " << src.dims() << " from " << src.place() << " to "
           << dst_place;
 
-  dst->Resize(src.dims());
+  dst->set_meta(src.meta());
+  VLOG(3) << "src.numel() = " << src.numel() << ", dst->numel() = "
+    << dst->numel();
 
   void* dst_ptr = nullptr;
   if (paddle::platform::is_cpu_place(dst_place)) {

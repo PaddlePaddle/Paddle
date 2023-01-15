@@ -20,7 +20,15 @@ template <typename T, typename Context>
 void AddNKernel(const Context& dev_ctx,
                 const std::vector<const TensorBase*>& x,
                 DenseTensor* out) {
+  VLOG(6) << "Huihuang debug CPU AddNKernel";
   size_t in_num = x.size();
+  for (const TensorBase *tb : x) {
+    if (tb->initialized() && DenseTensor::classof(tb)) {
+      auto* dt = static_cast<const DenseTensor *>(tb);
+      out->set_meta(dt->meta());
+      break;
+    }
+  }
   dev_ctx.template Alloc<T>(out);
 
   bool in_place = false;

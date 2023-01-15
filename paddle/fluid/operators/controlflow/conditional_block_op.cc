@@ -300,8 +300,53 @@ class ConditionalBlockGradOp : public ConditionalOp {
       }
       platform::DeviceContext *dev_ctx =
           platform::DeviceContextPool::Instance().Get(place);
+      /*
+      const phi::DenseTensor& inside_tensor = inside_var->Get<phi::DenseTensor>();
+      phi::DenseTensorMeta inside_meta = inside_tensor.meta();
+      if (inside_tensor.numel() == 1 && inside_tensor.dims().size() == 0) {
+  VLOG(6) << "Huihuang found "<< inside_grad_name <<" is_scalar";
+  inside_meta.is_scalar = true;
+  inside_var->GetMutable<phi::DenseTensor>()->set_meta(inside_meta);
+  outside_var->GetMutable<phi::DenseTensor>()->set_meta(inside_meta);
+        outside_var->GetMutable<phi::DenseTensor>()->mutable_data(place, 1);
+      }
+      */
+      VLOG(6) << "Huihuang debug, before assign: inside_var numel = "
+        << inside_var->Get<phi::DenseTensor>().numel()
+        << ", dims = "
+        << inside_var->Get<phi::DenseTensor>().dims().size()
+        << ", memory_size = "
+        << inside_var->Get<phi::DenseTensor>().memory_size()
+        << ", initailized = "
+              << inside_var->Get<phi::DenseTensor>().initialized()
+        << ", outside_var numel = "
+        << outside_var->Get<phi::DenseTensor>().numel()
+        << ", dims = "
+              << outside_var->Get<phi::DenseTensor>().dims().size()
+              << ", memory_size = "
+              << outside_var->Get<phi::DenseTensor>().memory_size()
+        << ", initailized = "
+        << outside_var->Get<phi::DenseTensor>().initialized();
+
       framework::VisitVarType(*inside_var,
                               AssignFunctor(outside_var, *dev_ctx));
+
+      VLOG(6) << "Huihuang debug, after assign: inside_var numel = "
+              << inside_var->Get<phi::DenseTensor>().numel()
+        << ", dims = "
+              << inside_var->Get<phi::DenseTensor>().dims().size()
+        << ", memory_size = "
+              << inside_var->Get<phi::DenseTensor>().memory_size()
+        << ", initailized = "
+              << inside_var->Get<phi::DenseTensor>().initialized()
+              << ", outside_var numel = "
+              << outside_var->Get<phi::DenseTensor>().numel()
+              << ", dims = "
+              << outside_var->Get<phi::DenseTensor>().dims().size()
+              << ", memory_size = "
+              << outside_var->Get<phi::DenseTensor>().memory_size()
+        << ", initailized = "
+              << outside_var->Get<phi::DenseTensor>().initialized();
     }
     // Assign zero to the grad_vars that are in outside_grads but not in
     // inside_grads
@@ -342,6 +387,16 @@ class ConditionalBlockGradOp : public ConditionalOp {
                                   scope,
                                   input_var->Get<phi::DenseTensor>(),
                                   outside_var->GetMutable<phi::DenseTensor>());
+
+  VLOG(6) << "Huihuang debug, after assign zero: input_var numel = "
+              << input_var->Get<phi::DenseTensor>().numel()
+        << ", dims = "
+              << input_var->Get<phi::DenseTensor>().dims().size()
+              << ", outside_var numel = "
+              << outside_var->Get<phi::DenseTensor>().numel()
+              << ", dims = "
+              << outside_var->Get<phi::DenseTensor>().dims().size();
+
       } else if (input_var->IsType<framework::LoDTensorArray>()) {
         PADDLE_ENFORCE_EQ(outside_var->IsType<framework::LoDTensorArray>(),
                           true,
@@ -384,8 +439,10 @@ class ConditionalBlockGradOp : public ConditionalOp {
     if (!input_tensor.IsInitialized() || input_tensor.numel() == 0) {
       return;
     }
+    if (!input_tensor.meta().is_scalar) {
+      outside_tensor->Resize(input_tensor.dims());
+    }
     VLOG(4) << "Assigning zero to " << outside_tensor;
-    outside_tensor->Resize(input_tensor.dims());
     outside_tensor->mutable_data(place, input_tensor.dtype());
     const platform::DeviceContext *dev_ctx =
         platform::DeviceContextPool::Instance().Get(place);
