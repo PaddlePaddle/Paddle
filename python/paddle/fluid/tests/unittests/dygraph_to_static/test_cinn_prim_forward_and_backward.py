@@ -18,11 +18,6 @@ import numpy as np
 
 import paddle
 import paddle.nn.functional as F
-from paddle.fluid import core
-
-# This case only tests prim_forward + to_static + cinn. Thus we need to
-# set this flag as False to avoid prim_backward.
-core.set_prim_backward(False)
 
 
 def apply_to_static(net, use_cinn):
@@ -44,7 +39,7 @@ class PrimeNet(paddle.nn.Layer):
 
 class TestPrimForward(unittest.TestCase):
     """
-    Test PrimeNet with @to_static + to_prim + cinn v.s Dygraph
+    Test PrimeNet with @to_static + to_prime + prim backward + cinn v.s Dygraph
     """
 
     def setUp(self):
