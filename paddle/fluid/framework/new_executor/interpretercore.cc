@@ -48,15 +48,13 @@ PADDLE_DEFINE_EXPORTED_bool(new_executor_use_local_scope,
 PADDLE_DEFINE_EXPORTED_bool(control_flow_use_new_executor,
                             true,
                             "Use new executor in control flow op");
-PADDLE_DEFINE_EXPORTED_bool(new_executor_use_cuda_graph,
-                            false,
-                            "Use CUDA Graph in new executor");
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-DECLARE_bool(sync_nccl_allreduce);
-#endif
 
 DECLARE_bool(check_nan_inf);
 DECLARE_bool(benchmark);
+DECLARE_bool(new_executor_use_cuda_graph);
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+DECLARE_bool(sync_nccl_allreduce);
+#endif
 
 constexpr const char* kExceptionCaught = "ExceptionCaught";
 constexpr const char* kTaskCompletion = "TaskCompletion";

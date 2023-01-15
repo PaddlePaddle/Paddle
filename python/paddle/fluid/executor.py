@@ -511,6 +511,16 @@ def _is_dy2st_enable_standalone_executor():
     ]
 
 
+def _is_cuda_graph_enable_standalone_executor():
+    return framework._cuda_graph_enable_standalone_executor_ in [
+        1,
+        '1',
+        True,
+        'True',
+        'true',
+    ]
+
+
 def _prepare_fleet_executor():
     from ..distributed.fleet.proto import fleet_executor_desc_pb2
 
@@ -845,15 +855,19 @@ class _ExecutorCache:
             )
             build_strategy = compiled_program._build_strategy
             # print(f"Program before convert:\n {inner_program}", flush=True)
+            use_cuda_graph = False
             # When using cuda graph, the cuda graph preparation logic in PE is not
             # executed, but it is processed in the constructor of new executor.
             if (
                 build_strategy is not None
                 and build_strategy.allow_cuda_graph_capture
             ):
+                use_cuda_graph = True
                 build_strategy.allow_cuda_graph_capture = False
                 set_flags({"FLAGS_new_executor_use_cuda_graph": True})
             compiled_program._compile(scope, place)
+            if use_cuda_graph:
+                build_strategy.allow_cuda_graph_capture = True
             ir_graph = framework.IrGraph(compiled_program._graph)
             converted_program = ir_graph.to_program()
 
@@ -1762,6 +1776,18 @@ class Executor:
                 ):
                     warnings.warn(
                         "Standalone executor is not used for async mode",
+                        UserWarning,
+                    )
+                    return False
+
+                # Unsupported case 5: CUDA Graph
+                if (
+                    compiled_program._build_strategy is not None
+                    and compiled_program._build_strategy.allow_cuda_graph_capture
+                    and not _is_cuda_graph_enable_standalone_executor()
+                ):
+                    warnings.warn(
+                        "Standalone executor is not used for CUDA Graph when FLAGS_CUDA_GRAPH_USE_STANDALONE_EXECUTOR=0",
                         UserWarning,
                     )
                     return False
