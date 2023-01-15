@@ -266,12 +266,13 @@ class UniformInitializer(Initializer):
         block = self._check_block(block)
 
         assert isinstance(block, framework.Block)
-        check_variable_and_dtype(
-            var,
-            "Out",
-            ["uint16", "float16", "float32", "float64"],
-            "uniform_random",
-        )
+        if not in_dygraph_mode():
+            check_variable_and_dtype(
+                var,
+                "Out",
+                ["uint16", "float16", "float32", "float64"],
+                "uniform_random",
+            )
 
         if self._seed == 0:
             self._seed = block.program.random_seed
@@ -381,13 +382,6 @@ class NormalInitializer(Initializer):
 
         assert isinstance(block, framework.Block)
 
-        check_variable_and_dtype(
-            var,
-            "Out",
-            ["uint16", "float16", "float32", "float64"],
-            "guassian_random",
-        )
-
         if self._seed == 0:
             self._seed = block.program.random_seed
 
@@ -405,6 +399,12 @@ class NormalInitializer(Initializer):
             return None
 
         else:
+            check_variable_and_dtype(
+                var,
+                "Out",
+                ["uint16", "float16", "float32", "float64"],
+                "guassian_random",
+            )
             op = block.append_op(
                 type="gaussian_random",
                 outputs={"Out": var},
@@ -596,12 +596,13 @@ class XavierInitializer(Initializer):
         block = self._check_block(block)
 
         assert isinstance(block, framework.Block)
-        check_variable_and_dtype(
-            var,
-            "Out",
-            ["uint16", "float16", "float32", "float64"],
-            "xavier_init",
-        )
+        if not in_dygraph_mode():
+            check_variable_and_dtype(
+                var,
+                "Out",
+                ["uint16", "float16", "float32", "float64"],
+                "xavier_init",
+            )
 
         f_in, f_out = self._compute_fans(var)
 
@@ -782,6 +783,16 @@ class MSRAInitializer(Initializer):
 
         # If fan_in is passed, use it
         fan_in = f_in if self._fan_in is None else self._fan_in
+
+        if fan_in == 0:
+            if self._fan_in is None:
+                raise ValueError(
+                    "The in_features of the Tensor contain zero, can not initialize the Tensor."
+                )
+            else:
+                raise ValueError(
+                    "fan_in should not be zero, can not initialize the Tensor."
+                )
 
         if self._seed == 0:
             self._seed = block.program.random_seed

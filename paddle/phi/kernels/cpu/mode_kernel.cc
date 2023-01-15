@@ -16,6 +16,7 @@
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/mode.h"
 
 namespace phi {
@@ -34,6 +35,13 @@ void ModeKernel(const Context& dev_ctx,
 
   T* output_data = dev_ctx.template Alloc<T>(out);
   int64_t* indices_data = dev_ctx.template Alloc<int64_t>(indices);
+
+  if (in_dims.size() == 0) {
+    phi::Copy<Context>(dev_ctx, x, dev_ctx.GetPlace(), false, out);
+    phi::funcs::set_constant(dev_ctx, indices, 0);
+    return;
+  }
+
   // if axis is not the last dim, transpose it to the last dim, do the
   // calculation, then tranpose it back to original axis.
   if (axis == in_dims.size() - 1) {

@@ -795,6 +795,16 @@
     func : maxout
   backward : maxout_grad
 
+- op : meshgrid
+  args : (Tensor[] inputs)
+  output : Tensor[]{inputs.size()}
+  infer_meta :
+    func : MeshgridInferMeta
+  kernel :
+    func : meshgrid
+    data_type : inputs
+  backward : meshgrid_grad
+
 - op : mode
   args : (Tensor x,  int axis = -1,  bool keepdim = false)
   output : Tensor(out), Tensor(indices)
@@ -804,6 +814,15 @@
     func : mode
   backward : mode_grad
 
+- op : multi_dot
+  args : (Tensor[] x)
+  output : Tensor
+  infer_meta :
+    func : MultiDotInferMeta
+  kernel :
+    func : multi_dot
+  backward : multi_dot_grad
+
 - op : multinomial
   args : (Tensor x, Scalar(int) num_samples = 1, bool replacement = false)
   output : Tensor(out)
@@ -812,6 +831,16 @@
   kernel :
     func : multinomial
     data_type : x
+
+- op : multiplex
+  args : (Tensor[] inputs, Tensor index)
+  output : Tensor
+  infer_meta :
+    func : MultiplexInferMeta
+  kernel :
+    func : multiplex
+    data_type : inputs
+  backward : multiplex_grad
 
 - op : mv
   args : (Tensor x, Tensor vec)
@@ -1121,12 +1150,21 @@
   infer_meta :
     func : SqueezeWithXShapeInferMeta
   kernel :
-    func : squeeze_with_xshape
+    func : squeeze
     data_type : x
   inplace : (x -> out)
   view: (x -> out)
   intermediate : xshape
   backward : squeeze_grad
+
+- op : stack
+  args : (Tensor[] x, int axis = 0)
+  output : Tensor (out)
+  infer_meta :
+    func : StackInferMeta
+  kernel :
+    func : stack
+  backward : stack_grad
 
 - op : svd
   args : (Tensor x, bool full_matrices = false)
@@ -1214,6 +1252,15 @@
     func : trunc
   backward : trunc_grad
 
+- op : unbind
+  args : (Tensor input, int axis = 0)
+  output : Tensor[] {axis<0 ? input.dims()[input.dims().size()+axis]:input.dims()[axis]}
+  infer_meta :
+    func : UnbindInferMeta
+  kernel :
+    func : unbind
+  backward : unbind_grad
+
 - op : unfold
   args : (Tensor x, int[] kernel_sizes, int[] strides, int[] paddings, int[] dilations)
   output : Tensor(out)
@@ -1223,13 +1270,23 @@
     func : unfold
   backward : unfold_grad
 
+- op : unique_consecutive
+  args : (Tensor x, bool return_inverse = false, bool return_counts = false, int[] axis = {}, int dtype = 5)
+  output : Tensor(out), Tensor(index), Tensor(counts)
+  infer_meta :
+      func : UniqueConsecutiveInferMeta
+  kernel :
+    func : unique_consecutive
+    data_type : x
+  optional : index, counts
+
 - op : unsqueeze
   args : (Tensor x, IntArray axis = {})
   output : Tensor(out), Tensor(xshape)
   infer_meta :
     func : UnsqueezeWithXShapeInferMeta
   kernel :
-    func : unsqueeze_with_xshape
+    func : unsqueeze
     data_type : x
   inplace : (x -> out)
   view: (x -> out)

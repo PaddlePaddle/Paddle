@@ -232,9 +232,11 @@ class PSGPUWrapper {
     if (s_instance_ == nullptr) {
       return;
     }
+#if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
     if (FLAGS_gpugraph_storage_mode == GpuGraphStorageMode::WHOLE_HBM) {
       this->EndPass();
     }
+#endif
     for (size_t i = 0; i < hbm_pools_.size(); i++) {
       delete hbm_pools_[i];
     }

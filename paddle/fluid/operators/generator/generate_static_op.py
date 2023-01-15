@@ -19,6 +19,7 @@ from pathlib import Path
 import yaml
 from filters import (
     cartesian_prod_mapping,
+    to_composite_grad_opmaker_name,
     to_input_name,
     to_int_array_tensor_name,
     to_int_array_tensors_name,
@@ -58,6 +59,7 @@ env.filters["to_int_array_tensors_name"] = to_int_array_tensors_name
 env.filters["to_input_name"] = to_input_name
 env.filters["to_opmaker_name_cstr"] = to_opmaker_name_cstr
 env.filters["cartesian_prod_mapping"] = cartesian_prod_mapping
+env.filters["to_composite_grad_opmaker_name"] = to_composite_grad_opmaker_name
 env.tests["base_op"] = is_base_op
 env.tests["vec"] = is_vec
 env.tests["scalar"] = is_scalar
@@ -111,7 +113,10 @@ def main(
     op_template = env.get_template('op.c.j2')
     with open(output_op_path, "wt") as f:
         msg = op_template.render(
-            ops=ops, backward_ops=[], op_dict=forward_op_dict
+            ops=ops,
+            backward_ops=[],
+            op_dict=forward_op_dict,
+            composite_gen_flag=False,
         )
         f.write(msg)
 
