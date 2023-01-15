@@ -1232,7 +1232,10 @@ class TestSundryAPI(unittest.TestCase):
         x2 = paddle.full([], 2)
         x1.stop_gradient = False
         x2.stop_gradient = False
+        x1.retain_grads()
+        x2.retain_grads()
         out = paddle.where(x1 > x2, x1, x2)
+        out.retain_grads()
         out.backward()
         self.assertEqual(out.shape, [])
         self.assertEqual(out.numpy(), 2)
@@ -1245,9 +1248,12 @@ class TestSundryAPI(unittest.TestCase):
     def test_atan2(self):
         x1 = paddle.full([], 0)
         x2 = paddle.full([], 2)
+        x1.retain_grads()
+        x2.retain_grads()
         x1.stop_gradient = False
         x2.stop_gradient = False
         out = paddle.atan2(x1, x2)
+        out.retain_grads()
         out.backward()
         self.assertEqual(out.shape, [])
         self.assertEqual(out.numpy(), 0)

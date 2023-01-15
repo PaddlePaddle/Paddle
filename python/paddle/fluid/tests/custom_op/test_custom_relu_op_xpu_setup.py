@@ -30,8 +30,10 @@ def custom_relu_dynamic(func, device, dtype, np_x, use_func=True):
 
     t = paddle.to_tensor(np_x, dtype=dtype)
     t.stop_gradient = False
+    t.retain_grads()
 
     out = func(t) if use_func else paddle.nn.functional.relu(t)
+    out.retain_grads()
     out.stop_gradient = False
 
     out.backward()
