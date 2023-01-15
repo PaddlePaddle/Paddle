@@ -16,7 +16,7 @@ import logging
 import typing
 
 import paddle
-from paddle.fluid import backward, framework
+from paddle.fluid import backward, core, framework
 from paddle.incubate.autograd import primx, utils
 
 
@@ -218,6 +218,8 @@ def grad(outputs, inputs, grad_outputs=None):
 @framework.static_only
 def to_prim(blocks):
     """Search nonbasic ops which have be registered composite rules and replace them with primitive ops."""
+    if not core.enable_prim_forward():
+        return
     if isinstance(blocks, paddle.fluid.framework.Block):
         logging.info("Atomize composite op to primitive ops begin.")
         main_program = blocks.program

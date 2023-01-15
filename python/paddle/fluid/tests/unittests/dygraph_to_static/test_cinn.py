@@ -133,7 +133,7 @@ class TestPrime(unittest.TestCase):
 
         for i in range(len(dy_res)):
             np.testing.assert_allclose(
-                cinn_res[i], dy_res[i], rtol=1e-1, atol=1e-1
+                cinn_res[i], dy_res[i], rtol=1e-7, atol=1e-7
             )
 
 

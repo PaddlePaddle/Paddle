@@ -606,7 +606,7 @@ class PartialProgramLayer:
 
         if targets and self._params:
             enable_prim = self._build_strategy.build_cinn_pass
-            if enable_prim:
+            if enable_prim and core.enable_prim_backward():
                 core.set_prim_enabled(True)
                 backward.gradients(targets=targets, inputs=[])
                 core.set_prim_enabled(False)
