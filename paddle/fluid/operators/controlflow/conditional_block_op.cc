@@ -342,16 +342,6 @@ class ConditionalBlockGradOp : public ConditionalOp {
                                   scope,
                                   input_var->Get<phi::DenseTensor>(),
                                   outside_var->GetMutable<phi::DenseTensor>());
-
-  VLOG(6) << "Huihuang debug, after assign zero: input_var numel = "
-              << input_var->Get<phi::DenseTensor>().numel()
-        << ", dims = "
-              << input_var->Get<phi::DenseTensor>().dims().size()
-              << ", outside_var numel = "
-              << outside_var->Get<phi::DenseTensor>().numel()
-              << ", dims = "
-              << outside_var->Get<phi::DenseTensor>().dims().size();
-
       } else if (input_var->IsType<framework::LoDTensorArray>()) {
         PADDLE_ENFORCE_EQ(outside_var->IsType<framework::LoDTensorArray>(),
                           true,
