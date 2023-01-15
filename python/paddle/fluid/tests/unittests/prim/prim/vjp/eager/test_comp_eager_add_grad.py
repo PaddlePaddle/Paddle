@@ -38,7 +38,17 @@ core.set_prim_enabled(True)
         ),
         (
             np.random.rand(2, 3, 3, 4),
+            np.random.rand(3, 1, 1),
+            np.float32,
+        ),
+        (
+            np.random.rand(2, 3, 3, 4),
             np.random.rand(2, 3, 1, 4),
+            np.float32,
+        ),
+        (
+            np.random.rand(2, 3, 3, 4),
+            np.random.rand(2, 3, 1, 1),
             np.float32,
         ),
     ],
