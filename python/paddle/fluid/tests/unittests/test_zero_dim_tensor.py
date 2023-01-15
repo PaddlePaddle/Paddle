@@ -1811,8 +1811,6 @@ class TestSundryAPIStatic(unittest.TestCase):
         mask2 = paddle.full([], True, dtype='bool')
         y1 = paddle.masked_select(x1, mask1)
         y2 = paddle.masked_select(x2, mask2)
-        paddle.static.append_backward(y1)
-        paddle.static.append_backward(y2)
 
         prog = paddle.static.default_main_program()
         res = self.exe.run(prog, fetch_list=[y1, y2])
