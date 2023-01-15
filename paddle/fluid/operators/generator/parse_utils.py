@@ -422,7 +422,7 @@ def parse_op_entry(op_entry: Dict[str, Any], name_field="op"):
         no_buffer_args = None
 
     # add data_transform tag for every input.
-    # the format is {data_transform : {skip_transform : x, support_trans_dtype : y}}
+    # the format is {data_transform : {skip_transform : [x, z], support_trans_dtype : y}}
     for input in inputs:
         input["data_transform"] = {}
     if "data_transform" in op_entry:
@@ -435,6 +435,7 @@ def parse_op_entry(op_entry: Dict[str, Any], name_field="op"):
                 assert (
                     name in input_names
                 ), f"{op_name} has an skip_transform input: '{name}' which is not an input."
+            data_trans["skip_transform"] = skip_trans_args
         if "support_trans_dtype" in data_trans:
             support_trans_args = parse_plain_list(
                 data_trans["support_trans_dtype"]
@@ -443,6 +444,7 @@ def parse_op_entry(op_entry: Dict[str, Any], name_field="op"):
                 assert (
                     name in input_names
                 ), f"{op_name} has an support_trans_dtype input: '{name}' which is not an input."
+            data_trans["support_trans_dtype"] = support_trans_args
         for input in inputs:
             if input["name"] in skip_trans_args:
                 input["data_transform"]["skip_trans_args"] = True

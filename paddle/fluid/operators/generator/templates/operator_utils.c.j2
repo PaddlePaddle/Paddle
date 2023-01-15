@@ -281,13 +281,28 @@ phi::KernelKey GetExpectedKernelType(
 {% endmacro %}
 
 {% macro get_kernel_for_var(op) %} {# only for data_transform #}
+{% set skip_args = op["data_transform"]["skip_transform"] %}
+{% set var_name = "var_name" %}
+{% set skip_args_len = skip_args | length %}
 phi::KernelKey GetKernelTypeForVar(
-    const std::string& var_name,
+    const std::string& {{var_name}},
     const phi::DenseTensor& tensor,
     const phi::KernelKey& expected_kernel_type) const override {
-    return phi::KernelKey(phi::Backend::ALL_BACKEND,
-                          expected_kernel_type.layout(),
-                          expected_kernel_type.dtype());
+    
+      if (
+        {%- for skip_arg in skip_args -%}
+          var_name == "{{ skip_arg }}"
+          {%- if skip_args_len != 1 and loop.index != skip_args_len %} || {% endif -%}
+        {%- endfor -%}
+      ){
+        return phi::KernelKey(phi::Backend::ALL_BACKEND,
+                            expected_kernel_type.layout(),
+                            expected_kernel_type.dtype());
+      }
+      else{
+          return phi::KernelKey(
+            tensor.place(), tensor.layout(), expected_kernel_type.dtype());
+      }
     }
 {% endmacro %}
 
