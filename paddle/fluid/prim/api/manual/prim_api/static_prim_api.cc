@@ -126,6 +126,7 @@ Tensor full<DescTensor>(paddle::experimental::IntArray shape,
   op->SetAttr("shape", shape.GetData());
   PADDLE_ENFORCE_EQ(
       ((dtype == paddle::experimental::DataType::FLOAT32) ||
+       (dtype == paddle::experimental::DataType::FLOAT64) ||
        (dtype == paddle::experimental::DataType::FLOAT16)),
       true,
       phi::errors::InvalidArgument(
