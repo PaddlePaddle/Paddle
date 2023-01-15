@@ -63,7 +63,6 @@ class MemcpyD2HInferVarType : public framework::VarTypeInference {
 class MemcpyD2HKernel {
  public:
   void operator()(const framework::ExecutionContext &ctx) const {
-    VLOG(4) << "Huihuang debug in MemcpyD2HKernel";
     auto *x = ctx.InputVar("X");
     if (x == nullptr) {
       return;
@@ -76,9 +75,7 @@ class MemcpyD2HKernel {
     // Get dev_ctx from ExecutionContext, it's D2H stream
     auto &dev_ctx = ctx.device_context();
     auto dst_place_type = ctx.Attr<int>("dst_place_type");
-    VLOG(4) << "Huihuang debug before MemcpyD2HFunctor";
     framework::VisitVarType(*x, MemcpyD2HFunctor(out, dev_ctx, dst_place_type));
-    VLOG(4) << "Huihuang debug after MemcpyD2HFunctor";
   }
 };
 

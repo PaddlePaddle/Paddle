@@ -121,7 +121,6 @@ class FetchV2Op : public framework::OperatorWithKernel {
 class FetchV2Kernel {
  public:
   void operator()(const framework::ExecutionContext &ctx) const {
-    VLOG(4) << "Huihuang debug in MemcpyD2HKernel";
     auto fetch_var_name = ctx.InputName("X");
     auto *fetch_var = ctx.InputVar("X");
     if (fetch_var == nullptr) {

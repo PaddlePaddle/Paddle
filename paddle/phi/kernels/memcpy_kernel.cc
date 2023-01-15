@@ -30,7 +30,6 @@ void MemcpyH2DKernel(const Context& dev_ctx,
                      const DenseTensor& x,
                      int dst_place_type,
                      DenseTensor* out) {
-  VLOG(6) << "Huihuang debug in MemcpyH2DKernel";
   PADDLE_ENFORCE_GE(
       dst_place_type,
       0,
@@ -42,9 +41,7 @@ void MemcpyH2DKernel(const Context& dev_ctx,
       errors::OutOfRange("dst_place_type only support 0-3, but got: %d",
                          dst_place_type));
 
-  VLOG(6) << "Huihuang debug in MemcpyH2DKernel before copy";
   Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
-  VLOG(6) << "Huihuang debug in MemcpyH2DKernel after copy";
 }
 
 template <typename Context>

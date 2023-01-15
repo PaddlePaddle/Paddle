@@ -300,53 +300,8 @@ class ConditionalBlockGradOp : public ConditionalOp {
       }
       platform::DeviceContext *dev_ctx =
           platform::DeviceContextPool::Instance().Get(place);
-      /*
-      const phi::DenseTensor& inside_tensor = inside_var->Get<phi::DenseTensor>();
-      phi::DenseTensorMeta inside_meta = inside_tensor.meta();
-      if (inside_tensor.numel() == 1 && inside_tensor.dims().size() == 0) {
-  VLOG(6) << "Huihuang found "<< inside_grad_name <<" is_scalar";
-  inside_meta.is_scalar = true;
-  inside_var->GetMutable<phi::DenseTensor>()->set_meta(inside_meta);
-  outside_var->GetMutable<phi::DenseTensor>()->set_meta(inside_meta);
-        outside_var->GetMutable<phi::DenseTensor>()->mutable_data(place, 1);
-      }
-      */
-      VLOG(6) << "Huihuang debug, before assign: inside_var numel = "
-        << inside_var->Get<phi::DenseTensor>().numel()
-        << ", dims = "
-        << inside_var->Get<phi::DenseTensor>().dims().size()
-        << ", memory_size = "
-        << inside_var->Get<phi::DenseTensor>().memory_size()
-        << ", initailized = "
-              << inside_var->Get<phi::DenseTensor>().initialized()
-        << ", outside_var numel = "
-        << outside_var->Get<phi::DenseTensor>().numel()
-        << ", dims = "
-              << outside_var->Get<phi::DenseTensor>().dims().size()
-              << ", memory_size = "
-              << outside_var->Get<phi::DenseTensor>().memory_size()
-        << ", initailized = "
-        << outside_var->Get<phi::DenseTensor>().initialized();
-
       framework::VisitVarType(*inside_var,
                               AssignFunctor(outside_var, *dev_ctx));
-
-      VLOG(6) << "Huihuang debug, after assign: inside_var numel = "
-              << inside_var->Get<phi::DenseTensor>().numel()
-        << ", dims = "
-              << inside_var->Get<phi::DenseTensor>().dims().size()
-        << ", memory_size = "
-              << inside_var->Get<phi::DenseTensor>().memory_size()
-        << ", initailized = "
-              << inside_var->Get<phi::DenseTensor>().initialized()
-              << ", outside_var numel = "
-              << outside_var->Get<phi::DenseTensor>().numel()
-              << ", dims = "
-              << outside_var->Get<phi::DenseTensor>().dims().size()
-              << ", memory_size = "
-              << outside_var->Get<phi::DenseTensor>().memory_size()
-        << ", initailized = "
-              << outside_var->Get<phi::DenseTensor>().initialized();
     }
     // Assign zero to the grad_vars that are in outside_grads but not in
     // inside_grads
