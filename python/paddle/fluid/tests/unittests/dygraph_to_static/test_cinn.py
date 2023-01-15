@@ -17,11 +17,6 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle.fluid import core
-
-# This case only tests to_static + cinn. Thus we need to
-# set this flag as False to avoid prim_backward.
-core.set_prim_backward(False)
 
 
 class Net(paddle.nn.Layer):

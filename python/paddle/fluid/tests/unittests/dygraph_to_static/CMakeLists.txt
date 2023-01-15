@@ -44,6 +44,12 @@ if(WIN32 AND NOT WITH_GPU)
   )# disable on Windows CPU CI for timeout
 endif()
 
+# Todo: support windows and apple
+if(WIN32 OR APPLE)
+  list(REMOVE_ITEM TEST_OPS test_resnet_prim)
+  list(REMOVE_ITEM TEST_OPS test_cinn_prim_forward)
+endif()
+
 foreach(TEST_OP ${TEST_OPS})
   list(FIND TEST_EAGER_OPS ${TEST_OP} WAS_FOUND)
   if(NOT WAS_FOUND EQUAL -1)

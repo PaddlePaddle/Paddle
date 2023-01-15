@@ -30,6 +30,7 @@ def _composite(op, *args):
 def softmax_composite(x, axis):
     """define composite rule of op softmax"""
     max_temp = max(x, axis, keepdim=True)
+    max_temp.stop_gradient = True
     molecular = exp(x - max_temp)
     denominator = sum(molecular, axis=axis, keepdim=True)
     res = divide(molecular, denominator)

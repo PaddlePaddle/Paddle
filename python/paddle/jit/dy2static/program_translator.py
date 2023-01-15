@@ -1103,7 +1103,7 @@ class ProgramCache:
             **cache_key.kwargs
         )
 
-        if enable_prim:
+        if enable_prim or core.enable_prim_forward() == "debug":
             concrete_program._to_prim()
             core.set_prim_enabled(False)
         return concrete_program, partial_program_from(concrete_program)

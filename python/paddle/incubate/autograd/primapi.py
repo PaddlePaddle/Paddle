@@ -223,7 +223,6 @@ def to_prim(blocks):
     if isinstance(blocks, paddle.fluid.framework.Block):
         logging.info("Atomize composite op to primitive ops begin.")
         main_program = blocks.program
-        return
     elif isinstance(blocks, typing.Sequence):
         for item in blocks:
             if not isinstance(item, paddle.fluid.framework.Block):
