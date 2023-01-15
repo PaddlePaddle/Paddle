@@ -20,6 +20,7 @@
 
 #include "paddle/fluid/memory/allocation/allocator.h"
 #include "paddle/fluid/memory/malloc.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/enforce.h"
 
 namespace phi {
@@ -39,6 +40,13 @@ int ProfileToGetBestConfig(
     const std::vector<std::function<cutlass::Status(GemmAllParams)>>
         &gemm_funcs,
     GemmAllParams params);
+
+inline int getSMVersion() {
+  const int device = phi::backends::gpu::GetCurrentDeviceId();
+  const phi::gpuDeviceProp prop =
+      phi::backends::gpu::GetDeviceProperties(device);
+  return prop.major * 10 + prop.minor;
+}
 }  // namespace cutlass_gemm_internal
 }  // namespace fusion
 }  // namespace phi

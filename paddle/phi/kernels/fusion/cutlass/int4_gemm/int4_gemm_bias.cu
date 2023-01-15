@@ -393,14 +393,14 @@ std::vector<std::function<cutlass::Status(GemmAllParams)>>
 std::map<std::vector<int>, int> map_problem_int4_gemm;
 std::mutex int4_gemm_mutex;
 
-void Int4Gemm(GemmAllParams params, int sm) {
+void Int4GemmBias(GemmAllParams params, int sm) {
   int batch = params.batch;
   int m = params.m;
   int n = params.n;
   int k = params.k;
   std::vector<int> problem_size = {batch, m, n, k};
   std::vector<std::function<cutlass::Status(GemmAllParams)>> *gemm_funcs =
-      &int4_gemm_sm75_all_func;
+      &int4_gemm_sm75_all_func;  // default use sm75 arch
   if (sm == 80) {
     gemm_funcs = &int4_gemm_sm80_all_func;
   }
