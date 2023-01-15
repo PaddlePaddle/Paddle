@@ -19,6 +19,10 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
+#if defined(PADDLE_WITH_CUDA)
+#include <cuda_runtime.h>
+#endif
+
 #include "paddle/fluid/inference/capi_exp/pd_inference_api.h"
 #include "paddle/fluid/inference/tests/api/tester_helper.h"
 
@@ -84,8 +88,13 @@ TEST(PD_Config, gpu_interface) {
   bool thread_local_thread = PD_ConfigThreadLocalStreamEnabled(config);
   EXPECT_TRUE(thread_local_thread);
 
-  void* exec_stream = nullptr;
-  PD_ConfigSetExecStream(config, exec_stream);
+#if defined(PADDLE_WITH_CUDA)
+  {
+    cudaStream_t external_stream;
+    cudaStreamCreate(&external_stream);
+    PD_ConfigSetExecStream(config, external_stream);
+  }
+#endif
 
   PD_ConfigDisableGpu(config);
   PD_ConfigDestroy(config);
