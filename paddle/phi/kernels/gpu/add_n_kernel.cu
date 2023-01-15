@@ -97,7 +97,7 @@ void AddNKernel(const Context &dev_ctx,
 
   for (const TensorBase *tb : x) {
     if (tb->initialized() && DenseTensor::classof(tb)) {
-      auto* dt = static_cast<const DenseTensor *>(tb);
+      auto *dt = static_cast<const DenseTensor *>(tb);
       out->set_meta(dt->meta());
       break;
     }

@@ -52,8 +52,8 @@ void Copy(const Context& dev_ctx,
           << dst_place;
 
   dst->set_meta(src.meta());
-  VLOG(3) << "src.numel() = " << src.numel() << ", dst->numel() = "
-    << dst->numel();
+  VLOG(3) << "src.numel() = " << src.numel()
+          << ", dst->numel() = " << dst->numel();
 
   void* dst_ptr = nullptr;
   if (paddle::platform::is_cpu_place(dst_place)) {
