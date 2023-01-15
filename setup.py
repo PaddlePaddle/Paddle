@@ -591,8 +591,8 @@ def options_process(args, build_options):
 
 
 def get_cmake_generator():
-    if os.getenv("CMAKE_GENERATOR"):
-        cmake_generator = os.getenv("CMAKE_GENERATOR")
+    if os.getenv("GENERATOR"):
+        cmake_generator = os.getenv("GENERATOR")
     else:
         cmake_generator = "Unix Makefiles"
     return cmake_generator
@@ -628,7 +628,7 @@ def cmake_run(build_path):
                 "XPU_SDK_ROOT",
                 "MSVC_STATIC_CRT",
                 "NEW_RELEASE_ALL",
-                "CMAKE_GENERATOR",
+                "GENERATOR",
             )
         }
     )
@@ -647,10 +647,13 @@ def cmake_run(build_path):
             elif option_key == 'PYTHON_INCLUDE_DIR':
                 key = option_key + ':PATH'
                 print(key)
+            elif option_key == 'GENERATOR':
+                key = 'CMAKE_' + option_key
             else:
                 key = other_options[option_key]
             if key not in paddle_build_options:
                 paddle_build_options[key] = option_value
+
     options_process(args, paddle_build_options)
     print("args:", args)
     with cd(build_path):
