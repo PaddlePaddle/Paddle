@@ -27,7 +27,8 @@ void SumKernel(const Context& dev_ctx,
                bool keep_dim,
                DenseTensor* out) {
   bool reduce_all = recompute_reduce_all(x, dims);
-  SumRawKernel<T, Context>(dev_ctx, x, dims, keep_dim, reduce_all, out_dtype, out);
+  SumRawKernel<T, Context>(
+      dev_ctx, x, dims, keep_dim, reduce_all, out_dtype, out);
 }
 
 }  // namespace phi
@@ -82,5 +83,6 @@ PD_REGISTER_KERNEL(
 #endif
 
 #if defined(PADDLE_WITH_XPU)
-PD_REGISTER_KERNEL(sum, XPU, ALL_LAYOUT, phi::SumKernel, float, int8_t, int64_t) {}
+PD_REGISTER_KERNEL(
+    sum, XPU, ALL_LAYOUT, phi::SumKernel, float, int8_t, int64_t) {}
 #endif
