@@ -14,24 +14,8 @@
 
 import unittest
 
-from paddle.fluid import core
-
-core.set_prim_enabled(True)
-
 import numpy as np
-
-# from utils import TOLERANCE
-
-TOLERANCE = {
-    "float32": {
-        "forward": {"rtol": 1e-7, "atol": 1e-7},
-        "backward": {"rtol": 1e-7, "atoil": 1e-7},
-    },
-    "float64": {
-        "forward": {"rtol": 1e-7, "atol": 1e-7},
-        "backward": {"rtol": 1e-7, "atol": 1e-7},
-    },
-}
+from utils import TOLERANCE
 
 import paddle
 import paddle.nn.functional as F
@@ -96,7 +80,16 @@ class TestCompositeSoftmax(unittest.TestCase):
             )
             y = fn(x)
             blocks = main_program.blocks
+
+            fwd_ops = [op.type for op in blocks[0].ops]
+            # Ensure that softmax in original block
+            self.assertTrue('softmax' in fwd_ops)
+
             paddle.incubate.autograd.to_prim(blocks)
+
+            fwd_ops_new = [op.type for op in blocks[0].ops]
+            # Ensure that softmax is splitted into small ops
+            self.assertTrue('softmax' not in fwd_ops_new)
 
         exe = paddle.static.Executor()
         exe.run(startup_program)

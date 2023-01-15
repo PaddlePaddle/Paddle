@@ -14,28 +14,12 @@
 
 import unittest
 
-from paddle.fluid import core
-
-core.set_prim_enabled(True)
-
 import numpy as np
+from utils import TOLERANCE
 
 import paddle
 import paddle.nn.functional as F
-
-# from utils import TOLERANCE
-
-
-TOLERANCE = {
-    "float32": {
-        "forward": {"rtol": 1e-7, "atol": 1e-7},
-        "backward": {"rtol": 1e-7, "atol": 1e-7},
-    },
-    "float64": {
-        "forward": {"rtol": 1e-7, "atol": 1e-7},
-        "backward": {"rtol": 1e-7, "atol": 1e-7},
-    },
-}
+from paddle.fluid import core
 
 
 def generate_data(shape, dtype="float32"):
@@ -78,6 +62,7 @@ def fn(x):
 
 
 def expect_grad(inputs):
+    paddle.disable_static()
     inputs.stop_gradient = False
     res = fn(inputs)
 
@@ -87,7 +72,7 @@ def expect_grad(inputs):
 
 class TestCompositeSoftmax(unittest.TestCase):
     def setUp(self):
-        self.dtypes = ["float32"]
+        self.dtypes = ["float32", "float64"]
         self.shapes = [[2, 3, 4], [2, 3]]
         self.axes = [-1, 0, 1]
 
@@ -102,10 +87,22 @@ class TestCompositeSoftmax(unittest.TestCase):
             x.stop_gradient = False
             y = fn(x)
             blocks = main_program.blocks
+
+            fwd_ops = [op.type for op in blocks[0].ops]
+            # Ensure that softmax in original block
+            self.assertTrue('softmax' in fwd_ops)
+
             paddle.incubate.autograd.to_prim(blocks)
+
+            fwd_ops_new = [op.type for op in blocks[0].ops]
+            # Ensure that softmax is splitted into small ops
+            self.assertTrue('softmax' not in fwd_ops_new)
+
             z = paddle.static.gradients([y], x)
-            print(blocks)
-            # breakpoint()
+            fwd_ops_grad = [op.type for op in blocks[0].ops]
+            # Ensure that softmax_grad not in grad block
+
+            self.assertTrue('softmax_grad' not in fwd_ops_grad)
 
         exe = paddle.static.Executor()
         exe.run(startup_program)
@@ -129,6 +126,60 @@ class TestCompositeSoftmax(unittest.TestCase):
         )
 
     def test_backward(self):
+        for i in self.axes:
+            for j in self.dtypes:
+                for t in self.shapes:
+                    attrs.set_axis(i)
+                    attrs.set_dtype(j)
+                    attrs.set_shape(t)
+                    self.compare_backward()
+
+
+class TestCompositeSoftmaxPrimBackward(unittest.TestCase):
+    "test composite softmax and prim backward"
+
+    def setUp(self):
+        core.set_prim_enabled(True)
+        self.dtypes = ["float32"]
+        self.shapes = [[2, 3, 4], [2, 3]]
+        self.axes = [-1, 0, 1]
+
+    def cal_composite_grad(self, inputs):
+        paddle.enable_static()
+        startup_program = paddle.static.Program()
+        main_program = paddle.static.Program()
+        with paddle.static.program_guard(main_program, startup_program):
+            x = paddle.static.data(
+                'x', shape=inputs.shape, dtype=str(inputs.dtype)
+            )
+            x.stop_gradient = False
+            y = fn(x)
+            blocks = main_program.blocks
+            paddle.incubate.autograd.to_prim(blocks)
+            z = paddle.static.gradients([y], x)
+
+        exe = paddle.static.Executor()
+        exe.run(startup_program)
+        res = exe.run(main_program, feed={'x': inputs}, fetch_list=[z])
+        paddle.disable_static()
+        return res
+
+    def compare_backward(self):
+        np_data = generate_data(attrs.shape)
+        tensor_data = paddle.to_tensor(np_data)
+
+        expect = expect_grad(tensor_data)[0].numpy()
+        actual = self.cal_composite_grad(np_data)[0]
+
+        assert expect.dtype == actual.dtype
+        np.testing.assert_allclose(
+            expect,
+            actual,
+            rtol=1e-6,
+            atol=1e-6,
+        )
+
+    def test_prim_backward(self):
         for i in self.axes:
             for j in self.dtypes:
                 for t in self.shapes:
