@@ -932,11 +932,10 @@ class ConcreteProgram:
 
     @switch_to_static_graph
     def _to_prim(self):
-        with framework.program_guard(self.main_program):
-            # TODO(Aurelius84): Fix this cycle import problem
-            import paddle
+        # TODO(Aurelius84): Fix this cycle import problem
+        from paddle.incubate.autograd.primapi import to_prim
 
-            paddle.incubate.autograd.to_prim(self.main_program.blocks)
+        to_prim(self.main_program.blocks)
 
     @staticmethod
     @switch_to_static_graph
@@ -1093,7 +1092,7 @@ class ProgramCache:
     def _build_once(self, cache_key):
         # TODO(Aurelius84): Need a gloabl FLAGS to enable/disable to_prim
         enable_prim = cache_key.kwargs['build_strategy'].build_cinn_pass
-        if enable_prim:
+        if enable_prim and core.enable_prim_backward():
             core.set_prim_enabled(True)
 
         concrete_program = ConcreteProgram.from_func_spec(
