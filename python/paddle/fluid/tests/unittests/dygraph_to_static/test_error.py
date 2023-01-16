@@ -174,7 +174,6 @@ class TestErrorBase(unittest.TestCase):
         self.filepath = inspect.getfile(unwrap(self.func_call))
         self.set_exception_type()
         self.set_message()
-        self.prog_trans = paddle.jit.ProgramTranslator()
 
     def set_input(self):
         self.input = np.ones([3, 2])
@@ -362,30 +361,6 @@ class TestErrorStaticLayerCallInRuntime2(TestErrorStaticLayerCallInRuntime):
             '<--- HERE',
             'return x',
         ]
-
-
-# Situation 2: Call ProgramTranslator().get_output(...) to use Dynamic-to-Static
-class TestErrorGetOutputInCompiletime(TestErrorStaticLayerCallInCompiletime):
-    def set_func_call(self):
-        self.func_call = lambda: self.prog_trans.get_output(
-            unwrap(self.func), self.input
-        )
-
-
-class TestErrorGetOutputInCompiletime_2(
-    TestErrorStaticLayerCallInCompiletime_2
-):
-    def set_func_call(self):
-        self.func_call = lambda: self.prog_trans.get_output(
-            unwrap(self.func), self.input
-        )
-
-
-class TestErrorGetOutputInRuntime(TestErrorStaticLayerCallInRuntime):
-    def set_func_call(self):
-        self.func_call = lambda: self.prog_trans.get_output(
-            unwrap(self.func), self.input
-        )
 
 
 class TestJitSaveInCompiletime(TestErrorBase):

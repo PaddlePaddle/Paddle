@@ -1541,14 +1541,6 @@ def flatten(x, start_axis=0, stop_axis=-1, name=None):
     if not (isinstance(x, Variable)):
         raise ValueError("The input x should be a Tensor")
 
-    if not paddle.in_dynamic_mode():
-        check_variable_and_dtype(
-            x,
-            'x',
-            ['float32', 'float64', 'int8', 'int16', 'int32', 'int64', 'uint8'],
-            'flatten',
-        )
-
     x_dim = len(x.shape)
     if x_dim == 0:
         if not (isinstance(start_axis, int)) or start_axis not in [0, -1]:
@@ -1586,6 +1578,12 @@ def flatten(x, start_axis=0, stop_axis=-1, name=None):
     if in_dygraph_mode():
         return _C_ops.flatten(x, start_axis, stop_axis)
     else:
+        check_variable_and_dtype(
+            x,
+            'x',
+            ['float32', 'float64', 'int8', 'int16', 'int32', 'int64', 'uint8'],
+            'flatten',
+        )
         helper = LayerHelper('flatten', **locals())
         out = helper.create_variable_for_type_inference(x.dtype)
         x_shape = helper.create_variable_for_type_inference(x.dtype)
@@ -1918,31 +1916,20 @@ def split(x, num_or_sections, axis=0, name=None):
     input = x
     dim = axis
     if in_dygraph_mode():
-        num = None
-        attrs = ()
-
         if isinstance(dim, Variable):
             dim = dim.numpy()
             dim = dim.item(0)
         assert len(input.shape) + dim >= 0, "(rank(x) + axis) must >= 0"
         dim = (len(input.shape) + dim) if dim < 0 else dim
-        attrs += ('axis', dim)
 
-        if isinstance(num_or_sections, int):
-            num = num_or_sections
-            attrs += ('num', num_or_sections)
-        elif isinstance(num_or_sections, (list, tuple)):
-            num = len(num_or_sections)
+        if isinstance(num_or_sections, (list, tuple)):
             if utils._contain_var(num_or_sections):
                 for index, item in enumerate(num_or_sections):
                     if isinstance(item, Variable):
                         num_or_sections[index] = num_or_sections[index].numpy()[
                             0
                         ]
-                attrs += ('sections', list(num_or_sections))
-            else:
-                attrs += ('sections', list(num_or_sections))
-        else:
+        elif not isinstance(num_or_sections, int):
             raise TypeError(
                 "The type of 'num_or_sections' in split must be int, list or tuple in imperative mode, but "
                 "received %s." % (type(num_or_sections))

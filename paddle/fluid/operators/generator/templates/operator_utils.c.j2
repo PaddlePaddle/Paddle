@@ -54,6 +54,10 @@ AddOutput({{name | to_opmaker_name}}, "({{typename}}), output {{i}} of {{op_name
 
     .AsIntermediate()
   {%- endif %}
+  {%- if output["optional"] %}
+
+    .AsDispensable()
+  {%- endif %}
   {%- if "is_extra" in output and output["is_extra"] %}
 
     .AsExtra()
@@ -417,7 +421,8 @@ class {{name | to_pascal_case}}OpMaker : public framework::SingleGradOpMaker<T> 
       forward_input_names,
       forward_output_names,
       forward_input_orig_names,
-      forward_output_orig_names)}});
+      forward_output_orig_names,
+      output['drop_empty_grad'])}});
   {% endfor %}
 
     grad_op->SetAttrMap(this->Attrs());
@@ -480,7 +485,8 @@ class {{name | to_pascal_case}}OpMaker : public framework::SingleGradOpMaker<T> 
       forward_input_names,
       forward_output_names,
       forward_input_orig_names,
-      forward_output_orig_names)}});
+      forward_output_orig_names,
+      true)}});
   {% endfor %}
 
   {% for attr in invoke_op["attrs"] %}
@@ -629,6 +635,7 @@ class {{op_name | to_composite_grad_opmaker_name}} : public prim::GradCompositeO
 {%- endmacro %}
 
 {% macro call_composite_backward_api(composite_op_dict) %}
+    VLOG(3) << "Runing {{composite_op_dict["composite"]["func_name"]}} composite func";
     prim::{{composite_op_dict["composite"]["func_name"]}}<prim::DescTensor>({{composite_op_dict["composite"]["func_args"]}});
 {%- endmacro %}
 
@@ -659,11 +666,15 @@ OutputGrad({{name_in_forward_orig | to_opmaker_name}})
 {%- endmacro %}
 
 {% macro extract_output_from_forward(name, input_names, output_names,
-  input_orig_names, output_orig_names) %}{# inline #}
+  input_orig_names, output_orig_names, drop_empty_grad) %}{# inline #}
   {% if name[:-5] in input_names %}
     {% set name_in_forward = name[:-5] %}
     {% set name_in_forward_orig = input_orig_names[input_names.index(name_in_forward)]%}
+      {%- if drop_empty_grad is true -%}
 InputGrad({{name_in_forward_orig | to_opmaker_name}})
+      {%- else -%}
+InputGrad({{name_in_forward_orig | to_opmaker_name}}, false)
+      {%- endif %}
   {%- elif (name) in input_names %}
     {% set name_in_forward_orig = input_orig_names[input_names.index(name)]%}
 Input({{name  | to_opmaker_name}})
