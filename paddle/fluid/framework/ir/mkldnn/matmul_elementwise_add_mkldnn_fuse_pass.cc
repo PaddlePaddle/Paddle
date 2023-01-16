@@ -25,7 +25,7 @@ namespace ir {
 using string::PrettyLogDetail;
 
 void MatmulElementwiseAddMKLDNNFusePass::ApplyImpl(Graph* graph) const {
-  auto matmul_types = {"matmul", "matmul_v2"};
+  auto matmul_types = {"fused_matmul", "matmul", "matmul_v2"};
   auto matmul_as_x = {true, false};
 
   for (const auto& matmul_type : matmul_types)
@@ -65,16 +65,12 @@ void MatmulElementwiseAddMKLDNNFusePass::FuseMatmulElementwiseAdd(
       return;
     }
 
+    matmul->Op()->SetType("fused_matmul");
     if (matmul_type == "matmul") {
-      matmul->Op()->SetType("matmul_v2");
       matmul->Op()->SetAttr("trans_x", matmul->Op()->GetAttr("transpose_X"));
       matmul->Op()->SetAttr("trans_y", matmul->Op()->GetAttr("transpose_Y"));
-      auto matmul_alpha = matmul->Op()->GetAttrIfExists<float>("alpha");
-      if (matmul_alpha != 1.0f) {
-        matmul->Op()->SetAttr("alpha", matmul_alpha);
-      }
+      matmul->Op()->SetAttr("matmul_alpha", matmul->Op()->GetAttr("alpha"));
     }
-
     matmul->Op()->SetInput("ResidualData", {elementwise_addend->Name()});
     matmul->Op()->SetOutput("Out", {elementwise_add_out->Name()});
 
@@ -135,6 +131,71 @@ MatmulElementwiseAddMKLDNNFusePass::MatmulElementwiseAddMKLDNNFusePass() {
       .IsType<bool>()
       .End();
 
+  AddOpCompat(OpCompat("fused_matmul"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddInput("Y")
+      .IsTensor()
+      .End()
+      .AddInput("ResidualData")
+      .IsTensor()
+      .IsOptional()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddAttr("trans_x")
+      .IsType<bool>()
+      .End()
+      .AddAttr("trans_y")
+      .IsType<bool>()
+      .End()
+      .AddAttr("matmul_alpha")
+      .IsType<float>()
+      .IsOptional()
+      .End()
+      .AddAttr("fuse_activation")
+      .IsType<std::string>()
+      .IsOptional()
+      .End()
+      .AddAttr("fuse_alpha")
+      .IsType<float>()
+      .IsOptional()
+      .End()
+      .AddAttr("fuse_beta")
+      .IsType<float>()
+      .IsOptional()
+      .End()
+      .AddAttr("fused_output_scale")
+      .IsType<float>()
+      .IsOptional()
+      .End()
+      .AddAttr("fused_reshape_X")
+      .IsType<std::vector<int>>()
+      .IsOptional()
+      .End()
+      .AddAttr("fused_transpose_X")
+      .IsType<std::vector<int>>()
+      .IsOptional()
+      .End()
+      .AddAttr("fused_reshape_Y")
+      .IsType<std::vector<int>>()
+      .IsOptional()
+      .End()
+      .AddAttr("fused_transpose_Y")
+      .IsType<std::vector<int>>()
+      .IsOptional()
+      .End()
+      .AddAttr("fused_reshape_Out")
+      .IsType<std::vector<int>>()
+      .IsOptional()
+      .End()
+      .AddAttr("fused_transpose_Out")
+      .IsType<std::vector<int>>()
+      .IsOptional()
+      .End();
+
   AddOpCompat(OpCompat("elementwise_add"))
       .AddInput("X")
       .IsTensor()
@@ -159,6 +220,7 @@ REGISTER_PASS(matmul_elementwise_add_mkldnn_fuse_pass,
 REGISTER_PASS_CAPABILITY(matmul_elementwise_add_mkldnn_fuse_pass)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination()
+            .EQ("fused_matmul", 0)
             .EQ("matmul", 0)
             .EQ("matmul_v2", 0)
             .LE("elementwise_add", 1));

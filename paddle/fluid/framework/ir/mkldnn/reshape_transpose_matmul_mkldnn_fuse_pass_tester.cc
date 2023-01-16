@@ -97,7 +97,7 @@ void TestMain(const std::string& op_name, bool with_xshapes) {
   int removed = 8;  // 2* reshape, reshape_out, transpose, transpose_out
   if (with_xshapes) removed += 2;  // transpose_xshape, reshape_xshape
   EXPECT_EQ(total_nodes_before - removed, total_nodes_after);
-  auto* matmul_op_desc = GetOpNodes(graph, "matmul_v2").at(0)->Op();
+  auto* matmul_op_desc = GetOpNodes(graph, "fused_matmul").at(0)->Op();
 
   auto check = [&matmul_op_desc](std::string a) {
     std::string shape_str = "fused_reshape_" + a;

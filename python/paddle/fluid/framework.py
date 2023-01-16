@@ -124,7 +124,6 @@ def _update_monkey_methods(is_eager):
     assert isinstance(is_eager, bool)
     # switch into eager mode
     if is_eager:
-        _legacy_C_ops.switch_to_eager_ops()
         if not _already_patch_eager_tensor:
             monkey_patch_varbase()
             monkey_patch_math_varbase()
@@ -132,7 +131,6 @@ def _update_monkey_methods(is_eager):
             _already_patch_eager_tensor = True
     # switch back into legacy mode
     else:
-        _legacy_C_ops.switch_to_core_ops()
         if not _already_patch_varbase:
             monkey_patch_varbase()
             monkey_patch_math_varbase()
@@ -566,7 +564,7 @@ def _fake_interface_only_(func):
         raise AssertionError(
             "'%s' only can be called by `paddle.Tensor` in dynamic graph mode. Suggestions:\n"
             "  1. If you are in static graph mode, you can switch to dynamic graph mode by turning off `paddle.enable_static()` or calling `paddle.disable_static()`.\n"
-            "  2. If you are using `@paddle.jit.to_static`, you can turn off ProgramTranslator by calling `paddle.jit.ProgramTranslator().enable(False)`. "
+            "  2. If you are using `@paddle.jit.to_static`, you can call `paddle.jit.enable_to_static(False)`. "
             "If you have to translate dynamic graph to static graph, please use other API to replace '%s'."
             % (func.__name__, func.__name__)
         )

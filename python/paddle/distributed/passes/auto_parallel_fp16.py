@@ -15,9 +15,7 @@
 from collections import defaultdict
 
 import paddle
-from paddle.distributed.auto_parallel.dist_attribute import (
-    OperatorDistributedAttribute,
-)
+from paddle.distributed.auto_parallel.dist_attribute import OperatorDistAttr
 from paddle.distributed.auto_parallel.process_group import (
     get_world_process_group,
 )
@@ -28,7 +26,6 @@ from paddle.distributed.auto_parallel.utils import (
     set_var_dist_attr,
 )
 from paddle.distributed.fleet.meta_optimizers.common import OP_ROLE_KEY, OpRole
-from paddle.fluid import unique_name
 from paddle.fluid.contrib.mixed_precision.fp16_utils import (
     AutoMixedPrecisionLists,
     _dtype_to_str,
@@ -37,9 +34,11 @@ from paddle.fluid.contrib.mixed_precision.fp16_utils import (
     _valid_types,
 )
 from paddle.fluid.data_feeder import check_type, check_variable_and_dtype
-from paddle.fluid.framework import default_main_program, default_startup_program
 from paddle.framework import core
+from paddle.static import default_main_program, default_startup_program
+from paddle.utils import unique_name
 
+from ..auto_parallel.process_mesh import ProcessMesh
 from .auto_parallel_amp import AMPPass
 from .pass_base import register_pass
 
@@ -582,8 +581,10 @@ def _check_and_update_gradient(grads, loss_scaling, name, dist_context):
         attrs=attrs,
     )
 
-    new_op_dist_attr = OperatorDistributedAttribute()
-    new_op_dist_attr.process_mesh = world_process_group.ranks
+    # Constructing dist attr from op_desc can
+    # give all inputs and outputs default dist attrs
+    new_op_dist_attr = OperatorDistAttr(new_op.desc)
+    new_op_dist_attr.process_mesh = ProcessMesh(world_process_group.ranks)
     new_op_dist_attr.impl_idx = 0
     if len(world_process_group.ranks) > 1:
         new_op_dist_attr.impl_type = "check_finite_and_unscale"
@@ -611,8 +612,8 @@ def _split_grads(params_grads):
 
 
 def _set_op_dist_attr_with_ranks(new_op, ranks, block, dist_context):
-    new_op_dist_attr = OperatorDistributedAttribute()
-    new_op_dist_attr.process_mesh = ranks
+    new_op_dist_attr = OperatorDistAttr()
+    new_op_dist_attr.process_mesh = ProcessMesh(ranks)
     new_op_dist_attr.impl_idx = 0
     for var_name in new_op.input_arg_names:
         var = block.var(var_name)
@@ -789,7 +790,7 @@ class FP16Pass(AMPPass):
 
                         # all_infs = paddle.fluid.layers.concat(found_infs)
                         all_infs = block.create_var(
-                            name=paddle.fluid.unique_name.generate_with_ignorable_key(
+                            name=paddle.utils.unique_name.generate_with_ignorable_key(
                                 ".".join(['concat', 'tmp'])
                             ),
                             dtype=found_infs[0].dtype,
@@ -820,7 +821,7 @@ class FP16Pass(AMPPass):
 
                         # found_inf = paddle.fluid.layers.reduce_any(all_infs)
                         found_inf = block.create_var(
-                            name=paddle.fluid.unique_name.generate_with_ignorable_key(
+                            name=paddle.utils.unique_name.generate_with_ignorable_key(
                                 ".".join(['reduce_any', 'tmp'])
                             ),
                             dtype=all_infs.dtype,
@@ -866,7 +867,8 @@ class FP16Pass(AMPPass):
             if self.get_attr("use_optimizer_fp16"):
                 base_opt._multi_precision = False
             if isinstance(
-                base_opt, (paddle.fluid.optimizer.Adam, paddle.optimizer.AdamW)
+                base_opt,
+                (paddle.static.Adam, paddle.optimizer.AdamW),
             ):
                 with main_program._optimized_guard([]):
                     # found_inf = paddle.tensor.creation._memcpy(

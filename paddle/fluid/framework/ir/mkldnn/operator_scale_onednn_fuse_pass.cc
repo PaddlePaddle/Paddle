@@ -27,6 +27,7 @@ using string::PrettyLogDetail;
 void FuseOperatorScaleOneDNNPass::ApplyImpl(Graph *graph) const {
   const std::vector<std::string> fusable_ops{
       "fc",
+      "fused_matmul",
       "matmul",
       "matmul_v2",
       "elementwise_add",
@@ -86,16 +87,18 @@ void FuseOperatorScaleOneDNNPass::FuseScale(Graph *graph,
     }
 
     if (op_type == "matmul") {
-      operator_op->Op()->SetType("matmul_v2");
+      operator_op->Op()->SetType("fused_matmul");
       operator_op->Op()->SetAttr("trans_x",
                                  operator_op->Op()->GetAttr("transpose_X"));
       operator_op->Op()->SetAttr("trans_y",
                                  operator_op->Op()->GetAttr("transpose_Y"));
-      auto matmul_alpha = operator_op->Op()->GetAttrIfExists<float>("alpha");
-      if (matmul_alpha != 1.0f) {
-        operator_op->Op()->SetAttr("alpha", matmul_alpha);
-      }
+      operator_op->Op()->SetAttr("matmul_alpha",
+                                 operator_op->Op()->GetAttr("alpha"));
     }
+    if (op_type == "matmul_v2") {
+      operator_op->Op()->SetType("fused_matmul");
+    }
+
     operator_op->Op()->SetAttr("fused_output_scale", scale);
     operator_op->Op()->SetOutput("Out", {scale_out->Name()});
 
@@ -122,7 +125,9 @@ REGISTER_PASS_CAPABILITY(operator_scale_onednn_fuse_pass)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination()
             .EQ("fc", 0)
+            .EQ("fused_matmul", 0)
             .EQ("matmul", 0)
+            .EQ("matmul_v2", 0)
             .EQ("matmul_v2", 0)
             .LE("elementwise_add", 1)
             .LE("elementwise_sub", 1)

@@ -37,6 +37,14 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+class MatMulV2OpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  void Make() final;
+
+ protected:
+  virtual void Apply() {}
+};
+
 // Reshape a rank-3 tensor from P x M x N to (P * M) x N.
 // Identity op if the tensor is not of rank 3.
 static phi::DenseTensor FoldInitDims(const phi::DenseTensor& input) {

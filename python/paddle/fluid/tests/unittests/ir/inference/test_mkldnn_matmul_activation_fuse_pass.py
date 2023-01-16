@@ -146,7 +146,7 @@ class TestMatmulActivationMkldnnFusePass(PassAutoScanTest):
                 'operator_scale_onednn_fuse_pass',
             ],
         )
-        yield config, ['matmul_v2'], (1e-5, 1e-5)
+        yield config, ['fused_matmul'], (1e-5, 1e-5)
 
     def test(self):
         self.run_and_statis(

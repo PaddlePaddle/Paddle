@@ -26,7 +26,7 @@ using string::PrettyLogDetail;
 
 void MatmulActivationMkldnnFusePass::ApplyImpl(Graph* graph) const {
   auto act_types = phi::funcs::GetSupportedActivations();
-  auto matmul_types = {"matmul", "matmul_v2"};
+  auto matmul_types = {"fused_matmul", "matmul", "matmul_v2"};
 
   for (const auto& matmul_type : matmul_types)
     for (auto& act_type : act_types) {
@@ -78,14 +78,11 @@ void MatmulActivationMkldnnFusePass::FuseMatmulAct(
               : "gelu_erf";
     }
 
+    matmul_op->SetType("fused_matmul");
     if (matmul_type == "matmul") {
-      matmul_op->SetType("matmul_v2");
       matmul_op->SetAttr("trans_x", matmul_op->GetAttr("transpose_X"));
       matmul_op->SetAttr("trans_y", matmul_op->GetAttr("transpose_Y"));
-      auto matmul_alpha = matmul_op->GetAttrIfExists<float>("alpha");
-      if (matmul_alpha != 1.0f) {
-        matmul_op->SetAttr("alpha", matmul_alpha);
-      }
+      matmul_op->SetAttr("matmul_alpha", matmul_op->GetAttr("alpha"));
     }
     matmul_op->SetAttr("fuse_activation", act_type);
     matmul_op->SetOutput("Out", {activation_out->Name()});
@@ -114,11 +111,6 @@ MatmulActivationMkldnnFusePass::MatmulActivationMkldnnFusePass() {
       .AddInput("Y")
       .IsTensor()
       .End()
-      .AddInput(
-          "ResidualData")  // Extra tensor used in matmul+elementwise_add fuse
-      .IsTensor()
-      .IsOptional()
-      .End()
       .AddOutput("Out")
       .IsTensor()
       .End()
@@ -139,8 +131,24 @@ MatmulActivationMkldnnFusePass::MatmulActivationMkldnnFusePass() {
       .AddInput("Y")
       .IsTensor()
       .End()
-      .AddInput(
-          "ResidualData")  // Extra tensor used in matmul+elementwise_add fuse
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddAttr("trans_x")
+      .IsType<bool>()
+      .End()
+      .AddAttr("trans_y")
+      .IsType<bool>()
+      .End();
+
+  AddOpCompat(OpCompat("fused_matmul"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddInput("Y")
+      .IsTensor()
+      .End()
+      .AddInput("ResidualData")
       .IsTensor()
       .IsOptional()
       .End()
@@ -152,6 +160,50 @@ MatmulActivationMkldnnFusePass::MatmulActivationMkldnnFusePass() {
       .End()
       .AddAttr("trans_y")
       .IsType<bool>()
+      .End()
+      .AddAttr("matmul_alpha")
+      .IsType<float>()
+      .IsOptional()
+      .End()
+      .AddAttr("fuse_activation")
+      .IsType<std::string>()
+      .IsOptional()
+      .End()
+      .AddAttr("fuse_alpha")
+      .IsType<float>()
+      .IsOptional()
+      .End()
+      .AddAttr("fuse_beta")
+      .IsType<float>()
+      .IsOptional()
+      .End()
+      .AddAttr("fused_output_scale")
+      .IsType<float>()
+      .IsOptional()
+      .End()
+      .AddAttr("fused_reshape_X")
+      .IsType<std::vector<int>>()
+      .IsOptional()
+      .End()
+      .AddAttr("fused_transpose_X")
+      .IsType<std::vector<int>>()
+      .IsOptional()
+      .End()
+      .AddAttr("fused_reshape_Y")
+      .IsType<std::vector<int>>()
+      .IsOptional()
+      .End()
+      .AddAttr("fused_transpose_Y")
+      .IsType<std::vector<int>>()
+      .IsOptional()
+      .End()
+      .AddAttr("fused_reshape_Out")
+      .IsType<std::vector<int>>()
+      .IsOptional()
+      .End()
+      .AddAttr("fused_transpose_Out")
+      .IsType<std::vector<int>>()
+      .IsOptional()
       .End();
 
   AddOpCompat(OpCompat("abs"))
@@ -305,6 +357,7 @@ REGISTER_PASS(matmul_activation_mkldnn_fuse_pass,
 REGISTER_PASS_CAPABILITY(matmul_activation_mkldnn_fuse_pass)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination()
+            .EQ("fused_matmul", 0)
             .EQ("matmul", 0)
             .EQ("matmul_v2", 0)
             .EQ("abs", 0)

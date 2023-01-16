@@ -66,6 +66,7 @@ limitations under the License. */
 #include "paddle/fluid/imperative/amp_auto_cast.h"
 #include "paddle/fluid/imperative/layer.h"
 #include "paddle/fluid/memory/allocation/allocator_strategy.h"
+#include "paddle/fluid/prim/utils/utils.h"
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/memory/allocation/cuda_ipc_allocator.h"
 #endif
@@ -645,6 +646,8 @@ PYBIND11_MODULE(libpaddle, m) {
         return oss.str();
       });
 
+  m.def("set_prim_enabled", &paddle::prim::PrimCommonUtils::SetPrimEnabled);
+  m.def("is_prim_enabled", &paddle::prim::PrimCommonUtils::IsPrimEnabled);
   m.def("set_num_threads", &platform::SetNumThreads);
 
   m.def("disable_signal_handler", &DisableSignalHandler);
@@ -1221,11 +1224,56 @@ All parameter, weight, gradient are variables in Paddle.
            const std::unordered_set<std::string> &no_grad_set,
            const std::vector<BlockDesc *> &grad_sub_block) {
           std::unordered_map<std::string, std::string> grad_to_var;
-          std::vector<std::unique_ptr<OpDesc>> grad_op_descs =
-              framework::OpInfoMap::Instance()
-                  .Get(op_desc.Type())
-                  .GradOpMaker()(
-                      op_desc, no_grad_set, &grad_to_var, grad_sub_block);
+
+          auto op_info = framework::OpInfoMap::Instance().Get(op_desc.Type());
+          auto grad_op_maker = op_info.GradOpMaker();
+          auto grad_comp_op_maker = op_info.GradCompOpMaker();
+
+          if ((grad_op_maker == nullptr) && (grad_comp_op_maker == nullptr)) {
+            // Normally, proto_ should not be null, except some special
+            // operators, such as LeaklyReluDoubleGrad op.
+            std::string type =
+                op_info.proto_ ? op_info.proto_->type() : "unknown";
+            PADDLE_THROW(platform::errors::NotFound(
+                "Neither operator %s's GradOpMaker nor GradCompOpMaker has "
+                "been registered.\nPlease check whether (%s) operator has "
+                "gradient operator.\nIf not, please set stop_gradient to be "
+                "True for its input and output variables using "
+                "var.stop_gradient=True.",
+                type.c_str(),
+                type.c_str()));
+          }
+
+          // In PrimEnabled mode, the priority of GradCompOpMaker is greater
+          // than GradCompMaker as we need split first-order grad operator into
+          // primitive operators for compiler. In PrimDisabled mode, the
+          // priority of GradCompOpMaker is less than GradCompMaker for better
+          // performance.
+          std::vector<std::unique_ptr<OpDesc>> grad_op_descs;
+          if (paddle::prim::PrimCommonUtils::IsPrimEnabled()) {
+            if (grad_comp_op_maker != nullptr) {
+              grad_op_descs = grad_comp_op_maker(op_desc,
+                                                 no_grad_set,
+                                                 &grad_to_var,
+                                                 op_desc.Block(),
+                                                 grad_sub_block);
+            } else {
+              grad_op_descs = grad_op_maker(
+                  op_desc, no_grad_set, &grad_to_var, grad_sub_block);
+            }
+          } else {
+            if (grad_op_maker != nullptr) {
+              grad_op_descs = grad_op_maker(
+                  op_desc, no_grad_set, &grad_to_var, grad_sub_block);
+            } else {
+              grad_op_descs = grad_comp_op_maker(op_desc,
+                                                 no_grad_set,
+                                                 &grad_to_var,
+                                                 op_desc.Block(),
+                                                 grad_sub_block);
+            }
+          }
+
           std::vector<OpDesc *> grad_op_desc_ptrs(grad_op_descs.size());
           std::transform(
               grad_op_descs.begin(),
@@ -1871,6 +1919,7 @@ All parameter, weight, gradient are variables in Paddle.
   BindGlobalValueGetterSetter(&m);
   BindFleetExecutor(&m);
   BindTCPStore(&m);
+  BindCommContextManager(&m);
   BindAutoParallel(&m);
   BindJitProperty(&m);
 
@@ -2546,7 +2595,17 @@ All parameter, weight, gradient are variables in Paddle.
         [] { return phi::autotune::AutoTuneStatus::Instance().Update(); });
 
   m.def("get_low_precision_op_list", [] {
-    return paddle::imperative::AmpOperators::Instance().GetAmpOpList();
+    py::dict op_list;
+    auto list_op = phi::KernelFactory::Instance().GetLowPrecisionKernelList();
+    for (auto iter = list_op.begin(); iter != list_op.end(); iter++) {
+      auto op_name = (iter->first).c_str();
+      auto counts = iter->second;
+      op_list[op_name] = std::to_string(counts.fp16_called_) + "," +
+                         std::to_string(counts.bf16_called_) + "," +
+                         std::to_string(counts.fp32_called_) + "," +
+                         std::to_string(counts.other_called_);
+    }
+    return op_list;
   });
 
   m.def("autotune_status", [] {

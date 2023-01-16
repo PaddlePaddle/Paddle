@@ -51,28 +51,35 @@ constexpr bool is_bfloat16() {
   return std::is_same<T, dtype::bfloat16>::value;
 }
 
+// TODO(Silv3S): remove dev_ctx and default values
+// after all fused operators are implemented.
 static void AppendActivation(const OneDNNContext& dev_ctx,
                              dnnl::post_ops& post_ops,  // NOLINT
-                             float activation_scale = 1.0f) {
-  const auto invalid_attribute =
-      dev_ctx.HasDnnAttr("fuse_activation")
-          ? PADDLE_GET_CONST(std::string, dev_ctx.GetDnnAttr("fuse_activation"))
-                .empty()
-          : true;
-  if (invalid_attribute) return;
+                             float activation_scale = 1.0f,
+                             std::string fuse_activation = "",
+                             float fuse_alpha = 0.0f,
+                             float fuse_beta = 0.0f) {
+  if (fuse_activation == "") {
+    const auto invalid_attribute =
+        dev_ctx.HasDnnAttr("fuse_activation")
+            ? PADDLE_GET_CONST(std::string,
+                               dev_ctx.GetDnnAttr("fuse_activation"))
+                  .empty()
+            : true;
+    if (invalid_attribute) return;
 
-  const auto fuse_activation =
-      dev_ctx.HasDnnAttr("fuse_activation")
-          ? PADDLE_GET_CONST(std::string, dev_ctx.GetDnnAttr("fuse_activation"))
-          : "";
-  const auto fuse_alpha =
-      dev_ctx.HasDnnAttr("fuse_alpha")
-          ? PADDLE_GET_CONST(float, dev_ctx.GetDnnAttr("fuse_alpha"))
-          : 0.0f;
-  const auto fuse_beta =
-      dev_ctx.HasDnnAttr("fuse_beta")
-          ? PADDLE_GET_CONST(float, dev_ctx.GetDnnAttr("fuse_beta"))
-          : 0.0f;
+    fuse_activation =
+        dev_ctx.HasDnnAttr("fuse_activation")
+            ? PADDLE_GET_CONST(std::string,
+                               dev_ctx.GetDnnAttr("fuse_activation"))
+            : "";
+    fuse_alpha = dev_ctx.HasDnnAttr("fuse_alpha")
+                     ? PADDLE_GET_CONST(float, dev_ctx.GetDnnAttr("fuse_alpha"))
+                     : 0.0f;
+    fuse_beta = dev_ctx.HasDnnAttr("fuse_beta")
+                    ? PADDLE_GET_CONST(float, dev_ctx.GetDnnAttr("fuse_beta"))
+                    : 0.0f;
+  }
 
   if (fuse_activation == "hard_sigmoid") {
     post_ops.append_eltwise(activation_scale,
