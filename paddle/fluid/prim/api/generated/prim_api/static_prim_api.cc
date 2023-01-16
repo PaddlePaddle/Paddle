@@ -160,7 +160,8 @@ Tensor full<DescTensor>(const IntArray& shape,
   op->SetType("fill_constant");
   op->SetAttr("shape", shape.GetData());
   PADDLE_ENFORCE_EQ(
-      ((dtype == DataType::FLOAT32) || (dtype == DataType::FLOAT16)),
+      ((dtype == DataType::FLOAT32) || (dtype == DataType::FLOAT64) ||
+       (dtype == DataType::FLOAT16)),
       true,
       phi::errors::InvalidArgument(
           "We only support float32/float16 for full, but we got data type: %s",
