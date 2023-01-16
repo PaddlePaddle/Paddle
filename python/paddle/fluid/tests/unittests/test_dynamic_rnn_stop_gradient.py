@@ -19,6 +19,7 @@ import numpy as np
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
+from paddle.tensor.manipulation import tensor_array_to_tensor
 
 paddle.enable_static()
 
@@ -58,7 +59,7 @@ def build_and_run_program(place, batch_size, beam_size, stop_gradient=False):
         length_cond = paddle.less_than(x=step_idx, y=max_len)
         layers.assign(length_cond, cond)
 
-    out = layers.tensor_array_to_tensor(scores, axis=0, use_stack=True)[0]
+    out = tensor_array_to_tensor(scores, axis=0, use_stack=True)[0]
     loss = paddle.mean(out)
     opt = fluid.optimizer.Adam(0.01)
     opt.minimize(loss)

@@ -21,8 +21,7 @@ import re
 import numpy as np
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
+from paddle.framework import core
 
 from ..utils.log_utils import get_logger
 from .process_group import _g_process_group_map
@@ -167,7 +166,7 @@ class DistributedSaver:
 
         dist_main_prog = kwargs.get('program', None)
         if not dist_main_prog:
-            dist_main_prog = fluid.default_main_program()
+            dist_main_prog = paddle.static.default_main_program()
         global_block = dist_main_prog.global_block()
 
         ops = global_block.ops
@@ -195,17 +194,18 @@ class DistributedSaver:
             used_inputs += op.input_arg_names
             used_outputs += op.output_arg_names
 
-        dist_feed_vars_names = list(set(feed_vars_names) & set(used_inputs))
-        dist_fetch_vars_names = list(set(fetch_vars_names) & set(used_outputs))
+        for idx, var_name in enumerate(feed_vars_names):
+            if var_name not in used_inputs:
+                feed_vars_names.pop(idx)
+        for idx, var_name in enumerate(fetch_vars_names):
+            if var_name not in used_outputs:
+                fetch_vars_names.pop(idx)
 
-        dist_feed_vars = [
-            global_block.vars[name] for name in dist_feed_vars_names
-        ]
-        dist_fetch_vars = [
-            global_block.vars[name] for name in dist_fetch_vars_names
-        ]
+        dist_feed_vars = list(
+            reversed([global_block.vars[name] for name in feed_vars_names])
+        )
+        dist_fetch_vars = [global_block.vars[name] for name in fetch_vars_names]
 
-        # NOTE: `paddle.static.save_inference_model` does not support subblock.
         dist_filename = filename + "_dist" + str(rank_id)
         dist_path = os.path.join(dirname, dist_filename)
         paddle.static.save_inference_model(

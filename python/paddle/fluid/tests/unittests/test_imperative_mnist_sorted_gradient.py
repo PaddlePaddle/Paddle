@@ -22,12 +22,11 @@ import paddle
 import paddle.fluid as fluid
 from paddle.fluid import core
 from paddle.fluid.dygraph.base import to_variable
-from paddle.fluid.framework import _test_eager_guard
 from paddle.fluid.optimizer import SGDOptimizer
 
 
 class TestImperativeMnistSortGradient(unittest.TestCase):
-    def func_test_mnist_sort_gradient_float32(self):
+    def test_mnist_sort_gradient_float32(self):
         seed = 90
         epoch_num = 1
 
@@ -167,11 +166,6 @@ class TestImperativeMnistSortGradient(unittest.TestCase):
             np.testing.assert_allclose(
                 value, dy_param_value2[key], rtol=1e-05, atol=1e-05
             )
-
-    def test_mnist_sort_gradient_float32(self):
-        with _test_eager_guard():
-            self.func_test_mnist_sort_gradient_float32()
-        self.func_test_mnist_sort_gradient_float32()
 
 
 if __name__ == '__main__':

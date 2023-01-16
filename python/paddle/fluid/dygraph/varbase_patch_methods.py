@@ -20,7 +20,7 @@ import sys
 
 import paddle
 from .. import framework
-from ..framework import convert_np_dtype_to_dtype_, _in_legacy_dygraph
+from ..framework import convert_np_dtype_to_dtype_
 from .. import core
 from .. import unique_name
 from ..framework import (
@@ -857,13 +857,6 @@ def monkey_patch_varbase():
                 return self.__setitem_varbase__(item, value)
 
     @framework.dygraph_only
-    def _grad_ivar(self):
-        if self.grad is not None:
-            if self.grad._is_initialized():
-                return self.grad
-        return None
-
-    @framework.dygraph_only
     def _set_grad_ivar(self, value):
         if isinstance(self, EagerParamBase):
             self.grad = value
@@ -965,14 +958,12 @@ def monkey_patch_varbase():
             .. code-block:: python
 
                 import paddle
-                from paddle.fluid.framework import _test_eager_guard
-                with _test_eager_guard():
-                    indices = [[0, 0, 1, 2, 2], [1, 3, 2, 0, 1]]
-                    values = [1, 2, 3, 4, 5]
-                    dense_shape = [3, 4]
-                    sparse_x = paddle.sparse.sparse_coo_tensor(paddle.to_tensor(indices, dtype='int32'), paddle.to_tensor(values, dtype='float32'), shape=dense_shape)
-                    print(sparse_x.values())
-                    #[1, 2, 3, 4, 5]
+                indices = [[0, 0, 1, 2, 2], [1, 3, 2, 0, 1]]
+                values = [1, 2, 3, 4, 5]
+                dense_shape = [3, 4]
+                sparse_x = paddle.sparse.sparse_coo_tensor(paddle.to_tensor(indices, dtype='int32'), paddle.to_tensor(values, dtype='float32'), shape=dense_shape)
+                print(sparse_x.values())
+                #[1, 2, 3, 4, 5]
         """
         return _C_ops.sparse_values(self)
 
@@ -990,16 +981,14 @@ def monkey_patch_varbase():
             .. code-block:: python
 
                 import paddle
-                from paddle.fluid.framework import _test_eager_guard
-                with _test_eager_guard():
-                    indices = [[0, 0, 1, 2, 2], [1, 3, 2, 0, 1]]
-                    values = [1, 2, 3, 4, 5]
-                    dense_shape = [3, 4]
-                    sparse_x = paddle.sparse.sparse_coo_tensor(paddle.to_tensor(indices, dtype='int64'), paddle.to_tensor(values, dtype='float32'), shape=dense_shape)
-                    dense_x = sparse_x.to_dense()
-                    #[[0., 1., 0., 2.],
-                    # [0., 0., 3., 0.],
-                    # [4., 5., 0., 0.]]
+                indices = [[0, 0, 1, 2, 2], [1, 3, 2, 0, 1]]
+                values = [1, 2, 3, 4, 5]
+                dense_shape = [3, 4]
+                sparse_x = paddle.sparse.sparse_coo_tensor(paddle.to_tensor(indices, dtype='int64'), paddle.to_tensor(values, dtype='float32'), shape=dense_shape)
+                dense_x = sparse_x.to_dense()
+                #[[0., 1., 0., 2.],
+                # [0., 0., 3., 0.],
+                # [4., 5., 0., 0.]]
         """
 
         return _C_ops.sparse_to_dense(self)
@@ -1018,14 +1007,12 @@ def monkey_patch_varbase():
             .. code-block:: python
 
                 import paddle
-                from paddle.fluid.framework import _test_eager_guard
-                with _test_eager_guard():
-                    dense_x = [[0, 1, 0, 2], [0, 0, 3, 4]]
-                    dense_x = paddle.to_tensor(dense_x, dtype='float32')
-                    sparse_x = dense_x.to_sparse_coo(sparse_dim=2)
-                    #indices=[[0, 0, 1, 1],
-                    #         [1, 3, 2, 3]],
-                    #values=[1., 2., 3., 4.]
+                dense_x = [[0, 1, 0, 2], [0, 0, 3, 4]]
+                dense_x = paddle.to_tensor(dense_x, dtype='float32')
+                sparse_x = dense_x.to_sparse_coo(sparse_dim=2)
+                #indices=[[0, 0, 1, 1],
+                #         [1, 3, 2, 3]],
+                #values=[1., 2., 3., 4.]
         """
 
         return _C_ops.sparse_to_sparse_coo(self, sparse_dim)
@@ -1066,7 +1053,6 @@ def monkey_patch_varbase():
             setattr(core.VarBase, method_name, method)
 
     if framework._in_eager_mode_:
-        setattr(core.eager.Tensor, "_grad_ivar", _grad_ivar)
         setattr(core.eager.Tensor, "_set_grad_ivar", _set_grad_ivar)
         setattr(core.eager.Tensor, "value", value)
         setattr(core.eager.Tensor, "cpu", cpu)

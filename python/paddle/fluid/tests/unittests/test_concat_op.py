@@ -22,7 +22,6 @@ import paddle
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
 from paddle.fluid import Program, core, program_guard
-from paddle.fluid.framework import _test_eager_guard
 from paddle.fluid.tests.unittests.op_test import (
     OpTest,
     convert_float_to_uint16,
@@ -354,12 +353,6 @@ class TestConcatAPI(unittest.TestCase):
         self.assertEqual((out1.numpy() == np_out1).all(), True)
         self.assertEqual((out2.numpy() == np_out2).all(), True)
 
-    def test_eager(self):
-        with _test_eager_guard():
-            self.test_api()
-            self.test_fluid_api()
-            self.test_imperative()
-
     def test_errors(self):
         with program_guard(Program(), Program()):
             # The item in input must be Variable.
@@ -478,7 +471,6 @@ class TestConcatDoubleGradCheck(unittest.TestCase):
             place=place,
             eps=eps,
         )
-        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         gradient_checker.double_grad_check_for_dygraph(
             self.concat_wrapper,
             [data1, data2],
@@ -520,7 +512,6 @@ class TestConcatTripleGradCheck(unittest.TestCase):
             place=place,
             eps=eps,
         )
-        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         gradient_checker.double_grad_check_for_dygraph(
             self.concat_wrapper,
             [data1, data2],

@@ -22,13 +22,10 @@ import paddle
 import paddle.fluid as fluid
 from paddle.fluid.dygraph.base import to_variable
 from paddle.fluid.optimizer import SGDOptimizer
-from paddle.jit import ProgramTranslator
-from paddle.jit.api import declarative
+from paddle.jit.api import to_static
 
 PRINT_STEP = 20
 SEED = 2020
-
-program_translator = ProgramTranslator()
 
 
 class SimpleLSTMRNN(fluid.Layer):
@@ -96,8 +93,8 @@ class SimpleLSTMRNN(fluid.Layer):
                 gate_input = paddle.matmul(x=nn, y=weight_1)
 
                 gate_input = paddle.add(gate_input, bias)
-                i, j, f, o = fluid.layers.split(
-                    gate_input, num_or_sections=4, dim=-1
+                i, j, f, o = paddle.split(
+                    gate_input, num_or_sections=4, axis=-1
                 )
                 c = pre_cell * paddle.nn.functional.sigmoid(
                     f
@@ -186,7 +183,7 @@ class PtbModel(fluid.Layer):
     def build_once(self, input, label, init_hidden, init_cell):
         pass
 
-    @declarative
+    @to_static
     def forward(self, input, label, init_hidden, init_cell):
 
         init_h = paddle.reshape(
@@ -319,12 +316,12 @@ def train(place):
 
 
 def train_dygraph(place):
-    program_translator.enable(False)
+    paddle.jit.enable_to_static(False)
     return train(place)
 
 
 def train_static(place):
-    program_translator.enable(True)
+    paddle.jit.enable_to_static(True)
     return train(place)
 
 

@@ -19,7 +19,7 @@ import numpy as np
 
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.framework import _in_legacy_dygraph
+import paddle.nn.functional as F
 from paddle.fluid.wrapped_decorator import wrap_decorator
 
 
@@ -220,7 +220,7 @@ class TestDygraphDoubleGrad(TestCase):
         numel = x_np.size
         x.stop_gradient = False
 
-        y = fluid.layers.relu(x)
+        y = F.relu(x)
         z = y + 1
         w = z * z
 
@@ -238,22 +238,6 @@ class TestDygraphDoubleGrad(TestCase):
         ).astype('float32')
         np.testing.assert_allclose(dx_actual.numpy(), dx_expected, rtol=1e-05)
 
-        if not _in_legacy_dygraph():
-            pass
-        else:
-            loss = paddle.mean(dx_actual * dx_actual + x * x)
-            loss.backward()
-
-            x_grad_actual = x.gradient()
-            x_grad_expected = (
-                2.0
-                / float(numel)
-                * (x_np + dx_expected * (x_np > 0) * 2 / float(numel))
-            ).astype('float32')
-            np.testing.assert_allclose(
-                x_grad_actual, x_grad_expected, rtol=1e-05
-            )
-
     @dygraph_guard
     def test_example_with_gradient_accumulation_and_no_grad_vars(self):
         x = random_var(self.shape)
@@ -261,8 +245,8 @@ class TestDygraphDoubleGrad(TestCase):
         numel = x_np.size
         x.stop_gradient = False
 
-        y1 = fluid.layers.relu(x)
-        y2 = fluid.layers.relu(x)
+        y1 = F.relu(x)
+        y2 = F.relu(x)
         z = y1 + y2
         w = z * z
 
@@ -285,22 +269,6 @@ class TestDygraphDoubleGrad(TestCase):
         ).astype('float32')
         np.testing.assert_allclose(dx_actual.numpy(), dx_expected, rtol=1e-05)
 
-        if not _in_legacy_dygraph():
-            pass
-        else:
-            loss = paddle.mean(dx_actual * dx_actual + x * x)
-            loss.backward()
-
-            x_grad_actual = x.gradient()
-            x_grad_expected = (
-                2.0
-                / float(numel)
-                * (x_np + dx_expected * (x_np > 0) * 4 / float(numel))
-            ).astype('float32')
-            np.testing.assert_allclose(
-                x_grad_actual, x_grad_expected, rtol=1e-05
-            )
-
     @dygraph_guard
     def test_example_with_gradient_accumulation_and_not_create_graph(self):
         x = random_var(self.shape)
@@ -308,7 +276,7 @@ class TestDygraphDoubleGrad(TestCase):
         numel = x_np.size
         x.stop_gradient = False
 
-        y = fluid.layers.relu(x)
+        y = F.relu(x)
         z = y + 1
         w = z * z
 
@@ -325,18 +293,6 @@ class TestDygraphDoubleGrad(TestCase):
         ).astype('float32')
 
         np.testing.assert_allclose(dx_actual.numpy(), dx_expected, rtol=1e-05)
-
-        if not _in_legacy_dygraph():
-            pass
-        else:
-            loss = paddle.mean(dx_actual * dx_actual + x * x)
-            loss.backward()
-
-            x_grad_actual = x.gradient()
-            x_grad_expected = (2.0 * x_np / float(numel)).astype('float32')
-            np.testing.assert_allclose(
-                x_grad_actual, x_grad_expected, rtol=1e-05
-            )
 
 
 class TestDygraphDoubleGradSortGradient(TestDygraphDoubleGrad):

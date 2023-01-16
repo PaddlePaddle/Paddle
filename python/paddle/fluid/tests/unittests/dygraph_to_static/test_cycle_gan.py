@@ -38,8 +38,7 @@ os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 
 import paddle
 from paddle.fluid.dygraph import to_variable
-from paddle.jit import ProgramTranslator
-from paddle.jit.api import declarative
+from paddle.jit.api import to_static
 from paddle.nn import BatchNorm
 
 # Note: Set True to eliminate randomness.
@@ -61,8 +60,6 @@ lambda_identity = 0.5
 IMAGE_SIZE = 64
 SEED = 2020
 
-program_translator = ProgramTranslator()
-
 
 class Cycle_Gan(fluid.dygraph.Layer):
     def __init__(self, input_channel, istrain=True):
@@ -82,7 +79,7 @@ class Cycle_Gan(fluid.dygraph.Layer):
                 input_channel
             )
 
-    @declarative
+    @to_static
     def forward(self, input_A, input_B):
         """
         Generator of GAN model.
@@ -133,7 +130,7 @@ class Cycle_Gan(fluid.dygraph.Layer):
             g_loss,
         )
 
-    @declarative
+    @to_static
     def discriminatorA(self, input_A, input_B):
         """
         Discriminator A of GAN model.
@@ -143,7 +140,7 @@ class Cycle_Gan(fluid.dygraph.Layer):
 
         return rec_B, fake_pool_rec_B
 
-    @declarative
+    @to_static
     def discriminatorB(self, input_A, input_B):
         """
         Discriminator B of GAN model.
@@ -560,7 +557,7 @@ def train(args, to_static):
         else fluid.CPUPlace()
     )
 
-    program_translator.enable(to_static)
+    paddle.jit.enable_to_static(to_static)
 
     with fluid.dygraph.guard(place):
         max_images_num = args.max_images_num

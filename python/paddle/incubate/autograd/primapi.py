@@ -12,8 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import logging
 import typing
 
+import paddle
 from paddle.fluid import backward, framework
 from paddle.incubate.autograd import primx, utils
 
@@ -23,7 +25,7 @@ def forward_grad(outputs, inputs, grad_inputs=None):
     """Forward mode of automatic differentiation.
 
     Note:
-        **ONLY available in the static mode and primitive operators.**
+        **ONLY available in the static graph mode and primitive operators.**
 
     Args:
         outputs(Tensor|Sequence[Tensor]): The output tensor or tensors.
@@ -106,7 +108,7 @@ def grad(outputs, inputs, grad_outputs=None):
     """Reverse mode of automatic differentiation.
 
     Note:
-        **ONLY available in the static mode and primitive operators**
+        **ONLY available in the static graph mode and primitive operators**
 
     Args:
         outputs(Tensor|Sequence[Tensor]): The output Tensor or Tensors.
@@ -211,3 +213,18 @@ def grad(outputs, inputs, grad_outputs=None):
     ad.erase_dots(xs_dot)
 
     return xs_bar[0] if isinstance(inputs, framework.Variable) else xs_bar
+
+
+@framework.static_only
+def to_prim(blocks):
+    """Search nonbasic ops which have be registered composite rules and replace them with primitive ops."""
+    if isinstance(blocks, paddle.fluid.framework.Block):
+        logging.info("Atomize composite op to primitive ops begin.")
+        primx._lower_composite(blocks)
+        return
+    elif isinstance(blocks, typing.Sequence):
+        for item in blocks:
+            to_prim(item)
+        return
+    else:
+        raise TypeError

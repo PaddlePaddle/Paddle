@@ -22,7 +22,7 @@ import numpy as np
 import paddle
 import paddle.nn as nn
 from paddle import _legacy_C_ops
-from paddle.fluid.framework import _non_static_mode, _test_eager_guard, core
+from paddle.fluid.framework import _non_static_mode, core
 from paddle.fluid.layer_helper import LayerHelper
 
 sys.path.append("./tokenizer")
@@ -196,7 +196,7 @@ class TestBertTokenizerOp(unittest.TestCase):
         self.texts_tensor = to_string_tensor(self.texts, "texts")
         self.text_pairs_tensor = to_string_tensor(self.text_pairs, "text_pairs")
 
-    def run_padding(self):
+    def test_padding(self):
         self.init_data()
         self.max_seq_len = 128
         self.pad_to_max_seq_len = True
@@ -310,12 +310,7 @@ class TestBertTokenizerOp(unittest.TestCase):
             token_type_ids, py_token_type_ids, rtol=0, atol=0.01
         )
 
-    def test_padding(self):
-        with _test_eager_guard():
-            self.run_padding()
-        self.run_padding()
-
-    def run_no_padding(self):
+    def test_no_padding(self):
         self.init_data()
         self.max_seq_len = 128
         self.pad_to_max_seq_len = False
@@ -375,12 +370,7 @@ class TestBertTokenizerOp(unittest.TestCase):
             token_type_ids, py_token_type_ids, rtol=0, atol=0.01
         )
 
-    def test_no_padding(self):
-        with _test_eager_guard():
-            self.run_no_padding()
-        self.run_no_padding()
-
-    def run_is_split_into_words(self):
+    def test_is_split_into_words(self):
         self.init_data()
         self.is_split_into_words = True
 
@@ -402,11 +392,6 @@ class TestBertTokenizerOp(unittest.TestCase):
         np.testing.assert_allclose(
             token_type_ids, py_token_type_ids, rtol=0, atol=0.01
         )
-
-    def test_is_split_into_words(self):
-        with _test_eager_guard():
-            self.run_is_split_into_words()
-        self.run_is_split_into_words()
 
     def test_inference(self):
         self.init_data()

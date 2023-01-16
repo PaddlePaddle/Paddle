@@ -38,6 +38,7 @@ __all__ = [  # noqa
     'is_compiled_with_rocm',
     'is_compiled_with_npu',
     'is_compiled_with_mlu',
+    'is_compiled_with_custom_device',
     'get_all_device_type',
     'get_all_custom_device_type',
     'get_available_device',
@@ -53,7 +54,8 @@ def is_compiled_with_npu():
     """
     Whether paddle was built with WITH_ASCEND_CL=ON to support Ascend NPU.
 
-    Returns (bool): `True` if NPU is supported, otherwise `False`.
+    Return:
+        bool, ``True`` if NPU is supported, otherwise ``False``.
 
     Examples:
         .. code-block:: python
@@ -62,6 +64,24 @@ def is_compiled_with_npu():
             support_npu = paddle.device.is_compiled_with_npu()
     """
     return core.is_compiled_with_npu()
+
+
+def is_compiled_with_custom_device(device_type):
+    """
+    Whether paddle was built with Paddle_CUSTOM_DEVICE .
+
+    Args:
+        std::string, the registered device type, like "npu".
+    Return:
+        bool, ``True`` if CustomDevice is supported, otherwise ``False``.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            support_npu = paddle.device.is_compiled_with_custom_device("npu")
+    """
+    return core.is_compiled_with_custom_device(device_type)
 
 
 def is_compiled_with_ipu():

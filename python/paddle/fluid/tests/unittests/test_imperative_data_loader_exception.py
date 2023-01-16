@@ -18,6 +18,7 @@ import unittest
 import numpy as np
 
 import paddle.fluid as fluid
+import paddle.nn.functional as F
 from paddle.fluid import core
 
 
@@ -36,7 +37,7 @@ class TestDygraphDataLoaderWithException(unittest.TestCase):
 
     def test_not_capacity(self):
         with fluid.dygraph.guard():
-            with self.assertRaisesRegexp(
+            with self.assertRaisesRegex(
                 ValueError, "Please give value to capacity."
             ):
                 fluid.io.DataLoader.from_generator()
@@ -112,7 +113,7 @@ class TestDygraphDataLoaderWithException(unittest.TestCase):
             try:
                 for _ in range(self.epoch_num):
                     for image, _ in loader():
-                        fluid.layers.relu(image)
+                        F.relu(image)
             except core.EnforceNotMet as ex:
                 self.assertIn("Blocking queue is killed", str(ex))
                 exception = ex

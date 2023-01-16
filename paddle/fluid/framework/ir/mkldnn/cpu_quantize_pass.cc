@@ -20,7 +20,7 @@
 
 #include "paddle/fluid/framework/ir/mkldnn/mkldnn_pass_util.h"
 #include "paddle/fluid/platform/mkldnn_helper.h"
-#include "paddle/fluid/string/pretty_log.h"
+#include "paddle/utils/string/pretty_log.h"
 
 namespace paddle {
 namespace framework {
@@ -452,6 +452,9 @@ void CPUQuantizePass::QuantizeConv(Graph* graph,
                      Graph* g) {
     VLOG(4) << "Quantize conv2d op";
     GET_IR_NODE_FROM_SUBGRAPH(conv_op, conv_op, conv_pattern);
+    if (conv_op->Op()->Type() == "conv2d") {
+      conv_op->Op()->SetType("fused_conv2d");
+    }
 
     // skip if should not be quantized
     if (!platform::HasOpINT8DataType(conv_op->Op())) {
@@ -1204,8 +1207,7 @@ void CPUQuantizePass::QuantizeMultiGru(Graph* graph) const {
       auto* w_scale_tensor_dst =
           scope->Var(w_scale_node->Name())->GetMutable<phi::DenseTensor>();
       w_scale_tensor_dst->Resize(scale_tensor_src.dims());
-      auto* dst_data =
-          w_scale_tensor_dst->mutable_data<float>(platform::CPUPlace());
+      auto* dst_data = w_scale_tensor_dst->mutable_data<float>(phi::CPUPlace());
       EigenVectorArrayMapFloat eigen_tensor_dst{dst_data,
                                                 w_scale_tensor_dst->numel()};
       eigen_tensor_dst =
@@ -1300,10 +1302,10 @@ void CPUQuantizePass::ApplyImpl(ir::Graph* graph) const {
       platform::errors::InvalidArgument("Scope cannot be nullptr."));
 
   GetQuantInfo(graph);
-  QuantizeConv(graph, "conv2d", false /* with_residual_data */);
-  QuantizeConv(graph, "conv2d", true /* with_residual_data */);
   QuantizeConv(graph, "fused_conv2d", false /* with_residual_data */);
   QuantizeConv(graph, "fused_conv2d", true /* with_residual_data */);
+  QuantizeConv(graph, "conv2d", false /* with_residual_data */);
+  QuantizeConv(graph, "conv2d", true /* with_residual_data */);
   QuantizePool(graph);
   QuantizeConcat(graph);
   QuantizePriorBox(graph);

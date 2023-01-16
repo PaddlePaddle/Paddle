@@ -18,6 +18,7 @@ import numpy as np
 
 import paddle
 import paddle.fluid as fluid
+import paddle.nn.functional as F
 import paddle.static as static
 
 
@@ -246,19 +247,19 @@ class SimpleNet(BackwardNet):
         x_merge = paddle.add(x_emb, x2_emb, name='x_add_x2')
         x2_merge = paddle.add(x2_emb, x3_emb, name='x2_add_x3')
         # shared fc_w
-        predict = fluid.layers.fc(
-            input=x_merge,
+        predict = paddle.static.nn.fc(
+            x=x_merge,
             size=1,
-            act='softmax',
-            param_attr=fluid.ParamAttr(name='fc_w'),
+            activation='softmax',
+            weight_attr=fluid.ParamAttr(name='fc_w'),
             name='fc_predict',
         )
         # useless layer for calculating loss
-        fc_no_use = fluid.layers.fc(
-            input=x2_merge,
+        fc_no_use = paddle.static.nn.fc(
+            x=x2_merge,
             size=1,
-            act='sigmoid',
-            param_attr=fluid.ParamAttr(name='fc_w'),
+            activation='sigmoid',
+            weight_attr=fluid.ParamAttr(name='fc_w'),
             name='fc_no_use',
         )
         # loss
@@ -284,8 +285,8 @@ class TestGradientsError(unittest.TestCase):
     def test_error(self):
         x = fluid.data(name='x', shape=[None, 2, 8, 8], dtype='float32')
         x.stop_gradient = False
-        conv = fluid.layers.conv2d(x, 4, 1, bias_attr=False)
-        y = fluid.layers.relu(conv)
+        conv = paddle.static.nn.conv2d(x, 4, 1, bias_attr=False)
+        y = F.relu(conv)
 
         with self.assertRaises(TypeError):
             x_grad = fluid.gradients(y.name, x)
@@ -331,7 +332,7 @@ class TestAppendBackwardWithError(unittest.TestCase):
         x = fluid.data(name='x', shape=[None, 13], dtype='int64')
         y = fluid.data(name='y', shape=[None, 1], dtype='float32')
         x_emb = fluid.embedding(x, size=[100, 256])
-        y_predict = fluid.layers.fc(input=x_emb, size=1, name='my_fc')
+        y_predict = paddle.static.nn.fc(x=x_emb, size=1, name='my_fc')
         loss = paddle.nn.functional.square_error_cost(input=y_predict, label=y)
         avg_loss = paddle.mean(loss)
         param_names = [

@@ -152,6 +152,7 @@ def sparse_coo_tensor(
         if shape is None:
             shape = min_shape
         else:
+            shape = list(shape)
             if shape < min_shape:
                 raise ValueError(
                     "the minimun shape required is {}, but get {}".format(

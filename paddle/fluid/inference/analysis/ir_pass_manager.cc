@@ -52,6 +52,7 @@ void IRPassManager::CreatePasses(Argument *argument,
   for (const std::string &pass_name : passes) {
     auto pass = framework::ir::PassRegistry::Instance().Get(pass_name);
     pass->Set("use_varseqlen", new bool(argument->tensorrt_use_varseqlen()));
+    pass->Set("use_cutlass", new bool(argument->use_cutlass()));
     pass->Set("with_interleaved",
               new bool(argument->tensorrt_with_interleaved()));
     pass->Set("tensorrt_transformer_posid",
@@ -79,6 +80,10 @@ void IRPassManager::CreatePasses(Argument *argument,
               new std::map<std::string, std::vector<int>>());
     pass->Set("optim_shape_tensor",
               new std::map<std::string, std::vector<int>>());
+
+    // This gpu_device_id is used by some fp16 precision passes, so move it
+    // here.
+    pass->Set("gpu_device_id", new int(argument->gpu_device_id()));
 
     // tuned trt dynamic_shape
     pass->Set("trt_tuned_dynamic_shape",
@@ -129,6 +134,7 @@ void IRPassManager::CreatePasses(Argument *argument,
           new std::unordered_set<int>(argument->quantize_excluded_op_ids()));
     } else if (pass_name == "cpu_quantize_pass") {
       if (argument->quantize_enabled_op_types().count("conv2d") ||
+          argument->quantize_enabled_op_types().count("fused_conv2d") ||
           argument->quantize_enabled_op_types().count("depthwise_conv2d")) {
         pass->Set("data_layout", new std::string("NHWC"));
       }
@@ -197,7 +203,6 @@ void IRPassManager::CreatePasses(Argument *argument,
             "model_opt_cache_dir",
             new std::string(GetOrCreateModelOptCacheDir(model_opt_cache_dir)));
       }
-      pass->Set("gpu_device_id", new int(argument->gpu_device_id()));
       pass->Set("use_static_engine", new bool(use_static_engine));
       pass->Set("model_from_memory", new bool(argument->model_from_memory()));
       pass->Set("use_inspector", new bool(argument->tensorrt_use_inspector()));

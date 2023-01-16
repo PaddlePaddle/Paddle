@@ -26,6 +26,7 @@
 #include "paddle/fluid/platform/dynload/tensorrt.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/phi/common/data_type.h"
+#include "paddle/phi/core/utils/data_type.h"
 
 namespace paddle {
 namespace inference {
@@ -94,6 +95,17 @@ static std::tuple<int, int, int> GetTrtCompileVersion() {
   return std::tuple<int, int, int>{
       NV_TENSORRT_MAJOR, NV_TENSORRT_MINOR, NV_TENSORRT_PATCH};
 }
+
+template <typename T>
+struct Destroyer {
+  void operator()(T* x) {
+    if (x) {
+      x->destroy();
+    }
+  }
+};
+template <typename T>
+using infer_ptr = std::unique_ptr<T, Destroyer<T>>;
 
 // A logger for create TensorRT infer builder.
 class NaiveLogger : public nvinfer1::ILogger {
@@ -215,14 +227,6 @@ static inline nvinfer1::DataType PhiType2NvType(phi::DataType type) {
   return nv_type;
 }
 
-static bool IsFloatVar(framework::proto::VarType::Type t) {
-  if (t == framework::proto::VarType::FP16 ||
-      t == framework::proto::VarType::FP32 ||
-      t == framework::proto::VarType::FP64 ||
-      t == framework::proto::VarType::BF16)
-    return true;
-  return false;
-}
 }  // namespace tensorrt
 }  // namespace inference
 }  // namespace paddle

@@ -21,7 +21,7 @@ import paddle.fluid as fluid
 from paddle.fluid import ParamAttr, layers
 from paddle.fluid.dygraph import Layer
 from paddle.fluid.dygraph.base import to_variable
-from paddle.jit.api import declarative
+from paddle.jit.api import to_static
 from paddle.nn import Embedding
 
 INF = 1.0 * 1e5
@@ -73,7 +73,7 @@ class BasicLSTMUnit(Layer):
         gate_input = paddle.matmul(x=concat_input_hidden, y=self._weight)
 
         gate_input = paddle.add(gate_input, self._bias)
-        i, j, f, o = layers.split(gate_input, num_or_sections=4, dim=-1)
+        i, j, f, o = paddle.split(gate_input, num_or_sections=4, axis=-1)
         new_cell = paddle.add(
             paddle.multiply(
                 pre_cell, paddle.nn.functional.sigmoid(f + self._forget_bias)
@@ -207,7 +207,7 @@ class BaseModel(fluid.dygraph.Layer):
         topk_coordinates = paddle.stack([batch_pos, indices], axis=2)
         return paddle.gather_nd(x, topk_coordinates)
 
-    @declarative
+    @to_static
     def forward(self, inputs):
         src, tar, label, src_sequence_length, tar_sequence_length = inputs
         if src.shape[0] < self.batch_size:
@@ -312,7 +312,7 @@ class BaseModel(fluid.dygraph.Layer):
 
         return loss
 
-    @declarative
+    @to_static
     def beam_search(self, inputs):
         src, tar, label, src_sequence_length, tar_sequence_length = inputs
         if src.shape[0] < self.batch_size:
@@ -724,7 +724,7 @@ class AttentionModel(fluid.dygraph.Layer):
 
         return array
 
-    @declarative
+    @to_static
     def forward(self, inputs):
         src, tar, label, src_sequence_length, tar_sequence_length = inputs
         if src.shape[0] < self.batch_size:

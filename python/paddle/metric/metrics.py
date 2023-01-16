@@ -269,7 +269,7 @@ class Accuracy(Metric):
         if (len(label.shape) == 1) or (
             len(label.shape) == 2 and label.shape[-1] == 1
         ):
-            # In static mode, the real label data shape may be different
+            # In static graph mode, the real label data shape may be different
             # from shape defined by paddle.static.InputSpec in model
             # building, reshape to the right shape.
             label = paddle.reshape(label, (-1, 1))
