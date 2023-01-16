@@ -129,6 +129,17 @@ void PrelnResidualBias::operator()(PDNode *x, PDNode *y) {
 
 }  // namespace patterns
 
+void addIntermediateOut(Node *op_node,
+                        const std::string &out_name,
+                        const std::string &scope_name,
+                        Graph *graph) {
+  std::string new_name = scope_name + "/at." + out_name + ".new";
+  VarDesc out_var(new_name);
+  out_var.SetPersistable(false);
+  auto *node_var = graph->CreateVarNode(&out_var);
+  IR_NODE_LINK_TO(op_node, node_var);
+}
+
 int PrelnResidualBiasFusePass::ApplyPattern(ir::Graph *graph,
                                             bool with_bias) const {
   PADDLE_ENFORCE_NOT_NULL(
@@ -239,6 +250,9 @@ int PrelnResidualBiasFusePass::ApplyPattern(ir::Graph *graph,
     new_desc.SetAttr("begin_norm_axis",
                      layer_norm->Op()->GetAttr("begin_norm_axis"));
     auto fused_node = graph->CreateOpNode(&new_desc);  // OpDesc will be copied.
+    addIntermediateOut(
+        fused_node, "DropoutMaskOut", "preln_residual_bias_fuse", graph);
+
     if (with_bias) {
       del_node_set.insert(elementwise0);
       del_node_set.insert(elementwise0_out);

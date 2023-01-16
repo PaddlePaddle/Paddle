@@ -82,10 +82,10 @@ class FusedBiasDropoutResidualLnOpMaker
     AddOutput("BiasDropoutResidualOut", "Output of bias + dropout + residual.")
         .AsIntermediate();
     AddOutput("DropoutMaskOut", "The random sampled dropout mask.")
-        .AsDispensable();
-    AddOutput("LnMean", "Mean of the current mini batch.").AsDispensable();
+        .AsIntermediate();
+    AddOutput("LnMean", "Mean of the current mini batch.").AsIntermediate();
     AddOutput("LnVariance", "Variance of the current mini batch.")
-        .AsDispensable();
+        .AsIntermediate();
     AddOutput("Y", "Result.");
     AddAttr<float>("dropout_rate", "Probability of setting units to zero.")
         .SetDefault(.5f)
