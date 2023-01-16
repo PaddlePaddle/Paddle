@@ -437,7 +437,7 @@
   backward : fill_diagonal_tensor_grad
 
 - op : flash_attn
-  args : (Tensor q, Tensor k, Tensor v, float dropout = 0.0, bool causal = false)
+  args : (Tensor q, Tensor k, Tensor v, float dropout = 0.0, bool causal = false, bool return_softmax = false)
   output : Tensor(out), Tensor(softmax_lse), Tensor(softmax), Tensor(seed_offset)
   infer_meta :
     func : FlashAttnInferMeta

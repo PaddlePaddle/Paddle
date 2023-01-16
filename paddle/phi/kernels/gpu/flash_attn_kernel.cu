@@ -34,13 +34,12 @@ void FlashAttnKernel(const Context& ctx,
                      const DenseTensor& v,
                      float dropout,
                      bool causal,
+                     bool return_softmax,
                      DenseTensor* out,
                      DenseTensor* softmax_lse,
                      DenseTensor* softmax,
                      DenseTensor* seed_offset) {
   ctx.template Alloc<T>(out);
-  ctx.template Alloc<float>(
-      softmax_lse);  // batch_size, num_heads, max_seqlen_q}
 
   cudaStream_t stream = ctx.stream();
   bool is_bf16 = q.dtype() == DataType::BFLOAT16 ? true : false;
@@ -69,9 +68,9 @@ void FlashAttnKernel(const Context& ctx,
 
   DenseTensor cu_seqlens_q;
   DenseTensor cu_seqlens_k;
-  ArangeNullaryKernel<int64_t, Context>(
+  ArangeNullaryKernel<int32_t, Context>(
       ctx, 0, (batch_size + 1) * seq_len_q, seq_len_q, &cu_seqlens_q);
-  ArangeNullaryKernel<int64_t, Context>(
+  ArangeNullaryKernel<int32_t, Context>(
       ctx, 0, (batch_size + 1) * seq_len_k, seq_len_k, &cu_seqlens_k);
 
   float scale = 1.0f / std::sqrt(head_size);
@@ -87,31 +86,38 @@ void FlashAttnKernel(const Context& ctx,
   std::vector<int64_t> seed_offset_vec{int64_t(seed), int64_t(offset)};
   paddle::framework::TensorFromVector<int64_t>(seed_offset_vec, seed_offset);
 
-  phi::dynload::flash_attn_fwd(
-      q_t_s.data(),
-      k_t_s.data(),
-      v_t_s.data(),
-      out->data(),
-      cu_seqlens_q.data<int64_t>(),
-      cu_seqlens_k.data<int64_t>(),
-      total_q,
-      total_k,
-      batch_size,
-      num_heads,
-      head_size,
-      seq_len_q,
-      seq_len_k,
-      dropout,
-      scale,
-      zero_tensors,
-      causal,
-      is_bf16,
-      num_splits,
-      softmax_lse->data<float>(),
-      nullptr,  // softmax->data<phi::dtype::float16>(),
-      stream,
-      seed,
-      offset);
+  softmax_lse->Resize({batch_size, num_heads, seq_len_q});
+  ctx.template Alloc<float>(softmax_lse);
+
+  if (return_softmax) {
+    softmax->Resize({batch_size, num_heads, seq_len_q, seq_len_k});
+    ctx.template Alloc<T>(softmax);
+  }
+
+  phi::dynload::flash_attn_fwd(q_t_s.data(),
+                               k_t_s.data(),
+                               v_t_s.data(),
+                               out->data(),
+                               cu_seqlens_q.data<int32_t>(),
+                               cu_seqlens_k.data<int32_t>(),
+                               total_q,
+                               total_k,
+                               batch_size,
+                               num_heads,
+                               head_size,
+                               seq_len_q,
+                               seq_len_k,
+                               dropout,
+                               scale,
+                               zero_tensors,
+                               causal,
+                               is_bf16,
+                               num_splits,
+                               softmax_lse->data<float>(),
+                               return_softmax ? softmax->data() : nullptr,
+                               stream,
+                               seed,
+                               offset);
 }
 
 }  // namespace phi

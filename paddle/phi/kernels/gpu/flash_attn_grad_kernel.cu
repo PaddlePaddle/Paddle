@@ -74,9 +74,9 @@ void FlashAttnGradKernel(const Context& ctx,
 
   DenseTensor cu_seqlens_q;
   DenseTensor cu_seqlens_k;
-  ArangeNullaryKernel<int64_t, Context>(
+  ArangeNullaryKernel<int32_t, Context>(
       ctx, 0, (batch_size + 1) * seq_len_q, seq_len_q, &cu_seqlens_q);
-  ArangeNullaryKernel<int64_t, Context>(
+  ArangeNullaryKernel<int32_t, Context>(
       ctx, 0, (batch_size + 1) * seq_len_k, seq_len_k, &cu_seqlens_k);
 
   float scale = 1.0f / std::sqrt(head_size);
@@ -96,8 +96,8 @@ void FlashAttnGradKernel(const Context& ctx,
                                dv->data(),
                                out.data(),
                                dout.data(),
-                               cu_seqlens_q.data<int64_t>(),
-                               cu_seqlens_k.data<int64_t>(),
+                               cu_seqlens_q.data<int32_t>(),
+                               cu_seqlens_k.data<int32_t>(),
                                total_q,
                                total_k,
                                batch_size,
