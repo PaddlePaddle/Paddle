@@ -95,6 +95,23 @@ Tensor multiply<DescTensor>(const Tensor& x, const Tensor& y) {
 }
 
 template <>
+Tensor expand<DescTensor>(const Tensor& x, const IntArray& shape) {
+  Tensor out = empty<DescTensor>({}, phi::DataType::FLOAT32, paddle::Place());
+  framework::BlockDesc* block = StaticCompositeContext::Instance().GetBlock();
+  framework::OpDesc* op = block->AppendOp();
+  op->SetType("expand_v2");
+  op->SetInput("X",
+               {std::static_pointer_cast<prim::DescTensor>(x.impl())->Name()});
+  op->SetOutput(
+      "Out", {std::static_pointer_cast<prim::DescTensor>(out.impl())->Name()});
+  std::vector<int> new_shape(shape.GetData().begin(), shape.GetData().end());
+  op->SetAttr("shape", new_shape);
+  op->CheckAttrs();
+  op->InferVarType(block);
+  return out;
+}
+
+template <>
 Tensor divide<DescTensor>(const Tensor& x, const Tensor& y) {
   // Grad infershape
   Tensor out = empty<DescTensor>({}, phi::DataType::FLOAT32, paddle::Place());
@@ -114,6 +131,23 @@ Tensor divide<DescTensor>(const Tensor& x, const Tensor& y) {
 }
 
 template <>
+Tensor unsqueeze<DescTensor>(const Tensor& x, const IntArray& axis) {
+  Tensor out = empty<DescTensor>({}, phi::DataType::FLOAT32, paddle::Place());
+  framework::BlockDesc* block = StaticCompositeContext::Instance().GetBlock();
+  framework::OpDesc* op = block->AppendOp();
+  op->SetType("unsqueeze2");
+  op->SetInput("X",
+               {std::static_pointer_cast<prim::DescTensor>(x.impl())->Name()});
+  op->SetOutput(
+      "Out", {std::static_pointer_cast<prim::DescTensor>(out.impl())->Name()});
+  std::vector<int> new_shape(axis.GetData().begin(), axis.GetData().end());
+  op->SetAttr("axes", new_shape);
+  op->CheckAttrs();
+  op->InferVarType(block);
+  return out;
+}
+
+template <>
 Tensor full<DescTensor>(paddle::experimental::IntArray shape,
                         paddle::experimental::Scalar value,
                         paddle::experimental::DataType dtype,
@@ -126,6 +160,7 @@ Tensor full<DescTensor>(paddle::experimental::IntArray shape,
   op->SetAttr("shape", shape.GetData());
   PADDLE_ENFORCE_EQ(
       ((dtype == paddle::experimental::DataType::FLOAT32) ||
+       (dtype == paddle::experimental::DataType::FLOAT64) ||
        (dtype == paddle::experimental::DataType::FLOAT16)),
       true,
       phi::errors::InvalidArgument(
@@ -140,6 +175,7 @@ Tensor full<DescTensor>(paddle::experimental::IntArray shape,
   op->InferShape(*block);
   return out;
 }
+
 template <>
 Tensor sum<DescTensor>(Tensor x,
                        paddle::experimental::IntArray axis,

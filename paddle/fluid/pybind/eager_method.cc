@@ -1893,6 +1893,21 @@ static PyObject* tensor_data_ptr(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+static PyObject* tensor__grad_ivar(TensorObject* self,
+                                   PyObject* args,
+                                   PyObject* kwargs) {
+  EAGER_TRY
+  VLOG(6) << "Get grad for tensor: " << self->tensor.name();
+  auto meta = egr::EagerUtils::nullable_autograd_meta(self->tensor);
+  VLOG(6) << meta << " initialized: " << meta->Grad().initialized();
+  if (meta && meta->Grad().initialized()) {
+    return ToPyObject(meta->Grad());
+  } else {
+    RETURN_PY_NONE
+  }
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
 #if defined(PADDLE_WITH_CUDA)
 static PyObject* tensor_method__uva(TensorObject* self,
                                     PyObject* args,
@@ -2150,6 +2165,10 @@ PyMethodDef variable_methods[] = {
      NULL},
     {"data_ptr",
      (PyCFunction)(void (*)(void))tensor_data_ptr,
+     METH_VARARGS | METH_KEYWORDS,
+     NULL},
+    {"_grad_ivar",
+     (PyCFunction)(void (*)(void))tensor__grad_ivar,
      METH_VARARGS | METH_KEYWORDS,
      NULL},
 #if defined(PADDLE_WITH_CUDA)
