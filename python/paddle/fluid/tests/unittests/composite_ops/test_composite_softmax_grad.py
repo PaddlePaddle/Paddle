@@ -175,8 +175,8 @@ class TestCompositeSoftmaxPrimBackward(unittest.TestCase):
         np.testing.assert_allclose(
             expect,
             actual,
-            rtol=1e-6,
-            atol=1e-6,
+            rtol=attrs.get_rtol("prim_backward"),
+            atol=attrs.get_rtol("prim_backward"),
         )
 
     def test_prim_backward(self):
