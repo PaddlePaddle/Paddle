@@ -18,7 +18,7 @@ foreach(src ${OPS})
 endforeach()
 
 if(WITH_GLOO)
-  set(COLLECTIVE_DEPS ${COLLECTIVE_DEPS} gloo_wrapper)
+  set(COLLECTIVE_DEPS ${COLLECTIVE_DEPS} gloo_wrapper comm_context_manager)
 endif()
 
 register_operators(

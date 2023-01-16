@@ -38,6 +38,9 @@ Tensor empty_like<Tensor>(const paddle::experimental::Tensor& x,
   }
   return empty_like_ad_func(x, dtype, place);
 }
-
+template <>
+void by_pass<Tensor>(const paddle::experimental::Tensor& x, Tensor* out) {
+  out->set_impl(x.impl());
+}
 }  // namespace prim
 }  // namespace paddle

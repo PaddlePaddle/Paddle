@@ -75,8 +75,6 @@ from paddle.fluid.framework import (
 from paddle.fluid.framework import dygraph_only, _non_static_mode
 from paddle.fluid.wrapped_decorator import wrap_decorator
 
-__all__ = []
-
 
 def create_program_from_desc(program_desc):
     program = Program()
@@ -160,7 +158,7 @@ def _dygraph_to_static_func_(dygraph_func):
         if _non_static_mode() or not program_translator.enable_to_static:
             logging_utils.warn(
                 "The decorator 'dygraph_to_static_func' doesn't work in "
-                "dygraph mode or set ProgramTranslator.enable to False. "
+                "dygraph mode or set 'paddle.jit.enable_to_static' to False. "
                 "We will just return dygraph output."
             )
             return dygraph_func(*args, **kwargs)
@@ -911,7 +909,7 @@ def save(layer, path, input_spec=None, **configs):
     prog_translator = ProgramTranslator()
     if not prog_translator.enable_to_static:
         raise RuntimeError(
-            "The paddle.jit.save doesn't work when setting ProgramTranslator.enable to False."
+            "The paddle.jit.save doesn't work when setting 'paddle.jit.enable_to_static' to False."
         )
 
     if not (
