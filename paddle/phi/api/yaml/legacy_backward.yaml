@@ -411,6 +411,16 @@
   kernel :
     func : einsum_grad
 
+- backward_op : elementwise_heaviside_grad
+  forward : heaviside (Tensor x, Tensor y) -> Tensor(out)
+  args : (Tensor x, Tensor y, Tensor out_grad, int axis = -1)
+  output : Tensor(x_grad), Tensor(y_grad)
+  infer_meta :
+    func : GeneralBinaryGradInferMeta
+    param : [x, y]
+  kernel :
+    func : elementwise_heaviside_grad
+
 - backward_op : elementwise_pow_grad
   forward : elementwise_pow(Tensor x, Tensor y) -> Tensor(out)
   args : (Tensor x, Tensor y, Tensor out_grad, int axis=-1)
@@ -1346,6 +1356,7 @@
     param : [x]
   kernel :
     func : sum_grad
+  composite : sum_grad(x, out_grad, axis, keepdim, reduce_all, x_grad)
   no_need_buffer : x
   backward : sum_double_grad
 
