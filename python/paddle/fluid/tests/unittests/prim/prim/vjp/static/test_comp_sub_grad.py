@@ -39,13 +39,9 @@ from paddle.fluid import core
             np.random.rand(2, 3, 1, 4),
             np.float32,
         ),
+        (np.random.rand(2, 3, 3, 4), np.random.rand(2, 3, 1, 4), np.float32),
         (
-
-            np.random.rand(2, 3, 3, 4),
-            np.random.rand(2, 3, 1, 4),
-            np.float32
-        ),
-        (   np.random.rand(2, 1, 3, 4),
+            np.random.rand(2, 1, 3, 4),
             np.random.rand(2, 3, 1, 4),
             np.float32,
         ),
@@ -53,7 +49,7 @@ from paddle.fluid import core
             np.random.rand(2, 3, 3, 4),
             np.random.rand(2, 1, 1, 4),
             np.float32,
-        )
+        ),
     ],
 )
 class TestDivGradComp(unittest.TestCase):

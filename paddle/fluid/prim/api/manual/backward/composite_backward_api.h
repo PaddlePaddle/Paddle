@@ -23,7 +23,6 @@ namespace prim {
 using Tensor = paddle::experimental::Tensor;
 using IntArray =
     paddle::experimental::IntArrayBase<paddle::experimental::Tensor>;
-// using IntArray = paddle::experimental::IntArray;
 //  This function should have as same signature as phi, which defined in
 //  paddle/phi/api/backward/backward_api.h
 template <typename T>
@@ -34,6 +33,7 @@ void tanh_grad(const Tensor& out, const Tensor& grad_out, Tensor* grad_x) {
   auto grad_x_tmp = multiply<T>(grad_out, tmp);
   grad_x->set_impl(grad_x_tmp.impl());
 }
+
 template <typename T>
 void subtract_grad(const Tensor& x,
                    const Tensor& y,
@@ -148,9 +148,9 @@ void sum_grad(const Tensor& x,
       axis_ = axis.GetData();
     }
     auto out_grad_ = unsqueeze<T>(out_grad, axis_);
-    x_grad_tmp = expand<T>(out_grad_, x_dim);
+    x_grad_tmp = expand<T>(out_grad_, IntArray(x_dim));
   } else {
-    x_grad_tmp = expand<T>(out_grad, x_dim);
+    x_grad_tmp = expand<T>(out_grad, IntArray(x_dim));
   }
 
   x_grad->set_impl(x_grad_tmp.impl());
@@ -214,11 +214,11 @@ void sqrt_grad(const Tensor& out, const Tensor& out_grad, Tensor* x_grad) {
     auto div_x = full<T>(phi::vectorize(out.dims()), 0.5);
     auto tmp = divide<T>(div_x, out);
     auto x_grad_tmp = multiply<T>(out_grad, tmp);
-    x_grad->set_impl(x_grad_tmp.impl()); 
+    x_grad->set_impl(x_grad_tmp.impl());
   }
 }
 
-template<typename T>
+template <typename T>
 void multiply_grad(const Tensor& x,
                    const Tensor& y,
                    const Tensor& out_grad,

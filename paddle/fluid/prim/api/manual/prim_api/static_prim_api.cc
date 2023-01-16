@@ -172,7 +172,7 @@ Tensor full<DescTensor>(paddle::experimental::IntArray shape,
       "Out", {std::static_pointer_cast<prim::DescTensor>(out.impl())->Name()});
   op->CheckAttrs();
   op->InferVarType(block);
-  // TODO(jiabin, cxxly): This may have runtime shape skip infershape for now.
+  op->InferShape(*block);
   return out;
 }
 
@@ -222,22 +222,7 @@ Tensor reshape<DescTensor>(Tensor x, paddle::experimental::IntArray shape) {
       "Out", {std::static_pointer_cast<prim::DescTensor>(out.impl())->Name()});
   op->CheckAttrs();
   op->InferVarType(block);
-  op->InferShape(*block);
-  return out;
-}
-
-template <>
-Tensor expand<DescTensor>(const Tensor& x, const IntArray& shape) {
-  Tensor out = empty<DescTensor>({}, phi::DataType::FLOAT32, paddle::Place());
-  framework::BlockDesc* block = StaticCompositeContext::Instance().GetBlock();
-  framework::OpDesc* op = block->AppendOp();
-  op->SetType("expand_v2");
-  op->SetInput("X",
-               {std::static_pointer_cast<prim::DescTensor>(x.impl())->Name()});
-  op->SetAttr("Shape", paddle::any_cast<std::vector<int>>(shape.GetData()));
-  op->CheckAttrs();
-  op->InferVarType(block);
-  op->InferShape(*block);
+  // TODO(jiabin, cxxly): This may have runtime shape skip infershape for now.
   return out;
 }
 
