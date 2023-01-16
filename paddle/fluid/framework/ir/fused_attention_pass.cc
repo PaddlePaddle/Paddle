@@ -350,13 +350,13 @@ PDNode* FusedAttentionGradPattern::operator()(PDNode* x,
             ->assert_is_op_input("layer_norm_grad", "X");
     post_layer_norm_grad_out_node =
         pattern->NewNode(post_layer_norm_grad_x_grad_repr())
-            ->assert_is_op_output("layer_norm_grad");
+            ->assert_is_op_output("layer_norm_grad", "X@GRAD");
     auto* post_layer_norm_grad_bias_grad_node =
         pattern->NewNode(post_layer_norm_grad_bias_grad_repr())
-            ->assert_is_op_output("layer_norm_grad");
+            ->assert_is_op_output("layer_norm_grad", "Bias@GRAD");
     auto* post_layer_norm_grad_scale_grad_node =
         pattern->NewNode(post_layer_norm_grad_scale_grad_repr())
-            ->assert_is_op_output("layer_norm_grad");
+            ->assert_is_op_output("layer_norm_grad", "Scale@GRAD");
     post_layer_norm_grad_node
         ->LinksFrom({x,
                      post_layer_norm_grad_bias_node,
@@ -388,7 +388,7 @@ PDNode* FusedAttentionGradPattern::operator()(PDNode* x,
             ->assert_is_op_input("elementwise_add_grad", "Y");
     residual_ele_add_grad_out_node =
         pattern->NewNode(residual_ele_add_grad_bias_grad_repr())
-            ->assert_is_op_output("elementwise_add_grad");
+            ->assert_is_op_output("elementwise_add_grad", "Y@GRAD");
     ele_add_grad_input->assert_is_op_input("elementwise_add_grad", "Out@GRAD");
     residual_ele_add_grad_node
         ->LinksFrom({ele_add_grad_input,
@@ -414,7 +414,7 @@ PDNode* FusedAttentionGradPattern::operator()(PDNode* x,
           ->assert_is_op_input("dropout_grad", "Mask");
   auto* out_linear_dropout_grad_out_node =
       pattern->NewNode(out_linear_dropout_grad_out_repr())
-          ->assert_is_op_output("dropout_grad");
+          ->assert_is_op_output("dropout_grad", "X@GRAD");
   out_linear_grad_input_node->assert_is_op_input("dropout_grad", "Out@GRAD");
   out_linear_dropout_grad_node
       ->LinksFrom(
@@ -432,10 +432,10 @@ PDNode* FusedAttentionGradPattern::operator()(PDNode* x,
           ->assert_is_op_input("elementwise_add_grad", "Y");
   auto* out_linear_ele_add_grad_x_grad_node =
       pattern->NewNode(out_linear_ele_add_grad_x_grad_repr())
-          ->assert_is_op_output("elementwise_add_grad");
+          ->assert_is_op_output("elementwise_add_grad", "X@GRAD");
   auto* out_linear_ele_add_grad_bias_grad_node =
       pattern->NewNode(out_linear_ele_add_grad_bias_grad_repr())
-          ->assert_is_op_output("elementwise_add_grad");
+          ->assert_is_op_output("elementwise_add_grad", "Y@GRAD");
   out_linear_dropout_grad_out_node->assert_is_op_input("elementwise_add_grad",
                                                        "Out@GRAD");
   out_linear_ele_add_grad_node
@@ -456,10 +456,10 @@ PDNode* FusedAttentionGradPattern::operator()(PDNode* x,
           ->assert_is_op_input("matmul_v2_grad", "Y");
   auto* out_linear_matmul_grad_x_grad_node =
       pattern->NewNode(out_linear_matmul_grad_x_grad_repr())
-          ->assert_is_op_output("matmul_v2_grad");
+          ->assert_is_op_output("matmul_v2_grad", "X@GRAD");
   auto* out_linear_matmul_grad_w_grad_node =
       pattern->NewNode(out_linear_matmul_grad_w_grad_repr())
-          ->assert_is_op_output("matmul_v2_grad");
+          ->assert_is_op_output("matmul_v2_grad", "Y@GRAD");
   out_linear_ele_add_grad_x_grad_node->assert_is_op_input("matmul_v2_grad",
                                                           "Out@GRAD");
   out_linear_matmul_grad_node
@@ -477,7 +477,7 @@ PDNode* FusedAttentionGradPattern::operator()(PDNode* x,
           ->assert_is_op_input("reshape2_grad", "XShape");
   auto* qkv_reshape_grad_out_node =
       pattern->NewNode(qkv_reshape_grad_out_repr())
-          ->assert_is_op_output("reshape2_grad");
+          ->assert_is_op_output("reshape2_grad", "X@GRAD");
   out_linear_matmul_grad_x_grad_node->assert_is_op_input("reshape2_grad",
                                                          "Out@GRAD");
   qkv_reshape_grad_node
@@ -492,7 +492,7 @@ PDNode* FusedAttentionGradPattern::operator()(PDNode* x,
           ->assert_is_op_input("transpose2_grad", "XShape");
   auto* qkv_transpose_grad_out_node =
       pattern->NewNode(qkv_transpose_grad_out_repr())
-          ->assert_is_op_output("transpose2_grad");
+          ->assert_is_op_output("transpose2_grad", "X@GRAD");
   qkv_reshape_grad_out_node->assert_is_op_input("transpose2_grad", "Out@GRAD");
   qkv_transpose_grad_node
       ->LinksFrom({qkv_reshape_grad_out_node, qkv_transpose_grad_x_shape_node})
@@ -508,10 +508,10 @@ PDNode* FusedAttentionGradPattern::operator()(PDNode* x,
           ->assert_is_op_input("matmul_v2_grad", "Y");
   auto* qkv_matmul_grad_x_grad_node =
       pattern->NewNode(qkv_matmul_grad_x_grad_repr())
-          ->assert_is_op_output("matmul_v2_grad");
+          ->assert_is_op_output("matmul_v2_grad", "X@GRAD");
   auto* qkv_matmul_grad_w_grad_node =
       pattern->NewNode(qkv_matmul_grad_w_grad_repr())
-          ->assert_is_op_output("matmul_v2_grad");
+          ->assert_is_op_output("matmul_v2_grad", "Y@GRAD");
   qkv_transpose_grad_out_node->assert_is_op_input("matmul_v2_grad", "Out@GRAD");
   qkv_matmul_grad_node
       ->LinksFrom({qkv_transpose_grad_out_node,
@@ -526,8 +526,9 @@ PDNode* FusedAttentionGradPattern::operator()(PDNode* x,
     auto* attn_dropout_grad_mask_node =
         pattern->NewNode(attn_dropout_grad_mask_repr())
             ->assert_is_op_input("dropout_grad", "Mask");
-    attn_dropout_grad_out_node = pattern->NewNode(attn_dropout_grad_out_repr())
-                                     ->assert_is_op_output("dropout_grad");
+    attn_dropout_grad_out_node =
+        pattern->NewNode(attn_dropout_grad_out_repr())
+            ->assert_is_op_output("dropout_grad", "X@GRAD");
     qkv_matmul_grad_x_grad_node->assert_is_op_input("dropout_grad", "Out@GRAD");
     attn_dropout_grad_node
         ->LinksFrom({qkv_matmul_grad_x_grad_node, attn_dropout_grad_mask_node})
@@ -541,8 +542,9 @@ PDNode* FusedAttentionGradPattern::operator()(PDNode* x,
   auto* qk_softmax_grad_fwd_out_node =
       pattern->NewNode(qk_softmax_grad_fwd_out_repr())
           ->assert_is_op_input("softmax_grad", "Out");
-  auto* qk_softmax_grad_out = pattern->NewNode(qk_softmax_grad_out_repr())
-                                  ->assert_is_op_output("softmax_grad");
+  auto* qk_softmax_grad_out =
+      pattern->NewNode(qk_softmax_grad_out_repr())
+          ->assert_is_op_output("softmax_grad", "X@GRAD");
   qk_softmax_grad_input_node->assert_is_op_input("softmax_grad", "Out@GRAD");
   qk_softmax_grad_node
       ->LinksFrom({qk_softmax_grad_input_node, qk_softmax_grad_fwd_out_node})
@@ -561,7 +563,7 @@ PDNode* FusedAttentionGradPattern::operator()(PDNode* x,
             ->assert_is_op_input("elementwise_add_grad", "Y");
     add_mask_ele_add_grad_x_grad_node =
         pattern->NewNode(add_mask_ele_add_grad_x_grad_repr())
-            ->assert_is_op_output("elementwise_add_grad");
+            ->assert_is_op_output("elementwise_add_grad", "X@GRAD");
     qk_softmax_grad_out->assert_is_op_input("elementwise_add_grad", "Out@GRAD");
     add_mask_ele_add_grad_node
         ->LinksFrom({add_mask_ele_add_grad_x_node,
@@ -588,10 +590,10 @@ PDNode* FusedAttentionGradPattern::operator()(PDNode* x,
                                     ->assert_is_op_input("matmul_v2_grad", "Y");
   auto* qk_matmul_grad_x_grad_node =
       pattern->NewNode(qk_matmul_grad_x_grad_repr())
-          ->assert_is_op_output("matmul_v2_grad");
+          ->assert_is_op_output("matmul_v2_grad", "X@GRAD");
   auto* qk_matmul_grad_w_grad_node =
       pattern->NewNode(qk_matmul_grad_w_grad_repr())
-          ->assert_is_op_output("matmul_v2_grad");
+          ->assert_is_op_output("matmul_v2_grad", "Y@GRAD");
   qk_scale_grad_out_node->assert_is_op_input("matmul_v2_grad", "Out@GRAD");
   qk_matmul_grad_node
       ->LinksFrom({qk_scale_grad_out_node,
@@ -622,7 +624,7 @@ PDNode* FusedAttentionGradPattern::operator()(PDNode* x,
           ->assert_is_op_input("transpose2_grad", "XShape");
   auto* fuse_qkv_transpose_grad_out_node =
       pattern->NewNode(fuse_qkv_transpose_grad_out_repr())
-          ->assert_is_op_output("transpose2_grad");
+          ->assert_is_op_output("transpose2_grad", "X@GRAD");
   fuse_qkv_split_grad_out_node->assert_is_op_input("transpose2_grad",
                                                    "Out@GRAD");
   fuse_qkv_transpose_grad_node
@@ -638,7 +640,7 @@ PDNode* FusedAttentionGradPattern::operator()(PDNode* x,
           ->assert_is_op_input("reshape2_grad", "XShape");
   auto* fuse_qkv_reshape_grad_out_node =
       pattern->NewNode(fuse_qkv_reshape_grad_out_repr())
-          ->assert_is_op_output("reshape2_grad");
+          ->assert_is_op_output("reshape2_grad", "X@GRAD");
   fuse_qkv_transpose_grad_out_node->assert_is_op_input("reshape2_grad",
                                                        "Out@GRAD");
   fuse_qkv_reshape_grad_node
@@ -657,10 +659,10 @@ PDNode* FusedAttentionGradPattern::operator()(PDNode* x,
           ->assert_is_op_input("elementwise_add_grad", "Y");
   auto* fuse_qkv_ele_add_grad_x_grad_node =
       pattern->NewNode(fuse_qkv_ele_add_grad_x_grad_repr())
-          ->assert_is_op_output("elementwise_add_grad");
+          ->assert_is_op_output("elementwise_add_grad", "X@GRAD");
   auto* fuse_qkv_ele_add_grad_bias_grad_node =
       pattern->NewNode(fuse_qkv_ele_add_grad_bias_grad_repr())
-          ->assert_is_op_output("elementwise_add_grad");
+          ->assert_is_op_output("elementwise_add_grad", "Y@GRAD");
   fuse_qkv_reshape_grad_out_node->assert_is_op_input("elementwise_add_grad",
                                                      "Out@GRAD");
   fuse_qkv_ele_add_grad_node
@@ -681,10 +683,10 @@ PDNode* FusedAttentionGradPattern::operator()(PDNode* x,
           ->assert_is_op_input("matmul_v2_grad", "Y");
   auto* fuse_qkv_matmul_grad_x_grad_node =
       pattern->NewNode(fuse_qkv_matmul_grad_x_grad_repr())
-          ->assert_is_op_output("matmul_v2_grad");
+          ->assert_is_op_output("matmul_v2_grad", "X@GRAD");
   auto* fuse_qkv_matmul_grad_w_grad_node =
       pattern->NewNode(fuse_qkv_matmul_grad_w_grad_repr())
-          ->assert_is_op_output("matmul_v2_grad");
+          ->assert_is_op_output("matmul_v2_grad", "Y@GRAD");
   fuse_qkv_ele_add_grad_x_grad_node->assert_is_op_input("matmul_v2_grad",
                                                         "Out@GRAD");
   fuse_qkv_matmul_grad_node
@@ -720,13 +722,13 @@ PDNode* FusedAttentionGradPattern::operator()(PDNode* x,
                          ->assert_is_op_input("layer_norm_grad", "X");
   auto* pre_layer_norm_grad_scale_grad_node =
       pattern->NewNode(pre_layer_norm_grad_scale_grad_repr())
-          ->assert_is_op_output("layer_norm_grad");
+          ->assert_is_op_output("layer_norm_grad", "Scale@GRAD");
   auto* pre_layer_norm_grad_bias_grad_node =
       pattern->NewNode(pre_layer_norm_grad_bias_grad_repr())
-          ->assert_is_op_output("layer_norm_grad");
+          ->assert_is_op_output("layer_norm_grad", "Bias@GRAD");
   auto* pre_layer_norm_grad_x_grad_node =
       pattern->NewNode(pre_layer_norm_grad_x_grad_repr())
-          ->assert_is_op_output("layer_norm_grad");
+          ->assert_is_op_output("layer_norm_grad", "X@GRAD");
   fuse_qkv_matmul_grad_x_grad_node->assert_is_op_input("layer_norm_grad",
                                                        "Y@GRAD");
   pre_layer_norm_grad_node
