@@ -15,7 +15,6 @@
 # TODO: define the initializers to create a Parameter in neural network
 from ...fluid.initializer import calculate_gain  # noqa: F401
 
-from .initializer import set_global_initializer  # noqa: F401
 from .Bilinear import Bilinear  # noqa: F401
 
 from .constant import Constant  # noqa: F401
@@ -60,6 +59,5 @@ __all__ = [  # noqa
     'Uniform',
     'Orthogonal',
     'Dirac',
-    'set_global_initializer',
     'calculate_gain',
 ]

@@ -674,7 +674,7 @@ class TestSetGlobalInitializer(unittest.TestCase):
         """Test Set Global Param initilizer with UniformInitializer"""
         main_prog = framework.Program()
         startup_prog = framework.Program()
-        paddle.nn.initializer.set_global_initializer(
+        fluid.set_global_initializer(
             paddle.nn.initializer.UniformInitializer(low=-0.5, high=0.5)
         )
         with fluid.program_guard(main_prog, startup_prog):
@@ -695,13 +695,13 @@ class TestSetGlobalInitializer(unittest.TestCase):
         self.assertAlmostEqual(param_init_op.attr('min'), -0.5, delta=DELTA)
         self.assertAlmostEqual(param_init_op.attr('max'), 0.5, delta=DELTA)
         self.assertEqual(param_init_op.attr('seed'), 0)
-        paddle.nn.initializer.set_global_initializer(None)
+        fluid.set_global_initializer(None)
 
     def test_set_global_bias_initilizer(self):
         """Test Set Global Bias initilizer with NormalInitializer"""
         main_prog = framework.Program()
         startup_prog = framework.Program()
-        paddle.nn.initializer.set_global_initializer(
+        fluid.set_global_initializer(
             paddle.nn.initializer.UniformInitializer(low=-0.5, high=0.5),
             bias_init=paddle.nn.initializer.NormalInitializer(
                 loc=0.0, scale=2.0
@@ -727,7 +727,7 @@ class TestSetGlobalInitializer(unittest.TestCase):
         self.assertAlmostEqual(param_init_op.attr('min'), -0.5, delta=DELTA)
         self.assertAlmostEqual(param_init_op.attr('max'), 0.5, delta=DELTA)
         self.assertEqual(param_init_op.attr('seed'), 0)
-        paddle.nn.initializer.set_global_initializer(None)
+        fluid.set_global_initializer(None)
 
 
 class TestUniformInitializerDygraph(unittest.TestCase):
