@@ -1356,6 +1356,7 @@
     param : [x]
   kernel :
     func : sum_grad
+  composite : sum_grad(x, out_grad, axis, keepdim, reduce_all, x_grad)
   no_need_buffer : x
   backward : sum_double_grad
 
