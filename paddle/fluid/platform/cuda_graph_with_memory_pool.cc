@@ -17,11 +17,8 @@
 #include "paddle/fluid/memory/allocation/allocator_facade.h"
 #include "paddle/phi/backends/all_context.h"
 
-PADDLE_DEFINE_EXPORTED_bool(new_executor_use_cuda_graph,
-                            false,
-                            "Use CUDA Graph in new executor");
-
 DECLARE_bool(use_stream_safe_cuda_allocator);
+DECLARE_bool(new_executor_use_cuda_graph);
 
 namespace paddle {
 namespace platform {
@@ -47,6 +44,8 @@ void BeginCUDAGraphCapture(phi::GPUPlace place,
   auto stream = dev_ctx->stream();
   CUDAGraph::BeginCapture(place, stream, mode);
 
+  // When using cuda graph in new executor, fast GC must be used.
+  // FLAGS_use_stream_safe_cuda_allocator should be true.
   auto old_value = FLAGS_use_stream_safe_cuda_allocator &&
                    !FLAGS_new_executor_use_cuda_graph;
   if (old_value) {
