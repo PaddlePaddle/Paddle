@@ -37,11 +37,11 @@ enum class SegmentedArraySize {
 template <typename T, SegmentedArraySize Size>
 struct PADDLE_ALIGN(256) ValueArray {
  public:
-  T val[Size];
+  const T data[static_cast<int>(Size)];
 
   void Set(T* ptr, const int num, T* dev_ptr = nullptr) {
     for (auto i = 0; i < num; ++i) {
-      val[i] = ptr[i];
+      data[i] = ptr[i];
     }
   }
 };
@@ -49,9 +49,9 @@ struct PADDLE_ALIGN(256) ValueArray {
 template <typename T>
 struct PADDLE_ALIGN(256) ValueArray<T, SegmentedArraySize::kVariableLength> {
  public:
-  T* val{nullptr};
+  T* data{nullptr};
 
-  void Set(T* ptr, const int num, T* dev_ptr = nullptr) { val = dev_ptr; }
+  void Set(T* ptr, const int num, T* dev_ptr = nullptr) { data = dev_ptr; }
 };
 
 template <typename T, SegmentedArraySize Size>

@@ -677,13 +677,13 @@ __global__ void SplitTensorWithDifferentShape(const T* input_data,
                                               DataArrayT data_array,
                                               const ValArrayT col_array) {
   IndexT curr_segment = 0;
-  IndexT curr_offset = col_array.val[0];
+  IndexT curr_offset = col_array.data[0];
   CUDA_KERNEL_LOOP_TYPE(tid_x, cumulative_col, IndexT) {
-    IndexT curr_col_offset = col_array.val[curr_segment + 1];
+    IndexT curr_col_offset = col_array.data[curr_segment + 1];
     while (curr_col_offset <= tid_x) {
       curr_offset = curr_col_offset;
       ++curr_segment;
-      curr_col_offset = col_array.val[curr_segment + 1];
+      curr_col_offset = col_array.data[curr_segment + 1];
     }
 
     IndexT local_col = tid_x - curr_offset;
