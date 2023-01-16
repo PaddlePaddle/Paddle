@@ -14,7 +14,6 @@ limitations under the License. */
 
 #include "paddle/phi/kernels/funcs/concat_and_split_functor.h"
 #include "paddle/fluid/memory/malloc.h"
-#include "paddle/phi/backends/gpu/cuda/cuda_graph_with_memory_pool.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/kernels/funcs/segmented_array.h"
 
@@ -640,12 +639,12 @@ struct PointerAndColArray
                      std::vector<DenseTensor*>* t,
                      T** pre_alloc_host_buf = nullptr)
       : funcs::PointerArraySetter<phi::GPUContext, T, Size>(
-            ctx, t, pre_alloc_host_buf) {
+            ctx, t, true, pre_alloc_host_buf) {
     IndexT* dev_ptr = nullptr;
     if (Size == SegmentedArraySize::kVariableLength) {
       size_t num_bytes = out_col_num * sizeof(IndexT);
       dev_ptr = reinterpret_cast<IndexT*>(this->AllocAndCopy(
-          ctx, reinterpret_cast<void*>(out_cols), num_bytes));
+          ctx, reinterpret_cast<void*>(out_cols), num_bytes, true));
     }
     val_array.Set(out_cols, out_col_num, dev_ptr);
   }
@@ -711,7 +710,7 @@ void SplitFunctionDispatchWithSameShape(const phi::GPUContext& ctx,
   GetBlockDims(ctx, out_row, cumulative_col, &block_dims, &grid_dims);
 
   funcs::PointerArraySetter<phi::GPUContext, T, Size> setter(
-      ctx, outs, pre_alloc_host_buf);
+      ctx, outs, true, pre_alloc_host_buf);
   SplitTensorWithSameShape<T, IndexT, decltype(setter.array)>
       <<<grid_dims, block_dims, 0, ctx.stream()>>>(
           input_data, out_row, cumulative_col, out_col, setter.array);

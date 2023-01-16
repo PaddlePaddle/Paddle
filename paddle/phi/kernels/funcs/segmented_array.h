@@ -15,6 +15,9 @@
 #pragma once
 
 #include "paddle/phi/kernels/funcs/fast_divmod.h"
+#ifdef PADDLE_WITH_CUDA
+#include "paddle/phi/backends/gpu/cuda/cuda_graph_with_memory_pool.h"
+#endif
 
 namespace phi {
 namespace funcs {
@@ -102,15 +105,25 @@ struct PADDLE_ALIGN(256) PointerArray<T, SegmentedArraySize::kVariableLength> {
 template <typename Context>
 struct ArraySetterBase {
  protected:
-  void* AllocAndCopy(const Context& ctx, void* src, size_t num_bytes) {
+  void* AllocAndCopy(const Context& ctx,
+                     void* src,
+                     size_t num_bytes,
+                     bool use_cuda_graph = false) {
     allocation = paddle::memory::Alloc(
         ctx.GetPlace(),
         num_bytes,
         phi::Stream(reinterpret_cast<phi::StreamId>(ctx.stream())));
+    int8_t* restored = reinterpret_cast<int8_t*>(src);
+#ifdef PADDLE_WITH_CUDA
+    if (use_cuda_graph) {
+      restored = phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph<int8_t>(
+          restored, num_bytes);
+    }
+#endif
     paddle::memory::Copy(ctx.GetPlace(),
                          allocation->ptr(),
                          phi::CPUPlace(),
-                         src,
+                         restored,
                          num_bytes,
                          ctx.stream());
     return allocation->ptr();
@@ -152,6 +165,7 @@ struct PointerArraySetter : public ArraySetterBase<Context> {
 
   PointerArraySetter(const Context& ctx,
                      std::vector<DenseTensor*>* t,
+                     bool use_cuda_graph = false,
                      T** pre_alloc_host_buf = nullptr) {
     T** data_ptr{nullptr};
     if (pre_alloc_host_buf) {
@@ -173,7 +187,7 @@ struct PointerArraySetter : public ArraySetterBase<Context> {
     if (Size == SegmentedArraySize::kVariableLength) {
       size_t num_bytes = t->size() * sizeof(T*);
       dev_ptr = reinterpret_cast<T**>(this->AllocAndCopy(
-          ctx, reinterpret_cast<void*>(data_ptr), num_bytes));
+          ctx, reinterpret_cast<void*>(data_ptr), num_bytes, use_cuda_graph));
     }
     array.Set(data_ptr, t->size(), dev_ptr);
   }
