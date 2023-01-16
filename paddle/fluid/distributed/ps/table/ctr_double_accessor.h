@@ -75,10 +75,12 @@ class CtrDoubleAccessor : public ValueAccessor {
       return val[CtrDoubleFeatureValue::DeltaScoreIndex()];
     }
     static double& Show(float* val) {
-      return ((double*)(val + CtrDoubleFeatureValue::ShowIndex()))[0];
+      return (reinterpret_cast<double*>(val +
+                                        CtrDoubleFeatureValue::ShowIndex()))[0];
     }
     static double& Click(float* val) {
-      return ((double*)(val + CtrDoubleFeatureValue::ClickIndex()))[0];
+      return (reinterpret_cast<double*>(
+          val + CtrDoubleFeatureValue::ClickIndex()))[0];
     }
     static float& Slot(float* val) {
       return val[CtrDoubleFeatureValue::SlotIndex()];
@@ -168,12 +170,12 @@ class CtrDoubleAccessor : public ValueAccessor {
   // param = 0, save all feature
   // param = 1, save delta feature
   // param = 3, save all feature with time decay
-  virtual bool Save(float* value, int param) override;
+  bool Save(float* value, int param) override;
   bool SaveCache(float* value,
                  int param,
                  double global_cache_threshold) override;
   // update delta_score and unseen_days after save
-  virtual void UpdateStatAfterSave(float* value, int param) override;
+  void UpdateStatAfterSave(float* value, int param) override;
   // 判断该value是否保存到ssd
   virtual bool SaveSSD(float* value);
   // virtual bool save_cache(float* value, int param, double
@@ -195,14 +197,14 @@ class CtrDoubleAccessor : public ValueAccessor {
   virtual int32_t Update(float** values,
                          const float** update_values,
                          size_t num);
-  virtual std::string ParseToString(const float* value, int param) override;
-  virtual int32_t ParseFromString(const std::string& str, float* v) override;
+  std::string ParseToString(const float* value, int param) override;
+  int32_t ParseFromString(const std::string& str, float* v) override;
   virtual bool CreateValue(int type, const float* value);
-  //这个接口目前只用来取show
-  virtual float GetField(float* value, const std::string& name) override {
-    CHECK(name == "show");
+  // 这个接口目前只用来取show
+  float GetField(float* value, const std::string& name) override {
+    CHECK_EQ(name, "show");
     if (name == "show") {
-      return (float)CtrDoubleFeatureValue::Show(value);
+      return static_cast<float>(CtrDoubleFeatureValue::Show(value));
     }
     return 0.0;
   }

@@ -25,7 +25,7 @@ import paddle
 import paddle.nn as nn
 from paddle.autograd import PyLayer
 from paddle.distributed.utils.moe_utils import global_gather, global_scatter
-from paddle.fluid.framework import in_dygraph_mode
+from paddle.framework import in_dygraph_mode
 from paddle.incubate.distributed.fleet import recompute_hybrid
 
 from .gate import BaseGate, GShardGate, NaiveGate, SwitchGate

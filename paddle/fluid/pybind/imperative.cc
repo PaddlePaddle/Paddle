@@ -350,9 +350,6 @@ Py_ssize_t GetSliceIndexFromPyObject(PyObject *obj) {
   }
 }
 
-bool PyCheckTensor(PyObject *obj) {
-  return py::isinstance<imperative::VarBase>(obj);
-}
 using PyNameVarBaseMap = std::unordered_map<std::string, py::handle>;
 
 // NOTE(zjl): py::handle is a very light wrapper of PyObject *.
@@ -872,7 +869,7 @@ void BindImperative(py::module *m_ptr) {
                         self->Name()));
               }
 
-              if (PyCheckTensor(value_obj.ptr())) {
+              if (py::isinstance<imperative::VarBase>(value_obj.ptr())) {
                 auto value_tensor =
                     value_obj.cast<std::shared_ptr<imperative::VarBase>>();
                 ins.insert({"ValueTensor", {value_tensor}});
