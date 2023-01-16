@@ -37,6 +37,16 @@ Tensor multiply<Tensor>(const Tensor& x, const Tensor& y) {
 }
 
 template <>
+Tensor expand<Tensor>(const Tensor& x, const IntArray& shape) {
+  return ::expand_ad_func(x, shape);
+}
+
+template <>
+Tensor unsqueeze<Tensor>(const Tensor& x, const IntArray& axis) {
+  return ::unsqueeze_ad_func(x, axis);
+}
+
+template <>
 Tensor divide<Tensor>(const Tensor& x, const Tensor& y) {
   return ::divide_ad_func(x, y);
 }
