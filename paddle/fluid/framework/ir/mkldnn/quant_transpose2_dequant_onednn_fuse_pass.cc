@@ -62,6 +62,7 @@ void FuseQuantTranspose2DequantOneDNNPass::FuseQuantizeTranspose2(
         quant_op->Op()->HasAttr("Shift")
             ? PADDLE_GET_CONST(float, quant_op->Op()->GetAttr("Shift"))
             : 0;
+
     transpose2_op->Op()->SetAttr("scale", scale);
     transpose2_op->Op()->SetAttr("shift", shift);
 

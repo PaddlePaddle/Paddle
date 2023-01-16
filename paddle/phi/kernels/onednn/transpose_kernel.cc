@@ -110,8 +110,9 @@ void TransposeKernel(const Context& dev_ctx,
   }
 
   if (with_shift) {
+    auto dst = output_data_type == "fp32" ? DNNL_ARG_SRC : DNNL_ARG_DST;
     attrs.set_zero_points(
-        DNNL_ARG_DST, mask, {static_cast<int32_t>(quantization_shift)});
+        dst, mask, {static_cast<int32_t>(quantization_shift)});
   }
 
   DataType out_dtype;
