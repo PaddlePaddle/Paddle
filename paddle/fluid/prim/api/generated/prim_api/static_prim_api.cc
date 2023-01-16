@@ -175,6 +175,7 @@ Tensor full<DescTensor>(const IntArray& shape,
   op->InferShape(*block);
   return out;
 }
+
 template <>
 Tensor sum<DescTensor>(const Tensor& x,
                        const IntArray& axis,
