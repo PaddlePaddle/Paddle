@@ -30,8 +30,6 @@ void Int4GemmKernel(const Context &ctx,
                     const DenseTensor &x,
                     const DenseTensor &y,
                     const DenseTensor &bias,
-                    const bool &trans_x,
-                    const bool &trans_y,
                     const std::string &activation,
                     DenseTensor *out) {
   ctx.template Alloc<T>(out);
@@ -98,7 +96,7 @@ void Int4GemmKernel(const Context &ctx,
       n,
       kx,
       &ctx};
-  if (activation == "identity") {
+  if (activation == "none") {
     Int4GemmBias(params, sm);
   } else {
     PADDLE_THROW(phi::errors::InvalidArgument(
