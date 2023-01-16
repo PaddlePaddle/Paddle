@@ -586,7 +586,7 @@ class {{op_name | to_composite_grad_opmaker_name}} : public prim::CompositeGradO
   {% set attrs_length = attrs | length %}
   {% for i in range(attrs_length) %}
     {% set attrs_data_type = attr_dict[attrs[i]]["typename"] | to_op_attr_type %}
-    const {{attrs_data_type}} {{attrs[i]}} = this->Attr<{{attrs_data_type}}>("{{fluid_attrs[i]}}");
+    {{attrs_data_type}} {{attrs[i]}} = this->Attr<{{attrs_data_type}}>("{{fluid_attrs[i]}}");
   {% endfor %}
 {%- endmacro %}
 
