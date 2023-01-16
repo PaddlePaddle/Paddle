@@ -31,5 +31,16 @@ void RegisterOperatorWithMetaInfoMap(
 // Interface for selective register custom op.
 void RegisterOperatorWithMetaInfo(const std::vector<OpMetaInfo>& op_meta_infos,
                                   void* dso_handle = nullptr);
+
+/////////////////////// Op register API /////////////////////////
+
+// For inference: compile directly with framework
+// Call after PD_BUILD_OP(...)
+void RegisterAllCustomOperator();
+
+// Using this api to load compiled custom operator's dynamic library and
+// register Custom Operator into it
+void LoadCustomOperatorLib(const std::string& dso_name);
+
 }  // namespace framework
 }  // namespace paddle
