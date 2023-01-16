@@ -128,6 +128,11 @@ void ProcessGroupBKCL::CreateBKCLEnvCache(const Place& place,
       platform::DeviceContextPool::Instance().Get(place));
   // must use XPUDeviceContext here to make sure XPUContext::Init() is called
   auto comm_ctx = std::make_unique<XPUDeviceContext>(place);
+  // set allocator
+  comm_ctx->SetAllocator(memory::allocation::AllocatorFacade::Instance()
+                             .GetAllocator(place)
+                             .get());
+
   BKCLContext_t bkcl_comm;
   BKCLCHECK(bkcl_init_rank(&bkcl_comm, GetRank(), GetSize(), &bkcl_id));
   comm_ctx->SetBkclContext(bkcl_comm);

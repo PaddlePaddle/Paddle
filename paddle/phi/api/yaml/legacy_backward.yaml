@@ -42,6 +42,7 @@
   kernel :
     func : add_grad
   no_need_buffer : x, y
+  composite : add_grad(Tensor x, Tensor y, Tensor out_grad, int axis)
   backward : add_double_grad
   inplace : (out_grad -> x_grad)
 
@@ -375,6 +376,7 @@
     param : [x, y]
   kernel :
     func : divide_grad
+  composite : divide_grad(Tensor x, Tensor y, Tensor out, Tensor out_grad, int axis = -1)
   backward : divide_double_grad
 
 - backward_op : dropout_grad
@@ -408,6 +410,16 @@
     param : [x_shape]
   kernel :
     func : einsum_grad
+
+- backward_op : elementwise_heaviside_grad
+  forward : heaviside (Tensor x, Tensor y) -> Tensor(out)
+  args : (Tensor x, Tensor y, Tensor out_grad, int axis = -1)
+  output : Tensor(x_grad), Tensor(y_grad)
+  infer_meta :
+    func : GeneralBinaryGradInferMeta
+    param : [x, y]
+  kernel :
+    func : elementwise_heaviside_grad
 
 - backward_op : elementwise_pow_grad
   forward : elementwise_pow(Tensor x, Tensor y) -> Tensor(out)
@@ -1325,6 +1337,7 @@
   kernel :
     func : subtract_grad
   no_need_buffer : x, y
+  composite : subtract_grad(Tensor x, Tensor y, Tensor out_grad, int axis)
   backward : subtract_double_grad
   inplace : (out_grad -> x_grad)
 
@@ -1343,6 +1356,7 @@
     param : [x]
   kernel :
     func : sum_grad
+  composite : sum_grad(x, out_grad, axis, keepdim, reduce_all, x_grad)
   no_need_buffer : x
   backward : sum_double_grad
 
