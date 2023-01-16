@@ -21,9 +21,9 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-class FuseQuantizeTranspose2OneDNNPass : public FusePassBase {
+class FuseQuantTranspose2DequantOneDNNPass : public FusePassBase {
  public:
-  virtual ~FuseQuantizeTranspose2OneDNNPass() {}
+  virtual ~FuseQuantTranspose2DequantOneDNNPass() {}
 
  protected:
   void ApplyImpl(Graph *graph) const override;

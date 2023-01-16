@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/ir/mkldnn/quant_transpose2_onednn_fuse_pass.h"
+#include "paddle/fluid/framework/ir/mkldnn/quant_transpose2_dequant_onednn_fuse_pass.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/string/pretty_log.h"
 
@@ -20,15 +20,15 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-void FuseQuantizeTranspose2OneDNNPass::FuseQuantizeTranspose2(
+void FuseQuantTranspose2DequantOneDNNPass::FuseQuantizeTranspose2(
     Graph *graph) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph, platform::errors::InvalidArgument("Graph cannot be nullptr."));
-  FusePassBase::Init("quant_transpose2_onednn_fuse_pass", graph);
+  FusePassBase::Init("quant_transpose2_dequant_onednn_fuse_pass", graph);
 
   GraphPatternDetector gpd;
   patterns::QuantTranspose2 quant_transpose2_pattern(
-      gpd.mutable_pattern(), "quant_transpose2_onednn_fuse_pass");
+      gpd.mutable_pattern(), "quant_transpose2_dequant_onednn_fuse_pass");
   quant_transpose2_pattern();
 
   int found_patterns_count = 0;
@@ -99,15 +99,15 @@ void FuseQuantizeTranspose2OneDNNPass::FuseQuantizeTranspose2(
   }
 }
 
-void FuseQuantizeTranspose2OneDNNPass::FuseTranspose2Dequantize(
+void FuseQuantTranspose2DequantOneDNNPass::FuseTranspose2Dequantize(
     Graph *graph) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph, platform::errors::InvalidArgument("Graph cannot be nullptr."));
-  FusePassBase::Init("quant_transpose2_onednn_fuse_pass", graph);
+  FusePassBase::Init("quant_transpose2_dequant_onednn_fuse_pass", graph);
 
   GraphPatternDetector gpd;
   patterns::Transpose2Dequant transpose2_dequant_pattern(
-      gpd.mutable_pattern(), "quant_transpose2_onednn_fuse_pass");
+      gpd.mutable_pattern(), "quant_transpose2_dequant_onednn_fuse_pass");
   transpose2_dequant_pattern();
 
   int found_patterns_count = 0;
@@ -176,7 +176,7 @@ void FuseQuantizeTranspose2OneDNNPass::FuseTranspose2Dequantize(
   }
 }
 
-void FuseQuantizeTranspose2OneDNNPass::ApplyImpl(Graph *graph) const {
+void FuseQuantTranspose2DequantOneDNNPass::ApplyImpl(Graph *graph) const {
   FuseQuantizeTranspose2(graph);
   FuseTranspose2Dequantize(graph);
 }
@@ -185,9 +185,9 @@ void FuseQuantizeTranspose2OneDNNPass::ApplyImpl(Graph *graph) const {
 }  // namespace framework
 }  // namespace paddle
 
-REGISTER_PASS(quant_transpose2_onednn_fuse_pass,
-              paddle::framework::ir::FuseQuantizeTranspose2OneDNNPass);
-REGISTER_PASS_CAPABILITY(quant_transpose2_onednn_fuse_pass)
+REGISTER_PASS(quant_transpose2_dequant_onednn_fuse_pass,
+              paddle::framework::ir::FuseQuantTranspose2DequantOneDNNPass);
+REGISTER_PASS_CAPABILITY(quant_transpose2_dequant_onednn_fuse_pass)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination()
             .GE("quantize", 0)
