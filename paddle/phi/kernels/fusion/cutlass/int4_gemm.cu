@@ -77,11 +77,11 @@ void Int4GemmKernel(const Context &ctx,
       out_bytes,
       phi::Stream(reinterpret_cast<phi::StreamId>(stream)));
 
-  dynamic_convert<cutlass::int4b_t, T>(
+  DynamicConvert<cutlass::int4b_t, T>(
       reinterpret_cast<const T *>(x.data()),
       reinterpret_cast<cutlass::int4b_t *>(tmp_x->ptr()),
       mk);
-  dynamic_convert<cutlass::int4b_t, T>(
+  DynamicConvert<cutlass::int4b_t, T>(
       reinterpret_cast<const T *>(x.data()),
       reinterpret_cast<cutlass::int4b_t *>(tmp_y->ptr()),
       kn);
@@ -103,9 +103,9 @@ void Int4GemmKernel(const Context &ctx,
         "Cutlass dose not support this activation on int4: %s.",
         activation.c_str()));
   }
-  dynamic_convert<T, int32_t>(reinterpret_cast<const int32_t *>(tmp_out->ptr()),
-                              reinterpret_cast<T *>(out->data()),
-                              mn);
+  DynamicConvert<T, int32_t>(reinterpret_cast<const int32_t *>(tmp_out->ptr()),
+                             reinterpret_cast<T *>(out->data()),
+                             mn);
 }
 }  // namespace cutlass_gemm_internal
 }  // namespace fusion

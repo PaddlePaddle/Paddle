@@ -49,7 +49,7 @@ inline int getSMVersion() {
 }
 
 template <typename Destination, typename Source>
-void dynamic_convert(Source const *s, Destination *t, int N);
+void DynamicConvert(Source const *s, Destination *t, int N);
 }  // namespace cutlass_gemm_internal
 }  // namespace fusion
 }  // namespace phi

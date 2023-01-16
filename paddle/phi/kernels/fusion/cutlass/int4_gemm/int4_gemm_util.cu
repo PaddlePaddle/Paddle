@@ -65,8 +65,29 @@ int ProfileToGetBestConfig(
 }
 
 template <typename Destination, typename Source>
-void dynamic_convert(Source const *s, Destination *t, int N) {
+void DynamicConvert(Source const *s, Destination *t, int N) {
   cutlass::NumericConverter<Destination, Source> converter;
+  CUTLASS_PRAGMA_UNROLL
+  for (int i = 0; i < N; ++i) {
+    t[i] = converter(s[i]);
+  }
+  return;
+}
+
+template <>
+void DynamicConvert<int8_t, int32_t>(int32_t const *s, int8_t *t, int N) {
+  cutlass::NumericConverter<int8_t, int32_t> converter;
+  CUTLASS_PRAGMA_UNROLL
+  for (int i = 0; i < N; ++i) {
+    t[i] = converter(s[i]);
+  }
+  return;
+}
+template <>
+void DynamicConvert<cutlass::int4b_t, int8_t>(int8_t const *s,
+                                              cutlass::int4b_t *t,
+                                              int N) {
+  cutlass::NumericConverter<cutlass::int4b_t, int8_t> converter;
   CUTLASS_PRAGMA_UNROLL
   for (int i = 0; i < N; ++i) {
     t[i] = converter(s[i]);
