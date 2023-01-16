@@ -35,6 +35,26 @@ enum class SegmentedArraySize {
 };
 
 template <typename T, SegmentedArraySize Size>
+struct PADDLE_ALIGN(256) ValueArray {
+ public:
+  T val[Size];
+
+  void Set(T* ptr, const int num, T* dev_ptr = nullptr) {
+    for (auto i = 0; i < num; ++i) {
+      val[i] = ptr[i];
+    }
+  }
+};
+
+template <typename T>
+struct PADDLE_ALIGN(256) ValueArray<T, SegmentedArraySize::kVariableLength> {
+ public:
+  T* val{nullptr};
+
+  void Set(T* ptr, const int num, T* dev_ptr = nullptr) { val = dev_ptr; }
+};
+
+template <typename T, SegmentedArraySize Size>
 struct PADDLE_ALIGN(256) ConstPointerArray {
  public:
   const T* data[static_cast<int>(Size)];
@@ -62,8 +82,8 @@ struct PADDLE_ALIGN(256) PointerArray {
  public:
   T* data[static_cast<int>(Size)];
 
-  void Set(const std::vector<T*>& ptrs, T** dev_ptr = nullptr) {
-    for (auto i = 0; i < ptrs.size(); ++i) {
+  void Set(T** ptrs, const int num, T** dev_ptr = nullptr) {
+    for (auto i = 0; i < num; ++i) {
       data[i] = ptrs[i];
     }
   }
@@ -74,9 +94,7 @@ struct PADDLE_ALIGN(256) PointerArray<T, SegmentedArraySize::kVariableLength> {
  public:
   T** data{nullptr};
 
-  void Set(const std::vector<T*>& ptrs, T** dev_ptr = nullptr) {
-    data = dev_ptr;
-  }
+  void Set(T** ptrs, const int num, T** dev_ptr = nullptr) { data = dev_ptr; }
 };
 
 #undef PADDLE_ALIGN
@@ -132,13 +150,22 @@ struct PointerArraySetter : public ArraySetterBase<Context> {
  public:
   PointerArray<T, Size> array;
 
-  PointerArraySetter(const Context& ctx, std::vector<DenseTensor*>* t) {
-    ptrs.resize(t->size());
+  PointerArraySetter(const Context& ctx,
+                     std::vector<DenseTensor*>* t,
+                     T** pre_alloc_host_buf = nullptr) {
+    T** data_ptr{nullptr};
+    if (pre_alloc_host_buf) {
+      data_ptr = pre_alloc_host_buf;
+    } else {
+      ptrs.resize(t->size());
+      data_ptr = ptrs.data();
+    }
+
     for (int i = 0; i < t->size(); ++i) {
       if (t->at(i) && (t->at(i)->numel() > 0)) {
-        ptrs[i] = ctx.template Alloc<T>(t->at(i));
+        data_ptr[i] = ctx.template Alloc<T>(t->at(i));
       } else {
-        ptrs[i] = nullptr;
+        data_ptr[i] = nullptr;
       }
     }
 
@@ -146,10 +173,9 @@ struct PointerArraySetter : public ArraySetterBase<Context> {
     if (Size == SegmentedArraySize::kVariableLength) {
       size_t num_bytes = t->size() * sizeof(T*);
       dev_ptr = reinterpret_cast<T**>(this->AllocAndCopy(
-          ctx, reinterpret_cast<void*>(ptrs.data()), num_bytes));
+          ctx, reinterpret_cast<void*>(data_ptr), num_bytes));
     }
-
-    array.Set(ptrs, dev_ptr);
+    array.Set(data_ptr, t->size(), dev_ptr);
   }
 
  private:
