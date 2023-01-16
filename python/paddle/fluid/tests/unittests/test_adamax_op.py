@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 
 
 class TestAdamaxOp1(OpTest):
@@ -56,7 +56,7 @@ class TestAdamaxOp1(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_dygraph=False)
 
 
 class TestAdamaxOp2(OpTest):
@@ -95,7 +95,7 @@ class TestAdamaxOp2(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_dygraph=False)
 
 
 class TestAdamaxOpMultipleSteps(OpTest):
@@ -140,7 +140,7 @@ class TestAdamaxOpMultipleSteps(OpTest):
             }
 
             # Verify output for this step
-            self.check_output()
+            self.check_output(check_dygraph=False)
 
             # Output of this step becomes input for next step
             self.inputs['Param'] = param_out

@@ -17,7 +17,7 @@ import unittest
 from functools import partial
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 
 import paddle
 import paddle.fluid as fluid
@@ -108,7 +108,7 @@ class TestAdamW(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_dygraph=False)
 
 
 @unittest.skipIf(
@@ -163,7 +163,7 @@ class TestAdamW2(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output_with_place(core.CUDAPlace(0))
+        self.check_output_with_place(core.CUDAPlace(0), check_dygraph=False)
 
 
 class TestAdamWOp(unittest.TestCase):

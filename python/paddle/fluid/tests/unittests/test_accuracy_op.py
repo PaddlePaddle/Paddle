@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 
 import paddle
 import paddle.fluid as fluid
@@ -26,6 +26,7 @@ class TestAccuracyOp(OpTest):
     def setUp(self):
         self.op_type = "accuracy"
         self.dtype = np.float32
+        self.python_api = paddle.metric.accuracy
         self.init_dtype()
         n = 8192
         infer = np.random.random((n, 1)).astype(self.dtype)

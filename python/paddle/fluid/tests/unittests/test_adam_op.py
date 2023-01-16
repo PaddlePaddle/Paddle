@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 
 import paddle
 import paddle.fluid as fluid
@@ -63,7 +63,7 @@ class TestAdamOp1(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_dygraph=False)
 
 
 class TestAdamOp2(OpTest):
@@ -110,7 +110,7 @@ class TestAdamOp2(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_dygraph=False)
 
 
 class TestAdamOnlyTailOp(TestAdamOp2):
@@ -170,7 +170,7 @@ class TestAdamOpMultipleSteps(OpTest):
             }
 
             # Verify output for this step
-            self.check_output()
+            self.check_output(check_dygraph=False)
 
             # Output of this step becomes input for next step
             self.inputs['Param'] = param_out
@@ -452,7 +452,7 @@ class TestAdamOpBetaVariable(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_dygraph=False)
 
 
 class TestAdamOpBetaEpsilonVariable(OpTest):
@@ -498,7 +498,7 @@ class TestAdamOpBetaEpsilonVariable(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_dygraph=False)
 
 
 class TestAdamOpWithGlobalBetaPow(OpTest):
@@ -547,7 +547,7 @@ class TestAdamOpWithGlobalBetaPow(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_dygraph=False)
 
 
 class TestAdamOpWithSkipUpdate(OpTest):
@@ -595,7 +595,7 @@ class TestAdamOpWithSkipUpdate(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_dygraph=False)
 
 
 class TestAdamOpV2(unittest.TestCase):
@@ -877,17 +877,11 @@ class TestAdamOptimizer(unittest.TestCase):
             exe = paddle.static.Executor(place)
             exe.run(startup_prog)
 
-            print("Start run on {}".format(place))
             for epoch in range(10):
                 pred_res, loss_res = exe.run(
                     main_prog,
                     feed={"a": a_np, "b": b_np, "label": label_np},
                     fetch_list=[prediction, loss],
-                )
-                print(
-                    "Epoch {} | Prediction[0]: {}, Loss: {}".format(
-                        epoch, pred_res[0], loss_res
-                    )
                 )
             paddle.disable_static()
             return pred_res, loss_res

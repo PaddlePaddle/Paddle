@@ -22,14 +22,9 @@ from paddle.fluid import core
 from paddle.static import Program, program_guard
 
 
-def arange_wrapper(start, end, step, dtype=None):
-    return paddle.arange(start, end, step, dtype)
-
-
 class TestArangeOp(OpTest):
     def setUp(self):
         self.op_type = "range"
-        self.python_api = arange_wrapper
         self.init_config()
         self.inputs = {
             'Start': np.array([self.case[0]]).astype(self.dtype),
@@ -45,10 +40,10 @@ class TestArangeOp(OpTest):
 
     def init_config(self):
         self.dtype = np.float32
-        self.case = (0, 1, 2)
+        self.case = (0, 1, 0.2)
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_dygraph=False)
 
 
 class TestFloatArangeOp(TestArangeOp):

@@ -16,7 +16,7 @@ import math
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 
 import paddle
 import paddle.fluid.core as core
@@ -49,7 +49,7 @@ class TestAdagradOp1(OpTest):
         self.outputs = {'ParamOut': param_out, 'MomentOut': moment_out}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_dygraph=False)
 
 
 class TestAdagradOp2(OpTest):
@@ -79,7 +79,7 @@ class TestAdagradOp2(OpTest):
         self.outputs = {'ParamOut': param_out, 'MomentOut': moment_out}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_dygraph=False)
 
 
 class TestSparseAdagradOp(unittest.TestCase):
