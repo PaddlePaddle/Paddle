@@ -120,6 +120,12 @@ class DatasetConfig(BaseConfig):
         super().__init__(category, config_dict)
 
 
+class FusedPassesConfig(BaseConfig):
+    def __init__(self, config_dict=None):
+        category = constants.FUSED_PASSES
+        super().__init__(category, config_dict)
+
+
 class Strategy(BaseConfig):
     """
     The `Strategy` object is used to configure the paralleization and optimization beheviors.
@@ -188,3 +194,6 @@ class Strategy(BaseConfig):
 
         config_dict = self._config_dict.get(constants.DATASET, None)
         self.dataset = DatasetConfig(config_dict)
+
+        config_dict = self._config_dict.get(constants.FUSED_PASSES, None)
+        self.fused_passes = FusedPassesConfig(config_dict)

@@ -16,7 +16,7 @@ from functools import reduce
 
 import paddle
 from paddle.distributed.auto_parallel.dist_tensor import DistributedTensor
-from paddle.fluid.framework import Variable
+from paddle.static import Variable
 
 from .base_cost import Cost
 

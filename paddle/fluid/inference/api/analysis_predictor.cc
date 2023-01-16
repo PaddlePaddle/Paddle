@@ -1362,7 +1362,10 @@ void AnalysisPredictor::OptimizeInferenceProgram() {
   // The config and argument take a lot of storage,
   // when the predictor settings are complete, we release these stores.
   config_.PartiallyRelease();
+#if defined(PADDLE_WITH_TESTING)
   fusion_statis_ = *argument_->fusion_statis_ptr();
+#endif
+
 #if defined(_WIN32)
   argument_->PartiallyRelease();
 #else
@@ -2350,7 +2353,9 @@ USE_TRT_CONVERTER(reshape2);
 USE_TRT_CONVERTER(gather_nd);
 USE_TRT_CONVERTER(reduce_mean);
 USE_TRT_CONVERTER(reduce_max);
+USE_TRT_CONVERTER(reduce_min);
 USE_TRT_CONVERTER(reduce_sum);
+USE_TRT_CONVERTER(reduce_prod);
 USE_TRT_CONVERTER(tile);
 USE_TRT_CONVERTER(conv3d);
 USE_TRT_CONVERTER(conv3d_transpose);
@@ -2422,6 +2427,10 @@ USE_TRT_CONVERTER(expand_v2)
 USE_TRT_CONVERTER(take_along_axis)
 USE_TRT_CONVERTER(skip_groupnorm_act)
 USE_TRT_CONVERTER(preln_groupnorm_act)
+#if IS_TRT_VERSION_GE(8522)
+USE_TRT_CONVERTER(flash_multihead_matmul)
+USE_TRT_CONVERTER(cross_multihead_matmul)
+#endif
 #if PADDLE_WITH_CUSPARSELT && IS_TRT_VERSION_GE(8000)
 USE_TRT_CONVERTER(sparse_fc)
 USE_TRT_CONVERTER(sparse_multihead_matmul)

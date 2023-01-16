@@ -71,6 +71,11 @@ class TrtConvertElementwiseTest_one_input_special_case0(TrtLayerAutoScanTest):
                                 },
                                 "op_outputs": {"Out": ["output_data"]},
                                 "op_attrs": dics[0],
+                                "outputs_dtype": {
+                                    "output_data": np.float32
+                                    if op_type != "elementwise_floordiv"
+                                    else np.int32
+                                },
                             }
                         ]
                         ops = self.generate_op_config(ops_config)
@@ -196,6 +201,11 @@ class TrtConvertElementwiseTest_one_input_special_case1(TrtLayerAutoScanTest):
                             "op_inputs": {"X": ["input_data"], "Y": ["weight"]},
                             "op_outputs": {"Out": ["output_data"]},
                             "op_attrs": dics[0],
+                            "outputs_dtype": {
+                                "output_data": np.float32
+                                if op_type != "elementwise_floordiv"
+                                else np.int32
+                            },
                         }
                     ]
                     ops = self.generate_op_config(ops_config)
@@ -321,6 +331,11 @@ class TrtConvertElementwiseTest_one_input(TrtLayerAutoScanTest):
                                 },
                                 "op_outputs": {"Out": ["output_data"]},
                                 "op_attrs": dics[0],
+                                "outputs_dtype": {
+                                    "output_data": np.float32
+                                    if op_type != "elementwise_floordiv"
+                                    else np.int32
+                                },
                             }
                         ]
                         ops = self.generate_op_config(ops_config)
@@ -455,6 +470,11 @@ class TrtConvertElementwiseTest_two_input_without_broadcast(
                             },
                             "op_outputs": {"Out": ["output_data"]},
                             "op_attrs": dics[0],
+                            "outputs_dtype": {
+                                "output_data": np.float32
+                                if op_type != "elementwise_floordiv"
+                                else np.int32
+                            },
                         }
                     ]
                     ops = self.generate_op_config(ops_config)
@@ -647,6 +667,11 @@ class TrtConvertElementwiseTest_two_input_with_broadcast(TrtLayerAutoScanTest):
                                 },
                                 "op_outputs": {"Out": ["output_data"]},
                                 "op_attrs": dics[0],
+                                "outputs_dtype": {
+                                    "output_data": np.float32
+                                    if op_type != "elementwise_floordiv"
+                                    else np.int32
+                                },
                             }
                         ]
                         ops = self.generate_op_config(ops_config)
@@ -782,6 +807,11 @@ class TrtConvertElementwiseTest_one_input_corner_case(TrtLayerAutoScanTest):
                                 },
                                 "op_outputs": {"Out": ["output_data"]},
                                 "op_attrs": dics[0],
+                                "outputs_dtype": {
+                                    "output_data": np.float32
+                                    if op_type != "elementwise_floordiv"
+                                    else np.int32
+                                },
                             }
                         ]
                         ops = self.generate_op_config(ops_config)

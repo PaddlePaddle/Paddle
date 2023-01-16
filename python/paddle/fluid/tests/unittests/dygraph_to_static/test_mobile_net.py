@@ -24,7 +24,6 @@ import paddle
 import paddle.fluid as fluid
 from paddle.fluid.initializer import MSRA
 from paddle.fluid.param_attr import ParamAttr
-from paddle.jit import ProgramTranslator
 from paddle.jit.api import to_static
 from paddle.jit.translated_layer import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 from paddle.nn import BatchNorm, Linear
@@ -36,7 +35,6 @@ if fluid.is_compiled_with_cuda():
     fluid.set_flags({'FLAGS_cudnn_deterministic': True})
 
 SEED = 2020
-program_translator = ProgramTranslator()
 
 
 class ConvBNLayer(fluid.dygraph.Layer):
@@ -494,7 +492,7 @@ class Args:
 
 
 def train_mobilenet(args, to_static):
-    program_translator.enable(to_static)
+    paddle.jit.enable_to_static(to_static)
     with fluid.dygraph.guard(args.place):
 
         np.random.seed(SEED)
@@ -605,7 +603,7 @@ def predict_static(args, data):
 
 
 def predict_dygraph(args, data):
-    program_translator.enable(False)
+    paddle.jit.enable_to_static(False)
     with fluid.dygraph.guard(args.place):
         if args.model == "MobileNetV1":
             model = MobileNetV1(class_dim=args.class_dim, scale=1.0)
