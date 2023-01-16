@@ -272,6 +272,7 @@ binary_api_list = [
     paddle.fmax,
     paddle.fmin,
     paddle.complex,
+    paddle.kron,
 ]
 
 binary_int_api_list = [
