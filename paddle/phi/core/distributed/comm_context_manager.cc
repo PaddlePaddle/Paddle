@@ -12,6 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#if defined(PADDLE_WITH_GLOO)
+#include <gloo/rendezvous/prefix_store.h>
+
+#include "paddle/phi/core/distributed/gloo_comm_context.h"
+#include "paddle/phi/core/distributed/gloo_utils.h"
+#include "paddle/phi/core/distributed/store/gloo_store.h"
+#endif
+
 #include "paddle/phi/core/distributed/comm_context_manager.h"
 
 #include <memory>
@@ -57,6 +65,24 @@ void CommContextManager::CreateNCCLCommContext(
   auto& comm_context_manager = CommContextManager::GetInstance();
   comm_context_manager.SetStore(store);
   comm_context_manager.Emplace(ring_id, std::move(nccl_comm_context));
+}
+#endif
+
+#if defined(PADDLE_WITH_GLOO)
+void CommContextManager::CreateGlooCommContext(
+    const std::shared_ptr<Store>& store, int ring_id, int rank, int size) {
+  GlooStore store_wrapper(store);
+  auto gloo_store = std::make_shared<gloo::rendezvous::PrefixStore>(
+      std::to_string(ring_id), store_wrapper);
+
+  auto gloo_device = CreateGlooDevice();
+
+  auto gloo_comm_context =
+      std::make_unique<GlooCommContext>(rank, size, gloo_store, gloo_device);
+  auto& comm_context_manager = CommContextManager::GetInstance();
+  // set actual store to manager
+  comm_context_manager.SetStore(store);
+  comm_context_manager.Emplace(ring_id, std::move(gloo_comm_context));
 }
 #endif
 

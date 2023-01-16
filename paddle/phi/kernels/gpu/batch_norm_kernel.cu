@@ -722,9 +722,6 @@ void BatchNormKernel(const Context &ctx,
 
   auto handle = ctx.cudnn_handle();
 
-  const size_t CUDNN_PER_ACTIVATION_THRESHOLD = 10240;
-  const size_t CUDNN_SPATIAL_THRESHOLD = 880801;
-
   // Now, depending on whether we are running test or not, we have two paths.
   // It is training mode when it's not reference AND not using pre-trained
   // model.
@@ -829,7 +826,7 @@ void BatchNormKernel(const Context &ctx,
 #else
     const bool use_native_kernel =
         (x_dims.size() == 2 ||
-         (x_dims.size() == 3 && N >= CUDNN_SPATIAL_THRESHOLD));
+         (x_dims.size() == 3 && N >= CUDNN_SPATIAL_THRESHOLD_EVAL));
     if (use_native_kernel) {
       const int block_size = 256;
       const int grid_size = (N * C * H * W * D + block_size - 1) / block_size;
@@ -1005,7 +1002,7 @@ void BatchNormKernel(const Context &ctx,
       // const size_t CUDNN_PER_ACTIVATION_THRESHOLD = 131070;
       const bool use_native_kernel =
           ((x_dims.size() == 2 && N >= CUDNN_PER_ACTIVATION_THRESHOLD) ||
-           (x_dims.size() == 3 && N >= CUDNN_SPATIAL_THRESHOLD));
+           (x_dims.size() == 3 && N >= CUDNN_SPATIAL_THRESHOLD_TRAIN));
       if (use_native_kernel) {
         dim3 block;
         dim3 grid;

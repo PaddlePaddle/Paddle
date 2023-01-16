@@ -68,9 +68,6 @@ def pairwise_distance(x, y, p=2.0, epsilon=1e-6, keepdim=False, name=None):
     #              [4.99999860, 4.99999860])
 
     """
-    check_type(p, 'porder', (float, int), 'PairwiseDistance')
-    check_type(epsilon, 'epsilon', (float), 'PairwiseDistance')
-    check_type(keepdim, 'keepdim', (bool), 'PairwiseDistance')
     if in_dygraph_mode():
         sub = _C_ops.subtract(x, y)
         # p_norm op has not uesd epsilon, so change it to the following.
@@ -82,6 +79,10 @@ def pairwise_distance(x, y, p=2.0, epsilon=1e-6, keepdim=False, name=None):
         return _C_ops.p_norm(sub, p, -1, 0.0, keepdim, False)
 
     else:
+        check_type(p, 'porder', (float, int), 'PairwiseDistance')
+        check_type(epsilon, 'epsilon', (float), 'PairwiseDistance')
+        check_type(keepdim, 'keepdim', (bool), 'PairwiseDistance')
+
         check_variable_and_dtype(
             x, 'x', ['float32', 'float64'], 'PairwiseDistance'
         )
