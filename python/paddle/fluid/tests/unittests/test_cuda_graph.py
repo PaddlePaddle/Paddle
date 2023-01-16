@@ -29,15 +29,23 @@ def can_use_cuda_graph():
     return paddle.is_compiled_with_cuda() and not paddle.is_compiled_with_rocm()
 
 
-class TestCUDAGraph(unittest.TestCase):
+class TestCUDAGraphInStaticMode(unittest.TestCase):
     def setUp(self):
         if can_use_cuda_graph():
+            # The behavior of `FLAGS_use_stream_safe_cuda_allocator` in static
+            # mode is inconsistent with that in dygraph mode.
+            # In static mode, FLAGS_use_stream_safe_cuda_allocator must be True.
+            # In dygraph mode, FLAGS_use_stream_safe_cuda_allocator must be False.
+            # These two types of unittests need to be written separately, because
+            # the allocator may only be initialized once, and the flag
+            # `FLAGS_use_stream_safe_cuda_allocator` only takes effect during
+            # initialization.
             paddle.set_flags(
                 {
                     'FLAGS_allocator_strategy': 'auto_growth',
                     'FLAGS_sync_nccl_allreduce': False,
                     'FLAGS_cudnn_deterministic': True,
-                    'FLAGS_use_stream_safe_cuda_allocator': False,
+                    'FLAGS_use_stream_safe_cuda_allocator': True,
                 }
             )
 
@@ -52,7 +60,6 @@ class TestCUDAGraph(unittest.TestCase):
             return
 
         seed = 100
-        paddle.set_flags({'FLAGS_use_stream_safe_cuda_allocator': True})
         loss_cuda_graph = self.cuda_graph_static_graph_main(
             seed, use_cuda_graph=True
         )
@@ -60,7 +67,6 @@ class TestCUDAGraph(unittest.TestCase):
             seed, use_cuda_graph=False
         )
         self.assertEqual(loss_cuda_graph, loss_no_cuda_graph)
-        paddle.set_flags({'FLAGS_use_stream_safe_cuda_allocator': False})
 
     def cuda_graph_static_graph_main(self, seed, use_cuda_graph):
         batch_size = 1
@@ -135,6 +141,24 @@ class TestCUDAGraph(unittest.TestCase):
             if cuda_graph:
                 cuda_graph.reset()
         return np.array(loss_t)
+
+
+class TestCUDAGraphInDygraphMode(unittest.TestCase):
+    def setUp(self):
+        if can_use_cuda_graph():
+            paddle.set_flags(
+                {
+                    'FLAGS_allocator_strategy': 'auto_growth',
+                    'FLAGS_sync_nccl_allreduce': False,
+                    'FLAGS_cudnn_deterministic': True,
+                    'FLAGS_use_stream_safe_cuda_allocator': False,
+                }
+            )
+
+    def random_tensor(self, shape):
+        return paddle.to_tensor(
+            np.random.randint(low=0, high=10, size=shape).astype("float32")
+        )
 
     def test_cuda_graph_dynamic_graph(self):
         if not can_use_cuda_graph():

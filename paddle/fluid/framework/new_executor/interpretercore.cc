@@ -552,17 +552,14 @@ void InterpreterCore::PrepareForCUDAGraphCapture() {
                         "FLAGS_sync_nccl_allreduce must be False to support "
                         "CUDA Graph capturing."));
 
-  // All output vars of coalesce_tensor op should be persistable.
+  // All output vars of coalesce_tensor op should not be gc.
   // If fused output var of coalesce_tensor is gc, it will cause accuracy
   // problem. The specific reasons need to be analyzed.
   for (auto& op_desc : block_.AllOps()) {
     if (op_desc->Type() == kCoalesceTensor) {
       for (auto& out_var_name : op_desc->OutputArgumentNames()) {
-        auto* out_var = op_desc->Block()->FindVarRecursive(out_var_name);
-        if (out_var) {
-          out_var->SetPersistable(true);
-          VLOG(4) << "Mark Var(" << out_var_name << ") as Persistable.";
-        }
+        execution_config_.skip_gc_vars.insert(out_var_name);
+        VLOG(4) << "Insert Var(" << out_var_name << ") into skip_gc_vars.";
       }
     }
   }
