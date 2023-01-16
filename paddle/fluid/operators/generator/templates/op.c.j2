@@ -39,11 +39,9 @@ using paddle::framework::GradVarName;
   {% else %}
 {{backward_op_reused_maker(op, op_dict[op["forward"]["name"]], op["invoke"])}}
   {% endif %}
-  {% if composite_gen_flag == True %}
-    {% if op is composite_op %}
+  {% if op is composite_op %}
 {{composite_grad_op_maker(op_dict[op["name"]])}}
-    {% endif %}
-  {% endif %}  
+  {% endif %}
 {% endfor %}
 }  // namespace operators
 }  // namespace paddle
@@ -51,7 +49,7 @@ using paddle::framework::GradVarName;
 namespace ops = paddle::operators;
 {% for op in ops + backward_ops %}
 {% if op is base_op %}
-{{register_op_with_components(op, op_dict)}}
+{{register_op_with_components(op)}}
 {{register_op_version(op)}}
 {% endif %}
 {% endfor %}
