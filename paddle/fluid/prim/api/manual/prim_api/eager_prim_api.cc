@@ -15,7 +15,7 @@
 #include "paddle/fluid/eager/api/all.h"
 #include "paddle/fluid/eager/api/generated/eager_generated/forwards/dygraph_functions.h"
 #include "paddle/fluid/prim/api/manual/prim_api/prim_api.h"
-
+#include "paddle/phi/capi/include/wrapper_base.h"
 namespace paddle {
 namespace prim {
 template <>
@@ -34,6 +34,38 @@ Tensor scale<Tensor>(const Tensor& x,
 template <>
 Tensor multiply<Tensor>(const Tensor& x, const Tensor& y) {
   return ::multiply_ad_func(x, y);
+}
+
+template <>
+Tensor expand<Tensor>(const Tensor& x, const IntArray& shape) {
+  return ::expand_ad_func(x, shape);
+}
+
+template <>
+Tensor unsqueeze<Tensor>(const Tensor& x, const IntArray& axis) {
+  return ::unsqueeze_ad_func(x, axis);
+}
+
+template <>
+Tensor divide<Tensor>(const Tensor& x, const Tensor& y) {
+  return ::divide_ad_func(x, y);
+}
+
+template <>
+Tensor full<Tensor>(paddle::experimental::IntArray shape,
+                    paddle::experimental::Scalar value,
+                    paddle::experimental::DataType dtype,
+                    paddle::platform::Place place) {
+  return ::full_ad_func(shape, value, dtype, place);
+}
+template <>
+Tensor sum<Tensor>(Tensor x, IntArray axis, DataType dtype, bool keepdim) {
+  return ::sum_ad_func(x, axis, dtype, keepdim);
+}
+
+template <>
+Tensor reshape<Tensor>(Tensor x, IntArray shape) {
+  return ::reshape_ad_func(x, shape);
 }
 }  // namespace prim
 }  // namespace paddle

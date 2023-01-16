@@ -256,7 +256,7 @@ def add_to_collection(collection_name, value, name=None):
 
 
 def fetch(tensor, name=None, logging=False):
-    if isinstance(tensor, paddle.fluid.framework.Variable):
+    if isinstance(tensor, paddle.static.Variable):
         tensor = tensor.name
     elif isinstance(tensor, str):
         tensor = tensor
