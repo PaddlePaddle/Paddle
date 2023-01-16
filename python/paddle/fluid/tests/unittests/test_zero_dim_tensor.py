@@ -211,7 +211,9 @@ class TestReduceAPI(unittest.TestCase):
 
             self.assertEqual(x.shape, [])
             self.assertEqual(out.shape, [])
-            self.assertEqual(out.numpy(), x.numpy())
+            if api not in [paddle.argmax, paddle.argmin]:
+                self.assertEqual(out.numpy(), x.numpy())
+
             if x.grad is not None:
                 self.assertEqual(x.grad.shape, [])
                 self.assertEqual(x.grad.numpy(), 1.0)
@@ -244,7 +246,9 @@ class TestReduceAPI(unittest.TestCase):
                 res = exe.run(main_prog, fetch_list=fetch_list)
                 self.assertEqual(res[0].shape, ())
                 self.assertEqual(res[1].shape, ())
-                self.assertEqual(res[0], res[1])
+                if api not in [paddle.argmax, paddle.argmin]:
+                    self.assertEqual(res[0], res[1])
+
                 if len(res) > 2:
                     self.assertEqual(res[2].shape, ())
                     self.assertEqual(res[3].shape, ())
