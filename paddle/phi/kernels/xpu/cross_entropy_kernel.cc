@@ -130,35 +130,33 @@ void CrossEntropyWithSoftmaxKernel(const Context& dev_ctx,
   } else {
     int* labels_int_ptr = nullptr;
     if (labels.dtype() == phi::DataType::INT32) {
-        printf("cross_entropy_with_softmax, INT32\n");
-        labels_int_ptr = (int *)labels.data<int32_t>();
+      labels_int_ptr = reinterpret_cast<int*>(labels.data<int32_t>());
     } else if (labels.dtype() == phi::DataType::INT64) {
-        printf("cross_entropy_with_softmax, INT64\n");
-        labels_int_ptr = RAII_GUARD.alloc_l3_or_gm<int32_t>(labels.numel());
-        PADDLE_ENFORCE_XDNN_NOT_NULL(labels_int_ptr);
+      labels_int_ptr = RAII_GUARD.alloc_l3_or_gm<int32_t>(labels.numel());
+      PADDLE_ENFORCE_XDNN_NOT_NULL(labels_int_ptr);
 
-        r = xpu::cast_v2<int64_t, int32_t>(dev_ctx.x_context(),
-                                           labels.data<int64_t>(),
-                                           labels_int_ptr,
-                                           labels.numel());
-        PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast_v2");
+      r = xpu::cast_v2<int64_t, int32_t>(dev_ctx.x_context(),
+                                         labels.data<int64_t>(),
+                                         labels_int_ptr,
+                                         labels.numel());
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast_v2");
     } else if (labels.dtype() == phi::DataType::INT16) {
-        printf("cross_entropy_with_softmax, INT16\n");
-        labels_int_ptr = RAII_GUARD.alloc_l3_or_gm<int32_t>(labels.numel());
-        PADDLE_ENFORCE_XDNN_NOT_NULL(labels_int_ptr);
+      labels_int_ptr = RAII_GUARD.alloc_l3_or_gm<int32_t>(labels.numel());
+      PADDLE_ENFORCE_XDNN_NOT_NULL(labels_int_ptr);
 
-        r = xpu::cast_v2<int16_t, int32_t>(dev_ctx.x_context(),
-                                           labels.data<int16_t>(),
-                                           labels_int_ptr,
-                                           labels.numel());
-        PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast_v2");
+      r = xpu::cast_v2<int16_t, int32_t>(dev_ctx.x_context(),
+                                         labels.data<int16_t>(),
+                                         labels_int_ptr,
+                                         labels.numel());
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast_v2");
     } else {
-        PADDLE_THROW(phi::errors::Unimplemented(
-            "cross_entropy_with_softmax labels not support"));
+      PADDLE_THROW(phi::errors::Unimplemented(
+          "cross_entropy_with_softmax labels not support"));
     }
 
     // DenseTensor labels_int32;
-    // int* labels_int_ptr_l3 = RAII_GUARD.alloc_l3_or_gm<int32_t>(labels.numel());
+    // int* labels_int_ptr_l3 =
+    // RAII_GUARD.alloc_l3_or_gm<int32_t>(labels.numel());
     // PADDLE_ENFORCE_XDNN_NOT_NULL(labels_int_ptr_l3);
 
     // r = xpu::cast_v2<int64_t, int32_t>(dev_ctx.x_context(),

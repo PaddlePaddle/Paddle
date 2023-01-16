@@ -69,7 +69,7 @@ class CustomFusedDenseXPUKernel : public framework::OpKernel<T> {
     phi::XpuFcInfo fc_info;
 
     phi::GetFCInfo(x_mat_dims, y->dims(), transx, transy, &fc_info);
-    VLOG(0) << "CustomFusedDenseXPUKernel 000";
+    VLOG(1) << "CustomFusedDenseXPUKernel 000";
     xpu::Context* xpu_ctx = dev_ctx.x_context();
 
     const XPUType* x_ptr = reinterpret_cast<const XPUType*>(x->data<T>());
@@ -124,6 +124,8 @@ class CustomFusedDenseXPUGradKernel : public framework::OpKernel<T> {
     phi::DenseTensor* dx = ctx.Output<phi::DenseTensor>("DX");
     phi::DenseTensor* dy = ctx.Output<phi::DenseTensor>("DY");
     phi::DenseTensor* dbias = ctx.Output<phi::DenseTensor>("DBias");
+
+    auto tag_start = std::chrono::steady_clock::now();
 
     std::string activation = "none";
     if (ctx.HasAttr("activation")) {
@@ -223,6 +225,13 @@ class CustomFusedDenseXPUGradKernel : public framework::OpKernel<T> {
                           {0});
       PADDLE_ENFORCE_XDNN_SUCCESS(r, "reduce_sum");
     }
+
+    auto tag_end = std::chrono::steady_clock::now();
+    float time_use = std::chrono::duration_cast<std::chrono::nanoseconds>(
+                         tag_end - tag_start)
+                         .count() /
+                     1000000.0;
+    printf("op: %s, %0.6f ms\n", "custom_fused_dense", time_use);
   }
 };
 
@@ -234,11 +243,10 @@ namespace ops = paddle::operators;
 REGISTER_OP_XPU_KERNEL(
     custom_fused_dense,
     ops::CustomFusedDenseXPUKernel<phi::XPUContext, float>,
-    ops::CustomFusedDenseXPUKernel<phi::XPUContext,
-                                    paddle::platform::float16>);
+    ops::CustomFusedDenseXPUKernel<phi::XPUContext, paddle::platform::float16>);
 
 REGISTER_OP_XPU_KERNEL(
     custom_fused_dense_grad,
     ops::CustomFusedDenseXPUGradKernel<phi::XPUContext, float>,
     ops::CustomFusedDenseXPUGradKernel<phi::XPUContext,
-                                        paddle::platform::float16>);
+                                       paddle::platform::float16>);

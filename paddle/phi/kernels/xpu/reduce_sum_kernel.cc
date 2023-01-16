@@ -47,7 +47,7 @@ void SumRawKernel(const Context& dev_ctx,
               const std::vector<int>& reduce_dims) {
     return xpu::reduce_sum<XPUType>(ctx, x, y, xdims, reduce_dims);
   };
-  int r = XPUReduce<Context, XPUType>(
+  int r = XPUReduce<Context, T>(
       dev_ctx, x, dims.GetData(), keep_dim, reduce_all, out, f);
 
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "reduce_sum");
@@ -55,4 +55,5 @@ void SumRawKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(sum_raw, XPU, ALL_LAYOUT, phi::SumRawKernel, float) {}
+PD_REGISTER_KERNEL(
+    sum_raw, XPU, ALL_LAYOUT, phi::SumRawKernel, float, phi::dtype::float16) {}

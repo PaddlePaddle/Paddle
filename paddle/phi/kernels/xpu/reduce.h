@@ -29,14 +29,17 @@ int XPUReduce(const Context& dev_ctx,
               bool reduce_all,
               DenseTensor* out,
               std::function<int(xpu::Context*,
-                                const T*,
-                                T*,
+                                const typename XPUTypeTrait<T>::Type*,
+                                typename XPUTypeTrait<T>::Type*,
                                 const std::vector<int>&,
                                 const std::vector<int>&)> func) {
   dev_ctx.template Alloc<T>(out);
 
-  const auto* x_data = x.data<T>();
-  auto* y_data = out->data<T>();
+  using XPUType = typename XPUTypeTrait<T>::Type;
+  //   const auto* x_data = x.data<XPUType>();
+  //   auto* y_data = out->data<XPUType>();
+  auto* x_data = reinterpret_cast<const XPUType*>(x.data<T>());
+  auto* y_data = reinterpret_cast<XPUType*>(out->data<T>());
   const auto& input_dim_size = x.dims().size();
   std::vector<int> true_dims;
   for (size_t i = 0; i < dims.size(); ++i) {
@@ -69,7 +72,7 @@ int XPUReduce(const Context& dev_ctx,
 
   int r = xpu::SUCCESS;
   if (reduce_dims.size() == 0) {
-    r = xpu::copy<T>(
+    r = xpu::copy<XPUType>(
         dev_ctx.x_context(), x_data, y_data, x.numel() * sizeof(T));
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "copy");
   } else {

@@ -41,11 +41,11 @@ class CustomFMHAXPUKernel : public framework::OpKernel<T> {
         reinterpret_cast<XPUType*>(ctxout->mutable_data<T>(ctx.GetPlace()));
     XPUType* sout_ptr =
         reinterpret_cast<XPUType*>(sout->mutable_data<T>(ctx.GetPlace()));
-    VLOG(0) << "==> CustomFMHAXPUKernel";
+    VLOG(1) << "==> CustomFMHAXPUKernel";
 
     (void)(ctxout_ptr);
     (void)(sout_ptr);
-    
+
 #if 0
     PADDLE_ENFORCE_EQ(
         platform::is_xpu_place(ctx.GetPlace()),
@@ -448,11 +448,20 @@ class CustomFMHAXPUKernel : public framework::OpKernel<T> {
 template <typename T>
 class CustomFMHAGradXPUKernel : public framework::OpKernel<T> {
  public:
-  using XPUT = typename XPUTypeTrait<T>::Type;
+  using XPUType = typename XPUTypeTrait<T>::Type;
 
   void Compute(const framework::ExecutionContext& ctx) const override {
-    PADDLE_THROW(platform::errors::Unimplemented(
-        "The custom_fmha_grad operator does not support XPU yet."));
+    // PADDLE_THROW(platform::errors::Unimplemented(
+    //     "The custom_fmha_grad operator does not support XPU yet."));
+    VLOG(1) << "==> CustomFusedDropoutResidualLnXPUGradKernel";
+
+    phi::DenseTensor* dqkv = ctx.Output<phi::DenseTensor>("DQKV");
+
+    XPUType* dx_qkv =
+        reinterpret_cast<XPUType*>(dqkv->mutable_data<T>(ctx.GetPlace()));
+
+    (void)dx_qkv;
+
 #if 0
     PADDLE_ENFORCE_EQ(
         platform::is_xpu_place(ctx.GetPlace()),
