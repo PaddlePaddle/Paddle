@@ -27,7 +27,7 @@ template <typename TShape,
           typename WShape,
           typename IShape,
           typename Arch,
-          int NumStages = 2>
+          int NumStages>
 cutlass::Status Int4GemmImpl(GemmAllParams params) {
   using ElementAccumulator = int32_t;
   using ElementComputeEpilogue = int32_t;
@@ -67,8 +67,8 @@ cutlass::Status Int4GemmImpl(GemmAllParams params) {
                                            NumStages>;
   const cutlass::int4b_t *input = params.input;
   const cutlass::int4b_t *weight = params.weight;
-  const cutlass::int4b_t *bias = params.bias;
-  cutlass::int4b_t *output = params.output;
+  const int32_t *bias = params.bias;
+  int32_t *output = params.output;
   int batch = params.batch;
   int m = params.m;
   int n = params.n;
@@ -81,10 +81,10 @@ cutlass::Status Int4GemmImpl(GemmAllParams params) {
   int split_k_slices = 1;  // in big shape,no need to split k
 
   typename Gemm::Arguments arguments(problem_size,
-                                     {input, LayoutInputA},
-                                     {weight, LayoutInputB},
-                                     {bias, LayoutInputBias},
-                                     {output, LayoutOutput},
+                                     {input, m},
+                                     {weight, n},
+                                     {bias, n},
+                                     {output, n},
                                      {alpha, beta},
                                      split_k_slices);
 
@@ -107,140 +107,140 @@ cutlass::Status Int4GemmImpl(GemmAllParams params) {
 }
 
 // config 0
-template <typename arch = cutlass::arch::Sm75, int NumStages = 2>
+template <typename arch, int NumStages>
 cutlass::Status Int4GemmImpl<cutlass::gemm::GemmShape<128, 256, 128>,
                              cutlass::gemm::GemmShape<64, 64, 128>,
                              cutlass::gemm::GemmShape<8, 8, 32>,
                              arch,
                              NumStages>(GemmAllParams);
 // config 1
-template <typename arch = cutlass::arch::Sm75, int NumStages = 2>
+template <typename arch, int NumStages>
 cutlass::Status Int4GemmImpl<cutlass::gemm::GemmShape<256, 128, 128>,
                              cutlass::gemm::GemmShape<64, 64, 128>,
                              cutlass::gemm::GemmShape<8, 8, 32>,
                              arch,
                              NumStages>(GemmAllParams);
 // config 2
-template <typename arch = cutlass::arch::Sm75, int NumStages = 2>
+template <typename arch, int NumStages>
 cutlass::Status Int4GemmImpl<cutlass::gemm::GemmShape<128, 128, 128>,
                              cutlass::gemm::GemmShape<64, 64, 128>,
                              cutlass::gemm::GemmShape<8, 8, 32>,
                              arch,
                              NumStages>(GemmAllParams);
 // config 3
-template <typename arch = cutlass::arch::Sm75, int NumStages = 2>
+template <typename arch, int NumStages>
 cutlass::Status Int4GemmImpl<cutlass::gemm::GemmShape<64, 128, 128>,
                              cutlass::gemm::GemmShape<32, 64, 128>,
                              cutlass::gemm::GemmShape<8, 8, 32>,
                              arch,
                              NumStages>(GemmAllParams);
 // config 4
-template <typename arch = cutlass::arch::Sm75, int NumStages = 2>
+template <typename arch, int NumStages>
 cutlass::Status Int4GemmImpl<cutlass::gemm::GemmShape<128, 64, 128>,
                              cutlass::gemm::GemmShape<64, 32, 128>,
                              cutlass::gemm::GemmShape<8, 8, 32>,
                              arch,
                              NumStages>(GemmAllParams);
 // config 5
-template <typename arch = cutlass::arch::Sm75, int NumStages = 2>
+template <typename arch, int NumStages>
 cutlass::Status Int4GemmImpl<cutlass::gemm::GemmShape<64, 64, 128>,
                              cutlass::gemm::GemmShape<32, 32, 128>,
                              cutlass::gemm::GemmShape<8, 8, 32>,
                              arch,
                              NumStages>(GemmAllParams);
 // config 6
-template <typename arch = cutlass::arch::Sm75, int NumStages = 2>
+template <typename arch, int NumStages>
 cutlass::Status Int4GemmImpl<cutlass::gemm::GemmShape<256, 64, 128>,
                              cutlass::gemm::GemmShape<64, 64, 128>,
                              cutlass::gemm::GemmShape<8, 8, 32>,
                              arch,
                              NumStages>(GemmAllParams);
 // config 7
-template <typename arch = cutlass::arch::Sm75, int NumStages = 2>
+template <typename arch, int NumStages>
 cutlass::Status Int4GemmImpl<cutlass::gemm::GemmShape<64, 256, 128>,
                              cutlass::gemm::GemmShape<64, 64, 128>,
                              cutlass::gemm::GemmShape<8, 8, 32>,
                              arch,
                              NumStages>(GemmAllParams);
 // config 8
-template <typename arch = cutlass::arch::Sm80, int NumStages = 3>
+template <typename arch, int NumStages>
 cutlass::Status Int4GemmImpl<cutlass::gemm::GemmShape<256, 128, 128>,
                              cutlass::gemm::GemmShape<64, 64, 128>,
                              cutlass::gemm::GemmShape<16, 8, 64>,
                              arch,
                              NumStages>(GemmAllParams);
 // config 9
-template <typename arch = cutlass::arch::Sm80, int NumStages = 3>
+template <typename arch, int NumStages>
 cutlass::Status Int4GemmImpl<cutlass::gemm::GemmShape<128, 256, 128>,
                              cutlass::gemm::GemmShape<64, 64, 128>,
                              cutlass::gemm::GemmShape<16, 8, 64>,
                              arch,
                              NumStages>(GemmAllParams);
 // config 10
-template <typename arch = cutlass::arch::Sm80, int NumStages = 4>
+template <typename arch, int NumStages>
 cutlass::Status Int4GemmImpl<cutlass::gemm::GemmShape<256, 64, 128>,
                              cutlass::gemm::GemmShape<64, 64, 128>,
                              cutlass::gemm::GemmShape<16, 8, 64>,
                              arch,
                              NumStages>(GemmAllParams);
 // config 11
-template <typename arch = cutlass::arch::Sm80, int NumStages = 4>
+template <typename arch, int NumStages>
 cutlass::Status Int4GemmImpl<cutlass::gemm::GemmShape<64, 256, 128>,
                              cutlass::gemm::GemmShape<64, 64, 128>,
                              cutlass::gemm::GemmShape<16, 8, 64>,
                              arch,
                              NumStages>(GemmAllParams);
 // config 12
-template <typename arch = cutlass::arch::Sm80, int NumStages = 5>
+template <typename arch, int NumStages>
 cutlass::Status Int4GemmImpl<cutlass::gemm::GemmShape<128, 128, 128>,
                              cutlass::gemm::GemmShape<64, 64, 128>,
                              cutlass::gemm::GemmShape<16, 8, 64>,
                              arch,
                              NumStages>(GemmAllParams);
 // config 13
-template <typename arch = cutlass::arch::Sm80, int NumStages = 6>
+template <typename arch, int NumStages>
 cutlass::Status Int4GemmImpl<cutlass::gemm::GemmShape<128, 64, 128>,
                              cutlass::gemm::GemmShape<64, 32, 128>,
                              cutlass::gemm::GemmShape<16, 8, 64>,
                              arch,
                              NumStages>(GemmAllParams);
 // config 14
-template <typename arch = cutlass::arch::Sm80, int NumStages = 6>
+template <typename arch, int NumStages>
 cutlass::Status Int4GemmImpl<cutlass::gemm::GemmShape<64, 128, 128>,
                              cutlass::gemm::GemmShape<32, 64, 128>,
                              cutlass::gemm::GemmShape<16, 8, 64>,
                              arch,
                              NumStages>(GemmAllParams);
 // config 15
-template <typename arch = cutlass::arch::Sm80, int NumStages = 10>
+template <typename arch, int NumStages>
 cutlass::Status Int4GemmImpl<cutlass::gemm::GemmShape<64, 64, 128>,
                              cutlass::gemm::GemmShape<32, 32, 128>,
                              cutlass::gemm::GemmShape<16, 8, 64>,
                              arch,
                              NumStages>(GemmAllParams);
 // config 16
-template <typename arch = cutlass::arch::Sm80, int NumStages = 3>
+template <typename arch, int NumStages>
 cutlass::Status Int4GemmImpl<cutlass::gemm::GemmShape<128, 128, 256>,
                              cutlass::gemm::GemmShape<64, 64, 256>,
                              cutlass::gemm::GemmShape<16, 8, 64>,
                              arch,
                              NumStages>(GemmAllParams);
 // config 17
-template <typename arch = cutlass::arch::Sm80, int NumStages = 3>
+template <typename arch, int NumStages>
 cutlass::Status Int4GemmImpl<cutlass::gemm::GemmShape<128, 64, 256>,
                              cutlass::gemm::GemmShape<64, 32, 256>,
                              cutlass::gemm::GemmShape<16, 8, 64>,
                              arch,
                              NumStages>(GemmAllParams);
 // config 18
-template <typename arch = cutlass::arch::Sm80, int NumStages = 3>
+template <typename arch, int NumStages>
 cutlass::Status Int4GemmImpl<cutlass::gemm::GemmShape<64, 128, 256>,
                              cutlass::gemm::GemmShape<32, 64, 256>,
                              cutlass::gemm::GemmShape<16, 8, 64>,
                              arch,
                              NumStages>(GemmAllParams);
 // config 19
-template <typename arch = cutlass::arch::Sm80, int NumStages = 5>
+template <typename arch, int NumStages>
 cutlass::Status Int4GemmImpl<cutlass::gemm::GemmShape<64, 64, 256>,
                              cutlass::gemm::GemmShape<32, 32, 256>,
                              cutlass::gemm::GemmShape<16, 8, 64>,

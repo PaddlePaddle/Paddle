@@ -47,6 +47,9 @@ inline int getSMVersion() {
       phi::backends::gpu::GetDeviceProperties(device);
   return prop.major * 10 + prop.minor;
 }
+
+template <typename Destination, typename Source>
+void dynamic_convert(Source const *s, Destination *t, int N);
 }  // namespace cutlass_gemm_internal
 }  // namespace fusion
 }  // namespace phi

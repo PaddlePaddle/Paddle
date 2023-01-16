@@ -13,6 +13,9 @@
 // limitations under the License.
 #pragma once
 
+#include "cutlass/cutlass.h"
+#include "cutlass/numeric_conversion.h"
+
 #include "paddle/phi/kernels/fusion/cutlass/int4_gemm/int4_gemm_util.h"
 
 namespace phi {
@@ -59,6 +62,16 @@ int ProfileToGetBestConfig(
         phi::errors::NotFound("Can't find any cutlass config for this op."));
   }
   return min_time_index;
+}
+
+template <typename Destination, typename Source>
+void dynamic_convert(Source const *s, Destination *t, int N) {
+  cutlass::NumericConverter<Destination, Source> converter;
+  CUTLASS_PRAGMA_UNROLL
+  for (int i = 0; i < N; ++i) {
+    t[i] = converter(s[i]);
+  }
+  return;
 }
 
 }  // namespace cutlass_gemm_internal

@@ -14,6 +14,8 @@
 
 #include "cutlass/numeric_conversion.h"
 
+#include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
 
@@ -28,11 +30,11 @@ void Int4GemmKernel(const Context &ctx,
                     const DenseTensor &x,
                     const DenseTensor &y,
                     const DenseTensor &bias,
-                    DenseTensor *out,
                     const bool &trans_x,
                     const bool &trans_y,
-                    const std::string &activation) {
-  ctx.template Alloc<T>(output);
+                    const std::string &activation,
+                    DenseTensor *out) {
+  ctx.template Alloc<T>(out);
   auto x_dims = x.dims();
   auto y_dims = y.dims();
   auto bias_dims = bias.dims();
@@ -47,6 +49,9 @@ void Int4GemmKernel(const Context &ctx,
   const int kx = x_dims[1];
   const int ky = y_dims[0];
   const int n = y_dims[1];
+  const int mk = m * kx;
+  const int kn = ky * n;
+  const int mn = m * n;
 
   CHECK_EQ(kx, ky);
 
@@ -74,29 +79,24 @@ void Int4GemmKernel(const Context &ctx,
       out_bytes,
       phi::Stream(reinterpret_cast<phi::StreamId>(stream)));
 
-  cutlass::Array<T, m *kx> *source_x =
-      reinterpret_cast<cutlass::Array<T, m * kx> *>(x.data());
-  cutlass::Array<T, kx *n> *source_y =
-      reinterpret_cast<cutlass::Array<T, ky * n> *>(y.data());
-
-  cutlass::NumericArrayConverter<cutlass::int4b_t, T, m * kx> convert_x;
-  cutlass::NumericArrayConverter<cutlass::int4b_t, T, ky * n> convert_y;
-
-  cutlass::Array<cutlass::int4b_t, m *kx> *destination_x = tmp_x->ptr();
-  *destination_x = convert_x(*source_x);
-  cutlass::Array<cutlass::int4b_t, ky *n> *destination_y = tmp_y->ptr();
-  *destination_x = convert_y(*source_y);
-  int32_t *destination_output = tmp_out->ptr();
+  dynamic_convert<cutlass::int4b_t, T>(
+      reinterpret_cast<const T *>(x.data()),
+      reinterpret_cast<cutlass::int4b_t *>(tmp_x->ptr()),
+      mk);
+  dynamic_convert<cutlass::int4b_t, T>(
+      reinterpret_cast<const T *>(x.data()),
+      reinterpret_cast<cutlass::int4b_t *>(tmp_y->ptr()),
+      kn);
 
   GemmAllParams params = {
-      reinterpret_cast<const cutlass::int4b_t *>(destination_x->data()),
-      reinterpret_cast<const cutlass::int4b_t *>(destination_y->data()),
+      reinterpret_cast<const cutlass::int4b_t *>(tmp_x->ptr()),
+      reinterpret_cast<const cutlass::int4b_t *>(tmp_y->ptr()),
       reinterpret_cast<const int32_t *>(bias.data()),
-      destination_output,
+      reinterpret_cast<int32_t *>(tmp_out->ptr()),
       1,
       m,
       n,
-      k,
+      kx,
       &ctx};
   if (activation == "identity") {
     Int4GemmBias(params, sm);
@@ -105,10 +105,9 @@ void Int4GemmKernel(const Context &ctx,
         "Cutlass dose not support this activation on int4: %s.",
         activation.c_str()));
   }
-  cutlass::Array<int32_t, m *n> *source_out = destination_output;
-  cutlass::NumericArrayConverter<T, int32_t, m * n> convert_out;
-  *out = convert_out(*source_out);
-  out->set_layout(ALL_LAYOUT);
+  dynamic_convert<T, int32_t>(reinterpret_cast<const int32_t *>(tmp_out->ptr()),
+                              reinterpret_cast<T *>(out->data()),
+                              mn);
 }
 }  // namespace cutlass_gemm_internal
 }  // namespace fusion
