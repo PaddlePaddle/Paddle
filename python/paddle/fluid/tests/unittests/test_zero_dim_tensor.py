@@ -188,6 +188,8 @@ reduce_api_list = [
     paddle.logsumexp,
     paddle.all,
     paddle.any,
+    paddle.std,
+    paddle.var,
 ]
 
 
