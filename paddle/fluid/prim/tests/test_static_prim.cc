@@ -135,9 +135,9 @@ struct TestBaseProgram {
   int idx_{0};
 };
 
-class TestGradCompositeGradMaker : public CompositeGradOpMakerBase {
+class TestGradCompositeGradMaker : public GradCompositeOpMakerBase {
  public:
-  using prim::CompositeGradOpMakerBase::CompositeGradOpMakerBase;
+  using prim::GradCompositeOpMakerBase::GradCompositeOpMakerBase;
   void Apply() override {}
 };
 
