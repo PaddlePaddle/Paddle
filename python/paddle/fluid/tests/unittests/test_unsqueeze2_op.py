@@ -292,24 +292,26 @@ class TestUnsqueezeInplaceAPI(TestUnsqueezeAPI):
 class TestUnsqueezeAPI_ZeroDim(unittest.TestCase):
     def test_dygraph(self):
         paddle.disable_static()
-        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
 
         x = paddle.rand([])
         x.stop_gradient = False
 
         out = paddle.unsqueeze(x, [-1])
+        out.retain_grads()
         out.backward()
         self.assertEqual(out.shape, [1])
         self.assertEqual(x.grad.shape, [])
         self.assertEqual(out.grad.shape, [1])
 
         out = paddle.unsqueeze(x, [-1, 1])
+        out.retain_grads()
         out.backward()
         self.assertEqual(out.shape, [1, 1])
         self.assertEqual(x.grad.shape, [])
         self.assertEqual(out.grad.shape, [1, 1])
 
         out = paddle.unsqueeze(x, [0, 1, 2])
+        out.retain_grads()
         out.backward()
         self.assertEqual(out.shape, [1, 1, 1])
         self.assertEqual(x.grad.shape, [])

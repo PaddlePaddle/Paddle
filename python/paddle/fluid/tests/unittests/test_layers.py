@@ -1391,7 +1391,8 @@ class TestLayer(LayerTest):
         with self.static_graph():
             data = fluid.data(name="input", shape=[-1, 32, 32], dtype="float32")
             label = fluid.data(name="label", shape=[-1, 1], dtype="int")
-            fc_out = fluid.layers.fc(input=data, size=10)
+            data_new = paddle.reshape(data, [3, 32 * 32])
+            fc_out = paddle.nn.Linear(32 * 32, 10)(data_new)
             predict = paddle.nn.functional.softmax(fc_out)
             result = paddle.static.accuracy(input=predict, label=label, k=5)
             place = fluid.CPUPlace()
@@ -1407,7 +1408,8 @@ class TestLayer(LayerTest):
         with self.dynamic_graph(force_to_use_cpu=True):
             data = base.to_variable(x)
             label = base.to_variable(y)
-            fc_out = fluid.layers.fc(data, size=10)
+            data_new = paddle.reshape(data, [3, 32 * 32])
+            fc_out = paddle.nn.Linear(32 * 32, 10)(data_new)
             predict = paddle.nn.functional.softmax(fc_out)
             dynamic_out = paddle.static.accuracy(
                 input=predict, label=label, k=5
@@ -1528,7 +1530,7 @@ class TestBook(LayerTest):
             startup_program=fluid.default_startup_program(),
         ):
             x = self._get_data(name='x', shape=[13], dtype='float32')
-            y_predict = layers.fc(input=x, size=1, act=None)
+            y_predict = paddle.nn.Linear(13, 1)(x)
             y = self._get_data(name='y', shape=[1], dtype='float32')
             cost = paddle.nn.functional.square_error_cost(
                 input=y_predict, label=y
@@ -1543,14 +1545,14 @@ class TestBook(LayerTest):
             # Change g_program, so the rest layers use `g_program`
             images = self._get_data(name='pixel', shape=[784], dtype='float32')
             label = self._get_data(name='label', shape=[1], dtype='int64')
-            hidden1 = layers.fc(input=images, size=128, act='relu')
-            hidden2 = layers.fc(input=hidden1, size=64, act='relu')
-            predict = layers.fc(
-                input=[hidden2, hidden1],
-                size=10,
-                act='softmax',
-                param_attr=["sftmax.w1", "sftmax.w2"],
-            )
+            hidden1 = paddle.nn.Linear(784, 128)(images)
+            hidden1 = paddle.nn.functional.relu(hidden1)
+            hidden2 = paddle.nn.Linear(128, 64)(hidden1)
+            hidden2 = paddle.nn.functional.relu(hidden2)
+            hidden1 = paddle.nn.Linear(128, 10, "sftmax.w1")(hidden1)
+            hidden2 = paddle.nn.Linear(64, 10, "sftmax.w2")(hidden2)
+            hidden = hidden1 + hidden2
+            predict = paddle.nn.functional.softmax(hidden)
             cost = paddle.nn.functional.cross_entropy(
                 input=predict, label=label, reduction='none', use_softmax=False
             )
@@ -1591,7 +1593,22 @@ class TestBook(LayerTest):
                 act="relu",
             )
 
-            predict = layers.fc(input=conv_pool_2, size=10, act="softmax")
+            conv_pool_2_new = paddle.reshape(
+                conv_pool_2,
+                [
+                    conv_pool_2.shape[0],
+                    conv_pool_2.shape[1]
+                    * conv_pool_2.shape[2]
+                    * conv_pool_2.shape[3],
+                ],
+            )
+            predict = paddle.nn.Linear(
+                conv_pool_2.shape[1]
+                * conv_pool_2.shape[2]
+                * conv_pool_2.shape[3],
+                10,
+            )(conv_pool_2_new)
+            predict = paddle.nn.functional.softmax(predict)
             cost = paddle.nn.functional.cross_entropy(
                 input=predict, label=label, reduction='none', use_softmax=False
             )
@@ -1643,9 +1660,11 @@ class TestBook(LayerTest):
                 axis=1,
             )
 
-            hidden1 = layers.fc(input=concat_embed, size=256, act='sigmoid')
-            predict_word = layers.fc(
-                input=hidden1, size=dict_size, act='softmax'
+            hidden1 = paddle.static.nn.fc(
+                x=concat_embed, size=256, activation='sigmoid'
+            )
+            predict_word = paddle.static.nn.fc(
+                x=hidden1, size=dict_size, activation='softmax'
             )
             cost = paddle.nn.functional.cross_entropy(
                 input=predict_word,
@@ -1682,7 +1701,7 @@ class TestBook(LayerTest):
             fluid.default_main_program(), fluid.default_startup_program()
         ):
             data = self._get_data(name='data', shape=[10], dtype='float32')
-            hid = layers.fc(input=data, size=20)
+            hid = paddle.nn.Linear(10, 20)(data)
             return paddle.nn.functional.softmax(hid, axis=1)
 
     @prog_scope()
@@ -2108,7 +2127,7 @@ class TestBook(LayerTest):
             seq_data = layers.data(
                 name='seq_data', shape=[10, 10], dtype='float32', lod_level=1
             )
-            seq = layers.fc(input=seq_data, size=20)
+            seq = paddle.static.nn.fc(x=seq_data, size=20)
             return layers.sequence_softmax(seq)
 
     def test_sequence_unsqueeze(self):

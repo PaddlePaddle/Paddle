@@ -154,6 +154,18 @@ def _convert_into_variable(tensor):
             new_var = tensor._to_static_var(
                 to_parameter=False, persistable=is_persistable
             )
+        # add param into parameter recorder to collect all the params used in this program.
+        if new_var.persistable is True:
+            # TODO(@xiongkun): 0d-tensor may be affected at present,
+            # but there is no particularly good method to identify whether 0d-tensor
+            # is used as buffer or "drop_out_state" in LSTM buffer variable.
+            from paddle.jit.dy2static.program_translator import (
+                ProgramTranslator,
+            )
+
+            ProgramTranslator.get_instance()._params_recorder.add(
+                tensor.block.program, tensor
+            )
         return new_var
     else:
         return tensor

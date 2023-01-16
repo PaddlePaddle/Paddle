@@ -1088,6 +1088,7 @@ void AnalysisPredictor::PrepareArgument() {
   // Init std::unique_ptr argument_.
   argument_.reset(new Argument);
   argument_->SetUseGPU(config_.use_gpu());
+  argument_->SetUseCutlass(config_.use_cutlass_);
   argument_->SetUseFcPadding(config_.use_fc_padding());
   argument_->SetGPUDeviceId(config_.gpu_device_id());
   argument_->SetEnableIrOptim(config_.enable_ir_optim_);
@@ -1361,7 +1362,10 @@ void AnalysisPredictor::OptimizeInferenceProgram() {
   // The config and argument take a lot of storage,
   // when the predictor settings are complete, we release these stores.
   config_.PartiallyRelease();
+#if defined(PADDLE_WITH_TESTING)
   fusion_statis_ = *argument_->fusion_statis_ptr();
+#endif
+
 #if defined(_WIN32)
   argument_->PartiallyRelease();
 #else
@@ -2349,7 +2353,9 @@ USE_TRT_CONVERTER(reshape2);
 USE_TRT_CONVERTER(gather_nd);
 USE_TRT_CONVERTER(reduce_mean);
 USE_TRT_CONVERTER(reduce_max);
+USE_TRT_CONVERTER(reduce_min);
 USE_TRT_CONVERTER(reduce_sum);
+USE_TRT_CONVERTER(reduce_prod);
 USE_TRT_CONVERTER(tile);
 USE_TRT_CONVERTER(conv3d);
 USE_TRT_CONVERTER(conv3d_transpose);
@@ -2396,6 +2402,7 @@ USE_TRT_CONVERTER(cast)
 USE_TRT_CONVERTER(recover_padding)
 USE_TRT_CONVERTER(remove_padding)
 USE_TRT_CONVERTER(equal);
+USE_TRT_CONVERTER(not_equal);
 USE_TRT_CONVERTER(top_k)
 USE_TRT_CONVERTER(top_k_v2)
 USE_TRT_CONVERTER(range)
@@ -2418,6 +2425,12 @@ USE_TRT_CONVERTER(logsigmoid)
 USE_TRT_CONVERTER(lookup_table)
 USE_TRT_CONVERTER(expand_v2)
 USE_TRT_CONVERTER(take_along_axis)
+USE_TRT_CONVERTER(skip_groupnorm_act)
+USE_TRT_CONVERTER(preln_groupnorm_act)
+#if IS_TRT_VERSION_GE(8522)
+USE_TRT_CONVERTER(flash_multihead_matmul)
+USE_TRT_CONVERTER(cross_multihead_matmul)
+#endif
 #if PADDLE_WITH_CUSPARSELT && IS_TRT_VERSION_GE(8000)
 USE_TRT_CONVERTER(sparse_fc)
 USE_TRT_CONVERTER(sparse_multihead_matmul)

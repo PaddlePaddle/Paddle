@@ -735,6 +735,11 @@ class TestHSigmoidLossAPI(unittest.TestCase):
         x = paddle.to_tensor(np.reshape(x_arr, (10, 0)), dtype='float32')
         label = paddle.to_tensor([], dtype='int64')
         weight = paddle.to_tensor([], dtype='float32')
+        self.assertRaises(ValueError, F.hsigmoid_loss, x, label, 2, weight)
+
+        x = paddle.to_tensor(np.reshape(x_arr, [1, 0, 0, 1]), dtype='float32')
+        label = paddle.to_tensor(np.reshape(x_arr, [1, 1, 0]), dtype='int64')
+        weight = paddle.to_tensor([], dtype='float32')
         self.assertRaises(ValueError, F.hsigmoid_loss, x, label, 0, weight)
         paddle.enable_static()
 

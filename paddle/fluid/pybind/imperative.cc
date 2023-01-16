@@ -53,7 +53,6 @@ limitations under the License. */
 #include "paddle/fluid/operators/utils.h"
 #include "paddle/fluid/pybind/cuda_streams_py.h"
 #include "paddle/fluid/pybind/eager_utils.h"
-#include "paddle/fluid/pybind/op_function.h"
 #include "paddle/fluid/pybind/pybind_variant_caster.h"
 #include "paddle/fluid/pybind/slice_utils.h"
 #include "paddle/fluid/pybind/tensor_py.h"
@@ -351,9 +350,6 @@ Py_ssize_t GetSliceIndexFromPyObject(PyObject *obj) {
   }
 }
 
-bool PyCheckTensor(PyObject *obj) {
-  return py::isinstance<imperative::VarBase>(obj);
-}
 using PyNameVarBaseMap = std::unordered_map<std::string, py::handle>;
 
 // NOTE(zjl): py::handle is a very light wrapper of PyObject *.
@@ -497,15 +493,6 @@ static void VarBaseCopy(std::shared_ptr<imperative::VarBase> &src,  // NOLINT
 // Bind Methods
 void BindImperative(py::module *m_ptr) {
   auto &m = *m_ptr;
-
-  BindOpFunctions1(&m);
-  BindOpFunctions2(&m);
-  BindOpFunctions3(&m);
-  BindOpFunctions4(&m);
-  BindOpFunctions5(&m);
-  BindOpFunctions6(&m);
-  BindOpFunctions7(&m);
-  BindOpFunctions8(&m);
 
 #ifndef _WIN32
   // Dygraph DataLoader signal handler
@@ -882,7 +869,7 @@ void BindImperative(py::module *m_ptr) {
                         self->Name()));
               }
 
-              if (PyCheckTensor(value_obj.ptr())) {
+              if (py::isinstance<imperative::VarBase>(value_obj.ptr())) {
                 auto value_tensor =
                     value_obj.cast<std::shared_ptr<imperative::VarBase>>();
                 ins.insert({"ValueTensor", {value_tensor}});

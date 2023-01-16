@@ -22,6 +22,7 @@ import re
 import shutil
 import subprocess
 import sys
+import sysconfig
 from contextlib import contextmanager
 from distutils.spawn import find_executable
 from subprocess import CalledProcessError
@@ -48,6 +49,28 @@ CMAKE = find_executable('cmake3') or find_executable('cmake')
 assert (
     CMAKE
 ), 'The "cmake" executable is not found. Please check if Cmake is installed.'
+
+# CMAKE: full path to python library
+if platform.system() == "Windows":
+    cmake_python_library = "{}/libs/python{}.lib".format(
+        sysconfig.get_config_var("prefix"), sysconfig.get_config_var("VERSION")
+    )
+    # Fix virtualenv builds
+    if not os.path.exists(cmake_python_library):
+        cmake_python_library = "{}/libs/python{}.lib".format(
+            sys.base_prefix, sysconfig.get_config_var("VERSION")
+        )
+else:
+    cmake_python_library = "{}/{}".format(
+        sysconfig.get_config_var("LIBDIR"),
+        sysconfig.get_config_var("INSTSONAME"),
+    )
+    if not os.path.exists(cmake_python_library):
+        libname = sysconfig.get_config_var("INSTSONAME")
+        libdir = sysconfig.get_config_var('LIBDIR') + (
+            sysconfig.get_config_var("multiarchsubdir") or ""
+        )
+        cmake_python_library = os.path.join(libdir, libname)
 
 TOP_DIR = os.path.dirname(os.path.realpath(__file__))
 
@@ -555,85 +578,27 @@ def options_process(args, build_options):
     for key, value in sorted(build_options.items()):
         if value is not None:
             args.append("-D{}={}".format(key, value))
+    if 'PYTHON_EXECUTABLE:FILEPATH' not in build_options.keys():
+        args.append("-D{}={}".format('PYTHON_EXECUTABLE', sys.executable))
+    if 'PYTHON_INCLUDE_DIR:PATH' not in build_options.keys():
+        args.append(
+            '-D{}={}'.format(
+                'PYTHON_INCLUDE_DIR', sysconfig.get_path("include")
+            )
+        )
+    if 'PYTHON_LIBRARY:FILEPATH' not in build_options.keys():
+        args.append('-D{}={}'.format('PYTHON_LIBRARY', cmake_python_library))
 
 
 def get_cmake_generator():
-    if os.getenv("CMAKE_GENERATOR"):
-        cmake_generator = os.getenv("CMAKE_GENERATOR")
+    if os.getenv("GENERATOR"):
+        cmake_generator = os.getenv("GENERATOR")
     else:
         cmake_generator = "Unix Makefiles"
-
     return cmake_generator
 
 
-def cmake_run(args, build_path):
-    with cd(build_path):
-        cmake_args = []
-        cmake_args.append(CMAKE)
-        cmake_args += args
-        cmake_args.append('-DWITH_SETUP_INSTALL=ON')
-        cmake_args.append(TOP_DIR)
-        print("cmake_args:", cmake_args)
-        subprocess.check_call(cmake_args)
-
-
-def build_run(args, build_path, envrion_var):
-    with cd(build_path):
-        build_args = []
-        build_args.append(CMAKE)
-        build_args += args
-        print(" ".join(build_args))
-        try:
-            subprocess.check_call(build_args, cwd=build_path, env=envrion_var)
-        except (CalledProcessError, KeyboardInterrupt) as e:
-            sys.exit(1)
-
-
-def run_cmake_build(build_path):
-    build_args = ["--build", ".", "--target", "install", "--config", 'Release']
-    max_jobs = os.getenv("MAX_JOBS")
-    if max_jobs is not None:
-        max_jobs = max_jobs or str(multiprocessing.cpu_count())
-
-        build_args += ["--"]
-        if IS_WINDOWS:
-            build_args += ["/p:CL_MPCount={}".format(max_jobs)]
-        else:
-            build_args += ["-j", max_jobs]
-    else:
-        build_args += ["-j", str(multiprocessing.cpu_count())]
-    environ_var = os.environ.copy()
-    build_run(build_args, build_path, environ_var)
-
-
-def build_steps():
-    print('------- Building start ------')
-    build_dir = os.getenv("BUILD_DIR")
-    if build_dir is not None:
-        build_dir = TOP_DIR + '/' + build_dir
-    else:
-        build_dir = TOP_DIR + '/build'
-    if not os.path.exists(build_dir):
-        _mkdir_p(build_dir)
-    build_path = build_dir
-    # run cmake to generate native build files
-    cmake_cache_file_path = os.path.join(build_path, "CMakeCache.txt")
-    # if rerun_cmake is True,remove CMakeCache.txt and rerun camke
-    if os.path.isfile(cmake_cache_file_path) and rerun_cmake is True:
-        os.remove(cmake_cache_file_path)
-
-    CMAKE_GENERATOR = get_cmake_generator()
-
-    if CMAKE_GENERATOR == "Ninja":
-        build_ninja_file_path = os.path.join(build_path, "build.ninja")
-        # if os.path.exists(cmake_cache_file_path) and not (USE_NINJA and not os.path.exists(build_ninja_file_path)):
-        if os.path.exists(cmake_cache_file_path) and os.path.exists(
-            build_ninja_file_path
-        ):
-            print("Do not need rerun camke,everything is ready,run build now")
-            run_cmake_build(build_path)
-            return
-
+def cmake_run(build_path):
     args = []
     env_var = os.environ.copy()  # get env variables
     paddle_build_options = {}
@@ -663,7 +628,7 @@ def build_steps():
                 "XPU_SDK_ROOT",
                 "MSVC_STATIC_CRT",
                 "NEW_RELEASE_ALL",
-                "CMAKE_GENERATOR",
+                "GENERATOR",
             )
         }
     )
@@ -680,15 +645,87 @@ def build_steps():
                 key = option_key + ":FILEPATH"
                 print(key)
             elif option_key == 'PYTHON_INCLUDE_DIR':
-                key = key = option_key + ':PATH'
+                key = option_key + ':PATH'
                 print(key)
+            elif option_key == 'GENERATOR':
+                key = 'CMAKE_' + option_key
             else:
                 key = other_options[option_key]
             if key not in paddle_build_options:
                 paddle_build_options[key] = option_value
+
     options_process(args, paddle_build_options)
     print("args:", args)
-    cmake_run(args, build_path)
+    with cd(build_path):
+        cmake_args = []
+        cmake_args.append(CMAKE)
+        cmake_args += args
+        cmake_args.append('-DWITH_SETUP_INSTALL=ON')
+        cmake_args.append(TOP_DIR)
+        print("cmake_args:", cmake_args)
+        subprocess.check_call(cmake_args)
+
+
+def build_run(args, build_path, envrion_var):
+    with cd(build_path):
+        build_args = []
+        build_args.append(CMAKE)
+        build_args += args
+        print(" ".join(build_args))
+        try:
+            subprocess.check_call(build_args, cwd=build_path, env=envrion_var)
+        except (CalledProcessError, KeyboardInterrupt) as e:
+            sys.exit(1)
+
+
+def run_cmake_build(build_path):
+    build_type = (
+        os.getenv("CMAKE_BUILD_TYPE")
+        if os.getenv("CMAKE_BUILD_TYPE") is not None
+        else "release"
+    )
+    build_args = ["--build", ".", "--target", "install", "--config", build_type]
+    max_jobs = os.getenv("MAX_JOBS")
+    if max_jobs is not None:
+        max_jobs = max_jobs or str(multiprocessing.cpu_count())
+
+        build_args += ["--"]
+        if IS_WINDOWS:
+            build_args += ["/p:CL_MPCount={}".format(max_jobs)]
+        else:
+            build_args += ["-j", max_jobs]
+    else:
+        build_args += ["-j", str(multiprocessing.cpu_count())]
+    environ_var = os.environ.copy()
+    build_run(build_args, build_path, environ_var)
+
+
+def build_steps():
+    print('------- Building start ------')
+    build_dir = os.getenv("BUILD_DIR")
+    if build_dir is not None:
+        build_dir = TOP_DIR + '/' + build_dir
+    else:
+        build_dir = TOP_DIR + '/build'
+    if not os.path.exists(build_dir):
+        _mkdir_p(build_dir)
+    build_path = build_dir
+    print("build_dir:", build_dir)
+    # run cmake to generate native build files
+    cmake_cache_file_path = os.path.join(build_path, "CMakeCache.txt")
+    # if rerun_cmake is True,remove CMakeCache.txt and rerun camke
+    if os.path.isfile(cmake_cache_file_path) and rerun_cmake is True:
+        os.remove(cmake_cache_file_path)
+
+    CMAKE_GENERATOR = get_cmake_generator()
+    bool_ninja = CMAKE_GENERATOR == "Ninja"
+    build_ninja_file_path = os.path.join(build_path, "build.ninja")
+    if os.path.exists(cmake_cache_file_path) and not (
+        bool_ninja and not os.path.exists(build_ninja_file_path)
+    ):
+        print("Do not need rerun camke, everything is ready, run build now")
+    else:
+        cmake_run(build_path)
     # make
     if only_cmake:
         print(
@@ -1202,16 +1239,12 @@ def get_setup_parameters():
         'paddle.inference.contrib.utils',
         'paddle.fluid',
         'paddle.fluid.dygraph',
-        'paddle.fluid.dygraph.amp',
         'paddle.fluid.proto',
         'paddle.fluid.proto.profiler',
-        'paddle.fluid.distributed',
         'paddle.fluid.layers',
         'paddle.fluid.dataloader',
         'paddle.fluid.contrib',
         'paddle.fluid.contrib.extend_optimizer',
-        'paddle.fluid.contrib.mixed_precision',
-        'paddle.fluid.contrib.mixed_precision.bf16',
         'paddle.fluid.contrib.layers',
         'paddle.fluid.transpiler',
         'paddle.fluid.transpiler.details',
@@ -1266,12 +1299,14 @@ def get_setup_parameters():
         'paddle.nn.functional',
         'paddle.nn.layer',
         'paddle.nn.quant',
+        'paddle.nn.quant.qat',
         'paddle.nn.initializer',
         'paddle.nn.utils',
         'paddle.metric',
         'paddle.static',
         'paddle.static.nn',
         'paddle.static.amp',
+        'paddle.static.amp.bf16',
         'paddle.static.quantization',
         'paddle.quantization',
         'paddle.quantization.imperative',
@@ -1313,16 +1348,22 @@ def main():
     # Execute the build process,cmake and make
     if cmake_and_build:
         build_steps()
+
+    if os.getenv("WITH_PYTHON") == "OFF":
+        print("only compile, not package")
+        return
+
     build_dir = os.getenv("BUILD_DIR")
     if build_dir is not None:
         env_dict_path = TOP_DIR + '/' + build_dir + '/python'
     else:
         env_dict_path = TOP_DIR + "/build/python/"
-    sys.path.append(env_dict_path)
+    sys.path.insert(1, env_dict_path)
     from env_dict import env_dict as env_dict
 
     global env_dict
     global paddle_binary_dir, paddle_source_dir
+
     paddle_binary_dir = env_dict.get("PADDLE_BINARY_DIR")
     paddle_source_dir = env_dict.get("PADDLE_SOURCE_DIR")
 
@@ -1342,7 +1383,6 @@ def main():
             paddle_binary_dir
         )
     )
-
     (
         setup_requires,
         packages,
@@ -1408,11 +1448,10 @@ def main():
             'Intended Audience :: Science/Research',
             'License :: OSI Approved :: Apache Software License',
             'Programming Language :: C++',
-            'Programming Language :: Python :: 2.7',
-            'Programming Language :: Python :: 3.5',
-            'Programming Language :: Python :: 3.6',
             'Programming Language :: Python :: 3.7',
             'Programming Language :: Python :: 3.8',
+            'Programming Language :: Python :: 3.9',
+            'Programming Language :: Python :: 3.10',
         ],
     )
 

@@ -45,7 +45,7 @@ PADDLE_DEFINE_EXPORTED_bool(new_executor_use_local_scope,
                             "Use local_scope in new executor(especially used "
                             "in UT), can turn off for better performance");
 PADDLE_DEFINE_EXPORTED_bool(control_flow_use_new_executor,
-                            false,
+                            true,
                             "Use new executor in control flow op");
 
 DECLARE_bool(check_nan_inf);
@@ -138,7 +138,7 @@ InterpreterCore::InterpreterCore(const platform::Place& place,
     Priority lhs_prority = vec_instruction_[lhs].GetPriority();
     Priority rhs_prority = vec_instruction_[rhs].GetPriority();
     if (lhs_prority == rhs_prority) {
-      return lhs > rhs;
+      return lhs < rhs;
     }
     return lhs_prority > rhs_prority;
   };

@@ -570,7 +570,7 @@ def where(condition, x=None, y=None, name=None):
         \end{cases}.
 
     Notes:
-        ``numpy.where(condition)`` is identical to ``paddle.nonzero(condition, as_tuple=True)``, please refer to :ref:`api_tensor_search_nonzero`.
+        ``numpy.where(condition)`` is identical to ``paddle.nonzero(condition, as_tuple=True)``, please refer to :ref:`api_paddle_nonzero`.
 
     Args:
         condition (Tensor): The condition to choose x or y. When True (nonzero), yield x, otherwise yield y.
@@ -612,15 +612,6 @@ def where(condition, x=None, y=None, name=None):
     if x is None or y is None:
         raise ValueError("either both or neither of x and y should be given")
 
-    if not paddle.in_dynamic_mode():
-        check_variable_and_dtype(condition, 'condition', ['bool'], 'where')
-        check_variable_and_dtype(
-            x, 'x', ['float32', 'float64', 'int32', 'int64'], 'where'
-        )
-        check_variable_and_dtype(
-            y, 'y', ['float32', 'float64', 'int32', 'int64'], 'where'
-        )
-
     condition_shape = list(condition.shape)
     x_shape = list(x.shape)
     y_shape = list(y.shape)
@@ -646,6 +637,13 @@ def where(condition, x=None, y=None, name=None):
     if in_dygraph_mode():
         return _C_ops.where(broadcast_condition, broadcast_x, broadcast_y)
     else:
+        check_variable_and_dtype(condition, 'condition', ['bool'], 'where')
+        check_variable_and_dtype(
+            x, 'x', ['float32', 'float64', 'int32', 'int64'], 'where'
+        )
+        check_variable_and_dtype(
+            y, 'y', ['float32', 'float64', 'int32', 'int64'], 'where'
+        )
         helper = LayerHelper("where", **locals())
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
 

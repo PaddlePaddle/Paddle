@@ -789,8 +789,8 @@ def randint(low=0, high=None, shape=[1], dtype=None, name=None):
         high = low
         low = 0
     if dtype is None:
-        dtype = 'int64'
-    if not isinstance(dtype, core.VarDesc.VarType):
+        dtype = core.VarDesc.VarType.INT64
+    elif not isinstance(dtype, core.VarDesc.VarType):
         dtype = convert_np_dtype_to_dtype_(dtype)
 
     if in_dygraph_mode():

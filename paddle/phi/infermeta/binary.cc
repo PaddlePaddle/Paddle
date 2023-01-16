@@ -86,7 +86,13 @@ void AllValueCompareInferMeta(const MetaTensor& x,
                               MetaConfig config) {
   detail::BinarySameInputDimsCheck(x, y, config);
 
-  out->set_dims(phi::make_ddim({1}));
+  auto x_dims = x.dims();
+  auto y_dims = y.dims();
+  if (x_dims.size() == 0 && y_dims.size() == 0) {
+    out->set_dims(phi::make_ddim({}));
+  } else {
+    out->set_dims(phi::make_ddim({1}));
+  }
   out->set_dtype(DataType::BOOL);
 }
 
@@ -859,6 +865,7 @@ void CrossEntropyWithSoftmaxInferMeta(const MetaTensor& logits,
   auto logits_dims = logits.dims();
   auto labels_dims = label.dims();
   auto logits_rank = logits_dims.size();
+  auto labels_rank = labels_dims.size();
   PADDLE_ENFORCE_GE(axis,
                     -logits_rank,
                     phi::errors::InvalidArgument(
@@ -890,6 +897,12 @@ void CrossEntropyWithSoftmaxInferMeta(const MetaTensor& logits,
         phi::errors::InvalidArgument("Attr(axis) can only be -1 "
                                      "when not in numeric_stable_mode."));
   }
+
+  PADDLE_ENFORCE_EQ(
+      (logits_rank - 1 != labels_rank) && (logits_rank != labels_rank),
+      false,
+      phi::errors::InvalidArgument("Expected input_dims - 1 == label_dims "
+                                   "or input_dims == label_dims."));
 
   if (soft_label) {
     if (config.is_runtime || (logits_dims[axis] > 0 && labels_dims[axis] > 0)) {

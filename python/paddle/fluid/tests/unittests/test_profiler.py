@@ -38,7 +38,7 @@ class TestProfiler(unittest.TestCase):
         main_program = fluid.Program()
         with fluid.program_guard(main_program, startup_program):
             image = fluid.layers.data(name='x', shape=[784], dtype='float32')
-            hidden1 = fluid.layers.fc(input=image, size=64, act='relu')
+            hidden1 = paddle.static.nn.fc(x=image, size=64, activation='relu')
             i = layers.zeros(shape=[1], dtype='int64')
             counter = fluid.layers.zeros(
                 shape=[1], dtype='int64', force_cpu=True
@@ -48,14 +48,20 @@ class TestProfiler(unittest.TestCase):
             cond = paddle.less_than(x=counter, y=until)
             while_op = paddle.static.nn.control_flow.While(cond=cond)
             with while_op.block():
-                hidden_n = fluid.layers.fc(input=hidden1, size=64, act='relu')
+                hidden_n = paddle.static.nn.fc(
+                    x=hidden1, size=64, activation='relu'
+                )
                 paddle.tensor.array_write(hidden_n, i, data_arr)
                 paddle.increment(x=counter, value=1)
                 paddle.assign(paddle.less_than(x=counter, y=until), cond)
 
             hidden_n = paddle.tensor.array_read(data_arr, i)
-            hidden2 = fluid.layers.fc(input=hidden_n, size=64, act='relu')
-            predict = fluid.layers.fc(input=hidden2, size=10, act='softmax')
+            hidden2 = paddle.static.nn.fc(
+                x=hidden_n, size=64, activation='relu'
+            )
+            predict = paddle.static.nn.fc(
+                x=hidden2, size=10, activation='softmax'
+            )
             label = fluid.layers.data(name='y', shape=[1], dtype='int64')
             cost = paddle.nn.functional.cross_entropy(
                 input=predict, label=label, reduction='none', use_softmax=False
@@ -294,14 +300,87 @@ class TestFLOPSAPI(unittest.TestCase):
             == 3 * 12 * 12 * 12 * 2 * 8
         )
         self.assertTrue(
-            flops('relu', {'X': [[12, 12, 12]]}, {}) == 12 * 12 * 12
-        )
-        self.assertTrue(
             flops('softmax', {'X': [[12, 12, 12]]}, {}) == 3 * 12 * 12 * 12
         )
         self.assertTrue(
             flops('c_embedding', {'Ids': [[12, 12]], 'W': [[12, 12, 3]]}, {})
             == 0
+        )
+        self.assertTrue(
+            flops(
+                'elu',
+                {
+                    'X': [[12, 12]],
+                },
+                {},
+            )
+            == 144
+        )
+        self.assertTrue(
+            flops(
+                'leaky_relu',
+                {
+                    'X': [[12, 12]],
+                },
+                {},
+            )
+            == 144
+        )
+        self.assertTrue(
+            flops(
+                'prelu',
+                {
+                    'X': [[12, 12]],
+                },
+                {},
+            )
+            == 144
+        )
+        self.assertTrue(
+            flops(
+                'relu6',
+                {
+                    'X': [[12, 12]],
+                },
+                {},
+            )
+            == 144
+        )
+        self.assertTrue(
+            flops(
+                'silu',
+                {
+                    'X': [[12, 12]],
+                },
+                {},
+            )
+            == 144
+        )
+        self.assertTrue(
+            flops(
+                'pool',
+                {'X': [[12, 12]]},
+                {},
+            )
+            == 12 * 12
+        )
+        self.assertTrue(
+            flops(
+                'conv2d',
+                {
+                    'Bias': [],
+                    'Filter': [[3, 3, 2, 2]],
+                    'Input': [[8, 3, 4, 4]],
+                    'ResidualData': [],
+                },
+                {
+                    'dilations': [1, 1],
+                    'groups': 1,
+                    'paddings': [1, 1],
+                    'strides': [1, 1],
+                },
+            )
+            == 14400
         )
 
 
