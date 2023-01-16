@@ -55,8 +55,8 @@ class ElementwiseSubOpMaker : public ElementwiseOpMaker {
 };
 
 class ElementwiseSubGradCompositeOpMaker
-    : public prim::GradCompositeOpMakerBase {
-  using prim::GradCompositeOpMakerBase::GradCompositeOpMakerBase;
+    : public prim::CompositeGradOpMakerBase {
+  using prim::CompositeGradOpMakerBase::CompositeGradOpMakerBase;
 
  public:
   void Apply() override {
