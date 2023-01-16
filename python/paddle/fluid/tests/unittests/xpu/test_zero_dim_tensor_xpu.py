@@ -17,9 +17,11 @@ import unittest
 import numpy as np
 
 import paddle
+import paddle.fluid as fluid
 import paddle.nn.functional as F
 
 paddle.set_device('xpu')
+fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
 
 
 unary_api_list = [
@@ -477,7 +479,6 @@ class TestSundryAPI(unittest.TestCase):
 
     def test_scatter_1D(self):
         x = paddle.to_tensor([1.0, 3.0, 5.0, 7.0, 9.0], stop_gradient=False)
-        x.retain_grads()
         index = paddle.full([], 2, 'int64')
         updates = paddle.full([], 4.0)
         out = paddle.scatter(x, index, updates)
@@ -491,7 +492,6 @@ class TestSundryAPI(unittest.TestCase):
         x = paddle.to_tensor(
             [[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]], stop_gradient=False
         )
-        x.retain_grads()
         index = paddle.full([], 1, 'int64')
         updates = paddle.to_tensor([1.0, 2.0, 3.0])
         out = paddle.scatter(x, index, updates)
@@ -748,6 +748,7 @@ class TestSundryAPI(unittest.TestCase):
             out1.numpy(),
         )
 
+        out0.retain_grads()
         out0.backward()
         self.assertEqual(out0.grad.shape, [1])
         self.assertEqual(logit.grad.shape, [2, 3])
