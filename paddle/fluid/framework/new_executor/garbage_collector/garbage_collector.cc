@@ -35,7 +35,7 @@ bool IsInterpretercoreFastGCEnabled() {
                     platform::errors::InvalidArgument(
                         "When FLAGS_new_executor_use_cuda_graph is true, "
                         "IsStreamSafeCUDAAllocatorUsed must be true, but "
-                        " got false."));
+                        "got false."));
   return (memory::allocation::AllocatorFacade::Instance()
               .IsStreamSafeCUDAAllocatorUsed() &&
           FLAGS_fast_eager_deletion_mode) ||
