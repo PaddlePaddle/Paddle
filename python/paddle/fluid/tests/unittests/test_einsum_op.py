@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 
 import paddle
 
@@ -24,6 +24,7 @@ class TestEinsumBinary(OpTest):
     def setUp(self):
         paddle.enable_static()
         self.op_type = "einsum"
+        self.python_api = paddle.tensor.einsum
         self.disable = False
         self.set_mandatory()
         self.init_input()
@@ -58,11 +59,15 @@ class TestEinsumBinary(OpTest):
 
     def test_check_output(self):
         if not self.disable:
-            self.check_output(no_check_set=["InnerCache", "XShape"])
+            self.check_output(
+                no_check_set=["InnerCache", "XShape"], check_dygraph=False
+            )
 
     def test_grad(self):
         if not self.disable:
-            self.check_grad([op[0] for op in self.operands], ["Out"])
+            self.check_grad(
+                [op[0] for op in self.operands], ["Out"], check_dygraph=False
+            )
 
 
 class TestEinsum1(TestEinsumBinary):

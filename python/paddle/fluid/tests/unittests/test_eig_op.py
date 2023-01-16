@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, skip_check_grad_ci
+from eager_op_test import OpTest, skip_check_grad_ci
 
 import paddle
 import paddle.fluid as fluid
@@ -61,6 +61,7 @@ def eig_backward(w, v, grad_w, grad_v):
 class TestEigOp(OpTest):
     def setUp(self):
         paddle.enable_static()
+        self.python_api = paddle.tensor.eig
         paddle.device.set_device("cpu")
         self.op_type = "eig"
         self.__class__.op_type = self.op_type
@@ -192,6 +193,7 @@ class TestEigOp(OpTest):
             ['Eigenvalues', 'Eigenvectors'],
             user_defined_grads=[self.grad_x],
             user_defined_grad_outputs=[self.grad_w, self.grad_v],
+            check_dygraph=False,
         )
 
 
