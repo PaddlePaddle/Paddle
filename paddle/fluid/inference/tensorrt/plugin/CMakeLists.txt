@@ -40,7 +40,8 @@ list(
   generic_plugin.cu
   lookup_table.cu
   many_emb_layernorm_plugin.cu
-  many_emb_layernorm_kernel.cu)
+  many_emb_layernorm_kernel.cu
+  split_gelu_op_plugin.cu)
 
 if(${TENSORRT_MAJOR_VERSION} GREATER_EQUAL 7)
   list(APPEND TRT_FILES many_emb_layernorm_varseqlen_plugin.cu

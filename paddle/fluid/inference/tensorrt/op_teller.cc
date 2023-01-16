@@ -2407,6 +2407,14 @@ struct SimpleOpTypeSetTeller : public Teller {
       }
     }
 
+    if (op_type == "split_gelu") {
+      if (!with_dynamic_shape) {
+        VLOG(3) << "The split_gelu op does not support "
+                   "static shape yet";
+        return false;
+      }
+    }
+
     if (op_type == "lookup_table") {
       if (!with_dynamic_shape) {
         VLOG(3) << "the lookup_table does not support "
@@ -2581,7 +2589,8 @@ struct SimpleOpTypeSetTeller : public Teller {
       "lookup_table_v2",
       "expand_v2",
       "skip_groupnorm_act",
-      "preln_groupnorm_act"};
+      "preln_groupnorm_act",
+      "split_gelu"};
 
   std::unordered_set<std::string> teller_set{
       "mul",
@@ -2731,7 +2740,8 @@ struct SimpleOpTypeSetTeller : public Teller {
       "lookup_table_v2",
       "expand_v2",
       "skip_groupnorm_act",
-      "preln_groupnorm_act"};
+      "preln_groupnorm_act",
+      "split_gelu"};
 };
 
 struct GenericPluginTeller : public Teller {

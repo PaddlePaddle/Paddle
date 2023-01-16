@@ -97,6 +97,7 @@ class InputOrOutputCompat {
       : optional_(false), name_(name), op_compat_(op_compat) {}
 
   InputOrOutputCompat& IsTensor();
+  InputOrOutputCompat& IsTensorList();
   InputOrOutputCompat& IsOptional();
   bool Optional() const { return optional_; }
   bool operator()(const std::vector<std::string>& input) const;

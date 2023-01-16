@@ -147,6 +147,13 @@ InputOrOutputCompat& InputOrOutputCompat::IsTensor() {
   return *this;
 }
 
+InputOrOutputCompat& InputOrOutputCompat::IsTensorList() {
+  conditions_.emplace_back([](const std::vector<std::string>& input) -> bool {
+    return input.size() >= 1u;
+  });
+  return *this;
+}
+
 InputOrOutputCompat& InputOrOutputCompat::IsOptional() {
   optional_ = true;
   return *this;
