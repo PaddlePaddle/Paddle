@@ -52,6 +52,7 @@ class TestCUDAGraph(unittest.TestCase):
             return
 
         seed = 100
+        paddle.set_flags({'FLAGS_use_stream_safe_cuda_allocator': True})
         loss_cuda_graph = self.cuda_graph_static_graph_main(
             seed, use_cuda_graph=True
         )
@@ -59,6 +60,7 @@ class TestCUDAGraph(unittest.TestCase):
             seed, use_cuda_graph=False
         )
         self.assertEqual(loss_cuda_graph, loss_no_cuda_graph)
+        paddle.set_flags({'FLAGS_use_stream_safe_cuda_allocator': False})
 
     def cuda_graph_static_graph_main(self, seed, use_cuda_graph):
         batch_size = 1
