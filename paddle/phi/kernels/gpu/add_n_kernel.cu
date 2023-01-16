@@ -94,15 +94,6 @@ void AddNKernel(const Context &dev_ctx,
     grids = dim3(CEIL_DIV(length, tile_size), 1, 1);
     blocks = dim3(tile_size, 1, 1);
   };
-
-  for (const TensorBase *tb : x) {
-    if (tb->initialized() && DenseTensor::classof(tb)) {
-      auto *dt = static_cast<const DenseTensor *>(tb);
-      out->set_meta(dt->meta());
-      break;
-    }
-  }
-
   auto *out_ptr = dev_ctx.template Alloc<T>(out);
   bool in_place = false;
   if (x.size() > 0 && x[0]->initialized() && DenseTensor::classof(x[0])) {

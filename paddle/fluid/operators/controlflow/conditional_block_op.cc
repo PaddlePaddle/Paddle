@@ -384,10 +384,8 @@ class ConditionalBlockGradOp : public ConditionalOp {
     if (!input_tensor.IsInitialized() || input_tensor.numel() == 0) {
       return;
     }
-    if (input_tensor.dims().size() != 0) {
-      outside_tensor->Resize(input_tensor.dims());
-    }
     VLOG(4) << "Assigning zero to " << outside_tensor;
+    outside_tensor->Resize(input_tensor.dims());
     outside_tensor->mutable_data(place, input_tensor.dtype());
     const platform::DeviceContext *dev_ctx =
         platform::DeviceContextPool::Instance().Get(place);
