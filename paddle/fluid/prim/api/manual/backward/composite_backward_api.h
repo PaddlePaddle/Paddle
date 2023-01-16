@@ -180,5 +180,15 @@ void divide_grad(const Tensor& x,
     }
   }  // indicate we will compute dx
 }
+
+template <typename T>
+void sqrt_grad(const Tensor& out, const Tensor& out_grad, Tensor* x_grad) {
+  if (x_grad) {
+    auto div_x = full<T>(phi::vectorize(out.dims()), 0.5);
+    auto tmp = divide<T>(div_x, out);
+    auto x_grad_tmp = multiply<T>(out_grad, tmp);
+    x_grad->set_impl(x_grad_tmp.impl());
+  }
+}
 }  // namespace prim
 }  // namespace paddle
