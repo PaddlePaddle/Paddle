@@ -416,3 +416,12 @@ REGISTER_OPERATOR(
 REGISTER_OPERATOR(fused_gemm_epilogue_grad,
                   ops::FusedGemmEpilogueGradOp,
                   ops::FusedGemmEpilogueGradOpMaker);
+
+// This op is used by cutlass,int4_gemm_cutlass is a intermediate op to test
+// int4 gemm performance.
+REGISTER_OPERATOR(
+    int4_gemm_cutlass,
+    ops::FusedGemmEpilogueOp,
+    ops::FusedGemmEpilogueOpMaker,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
