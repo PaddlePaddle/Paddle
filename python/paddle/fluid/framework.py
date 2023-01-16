@@ -7497,7 +7497,7 @@ def _dygraph_guard(tracer):
     try:
         yield
     finally:
-        if tracer is not None:
+        if tmp_tracer is not None:
             core._switch_tracer(tmp_tracer)
         global_var._dygraph_tracer_ = tmp_tracer
 
