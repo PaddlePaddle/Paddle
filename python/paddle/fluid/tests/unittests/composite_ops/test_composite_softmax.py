@@ -105,7 +105,7 @@ class TestCompositeSoftmax(unittest.TestCase):
         actual = self.cal_composite(np_data)[0]
 
         assert expect.dtype == actual.dtype
-        assert np.allclose(
+        np.testing.assert_allclose(
             expect,
             actual,
             rtol=attrs.get_rtol("forward"),
