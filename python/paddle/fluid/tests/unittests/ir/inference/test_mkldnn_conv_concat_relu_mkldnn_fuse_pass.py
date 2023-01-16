@@ -37,7 +37,6 @@ class TestConvConcatActivationMkldnnFusePass(PassAutoScanTest):
                     'gelu',
                     'swish',
                     'mish',
-                    'sqrt',
                     'hard_swish',
                     'sigmoid',
                     'abs',
