@@ -934,7 +934,7 @@ ir::Graph* FusedAttentionsPass::PreMaskDropResPostBwd(Graph* graph) const {
     GraphSafeRemoveNodes(g,
                          {post_layer_norm_grad_op_node,
                           residual_ele_add_grad_op_node,
-                          residual_ele_add_grad_op_node,
+                          out_linear_dropout_grad_op_node,
                           out_linear_ele_add_grad_op_node,
                           out_linear_matmul_grad_op_node,
                           qkv_reshape_grad_op_node,
