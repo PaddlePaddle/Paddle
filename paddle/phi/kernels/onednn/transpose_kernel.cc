@@ -121,6 +121,8 @@ void TransposeKernel(const Context& dev_ctx,
     out_dtype = DataType::INT8;
   } else if (output_data_type == "uint8") {
     out_dtype = DataType::UINT8;
+  } else if (output_data_type == "fp32") {
+    out_dtype = DataType::FLOAT32;
   } else {
     out_dtype = x.dtype();
   }

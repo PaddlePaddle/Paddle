@@ -27,6 +27,8 @@ class FuseQuantizeTranspose2OneDNNPass : public FusePassBase {
 
  protected:
   void ApplyImpl(Graph *graph) const override;
+  void FuseQuantizeTranspose2(Graph *graph) const;
+  void FuseTranspose2Dequantize(Graph *graph) const;
 };
 
 }  // namespace ir

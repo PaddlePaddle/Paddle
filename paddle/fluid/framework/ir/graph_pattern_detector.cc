@@ -988,9 +988,6 @@ PDNode *patterns::QuantTranspose2::operator()() {
                         ->AsOutput()
                         ->assert_is_op_output("quantize")
                         ->assert_is_op_input("transpose2", "X");
-  // auto transpose2_in = pattern->NewNode(transpose2_in_repr())
-  //                          ->AsInput()
-  //                          ->assert_is_op_input("transpose2", "X");
   auto *transpose2_op =
       pattern->NewNode(transpose2_op_repr())->assert_is_op("transpose2");
 
@@ -998,6 +995,22 @@ PDNode *patterns::QuantTranspose2::operator()() {
   transpose2_op->LinksFrom({quant_out});
 
   return transpose2_op;
+}
+
+PDNode *patterns::Transpose2Dequant::operator()() {
+  auto *transpose2_op =
+      pattern->NewNode(transpose2_op_repr())->assert_is_op("transpose2");
+  auto dequant_in = pattern->NewNode(dequant_in_repr())
+                        ->assert_is_op_input("dequantize", "Input");
+  auto dequant_op =
+      pattern->NewNode(dequant_op_repr())->assert_is_op("dequantize");
+  auto dequant_out = pattern->NewNode(dequant_out_repr())
+                         ->AsOutput()
+                         ->assert_is_op_output("dequantize", "Output");
+
+  transpose2_op->LinksTo({dequant_in});
+  dequant_op->LinksFrom({dequant_in}).LinksTo({dequant_out});
+  return dequant_out;
 }
 
 PDNode *patterns::Squeeze2Transpose2::operator()() {

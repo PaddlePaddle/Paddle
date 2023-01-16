@@ -564,17 +564,16 @@ struct QuantTranspose2 : public PatternBase {
   PATTERN_DECL_NODE(transpose2_op);
 };
 
-// struct Transpose2Dequant : public PatternBase {
-//   QuantTranspose2(PDPattern* pattern, const std::string& name_scope)
-//       : PatternBase(pattern, name_scope, "quant_transpose2") {}
+struct Transpose2Dequant : public PatternBase {
+  Transpose2Dequant(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "transpose2_dequant") {}
+  PDNode* operator()();
 
-//   PDNode* operator()();
-
-//   PATTERN_DECL_NODE(quant_in);
-//   PATTERN_DECL_NODE(quant_op);
-//   PATTERN_DECL_NODE(quant_out);
-//   PATTERN_DECL_NODE(transpose2_op);
-// };
+  PATTERN_DECL_NODE(transpose2_op);
+  PATTERN_DECL_NODE(dequant_in);
+  PATTERN_DECL_NODE(dequant_op);
+  PATTERN_DECL_NODE(dequant_out);
+};
 
 struct Squeeze2Transpose2 : public PatternBase {
   Squeeze2Transpose2(PDPattern* pattern, const std::string& name_scope)

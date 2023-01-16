@@ -20,7 +20,8 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-void FuseQuantizeTranspose2OneDNNPass::ApplyImpl(Graph *graph) const {
+void FuseQuantizeTranspose2OneDNNPass::FuseQuantizeTranspose2(
+    Graph *graph) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph, platform::errors::InvalidArgument("Graph cannot be nullptr."));
   FusePassBase::Init("quant_transpose2_onednn_fuse_pass", graph);
@@ -96,6 +97,88 @@ void FuseQuantizeTranspose2OneDNNPass::ApplyImpl(Graph *graph) const {
     paddle::string::PrettyLogDetail("--- fused %d quant with transpose2",
                                     found_patterns_count);
   }
+}
+
+void FuseQuantizeTranspose2OneDNNPass::FuseTranspose2Dequantize(
+    Graph *graph) const {
+  PADDLE_ENFORCE_NOT_NULL(
+      graph, platform::errors::InvalidArgument("Graph cannot be nullptr."));
+  FusePassBase::Init("quant_transpose2_onednn_fuse_pass", graph);
+
+  GraphPatternDetector gpd;
+  patterns::Transpose2Dequant transpose2_dequant_pattern(
+      gpd.mutable_pattern(), "quant_transpose2_onednn_fuse_pass");
+  transpose2_dequant_pattern();
+
+  int found_patterns_count = 0;
+  auto handler = [&](const GraphPatternDetector::subgraph_t &subgraph,
+                     Graph *g) {
+    GET_IR_NODE_FROM_SUBGRAPH(
+        transpose2_op, transpose2_op, transpose2_dequant_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        dequant_in, dequant_in, transpose2_dequant_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        dequant_op, dequant_op, transpose2_dequant_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        dequant_out, dequant_out, transpose2_dequant_pattern);
+
+    if (!transpose2_op->Op()->HasAttr("use_mkldnn") ||
+        (transpose2_op->Op()->HasAttr("use_mkldnn") &&
+         !(PADDLE_GET_CONST(bool,
+                            transpose2_op->Op()->GetAttr("use_mkldnn"))))) {
+      VLOG(4) << "Only oneDNN version of transpose2 can be fused before with "
+                 "dequantize.";
+      return;
+    }
+
+    if (!dequant_op->Op()->HasAttr("Scale") &&
+        !dequant_op->Op()->HasAttr("Shift")) {
+      VLOG(4) << "Dequantize operator should have scale and shift attributes.";
+      return;
+    }
+    float scale =
+        dequant_op->Op()->HasAttr("Scale")
+            ? PADDLE_GET_CONST(float, dequant_op->Op()->GetAttr("Scale"))
+            : 1;
+    float reorder_scale = 1.0 / scale;
+    float shift =
+        dequant_op->Op()->HasAttr("Shift")
+            ? PADDLE_GET_CONST(float, dequant_op->Op()->GetAttr("Shift"))
+            : 0;
+
+    PADDLE_ENFORCE(scale != 0.0f,
+                   phi::errors::InvalidArgument(
+                       "Dequantization scale must be different than 0.0f"));
+
+    PADDLE_ENFORCE(shift <= 255 && shift >= 0,
+                   phi::errors::InvalidArgument(
+                       "Dequantization shift must be lower or equal to ",
+                       "255 and greater or equal to 0, but got %f",
+                       shift));
+
+    std::string output_dtype = "fp32";
+    transpose2_op->Op()->SetAttr("scale", reorder_scale);
+    transpose2_op->Op()->SetAttr("shift", shift);
+    transpose2_op->Op()->SetAttr("output_data_type", output_dtype);
+
+    transpose2_op->Op()->SetOutput(
+        "Out", std::vector<std::string>({dequant_out->Name()}));
+    IR_NODE_LINK_TO(transpose2_op, dequant_out);
+    GraphSafeRemoveNodes(graph, {dequant_in, dequant_op});
+    found_patterns_count++;
+  };
+
+  gpd(graph, handler);
+  AddStatis(found_patterns_count);
+  if ((!Has("disable_logs") || !Get<bool>("disable_logs"))) {
+    paddle::string::PrettyLogDetail("--- fused %d transpose2 with dequant",
+                                    found_patterns_count);
+  }
+}
+
+void FuseQuantizeTranspose2OneDNNPass::ApplyImpl(Graph *graph) const {
+  FuseQuantizeTranspose2(graph);
+  FuseTranspose2Dequantize(graph);
 }
 
 }  // namespace ir
