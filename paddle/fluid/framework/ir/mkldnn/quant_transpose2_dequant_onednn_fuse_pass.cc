@@ -32,7 +32,6 @@ void FuseQuantTranspose2DequantOneDNNPass::FuseQuantizeTranspose2(
   quant_transpose2_pattern();
 
   int found_patterns_count = 0;
-
   auto handler = [&](const GraphPatternDetector::subgraph_t &subgraph,
                      Graph *g) {
     GET_IR_NODE_FROM_SUBGRAPH(quant_in, quant_in, quant_transpose2_pattern);
@@ -45,15 +44,11 @@ void FuseQuantTranspose2DequantOneDNNPass::FuseQuantizeTranspose2(
         (transpose2_op->Op()->HasAttr("use_mkldnn") &&
          !(PADDLE_GET_CONST(bool,
                             transpose2_op->Op()->GetAttr("use_mkldnn"))))) {
-      VLOG(4) << "Only oneDNN version of transpose2 can be fused after with "
-                 "quantize.";
+      VLOG(4)
+          << "Only oneDNN version of transpose2 can be fused with quantize.";
       return;
     }
-    if (!quant_op->Op()->HasAttr("Scale") &&
-        !quant_op->Op()->HasAttr("Shift")) {
-      VLOG(4) << "Quantize operator should have scale and shift attributes.";
-      return;
-    }
+
     float scale =
         quant_op->Op()->HasAttr("Scale")
             ? PADDLE_GET_CONST(float, quant_op->Op()->GetAttr("Scale"))
@@ -127,16 +122,11 @@ void FuseQuantTranspose2DequantOneDNNPass::FuseTranspose2Dequantize(
         (transpose2_op->Op()->HasAttr("use_mkldnn") &&
          !(PADDLE_GET_CONST(bool,
                             transpose2_op->Op()->GetAttr("use_mkldnn"))))) {
-      VLOG(4) << "Only oneDNN version of transpose2 can be fused before with "
-                 "dequantize.";
+      VLOG(4)
+          << "Only oneDNN version of transpose2 can be fused with dequantize.";
       return;
     }
 
-    if (!dequant_op->Op()->HasAttr("Scale") &&
-        !dequant_op->Op()->HasAttr("Shift")) {
-      VLOG(4) << "Dequantize operator should have scale and shift attributes.";
-      return;
-    }
     float scale =
         dequant_op->Op()->HasAttr("Scale")
             ? PADDLE_GET_CONST(float, dequant_op->Op()->GetAttr("Scale"))
@@ -147,23 +137,12 @@ void FuseQuantTranspose2DequantOneDNNPass::FuseTranspose2Dequantize(
             ? PADDLE_GET_CONST(float, dequant_op->Op()->GetAttr("Shift"))
             : 0;
 
-    PADDLE_ENFORCE(scale != 0.0f,
-                   phi::errors::InvalidArgument(
-                       "Dequantization scale must be different than 0.0f"));
-
-    PADDLE_ENFORCE(shift <= 255 && shift >= 0,
-                   phi::errors::InvalidArgument(
-                       "Dequantization shift must be lower or equal to ",
-                       "255 and greater or equal to 0, but got %f",
-                       shift));
-
-    std::string output_dtype = "fp32";
     transpose2_op->Op()->SetAttr("scale", reorder_scale);
     transpose2_op->Op()->SetAttr("shift", shift);
-    transpose2_op->Op()->SetAttr("output_data_type", output_dtype);
-
+    transpose2_op->Op()->SetAttr("output_data_type", std::string("fp32"));
     transpose2_op->Op()->SetOutput(
         "Out", std::vector<std::string>({dequant_out->Name()}));
+
     IR_NODE_LINK_TO(transpose2_op, dequant_out);
     GraphSafeRemoveNodes(graph, {dequant_in, dequant_op});
     found_patterns_count++;
@@ -190,6 +169,5 @@ REGISTER_PASS(quant_transpose2_dequant_onednn_fuse_pass,
               paddle::framework::ir::FuseQuantTranspose2DequantOneDNNPass);
 REGISTER_PASS_CAPABILITY(quant_transpose2_dequant_onednn_fuse_pass)
     .AddCombination(
-        paddle::framework::compatible::OpVersionComparatorCombination()
-            .GE("quantize", 0)
-            .GE("transpose2", 0));
+        paddle::framework::compatible::OpVersionComparatorCombination().GE(
+            "transpose2", 0));
