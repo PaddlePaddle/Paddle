@@ -54,7 +54,7 @@ class ElementwiseSubOpMaker : public ElementwiseOpMaker {
   }
 };
 
-class ElementwiseSubGradCompositeOpMaker
+class ElementwiseSubCompositeGradOpMaker
     : public prim::CompositeGradOpMakerBase {
   using prim::CompositeGradOpMakerBase::CompositeGradOpMakerBase;
 
@@ -109,7 +109,7 @@ REGISTER_OPERATOR(elementwise_sub,
                   ::paddle::operators::ElementwiseOpInferVarType,
                   elementwise_subGradMaker<::paddle::framework::OpDesc>,
                   elementwise_subGradMaker<::paddle::imperative::OpBase>,
-                  ::paddle::operators::ElementwiseSubGradCompositeOpMaker,
+                  ::paddle::operators::ElementwiseSubCompositeGradOpMaker,
                   ::paddle::operators::ElementwiseOpInplaceInferer);
 
 REGISTER_OPERATOR(

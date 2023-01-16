@@ -67,7 +67,7 @@ class ElementwiseDivGradOpMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
-class ElementwiseDivGradCompositeOpMaker
+class ElementwiseDivCompositeGradOpMaker
     : public prim::CompositeGradOpMakerBase {
   using prim::CompositeGradOpMakerBase::CompositeGradOpMakerBase;
 
@@ -123,7 +123,7 @@ REGISTER_OPERATOR(elementwise_div,
                   ops::ElementwiseOp,
                   ops::ElementwiseDivOpMaker,
                   ops::ElementwiseOpInferVarType,
-                  ops::ElementwiseDivGradCompositeOpMaker,
+                  ops::ElementwiseDivCompositeGradOpMaker,
                   ops::ElementwiseDivGradOpMaker<paddle::framework::OpDesc>,
                   ops::ElementwiseDivGradOpMaker<paddle::imperative::OpBase>);
 

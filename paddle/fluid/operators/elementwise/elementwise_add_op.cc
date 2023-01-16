@@ -51,7 +51,7 @@ class ElementwiseAddOpMaker : public ElementwiseOpMaker {
   }
 };
 
-class ElementwiseAddGradCompositeOpMaker
+class ElementwiseAddCompositeGradOpMaker
     : public prim::CompositeGradOpMakerBase {
   using prim::CompositeGradOpMakerBase::CompositeGradOpMakerBase;
 
@@ -122,7 +122,7 @@ REGISTER_OPERATOR(elementwise_add,
                   ::paddle::operators::ElementwiseOpInferVarType,
                   elementwise_addGradMaker<::paddle::framework::OpDesc>,
                   elementwise_addGradMaker<::paddle::imperative::OpBase>,
-                  ::paddle::operators::ElementwiseAddGradCompositeOpMaker,
+                  ::paddle::operators::ElementwiseAddCompositeGradOpMaker,
                   ::paddle::operators::ElementwiseOpInplaceInferer);
 
 namespace ops = paddle::operators;

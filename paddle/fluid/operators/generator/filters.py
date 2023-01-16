@@ -138,7 +138,7 @@ def to_composite_grad_opmaker_name(backward_op_name):
     for i in range(len(words)):
         words[i] = words[i].strip()
         words[i] = words[i].capitalize()
-    composite_grad_opmaker_name = "".join(word for word in words)
+    composite_grad_opmaker_name = "".join(word for word in words[:-1])
     composite_grad_opmaker_name += "CompositeGradOpMaker"
     return composite_grad_opmaker_name
 
