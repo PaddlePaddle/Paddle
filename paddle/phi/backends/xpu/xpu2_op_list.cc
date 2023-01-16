@@ -422,6 +422,7 @@ XPUOpMap& get_kl2_ops() {
       {"prelu", XPUKernelSet({phi::DataType::FLOAT32})},
       {"prelu_grad",
        XPUKernelSet({phi::DataType::FLOAT32, phi::DataType::FLOAT16})},
+      {"prod_raw", XPUKernelSet({phi::DataType::FLOAT32})},
       {"range", XPUKernelSet({phi::DataType::FLOAT32, phi::DataType::INT64})},
       {"reciprocal", XPUKernelSet({phi::DataType::FLOAT32})},
       {"reciprocal_grad",
