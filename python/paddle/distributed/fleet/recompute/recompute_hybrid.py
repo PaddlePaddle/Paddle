@@ -13,8 +13,9 @@
 # limitations under the License.
 
 import paddle
+from paddle import framework
 from paddle.autograd import PyLayer
-from paddle.fluid import core, framework
+from paddle.framework import core
 
 from ..meta_parallel.parallel_layers.random import get_rng_state_tracker
 from ..meta_parallel.pp_utils import utils

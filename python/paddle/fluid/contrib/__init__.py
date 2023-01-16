@@ -22,8 +22,6 @@ from . import extend_optimizer
 from .extend_optimizer import *
 from . import model_stat
 from .model_stat import *
-from . import mixed_precision
-from .mixed_precision import *
 from . import layers
 from .layers import *
 from . import optimizer
@@ -34,6 +32,5 @@ __all__ = []
 __all__ += memory_usage_calc.__all__
 __all__ += op_frequence.__all__
 __all__ += extend_optimizer.__all__
-__all__ += ['mixed_precision']
 __all__ += layers.__all__
 __all__ += optimizer.__all__

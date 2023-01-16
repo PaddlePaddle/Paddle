@@ -84,7 +84,8 @@ void WeightedSampler::build(GraphEdgeBlob *edges) {
     delete right;
     right = nullptr;
   }
-  return build_one((WeightedGraphEdgeBlob *)edges, 0, edges->size());
+  return build_one(
+      reinterpret_cast<WeightedGraphEdgeBlob *>(edges), 0, edges->size());
 }
 
 void WeightedSampler::build_one(WeightedGraphEdgeBlob *edges,
