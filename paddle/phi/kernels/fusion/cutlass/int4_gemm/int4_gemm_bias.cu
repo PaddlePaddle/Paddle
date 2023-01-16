@@ -76,7 +76,7 @@ cutlass::Status Int4GemmImpl(GemmAllParams params) {
   cutlass::gemm::GemmCoord problem_size({m, n, k});
 
   ElementComputeEpilogue alpha = ElementComputeEpilogue(1);
-  ElementComputeEpilogue beta = ElementComputeEpilogue(0);
+  ElementComputeEpilogue beta = ElementComputeEpilogue(1);
 
   int split_k_slices = 1;  // in big shape,no need to split k
 

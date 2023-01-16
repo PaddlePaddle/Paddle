@@ -23,8 +23,8 @@ namespace cutlass_gemm_internal {
 typedef struct {
   const cutlass::int4b_t *input;
   const cutlass::int4b_t *weight;
-  const cutlass::int4b_t *bias;
-  cutlass::int4b_t *output;
+  const int32_t *bias;
+  int32_t *output;
   int batch;
   int m;
   int n;

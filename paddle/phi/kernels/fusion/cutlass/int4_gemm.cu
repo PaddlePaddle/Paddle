@@ -55,30 +55,43 @@ void Int4GemmKernel(const Context &ctx,
     PADDLE_THROW(phi::errors::InvalidArgument(
         "Cutlass does not support int4 gemm on sm %d", sm));
   }
+  auto stream = ctx.stream();
+
+  size_t x_bytes = m * kx / 2;
+  size_t y_bytes = ky * n / 2;
+  size_t out_bytes = m * n * 4;
+
+  paddle::memory::allocation::AllocationPtr tmp_x = paddle::memory::Alloc(
+      ctx.GetPlace(),
+      x_bytes,
+      phi::Stream(reinterpret_cast<phi::StreamId>(stream)));
+  paddle::memory::allocation::AllocationPtr tmp_y = paddle::memory::Alloc(
+      ctx.GetPlace(),
+      y_bytes,
+      phi::Stream(reinterpret_cast<phi::StreamId>(stream)));
+  paddle::memory::allocation::AllocationPtr tmp_out = paddle::memory::Alloc(
+      ctx.GetPlace(),
+      out_bytes,
+      phi::Stream(reinterpret_cast<phi::StreamId>(stream)));
 
   cutlass::Array<T, m *kx> *source_x =
       reinterpret_cast<cutlass::Array<T, m * kx> *>(x.data());
   cutlass::Array<T, kx *n> *source_y =
       reinterpret_cast<cutlass::Array<T, ky * n> *>(y.data());
-  cutlass::Array<T, m *n> *source_bias =
-      reinterpret_cast<cutlass::Array<T, m * n> *>(bias.data());
 
   cutlass::NumericArrayConverter<cutlass::int4b_t, T, m * kx> convert_x;
   cutlass::NumericArrayConverter<cutlass::int4b_t, T, ky * n> convert_y;
-  cutlass::NumericArrayConverter<cutlass::int4b_t, T, m * n> convert_bias;
 
-  cutlass::Array<cutlass::int4b_t, m * kx> *destination_x;
+  cutlass::Array<cutlass::int4b_t, m *kx> *destination_x = tmp_x->ptr();
   *destination_x = convert_x(*source_x);
-  cutlass::Array<cutlass::int4b_t, ky * n> *destination_y;
+  cutlass::Array<cutlass::int4b_t, ky *n> *destination_y = tmp_y->ptr();
   *destination_x = convert_y(*source_y);
-  cutlass::Array<cutlass::int4b_t, m * n> *destination_bias;
-  *destination_bias = convert_x(*source_bias);
-  cutlass::int4b_t *destination_output;
+  int32_t *destination_output = tmp_out->ptr();
 
   GemmAllParams params = {
       reinterpret_cast<const cutlass::int4b_t *>(destination_x->data()),
       reinterpret_cast<const cutlass::int4b_t *>(destination_y->data()),
-      reinterpret_cast<const cutlass::int4b_t *>(destination_bias->data()),
+      reinterpret_cast<const int32_t *>(bias.data()),
       destination_output,
       1,
       m,
@@ -86,12 +99,15 @@ void Int4GemmKernel(const Context &ctx,
       k,
       &ctx};
   if (activation == "identity") {
-    Int4GemmBias(params);
+    Int4GemmBias(params, sm);
   } else {
     PADDLE_THROW(phi::errors::InvalidArgument(
         "Cutlass dose not support this activation on int4: %s.",
         activation.c_str()));
   }
+  cutlass::Array<int32_t, m *n> *source_out = destination_output;
+  cutlass::NumericArrayConverter<T, int32_t, m * n> convert_out;
+  *out = convert_out(*source_out);
   out->set_layout(ALL_LAYOUT);
 }
 }  // namespace cutlass_gemm_internal
