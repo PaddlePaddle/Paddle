@@ -693,21 +693,25 @@ class Adam(Optimizer):
                         if master_weight is not None
                         else None
                     )
-                    _, _, _, _, _, _ = _C_ops.merged_adam_(
-                        self._param_dict[key][param_group_idx],
-                        grad_dict[key],
-                        lr_dict[key],
-                        self._moment1_dict[key][param_group_idx],
-                        self._moment2_dict[key][param_group_idx],
-                        self._beta1_pow_acc_dict[key][param_group_idx],
-                        self._beta2_pow_acc_dict[key][param_group_idx],
-                        master_weight,
-                        _beta1,
-                        _beta2,
-                        self._epsilon,
-                        find_master,
-                        False,
-                    )
+                    if self._get_auxiliary_var('found_inf'):
+                        self._set_auxiliary_var('found_inf', True)
+                        _, _, _, _, _, _ = _C_ops.merged_adam_(
+                            self._param_dict[key][param_group_idx],
+                            grad_dict[key],
+                            lr_dict[key],
+                            self._moment1_dict[key][param_group_idx],
+                            self._moment2_dict[key][param_group_idx],
+                            self._beta1_pow_acc_dict[key][param_group_idx],
+                            self._beta2_pow_acc_dict[key][param_group_idx],
+                            master_weight,
+                            _beta1,
+                            _beta2,
+                            self._epsilon,
+                            find_master,
+                            False,
+                        )
+                    else:
+                        self._set_auxiliary_var('found_inf', False)
                 else:
                     inputs = {
                         "Param": self._param_dict[key][param_group_idx],
