@@ -15,11 +15,17 @@
 #pragma once
 #include "paddle/fluid/prim/api/manual/prim_api/prim_api.h"
 #include "paddle/fluid/prim/api/manual/utils/utils.h"
+#include "paddle/phi/common/int_array.h"
+#include "paddle/phi/core/ddim.h"
+
 namespace paddle {
 namespace prim {
-
-// This function should have as same signature as phi, which defined in
-// paddle/phi/api/backward/backward_api.h
+using Tensor = paddle::experimental::Tensor;
+using IntArray =
+    paddle::experimental::IntArrayBase<paddle::experimental::Tensor>;
+// using IntArray = paddle::experimental::IntArray;
+//  This function should have as same signature as phi, which defined in
+//  paddle/phi/api/backward/backward_api.h
 template <typename T>
 void tanh_grad(const Tensor& out, const Tensor& grad_out, Tensor* grad_x) {
   auto tmp = pow<T>(out, 2.0);
@@ -95,6 +101,44 @@ void add_grad(const Tensor& x,
 }
 
 template <typename T>
+void sum_grad(const Tensor& x,
+              const Tensor& out_grad,
+              const IntArray& axis,
+              bool keepdim,
+              bool reduce_all,
+              Tensor* x_grad) {
+  if (!x_grad) {
+    return;
+  }
+  std::vector<int> x_dim = phi::vectorize<int>(x.dims());
+  int64_t axis_size = axis.size();
+  int64_t x_dim_size = x_dim.size();
+  reduce_all = false;
+  if (reduce_all || axis_size == 0 || axis_size == x_dim_size) {
+    reduce_all = true;
+  } else {
+    reduce_all = false;
+  }
+  auto x_grad_tmp = Tensor();
+  if (!keepdim) {
+    auto axis_ = std::vector<int64_t>();
+    if (reduce_all) {
+      for (int64_t i = 1; i < x_dim_size; i++) {
+        axis_.push_back(i);
+      }
+    } else {
+      axis_ = axis.GetData();
+    }
+    auto out_grad_ = unsqueeze<T>(out_grad, axis_);
+    x_grad_tmp = expand<T>(out_grad_, x_dim);
+  } else {
+    x_grad_tmp = expand<T>(out_grad, x_dim);
+  }
+
+  x_grad->set_impl(x_grad_tmp.impl());
+}
+
+template <typename T>
 void divide_grad(const Tensor& x,
                  const Tensor& y,
                  const Tensor& out,
@@ -135,6 +179,16 @@ void divide_grad(const Tensor& x,
       dx->set_impl(dx_res.impl());
     }
   }  // indicate we will compute dx
+}
+
+template <typename T>
+void sqrt_grad(const Tensor& out, const Tensor& out_grad, Tensor* x_grad) {
+  if (x_grad) {
+    auto div_x = full<T>(phi::vectorize(out.dims()), 0.5);
+    auto tmp = divide<T>(div_x, out);
+    auto x_grad_tmp = multiply<T>(out_grad, tmp);
+    x_grad->set_impl(x_grad_tmp.impl());
+  }
 }
 }  // namespace prim
 }  // namespace paddle
