@@ -58,6 +58,9 @@ class XPUTestWhereOp(XPUOpTestWrapper):
         def test_check_output(self):
             self.check_output_with_place(self.place)
 
+        def test_check_grad(self):
+            self.check_grad_with_place(self.place, ['X', 'Y'], 'Out')
+
     class TestXPUWhereOp2(TestXPUWhereOp):
         def init_data(self):
             self.x = np.random.uniform(-5, 5, (60, 2)).astype(self.dtype)

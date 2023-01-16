@@ -39,7 +39,7 @@ using paddle::distributed::PsService;
 
 class PSCore {
  public:
-  explicit PSCore() {}
+  PSCore() {}
   virtual ~PSCore() {}
 
   virtual int InitServer(
