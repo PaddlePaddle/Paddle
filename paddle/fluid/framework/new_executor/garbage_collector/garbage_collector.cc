@@ -17,7 +17,6 @@
 #include "paddle/fluid/framework/new_executor/garbage_collector/event_garbage_collector.h"
 #include "paddle/fluid/framework/new_executor/garbage_collector/fast_garbage_collector.h"
 #include "paddle/fluid/framework/new_executor/garbage_collector/no_event_garbage_collector.h"
-#include "paddle/fluid/platform/cuda_graph_with_memory_pool.h"
 
 DECLARE_bool(fast_eager_deletion_mode);
 DECLARE_bool(new_executor_use_cuda_graph);
@@ -35,7 +34,8 @@ bool IsInterpretercoreFastGCEnabled() {
                     false,
                     platform::errors::InvalidArgument(
                         "When FLAGS_new_executor_use_cuda_graph is true, "
-                        "IsStreamSafeCUDAAllocatorUsed must be true."));
+                        "IsStreamSafeCUDAAllocatorUsed must be true, but "
+                        " got false."));
   return (memory::allocation::AllocatorFacade::Instance()
               .IsStreamSafeCUDAAllocatorUsed() &&
           FLAGS_fast_eager_deletion_mode) ||

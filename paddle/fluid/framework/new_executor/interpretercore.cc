@@ -544,6 +544,8 @@ void InterpreterCore::PrepareForCUDAGraphCapture() {
                     true,
                     platform::errors::InvalidArgument(
                         "CUDA Graph is only supported on NVIDIA GPU device."));
+  // If set true, will call `cudaStreamSynchronize(nccl_stream)`after allreduce.
+  // which may cause error in cuda graph. This behavior is consistent with PE.
   PADDLE_ENFORCE_EQ(FLAGS_sync_nccl_allreduce,
                     false,
                     platform::errors::InvalidArgument(
@@ -551,6 +553,8 @@ void InterpreterCore::PrepareForCUDAGraphCapture() {
                         "CUDA Graph capturing."));
 
   // All output vars of coalesce_tensor op should be persistable.
+  // If fused output var of coalesce_tensor is gc, it will cause accuracy
+  // problem. The specific reasons need to be analyzed.
   for (auto& op_desc : block_.AllOps()) {
     if (op_desc->Type() == kCoalesceTensor) {
       for (auto& out_var_name : op_desc->OutputArgumentNames()) {
