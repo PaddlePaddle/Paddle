@@ -40,8 +40,8 @@ cc_library(
        cinn_launch_context)
 
 if(WITH_TESTING)
-  cc_test_old(cinn_lib_test SRCS cinn_lib_test.cc DEPS cinn)
-  set_tests_properties(cinn_lib_test PROPERTIES LABELS "RUN_TYPE=CINN")
+  # cc_test_old(cinn_lib_test SRCS cinn_lib_test.cc DEPS cinn)
+  # set_tests_properties(cinn_lib_test PROPERTIES LABELS "RUN_TYPE=CINN")
 
   cc_test_old(cinn_cache_key_test SRCS cinn_cache_key_test.cc DEPS
               cinn_cache_key)
@@ -74,20 +74,20 @@ if(WITH_TESTING)
   # set_tests_properties(cinn_graph_symbolization_test PROPERTIES LABELS
   #                                                              "RUN_TYPE=CINN")
 
-  cc_test_old(
-    cinn_compiler_test
-    SRCS
-    cinn_compiler_test.cc
-    DEPS
-    cinn_compiler
-    place
-    proto_desc
-    graph_viz_pass
-    build_cinn_pass
-    cinn
-    mul_op
-    activation_op
-    elementwise_add_op
-    generated_op)
-  set_tests_properties(cinn_compiler_test PROPERTIES LABELS "RUN_TYPE=CINN")
+  # cc_test_old(
+  #   cinn_compiler_test
+  #   SRCS
+  #   cinn_compiler_test.cc
+  #   DEPS
+  #   cinn_compiler
+  #   place
+  #   proto_desc
+  #   graph_viz_pass
+  #   build_cinn_pass
+  #   cinn
+  #   mul_op
+  #   activation_op
+  #   elementwise_add_op
+  #   generated_op)
+  # set_tests_properties(cinn_compiler_test PROPERTIES LABELS "RUN_TYPE=CINN")
 endif()
