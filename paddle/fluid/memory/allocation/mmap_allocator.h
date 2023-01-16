@@ -159,12 +159,12 @@ class MemoryMapFdSet {
   std::mutex mtx_;
 };
 
-class MemoryMap {
+class MemoryMapInfo {
  public:
-  explicit MemoryMap(int flags,
-                     size_t data_size,
-                     std::string file_name,
-                     void *mmap_ptr)
+  explicit MemoryMapInfo(int flags,
+                         size_t data_size,
+                         std::string file_name,
+                         void *mmap_ptr)
       : flags_(flags),
         data_size_(data_size),
         file_name_(file_name),
@@ -176,28 +176,48 @@ class MemoryMap {
   void *mmap_ptr_ = nullptr;
 };
 
+/* Note(zhangbo):
+MemoryMapAllocationPool is used to cache and reuse shm, thus reducing munmap in
+dataloader. The munmap(shm_mmap_ptr) instruction in
+RefcountedMemoryMapAllocation::close() function may block other threads of the
+process. Therefore, the logic of shm cache and reuse is designed: the shm
+created by the _share_filename process will be cached and reused according to
+the data_size of shm, thus eliminating the problem of munmap blocking other
+threads
+*/
 class MemoryMapAllocationPool {
  public:
-  static MemoryMapAllocationPool &Instance();  // NOLINT
+  static MemoryMapAllocationPool &Instance() {
+    if (pool_ == nullptr) {
+      pool_ = new MemoryMapAllocationPool();
+    }
+    return *pool_;
+  }
 
-  void Insert(const MemoryMap &memory_map);
+  void Insert(const MemoryMapInfo &memory_map);
 
   int FindFromCache(const int &flag,
                     const size_t &data_size,
                     const std::string &file_name = "",
                     bool check_refcount = true);
 
-  const MemoryMap &GetById(int id);
+  const MemoryMapInfo &GetById(int id);
 
   size_t BufferSize() { return memory_map_allocations_.size(); }
 
   void Clear();
 
+  void SetMaxPoolSize(const int &size);
+
+  int MaxPoolSize() { return max_pool_size_; }
+
   ~MemoryMapAllocationPool();
 
  private:
   MemoryMapAllocationPool() = default;
-  std::vector<MemoryMap> memory_map_allocations_;
+  static MemoryMapAllocationPool *pool_;
+  std::vector<MemoryMapInfo> memory_map_allocations_;
+  int max_pool_size_ = 0;
   std::mutex mtx_;
 };
 

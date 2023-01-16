@@ -26,9 +26,6 @@
 #include "glog/logging.h"
 #include "paddle/fluid/platform/enforce.h"
 
-PADDLE_DEFINE_EXPORTED_int32(memory_map_allocation_pool_max_size,
-                             50,
-                             "Use inplace in new executor");
 DECLARE_bool(use_shm_cache);
 
 namespace paddle {
@@ -196,11 +193,13 @@ void RefcountedMemoryMapAllocation::close() {
   } else {
     if (FLAGS_use_shm_cache &&
         MemoryMapAllocationPool::Instance().BufferSize() <
-            static_cast<size_t>(FLAGS_memory_map_allocation_pool_max_size)) {
-      MemoryMapAllocationPool::Instance().Insert(
-          MemoryMap(flags_, map_size_ - mmap_alignment, ipc_name_, map_ptr_));
+            static_cast<size_t>(
+                MemoryMapAllocationPool::Instance().MaxPoolSize())) {
+      MemoryMapAllocationPool::Instance().Insert(MemoryMapInfo(
+          flags_, map_size_ - mmap_alignment, ipc_name_, map_ptr_));
     } else {
-      if (info->refcount == 0) {
+      if (info->refcount == 0 &&
+          shm_open(ipc_name_.c_str(), O_RDWR, (mode_t)0600) != -1) {
         shm_unlink(ipc_name_.c_str());
         VLOG(6) << "shm_unlink file: " << ipc_name_;
       }
@@ -330,15 +329,12 @@ void MemoryMapFdSet::Clear() {
 
 MemoryMapFdSet::~MemoryMapFdSet() { Clear(); }
 
-MemoryMapAllocationPool &MemoryMapAllocationPool::Instance() {  // NOLINT
-  static MemoryMapAllocationPool pool;
-  return pool;
-}
+MemoryMapAllocationPool *MemoryMapAllocationPool::pool_ = nullptr;
 
-void MemoryMapAllocationPool::Insert(const MemoryMap &memory_map) {
+void MemoryMapAllocationPool::Insert(const MemoryMapInfo &memory_map) {
   std::lock_guard<std::mutex> guard(mtx_);
   memory_map_allocations_.push_back(memory_map);
-  VLOG(4) << this << " intset a new shm";
+  VLOG(4) << this << "Intsert a new shm: " << memory_map.file_name_;
 }
 
 int MemoryMapAllocationPool::FindFromCache(const int &flag,
@@ -346,16 +342,6 @@ int MemoryMapAllocationPool::FindFromCache(const int &flag,
                                            const std::string &file_name,
                                            bool check_refcount) {
   std::lock_guard<std::mutex> guard(mtx_);
-  for (std::vector<MemoryMap>::iterator it = memory_map_allocations_.begin();
-       it != memory_map_allocations_.end();) {
-    if (shm_open(it->file_name_.c_str(), O_RDWR, (mode_t)0600) == -1) {
-      VLOG(4) << it->file_name_ << " has been closed, delete from cache";
-      it = memory_map_allocations_.erase(it);
-    } else {
-      ++it;
-    }
-  }
-
   for (size_t idx = 0; idx < memory_map_allocations_.size(); idx++) {
     if (memory_map_allocations_.at(idx).flags_ == flag &&
         memory_map_allocations_.at(idx).data_size_ == data_size) {
@@ -364,7 +350,7 @@ int MemoryMapAllocationPool::FindFromCache(const int &flag,
         if (!check_refcount || reinterpret_cast<CountInfo *>(
                                    memory_map_allocations_.at(idx).mmap_ptr_)
                                        ->refcount == 0) {
-          VLOG(4) << "** match at: " << idx;
+          VLOG(4) << "Match at: " << idx;
           return idx;
         }
       }
@@ -373,9 +359,14 @@ int MemoryMapAllocationPool::FindFromCache(const int &flag,
   return -1;
 }
 
-const MemoryMap &MemoryMapAllocationPool::GetById(int id) {
+const MemoryMapInfo &MemoryMapAllocationPool::GetById(int id) {
   std::lock_guard<std::mutex> guard(mtx_);
   return memory_map_allocations_.at(id);
+}
+
+void MemoryMapAllocationPool::SetMaxPoolSize(const int &size) {
+  max_pool_size_ = size;
+  VLOG(4) << this << "Set max pool size is: " << max_pool_size_;
 }
 
 void MemoryMapAllocationPool::Clear() {
@@ -385,6 +376,14 @@ void MemoryMapAllocationPool::Clear() {
     if (rlt == 0) {
       VLOG(4) << "MemoryMapAllocationPool: clear " << mmap.file_name_;
     }
+    PADDLE_ENFORCE_NE(munmap(mmap.mmap_ptr_, mmap.data_size_ + mmap_alignment),
+                      -1,
+                      platform::errors::Unavailable(
+                          "could not unmap the shared memory file: ",
+                          strerror(errno),
+                          " (",
+                          errno,
+                          ")"));
   }
   memory_map_allocations_.clear();
 }
