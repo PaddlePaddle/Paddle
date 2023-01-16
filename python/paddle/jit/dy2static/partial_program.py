@@ -32,6 +32,7 @@ from paddle.fluid.layers.utils import _hash_with_id, flatten, pack_sequence_as
 
 from . import logging_utils
 from .return_transformer import RETURN_NO_VALUE_MAGIC_NUM
+from .utils import _out_grad_names, _param_grad_names
 
 __all__ = []
 
@@ -379,46 +380,15 @@ class PartialProgramLayer:
 
     @LazyInitialized
     def _param_grad_names(self):
-        names = []
-        # NOTE: `names` and `self._params` must be in the same order so that
-        # the param grad name can be set correctly in the run_program.
-        for param in self._params:
-            candidate = [
-                var_name
-                for var_name in self._train_program.block(0).vars.keys()
-                if var_name.endswith(param.name + '@GRAD')
-            ]
-            if candidate:
-                names.append(
-                    max(candidate, key=lambda name: name.count('grad/'))
-                )
-            else:
-                names.append(param.name + '@GRAD')
-        return names
+        return _param_grad_names(self.program.desc, self._params)
 
     @LazyInitialized
     def _out_grad_names(self):
-        """
-        Parse Out@GARD name from original train and infer program.
-        """
-        names = []
-        origin_infer_program = self._create_program(is_infer_mode=True)
-        origin_train_program = self._train_program
-        fwd_end_op_index = len(origin_infer_program.block(0).ops)
-        for i in range(
-            fwd_end_op_index + 1,
-            min(
-                fwd_end_op_index + 2 * len(self._outputs.var_ids),
-                len(origin_train_program.block(0).ops),
-            ),
-            2,
-        ):
-            op = origin_train_program.block(0).ops[i]
-            if op.type == 'fill_constant':
-                var_name = op.output('Out')[0]
-                names.append(var_name)
-
-        return names
+        return _out_grad_names(
+            self.program.desc,
+            self.forward_program.block(0).desc.op_size(),
+            len(self._outputs.var_ids),
+        )
 
     @property
     def program(self):
