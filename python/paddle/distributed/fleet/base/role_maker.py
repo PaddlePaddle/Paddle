@@ -20,7 +20,7 @@ from multiprocessing import Manager, Process
 import numpy as np
 
 import paddle
-import paddle.fluid.core as core
+import paddle.framework.core as core
 from paddle.distributed.fleet.base.private_helper_function import (
     wait_server_ready,
 )
