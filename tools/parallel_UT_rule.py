@@ -1542,7 +1542,6 @@ FOURTH_HIGH_PARALLEL_JOB_NEW = [
     'test_gru_unit_op',
     'test_amp_check_finite_and_scale_op',
     'test_imperative_selected_rows_to_lod_tensor',
-    'test_imperative_save_load',
     'test_add_reader_dependency',
     'test_imperative_transformer_sorted_gradient',
     'test_bicubic_interp_v2_op',

@@ -207,7 +207,7 @@ std::string CastPyArg2AttrString(PyObject* obj, ssize_t arg_pos) {
   }
 }
 
-bool IsEagerTensor(PyObject* obj) {
+bool PyCheckTensor(PyObject* obj) {
   return PyObject_IsInstance(obj, reinterpret_cast<PyObject*>(p_tensor_type));
 }
 
@@ -1307,7 +1307,7 @@ std::vector<paddle::experimental::Tensor> GetTensorListFromPyObject(
 }
 
 paddle::experimental::Tensor& GetTensorFromPyObject(PyObject* obj) {
-  if (!IsEagerTensor(obj)) {
+  if (!PyCheckTensor(obj)) {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "argument must be "
         "Tensor, but got %s",
@@ -1384,7 +1384,7 @@ paddle::experimental::Scalar CastPyArg2Scalar(PyObject* obj,
   } else if (PyFloat_Check(obj)) {
     double value = CastPyArg2Double(obj, op_type, arg_pos);
     return paddle::experimental::Scalar(value);
-  } else if (IsEagerTensor(obj)) {
+  } else if (PyCheckTensor(obj)) {
     paddle::experimental::Tensor& value = GetTensorFromPyObject(
         op_type, "" /*arg_name*/, obj, arg_pos, false /*dispensable*/);
     return paddle::experimental::Scalar(value);
@@ -1715,7 +1715,7 @@ paddle::experimental::Tensor UnPackHook::operator()(
   Py_XDECREF(args);
   egr::Controller::Instance().SetHasGrad(grad_tmp);
 
-  PADDLE_ENFORCE_EQ(paddle::pybind::IsEagerTensor(ret),
+  PADDLE_ENFORCE_EQ(paddle::pybind::PyCheckTensor(ret),
                     true,
                     paddle::platform::errors::InvalidArgument(
                         "paddle.autograd.saved_tensors_hooks only one pair "
@@ -1740,7 +1740,7 @@ void* UnPackHook::operator()(void* packed_value, void* other) {
   Py_XDECREF(args);
   egr::Controller::Instance().SetHasGrad(grad_tmp);
 
-  PADDLE_ENFORCE_EQ(paddle::pybind::IsEagerTensor(ret),
+  PADDLE_ENFORCE_EQ(paddle::pybind::PyCheckTensor(ret),
                     true,
                     paddle::platform::errors::InvalidArgument(
                         "paddle.autograd.saved_tensors_hooks only one pair "

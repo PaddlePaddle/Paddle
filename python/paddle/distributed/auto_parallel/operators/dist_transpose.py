@@ -124,6 +124,13 @@ class DistributedTranspose2Impl(DistributedOperatorImpl):
         for i in range(len(x_dims_mapping)):
             x_shape_dims_mapping[i + 1] = x_dims_mapping[i]
 
+        if changed:
+            op_dist_attr.set_input_dims_mapping(x_name, x_dims_mapping)
+            op_dist_attr.set_output_dims_mapping(out_name, out_dims_mapping)
+            op_dist_attr.set_output_dims_mapping(
+                x_shape_name, x_shape_dims_mapping
+            )
+
         return changed
 
     def calc_cost(self, op_role, dist_op, ctx, cluster):

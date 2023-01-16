@@ -20,7 +20,7 @@ import sys
 
 import paddle
 from .. import framework
-from ..framework import convert_np_dtype_to_dtype_, _in_legacy_dygraph
+from ..framework import convert_np_dtype_to_dtype_
 from .. import core
 from .. import unique_name
 from ..framework import (
@@ -857,13 +857,6 @@ def monkey_patch_varbase():
                 return self.__setitem_varbase__(item, value)
 
     @framework.dygraph_only
-    def _grad_ivar(self):
-        if self.grad is not None:
-            if self.grad._is_initialized():
-                return self.grad
-        return None
-
-    @framework.dygraph_only
     def _set_grad_ivar(self, value):
         if isinstance(self, EagerParamBase):
             self.grad = value
@@ -1060,7 +1053,6 @@ def monkey_patch_varbase():
             setattr(core.VarBase, method_name, method)
 
     if framework._in_eager_mode_:
-        setattr(core.eager.Tensor, "_grad_ivar", _grad_ivar)
         setattr(core.eager.Tensor, "_set_grad_ivar", _set_grad_ivar)
         setattr(core.eager.Tensor, "value", value)
         setattr(core.eager.Tensor, "cpu", cpu)

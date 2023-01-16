@@ -218,7 +218,7 @@ def std(x, axis=None, unbiased=True, keepdim=False, name=None):
 
 def numel(x, name=None):
     """
-    Returns the number of elements for a tensor, which is a int64 Tensor with shape [1] in static mode
+    Returns the number of elements for a tensor, which is a int64 Tensor with shape [1] in static graph mode
     or a scalar value in imperative mode.
 
     Args:
@@ -404,6 +404,10 @@ def median(x, axis=None, keepdim=False, name=None):
     """
     if not isinstance(x, Variable):
         raise TypeError("In median, the input x should be a Tensor.")
+
+    if len(x.shape) == 0:
+        return x.clone()
+
     is_flatten = axis is None
     dims = len(x.shape)
     if is_flatten:

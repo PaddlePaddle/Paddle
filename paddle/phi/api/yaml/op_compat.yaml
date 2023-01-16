@@ -60,6 +60,19 @@
   extra :
     attrs : [bool use_cudnn = true]
 
+- op : allclose
+  inputs :
+    {x : Input, y : Other}
+  outputs :
+    out : Out
+  scalar :
+    rtol :
+      data_type : std::string
+      tensor_name : Rtol
+    atol :
+      data_type : std::string
+      tensor_name : Atol
+
 - op : angle
   backward : angle_grad
   inputs :
@@ -180,7 +193,18 @@
     out : Out
 
 - op : clip
-  backward : clip_grad
+  backward : clip_grad, clip_double_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
+  scalar :
+    min :
+      data_type : float
+      tensor_name : Min
+    max :
+      data_type :  float
+      tensor_name : Max
   extra :
     attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32"]
 
@@ -503,6 +527,13 @@
   inputs: {x: X}
   outputs: {out: Out}
 
+- op : fill_diagonal
+  backward : fill_diagonal_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
+
 - op : fill_diagonal_tensor
   inputs :
     {x : X, y : Y}
@@ -634,6 +665,13 @@
   outputs :
     out : Out
 
+- op : hardtanh (brelu)
+  backward : hardtanh_grad (brelu_grad)
+  inputs :
+    x : X
+  outputs :
+    out : Out
+
 - op : heaviside (elementwise_heaviside)
   backward : heaviside_grad (elementwise_heaviside_grad)
   extra :
@@ -643,6 +681,13 @@
 - op : histogram
   inputs :
     input : X
+  outputs :
+    out : Out
+
+- op : imag
+  backward : imag_grad
+  inputs :
+    x : X
   outputs :
     out : Out
 
@@ -809,13 +854,11 @@
     out : Out
 
 - op : logsigmoid
+  backward : logsigmoid_grad
   inputs :
     x : X
   outputs :
     out : Out
-
-- op : logsigmoid
-  backward : logsigmoid_grad
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
@@ -874,6 +917,14 @@
   outputs :
     out : Out
 
+- op : meshgrid
+  backward : meshgrid_grad
+  inputs :
+    inputs : X
+  outputs :
+    out : Out
+  drop_empty_grad : [inputs_grad]
+
 - op : mish
   backward : mish_grad
   extra :
@@ -886,6 +937,14 @@
   outputs :
     {out : Out, indices : Indices}
 
+- op : multi_dot
+  backward : multi_dot_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
+  drop_empty_grad : [x_grad]
+
 - op : multinomial
   inputs :
     {x : X}
@@ -895,6 +954,14 @@
     num_samples :
       data_type : int
       support_tensor : true
+
+- op : multiplex
+  backward : multiplex_grad
+  inputs :
+    {inputs : X, index : Ids}
+  outputs :
+    out : Out
+  drop_empty_grad : [inputs_grad]
 
 - op : multiply (elementwise_mul)
   backward : multiply_grad (elementwise_mul_grad)
@@ -996,6 +1063,13 @@
 - op : quantize_linear
   extra :
     attrs : [float moving_rate = 0.9]
+
+- op : real
+  backward : real_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
 
 - op : reciprocal
   backward : reciprocal_grad
@@ -1214,6 +1288,8 @@
 
 - op : softmax
   backward : softmax_grad
+  inputs :
+    x : X
   extra :
     attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32", bool is_test = false]
 
@@ -1270,19 +1346,30 @@
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
 - op : squeeze (squeeze2)
-  backward : squeeze_grad (squeeze2_grad)
+  backward : squeeze_grad (squeeze2_grad), squeeze_double_grad(squeeze2_double_grad)
+  inputs :
+    x : X
+  attrs :
+   axis : axes
+  outputs :
+    {out : Out, xshape : XShape}
+  int_array:
+    axis :
+      data_type : int
+      support_tensor : true
   extra :
     attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32"]
+    outputs : [xshape]
 
 - op : stack
   backward : stack_grad
+  inputs :
+    x : X
+  outputs :
+    out : Y
   extra :
     attrs : [bool use_mkldnn = false]
-
-- op : stack
-  backward : stack_grad
-  extra :
-    attrs : [bool use_mkldnn = false]
+  drop_empty_grad : [x_grad]
 
 - op : subtract (elementwise_sub)
   backward : subtract_grad (elementwise_sub_grad)
@@ -1349,6 +1436,18 @@
   outputs :
     out : Out
 
+- op : tile
+  backward : tile_grad, tile_double_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
+  int_array:
+    repeat_times :
+      data_type : int
+      tensor_name : RepeatTimes
+      tensors_name : repeat_times_tensor
+
 - op : topk (top_k_v2)
   backward : topk_grad (top_k_v2_grad)
   inputs :
@@ -1383,11 +1482,39 @@
   outputs :
     out : Out
 
+- op : unbind
+  inputs :
+    input : X
+  outputs :
+    out : Out
+
 - op : unfold
   inputs :
     x : X
   outputs :
     out : Y
+
+- op : unique_consecutive
+  inputs :
+    x : X
+  outputs :
+    {out : Out, index : Index, counts : Counts}
+
+- op : unsqueeze (unsqueeze2)
+  backward : unsqueeze_grad (unsqueeze2_grad), unsqueeze_double_grad(unsqueeze2_double_grad)
+  inputs :
+    x : X
+  attrs :
+   axis : axes
+  outputs :
+    {out : Out, xshape : XShape}
+  int_array:
+    axis :
+      data_type : int
+      tensor_name : AxesTensor
+      tensors_name : AxesTensorList
+  extra :
+    outputs : [xshape]
 
 - op : unstack
   backward : unstack_grad

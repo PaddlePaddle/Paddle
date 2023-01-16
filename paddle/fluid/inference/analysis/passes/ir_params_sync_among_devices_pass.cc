@@ -63,7 +63,7 @@ void IrParamsSyncAmongDevicesPass::CopyParamsToNpu(Argument *argument) {
         var,
         platform::errors::PreconditionNotMet("The var should not be nullptr"));
 
-    if (var->IsType<phi::DenseTensor>() || var->IsType<phi::DenseTensor>()) {
+    if (var->IsType<phi::DenseTensor>()) {
       auto *t = var->GetMutable<phi::DenseTensor>();
 
       platform::CPUPlace cpu_place;
@@ -139,7 +139,7 @@ void IrParamsSyncAmongDevicesPass::CopyParamsToGpu(Argument *argument) {
       PADDLE_ENFORCE_NOT_NULL(var,
                               platform::errors::PreconditionNotMet(
                                   "The var should not be nullptr"));
-      if (var->IsType<phi::DenseTensor>() || var->IsType<phi::DenseTensor>()) {
+      if (var->IsType<phi::DenseTensor>()) {
         auto *t = var->GetMutable<phi::DenseTensor>();
         auto var_data_type = var_node->Var()->GetDataType();
         VLOG(5) << "var_name is " << var_name << ", data type is "
@@ -197,7 +197,7 @@ void IrParamsSyncAmongDevicesPass::CopyParamsToCustomDevice(
         var,
         platform::errors::PreconditionNotMet("The var should not be nullptr"));
 
-    if (var->IsType<phi::DenseTensor>() || var->IsType<phi::DenseTensor>()) {
+    if (var->IsType<phi::DenseTensor>()) {
       auto *t = var->GetMutable<phi::DenseTensor>();
 
       platform::CPUPlace cpu_place;

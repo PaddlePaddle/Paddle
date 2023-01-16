@@ -16,10 +16,9 @@ import copy
 import logging
 import time
 
-from paddle.distributed.passes import new_pass
-from paddle.fluid import program_guard
-from paddle.fluid.backward import append_backward
-from paddle.fluid.framework import unique_name
+from paddle.distributed.passes import PassManager, new_pass
+from paddle.static import append_backward, program_guard
+from paddle.utils import unique_name
 
 from ..utils.log_utils import get_logger
 from .partitioner import Partitioner
@@ -221,13 +220,21 @@ class Parallelizer:
                 self._dist_context.serial_feed_vars["inputs"]
                 + self._dist_context.serial_feed_vars["labels"]
             )
-            if config["use_pure_fp16"]:
+            if config["enable_bf16"]:
+                auto_parallel_bf16_pass = new_pass("auto_parallel_bf16", config)
+                auto_parallel_bf16_pass.apply(
+                    [main_program], [startup_program], self._pass_context
+                )
+                loss = auto_parallel_bf16_pass.get_loss()
+
+            elif config["use_pure_fp16"]:
                 config["base_opt"] = optimizer
                 auto_parallel_fp16_pass = new_pass("auto_parallel_fp16", config)
                 auto_parallel_fp16_pass.apply(
                     [main_program], [startup_program], self._pass_context
                 )
                 loss = auto_parallel_fp16_pass.get_loss()
+
             else:
                 auto_parallel_amp_pass = new_pass("auto_parallel_amp", config)
                 auto_parallel_amp_pass.apply(
@@ -310,6 +317,16 @@ class Parallelizer:
                 [main_program], [startup_program], self._pass_context
             )
 
+            # deps for newexe
+            config = {}
+            config["dist_context"] = self._dist_context
+            APSED_pass = new_pass(
+                "auto_parallel_supplement_explicit_dependencies", config
+            )
+            APSED_pass.apply(
+                [main_program], [startup_program], self._pass_context
+            )
+
         # gradient_merge is then train-only optimization
         if self._mode == "train" and self._strategy.gradient_merge.enable:
             config = copy.deepcopy(self._strategy.gradient_merge.to_dict())
@@ -321,3 +338,11 @@ class Parallelizer:
             auto_parallel_gradient_merge_pass.apply(
                 [main_program], [startup_program], self._pass_context
             )
+
+        if self._mode == "train" and self._strategy.fused_passes.enable:
+            if len(self._strategy.fused_passes.fused_passes_list) > 0:
+                new_pass_list = []
+                for op in self._strategy.fused_passes.fused_passes_list:
+                    new_pass_list.append(new_pass(op))
+                pass_manager = PassManager(new_pass_list)
+                pass_manager.apply([main_program], [startup_program])

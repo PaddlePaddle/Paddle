@@ -18,6 +18,7 @@ from collections import defaultdict
 import numpy as np
 
 import paddle
+import paddle.autograd as imperative_base
 from paddle import _C_ops
 from paddle.fluid import core
 from paddle.fluid.framework import (
@@ -32,12 +33,6 @@ from paddle.fluid.framework import (
 
 from ..fluid import framework, unique_name
 from ..fluid.backward import _get_no_grad_set_name, append_backward
-from ..fluid.clip import (
-    GradientClipBase,
-    append_gradient_clip_ops,
-    error_clip_callback,
-)
-from ..fluid.dygraph import base as imperative_base
 from ..fluid.framework import Parameter, program_guard
 from ..fluid.initializer import Constant
 from ..fluid.layer_helper import LayerHelper
@@ -109,7 +104,7 @@ class Optimizer:
             different parameter groups such as the learning rate, weight decay, etc, \
             then the parameters are list of dict. Note that the learning_rate in paramter groups \
             represents the scale of base learning_rate. \
-            The default value is None in static mode, at this time all parameters will be updated.
+            The default value is None in static graph mode, at this time all parameters will be updated.
         weight_decay (float|WeightDecayRegularizer, optional): The strategy of regularization. \
             It canbe a float value as coeff of L2 regularization or \
             :ref:`api_fluid_regularizer_L1Decay`, :ref:`api_fluid_regularizer_L2Decay`.
@@ -168,7 +163,7 @@ class Optimizer:
 
     """
 
-    @imperative_base.no_grad
+    @imperative_base.no_grad()
     def __init__(
         self,
         learning_rate,
@@ -225,7 +220,7 @@ class Optimizer:
                 % type(learning_rate)
             )
         if grad_clip is not None:
-            if not isinstance(grad_clip, GradientClipBase):
+            if not isinstance(grad_clip, paddle.nn.clip.GradientClipBase):
                 raise TypeError(
                     "'grad_clip' should be an instance of GradientClipBase's derived class"
                 )
@@ -1042,7 +1037,7 @@ class Optimizer:
                     params_grads.append((parameter_list[index], grad))
         else:
             if callbacks is None:
-                callbacks = [error_clip_callback]
+                callbacks = [paddle.nn.clip.error_clip_callback]
             else:
                 assert isinstance(callbacks, list)
             program = loss.block.program
@@ -1103,7 +1098,7 @@ class Optimizer:
             params_grads = self._grad_clip(params_grads)
         else:
 
-            params_grads = append_gradient_clip_ops(params_grads)
+            params_grads = paddle.nn.clip.append_gradient_clip_ops(params_grads)
 
         # Add regularization if any
         params_grads = self.append_regularization_ops(
@@ -1317,7 +1312,7 @@ class Optimizer:
         else:
             core.clear_gradients(param_list, set_to_zero)
 
-    @imperative_base.no_grad
+    @imperative_base.no_grad()
     def minimize(
         self, loss, startup_program=None, parameters=None, no_grad_set=None
     ):
@@ -1380,7 +1375,7 @@ class Optimizer:
 
         return optimize_ops, params_grads
 
-    @imperative_base.no_grad
+    @imperative_base.no_grad()
     @framework.dygraph_only
     def step(self):
         """
