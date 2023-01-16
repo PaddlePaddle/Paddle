@@ -384,7 +384,7 @@ class ConditionalBlockGradOp : public ConditionalOp {
     if (!input_tensor.IsInitialized() || input_tensor.numel() == 0) {
       return;
     }
-    if (!input_tensor.meta().is_scalar) {
+    if (input_tensor.dims().size() != 0) {
       outside_tensor->Resize(input_tensor.dims());
     }
     VLOG(4) << "Assigning zero to " << outside_tensor;
