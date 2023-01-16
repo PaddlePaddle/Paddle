@@ -738,7 +738,7 @@ PDNode* FusedAttentionGradPattern::operator()(PDNode* x,
                 pre_layer_norm_grad_bias_grad_node,
                 pre_layer_norm_grad_x_grad_node});
 
-  return nullptr;
+  return pre_layer_norm_grad_x_grad_node;
 }
 
 }  // namespace patterns
@@ -847,7 +847,113 @@ ir::Graph* FusedAttentionsPass::PreMaskDropResPostFwd(Graph* graph) const {
 }
 
 ir::Graph* FusedAttentionsPass::PreMaskDropResPostBwd(Graph* graph) const {
-  // TODO(Yuang Liu): finish the pass
+  GraphPatternDetector gpd;
+  auto* x = gpd.mutable_pattern()
+                ->NewNode(patterns::PDNodeName(name_scope_, "x"))
+                ->AsInput()
+                ->assert_is_op_input("layer_norm_grad", "Y@GRAD");
+  patterns::FusedAttentionGradPattern fused_attention_grad_pattern(
+      gpd.mutable_pattern(), "fused_attention_pattern");
+
+  fused_attention_grad_pattern(x,
+                               /* pre_layer_norm */ true,
+                               /* post_layer_norm */ true,
+                               /* has_attn_mask */ true,
+                               /* do_dropout */ true,
+                               /* add_residual */ true);
+
+  int found_fused_attention = 0;
+
+  auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
+                     Graph* g) {
+    VLOG(3) << "handle FusedMultiHeadAttention backward pass's fusion";
+
+    GET_IR_NODE_FROM_SUBGRAPH(post_layer_norm_grad_op_node,
+                              post_layer_norm_grad_op,
+                              fused_attention_grad_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(residual_ele_add_grad_op_node,
+                              residual_ele_add_grad_op,
+                              fused_attention_grad_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(out_linear_dropout_grad_op_node,
+                              out_linear_dropout_grad_op,
+                              fused_attention_grad_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(out_linear_ele_add_grad_op_node,
+                              out_linear_ele_add_grad_op,
+                              fused_attention_grad_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(out_linear_matmul_grad_op_node,
+                              out_linear_matmul_grad_op,
+                              fused_attention_grad_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(qkv_reshape_grad_op_node,
+                              qkv_reshape_grad_op,
+                              fused_attention_grad_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(qkv_transpose_grad_op_node,
+                              qkv_transpose_grad_op,
+                              fused_attention_grad_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(qkv_matmul_grad_op_node,
+                              qkv_matmul_grad_op,
+                              fused_attention_grad_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(attn_dropout_grad_op_node,
+                              attn_dropout_grad_op,
+                              fused_attention_grad_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(qk_softmax_grad_op_node,
+                              qk_softmax_grad_op,
+                              fused_attention_grad_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(add_mask_ele_add_grad_op_node,
+                              add_mask_ele_add_grad_op,
+                              fused_attention_grad_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        qk_scale_grad_op_node, qk_scale_grad_op, fused_attention_grad_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(qk_matmul_grad_op_node,
+                              qk_matmul_grad_op,
+                              fused_attention_grad_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(fuse_qkv_split_grad_op_node,
+                              fuse_qkv_split_grad_op,
+                              fused_attention_grad_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(fuse_qkv_transpose_grad_op_node,
+                              fuse_qkv_transpose_grad_op,
+                              fused_attention_grad_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(fuse_qkv_reshape_grad_op_node,
+                              fuse_qkv_reshape_grad_op,
+                              fused_attention_grad_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(fuse_qkv_ele_add_grad_op_node,
+                              fuse_qkv_ele_add_grad_op,
+                              fused_attention_grad_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(fuse_qkv_matmul_grad_op_node,
+                              fuse_qkv_matmul_grad_op,
+                              fused_attention_grad_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(pre_layer_norm_grad_op_node,
+                              pre_layer_norm_grad_op,
+                              fused_attention_grad_pattern);
+
+    // TODO(Yuang Liu): finish the handler
+
+    GraphSafeRemoveNodes(g,
+                         {post_layer_norm_grad_op_node,
+                          residual_ele_add_grad_op_node,
+                          residual_ele_add_grad_op_node,
+                          out_linear_ele_add_grad_op_node,
+                          out_linear_matmul_grad_op_node,
+                          qkv_reshape_grad_op_node,
+                          qkv_transpose_grad_op_node,
+                          qkv_matmul_grad_op_node,
+                          attn_dropout_grad_op_node,
+                          qk_softmax_grad_op_node,
+                          add_mask_ele_add_grad_op_node,
+                          qk_scale_grad_op_node,
+                          qk_matmul_grad_op_node,
+                          fuse_qkv_split_grad_op_node,
+                          fuse_qkv_transpose_grad_op_node,
+                          fuse_qkv_reshape_grad_op_node,
+                          fuse_qkv_ele_add_grad_op_node,
+                          fuse_qkv_matmul_grad_op_node,
+                          pre_layer_norm_grad_op_node});
+
+    found_fused_attention++;
+  };
+
+  gpd(graph, handler);
+  AddStatis(found_fused_attention);
+
   return graph;
 }
 
