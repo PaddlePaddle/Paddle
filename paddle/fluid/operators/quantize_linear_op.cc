@@ -200,6 +200,12 @@ class QuantizeLinearOpMaker : public framework::OpProtoAndCheckerMaker {
                   "(bool, default false) Set to true for inference only, false "
                   "for training. Some layers may run faster when this is true.")
         .SetDefault(true);
+    AddAttr<bool>(
+        "only_observer",
+        "(bool, default false) Whether to only observer or not. If "
+        "only_observer=false, it will calculate fake quant or dequant output. "
+        "If only_observer=true, it will only calibrate scale information.")
+        .SetDefault(false);
     AddComment(R"DOC(
 The scale of QuantizeLinear operator is a vector.
 In detail, each channel of the input X has a scale value.

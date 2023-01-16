@@ -286,7 +286,7 @@ void HeterWrapper::EndPass(Scope* scope, int num) {
 void HeterWrapper::CallRemoteXpu(std::shared_ptr<HeterTask> task,
                                  HeterCpuWorker* worker,
                                  int mpi_rank,
-                                 std::vector<std::string>& send_vars) {
+                                 const std::vector<std::string>& send_vars) {
   HeterRequest request;
   request.set_cmd(0);
   request.set_cur_batch(task->cur_batch_);
@@ -329,10 +329,11 @@ void HeterWrapper::CallRemoteXpu(std::shared_ptr<HeterTask> task,
   stub.service(&done->cntl, &request, &done->response, done);
 }
 
-void HeterWrapper::CallRemoteXpuSync(std::shared_ptr<HeterTask> task,
-                                     HeterCpuWorker* worker,
-                                     int mpi_rank,
-                                     std::vector<std::string>& send_vars) {
+void HeterWrapper::CallRemoteXpuSync(
+    std::shared_ptr<HeterTask> task,
+    HeterCpuWorker* worker,
+    int mpi_rank,
+    const std::vector<std::string>& send_vars) {
   HeterRequest request;
   HeterResponse response;
   brpc::Controller cntl;

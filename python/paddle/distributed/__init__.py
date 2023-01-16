@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import atexit
 from . import io
 from .spawn import spawn  # noqa: F401
 from .launch.main import launch  # noqa: F401
@@ -29,8 +30,8 @@ from paddle.distributed.fleet.base.topology import ParallelMode  # noqa: F401
 
 from .collective import split  # noqa: F401
 from .collective import new_group  # noqa: F401
-from .collective import is_available  # noqa: F401
-
+from .collective import is_available
+from .collective import _destroy_process_group_id_map
 from .communication import (
     stream,
     ReduceOp,
@@ -123,3 +124,5 @@ __all__ = [  # noqa
     "is_available",
     "get_backend",
 ]
+
+atexit.register(_destroy_process_group_id_map)

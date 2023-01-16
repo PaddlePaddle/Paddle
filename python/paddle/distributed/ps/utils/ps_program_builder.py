@@ -472,7 +472,7 @@ class FlPsProgramBuilder(HeterAsyncPsProgramBuilder):
         if not self.is_server:
             self._build_trainer_programs()
             fluid.framework.switch_startup_program(self.cloned_startup)
-            fluid.framework.switch_main_program(self.cloned_main)
+            paddle.framework.switch_main_program(self.cloned_main)
             print(
                 "paddle.static.default_startup_program: {}".format(
                     paddle.static.default_startup_program()._heter_pipeline_opt
@@ -483,4 +483,4 @@ class FlPsProgramBuilder(HeterAsyncPsProgramBuilder):
             fluid.framework.switch_startup_program(
                 self.attrs['_startup_server']
             )
-            fluid.framework.switch_main_program(self.attrs['_main_server'])
+            paddle.framework.switch_main_program(self.attrs['_main_server'])
