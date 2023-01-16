@@ -1059,7 +1059,6 @@ def monkey_patch_varbase():
             setattr(core.VarBase, method_name, method)
 
     if framework.global_var._in_eager_mode_:
-        setattr(core.eager.Tensor, "_grad_ivar", _grad_ivar)
         setattr(core.eager.Tensor, "_set_grad_ivar", _set_grad_ivar)
         setattr(core.eager.Tensor, "value", value)
         setattr(core.eager.Tensor, "cpu", cpu)
