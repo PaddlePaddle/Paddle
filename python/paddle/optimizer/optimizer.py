@@ -920,8 +920,10 @@ class Optimizer:
                 self._create_accumulators(target_block, params_acc_dict)
 
             if framework._non_static_mode():
-                if self._get_auxiliary_var('found_inf'):
-                    self._set_auxiliary_var('found_inf', True)
+                found_inf = self._get_auxiliary_var('found_inf')
+                if found_inf:
+                    if isinstance(found_inf, core.eager.Tensor):
+                        self._set_auxiliary_var('found_inf', True)
                     if isinstance(parameters_and_grads, list):
                         for param_and_grad in parameters_and_grads:
                             if param_and_grad[1] is None:
@@ -948,7 +950,8 @@ class Optimizer:
                                     target_block, param_grad_dict
                                 )
                 else:
-                    self._set_auxiliary_var('found_inf', False)
+                    if isinstance(found_inf, core.eager.Tensor):
+                        self._set_auxiliary_var('found_inf', False)
             else:
                 for param_and_grad in parameters_and_grads:
                     if param_and_grad[1] is None:

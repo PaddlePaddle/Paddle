@@ -693,8 +693,10 @@ class Adam(Optimizer):
                         if master_weight is not None
                         else None
                     )
-                    if self._get_auxiliary_var('found_inf'):
-                        self._set_auxiliary_var('found_inf', True)
+                    found_inf = self._get_auxiliary_var('found_inf')
+                    if found_inf:
+                        if isinstance(found_inf, core.eager.Tensor):
+                            self._set_auxiliary_var('found_inf', True)
                         _, _, _, _, _, _ = _C_ops.merged_adam_(
                             self._param_dict[key][param_group_idx],
                             grad_dict[key],
@@ -711,7 +713,8 @@ class Adam(Optimizer):
                             False,
                         )
                     else:
-                        self._set_auxiliary_var('found_inf', False)
+                        if isinstance(found_inf, core.eager.Tensor):
+                            self._set_auxiliary_var('found_inf', False)
                 else:
                     inputs = {
                         "Param": self._param_dict[key][param_group_idx],
