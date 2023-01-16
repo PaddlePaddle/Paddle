@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import platform
 import unittest
 
 import numpy as np
@@ -19,10 +20,6 @@ import numpy as np
 import paddle
 import paddle.nn.functional as F
 from paddle.fluid import core
-
-# This case only tests prim_forward + to_static + cinn. Thus we need to
-# set this flag as False to avoid prim_backward.
-core.set_prim_backward(False)
 
 
 def apply_to_static(net, use_cinn):
@@ -44,10 +41,13 @@ class PrimeNet(paddle.nn.Layer):
 
 class TestPrimForward(unittest.TestCase):
     """
-    Test PrimeNet with @to_static + to_prim + cinn v.s Dygraph
+    This case only tests prim_forward + to_static + cinn. Thus we need to
+    set this flag as False to avoid prim_backward.
+    core.set_prim_backward(False)
     """
 
     def setUp(self):
+        core.set_prim_backward(False)
         paddle.seed(2022)
         self.x = paddle.randn([2, 4])
         self.x.stop_gradient = False
@@ -71,18 +71,18 @@ class TestPrimForward(unittest.TestCase):
 
             res.append(out.numpy())
 
-        self.check_prime(net, use_prim)
+        self.check_prim(net, use_prim)
 
         return res
 
-    def check_prime(self, net, use_prim):
+    def check_prim(self, net, use_prim):
         if not use_prim:
             return
         fwd_ops = [op.type for op in net.forward.main_program.block(0).ops]
         # Ensure that softmax is splitted into small ops
         self.assertTrue('softmax' not in fwd_ops)
 
-    def test_cinn(self):
+    def test_cinn_prim_forward(self):
         dy_res = self.train(use_prim=False)
         cinn_res = self.train(use_prim=True)
 
@@ -90,6 +90,61 @@ class TestPrimForward(unittest.TestCase):
             np.testing.assert_allclose(
                 cinn_res[i], dy_res[i], rtol=1e-7, atol=1e-7
             )
+
+
+class TestPrimForwardAndBackward(unittest.TestCase):
+    """
+    Test PrimeNet with @to_static + prim forward + prim backward + cinn v.s Dygraph
+    """
+
+    def setUp(self):
+        paddle.seed(2022)
+        self.x = paddle.randn([2, 4])
+        self.x.stop_gradient = False
+
+    def train(self, use_prim):
+        core.set_prim_backward(True)
+        paddle.seed(2022)
+        net = PrimeNet()
+        sgd = paddle.optimizer.SGD(
+            learning_rate=0.1, parameters=net.parameters()
+        )
+        if use_prim:
+            net = apply_to_static(net, use_prim)
+
+        res = []
+        for _ in range(10):
+            out = net(self.x)
+            loss = paddle.mean(out)
+            loss.backward()
+            sgd.step()
+            sgd.clear_grad()
+
+            res.append(out.numpy())
+
+        self.check_prim(net, use_prim)
+
+        return res
+
+    def check_prim(self, net, use_prim):
+        if not use_prim:
+            return
+        fwd_ops = [op.type for op in net.forward.main_program.block(0).ops]
+        # Ensure that softmax is splitted into small ops
+        self.assertTrue('softmax' not in fwd_ops)
+
+    def test_cinn_prim(self):
+        plat = platform.system()
+        if plat == "Linux":
+            dy_res = self.train(use_prim=False)
+            cinn_res = self.train(use_prim=True)
+
+            for i in range(len(dy_res)):
+                np.testing.assert_allclose(
+                    cinn_res[i], dy_res[i], rtol=1e-6, atol=1e-6
+                )
+        else:
+            pass
 
 
 if __name__ == '__main__':
