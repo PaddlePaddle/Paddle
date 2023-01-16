@@ -180,6 +180,7 @@ binary_api_list = [
     paddle.logical_xor,
     paddle.maximum,
     paddle.minimum,
+    paddle.equal_all,
 ]
 
 binary_int_api_list = [
