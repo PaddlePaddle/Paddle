@@ -23,17 +23,13 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-//    |
-// reshape2
-//    |
-// reshape2
-//    |
-// transpose2     ->           reverse_roll (shift_size=0)
-//    |          fuse
-// reshape2
-//    |
-// reshape2
-//    |
+//       |
+//     split
+//   |       |
+//   |     gelu
+//   |       |
+// elementwise_mul     ->      split_gelu
+//       |
 //
 
 class SplitGeluMulFusePass : public FusePassBase {

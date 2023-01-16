@@ -99,7 +99,7 @@ int SplitGeluMulFusePass::ApplyPattern(ir::Graph *graph) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph,
       platform::errors::InvalidArgument(
-          "The input graph of ReverseRollFusePass should not be "
+          "The input graph of SplitGeluMulFusePass should not be "
           "nullptr."));
   GraphPatternDetector gpd;
   FusePassBase::Init(scope_name_, graph);
