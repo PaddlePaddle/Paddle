@@ -346,7 +346,7 @@ PDNode* FusedAttentionGradPattern::operator()(PDNode* x,
         pattern->NewNode(post_layer_norm_grad_variance_repr())
             ->assert_is_op_input("layer_norm_grad", "Variance");
     auto* post_layer_norm_grad_x_node =
-        pattern->NewNode(post_layer_norm_grad_x_grad_repr())
+        pattern->NewNode(post_layer_norm_grad_x_repr())
             ->assert_is_op_input("layer_norm_grad", "X");
     post_layer_norm_grad_out_node =
         pattern->NewNode(post_layer_norm_grad_x_grad_repr())
@@ -371,6 +371,7 @@ PDNode* FusedAttentionGradPattern::operator()(PDNode* x,
 
   // add residual
   PDNode* residual_ele_add_grad_out_node{nullptr};
+  PDNode* residual_ele_add_grad_x_node{nullptr};
   if (add_residual) {
     PDNode* ele_add_grad_input = x;
     if (post_layer_norm) {
@@ -379,11 +380,11 @@ PDNode* FusedAttentionGradPattern::operator()(PDNode* x,
     auto* residual_ele_add_grad_node =
         pattern->NewNode(residual_ele_add_grad_op_repr())
             ->assert_is_op("elementwise_add_grad");
-    auto* residual_ele_add_x_node =
+    residual_ele_add_grad_x_node =
         pattern->NewNode(residual_ele_add_grad_x_repr())
             ->assert_is_op_input("elementwise_add_grad", "X");
-    auto* residual_ele_add_bias_node =
-        pattern->NewNode(residual_ele_add_grad_bias_grad_repr())
+    auto* residual_ele_add_grad_bias_node =
+        pattern->NewNode(residual_ele_add_grad_bias_repr())
             ->assert_is_op_input("elementwise_add_grad", "Y");
     residual_ele_add_grad_out_node =
         pattern->NewNode(residual_ele_add_grad_bias_grad_repr())
@@ -391,8 +392,8 @@ PDNode* FusedAttentionGradPattern::operator()(PDNode* x,
     ele_add_grad_input->assert_is_op_input("elementwise_add_grad", "Out@GRAD");
     residual_ele_add_grad_node
         ->LinksFrom({ele_add_grad_input,
-                     residual_ele_add_x_node,
-                     residual_ele_add_bias_node})
+                     residual_ele_add_grad_x_node,
+                     residual_ele_add_grad_bias_node})
         .LinksTo({residual_ele_add_grad_out_node});
   }
 
@@ -566,7 +567,7 @@ PDNode* FusedAttentionGradPattern::operator()(PDNode* x,
         ->LinksFrom({add_mask_ele_add_grad_x_node,
                      add_mask_ele_add_grad_bias_node,
                      qk_softmax_grad_out})
-        .LinksTo({qk_softmax_grad_out});
+        .LinksTo({add_mask_ele_add_grad_x_grad_node});
   }
 
   PDNode* qk_scale_grad_input_node =
@@ -660,8 +661,8 @@ PDNode* FusedAttentionGradPattern::operator()(PDNode* x,
   auto* fuse_qkv_ele_add_grad_bias_grad_node =
       pattern->NewNode(fuse_qkv_ele_add_grad_bias_grad_repr())
           ->assert_is_op_output("elementwise_add_grad");
-  fuse_qkv_reshape_grad_out_node->assert_is_op_input(
-      "fuse_qkv_reshape_grad_out_node", "Out@GRAD");
+  fuse_qkv_reshape_grad_out_node->assert_is_op_input("elementwise_add_grad",
+                                                     "Out@GRAD");
   fuse_qkv_ele_add_grad_node
       ->LinksFrom({fuse_qkv_reshape_grad_out_node,
                    fuse_qkv_ele_add_grad_x_node,
@@ -714,8 +715,9 @@ PDNode* FusedAttentionGradPattern::operator()(PDNode* x,
       pattern->NewNode(pre_layer_norm_grad_variance_repr())
           ->assert_is_op_input("layer_norm_grad", "Variance");
   auto* pre_layer_norm_grad_x_node =
-      pattern->NewNode(pre_layer_norm_grad_x_repr())
-          ->assert_is_op_input("layer_norm_grad", "X");
+      add_residual ? residual_ele_add_grad_x_node
+                   : pattern->NewNode(pre_layer_norm_grad_x_repr())
+                         ->assert_is_op_input("layer_norm_grad", "X");
   auto* pre_layer_norm_grad_scale_grad_node =
       pattern->NewNode(pre_layer_norm_grad_scale_grad_repr())
           ->assert_is_op_output("layer_norm_grad");
@@ -853,7 +855,7 @@ ir::Graph* FusedAttentionsPass::PreMaskDropResPostBwd(Graph* graph) const {
                 ->AsInput()
                 ->assert_is_op_input("layer_norm_grad", "Y@GRAD");
   patterns::FusedAttentionGradPattern fused_attention_grad_pattern(
-      gpd.mutable_pattern(), "fused_attention_pattern");
+      gpd.mutable_pattern(), "fused_attention_grad_pattern");
 
   fused_attention_grad_pattern(x,
                                /* pre_layer_norm */ true,
