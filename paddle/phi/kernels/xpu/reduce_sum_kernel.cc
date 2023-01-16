@@ -47,4 +47,4 @@ void SumRawKernel(const Context& dev_ctx,
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
-    sum_raw, XPU, ALL_LAYOUT, phi::SumRawKernel, float, int8_t, int64_t) {}
+    sum_raw, XPU, ALL_LAYOUT, phi::SumRawKernel, float, int64_t) {}
