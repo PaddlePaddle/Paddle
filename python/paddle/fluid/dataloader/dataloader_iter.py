@@ -411,19 +411,15 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
         # MemoryMapAllocationPool is used to cache and reuse shm, thus reducing munmap in dataloader.
         # For more details, please see: paddle/fluid/memory/allocation/mmap_allocator.h
         try:
-            self._worker_shm_buffer_size = (
-                (2 + 1) * len(self._dataset[0])
-                if len(self._dataset[0]) < 5
-                else 0
-            )
+            self._worker_shm_buffer_size = (2 + 1) * len(self._dataset[0])
         except:
             self._worker_shm_buffer_size = 0
             warnings.warn(
                 "Setting the shm cache buffer size to 0, equivalent to not using the shm cache policy."
             )
         self._main_thread_shm_buffer_size = (
-            self._worker_shm_buffer_size
-        ) * self._num_workers
+            (self._worker_shm_buffer_size) * 2 * self._num_workers
+        )
 
         # init workers and indices queues and put 2 indices in each indices queue
         self._init_workers()
