@@ -139,6 +139,12 @@
 
 - op : batch_norm
   backward : batch_norm_grad
+  inputs:
+    x : X
+    mean : Mean
+    variance : Variance
+    scale : Scale
+    bias : Bias
   extra :
     attrs : [bool use_mkldnn = false, bool fuse_with_relu = false]
 

@@ -605,13 +605,16 @@ def _lower_composite(block, blacklist=[]):
                     expand_nested_list(get_output_var_list(op)),
                     expand_nested_list(as_tensors(lower_fn(op, *input_args))),
                 ):
-                    assert not (orig_out is None) ^ (
-                        new_out is None
-                    ), "orig_out and new_out should match."
-                    vars_to_remove.add(new_out.name)
-                    value_table[new_out.name] = new_out
-                    to_bind[orig_out.name] = new_out.name
-                    to_bind_rev[new_out.name] = orig_out.name
+                    if new_out is not None:
+                        assert not (orig_out is None) ^ (
+                            new_out is None
+                        ), "orig_out and new_out should match."
+                        vars_to_remove.add(new_out.name)
+                        value_table[new_out.name] = new_out
+                        to_bind[orig_out.name] = new_out.name
+                        to_bind_rev[new_out.name] = orig_out.name
+                    else:
+                        pass
             else:
                 inputs = {}
                 for i in range(len(op.input_names)):
