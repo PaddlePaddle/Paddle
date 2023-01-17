@@ -85,6 +85,7 @@ unary_api_list = [
     paddle.poisson,
     paddle.bernoulli,
     paddle.median,
+    paddle.nn.functional.alpha_dropout,
 ]
 
 inplace_api_list = [
