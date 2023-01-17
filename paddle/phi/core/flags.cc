@@ -1204,5 +1204,5 @@ PADDLE_DEFINE_EXPORTED_bool(trt_ibuilder_cache,
  * operation.
  */
 PADDLE_DEFINE_EXPORTED_bool(use_shm_cache,
-                            true,
+                            false,
                             "Use shm cache in mmap_allocator.");
