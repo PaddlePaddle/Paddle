@@ -98,11 +98,12 @@ bool ProcessGroupCustom::CustomTask::Wait(std::chrono::milliseconds timeout) {
 // Same as Wait
 void ProcessGroupCustom::CustomTask::Synchronize() { Wait(kWaitTimeout); }
 
-ProcessGroupCustom::ProcessGroupCustom(const std::shared_ptr<Store>& store,
-                                       const std::string& device_type,
-                                       int rank,
-                                       int size,
-                                       int gid)
+ProcessGroupCustom::ProcessGroupCustom(
+    const std::shared_ptr<phi::distributed::Store>& store,
+    const std::string& device_type,
+    int rank,
+    int size,
+    int gid)
     : ProcessGroupWithoutStream(rank, size, gid),
       store_(store),
       device_type_(device_type) {}
@@ -438,7 +439,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Broadcast(
 
 std::shared_ptr<ProcessGroupCustom>
 ProcessGroupCustom::CreateProcessGroupCustom(
-    const std::shared_ptr<Store>& store,
+    const std::shared_ptr<phi::distributed::Store>& store,
     const std::string& device_type,
     int rank,
     int size,

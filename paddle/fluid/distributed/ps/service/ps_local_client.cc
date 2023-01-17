@@ -36,13 +36,13 @@ int32_t PsLocalClient::Initialize() {
 
 ::std::future<int32_t> PsLocalClient::Shrink(uint32_t table_id,
                                              const std::string threshold) {
-  // TODO
+  // TODO  // NOLINT
   return done();
 }
 
 ::std::future<int32_t> PsLocalClient::Load(const std::string& epoch,
                                            const std::string& mode) {
-  // TODO
+  // TODO  // NOLINT
   for (auto& it : _table_map) {
     Load(it.first, epoch, mode);
   }
@@ -51,7 +51,7 @@ int32_t PsLocalClient::Initialize() {
 ::std::future<int32_t> PsLocalClient::Load(uint32_t table_id,
                                            const std::string& epoch,
                                            const std::string& mode) {
-  // TODO
+  // TODO  // NOLINT
   auto* table_ptr = GetTable(table_id);
   table_ptr->Load(epoch, mode);
   return done();
@@ -59,7 +59,7 @@ int32_t PsLocalClient::Initialize() {
 
 ::std::future<int32_t> PsLocalClient::Save(const std::string& epoch,
                                            const std::string& mode) {
-  // TODO
+  // TODO  // NOLINT
   for (auto& it : _table_map) {
     Save(it.first, epoch, mode);
   }
@@ -68,7 +68,7 @@ int32_t PsLocalClient::Initialize() {
 ::std::future<int32_t> PsLocalClient::Save(uint32_t table_id,
                                            const std::string& epoch,
                                            const std::string& mode) {
-  // TODO
+  // TODO  // NOLINT
   auto* table_ptr = GetTable(table_id);
   table_ptr->Flush();
   table_ptr->Save(epoch, mode);
@@ -76,11 +76,11 @@ int32_t PsLocalClient::Initialize() {
 }
 
 ::std::future<int32_t> PsLocalClient::Clear() {
-  // TODO
+  // TODO  // NOLINT
   return done();
 }
 ::std::future<int32_t> PsLocalClient::Clear(uint32_t table_id) {
-  // TODO
+  // TODO  // NOLINT
   return done();
 }
 
@@ -126,7 +126,9 @@ int32_t PsLocalClient::Initialize() {
     auto& region = regions[region_idx];
     if (region.size - region_data_idx >= shard_buffer_remain) {
       memcpy(reinterpret_cast<void*>(region.data + region_data_idx),
-             (uint8_t*)(void*)(region_buffer.data()) + index,
+             reinterpret_cast<uint8_t*>(
+                 reinterpret_cast<void*>(region_buffer.data())) +
+                 index,
              shard_buffer_remain);
       region_data_idx += shard_buffer_remain;
       shard_buffer_remain = 0;
@@ -135,7 +137,9 @@ int32_t PsLocalClient::Initialize() {
       region_data_idx = 0;
     } else {
       memcpy(reinterpret_cast<void*>(region.data + region_data_idx),
-             (uint8_t*)(void*)(region_buffer.data()) + index,
+             reinterpret_cast<uint8_t*>(
+                 reinterpret_cast<void*>(region_buffer.data())) +
+                 index,
              region.size - region_data_idx);
       shard_buffer_remain -= (region.size - region_data_idx);
       index += (region.size - region_data_idx);

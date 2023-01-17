@@ -289,6 +289,26 @@ def parse_forward(op_name: str, forward_config: str) -> Dict[str, Any]:
     return forward_cfg
 
 
+def parse_composite(
+    op_name: str,
+    composite_config: str,
+) -> Dict[str, Any]:
+    # composite_config: func(args1, args2,.....)
+    fname = r'(.*?)'
+    wspace = r'\s*'
+    fargs = r'(.*?)'
+    pattern = fr'{fname}{wspace}\({wspace}{fargs}{wspace}\)'
+
+    m = re.search(pattern, composite_config)
+    func_name = m.group(1)
+    func_args = m.group(2)
+
+    composite_dict = {}
+    composite_dict["func_name"] = func_name
+    composite_dict["func_args"] = func_args
+    return composite_dict
+
+
 def check_op_config(op_entry, op_name):
     base_key_set = (
         'op',
@@ -306,6 +326,7 @@ def check_op_config(op_entry, op_name):
         'intermediate',
         'no_need_buffer',
         'data_transform',
+        'composite',
     )
     infer_meta_key_set = ('func', 'param')
     kernel_key_set = ('func', 'param', 'data_type', 'layout', 'backend')
@@ -331,9 +352,9 @@ def parse_op_entry(op_entry: Dict[str, Any], name_field="op"):
     op_name = op_entry[name_field]
     inputs, attrs = parse_input_and_attr(op_name, op_entry["args"])
     outputs = parse_outputs(op_name, op_entry["output"])
-
+    if "composite" in op_entry:
+        composite_dict = parse_composite(op_name, op_entry["composite"])
     check_op_config(op_entry, op_name)
-
     # validate default value of DataType and DataLayout
     for attr in attrs:
         if "default_value" in attr:
@@ -362,15 +383,21 @@ def parse_op_entry(op_entry: Dict[str, Any], name_field="op"):
     # add optional tag for every input
     for input in inputs:
         input["optional"] = False
+    for output in outputs:
+        output["optional"] = False
+
     if "optional" in op_entry:
         optional_args = parse_plain_list(op_entry["optional"])
         for name in optional_args:
             assert (
-                name in input_names
-            ), f"{op_name} has an optional input: '{name}' which is not an input."
+                name in input_names or name in output_names
+            ), f"{op_name} has an optional tensor: '{name}' which is not in input or output."
         for input in inputs:
             if input["name"] in optional_args:
                 input["optional"] = True
+        for output in outputs:
+            if output["name"] in optional_args:
+                output["optional"] = True
 
     # add intermediate tag for every output
     for output in outputs:
@@ -400,7 +427,41 @@ def parse_op_entry(op_entry: Dict[str, Any], name_field="op"):
     else:
         no_buffer_args = None
 
-    # TODO(chenfeiyu): data_transform
+    # add data_transform tag for every input.
+    # the format is {data_transform : {skip_transform : [x, z], support_trans_dtype : y}}
+    for input in inputs:
+        input["data_transform"] = {}
+    if "data_transform" in op_entry:
+        skip_trans_args = []
+        support_trans_args = []
+        data_trans = op_entry["data_transform"]
+        if "skip_transform" in data_trans:
+            skip_trans_args = parse_plain_list(data_trans["skip_transform"])
+            for name in skip_trans_args:
+                assert (
+                    name in input_names
+                ), f"{op_name} has an skip_transform input: '{name}' which is not an input."
+            data_trans["skip_transform"] = skip_trans_args
+        if "support_trans_dtype" in data_trans:
+            support_trans_args = parse_plain_list(
+                data_trans["support_trans_dtype"]
+            )
+            for name in support_trans_args:
+                assert (
+                    name in input_names
+                ), f"{op_name} has an support_trans_dtype input: '{name}' which is not an input."
+            data_trans["support_trans_dtype"] = support_trans_args
+        for input in inputs:
+            if input["name"] in skip_trans_args:
+                input["data_transform"]["skip_trans_args"] = True
+            else:
+                input["data_transform"]["skip_trans_args"] = False
+            if input["name"] in support_trans_args:
+                input["data_transform"]["support_trans_dtype"] = True
+            else:
+                input["data_transform"]["support_trans_dtype"] = False
+    else:
+        data_trans = None
 
     op = {
         "name": op_name,
@@ -408,6 +469,7 @@ def parse_op_entry(op_entry: Dict[str, Any], name_field="op"):
         "attrs": attrs,
         "outputs": outputs,
         "no_need_buffer": no_buffer_args,
+        "data_transform": data_trans,
     }
 
     # invokes another op ?
@@ -440,6 +502,10 @@ def parse_op_entry(op_entry: Dict[str, Any], name_field="op"):
         # invoke
         invoke = parse_invoke(op_name, op_entry["invoke"])
         op["invoke"] = invoke
+
+    # has composite ?
+    if "composite" in op_entry:
+        op.update({"composite": composite_dict})
 
     # backward
     if "backward" in op_entry:
