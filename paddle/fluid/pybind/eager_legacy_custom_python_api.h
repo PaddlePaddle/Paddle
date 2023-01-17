@@ -26,9 +26,9 @@ static PyObject *eager_api_run_program(PyObject *self,
                                        PyObject *kwargs) {
   PyThreadState *tstate = nullptr;
   try {
-    auto X = GetTensorListFromArgs("run_program", "X", args, 0, false);
+    auto X = GetTensorListFromArgs("run_program", "X", args, 0, true);
     auto Params = GetTensorListFromArgs("run_program", "Params", args, 1, true);
-    auto Out = GetTensorPtrListFromArgs("run_program", "Out", args, 2, false);
+    auto Out = GetTensorPtrListFromArgs("run_program", "Out", args, 2, true);
     auto OutScope =
         GetScopePtrListFromArgs("run_program", "OutScope", args, 3, false);
     auto DOut = GetTensorPtrListFromArgs("run_program", "DOut", args, 4, true);

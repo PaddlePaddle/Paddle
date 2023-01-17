@@ -477,6 +477,9 @@ class GradCompositeOpMakerBase {
   void RecoverOutputName(const paddle::experimental::Tensor& output,
                          const std::string& origin_name) {
     if (origin_name == framework::kEmptyVarName) return;
+    VLOG(4) << "Recover: "
+            << static_cast<prim::DescTensor*>(output.impl().get())->Name()
+            << " To: " << origin_name;
     prim::StaticCompositeContext::Instance().GetBlock()->RenameVar(
         static_cast<prim::DescTensor*>(output.impl().get())->Name(),
         origin_name);
