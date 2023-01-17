@@ -1985,12 +1985,18 @@ class TestSundryAPIStatic(unittest.TestCase):
     @prog_scope()
     def test_maseked_select(self):
         x = paddle.rand([])
+        x.stop_gradient = False
         mask = paddle.full([], True, dtype='bool')
         y = paddle.masked_select(x, mask)
+        paddle.static.append_backward(y.sum())
 
         prog = paddle.static.default_main_program()
-        res = self.exe.run(prog, fetch_list=[y])
+        res = self.exe.run(prog, fetch_list=[y, y.grad_name, x.grad_name])
         self.assertEqual(res[0].shape, (1,))
+        self.assertEqual(res[0], x)
+        self.assertEqual(res[1].shape, (1,))
+        self.assertEqual(res[2].shape, ())
+        self.assertEqual(res[2], 1)
 
 
 # Use to test API whose zero-dim input tensors don't have grad and not need to test backward in OpTest.
