@@ -14,7 +14,7 @@
 
 import copy
 
-from paddle.fluid.data_feeder import check_dtype, check_variable_and_dtype
+from paddle.common_ops_import import check_dtype, check_variable_and_dtype
 from paddle.framework import core
 from paddle.static import Operator
 

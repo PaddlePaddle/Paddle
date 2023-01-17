@@ -37,6 +37,16 @@ Tensor multiply<Tensor>(const Tensor& x, const Tensor& y) {
 }
 
 template <>
+Tensor expand<Tensor>(const Tensor& x, const IntArray& shape) {
+  return ::expand_ad_func(x, shape);
+}
+
+template <>
+Tensor unsqueeze<Tensor>(const Tensor& x, const IntArray& axis) {
+  return ::unsqueeze_ad_func(x, axis);
+}
+
+template <>
 Tensor divide<Tensor>(const Tensor& x, const Tensor& y) {
   return ::divide_ad_func(x, y);
 }
@@ -56,6 +66,16 @@ Tensor sum<Tensor>(Tensor x, IntArray axis, DataType dtype, bool keepdim) {
 template <>
 Tensor reshape<Tensor>(Tensor x, IntArray shape) {
   return ::reshape_ad_func(x, shape);
+}
+
+template <>
+Tensor exp<Tensor>(const Tensor& x) {
+  return ::exp_ad_func(x);
+}
+
+template <typename T>
+Tensor expand(const Tensor& x, const IntArray& shape) {
+  return ::expand_ad_func(x, shape);
 }
 }  // namespace prim
 }  // namespace paddle
