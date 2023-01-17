@@ -142,7 +142,7 @@ def _dygraph_to_static_func_(dygraph_func):
 
                return x_v
 
-          x = paddle.tensor.fill_constant(shape=[3, 3], value=0, dtype='float64')
+          x = paddle.full(shape=[3, 3], fill_value=0, dtype='float64')
 
           x_v = func(x)
           exe = fluid.Executor(fluid.CPUPlace())

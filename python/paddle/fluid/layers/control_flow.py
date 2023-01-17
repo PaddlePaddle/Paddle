@@ -928,9 +928,9 @@ class While:
             import paddle.fluid as fluid
             import numpy as np
 
-            i = paddle.tensor.fill_constant(shape=[1], dtype='int64', value=0)           # loop counter
+            i = paddle.full(shape=[1], dtype='int64', fill_value=0)           # loop counter
 
-            loop_len = paddle.tensor.fill_constant(shape=[1],dtype='int64', value=10)    # loop length
+            loop_len = paddle.full(shape=[1],dtype='int64', fill_value=10)    # loop length
 
             cond = paddle.less_than(x=i, y=loop_len)
             while_op = fluid.layers.While(cond=cond)
@@ -953,11 +953,11 @@ class While:
             import numpy as np
 
             paddle.enable_static()
-            i = paddle.tensor.fill_constant(shape=[1], dtype='int64', value=0)
-            loop_len = paddle.tensor.fill_constant(shape=[1], dtype='int64', value=10)
-            one = paddle.tensor.fill_constant(shape=[1], dtype='float32', value=1)
+            i = paddle.full(shape=[1], dtype='int64', fill_value=0)
+            loop_len = paddle.full(shape=[1], dtype='int64', fill_value=10)
+            one = paddle.full(shape=[1], dtype='float32', fill_value=1)
             data = fluid.data(name='data', shape=[1], dtype='float32')
-            sums = paddle.tensor.fill_constant(shape=[1], dtype='float32', value=0)  # Define the variable to be obtained ouside of While, which name should be different from the variable inside the While to be obtained
+            sums = paddle.full(shape=[1], dtype='float32', fill_value=0)  # Define the variable to be obtained ouside of While, which name should be different from the variable inside the While to be obtained
 
             cond = paddle.less_than(x=i, y=loop_len)
             while_op = fluid.layers.While(cond=cond)
@@ -1536,11 +1536,11 @@ class Switch:
         '''
         with fluid.layers.Switch() as switch:
             with switch.case(cond1):
-                i = paddle.tensor.fill_constant(shape=[1], dtype='int64', value=1)
+                i = paddle.full(shape=[1], dtype='int64', fill_value=1)
             with switch.case(cond2):
-                i = paddle.tensor.fill_constant(shape=[1], dtype='int64', value=2)
+                i = paddle.full(shape=[1], dtype='int64', fill_value=2)
             with switch.default():
-                i = paddle.tensor.fill_constant(shape=[1], dtype='int64', value=0)
+                i = paddle.full(shape=[1], dtype='int64', fill_value=0)
         '''
 
     Args:
@@ -1558,12 +1558,12 @@ class Switch:
                 dtype='float32',
                 persistable=True,
                 name="learning_rate")
-            zero_var = paddle.tensor.fill_constant(
-                shape=[1], dtype='float32', value=0.0)
-            one_var = paddle.tensor.fill_constant(
-                shape=[1], dtype='float32', value=1.0)
-            two_var = paddle.tensor.fill_constant(
-                shape=[1], dtype='float32', value=2.0)
+            zero_var = paddle.full(
+                shape=[1], dtype='float32', fill_value=0.0)
+            one_var = paddle.full(
+                shape=[1], dtype='float32', fill_value=1.0)
+            two_var = paddle.full(
+                shape=[1], dtype='float32', fill_value=2.0)
 
             global_step = fluid.layers.autoincreased_step_counter(counter_name='@LR_DECAY_COUNTER@', begin=0, step=1)
 

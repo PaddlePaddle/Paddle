@@ -50,9 +50,9 @@ class HybridParallelInferenceHelper:
         # while op pattern
         with paddle.fluid.device_guard(f'{device}:all'):
             # init global cond
-            max_len = paddle.tensor.fill_constant(shape=[1], dtype="int64", value=10, force_cpu=False)
-            step_idx = paddle.tensor.fill_constant(shape=[1], dtype="int64", value=0, force_cpu=False)
-            cond_int = paddle.tensor.fill_constant(shape=[1], dtype="int64", value=0, force_cpu=False, name="cond_int")
+            max_len = paddle.full(shape=[1], dtype="int64", fill_value=10)
+            step_idx = paddle.full(shape=[1], dtype="int64", fill_value=0)
+            cond_int = paddle.full(shape=[1], dtype="int64", fill_value=0, name="cond_int")
             cond = layers.cast(step_idx < max_len, dtype="bool")
             while_op = layers.While(cond, is_test=True)
 

@@ -45,10 +45,10 @@ class TestAssignOpWithLoDTensorArray(unittest.TestCase):
         with program_guard(main_program):
             x = fluid.data(name='x', shape=[100, 10], dtype='float32')
             x.stop_gradient = False
-            y = paddle.tensor.fill_constant(
-                shape=[100, 10], dtype='float32', value=1)
+            y = paddle.full(
+                shape=[100, 10], dtype='float32', fill_value=1)
             z = paddle.add(x=x, y=y)
-            i = paddle.tensor.fill_constant(shape=[1], dtype='int64', value=0)
+            i = paddle.full(shape=[1], dtype='int64', fill_value=0)
             init_array = paddle.tensor.array_write(x=z, i=i)
             array = fluid.layers.assign(init_array)
             sums = paddle.tensor.array_read(array=init_array, i=i)

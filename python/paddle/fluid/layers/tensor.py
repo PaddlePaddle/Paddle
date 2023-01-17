@@ -286,10 +286,10 @@ def sums(input, out=None):
 
             import paddle.fluid as fluid
 
-            x0 = paddle.tensor.fill_constant(shape=[16, 32], dtype='int64', value=1)
-            x1 = paddle.tensor.fill_constant(shape=[16, 32], dtype='int64', value=2)
-            x2 = paddle.tensor.fill_constant(shape=[16, 32], dtype='int64', value=3)
-            x3 = paddle.tensor.fill_constant(shape=[16, 32], dtype='int64', value=0)
+            x0 = paddle.full(shape=[16, 32], dtype='int64', fill_value=1)
+            x1 = paddle.full(shape=[16, 32], dtype='int64', fill_value=2)
+            x2 = paddle.full(shape=[16, 32], dtype='int64', fill_value=3)
+            x3 = paddle.full(shape=[16, 32], dtype='int64', fill_value=0)
 
             # Sum of multiple Tensors, the result is stored to a new Variable sum0 (sum0=x0+x1+x2, the value is [[6, ..., 6], ..., [6, ..., 6]])
             sum0 = fluid.layers.sums(input=[x0, x1, x2])
@@ -520,8 +520,9 @@ def fill_constant_batch_size_like(
 
         .. code-block:: python
 
+             import paddle
              import paddle.fluid as fluid
-             like = paddle.tensor.fill_constant(shape=[1,2], value=10, dtype='int64') #like=[[10, 10]]
+             like = paddle.full(shape=[1,2], fill_value=10, dtype='int64') #like=[[10, 10]]
              data = fluid.layers.fill_constant_batch_size_like(
                     input=like, shape=[1], value=0, dtype='int64') #like=[[10, 10]] data=[0]
 
@@ -723,10 +724,11 @@ def zeros(shape, dtype, force_cpu=False, name=None):
         .. code-block:: python
 
           import paddle.fluid as fluid
+          import paddle
           data = fluid.layers.zeros(shape=[3, 2], dtype='float32') # [[0., 0.], [0., 0.], [0., 0.]]
 
           # shape is a Tensor
-          shape = paddle.tensor.fill_constant(shape=[2], dtype='int32', value=2)
+          shape = paddle.full(shape=[2], dtype='int32', fill_value=2)
           data1 = fluid.layers.zeros(shape=shape, dtype='int32') #[[0, 0], [0, 0]]
     """
     # TODO: remove zeros

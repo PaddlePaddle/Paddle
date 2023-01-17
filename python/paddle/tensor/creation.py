@@ -862,21 +862,21 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
 
           import paddle
           # attr shape is a list which doesn't contain  Tensor.
-          data1 = paddle.tensor.fill_constant(shape=[2,1], value=0, dtype='int64') # data1=[[0],[0]]
+          data1 = paddle.full(shape=[2,1], fill_value=0, dtype='int64') # data1=[[0],[0]]
           data2 = paddle.tensor.fill_constant(shape=[2,1], value=5, dtype='int64', out=data1)
           # data1=[[5], [5]] data2=[[5], [5]]
 
           # attr shape is a list which contains Tensor.
-          positive_2 = paddle.tensor.fill_constant([1], "int32", 2)
-          data3 = paddle.tensor.fill_constant(shape=[1, positive_2], dtype='float32', value=1.5) # data3=[[1.5, 1.5]]
+          positive_2 = paddle.full([1], 2, "int32")
+          data3 = paddle.full(shape=[1, positive_2], dtype='float32', fill_value=1.5) # data3=[[1.5, 1.5]]
 
           # attr shape is a Tensor.
-          shape = paddle.tensor.fill_constant([2], "int32", 2) # shape=[2,2]
-          data4 = paddle.tensor.fill_constant(shape=shape, dtype='bool', value=True) # data4=[[True,True],[True,True]]
+          shape = paddle.full([2], 2, "int32") # shape=[2,2]
+          data4 = paddle.full(shape=shape, dtype='bool', fill_value=True) # data4=[[True,True],[True,True]]
 
           # attr value is a Tensor.
-          val = paddle.tensor.fill_constant([1], "float32", 2.0) # val=[2.0]
-          data5 = paddle.tensor.fill_constant(shape=[2,1], value=val, dtype='float32') #data5=[[2.0],[2.0]]
+          val = paddle.full([1], 2.0, "float32") # val=[2.0]
+          data5 = paddle.full(shape=[2,1], fill_value=val, dtype='float32') #data5=[[2.0],[2.0]]
     """
 
     if in_dygraph_mode():
