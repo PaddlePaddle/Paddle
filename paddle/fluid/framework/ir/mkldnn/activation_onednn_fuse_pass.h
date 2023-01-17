@@ -19,7 +19,7 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-static std::vector<std::string> GetSupportedActivations() {
+inline std::vector<std::string> GetSupportedActivations() {
   return std::vector<std::string>{"abs",
                                   "clip",
                                   "gelu",
@@ -35,7 +35,7 @@ static std::vector<std::string> GetSupportedActivations() {
                                   "tanh"};
 }
 
-static std::unordered_map<std::string, std::string> GetAttributeMap(
+inline std::unordered_map<std::string, std::string> GetAttributeMap(
     std::string act_type) {
   std::unordered_map<std::string, std::string> attr_map;
   if (act_type == "swish") {
@@ -55,7 +55,7 @@ static std::unordered_map<std::string, std::string> GetAttributeMap(
   return attr_map;
 }
 
-static void SetActivationAttrs(paddle::framework::OpDesc* fused_op,
+inline void SetActivationAttrs(paddle::framework::OpDesc* fused_op,
                                paddle::framework::OpDesc* act_op,
                                const std::string& act_type) {
   if (fused_op->HasAttr("use_mkldnn")) {
