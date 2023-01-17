@@ -953,10 +953,20 @@ def _import_module_from_library(module_name, build_directory, verbose=False):
     log_v('loading shared library from: {}'.format(ext_path), verbose)
     op_names = load_op_meta_info_and_register_op(ext_path)
 
+    spec = importlib.util.spec_from_file_location(module_name, ext_path)
+    assert spec is not None
+    module = importlib.util.module_from_spec(spec)
+    assert isinstance(spec.loader, importlib.abc.Loader)
+    spec.loader.exec_module(module)
+
     # generate Python api in ext_path
-    return _generate_python_module(
+    op_module = _generate_python_module(
         module_name, op_names, build_directory, verbose
     )
+    for op_name in op_names:
+        module.op_name = op_module.op_name
+
+    return module
 
 
 def _generate_python_module(

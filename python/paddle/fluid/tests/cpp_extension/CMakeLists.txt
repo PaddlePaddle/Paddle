@@ -1,1 +1,2 @@
 py_test(test_cpp_extension_setup SRCS test_cpp_extension_setup.py)
+py_test(test_cpp_extension_jit SRCS test_cpp_extension_jit.py)

@@ -13,49 +13,55 @@
 # limitations under the License.
 
 import os
-import site
-import sys
 import unittest
+from site import getsitepackages
 
 import numpy as np
 
 import paddle
+from paddle.utils.cpp_extension import get_build_directory, load
+from paddle.utils.cpp_extension.extension_utils import run_cmd
 
-# from paddle.utils.cpp_extension.extension_utils import run_cmd
+# Because Windows don't use docker, the shared lib already exists in the
+# cache dir, it will not be compiled again unless the shared lib is removed.
+file = '{}\\custom_cpp_extension\\custom_cpp_extension.pyd'.format(
+    get_build_directory()
+)
+if os.name == 'nt' and os.path.isfile(file):
+    cmd = 'del {}'.format(file)
+    run_cmd(cmd, True)
+
+# Compile and load custom op Just-In-Time.
+# custom_relu_op_dup.cc is only used for multi ops test,
+# not a new op, if you want to test only one op, remove this
+# source file
+sources = ["custom_add.cc", "custom_sub.cc"]
+paddle_includes = []
+for site_packages_path in getsitepackages():
+    paddle_includes.append(
+        os.path.join(site_packages_path, 'paddle', 'include')
+    )
+    paddle_includes.append(
+        os.path.join(site_packages_path, 'paddle', 'include', 'third_party')
+    )
+
+custom_cpp_extension = load(
+    name='custom_cpp_extension',
+    sources=sources,
+    extra_include_paths=paddle_includes
+    + [os.path.dirname(os.path.abspath(__file__))],  # add for Coverage CI
+    extra_cxx_cflags=['-w', '-g'],
+    verbose=True,
+)
+print(custom_cpp_extension)
 
 
-class TestCppExtensionSetupInstall(unittest.TestCase):
+class TestCppExtensionJITInstall(unittest.TestCase):
     """
     Tests setup install cpp extensions.
     """
 
     def setUp(self):
-        cur_dir = os.path.dirname(os.path.abspath(__file__))
-        # compile, install the custom op egg into site-packages under background
-        if os.name == 'nt':
-            cmd = 'cd /d {} && python cpp_extension_setup.py install'.format(
-                cur_dir
-            )
-        else:
-            cmd = 'cd {} && {} cpp_extension_setup.py install'.format(
-                cur_dir, sys.executable
-            )
-        # run_cmd(cmd)
-        os.system(cmd)
-
-        # See: https://stackoverflow.com/questions/56974185/import-runtime-installed-module-using-pip-in-python-3
-        if os.name == 'nt':
-            site_dir = site.getsitepackages()[1]
-        else:
-            site_dir = site.getsitepackages()[0]
-        custom_egg_path = [
-            x for x in os.listdir(site_dir) if 'custom_cpp_extension' in x
-        ]
-        assert len(custom_egg_path) == 1, "Matched egg number is %d." % len(
-            custom_egg_path
-        )
-        sys.path.append(os.path.join(site_dir, custom_egg_path[0]))
-
         # config seed
         SEED = 2021
         paddle.seed(SEED)
@@ -71,8 +77,6 @@ class TestCppExtensionSetupInstall(unittest.TestCase):
         self._test_extension_class()
 
     def _test_extension_function(self):
-        import custom_cpp_extension
-
         for dtype in self.dtypes:
             np_x = np.random.uniform(-1, 1, [4, 8]).astype(dtype)
             x = paddle.to_tensor(np_x, dtype=dtype)
@@ -89,8 +93,6 @@ class TestCppExtensionSetupInstall(unittest.TestCase):
             np.testing.assert_allclose(out.numpy(), target_out, atol=1e-5)
 
     def _test_extension_class(self):
-        import custom_cpp_extension
-
         for dtype in self.dtypes:
             # Test we can use CppExtension class with C++ methods.
             power = custom_cpp_extension.Power(3, 3)
