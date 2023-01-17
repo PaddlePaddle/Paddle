@@ -51,8 +51,6 @@ constexpr bool is_bfloat16() {
   return std::is_same<T, dtype::bfloat16>::value;
 }
 
-// TODO(Silv3S): remove dev_ctx and default values
-// after all fused operators are implemented.
 static void AppendActivation(const OneDNNContext& dev_ctx,
                              dnnl::post_ops& post_ops,  // NOLINT
                              float activation_scale = 1.0f,
