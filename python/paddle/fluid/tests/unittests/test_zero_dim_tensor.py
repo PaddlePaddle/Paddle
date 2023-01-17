@@ -1298,6 +1298,20 @@ class TestSundryAPI(unittest.TestCase):
         self.assertEqual(x1.grad.numpy(), 0.5)
         self.assertEqual(x2.grad.numpy(), 0)
 
+    def test_maseked_select(self):
+        x = paddle.rand([])
+        x.stop_gradient = False
+        mask = paddle.full([], True, dtype='bool')
+        y = paddle.masked_select(x, mask)
+
+        y.retain_grads()
+        y.backward()
+        self.assertEqual(y.shape, [1])
+        self.assertEqual(y.numpy(), x.numpy())
+        self.assertEqual(y.grad.shape, [1])
+        self.assertEqual(x.grad.shape, [])
+        self.assertEqual(x.grad.numpy(), 1)
+
 
 class TestSundryAPIStatic(unittest.TestCase):
     def setUp(self):
@@ -1967,6 +1981,22 @@ class TestSundryAPIStatic(unittest.TestCase):
         res = self.exe.run(prog, feed={}, fetch_list=[out])
 
         self.assertEqual(res[0].shape, ())
+
+    @prog_scope()
+    def test_maseked_select(self):
+        x = paddle.rand([])
+        x.stop_gradient = False
+        mask = paddle.full([], True, dtype='bool')
+        y = paddle.masked_select(x, mask)
+        paddle.static.append_backward(y.sum())
+
+        prog = paddle.static.default_main_program()
+        res = self.exe.run(prog, fetch_list=[x, y, y.grad_name, x.grad_name])
+        self.assertEqual(res[1].shape, (1,))
+        self.assertEqual(res[1], res[0])
+        self.assertEqual(res[2].shape, (1,))
+        self.assertEqual(res[3].shape, ())
+        self.assertEqual(res[3], 1)
 
 
 # Use to test API whose zero-dim input tensors don't have grad and not need to test backward in OpTest.
