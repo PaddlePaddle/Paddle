@@ -100,7 +100,6 @@ class MultivariateNormal(distribution.Distribution):
         event_shape = self.loc.shape[-1:]
         super(MultivariateNormal, self).__init__(batch_shape, event_shape)
 
-
     @property
     def mean(self):
         r"""Mean of distribution
