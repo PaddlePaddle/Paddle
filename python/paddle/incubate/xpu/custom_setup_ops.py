@@ -77,7 +77,7 @@ def custom_fmha(qkv, cu_seq_len, host_seq_len, is_test, dropout_rate,
                      },
                      outputs={
                          'CtxOut': ctx_out,
-                         'SOut': s_out
+                         'SOut': s_out,
                          'DropoutMask': dropout_mask
                      },
                      attrs={
