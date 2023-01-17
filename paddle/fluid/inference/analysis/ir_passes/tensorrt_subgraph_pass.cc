@@ -68,6 +68,13 @@ void OutputProcess(framework::ir::Graph *graph,
   }
 
   for (auto *op_node : framework::ir::TopologySortOperations(*graph)) {
+    for (auto *var_node : op_node->outputs) {
+      std::cout << "trtvar " << var_node->Name() << std::endl;
+      if (var_node->Var()->Persistable()) {
+        std::cout << "trtvar " << var_node->Name() << " "
+                  << var_node->Var()->Persistable() << std::endl;
+      }
+    }
     if (!op_node->IsOp()) continue;
     auto op_type = op_node->Op()->Type();
     if (op_type == "feed") block_desc = op_node->Op()->Block();
@@ -128,6 +135,15 @@ void analysis::TensorRtSubgraphPass::ApplyImpl(
   auto with_dynamic_shape = Get<bool>("with_dynamic_shape");
   auto teller = [&](const framework::ir::Node *node) {
     if (!node->IsOp() || !node->Op()) return false;
+    if (node->Op()->Type() == "conv2d") {
+      for (auto *x : node->inputs) {
+        std::cout << "## teller var input " << x->Name() << std::endl;
+        if (x->IsVar() && x->Var()->Persistable()) {
+          std::cout << "## teller var input " << x->Name() << " "
+                    << x->Var()->Persistable() << std::endl;
+        }
+      }
+    }
     if (find(trt_disabled_ops.begin(),
              trt_disabled_ops.end(),
              node->Op()->Type()) != trt_disabled_ops.end()) {
@@ -141,6 +157,25 @@ void analysis::TensorRtSubgraphPass::ApplyImpl(
       VLOG(3) << node->Op()->Type().c_str() << " op is not in TensorRT";
     return is_ok;
   };
+  for (auto *node : graph->Nodes()) {
+    std::cout << "node: " << node->Name() << ", isVar: " << node->IsVar()
+              << ", isOP: " << node->IsOp() << std::endl;
+    for (auto *x : node->inputs) {
+      std::cout << "## trtvar input " << x->Name() << std::endl;
+      if (x->IsVar() && x->Var()->Persistable()) {
+        std::cout << "## trtvar input " << x->Name() << " "
+                  << x->Var()->Persistable() << std::endl;
+      }
+    }
+    for (auto *x : node->outputs) {
+      std::cout << "## trtvar output " << x->Name() << std::endl;
+      if (x->IsVar() && x->Var()->Persistable()) {
+        std::cout << "## trtvar output " << x->Name() << " "
+                  << x->Var()->Persistable() << std::endl;
+      }
+    }
+    std::cout << "=========" << std::endl;
+  }
 
   framework::ir::SubGraphFuser fuser(
       graph,
