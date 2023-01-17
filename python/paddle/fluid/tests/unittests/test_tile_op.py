@@ -286,7 +286,6 @@ class TestTileDoubleGradCheck(unittest.TestCase):
         gradient_checker.double_grad_check(
             [data], out, x_init=[data_arr], place=place, eps=eps
         )
-        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         gradient_checker.double_grad_check_for_dygraph(
             self.tile_wrapper, [data], out, x_init=[data_arr], place=place
         )
@@ -318,7 +317,6 @@ class TestTileTripleGradCheck(unittest.TestCase):
         gradient_checker.triple_grad_check(
             [data], out, x_init=[data_arr], place=place, eps=eps
         )
-        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         gradient_checker.triple_grad_check_for_dygraph(
             self.tile_wrapper, [data], out, x_init=[data_arr], place=place
         )
@@ -335,24 +333,26 @@ class TestTileTripleGradCheck(unittest.TestCase):
 class TestTileAPI_ZeroDim(unittest.TestCase):
     def test_dygraph(self):
         paddle.disable_static()
-        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
 
         x = paddle.rand([])
         x.stop_gradient = False
 
         out = paddle.tile(x, [])
+        out.retain_grads()
         out.backward()
         self.assertEqual(out.shape, [])
         self.assertEqual(x.grad.shape, [])
         self.assertEqual(out.grad.shape, [])
 
         out = paddle.tile(x, [3])
+        out.retain_grads()
         out.backward()
         self.assertEqual(out.shape, [3])
         self.assertEqual(x.grad.shape, [])
         self.assertEqual(out.grad.shape, [3])
 
         out = paddle.tile(x, [2, 3])
+        out.retain_grads()
         out.backward()
         self.assertEqual(out.shape, [2, 3])
         self.assertEqual(x.grad.shape, [])
