@@ -92,14 +92,14 @@ class MultivariateNormal(distribution.Distribution):
                 batch_shape + [-1, -1]
             )
 
+            self._unbroadcasted_scale_tril = paddle.linalg.cholesky(
+                covariance_matrix
+            )
+
         self.loc = loc.expand(batch_shape + [-1])
         event_shape = self.loc.shape[-1:]
         super(MultivariateNormal, self).__init__(batch_shape, event_shape)
 
-        if covariance_matrix is not None:
-            self._unbroadcasted_scale_tril = paddle.linalg.cholesky(
-                covariance_matrix
-            )
 
     @property
     def mean(self):
@@ -261,7 +261,7 @@ class MultivariateNormal(distribution.Distribution):
         else:
             return H.expand(self._batch_shape)
 
-    def sample(self, shape=[]):
+    def sample(self, shape=()):
         """Draw sample data from multinomial distribution
 
         Args:
@@ -270,7 +270,7 @@ class MultivariateNormal(distribution.Distribution):
         with paddle.no_grad():
             return self.rsample(shape)
 
-    def rsample(self, shape=[]):
+    def rsample(self, shape=()):
         """Generate reparameterized samples of the specified shape.
 
         Args:
@@ -454,14 +454,3 @@ class MultivariateNormal(distribution.Distribution):
             # shape = [..., 1, i, j, 1]
             reshaped_M = paddle.transpose(permuted_M, perm=permute_inv_dims)
             return paddle.reshape(reshaped_M, bx_batch_shape)
-
-    def _extend_shape(self, sample_shape):
-        """Compute shape of the sample
-
-        Args:
-            sample_shape (Tensor): sample shape
-
-        Returns:
-            Tensor: generated sample data shape
-        """
-        return sample_shape + list(self.batch_shape) + list(self.event_shape)
