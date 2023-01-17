@@ -30,7 +30,7 @@ void CumsumKernel(const Context& dev_ctx,
   using XPUType = typename XPUTypeTrait<T>::Type;
   dev_ctx.template Alloc<T>(out);
 
-  if (x.dims().size() == 0 || x.numel() == 1) {
+  if (x.numel() == 1) {
     int r = xpu::copy<XPUType>(dev_ctx.x_context(),
                                reinterpret_cast<const XPUType*>(x.data<T>()),
                                reinterpret_cast<XPUType*>(out->data<T>()),

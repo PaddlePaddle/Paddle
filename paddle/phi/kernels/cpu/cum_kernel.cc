@@ -60,7 +60,7 @@ void ScanKernel(const Context& dev_ctx,
   dev_ctx.template Alloc<T>(out);
 
   // For 0D Tensor
-  if (x.dims().size() == 0 || x.numel() == 1) {
+  if (x.numel() == 1) {
     auto raw_dims = out->dims();
     phi::Copy<Context>(dev_ctx, x, dev_ctx.GetPlace(), false, out);
     out->Resize(raw_dims);
