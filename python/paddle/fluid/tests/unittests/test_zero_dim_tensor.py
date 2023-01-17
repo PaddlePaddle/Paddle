@@ -1315,7 +1315,9 @@ class TestSundryAPI(unittest.TestCase):
     def test_t(self):
         x = paddle.full([], 2.0)
         x.stop_gradient = False
+        x.retain_grads()
         out = paddle.t(x)
+        out.retain_grads()
         out.backward()
         self.assertEqual(out.shape, [])
         self.assertEqual(out.grad.shape, [])
