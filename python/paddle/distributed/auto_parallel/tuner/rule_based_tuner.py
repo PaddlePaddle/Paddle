@@ -516,7 +516,11 @@ class ClusterPartitionUtil:
 
     @staticmethod
     def complete_meshes(partitions: list, num: int):
-        if len(partitions) == 1:
+        if num == 2:
+            return [[1, 2], [2, 1]]
+        if num == 3:
+            return [[1, 2], [2, 1], [1]]
+        elif len(partitions) == 1:
             partitions = ClusterPartitionUtil.factorization(num - 1)
             partitions.append([1])
         return partitions
