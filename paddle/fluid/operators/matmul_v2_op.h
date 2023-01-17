@@ -37,6 +37,21 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+class MatMulV2Op : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+  void InferShape(framework::InferShapeContext* ctx) const override;
+
+ protected:
+  phi::KernelKey GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override;
+
+  phi::KernelKey GetKernelTypeForVar(
+      const std::string& var_name,
+      const phi::DenseTensor& tensor,
+      const phi::KernelKey& expected_kernel_type) const override;
+};
+
 class MatMulV2OpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() final;
