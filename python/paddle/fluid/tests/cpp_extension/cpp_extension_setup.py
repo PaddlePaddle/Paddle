@@ -29,8 +29,9 @@ for site_packages_path in getsitepackages():
 setup(
     name='custom_cpp_extension',
     ext_modules=CppExtension(
-        sources=["custom_add.cpp", "custom_sub.cpp"],
-        include_dirs=paddle_includes + ["cpp_extension"],
+        sources=["custom_add.cc", "custom_sub.cc"],
+        include_dirs=paddle_includes
+        + [os.path.dirname(os.path.abspath(__file__))],
         extra_compile_args={'cc': ['-w', '-g']},
         verbose=True,
     ),

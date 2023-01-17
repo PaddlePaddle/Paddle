@@ -40,6 +40,7 @@ class TestCppExtensionInstall(unittest.TestCase):
                 cur_dir, sys.executable
             )
         run_cmd(cmd)
+        # os.system(cmd)
 
         # See: https://stackoverflow.com/questions/56974185/import-runtime-installed-module-using-pip-in-python-3
         if os.name == 'nt':

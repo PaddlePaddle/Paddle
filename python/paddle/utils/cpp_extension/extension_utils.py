@@ -159,11 +159,46 @@ def load_op_meta_info_and_register_op(lib_filename):
     return OpProtoHolder.instance().update_op_proto()
 
 
+def custom_write_extension_stub(resource, pyfile):
+    _extension_template = textwrap.dedent(
+        """
+        import os
+        import sys
+        import importlib.util
+
+        cur_dir = os.path.dirname(os.path.abspath(__file__))
+        so_path = os.path.join(cur_dir, "{resource}")
+
+        def __bootstrap__():
+            spec = importlib.util.spec_from_file_location(__name__, so_path)
+            assert spec is not None
+            mod = importlib.util.module_from_spec(spec)
+            assert isinstance(spec.loader, importlib.abc.Loader)
+            spec.loader.exec_module(mod)
+
+        __bootstrap__()
+
+        """
+    ).lstrip()
+
+    with open(pyfile, 'w') as f:
+        f.write(_extension_template.format(resource=resource))
+
+
 def custom_write_stub(resource, pyfile):
     """
     Customized write_stub function to allow us to inject generated python
     api codes into egg python file.
     """
+    # NOTE: To avoid importing .so file instead of python file because they have same name,
+    # we rename .so shared library to another name, see EasyInstallCommand.
+    filename, ext = os.path.splitext(resource)
+    resource = filename + "_pd_" + ext
+
+    if CustomOpInfo.instance().empty():
+        custom_write_extension_stub(resource, pyfile)
+        return
+
     _stub_template = textwrap.dedent(
         """
         import os
@@ -197,37 +232,6 @@ def custom_write_stub(resource, pyfile):
 
         """
     ).lstrip()
-
-    # NOTE: To avoid importing .so file instead of python file because they have same name,
-    # we rename .so shared library to another name, see EasyInstallCommand.
-    filename, ext = os.path.splitext(resource)
-    resource = filename + "_pd_" + ext
-
-    if CustomOpInfo.instance().empty():
-        _extension_template = textwrap.dedent(
-            """
-        import os
-        import sys
-        import importlib.util
-
-        cur_dir = os.path.dirname(os.path.abspath(__file__))
-        so_path = os.path.join(cur_dir, "{resource}")
-
-        def __bootstrap__():
-            spec = importlib.util.spec_from_file_location(__name__, so_path)
-            assert spec is not None
-            mod = importlib.util.module_from_spec(spec)
-            assert isinstance(spec.loader, importlib.abc.Loader)
-            spec.loader.exec_module(mod)
-
-        __bootstrap__()
-
-        """
-        ).lstrip()
-
-        with open(pyfile, 'w') as f:
-            f.write(_extension_template.format(resource=resource))
-        return
 
     # Parse registering op information
     _, op_info = CustomOpInfo.instance().last()
