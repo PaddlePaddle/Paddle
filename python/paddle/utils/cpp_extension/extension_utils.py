@@ -198,6 +198,37 @@ def custom_write_stub(resource, pyfile):
         """
     ).lstrip()
 
+    # NOTE: To avoid importing .so file instead of python file because they have same name,
+    # we rename .so shared library to another name, see EasyInstallCommand.
+    filename, ext = os.path.splitext(resource)
+    resource = filename + "_pd_" + ext
+
+    if CustomOpInfo.instance().empty():
+        _extension_template = textwrap.dedent(
+            """
+        import os
+        import sys
+        import importlib.util
+
+        cur_dir = os.path.dirname(os.path.abspath(__file__))
+        so_path = os.path.join(cur_dir, "{resource}")
+
+        def __bootstrap__():
+            spec = importlib.util.spec_from_file_location(__name__, so_path)
+            assert spec is not None
+            mod = importlib.util.module_from_spec(spec)
+            assert isinstance(spec.loader, importlib.abc.Loader)
+            spec.loader.exec_module(mod)
+
+        __bootstrap__()
+
+        """
+        ).lstrip()
+
+        with open(pyfile, 'w') as f:
+            f.write(_extension_template.format(resource=resource))
+        return
+
     # Parse registering op information
     _, op_info = CustomOpInfo.instance().last()
     so_path = op_info.so_path
@@ -207,11 +238,6 @@ def custom_write_stub(resource, pyfile):
         "Required at least one custom operators, but received len(custom_op) =  %d"
         % len(new_custom_ops)
     )
-
-    # NOTE: To avoid importing .so file instead of python file because they have same name,
-    # we rename .so shared library to another name, see EasyInstallCommand.
-    filename, ext = os.path.splitext(resource)
-    resource = filename + "_pd_" + ext
 
     api_content = []
     for op_name in new_custom_ops:
@@ -255,6 +281,11 @@ class CustomOpInfo:
         """
         assert len(self.op_info_map) > 0
         return next(reversed(self.op_info_map.items()))
+
+    def empty(self):
+        if self.op_info_map:
+            return False
+        return True
 
 
 VersionFields = collections.namedtuple(

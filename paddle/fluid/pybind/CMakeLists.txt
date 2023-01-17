@@ -42,7 +42,8 @@ set(PYBIND_DEPS
     auto_parallel
     jit_layer
     jit_property
-    prim_utils)
+    prim_utils
+    pybind_util)
 
 if(WITH_PSCORE)
   set(PYBIND_DEPS ${PYBIND_DEPS} ps_service)

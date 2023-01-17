@@ -12,3 +12,8 @@ cc_test(
   variant_test
   SRCS variant_test.cc
   DEPS gtest)
+
+cc_library(
+  pybind_util
+  SRCS pybind.cc
+  DEPS phi_tensor_raw)

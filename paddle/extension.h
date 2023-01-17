@@ -16,3 +16,5 @@ limitations under the License. */
 
 // All paddle apis in C++ frontend
 #include "paddle/phi/api/all.h"
+// Python bindings for the C++ frontend
+#include "paddle/utils/pybind.h"

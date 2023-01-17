@@ -1,0 +1,1 @@
+py_test(test_cpp_extension_setup SRCS test_cpp_extension_setup.py)
