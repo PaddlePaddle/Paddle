@@ -96,7 +96,7 @@ class CumsumGradMaker : public framework::SingleGradOpMaker<T> {
     grad_op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
     grad_op->SetAttrMap(this->Attrs());
     grad_op->SetAttr("reverse",
-                     !PADDLE_GET_CONST(bool, this->GetAttr("reverse")));
+                     PADDLE_GET_CONST(bool, this->GetAttr("reverse")));
   }
 };
 

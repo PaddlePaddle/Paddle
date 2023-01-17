@@ -32,7 +32,7 @@ void CumsumGradKernel(const Context& dev_ctx,
                       DenseTensor* x_grad) {
   x_grad->Resize(x.dims());
   CumsumKernel<T, Context>(
-      dev_ctx, out_grad, axis, flatten, exclusive, reverse, x_grad);
+      dev_ctx, out_grad, axis, flatten, exclusive, !reverse, x_grad);
 }
 
 }  // namespace phi
