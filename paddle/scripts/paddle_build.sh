@@ -3464,7 +3464,6 @@ function build_pr_and_develop() {
     if [ ! -d "${PADDLE_ROOT}/build/python/dist/" ]; then
         mkdir ${PADDLE_ROOT}/build/python/dist/ && mv ${PADDLE_ROOT}/dist/*.whl ${PADDLE_ROOT}/build/python/dist/
     fi
-    
     cmake_change=`git diff --name-only upstream/$BRANCH | grep "cmake/external" || true`
     cp ${PADDLE_ROOT}/python/requirements.txt /tmp
     generate_api_spec "$1" "PR"
