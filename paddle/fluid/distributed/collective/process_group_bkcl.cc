@@ -16,6 +16,7 @@
 
 #include "paddle/fluid/distributed/collective/bkcl_tools.h"
 #include "paddle/fluid/distributed/collective/common.h"
+#include "paddle/fluid/distributed/collective/utils.h"
 #include "paddle/fluid/platform/device/xpu/bkcl_helper.h"
 #include "paddle/fluid/platform/device/xpu/xpu_info.h"
 #include "paddle/phi/core/device_context.h"
@@ -85,6 +86,73 @@ void ProcessGroupBKCL::GroupStart() {
 
 void ProcessGroupBKCL::GroupEnd() {
   PADDLE_ENFORCE_XPU_SUCCESS(bkcl_group_end());
+}
+
+std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::Recv(
+    phi::DenseTensor* tensor,
+    int src_rank,
+    int64_t offset,
+    int64_t numel,
+    bool sync_op,
+    bool use_calc_stream) {
+  // numel > 0 indicates the tensor need to be sliced
+  phi::DenseTensor partial_tensor;
+  if (numel > 0) {
+    partial_tensor = GetPartialTensor(*tensor, offset, numel);
+    tensor = &partial_tensor;
+  }
+
+  return Collective(
+      tensor,
+      // have to pass a tensor here
+      // TODO(zhangxiaoci) catch up with nccl's api
+      *tensor,
+      [&](phi::DenseTensor* output,
+          const phi::DenseTensor& input,
+          BKCLContext_t comm,
+          const XPUStream& stream) {
+        return bkcl_recv(comm,
+                         output->data(),
+                         output->numel(),
+                         src_rank,
+                         platform::ToBKCLDataType(
+                             framework::TransToProtoVarType(output->type())),
+                         stream);
+      },
+      CommType::RECV,
+      sync_op,
+      use_calc_stream);
+}
+
+std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::Send(
+    const phi::DenseTensor& tensor,
+    int dst_rank,
+    int64_t offset,
+    int64_t numel,
+    bool sync_op,
+    bool use_calc_stream) {
+  // numel > 0 indicates the tensor need to be sliced
+  const phi::DenseTensor& tensor_maybe_partial =
+      numel > 0 ? GetPartialTensor(tensor, offset, numel) : tensor;
+
+  return Collective(
+      nullptr,
+      tensor_maybe_partial,
+      [&](phi::DenseTensor* output,
+          const phi::DenseTensor& input,
+          BKCLContext_t comm,
+          const XPUStream& stream) {
+        return bkcl_send(comm,
+                         input.data(),
+                         input.numel(),
+                         dst_rank,
+                         platform::ToBKCLDataType(
+                             framework::TransToProtoVarType(input.type())),
+                         stream);
+      },
+      CommType::SEND,
+      sync_op,
+      use_calc_stream);
 }
 
 std::shared_ptr<ProcessGroupBKCL::BKCLTask> ProcessGroupBKCL::CreateTask(
