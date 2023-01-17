@@ -1991,12 +1991,12 @@ class TestSundryAPIStatic(unittest.TestCase):
         paddle.static.append_backward(y.sum())
 
         prog = paddle.static.default_main_program()
-        res = self.exe.run(prog, fetch_list=[y, y.grad_name, x.grad_name])
-        self.assertEqual(res[0].shape, (1,))
-        self.assertEqual(res[0], x)
+        res = self.exe.run(prog, fetch_list=[x, y, y.grad_name, x.grad_name])
         self.assertEqual(res[1].shape, (1,))
-        self.assertEqual(res[2].shape, ())
-        self.assertEqual(res[2], 1)
+        self.assertEqual(res[1], res[0])
+        self.assertEqual(res[2].shape, (1,))
+        self.assertEqual(res[3].shape, ())
+        self.assertEqual(res[3], 1)
 
 
 # Use to test API whose zero-dim input tensors don't have grad and not need to test backward in OpTest.
