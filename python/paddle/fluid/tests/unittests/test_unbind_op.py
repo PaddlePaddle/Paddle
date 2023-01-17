@@ -15,11 +15,11 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16
 
 import paddle
 import paddle.fluid as fluid
 import paddle.tensor as tensor
+from eager_op_test import OpTest, convert_float_to_uint16
 from paddle.fluid import Program, program_guard
 
 
@@ -107,6 +107,7 @@ class TestUnbindOp(OpTest):
 
     def _set_op_type(self):
         self.op_type = "unbind"
+        self.python_api = paddle.unbind
 
     def test_check_output(self):
         self.check_output()
