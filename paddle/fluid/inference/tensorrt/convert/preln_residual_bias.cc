@@ -29,9 +29,12 @@ class PrelnResidualBiasOpConverter : public OpConverter {
     VLOG(4) << "convert fused_bias_dropout_residual_layer_norm op with "
                "drop_rate = 0 to preln_residual_bias tensorrt layer";
     if (!engine_->with_dynamic_shape()) {
-      PADDLE_THROW(
-          platform::errors::Fatal("Unsupported static graph mode. Please set "
-                                  "dynamic shape of inputs."));
+      VLOG(0) << "preln_residual_bias trt layer can not work with static graph "
+                 "mode. "
+                 "preln_residual_bias trt layer will fall back to phi "
+                 "fused_bias_dropout_residual_layer_norm op and cut the trt "
+                 "subgraph"
+                 "It is recommended to use dynamic shape trt mode instead.";
     }
     framework::OpDesc op_desc(op, nullptr);
     // Declare inputs
