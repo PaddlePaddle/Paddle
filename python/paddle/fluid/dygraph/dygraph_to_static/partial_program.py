@@ -189,10 +189,6 @@ class PartialProgramLayer:
             return core.Scope()
 
     @LazyInitialized
-    def __fake_vars(self):
-        return _create_fake_var()
-
-    @LazyInitialized
     def _double_grads(self):
         return self._get_double_grads(self._origin_main_program)
 
@@ -489,7 +485,7 @@ class PartialProgramLayer:
             if isinstance(out, framework.Variable):
                 targets.append(program.global_block().var(out.name))
 
-        if targets and self._params:
+        if targets:
             backward.gradients(targets=targets, inputs=[])
 
         start_idx = len(
@@ -889,12 +885,7 @@ class PartialProgramLayer:
                             % name)
 
     def _valid_vars(self, vars):
-        """
-        Note: run_program_op.InferShape requires `X`/'Out' not be null.
-        But it's common in dy2static, fake varBase is created to handle the
-        problem.
-        """
-        return vars if vars else self.__fake_vars
+        return vars if vars else None
 
 
 def _create_fake_var():
