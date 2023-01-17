@@ -20,27 +20,32 @@ namespace inference {
 namespace tensorrt {
 namespace plugin {
 
-template <typename T, int32_t HHS, int32_t TPB>
-__global__ void splitGeLUKernel(T const *input,
-                                T *output,
-                                float const fDiv,
-                                float const fAdd,
-                                float const fMul) {
+template <int32_t HHS, int32_t TPB>
+__global__ void splitGeLUKernelHalf(half2 const *input,
+                                    half2 *output,
+                                    float const fDiv,
+                                    float const fAdd,
+                                    float const fMul) {
   int32_t indexInput = blockIdx.x * HHS * 2 + threadIdx.x;
   int32_t indexOutput = blockIdx.x * HHS + threadIdx.x;
-
+  const int loop = HHS / TPB;
+  const half2 hadd(1, 1);
+  const half2 hmul(0.5, 0.5);
 #pragma unroll
-  for (int32_t i = 0; i < HHS / TPB; ++i) {
-    auto valueL = static_cast<float>(input[indexInput]);
-    auto valueR = static_cast<float>(input[indexInput + HHS]);
-    float tmp = valueR;
-    tmp /= fDiv;
-    tmp = erff(tmp);
-    tmp += fAdd;
-    tmp *= valueR;
-    tmp *= fMul;
-    tmp *= valueL;
-    output[indexOutput] = static_cast<T>(tmp);
+  for (int32_t i = 0; i < loop; ++i) {
+    half2 hvalueL = input[indexInput];
+    auto hvalueR = input[indexInput + HHS];
+    auto tmp = __half22float2(hvalueR);
+    tmp.x /= 1.4140625f;
+    tmp.y /= 1.4140625f;
+    tmp.x = erff(tmp.x);
+    tmp.y = erff(tmp.y);
+    half2 htmp = __float22half2_rn(tmp);
+    htmp = __hadd2(htmp, hadd);
+    htmp = __hmul2(htmp, hvalueR);
+    htmp = __hmul2(htmp, hmul);
+    htmp = __hmul2(htmp, hvalueL);
+    output[indexOutput] = htmp;
     indexInput += TPB;
     indexOutput += TPB;
   }
@@ -58,15 +63,15 @@ int32_t launchSplitGeLUKernel(cudaStream_t stream,
   constexpr int32_t TPB = 256;  // thread per block
   switch (nHalfHiddenSize) {
     case 1280:
-      (splitGeLUKernel<T, 1280, TPB>)<<<gridSize, TPB, 0, stream>>>(
+      (splitGeLUKernelHalf<640, 64>)<<<gridSize, 64, 0, stream>>>(
           input, output, fDiv, fAdd, fMul);
       break;
     case 2560:
-      (splitGeLUKernel<T, 2560, TPB>)<<<gridSize, TPB, 0, stream>>>(
+      (splitGeLUKernelHalf<1280, 128>)<<<gridSize, 128, 0, stream>>>(
           input, output, fDiv, fAdd, fMul);
       break;
     case 5120:
-      (splitGeLUKernel<T, 5120, TPB>)<<<gridSize, TPB, 0, stream>>>(
+      (splitGeLUKernelHalf<2560, 256>)<<<gridSize, 256, 0, stream>>>(
           input, output, fDiv, fAdd, fMul);
       break;
     default:
@@ -135,21 +140,21 @@ int SplitGeluPluginDynamic::enqueue(
   const int32_t nHalfHiddenSize = input_desc[0].dims.d[2] / 2;  // HHS
   if (input_type == nvinfer1::DataType::kFLOAT) {
     VLOG(3) << "TRT Plugin DataType selected. SplitGelu-->fp32";
-    launchSplitGeLUKernel(stream,
-                          gridSize,
-                          nHalfHiddenSize,
-                          static_cast<float const *>(inputs[0]),
-                          static_cast<float *>(outputs[0]),
-                          1.4140625f,
-                          1,
-                          0.5f);
+    /*    launchSplitGeLUKernel(stream,
+                              gridSize,
+                              nHalfHiddenSize,
+                              static_cast<float const *>(inputs[0]),
+                              static_cast<float *>(outputs[0]),
+                              1.4140625f,
+                              1,
+                              0.5f);*/
   } else if (input_type == nvinfer1::DataType::kHALF) {
     VLOG(3) << "TRT Plugin DataType selected. SplitGelu-->fp16";
     launchSplitGeLUKernel(stream,
                           gridSize,
                           nHalfHiddenSize,
-                          static_cast<half const *>(inputs[0]),
-                          static_cast<half *>(outputs[0]),
+                          static_cast<half2 const *>(inputs[0]),
+                          static_cast<half2 *>(outputs[0]),
                           1.4140625f,
                           1,
                           0.5f);
