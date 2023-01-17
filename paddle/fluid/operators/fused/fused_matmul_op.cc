@@ -65,7 +65,8 @@ class FusedMatmulOp : public framework::OperatorWithKernel {
                           "The Input(Y) dims size must be greater than 0,"
                           " but received dims size is 0. "));
 
-    bool x_broadcasted = false, y_broadcasted = false;
+    bool x_broadcasted = false;
+    bool y_broadcasted = false;
     if (ndims_x == 1) {
       dims_x.insert(dims_x.begin(), 1);
       ndims_x = 2;

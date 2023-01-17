@@ -1655,7 +1655,8 @@ std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetInputTensor(
     auto custom_place = place_;
     auto paddleplace = static_cast<PaddlePlace>(
         static_cast<size_t>(PaddlePlace::kCUSTOM) +
-        phi::GetOrRegisterGlobalDeviceTypeId(place_.GetDeviceType()));
+        phi::CustomRegisteredDeviceMap::Instance()
+            .GetOrRegisterGlobalDeviceTypeId(place_.GetDeviceType()));
     res->SetPlace(paddleplace, custom_place.GetDeviceId());
   } else {
     auto gpu_place = place_;
@@ -1710,7 +1711,8 @@ std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetOutputTensor(
     auto custom_place = place_;
     auto paddleplace = static_cast<PaddlePlace>(
         static_cast<size_t>(PaddlePlace::kCUSTOM) +
-        phi::GetOrRegisterGlobalDeviceTypeId(place_.GetDeviceType()));
+        phi::CustomRegisteredDeviceMap::Instance()
+            .GetOrRegisterGlobalDeviceTypeId(place_.GetDeviceType()));
     res->SetPlace(paddleplace, custom_place.GetDeviceId());
   } else {
     auto gpu_place = place_;
@@ -2427,6 +2429,10 @@ USE_TRT_CONVERTER(expand_v2)
 USE_TRT_CONVERTER(take_along_axis)
 USE_TRT_CONVERTER(skip_groupnorm_act)
 USE_TRT_CONVERTER(preln_groupnorm_act)
+#if IS_TRT_VERSION_GE(8522)
+USE_TRT_CONVERTER(flash_multihead_matmul)
+USE_TRT_CONVERTER(cross_multihead_matmul)
+#endif
 #if PADDLE_WITH_CUSPARSELT && IS_TRT_VERSION_GE(8000)
 USE_TRT_CONVERTER(sparse_fc)
 USE_TRT_CONVERTER(sparse_multihead_matmul)
