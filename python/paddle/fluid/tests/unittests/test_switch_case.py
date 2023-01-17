@@ -93,25 +93,25 @@ class TestAPISwitchCase(unittest.TestCase):
                 res[1],
                 2,
                 rtol=1e-05,
-                err_msg='result is {} but answer is {}'.format(res[0], 2),
+                err_msg='result is {} but answer is {}'.format(res[1], 2),
             )
             np.testing.assert_allclose(
                 res[2],
                 3,
                 rtol=1e-05,
-                err_msg='result is {} but answer is {}'.format(res[0], 3),
+                err_msg='result is {} but answer is {}'.format(res[2], 3),
             )
             np.testing.assert_allclose(
                 res[3],
                 2,
                 rtol=1e-05,
-                err_msg='result is {} but answer is {}'.format(res[0], 2),
+                err_msg='result is {} but answer is {}'.format(res[3], 2),
             )
             np.testing.assert_allclose(
                 res[4],
                 2,
                 rtol=1e-05,
-                err_msg='result is {} but answer is {}'.format(res[0], 2),
+                err_msg='result is {} but answer is {}'.format(res[4], 2),
             )
 
     def test_0d_tensor(self):
@@ -176,30 +176,116 @@ class TestAPISwitchCase(unittest.TestCase):
                 rtol=1e-05,
                 err_msg='result is {} but answer is {}'.format(res[0], 1),
             )
+            self.assertEqual(res[0].shape, ())
             np.testing.assert_allclose(
                 res[1],
                 2,
                 rtol=1e-05,
-                err_msg='result is {} but answer is {}'.format(res[0], 2),
+                err_msg='result is {} but answer is {}'.format(res[1], 2),
             )
+            self.assertEqual(res[1].shape, ())
             np.testing.assert_allclose(
                 res[2],
                 3,
                 rtol=1e-05,
-                err_msg='result is {} but answer is {}'.format(res[0], 3),
+                err_msg='result is {} but answer is {}'.format(res[2], 3),
             )
+            self.assertEqual(res[2].shape, ())
             np.testing.assert_allclose(
                 res[3],
                 2,
                 rtol=1e-05,
-                err_msg='result is {} but answer is {}'.format(res[0], 2),
+                err_msg='result is {} but answer is {}'.format(res[3], 2),
             )
+            self.assertEqual(res[3].shape, ())
             np.testing.assert_allclose(
                 res[4],
                 2,
                 rtol=1e-05,
-                err_msg='result is {} but answer is {}'.format(res[0], 2),
+                err_msg='result is {} but answer is {}'.format(res[4], 2),
             )
+            self.assertEqual(res[4].shape, ())
+
+    def test_0d_tensor_dygraph(self):
+        paddle.disable_static()
+
+        def fn_1():
+            return paddle.full(shape=[], dtype='int32', fill_value=1)
+
+        def fn_2():
+            return paddle.full(shape=[], dtype='int32', fill_value=2)
+
+        def fn_3():
+            return paddle.full(shape=[], dtype='int32', fill_value=3)
+
+        index_1 = paddle.full(shape=[], dtype='int32', fill_value=1)
+        index_2 = paddle.full(shape=[], dtype='int32', fill_value=2)
+        index_5 = paddle.full(shape=[], dtype='int32', fill_value=5)
+
+        # call fn_1
+        out_0 = paddle.static.nn.switch_case(
+            branch_index=index_1, branch_fns={1: fn_1, 2: fn_2, 3: fn_3}
+        )
+
+        # call fn_2 : branch_fns={0: fn_1, 1:fn_2, 2:fn_3}
+        out_1 = paddle.static.nn.switch_case(
+            branch_index=index_1, branch_fns=(fn_1, fn_2, fn_3)
+        )
+
+        # call default fn_3
+        out_2 = paddle.static.nn.switch_case(
+            branch_index=index_5,
+            branch_fns=((1, fn_1), (2, fn_2)),
+            default=fn_3,
+        )
+
+        # no default, call fn_2
+        out_3 = paddle.static.nn.switch_case(
+            branch_index=index_2, branch_fns=[(1, fn_1), (2, fn_2)]
+        )
+
+        # no default, call fn_2 but branch_index is 5
+        out_4 = paddle.static.nn.switch_case(
+            branch_index=index_5,
+            branch_fns=[(1, fn_1), (3, fn_2), (2, fn_3)],
+        )
+        np.testing.assert_allclose(
+            out_0,
+            1,
+            rtol=1e-05,
+            err_msg='result is {} but answer is {}'.format(out_0, 1),
+        )
+        self.assertEqual(out_0.shape, [])
+        np.testing.assert_allclose(
+            out_1,
+            2,
+            rtol=1e-05,
+            err_msg='result is {} but answer is {}'.format(out_1, 2),
+        )
+        self.assertEqual(out_1.shape, [])
+        np.testing.assert_allclose(
+            out_2,
+            3,
+            rtol=1e-05,
+            err_msg='result is {} but answer is {}'.format(out_2, 3),
+        )
+        self.assertEqual(out_2.shape, [])
+        np.testing.assert_allclose(
+            out_3,
+            2,
+            rtol=1e-05,
+            err_msg='result is {} but answer is {}'.format(out_3, 2),
+        )
+        self.assertEqual(out_3.shape, [])
+        np.testing.assert_allclose(
+            out_4,
+            2,
+            rtol=1e-05,
+            err_msg='result is {} but answer is {}'.format(out_4, 2),
+        )
+        self.assertEqual(out_4.shape, [])
+
+        paddle.enable_static()
 
     def test_return_var_tuple(self):
         def fn_1():
@@ -426,18 +512,21 @@ class TestAPISwitchCase_Nested(unittest.TestCase):
                 rtol=1e-05,
                 err_msg='result is {} but answer is {}'.format(res[0], 1),
             )
+            self.assertEqual(res[0].shape, ())
             np.testing.assert_allclose(
                 res[1],
                 2,
                 rtol=1e-05,
                 err_msg='result is {} but answer is {}'.format(res[1], 2),
             )
+            self.assertEqual(res[1].shape, ())
             np.testing.assert_allclose(
                 res[2],
                 3,
                 rtol=1e-05,
                 err_msg='result is {} but answer is {}'.format(res[2], 3),
             )
+            self.assertEqual(res[2].shape, ())
 
 
 # test TypeError and ValueError of api switch_case

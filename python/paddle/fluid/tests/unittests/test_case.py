@@ -145,10 +145,71 @@ class TestAPICase(unittest.TestCase):
             )
 
             np.testing.assert_allclose(res[0], 1, rtol=1e-05)
+            self.assertEqual(res[0].shape, ())
             np.testing.assert_allclose(res[1], 2, rtol=1e-05)
+            self.assertEqual(res[1].shape, ())
             np.testing.assert_allclose(res[2], 3, rtol=1e-05)
+            self.assertEqual(res[2].shape, ())
             np.testing.assert_allclose(res[3], 2, rtol=1e-05)
+            self.assertEqual(res[3].shape, ())
             np.testing.assert_allclose(res[4], 2, rtol=1e-05)
+            self.assertEqual(res[4].shape, ())
+
+    def test_0d_tensor_dygraph(self):
+        paddle.disable_static()
+
+        def fn_1():
+            return paddle.full(shape=[], dtype='int32', fill_value=1)
+
+        def fn_2():
+            return paddle.full(shape=[], dtype='int32', fill_value=2)
+
+        def fn_3():
+            return paddle.full(shape=[], dtype='int32', fill_value=3)
+
+        x = paddle.full(shape=[], dtype='float32', fill_value=0.3)
+        y = paddle.full(shape=[], dtype='float32', fill_value=0.1)
+        z = paddle.full(shape=[], dtype='float32', fill_value=0.2)
+        pred_2 = paddle.less_than(x, y)  # false: 0.3 < 0.1
+        pred_1 = paddle.less_than(z, x)  # true: 0.2 < 0.3
+
+        # call fn_1
+        out_0 = paddle.static.nn.control_flow.case(
+            pred_fn_pairs=[(pred_1, fn_1), (pred_1, fn_2)], default=fn_3
+        )
+
+        # call fn_2
+        out_1 = paddle.static.nn.control_flow.case(
+            pred_fn_pairs=[(pred_2, fn_1), (pred_1, fn_2)], default=fn_3
+        )
+
+        # call default fn_3
+        out_2 = paddle.static.nn.control_flow.case(
+            pred_fn_pairs=((pred_2, fn_1), (pred_2, fn_2)), default=fn_3
+        )
+
+        # no default, call fn_2
+        out_3 = paddle.static.nn.control_flow.case(
+            pred_fn_pairs=[(pred_1, fn_2)]
+        )
+
+        # no default, call fn_2. but pred_2 is false
+        out_4 = paddle.static.nn.control_flow.case(
+            pred_fn_pairs=[(pred_2, fn_2)]
+        )
+
+        np.testing.assert_allclose(out_0, 1, rtol=1e-05)
+        self.assertEqual(out_0.shape, [])
+        np.testing.assert_allclose(out_1, 2, rtol=1e-05)
+        self.assertEqual(out_1.shape, [])
+        np.testing.assert_allclose(out_2, 3, rtol=1e-05)
+        self.assertEqual(out_2.shape, [])
+        np.testing.assert_allclose(out_3, 2, rtol=1e-05)
+        self.assertEqual(out_3.shape, [])
+        np.testing.assert_allclose(out_4, 2, rtol=1e-05)
+        self.assertEqual(out_4.shape, [])
+
+        paddle.enable_static()
 
     def test_return_var_tuple(self):
         def fn_1():
@@ -394,8 +455,11 @@ class TestAPICase_Nested(unittest.TestCase):
             res = exe.run(main_program, fetch_list=[out_1, out_2, out_3])
 
             np.testing.assert_allclose(res[0], 1, rtol=1e-05)
+            self.assertEqual(res[0].shape, ())
             np.testing.assert_allclose(res[1], 2, rtol=1e-05)
+            self.assertEqual(res[1].shape, ())
             np.testing.assert_allclose(res[2], 3, rtol=1e-05)
+            self.assertEqual(res[2].shape, ())
 
 
 class TestAPICase_Error(unittest.TestCase):
