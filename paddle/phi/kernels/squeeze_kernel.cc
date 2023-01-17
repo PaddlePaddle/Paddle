@@ -25,9 +25,7 @@ void SqueezeInferKernel(const Context& dev_ctx,
                         const DenseTensor& x,
                         const IntArray& axes,
                         DenseTensor* out) {
-  auto x_dims = x.dims();
-  std::vector<int32_t> tmp(axes.GetData().begin(), axes.GetData().end());
-  auto out_dims = funcs::GetOutputSqueezeShape(tmp, x_dims, true);
+  auto out_dims = out->dims();
   out->Resize(out_dims);
 
   dev_ctx.template Alloc<T>(out);
