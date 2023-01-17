@@ -36,6 +36,8 @@ class CustomFMHAOp : public framework::OperatorWithKernel {
         ctx->HasOutput("CtxOut"), "Output", "CtxOut", "CustomFMHAOp");
     OP_INOUT_CHECK(
         ctx->HasOutput("SOut"), "Output", "SOut", "CustomFMHAOp");
+    OP_INOUT_CHECK(
+        ctx->HasOutput("DropoutMask"), "Output", "DropoutMask", "CustomFMHAOp");
     // Get dims of inputs
     auto x_shape = ctx->GetInputDim("QKV");
     auto y_shape = ctx->GetInputDim("CuSeqLen");
@@ -94,6 +96,7 @@ class CustomFMHAOp : public framework::OperatorWithKernel {
     std::vector<int64_t> s_out_shape = {
         batch_size, num_heads, max_seq_len, max_seq_len};
     ctx->SetOutputDim("SOut", phi::make_ddim(s_out_shape)); 
+    ctx->SetOutputDim("DropoutMask", phi::make_ddim(s_out_shape));
   }
 
  protected:
@@ -105,6 +108,7 @@ class CustomFMHAOp : public framework::OperatorWithKernel {
     // host_seq_len -> int
     // ctx_out      -> float16
     // s_out        -> float16
+    // dropout_mask -> float16
     framework::LibraryType library = framework::LibraryType::kPlain;
     framework::DataLayout layout = framework::DataLayout::kAnyLayout;
     return framework::OpKernelType(
@@ -120,6 +124,7 @@ class CustomFMHAOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("HostSeqLen", "int[batch_size + 1], lod on host");
     AddOutput("CtxOut", "float16[total_tokens, num_heads, head_size]");
     AddOutput("SOut", "float16[batch_size, num_heads, max_seq_len, max_seq_len]");
+    AddOutput("DropoutMask", "same shape as SOut");
     AddAttr<bool>("is_test", "is_test").SetDefault(false);
     AddAttr<float>("dropout_rate", "dropout_rate").SetDefault(0.0);
     AddAttr<bool>("zero_tensors", "zero_tensors").SetDefault(false);
@@ -145,6 +150,8 @@ class CustomFMHAGradOp : public framework::OperatorWithKernel {
         ctx->HasInput("HostSeqLen"), "Input", "HostSeqLen", "CustomFMHAGradOp");
     OP_INOUT_CHECK(
         ctx->HasInput("SOut"), "Input", "SOut", "CustomFMHAGradOp");
+    OP_INOUT_CHECK(
+        ctx->HasInput("DropoutMask"), "Input", "DropoutMask", "CustomFMHAGradOp");
     OP_INOUT_CHECK(
         ctx->HasInput("DCtxOut"), "Input", "DCtxOut", "CustomFMHAGradOp");
     // Check output
@@ -181,6 +188,7 @@ class CustomFMHAGradOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("CuSeqLen", "int[batch_size + 1], lod on device");
     AddInput("HostSeqLen", "int[batch_size + 1], lod on host");
     AddInput("SOut", "float16[batch_size, num_heads, max_seq_len, max_seq_len]");
+    AddInput("DropoutMask", "same shape as SOut");
     AddInput("DCtxOut", "float16[total_tokens, num_heads, head_size]");
     AddOutput("DQKV", "float16[total_tokens, 3, num_heads, head_size]");
     AddAttr<bool>("is_test", "is_test").SetDefault(false);
@@ -206,6 +214,7 @@ class CustomFMHAOpGradMaker : public framework::SingleGradOpMaker<T> {
     op->SetInput("CuSeqLen", this->Input("CuSeqLen"));
     op->SetInput("HostSeqLen", this->Input("HostSeqLen"));
     op->SetInput("SOut", this->Output("SOut"));
+    op->SetInput("DropoutMask", this->Output("DropoutMask"));
     op->SetInput("DCtxOut", this->OutputGrad("CtxOut"));
     op->SetOutput("DQKV", this->InputGrad("QKV"));
     
