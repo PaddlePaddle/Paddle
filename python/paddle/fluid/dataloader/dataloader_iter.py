@@ -20,6 +20,7 @@ import numbers
 import logging
 import itertools
 import threading
+import warnings
 import numpy as np
 from collections import namedtuple
 from paddle.fluid.framework import (
@@ -406,10 +407,16 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
 
         self._base_seed = np.random.randint(low=0, high=sys.maxsize)
 
-        # Note:zhangbo, shm_buffer_size is used for MemoryMapAllocationPool.
+        # Note(zhangbo): shm_buffer_size is used for MemoryMapAllocationPool.
         # MemoryMapAllocationPool is used to cache and reuse shm, thus reducing munmap in dataloader.
         # For more details, please see: paddle/fluid/memory/allocation/mmap_allocator.h
-        self._worker_shm_buffer_size = (2 + 1) * 2
+        try:
+            self._worker_shm_buffer_size = (2 + 1) * len(self._dataset[0])
+        except:
+            self._worker_shm_buffer_size = 0
+            warnings.warn(
+                "Setting the shm cache buffer size to 0, equivalent to not using the shm cache policy."
+            )
         self._main_thread_shm_buffer_size = (
             self._worker_shm_buffer_size
         ) * self._num_workers
