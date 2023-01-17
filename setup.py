@@ -591,8 +591,8 @@ def options_process(args, build_options):
 
 
 def get_cmake_generator():
-    if os.getenv("CMAKE_GENERATOR"):
-        cmake_generator = os.getenv("CMAKE_GENERATOR")
+    if os.getenv("GENERATOR"):
+        cmake_generator = os.getenv("GENERATOR")
     else:
         cmake_generator = "Unix Makefiles"
     return cmake_generator
@@ -628,7 +628,7 @@ def cmake_run(build_path):
                 "XPU_SDK_ROOT",
                 "MSVC_STATIC_CRT",
                 "NEW_RELEASE_ALL",
-                "CMAKE_GENERATOR",
+                "GENERATOR",
             )
         }
     )
@@ -647,10 +647,13 @@ def cmake_run(build_path):
             elif option_key == 'PYTHON_INCLUDE_DIR':
                 key = option_key + ':PATH'
                 print(key)
+            elif option_key == 'GENERATOR':
+                key = 'CMAKE_' + option_key
             else:
                 key = other_options[option_key]
             if key not in paddle_build_options:
                 paddle_build_options[key] = option_value
+
     options_process(args, paddle_build_options)
     print("args:", args)
     with cd(build_path):
@@ -676,7 +679,12 @@ def build_run(args, build_path, envrion_var):
 
 
 def run_cmake_build(build_path):
-    build_args = ["--build", ".", "--target", "install", "--config", 'Release']
+    build_type = (
+        os.getenv("CMAKE_BUILD_TYPE")
+        if os.getenv("CMAKE_BUILD_TYPE") is not None
+        else "release"
+    )
+    build_args = ["--build", ".", "--target", "install", "--config", build_type]
     max_jobs = os.getenv("MAX_JOBS")
     if max_jobs is not None:
         max_jobs = max_jobs or str(multiprocessing.cpu_count())
@@ -702,6 +710,7 @@ def build_steps():
     if not os.path.exists(build_dir):
         _mkdir_p(build_dir)
     build_path = build_dir
+    print("build_dir:", build_dir)
     # run cmake to generate native build files
     cmake_cache_file_path = os.path.join(build_path, "CMakeCache.txt")
     # if rerun_cmake is True,remove CMakeCache.txt and rerun camke
@@ -1339,6 +1348,11 @@ def main():
     # Execute the build process,cmake and make
     if cmake_and_build:
         build_steps()
+
+    if os.getenv("WITH_PYTHON") == "OFF":
+        print("only compile, not package")
+        return
+
     build_dir = os.getenv("BUILD_DIR")
     if build_dir is not None:
         env_dict_path = TOP_DIR + '/' + build_dir + '/python'
@@ -1349,6 +1363,7 @@ def main():
 
     global env_dict
     global paddle_binary_dir, paddle_source_dir
+
     paddle_binary_dir = env_dict.get("PADDLE_BINARY_DIR")
     paddle_source_dir = env_dict.get("PADDLE_SOURCE_DIR")
 

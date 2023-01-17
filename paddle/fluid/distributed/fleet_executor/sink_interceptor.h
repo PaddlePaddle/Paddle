@@ -25,7 +25,7 @@ namespace distributed {
  *   1. record the num of micro-step
  *   2. check whether to notify carrier the current step is finished
  */
-class SinkInterceptor : public Interceptor {
+class SinkInterceptor final : public Interceptor {
  public:
   SinkInterceptor(int64_t interceptor_id, TaskNode* node);
 
