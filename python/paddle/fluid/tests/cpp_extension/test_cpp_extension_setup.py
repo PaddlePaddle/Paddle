@@ -66,7 +66,11 @@ class TestCppExtensionInstall(unittest.TestCase):
     def tearDown(self):
         pass
 
-    def test_extension_function(self):
+    def test_cpp_extension(self):
+        self._test_extension_function()
+        self._test_extension_class()
+
+    def _test_extension_function(self):
         import custom_cpp_extension
 
         for dtype in self.dtypes:
@@ -84,7 +88,7 @@ class TestCppExtensionInstall(unittest.TestCase):
             target_out = np.exp(np_x) - np.exp(np_y)
             np.testing.assert_allclose(out.numpy(), target_out, atol=1e-5)
 
-    def test_extension_class(self):
+    def _test_extension_class(self):
         import custom_cpp_extension
 
         for dtype in self.dtypes:
