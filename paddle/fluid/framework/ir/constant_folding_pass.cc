@@ -119,7 +119,6 @@ void ConstantFoldingPass::ApplyImpl(ir::Graph *graph) const {
         local_x_tensor->Resize(global_persis_x_tensor->dims());
         *local_x_tensor = *global_persis_x_tensor;
       }
-      std::cout << "#####" << std::endl;
 
       op = paddle::framework::OpRegistry::CreateOp(*op_node->Op());
       remove_nodes.emplace(op_node);
@@ -154,36 +153,6 @@ void ConstantFoldingPass::ApplyImpl(ir::Graph *graph) const {
       GraphSafeRemoveNodes(graph, remove_nodes);
     }
     delete local_scope;
-  }
-  for (auto *node : graph->Nodes()) {
-    if (!node->IsOp() || node->Op()->Type() != "conv2d") continue;
-    std::cout << "node: " << node->Name() << ", isVar: " << node->IsVar()
-              << ", isOP: " << node->IsOp() << std::endl;
-    for (auto *x : node->inputs) {
-      std::cout << "## trtvar input " << x->Name() << std::endl;
-      if (x->IsVar() && x->Var()->Persistable()) {
-        std::cout << "## trtvar input " << x->Name() << " "
-                  << x->Var()->Persistable() << std::endl;
-      }
-    }
-    for (auto *x : node->outputs) {
-      std::cout << "## trtvar output " << x->Name() << std::endl;
-      if (x->IsVar() && x->Var()->Persistable()) {
-        std::cout << "## trtvar output " << x->Name() << " "
-                  << x->Var()->Persistable() << std::endl;
-      }
-    }
-    std::cout << "=========" << std::endl;
-    // auto* desc = node->Op()
-    const framework::OpDesc desc = *node->Op();
-    auto *block = desc.Block();
-    if (block) {
-      auto *var_desc = block->FindVar("tmp_0");
-      // Can't get feed op's TensorDesc
-      if (var_desc && !var_desc->Persistable()) {
-        std::cout << "tmp_0 is not persisable" << std::endl;
-      }
-    }
   }
 }
 
