@@ -965,6 +965,9 @@ class TestSundryAPI(unittest.TestCase):
         out1 = paddle.add_n(x1)
         out2 = paddle.add_n([x2, x3])
 
+        out1.retain_grads()
+        out2.retain_grads()
+
         out1.backward()
         out2.backward()
 
