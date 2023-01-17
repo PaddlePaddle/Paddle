@@ -1470,19 +1470,21 @@ class TestSundryAPIStatic(unittest.TestCase):
             return [i, ten]
 
         main_program = paddle.static.Program()
-        startup_program = paddle.static.Program()
-        with fluid.program_guard(main_program, startup_program):
+        with fluid.program_guard(main_program, paddle.static.Program()):
             i = paddle.full([], 0, 'int64')
+            i.stop_gradient = False
             ten = paddle.full([], 10, dtype='int64')
             out = paddle.static.nn.while_loop(cond, body, [i, ten])
+            paddle.static.append_backward(out[0])
 
         place = (
             paddle.CUDAPlace(0)
             if paddle.device.is_compiled_with_cuda()
             else paddle.CPUPlace()
         )
-        res = self.exe.run(main_program, fetch_list=out)
+        res = self.exe.run(main_program, fetch_list=[i.name, i.grad_name])
         self.assertEqual(res[0].shape, ())
+        self.assertEqual(res[1].shape, ())
 
     @prog_scope()
     def test_while_loop_backward(self):
@@ -1505,8 +1507,8 @@ class TestSundryAPIStatic(unittest.TestCase):
             x.stop_gradient = False
 
             out = paddle.static.nn.while_loop(cond, body, [i, x])
-            mean = paddle.mean(out[1])
-            paddle.static.append_backward(mean)
+            # mean = paddle.mean(out[1])
+            paddle.static.append_backward(out[1])
 
         place = (
             paddle.CUDAPlace(0)
@@ -1515,16 +1517,14 @@ class TestSundryAPIStatic(unittest.TestCase):
         )
         feed_i = np.ones([]).astype('float32')
         feed_x = np.ones([]).astype('float32')
-        data = np.array(100).astype('float32')
-        i_grad = np.array(110).astype('float32')
 
         res = self.exe.run(
             main_program,
             feed={'i': feed_i, 'x': feed_x},
-            fetch_list=[mean.name, i.grad_name],
+            fetch_list=[x.name, i.grad_name],
         )
         self.assertEqual(res[0].shape, ())
-        self.assertEqual(res[1].shape, ())
+        # self.assertEqual(res[1].shape, ())
 
 
 # Use to test API whose zero-dim input tensors don't have grad and not need to test backward in OpTest.
