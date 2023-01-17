@@ -284,6 +284,20 @@ bool IsCompiledWithNPU() {
 #endif
 }
 
+bool IsCompiledWithCustomDevice(std::string device_type) {
+#ifndef PADDLE_WITH_CUSTOM_DEVICE
+  return false;
+#else
+  std::vector<std::string> device_types;
+  device_types = phi::DeviceManager::GetAllCustomDeviceTypes();
+  if (std::count(device_types.begin(), device_types.end(), device_type)) {
+    return true;
+  } else {
+    return false;
+  }
+#endif
+}
+
 bool IsCompiledWithIPU() {
 #ifndef PADDLE_WITH_IPU
   return false;
@@ -956,7 +970,7 @@ All parameter, weight, gradient are variables in Paddle.
              }
            })
       .def("set_string_list",
-           [](Variable &self, Strings str_list) {
+           [](Variable &self, std::vector<std::string> str_list) {
              *self.GetMutable<Strings>() = str_list;
            })
       .def("set_vocab",
@@ -1559,6 +1573,25 @@ All parameter, weight, gradient are variables in Paddle.
 #endif
     return devices;
   });
+  m.def("get_custom_device_count", [](const std::string &device_type) {
+    size_t device_count = 0;
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+    // TODO(duanyanhui): Optimize DeviceManager::GetDeviceCount to support
+    // returning default device when only one device is registered in
+    // DeviceManager.
+    device_count = phi::DeviceManager::GetDeviceCount(device_type);
+#else
+          VLOG(1) << string::Sprintf(
+              "Cannot use get_custom_device_count because you have "
+              "installed"
+              "CPU/GPU version PaddlePaddle.\n"
+              "If you want to use get_custom_device_count, please try to "
+              "install"
+              "CustomDevice version "
+              "PaddlePaddle by: pip install paddlepaddle\n");
+#endif
+    return device_count;
+  });
 
   py::class_<OperatorBase>(m, "Operator")
       .def_static("create",
@@ -1806,6 +1839,7 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("is_compiled_with_ascend", IsCompiledWithAscend);
   m.def("is_compiled_with_rocm", IsCompiledWithROCM);
   m.def("is_compiled_with_npu", IsCompiledWithNPU);
+  m.def("is_compiled_with_custom_device", IsCompiledWithCustomDevice);
   m.def("is_compiled_with_ipu", IsCompiledWithIPU);
   m.def("is_compiled_with_xpu", IsCompiledWithXPU);
   m.def("is_compiled_with_mkldnn", IsCompiledWithMKLDNN);
@@ -1892,7 +1926,7 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("set_feed_variable",
         static_cast<void (*)(  // NOLINT
             Scope *,
-            const Strings &,
+            const std::vector<std::string> &,
             const std::string &,
             size_t)>(&framework::SetFeedVariable));
   m.def("get_fetch_variable",

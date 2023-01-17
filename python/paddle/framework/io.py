@@ -777,7 +777,7 @@ def save(obj, path, protocol=4, **configs):
         # 2. save object
         dirname = os.path.dirname(path)
         if dirname and not os.path.exists(dirname):
-            os.makedirs(dirname)
+            os.makedirs(dirname, exist_ok=True)
     elif not _is_memory_buffer(path):
         raise ValueError(
             "only supports saving objects to file and `BytesIO`, but got {}".format(
@@ -853,7 +853,7 @@ def _legacy_save(obj, path, protocol=2):
         # 2. save object
         dirname = os.path.dirname(path)
         if dirname and not os.path.exists(dirname):
-            os.makedirs(dirname)
+            os.makedirs(dirname, exist_ok=True)
 
     if isinstance(obj, dict):
         saved_obj = _build_saved_state_dict(obj)

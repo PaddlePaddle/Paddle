@@ -338,6 +338,15 @@
     data_type : x
   backward : cast_grad
 
+- op : channel_shuffle
+  args : (Tensor x, int groups, str data_format="NCHW")
+  output : Tensor(out)
+  infer_meta :
+    func : ChannelShuffleInferMeta
+  kernel :
+    func : channel_shuffle
+  backward : channel_shuffle_grad
+
 - op : check_finite_and_unscale_
   args : (Tensor[] x, Tensor scale, Tensor input_found_infinite)
   output : Tensor[](out){x.size()}, Tensor(output_found_infinite)
@@ -563,6 +572,15 @@
   kernel :
     func : einsum
   backward : einsum_grad
+
+- op : elementwise_heaviside
+  args : (Tensor x, Tensor y)
+  output : Tensor
+  infer_meta :
+    func : ElementwiseInferMeta
+  kernel :
+    func : elementwise_heaviside
+  backward : elementwise_heaviside_grad
 
 - op : elementwise_pow
   args : (Tensor x, Tensor y)
@@ -1280,16 +1298,6 @@
   kernel :
     func : not_equal
 
-- op : numel
-  args : (Tensor x)
-  output : Tensor(size)
-  infer_meta :
-    func : NumelInferMeta
-  kernel :
-    func : numel
-  data_transform:
-    skip_transform : x
-
 - op : one_hot
   args : (Tensor x, Scalar(int) num_classes)
   output : Tensor(out)
@@ -1570,28 +1578,6 @@
     data_type : x
   backward : segment_pool_grad
 
-- op : send_u_recv
-  args : (Tensor x, Tensor src_index, Tensor dst_index, str reduce_op = "SUM", IntArray out_size = {0})
-  output : Tensor(out), Tensor(dst_count)
-  infer_meta :
-    func : SendURecvInferMeta
-  kernel :
-    func : send_u_recv
-    data_type : x
-  intermediate : dst_count
-  backward : send_u_recv_grad
-
-- op : send_ue_recv
-  args : (Tensor x, Tensor y, Tensor src_index, Tensor dst_index, str message_op, str reduce_op, IntArray out_size)
-  output : Tensor(out), Tensor(dst_count)
-  infer_meta :
-    func : SendUERecvInferMeta
-  kernel :
-    func : send_ue_recv
-    data_type : x
-  intermediate : dst_count
-  backward : send_ue_recv_grad
-
 - op : sgd_
   args : (Tensor param, Tensor learning_rate, Tensor grad, Tensor master_param, bool multi_precision)
   output : Tensor(param_out), Tensor(master_param_out)
@@ -1644,15 +1630,6 @@
   kernel :
     func : slice
   backward : slice_grad
-
-- op : slogdet
-  args : (Tensor x)
-  output : Tensor
-  infer_meta :
-    func : UnchangedInferMeta
-  kernel :
-    func : slogdet
-  backward : slogdet_grad
 
 - op : softmax
   args : (Tensor x, int axis)

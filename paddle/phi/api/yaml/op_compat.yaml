@@ -993,6 +993,12 @@
   outputs :
     {out : Out, total_weight : Total_weight}
 
+- op : numel(size)
+  inputs :
+    x : Input
+  outputs :
+    size : Out
+
 - op : overlap_add
   backward : overlap_add_grad
   inputs :
@@ -1215,6 +1221,28 @@
   outputs :
     out : Out
 
+- op : send_u_recv(graph_send_recv)
+  backward : send_u_recv_grad(graph_send_recv_grad)
+  inputs :
+    {x : X, src_index : Src_index, dst_index : Dst_index}
+  outputs :
+    {out : Out, dst_count : Dst_count}
+  int_array :
+    out_size:
+      data_type : int64_t
+      tensor_name : Out_size
+
+- op : send_ue_recv(graph_send_ue_recv)
+  backward : send_ue_recv_grad(graph_send_ue_recv_grad)
+  inputs :
+    {x : X, y : Y, src_index : Src_index, dst_index : Dst_index}
+  outputs :
+    {out : Out, dst_count : Dst_count}
+  int_array :
+    out_size:
+      data_type : int64_t
+      tensor_name : Out_size
+
 - op : send_uv (graph_send_uv)
   backward : send_uv_grad (graph_send_uv_grad)
 
@@ -1286,8 +1314,17 @@
   extra :
     attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32"]
 
+- op : slogdet(slogdeterminant)
+  backward : slogdet_grad(slogdeterminant_grad)
+  inputs :
+    x : Input
+  outputs :
+    out : Out
+
 - op : softmax
   backward : softmax_grad
+  inputs :
+    x : X
   extra :
     attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32", bool is_test = false]
 

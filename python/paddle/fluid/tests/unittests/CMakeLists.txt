@@ -837,6 +837,7 @@ add_subdirectory(sequence)
 add_subdirectory(dygraph_to_static)
 add_subdirectory(rnn)
 add_subdirectory(autograd)
+add_subdirectory(composite_ops)
 add_subdirectory(distribution)
 add_subdirectory(prim)
 
@@ -1258,3 +1259,7 @@ set_tests_properties(test_parallel_executor_dry_run
                      PROPERTIES ENVIRONMENT "FLAGS_USE_STANDALONE_EXECUTOR=0")
 set_tests_properties(test_parallel_executor_drop_scope
                      PROPERTIES ENVIRONMENT "FLAGS_USE_STANDALONE_EXECUTOR=0")
+
+set_tests_properties(
+  test_cuda_graph_static_mode
+  PROPERTIES ENVIRONMENT "FLAGS_CUDA_GRAPH_USE_STANDALONE_EXECUTOR=1")
