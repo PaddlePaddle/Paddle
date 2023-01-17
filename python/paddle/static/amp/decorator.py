@@ -34,8 +34,6 @@ from .fp16_utils import (
     update_role_var_grad,
 )
 
-__all__ = ["decorate"]
-
 
 class OptimizerWithMixedPrecision:
     """
