@@ -132,4 +132,4 @@ void AddNKernel(const Context& dev_ctx,
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
-    add_n, OneDNN, ALL_LAYOUT, phi::AddNKernel, float, phi::dtype::bfloat16) {}
+    add_n, OneDNN, ONEDNN, phi::AddNKernel, float, phi::dtype::bfloat16) {}

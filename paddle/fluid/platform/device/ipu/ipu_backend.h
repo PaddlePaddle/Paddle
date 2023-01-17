@@ -54,8 +54,8 @@ class IpuBackend {
                const std::vector<std::string> &fetch_list);
 
   // Run the compiled graph on ipu
-  void Run(const std::vector<const framework::Tensor *> &inputs,
-           const std::vector<framework::Tensor *> &outputs,
+  void Run(const std::vector<const phi::DenseTensor *> &inputs,
+           const std::vector<phi::DenseTensor *> &outputs,
            const framework::ExecutionContext &ctx);
 
   // Sync weights from IPU while training

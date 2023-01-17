@@ -19,14 +19,14 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 template <typename T>
 class TeacherStudentSigmoidLossOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    Tensor* y = context.Output<Tensor>("Y");
-    const Tensor* x = context.Input<Tensor>("X");
-    const Tensor* labels = context.Input<Tensor>("Label");
+    phi::DenseTensor* y = context.Output<phi::DenseTensor>("Y");
+    const phi::DenseTensor* x = context.Input<phi::DenseTensor>("X");
+    const phi::DenseTensor* labels = context.Input<phi::DenseTensor>("Label");
     T* y_data = y->mutable_data<T>(context.GetPlace());
     const T* x_data = x->data<T>();
     const T* label_data = labels->data<T>();
@@ -68,13 +68,14 @@ template <typename T>
 class TeacherStudentSigmoidLossGradOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    const Tensor* x = context.Input<Tensor>("X");
+    const phi::DenseTensor* x = context.Input<phi::DenseTensor>("X");
     const T* x_data = x->data<T>();
 
-    Tensor* dx = context.Output<Tensor>(framework::GradVarName("X"));
+    phi::DenseTensor* dx =
+        context.Output<phi::DenseTensor>(framework::GradVarName("X"));
     T* dx_data = dx->mutable_data<T>(context.GetPlace());
 
-    const Tensor* labels = context.Input<Tensor>("Label");
+    const phi::DenseTensor* labels = context.Input<phi::DenseTensor>("Label");
     const T* label_data = labels->data<T>();
 
     T soft_max_up_bound =
@@ -84,8 +85,8 @@ class TeacherStudentSigmoidLossGradOpKernel : public framework::OpKernel<T> {
 
     int64_t batch_size = x->dims()[0];
 
-    const framework::Tensor* dOut =
-        context.Input<framework::Tensor>(framework::GradVarName("Y"));
+    const phi::DenseTensor* dOut =
+        context.Input<phi::DenseTensor>(framework::GradVarName("Y"));
 
     const T* dout_data = dOut->data<T>();
 

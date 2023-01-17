@@ -233,11 +233,11 @@ void CheckFiniteAndUnscaleKernel(const Context& dev_ctx,
       dev_ctx.template Alloc<MPDType>(&float_out,
                                       out->numel() * sizeof(MPDType));
 
-      int r = xpu::cast_v2(dev_ctx.x_context(),
-                           reinterpret_cast<const float16*>(x->data<T>()),
-                           float_x.data<MPDType>(),
-                           x->numel());
-      PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast_v2");
+      int r = xpu::cast(dev_ctx.x_context(),
+                        reinterpret_cast<const float16*>(x->data<T>()),
+                        float_x.data<MPDType>(),
+                        x->numel());
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
 
       r = xpu::scale(dev_ctx.x_context(),
                      float_x.data<MPDType>(),
@@ -248,11 +248,11 @@ void CheckFiniteAndUnscaleKernel(const Context& dev_ctx,
                      0.0);
       PADDLE_ENFORCE_XDNN_SUCCESS(r, "scale");
 
-      r = xpu::cast_v2(dev_ctx.x_context(),
-                       float_out.data<MPDType>(),
-                       reinterpret_cast<float16*>(out->data<T>()),
-                       out->numel());
-      PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast_v2");
+      r = xpu::cast(dev_ctx.x_context(),
+                    float_out.data<MPDType>(),
+                    reinterpret_cast<float16*>(out->data<T>()),
+                    out->numel());
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
     } else {
       int r = xpu::scale(dev_ctx.x_context(),
                          reinterpret_cast<const XPUType*>(x->data<T>()),

@@ -16,6 +16,7 @@
 #include <sstream>
 
 #include "glog/logging.h"
+#include "paddle/fluid/framework/op_proto_maker.h"
 #include "paddle/fluid/platform/flags.h"
 #include "paddle/fluid/platform/profiler/common_event.h"
 #include "paddle/fluid/platform/profiler/host_event_recorder.h"
@@ -87,6 +88,21 @@ void ProcessOperatorSupplementEvents(
       collector->AddThreadName(tid, thr_sec.thread_name);
     }
     for (const auto& evt : thr_sec.events) {
+      // get callstack from event
+      std::vector<std::string> callstacks;
+      const std::vector<std::string>* callstack_ptr = nullptr;
+      auto iter = evt.attributes.find(
+          framework::OpProtoAndCheckerMaker::OpCreationCallstackAttrName());
+      if (iter != evt.attributes.end()) {
+        callstack_ptr =
+            &PADDLE_GET_CONST(std::vector<std::string>, iter->second);
+        callstacks = *callstack_ptr;
+      }
+      std::ostringstream result_string;
+      for (auto it = callstacks.begin(); it != callstacks.end(); it++) {
+        result_string << (*it) << std::endl;
+      }
+
       OperatorSupplementEvent event;
       event.timestamp_ns = evt.timestamp_ns;
       event.op_type = evt.op_type;
@@ -111,13 +127,11 @@ void ProcessOperatorSupplementEvents(
         }
       }
 
-      std::ostringstream result_string;
-      for (auto it = evt.callstack.begin(); it != evt.callstack.end(); it++) {
-        result_string << (*it) << std::endl;
-      }
       event.input_shapes = input_shapes;
       event.dtypes = dtypes;
       event.callstack = result_string.str();
+      event.attributes = evt.attributes;
+      event.op_id = evt.op_id;
       event.process_id = op_supplement_events.process_id;
       event.thread_id = tid;
       collector->AddOperatorSupplementEvent(std::move(event));

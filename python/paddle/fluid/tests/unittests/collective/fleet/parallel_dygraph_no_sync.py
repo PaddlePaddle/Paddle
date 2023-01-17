@@ -12,25 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import os
-import contextlib
-import unittest
-import numpy as np
-import six
-import pickle
 import random
 
+import numpy as np
+from test_dist_base import (
+    TestParallelDyGraphRunnerBase,
+    print_to_err,
+    print_to_out,
+    runtime_main,
+)
+
 import paddle
-import paddle.fluid as fluid
 import paddle.distributed as dist
-import paddle.fluid.dygraph as dygraph
-from paddle.fluid.dygraph.parallel import ParallelEnv
-from paddle.fluid import core
-from paddle.fluid.dygraph.nn import Linear
-from paddle.fluid.framework import _test_eager_guard
-from test_dist_base import print_to_err, print_to_out, runtime_main, TestParallelDyGraphRunnerBase
+import paddle.fluid as fluid
+from paddle.nn import Linear
 
 seed = 90
 RUN_STEP = 20
@@ -39,12 +35,11 @@ batch_num = 1000
 
 
 class SimpleNet(fluid.Layer):
-
     def __init__(self):
-        super(SimpleNet, self).__init__()
-        self.net_a = Linear(input_dim=10, output_dim=20)
-        self.net_b = Linear(input_dim=20, output_dim=5)
-        self.net_c = Linear(input_dim=5, output_dim=10)
+        super().__init__()
+        self.net_a = Linear(10, 20)
+        self.net_b = Linear(20, 5)
+        self.net_c = Linear(5, 10)
 
     def forward(self, x):
         x = self.net_a(x)
@@ -54,14 +49,14 @@ class SimpleNet(fluid.Layer):
 
 
 class TestNoSync(TestParallelDyGraphRunnerBase):
-
     def get_model(self):
         model = SimpleNet()
-        train_reader = paddle.batch(fake_sample_reader(),
-                                    batch_size=batch_size,
-                                    drop_last=True)
-        optimizer = paddle.optimizer.SGD(learning_rate=0.001,
-                                         parameters=model.parameters())
+        train_reader = paddle.batch(
+            fake_sample_reader(), batch_size=batch_size, drop_last=True
+        )
+        optimizer = paddle.optimizer.SGD(
+            learning_rate=0.001, parameters=model.parameters()
+        )
         return model, train_reader, optimizer
 
     def run_one_loop(self, model, optimizer, batch):
@@ -77,7 +72,7 @@ class TestNoSync(TestParallelDyGraphRunnerBase):
             device_id = int(os.getenv("FLAGS_selected_gpus", "0"))
             place = fluid.CUDAPlace(device_id)
         else:
-            assert ("Only support CUDAPlace for now.")
+            assert "Only support CUDAPlace for now."
 
         with fluid.dygraph.guard(place):
             fluid.default_startup_program().random_seed = seed
@@ -90,9 +85,11 @@ class TestNoSync(TestParallelDyGraphRunnerBase):
                 dist.init_parallel_env()
                 print_to_err(
                     type(self).__name__,
-                    "begin to prepare context in dygraph with nccl2")
+                    "begin to prepare context in dygraph with nccl2",
+                )
                 model = paddle.DataParallel(
-                    model, find_unused_parameters=args.find_unused_parameters)
+                    model, find_unused_parameters=args.find_unused_parameters
+                )
             print_to_err(type(self).__name__, "model built in dygraph")
             out_losses = self.model_train(args, model, opt, train_reader)
             print_to_out(out_losses)
@@ -119,7 +116,8 @@ class TestNoSync(TestParallelDyGraphRunnerBase):
         model, train_reader, opt = self.get_model()
         if args.update_method in ["nccl2", "gloo"]:
             model = paddle.DataParallel(
-                model, find_unused_parameters=args.find_unused_parameters)
+                model, find_unused_parameters=args.find_unused_parameters
+            )
 
         out_losses = self.model_train(args, model, opt, train_reader)
         print_to_out(out_losses)
@@ -149,10 +147,9 @@ class TestNoSync(TestParallelDyGraphRunnerBase):
 
 
 def fake_sample_reader():
-
     def __reader__():
         for i in range(batch_num):
-            x_data = np.random.random_sample((10, )).astype('float32')
+            x_data = np.random.random_sample((10,)).astype('float32')
             yield x_data
 
     return __reader__

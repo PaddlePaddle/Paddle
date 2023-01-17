@@ -132,11 +132,11 @@ void CrossEntropyWithSoftmaxKernel(const Context& dev_ctx,
     int* labels_int_ptr_l3 = RAII_GUARD.alloc_l3_or_gm<int32_t>(labels.numel());
     PADDLE_ENFORCE_XDNN_NOT_NULL(labels_int_ptr_l3);
 
-    r = xpu::cast_v2<int64_t, int32_t>(dev_ctx.x_context(),
-                                       labels.data<int64_t>(),
-                                       labels_int_ptr_l3,
-                                       labels.numel());
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "clip_v2");
+    r = xpu::cast<int64_t, int32_t>(dev_ctx.x_context(),
+                                    labels.data<int64_t>(),
+                                    labels_int_ptr_l3,
+                                    labels.numel());
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
 
     r = xpu::hard_cross_entropy<XPUType, int32_t>(
         dev_ctx.x_context(),

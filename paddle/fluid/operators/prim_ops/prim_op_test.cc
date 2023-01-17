@@ -40,6 +40,7 @@ USE_OP_ITSELF(eq_p);
 USE_OP_ITSELF(pow_p);
 USE_OP_ITSELF(max_p);
 USE_OP_ITSELF(erf_p);
+USE_OP_ITSELF(bernoulli_p);
 
 namespace paddle {
 namespace framework {
@@ -724,6 +725,27 @@ TEST(PrimOp, erf_p) {
   ASSERT_EQ(block->Var("x1")->GetType(), proto::VarType::LOD_TENSOR);
   ASSERT_EQ(block->Var("x1")->GetDataType(), proto::VarType_Type_FP32);
   auto shapes = block->Var("x1")->GetShape();
+  ASSERT_EQ(shapes.size(), 3UL);
+  ASSERT_EQ(shapes[0], 3L);
+  ASSERT_EQ(shapes[1], 4L);
+  ASSERT_EQ(shapes[2], 5L);
+}
+
+TEST(PrimOp, bernoulli_p) {
+  ProgramDesc program;
+  auto *block = program.MutableBlock(0);
+  std::string x0 = "x0";
+
+  AppendOp(block,
+           "bernoulli_p",
+           {{}},
+           {{"Y", {x0}}},
+           {{"p", 0.5f},
+            {"dtype", proto::VarType_Type_FP32},
+            {"shape", std::vector<int64_t>{3, 4, 5}}});
+  ASSERT_EQ(block->Var("x0")->GetType(), proto::VarType::LOD_TENSOR);
+  ASSERT_EQ(block->Var("x0")->GetDataType(), proto::VarType_Type_FP32);
+  auto shapes = block->Var("x0")->GetShape();
   ASSERT_EQ(shapes.size(), 3UL);
   ASSERT_EQ(shapes[0], 3L);
   ASSERT_EQ(shapes[1], 4L);

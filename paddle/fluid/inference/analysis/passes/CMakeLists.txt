@@ -30,17 +30,6 @@ cc_library(
   inference_op_replace_pass
   SRCS inference_op_replace_pass.cc
   DEPS analysis_pass graph_to_program_pass)
-if(WITH_TESTING)
-  cc_library(
-    ir_graph_clean_pass
-    SRCS ir_graph_clean_pass.cc
-    DEPS analysis_pass gtest)
-else()
-  cc_library(
-    ir_graph_clean_pass
-    SRCS ir_graph_clean_pass.cc
-    DEPS analysis_pass)
-endif()
 
 cc_library(
   analysis_passes
@@ -52,8 +41,7 @@ cc_library(
        memory_optim_pass
        convert_to_mixed_precision
        inference_op_replace_pass
-       ir_graph_to_program_pass
-       ir_graph_clean_pass)
+       ir_graph_to_program_pass)
 
 set(analysis_deps
     ${analysis_deps} analysis_passes subgraph_detector

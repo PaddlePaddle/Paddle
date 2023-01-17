@@ -19,14 +19,14 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 
 template <typename DeviceContext, typename T>
 class ProximalAdagradOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* param_out = ctx.Output<Tensor>("ParamOut");
-    auto* moment_out = ctx.Output<Tensor>("MomentOut");
+    auto* param_out = ctx.Output<phi::DenseTensor>("ParamOut");
+    auto* moment_out = ctx.Output<phi::DenseTensor>("MomentOut");
 
     param_out->mutable_data<T>(ctx.GetPlace());
     moment_out->mutable_data<T>(ctx.GetPlace());
@@ -34,12 +34,14 @@ class ProximalAdagradOpKernel : public framework::OpKernel<T> {
     auto l1 = static_cast<T>(ctx.Attr<float>("l1"));
     auto l2 = static_cast<T>(ctx.Attr<float>("l2"));
 
-    auto grad = ctx.Input<Tensor>("Grad");
-    auto p = framework::EigenVector<T>::Flatten(*ctx.Input<Tensor>("Param"));
-    auto m = framework::EigenVector<T>::Flatten(*ctx.Input<Tensor>("Moment"));
+    auto grad = ctx.Input<phi::DenseTensor>("Grad");
+    auto p = framework::EigenVector<T>::Flatten(
+        *ctx.Input<phi::DenseTensor>("Param"));
+    auto m = framework::EigenVector<T>::Flatten(
+        *ctx.Input<phi::DenseTensor>("Moment"));
     auto g = framework::EigenVector<T>::Flatten(*grad);
-    auto lr =
-        framework::EigenVector<T>::Flatten(*ctx.Input<Tensor>("LearningRate"));
+    auto lr = framework::EigenVector<T>::Flatten(
+        *ctx.Input<phi::DenseTensor>("LearningRate"));
 
     auto p_out = framework::EigenVector<T>::Flatten(*param_out);
     auto m_out = framework::EigenVector<T>::Flatten(*moment_out);

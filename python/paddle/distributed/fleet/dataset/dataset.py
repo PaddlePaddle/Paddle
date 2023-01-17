@@ -13,19 +13,19 @@
 # limitations under the License.
 """This is definition of dataset class, which is high performance IO."""
 
-import paddle
-from paddle.fluid.proto import data_feed_pb2
 from google.protobuf import text_format
+
 import paddle.fluid.core as core
+from paddle.fluid.proto import data_feed_pb2
 
 __all__ = []
 
 
-class DatasetBase(object):
-    """ Base dataset class. """
+class DatasetBase:
+    """Base dataset class."""
 
     def __init__(self):
-        """ Init. """
+        """Init."""
         # define class name here
         # to decide whether we need create in memory instance
         self.proto_desc = data_feed_pb2.DataFeedDesc()
@@ -36,15 +36,17 @@ class DatasetBase(object):
         self.use_ps_gpu = False
         self.psgpu = None
 
-    def init(self,
-             batch_size=1,
-             thread_num=1,
-             use_var=[],
-             pipe_command="cat",
-             input_type=0,
-             fs_name="",
-             fs_ugi="",
-             download_cmd="cat"):
+    def init(
+        self,
+        batch_size=1,
+        thread_num=1,
+        use_var=[],
+        pipe_command="cat",
+        input_type=0,
+        fs_name="",
+        fs_ugi="",
+        download_cmd="cat",
+    ):
         """
         should be called only once in user's python scripts to initialize setings of dataset instance.
         Normally, it is called by InMemoryDataset or QueueDataset.
@@ -272,8 +274,9 @@ class DatasetBase(object):
     def _dynamic_adjust_after_train(self):
         pass
 
-    def _check_use_var_with_data_generator(self, var_list, data_generator_class,
-                                           test_file):
+    def _check_use_var_with_data_generator(
+        self, var_list, data_generator_class, test_file
+    ):
         """
          Var consistency insepection of use_var_list and data_generator data.
 
@@ -305,32 +308,38 @@ class DatasetBase(object):
                     if var_len != data_gen_len:
                         raise ValueError(
                             "var length mismatch error: var_list = %s vs data_generator = %s"
-                            % (var_len, data_gen_len))
+                            % (var_len, data_gen_len)
+                        )
 
                     for i, ele in enumerate(user_parsed_line):
                         if len(ele[1]) == 0:
                             raise ValueError(
                                 "var length error: var %s's length in data_generator is 0"
-                                % ele[0])
+                                % ele[0]
+                            )
 
                         if var_list[
-                                i].dtype == core.VarDesc.VarType.FP32 and not all(
-                                    isinstance(ele, float) for ele in ele[1]):
+                            i
+                        ].dtype == core.VarDesc.VarType.FP32 and not all(
+                            isinstance(ele, float) for ele in ele[1]
+                        ):
                             raise TypeError(
                                 "var dtype mismatch error: var name = %s, var type in var_list = %s, while var in data_generator contains non-float value, which is %s \n"
                                 "Please check if order of var_list and data_generator are aligned. \n"
                                 "Please check if var's type in data_generator is correct."
-                                % (ele[0], "float", ele[1]))
+                                % (ele[0], "float", ele[1])
+                            )
 
-                        if (var_list[i].dtype == core.VarDesc.VarType.INT64
-                                or var_list[i].dtype
-                                == core.VarDesc.VarType.INT32) and not all(
-                                    isinstance(ele, int) for ele in ele[1]):
+                        if (
+                            var_list[i].dtype == core.VarDesc.VarType.INT64
+                            or var_list[i].dtype == core.VarDesc.VarType.INT32
+                        ) and not all(isinstance(ele, int) for ele in ele[1]):
                             raise TypeError(
                                 "var dtype mismatch error: var name = %s, var type in var_list = %s, while var in data_generator contains non-int value, which is %s \n"
                                 "Please check if order of var_list and data_generator are aligned. \n"
                                 "Please check if var's type in data_generator is correct."
-                                % (ele[0], "int", ele[1]))
+                                % (ele[0], "int", ele[1])
+                            )
 
             else:
                 break
@@ -354,8 +363,8 @@ class InMemoryDataset(DatasetBase):
     """
 
     def __init__(self):
-        """ Init. """
-        super(InMemoryDataset, self).__init__()
+        """Init."""
+        super().__init__()
         self.proto_desc.name = "MultiSlotInMemoryDataFeed"
         self.fleet_send_batch_size = None
         self.is_user_set_queue_num = False
@@ -506,7 +515,7 @@ class InMemoryDataset(DatasetBase):
                 self._set_fleet_send_batch_size(kwargs[key])
             elif key == "fleet_send_sleep_seconds":
                 self._set_fleet_send_sleep_seconds(kwargs[key])
-            elif key == "fea_eval" and kwargs[key] == True:
+            elif key == "fea_eval" and kwargs[key]:
                 candidate_size = kwargs.get("candidate_size", 10000)
                 self._set_fea_eval(candidate_size, True)
 
@@ -589,14 +598,16 @@ class InMemoryDataset(DatasetBase):
             data_feed_type = "MultiSlotInMemoryDataFeed"
         self._set_feed_type(data_feed_type)
 
-        super(InMemoryDataset, self).init(batch_size=batch_size,
-                                          thread_num=thread_num,
-                                          use_var=use_var,
-                                          pipe_command=pipe_command,
-                                          input_type=input_type,
-                                          fs_name=fs_name,
-                                          fs_ugi=fs_ugi,
-                                          download_cmd=download_cmd)
+        super().init(
+            batch_size=batch_size,
+            thread_num=thread_num,
+            use_var=use_var,
+            pipe_command=pipe_command,
+            input_type=input_type,
+            fs_name=fs_name,
+            fs_ugi=fs_ugi,
+            download_cmd=download_cmd,
+        )
 
         if kwargs.get("queue_num", -1) > 0:
             queue_num = kwargs.get("queue_num", -1)
@@ -607,7 +618,7 @@ class InMemoryDataset(DatasetBase):
         Set data_feed_desc
         """
         self.proto_desc.name = data_feed_type
-        if (self.proto_desc.name == "SlotRecordInMemoryDataFeed"):
+        if self.proto_desc.name == "SlotRecordInMemoryDataFeed":
             self.dataset = core.Dataset("SlotRecordDataset")
 
     def _prepare_to_run(self):
@@ -780,11 +791,12 @@ class InMemoryDataset(DatasetBase):
         self.gen_uni_feasigns = generate_uni_feasigns
         self.local_shard_num = shard_num
 
-    def _generate_local_tables_unlock(self, table_id, fea_dim, read_thread_num,
-                                      consume_thread_num, shard_num):
-        self.dataset.generate_local_tables_unlock(table_id, fea_dim,
-                                                  read_thread_num,
-                                                  consume_thread_num, shard_num)
+    def _generate_local_tables_unlock(
+        self, table_id, fea_dim, read_thread_num, consume_thread_num, shard_num
+    ):
+        self.dataset.generate_local_tables_unlock(
+            table_id, fea_dim, read_thread_num, consume_thread_num, shard_num
+        )
 
     def set_date(self, date):
         """
@@ -822,11 +834,25 @@ class InMemoryDataset(DatasetBase):
         if self.use_ps_gpu and core._is_compiled_with_heterps():
             self.psgpu.set_date(year, month, day)
 
-    def tdm_sample(self, tree_name, tree_path, tdm_layer_counts,
-                   start_sample_layer, with_hierachy, seed, id_slot):
-        self.dataset.tdm_sample(tree_name, tree_path, tdm_layer_counts,
-                                start_sample_layer, with_hierachy, seed,
-                                id_slot)
+    def tdm_sample(
+        self,
+        tree_name,
+        tree_path,
+        tdm_layer_counts,
+        start_sample_layer,
+        with_hierachy,
+        seed,
+        id_slot,
+    ):
+        self.dataset.tdm_sample(
+            tree_name,
+            tree_path,
+            tdm_layer_counts,
+            start_sample_layer,
+            with_hierachy,
+            seed,
+            id_slot,
+        )
 
     def load_into_memory(self, is_shuffle=False):
         """
@@ -1113,12 +1139,14 @@ class InMemoryDataset(DatasetBase):
 
         """
         import numpy as np
+
         local_data_size = self.dataset.get_memory_data_size()
         local_data_size = np.array([local_data_size])
         if fleet is not None:
             global_data_size = local_data_size * 0
-            fleet._role_maker.all_reduce_worker(local_data_size,
-                                                global_data_size)
+            fleet._role_maker.all_reduce_worker(
+                local_data_size, global_data_size
+            )
             return global_data_size[0]
         return local_data_size[0]
 
@@ -1167,12 +1195,14 @@ class InMemoryDataset(DatasetBase):
 
         """
         import numpy as np
+
         local_data_size = self.dataset.get_shuffle_data_size()
         local_data_size = np.array([local_data_size])
         if fleet is not None:
             global_data_size = local_data_size * 0
-            fleet._role_maker.all_reduce_worker(local_data_size,
-                                                global_data_size)
+            fleet._role_maker.all_reduce_worker(
+                local_data_size, global_data_size
+            )
             return global_data_size[0]
         return local_data_size[0]
 
@@ -1259,7 +1289,7 @@ class QueueDataset(DatasetBase):
         """
         Initialize QueueDataset
         """
-        super(QueueDataset, self).__init__()
+        super().__init__()
         self.proto_desc.name = "MultiSlotDataFeed"
 
     def init(self, **kwargs):
@@ -1268,7 +1298,7 @@ class QueueDataset(DatasetBase):
 
         should be called only once in user's python scripts to initialize setings of dataset instance
         """
-        super(QueueDataset, self).init(**kwargs)
+        super().init(**kwargs)
 
     def _prepare_to_run(self):
         """
@@ -1300,14 +1330,14 @@ class FileInstantDataset(DatasetBase):
         """
         Initialize FileInstantDataset
         """
-        super(FileInstantDataset, self).__init__()
+        super().__init__()
         self.proto_desc.name = "MultiSlotFileInstantDataFeed"
 
     def init(self, **kwargs):
         """
         should be called only once in user's python scripts to initialize setings of dataset instance
         """
-        super(FileInstantDataset, self).init(**kwargs)
+        super().init(**kwargs)
 
 
 class BoxPSDataset(InMemoryDataset):
@@ -1325,7 +1355,7 @@ class BoxPSDataset(InMemoryDataset):
         """
         Initialize BoxPSDataset
         """
-        super(BoxPSDataset, self).__init__()
+        super().__init__()
         self.boxps = core.BoxPS(self.dataset)
         self.proto_desc.name = "PaddleBoxDataFeed"
 
@@ -1333,7 +1363,7 @@ class BoxPSDataset(InMemoryDataset):
         """
         should be called only once in user's python scripts to initialize setings of dataset instance
         """
-        super(BoxPSDataset, self).init(**kwargs)
+        super().init(**kwargs)
 
         rank_offset = kwargs.get("rank_offset", "")
         self._set_rank_offset(rank_offset)
@@ -1493,7 +1523,7 @@ class BoxPSDataset(InMemoryDataset):
               filelist = ["a.txt", "b.txt"]
               dataset.set_filelist(filelist)
               dataset.load_into_memory()
-	    """
+        """
         self._prepare_to_run()
         self.boxps.load_into_memory()
 

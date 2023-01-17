@@ -22,8 +22,8 @@ template <typename T>
 class NPUReduceMeanOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* input = ctx.Input<Tensor>("X");
-    auto* output = ctx.Output<Tensor>("Out");
+    auto* input = ctx.Input<phi::DenseTensor>("X");
+    auto* output = ctx.Output<phi::DenseTensor>("Out");
     output->mutable_data<T>(ctx.GetPlace());
 
     bool reduce_all = ctx.Attr<bool>("reduce_all");
@@ -56,9 +56,11 @@ template <typename T>
 class NPUReduceMeanGradOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* input = ctx.Input<Tensor>("X");
-    auto* output_grad = ctx.Input<Tensor>(framework::GradVarName("Out"));
-    auto* input_grad = ctx.Output<Tensor>(framework::GradVarName("X"));
+    auto* input = ctx.Input<phi::DenseTensor>("X");
+    auto* output_grad =
+        ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+    auto* input_grad =
+        ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
     input_grad->mutable_data<T>(ctx.GetPlace());
 
     bool reduce_all = ctx.Attr<bool>("reduce_all");

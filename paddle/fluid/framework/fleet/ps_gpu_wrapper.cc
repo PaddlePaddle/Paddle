@@ -140,7 +140,7 @@ void PSGPUWrapper::PreBuildTask(std::shared_ptr<HeterContext> gpu_task) {
   if (!gpu_graph_mode_) {
     if (data_set_name.find("SlotRecordDataset") != std::string::npos) {
       VLOG(0) << "ps_gpu_wrapper use SlotRecordDataset";
-      SlotRecordDataset* dataset = (SlotRecordDataset*)(dataset_);
+      SlotRecordDataset* dataset = (SlotRecordDataset*)(dataset_);  // NOLINT
       auto input_channel = dataset->GetInputChannel();
       VLOG(0) << "psgpu wrapperinputslotchannle size: "
               << input_channel->Size();
@@ -194,7 +194,7 @@ void PSGPUWrapper::PreBuildTask(std::shared_ptr<HeterContext> gpu_task) {
     } else {
       CHECK(data_set_name.find("MultiSlotDataset") != std::string::npos);
       VLOG(0) << "ps_gpu_wrapper use MultiSlotDataset";
-      MultiSlotDataset* dataset = (MultiSlotDataset*)(dataset_);
+      MultiSlotDataset* dataset = (MultiSlotDataset*)(dataset_);  // NOLINT
       auto input_channel = dataset->GetInputChannel();
 
       const std::deque<Record>& vec_data = input_channel->GetData();
@@ -235,7 +235,7 @@ void PSGPUWrapper::PreBuildTask(std::shared_ptr<HeterContext> gpu_task) {
     }
   } else {
     VLOG(0) << "PreBuild in GpuGraph mode";
-    SlotRecordDataset* dataset = (SlotRecordDataset*)(dataset_);
+    SlotRecordDataset* dataset = (SlotRecordDataset*)(dataset_);  // NOLINT
     const std::vector<uint64_t>& vec_data = dataset->GetGpuGraphTotalKeys();
 
     total_len = vec_data.size();
@@ -264,7 +264,7 @@ void PSGPUWrapper::PreBuildTask(std::shared_ptr<HeterContext> gpu_task) {
                iter++) {
             uint64_t cur_key = *iter;
             int shard_id = cur_key % thread_keys_shard_num_;
-            // TODO: feasign <-> slot <-> multi_dim
+            // TODO(fengdanlei): feasign <-> slot <-> multi_dim
             this->thread_dim_keys_[i][shard_id][0].insert(cur_key);
           }
         };
@@ -786,9 +786,9 @@ void PSGPUWrapper::BuildGPUTask(std::shared_ptr<HeterContext> gpu_task) {
     size_t left = 0, right = 0;
 
     size_t real_len = len_per_thread;
-    if ((size_t)z < remain) real_len++;
+    if ((size_t)z < remain) real_len++;  // NOLINT
 
-    if ((size_t)z < remain) {
+    if ((size_t)z < remain) {  // NOLINT
       left = z * (len_per_thread + 1);
       right = left + real_len;
     } else {
@@ -799,7 +799,7 @@ void PSGPUWrapper::BuildGPUTask(std::shared_ptr<HeterContext> gpu_task) {
 
     for (size_t k = left; k < right; k++) {
 #ifdef PADDLE_WITH_PSLIB
-      float* val = (float*)(mem_pool->mem_address(k));
+      float* val = (float*)(mem_pool->mem_address(k));  // NOLINT
       float* ptr_val = device_dim_ptrs[k]->data();
       size_t dim = device_dim_ptrs[k]->size();
       val->delta_score =
@@ -809,8 +809,8 @@ void PSGPUWrapper::BuildGPUTask(std::shared_ptr<HeterContext> gpu_task) {
                               DownpourCtrDymfFeatureValue::show_index()];
       val->clk = ptr_val[paddle::ps::DownpourCtrDymfAccessor::
                              DownpourCtrDymfFeatureValue::click_index()];
-      val->slot = int(ptr_val[paddle::ps::DownpourCtrDymfAccessor::
-                                  DownpourCtrDymfFeatureValue::slot_index()]);
+      val->slot = int(ptr_val[paddle::ps::DownpourCtrDymfAccessor::  // NOLINT
+                              DownpourCtrDymfFeatureValue::slot_index()]);
       val->lr = ptr_val[paddle::ps::DownpourCtrDymfAccessor::
                             DownpourCtrDymfFeatureValue::embed_w_index()];
       val->lr_g2sum =
@@ -818,7 +818,7 @@ void PSGPUWrapper::BuildGPUTask(std::shared_ptr<HeterContext> gpu_task) {
                       DownpourCtrDymfFeatureValue::embed_g2sum_index()];
       // TODO(xuefeng) set mf_dim while using DownpourCtrDymfAccessor
       ptr_val[paddle::ps::DownpourCtrDymfAccessor::DownpourCtrDymfFeatureValue::
-                  mf_dim_index()] = float(mf_dim);
+                  mf_dim_index()] = float(mf_dim);  // NOLINT
       val->mf_dim = mf_dim;
       if (dim > 8) {  // CpuPS alreay expand as mf_dim
         val->mf_size = mf_dim + 1;
@@ -1025,7 +1025,8 @@ void PSGPUWrapper::EndPass() {
     VLOG(0) << "dump pool to cpu table: " << i << "with mf dim: " << mf_dim
             << " key_len :" << len
             << " feature_value_size:" << feature_value_size;
-    char* test_build_values = (char*)malloc(feature_value_size * real_len);
+    char* test_build_values =
+        (char*)malloc(feature_value_size * real_len);  // NOLINT
     uint64_t offset = left * feature_value_size;
     cudaMemcpy(test_build_values,
                hbm_pool->mem() + offset,
@@ -1038,9 +1039,9 @@ void PSGPUWrapper::EndPass() {
         continue;
       }
       size_t local_offset = (i - left) * feature_value_size;
-      float* gpu_val = (float*)(test_build_values + local_offset);
+      float* gpu_val = (float*)(test_build_values + local_offset);  // NOLINT
 #ifdef PADDLE_WITH_PSLIB
-      // TODO: PSLIB DumpFill
+      // TODO(fengdanlei): PSLIB DumpFill
 #endif
 #ifdef PADDLE_WITH_PSCORE
       accessor_wrapper_ptr->DumpFill(gpu_val, cpu_table_accessor_, mf_dim);
@@ -1239,7 +1240,7 @@ void PSGPUWrapper::PullSparse(const paddle::platform::Place& place,
       auto buf = memory::Alloc(place, total_length * feature_value_size);
       float* total_values_gpu = reinterpret_cast<float*>(buf->ptr());
       VLOG(3) << "Begin copy keys, key_num[" << total_length << "]";
-      LoDTensor& total_keys_tensor = keys_tensor[devid_2_index];
+      phi::DenseTensor& total_keys_tensor = keys_tensor[devid_2_index];
       uint64_t* total_keys =
           reinterpret_cast<uint64_t*>(total_keys_tensor.mutable_data<int64_t>(
               {int64_t(total_length), 1}, place));
@@ -1309,7 +1310,7 @@ void PSGPUWrapper::PullSparse(const paddle::platform::Place& place,
     VLOG(3) << "Begin copy keys, key_num[" << total_length << "]";
     int device_id = place.GetDeviceId();
     int devid_2_index = HeterPs_->get_index_by_devid(device_id);
-    LoDTensor& total_keys_tensor = keys_tensor[devid_2_index];
+    phi::DenseTensor& total_keys_tensor = keys_tensor[devid_2_index];
     uint64_t* total_keys =
         reinterpret_cast<uint64_t*>(total_keys_tensor.mutable_data<int64_t>(
             {int64_t(total_length), 1}, place));
@@ -1489,7 +1490,7 @@ void PSGPUWrapper::PushSparseGrad(const paddle::platform::Place& place,
               << "grad_value_size:" << grad_value_size;
       float* total_grad_values_gpu = reinterpret_cast<float*>(buf->ptr());
 
-      LoDTensor& total_keys_tensor = keys_tensor[devid_2_index];
+      phi::DenseTensor& total_keys_tensor = keys_tensor[devid_2_index];
       uint64_t* total_keys =
           reinterpret_cast<uint64_t*>(total_keys_tensor.data<int64_t>());
       VLOG(3) << "Begin copy grad tensor to gpups struct";
@@ -1526,7 +1527,7 @@ void PSGPUWrapper::PushSparseGrad(const paddle::platform::Place& place,
     VLOG(3) << "Push Sparse Max mf dimention: " << max_mf_dim_
             << "grad_value_size:" << grad_value_size;
     float* total_grad_values_gpu = reinterpret_cast<float*>(buf->ptr());
-    LoDTensor& total_keys_tensor = keys_tensor[devid_2_index];
+    phi::DenseTensor& total_keys_tensor = keys_tensor[devid_2_index];
     uint64_t* total_keys =
         reinterpret_cast<uint64_t*>(total_keys_tensor.data<int64_t>());
     VLOG(3) << "Begin copy grad tensor to xpups struct";

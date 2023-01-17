@@ -32,7 +32,7 @@ namespace cub = hipcub;
 #include "paddle/fluid/memory/allocation/allocator.h"
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/operators/detection/bbox_util.h"
-#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
+#include "paddle/phi/backends/gpu/gpu_primitives.h"
 
 namespace phi {
 
@@ -69,7 +69,7 @@ __global__ void GPUDistFpnProposalsHelper(const int nthreads,
     tgt_lvl = min(max_level, max(tgt_lvl, min_level));
     target_lvls[i] = tgt_lvl;
     // compute number of rois in the same batch and same target level
-    paddle::platform::CudaAtomicAdd(
+    phi::CudaAtomicAdd(
         sub_lod_list + (tgt_lvl - min_level) * lod_size + roi_batch_ind, 1);
   }
 }

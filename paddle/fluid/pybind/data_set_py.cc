@@ -79,7 +79,7 @@ class IterableDatasetWrapper {
       tensors_.emplace_back();
       for (auto &var_name : slots_) {
         auto *var = scopes_.back()->Var(var_name);
-        auto *t = var->GetMutable<framework::LoDTensor>();
+        auto *t = var->GetMutable<phi::DenseTensor>();
         tensors_.back().emplace_back(t);
       }
     }
@@ -113,7 +113,7 @@ class IterableDatasetWrapper {
     exhaustive_num_ = 0;
   }
 
-  std::vector<std::unordered_map<std::string, framework::LoDTensor>> Next() {
+  std::vector<std::unordered_map<std::string, phi::DenseTensor>> Next() {
     PADDLE_ENFORCE_EQ(
         is_started_,
         true,
@@ -121,7 +121,7 @@ class IterableDatasetWrapper {
             "Reader must be started when getting next batch data."));
     size_t device_num = places_.size();
 
-    std::vector<std::unordered_map<std::string, framework::LoDTensor>> result(
+    std::vector<std::unordered_map<std::string, phi::DenseTensor>> result(
         device_num);
 
     size_t read_num = 0;
@@ -175,7 +175,7 @@ class IterableDatasetWrapper {
   }
 
  private:
-  bool IsValidLoDTensor(const framework::LoDTensor &tensor) const {
+  bool IsValidLoDTensor(const phi::DenseTensor &tensor) const {
     auto &lod = tensor.lod();
     PADDLE_ENFORCE_LE(lod.size(),
                       1,
@@ -202,7 +202,7 @@ class IterableDatasetWrapper {
   size_t exhaustive_num_;
 
   std::vector<std::unique_ptr<framework::Scope>> scopes_;
-  std::vector<std::vector<framework::LoDTensor *>> tensors_;
+  std::vector<std::vector<phi::DenseTensor *>> tensors_;
   bool is_started_{false};
 };
 

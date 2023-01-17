@@ -34,7 +34,7 @@ class TruncatedGaussianRandomOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     framework::LibraryType library{framework::LibraryType::kPlain};
-    framework::DataLayout layout{framework::DataLayout::kAnyLayout};
+    phi::DataLayout layout{phi::DataLayout::kAnyLayout};
     return framework::OpKernelType(
         static_cast<framework::proto::VarType::Type>(ctx.Attr<int>("dtype")),
         ctx.device_context(),

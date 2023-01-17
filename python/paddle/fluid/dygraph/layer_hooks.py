@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import six
 import warnings
 
 from paddle.fluid.framework import default_main_program, _non_static_mode
@@ -38,13 +37,16 @@ def record_program_ops_pre_hook(layer, inputs):
     if not _non_static_mode():
         if layer._op_recorder.start < 0:
             layer._op_recorder.start = len(
-                default_main_program().current_block().ops)
+                default_main_program().current_block().ops
+            )
             layer._op_recorder.is_valid = True
         else:
             layer._op_recorder.is_valid = False
             warnings.warn(
-                "{} has recorded the op information before. Please check whether you call this layer twice."
-                .format(layer._full_name))
+                "{} has recorded the op information before. Please check whether you call this layer twice.".format(
+                    layer._full_name
+                )
+            )
 
     return None
 
@@ -57,14 +59,14 @@ def set_op_customized_attrs_post_hook(layer, inputs, outputs):
 
         start = layer._op_recorder.start
         end = len(default_main_program().current_block().ops)
-        assert (start >= 0 and end >= start)
+        assert start >= 0 and end >= start
         ops = default_main_program().current_block().ops[start:end]
 
         layer._op_recorder.end = end
         layer._op_recorder.ops = ops
 
         for op in ops:
-            for attr_name, val in six.iteritems(layer._customized_attrs):
+            for attr_name, val in layer._customized_attrs.items():
                 op._set_attr(attr_name, val)
 
         # remove pre-hook and post-hook

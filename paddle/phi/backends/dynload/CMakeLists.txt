@@ -99,3 +99,10 @@ if(MKL_FOUND AND WITH_ONEMKL)
     DEPS phi_dynamic_loader)
   target_include_directories(phi_dynload_mklrt PRIVATE ${MKL_INCLUDE})
 endif()
+
+if(WITH_CUDNN_FRONTEND)
+  nv_test(
+    cudnn_frontend_test
+    SRCS cudnn_frontend_test.cc
+    DEPS phi_dynload_cuda cudnn-frontend)
+endif()

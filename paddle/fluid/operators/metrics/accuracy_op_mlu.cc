@@ -23,12 +23,12 @@ template <typename T>
 class AccuracyMLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* indices = ctx.Input<Tensor>("Indices");
-    auto* label = ctx.Input<Tensor>("Label");
+    auto* indices = ctx.Input<phi::DenseTensor>("Indices");
+    auto* label = ctx.Input<phi::DenseTensor>("Label");
 
-    auto* accuracy = ctx.Output<Tensor>("Accuracy");
-    auto* correct = ctx.Output<Tensor>("Correct");
-    auto* total = ctx.Output<Tensor>("Total");
+    auto* accuracy = ctx.Output<phi::DenseTensor>("Accuracy");
+    auto* correct = ctx.Output<phi::DenseTensor>("Correct");
+    auto* total = ctx.Output<phi::DenseTensor>("Total");
 
     int num_samples = indices->dims()[0];
     if (num_samples == 0) {

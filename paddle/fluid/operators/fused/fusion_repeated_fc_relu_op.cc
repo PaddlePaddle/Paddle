@@ -106,14 +106,14 @@ framework::OpKernelType FusionRepeatedFCReluOp::GetExpectedKernelType(
 }
 
 void FusionRepeatedFCReluOpMaker::Make() {
-  AddInput("X", "(LoDTensor) Input tensors of this operator.");
+  AddInput("X", "(phi::DenseTensor) Input tensors of this operator.");
   AddInput("W", "(Tensor) The weight tensors of this operator.").AsDuplicable();
   AddInput("Bias", "(Tensor) The bias tensors of this operator.")
       .AsDuplicable();
   AddOutput("ReluOut", "(Tensor) The output tensor of each relu operator.")
       .AsDuplicable()
       .AsIntermediate();
-  AddOutput("Out", "(LoDTensor) Output tensor of this operator.");
+  AddOutput("Out", "(phi::DenseTensor) Output tensor of this operator.");
   AddComment(R"DOC(
   Fusion Repeated FC with Relu Operator.
 )DOC");
@@ -140,11 +140,11 @@ template <typename T>
 class FusionRepeatedFCReluKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto in = ctx.Input<Tensor>("X");
-    auto weights = ctx.MultiInput<Tensor>("W");
-    auto biases = ctx.MultiInput<Tensor>("Bias");
-    auto relus = ctx.MultiOutput<Tensor>("ReluOut");
-    auto* out = ctx.Output<Tensor>("Out");
+    auto in = ctx.Input<phi::DenseTensor>("X");
+    auto weights = ctx.MultiInput<phi::DenseTensor>("W");
+    auto biases = ctx.MultiInput<phi::DenseTensor>("Bias");
+    auto relus = ctx.MultiOutput<phi::DenseTensor>("ReluOut");
+    auto* out = ctx.Output<phi::DenseTensor>("Out");
     auto place = ctx.GetPlace();
     int weight_sz = static_cast<int>(weights.size());
 

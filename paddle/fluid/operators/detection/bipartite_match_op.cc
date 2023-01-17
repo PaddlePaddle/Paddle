@@ -18,8 +18,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
-using LoDTensor = framework::LoDTensor;
+using Tensor = phi::DenseTensor;
 
 class BipartiteMatchOp : public framework::OperatorWithKernel {
  public:
@@ -72,7 +71,7 @@ class BipartiteMatchKernel : public framework::OpKernel<T> {
  public:
   // The match_indices must be initialized to -1 at first.
   // The match_dist must be initialized to 0 at first.
-  void BipartiteMatch(const Tensor& dist,
+  void BipartiteMatch(const phi::DenseTensor& dist,
                       int* match_indices,
                       T* match_dist) const {
     PADDLE_ENFORCE_EQ(
@@ -157,7 +156,7 @@ class BipartiteMatchKernel : public framework::OpKernel<T> {
     }
   }
 
-  void ArgMaxMatch(const Tensor& dist,
+  void ArgMaxMatch(const phi::DenseTensor& dist,
                    int* match_indices,
                    T* match_dist,
                    T overlap_threshold) const {
@@ -196,9 +195,10 @@ class BipartiteMatchKernel : public framework::OpKernel<T> {
   }
 
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* dist_mat = context.Input<LoDTensor>("DistMat");
-    auto* match_indices = context.Output<Tensor>("ColToRowMatchIndices");
-    auto* match_dist = context.Output<Tensor>("ColToRowMatchDist");
+    auto* dist_mat = context.Input<phi::DenseTensor>("DistMat");
+    auto* match_indices =
+        context.Output<phi::DenseTensor>("ColToRowMatchIndices");
+    auto* match_dist = context.Output<phi::DenseTensor>("ColToRowMatchDist");
 
     auto& dev_ctx = context.device_context<phi::CPUContext>();
 
@@ -250,7 +250,8 @@ class BipartiteMatchOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput(
         "DistMat",
-        "(LoDTensor or Tensor) this input is a 2-D LoDTensor with shape "
+        "(phi::DenseTensor or Tensor) this input is a 2-D phi::DenseTensor "
+        "with shape "
         "[K, M]. It is pair-wise distance matrix between the entities "
         "represented by each row and each column. For example, assumed one "
         "entity is A with shape [K], another entity is B with shape [M]. The "
@@ -301,8 +302,8 @@ row entity to the column entity and the matched indices are not duplicated
 in each row of ColToRowMatchIndices. If the column entity is not matched
 any row entity, set -1 in ColToRowMatchIndices.
 
-Please note that the input DistMat can be LoDTensor (with LoD) or Tensor.
-If LoDTensor with LoD, the height of ColToRowMatchIndices is batch size.
+Please note that the input DistMat can be phi::DenseTensor (with LoD) or Tensor.
+If phi::DenseTensor with LoD, the height of ColToRowMatchIndices is batch size.
 If Tensor, the height of ColToRowMatchIndices is 1.
 
 )DOC");

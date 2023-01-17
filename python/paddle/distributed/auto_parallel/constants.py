@@ -55,6 +55,7 @@ set_field_default_config(BASE, "reinit", False)  # Only for debug
 RECOMPUTE = "recompute"
 set_field_default_config(RECOMPUTE, "enable", False)
 set_field_default_config(RECOMPUTE, "checkpoints", None)
+set_field_default_config(RECOMPUTE, "no_recompute_segments", [])
 set_field_default_config(RECOMPUTE, "enable_tuning", False)
 
 #########################################
@@ -82,7 +83,9 @@ SHARDING = "sharding"
 set_field_default_config(SHARDING, "enable", False)
 set_field_default_config(SHARDING, "stage", 1)
 set_field_default_config(SHARDING, "degree", 8)
-set_field_default_config(SHARDING, "segment_broadcast_MB", 32.0)
+set_field_default_config(SHARDING, "overlap_grad_comm", False)
+set_field_default_config(SHARDING, "bucket_size_numel", -1)
+set_field_default_config(SHARDING, "partition_algor", "greedy_even")
 set_field_default_config(SHARDING, "enable_tuning", False)
 set_field_default_config(SHARDING, "tuning_range", [])
 
@@ -116,3 +119,10 @@ set_field_default_config(TUNING, "profile_start_step", 1)
 set_field_default_config(TUNING, "profile_end_step", 1)
 set_field_default_config(TUNING, "run_after_tuning", True)
 set_field_default_config(TUNING, "verbose", True)
+
+#########################################
+# dataset configuration
+#########################################
+DATASET = "dataset"
+set_field_default_config(DATASET, "enable", False)
+set_field_default_config(DATASET, "num_shards", 1)

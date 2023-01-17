@@ -17,9 +17,9 @@
 #include <memory>
 #include <string>
 
-#include "paddle/fluid/operators/math.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/funcs/math.h"
 
 namespace phi {
 template <typename T>

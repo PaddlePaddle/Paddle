@@ -26,8 +26,6 @@ DECLARE_int32(paddle_num_threads);
 namespace paddle {
 namespace operators {
 
-using framework::Tensor;
-
 class GRUOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -117,11 +115,12 @@ class GRUOp : public framework::OperatorWithKernel {
 class GRUOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("Input",
-             "(LoDTensor) The first input is a LodTensor, which supports "
-             "variable-time length input sequence. The underlying tensor in "
-             "this LoDTenosr is a matrix with shape (T X 3D), where, T is the "
-             "total time steps in this mini-batch, D is the hidden size.");
+    AddInput(
+        "Input",
+        "(phi::DenseTensor) The first input is a LodTensor, which supports "
+        "variable-time length input sequence. The underlying tensor in "
+        "this phi::DenseTensor is a matrix with shape (T X 3D), where, T is "
+        "the total time steps in this mini-batch, D is the hidden size.");
     AddInput("H0",
              "(Tensor, optional) The initial hidden state is an optional "
              "input. This is a tensor with shape (N x D), where N is the "
@@ -138,35 +137,38 @@ class GRUOpMaker : public framework::OpProtoAndCheckerMaker {
              "(Tensor, optional) Bias vector with shape (1 x 3D) concating "
              "bias of the update gate, reset gate and output candidate.")
         .AsDispensable();
-    AddOutput("BatchGate",
-              "(LoDTensor) To compute with batches, sequence data will be "
-              "reorganized into several successive batches each containing "
-              "data from the same time step. The LoDTensor BatchGate contains "
-              "the update gate, reset gate and output candidate values "
-              "organized in batches. The LoD size is 2. The first LoD contains "
-              "the batch offsets and the second LoD contains the indexes in "
-              "the raw sequence data.")
+    AddOutput(
+        "BatchGate",
+        "(phi::DenseTensor) To compute with batches, sequence data will be "
+        "reorganized into several successive batches each containing "
+        "data from the same time step. The phi::DenseTensor BatchGate contains "
+        "the update gate, reset gate and output candidate values "
+        "organized in batches. The LoD size is 2. The first LoD contains "
+        "the batch offsets and the second LoD contains the indexes in "
+        "the raw sequence data.")
         .AsIntermediate()
         .AsExtra();
-    AddOutput(
-        "BatchResetHiddenPrev",
-        "(LoDTensor) The reset hidden state LoDTensor organized in batches. "
-        "This LoDTensor is a matrix with shape (T X D) and has the same LoD "
-        "with `BatchGate`.")
+    AddOutput("BatchResetHiddenPrev",
+              "(phi::DenseTensor) The reset hidden state phi::DenseTensor "
+              "organized in batches. "
+              "This phi::DenseTensor is a matrix with shape (T X D) and has "
+              "the same LoD "
+              "with `BatchGate`.")
         .AsIntermediate()
         .AsExtra();
-    AddOutput(
-        "BatchHidden",
-        "(LoDTensor) The hidden state LoDTensor organized in batches.  "
-        "This LoDTensor is a matrix with shape (T X D) and has the same LoD "
-        "with `BatchGate`.")
+    AddOutput("BatchHidden",
+              "(phi::DenseTensor) The hidden state phi::DenseTensor organized "
+              "in batches.  "
+              "This phi::DenseTensor is a matrix with shape (T X D) and has "
+              "the same LoD "
+              "with `BatchGate`.")
         .AsIntermediate()
         .AsExtra();
-    AddOutput(
-        "Hidden",
-        "(LoDTensor) the hidden state LoDTensor organized in sequences. "
-        "This LoDTensor is a matrix with shape (T X D) and has the same LoD "
-        "with `BatchGate`.");
+    AddOutput("Hidden",
+              "(phi::DenseTensor) the hidden state phi::DenseTensor organized "
+              "in sequences. "
+              "This phi::DenseTensor is a matrix with shape (T X D) and has "
+              "the same LoD with `BatchGate`.");
     AddAttr<std::string>("activation",
                          "(string, default tanh) "
                          "The activation type used for output candidate {h}_t.")
@@ -316,23 +318,24 @@ class GRUCPUKernel : public framework::OpKernel<T> {
  public:
   void BatchCompute(const framework::ExecutionContext& context) const {
     using DeviceContext = phi::CPUContext;
-    using LodTensorPtr = LoDTensor*;
+    using LodTensorPtr = phi::DenseTensor*;
     bool is_test = context.Attr<bool>("is_test");
 
     bool origin_mode = context.Attr<bool>("origin_mode");
-    auto* input = context.Input<LoDTensor>("Input");
-    auto* h0 = context.Input<Tensor>("H0");
-    auto* weight = context.Input<Tensor>("Weight");
+    auto* input = context.Input<phi::DenseTensor>("Input");
+    auto* h0 = context.Input<phi::DenseTensor>("H0");
+    auto* weight = context.Input<phi::DenseTensor>("Weight");
     const T* weight_data = weight->data<T>();
-    auto* bias = context.Input<Tensor>("Bias");
-    auto* hidden = context.Output<LoDTensor>("Hidden");
+    auto* bias = context.Input<phi::DenseTensor>("Bias");
+    auto* hidden = context.Output<phi::DenseTensor>("Hidden");
     hidden->mutable_data<T>(context.GetPlace());
 
     auto input_dims = input->dims();
     auto hidden_dims = hidden->dims();
 
     LodTensorPtr batch_gate, batch_reset_hidden_prev, batch_hidden;
-    LoDTensor batch_gate_tmp, batch_reset_hidden_prev_tmp, batch_hidden_tmp;
+    phi::DenseTensor batch_gate_tmp, batch_reset_hidden_prev_tmp,
+        batch_hidden_tmp;
     if (is_test) {
       batch_gate = &batch_gate_tmp;
       batch_gate->Resize(input_dims);
@@ -343,10 +346,10 @@ class GRUCPUKernel : public framework::OpKernel<T> {
       batch_hidden = &batch_hidden_tmp;
       batch_hidden->Resize(hidden_dims);
     } else {
-      batch_gate = context.Output<LoDTensor>("BatchGate");
-      batch_hidden = context.Output<LoDTensor>("BatchHidden");
+      batch_gate = context.Output<phi::DenseTensor>("BatchGate");
+      batch_hidden = context.Output<phi::DenseTensor>("BatchHidden");
       batch_reset_hidden_prev =
-          context.Output<LoDTensor>("BatchResetHiddenPrev");
+          context.Output<phi::DenseTensor>("BatchResetHiddenPrev");
     }
     batch_gate->mutable_data<T>(context.GetPlace());
     batch_reset_hidden_prev->mutable_data<T>(context.GetPlace());

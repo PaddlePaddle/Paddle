@@ -23,38 +23,38 @@ template <typename DeviceContext, typename T>
 class Unpool2dMaxFunctor {
  public:
   void operator()(const DeviceContext& context,
-                  const framework::Tensor& input,
-                  const framework::Tensor& indices,
-                  framework::Tensor* output);
+                  const phi::DenseTensor& input,
+                  const phi::DenseTensor& indices,
+                  phi::DenseTensor* output);
 };
 template <typename DeviceContext, class T>
 class Unpool2dMaxGradFunctor {
  public:
   void operator()(const DeviceContext& context,
-                  const framework::Tensor& input,
-                  const framework::Tensor& indices,
-                  const framework::Tensor& output,
-                  const framework::Tensor& output_grad,
-                  framework::Tensor* input_grad);
+                  const phi::DenseTensor& input,
+                  const phi::DenseTensor& indices,
+                  const phi::DenseTensor& output,
+                  const phi::DenseTensor& output_grad,
+                  phi::DenseTensor* input_grad);
 };
 
 template <typename DeviceContext, typename T>
 class Unpool3dMaxFunctor {
  public:
   void operator()(const DeviceContext& context,
-                  const framework::Tensor& input,
-                  const framework::Tensor& indices,
-                  framework::Tensor* output);
+                  const phi::DenseTensor& input,
+                  const phi::DenseTensor& indices,
+                  phi::DenseTensor* output);
 };
 template <typename DeviceContext, class T>
 class Unpool3dMaxGradFunctor {
  public:
   void operator()(const DeviceContext& context,
-                  const framework::Tensor& input,
-                  const framework::Tensor& indices,
-                  const framework::Tensor& output,
-                  const framework::Tensor& output_grad,
-                  framework::Tensor* input_grad);
+                  const phi::DenseTensor& input,
+                  const phi::DenseTensor& indices,
+                  const phi::DenseTensor& output,
+                  const phi::DenseTensor& output_grad,
+                  phi::DenseTensor* input_grad);
 };
 }  // namespace math
 }  // namespace operators

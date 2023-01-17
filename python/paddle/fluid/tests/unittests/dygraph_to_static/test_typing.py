@@ -13,16 +13,17 @@
 # limitations under the License.
 import os
 import tempfile
-import paddle
 import unittest
+from typing import Dict, List, Tuple
+
 import numpy as np
-from typing import Tuple, List, Dict, TypeVar
+
+import paddle
 
 
 class BaseLayer(paddle.nn.Layer):
-
     def __init__(self, in_size, out_size):
-        super(BaseLayer, self).__init__()
+        super().__init__()
         self._linear = paddle.nn.Linear(in_size, out_size)
 
     def build(self, x):
@@ -32,9 +33,8 @@ class BaseLayer(paddle.nn.Layer):
 
 
 class LinearNetWithTuple(BaseLayer):
-
     def __init__(self, in_size, out_size):
-        super(LinearNetWithTuple, self).__init__(in_size, out_size)
+        super().__init__(in_size, out_size)
 
     def forward(self, x) -> Tuple[paddle.Tensor, str]:
         out1, out2 = self.build(x)
@@ -42,9 +42,8 @@ class LinearNetWithTuple(BaseLayer):
 
 
 class LinearNetWithTuple2(BaseLayer):
-
     def __init__(self, in_size, out_size):
-        super(LinearNetWithTuple2, self).__init__(in_size, out_size)
+        super().__init__(in_size, out_size)
 
     def forward(self, x) -> Tuple[paddle.Tensor, np.array]:
         out1, out2 = self.build(x)
@@ -52,9 +51,8 @@ class LinearNetWithTuple2(BaseLayer):
 
 
 class LinearNetWithList(BaseLayer):
-
     def __init__(self, in_size, out_size):
-        super(LinearNetWithList, self).__init__(in_size, out_size)
+        super().__init__(in_size, out_size)
 
     def forward(self, x) -> List[paddle.Tensor]:
         out1, out2 = self.build(x)
@@ -62,9 +60,8 @@ class LinearNetWithList(BaseLayer):
 
 
 class LinearNetWithDict(BaseLayer):
-
     def __init__(self, in_size, out_size):
-        super(LinearNetWithDict, self).__init__(in_size, out_size)
+        super().__init__(in_size, out_size)
 
     def forward(self, x) -> Dict[str, paddle.Tensor]:
         out1, out2 = self.build(x)
@@ -72,7 +69,6 @@ class LinearNetWithDict(BaseLayer):
 
 
 class TestTyping(unittest.TestCase):
-
     def setUp(self):
         self.in_num = 16
         self.out_num = 16
@@ -105,7 +101,6 @@ class TestTyping(unittest.TestCase):
 
 
 class TestTypingTuple(TestTyping):
-
     def build_net(self):
         return LinearNetWithTuple2(self.in_num, self.out_num)
 
@@ -116,7 +111,6 @@ class TestTypingTuple(TestTyping):
 
 
 class TestTypingList(TestTyping):
-
     def build_net(self):
         return LinearNetWithList(self.in_num, self.out_num)
 
@@ -126,7 +120,6 @@ class TestTypingList(TestTyping):
 
 
 class TestTypingDict(TestTyping):
-
     def build_net(self):
         return LinearNetWithDict(self.in_num, self.out_num)
 

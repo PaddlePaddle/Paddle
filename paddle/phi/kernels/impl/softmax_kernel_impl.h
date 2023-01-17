@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/math/softmax.h"
 #include "paddle/phi/kernels/funcs/axis_utils.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/softmax_kernel.h"
 
 namespace phi {
@@ -31,7 +32,13 @@ void SoftmaxKernel(const Context& dev_ctx,
 
   // allocate memory on device.
   dev_ctx.template Alloc<T>(out);
+  // For 0-Sized Tensor
   if (out->numel() == 0) {
+    return;
+  }
+  // For 0D Tensor
+  if (rank == 0) {
+    phi::funcs::set_constant(dev_ctx, out, 1.0);
     return;
   }
 

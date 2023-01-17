@@ -24,8 +24,8 @@ template <typename T>
 class ShareBufferOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-    const auto inputs = ctx.MultiInput<framework::Tensor>("X");
-    auto outputs = ctx.MultiOutput<framework::Tensor>("Out");
+    const auto inputs = ctx.MultiInput<phi::DenseTensor>("X");
+    auto outputs = ctx.MultiOutput<phi::DenseTensor>("Out");
     size_t n = inputs.size();
     PADDLE_ENFORCE_EQ(
         n,

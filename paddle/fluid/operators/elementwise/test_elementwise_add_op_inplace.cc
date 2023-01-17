@@ -54,9 +54,9 @@ bool TestMain(const platform::Place &place,
               const framework::DDim &dims,
               bool inplace) {
   framework::Scope scope;
-  auto *x = scope.Var("x")->GetMutable<framework::LoDTensor>();
-  auto *y = scope.Var("y")->GetMutable<framework::LoDTensor>();
-  auto *z = scope.Var("z")->GetMutable<framework::LoDTensor>();
+  auto *x = scope.Var("x")->GetMutable<phi::DenseTensor>();
+  auto *y = scope.Var("y")->GetMutable<phi::DenseTensor>();
+  auto *z = scope.Var("z")->GetMutable<phi::DenseTensor>();
 
   x->Resize(dims);
   y->Resize(dims);
@@ -95,8 +95,8 @@ bool TestMain(const platform::Place &place,
   op->Run(scope, place);
   platform::DeviceContextPool::Instance().Get(place)->Wait();
 
-  framework::LoDTensor cpu_out;
-  auto &out_tensor = scope.FindVar(out_name)->Get<framework::LoDTensor>();
+  phi::DenseTensor cpu_out;
+  auto &out_tensor = scope.FindVar(out_name)->Get<phi::DenseTensor>();
   PADDLE_ENFORCE_EQ(scope.kids().empty(),
                     true,
                     platform::errors::InvalidArgument(

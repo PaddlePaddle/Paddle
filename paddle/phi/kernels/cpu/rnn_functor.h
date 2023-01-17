@@ -14,9 +14,9 @@
 
 #pragma once
 
-#include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/operators/utils.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/generator.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
@@ -148,7 +148,13 @@ void DropoutCpuFunctionInplace(const CPUContext& dev_ctx,
     if (dropout_prob == 1.0f) {
       std::fill(mask_data, mask_data + size, static_cast<uint8_t>(0));
     } else {
-      auto engine = paddle::framework::GetCPURandomEngine(seed_number);
+      std::shared_ptr<std::mt19937_64> engine;
+      if (seed_number) {
+        engine = std::make_shared<std::mt19937_64>();
+        engine->seed(seed_number);
+      } else {
+        engine = dev_ctx.GetGenerator()->GetCPUEngine();
+      }
       std::uniform_real_distribution<float> dist(0, 1);
       for (size_t i = 0; i < size; ++i) {
         if (dist(*engine) < dropout_prob) {

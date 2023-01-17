@@ -30,33 +30,7 @@ limitations under the License. */
 namespace paddle {
 namespace platform {
 
-using framework::DataLayout;
-using framework::Tensor;
-using user_function = std::function<std::shared_ptr<float>(const float*)>;
 using memory = dnnl::memory;
-
-template <typename T,
-          typename TForward,
-          typename TBackward = mkldnn_dummy_primitive,
-          typename TBackward_params = mkldnn_dummy_primitive>
-using MKLDNNHandlerT =
-    phi::funcs::OneDNNHandlerT<T, TForward, TBackward, TBackward_params>;
-
-template <typename T,
-          typename TForward,
-          typename TBackward = mkldnn_dummy_primitive,
-          typename TBackward_params = mkldnn_dummy_primitive>
-using MKLDNNHandlerNoCachingT = phi::funcs::
-    OneDNNHandlerNoCachingT<T, TForward, TBackward, TBackward_params>;
-
-template <typename T>
-using ReductionMKLDNNHandler = phi::funcs::ReductionOneDNNHandler<T>;
-
-template <typename T>
-using BroadcastDataMKLDNNHandler = phi::funcs::BroadcastDataOneDNNHandler<T>;
-
-template <typename T>
-using BinaryMKLDNNHandler = phi::funcs::BinaryOneDNNHandler<T>;
 
 static void AppendActivation(const framework::ExecutionContext& ctx,
                              dnnl::post_ops& post_ops,  // NOLINT
@@ -111,19 +85,75 @@ static void AppendActivation(const framework::ExecutionContext& ctx,
   }
 }
 
-template <typename T>
-constexpr bool IsInt8() {
-  return std::is_same<T, int8_t>::value || std::is_same<T, uint8_t>::value;
+static void SetOutMemDescWithUnsqueeze2FuseSupport(
+    const framework::ExecutionContext& ctx,
+    phi::DenseTensor* out,
+    const dnnl::memory::desc& out_md) {
+  const std::vector<int>& fused_unsqueeze2_axes =
+      ctx.Attr<std::vector<int>>("fused_unsqueeze2_axes");
+  const std::vector<int64_t>& op_tz = out_md.dims();
+  std::vector<int64_t> unsqueezed_op_tz(
+      op_tz.size() + fused_unsqueeze2_axes.size(), 0);
+
+  for (const auto& axis : fused_unsqueeze2_axes) {
+    int positive_axis = axis < 0 ? unsqueezed_op_tz.size() + axis : axis;
+    unsqueezed_op_tz[positive_axis] = 1;
+  }
+
+  int j = 0;
+  for (size_t i = 0; i < unsqueezed_op_tz.size(); ++i) {
+    if (unsqueezed_op_tz[i] == 0) {
+      unsqueezed_op_tz[i] = op_tz[j++];
+    }
+  }
+  out->set_mem_desc(out_md.reshape(unsqueezed_op_tz));
+  out->Resize(phi::make_ddim(unsqueezed_op_tz));
 }
 
-template <typename T>
-constexpr bool IsBfloat16() {
-  return std::is_same<T, paddle::platform::bfloat16>::value;
+static void SetOutMemDescWithReshape2FuseSupport(
+    const framework::ExecutionContext& ctx,
+    phi::DenseTensor* out,
+    const dnnl::memory::desc& out_md) {
+  std::vector<int64_t> fused_reshape2_shape(
+      ctx.Attr<std::vector<int>>("fused_reshape2_shape").begin(),
+      ctx.Attr<std::vector<int>>("fused_reshape2_shape").end());
+
+  const int out_shape_numel = out->numel();
+  const int new_shape_numel = std::accumulate(fused_reshape2_shape.begin(),
+                                              fused_reshape2_shape.end(),
+                                              1,
+                                              std::multiplies<int64_t>());
+
+  for (size_t i = 0; i < fused_reshape2_shape.size(); ++i) {
+    if (fused_reshape2_shape[i] == -1) {
+      fused_reshape2_shape[i] = -out_shape_numel / new_shape_numel;
+      break;
+    }
+  }
+
+  out->set_mem_desc(out_md.reshape(fused_reshape2_shape));
+  out->Resize(phi::make_ddim(fused_reshape2_shape));
+}
+
+static void SetOutMemDescWithLogicalLayoutFusesSupport(
+    const framework::ExecutionContext& ctx,
+    phi::DenseTensor* out,
+    const dnnl::memory::desc& out_md) {
+  if (ctx.HasAttr("fused_unsqueeze2_axes")) {
+    SetOutMemDescWithUnsqueeze2FuseSupport(ctx, out, out_md);
+  } else if (ctx.HasAttr("fused_reshape2_shape")) {
+    SetOutMemDescWithReshape2FuseSupport(ctx, out, out_md);
+  } else if (ctx.HasAttr("fused_squeeze2_axes")) {
+    out->set_mem_desc(out_md);
+    out->Resize(phi::make_ddim(out_md.dims()));
+  } else {
+    out->set_mem_desc(out_md);
+  }
 }
 
 template <typename XT, typename YT, typename OT>
 class MatMulV2MKLDNNHandler
-    : public paddle::platform::MKLDNNHandlerNoCachingT<XT, dnnl::matmul> {
+    : public phi::funcs::OneDNNHandlerNoCachingT<XT, dnnl::matmul> {
  public:
   MatMulV2MKLDNNHandler(const framework::ExecutionContext& ctx,
                         const dnnl::engine engine,
@@ -135,8 +165,8 @@ class MatMulV2MKLDNNHandler
                         bool is_output_fused,
                         const std::vector<int64_t>& x_strides_override,
                         const std::vector<int64_t>& y_strides_override)
-      : paddle::platform::MKLDNNHandlerNoCachingT<XT, dnnl::matmul>(engine,
-                                                                    cpu_place) {
+      : phi::funcs::OneDNNHandlerNoCachingT<XT, dnnl::matmul>(engine,
+                                                              cpu_place) {
     // M X K * K X N
     std::vector<int64_t> x_dims(x_org_dims);
     std::vector<int64_t> y_dims(y_org_dims);
@@ -197,13 +227,16 @@ class MatMulV2MKLDNNHandler
     }
 
     // TODO(jczaja): Why not for int8??
-    if (!IsInt8<OT>() && is_output_fused) {
+    if (!phi::funcs::is_int8<OT>() && is_output_fused) {
       out_strides = FakeTransposeStrides(out_ddims);
     }
 
-    auto x_md = memory::desc(x_dims, MKLDNNGetDataType<XT>(), x_strides);
-    auto y_md = memory::desc(y_dims, MKLDNNGetDataType<YT>(), y_strides);
-    auto out_md = memory::desc(out_ddims, MKLDNNGetDataType<OT>(), out_strides);
+    auto x_md =
+        memory::desc(x_dims, phi::funcs::OneDNNGetDataType<XT>(), x_strides);
+    auto y_md =
+        memory::desc(y_dims, phi::funcs::OneDNNGetDataType<YT>(), y_strides);
+    auto out_md = memory::desc(
+        out_ddims, phi::funcs::OneDNNGetDataType<OT>(), out_strides);
 
     const dnnl::primitive_attr matmul_attrs = CreateMatmulAttrs(ctx);
 
@@ -236,10 +269,10 @@ class MatMulV2MKLDNNHandler
     }
 
     if (ctx.HasInput("ResidualData")) {
-      auto* residual_data = ctx.Input<Tensor>("ResidualData");
+      auto* residual_data = ctx.Input<phi::DenseTensor>("ResidualData");
       auto residual_data_tz = phi::vectorize(residual_data->dims());
       auto residual_data_md = memory::desc(residual_data_tz,
-                                           MKLDNNGetDataType<OT>(),
+                                           phi::funcs::OneDNNGetDataType<OT>(),
                                            dnnl::memory::format_tag::any);
       post_operations.append_binary(dnnl::algorithm::binary_add,
                                     residual_data_md);
@@ -250,6 +283,12 @@ class MatMulV2MKLDNNHandler
     }
 
     AppendActivation(ctx, post_operations);
+
+    if (ctx.HasAttr("fused_output_scale")) {
+      float scale_alpha = ctx.Attr<float>("fused_output_scale");
+      post_operations.append_eltwise(
+          1.0, dnnl::algorithm::eltwise_linear, scale_alpha, 0.0f);
+    }
 
     matmul_attrs.set_post_ops(post_operations);
     return matmul_attrs;
@@ -273,263 +312,25 @@ class MatMulV2MKLDNNHandler
     return fake_strides;
   }
 
-  std::shared_ptr<memory> AcquireWeightsMemory(const Tensor* input) {
+  std::shared_ptr<memory> AcquireWeightsMemory(const phi::DenseTensor* input) {
     const YT* input_data = input->data<YT>();
-    return this->AcquireMemoryFromPrimitive(this->fwd_pd_->weights_desc(),
-                                            to_void_cast<YT>(input_data));
+    return this->AcquireMemoryFromPrimitive(
+        this->fwd_pd_->weights_desc(),
+        phi::funcs::to_void_cast<YT>(input_data));
   }
 
-  std::shared_ptr<dnnl::memory> AcquireDstMemory(
-      paddle::framework::Tensor* output) {
+  std::shared_ptr<dnnl::memory> AcquireDstMemory(phi::DenseTensor* output) {
     // We cannot use base AcquireDstMemory as it makes an allocation request
     // base on DST memory primitive size. This is fine in general, but in MatMul
     // we have primitive that covers only one batch of Data and then shift
-    // pointer for every new batch. Hence Tensor size is bigger that dst memory
-    // primitive size. So would we request less memory that is there and it
-    // triggers an
-    // assertion.  So as there is no 'any' format here we can leave default size
-    // of Tensor as computed in ComputeInferShape
+    // pointer for every new batch. Hence phi::DenseTensor size is bigger that
+    // dst memory primitive size. So would we request less memory that is there
+    // and it triggers an assertion.  So as there is no 'any' format here we can
+    // leave default size of phi::DenseTensor as computed in ComputeInferShape
     OT* ptr = output->mutable_data<OT>(this->place_);
     return this->AcquireMemoryFromPrimitive(this->fwd_pd_->dst_desc(), ptr);
   }
 };
 
-template <typename T>
-class ActivationMKLDNNHandler
-    : public MKLDNNHandlerNoCachingT<T,
-                                     dnnl::eltwise_forward,
-                                     dnnl::eltwise_backward> {
- public:
-  ActivationMKLDNNHandler(dnnl::algorithm algorithm,
-                          const framework::ExecutionContext& ctx,
-                          const dnnl::engine engine,
-                          Place cpu_place,
-                          const framework::Tensor* x)
-      : platform::MKLDNNHandlerNoCachingT<T,
-                                          dnnl::eltwise_forward,
-                                          dnnl::eltwise_backward>(engine,
-                                                                  cpu_place) {
-    float alpha = ctx.HasAttr("alpha") ? ctx.Attr<float>("alpha") : 0;
-    float beta = ctx.HasAttr("beta") ? ctx.Attr<float>("beta") : 0;
-
-    if (ctx.Type() == "scale") {
-      bool bias_after_scale = ctx.Attr<bool>("bias_after_scale");
-      auto* scale_tensor = ctx.Input<Tensor>("ScaleTensor");
-      alpha = (scale_tensor == nullptr)
-                  ? ctx.Attr<float>("scale")
-                  : static_cast<float>(*(scale_tensor->data<T>()));
-      beta = ctx.Attr<float>("bias");
-      // if bias_after_scale == true
-      //   out = scale*X + bias
-      // else
-      //   out = scale*(X + bias) = scale*X + scale*bias
-      if (!bias_after_scale) {
-        beta *= alpha;
-      }
-    } else if (ctx.Type() == "clip") {
-      alpha = ctx.HasInput("Min") ? ctx.Input<Tensor>("Min")->data<float>()[0]
-                                  : ctx.Attr<float>("min");
-      beta = ctx.HasInput("Max") ? ctx.Input<Tensor>("Max")->data<float>()[0]
-                                 : ctx.Attr<float>("max");
-    } else {
-      // paddle uses beta but mkldnn uses alpha for swish
-      if (algorithm == dnnl::algorithm::eltwise_swish) {
-        std::swap(alpha, beta);
-      } else if (algorithm == dnnl::algorithm::eltwise_bounded_relu) {
-        alpha = ctx.Attr<float>("threshold");
-      }
-    }
-
-    this->AcquireForwardPrimitiveDescriptor(dnnl::prop_kind::forward_training,
-                                            algorithm,
-                                            x->mem_desc(),
-                                            alpha,
-                                            beta);
-  }
-
-  ActivationMKLDNNHandler(dnnl::algorithm algorithm,
-                          const framework::ExecutionContext& ctx,
-                          const dnnl::engine engine,
-                          Place cpu_place,
-                          const framework::Tensor* x,
-                          const Tensor* dout)
-      : platform::MKLDNNHandlerNoCachingT<T,
-                                          dnnl::eltwise_forward,
-                                          dnnl::eltwise_backward>(engine,
-                                                                  cpu_place) {
-    float alpha = ctx.HasAttr("alpha") ? ctx.Attr<float>("alpha") : 0;
-    float beta = ctx.HasAttr("beta") ? ctx.Attr<float>("beta") : 0;
-
-    // paddle uses beta but mkldnn uses alpha for swish
-    if (algorithm == dnnl::algorithm::eltwise_swish) {
-      std::swap(alpha, beta);
-    } else if (algorithm == dnnl::algorithm::eltwise_bounded_relu) {
-      alpha = ctx.Attr<float>("threshold");
-    }
-
-    if (ctx.Type() == "clip_grad") {
-      alpha = ctx.HasInput("Min") ? ctx.Input<Tensor>("Min")->data<float>()[0]
-                                  : ctx.Attr<float>("min");
-      beta = ctx.HasInput("Max") ? ctx.Input<Tensor>("Max")->data<float>()[0]
-                                 : ctx.Attr<float>("max");
-    }
-
-    this->AcquireForwardPrimitiveDescriptor(dnnl::prop_kind::forward_training,
-                                            algorithm,
-                                            x->mem_desc(),
-                                            alpha,
-                                            beta);
-    this->AcquireBackwardPrimitiveDescriptor(
-        algorithm, dout->mem_desc(), x->mem_desc(), alpha, beta);
-  }
-
-  std::shared_ptr<dnnl::memory> AcquireBackwardSrcMemory(
-      const framework::Tensor* input) {
-    const T* input_data = input->data<T>();
-    return this->AcquireMemoryFromPrimitive(this->bwd_pd_->src_desc(),
-                                            to_void_cast<T>(input_data));
-  }
-};
-
-static std::unordered_map<std::string, std::string> GetAttributeMap(
-    std::string act_type) {
-  std::unordered_map<std::string, std::string> attr_map;
-  if (act_type == "swish") {
-    attr_map.emplace("beta", "fuse_alpha");
-  } else if (act_type == "relu6") {
-    attr_map.emplace("threshold", "fuse_alpha");
-  } else if (act_type == "hard_sigmoid") {
-    attr_map.emplace("slope", "fuse_alpha");
-    attr_map.emplace("offset", "fuse_beta");
-  } else if (act_type == "clip") {
-    attr_map.emplace("min", "fuse_alpha");
-    attr_map.emplace("max", "fuse_beta");
-  } else {
-    attr_map.emplace("alpha", "fuse_alpha");
-    attr_map.emplace("beta", "fuse_beta");
-  }
-  return attr_map;
-}
-
-static std::vector<std::string> GetSupportedActivations() {
-  return std::vector<std::string>{"abs",
-                                  "clip",
-                                  "gelu",
-                                  "hard_sigmoid",
-                                  "hard_swish",
-                                  "leaky_relu",
-                                  "mish",
-                                  "relu",
-                                  "relu6",
-                                  "sigmoid",
-                                  "sqrt",
-                                  "swish",
-                                  "tanh"};
-}
-
-class ReorderMKLDNNHandler {
- public:
-  ReorderMKLDNNHandler(std::vector<int64_t>& dims,  // NOLINT
-                       framework::proto::VarType::Type vtype,
-                       dnnl::memory::data_type dtype,
-                       dnnl::engine engine)
-      : dims_(dims),
-        vtype_(vtype),
-        vtype_dst_(vtype),
-        dtype_(dtype),
-        dtype_dst_(dtype),
-        engine_(engine) {}
-
-  ReorderMKLDNNHandler(std::vector<int64_t>& dims,  // NOLINT
-                       framework::proto::VarType::Type vtype,
-                       dnnl::memory::data_type dtype,
-                       framework::proto::VarType::Type vtype_dst,
-                       dnnl::memory::data_type dtype_dst,
-                       dnnl::engine engine)
-      : dims_(dims),
-        vtype_(vtype),
-        vtype_dst_(vtype_dst),
-        dtype_(dtype),
-        dtype_dst_(dtype_dst),
-        engine_(engine) {}
-
-  std::shared_ptr<dnnl::memory> AcquireSrcMemory(const dnnl::memory::desc& md,
-                                                 void* ptr) {
-    return std::make_shared<dnnl::memory>(md, engine_, ptr);
-  }
-
-  std::shared_ptr<dnnl::memory> AcquireSrcMemory(const MKLDNNMemoryFormat& fmt,
-                                                 void* ptr) {
-    auto md = dnnl::memory::desc(dims_, dtype_, fmt);
-    return std::make_shared<dnnl::memory>(md, engine_, ptr);
-  }
-
-  std::shared_ptr<dnnl::memory> AcquireSubmemory(
-      const std::vector<int64_t>& dims,
-      const std::vector<int64_t>& offset,
-      const std::shared_ptr<dnnl::memory>& mem_p) {
-    auto sub_md = mem_p->get_desc().submemory_desc(dims, {offset});
-    auto sub_mem_p = std::make_shared<dnnl::memory>(
-        sub_md, engine_, mem_p->get_data_handle());
-    return sub_mem_p;
-  }
-
-  std::shared_ptr<dnnl::memory> AcquireDstMemory(framework::Tensor* output,
-                                                 const MKLDNNMemoryFormat& fmt,
-                                                 platform::Place place) {
-    auto dst_md = platform::MKLDNNMemDesc(dims_, dtype_dst_, fmt);
-    auto dst_data = output->mutable_data(
-        place, framework::TransToPhiDataType(vtype_dst_), dst_md.get_size());
-    return std::make_shared<dnnl::memory>(dst_md, engine_, dst_data);
-  }
-
-  std::shared_ptr<dnnl::memory> AcquireDstMemory(
-      framework::Tensor* output,
-      const dnnl::memory::desc& src_md,
-      platform::Place place) {
-    if (vtype_dst_ == vtype_) {
-      auto dst_data = output->mutable_data(
-          place, framework::TransToPhiDataType(vtype_dst_), src_md.get_size());
-      return std::make_shared<dnnl::memory>(src_md, engine_, dst_data);
-    } else {
-      auto dst_md = src_md;
-      dst_md.data.data_type = static_cast<dnnl_data_type_t>(dtype_dst_);
-      auto dst_data = output->mutable_data(
-          place, framework::TransToPhiDataType(vtype_dst_), dst_md.get_size());
-      return std::make_shared<dnnl::memory>(dst_md, engine_, dst_data);
-    }
-  }
-
-  std::shared_ptr<dnnl::memory> AcquireDstMemory(
-      framework::Tensor* output,
-      const std::vector<int64_t>& dims,
-      const MKLDNNMemoryFormat& fmt,
-      platform::Place place) {
-    auto dst_md = platform::MKLDNNMemDesc(dims, dtype_dst_, fmt);
-    auto dst_data = output->mutable_data(
-        place, framework::TransToPhiDataType(vtype_dst_), dst_md.get_size());
-    return std::make_shared<dnnl::memory>(dst_md, engine_, dst_data);
-  }
-
-  std::shared_ptr<dnnl::reorder> AcquireReorder(
-      std::shared_ptr<dnnl::memory> dst_memory_p,
-      std::shared_ptr<dnnl::memory> src_memory_p) {
-    return std::make_shared<dnnl::reorder>(*(src_memory_p), *(dst_memory_p));
-  }
-
-  std::shared_ptr<dnnl::reorder> AcquireReorder(
-      std::shared_ptr<dnnl::memory> dst_memory_p,
-      std::shared_ptr<dnnl::memory> src_memory_p,
-      const dnnl::primitive_attr& attrs) {
-    return std::make_shared<dnnl::reorder>(
-        *(src_memory_p), *(dst_memory_p), attrs);
-  }
-
- private:
-  std::vector<int64_t> dims_;
-  framework::proto::VarType::Type vtype_, vtype_dst_;
-  dnnl::memory::data_type dtype_, dtype_dst_;
-  dnnl::engine engine_;
-};
 }  // namespace platform
 }  // namespace paddle

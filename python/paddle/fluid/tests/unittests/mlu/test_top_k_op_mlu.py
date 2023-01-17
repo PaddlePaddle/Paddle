@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 import sys
@@ -27,7 +25,6 @@ paddle.enable_static()
 
 
 class TestTopkOp(OpTest):
-
     def setUp(self):
         self.variable_k = False
         self.set_args()
@@ -68,7 +65,6 @@ class TestTopkOp(OpTest):
 
 
 class TestTopkFP16Op(TestTopkOp):
-
     def init_dtype(self):
         self.dtype = np.float16
 

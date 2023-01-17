@@ -319,13 +319,13 @@ template <typename T>
 class YoloBoxPostKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    using Tensor = framework::Tensor;
+    using Tensor = phi::DenseTensor;
     // prepare inputs
     std::vector<const float*> boxes_input(3);
     std::vector<std::vector<int32_t>> boxes_input_dims(3);
     for (int i = 0; i < 3; i++) {
       auto* boxes_tensor =
-          context.Input<framework::Tensor>("Boxes" + std::to_string(i));
+          context.Input<phi::DenseTensor>("Boxes" + std::to_string(i));
       boxes_input[i] = boxes_tensor->data<float>();
       auto dims = boxes_tensor->dims();
       for (int j = 0; j < dims.size(); j++) {
@@ -333,13 +333,13 @@ class YoloBoxPostKernel : public framework::OpKernel<T> {
       }
     }
     const float* image_shape_data =
-        context.Input<framework::Tensor>("ImageShape")->data<float>();
+        context.Input<phi::DenseTensor>("ImageShape")->data<float>();
     const float* image_scale_data =
-        context.Input<framework::Tensor>("ImageScale")->data<float>();
+        context.Input<phi::DenseTensor>("ImageScale")->data<float>();
 
     // prepare outputs
-    auto* boxes_scores_tensor = context.Output<framework::Tensor>("Out");
-    auto* boxes_num_tensor = context.Output<framework::Tensor>("NmsRoisNum");
+    auto* boxes_scores_tensor = context.Output<phi::DenseTensor>("Out");
+    auto* boxes_num_tensor = context.Output<phi::DenseTensor>("NmsRoisNum");
 
     // prepare anchors
     std::vector<int32_t> anchors;
@@ -382,7 +382,7 @@ class YoloBoxPostKernel : public framework::OpKernel<T> {
     // clip_bbox and scale_x_y is not used now!
     float nms_threshold = context.Attr<float>("nms_threshold");
 
-    int batch = context.Input<framework::Tensor>("ImageShape")->dims()[0];
+    int batch = context.Input<phi::DenseTensor>("ImageShape")->dims()[0];
     TensorInfo* ts_info = new TensorInfo[batch * boxes_input.size()];
     for (int i = 0; i < batch * static_cast<int>(boxes_input.size()); i++) {
 #ifdef PADDLE_WITH_HIP

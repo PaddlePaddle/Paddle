@@ -21,16 +21,16 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 using NPUDeviceContext = platform::NPUDeviceContext;
 
 template <typename T>
 class GatherNdNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-    auto *x = ctx.Input<Tensor>("X");
-    auto *index = ctx.Input<Tensor>("Index");
-    auto *out = ctx.Output<Tensor>("Out");
+    auto *x = ctx.Input<phi::DenseTensor>("X");
+    auto *index = ctx.Input<phi::DenseTensor>("Index");
+    auto *out = ctx.Output<phi::DenseTensor>("Out");
 
     out->template mutable_data<T>(ctx.GetPlace());
 
@@ -65,10 +65,10 @@ template <typename T>
 class GatherNdGradNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-    auto *index = ctx.Input<Tensor>("Index");
-    auto *x = ctx.Input<Tensor>("X");
-    auto *dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
-    auto *dx = ctx.Output<Tensor>(framework::GradVarName("X"));
+    auto *index = ctx.Input<phi::DenseTensor>("Index");
+    auto *x = ctx.Input<phi::DenseTensor>("X");
+    auto *dout = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+    auto *dx = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
     auto *p = dx->mutable_data<T>(ctx.GetPlace());
 
     if (dx->numel() == 0) return;
@@ -78,8 +78,8 @@ class GatherNdGradNPUKernel : public framework::OpKernel<T> {
       return;
     }
 
-    framework::Tensor tmp_tensor(index->type());
-    framework::Tensor tmp_tensor2(dout->type());
+    phi::DenseTensor tmp_tensor(index->type());
+    phi::DenseTensor tmp_tensor2(dout->type());
     const auto index_dims = index->dims();
     if (index_dims.size() == 1) {
       tmp_tensor.ShareDataWith(*index);

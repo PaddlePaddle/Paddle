@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import numpy as np
 import argparse
 import os
@@ -21,7 +19,6 @@ import sys
 import signal
 import time
 from contextlib import closing
-from six import string_types
 import math
 import paddle
 import paddle.fluid as fluid
@@ -38,7 +35,6 @@ paddle.enable_static()
 
 
 class TestCollectiveIdentity(TestCollectiveRunnerBase):
-
     def __init__(self):
         self.global_ring_id = 0
 
@@ -46,22 +42,22 @@ class TestCollectiveIdentity(TestCollectiveRunnerBase):
         ring_id = 0
         nranks = 2
         with fluid.program_guard(main_prog, startup_program):
-            tindata = layers.data(name="tindata",
-                                  shape=[10, 1000],
-                                  dtype='float32')
+            tindata = layers.data(
+                name="tindata", shape=[10, 1000], dtype='float32'
+            )
             toutdata = main_prog.current_block().create_var(
                 name="outofgather",
                 dtype='float32',
                 type=core.VarDesc.VarType.LOD_TENSOR,
                 persistable=False,
-                stop_gradient=False)
-            main_prog.global_block().append_op(type="c_identity",
-                                               inputs={'X': tindata},
-                                               outputs={'Out': toutdata},
-                                               attrs={
-                                                   'ring_id': ring_id,
-                                                   'nranks': nranks
-                                               })
+                stop_gradient=False,
+            )
+            main_prog.global_block().append_op(
+                type="c_identity",
+                inputs={'X': tindata},
+                outputs={'Out': toutdata},
+                attrs={'ring_id': ring_id, 'nranks': nranks},
+            )
             return toutdata
 
 

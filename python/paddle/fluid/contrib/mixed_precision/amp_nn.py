@@ -39,8 +39,12 @@ def check_finite_and_unscale(x, scale, name=None, float_status=None):
     """
     check_type(x, 'x', (tuple, list), 'check_finite_and_unscale')
     for e in x:
-        check_variable_and_dtype(e, "x", ['float16', 'float32', 'float64'],
-                                 'check_finite_and_unscale')
+        check_variable_and_dtype(
+            e,
+            "x",
+            ['float16', 'float32', 'float64'],
+            'check_finite_and_unscale',
+        )
 
     helper = LayerHelper("check_finite_and_unscale", **locals())
 
@@ -52,29 +56,34 @@ def check_finite_and_unscale(x, scale, name=None, float_status=None):
 
     inputs = {'X': x, 'Scale': scale}
     if core.is_compiled_with_npu():
-        check_variable_and_dtype(float_status, "float_status",
-                                 ['float16', 'float32'],
-                                 'check_finite_and_unscale')
+        check_variable_and_dtype(
+            float_status,
+            "float_status",
+            ['float16', 'float32'],
+            'check_finite_and_unscale',
+        )
         inputs['FloatStatus'] = float_status
     outputs = {'Out': x, 'FoundInfinite': found_inf}
-    helper.append_op(type='check_finite_and_unscale',
-                     inputs=inputs,
-                     outputs=outputs)
+    helper.append_op(
+        type='check_finite_and_unscale', inputs=inputs, outputs=outputs
+    )
 
     return x, found_inf
 
 
-def update_loss_scaling(x,
-                        found_inf,
-                        prev_loss_scaling,
-                        num_good_steps,
-                        num_bad_steps,
-                        incr_every_n_steps,
-                        decr_every_n_nan_or_inf,
-                        incr_ratio,
-                        decr_ratio,
-                        stop_update=False,
-                        name=None):
+def update_loss_scaling(
+    x,
+    found_inf,
+    prev_loss_scaling,
+    num_good_steps,
+    num_bad_steps,
+    incr_every_n_steps,
+    decr_every_n_nan_or_inf,
+    incr_ratio,
+    decr_ratio,
+    stop_update=False,
+    name=None,
+):
     """
     Update loss scaling according to overall gradients. If all gradients is
     finite after incr_every_n_steps, loss scaling will increase by incr_ratio.
@@ -102,23 +111,39 @@ def update_loss_scaling(x,
                            loss scaling.
     """
 
-    check_variable_and_dtype(prev_loss_scaling, "prev_loss_scaling",
-                             ['float32', 'float64'], "update_loss_scaling")
+    check_variable_and_dtype(
+        prev_loss_scaling,
+        "prev_loss_scaling",
+        ['float32', 'float64'],
+        "update_loss_scaling",
+    )
     check_type(x, 'x', (tuple, list), 'update_loss_scaling')
     for e in x:
-        check_variable_and_dtype(e, "x", ['float16', 'float32', 'float64'],
-                                 'update_loss_scaling')
+        check_variable_and_dtype(
+            e, "x", ['float16', 'float32', 'float64'], 'update_loss_scaling'
+        )
         if e.dtype == core.VarDesc.VarType.FP16:
-            assert prev_loss_scaling.dtype == core.VarDesc.VarType.FP32, \
-                "The dtype of prev_loss_scaling should be float32 when the dtype of x is float16."
+            assert (
+                prev_loss_scaling.dtype == core.VarDesc.VarType.FP32
+            ), "The dtype of prev_loss_scaling should be float32 when the dtype of x is float16."
         else:
-            assert prev_loss_scaling.dtype == e.dtype, "The dtype of prev_loss_scaling should be equal to the dtype of x."
+            assert (
+                prev_loss_scaling.dtype == e.dtype
+            ), "The dtype of prev_loss_scaling should be equal to the dtype of x."
 
     if in_dygraph_mode():
-        _C_ops.update_loss_scaling_(x, found_inf, prev_loss_scaling,
-                                    num_good_steps, num_bad_steps,
-                                    incr_every_n_steps, decr_every_n_nan_or_inf,
-                                    incr_ratio, decr_ratio, stop_update)
+        _C_ops.update_loss_scaling_(
+            x,
+            found_inf,
+            prev_loss_scaling,
+            num_good_steps,
+            num_bad_steps,
+            incr_every_n_steps,
+            decr_every_n_nan_or_inf,
+            incr_ratio,
+            decr_ratio,
+            stop_update,
+        )
         return x
 
     helper = LayerHelper("update_loss_scaling", **locals())
@@ -128,14 +153,14 @@ def update_loss_scaling(x,
         'FoundInfinite': found_inf,
         'PrevLossScaling': prev_loss_scaling,
         'InGoodSteps': num_good_steps,
-        'InBadSteps': num_bad_steps
+        'InBadSteps': num_bad_steps,
     }
 
     outputs = {
         'Out': x,
         'LossScaling': prev_loss_scaling,
         'OutGoodSteps': num_good_steps,
-        'OutBadSteps': num_bad_steps
+        'OutBadSteps': num_bad_steps,
     }
 
     attrs = {
@@ -150,9 +175,8 @@ def update_loss_scaling(x,
     else:
         attrs['stop_update'] = stop_update
 
-    helper.append_op(type='update_loss_scaling',
-                     inputs=inputs,
-                     outputs=outputs,
-                     attrs=attrs)
+    helper.append_op(
+        type='update_loss_scaling', inputs=inputs, outputs=outputs, attrs=attrs
+    )
 
     return x

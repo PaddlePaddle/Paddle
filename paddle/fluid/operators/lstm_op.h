@@ -24,14 +24,13 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using LoDTensor = framework::LoDTensor;
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 
 template <typename DeviceContext, typename T>
 inline void ReorderInitState(const DeviceContext& ctx,
-                             const framework::Tensor& src,
+                             const phi::DenseTensor& src,
                              framework::Vector<size_t> index_lod,
-                             framework::Tensor* dst,
+                             phi::DenseTensor* dst,
                              bool indexed_src) {
   phi::funcs::CopyMatrixRowsFunctor<DeviceContext, T> row_shuffle;
   dst->mutable_data<T>(src.dims(), ctx.GetPlace());
@@ -44,25 +43,25 @@ class LSTMKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     bool is_test = ctx.Attr<bool>("is_test");
 
-    auto* input = ctx.Input<LoDTensor>("Input");
-    auto* weight = ctx.Input<Tensor>("Weight");
-    auto* bias = ctx.Input<Tensor>("Bias");
+    auto* input = ctx.Input<phi::DenseTensor>("Input");
+    auto* weight = ctx.Input<phi::DenseTensor>("Weight");
+    auto* bias = ctx.Input<phi::DenseTensor>("Bias");
 
-    auto* hidden_t0 = ctx.Input<Tensor>("H0");
-    auto* cell_t0 = ctx.Input<Tensor>("C0");
+    auto* hidden_t0 = ctx.Input<phi::DenseTensor>("H0");
+    auto* cell_t0 = ctx.Input<phi::DenseTensor>("C0");
 
-    LoDTensor* batch_gate = nullptr;
-    LoDTensor batch_gate_temp;
+    phi::DenseTensor* batch_gate = nullptr;
+    phi::DenseTensor batch_gate_temp;
     if (is_test) {
       batch_gate = &batch_gate_temp;
       batch_gate->Resize(input->dims());
     } else {
-      batch_gate = ctx.Output<LoDTensor>("BatchGate");
+      batch_gate = ctx.Output<phi::DenseTensor>("BatchGate");
     }
     batch_gate->mutable_data<T>(ctx.GetPlace());
-    auto* hidden_out = ctx.Output<LoDTensor>("Hidden");
+    auto* hidden_out = ctx.Output<phi::DenseTensor>("Hidden");
     hidden_out->mutable_data<T>(ctx.GetPlace());
-    auto* cell_out = ctx.Output<LoDTensor>("Cell");
+    auto* cell_out = ctx.Output<phi::DenseTensor>("Cell");
     cell_out->mutable_data<T>(ctx.GetPlace());
 
     bool is_reverse = ctx.Attr<bool>("is_reverse");
@@ -110,12 +109,12 @@ class LSTMKernel : public framework::OpKernel<T> {
     }
 
     // Use the local variable as here.
-    LoDTensor batch_hidden, batch_cell, batch_cell_pre_act_temp;
-    LoDTensor* batch_cell_pre_act;
+    phi::DenseTensor batch_hidden, batch_cell, batch_cell_pre_act_temp;
+    phi::DenseTensor* batch_cell_pre_act;
     if (is_test) {
       batch_cell_pre_act = &batch_cell_pre_act_temp;
     } else {
-      batch_cell_pre_act = ctx.Output<LoDTensor>("BatchCellPreAct");
+      batch_cell_pre_act = ctx.Output<phi::DenseTensor>("BatchCellPreAct");
     }
     batch_hidden.mutable_data<T>(dims, ctx.GetPlace());
     batch_cell.mutable_data<T>(dims, ctx.GetPlace());
@@ -191,11 +190,11 @@ class LSTMKernel : public framework::OpKernel<T> {
 
     phi::funcs::Batch2LoDTensorFunctor<DeviceContext, T> to_seq;
     batch_hidden.set_lod(batch_gate->lod());
-    // restore the output hidden in LoDTensor from the batch hidden
+    // restore the output hidden in phi::DenseTensor from the batch hidden
     to_seq(device_ctx, batch_hidden, hidden_out);
 
     batch_cell.set_lod(batch_gate->lod());
-    // restore the output cell state in LoDTensor from the batch cell
+    // restore the output cell state in phi::DenseTensor from the batch cell
     to_seq(device_ctx, batch_cell, cell_out);
   }
 };
@@ -204,27 +203,29 @@ template <typename DeviceContext, typename T>
 class LSTMGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* input = ctx.Input<LoDTensor>("Input");
-    auto* weight = ctx.Input<Tensor>("Weight");
-    auto* bias = ctx.Input<Tensor>("Bias");
+    auto* input = ctx.Input<phi::DenseTensor>("Input");
+    auto* weight = ctx.Input<phi::DenseTensor>("Weight");
+    auto* bias = ctx.Input<phi::DenseTensor>("Bias");
 
-    auto* hidden_out = ctx.Input<LoDTensor>("Hidden");
-    auto* cell_out = ctx.Input<LoDTensor>("Cell");
+    auto* hidden_out = ctx.Input<phi::DenseTensor>("Hidden");
+    auto* cell_out = ctx.Input<phi::DenseTensor>("Cell");
 
-    auto* batch_gate = ctx.Input<LoDTensor>("BatchGate");
-    auto* batch_cell_pre_act = ctx.Input<LoDTensor>("BatchCellPreAct");
+    auto* batch_gate = ctx.Input<phi::DenseTensor>("BatchGate");
+    auto* batch_cell_pre_act = ctx.Input<phi::DenseTensor>("BatchCellPreAct");
 
-    auto* hidden_g = ctx.Input<LoDTensor>(framework::GradVarName("Hidden"));
+    auto* hidden_g =
+        ctx.Input<phi::DenseTensor>(framework::GradVarName("Hidden"));
 
-    auto* in_g = ctx.Output<LoDTensor>(framework::GradVarName("Input"));
-    auto* weight_g = ctx.Output<Tensor>(framework::GradVarName("Weight"));
-    auto* bias_g = ctx.Output<Tensor>(framework::GradVarName("Bias"));
+    auto* in_g = ctx.Output<phi::DenseTensor>(framework::GradVarName("Input"));
+    auto* weight_g =
+        ctx.Output<phi::DenseTensor>(framework::GradVarName("Weight"));
+    auto* bias_g = ctx.Output<phi::DenseTensor>(framework::GradVarName("Bias"));
 
-    auto* h0 = ctx.Input<Tensor>("H0");
-    auto* c0 = ctx.Input<Tensor>("C0");
+    auto* h0 = ctx.Input<phi::DenseTensor>("H0");
+    auto* c0 = ctx.Input<phi::DenseTensor>("C0");
 
-    auto* h0_g = ctx.Output<Tensor>(framework::GradVarName("H0"));
-    auto* c0_g = ctx.Output<Tensor>(framework::GradVarName("C0"));
+    auto* h0_g = ctx.Output<phi::DenseTensor>(framework::GradVarName("H0"));
+    auto* c0_g = ctx.Output<phi::DenseTensor>(framework::GradVarName("C0"));
 
     auto& device_ctx = ctx.template device_context<DeviceContext>();
     phi::funcs::SetConstant<DeviceContext, T> zero;
@@ -292,20 +293,20 @@ class LSTMGradKernel : public framework::OpKernel<T> {
     phi::funcs::LoDTensor2BatchFunctor<DeviceContext, T> to_batch;
 
     auto ToBatch = [&batch_gate, &to_batch](const DeviceContext& ctx,
-                                            const framework::LoDTensor& src,
+                                            const phi::DenseTensor& src,
                                             const framework::DDim& dims,
-                                            framework::LoDTensor& dst) {
+                                            phi::DenseTensor& dst) {
       dst.mutable_data<T>(dims, ctx.GetPlace());
       dst.set_lod(batch_gate->lod());
       to_batch(ctx, src, &dst, false);
     };
 
-    LoDTensor batch_hidden, batch_hidden_g, batch_cell;
+    phi::DenseTensor batch_hidden, batch_hidden_g, batch_cell;
     ToBatch(device_ctx, *hidden_out, out_dims, batch_hidden);
     ToBatch(device_ctx, *hidden_g, out_dims, batch_hidden_g);
     ToBatch(device_ctx, *cell_out, out_dims, batch_cell);
 
-    LoDTensor batch_cell_g, batch_gate_g;
+    phi::DenseTensor batch_cell_g, batch_gate_g;
     batch_cell_g.mutable_data<T>(out_dims, ctx.GetPlace());
     // TODO(qingqing) support the case output cell has gradient.
     // to_batch(device_ctx, *cell_g, batch_cell_g, false);

@@ -23,8 +23,8 @@ void AddmmKernel(const Context& dev_ctx,
                  const DenseTensor& input,
                  const DenseTensor& x,
                  const DenseTensor& y,
-                 float alpha,
                  float beta,
+                 float alpha,
                  DenseTensor* out);
 
 }  // namespace phi

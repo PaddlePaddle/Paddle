@@ -18,14 +18,14 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 
 template <typename T>
 class CumSumMLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x = ctx.Input<Tensor>("X");
-    auto* out = ctx.Output<Tensor>("Out");
+    auto* x = ctx.Input<phi::DenseTensor>("X");
+    auto* out = ctx.Output<phi::DenseTensor>("Out");
     int axis = ctx.Attr<int>("axis");
     bool exclusive = ctx.Attr<bool>("exclusive");
     bool reverse = ctx.Attr<bool>("reverse");
@@ -33,7 +33,7 @@ class CumSumMLUKernel : public framework::OpKernel<T> {
 
     out->mutable_data<T>(ctx.GetPlace());
 
-    Tensor* input_ptr = const_cast<Tensor*>(x);
+    phi::DenseTensor* input_ptr = const_cast<phi::DenseTensor*>(x);
     Tensor flat_x(x->type());
     if (flatten) {
       PADDLE_ENFORCE_EQ(

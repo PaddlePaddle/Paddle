@@ -28,6 +28,10 @@ if(WITH_PYTHON)
   endif()
 endif()
 
+if(WITH_RPC)
+  add_subdirectory(rpc)
+endif()
+
 if(NOT WITH_PSCORE)
   add_subdirectory(fleet_executor)
   return()
@@ -36,13 +40,12 @@ endif()
 proto_library(ps_framework_proto SRCS the_one_ps.proto)
 
 set(DISTRIBUTE_COMPILE_FLAGS
-    "-Wno-error=unused-value -Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor -Wno-error=sign-compare -Wno-error=unused-variable -Wno-error=return-type -Wno-error=unused-but-set-variable -Wno-error=unknown-pragmas -Wno-error=parentheses -Wno-error=unused-result"
+    "-Wno-error=unused-value -Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor -Wno-error=return-type -Wno-error=unused-but-set-variable -Wno-error=unknown-pragmas -Wno-error=parentheses -Wno-error=unused-result"
 )
 
 if(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 7.0)
   set(DISTRIBUTE_COMPILE_FLAGS "${DISTRIBUTE_COMPILE_FLAGS} -faligned-new")
 endif()
-
 add_subdirectory(common)
 add_subdirectory(ps)
 add_subdirectory(test)

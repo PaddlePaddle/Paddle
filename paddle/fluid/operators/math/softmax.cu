@@ -23,7 +23,7 @@ namespace paddle {
 namespace operators {
 namespace math {
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 using ScopedTensorDescriptor = platform::ScopedTensorDescriptor;
 using DataLayout = platform::DataLayout;
 template <typename T>
@@ -32,8 +32,8 @@ using CudnnDataType = platform::CudnnDataType<T>;
 template <typename T, typename DeviceContext>
 void SoftmaxCUDNNFunctor<T, DeviceContext>::operator()(
     const DeviceContext& context,
-    const framework::Tensor* X,
-    framework::Tensor* Y) {
+    const phi::DenseTensor* X,
+    phi::DenseTensor* Y) {
   // ------------------- cudnn descriptors ---------------------
   ScopedTensorDescriptor xDesc;
   ScopedTensorDescriptor yDesc;
@@ -83,9 +83,9 @@ void SoftmaxCUDNNFunctor<T, DeviceContext>::operator()(
 template <typename T, typename DeviceContext>
 void SoftmaxGradCUDNNFunctor<T, DeviceContext>::operator()(
     const DeviceContext& context,
-    const framework::Tensor* Y,
-    const framework::Tensor* YGrad,
-    framework::Tensor* XGrad) {
+    const phi::DenseTensor* Y,
+    const phi::DenseTensor* YGrad,
+    phi::DenseTensor* XGrad) {
   // ------------------- cudnn descriptors ---------------------
   ScopedTensorDescriptor yDesc;
   ScopedTensorDescriptor dyDesc;

@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import numpy as np
 import unittest
 import sys
@@ -27,7 +25,6 @@ paddle.enable_static()
 
 
 class TestStackOpBase(OpTest):
-
     def initDefaultParameters(self):
         self.num_inputs = 4
         self.input_dim = (5, 6, 7)
@@ -51,7 +48,8 @@ class TestStackOpBase(OpTest):
         self.x = []
         for i in range(self.num_inputs):
             self.x.append(
-                np.random.random(size=self.input_dim).astype(self.dtype))
+                np.random.random(size=self.input_dim).astype(self.dtype)
+            )
 
         tmp = []
         x_names = self.get_x_names()
@@ -75,61 +73,51 @@ class TestStackOpBase(OpTest):
 
 
 class TestStackOp1(TestStackOpBase):
-
     def initParameters(self):
         self.num_inputs = 16
 
 
 class TestStackOp2(TestStackOpBase):
-
     def initParameters(self):
         self.num_inputs = 20
 
 
 class TestStackOp3(TestStackOpBase):
-
     def initParameters(self):
         self.axis = -1
 
 
 class TestStackOp4(TestStackOpBase):
-
     def initParameters(self):
         self.axis = -4
 
 
 class TestStackOp5(TestStackOpBase):
-
     def initParameters(self):
         self.axis = 1
 
 
 class TestStackOp6(TestStackOpBase):
-
     def initParameters(self):
         self.axis = 3
 
 
 class TestStackOpINT32(TestStackOpBase):
-
     def init_dtype(self):
         self.dtype = np.int32
 
 
 class TestStackOpINT64(TestStackOpBase):
-
     def init_dtype(self):
         self.dtype = np.int64
 
 
 class TestStackOpHalf(TestStackOpBase):
-
     def init_dtype(self):
         self.dtype = np.float16
 
 
 class API_test(unittest.TestCase):
-
     def test_out(self):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
             data1 = fluid.layers.data('data1', shape=[1, 2], dtype='float32')
@@ -141,12 +129,10 @@ class API_test(unittest.TestCase):
             input1 = np.random.random([1, 2]).astype('float32')
             input2 = np.random.random([1, 2]).astype('float32')
             input3 = np.random.random([1, 2]).astype('float32')
-            result, = exe.run(feed={
-                "data1": input1,
-                "data2": input2,
-                "data3": input3
-            },
-                              fetch_list=[result_stack])
+            (result,) = exe.run(
+                feed={"data1": input1, "data2": input2, "data3": input3},
+                fetch_list=[result_stack],
+            )
             expected_result = np.stack([input1, input2, input3], axis=0)
             np.testing.assert_allclose(expected_result, result)
 
@@ -157,7 +143,6 @@ class API_test(unittest.TestCase):
 
 
 class API_DygraphTest(unittest.TestCase):
-
     def test_out(self):
         data1 = np.array([[1.0, 2.0]]).astype("float32")
         data2 = np.array([[3.0, 4.0]]).astype("float32")

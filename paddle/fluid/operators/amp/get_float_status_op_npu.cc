@@ -21,14 +21,14 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 
 template <typename DeviceContext, typename T>
 class GetFloatStatusKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    const auto* float_status = ctx.Input<framework::Tensor>("FloatStatus");
-    auto* float_status_out = ctx.Output<framework::Tensor>("FloatStatusOut");
+    const auto* float_status = ctx.Input<phi::DenseTensor>("FloatStatus");
+    auto* float_status_out = ctx.Output<phi::DenseTensor>("FloatStatusOut");
     // GetClearFloatStatus modifies the input.
     PADDLE_ENFORCE_EQ(float_status_out,
                       float_status,

@@ -15,13 +15,13 @@
 #include "paddle/phi/kernels/diagonal_grad_kernel.h"
 
 #include "paddle/fluid/framework/tensor_util.h"
-#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
+#include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/diagonal.h"
 
 namespace phi {
 
-using paddle::platform::PADDLE_CUDA_NUM_THREADS;
+using phi::PADDLE_CUDA_NUM_THREADS;
 
 template <typename T, typename Context>
 void DiagonalGradKernel(const Context& dev_ctx,
@@ -166,4 +166,9 @@ PD_REGISTER_KERNEL(diagonal_grad,
                    float,
                    double,
                    int,
-                   int64_t) {}
+                   int64_t,
+                   bool,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}

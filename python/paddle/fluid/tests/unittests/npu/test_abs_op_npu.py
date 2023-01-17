@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function, division
-
 import numpy as np
 import unittest
 import sys
@@ -27,7 +25,6 @@ paddle.enable_static()
 
 
 class TestNPUAbs(OpTest):
-
     def setUp(self):
         self.op_type = "abs"
         self.set_npu()

@@ -29,7 +29,7 @@ void DropoutGradRawKernel(const Context& dev_ctx,
                           const std::string& mode,
                           DenseTensor* x_grad) {
   bool upscale_in_train = (mode == "upscale_in_train");
-  x_grad->mutable_data<T>(dev_ctx.GetPlace());
+  dev_ctx.template Alloc<T>(x_grad);
   paddle::operators::DropoutGradGPUKernelDriver<T>(dev_ctx,
                                                    is_test,
                                                    p.to<float>(),

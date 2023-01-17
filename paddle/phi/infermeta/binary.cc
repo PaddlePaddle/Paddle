@@ -195,10 +195,10 @@ void BincountInferMeta(const MetaTensor& x,
                                    "But the dimension of Input(X) is [%d]",
                                    input_dim.size()));
 
-  VLOG(1) << "####### CHECK weights";
+  VLOG(4) << "####### CHECK weights";
   if (weights) {
     auto weights_dim = weights.dims();
-    VLOG(1) << "##### weights_dim " << weights_dim;
+    VLOG(4) << "##### weights_dim " << weights_dim;
     PADDLE_ENFORCE_EQ(weights_dim.size(),
                       1,
                       phi::errors::InvalidArgument(
@@ -328,10 +328,10 @@ void CholeskySolveInferMeta(const MetaTensor& x,
   out->share_lod(x);
 }
 
-void CompareInferMeta(const MetaTensor& x,
-                      const MetaTensor& y,
-                      int axis,
-                      MetaTensor* out) {
+void CompareRawInferMeta(const MetaTensor& x,
+                         const MetaTensor& y,
+                         int axis,
+                         MetaTensor* out) {
   auto dim_x = x.dims();
   auto dim_y = y.dims();
 
@@ -356,6 +356,12 @@ void CompareInferMeta(const MetaTensor& x,
   }
 
   out->set_dtype(DataType::BOOL);
+}
+
+void CompareInferMeta(const MetaTensor& x,
+                      const MetaTensor& y,
+                      MetaTensor* out) {
+  CompareRawInferMeta(x, y, -1, out);
 }
 
 void CompareAllInferMeta(const MetaTensor& x,
@@ -409,12 +415,9 @@ void ConvInferMeta(const MetaTensor& input,
                    const std::vector<int>& strides,
                    const std::vector<int>& paddings_t,
                    const std::string& padding_algorithm,
-                   int groups,
                    const std::vector<int>& dilations_t,
+                   int groups,
                    const std::string& data_format,
-                   bool use_addto,
-                   int workspace_size_MB,
-                   bool exhaustive_search,
                    MetaTensor* out,
                    MetaConfig config) {
   std::vector<int> paddings = paddings_t;
@@ -559,27 +562,24 @@ void ConvInferMeta(const MetaTensor& input,
   out->set_dtype(input.dtype());
 }
 
-void ConvInferInferMeta(const MetaTensor& input,
-                        const MetaTensor& filter,
-                        const std::vector<int>& strides,
-                        const std::vector<int>& paddings,
-                        const std::string& paddding_algorithm,
-                        int groups,
-                        const std::vector<int>& dilations,
-                        const std::string& data_format,
-                        MetaTensor* out,
-                        MetaConfig config) {
+void Conv3DInferMeta(const MetaTensor& input,
+                     const MetaTensor& filter,
+                     const std::vector<int>& strides,
+                     const std::vector<int>& paddings,
+                     const std::string& padding_algorithm,
+                     int groups,
+                     const std::vector<int>& dilations,
+                     const std::string& data_format,
+                     MetaTensor* out,
+                     MetaConfig config) {
   ConvInferMeta(input,
                 filter,
                 strides,
                 paddings,
-                paddding_algorithm,
-                groups,
+                padding_algorithm,
                 dilations,
+                groups,
                 data_format,
-                /*use_addto=*/false,
-                /*workspace_size_MB=*/512,  // useless in infermeta
-                /*exhaustive_search=*/false,
                 out,
                 config);
 }
@@ -602,10 +602,9 @@ void ConvTransposeInferMeta(const MetaTensor& x,
   std::vector<int> paddings_ = paddings;
   std::vector<int> dilations_ = dilations;
 
-  const DataLayout data_layout =
-      config.is_run_mkldnn_kernel
-          ? DataLayout::kNCHW
-          : paddle::framework::StringToDataLayout(data_format);
+  const DataLayout data_layout = config.is_run_mkldnn_kernel
+                                     ? DataLayout::kNCHW
+                                     : phi::StringToDataLayout(data_format);
 
   PADDLE_ENFORCE_EQ(
       x_dims.size() == 4 || x_dims.size() == 5,
@@ -921,6 +920,28 @@ void CrossEntropyWithSoftmaxInferMeta(const MetaTensor& logits,
 
   softmax->share_lod(logits);
   loss->share_lod(logits);
+}
+
+void DepthwiseConvInferMeta(const MetaTensor& input,
+                            const MetaTensor& filter,
+                            const std::vector<int>& strides,
+                            const std::vector<int>& paddings,
+                            const std::string& padding_algorithm,
+                            int groups,
+                            const std::vector<int>& dilations,
+                            const std::string& data_format,
+                            MetaTensor* out,
+                            MetaConfig config) {
+  ConvInferMeta(input,
+                filter,
+                strides,
+                paddings,
+                padding_algorithm,
+                dilations,
+                groups,
+                data_format,
+                out,
+                config);
 }
 
 void DistInferMeta(const MetaTensor& x,
@@ -1247,37 +1268,69 @@ void GatherInferMeta(const MetaTensor& x,
             index_dims[1]));
   } else {
     PADDLE_ENFORCE_EQ(
-        index_dims.size(),
-        1,
+        index_dims.size() == 1 || index_dims.size() == 0,
+        true,
         phi::errors::InvalidArgument(
-            "The index should be 1D, when it is not 2D, but we get %d",
+            "The index should be 0D or 1D, when it is not 2D, but we get %d",
             index_dims.size()));
   }
 
   auto input_dim = x.dims();
   auto axis_v = axis.to<int>();
-  if (axis.FromTensor() || axis_v == 0) {
-    // if axis.FromTensor(), we can not obtain correct shape of output
-    int batch_size = index_dims[0];
-    phi::DDim output_dims(input_dim);
-    output_dims[0] = batch_size;
-    out->set_dims(output_dims);
-    out->set_dtype(x.dtype());
-    out->share_lod(x);
+  if (index_dims.size() == 0) {
+    // 0D index will decrease the dimension
+    if (input_dim.size() == 1) {
+      // the index is a 0D tensor and the x is a 1D tensor
+      out->set_dims(phi::DDim(phi::Dim<0>()));
+    } else {
+      if (axis.FromTensor() || axis_v == 0) {
+        // decrease the output dimension
+        std::vector<int> out_dim_vec;
+        for (int i = 1; i < input_dim.size(); ++i) {
+          out_dim_vec.emplace_back(input_dim[i]);
+        }
+        auto output_dims = phi::make_ddim(out_dim_vec);
+        out->set_dims(output_dims);
+        out->set_dtype(x.dtype());
+        out->share_lod(x);
+      } else {
+        std::vector<int> out_dim_vec;
+        for (int i = 0; i < axis_v; i++) {
+          out_dim_vec.push_back(input_dim[i]);
+        }
+        for (int i = axis_v + 1; i < input_dim.size(); i++) {
+          out_dim_vec.push_back(input_dim[i]);
+        }
+        auto output_dims = phi::make_ddim(out_dim_vec);
+        out->set_dims(output_dims);
+        out->set_dtype(x.dtype());
+        out->share_lod(x);
+      }
+    }
   } else {
-    int index_size = index_dims[0];
-    std::vector<int> out_dim_vec;
-    for (int i = 0; i < axis_v; i++) {
-      out_dim_vec.push_back(input_dim[i]);
+    if (axis.FromTensor() || axis_v == 0) {
+      // if axis.FromTensor(), we can not obtain correct shape of output
+      int batch_size = index_dims[0];
+      phi::DDim output_dims(input_dim);
+      output_dims[0] = batch_size;
+      out->set_dims(output_dims);
+      out->set_dtype(x.dtype());
+      out->share_lod(x);
+    } else {
+      int index_size = index_dims[0];
+      std::vector<int> out_dim_vec;
+      for (int i = 0; i < axis_v; i++) {
+        out_dim_vec.push_back(input_dim[i]);
+      }
+      out_dim_vec.push_back(index_size);
+      for (int i = axis_v + 1; i < input_dim.size(); i++) {
+        out_dim_vec.push_back(input_dim[i]);
+      }
+      auto output_dims = phi::make_ddim(out_dim_vec);
+      out->set_dims(output_dims);
+      out->set_dtype(x.dtype());
+      out->share_lod(x);
     }
-    out_dim_vec.push_back(index_size);
-    for (int i = axis_v + 1; i < input_dim.size(); i++) {
-      out_dim_vec.push_back(input_dim[i]);
-    }
-    auto output_dims = phi::make_ddim(out_dim_vec);
-    out->set_dims(output_dims);
-    out->set_dtype(x.dtype());
-    out->share_lod(x);
   }
 }
 
@@ -2877,4 +2930,3 @@ void Unpool3dInferMeta(const MetaTensor& x,
 }  // namespace phi
 
 PD_REGISTER_INFER_META_FN(add_raw, phi::ElementwiseRawInferMeta);
-PD_REGISTER_INFER_META_FN(conv2d_infer, phi::ConvInferInferMeta);

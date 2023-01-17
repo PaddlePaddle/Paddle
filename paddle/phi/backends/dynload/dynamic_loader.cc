@@ -17,8 +17,8 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
-#include "paddle/fluid/platform/enforce.h"
 #include "paddle/phi/backends/dynload/cupti_lib_path.h"
+#include "paddle/phi/core/enforce.h"
 
 #if defined(_WIN32)
 #include <windows.h>
@@ -479,7 +479,7 @@ void* GetNCCLDsoHandle() {
 #else
   std::string warning_msg(
       "You may need to install 'nccl2' from NVIDIA official website: "
-      "https://developer.nvidia.com/nccl/nccl-download"
+      "https://developer.nvidia.com/nccl/nccl-download "
       "before install PaddlePaddle.");
 #endif
 

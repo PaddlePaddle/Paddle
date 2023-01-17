@@ -942,4 +942,21 @@ if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
   py_test_modules(
     test_fleet_log MODULES test_fleet_log ENVS
     "http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python")
+  set_tests_properties(test_fleet_log PROPERTIES TIMEOUT "200" LABELS
+                                                 "RUN_TYPE=DIST")
+endif()
+if((WITH_GPU) AND (LINUX))
+  py_test_modules(
+    test_dygraph_dist_save_load MODULES test_dygraph_dist_save_load ENVS
+    "http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python")
+  set_tests_properties(test_dygraph_dist_save_load
+                       PROPERTIES TIMEOUT "200" LABELS "RUN_TYPE=DIST")
+endif()
+if((WITH_GPU) AND (LINUX))
+  py_test_modules(
+    test_dygraph_save_for_auto_infer MODULES test_dygraph_save_for_auto_infer
+    ENVS
+    "http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python")
+  set_tests_properties(test_dygraph_save_for_auto_infer
+                       PROPERTIES TIMEOUT "300" LABELS "RUN_TYPE=DIST")
 endif()

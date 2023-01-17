@@ -95,11 +95,12 @@ framework::OpKernelType FusionSeqConvEltAddReluOp::GetExpectedKernelType(
 }
 
 void FusionSeqConvEltAddReluOpMaker::Make() {
-  AddInput("X",
-           "(LoDTensor) the input is a LodTensor, which support "
-           "variable-time length input sequence. The underlying tensor in "
-           "this LoDTensor is a matrix with shape (T X M), where T is the "
-           "total time steps in this mini-batch, M is the dim size of x.");
+  AddInput(
+      "X",
+      "(phi::DenseTensor) the input is a LodTensor, which support "
+      "variable-time length input sequence. The underlying tensor in "
+      "this phi::DenseTensor is a matrix with shape (T X M), where T is the "
+      "total time steps in this mini-batch, M is the dim size of x.");
   // PaddingData only support false yet, should be ensured at pass.
   AddInput("Filter",
            "(Tensor) same as the input(Filter) of sequence conv op is an "
@@ -111,9 +112,9 @@ void FusionSeqConvEltAddReluOpMaker::Make() {
            "output feature size");
   AddOutput(
       "Out",
-      "(LoDTensor) the output(Out) is a LodTensor, which support "
+      "(phi::DenseTensor) the output(Out) is a LodTensor, which support "
       "variable-time length output sequence. The underlying tensor in "
-      "this LoDTensor is a matrix with shape (T, N), where, T is the "
+      "this phi::DenseTensor is a matrix with shape (T, N), where, T is the "
       "total time steps in this mini-batch, N is the output feature size.");
   AddOutput("ColMat",
             "(Tensor) (T, K), where T is where T is the "
@@ -150,11 +151,11 @@ class FusionSeqConvEltAddReluKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     using DeviceContext = phi::CPUContext;
-    auto* x = ctx.Input<LoDTensor>("X");
-    auto* w = ctx.Input<Tensor>("Filter");
-    auto* b = ctx.Input<Tensor>("Bias");
-    auto* y = ctx.Output<LoDTensor>("Out");
-    auto* col = ctx.Output<Tensor>("ColMat");
+    auto* x = ctx.Input<phi::DenseTensor>("X");
+    auto* w = ctx.Input<phi::DenseTensor>("Filter");
+    auto* b = ctx.Input<phi::DenseTensor>("Bias");
+    auto* y = ctx.Output<phi::DenseTensor>("Out");
+    auto* col = ctx.Output<phi::DenseTensor>("ColMat");
 
     auto x_lod = x->lod();
     auto x_dims = x->dims();

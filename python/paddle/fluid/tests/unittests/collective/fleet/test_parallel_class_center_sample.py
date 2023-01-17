@@ -12,18 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import os
 import unittest
-import paddle.fluid as fluid
 
 from test_parallel_dygraph_dataparallel import TestMultipleGpus
-from paddle.fluid.framework import _test_eager_guard
 
 
 class TestParallelClassCenterSample(TestMultipleGpus):
-
     def test_parallel_class_center_sample(self):
         self.run_mnist_2gpu('parallel_class_center_sample.py')
         self.run_mnist_2gpu('parallel_class_center_sample.py', eager_mode=False)

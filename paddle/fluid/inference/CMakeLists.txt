@@ -38,7 +38,7 @@ endif()
 get_property(fluid_modules GLOBAL PROPERTY FLUID_MODULES)
 get_property(phi_modules GLOBAL PROPERTY PHI_MODULES)
 get_property(phi_kernels GLOBAL PROPERTY PHI_KERNELS)
-set(utils_modules stringpiece pretty_log string_helper benchmark)
+set(utils_modules pretty_log string_helper benchmark)
 
 if(WITH_CUSTOM_DEVICE)
   set(fluid_modules ${fluid_modules} phi_capi)
@@ -58,11 +58,24 @@ set(STATIC_INFERENCE_API
     phi
     ${mkldnn_quantizer_cfg})
 
+set(OP_LIST
+    ""
+    CACHE STRING "The list of operators that will be compiled")
+
+set(KERNEL_LIST
+    ""
+    CACHE STRING "The list of phi kernels that will be compiled")
+
 #windows GPU static library over the limit, so not create_static_lib, and cc_library is dummy
 if(WIN32 AND WITH_GPU)
   cc_library(paddle_inference DEPS ${fluid_modules} phi ${STATIC_INFERENCE_API}
                                    ${utils_modules})
 else()
+  # message("${fluid_modules}")
+  # message("PHI_MODULES ${phi_modules}")
+  # message("${phi_kernels}")
+  # message("${STATIC_INFERENCE_API}")
+  # message("${utils_modules}")
   create_static_lib(paddle_inference ${fluid_modules} ${phi_modules}
                     ${phi_kernels} ${STATIC_INFERENCE_API} ${utils_modules})
 endif()
@@ -108,10 +121,20 @@ if(WITH_PSCORE)
                             tensor_table)
 endif()
 
+if(WITH_INFERENCE_NVTX AND NOT WIN32)
+  set(SHARED_INFERENCE_DEPS ${SHARED_INFERENCE_DEPS} cuda_profiler)
+endif()
+
 if(WITH_ONNXRUNTIME)
   set(SHARED_INFERENCE_SRCS
       ${SHARED_INFERENCE_SRCS}
       ${CMAKE_CURRENT_SOURCE_DIR}/api/onnxruntime_predictor.cc)
+endif()
+
+#export all symbols for paddle/phi/api/include/api.h on paddle_inference_shared, only for UNIX
+if(UNIX)
+  set(SHARED_INFERENCE_DEPS ${SHARED_INFERENCE_DEPS}
+                            $<TARGET_OBJECTS:phi_function_api>)
 endif()
 
 # Create shared inference library

@@ -18,7 +18,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/fake_dequantize_op.cu.h"
 #include "paddle/fluid/operators/fake_quantize_op.cu.h"
 #include "paddle/fluid/operators/quantize_linear_op.h"
-#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
+#include "paddle/phi/backends/gpu/gpu_primitives.h"
 
 namespace paddle {
 namespace operators {
@@ -26,11 +26,11 @@ namespace operators {
 template <typename T>
 struct ChannelDequantizeFunctorV2<phi::GPUContext, T> {
   void operator()(const phi::GPUContext& dev_ctx,
-                  const framework::Tensor* in,
-                  const framework::Tensor* scale,
+                  const phi::DenseTensor* in,
+                  const phi::DenseTensor* scale,
                   T max_range,
                   const int quant_axis,
-                  framework::Tensor* out) {
+                  phi::DenseTensor* out) {
     auto in_dims = in->dims();
     const T* in_data = in->data<T>();
     T* out_data = out->mutable_data<T>(dev_ctx.GetPlace());

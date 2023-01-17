@@ -141,8 +141,7 @@ class MatMulOpConverter : public OpConverter {
 
         auto create_weights = [&](float data,
                                   const std::string& type) -> float* {
-          std::unique_ptr<framework::Tensor> tmp_tensor(
-              new framework::Tensor());
+          std::unique_ptr<phi::DenseTensor> tmp_tensor(new phi::DenseTensor());
           tmp_tensor->Resize({1});
           auto* tmp_data =
               tmp_tensor->mutable_data<float>(platform::CPUPlace());

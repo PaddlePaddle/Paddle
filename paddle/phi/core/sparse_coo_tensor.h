@@ -274,7 +274,7 @@ class SparseCooTensor : public TensorBase,
                 [0, 0, 0, 0]]
      dims_ = (4, 4)
      non_zero_elements_ = [[0, 1, 0, 0], [0, 0, 4, 0]]
-     non_zero_indices_ = [0, 2],
+     non_zero_indices_ = [[0, 2], [1, 2]]
    */
 };
 

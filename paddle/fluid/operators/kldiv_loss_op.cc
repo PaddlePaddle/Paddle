@@ -19,8 +19,6 @@
 namespace paddle {
 namespace operators {
 
-using framework::Tensor;
-
 class KLDivLossOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;

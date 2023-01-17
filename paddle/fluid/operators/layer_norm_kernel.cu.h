@@ -25,15 +25,15 @@ namespace cub = hipcub;
 #include <iostream>
 
 #include "paddle/fluid/operators/fused/quant_dequant_kernel.h"
-#include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
 #include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
+#include "paddle/phi/backends/gpu/gpu_device_function.h"
 #include "paddle/phi/core/ddim.h"
 #include "paddle/phi/kernels/funcs/aligned_vector.h"
 
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 template <typename T>
 using CudnnDataType = platform::CudnnDataType<T>;
 template <typename T>
@@ -55,7 +55,7 @@ static __forceinline__ __device__ U WarpReduceSum(U val) {
   unsigned mask = 0u;
   CREATE_SHFL_MASK(mask, true);
   for (int offset = warpSize / 2; offset > 0; offset /= 2) {
-    val += paddle::platform::CudaShuffleDownSync(mask, val, offset);
+    val += phi::backends::gpu::CudaShuffleDownSync(mask, val, offset);
   }
   return val;
 }
@@ -938,12 +938,12 @@ void ln_bwd_fast_kernel_driver(const phi::GPUContext &dev_ctx,
     const int gridx = 2 * dev_ctx.GetSMCount();
 
     // get temp space for dscale and dbias.
-    framework::Tensor dscale_temp;
+    phi::DenseTensor dscale_temp;
     dscale_temp.Resize({gridx, cols});
     dscale_temp.mutable_data<U>(dev_ctx.GetPlace());
     U *dscale_temp_ptr = dscale_temp.data<U>();
 
-    framework::Tensor dbias_temp;
+    phi::DenseTensor dbias_temp;
     dbias_temp.Resize({gridx, cols});
     dbias_temp.mutable_data<U>(dev_ctx.GetPlace());
     U *dbias_temp_ptr = dbias_temp.data<U>();

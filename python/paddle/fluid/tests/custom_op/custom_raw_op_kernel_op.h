@@ -23,8 +23,7 @@
 namespace custom_raw_op {
 
 struct ReluFunctor {
-  explicit ReluFunctor(const paddle::framework::Tensor &x,
-                       paddle::framework::Tensor *y)
+  explicit ReluFunctor(const phi::DenseTensor &x, phi::DenseTensor *y)
       : x_(x), y_(y) {}
 
   template <typename U>
@@ -72,12 +71,11 @@ struct ReluFunctor {
   }
 
  private:
-  const paddle::framework::Tensor &x_;
-  paddle::framework::Tensor *y_;
+  const phi::DenseTensor &x_;
+  phi::DenseTensor *y_;
 };
 
-inline void ReluForward(const paddle::framework::Tensor &x,
-                        paddle::framework::Tensor *y) {
+inline void ReluForward(const phi::DenseTensor &x, phi::DenseTensor *y) {
   custom_raw_op::ReluFunctor functor(x, y);
   paddle::framework::VisitDataType(
       paddle::framework::TransToProtoVarType(x.dtype()), functor);

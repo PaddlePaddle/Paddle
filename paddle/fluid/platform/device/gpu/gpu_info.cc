@@ -124,11 +124,6 @@ size_t GpuInitAllocSize() { return GpuAllocSize(/* realloc = */ false); }
 
 size_t GpuReallocSize() { return GpuAllocSize(/* realloc = */ true); }
 
-size_t GpuMinChunkSize() {
-  // Allow to allocate the minimum chunk size is 256 bytes.
-  return 1 << 8;
-}
-
 size_t GpuMaxChunkSize() {
   size_t max_chunk_size = GpuMaxAllocSize();
   VLOG(10) << "Max chunk size " << (max_chunk_size >> 20) << "M";
@@ -410,8 +405,8 @@ void RecordedGpuFree(void *p, size_t size, int dev_id) {
 CUresult RecordedGpuMemCreate(CUmemGenericAllocationHandle *handle,
                               size_t size,
                               const CUmemAllocationProp *prop,
-                              unsigned long long flags,
-                              int dev_id) {  // NOLINT
+                              unsigned long long flags,  // NOLINT
+                              int dev_id) {
   return RecordedGpuMallocHelper::Instance(dev_id)->MemCreate(
       handle, size, prop, flags);
 }

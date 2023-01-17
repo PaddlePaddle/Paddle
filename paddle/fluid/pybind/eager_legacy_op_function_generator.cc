@@ -416,6 +416,11 @@ GenerateOpFunctions() {
     if (CUSTOM_HANDWRITE_OPS_SET.count(op_type)) {
       continue;
     }
+    // Skip the sparse op
+    if (op_type.compare(0, 7, "sparse_") == 0 && op_type != "sparse_momentum" &&
+        op_type != "sparse_attention") {
+      continue;
+    }
     // Skip operator which is not inherit form OperatorWithKernel, like while,
     // since only OperatorWithKernel can run in dygraph mode.
     // if the phi lib contains op kernel, we still generate ops method

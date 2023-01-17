@@ -61,6 +61,7 @@ std::map<std::string, std::set<std::string>> op_ins_map = {
       "QKVW",
       "QKVBias",
       "CacheKV",
+      "PreCaches",
       "TimeStep",
       "SrcMask",
       "OutLinearW",

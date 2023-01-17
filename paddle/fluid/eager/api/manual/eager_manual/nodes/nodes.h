@@ -63,8 +63,8 @@ class Conv2dGradNodeFinal : public egr::GradNodeBase {
   void SetAttributepaddings(const std::vector<int>& paddings) {
     paddings_ = paddings;
   }
-  void SetAttributepaddding_algorithm(const std::string& paddding_algorithm) {
-    paddding_algorithm_ = paddding_algorithm;
+  void SetAttributepadding_algorithm(const std::string& padding_algorithm) {
+    padding_algorithm_ = padding_algorithm;
   }
   void SetAttributegroups(const int& groups) { groups_ = groups; }
   void SetAttributedilations(const std::vector<int>& dilations) {
@@ -72,13 +72,6 @@ class Conv2dGradNodeFinal : public egr::GradNodeBase {
   }
   void SetAttributedata_format(const std::string& data_format) {
     data_format_ = data_format;
-  }
-  void SetAttributeuse_addto(const bool& use_addto) { use_addto_ = use_addto; }
-  void SetAttributeworkspace_size_MB(const int& workspace_size_MB) {
-    workspace_size_MB_ = workspace_size_MB;
-  }
-  void SetAttributeexhaustive_search(const bool& exhaustive_search) {
-    exhaustive_search_ = exhaustive_search;
   }
 
  private:
@@ -89,13 +82,10 @@ class Conv2dGradNodeFinal : public egr::GradNodeBase {
   // Attributes
   std::vector<int> strides_;
   std::vector<int> paddings_;
-  std::string paddding_algorithm_;
+  std::string padding_algorithm_;
   int groups_;
   std::vector<int> dilations_;
   std::string data_format_;
-  bool use_addto_;
-  int workspace_size_MB_;
-  bool exhaustive_search_;
 };
 
 class Conv2dDoubleGradNodeFinal : public egr::GradNodeBase {
@@ -146,8 +136,8 @@ class Conv2dDoubleGradNodeFinal : public egr::GradNodeBase {
   void SetAttributepaddings(const std::vector<int>& paddings) {
     paddings_ = paddings;
   }
-  void SetAttributepaddding_algorithm(const std::string& paddding_algorithm) {
-    paddding_algorithm_ = paddding_algorithm;
+  void SetAttributepadding_algorithm(const std::string& padding_algorithm) {
+    padding_algorithm_ = padding_algorithm;
   }
   void SetAttributegroups(const int& groups) { groups_ = groups; }
   void SetAttributedilations(const std::vector<int>& dilations) {
@@ -155,13 +145,6 @@ class Conv2dDoubleGradNodeFinal : public egr::GradNodeBase {
   }
   void SetAttributedata_format(const std::string& data_format) {
     data_format_ = data_format;
-  }
-  void SetAttributeuse_addto(const bool& use_addto) { use_addto_ = use_addto; }
-  void SetAttributeworkspace_size_MB(const int& workspace_size_MB) {
-    workspace_size_MB_ = workspace_size_MB;
-  }
-  void SetAttributeexhaustive_search(const bool& exhaustive_search) {
-    exhaustive_search_ = exhaustive_search;
   }
 
  private:
@@ -173,13 +156,10 @@ class Conv2dDoubleGradNodeFinal : public egr::GradNodeBase {
   // Attributes
   std::vector<int> strides_;
   std::vector<int> paddings_;
-  std::string paddding_algorithm_;
+  std::string padding_algorithm_;
   int groups_;
   std::vector<int> dilations_;
   std::string data_format_;
-  bool use_addto_;
-  int workspace_size_MB_;
-  bool exhaustive_search_;
 };
 
 class AddNGradNodeFinal : public egr::GradNodeBase {

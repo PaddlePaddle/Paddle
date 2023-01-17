@@ -19,16 +19,16 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 
 template <typename DeviceContext, typename T>
 class SquaredL2DistanceKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* in0 = context.Input<Tensor>("X");
-    auto* in1 = context.Input<Tensor>("Y");
-    auto* out0 = context.Output<Tensor>("sub_result");
-    auto* out1 = context.Output<Tensor>("Out");
+    auto* in0 = context.Input<phi::DenseTensor>("X");
+    auto* in1 = context.Input<phi::DenseTensor>("Y");
+    auto* out0 = context.Output<phi::DenseTensor>("sub_result");
+    auto* out1 = context.Output<phi::DenseTensor>("Out");
 
     auto in0_dims = in0->dims();
     auto in1_dims = in1->dims();
@@ -66,10 +66,10 @@ template <typename DeviceContext, typename T>
 class SquaredL2DistanceGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* in0 = context.Input<Tensor>("sub_result");
-    auto* in1 = context.Input<Tensor>(framework::GradVarName("Out"));
-    auto* x_g = context.Output<Tensor>(framework::GradVarName("X"));
-    auto* y_g = context.Output<Tensor>(framework::GradVarName("Y"));
+    auto* in0 = context.Input<phi::DenseTensor>("sub_result");
+    auto* in1 = context.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+    auto* x_g = context.Output<phi::DenseTensor>(framework::GradVarName("X"));
+    auto* y_g = context.Output<phi::DenseTensor>(framework::GradVarName("Y"));
 
     PADDLE_ENFORCE_NOT_NULL(
         x_g,

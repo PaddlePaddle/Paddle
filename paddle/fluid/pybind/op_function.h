@@ -147,8 +147,8 @@ static inline void HandleViewBetweenInputAndOutput(
       platform::errors::InvalidArgument("Tensor %s has not been initialized!",
                                         input_var->Name()));
 
-  if (input_var->Var().IsType<framework::LoDTensor>()) {
-    const auto& input_tensor = input_var->Var().Get<framework::LoDTensor>();
+  if (input_var->Var().IsType<phi::DenseTensor>()) {
+    const auto& input_tensor = input_var->Var().Get<phi::DenseTensor>();
     PADDLE_ENFORCE_EQ(
         input_tensor.IsInitialized(),
         true,
@@ -156,7 +156,7 @@ static inline void HandleViewBetweenInputAndOutput(
             "LoDTensor %s has not been initialized!", input_var->Name()));
 
     auto* view_output_tensor =
-        view_output_var->MutableVar()->GetMutable<framework::LoDTensor>();
+        view_output_var->MutableVar()->GetMutable<phi::DenseTensor>();
     view_output_tensor->ShareBufferWith(input_tensor);
     view_output_tensor->ShareInplaceVersionCounterWith(input_tensor);
 

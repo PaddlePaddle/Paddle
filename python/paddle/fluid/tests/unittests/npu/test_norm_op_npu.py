@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import sys
 
 sys.path.append("..")
@@ -26,7 +24,6 @@ from paddle.fluid.tests.unittests.test_norm_op import l2_norm
 
 
 class TestNPUNormOp(OpTest):
-
     def setUp(self):
         paddle.enable_static()
         self.set_npu()
@@ -56,13 +53,12 @@ class TestNPUNormOp(OpTest):
         self.check_output_with_place(self.place)
 
     def test_check_grad(self):
-        self.check_grad_with_place(self.place, ['X'],
-                                   'Out',
-                                   max_relative_error=0.006)
+        self.check_grad_with_place(
+            self.place, ['X'], 'Out', max_relative_error=0.006
+        )
 
 
 class TestNPUNormOp2(TestNPUNormOp):
-
     def init_test_case(self):
         self.shape = [5, 3, 9, 7]
         self.axis = 0
@@ -70,17 +66,17 @@ class TestNPUNormOp2(TestNPUNormOp):
 
 
 class TestNPUNormOp3(TestNPUNormOp):
-
     def init_test_case(self):
         self.shape = [5, 3, 2, 7]
         self.axis = -1
         self.epsilon = 1e-8
 
 
-@skip_check_grad_ci(reason="'check_grad' on large inputs is too slow, " +
-                    "however it is desirable to cover the forward pass")
+@skip_check_grad_ci(
+    reason="'check_grad' on large inputs is too slow, "
+    + "however it is desirable to cover the forward pass"
+)
 class TestNPUNormOp4(TestNPUNormOp):
-
     def init_test_case(self):
         self.shape = [128, 1024, 14, 14]
         self.axis = 2
@@ -90,10 +86,11 @@ class TestNPUNormOp4(TestNPUNormOp):
         pass
 
 
-@skip_check_grad_ci(reason="'check_grad' on large inputs is too slow, " +
-                    "however it is desirable to cover the forward pass")
+@skip_check_grad_ci(
+    reason="'check_grad' on large inputs is too slow, "
+    + "however it is desirable to cover the forward pass"
+)
 class TestNPUNormOp5(TestNPUNormOp):
-
     def init_test_case(self):
         self.shape = [2048, 2048]
         self.axis = 1
@@ -104,7 +101,6 @@ class TestNPUNormOp5(TestNPUNormOp):
 
 
 class API_NormTest(unittest.TestCase):
-
     def test_errors(self):
         paddle.enable_static()
         with fluid.program_guard(fluid.Program()):
@@ -117,7 +113,6 @@ class API_NormTest(unittest.TestCase):
 
 
 class TestNPUNormOpFP16(TestNPUNormOp):
-
     def set_npu(self):
         self.__class__.use_npu = True
         self.__class__.no_need_check_grad = True

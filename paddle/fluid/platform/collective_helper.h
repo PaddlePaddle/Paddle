@@ -69,10 +69,7 @@ class NCCLComm {
 // A singleton NCCL communicator context reserves communication ring ids
 class NCCLCommContext {
  public:
-  static NCCLCommContext& Instance() {
-    static NCCLCommContext comm_ctx;
-    return comm_ctx;
-  }
+  static NCCLCommContext& Instance();
 
   NCCLComm* CreateComm(
       ncclUniqueId* nccl_id, int nranks, int rank, int dev_id, int ring_id = 0);

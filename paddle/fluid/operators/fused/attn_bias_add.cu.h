@@ -324,7 +324,7 @@ void Launch2DColumnReduce(const phi::GPUContext& dev_ctx,
     BiasAddBwSinglePassKernel<T>
         <<<grid, block, 0, stream>>>(d_out, reduce_num, left_num, d_bias);
   } else {
-    framework::Tensor tmp_sum;
+    phi::DenseTensor tmp_sum;
     tmp_sum.Resize({grid.y, left_num});
     dev_ctx.template Alloc<ReduceParamType<T>>(
         &tmp_sum, tmp_sum.numel() * sizeof(ReduceParamType<T>));

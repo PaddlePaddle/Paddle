@@ -62,7 +62,7 @@ ENV CPLUS_INCLUDE_PATH=/usr/local/python3.7.0/include/python3.7:$CPLUS_INCLUDE_P
 RUN ln -sf /usr/local/python3.7.0/bin/python3.7 /usr/local/bin/python3 && ln -sf /usr/local/python3.7.0/bin/python3.7 /usr/bin/python3
 RUN mv /usr/bin/python /usr/bin/python.bak && ln -s /usr/local/python3.7.0/bin/python3.7 /usr/local/bin/python && ln -s /usr/local/python3.7.0/bin/python3.7 /usr/bin/python
 
-RUN rm -r /root/python_build
+RUN rm -rf /root/python_build
 
 WORKDIR /home
 RUN python3.7 -m pip uninstall -y pip setuptools

@@ -129,7 +129,7 @@ static void ScaleCPU(DataType kernel_dtype,
       break;
     }
     default: {
-      PADDLE_THROW(paddle::platform::errors::Fatal(
+      PADDLE_THROW(phi::errors::Fatal(
           "Detected unsupported data type."
           "Only Float64, Float32, BFloat16, Int64, Int32, Int16, Int8, UInt8 "
           "are supported for now."));
@@ -188,7 +188,7 @@ static void ScaleGPU(DataType kernel_dtype,
       break;
     }
     default: {
-      PADDLE_THROW(paddle::platform::errors::Fatal(
+      PADDLE_THROW(phi::errors::Fatal(
           "Detected unsupported data type."
           "Only Float64, Float32, Float16, Int64, Int32, Int16, Int8, UInt8 "
           "are "
@@ -262,7 +262,7 @@ Tensor scale_switch_case(const Tensor& x,
       break;
 #endif
     default:
-      PADDLE_THROW(paddle::platform::errors::Fatal(
+      PADDLE_THROW(phi::errors::Fatal(
           "Detected unsupported backend."
           "Only CPU and CUDA Backend are supported for now."
           "Please double check if your backend falls into the above two "

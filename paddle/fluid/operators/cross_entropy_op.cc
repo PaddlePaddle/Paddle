@@ -346,14 +346,14 @@ class CrossEntropyGradientOp2 : public CrossEntropyGradientOpBase {
   }
 
  protected:
-  virtual framework::DDim GetXDim(framework::InferShapeContext* ctx) const {
+  framework::DDim GetXDim(framework::InferShapeContext* ctx) const override {
     auto x_shape = ctx->GetInputDim("XShape");
     return framework::DDim(x_shape.Get(), x_shape.size() - 1);
   }
 
-  virtual const char* VarNameWithXLoD() const { return "XShape"; }
+  const char* VarNameWithXLoD() const override { return "XShape"; }
 
-  virtual bool IsSoftLabel(framework::InferShapeContext* ctx) const {
+  bool IsSoftLabel(framework::InferShapeContext* ctx) const override {
     return false;
   }
 };

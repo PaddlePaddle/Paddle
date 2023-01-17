@@ -12,12 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
-from numpy.lib.stride_tricks import as_strided
-import paddle
 import unittest
 
+import numpy as np
+from numpy.lib.stride_tricks import as_strided
 from op_test import OpTest
+
+import paddle
 
 
 def frame_from_librosa(x, frame_length, hop_length, axis=-1):
@@ -44,7 +45,6 @@ def frame_from_librosa(x, frame_length, hop_length, axis=-1):
 
 
 class TestFrameOp(OpTest):
-
     def setUp(self):
         self.op_type = "frame"
         self.python_api = paddle.signal.frame
@@ -57,7 +57,7 @@ class TestFrameOp(OpTest):
         }
 
     def initTestCase(self):
-        input_shape = (150, )
+        input_shape = (150,)
         input_type = 'float64'
         attrs = {
             'frame_length': 50,
@@ -78,9 +78,8 @@ class TestFrameOp(OpTest):
 
 
 class TestCase1(TestFrameOp):
-
     def initTestCase(self):
-        input_shape = (150, )
+        input_shape = (150,)
         input_type = 'float64'
         attrs = {
             'frame_length': 50,
@@ -91,7 +90,6 @@ class TestCase1(TestFrameOp):
 
 
 class TestCase2(TestFrameOp):
-
     def initTestCase(self):
         input_shape = (8, 150)
         input_type = 'float64'
@@ -104,7 +102,6 @@ class TestCase2(TestFrameOp):
 
 
 class TestCase3(TestFrameOp):
-
     def initTestCase(self):
         input_shape = (150, 8)
         input_type = 'float64'
@@ -117,7 +114,6 @@ class TestCase3(TestFrameOp):
 
 
 class TestCase4(TestFrameOp):
-
     def initTestCase(self):
         input_shape = (4, 2, 150)
         input_type = 'float64'
@@ -130,7 +126,6 @@ class TestCase4(TestFrameOp):
 
 
 class TestCase5(TestFrameOp):
-
     def initTestCase(self):
         input_shape = (150, 4, 2)
         input_type = 'float64'

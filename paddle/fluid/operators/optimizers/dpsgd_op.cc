@@ -17,7 +17,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 class DpsgdOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -36,18 +36,18 @@ class DpsgdOp : public framework::OperatorWithKernel {
         true,
         platform::errors::NotFound(
             "Input(LearningRate) of DpsgdOp should not be null."));
-    PADDLE_ENFORCE_EQ(
-        ctx->GetInputsVarType("Param").front(),
-        framework::proto::VarType::LOD_TENSOR,
-        platform::errors::InvalidArgument(
-            "The input var's type should be LoDTensor, but the received is %s",
-            ctx->GetInputsVarType("Param").front()));
-    PADDLE_ENFORCE_EQ(
-        ctx->GetInputsVarType("Grad").front(),
-        framework::proto::VarType::LOD_TENSOR,
-        platform::errors::InvalidArgument(
-            "The input var's type should be LoDTensor, but the received is %s",
-            ctx->GetInputsVarType("Grad").front()));
+    PADDLE_ENFORCE_EQ(ctx->GetInputsVarType("Param").front(),
+                      framework::proto::VarType::LOD_TENSOR,
+                      platform::errors::InvalidArgument(
+                          "The input var's type should be phi::DenseTensor, "
+                          "but the received is %s",
+                          ctx->GetInputsVarType("Param").front()));
+    PADDLE_ENFORCE_EQ(ctx->GetInputsVarType("Grad").front(),
+                      framework::proto::VarType::LOD_TENSOR,
+                      platform::errors::InvalidArgument(
+                          "The input var's type should be phi::DenseTensor, "
+                          "but the received is %s",
+                          ctx->GetInputsVarType("Grad").front()));
 
     PADDLE_ENFORCE_EQ(ctx->HasOutput("ParamOut"),
                       true,

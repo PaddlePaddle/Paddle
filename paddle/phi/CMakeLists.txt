@@ -15,8 +15,6 @@ add_subdirectory(backends)
 add_subdirectory(kernels)
 # phi infermeta
 add_subdirectory(infermeta)
-# phi operator definitions
-add_subdirectory(ops)
 # phi tools
 add_subdirectory(tools)
 # phi tests
@@ -36,7 +34,6 @@ set(PHI_DEPS
     arg_map_context
     infermeta
     lod_utils
-    op_compat_infos
     sparse_csr_tensor
     sparse_coo_tensor
     string_tensor

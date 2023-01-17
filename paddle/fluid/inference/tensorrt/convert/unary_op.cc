@@ -52,37 +52,51 @@ class UnaryOpConverter : public OpConverter {
     nvinfer1::ITensor* input_tensor =
         engine_->GetITensor(op_desc.Input("X")[0]);
     auto op_pair = ops.find(op_type_);
-    nvinfer1::IUnaryLayer* layer =
-        TRT_ENGINE_ADD_LAYER(engine_, Unary, *input_tensor, op_pair->second);
+
+    nvinfer1::IUnaryLayer* layer = nullptr;
+    for (auto trt_op : op_pair->second) {
+      layer = TRT_ENGINE_ADD_LAYER(engine_, Unary, *input_tensor, trt_op);
+      input_tensor = layer->getOutput(0);
+    }
+
     auto output_name = op_desc.Output("Out")[0];
     RreplenishLayerAndOutput(layer, op_type_, {output_name}, test_mode);
   }
 
  protected:
   std::string op_type_;
-  static const std::unordered_map<std::string, nvinfer1::UnaryOperation> ops;
+  static const std::unordered_map<std::string,
+                                  std::vector<nvinfer1::UnaryOperation>>
+      ops;
 };
 
-const std::unordered_map<std::string, nvinfer1::UnaryOperation>
+const std::unordered_map<std::string, std::vector<nvinfer1::UnaryOperation>>
     UnaryOpConverter::ops = {
-        {"exp", nvinfer1::UnaryOperation::kEXP},
-        {"log", nvinfer1::UnaryOperation::kLOG},
-        {"sqrt", nvinfer1::UnaryOperation::kSQRT},
-        {"abs", nvinfer1::UnaryOperation::kABS},
-        {"sin", nvinfer1::UnaryOperation::kSIN},
-        {"cos", nvinfer1::UnaryOperation::kCOS},
-        {"tan", nvinfer1::UnaryOperation::kTAN},
-        {"sinh", nvinfer1::UnaryOperation::kSINH},
-        {"cosh", nvinfer1::UnaryOperation::kCOSH},
-        {"asin", nvinfer1::UnaryOperation::kASIN},
-        {"acos", nvinfer1::UnaryOperation::kACOS},
-        {"atan", nvinfer1::UnaryOperation::kATAN},
-        {"asinh", nvinfer1::UnaryOperation::kASINH},
-        {"atanh", nvinfer1::UnaryOperation::kATANH},
-        {"ceil", nvinfer1::UnaryOperation::kCEIL},
-        {"floor", nvinfer1::UnaryOperation::kFLOOR},
+        {"exp", {nvinfer1::UnaryOperation::kEXP}},
+        {"log", {nvinfer1::UnaryOperation::kLOG}},
+        {"sqrt", {nvinfer1::UnaryOperation::kSQRT}},
+        {"abs", {nvinfer1::UnaryOperation::kABS}},
+        {"sin", {nvinfer1::UnaryOperation::kSIN}},
+        {"cos", {nvinfer1::UnaryOperation::kCOS}},
+        {"tan", {nvinfer1::UnaryOperation::kTAN}},
+        {"sinh", {nvinfer1::UnaryOperation::kSINH}},
+        {"cosh", {nvinfer1::UnaryOperation::kCOSH}},
+        {"asin", {nvinfer1::UnaryOperation::kASIN}},
+        {"acos", {nvinfer1::UnaryOperation::kACOS}},
+        {"atan", {nvinfer1::UnaryOperation::kATAN}},
+        {"asinh", {nvinfer1::UnaryOperation::kASINH}},
+        {"atanh", {nvinfer1::UnaryOperation::kATANH}},
+        {"ceil", {nvinfer1::UnaryOperation::kCEIL}},
+        {"floor", {nvinfer1::UnaryOperation::kFLOOR}},
+        {"rsqrt",
+         {nvinfer1::UnaryOperation::kSQRT, nvinfer1::UnaryOperation::kRECIP}},
+        {"logical_not", {nvinfer1::UnaryOperation::kNOT}},
+        {"reciprocal", {nvinfer1::UnaryOperation::kRECIP}},
+#if IS_TRT_VERSION_GE(8200)
+        {"sign", {nvinfer1::UnaryOperation::kSIGN}},
+#endif
 #if IS_TRT_VERSION_GE(7000)
-        {"erf", nvinfer1::UnaryOperation::kERF},
+        {"erf", {nvinfer1::UnaryOperation::kERF}},
 #endif
 };
 
@@ -152,6 +166,29 @@ class FloorOpConverter : public UnaryOpConverter {
  public:
   FloorOpConverter() { op_type_ = "floor"; }
 };
+
+class RsqrtOpConverter : public UnaryOpConverter {
+ public:
+  RsqrtOpConverter() { op_type_ = "rsqrt"; }
+};
+
+class LogicalNotOpConverter : public UnaryOpConverter {
+ public:
+  LogicalNotOpConverter() { op_type_ = "logical_not"; }
+};
+
+class ReciprocalOpConverter : public UnaryOpConverter {
+ public:
+  ReciprocalOpConverter() { op_type_ = "reciprocal"; }
+};
+
+#if IS_TRT_VERSION_GE(8200)
+class SignOpConverter : public UnaryOpConverter {
+ public:
+  SignOpConverter() { op_type_ = "sign"; }
+};
+#endif
+
 #if IS_TRT_VERSION_GE(7000)
 class ErfOpConverter : public UnaryOpConverter {
  public:
@@ -179,6 +216,12 @@ REGISTER_TRT_OP_CONVERTER(asinh, AsinhOpConverter);
 REGISTER_TRT_OP_CONVERTER(atanh, AtanhOpConverter);
 REGISTER_TRT_OP_CONVERTER(ceil, CeilOpConverter);
 REGISTER_TRT_OP_CONVERTER(floor, FloorOpConverter);
+REGISTER_TRT_OP_CONVERTER(rsqrt, RsqrtOpConverter);
+REGISTER_TRT_OP_CONVERTER(logical_not, LogicalNotOpConverter);
+REGISTER_TRT_OP_CONVERTER(reciprocal, ReciprocalOpConverter);
+#if IS_TRT_VERSION_GE(8200)
+REGISTER_TRT_OP_CONVERTER(sign, SignOpConverter);
+#endif
 #if IS_TRT_VERSION_GE(7000)
 REGISTER_TRT_OP_CONVERTER(erf, ErfOpConverter);
 #endif

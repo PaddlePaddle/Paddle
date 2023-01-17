@@ -22,7 +22,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 
 template <typename DeviceContext, typename T>
 class TruncatedGaussianRandomNPUKernel : public framework::OpKernel<T> {
@@ -57,7 +57,7 @@ class TruncatedGaussianRandomNPUKernel : public framework::OpKernel<T> {
     float max_value = mean + std * 2.0;
     FillNpuTensorWithConstant<float>(&max_tensor, max_value);
 
-    auto* out = ctx.Output<framework::Tensor>("Out");
+    auto* out = ctx.Output<phi::DenseTensor>("Out");
     out->mutable_data<T>(ctx.GetPlace());
     auto stream =
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
@@ -80,7 +80,7 @@ class NPUTruncatedGaussianRandomKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& context) const override {
     float mean = context.Attr<float>("mean");
     float std = context.Attr<float>("std");
-    auto* tensor = context.Output<framework::Tensor>("Out");
+    auto* tensor = context.Output<phi::DenseTensor>("Out");
     tensor->mutable_data<T>(context.GetPlace());
 
     Tensor cpu_tensor(tensor->dtype());

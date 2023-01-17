@@ -60,21 +60,18 @@ class MasterDaemon {
   void _do_wait(SocketType socket);
   void _do_get(SocketType socket);
   void _do_set(SocketType socket);
-  void _do_stop(SocketType socket);
   SocketType _listen_socket;
   std::vector<SocketType> _sockets;
   std::unordered_map<std::string, std::vector<uint8_t>> _store;
   std::thread _background_thread{};
   int _nranks = -1;
   int _timeout = 0;
-  bool _stop = false;  // all workers stopped
-  std::chrono::time_point<std::chrono::system_clock> _stop_time;
-  bool _has_stop = false;  // at least one worker stopped
 
   void InitControlFd();
   void CloseControlFd();
   void StopByControlFd();
 #ifdef _WIN32
+  HANDLE ghStopEvent_{};
 #else
   std::array<int, 2> _control_fd{{-1, -1}};
 #endif

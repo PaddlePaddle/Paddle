@@ -59,6 +59,11 @@ class DependOp : public framework::OperatorBase {
   }
 };
 
+class DependOpShapeInference : public framework::InferShapeBase {
+ public:
+  void operator()(framework::InferShapeContext *ctx) const override {}
+};
+
 class DependOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
@@ -84,12 +89,18 @@ y = opB(x)
   }
 };
 
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(DependNoNeedBufferVarsInferer, "X", "Dep");
+
 }  // namespace operators
 }  // namespace paddle
 
+namespace ops = paddle::operators;
+
 REGISTER_OPERATOR(
     depend,
-    paddle::operators::DependOp,
+    ops::DependOp,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
-    paddle::operators::DependOpProtoMaker);
+    ops::DependOpProtoMaker,
+    ops::DependOpShapeInference,
+    ops::DependNoNeedBufferVarsInferer);

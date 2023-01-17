@@ -16,6 +16,11 @@
 
 namespace phi {
 
+KernelSignature AddmmOpArgumentMapping(const ArgumentMappingContext& ctx) {
+  return KernelSignature(
+      "addmm", {"Input", "X", "Y"}, {"Beta", "Alpha"}, {"Out"});
+}
+
 KernelSignature AddmmGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
   return KernelSignature("addmm_grad",
                          {"Input", "X", "Y", "Out@GRAD"},
@@ -25,4 +30,5 @@ KernelSignature AddmmGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
 
 }  // namespace phi
 
+PD_REGISTER_ARG_MAPPING_FN(addmm, phi::AddmmOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(addmm_grad, phi::AddmmGradOpArgumentMapping);

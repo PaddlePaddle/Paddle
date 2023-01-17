@@ -13,11 +13,8 @@
 # limitations under the License.
 
 import contextlib
-import unittest
-import numpy as np
 
 import paddle.fluid as fluid
-from paddle.fluid import core
 
 
 @contextlib.contextmanager

@@ -23,7 +23,6 @@ namespace paddle {
 namespace operators {
 
 using framework::OpKernelType;
-using framework::Tensor;
 
 class QuantOp : public framework::OperatorWithKernel {
  public:

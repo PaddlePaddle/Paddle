@@ -38,6 +38,8 @@ if(WITH_XPU)
   op_library(resnet_basic_block_op)
   op_library(resnet_unit_op)
   op_library(fused_gemm_epilogue_op)
+  op_library(fused_attention_op)
+  op_library(fused_feedforward_op)
 endif()
 
 if(WITH_GPU OR WITH_ROCM)

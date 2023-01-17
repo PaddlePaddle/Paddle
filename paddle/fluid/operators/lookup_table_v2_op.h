@@ -27,8 +27,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
-using LoDTensor = framework::LoDTensor;
+using Tensor = phi::DenseTensor;
 using SelectedRows = phi::SelectedRows;
 using DDim = framework::DDim;
 
@@ -57,7 +56,7 @@ struct LookupTableV2CPUFunctor {
 
   template <typename IdT>
   void apply() {
-    auto *output_t = context_.Output<LoDTensor>("Out");  // float tensor
+    auto *output_t = context_.Output<phi::DenseTensor>("Out");  // float tensor
     auto *table_var = context_.InputVar("W");
 
     int64_t padding_idx = context_.Attr<int64_t>("padding_idx");
@@ -65,8 +64,8 @@ struct LookupTableV2CPUFunctor {
     auto ids = CopyIdsToVector<IdT, int64_t>(*ids_t_);
     auto ids_numel = static_cast<int64_t>(ids.size());
 
-    if (table_var->template IsType<LoDTensor>()) {
-      const auto &table_t = table_var->template Get<LoDTensor>();
+    if (table_var->template IsType<phi::DenseTensor>()) {
+      const auto &table_t = table_var->template Get<phi::DenseTensor>();
       int64_t row_number = table_t.dims()[0];
       int64_t row_width = table_t.dims()[1];
 
@@ -151,7 +150,7 @@ template <typename T>
 class LookupTableV2Kernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
-    const auto *ids = context.Input<Tensor>("Ids");
+    const auto *ids = context.Input<phi::DenseTensor>("Ids");
     LookupTableV2CPUFunctor<T> functor(context, ids);
     framework::VisitIntDataType(framework::TransToProtoVarType(ids->dtype()),
                                 functor);
@@ -168,15 +167,15 @@ struct LookupTableV2GradCPUFunctor {
   void apply() {
     auto *table_var = context_.InputVar("W");
     DDim table_dim;
-    if (table_var->template IsType<LoDTensor>()) {
-      table_dim = context_.Input<LoDTensor>("W")->dims();
+    if (table_var->template IsType<phi::DenseTensor>()) {
+      table_dim = context_.Input<phi::DenseTensor>("W")->dims();
     } else if (table_var->template IsType<phi::SelectedRows>()) {
       auto *table_t = context_.Input<phi::SelectedRows>("W");
       table_dim = table_t->value().dims();
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
           "The parameter W of a LookupTableV2 "
-          "must be either LoDTensor or SelectedRows"));
+          "must be either phi::DenseTensor or SelectedRows"));
     }
 
     int64_t padding_idx = context_.Attr<int64_t>("padding_idx");
@@ -188,7 +187,8 @@ struct LookupTableV2GradCPUFunctor {
     // Since paddings are not trainable and fixed in forward, the gradient of
     // paddings makes no sense and we don't deal with it in backward.
     if (is_sparse) {
-      auto *d_output = context_.Input<LoDTensor>(framework::GradVarName("Out"));
+      auto *d_output =
+          context_.Input<phi::DenseTensor>(framework::GradVarName("Out"));
       auto *d_table =
           context_.Output<phi::SelectedRows>(framework::GradVarName("W"));
 
@@ -219,8 +219,10 @@ struct LookupTableV2GradCPUFunctor {
       memcpy(d_table_data, d_output_data, sizeof(T) * d_output->numel());
 
     } else {
-      auto *d_output = context_.Input<LoDTensor>(framework::GradVarName("Out"));
-      auto *d_table = context_.Output<LoDTensor>(framework::GradVarName("W"));
+      auto *d_output =
+          context_.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+      auto *d_table =
+          context_.Output<phi::DenseTensor>(framework::GradVarName("W"));
       auto *ids_data = ids.data();
 
       int64_t N = table_dim[0];
@@ -272,7 +274,7 @@ template <typename T>
 class LookupTableV2GradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
-    const auto *ids = context.Input<Tensor>("Ids");
+    const auto *ids = context.Input<phi::DenseTensor>("Ids");
     LookupTableV2GradCPUFunctor<T> functor(context, ids);
     framework::VisitIntDataType(framework::TransToProtoVarType(ids->dtype()),
                                 functor);

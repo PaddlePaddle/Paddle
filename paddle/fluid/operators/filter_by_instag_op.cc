@@ -69,16 +69,17 @@ class FilterByInstagOp : public framework::OperatorWithKernel {
 class FilterByInstagOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("Ins", "(LoDTensor) embeded tensor");
-    AddInput("Ins_tag", "(LoDTensor) ins tag list");
+    AddInput("Ins", "(phi::DenseTensor) embeded tensor");
+    AddInput("Ins_tag", "(phi::DenseTensor) ins tag list");
     AddInput("Filter_tag", "(1D Tensor) filter tag list");
     AddAttr<bool>("is_lod", "is Ins with LoD info or not, default True");
     AddAttr<int64_t>("out_val_if_empty",
                      "if the output after filter is empty, the output value")
         .SetDefault(0);
-    AddOutput("Out", "(LoDTensor) embeded tensor filtered by instag");
+    AddOutput("Out", "(phi::DenseTensor) embeded tensor filtered by instag");
     AddOutput("LossWeight", "(Tensor) loss weight.");
-    AddOutput("IndexMap", "(LoDTensor) mapping from Out rows to X1 rows");
+    AddOutput("IndexMap",
+              "(phi::DenseTensor) mapping from Out rows to X1 rows");
     AddComment(R"DOC(
 Filter By Instag Op
 

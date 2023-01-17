@@ -205,11 +205,12 @@ framework::OpKernelType AttentionLSTMOp::GetExpectedKernelType(
 }
 
 void AttentionLSTMOpMaker::Make() {
-  AddInput("X",
-           "(LoDTensor) the input is a LodTensor, which support "
-           "variable-time length input sequence. The underlying tensor in "
-           "this LoDTensor is a matrix with shape (T X M), where T is the "
-           "total time steps in this mini-batch, M is the dim size of x.");
+  AddInput(
+      "X",
+      "(phi::DenseTensor) the input is a LodTensor, which support "
+      "variable-time length input sequence. The underlying tensor in "
+      "this phi::DenseTensor is a matrix with shape (T X M), where T is the "
+      "total time steps in this mini-batch, M is the dim size of x.");
   AddInput("C0",
            "(Tensor) LSTM C0"
            "This is a tensor with shape (N x D), where N is the batch size, D "
@@ -247,12 +248,14 @@ void AttentionLSTMOpMaker::Make() {
            "Note: we should add the bias of hidden and context accorindg to "
            "the same gate: "
            "{B_forget, B_input, B_output, B_cell}");
-  AddOutput("Hidden",
-            "(LoDTensor) (same as LSTMOp) the hidden state of LSTM operator. "
-            "The shape is (T x D), and lod is the same with the `Input`.");
-  AddOutput("Cell",
-            "(LoDTensor) (same as LSTMOp) the cell state of LSTM operator. "
-            "The shape is (T x D), and lod is the same with the `Input`.");
+  AddOutput(
+      "Hidden",
+      "(phi::DenseTensor) (same as LSTMOp) the hidden state of LSTM operator. "
+      "The shape is (T x D), and lod is the same with the `Input`.");
+  AddOutput(
+      "Cell",
+      "(phi::DenseTensor) (same as LSTMOp) the cell state of LSTM operator. "
+      "The shape is (T x D), and lod is the same with the `Input`.");
   AddOutput("AttentionedX",
             "(Tensor) shape is (T x 1), the result after X * AttentionWeight,"
             " where T is the total time steps in this mini-batch,"
@@ -339,22 +342,23 @@ class AttentionLSTMKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     using DeviceContext = phi::CPUContext;
 
-    auto* x = ctx.Input<LoDTensor>("X");
-    auto* h0 = ctx.Input<Tensor>("H0");
-    auto* c0 = ctx.Input<Tensor>("C0");
-    auto* atten_w = ctx.Input<Tensor>("AttentionWeight");
-    auto* atten_b = ctx.Input<Tensor>("AttentionBias");
-    auto* atten_scalar = ctx.Input<Tensor>("AttentionScalar");
-    auto* atten_scalar_bias = ctx.Input<Tensor>("AttentionScalarBias");
-    auto* lstm_w = ctx.Input<Tensor>("LSTMWeight");
-    auto* lstm_b = ctx.Input<Tensor>("LSTMBias");
+    auto* x = ctx.Input<phi::DenseTensor>("X");
+    auto* h0 = ctx.Input<phi::DenseTensor>("H0");
+    auto* c0 = ctx.Input<phi::DenseTensor>("C0");
+    auto* atten_w = ctx.Input<phi::DenseTensor>("AttentionWeight");
+    auto* atten_b = ctx.Input<phi::DenseTensor>("AttentionBias");
+    auto* atten_scalar = ctx.Input<phi::DenseTensor>("AttentionScalar");
+    auto* atten_scalar_bias =
+        ctx.Input<phi::DenseTensor>("AttentionScalarBias");
+    auto* lstm_w = ctx.Input<phi::DenseTensor>("LSTMWeight");
+    auto* lstm_b = ctx.Input<phi::DenseTensor>("LSTMBias");
 
-    auto* hidden_out = ctx.Output<LoDTensor>("Hidden");
-    auto* cell_out = ctx.Output<LoDTensor>("Cell");
-    auto* atted_x = ctx.Output<Tensor>("AttentionedX");
-    auto* fc_out = ctx.Output<Tensor>("AttentionFCOut");
-    auto* lstm_x = ctx.Output<Tensor>("LSTMX");
-    auto* lstm_out = ctx.Output<Tensor>("LSTMOUT");
+    auto* hidden_out = ctx.Output<phi::DenseTensor>("Hidden");
+    auto* cell_out = ctx.Output<phi::DenseTensor>("Cell");
+    auto* atted_x = ctx.Output<phi::DenseTensor>("AttentionedX");
+    auto* fc_out = ctx.Output<phi::DenseTensor>("AttentionFCOut");
+    auto* lstm_x = ctx.Output<phi::DenseTensor>("LSTMX");
+    auto* lstm_out = ctx.Output<phi::DenseTensor>("LSTMOUT");
 
     // some shape should be reshape here since infershape can not get lod info
     auto x_lod = x->lod();

@@ -20,8 +20,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using framework::Tensor;
-
 class CropTensorOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -77,8 +75,8 @@ class CropTensorOp : public framework::OperatorWithKernel {
                             x_dim.size()));
       if (ctx->IsRuntime()) {
         // If true, set the shape of Output(Out) according to Input(Shape) in
-        // CropTensorKernel with ExecutionContext. Also check LoD in
-        // CropTensorKernel.
+        // CropKernel with ExecutionContext. Also check LoD in
+        // CropKernel.
         ctx->ShareLoD("X", /*->*/ "Out");
       } else {
         auto out_dims = std::vector<int>(shape_dim[0], -1);
@@ -117,7 +115,7 @@ class CropTensorOp : public framework::OperatorWithKernel {
 
   framework::OpKernelType GetKernelTypeForVar(
       const std::string &var_name,
-      const Tensor &tensor,
+      const phi::DenseTensor &tensor,
       const framework::OpKernelType &expected_kernel_type) const override {
     if (var_name == "ShapeTensor" || var_name == "OffsetsTensor" ||
         var_name == "Shape" || var_name == "Offsets") {
@@ -276,7 +274,7 @@ class CropTensorOpGrad : public framework::OperatorWithKernel {
 
   framework::OpKernelType GetKernelTypeForVar(
       const std::string &var_name,
-      const Tensor &tensor,
+      const phi::DenseTensor &tensor,
       const framework::OpKernelType &expected_kernel_type) const override {
     if (var_name == "ShapeTensor" || var_name == "OffsetsTensor" ||
         var_name == "Shape" || var_name == "Offsets") {

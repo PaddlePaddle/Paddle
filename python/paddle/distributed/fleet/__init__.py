@@ -24,7 +24,9 @@ from .dataset import QueueDataset  # noqa: F401
 from .dataset import FileInstantDataset  # noqa: F401
 from .dataset import BoxPSDataset  # noqa: F401
 from .data_generator.data_generator import MultiSlotDataGenerator  # noqa: F401
-from .data_generator.data_generator import MultiSlotStringDataGenerator  # noqa: F401
+from .data_generator.data_generator import (
+    MultiSlotStringDataGenerator,
+)  # noqa: F401
 from . import metrics  # noqa: F401
 from .base.topology import CommunicateTopology
 from .base.topology import HybridCommunicateGroup  # noqa: F401
@@ -34,11 +36,17 @@ from .optimizer import distributed_optimizer
 from .scaler import distributed_scaler
 from .utils import log_util
 
-__all__ = [  #noqa
-    "CommunicateTopology", "UtilBase", "HybridCommunicateGroup",
-    "MultiSlotStringDataGenerator", "UserDefinedRoleMaker",
-    "DistributedStrategy", "Role", "MultiSlotDataGenerator",
-    "PaddleCloudRoleMaker", "Fleet"
+__all__ = [  # noqa
+    "CommunicateTopology",
+    "UtilBase",
+    "HybridCommunicateGroup",
+    "MultiSlotStringDataGenerator",
+    "UserDefinedRoleMaker",
+    "DistributedStrategy",
+    "Role",
+    "MultiSlotDataGenerator",
+    "PaddleCloudRoleMaker",
+    "Fleet",
 ]
 
 fleet = Fleet()

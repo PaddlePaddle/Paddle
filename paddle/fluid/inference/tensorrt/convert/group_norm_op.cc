@@ -11,10 +11,10 @@ limitations under the License. */
 
 #include "paddle/fluid/inference/tensorrt/plugin/group_norm_op_plugin.h"
 
+#include <vector>
+
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 #include "paddle/fluid/inference/tensorrt/engine.h"
-
-#include <vector>
 
 namespace paddle {
 namespace framework {
@@ -34,7 +34,7 @@ class GroupNormOpConverter : public OpConverter {
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope,
                   bool test_mode) override {
-    VLOG(3) << "convert a fluid group_norm op";
+    VLOG(4) << "convert a fluid group_norm op to tensorrt group_norm plugin";
 
     framework::OpDesc op_desc(op, nullptr);
 
@@ -50,7 +50,7 @@ class GroupNormOpConverter : public OpConverter {
     auto GetWeight = [&](const std::string& var_name,
                          framework::DDim* dims) -> TensorRTEngine::Weight {
       auto* temp_var = scope.FindVar(var_name);
-      auto* temp_tensor = temp_var->GetMutable<framework::LoDTensor>();
+      auto* temp_tensor = temp_var->GetMutable<phi::DenseTensor>();
       (*dims) = temp_tensor->dims();
 
       auto weight = engine_->GetTrtWeight(var_name, *temp_tensor);
@@ -61,6 +61,8 @@ class GroupNormOpConverter : public OpConverter {
     framework::DDim bias_dims;
     auto scale_weights = GetWeight(scale_name, &scale_dims);
     auto bias_weights = GetWeight(bias_name, &bias_dims);
+    bool with_fp16 = engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
+
     if (engine_->with_dynamic_shape()) {
       int gn_num = groups;
       std::vector<int64_t> mean_shape({gn_num});
@@ -74,7 +76,8 @@ class GroupNormOpConverter : public OpConverter {
               epsilon,
               groups,
               mean_shape,
-              variance_shape);
+              variance_shape,
+              with_fp16);
       nvinfer1::ILayer* groupnorm_layer =
           engine_->AddDynamicPlugin(&input_itensor, 1, plugin);
       auto output_name = op_desc.Output("Y")[0];
@@ -92,7 +95,8 @@ class GroupNormOpConverter : public OpConverter {
           epsilon,
           groups,
           mean_shape,
-          variance_shape);
+          variance_shape,
+          with_fp16);
       nvinfer1::ILayer* groupnorm_layer =
           engine_->AddPlugin(&input_itensor, 1, plugin);
       auto output_name = op_desc.Output("Y")[0];

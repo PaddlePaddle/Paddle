@@ -12,10 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 
-
-class PSDispatcher(object):
+class PSDispatcher:
     """
     PSDispatcher is the base class for dispatching vars
     into different pserver instance.
@@ -66,7 +64,7 @@ class HashName(PSDispatcher):
     """
 
     def __init__(self, pserver_endpoints):
-        super(HashName, self).__init__(pserver_endpoints)
+        super().__init__(pserver_endpoints)
 
     def _hash_block(self, block_str, total):
         return hash(block_str) % total
@@ -106,7 +104,7 @@ class RoundRobin(PSDispatcher):
     """
 
     def __init__(self, pserver_endpoints):
-        super(RoundRobin, self).__init__(pserver_endpoints)
+        super().__init__(pserver_endpoints)
 
     def dispatch(self, varlist):
         """

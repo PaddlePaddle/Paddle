@@ -12,20 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ..nn import Layer
-from ..fluid.framework import core, _non_static_mode, in_dygraph_mode
-from ..fluid.layer_helper import LayerHelper
-from ..fluid.data_feeder import check_variable_and_dtype, check_type
 from paddle import _C_ops, _legacy_C_ops
+
+from ..fluid.data_feeder import check_type, check_variable_and_dtype
+from ..fluid.framework import _non_static_mode, in_dygraph_mode
+from ..fluid.layer_helper import LayerHelper
+from ..nn import Layer
 
 __all__ = ['viterbi_decode', 'ViterbiDecoder']
 
 
-def viterbi_decode(potentials,
-                   transition_params,
-                   lengths,
-                   include_bos_eos_tag=True,
-                   name=None):
+def viterbi_decode(
+    potentials, transition_params, lengths, include_bos_eos_tag=True, name=None
+):
     """
     Decode the highest scoring sequence of tags computed by transitions and potentials and get the viterbi path.
 
@@ -59,34 +58,43 @@ def viterbi_decode(potentials,
             scores, path = paddle.text.viterbi_decode(emission, transition, length, False) # scores: [3.37089300, 1.56825531], path: [[1, 0, 0], [1, 1, 0]]
     """
     if in_dygraph_mode():
-        return _C_ops.viterbi_decode(potentials, transition_params, lengths,
-                                     include_bos_eos_tag)
+        return _C_ops.viterbi_decode(
+            potentials, transition_params, lengths, include_bos_eos_tag
+        )
 
     if _non_static_mode():
-        return _legacy_C_ops.viterbi_decode(potentials, transition_params,
-                                            lengths, 'include_bos_eos_tag',
-                                            include_bos_eos_tag)
-    check_variable_and_dtype(potentials, 'input', ['float32', 'float64'],
-                             'viterbi_decode')
-    check_variable_and_dtype(transition_params, 'transitions',
-                             ['float32', 'float64'], 'viterbi_decode')
+        return _legacy_C_ops.viterbi_decode(
+            potentials,
+            transition_params,
+            lengths,
+            'include_bos_eos_tag',
+            include_bos_eos_tag,
+        )
+    check_variable_and_dtype(
+        potentials, 'input', ['float32', 'float64'], 'viterbi_decode'
+    )
+    check_variable_and_dtype(
+        transition_params,
+        'transitions',
+        ['float32', 'float64'],
+        'viterbi_decode',
+    )
     check_variable_and_dtype(lengths, 'length', 'int64', 'viterbi_decode')
     check_type(include_bos_eos_tag, 'include_tag', bool, 'viterbi_decode')
     helper = LayerHelper('viterbi_decode', **locals())
     attrs = {'include_bos_eos_tag': include_bos_eos_tag}
     scores = helper.create_variable_for_type_inference(potentials.dtype)
     path = helper.create_variable_for_type_inference('int64')
-    helper.append_op(type='viterbi_decode',
-                     inputs={
-                         'Input': potentials,
-                         'Transition': transition_params,
-                         'Length': lengths
-                     },
-                     outputs={
-                         'Scores': scores,
-                         'Path': path
-                     },
-                     attrs=attrs)
+    helper.append_op(
+        type='viterbi_decode',
+        inputs={
+            'Input': potentials,
+            'Transition': transition_params,
+            'Length': lengths,
+        },
+        outputs={'Scores': scores, 'Path': path},
+        attrs=attrs,
+    )
     return scores, path
 
 
@@ -128,11 +136,16 @@ class ViterbiDecoder(Layer):
     """
 
     def __init__(self, transitions, include_bos_eos_tag=True, name=None):
-        super(ViterbiDecoder, self).__init__()
+        super().__init__()
         self.transitions = transitions
         self.include_bos_eos_tag = include_bos_eos_tag
         self.name = name
 
     def forward(self, potentials, lengths):
-        return viterbi_decode(potentials, self.transitions, lengths,
-                              self.include_bos_eos_tag, self.name)
+        return viterbi_decode(
+            potentials,
+            self.transitions,
+            lengths,
+            self.include_bos_eos_tag,
+            self.name,
+        )

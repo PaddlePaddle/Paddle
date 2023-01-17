@@ -48,6 +48,6 @@ using Attribute = paddle::variant<bool,
                                   DataLayout,
                                   Place>;
 
-using RuntimeAttrs = paddle::flat_hash_map<std::string, Attribute>;
+using AttributeMap = paddle::flat_hash_map<std::string, Attribute>;
 
 }  // namespace phi

@@ -17,6 +17,7 @@
 #include "paddle/phi/backends/xpu/xpu_context.h"
 #include "paddle/phi/core/ddim.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/core/utils/data_type.h"
 
 namespace phi {
 
@@ -64,4 +65,4 @@ void ArgMaxKernel(const Context& dev_ctx,
                        XPUAPIErrorMsg[r]));
 }
 }  // namespace phi
-PD_REGISTER_KERNEL(arg_max, XPU, ALL_LAYOUT, phi::ArgMaxKernel, float) {}
+PD_REGISTER_KERNEL(argmax, XPU, ALL_LAYOUT, phi::ArgMaxKernel, float) {}

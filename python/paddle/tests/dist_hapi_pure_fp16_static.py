@@ -12,26 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import division
-from __future__ import print_function
-
 import unittest
 
 import numpy as np
 
 import paddle
-from paddle import fluid
-
-from paddle import Model
-from paddle.static import InputSpec
+from paddle import Model, fluid
 from paddle.nn.layer.loss import CrossEntropyLoss
+from paddle.static import InputSpec
 from paddle.vision.models import LeNet
 
 
-@unittest.skipIf(not fluid.is_compiled_with_cuda(),
-                 'CPU testing is not supported')
+@unittest.skipIf(
+    not fluid.is_compiled_with_cuda(), 'CPU testing is not supported'
+)
 class TestDistTraningWithPureFP16(unittest.TestCase):
-
     def test_amp_training_purefp16(self):
         if not fluid.is_compiled_with_cuda():
             self.skipTest('module not tested when ONLY_CPU compling')
@@ -45,13 +40,17 @@ class TestDistTraningWithPureFP16(unittest.TestCase):
         inputs = InputSpec([None, 1, 28, 28], "float32", 'x')
         labels = InputSpec([None, 1], "int64", "y")
         model = Model(net, inputs, labels)
-        optim = paddle.optimizer.Adam(learning_rate=0.001,
-                                      parameters=model.parameters(),
-                                      multi_precision=True)
+        optim = paddle.optimizer.Adam(
+            learning_rate=0.001,
+            parameters=model.parameters(),
+            multi_precision=True,
+        )
         amp_configs = {"level": amp_level, "use_fp16_guard": False}
-        model.prepare(optimizer=optim,
-                      loss=CrossEntropyLoss(reduction="sum"),
-                      amp_configs=amp_configs)
+        model.prepare(
+            optimizer=optim,
+            loss=CrossEntropyLoss(reduction="sum"),
+            amp_configs=amp_configs,
+        )
         model.train_batch([data], [label])
 
 

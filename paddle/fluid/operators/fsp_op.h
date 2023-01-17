@@ -20,15 +20,15 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 
 template <typename DeviceContext, typename T>
 class FSPOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* x = context.Input<Tensor>("X");
-    auto* y = context.Input<Tensor>("Y");
-    auto* output = context.Output<Tensor>("Out");
+    auto* x = context.Input<phi::DenseTensor>("X");
+    auto* y = context.Input<phi::DenseTensor>("Y");
+    auto* output = context.Output<phi::DenseTensor>("Out");
     output->mutable_data<T>(context.GetPlace());
     auto x_dims = x->dims();
     auto y_dims = y->dims();
@@ -69,12 +69,13 @@ template <typename DeviceContext, typename T>
 class FSPGradOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* d_x = context.Output<Tensor>(framework::GradVarName("X"));
-    auto* d_y = context.Output<Tensor>(framework::GradVarName("Y"));
+    auto* d_x = context.Output<phi::DenseTensor>(framework::GradVarName("X"));
+    auto* d_y = context.Output<phi::DenseTensor>(framework::GradVarName("Y"));
     if (d_x == nullptr && d_y == nullptr) {
       return;
     }
-    auto* d_out = context.Input<Tensor>(framework::GradVarName("Out"));
+    auto* d_out =
+        context.Input<phi::DenseTensor>(framework::GradVarName("Out"));
     auto d_out_dims = d_out->dims();
     auto batch_size = d_out_dims[0];
     auto x_channel = d_out_dims[1];
@@ -89,7 +90,7 @@ class FSPGradOpKernel : public framework::OpKernel<T> {
       set_zero(context.template device_context<DeviceContext>(),
                d_x,
                static_cast<T>(0));
-      auto* y = context.Input<Tensor>("Y");
+      auto* y = context.Input<phi::DenseTensor>("Y");
       auto y_dims = y->dims();
       h = y_dims[2];
       w = y_dims[3];
@@ -122,7 +123,7 @@ class FSPGradOpKernel : public framework::OpKernel<T> {
       set_zero(context.template device_context<DeviceContext>(),
                d_y,
                static_cast<T>(0));
-      auto* x = context.Input<Tensor>("X");
+      auto* x = context.Input<phi::DenseTensor>("X");
       auto x_dims = x->dims();
       h = x_dims[2];
       w = x_dims[3];

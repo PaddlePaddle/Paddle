@@ -23,8 +23,8 @@ template <cnnlSoftmaxAlgorithm_t softmax_algo, typename T>
 class SoftmaxMLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* in = ctx.Input<framework::LoDTensor>("X");
-    auto* out = ctx.Output<framework::LoDTensor>("Out");
+    auto* in = ctx.Input<phi::DenseTensor>("X");
+    auto* out = ctx.Output<phi::DenseTensor>("Out");
     out->mutable_data<T>(ctx.GetPlace());
 
     const int rank = in->dims().size();
@@ -64,10 +64,10 @@ template <cnnlSoftmaxAlgorithm_t softmax_algo, typename T>
 class SoftmaxGradMLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* out = ctx.Input<framework::LoDTensor>("Out");
-    auto* dOut = ctx.Input<framework::LoDTensor>(framework::GradVarName("Out"));
+    auto* out = ctx.Input<phi::DenseTensor>("Out");
+    auto* dOut = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
 
-    auto* dX = ctx.Output<Tensor>(framework::GradVarName("X"));
+    auto* dX = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
     dX->mutable_data<T>(ctx.GetPlace());
 
     const int rank = out->dims().size();

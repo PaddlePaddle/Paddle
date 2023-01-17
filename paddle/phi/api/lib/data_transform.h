@@ -56,7 +56,7 @@ class TransformFlag {
   // the complex is always transferd, except stop_transform_ is true.
   bool trans_data_type_ = false;
 
-  // trans_backend_ and trans_layout_ are true defalutly,
+  // trans_backend_ and trans_layout_ are true defaultly,
   // and they can only be setted by global flag.
   bool trans_backend_ = true;
   bool trans_layout_ = true;
@@ -79,6 +79,17 @@ std::unique_ptr<std::vector<phi::DenseTensor>> PrepareData(
 
 paddle::optional<std::vector<phi::DenseTensor>> PrepareData(
     const paddle::optional<std::vector<Tensor>>& inputs,
+    const phi::TensorArgDef& target_args_def,
+    const TransformFlag& transform_flag);
+
+// Only support transfering place for SelectedRows
+std::shared_ptr<phi::SelectedRows> PrepareDataForSelectedRows(
+    const Tensor& input,
+    const phi::TensorArgDef& target_args_def,
+    const TransformFlag& transform_flag);
+
+paddle::optional<phi::SelectedRows> PrepareDataForSelectedRows(
+    const paddle::optional<Tensor>& input,
     const phi::TensorArgDef& target_args_def,
     const TransformFlag& transform_flag);
 

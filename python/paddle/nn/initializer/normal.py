@@ -12,8 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ...fluid.initializer import NormalInitializer
-from ...fluid.initializer import TruncatedNormalInitializer
+from ...fluid.initializer import NormalInitializer, TruncatedNormalInitializer
 
 __all__ = []
 
@@ -56,7 +55,7 @@ class Normal(NormalInitializer):
     def __init__(self, mean=0.0, std=1.0, name=None):
         assert mean is not None, 'mean should not be None'
         assert std is not None, 'std should not be None'
-        super(Normal, self).__init__(loc=mean, scale=std, seed=0)
+        super().__init__(loc=mean, scale=std, seed=0)
 
 
 class TruncatedNormal(TruncatedNormalInitializer):
@@ -96,4 +95,4 @@ class TruncatedNormal(TruncatedNormalInitializer):
     def __init__(self, mean=0.0, std=1.0, name=None):
         assert mean is not None, 'mean should not be None'
         assert std is not None, 'std should not be None'
-        super(TruncatedNormal, self).__init__(loc=mean, scale=std, seed=0)
+        super().__init__(loc=mean, scale=std, seed=0)

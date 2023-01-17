@@ -16,7 +16,7 @@ namespace paddle {
 namespace operators {
 
 using DDim = framework::DDim;
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 
 void CheckAxis(int axis, int rank) {
   // check the axis is in [-rank, rank-1]
@@ -34,9 +34,9 @@ class NormNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
     VLOG(4) << "Launch Norm Op Kernel on NPU." << std::endl;
-    auto *in_x = ctx.Input<framework::Tensor>("X");
-    auto *out_y = ctx.Output<framework::Tensor>("Out");
-    auto *out_norm = ctx.Output<framework::Tensor>("Norm");
+    auto *in_x = ctx.Input<phi::DenseTensor>("X");
+    auto *out_y = ctx.Output<phi::DenseTensor>("Out");
+    auto *out_norm = ctx.Output<phi::DenseTensor>("Norm");
     out_y->mutable_data<T>(ctx.GetPlace());
     out_norm->mutable_data<T>(ctx.GetPlace());
     auto xdim = in_x->dims();
@@ -67,10 +67,10 @@ class NormGradNPUKernel : public framework::OpKernel<T> {
     float epsilon = ctx.Attr<float>("epsilon");
     int axis = ctx.Attr<int>("axis");
 
-    auto *x = ctx.Input<Tensor>("X");
-    auto *y = ctx.Input<framework::Tensor>("Out");
-    auto *dy = ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
-    auto *dx = ctx.Output<framework::Tensor>(framework::GradVarName("X"));
+    auto *x = ctx.Input<phi::DenseTensor>("X");
+    auto *y = ctx.Input<phi::DenseTensor>("Out");
+    auto *dy = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+    auto *dx = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
 
     auto xdim = x->dims();
     CheckAxis(axis, xdim.size());

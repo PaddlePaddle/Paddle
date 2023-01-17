@@ -45,7 +45,7 @@ using FeedInfoMap = CinnGraphSymbolization::FeedInfoMap;
 namespace utils {
 
 OpMapperContext::FeedInfo GetCinnFeedInfoFromTensor(
-    const Tensor& tensor, bool skip_trans_type = false) {
+    const phi::DenseTensor& tensor, bool skip_trans_type = false) {
   OpMapperContext::FeedInfo info;
   const auto& dim = tensor.dims();
   for (int i = 0; i < dim.size(); i++) {

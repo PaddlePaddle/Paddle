@@ -12,24 +12,27 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
-from paddle.distributed.passes import new_pass, PassManager
 import unittest
+
 from dist_pass_test_base import DistPassTestBase
 from model_zoo import simple_net
 
+import paddle
+from paddle.distributed.passes import PassManager, new_pass
+
 
 class TestBuildCINNPass(DistPassTestBase):
-
     def init(self):
         self.atol = 0.0
         self.rtol = 0.0
 
     def apply_passes(self, main_prog, startup_prog):
-        pass_manager = PassManager([
-            new_pass("build_cinn"),
-            new_pass("fuse_elewise_add_act"),
-        ])
+        pass_manager = PassManager(
+            [
+                new_pass("build_cinn"),
+                new_pass("fuse_elewise_add_act"),
+            ]
+        )
         pass_manager.apply([main_prog], [startup_prog])
         op_types = [op.type for op in main_prog.global_block().ops]
         self.assertTrue('cinn_launch' in op_types)

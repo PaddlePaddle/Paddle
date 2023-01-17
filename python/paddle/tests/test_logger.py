@@ -12,20 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import division
-from __future__ import print_function
-
-import unittest
 import os
-import numpy as np
 import shutil
 import tempfile
+import unittest
 
 from paddle.hapi.logger import setup_logger
 
 
 class TestSetupLogger(unittest.TestCase):
-
     def setUp(self):
         self.save_dir = tempfile.mkdtemp()
         self.save_file = os.path.join(self.save_dir, 'logger.txt')

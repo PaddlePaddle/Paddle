@@ -19,14 +19,14 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 
 template <typename T>
 class PadNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* x = context.Input<Tensor>("X");
-    auto* out = context.Output<Tensor>("Out");
+    auto* x = context.Input<phi::DenseTensor>("X");
+    auto* out = context.Output<phi::DenseTensor>("Out");
     auto paddings = context.Attr<std::vector<int>>("paddings");
     float pad_value = context.Attr<float>("pad_value");
 
@@ -56,8 +56,9 @@ template <typename T>
 class PadGradNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* d_out = context.Input<Tensor>(framework::GradVarName("Out"));
-    auto* d_x = context.Output<Tensor>(framework::GradVarName("X"));
+    auto* d_out =
+        context.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+    auto* d_x = context.Output<phi::DenseTensor>(framework::GradVarName("X"));
     auto paddings = context.Attr<std::vector<int>>("paddings");
 
     d_x->mutable_data<T>(context.GetPlace());

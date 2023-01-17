@@ -1,0 +1,486 @@
+{# ----------------------------- op maker ----------------------------------- #}
+{% macro op_maker(op) %}
+  {% set op_name = op["op_name"] %}
+class {{op_name | to_pascal_case}}OpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  void Make() override {
+  {% filter indent(4, True) %}
+    {% for input in op["inputs"] %}
+{{add_input(loop.index0, input, op_name)}};
+    {% endfor %}
+    {% for output in op["outputs"] %}
+{{add_output(loop.index0, output, op_name)}};
+    {% endfor %}
+    {% for attr in op["attrs"] %}
+      {% if attr["name"] in op["kernel"]["param"] %}
+{{add_attr(loop.index0, attr, op_name)}};
+      {% endif %}
+    {% endfor %}
+  {% endfilter %}
+    AddComment(R"DOC(
+TODO: Documentation of {{op_name}} op.
+)DOC");
+  }
+};
+{% endmacro %}
+
+
+{# add input, it could be duplicable or dispensable #}
+{% macro add_input(i, input, op_name) %}{# inline #}
+  {% set name = input["name"] %}
+  {% set typename = input["typename"] %}
+AddInput({{name| to_opmaker_name}}, "({{typename}}), input {{i}} of {{op_name}} op.")
+  {%- if typename is vec %}
+
+    .AsDuplicable()
+  {%- endif %}
+  {%- if input["optional"] %}
+
+    .AsDispensable()
+  {%- endif %}
+{%- endmacro %}
+
+{# add output, it could be duplicable or intermediate, however, optional output is not supported #}
+{% macro add_output(i, output, op_name) %}{# inline #}
+  {% set name = output["name"] %}
+  {% set typename = output["typename"] %}
+  {% set is_intermediate = output["intermediate"] %}
+AddOutput({{name | to_opmaker_name}}, "({{typename}}), output {{i}} of {{op_name}} op.")
+  {%- if typename is vec %}
+
+    .AsDuplicable()
+  {%- endif %}
+  {%- if is_intermediate %}
+
+    .AsIntermediate()
+  {%- endif %}
+{%- endmacro %}
+
+{# add attribute, and process default value if needed #}
+{% macro add_attr(i, attr, op_name) %}{# inline #}
+  {% set name = attr["name"] %}
+  {% set typename = attr["typename"] %}
+  {% if typename is scalar %}
+AddInput("{{name | to_pascal_case}}Tensor", "attribute {{i}} for {{op_name}} op from 0D Tensor.")
+    .AsDispensable();
+  {% elif typename == "IntArray" %}{# the type has been renamed #}
+AddInput("{{name | to_pascal_case}}Tensor", "attribute {{i}} for {{op_name}} op from 1D integer Tensor.")
+    .AsDispensable();
+AddInput("{{name | to_pascal_case}}TensorList", "attribute {{i}} for {{op_name}} op from list fo 0D integer Tensors.")
+    .AsDuplicable()
+    .AsDispensable();
+  {% endif %}
+AddAttr<{{typename | to_op_attr_type}}>("{{name}}", "({{typename | to_op_attr_type}}), attribute {{i}} for {{op_name}} op.")
+  {% if "default_value" in attr %}
+    .SetDefault({{process_default_value(attr)}})
+  {%- endif %}
+{%- endmacro %}
+
+{# process default value for attributes, some attribute has different types and different default values in op & opmaker #}
+{% macro process_default_value(attr) %}{# inline #}
+  {% set default_value = attr["default_value"] %}
+  {% set typename = attr["typename"] %}
+  {% if typename == "DataType" %}{# convert back to VarType #}
+    {% if default_value == "DataType::UNDEFINED" %}
+-1
+    {%- else %}
+static_cast<int>(framework::TransToProtoVarType(experimental::{{default_value}}))
+    {%- endif %}
+  {%- elif typename == "DataLayout" %} {# does DataLayout need any processing?#}
+static_cast<int>(experimental::{{default_value}})
+  {%- elif typename == "Place" %}{# construct a Place to get the type #}
+static_cast<int>(phi::Place({{"phi::" if not default_value is initializer_list}}{{default_value}}).GetType())
+  {%- else %}{# pass through as-is #}
+{{default_value}}
+  {%- endif %}
+{%- endmacro %}
+
+
+{# --------------------------------------- name mapping ---------------------------------------------- #}
+{% macro name_map(op) %}
+KernelSignature {{op["op_name"] | to_pascal_case }}OpArgumentMapping(const ArgumentMappingContext& ctx) {
+  {% set kernel_args = op["kernel"]["param"] %}
+  {{get_input_list(op["inputs"], kernel_args)}};
+  paddle::small_vector<const char*> attrs;
+  {% for attr in op["attrs"]%}
+  {% filter indent(2)%}
+  {{get_an_attr(attr)}};
+  {% endfilter %}
+  {% endfor %}
+  {{get_output_list(op["outputs"], kernel_args)}};
+  {% if op["kernel"]["func"] | length == 1 %}
+  KernelSignature sig("{{op["kernel"]["func"][0]}}", std::move(inputs), std::move(attrs), std::move(outputs));
+  return sig;
+  {% else %}{# it has kernel for selected rows #}
+  const char* kernel_name = ctx.IsSelectedRowsInput({{kernel_args[0] | to_opmaker_name_cstr}}) ? "{{op["kernel"]["func"][1]}}" : "{{op["kernel"]["func"][0]}}";
+  KernelSignature sig (kernel_name, std::move(inputs), std::move(attrs), std::move(outputs));
+  return sig;
+  {%endif%}
+}
+
+/*
+******************************************************************
+NOTE: The following codes are for 'get_compat_kernel_signature.py'
+All possible KernelSignatures returned by {{op["name"] | to_pascal_case }}OpArgumentMapping:
+
+{{op | cartesian_prod_mapping}}
+******************************************************************
+*/
+{% endmacro %}
+
+{% macro get_kernel_dispatch(inputs, kernel_config) %}{# inline #}
+{%- for kernel_func in kernel_config["func"] %}
+  {% set input_idx = namespace(idx=0) %}
+  {% set kernel_in_type_list = kernel_config["dispatch"][kernel_func][0] %}
+
+  if ( {%- for input in inputs %}
+    {%- if input["name"] in kernel_config["param"] %}
+      {%- if kernel_in_type_list[input_idx.idx] == "dense" %}
+ctx.IsDenseTensorInput("{{input["name"]}}"){{" && " if not loop.last}}
+      {%- elif kernel_in_type_list[input_idx.idx] == "selected_rows" %}
+ctx.IsSelectedRowsInput("{{input["name"]}}"){{" && " if not loop.last}}
+      {%- elif kernel_in_type_list[input_idx.idx] == "sparse_coo" %}
+ctx.IsSparseCooTensorInput("{{input["name"]}}"){{" && " if not loop.last}}
+      {%- elif kernel_in_type_list[input_idx.idx] == "sparse_csr" %}
+ctx.IsSparseCsrTensorInput("{{input["name"]}}"){{" && " if not loop.last}}
+      {%- endif %}
+      {% set input_idx.idx = input_idx.idx + 1 %}
+    {%- endif %}
+  {%- endfor %}) {
+    kernel_name = "{{kernel_func}}";
+  }
+{%- endfor %}
+{%- endmacro %}
+
+{% macro sparse_op_name_map(op) %}
+KernelSignature {{op["op_name"] | to_pascal_case }}OpArgumentMapping(const ArgumentMappingContext& ctx) {
+  {% set kernel_args = op["kernel"]["param"] %}
+  {{get_input_list(op["inputs"], kernel_args)}};
+  paddle::small_vector<const char*> attrs;
+  {% for attr in op["attrs"]%}
+  {% filter indent(2)%}
+  {{get_an_attr(attr)}};
+  {% endfilter %}
+  {% endfor %}
+  {{get_output_list(op["outputs"], kernel_args)}};
+
+  const char* kernel_name = "unregistered";
+{{get_kernel_dispatch(op["inputs"], op["kernel"])}}
+  KernelSignature sig (kernel_name, std::move(inputs), std::move(attrs), std::move(outputs));
+  return sig;
+}
+
+/*
+******************************************************************
+NOTE: The following codes are for 'get_compat_kernel_signature.py'
+All possible KernelSignatures returned by {{op["name"] | to_pascal_case }}OpArgumentMapping:
+
+{{op | cartesian_prod_mapping}}
+******************************************************************
+*/
+{% endmacro %}
+
+{% macro register_base_kernel_name(op) %}
+PD_REGISTER_BASE_KERNEL_NAME({{op["op_name"]}}, {{op["name"]}});
+{%- endmacro %}
+
+{% macro register_name_map(op) %}
+PD_REGISTER_ARG_MAPPING_FN({{op["op_name"]}}, phi::{{op["op_name"] | to_pascal_case}}OpArgumentMapping);
+{%- endmacro %}
+
+{% macro get_input_list(inputs, kernel_args) %}{# inline #}
+paddle::small_vector<const char*> inputs {
+{%- for input in inputs %}
+{%- if input["name"] in kernel_args %}
+{{input["name"] | to_opmaker_name_cstr}}{{", " if not loop.last}}
+{%- endif %}
+{%- endfor %}
+}
+{%- endmacro %}
+
+{% macro get_an_attr(attr) %}{# inline #}
+{% set typename = attr["typename"] %}
+{% set name = attr["name"] %}
+{% if typename is scalar %}{# scalar correspond to a dispensable input and an attr in opmaker #}
+attrs.emplace_back(
+  ctx.HasInput("{{name | to_pascal_case}}")
+  ? "{{name | to_pascal_case}}Tensor"
+  : "{{name}}"
+)
+{%- elif typename == "IntArray" %}
+attrs.emplace_back(
+  ctx.HasInput("{{name | to_pascal_case}}Tensor")
+  ? "{{name | to_pascal_case}}Tensor"
+  : ctx.InputSize("{{name | to_pascal_case}}TensorList") > 0
+    ? "{{name | to_pascal_case}}TensorList"
+    : "{{name}}"
+)
+{%- else %}
+attrs.emplace_back("{{name}}")
+{%- endif %}
+{%- endmacro %}
+
+{% macro get_output_list(outputs, kernel_args) %}{# inline #}
+paddle::small_vector<const char*> outputs {
+{%- for output in outputs %}
+{{output["name"] | to_opmaker_name_cstr}}{{", " if not loop.last}}
+{%- endfor %}
+}
+{%- endmacro %}
+
+{% macro get_expected_kernel(op) %}
+{% set kernel = op["kernel"] %}
+framework::OpKernelType GetExpectedKernelType(
+    const framework::ExecutionContext& ctx) const override {
+{%if kernel["data_type"] is not none %}{# data type ---------------------------------#}
+  {% if kernel["data_type"]["candidates"] | length == 1 %}
+    {% set data_type_arg = kernel["data_type"]["candidates"][0] %}
+    {% set inputs = op["inputs"] | map(attribute="name") | list %}
+    {% if data_type_arg in inputs %}
+  auto data_type = framework::OperatorWithKernel::IndicateVarDataType(ctx, {{data_type_arg | to_opmaker_name}});
+    {% else %}{# it is an attribute and probably named dtype#}
+  auto data_type = framework::proto::VarType::Type(ctx.Attr<int>("{{data_type_arg}}"));
+    {% endif %}
+  {% elif kernel["data_type"]["candidates"] | length == 2 %}
+    {% set data_type_args = kernel["data_type"]["candidates"] %}
+  auto data_type = framework::proto::VarType::Type(ctx.Attr<int>("{{data_type_args[0]}}");
+  if (data_type == static_cast<proto::VarType::Type>(-1)) {
+    data_type = framework::OperatorWithKernel::IndicateVarDataType(ctx, {{data_type_args[1] | to_opmaker_name}});
+  }
+  {% endif %}
+{% endif %}
+  return framework::OpKernelType(data_type, ctx.GetPlace());
+}
+{% endmacro %}
+
+{# --------------------------------------- operator  ---------------------------------------------- #}
+{% macro operator(op) %}
+class {{op["op_name"] | to_pascal_case}}Op : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+  {# ----------- get expected kernel type function -------------------------- #}
+  {% set kernel = op["kernel"] %}
+  {% if kernel["data_type"] is not none %}
+ protected:
+  {% filter indent(2, True)%}
+{{get_expected_kernel(op)}}
+  {% endfilter %}
+  {% endif %}
+};
+
+DECLARE_INFER_SHAPE_FUNCTOR({{op["op_name"]}}, {{op["op_name"] | to_pascal_case}}InferShapeFunctor,
+                            PD_INFER_META(phi::{{op["infer_meta"]["func"]}}));
+{# inplace inferer #}
+{% if op["inplace"] is not none %}
+  {% set inplace_map %}
+  {% for source, target in op["inplace"].items() %}
+{{"{"}}{{target | to_opmaker_name}}, {{source | to_opmaker_name}}{{"}"}}{{", " if not loop.last}}
+  {%- endfor %}
+  {%- endset %}
+DECLARE_INPLACE_OP_INFERER({{op["op_name"] | to_pascal_case}}InplaceInferer,
+                           {{inplace_map}});
+{% endif %}
+
+{# no_need_buffer inferer #}
+{% if op["no_need_buffer"] is not none %}
+DECLARE_NO_NEED_BUFFER_VARS_INFERER({{op["op_name"] | to_pascal_case}}NoNeedBufferVarInferer,
+                                    {{op["no_need_buffer"] | map("to_opmaker_name") | join(", ")}});
+{% endif %}
+{% endmacro%}
+
+{% macro register_op_with_components(op) %}
+{% set name = op["op_name"] %}
+REGISTER_OPERATOR({{name}}, ops::{{name | to_pascal_case}}Op,
+{% if not "forward" in op %}{# it is a forward op #}
+                  ops::{{name | to_pascal_case}}OpMaker,
+{% endif %}
+{% if "backward" in op and op["backward"] is not none %}{# backward #}
+  {% set backward_name = op["backward"] %}
+                  ops::{{backward_name | to_pascal_case}}OpMaker<paddle::framework::OpDesc>,
+                  ops::{{backward_name | to_pascal_case}}OpMaker<paddle::imperative::OpBase>,
+{% else %}
+                  paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+                  paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
+{% endif %}
+{% if op is supports_inplace %}{# inplace#}
+                  ops::{{name | to_pascal_case}}InplaceInferer,
+{% endif %}
+{% if op is supports_no_need_buffer %}{# no_need_buffer #}
+                  ops::{{name | to_pascal_case}}NoNeedBufferVarInferer,
+{% endif %}
+                  ops::{{name | to_pascal_case}}InferShapeFunctor);
+{% endmacro %}
+
+{% macro register_op_version(op) %}
+{% if "version" in op %}
+{% set name = op["op_name"] %}
+REGISTER_OP_VERSION({{name}})
+  {% for checkpoint in op["version"]%}
+  .AddCheckpoint(
+    R"ROC({{checkpoint["checkpoint"]}})ROC",
+      paddle::framework::compatible::OpVersionDesc()
+    {% for action in checkpoint["action"]%}
+      {% if "add_input" in action %}
+        .NewInput("{{action["add_input"]}}", "{{action["comment"]}}"){{")" if loop.last}}
+      {% endif %}
+      {% if "delete_input" in action %}
+        .DeleteInput("{{action["delete_input"]}}", "{{action["comment"]}}"){{")" if loop.last}}
+      {% endif %}
+      {% if "modify_input" in action %}
+        .ModifyInput("{{action["modify_input"]}}", "{{action["comment"]}}"){{")" if loop.last}}
+      {% endif %}
+      {% if "add_output" in action %}
+        .NewOutput("{{action["add_output"]}}", "{{action["comment"]}}"){{")" if loop.last}}
+      {% endif %}
+      {% if "delete_output" in action %}
+        .DeleteOutput("{{action["delete_output"]}}", "{{action["comment"]}}"){{")" if loop.last}}
+      {% endif %}
+      {% if "modify_output" in action %}
+        .ModifyOutput("{{action["modify_output"]}}", "{{action["comment"]}}"){{")" if loop.last}}
+      {% endif %}
+      {% if "add_attr" in action %}
+        .NewAttr("{{action["add_attr"]}}", "{{action["comment"]}}", {{action["default"]}}){{")" if loop.last}}
+      {% endif %}
+      {% if "delete_attr" in action %}
+        .DeleteAttr("{{action["delete_attr"]}}", "{{action["comment"]}}"){{")" if loop.last}}
+      {% endif %}
+      {% if "fix_bug" in action %}
+        .BugfixWithBehaviorChanged("{{action["comment"]}}"){{")" if loop.last}}
+      {% endif %}
+    {% endfor %}
+  {% endfor %};
+{% endif %}
+{% endmacro %}
+
+
+{# --------------------------------------- backward op maker ---------------------------------------------- #}
+{% macro backward_op_maker(op, forward_op ) %}
+  {% set name = op["op_name"] %}
+  {% set forward_input_names = op["forward"]["inputs"] | map(attribute="name") | list %}
+  {% set forward_output_names = op["forward"]["outputs"] | map(attribute="name") | list %}
+  {% set forward_attr_names = op["forward"]["attrs"] | map(attribute="name") | list %}
+  {% set forward_input_orig_names = forward_op["inputs"] | map(attribute="name") | list %}
+  {% set forward_output_orig_names = forward_op["outputs"] | map(attribute="name") | list %}
+  {% set forward_attr_orig_names = forward_op["attrs"] | map(attribute="name") | list %}
+template <typename T>
+class {{name | to_pascal_case}}OpMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  void Apply(GradOpPtr<T> grad_op) const override {
+    grad_op->SetType("{{name}}");
+
+  {% for input in op["inputs"] %}
+    grad_op->SetInput({{input["name"] | to_opmaker_name}}, this->{{extract_input_from_forward(
+      input["name"],
+      forward_input_names,
+      forward_output_names,
+      forward_input_orig_names,
+      forward_output_orig_names)}});
+  {% endfor %}
+
+  {% for output in op["outputs"] %}
+    grad_op->SetOutput({{output["name"] | to_opmaker_name}}, this->{{extract_output_from_forward(
+      output["name"],
+      forward_input_names,
+      forward_output_names,
+      forward_input_orig_names,
+      forward_output_orig_names)}});
+  {% endfor %}
+
+    grad_op->SetAttrMap(this->Attrs());
+  {% for attr in op["attrs"] %}
+    {% set attr_name = attr["name"] %}
+    {% if attr_name in forward_attr_names %}
+      {% if attr["typename"] == "IntArray" %}
+    grad_op->SetInput("{{attr_name | to_pascal_case}}Tensor", this->Input("{{attr_name | to_pascal_case}}Tensor"));
+    grad_op->SetInput("{{attr_name | to_pascal_case}}TensorList", this->Input("{{attr_name | to_pascal_case}}TensorList"));
+      {% elif attr["typename"] == "Scalar" %}
+    grad_op->SetInput("{{attr_name | to_pascal_case}}Tensor", this->Input("{{attr_name | to_pascal_case}}Tensor"));
+      {% endif %}
+    {% else %}{# maybe something wrong: backward op has more attrs than the forward one#}
+    grad_op->SetAttr("{{attr_name}}", {{process_default_value(attr)}});
+    {% endif %}
+  {% endfor %}
+  }
+};
+{% endmacro %}
+
+{% macro backward_op_reused_maker(bw_op, forward_op, invoke_op) %}
+  {% set name = bw_op["op_name"] %}
+  {% set forward_input_names = bw_op["forward"]["inputs"] | map(attribute="name") | list %}
+  {% set forward_output_names = bw_op["forward"]["outputs"] | map(attribute="name") | list %}
+  {% set forward_attr_names = bw_op["forward"]["attrs"] | map(attribute="name") | list %}
+  {% set forward_input_orig_names = forward_op["inputs"] | map(attribute="name") | list %}
+  {% set forward_output_orig_names = forward_op["outputs"] | map(attribute="name") | list %}
+  {% set forward_attr_orig_names = forward_op["attrs"] | map(attribute="name") | list %}
+template <typename T>
+class {{name | to_pascal_case}}OpMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  void Apply(GradOpPtr<T> grad_op) const override {
+    grad_op->SetType("{{invoke_op["func"]}}");
+
+  {% for input in invoke_op["inputs"] %}
+    grad_op->SetInput({{input["name"] | to_opmaker_name}}, this->{{extract_input_from_forward(
+      input["value"],
+      forward_input_names,
+      forward_output_names,
+      forward_input_orig_names,
+      forward_output_orig_names)}});
+  {% endfor %}
+
+  {% for output in invoke_op["outputs"] %}
+    grad_op->SetOutput({{output["name"] | to_opmaker_name}}, this->{{extract_output_from_forward(
+      output["value"],
+      forward_input_names,
+      forward_output_names,
+      forward_input_orig_names,
+      forward_output_orig_names)}});
+  {% endfor %}
+
+  {% for attr in invoke_op["attrs"] %}
+    grad_op->SetAttr("{{attr["name"]}}", {{attr["value"]}});
+  {% endfor %}
+  }
+};
+{% endmacro %}
+
+
+{% macro extract_input_from_forward(name,
+  input_names, output_names,
+  input_orig_names, output_orig_names) %}{# inline #}
+  {% if name in input_names %}
+    {% set name_in_forward_orig = input_orig_names[input_names.index(name)]%}
+Input({{name_in_forward_orig | to_opmaker_name}})
+  {%- elif name in output_names %}
+    {% set name_in_forward_orig = output_orig_names[output_names.index(name)]%}
+Output({{name_in_forward_orig | to_opmaker_name}})
+  {%- elif name.endswith("_grad") %}{# output grad#}
+    {% set name_in_forward = name[:-5] %}
+    {% if name_in_forward in output_names %}
+      {% set name_in_forward_orig = output_orig_names[output_names.index(name_in_forward)] %}
+OutputGrad({{name_in_forward_orig | to_opmaker_name}})
+    {%- endif %}
+  {%- endif %}
+{%- endmacro %}
+
+{% macro extract_output_from_forward(name, input_names, output_names,
+  input_orig_names, output_orig_names) %}{# inline #}
+  {% if name[:-5] in input_names %}
+    {% set name_in_forward = name[:-5] %}
+    {% set name_in_forward_orig = input_orig_names[input_names.index(name_in_forward)]%}
+InputGrad({{name_in_forward_orig | to_opmaker_name}})
+  {%- elif (name | to_input_name) in input_names %}
+    {% set name_in_forward = name | to_input_name %}
+    {% set name_in_forward_orig = input_orig_names[input_names.index(name_in_forward)]%}
+InputGrad({{name | to_input_name | to_opmaker_name}})
+  {%- endif %}
+{%- endmacro %}
+
+{% macro extract_attr_from_forward(name, attr_names, attr_origin_names) %}
+this->GetAttr("{{name}}")
+{%- endmacro %}
