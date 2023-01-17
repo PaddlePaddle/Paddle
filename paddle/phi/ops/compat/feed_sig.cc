@@ -16,16 +16,17 @@
 
 namespace phi {
 
-KernelSignature SlogDeterminantGradOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
-  return KernelSignature(
-      "slogdet_grad", {"Input", "Out", "Out@GRAD"}, {}, {"Input@GRAD"});
+KernelSignature FeedOpArgumentMapping(const ArgumentMappingContext& ctx) {
+  if (ctx.IsDenseTensorOutput("Out")) {
+    return KernelSignature("feed_dense_tensor", {"X"}, {"col"}, {"Out"});
+  } else if (ctx.IsSparseCooTensorOutput("Out")) {
+    return KernelSignature("feed_sparse_coo_tensor", {"X"}, {"col"}, {"Out"});
+  } else {
+    return KernelSignature("feed_strings", {"X"}, {"col"}, {"Out"});
+  }
 }
 
 }  // namespace phi
 
-PD_REGISTER_BASE_KERNEL_NAME(slogdeterminant, slogdet);
-PD_REGISTER_BASE_KERNEL_NAME(slogdeterminant_grad, slogdet_grad);
-
-PD_REGISTER_ARG_MAPPING_FN(slogdeterminant_grad,
-                           phi::SlogDeterminantGradOpArgumentMapping);
+PD_REGISTER_BASE_KERNEL_NAME(feed, feed_dense_tensor);
+PD_REGISTER_ARG_MAPPING_FN(feed, phi::FeedOpArgumentMapping);
