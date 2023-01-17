@@ -35,7 +35,6 @@ from paddle.fluid.framework import (
     Program,
     _current_expected_place,
     _dygraph_tracer,
-    _test_eager_guard,
     in_dygraph_mode,
 )
 from paddle.fluid.op import Operator
@@ -1772,7 +1771,6 @@ class OpTest(unittest.TestCase):
 
             def calculate_output(self):
                 # we only check end2end api when check_dygraph=True
-                # with _test_eager_guard():
                 self.is_python_api_test = True
                 eager_dygraph_outs = self.op_test._calc_python_api_output(place)
                 if eager_dygraph_outs is None:
@@ -1784,22 +1782,18 @@ class OpTest(unittest.TestCase):
                 self.outputs = eager_dygraph_outs
 
             def _compare_numpy(self, name, actual_np, expect_np):
-                # with _test_eager_guard():
                 super()._compare_numpy(name, actual_np, expect_np)
 
             def convert_uint16_to_float_ifneed(self, actual_np, expect_np):
-                # with _test_eager_guard():
                 return super().convert_uint16_to_float_ifneed(
                     actual_np, expect_np
                 )
 
             def find_actual_value(self, name):
-                # with _test_eager_guard():
                 return super().find_actual_value(name)
 
             def _compare_list(self, name, actual, expect):
                 """if expect is a tuple, we need to compare list."""
-                # with _test_eager_guard():
                 super()._compare_list(name, actual, expect)
 
             def _is_skip_name(self, name):
@@ -2247,33 +2241,32 @@ class OpTest(unittest.TestCase):
 
         if check_dygraph:
             with fluid.dygraph.base.guard(place):
-                with _test_eager_guard():
-                    eager_dygraph_grad = self._get_dygraph_grad(
-                        inputs_to_check,
-                        place,
-                        output_names,
-                        user_defined_grad_outputs,
-                        no_grad_set,
-                        check_dygraph,
-                    )
-                    fp32_grads = []
-                    for grad in eager_dygraph_grad:
-                        if grad.dtype == np.uint16:
-                            grad = convert_uint16_to_float(grad)
-                            max_relative_error = (
-                                0.03
-                                if max_relative_error < 0.03
-                                else max_relative_error
-                            )
-                        fp32_grads.append(grad)
-                    eager_dygraph_grad = fp32_grads
-                    self._assert_is_close(
-                        numeric_grads,
-                        eager_dygraph_grad,
-                        inputs_to_check,
-                        max_relative_error,
-                        "Gradient Check On %s" % str(place),
-                    )
+                eager_dygraph_grad = self._get_dygraph_grad(
+                    inputs_to_check,
+                    place,
+                    output_names,
+                    user_defined_grad_outputs,
+                    no_grad_set,
+                    check_dygraph,
+                )
+                fp32_grads = []
+                for grad in eager_dygraph_grad:
+                    if grad.dtype == np.uint16:
+                        grad = convert_uint16_to_float(grad)
+                        max_relative_error = (
+                            0.03
+                            if max_relative_error < 0.03
+                            else max_relative_error
+                        )
+                    fp32_grads.append(grad)
+                eager_dygraph_grad = fp32_grads
+                self._assert_is_close(
+                    numeric_grads,
+                    eager_dygraph_grad,
+                    inputs_to_check,
+                    max_relative_error,
+                    "Gradient Check On %s" % str(place),
+                )
 
     def _find_var_in_dygraph(self, output_vars, name):
         if name in output_vars:
