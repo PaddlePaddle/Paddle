@@ -43,10 +43,10 @@ class TestDy2staticException(unittest.TestCase):
     def test_error(self):
         if self.dyfunc:
             with self.assertRaisesRegex(Dygraph2StaticException, self.error):
-                ProgramTranslator().enable(True)
-                self.assertTrue(declarative(self.dyfunc)(self.x))
-        paddle.fluid.dygraph.base._in_declarative_mode_ = False
-        ProgramTranslator().enable(False)
+                paddle.jit.enable_to_static(True)
+                self.assertTrue(paddle.jit.to_static(self.dyfunc)(self.x))
+        paddle.fluid.dygraph.base.global_var._in_declarative_mode_ = False
+        paddle.jit.enable_to_static(False)
 
 
 class TestDygraphIfElse(unittest.TestCase):
@@ -469,8 +469,8 @@ class TestDy2StIfElseRetInt4(TestDy2StIfElseRetInt1):
         # that the code block is under @to_static, but in this UT
         # an exception is thrown during Dy2St, making the `_in_declarative_mode_`
         # a wrong value. So We need set `_in_declarative_mode_` to False manually.
-        paddle.fluid.dygraph.base._in_declarative_mode_ = False
-        ProgramTranslator().enable(False)
+        paddle.fluid.dygraph.base.global_var._in_declarative_mode_ = False
+        paddle.jit.enable_to_static(False)
 
 
 class IfElseNet(paddle.nn.Layer):

@@ -71,9 +71,10 @@ def monkey_patch_math_varbase():
 
     @no_grad
     def create_tensor(value, dtype, shape):
-        if framework._in_eager_mode_:
-            out = _C_ops.full(shape, value, dtype,
-                              framework._current_expected_place())
+        if framework.global_var._in_eager_mode_:
+            out = _C_ops.full(
+                shape, value, dtype, framework._current_expected_place()
+            )
         else:
             out = _varbase_creator(dtype=dtype)
             out = _legacy_C_ops.fill_constant(out, 'dtype', dtype, 'shape',
@@ -238,7 +239,7 @@ def monkey_patch_math_varbase():
 
             # 2. create varbase for scalar
             lhs_dtype = self.dtype
-            if framework._in_eager_mode_:
+            if framework.global_var._in_eager_mode_:
                 other_var_should_be = core.eager.Tensor
             else:
                 other_var_should_be = core.VarBase
@@ -429,7 +430,7 @@ def monkey_patch_math_varbase():
     global _already_patch_varbase
     global _already_patch_eager_tensor
 
-    if framework._in_eager_mode_:
+    if framework.global_var._in_eager_mode_:
         local_already_patch = _already_patch_eager_tensor
         _already_patch_eager_tensor = True
         local_tensor = core.eager.Tensor
@@ -439,10 +440,22 @@ def monkey_patch_math_varbase():
         local_tensor = core.VarBase
 
     if not local_already_patch:
-        for method in varbase_methods:
-            method_name = method[0]
-            method_impl = method[1]
-            setattr(local_tensor, method_name, method_impl)
+        if framework.global_var._in_eager_mode_:
+            for method_name in eager_cpp_level_patch:
+                method_impl = getattr(local_tensor, method_name, None)
+                if method_impl:
+                    setattr(local_tensor, method_name, method_impl)
+
+            for method in eager_methods:
+                method_name = method[0]
+                method_impl = method[1]
+                setattr(local_tensor, method_name, method_impl)
+
+        else:
+            for method in varbase_methods:
+                method_name = method[0]
+                method_impl = method[1]
+                setattr(local_tensor, method_name, method_impl)
     else:
         import paddle.tensor
         # Tensor method from module paddle.tensor

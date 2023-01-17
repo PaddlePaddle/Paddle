@@ -20,6 +20,7 @@ import sys
 import numpy as np
 from paddle.fluid import core
 from paddle.fluid import framework
+from paddle.fluid.framework import global_var
 from paddle.fluid.multiprocess_utils import CleanupFuncRegistrar
 from .tracer import Tracer
 import logging
@@ -34,16 +35,13 @@ __all__ = [
     'enabled', 'to_variable'
 ]
 
-# Flag that indicates whether running code under `@declarative`
-_in_declarative_mode_ = False
-
 
 def in_declarative_mode():
     """
     Return a bool value that indicates whether running code under `@declarative`
 
     """
-    return _in_declarative_mode_
+    return global_var._in_declarative_mode_
 
 
 def declarative_unsupport_argument_warning(func_name, input_names, inputs,
@@ -75,11 +73,11 @@ switch_to_static_graph = wrap_decorator(_switch_to_static_graph_)
 @signature_safe_contextmanager
 def _switch_declarative_mode_guard_(is_declarative=True):
 
-    global _in_declarative_mode_
-    original_val = _in_declarative_mode_
-    _in_declarative_mode_ = is_declarative
+    global global_var
+    original_val = global_var._in_declarative_mode_
+    global_var._in_declarative_mode_ = is_declarative
     yield
-    _in_declarative_mode_ = original_val
+    global_var._in_declarative_mode_ = original_val
 
 
 @signature_safe_contextmanager
@@ -93,9 +91,6 @@ def program_desc_tracing_guard(enable):
     finally:
         if tracer:
             tracer._enable_program_desc_tracing = original_val
-
-
-_functional_dygraph_context_manager = None
 
 
 @signature_safe_contextmanager
@@ -204,11 +199,12 @@ def enable_dygraph(place=None):
             print(paddle.in_dynamic_mode())  # True, Now we are in dynamic mode
 
     """
-    global _functional_dygraph_context_manager
-    if _functional_dygraph_context_manager is None:
-        _functional_dygraph_context_manager = guard(
-            place=_get_paddle_place(place))
-        _functional_dygraph_context_manager.__enter__()
+    global global_var
+    if global_var._functional_dygraph_context_manager is None:
+        global_var._functional_dygraph_context_manager = guard(
+            place=_get_paddle_place(place)
+        )
+        global_var._functional_dygraph_context_manager.__enter__()
 
         # call disable_dygraph when Python exit
         CleanupFuncRegistrar.register(disable_dygraph)
@@ -238,10 +234,10 @@ def disable_dygraph():
             print(paddle.in_dynamic_mode())  # True, Now we are in dynamic mode
 
     """
-    global _functional_dygraph_context_manager
-    if _functional_dygraph_context_manager is not None:
-        _functional_dygraph_context_manager.__exit__(*sys.exc_info())
-        _functional_dygraph_context_manager = None
+    global global_var
+    if global_var._functional_dygraph_context_manager is not None:
+        global_var._functional_dygraph_context_manager.__exit__(*sys.exc_info())
+        global_var._functional_dygraph_context_manager = None
 
 
 @signature_safe_contextmanager

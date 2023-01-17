@@ -528,11 +528,14 @@ class PartialProgramLayer:
                 if "@GRAD" in name:
                     var_desc = block.vars[name].desc
                     var_base = None
-                    if not framework._in_eager_mode_:
-                        var_base = core.VarBase(var_desc.dtype(),
-                                                var_desc.shape(),
-                                                var_desc.name(),
-                                                var_desc.type(), False)
+                    if not framework.global_var._in_eager_mode_:
+                        var_base = core.VarBase(
+                            var_desc.dtype(),
+                            var_desc.shape(),
+                            var_desc.name(),
+                            var_desc.type(),
+                            False,
+                        )
                     else:
                         var_base = core.eager.Tensor(var_desc.dtype(),
                                                      var_desc.shape(),
@@ -697,12 +700,14 @@ class PartialProgramLayer:
         for i, value in enumerate(flatten_inputs):
             if isinstance(value, np.ndarray):
                 var = None
-                if not framework._in_eager_mode_:
-                    var = core.VarBase(value=value,
-                                       name=self._inputs[i].desc.name(),
-                                       persistable=False,
-                                       place=expected_place,
-                                       zero_copy=True)
+                if not framework.global_var._in_eager_mode_:
+                    var = core.VarBase(
+                        value=value,
+                        name=self._inputs[i].desc.name(),
+                        persistable=False,
+                        place=expected_place,
+                        zero_copy=True,
+                    )
                 else:
                     var = core.eager.Tensor(value=value,
                                             name=self._inputs[i].desc.name(),
@@ -736,9 +741,14 @@ class PartialProgramLayer:
             if var_desc.name() in out_varbase_map:
                 return out_varbase_map[var_desc.name()]
 
-            if not framework._in_eager_mode_:
-                var_base = core.VarBase(var_desc.dtype(), var_desc.shape(),
-                                        var_desc.name(), var_desc.type(), False)
+            if not framework.global_var._in_eager_mode_:
+                var_base = core.VarBase(
+                    var_desc.dtype(),
+                    var_desc.shape(),
+                    var_desc.name(),
+                    var_desc.type(),
+                    False,
+                )
             else:
                 var_base = core.eager.Tensor(var_desc.dtype(), var_desc.shape(),
                                              var_desc.name(), var_desc.type(),
@@ -755,12 +765,17 @@ class PartialProgramLayer:
     def _create_scope_vec(self, program_id=None, use_scope_cache=False):
         # Hold forward variables
         tmp_scope_vec = None
-        inner_scope = self._get_scope(program_id=program_id,
-                                      use_scope_cache=use_scope_cache)
-        if not framework._in_eager_mode_:
-            tmp_scope_vec = core.VarBase(core.VarDesc.VarType.FP32, [],
-                                         "program_out_scope",
-                                         core.VarDesc.VarType.STEP_SCOPES, True)
+        inner_scope = self._get_scope(
+            program_id=program_id, use_scope_cache=use_scope_cache
+        )
+        if not framework.global_var._in_eager_mode_:
+            tmp_scope_vec = core.VarBase(
+                core.VarDesc.VarType.FP32,
+                [],
+                "program_out_scope",
+                core.VarDesc.VarType.STEP_SCOPES,
+                True,
+            )
             tmp_scope_vec.value().set_scope(inner_scope)
         else:
             tmp_scope_vec = [inner_scope]
@@ -901,7 +916,7 @@ def _create_fake_var():
     """
     Create a fake_var (force on CPU) to handle empty input or output
     """
-    if not framework._in_eager_mode_:
+    if not framework.global_var._in_eager_mode_:
         return [
             core.VarBase(core.VarDesc.VarType.FP32, [], "Fake_var",
                          core.VarDesc.VarType.RAW, False)

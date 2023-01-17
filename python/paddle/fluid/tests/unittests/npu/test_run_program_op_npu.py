@@ -29,7 +29,7 @@ import paddle.fluid as fluid
 from paddle import compat as cpt
 from paddle.fluid import core, framework, executor
 from paddle.fluid.layers.utils import _hash_with_id
-from paddle.fluid.framework import _in_eager_mode_
+from paddle.fluid.framework import global_var
 
 paddle.enable_static()
 np.random.seed(1243)
@@ -136,11 +136,10 @@ class RunProgramNPUOpTest(unittest.TestCase):
     def prepare_dygraph_input(self, place, return_param_list=False):
 
         def create_var_base(is_input, name, np_value, stop_gradient):
-            if _in_eager_mode_:
-                var = core.eager.Tensor(value=np_value,
-                                        name=name,
-                                        place=place,
-                                        zero_copy=True)
+            if global_var._in_eager_mode_:
+                var = core.eager.Tensor(
+                    value=np_value, name=name, place=place, zero_copy=True
+                )
             else:
                 var = core.VarBase(value=np_value,
                                    name=name,
@@ -180,7 +179,7 @@ class RunProgramNPUOpTest(unittest.TestCase):
         for name in self.output_names['Out']:
             outputs['Out'].append(create_var_base(False, name))
 
-        if _in_eager_mode_:
+        if global_var._in_eager_mode_:
             outputs['OutScope'] = [core.Scope()]
         else:
             outputs['OutScope'] = framework._varbase_creator(

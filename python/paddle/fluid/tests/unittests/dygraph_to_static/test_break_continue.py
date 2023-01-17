@@ -36,10 +36,10 @@ class TestDy2staticException(unittest.TestCase):
     def test_error(self):
         if self.dyfunc:
             with self.assertRaisesRegex(Dygraph2StaticException, self.error):
-                ProgramTranslator().enable(True)
-                self.assertTrue(declarative(self.dyfunc)(self.x))
-        paddle.fluid.dygraph.base._in_declarative_mode_ = False
-        ProgramTranslator().enable(False)
+                paddle.jit.enable_to_static(True)
+                self.assertTrue(to_static(self.dyfunc)(self.x))
+        paddle.fluid.dygraph.base.global_var._in_declarative_mode_ = False
+        paddle.jit.enable_to_static(False)
 
 
 def test_continue_in_for(x):

@@ -56,9 +56,10 @@ class LazyInitHelper(object):
         dygraph mode into static mode.
         """
         self.enable()
-        if self._in_guard: return
-        self._tracer = framework._dygraph_tracer_
-        framework._dygraph_tracer_ = None
+        if self._in_guard:
+            return
+        self._tracer = framework.global_var._dygraph_tracer_
+        framework.global_var._dygraph_tracer_ = None
         self._in_guard = True
 
     def __exit__(self, *args, **kwargs):
@@ -68,7 +69,7 @@ class LazyInitHelper(object):
         self.disable()
         if not self._in_guard: return
         assert self._tracer is not None
-        framework._dygraph_tracer_ = self._tracer
+        framework.global_var._dygraph_tracer_ = self._tracer
         self._tracer = None
         self._in_guard = False
 
