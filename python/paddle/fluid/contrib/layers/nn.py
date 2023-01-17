@@ -99,6 +99,7 @@ def fused_embedding_seq_pool(
             import numpy as np
             import paddle.fluid as fluid
             import paddle
+            paddle.enable_static()
 
             dict_size = 20
             data_t = paddle.static.data(
@@ -307,6 +308,7 @@ def multiclass_nms2(
 
             import paddle.fluid as fluid
             import paddle
+            paddle.enable_static()
             boxes = paddle.static.data(name='bboxes', shape=[-1, 81, 4],
                                       dtype='float32', lod_level=1)
             scores = paddle.static.data(name='scores', shape=[-1, 81],
@@ -504,6 +506,7 @@ def shuffle_batch(x, seed=None):
 
             import paddle.fluid as fluid
             import paddle
+            paddle.enable_static()
             x = paddle.static.data(name="x", shape=[-1, 4])
             out = fluid.contrib.layers.shuffle_batch(x)
     """
@@ -1442,7 +1445,7 @@ def correlation(
 
             import paddle.fluid as fluid
             import paddle
-
+            paddle.enable_static()
             x1 = paddle.static.data(name='x1',
                                shape=x_shape,
                                dtype=x_type)
