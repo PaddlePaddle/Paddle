@@ -15,9 +15,9 @@
 import unittest
 
 import numpy as np
+from op_test import OpTest
 
 import paddle
-from eager_op_test import OpTest
 
 
 def valid_eigh_result(A, eigh_value, eigh_vector, uplo):
@@ -70,7 +70,6 @@ def valid_single_eigh_result(A, eigh_value, eigh_vector, uplo):
 class TestEighOp(OpTest):
     def setUp(self):
         paddle.enable_static()
-        self.python_api = paddle.tensor.eigh
         self.op_type = "eigh"
         self.init_input()
         self.init_config()
