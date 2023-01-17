@@ -16,7 +16,7 @@
 
 #if defined _WIN32 || defined __APPLE__
 #else
-#define _LINUX
+#define __LINUX__
 #endif
 
 #ifdef __LINUX__
