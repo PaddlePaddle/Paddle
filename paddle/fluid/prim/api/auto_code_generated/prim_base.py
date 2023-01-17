@@ -22,9 +22,9 @@ white_ops_list = [
     "expand",
     "full",
     "reshape",
-    "unsqueeze",
     "divide",
     "sum",
+    "exp",
 ]
 
 inplace_out_type_map = {
