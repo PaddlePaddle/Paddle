@@ -865,6 +865,11 @@ class TestSundryAPI(unittest.TestCase):
         self.assertEqual(out.grad.shape, [1])
         self.assertEqual(x.grad.shape, [])
 
+    def test_histogram(self):
+        x = paddle.rand([])
+        out = paddle.histogram(x, bins=5, min=1, max=5)
+        self.assertEqual(out.shape, [5])
+
     def test_scale(self):
         x = paddle.rand([])
         x.stop_gradient = False
@@ -1515,6 +1520,16 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(res[0].shape, (1,))
         self.assertEqual(res[1].shape, ())
         self.assertEqual(res[2].shape, (1,))
+
+    @prog_scope()
+    def test_histogram(self):
+        x = paddle.full([], 1, 'float32')
+        out = paddle.histogram(x, bins=5, min=1, max=5)
+
+        prog = paddle.static.default_main_program()
+        res = self.exe.run(prog, feed={}, fetch_list=[out])
+
+        self.assertEqual(res[0].shape, (5,))
 
     @prog_scope()
     def test_scale(self):
