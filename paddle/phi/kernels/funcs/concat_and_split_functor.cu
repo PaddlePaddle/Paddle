@@ -761,8 +761,9 @@ void SplitFunctorDispatchWithIndexType(
 
   int out_cols_num = out_num + 1;
   std::vector<IndexT> outputs_cols_vec(out_cols_num);
+  std::vector<T*> outputs_data_vec(out_num, nullptr);
   IndexT* outs_cols = outputs_cols_vec.data();
-  T** outs_data = nullptr;
+  T** outs_data = outputs_data_vec.data();
 
 // There are some differences between hip runtime and NV runtime.
 // In NV, when the pageable memory data less than 64K is transferred from

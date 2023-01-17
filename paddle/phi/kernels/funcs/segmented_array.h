@@ -167,14 +167,13 @@ struct PointerArraySetter : public ArraySetterBase<Context> {
                      std::vector<DenseTensor*>* t,
                      bool use_cuda_graph = false,
                      T** pre_alloc_host_buf = nullptr) {
-    T** data_ptr{nullptr};
+    ptrs.resize(t->size());
+    T** data_ptr = ptrs.data();
+#ifdef PADDLE_WITH_HIP
     if (pre_alloc_host_buf) {
       data_ptr = pre_alloc_host_buf;
-    } else {
-      ptrs.resize(t->size());
-      data_ptr = ptrs.data();
     }
-
+#endif
     for (int i = 0; i < t->size(); ++i) {
       if (t->at(i) && (t->at(i)->numel() > 0)) {
         data_ptr[i] = ctx.template Alloc<T>(t->at(i));
