@@ -1,4 +1,4 @@
-// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -102,22 +102,23 @@ void ReshapeTransposeMatmulMkldnnFusePass::Fuse(
                                               matmul_type + " encountered.");
     }
 
-    // Extra check to fuse each input only once
+    // Return if input of fused_matmul is already fused
     if (matmul_type == "fused_matmul") {
-      auto shape_fused_X =
+      auto is_already_fused_X =
           matmul_desc->HasAttr("fused_reshape_X")
-              ? PADDLE_GET_CONST(std::vector<int>,
-                                 matmul_desc->GetAttr("fused_reshape_X"))
-              : std::vector<int>();
+              ? !(PADDLE_GET_CONST(std::vector<int>,
+                                   matmul_desc->GetAttr("fused_reshape_X"))
+                      .empty())
+              : false;
+      if (is_already_fused_X && matmul_input_name == "X") return;
 
-      auto shape_fused_Y =
+      auto is_already_fused_Y =
           matmul_desc->HasAttr("fused_reshape_Y")
-              ? PADDLE_GET_CONST(std::vector<int>,
-                                 matmul_desc->GetAttr("fused_reshape_Y"))
-              : std::vector<int>();
-
-      if (!shape_fused_X.empty() && matmul_input_name == "X") return;
-      if (!shape_fused_Y.empty() && matmul_input_name == "Y") return;
+              ? !(PADDLE_GET_CONST(std::vector<int>,
+                                   matmul_desc->GetAttr("fused_reshape_Y"))
+                      .empty())
+              : false;
+      if (is_already_fused_Y && matmul_input_name == "Y") return;
     }
 
     auto reshape_shape =
