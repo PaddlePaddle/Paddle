@@ -1,4 +1,4 @@
-// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,6 +12,24 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/core/compat/op_utils.h"
+#pragma once
 
-PD_REGISTER_BASE_KERNEL_NAME(size, numel);
+#include "paddle/fluid/framework/ir/fuse_pass_base.h"
+#include "paddle/fluid/framework/ir/graph.h"
+
+namespace paddle {
+namespace framework {
+namespace ir {
+
+class TrtSupportNHWCPass : public FusePassBase {
+ public:
+  TrtSupportNHWCPass() = default;
+  ~TrtSupportNHWCPass() = default;
+
+ protected:
+  void ApplyImpl(Graph* graph) const override;
+};
+
+}  // namespace ir
+}  // namespace framework
+}  // namespace paddle
