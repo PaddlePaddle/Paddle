@@ -214,7 +214,7 @@ class TestAPISwitchCase(unittest.TestCase):
             x = paddle.full(shape=[], dtype='float32', fill_value=-2.0)
             x.stop_gradient = False
             pred = paddle.full(shape=[], dtype='int32', fill_value=2)
-            # pred is 0, so out = 2 * x
+            # pred is 2, so out = 2 * x
             out = paddle.static.nn.switch_case(
                 branch_index=pred,
                 branch_fns=[(1, lambda: x), (2, lambda: 2 * x)],
