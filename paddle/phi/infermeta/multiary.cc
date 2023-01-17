@@ -2982,6 +2982,73 @@ void MoeInferMeta(const MetaTensor& x,
   out->set_layout(x.layout());
 }
 
+void FusedMultiHeadAttentionInferMeta(const MetaTensor& query,
+                                      const MetaTensor& key,
+                                      const MetaTensor& value,
+                                      const MetaTensor& mask, // optional
+                                      MetaTensor* out) {
+  PADDLE_ENFORCE_EQ(
+        query.dims().size(),
+        4,
+        phi::errors::InvalidArgument("Query should be a 4-D tensor"
+                                     "But received Query dimension(%s)",
+                                     query.size()));
+  PADDLE_ENFORCE_EQ(
+        key.dims().size(),
+        4,
+        phi::errors::InvalidArgument("Key should be a 4-D tensor"
+                                     "But received Key dimension(%s)",
+                                     key.size()));
+  PADDLE_ENFORCE_EQ(
+        value.dims().size(),
+        4,
+        phi::errors::InvalidArgument("Value should be a 4-D tensor"
+                                     "But received Value dimension(%s)",
+                                     value.size()));
+  const int64_t query_batch_size = query.dims()[0]; 
+  const int64_t query_num_head = query.dims()[1]; 
+  const int64_t query_seq_length = query.dims()[2]; 
+  const int64_t query_head_size = query.dims()[3]; 
+
+  const int64_t key_batch_size = key.dims()[0]; 
+  const int64_t key_num_head = key.dims()[1]; 
+  const int64_t key_seq_length = key.dims()[2]; 
+  const int64_t key_head_size = key.dims()[3]; 
+   
+  const int64_t value_batch_size = value.dims()[0]; 
+  const int64_t value_num_head = value.dims()[1]; 
+  const int64_t value_seq_length = value.dims()[2]; 
+  const int64_t value_head_size = value.dims()[3]; 
+
+  PADDLE_ENFORCE_EQ(
+        ((query_batch_size == key_batch_size) && (key_batch_size == value_batch_size)),
+        true,
+        phi::errors::InvalidArgument("The batchsize of Query, Key, Value should be equal. "));
+
+  PADDLE_ENFORCE_EQ(
+        ((query_num_head == key_num_head) && (key_num_head == value_num_head)),
+        true,
+        phi::errors::InvalidArgument("The head number of Query, Key, Value should be equal. "));
+
+  PADDLE_ENFORCE_EQ(
+        query_head_size == key_head_size,
+        true,
+        phi::errors::InvalidArgument("The head size of Query, Key should be equal. "));
+
+  PADDLE_ENFORCE_EQ(
+        key_seq_length == value_seq_length,
+        true,
+        phi::errors::InvalidArgument("The seq length of Key, Value should be equal. "));
+
+  // TODO(zhengzekang): Add check for mask. 
+
+  std::vector<int64_t> out_dims({query_batch_size, query_num_head, query_seq_length, value_head_size});
+  out->set_dims(phi::make_ddim(out_dims));
+  out->share_lod(query);
+  out->set_dtype(query.dtype());
+  out->set_layout(query.layout());
+}
+
 }  // namespace phi
 
 PD_REGISTER_INFER_META_FN(batch_norm_infer, phi::BatchNormInferInferMeta);

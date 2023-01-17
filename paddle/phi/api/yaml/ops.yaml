@@ -1302,3 +1302,11 @@
   kernel :
     func : where
   backward : where_grad
+
+- op : cutlass_fused_multihead_attention
+  args : (Tensor query, Tensor key, Tensor value, Tensor mask)
+  output : Tensor
+  infer_meta :
+    func : FusedMultiHeadAttentionInferMeta
+  kernel :
+    func : fused_multihead_attention
