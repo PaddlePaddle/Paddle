@@ -313,7 +313,7 @@ def multiclass_nms2(
                                       dtype='float32', lod_level=1)
             scores = paddle.static.data(name='scores', shape=[-1, 81],
                                       dtype='float32', lod_level=1)
-            out, index = fluid.layers.multiclass_nms2(bboxes=boxes,
+            out, index = fluid.contrib.layers.multiclass_nms2(bboxes=boxes,
                                               scores=scores,
                                               background_label=0,
                                               score_threshold=0.5,
@@ -1447,11 +1447,11 @@ def correlation(
             import paddle
             paddle.enable_static()
             x1 = paddle.static.data(name='x1',
-                               shape=x_shape,
-                               dtype=x_type)
+                               shape=[2,3,4,5],
+                               dtype="float32")
             x2 = paddle.static.data(name='x2',
-                                shape=x_shape,
-                                dtype=x_type)
+                                shape=[2,3,4,5],
+                                dtype="float32")
 
 
             out = fluid.contrib.correlation(
