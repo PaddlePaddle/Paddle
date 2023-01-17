@@ -26,7 +26,7 @@ function(find_register FILENAME PATTERN OUTPUT)
       PARENT_SCOPE)
 endfunction()
 
-function(find_phi_register FILENAME ADD_PATH)
+function(find_phi_register FILENAME ADD_PATH PATTERN)
   # set op_name to OUTPUT
   set(options "")
   set(oneValueArgs "")
@@ -36,11 +36,11 @@ function(find_phi_register FILENAME ADD_PATH)
   string(
     REGEX
       MATCH
-      "PD_REGISTER_KERNEL\\([ \t\r\n]*[a-z0-9_]*,[[ \\\t\r\n\/]*[a-z0-9_]*]?[ \\\t\r\n]*[a-zA-Z]*,[ \\\t\r\n]*[A-Z_]*"
+      "${PATTERN}\\([ \t\r\n]*[a-z0-9_]*,[[ \\\t\r\n\/]*[a-z0-9_]*]?[ \\\t\r\n]*[a-zA-Z]*,[ \\\t\r\n]*[A-Z_]*"
       register
       "${CONTENT}")
   if(NOT register STREQUAL "")
-    string(REPLACE "PD_REGISTER_KERNEL(" "" register "${register}")
+    string(REPLACE "${PATTERN}(" "" register "${register}")
     string(REPLACE "," ";" register "${register}")
     string(REGEX REPLACE "[ \\\t\r\n]+" "" register "${register}")
     string(REGEX REPLACE "//cuda_only" "" register "${register}")
@@ -401,7 +401,8 @@ function(op_library TARGET)
     # pybind USE_OP_ITSELF
     set(op_name "")
     # Add PHI Kernel Registry Message
-    find_phi_register(${cc_src} ${pybind_file})
+    find_phi_register(${cc_src} ${pybind_file} "PD_REGISTER_KERNEL")
+    find_phi_register(${cc_src} ${pybind_file} "PD_REGISTER_GENERAL_KERNEL")
     find_register(${cc_src} "REGISTER_OPERATOR" op_name)
     if(NOT ${op_name} EQUAL "")
       file(APPEND ${pybind_file} "USE_OP_ITSELF(${op_name});\n")
@@ -440,7 +441,8 @@ function(op_library TARGET)
   foreach(cu_src ${cu_srcs})
     set(op_name "")
     # Add PHI Kernel Registry Message
-    find_phi_register(${cu_src} ${pybind_file})
+    find_phi_register(${cu_src} ${pybind_file} "PD_REGISTER_KERNEL")
+    find_phi_register(${cu_src} ${pybind_file} "PD_REGISTER_GENERAL_KERNEL")
     find_register(${cu_src} "REGISTER_OP_CUDA_KERNEL" op_name)
     if(NOT ${op_name} EQUAL "")
       file(APPEND ${pybind_file} "USE_OP_DEVICE_KERNEL(${op_name}, CUDA);\n")
