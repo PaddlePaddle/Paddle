@@ -10,3 +10,4 @@ endforeach()
 
 add_subdirectory(prim)
 add_subdirectory(model)
+add_subdirectory(composite_ops)
