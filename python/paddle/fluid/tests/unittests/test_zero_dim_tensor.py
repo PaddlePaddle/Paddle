@@ -1185,6 +1185,7 @@ class TestSundryAPI(unittest.TestCase):
         out2 = paddle.unsqueeze(x1, axis=x2)
         out2.backward()
         self.assertEqual(out2.shape, [1])
+        self.assertEqual(x1.grad.shape, [])
 
 
 class TestSundryAPIStatic(unittest.TestCase):
@@ -1821,13 +1822,13 @@ class TestSundryAPIStatic(unittest.TestCase):
         x1 = paddle.full([], 2)
         out1 = paddle.unsqueeze(x1, axis=0)
         x1.stop_gradient = False
-        paddle.static.append_backward(out1)
+        paddle.static.append_backward(out1.sum())
 
         x2 = paddle.full([], 3)
         x3 = paddle.full([], 0, dtype='int32')
         x2.stop_gradient = False
         out2 = paddle.unsqueeze(x2, axis=x3)
-        paddle.static.append_backward(out2)
+        paddle.static.append_backward(out2.sum())
 
         prog = paddle.static.default_main_program()
         res = self.exe.run(
