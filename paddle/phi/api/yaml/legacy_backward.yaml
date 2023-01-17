@@ -475,6 +475,7 @@
     func : expand_grad
   no_need_buffer : x
   backward : expand_double_grad
+  composite: expand_grad(x, out_grad, shape, x_grad_p)
 
 - backward_op : exponential__grad
   forward : exponential_ (Tensor x, float lam) -> Tensor(out)
@@ -880,6 +881,7 @@
     param : [x, y]
   kernel :
     func : multiply_grad
+  composite: multiply_grad(x, y, out_grad, axis, x_grad, y_grad)
   backward : multiply_double_grad
 
 - backward_op : multiply_triple_grad

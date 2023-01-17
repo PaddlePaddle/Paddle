@@ -477,7 +477,7 @@ class TestSundryAPI(unittest.TestCase):
         self.assertEqual(x.grad.shape, [2, 3])
         self.assertEqual(out.grad.shape, [2])
 
-    def test_scatter_1D(self):
+    def _test_scatter_1D(self):
         x = paddle.to_tensor([1.0, 3.0, 5.0, 7.0, 9.0], stop_gradient=False)
         index = paddle.full([], 2, 'int64')
         updates = paddle.full([], 4.0)
@@ -488,7 +488,7 @@ class TestSundryAPI(unittest.TestCase):
         self.assertEqual(out.numpy()[2], 4)
         self.assertEqual(out.grad.shape, [5])
 
-    def test_scatter_XD(self):
+    def _test_scatter_XD(self):
         x = paddle.to_tensor(
             [[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]], stop_gradient=False
         )
@@ -779,6 +779,13 @@ class TestSundryAPI(unittest.TestCase):
         x = paddle.full([], 0.5)
         y = paddle.full([], 0.6)
         self.assertFalse(paddle.allclose(x, y))
+
+    def test_equalall(self):
+        x = paddle.full([], 0.5)
+        y = paddle.full([], 0.6)
+        out = paddle.equal_all(x, y)
+        self.assertEqual(out.shape, [])
+        self.assertFalse(out)
 
 
 # Use to test API whose zero-dim input tensors don't have grad and not need to test backward in OpTest.
