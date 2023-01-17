@@ -44,7 +44,7 @@ void ArgMaxKernel(const Context& dev_ctx,
   dev_ctx.template Alloc<int64_t>(out);
   if (x.dims().size() == 0) {
     xpu::constant<T>(
-        dev_ctx.x_context(), dx_data, x->numel(), static_cast<T>(0));
+        dev_ctx.x_context(), dx_data, x.numel(), static_cast<T>(0));
     return;
   }
 
