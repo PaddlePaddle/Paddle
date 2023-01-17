@@ -374,8 +374,6 @@ void ExecuteFusedMatmul(const OneDNNContext &dev_ctx,
   matmul_p->execute(astream, matmul_args);
   astream.wait();
 
-  // TODO(jczaja): Explain why int8 format of dst is ABCD and do not need
-  // permute
   if (is_output_fused && !funcs::is_int8<T_out>()) {
     auto permuted_md =
         dst_memory_p->get_desc().permute_axes(fused_transpose_Out);
