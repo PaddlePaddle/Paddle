@@ -22,6 +22,7 @@ import paddle.fluid as fluid
 import paddle.fluid.core as core
 import paddle.fluid.layers as layers
 import paddle.fluid.optimizer as optimizer
+from paddle.fluid.backward import append_backward
 from paddle.fluid.framework import Program, program_guard
 
 paddle.enable_static()
@@ -154,6 +155,36 @@ class TestAPICase(unittest.TestCase):
             self.assertEqual(res[3].shape, ())
             np.testing.assert_allclose(res[4], 2, rtol=1e-05)
             self.assertEqual(res[4].shape, ())
+
+    def test_0d_tensor_backward(self):
+        main_program = Program()
+        startup_program = Program()
+        with program_guard(main_program, startup_program):
+            x = paddle.full(shape=[], dtype='float32', fill_value=-2.0)
+            x.stop_gradient = False
+            pred = paddle.full(shape=[], dtype='bool', fill_value=0)
+            # pred is False, so out = -x
+            out = paddle.static.nn.case(
+                pred_fn_pairs=[(pred, lambda: x)], default=lambda: -x
+            )
+            append_backward(out)
+
+        place = (
+            fluid.CUDAPlace(0)
+            if core.is_compiled_with_cuda()
+            else fluid.CPUPlace()
+        )
+        exe = fluid.Executor(place)
+
+        res = exe.run(main_program, fetch_list=[out.name, x.grad_name])
+        np.testing.assert_allclose(
+            np.asarray(res[0]), np.array(2.0), rtol=1e-05
+        )
+        self.assertEqual(res[0].shape, ())
+        np.testing.assert_allclose(
+            np.asarray(res[1]), np.array(-1.0), rtol=1e-05
+        )
+        self.assertEqual(res[1].shape, ())
 
     def test_0d_tensor_dygraph(self):
         paddle.disable_static()
