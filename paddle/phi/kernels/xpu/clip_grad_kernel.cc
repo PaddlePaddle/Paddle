@@ -1,4 +1,4 @@
-// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -27,13 +27,15 @@ void ClipGradKernel(const Context& ctx,
                     const Scalar& max,
                     DenseTensor* x_grad) {
   ctx.template Alloc<T>(x_grad);
-  int r = xpu::clip_grad(ctx.x_context(),
-                         x.data<T>(),
-                         out_grad.data<T>(),
-                         x_grad->data<T>(),
-                         x.numel(),
-                         min.to<T>(),
-                         max.to<T>());
+  using XPUDataType = typename XPUTypeTrait<T>::Type;
+  int r =
+      xpu::clip_grad(ctx.x_context(),
+                     reinterpret_cast<const XPUDataType*>(x.data<T>()),
+                     reinterpret_cast<const XPUDataType*>(out_grad.data<T>()),
+                     reinterpret_cast<XPUDataType*>(x_grad->data<T>()),
+                     x.numel(),
+                     min.to<T>(),
+                     max.to<T>());
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "clip_grad");
 }
 }  // namespace phi
