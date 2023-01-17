@@ -41,9 +41,9 @@ namespace prim {
   argument DropEmptyIG in the derived classes.
  */
 
-class CompositeGradOpMakerBase {
+class GradCompositeOpMakerBase {
  public:
-  explicit CompositeGradOpMakerBase(
+  explicit GradCompositeOpMakerBase(
       const framework::OpDesc& fwd_op,
       const std::unordered_set<std::string>& no_grad_set,
       std::unordered_map<std::string, std::string>* grad_to_var,
@@ -61,7 +61,7 @@ class CompositeGradOpMakerBase {
         acting_program_.MutableBlock(0));
   }
 
-  virtual ~CompositeGradOpMakerBase() = default;
+  virtual ~GradCompositeOpMakerBase() = default;
 
   virtual std::vector<std::unique_ptr<framework::OpDesc>> operator()() {
     this->Apply();
