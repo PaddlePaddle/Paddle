@@ -272,7 +272,6 @@ binary_api_list = [
     paddle.fmax,
     paddle.fmin,
     paddle.complex,
-    paddle.equal_all,
 ]
 
 binary_int_api_list = [
@@ -1143,6 +1142,13 @@ class TestSundryAPI(unittest.TestCase):
         x = paddle.full([], 0.5)
         y = paddle.full([], 0.6)
         self.assertFalse(paddle.allclose(x, y))
+
+    def test_equalall(self):
+        x = paddle.full([], 0.5)
+        y = paddle.full([], 0.6)
+        out = paddle.equal_all(x, y)
+        self.assertEqual(out.shape, [])
+        self.assertFalse(out)
 
     def test_where(self):
         x1 = paddle.full([], 1)

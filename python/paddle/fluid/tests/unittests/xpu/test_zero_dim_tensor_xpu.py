@@ -180,7 +180,6 @@ binary_api_list = [
     paddle.logical_xor,
     paddle.maximum,
     paddle.minimum,
-    paddle.equal_all,
 ]
 
 binary_int_api_list = [
@@ -758,6 +757,13 @@ class TestSundryAPI(unittest.TestCase):
         x = paddle.full([], 0.5)
         y = paddle.full([], 0.6)
         self.assertFalse(paddle.allclose(x, y))
+
+    def test_equalall(self):
+        x = paddle.full([], 0.5)
+        y = paddle.full([], 0.6)
+        out = paddle.equal_all(x, y)
+        self.assertEqual(out.shape, [])
+        self.assertFalse(out)
 
 
 # Use to test API whose zero-dim input tensors don't have grad and not need to test backward in OpTest.
