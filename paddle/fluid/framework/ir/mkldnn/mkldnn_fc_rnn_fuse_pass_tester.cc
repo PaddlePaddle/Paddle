@@ -23,6 +23,20 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
+void RegisterOpKernels() {
+  auto& all_kernels = OperatorWithKernel::AllOpKernels();
+  platform::CPUPlace place = platform::CPUPlace();
+  OpKernelType mkldnn_kernel_type = OpKernelType(proto::VarType::FP32,
+                                                 place,
+                                                 DataLayout::kAnyLayout,
+                                                 LibraryType::kMKLDNN);
+
+  auto fake_kernel_func = [](const ExecutionContext&) -> void {};
+
+  all_kernels["mul"][mkldnn_kernel_type] = fake_kernel_func;
+  all_kernels["elementwise_add"][mkldnn_kernel_type] = fake_kernel_func;
+}
+
 void TestFcRNNFusePass(const std::string& pass_name,
                        std::string activation = "tanh",
                        std::string gate_activation = "sigmoid",
@@ -40,6 +54,7 @@ void TestFcRNNFusePass(const std::string& pass_name,
       "__param_scope__",
       (pass_name == "fc_gru_fuse_pass" ? fc_gru_test::CreateParamScope()
                                        : fc_lstm_test::CreateParamScope()));
+  RegisterOpKernels();
   graph.reset(mkldnn_placement_pass_->Apply(graph.release()));
 
   auto check_num_mkldnn_nodes = [&](const std::unique_ptr<ir::Graph>& graph) {

@@ -14,9 +14,9 @@
 
 #include <gtest/gtest.h>
 
-#include "paddle/utils/tribool.h"
-
 #include "paddle/fluid/framework/ir/mkldnn/mkldnn_placement_pass.h"
+#include "paddle/fluid/framework/ir/pass_tester_helper.h"
+#include "paddle/utils/tribool.h"
 
 namespace paddle {
 namespace framework {
@@ -24,6 +24,28 @@ namespace ir {
 
 class PlacementPassTest {
  private:
+  void RegisterOpKernel() {
+    static bool is_registered = false;
+    if (!is_registered) {
+      auto& all_kernels = OperatorWithKernel::AllOpKernels();
+
+      platform::CPUPlace place = platform::CPUPlace();
+      OpKernelType mkldnn_kernel_type = OpKernelType(proto::VarType::FP32,
+                                                     place,
+                                                     DataLayout::kAnyLayout,
+                                                     LibraryType::kMKLDNN);
+
+      auto fake_kernel_func = [](const ExecutionContext&) -> void {};
+
+      all_kernels["conv2d"][mkldnn_kernel_type] = fake_kernel_func;
+      all_kernels["pool2d"][mkldnn_kernel_type] = fake_kernel_func;
+      all_kernels["concat"][mkldnn_kernel_type] = fake_kernel_func;
+      all_kernels["relu"][mkldnn_kernel_type] = fake_kernel_func;
+
+      is_registered = true;
+    }
+  }
+
   void SetOp(ProgramDesc* prog,
              const std::string& type,
              const std::string& name,
@@ -80,6 +102,7 @@ class PlacementPassTest {
                                              "l"})) {
       auto* var = prog.MutableBlock(0)->Var(v);
       var->SetType(proto::VarType::SELECTED_ROWS);
+      var->SetDataType(framework::proto::VarType::FP32);
       if (v == "weights" || v == "bias") {
         var->SetPersistable(true);
       }
@@ -127,15 +150,18 @@ class PlacementPassTest {
 
  public:
   void MainTest(std::initializer_list<std::string> mkldnn_enabled_op_types,
-                unsigned expected_use_mkldnn_true_count) {
+                unsigned expected_use_mkldnn_true_count,
+                std::initializer_list<std::string> mkldnn_excluded_ops = {}) {
     auto prog = BuildProgramDesc();
-
+    RegisterOpKernel();
     std::unique_ptr<ir::Graph> graph(new ir::Graph(prog));
 
     auto pass = PassRegistry::Instance().Get("mkldnn_placement_pass");
 
     pass->Set("mkldnn_enabled_op_types",
               new std::unordered_set<std::string>(mkldnn_enabled_op_types));
+    pass->Set("mkldnn_excluded_ops",
+              new std::unordered_set<std::string>(mkldnn_excluded_ops));
 
     graph.reset(pass->Apply(graph.release()));
 
@@ -162,8 +188,8 @@ class PlacementPassTest {
 };
 
 TEST(MKLDNNPlacementPass, enable_conv_relu) {
-  // 1 conv (1 conv is always true) + 2 relu (1 relu is always true) + 0 pool
-  PlacementPassTest().MainTest({"conv2d", "relu"}, 3);
+  // 2 conv (1 conv is always true) + 2 relu (1 relu is always true) + 0 pool
+  PlacementPassTest().MainTest({"conv2d", "relu"}, 4);
 }
 
 TEST(MKLDNNPlacementPass, enable_relu_pool) {
@@ -172,8 +198,15 @@ TEST(MKLDNNPlacementPass, enable_relu_pool) {
 }
 
 TEST(MKLDNNPlacementPass, enable_all) {
-  // 1 conv (1 conv is always true) + 2 relu (1 relu is always true) + 1 pool
-  PlacementPassTest().MainTest({}, 4);
+  // 2 conv (1 conv is always true) + 2 relu (1 relu is always true) + 1 pool +
+  // 1 concat
+  PlacementPassTest().MainTest({}, 6);
+}
+
+TEST(MKLDNNPlacementPass, enable_all_excluded_conv) {
+  // 1 conv (1 conv is always true) + 2 relu (1 relu is always true) + 1 pool +
+  // 1 concat
+  PlacementPassTest().MainTest({}, 5, {"conv2d"});
 }
 
 TEST(MKLDNNPlacementPass, placement_name) {
