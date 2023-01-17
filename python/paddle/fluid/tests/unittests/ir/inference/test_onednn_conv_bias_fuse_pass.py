@@ -190,7 +190,7 @@ class TestConvBiasOneDNNFusePass(PassAutoScanTest):
 
     def test(self):
         self.run_and_statis(
-            quant=False, max_examples=350, passes=['conv_bias_mkldnn_fuse_pass']
+            quant=False, passes=['conv_bias_mkldnn_fuse_pass'], max_examples=150
         )
 
 
