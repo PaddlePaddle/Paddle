@@ -380,12 +380,12 @@ class PartialProgramLayer:
 
     @LazyInitialized
     def _param_grad_names(self):
-        return _param_grad_names(self.program.desc, self._params)
+        return _param_grad_names(self._train_program.desc, self._params)
 
     @LazyInitialized
     def _out_grad_names(self):
         return _out_grad_names(
-            self.program.desc,
+            self._train_program.desc,
             self._create_program(is_infer_mode=True).desc.block(0).op_size(),
             len(self._outputs.var_ids),
         )
