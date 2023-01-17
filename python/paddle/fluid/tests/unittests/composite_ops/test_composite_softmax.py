@@ -57,8 +57,7 @@ attrs = Attr()
 
 
 def fn(x):
-    y = paddle.tan(x)
-    return F.softmax(y, axis=attrs.axis, dtype=attrs.dtype)
+    return F.softmax(x, axis=attrs.axis, dtype=attrs.dtype)
 
 
 def expect_forward(inputs):
@@ -81,7 +80,16 @@ class TestCompositeSoftmax(unittest.TestCase):
             )
             y = fn(x)
             blocks = main_program.blocks
+
+            fwd_ops = [op.type for op in blocks[0].ops]
+            # Ensure that softmax in original block
+            self.assertTrue('softmax' in fwd_ops)
+
             paddle.incubate.autograd.to_prim(blocks)
+
+            fwd_ops_new = [op.type for op in blocks[0].ops]
+            # Ensure that softmax is splitted into small ops
+            self.assertTrue('softmax' not in fwd_ops_new)
 
         exe = paddle.static.Executor()
         exe.run(startup_program)
@@ -97,7 +105,7 @@ class TestCompositeSoftmax(unittest.TestCase):
         actual = self.cal_composite(np_data)[0]
 
         assert expect.dtype == actual.dtype
-        assert np.allclose(
+        np.testing.assert_allclose(
             expect,
             actual,
             rtol=attrs.get_rtol("forward"),

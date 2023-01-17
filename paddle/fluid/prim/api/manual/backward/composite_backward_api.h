@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #pragma once
+#include "paddle/fluid/prim/api/generated/prim_api/prim_api.h"
 #include "paddle/fluid/prim/api/manual/prim_api/prim_api.h"
 #include "paddle/fluid/prim/api/manual/utils/utils.h"
 #include "paddle/phi/common/int_array.h"
