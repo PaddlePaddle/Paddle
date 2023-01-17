@@ -23,9 +23,7 @@ namespace py = pybind11;
 namespace paddle {
 namespace pybind {
 
-#define RETURN_PY_NONE \
-  Py_INCREF(Py_None);  \
-  return Py_None;
+extern PyTypeObject* p_tensor_type;
 
 typedef struct {
   PyObject_HEAD paddle::experimental::Tensor tensor;
@@ -33,7 +31,9 @@ typedef struct {
   PyObject* weakrefs;
 } TensorObject;
 
-extern PyTypeObject* p_tensor_type;
+#define RETURN_PY_NONE \
+  Py_INCREF(Py_None);  \
+  return Py_None;
 
 bool PyCheckTensor(PyObject* obj);
 

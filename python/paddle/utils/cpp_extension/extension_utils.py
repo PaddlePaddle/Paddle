@@ -159,93 +159,62 @@ def load_op_meta_info_and_register_op(lib_filename):
     return OpProtoHolder.instance().update_op_proto()
 
 
-def custom_write_extension_stub(resource, pyfile):
-    _extension_template = textwrap.dedent(
+def custom_write_stub(resource, pyfile):
+    """
+    Customized write_stub function to allow us to inject generated python
+    api codes into egg python file.
+    """
+    _stub_template = textwrap.dedent(
         """
+        {custom_api}
+
         import os
         import sys
+        import types
+        import paddle
         import importlib.util
 
         cur_dir = os.path.dirname(os.path.abspath(__file__))
         so_path = os.path.join(cur_dir, "{resource}")
 
         def __bootstrap__():
+            assert os.path.exists(so_path)
             spec = importlib.util.spec_from_file_location(__name__, so_path)
             assert spec is not None
             mod = importlib.util.module_from_spec(spec)
             assert isinstance(spec.loader, importlib.abc.Loader)
             spec.loader.exec_module(mod)
 
+            # load custom op shared library with abs path
+            custom_ops = paddle.utils.cpp_extension.load_op_meta_info_and_register_op(so_path)
+            for custom_ops in custom_ops:
+                setattr(mod, custom_ops, eval(custom_ops))
+
         __bootstrap__()
 
         """
     ).lstrip()
 
-    with open(pyfile, 'w') as f:
-        f.write(_extension_template.format(resource=resource))
-
-
-def custom_write_stub(resource, pyfile):
-    """
-    Customized write_stub function to allow us to inject generated python
-    api codes into egg python file.
-    """
     # NOTE: To avoid importing .so file instead of python file because they have same name,
     # we rename .so shared library to another name, see EasyInstallCommand.
     filename, ext = os.path.splitext(resource)
     resource = filename + "_pd_" + ext
 
-    if CustomOpInfo.instance().empty():
-        custom_write_extension_stub(resource, pyfile)
-        return
-
-    _stub_template = textwrap.dedent(
-        """
-        import os
-        import sys
-        import types
-        import paddle
-
-        cur_dir = os.path.dirname(os.path.abspath(__file__))
-        so_path = os.path.join(cur_dir, "{resource}")
-
-        def inject_ext_module(module_name, api_names):
-            if module_name in sys.modules:
-                return sys.modules[module_name]
-
-            new_module = types.ModuleType(module_name)
-            for api_name in api_names:
-                setattr(new_module, api_name, eval(api_name))
-
-            return new_module
-
-        def __bootstrap__():
-            assert os.path.exists(so_path)
-
-            # load custom op shared library with abs path
-            new_custom_ops = paddle.utils.cpp_extension.load_op_meta_info_and_register_op(so_path)
-            m = inject_ext_module(__name__, new_custom_ops)
-
-        __bootstrap__()
-
-        {custom_api}
-
-        """
-    ).lstrip()
-
-    # Parse registering op information
-    _, op_info = CustomOpInfo.instance().last()
-    so_path = op_info.so_path
-
-    new_custom_ops = load_op_meta_info_and_register_op(so_path)
-    assert len(new_custom_ops) > 0, (
-        "Required at least one custom operators, but received len(custom_op) =  %d"
-        % len(new_custom_ops)
-    )
-
     api_content = []
-    for op_name in new_custom_ops:
-        api_content.append(_custom_api_content(op_name))
+    if CustomOpInfo.instance().empty():
+        print("Received len(custom_op) =  0, using cpp extension only")
+    else:
+        # Parse registering op information
+        _, op_info = CustomOpInfo.instance().last()
+        so_path = op_info.so_path
+
+        new_custom_ops = load_op_meta_info_and_register_op(so_path)
+        for op_name in new_custom_ops:
+            api_content.append(_custom_api_content(op_name))
+        print(
+            "Received len(custom_op) =  %d, using custom operator"
+            % len(new_custom_ops)
+        )
 
     with open(pyfile, 'w') as f:
         f.write(

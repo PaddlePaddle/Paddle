@@ -20,7 +20,8 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle.utils.cpp_extension.extension_utils import run_cmd
+
+# from paddle.utils.cpp_extension.extension_utils import run_cmd
 
 
 class TestCppExtensionInstall(unittest.TestCase):
@@ -39,8 +40,8 @@ class TestCppExtensionInstall(unittest.TestCase):
             cmd = 'cd {} && {} cpp_extension_setup.py install'.format(
                 cur_dir, sys.executable
             )
-        run_cmd(cmd)
-        # os.system(cmd)
+        # run_cmd(cmd)
+        os.system(cmd)
 
         # See: https://stackoverflow.com/questions/56974185/import-runtime-installed-module-using-pip-in-python-3
         if os.name == 'nt':
