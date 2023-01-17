@@ -386,7 +386,7 @@ class PartialProgramLayer:
     def _out_grad_names(self):
         return _out_grad_names(
             self.program.desc,
-            self.forward_program.block(0).desc.op_size(),
+            self._create_program(is_infer_mode=True).desc.block(0).op_size(),
             len(self._outputs.var_ids),
         )
 
