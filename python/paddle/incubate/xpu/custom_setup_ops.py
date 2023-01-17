@@ -68,6 +68,7 @@ def custom_fmha(qkv, cu_seq_len, host_seq_len, is_test, dropout_rate,
     helper = LayerHelper('custom_fmha', **locals())
     ctx_out = helper.create_variable_for_type_inference(dtype=qkv.dtype)
     s_out = helper.create_variable_for_type_inference(dtype=qkv.dtype)
+    dropout_mask = helper.create_variable_for_type_inference(dtype=qkv.dtype)
     helper.append_op(type='custom_fmha',
                      inputs={
                          'QKV': qkv,
@@ -77,6 +78,7 @@ def custom_fmha(qkv, cu_seq_len, host_seq_len, is_test, dropout_rate,
                      outputs={
                          'CtxOut': ctx_out,
                          'SOut': s_out
+                         'DropoutMask': dropout_mask
                      },
                      attrs={
                          'is_test': is_test,
@@ -84,7 +86,7 @@ def custom_fmha(qkv, cu_seq_len, host_seq_len, is_test, dropout_rate,
                          'zero_tensors': zero_tensors,
                          'use_fmha_mke_opt': use_fmha_mke_opt
                      })
-    return ctx_out, s_out
+    return ctx_out, s_out, dropout_mask
 
 
 def custom_fused_dropout_residual_ln(hidden_states, input_tensor, weight, bias,
