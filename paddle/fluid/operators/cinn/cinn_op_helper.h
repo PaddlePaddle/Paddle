@@ -29,6 +29,7 @@ constexpr char kOutputs[] = "Out";
 constexpr char kCompilationKey[] = "compilation_key";
 constexpr char kCachedIndex[] = "cached_index";
 constexpr char kInstructionIndex[] = "instruction_index";
+constexpr char kInplaceVarNames[] = "InplaceVars";
 
 // utility functions
 namespace details {
