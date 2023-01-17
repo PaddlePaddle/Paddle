@@ -1179,13 +1179,13 @@ class TestSundryAPI(unittest.TestCase):
         out1 = paddle.unsqueeze(x1, axis=0)
         out1.backward()
         self.assertEqual(out1.shape, (1,))
-        self.assertEqual(x1.grad.shape, [])
+        self.assertEqual(x1.grad.shape, ())
 
         x2 = paddle.full([], 0, dtype='int32')
         out2 = paddle.unsqueeze(x1, axis=x2)
         out2.backward()
         self.assertEqual(out2.shape, (1,))
-        self.assertEqual(x1.grad.shape, [])
+        self.assertEqual(x1.grad.shape, ())
 
 
 class TestSundryAPIStatic(unittest.TestCase):
@@ -1842,8 +1842,8 @@ class TestSundryAPIStatic(unittest.TestCase):
         )
         self.assertEqual(res[0].shape, (1,))
         self.assertEqual(res[1].shape, (1,))
-        self.assertEqual(res[2].shape, [])
-        self.assertEqual(res[3].shape, [])
+        self.assertEqual(res[2].shape, ())
+        self.assertEqual(res[3].shape, ())
 
 
 # Use to test API whose zero-dim input tensors don't have grad and not need to test backward in OpTest.
