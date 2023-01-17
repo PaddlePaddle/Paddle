@@ -285,7 +285,7 @@ void HogwildWorker::TrainFiles() {
         quit_flag_.store(true, std::memory_order_relaxed);
       }
       g_barrier.wait();
-      if (quit_flag_.load(std::memory_order_relaxed) == true) { 
+      if (quit_flag_.load(std::memory_order_relaxed) == true) {
         break;
       }
     }

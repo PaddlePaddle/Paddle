@@ -213,10 +213,7 @@ class DeviceWorker {
     dev_ctx_ = dev_ctx;
   }
 
-  virtual void SetThreadNum(int thread_num) {
-    thread_num_ = thread_num;
-  }
-
+  virtual void SetThreadNum(int thread_num) { thread_num_ = thread_num; }
 
   virtual Scope* GetThreadScope() { return thread_scope_; }
   DataFeed* device_reader_ = nullptr;

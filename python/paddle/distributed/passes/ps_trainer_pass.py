@@ -19,10 +19,10 @@ from _collections import defaultdict
 import paddle
 import paddle.fluid.framework as framework
 from paddle.distributed.passes.pass_base import PassBase, register_pass
+from paddle.fluid.transpiler.collective import SingleProcessMultiThread
 from paddle.framework import core
 from paddle.static import Parameter, Program
 
-from paddle.fluid.transpiler.collective import SingleProcessMultiThread
 from ..ps.utils.public import *  # noqa: F403
 
 

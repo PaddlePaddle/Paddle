@@ -52,9 +52,8 @@ class unzipOp : public framework::OperatorWithKernel {
   // is determined by its input "X".
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return phi::KernelKey(
-        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
-        ctx.device_context().GetPlace());
+    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+                          ctx.device_context().GetPlace());
   }
 };
 
@@ -113,8 +112,8 @@ class unzipGradientOp : public framework::OperatorWithKernel {
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(
-                                       ctx, framework::GradVarName("Y")),
-                                   ctx.device_context().GetPlace());
+                              ctx, framework::GradVarName("Y")),
+                          ctx.device_context().GetPlace());
   }
 };
 
