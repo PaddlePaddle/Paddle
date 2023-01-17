@@ -77,7 +77,7 @@ class MultivariateNormal(distribution.Distribution):
             raise ValueError("Exactly covariance_matrix may be specified.")
 
         if covariance_matrix is not None:
-            if covariance_matrix.dim() < 2:
+            if len(covariance_matrix) < 2:
                 raise ValueError(
                     "covariance_matrix must be at least two-dimensional, "
                     "with optional leading batch dimensions"
