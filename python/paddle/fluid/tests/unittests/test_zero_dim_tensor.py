@@ -1888,9 +1888,9 @@ class TestSundryAPIStatic(unittest.TestCase):
             prog, feed={}, fetch_list=[out, out.grad_name, x.grad_name]
         )
 
-        self.assertEqual(res[0].shape, [])
-        self.assertEqual(res[1].shape, [])
-        self.assertEqual(res[2].shape, [])
+        self.assertEqual(res[0].shape, ())
+        self.assertEqual(res[1].shape, ())
+        self.assertEqual(res[2].shape, ())
 
 
 # Use to test API whose zero-dim input tensors don't have grad and not need to test backward in OpTest.
