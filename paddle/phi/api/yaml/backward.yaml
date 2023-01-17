@@ -431,6 +431,7 @@
   kernel :
     func : exp_grad
   inplace : (out_grad -> x_grad)
+  composite : exp_grad(out, out_grad, x_grad)
 
 - backward_op : expm1_grad
   forward : expm1 (Tensor x) -> Tensor(out)

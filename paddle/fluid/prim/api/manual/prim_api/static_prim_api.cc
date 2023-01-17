@@ -199,7 +199,7 @@ Tensor sum<DescTensor>(Tensor x,
       "Out", {std::static_pointer_cast<prim::DescTensor>(out.impl())->Name()});
   op->CheckAttrs();
   op->InferVarType(block);
-  // TODO(jiabin): This may have runtime shape skip infershape for now.
+  // TODO(jiabin, cxxly): This may have runtime shape skip infershape for now.
   return out;
 }
 
@@ -222,7 +222,23 @@ Tensor reshape<DescTensor>(Tensor x, paddle::experimental::IntArray shape) {
       "Out", {std::static_pointer_cast<prim::DescTensor>(out.impl())->Name()});
   op->CheckAttrs();
   op->InferVarType(block);
-  // TODO(jiabin): This may have runtime shape skip infershape for now.
+  // TODO(jiabin, cxxly): This may have runtime shape skip infershape for now.
+  return out;
+}
+
+template <>
+Tensor exp<DescTensor>(const Tensor& x) {
+  Tensor out = empty<DescTensor>({}, phi::DataType::FLOAT32, paddle::Place());
+  framework::BlockDesc* block = StaticCompositeContext::Instance().GetBlock();
+  framework::OpDesc* op = block->AppendOp();
+  op->SetType("exp");
+  op->SetInput("X",
+               {std::static_pointer_cast<prim::DescTensor>(x.impl())->Name()});
+  op->SetOutput(
+      "Out", {std::static_pointer_cast<prim::DescTensor>(out.impl())->Name()});
+  op->CheckAttrs();
+  op->InferVarType(block);
+  op->InferShape(*block);
   return out;
 }
 }  // namespace prim

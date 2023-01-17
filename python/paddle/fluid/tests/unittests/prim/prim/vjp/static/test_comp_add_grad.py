@@ -51,7 +51,7 @@ from paddle.fluid import core
         ),
     ],
 )
-class TestDivGradComp(unittest.TestCase):
+class TestAddGradComp(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.primal0 = cls.primal0.astype(cls.dtype)
