@@ -954,6 +954,34 @@ class TestSundryAPI(unittest.TestCase):
         np.testing.assert_array_equal(out3_1.numpy(), out3_2.numpy())
         np.testing.assert_array_equal(out3_2.numpy(), np.asarray(1))
 
+    def test_cumsum(self):
+        x1 = paddle.rand([])
+        x1.stop_gradient = False
+
+        out1 = paddle.cumsum(x1)
+        out2 = paddle.cumsum(x1, axis=0)
+        out3 = paddle.cumsum(x1, axis=-1)
+
+        out1.retain_grads()
+        out2.retain_grads()
+        out3.retain_grads()
+
+        out1.backward()
+        out2.backward()
+        out3.backward()
+
+        self.assertEqual(x1.grad.shape, [])
+        self.assertTrue(x1.grad.numpy() == 3)
+        self.assertEqual(out1.shape, [1])
+        self.assertEqual(out1.grad.shape, [1])
+        self.assertTrue(out1.grad.numpy() == 1)
+        self.assertEqual(out2.shape, [])
+        self.assertEqual(out2.grad.shape, [])
+        self.assertTrue(out2.grad.numpy() == 1)
+        self.assertEqual(out3.shape, [])
+        self.assertEqual(out3.grad.shape, [])
+        self.assertTrue(out3.grad.numpy() == 1)
+
     def test_add_n(self):
         x1 = paddle.rand([])
         x1.stop_gradient = False
@@ -1660,6 +1688,45 @@ class TestSundryAPIStatic(unittest.TestCase):
         np.testing.assert_array_equal(out3_2, np.asarray(1))
 
     @prog_scope()
+    def test_cumsum(self):
+        x1 = paddle.rand([])
+        x1.stop_gradient = False
+
+        out1 = paddle.cumsum(x1)
+        out2 = paddle.cumsum(x1, axis=0)
+        out3 = paddle.cumsum(x1, axis=-1)
+
+        paddle.static.append_backward(out1.sum())
+        paddle.static.append_backward(out2.sum())
+        paddle.static.append_backward(out3.sum())
+
+        prog = paddle.static.default_main_program()
+        res = self.exe.run(
+            prog,
+            fetch_list=[
+                out1,
+                out2,
+                out3,
+                x1.grad_name,
+                out1.grad_name,
+                out2.grad_name,
+                out3.grad_name,
+            ],
+        )
+        self.assertEqual(res[0].shape, (1,))
+        self.assertEqual(res[1].shape, ())
+        self.assertEqual(res[2].shape, ())
+        self.assertEqual(res[3].shape, ())
+        self.assertEqual(res[3], 1)
+        self.assertEqual(res[4].shape, (1,))
+        self.assertEqual(res[4], 1)
+        self.assertEqual(res[5].shape, ())
+        self.assertEqual(res[5], 1)
+        self.assertEqual(res[6].shape, ())
+        self.assertEqual(res[6], 1)
+        self.assertEqual(out2.shape, ())
+        self.assertEqual(out3.shape, ())
+
     def test_add_n(self):
         x1 = paddle.rand([])
         x1.stop_gradient = False
