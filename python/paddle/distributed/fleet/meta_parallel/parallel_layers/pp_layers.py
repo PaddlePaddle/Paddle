@@ -45,8 +45,8 @@ import re
 from functools import partial
 
 import paddle
-from paddle.fluid.dygraph.layers import Layer
-from paddle.fluid.framework import in_dygraph_mode
+import paddle.framework as framework
+import paddle.nn as nn
 from paddle.incubate.distributed.fleet import recompute_hybrid
 
 from ...utils.log_util import layer_to_str, logger
@@ -60,7 +60,7 @@ class LayerDesc:
         self.inputs = inputs
         self.kwargs = kwargs
 
-        if not issubclass(layer_func, Layer):
+        if not issubclass(layer_func, nn.Layer):
             raise TypeError(
                 "The input(layer_func) should be a derived class of Layer."
             )
@@ -151,7 +151,7 @@ class SegmentLayers:
         regex = re.compile(layername, re.IGNORECASE)
         for idx, layer in enumerate(self._layers_desc):
             name = None
-            if isinstance(layer, Layer):
+            if isinstance(layer, nn.Layer):
                 name = layer.__class__.__name__
             elif isinstance(layer, LayerDesc):
                 name = layer.layer_func.__name__
@@ -180,7 +180,7 @@ class SegmentLayers:
         return result
 
 
-class PipelineLayerChunk(Layer):
+class PipelineLayerChunk(nn.Layer):
     def __init__(self):
         super().__init__()
         self.run_function = []
@@ -189,7 +189,7 @@ class PipelineLayerChunk(Layer):
         # This method is used to unify codes in _build_layer_impl.
         # For 1f1b scheduler, it will call append method of a List.
         # For interleave scheduler, it will call append method of this class.
-        if isinstance(sublayer, Layer):
+        if isinstance(sublayer, nn.Layer):
             self.add_sublayer(str(len(self.run_function)), sublayer)
         self.run_function.append(sublayer)
 
@@ -206,7 +206,7 @@ class PipelineLayerChunk(Layer):
         )
 
 
-class PipelineLayer(Layer):
+class PipelineLayer(nn.Layer):
     """PipelineLayer
     Args:
         layers(Iterable): A sequence of layers description to define the structure for pipeline.
@@ -220,9 +220,8 @@ class PipelineLayer(Layer):
     Examples:
         .. code-block:: python
         import paddle.nn as nn
-        from paddle.distributed import fleet
-        from paddle.fluid.dygraph.layers import Layer
         import paddle.nn.functional as F
+        from paddle.distributed import fleet
         from paddle.distributed.fleet.meta_parallel import LayerDesc, PipelineLayer
 
         pipeline_parallel_size = 2
@@ -241,7 +240,7 @@ class PipelineLayer(Layer):
 
         hcg = fleet.get_hybrid_communicate_group()
 
-        class ReshapeHelp(Layer):
+        class ReshapeHelp(nn.Layer):
             def __init__(self, shape):
                 super().__init__()
                 self.shape = shape
@@ -500,14 +499,14 @@ class PipelineLayer(Layer):
         for key, comm in self.shared_comm.items():
             param = getattr(self.shared_layers[key], comm['weight_attr'])
             # need use trace_op to allreduce weight
-            if in_dygraph_mode():
+            if framework.in_dygraph_mode():
                 with paddle.framework.no_grad():
                     paddle.distributed.all_reduce(
                         param.grad, group=comm['group']
                     )
             else:
                 with paddle.framework.no_grad():
-                    paddle.fluid.framework._dygraph_tracer().trace_op(
+                    framework._dygraph_tracer().trace_op(
                         type="c_allreduce_sum",
                         inputs={'X': param._grad_ivar()},
                         outputs={'Out': param._grad_ivar()},
@@ -627,7 +626,7 @@ class PipelineLayer(Layer):
 
         for index, layer in enumerate(self._layers_desc[start:end]):
             layer_index = start + index
-            if isinstance(layer, Layer):
+            if isinstance(layer, nn.Layer):
                 run_function.append(layer)
                 if self._num_virtual_pipeline_stages == 1:
                     # Only add sublayer for 1f1b scheduler,
@@ -729,7 +728,7 @@ class PipelineLayer(Layer):
         ):
             return False
 
-        params = [f.parameters() for f in funcs if isinstance(f, Layer)]
+        params = [f.parameters() for f in funcs if isinstance(f, nn.Layer)]
         return any(len(list(p)) > 0 for p in params)
 
     def save_state_dict(self, path):
