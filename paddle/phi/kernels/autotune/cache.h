@@ -35,21 +35,6 @@ struct ConvAutoTuneResult {
   bool exhaustive_search = false;
 };
 
-// FIXME: reconsider these two structs
-struct MatmulAutoTuneResult {
-  MatmulAutoTuneResult() {}
-  MatmulAutoTuneResult(int64_t idx, bool search)
-      : algo(idx), exhaustive_search(search) {}
-
-  int64_t algo;
-  bool exhaustive_search = false;
-};
-
-struct MatmulCache {
-  int lib_idx{0};   // using cuBlas or cuBlasLt
-  int algo_idx{0};  // algo selected in cuBlasLt
-};
-
 size_t TransposeKey(const std::vector<int64_t>& x_dims,
                     const std::vector<int32_t>& perm,
                     phi::DataType dtype);

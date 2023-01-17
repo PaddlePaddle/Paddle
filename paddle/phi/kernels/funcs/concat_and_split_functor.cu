@@ -781,7 +781,6 @@ void SplitFunctorDispatchWithIndexType(
                                           (out_cols_num) * sizeof(IndexT));
   outs_cols = reinterpret_cast<IndexT*>(cols_alloc->ptr());
 #endif
-
   outs_cols[0] = 0;
   for (int i = 0; i < out_num; ++i) {
     IndexT t_col = ref_ins.at(i)->numel() / out_row;
@@ -825,7 +824,7 @@ void SplitFunctorDispatchWithIndexType(
   // next time)
   auto* data_alloc_released = data_alloc.release();
   auto* cols_alloc_released = cols_alloc.release();
-  context.AddStreamCallback([data_alloc_released, cols_alloc_released] {
+  ctx.AddStreamCallback([data_alloc_released, cols_alloc_released] {
     paddle::memory::allocation::Allocator::AllocationDeleter(
         data_alloc_released);
     paddle::memory::allocation::Allocator::AllocationDeleter(

@@ -25,6 +25,7 @@ namespace autotune {
 template <typename T, typename ReturnType, typename... Args>
 class KernelCallback {
  public:
+  using ReturnT = ReturnType;
   using FuncType = ReturnType (*)(Args...);
 
   KernelCallback() {}
@@ -142,14 +143,12 @@ class AutoTuneBase {
   }
 };
 
-// FIXME: It seems that MakeAutoTuner is used nowhere.
-
-// template <typename T, typename ReturnType, typename... Args>
-// static AutoTuneBase<T, KernelCallback<T, ReturnType, Args...>> MakeAutoTuner(
-//     ReturnType (*func)(Args...)) {
-//   auto obj = MakeCallback<T>(func);
-//   return AutoTuneBase<T, decltype(obj)>(obj);
-// }
+template <typename T, typename ReturnType, typename... Args>
+static AutoTuneBase<T, KernelCallback<T, ReturnType, Args...>> MakeAutoTuner(
+    ReturnType (*func)(Args...)) {
+  auto obj = MakeCallback<T>(func);
+  return AutoTuneBase<T, decltype(obj)>(obj);
+}
 
 template <typename T, typename ReturnType, typename... Args>
 class TransposeAutoTuner
@@ -173,31 +172,6 @@ template <typename T, typename ReturnType, typename... Args>
 static AutoTuneBase<T, KernelCallback<T, ReturnType, Args...>>*
 MakeTransposeTuner(ReturnType (*func)(Args...)) {
   return TransposeAutoTuner<T, ReturnType, Args...>::Instance(func);
-}
-
-// FIXME: add MatmulAutoTuner but how to use it ?
-template <typename T, typename ReturnType, typename... Args>
-class MatmulAutoTuner
-    : public AutoTuneBase<T, KernelCallback<T, ReturnType, Args...>> {
- public:
-  static AutoTuneBase<T, KernelCallback<T, ReturnType, Args...>>* Instance(
-      ReturnType (*func)(Args...)) {
-    static std::once_flag matmul_init_flag_;
-    static std::unique_ptr<
-        AutoTuneBase<T, KernelCallback<T, ReturnType, Args...>>>
-        instance_;
-    std::call_once(matmul_init_flag_, [&] {
-      auto obj = MakeCallback<T>(func);
-      instance_.reset(new AutoTuneBase<T, decltype(obj)>(obj));
-    });
-    return instance_.get();
-  }
-};
-
-template <typename T, typename ReturnType, typename... Args>
-static AutoTuneBase<T, KernelCallback<T, ReturnType, Args...>>* MakeMatmulTuner(
-    ReturnType (*func)(Args...)) {
-  return MatmulAutoTuner<T, ReturnType, Args...>::Instance(func);
 }
 
 }  // namespace autotune

@@ -15,7 +15,7 @@
 #pragma once
 
 #include "paddle/phi/kernels/funcs/fast_divmod.h"
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/phi/backends/gpu/cuda/cuda_graph_with_memory_pool.h"
 #endif
 
