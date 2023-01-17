@@ -1304,10 +1304,13 @@ class TestSundryAPI(unittest.TestCase):
         mask = paddle.full([], True, dtype='bool')
         y = paddle.masked_select(x, mask)
 
+        y.retain_grads()
         y.backward()
-
         self.assertEqual(y.shape, [1])
+        self.assertEqual(y.numpy(), x.numpy())
+        self.assertEqual(y.grad.shape, [1])
         self.assertEqual(x.grad.shape, [])
+        self.assertEqual(x.grad.numpy(), 1)
 
 
 class TestSundryAPIStatic(unittest.TestCase):
