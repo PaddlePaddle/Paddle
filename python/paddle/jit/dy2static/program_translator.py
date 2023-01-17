@@ -18,7 +18,7 @@ import textwrap
 import threading
 import weakref
 
-from paddle.fluid import _non_static_mode, framework
+from paddle.fluid import _non_static_mode, core, framework
 from paddle.fluid.data_feeder import check_type
 from paddle.fluid.dygraph import layers
 from paddle.fluid.dygraph.base import param_guard, switch_to_static_graph
@@ -416,9 +416,9 @@ class StaticFunction:
             # will show up **only once**. StaticFunction.__call__ will run many times, it is appropriate to
             # display this warning message only once.
             logging_utils.warn(
-                "The decorator '@paddle.jit.to_static' does NOT work when setting ProgramTranslator.enable to False. "
+                "The decorator '@paddle.jit.to_static' does NOT work when setting 'paddle.jit.enable_to_static' to False. "
                 "We will just return dygraph output. If you would like to get static graph output, please call API "
-                "ProgramTranslator.enable(True)"
+                "paddle.jit.enable_to_static(True)"
             )
             return self._call_dygraph_function(*args, **kwargs)
 
@@ -930,6 +930,13 @@ class ConcreteProgram:
         self.function = function
         self.kwargs = kwargs
 
+    @switch_to_static_graph
+    def _to_prim(self):
+        # TODO(Aurelius84): Fix this cycle import problem
+        from paddle.incubate.autograd.primapi import to_prim
+
+        to_prim(self.main_program.blocks)
+
     @staticmethod
     @switch_to_static_graph
     def from_func_spec(
@@ -1083,6 +1090,11 @@ class ProgramCache:
         self._recent_cache_key = None
 
     def _build_once(self, cache_key):
+        # TODO(Aurelius84): Need a gloabl FLAGS to enable/disable to_prim
+        enable_prim = cache_key.kwargs['build_strategy'].build_cinn_pass
+        if enable_prim and core.enable_prim_backward():
+            core.set_prim_enabled(True)
+
         concrete_program = ConcreteProgram.from_func_spec(
             func_spec=cache_key.function_spec,
             input_spec=cache_key.input_args_with_spec,
@@ -1090,6 +1102,10 @@ class ProgramCache:
             class_instance=cache_key.class_instance,
             **cache_key.kwargs
         )
+
+        if enable_prim or core.enable_prim_forward() == "debug":
+            concrete_program._to_prim()
+            core.set_prim_enabled(False)
         return concrete_program, partial_program_from(concrete_program)
 
     def __getitem__(self, item):
@@ -1222,8 +1238,7 @@ class ProgramTranslator:
                     return x_v
 
 
-                prog_trans = paddle.jit.ProgramTranslator()
-                prog_trans.enable(False)
+                paddle.jit.enable_to_static(False)
 
                 x = paddle.ones([1, 2])
                 # ProgramTranslator is disabled so the func is run in dygraph
@@ -1513,3 +1528,47 @@ class ProgramTranslator:
 
         """
         return self._program_cache
+
+
+def enable_to_static(enable_to_static_bool):
+
+    """
+    Enable or disable the converting from imperative to static graph by
+    ProgramTranslator globally.
+
+    Args:
+        enable_to_static_bool (bool): True or False to enable or disable converting to static.
+
+    Returns:
+        None.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+
+            @paddle.jit.to_static
+            def func(x):
+                if paddle.mean(x) > 0:
+                    x_v = x - 1
+                else:
+                    x_v = x + 1
+                return x_v
+
+
+            paddle.jit.enable_to_static(False)
+
+            x = paddle.ones([1, 2])
+            # ProgramTranslator is disabled so the func is run in dygraph
+            print(func(x))  # [[0. 0.]]
+
+    """
+    check_type(
+        enable_to_static_bool,
+        "enable_to_static_bool",
+        bool,
+        "paddle.jit.enable_to_static",
+    )
+    _program_trans = ProgramTranslator()
+    _program_trans.enable(enable_to_static_bool)

@@ -256,6 +256,16 @@ def replace_compat_name(op_fluid_map_list, forward_op_dict, backward_op_dict):
             op_item['no_need_buffer'] = get_param_list_alias(
                 op_item['no_need_buffer'], args_map
             )
+        if 'data_transform' in op_item and op_item['data_transform']:
+            data_trans_item = op_item['data_transform']
+            if 'skip_transform' in data_trans_item:
+                data_trans_item['skip_transform'] = get_param_list_alias(
+                    data_trans_item['skip_transform'], args_map
+                )
+            if 'support_trans_dtype' in data_trans_item:
+                data_trans_item['support_trans_dtype'] = get_param_list_alias(
+                    data_trans_item['support_trans_dtype'], args_map
+                )
 
         process_scalar(op_item, scalar_configs)
         process_int_array(op_item, int_array_configs)

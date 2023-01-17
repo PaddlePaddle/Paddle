@@ -16,7 +16,7 @@
 
 #include "paddle/fluid/distributed/ps/table/table.h"
 
-//#define pslib_debug_dense_compress
+// #define pslib_debug_dense_compress
 
 namespace paddle {
 namespace distributed {
@@ -36,13 +36,13 @@ int32_t PsLocalClient::Initialize() {
 
 ::std::future<int32_t> PsLocalClient::Shrink(uint32_t table_id,
                                              const std::string threshold) {
-  // TODO
+  // TODO  // NOLINT
   return done();
 }
 
 ::std::future<int32_t> PsLocalClient::Load(const std::string& epoch,
                                            const std::string& mode) {
-  // TODO
+  // TODO  // NOLINT
   for (auto& it : _table_map) {
     Load(it.first, epoch, mode);
   }
@@ -51,7 +51,7 @@ int32_t PsLocalClient::Initialize() {
 ::std::future<int32_t> PsLocalClient::Load(uint32_t table_id,
                                            const std::string& epoch,
                                            const std::string& mode) {
-  // TODO
+  // TODO  // NOLINT
   auto* table_ptr = GetTable(table_id);
   table_ptr->Load(epoch, mode);
   return done();
@@ -59,7 +59,7 @@ int32_t PsLocalClient::Initialize() {
 
 ::std::future<int32_t> PsLocalClient::Save(const std::string& epoch,
                                            const std::string& mode) {
-  // TODO
+  // TODO  // NOLINT
   for (auto& it : _table_map) {
     Save(it.first, epoch, mode);
   }
@@ -68,7 +68,7 @@ int32_t PsLocalClient::Initialize() {
 ::std::future<int32_t> PsLocalClient::Save(uint32_t table_id,
                                            const std::string& epoch,
                                            const std::string& mode) {
-  // TODO
+  // TODO  // NOLINT
   auto* table_ptr = GetTable(table_id);
   table_ptr->Flush();
   table_ptr->Save(epoch, mode);
@@ -76,11 +76,11 @@ int32_t PsLocalClient::Initialize() {
 }
 
 ::std::future<int32_t> PsLocalClient::Clear() {
-  // TODO
+  // TODO  // NOLINT
   return done();
 }
 ::std::future<int32_t> PsLocalClient::Clear(uint32_t table_id) {
-  // TODO
+  // TODO  // NOLINT
   return done();
 }
 
@@ -125,8 +125,10 @@ int32_t PsLocalClient::Initialize() {
   while (shard_buffer_remain > 0 && region_idx < region_num) {
     auto& region = regions[region_idx];
     if (region.size - region_data_idx >= shard_buffer_remain) {
-      memcpy((void*)(region.data + region_data_idx),
-             (uint8_t*)(void*)(region_buffer.data()) + index,
+      memcpy(reinterpret_cast<void*>(region.data + region_data_idx),
+             reinterpret_cast<uint8_t*>(
+                 reinterpret_cast<void*>(region_buffer.data())) +
+                 index,
              shard_buffer_remain);
       region_data_idx += shard_buffer_remain;
       shard_buffer_remain = 0;
@@ -134,8 +136,10 @@ int32_t PsLocalClient::Initialize() {
       ++region_idx;
       region_data_idx = 0;
     } else {
-      memcpy((void*)(region.data + region_data_idx),
-             (uint8_t*)(void*)(region_buffer.data()) + index,
+      memcpy(reinterpret_cast<void*>(region.data + region_data_idx),
+             reinterpret_cast<uint8_t*>(
+                 reinterpret_cast<void*>(region_buffer.data())) +
+                 index,
              region.size - region_data_idx);
       shard_buffer_remain -= (region.size - region_data_idx);
       index += (region.size - region_data_idx);
@@ -230,7 +234,7 @@ int32_t PsLocalClient::Initialize() {
   return done();
 }
 
-//::std::future<int32_t> PsLocalClient::PullSparse(float** select_values,
+// ::std::future<int32_t> PsLocalClient::PullSparse(float** select_values,
 //                                                  size_t table_id,
 //                                                  const uint64_t* keys,
 //                                                  size_t num) {
@@ -271,7 +275,7 @@ int32_t PsLocalClient::Initialize() {
   // std::make_shared<CostTimer>("pslib_downpour_client_pull_sparse");
   // auto local_timer =
   // std::make_shared<CostTimer>("pslib_downpour_client_pull_sparse_local");
-  //将key拆分到各shard请求，并记录原始对应value指针
+  // 将key拆分到各shard请求，并记录原始对应value指针
   auto* table_ptr = GetTable(table_id);
 
   TableContext table_context;

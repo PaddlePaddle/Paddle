@@ -411,11 +411,14 @@ def ParseYamlCompositeInfo(string):
     pattern = fr'{fname}{wspace}\({wspace}{fargs}{wspace}\)'
 
     m = re.search(pattern, string)
-    composite_fun_info = []
-    composite_fun_info.append(m.group(1))
+    composite_fun_info = {}
+    composite_fun_info.update({"name": m.group(1)})
     func_args = m.group(2).split(",")
     for fun_arg in func_args:
-        composite_fun_info.append(fun_arg.strip())
+        if "args" in composite_fun_info:
+            composite_fun_info["args"].append(fun_arg.strip())
+        else:
+            composite_fun_info.update({"args": [fun_arg.strip()]})
 
     return composite_fun_info
 
@@ -455,7 +458,9 @@ class FunctionGeneratorBase:
         # Special Op Attributes
         self.optional_inputs = []  # [name, ...]
         self.no_need_buffers = []  # [name, ...]
-        self.composite_func_info = []  # [func_name, input_name, ...]
+        self.composite_func_info = (
+            {}
+        )  # {name: func_name, args: [input_name, ...]}
         self.intermediate_outputs = []  # [name, ...]
         self.forward_inplace_map = {}  # {name : name, ...}
 
