@@ -22,14 +22,15 @@ namespace operators {
 
 using Tensor = phi::DenseTensor;
 
-// reference paddle/fluid/operators/fused/fused_bias_dropout_residual_layer_norm_op.cc
+// reference
+// paddle/fluid/operators/fused/fused_bias_dropout_residual_layer_norm_op.cc
 class CustomFusedDropoutResidualLnOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
     OP_INOUT_CHECK(
-                   ctx->HasInput("X"), "Input", "X", "CustomFusedDropoutResidualLnOp");
+        ctx->HasInput("X"), "Input", "X", "CustomFusedDropoutResidualLnOp");
 
     OP_INOUT_CHECK(ctx->HasInput("Residual"),
                    "Input",
@@ -52,13 +53,13 @@ class CustomFusedDropoutResidualLnOp : public framework::OperatorWithKernel {
       left *= x_dim[i];
     }
 
-    if (ctx->Attrs().Get<bool>("is_test") == false) {
-      ctx->SetOutputDim("DropoutMask", ctx->GetInputDim("X"));
-    }
+    ctx->SetOutputDim("DropoutMask", ctx->GetInputDim("X"));
+    // if (ctx->Attrs().Get<bool>("is_test") == false) {
+
+    // }
     ctx->SetOutputDim("LnMean", {left});
     ctx->SetOutputDim("LnVar", {left});
     ctx->SetOutputDim("DropoutResidualOut", ctx->GetInputDim("X"));
-
   }
 
  protected:
@@ -85,16 +86,15 @@ class CustomFusedDropoutResidualLnOpMaker
              "(optional) Bias is a 1-dimensional tensor of size "
              "H. Here, H represents the last dimension of its input tensor.")
         .AsDispensable();
-    
+
     AddOutput("Out", "Result.");
     AddOutput("DropoutMask", "The random sampled dropout mask.")
         .AsIntermediate();
     AddOutput("LnMean", "Mean of the current mini batch.").AsIntermediate();
-    AddOutput("LnVar", "Variance of the current mini batch.")
-        .AsIntermediate();
+    AddOutput("LnVar", "Variance of the current mini batch.").AsIntermediate();
     AddOutput("DropoutResidualOut", "Output of bias + dropout + residual.")
         .AsIntermediate();
-    
+
     AddAttr<float>("ln_epsilon",
                    "Constant for numerical stability [default 1e-5].")
         .SetDefault(1e-5)
@@ -118,7 +118,8 @@ class CustomFusedDropoutResidualLnOpMaker
                   "will be dropped.")
         .SetDefault(true);
     AddAttr<int>("seed_val", "Dropout random seed.").SetDefault(0);
-    AddAttr<bool>("is_upscale_in_train", "is_upscale_in_train.").SetDefault(true);
+    AddAttr<bool>("is_upscale_in_train", "is_upscale_in_train.")
+        .SetDefault(true);
     AddAttr<float>("dropout_rate", "Probability of setting units to zero.")
         .SetDefault(.5f)
         .AddCustomChecker([](const float &drop_p) {
@@ -134,16 +135,15 @@ class CustomFusedDropoutResidualLnOpMaker
     // @final_out: [batch_size, seq_len, embed_dim]
     y = layer_norm(residual + dropout(x));
     )DOC");
-
   }
 };
 
-class CustomFusedDropoutResidualLnGradOp : public framework::OperatorWithKernel {
+class CustomFusedDropoutResidualLnGradOp
+    : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-
     PADDLE_ENFORCE_EQ(ctx->Attrs().Get<bool>("is_test"),
                       false,
                       platform::errors::InvalidArgument(
@@ -158,8 +158,7 @@ class CustomFusedDropoutResidualLnGradOp : public framework::OperatorWithKernel 
                    "FusedBiasDropoutResidualLnGrad");
 
     if (ctx->HasOutput(framework::GradVarName("X"))) {
-      ctx->SetOutputDim(framework::GradVarName("X"), 
-                        ctx->GetInputDim("X"));
+      ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
     }
     if (ctx->HasOutput(framework::GradVarName("Residual"))) {
       ctx->SetOutputDim(framework::GradVarName("Residual"),
@@ -196,7 +195,6 @@ class CustomFusedDropoutResidualLnGradOpMaker
 
  protected:
   void Apply(GradOpPtr<T> op) const override {
-
     op->SetType("custom_fused_dropout_residual_ln_grad");
     op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
     op->SetInput("X", this->Input("X"));
@@ -222,8 +220,7 @@ class CustomFusedDropoutResidualLnGradOpMaker
       op->SetInput("LnVar", this->Output("LnVar"));
     }
     if (this->HasOutput("DropoutResidualOut")) {
-      op->SetInput("DropoutResidualOut",
-                   this->Output("DropoutResidualOut"));
+      op->SetInput("DropoutResidualOut", this->Output("DropoutResidualOut"));
     }
     op->SetInput("DropoutMask", this->Output("DropoutMask"));
     op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));

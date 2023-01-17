@@ -30,15 +30,10 @@ class CustomFusedDropoutResidualLnXPUKernel : public framework::OpKernel<T> {
 
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    // PADDLE_THROW(platform::errors::Unimplemented(
-    //     "The custom_fused_dropout_residual_ln operator does not support XPU
-    //     yet."));
-
     auto& dev_ctx = ctx.template device_context<phi::XPUContext>();
 
-    //   const phi::DenseTensor* x = ctx.Input<phi::DenseTensor>("X");
-    //   const phi::DenseTensor* residual =
-    //   ctx.Input<phi::DenseTensor>("Residual");
+    const phi::DenseTensor* x = ctx.Input<phi::DenseTensor>("X");
+    const phi::DenseTensor* residual = ctx.Input<phi::DenseTensor>("Residual");
     const phi::DenseTensor* ln_scale = ctx.Input<phi::DenseTensor>("LnScale");
     const phi::DenseTensor* ln_bias = ctx.Input<phi::DenseTensor>("LnBias");
 
@@ -56,11 +51,17 @@ class CustomFusedDropoutResidualLnXPUKernel : public framework::OpKernel<T> {
       VLOG(1) << "layer_norm fusion, FLOAT16\n";
     }
 
-    const float* ln_scale_ptr =
-        reinterpret_cast<const float*>(ln_scale->data<T>());
-    const float* ln_bias_ptr =
-        reinterpret_cast<const float*>(ln_bias->data<T>());
+    // input
+    // paddle::experimental::CppTypeToDataType<T>::Type()
+    const XPUType* x_ptr = reinterpret_cast<const XPUType*>(x->data<T>());
+    const XPUType* res_ptr =
+        reinterpret_cast<const XPUType*>(residual->data<T>());
+    const XPUType* ln_scale_ptr =
+        reinterpret_cast<const XPUType*>(ln_scale->data<T>());
+    const XPUType* ln_bias_ptr =
+        reinterpret_cast<const XPUType*>(ln_bias->data<T>());
 
+    // output
     XPUType* out_ptr =
         reinterpret_cast<XPUType*>(final_out->mutable_data<T>(ctx.GetPlace()));
     XPUType* dropout_mask_out_ptr = reinterpret_cast<XPUType*>(
@@ -76,73 +77,59 @@ class CustomFusedDropoutResidualLnXPUKernel : public framework::OpKernel<T> {
 
     VLOG(1) << "==> CustomFusedDropoutResidualLnXPUKernel";
 
-    (void)dev_ctx;
-    (void)ln_scale_ptr;
-    (void)ln_bias_ptr;
-    (void)out_ptr;
-    (void)dropout_mask_out_ptr;
-    (void)ln_mean_ptr;
-    (void)ln_var_ptr;
-    (void)dropout_out_ptr;
+    auto ln_epsilon = ctx.Attr<float>("ln_epsilon");
+    auto is_test = ctx.Attr<bool>("is_test");
+    //   auto fix_seed = ctx.Attr<bool>("fix_seed");
+    auto seed_val = ctx.Attr<int>("seed_val");
+    auto is_upscale_in_train = ctx.Attr<bool>("is_upscale_in_train");
+    auto dropout_rate = ctx.Attr<float>("dropout_rate");
 
-#if 0
+    auto* xpu_ctx = dev_ctx.x_context();
+    xpu::ctx_guard RAII_GUARD(xpu_ctx);
+    // inputs
+    const auto& x_dims = x->dims();
+    int x_m = 1;
+    for (int i = 0; i < x_dims.size() - 1; i++) {
+      x_m *= x_dims[i];
+    }
+    int x_n = x_dims[x_dims.size() - 1];
 
-  auto ln_epsilon = ctx.Attr<float>("ln_epsilon");
-  auto is_test = ctx.Attr<bool>("is_test");
-//   auto fix_seed = ctx.Attr<bool>("fix_seed");
-  auto seed_val = ctx.Attr<int>("seed_val");
-  auto is_upscale_in_train = ctx.Attr<bool>("is_upscale_in_train");
-  auto dropout_rate = ctx.Attr<float>("dropout_rate");
+    xpu::DropoutAddLayernormParam dropout_param = {is_test,
+                                                   is_upscale_in_train,
+                                                   dropout_rate,
+                                                   seed_val,
+                                                   true,
+                                                   ln_epsilon,
+                                                   x_m,
+                                                   x_n};
 
-  auto* xpu_ctx = dev_ctx.x_context();
-  // inputs
-  const auto &x_dims = x->dims();
-  int x_m = 1;
-  for (int i = 0; i < x_dims.size() - 1; i++) {
-    x_m *= x_dims[i];
-  }
-  int x_n = x_dims[x_dims.size() - 1];
-
-//   auto matrix_dim = phi::flatten_to_2d(x_dims, 0);
-//   int x_m = static_cast<int>(matrix_dim[0]);
-//   int x_n = static_cast<int>(matrix_dim[1]);
-
-  printf("===> custom_fused_dropout_residual_ln, m: %d, n: %d\n", x_m, x_n);
-
-//   // outputs
-//   final_out.Resize(x_dims);
-//   dropout_mask_out.Resize(x_dims);
-//   dropout_residual_out.Resize(x_dims);
-//   ln_mean.Resize({x_m});
-//   ln_var.Resize({x_m});
-
-  const XPUType* x_ptr = reinterpret_cast<const XPUType*>(x->data<T>());
-  const XPUType* res_ptr =
-            reinterpret_cast<const XPUType*>(residual->data<T>());
-  const XPUType* ln_scale_ptr =
-            reinterpret_cast<const XPUType*>(ln_scale->data<T>());
-  const XPUType* ln_bias_ptr =
-            reinterpret_cast<const XPUType*>(ln_bias->data<T>());
-
-  XPUType* out_ptr =
-    reinterpret_cast<XPUType*>(final_out->mutable_data<T>(ctx.GetPlace()));
-
-  XPUType* dropout_out_ptr = reinterpret_cast<XPUType*>(
-        dropout_residual_out->mutable_data<T>(ctx.GetPlace()));
-  XPUType* dropout_mask_out_ptr = reinterpret_cast<XPUType*>(
-        dropout_mask_out->mutable_data<T>(ctx.GetPlace()));
-  XPUType* ln_mean_ptr = reinterpret_cast<XPUType*>(
-        ln_mean->mutable_data<T>(ctx.GetPlace()));
-  XPUType* ln_var_ptr = reinterpret_cast<XPUType*>(
-        ln_var->mutable_data<T>(ctx.GetPlace()));
-
-
-  xpu::DropoutAddLayernormParam dropout_param = {
-    is_test, is_upscale_in_train, dropout_rate,
-    seed_val, true, ln_epsilon, x_m, x_n};
-
-  int r = xpu::dropout_add_layernorm(xpu_ctx,
-        x_ptr, res_ptr, ln_scale_ptr, ln_bias_ptr,
+    const float* ln_scale_fp32_ptr;
+    const float* ln_bias_fp32_ptr;
+    if (x->dtype() == phi::DataType::FLOAT32) {
+      ln_scale_fp32_ptr = reinterpret_cast<const float*>(ln_scale_ptr);
+      ln_bias_fp32_ptr = reinterpret_cast<const float*>(ln_bias_ptr);
+    } else if (x->dtype() == phi::DataType::FLOAT16) {
+      float* ln_scale_tmp = RAII_GUARD.alloc_l3_or_gm<float>(ln_scale->numel());
+      float* ln_bias_tmp = RAII_GUARD.alloc_l3_or_gm<float>(ln_bias->numel());
+      int r = xpu::cast<XPUType, float>(
+          xpu_ctx, ln_scale_ptr, ln_scale_tmp, ln_scale->numel());
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
+      r = xpu::cast<XPUType, float>(
+          xpu_ctx, ln_bias_ptr, ln_bias_tmp, ln_bias->numel());
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
+      ln_scale_fp32_ptr = ln_scale_tmp;
+      ln_bias_fp32_ptr = ln_bias_tmp;
+    } else {
+      PADDLE_THROW(
+          phi::errors::Unimplemented("custom_fused_dropout_residual_ln lnscale "
+                                     "ln_bias only support fp32, fp16"));
+    }
+    int r = xpu::dropout_add_layernorm<XPUType>(
+        xpu_ctx,
+        x_ptr,
+        res_ptr,
+        ln_scale_fp32_ptr,
+        ln_bias_fp32_ptr,
         dropout_out_ptr,
         dropout_mask_out_ptr,
         out_ptr,
@@ -150,8 +137,7 @@ class CustomFusedDropoutResidualLnXPUKernel : public framework::OpKernel<T> {
         ln_var_ptr,
         (const xpu::DropoutAddLayernormParam)dropout_param);
 
-  PADDLE_ENFORCE_XDNN_SUCCESS(r, "dropout_add_layernorm");
-#endif
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "dropout_add_layernorm");
   }
 };
 
@@ -169,6 +155,22 @@ class CustomFusedDropoutResidualLnXPUGradKernel
 
     auto& dev_ctx = ctx.template device_context<phi::XPUContext>();
 
+    const phi::DenseTensor* x = ctx.Input<phi::DenseTensor>("X");
+    // const phi::DenseTensor* residual =
+    //     ctx.Input<phi::DenseTensor>("Residual");
+    const phi::DenseTensor* ln_scale = ctx.Input<phi::DenseTensor>("LnScale");
+    // const phi::DenseTensor* ln_bias = ctx.Input<phi::DenseTensor>("LnBias");
+
+    const phi::DenseTensor* dropout_mask_out =
+        ctx.Input<phi::DenseTensor>("DropoutMask");
+    const phi::DenseTensor* ln_mean = ctx.Input<phi::DenseTensor>("LnMean");
+    const phi::DenseTensor* ln_var = ctx.Input<phi::DenseTensor>("LnVar");
+    const phi::DenseTensor* dropout_residual_out =
+        ctx.Input<phi::DenseTensor>("DropoutResidualOut");
+    const phi::DenseTensor* grad_out =
+        ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+
+    // output
     phi::DenseTensor* grad_x =
         ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
     phi::DenseTensor* grad_residual =
@@ -178,20 +180,112 @@ class CustomFusedDropoutResidualLnXPUGradKernel
     phi::DenseTensor* grad_ln_bias =
         ctx.Output<phi::DenseTensor>(framework::GradVarName("LnBias"));
 
+    // input
+    // const XPUType* x_ptr = reinterpret_cast<const XPUType*>(x->data<T>());
+    // const XPUType* res_ptr =
+    //         reinterpret_cast<const XPUType*>(residual->data<T>());
+    const XPUType* ln_scale_ptr =
+        reinterpret_cast<const XPUType*>(ln_scale->data<T>());
+    // const XPUType* ln_bias_ptr =
+    //     reinterpret_cast<const XPUType*>(ln_bias->data<T>());
+    const XPUType* dropout_mask_ptr =
+        reinterpret_cast<const XPUType*>(dropout_mask_out->data<T>());
+    const float* ln_mean_ptr =
+        reinterpret_cast<const float*>(ln_mean->data<float>());
+    const float* ln_var_ptr =
+        reinterpret_cast<const float*>(ln_var->data<float>());
+    const XPUType* dropout_out_ptr =
+        reinterpret_cast<const XPUType*>(dropout_residual_out->data<T>());
+    const XPUType* grad_out_ptr =
+        reinterpret_cast<const XPUType*>(grad_out->data<T>());
+
+    // output
     XPUType* dx_ptr =
         reinterpret_cast<XPUType*>(grad_x->mutable_data<T>(ctx.GetPlace()));
     XPUType* d_residual_ptr = reinterpret_cast<XPUType*>(
         grad_residual->mutable_data<T>(ctx.GetPlace()));
-    float* d_ln_scale_ptr = reinterpret_cast<float*>(
+    XPUType* d_ln_scale_ptr = reinterpret_cast<XPUType*>(
         grad_ln_scale->mutable_data<T>(ctx.GetPlace()));
-    float* d_ln_bias_ptr =
-        reinterpret_cast<float*>(grad_ln_bias->mutable_data<T>(ctx.GetPlace()));
+    XPUType* d_ln_bias_ptr = reinterpret_cast<XPUType*>(
+        grad_ln_bias->mutable_data<T>(ctx.GetPlace()));
 
-    (void)dev_ctx;
-    (void)dx_ptr;
-    (void)d_residual_ptr;
-    (void)d_ln_scale_ptr;
-    (void)d_ln_bias_ptr;
+    auto ln_epsilon = ctx.Attr<float>("ln_epsilon");
+    auto is_test = ctx.Attr<bool>("is_test");
+    // auto fix_seed = ctx.Attr<bool>("fix_seed");
+    auto seed_val = ctx.Attr<int>("seed_val");
+    auto is_upscale_in_train = ctx.Attr<bool>("is_upscale_in_train");
+    auto dropout_rate = ctx.Attr<float>("dropout_rate");
+
+    auto* xpu_ctx = dev_ctx.x_context();
+    xpu::ctx_guard RAII_GUARD(xpu_ctx);
+    // inputs
+    const auto& x_dims = x->dims();
+    int x_m = 1;
+    for (int i = 0; i < x_dims.size() - 1; i++) {
+      x_m *= x_dims[i];
+    }
+    int x_n = x_dims[x_dims.size() - 1];
+
+    xpu::DropoutAddLayernormParam dropout_param = {is_test,
+                                                   is_upscale_in_train,
+                                                   dropout_rate,
+                                                   seed_val,
+                                                   true,
+                                                   ln_epsilon,
+                                                   x_m,
+                                                   x_n};
+
+    // (void)dev_ctx;
+    // (void)dx_ptr;
+    // (void)d_residual_ptr;
+    // (void)d_ln_scale_ptr;
+    // (void)d_ln_bias_ptr;
+
+    const float* ln_scale_fp32_ptr;
+    float* ln_dscale_fp32_ptr;
+    float* ln_dbias_fp32_ptr;
+    if (x->dtype() == phi::DataType::FLOAT32) {
+      ln_scale_fp32_ptr = reinterpret_cast<const float*>(ln_scale_ptr);
+      ln_dscale_fp32_ptr = reinterpret_cast<float*>(d_ln_scale_ptr);
+      ln_dbias_fp32_ptr = reinterpret_cast<float*>(d_ln_bias_ptr);
+    } else if (x->dtype() == phi::DataType::FLOAT16) {
+      float* ln_scale_tmp = RAII_GUARD.alloc_l3_or_gm<float>(ln_scale->numel());
+      ln_dscale_fp32_ptr =
+          RAII_GUARD.alloc_l3_or_gm<float>(grad_ln_scale->numel());
+      ln_dbias_fp32_ptr =
+          RAII_GUARD.alloc_l3_or_gm<float>(grad_ln_bias->numel());
+      int r = xpu::cast<XPUType, float>(
+          xpu_ctx, ln_scale_ptr, ln_scale_tmp, ln_scale->numel());
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
+      ln_scale_fp32_ptr = ln_scale_tmp;
+    } else {
+      PADDLE_THROW(phi::errors::Unimplemented(
+          "custom_fused_dropout_residual_ln_grad lnscale ln_bias only support "
+          "fp32, fp16"));
+    }
+
+    dropout_add_layernorm_grad(
+        xpu_ctx,
+        dropout_out_ptr,
+        dropout_mask_ptr,
+        grad_out_ptr,
+        dx_ptr,
+        d_residual_ptr,
+        ln_scale_fp32_ptr,
+        ln_mean_ptr,
+        ln_var_ptr,
+        ln_dscale_fp32_ptr,
+        ln_dbias_fp32_ptr,
+        (const xpu::DropoutAddLayernormParam)dropout_param);
+
+    if (x->dtype() == phi::DataType::FLOAT16) {
+      int r = xpu::cast<float, XPUType>(
+          xpu_ctx, ln_dscale_fp32_ptr, d_ln_scale_ptr, grad_ln_scale->numel());
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
+      r = xpu::cast<float, XPUType>(
+          xpu_ctx, ln_dbias_fp32_ptr, d_ln_bias_ptr, grad_ln_bias->numel());
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
+    }
 
 #if 0
     auto& dev_ctx = ctx.template device_context<phi::XPUContext>();

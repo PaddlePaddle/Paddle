@@ -226,12 +226,14 @@ class CustomFusedDenseXPUGradKernel : public framework::OpKernel<T> {
       PADDLE_ENFORCE_XDNN_SUCCESS(r, "reduce_sum");
     }
 
-    auto tag_end = std::chrono::steady_clock::now();
-    float time_use = std::chrono::duration_cast<std::chrono::nanoseconds>(
-                         tag_end - tag_start)
-                         .count() /
-                     1000000.0;
-    printf("op: %s, %0.6f ms\n", "custom_fused_dense", time_use);
+    if (std::getenv("XPU_PADDLE_FC_PRINT") != nullptr) {
+      auto tag_end = std::chrono::steady_clock::now();
+      float time_use = std::chrono::duration_cast<std::chrono::nanoseconds>(
+                           tag_end - tag_start)
+                           .count() /
+                       1000000.0;
+      printf("op: %s, %0.6f ms\n", "custom_fused_dense", time_use);
+    }
   }
 };
 
