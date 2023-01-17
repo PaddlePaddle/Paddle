@@ -17,11 +17,9 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
 import paddle.nn.functional as F
 
 paddle.set_device('xpu')
-fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
 
 
 unary_api_list = [
