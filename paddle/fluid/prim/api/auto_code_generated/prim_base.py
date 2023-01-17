@@ -18,7 +18,7 @@ white_ops_list = [
     "pow",
     "scale",
     "multiply",
-    "unsqueese",
+    "unsqueeze",
     "expand",
     "full",
     "reshape",
