@@ -863,7 +863,8 @@ if(WITH_DISTRIBUTE)
            fleet
            heter_server
            brpc
-           fleet_executor)
+           fleet_executor
+           flags)
     set(DISTRIBUTE_COMPILE_FLAGS
         "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor -Wno-error=parentheses"
     )
