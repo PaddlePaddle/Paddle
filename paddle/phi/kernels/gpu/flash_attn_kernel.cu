@@ -21,6 +21,7 @@
 #include "paddle/phi/core/kernel_registry.h"
 
 #include "paddle/phi/kernels/arange_kernel.h"
+#include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/reshape_kernel.h"
 
 #include "paddle/phi/backends/dynload/flashattn.h"
@@ -94,12 +95,15 @@ void FlashAttnKernel(const Context& ctx,
     ctx.template Alloc<T>(softmax);
   }
 
+  DenseTensor workspace = Empty<float>(ctx, {total_q, num_heads, head_size});
+  uint64_t workspace_size;
+
   phi::dynload::flash_attn_fwd(q_t_s.data(),
                                k_t_s.data(),
                                v_t_s.data(),
                                out->data(),
-                               cu_seqlens_q.data<int32_t>(),
-                               cu_seqlens_k.data<int32_t>(),
+                               cu_seqlens_q.data(),
+                               cu_seqlens_k.data(),
                                total_q,
                                total_k,
                                batch_size,
@@ -113,8 +117,10 @@ void FlashAttnKernel(const Context& ctx,
                                causal,
                                is_bf16,
                                num_splits,
-                               softmax_lse->data<float>(),
+                               softmax_lse->data(),
                                return_softmax ? softmax->data() : nullptr,
+                               workspace.data(),
+                               &workspace_size,
                                stream,
                                seed,
                                offset);

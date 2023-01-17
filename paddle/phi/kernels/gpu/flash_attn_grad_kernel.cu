@@ -21,6 +21,7 @@
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/arange_kernel.h"
+#include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/flash_attn_grad_kernel.h"
 #include "paddle/phi/kernels/reshape_kernel.h"
 
@@ -88,6 +89,11 @@ void FlashAttnGradKernel(const Context& ctx,
   uint64_t seed = seed_offset_vec[0];
   uint64_t offset = seed_offset_vec[1];
 
+  DenseTensor workspace = Empty<float>(ctx, {total_q, num_heads, head_size});
+  uint64_t workspace_size;
+
+  DenseTensor dsoftmax = Empty<float>(ctx, {batch_size, num_heads, seq_len_q});
+
   phi::dynload::flash_attn_bwd(q_t_s.data(),
                                k_t_s.data(),
                                v_t_s.data(),
@@ -96,8 +102,8 @@ void FlashAttnGradKernel(const Context& ctx,
                                dv->data(),
                                out.data(),
                                dout.data(),
-                               cu_seqlens_q.data<int32_t>(),
-                               cu_seqlens_k.data<int32_t>(),
+                               cu_seqlens_q.data(),
+                               cu_seqlens_k.data(),
                                total_q,
                                total_k,
                                batch_size,
@@ -112,7 +118,9 @@ void FlashAttnGradKernel(const Context& ctx,
                                is_bf16,
                                num_splits,
                                const_cast<float*>(softmax_lse.data<float>()),
-                               nullptr,
+                               dsoftmax.data(),
+                               workspace.data(),
+                               &workspace_size,
                                stream,
                                seed,
                                offset);

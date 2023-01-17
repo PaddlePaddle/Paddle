@@ -131,6 +131,7 @@ from .extension import gather_tree  # noqa: F401
 from .extension import temporal_shift  # noqa: F401
 
 from .sparse_attention import sparse_attention
+from .flash_attention import flash_attention
 
 __all__ = [  # noqa
     'celu',
@@ -239,6 +240,7 @@ __all__ = [  # noqa
     'instance_norm',
     'class_center_sample',
     'sparse_attention',
+    'flash_attention',
     'fold',
     'cosine_embedding_loss',
     'rrelu',
