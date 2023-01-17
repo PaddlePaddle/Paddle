@@ -426,7 +426,8 @@ endif()
 
 if(WITH_DISTRIBUTE
    AND NOT WITH_PSLIB
-   AND NOT WITH_PSCORE)
+   AND NOT WITH_PSCORE
+   AND NOT WITH_RPC)
   include(external/snappy)
   list(APPEND third_party_deps extern_snappy)
 
