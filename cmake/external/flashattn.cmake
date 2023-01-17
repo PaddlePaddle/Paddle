@@ -14,9 +14,7 @@
 
 include(ExternalProject)
 
-if(WITH_ROCM)
-  add_definitions(-DFLASHATTN_WITH_HIP)
-endif()
+add_definitions(-DPADDLE_WITH_FLASHATTN)
 
 set(FLASHATTN_PREFIX_DIR ${THIRD_PARTY_PATH}/flashattn)
 set(FLASHATTN_SOURCE_SUBDIR csrc/flash_attn)

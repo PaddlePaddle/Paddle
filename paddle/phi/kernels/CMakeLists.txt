@@ -71,7 +71,6 @@ set(COMMON_KERNEL_DEPS
     matrix_solve
     phi_dynload_warpctc
     phi_dynload_warprnnt
-    phi_dynload_flashattn
     sequence_padding
     sequence_scale
     fft
@@ -79,6 +78,10 @@ set(COMMON_KERNEL_DEPS
     gpc
     utf8proc
     gather_scatter_functor)
+
+if(WITH_FLASHATTN)
+  set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} phi_dynload_flashattn)
+endif()
 
 set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} process_group)
 if(WITH_NCCL OR WITH_RCCL)

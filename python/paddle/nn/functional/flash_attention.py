@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import paddle
 from paddle import _C_ops, in_dynamic_mode
 from paddle.fluid.layer_helper import LayerHelper
 
@@ -88,13 +89,16 @@ def flash_attention(
             value,
             dropout,
             causal,
+            return_softmax,
         )
         return result_attention, result_softmax
 
     helper = LayerHelper('flash_attn', **locals())
     dtype = helper.input_dtype(input_param_name='q')
     out = helper.create_variable_for_type_inference(dtype)
-    result_softmax = helper.create_variable_for_type_inference(dtype)
+    softmax = helper.create_variable_for_type_inference(dtype)
+    softmax_lse = helper.create_variable_for_type_inference(paddle.float32)
+    seed_offset = helper.create_variable_for_type_inference(paddle.int64)
     inputs = {
         'q': query,
         'k': key,
@@ -105,7 +109,9 @@ def flash_attention(
     }
     outputs = {
         'out': out,
-        'softmax': result_softmax,
+        'softmax': softmax,
+        'softmax_lse': softmax_lse,
+        'seed_offset': seed_offset,
     }
     helper.append_op(type='flash_attn', inputs=inputs, outputs=outputs)
-    return out, result_softmax
+    return out, softmax
