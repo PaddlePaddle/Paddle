@@ -943,7 +943,9 @@ def _import_module_from_library(module_name, build_directory, verbose=False):
         dynamic_suffix = '.dylib'
     else:
         dynamic_suffix = '.so'
-    ext_path = os.path.join(build_directory, module_name + dynamic_suffix)
+    ext_path = os.path.join(
+        build_directory, module_name + "_pd_" + dynamic_suffix
+    )
     if not os.path.exists(ext_path):
         raise FileNotFoundError(
             "Extension path: {} does not exist.".format(ext_path)
