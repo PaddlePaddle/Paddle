@@ -153,7 +153,7 @@ class CustomFMHAGradXPUKernel : public framework::OpKernel<T> {
     // printf("====> grad cu_seq_len_ptr: %p\n", cu_seq_len_ptr);
     int tmp_size = host_seq_len->numel();
     int* tmp = reinterpret_cast<int*>(malloc(tmp_size * sizeof(int)));
-    // xpu_memcpy(tmp, cu_seq_len_ptr, tmp_size * sizeof(int),
+    xpu_memcpy(tmp, cu_seq_len_ptr, tmp_size * sizeof(int), XPU_DEVICE_TO_HOST);
     // XPU_DEVICE_TO_HOST); for (int i = 0; i < tmp_size; i++) {
     //     printf("seq len: %d\n", tmp[i]);
     // }
@@ -178,9 +178,9 @@ class CustomFMHAGradXPUKernel : public framework::OpKernel<T> {
     bool is_test = ctx.Attr<bool>("is_test");
 
     int qkv_size = total_tokens * num_heads * head_size;
-    XPUType* d_q_ptr = RAII_GUARD.alloc_l3_or_gm<XPUType>(qkv_size);
-    XPUType* d_k_ptr = RAII_GUARD.alloc_l3_or_gm<XPUType>(qkv_size);
-    XPUType* d_v_ptr = RAII_GUARD.alloc_l3_or_gm<XPUType>(qkv_size);
+    XPUType* d_q_ptr = RAII_GUARD.alloc_l3_or_gm<XPUType>(qkv_size * 3);
+    XPUType* d_k_ptr = RAII_GUARD.alloc_l3_or_gm<XPUType>(qkv_size * 3);
+    XPUType* d_v_ptr = RAII_GUARD.alloc_l3_or_gm<XPUType>(qkv_size * 3);
     int r = xpu::mha_fusion_grad<XPUType, int16_t>(
         xpu_ctx,
         qkv_ptr,
