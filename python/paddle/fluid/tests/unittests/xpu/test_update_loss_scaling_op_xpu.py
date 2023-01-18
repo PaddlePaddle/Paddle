@@ -26,7 +26,7 @@ from xpu.get_test_cover_info import (
 
 import paddle
 import paddle.fluid as fluid
-import paddle.fluid.contrib.mixed_precision.amp_nn as amp_nn
+import paddle.static.amp.amp_nn as amp_nn
 
 paddle.enable_static()
 

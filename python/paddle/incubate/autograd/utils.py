@@ -16,6 +16,8 @@ import typing
 import paddle
 from paddle.fluid import framework as framework
 
+from .phi_ops_map import op_info, op_map
+
 
 class PrimOption:
     def __init__(self):
@@ -146,6 +148,64 @@ def get_input_var_list(op):
         return [
             get_var_block(op.block, op.input(n)) for n in sorted(op.input_names)
         ]
+
+
+def _solve_arg(item):
+    if "=" not in item:
+        res = item
+    else:
+        res = item.split('=')[0]
+    [arg_type, arg_name] = res.strip().split()
+    return arg_type.strip(), arg_name.strip()
+
+
+def _get_args_values(op, phi_name):
+    "get attrs' values for api args' values"
+    args = op_info[phi_name]
+    args_list = args["args"].split(",")
+    inputs = []
+    attrs = []
+    for item in args_list:
+        arg_type, arg_name = _solve_arg(item)
+        op_content = op_map[op.type]
+        if arg_type in ("Tensor", "Tensor[]"):
+            if (
+                "inputs" in op_content.keys()
+                and arg_name in op_content["inputs"].keys()
+            ):
+                inputs.append(op_content["inputs"][arg_name])
+            else:
+                inputs.append(arg_name)
+        else:
+            op_content = op_map[op.type]
+            if (
+                "attrs" in op_content.keys()
+                and arg_name in op_content["attrs"].keys()
+            ):
+                attrs.append(op.attr(op_content["attrs"][arg_name]))
+            attrs.append(op.attr(arg_name))
+
+    return inputs, attrs
+
+
+def prepare_python_api_arguments(op):
+    """
+    Generate all args inputs of composite op. Because inputs of composite op is
+    the same as phi op desribed in ops.yaml. So we need to map origin op to phi op
+    and then push input data and attrs of origin op to correspondng phi op.
+    """
+    if op.input_names is None:
+        return []
+    else:
+        if op.type in op_map:
+            phi_name = op_map[op.type]["phi_name"]
+        else:
+            phi_name = op.type
+        inputs, attrs = _get_args_values(op, phi_name)
+        res = [get_var_block(op.block, op.input(n)) for n in inputs]
+        if attrs:
+            res.extend(attrs)
+        return res
 
 
 def get_output_var_list(op):

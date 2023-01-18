@@ -1010,6 +1010,18 @@ PADDLE_DEFINE_EXPORTED_bool(enable_cinn_auto_tune,
 
 #endif
 
+/*
+ * CUDA Graph related FLAG
+ * Name: FLAGS_new_executor_use_cuda_graph
+ * Since Version: 2.4
+ * Value Range: bool, default=false
+ * Example: FLAGS_new_executor_use_cuda_graph=true would allow
+ * new executor to use CUDA Graph.
+ */
+PADDLE_DEFINE_EXPORTED_bool(new_executor_use_cuda_graph,
+                            false,
+                            "Use CUDA Graph in new executor");
+
 DEFINE_int32(record_pool_max_size,
              2000000,
              "SlotRecordDataset slot record pool max size");
@@ -1181,3 +1193,16 @@ PADDLE_DEFINE_EXPORTED_int32(cudnn_cache_saturation_count, 1, "");
 PADDLE_DEFINE_EXPORTED_bool(trt_ibuilder_cache,
                             false,
                             "Add a persistent ibuilder.");
+
+/**
+ * mmap_allocator related FLAG
+ * Name: use_shm_cache
+ * Since Version: 2.5.0
+ * Value Range: bool, default=true
+ * Example:
+ * Note: . If True, mmap_allocator will cache shm file to decrease munmap
+ * operation.
+ */
+PADDLE_DEFINE_EXPORTED_bool(use_shm_cache,
+                            true,
+                            "Use shm cache in mmap_allocator.");

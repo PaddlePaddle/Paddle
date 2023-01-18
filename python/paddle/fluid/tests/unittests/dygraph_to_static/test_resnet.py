@@ -14,6 +14,7 @@
 
 import math
 import os
+import platform
 import tempfile
 import time
 import unittest
@@ -23,6 +24,7 @@ from predictor_utils import PredictorTools
 
 import paddle
 import paddle.fluid as fluid
+from paddle.fluid import core
 from paddle.jit.translated_layer import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 from paddle.nn import BatchNorm
 
@@ -425,6 +427,21 @@ class TestResnet(unittest.TestCase):
         )
         self.verify_predict()
 
+    def test_resnet_composite(self):
+        core.set_prim_enabled(True)
+        static_loss = self.train(to_static=True)
+        core.set_prim_enabled(False)
+        dygraph_loss = self.train(to_static=True)
+        np.testing.assert_allclose(
+            static_loss,
+            dygraph_loss,
+            rtol=1e-05,
+            err_msg='static_loss: {} \n dygraph_loss: {}'.format(
+                static_loss, dygraph_loss
+            ),
+        )
+        core.set_prim_enabled(False)
+
     def test_in_static_mode_mkldnn(self):
         fluid.set_flags({'FLAGS_use_mkldnn': True})
         try:
@@ -432,6 +449,68 @@ class TestResnet(unittest.TestCase):
                 self.resnet_helper.train(to_static=True)
         finally:
             fluid.set_flags({'FLAGS_use_mkldnn': False})
+
+
+class TestResnetPrim(unittest.TestCase):
+    "test prim forward +  prim backward + to_static"
+
+    def setUp(self):
+        self.resnet_helper = ResNetHelper()
+
+    def train(self, to_static):
+        paddle.jit.enable_to_static(to_static)
+        return self.resnet_helper.train(to_static)
+
+    def verify_predict(self):
+        image = np.random.random([1, 3, 224, 224]).astype('float32')
+        dy_pre = self.resnet_helper.predict_dygraph(image)
+        st_pre = self.resnet_helper.predict_static(image)
+        dy_jit_pre = self.resnet_helper.predict_dygraph_jit(image)
+        predictor_pre = self.resnet_helper.predict_analysis_inference(image)
+        np.testing.assert_allclose(
+            dy_pre,
+            st_pre,
+            rtol=1e-05,
+            err_msg='dy_pre:\n {}\n, st_pre: \n{}.'.format(dy_pre, st_pre),
+        )
+        np.testing.assert_allclose(
+            dy_jit_pre,
+            st_pre,
+            rtol=1e-05,
+            err_msg='dy_jit_pre:\n {}\n, st_pre: \n{}.'.format(
+                dy_jit_pre, st_pre
+            ),
+        )
+        np.testing.assert_allclose(
+            predictor_pre,
+            st_pre,
+            rtol=1e-05,
+            err_msg='predictor_pre:\n {}\n, st_pre: \n{}.'.format(
+                predictor_pre, st_pre
+            ),
+        )
+
+    def test_resnet_composite(self):
+        plat = platform.system()
+        if plat == "Linux":
+            print("=================== origin resnet ===================")
+            core.set_prim_enabled(False)
+            static_loss = self.train(to_static=True)
+            print("======= resnet with prim forward and backward =======")
+            core.set_prim_enabled(True)
+            core.set_prim_forward("debug")
+            dygraph_loss = self.train(to_static=True)
+            np.testing.assert_allclose(
+                static_loss,
+                dygraph_loss,
+                rtol=1e-02,
+                err_msg='static_loss: {} \n dygraph_loss: {}'.format(
+                    static_loss, dygraph_loss
+                ),
+            )
+            core.set_prim_enabled(False)
+        else:
+            pass
 
 
 if __name__ == '__main__':

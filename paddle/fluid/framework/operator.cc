@@ -1561,6 +1561,63 @@ void OperatorWithKernel::RuntimeInferShape(const Scope& scope,
   this->Info().infer_shape_(&infer_shape_ctx);
 }
 
+template <typename T>
+bool HasSameTensorType(phi::TensorBase* phi_tensor, Variable* var) {
+  if (phi_tensor == nullptr && var == nullptr) {
+    return true;
+  } else if (phi_tensor != nullptr && var != nullptr) {
+    if (T::classof(phi_tensor) && var->IsType<T>()) {
+      return true;
+    }
+  }
+  return false;
+}
+
+// TODO(YuanRisheng): We need collect all `need_prepare_phi_data_`
+// into this function.
+void OperatorWithKernel::CheckWhetherPreparePhiData(
+    const VariableNameMap& innames,
+    const VariableNameMap& outnames,
+    const Scope& scope) const {
+  if (run_phi_kernel_ && impl_ != nullptr) {
+    const auto& phi_kernel_context = impl_->getKernelContext();
+    size_t phi_tensor_index = 0;
+    // Check each tensor in KernelContext, if there is a tensor that has
+    // different type with variable. The PhiKernelContext need be reconstructed.
+    // We use kernel_signature_'s output to retrieve tensor. Because the tensor
+    // in phi_kernel_context stored in the order of kernel_signature_'s output.
+    if (phi_kernel_context->OutputsSize() >= phi_tensor_index ||
+        kernel_signature_ == nullptr) {
+      need_prepare_phi_data_ = true;
+      return;
+    }
+
+    const auto& phi_output_names = kernel_signature_->output_names;
+    for (auto& phi_output_name : phi_output_names) {
+      const auto& iter = outnames.find(phi_output_name);
+      if (iter != outnames.end()) {
+        for (auto& var_name : iter->second) {
+          auto var_output = scope.FindVar(var_name);
+          auto phi_output =
+              phi_kernel_context->MutableOutputAt<phi::TensorBase>(
+                  phi_tensor_index);
+          if (phi_output == nullptr) {
+            continue;
+          }
+          if (!(HasSameTensorType<phi::DenseTensor>(phi_output, var_output) ||
+                HasSameTensorType<phi::SparseCooTensor>(phi_output,
+                                                        var_output) ||
+                HasSameTensorType<framework::Strings>(phi_output,
+                                                      var_output))) {
+            need_prepare_phi_data_ = true;
+          }
+          phi_tensor_index++;
+        }
+      }
+    }
+  }
+}
+
 void OperatorWithKernel::RunImpl(const Scope& scope,
                                  const platform::Place& place) const {
   // To reduce the elapsed time of HasAttr, we use bool variable to record the
@@ -1571,6 +1628,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
       HasAttr(kAllKernelsMustComputeRuntimeShape))
     all_kernels_must_compute_runtime_shape_ = true;
   const Scope* cur_scope = &scope;
+  CheckWhetherPreparePhiData(Inputs(), Outputs(), scope);
   if (!enable_cache_runtime_context_) {
     RuntimeContext ctx(Inputs(), Outputs(), scope);
     RunImpl(scope, place, &ctx);
@@ -2993,7 +3051,6 @@ void OperatorWithKernel::BuildPhiKernelContext(
                         "to the size of kernel attribute_defs (%d).",
                         attr_names.size(),
                         attr_defs.size()));
-
   for (size_t i = 0; i < input_names.size(); ++i) {
     auto it = ctx.inputs.find(input_names[i]);
 
@@ -3037,6 +3094,9 @@ void OperatorWithKernel::BuildPhiKernelContext(
       } else if (var->IsType<framework::Vocab>()) {
         tensor_in = &(var->Get<framework::Vocab>());
         phi_kernel_context->EmplaceBackInputWithoutSetRange(tensor_in);
+      } else if (var->IsType<framework::FeedList>()) {
+        tensor_in = &(var->Get<framework::FeedList>());
+        phi_kernel_context->EmplaceBackInputWithoutSetRange(tensor_in);
       } else {
         PADDLE_THROW(platform::errors::Unimplemented(
             "Unsupported input `%s` type when call pt kernel.",
@@ -3047,7 +3107,6 @@ void OperatorWithKernel::BuildPhiKernelContext(
     phi_kernel_context->AssignInputRange(std::make_pair(start_idx, end_idx), i);
   }
   VLOG(4) << "Done inputs";
-
   for (size_t i = 0; i < output_names.size(); ++i) {
     auto it = ctx.outputs.find(output_names[i]);
     size_t start_idx =
@@ -3087,6 +3146,9 @@ void OperatorWithKernel::BuildPhiKernelContext(
           // Note: If the input LoDTensorArray size is 0, the output
           // LoDTensorArray is also 0
           phi_kernel_context->EmplaceBackOutputWithoutSetRange(tensor_out);
+        } else if (var->template IsType<framework::Strings>()) {
+          tensor_out = var->template GetMutable<framework::Strings>();
+          phi_kernel_context->EmplaceBackOutputWithoutSetRange(tensor_out);
         } else if (var->template IsType<paddle::framework::RawTensor>()) {
           tensor_out = var->template GetMutable<paddle::framework::RawTensor>();
           phi_kernel_context->EmplaceBackOutputWithoutSetRange(tensor_out);
@@ -3108,7 +3170,6 @@ void OperatorWithKernel::BuildPhiKernelContext(
                                           i);
   }
   VLOG(4) << "Done outputs";
-
   for (size_t i = 0; i < attr_names.size(); ++i) {
     VLOG(6) << "BuildPhiKernelContext: " << attr_names[i] << ": "
             << attr_defs[i].type_index;
