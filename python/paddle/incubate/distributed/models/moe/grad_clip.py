@@ -14,8 +14,8 @@
 
 import paddle
 import paddle.distributed as dist
-from paddle.fluid import core, layers
-from paddle.fluid.dygraph import base as imperative_base
+from paddle.autograd import no_grad
+from paddle.framework import core
 from paddle.nn import clip
 from paddle.nn.clip import ClipGradBase, _squared_l2_norm
 
@@ -142,25 +142,25 @@ class ClipGradForMOEByGlobalNorm(ClipGradBase):
 
         global_norm_var = []
         if len(sum_square_list_fp16) > 0:
-            global_norm_var_fp16 = layers.concat(sum_square_list_fp16)
+            global_norm_var_fp16 = paddle.concat(sum_square_list_fp16)
             global_norm_var_fp16 = paddle.sum(global_norm_var_fp16)
             global_norm_var.append(global_norm_var_fp16.astype(sum_dtype))
         if len(sum_square_list_fp32) > 0:
-            global_norm_var_fp32 = layers.concat(sum_square_list_fp32)
+            global_norm_var_fp32 = paddle.concat(sum_square_list_fp32)
             global_norm_var_fp32 = paddle.sum(global_norm_var_fp32)
             if sum_dtype == 'float32':
                 global_norm_var.append(global_norm_var_fp32)
             else:
                 global_norm_var.append(global_norm_var_fp32.astype(sum_dtype))
         if len(sum_square_list) > 0:
-            global_norm_var_fp64 = layers.concat(sum_square_list)
+            global_norm_var_fp64 = paddle.concat(sum_square_list)
             global_norm_var_fp64 = paddle.sum(global_norm_var_fp64)
             global_norm_var.append(global_norm_var_fp64)
-        global_norm_var = layers.concat(global_norm_var)
+        global_norm_var = paddle.concat(global_norm_var)
         global_norm_var = paddle.sum(global_norm_var)
         return global_norm_var, sum_dtype
 
-    @imperative_base.no_grad
+    @no_grad()
     def _dygraph_clip(self, params_grads):
         normal_params_grads = []
         moe_params_grads = []
@@ -210,8 +210,8 @@ class ClipGradForMOEByGlobalNorm(ClipGradBase):
 
         params_and_grads = []
         global_norm_var = paddle.sqrt(global_norm_var)
-        max_global_norm = layers.fill_constant(
-            shape=[1], dtype=global_norm_var.dtype, value=self.clip_norm
+        max_global_norm = paddle.full(
+            shape=[1], dtype=global_norm_var.dtype, fill_value=self.clip_norm
         )
         clip_var = paddle.divide(
             x=max_global_norm,

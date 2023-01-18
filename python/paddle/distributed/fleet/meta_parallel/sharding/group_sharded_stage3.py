@@ -20,12 +20,11 @@ import numpy as np
 
 import paddle
 import paddle.distributed as dist
-import paddle.fluid.core as core
-import paddle.fluid.framework as framework
-from paddle import nn
+from paddle import framework, nn
 from paddle.autograd import PyLayer
 from paddle.distributed import collective
 from paddle.fluid.framework import EagerParamBase
+from paddle.framework import core
 from paddle.nn import ClipGradByGlobalNorm
 
 from .group_sharded_storage import GradStorage

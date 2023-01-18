@@ -478,6 +478,7 @@ class ProcessGroupIdMap
     : public std::unordered_map<int, std::shared_ptr<ProcessGroup>> {
  public:
   static ProcessGroupIdMap& GetInstance();
+  static void DestroyProcessGroup(int gid);
 };
 
 // TODO(dev): The following method will be removed soon.

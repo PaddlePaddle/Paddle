@@ -70,8 +70,10 @@ TEST(Backend, StringToBackend) {
 #else
   EXPECT_EQ(phi::Backend::KPS, pexp::StringToBackend("KPS"));
 #endif
-  EXPECT_EQ(static_cast<phi::Backend>(
-                static_cast<size_t>(phi::Backend::NUM_BACKENDS) + 1),
+  EXPECT_EQ(static_cast<Backend>(
+                static_cast<size_t>(Backend::NUM_BACKENDS) +
+                phi::CustomRegisteredDeviceMap::Instance()
+                    .GetOrRegisterGlobalDeviceTypeId("CustomBackend")),
             pexp::StringToBackend("CustomBackend"));
 }
 
