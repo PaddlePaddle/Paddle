@@ -163,7 +163,7 @@ def get_header_install_dir(header):
         )
         patterns = [
             'install/mkldnn/include',
-            'pybind/src/extern_pybind/include/',
+            'pybind/src/extern_pybind/include',
         ]
         for pattern in patterns:
             install_dir = re.sub(pattern, '', install_dir)
