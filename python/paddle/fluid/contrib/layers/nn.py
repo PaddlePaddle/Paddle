@@ -1587,7 +1587,7 @@ def fused_bn_add_act(
                     )
                     loss = paddle.mean(loss)
                     sgd = fluid.optimizer.SGD(learning_rate=0.001)
-                    sgd = fluid.contrib.mixed_precision.decorate(
+                    sgd = paddle.static.amp.decorate(
                         sgd, use_dynamic_loss_scaling=True, init_loss_scaling=128.0)
                     sgd.minimize(loss)
 

@@ -33,6 +33,8 @@ from paddle.jit.dy2static.partial_program import (
     add_build_strategy_for,
 )
 
+from .dy2static.utils import _out_grad_names, _param_grad_names
+
 __all__ = []
 
 INFER_MODEL_SUFFIX = ".pdmodel"
@@ -887,28 +889,7 @@ def _construct_params_and_buffers(
 
 
 def _valid_vars(vars):
-    if vars:
-        return vars
-    if framework._in_eager_without_dygraph_check():
-        return [
-            core.eager.Tensor(
-                core.VarDesc.VarType.FP32,
-                [],
-                "Fake_var",
-                core.VarDesc.VarType.RAW,
-                False,
-            )
-        ]
-    else:
-        return [
-            core.VarBase(
-                core.VarDesc.VarType.FP32,
-                [],
-                "Fake_var",
-                core.VarDesc.VarType.RAW,
-                False,
-            )
-        ]
+    return vars if vars else None
 
 
 def _run_dygraph(instance, input, program_holder):
@@ -1041,6 +1022,15 @@ def _run_dygraph(instance, input, program_holder):
         'program_id',
         _hash_with_id(trace_program, instance),
     ]
+    if not instance._is_test:
+        attrs.extend(
+            (
+                'param_grad_names',
+                _param_grad_names(trace_program, persistable_vars),
+                'out_grad_names',
+                _out_grad_names(trace_program, end_op_index, len(output_vars)),
+            )
+        )
 
     use_interpretorcore = (
         _is_enable_standalone_executor()

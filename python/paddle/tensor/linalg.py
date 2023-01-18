@@ -1296,7 +1296,7 @@ def t(input, name=None):
             "tensor.transpose() instead." % len(input.shape)
         )
     if in_dygraph_mode():
-        if len(input.shape) == 1:
+        if len(input.shape) <= 1:
             return input
         # 2-D tensor
         perm = [1, 0]
@@ -1313,7 +1313,7 @@ def t(input, name=None):
         helper = LayerHelper('t', **locals())
         out = helper.create_variable_for_type_inference(input.dtype)
         input_shape = helper.create_variable_for_type_inference(input.dtype)
-        if len(input.shape) == 1:
+        if len(input.shape) <= 1:
             out = input
         else:
             helper.append_op(
@@ -1557,30 +1557,29 @@ def bmm(x, y, name=None):
             #          [60., 60.]]])
 
     """
-    x_shape = x.shape
-    y_shape = y.shape
-    if not len(x_shape) == len(y_shape) == 3:
-        raise ValueError(
-            "x and y should be 3-dimensional. But received x's dimention: {}, y's dimention: {}".format(
-                x_shape, y_shape
-            )
-        )
-    if x_shape[2] != y_shape[1]:
-        raise ValueError(
-            "x's width must be equal with y's height. But received x's shape: {}, y's shape: {}".format(
-                x_shape, y_shape
-            )
-        )
-    if x_shape[0] != y_shape[0]:
-        raise ValueError(
-            "x's batch (shape[0]) must be equal with y's batch (shape[0]). But received x's shape: {}, y's shape: {}".format(
-                x_shape, y_shape
-            )
-        )
-
     if in_dygraph_mode():
         return _C_ops.bmm(x, y)
     else:
+        x_shape = x.shape
+        y_shape = y.shape
+        if not len(x_shape) == len(y_shape) == 3:
+            raise ValueError(
+                "x and y should be 3-dimensional. But received x's dimention: {}, y's dimention: {}".format(
+                    x_shape, y_shape
+                )
+            )
+        if x_shape[2] != y_shape[1]:
+            raise ValueError(
+                "x's width must be equal with y's height. But received x's shape: {}, y's shape: {}".format(
+                    x_shape, y_shape
+                )
+            )
+        if x_shape[0] != y_shape[0]:
+            raise ValueError(
+                "x's batch (shape[0]) must be equal with y's batch (shape[0]). But received x's shape: {}, y's shape: {}".format(
+                    x_shape, y_shape
+                )
+            )
         helper = LayerHelper('bmm', **locals())
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
         helper.append_op(
@@ -2378,10 +2377,6 @@ def eigvals(x, name=None):
             # [(-0.27078833542132674+0j), (0.29962280156230725+0j), (0.8824477020120244+0j)] #complex128
     """
 
-    check_variable_and_dtype(
-        x, 'dtype', ['float32', 'float64', 'complex64', 'complex128'], 'eigvals'
-    )
-
     x_shape = list(x.shape)
     if len(x_shape) < 2:
         raise ValueError(
@@ -2400,6 +2395,12 @@ def eigvals(x, name=None):
     if in_dygraph_mode():
         return _C_ops.eigvals(x)
     else:
+        check_variable_and_dtype(
+            x,
+            'dtype',
+            ['float32', 'float64', 'complex64', 'complex128'],
+            'eigvals',
+        )
         helper = LayerHelper('eigvals', **locals())
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
         helper.append_op(type='eigvals', inputs={'X': x}, outputs={'Out': out})

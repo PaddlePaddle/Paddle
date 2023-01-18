@@ -25,23 +25,20 @@ from paddle.distributed.auto_parallel.utils import (
 )
 from paddle.distributed.fleet.meta_optimizers.common import OpRole
 from paddle.distributed.passes.pass_base import PassBase, register_pass
-from paddle.fluid import unique_name
-from paddle.fluid.contrib.mixed_precision.bf16 import (
-    AutoMixedPrecisionListsBF16,
-)
-from paddle.fluid.contrib.mixed_precision.bf16.amp_utils import (
+from paddle.framework import Block, core
+from paddle.static.amp.bf16 import AutoMixedPrecisionListsBF16
+from paddle.static.amp.bf16.amp_utils import (
     _dtype_to_str,
     _is_in_fp32_varnames,
     _valid_types,
-    find_op_index,
     find_true_post_op,
 )
-from paddle.fluid.contrib.mixed_precision.fp16_utils import (
+from paddle.static.amp.fp16_utils import (
     _rename_arg,
+    find_op_index,
     find_true_prev_op,
 )
-from paddle.fluid.framework import Block
-from paddle.framework import core
+from paddle.utils import unique_name
 
 from ..auto_parallel.utils import is_backward_op, is_forward_op, is_loss_op
 
@@ -501,7 +498,7 @@ def _update_backward_cast_ops(params_grads, dist_context):
             # add new op in the python and cpp at the same time
             new_op_desc = main_block.desc.append_op()
             new_op_desc.copy_from(op.desc)
-            new_op = paddle.fluid.framework.Operator(
+            new_op = paddle.static.Operator(
                 block=main_block,
                 desc=new_op_desc,
                 type=None,

@@ -66,6 +66,12 @@ struct SimpleOpTypeSetTeller : public Teller {
     teller_set.insert("sparse_multihead_matmul");
     int8_teller_set.insert("sparse_multihead_matmul");
 #endif
+#if IS_TRT_VERSION_GE(8522)
+    teller_set.insert("flash_multihead_matmul");
+    int8_teller_set.insert("flash_multihead_matmul");
+    teller_set.insert("cross_multihead_matmul");
+    int8_teller_set.insert("cross_multihead_matmul");
+#endif
 #if IS_TRT_VERSION_GE(8200)
     teller_set.insert("round");
     int8_teller_set.insert("round");
@@ -686,8 +692,12 @@ struct SimpleOpTypeSetTeller : public Teller {
       int axis = desc.HasAttr("axis")
                      ? PADDLE_GET_CONST(int64_t, desc.GetAttr("axis"))
                      : -1;
-      bool flatten = PADDLE_GET_CONST(bool, desc.GetAttr("flatten"));
-      int dtype = PADDLE_GET_CONST(int, desc.GetAttr("dtype"));
+      bool flatten = desc.HasAttr("flatten")
+                         ? PADDLE_GET_CONST(bool, desc.GetAttr("flatten"))
+                         : false;
+      int dtype = desc.HasAttr("dtype")
+                      ? PADDLE_GET_CONST(int, desc.GetAttr("dtype"))
+                      : 3;
       if (axis == 0 || flatten || (dtype != 2 && dtype != 3)) return false;
     }
 
@@ -764,7 +774,7 @@ struct SimpleOpTypeSetTeller : public Teller {
     if (op_type == "nearest_interp") {
       std::vector<std::string> attrs{
           "interp_method", "align_corners", "scale", "out_h", "out_w"};
-      for (auto const attr : attrs) {
+      for (auto const& attr : attrs) {
         if (!desc.HasAttr(attr)) return false;
       }
       if (desc.HasAttr("data_layout")) {
@@ -810,7 +820,7 @@ struct SimpleOpTypeSetTeller : public Teller {
                                      "scale",
                                      "out_h",
                                      "out_w"};
-      for (auto const attr : attrs) {
+      for (auto const& attr : attrs) {
         if (!desc.HasAttr(attr)) return false;
       }
       auto data_layout = phi::StringToDataLayout(
@@ -849,7 +859,7 @@ struct SimpleOpTypeSetTeller : public Teller {
                                      "scale",
                                      "out_h",
                                      "out_w"};
-      for (auto const attr : attrs) {
+      for (auto const& attr : attrs) {
         if (!desc.HasAttr(attr)) {
           VLOG(3) << "The op_type " << op_type << " doesn't have the attr "
                   << attr << " and return false";
@@ -1350,8 +1360,9 @@ struct SimpleOpTypeSetTeller : public Teller {
         op_type == "logical_or" || op_type == "logical_xor" ||
         op_type == "logical_and" || op_type == "less_equal") {
 #if IS_TRT_VERSION_GE(8400)
+      // TRT does not support kEQUAL/kGREATER/kLESS work with implicit batch
       if (!with_dynamic_shape) {
-        VLOG(3) << "these ops do not support static shape yet";
+        VLOG(3) << "Ops(" << op_type << ") do not support static shape yet.";
         return false;
       }
       if (op_type == "logical_or" || op_type == "logical_xor" ||
@@ -1746,7 +1757,7 @@ struct SimpleOpTypeSetTeller : public Teller {
                                      "spatial_scale",
                                      "sampling_ratio",
                                      "aligned"};
-      for (auto const attr : attrs) {
+      for (auto const& attr : attrs) {
         if (!desc.HasAttr(attr)) return false;
       }
 
@@ -2088,7 +2099,8 @@ struct SimpleOpTypeSetTeller : public Teller {
     }
 
     if (op_type == "reduce_sum" || op_type == "reduce_mean" ||
-        op_type == "reduce_max") {
+        op_type == "reduce_max" || op_type == "reduce_min" ||
+        op_type == "reduce_prod") {
       if (!desc.HasAttr("dim", /*with_attr_var=*/false)) {
         VLOG(3) << "Skip to convert into TRT while found Attribute('dim') is "
                    "Variable type in "
@@ -2272,24 +2284,15 @@ struct SimpleOpTypeSetTeller : public Teller {
       }
       int in_dtype = PADDLE_GET_CONST(int, desc.GetAttr("in_dtype"));
       int out_dtype = PADDLE_GET_CONST(int, desc.GetAttr("out_dtype"));
-      if ((in_dtype == 4 || in_dtype == 5) && out_dtype == 4) {
-        VLOG(3) << "unsupport data type conversion";
-        return false;
-      }
-#if IS_TRT_VERSION_GE(8400)
+
       if (in_dtype == 0 || out_dtype == 0) {
+#if IS_TRT_VERSION_GE(8400)
         if (with_dynamic_shape) {
           VLOG(3) << "the cast op supports inputs and outputs of BOOL by "
                      "trt8.4 above ";
           return true;
         }
-      }
 #endif
-      if (!((in_dtype == 5 || in_dtype == 4 || in_dtype == 3 ||
-             in_dtype == 2) &&
-            (out_dtype == 5 || out_dtype == 4 || out_dtype == 2))) {
-        VLOG(3) << "only valid conversions are: "
-                   "(kFLOAT | kHALF | kINT32) -> (kFLOAT | kHALF | kINT32)";
         return false;
       }
     }
@@ -2334,9 +2337,15 @@ struct SimpleOpTypeSetTeller : public Teller {
 
     if (op_type == "equal" || op_type == "not_equal") {
 #if !IS_TRT_VERSION_GE(8000)
-      VLOG(3) << "compare is not supported when TensorRT < 8.0";
+      VLOG(3) << "equal is not supported when TensorRT < 8.0";
       return false;
 #else
+      // TRT does not support kEQUAL/kGREATER/kLESS work with implicit batch
+      if (!with_dynamic_shape) {
+        VLOG(3) << "the equal does not support "
+                   "static shape yet";
+        return false;
+      }
       int axis = PADDLE_GET_CONST(int, desc.GetAttr("axis"));
       if (axis == 0) {
         return false;
@@ -2385,6 +2394,22 @@ struct SimpleOpTypeSetTeller : public Teller {
     if (op_type == "skip_merge_layernorm") {
       if (!with_dynamic_shape) {
         VLOG(3) << "The merge_layernorm op does not support "
+                   "static shape yet";
+        return false;
+      }
+    }
+
+    if (op_type == "skip_groupnorm_act") {
+      if (!with_dynamic_shape) {
+        VLOG(3) << "The skip_groupnorm_act op does not support "
+                   "static shape yet";
+        return false;
+      }
+    }
+
+    if (op_type == "preln_groupnorm_act") {
+      if (!with_dynamic_shape) {
+        VLOG(3) << "The preln_groupnorm_act op does not support "
                    "static shape yet";
         return false;
       }
@@ -2507,6 +2532,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "flatten",
       "gather",
       "gather_nd",
+      "group_norm",
       "yolo_box",
       "yolo_box_head",
       "arg_max",
@@ -2561,7 +2587,9 @@ struct SimpleOpTypeSetTeller : public Teller {
       "merge_layernorm",
       "skip_merge_layernorm",
       "lookup_table_v2",
-      "expand_v2"};
+      "expand_v2",
+      "skip_groupnorm_act",
+      "preln_groupnorm_act"};
 
   std::unordered_set<std::string> teller_set{
       "mul",
@@ -2709,7 +2737,9 @@ struct SimpleOpTypeSetTeller : public Teller {
       "skip_merge_layernorm",
       "lookup_table",
       "lookup_table_v2",
-      "expand_v2"};
+      "expand_v2",
+      "skip_groupnorm_act",
+      "preln_groupnorm_act"};
 };
 
 struct GenericPluginTeller : public Teller {
