@@ -25,12 +25,12 @@ from ..fluid.framework import Parameter, Variable
 from ..fluid.layer_helper import LayerHelper
 from ..nn.clip import GradientClipBase
 from .lr import LRScheduler
-from .optimizer import Optimizer
+from .multi_tensor_base import MultiTensorBase
 
 __all__ = []
 
 
-class AdamW(Optimizer):
+class AdamW(MultiTensorBase):
     r"""
     The AdamW optimizer is implemented based on the AdamW Optimization
     in paper `DECOUPLED WEIGHT DECAY REGULARIZATION <https://arxiv.org/pdf/1711.05101.pdf>`_.
@@ -88,6 +88,8 @@ class AdamW(Optimizer):
             different semantics with the original Adam algorithm and may lead to different result.
             The default value is False.
         multi_precision (bool, optional): Whether to use multi-precision during weight updating. Default is false.
+        chunk_size(int, optional) ChunkSize for blocks computing. Default is 32*2048.
+        use_multi_tensor (bool, optional): Whether to use multi-tensor strategy to update all parameters at once . Default is false.
         name (str, optional): Normally there is no need for user to set this property.
             For more information, please refer to :ref:`api_guide_Name`.
             The default value is None.
@@ -160,6 +162,8 @@ class AdamW(Optimizer):
         grad_clip=None,
         lazy_mode=False,
         multi_precision=False,
+        chunk_size=32 * 2048,
+        use_multi_tensor=False,
         name=None,
     ):
         assert learning_rate is not None
@@ -254,6 +258,9 @@ class AdamW(Optimizer):
         self._apply_decay_param_fun = apply_decay_param_fun
         self._weight_decay = weight_decay
         self._grad_clip = grad_clip
+        self._chunk_size = chunk_size
+        self._use_multi_tensor = use_multi_tensor
+        self._use_adamw = True
         self._lr_ratio = lr_ratio
         self._beta1 = beta1
         self._beta2 = beta2
@@ -261,6 +268,9 @@ class AdamW(Optimizer):
         self._lazy_mode = lazy_mode
         self._multi_precision = multi_precision
         self._master_weights = {}
+        self._lr_first = []
+        self._use_multi_tensor_adam = True
+        self.test_lr_and_betapow = True
 
         self._default_dict = {
             'weight_decay': weight_decay,
@@ -278,7 +288,15 @@ class AdamW(Optimizer):
         else:
             self._param_groups = self._parameter_list
 
-        self._use_multi_tensor = None
+        if self._use_multi_tensor:
+            self._param_dict = self._create_multi_tensor_dict()
+            self._moment1_dict = self._create_multi_tensor_dict()
+            self._moment2_dict = self._create_multi_tensor_dict()
+            self._beta1_pow_acc_dict = self._create_multi_tensor_dict()
+            self._beta2_pow_acc_dict = self._create_multi_tensor_dict()
+            self._master_weight_dict = self._create_multi_tensor_dict()
+            self._master_weight_dict['FP32_LODTensor'] = None
+
         self.regularization = None
         self._auxiliary_vars = {}
 
@@ -631,11 +649,14 @@ class AdamW(Optimizer):
                     params_grads.append((param, grad_var))
 
             optimize_ops = self._apply_optimize(
-                loss=None, startup_program=None, params_grads=params_grads
+                loss=None,
+                startup_program=None,
+                params_grads=params_grads,
+                param_group_idx=0,
             )
         else:
             # optimize parameters in groups
-            for param_group in self._param_groups:
+            for idx, param_group in enumerate(self._param_groups):
                 params_grads = defaultdict(lambda: list())
                 for param in param_group['params']:
                     if param.stop_gradient:
@@ -665,7 +686,10 @@ class AdamW(Optimizer):
                     {k: v for k, v in param_group.items() if k != 'params'}
                 )
                 self._apply_optimize(
-                    loss=None, startup_program=None, params_grads=params_grads
+                    loss=None,
+                    startup_program=None,
+                    params_grads=params_grads,
+                    param_group_idx=idx,
                 )
 
     def _update_param_group(self, parameters):
