@@ -12,25 +12,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/bitwise_kernel.h"
+#pragma once
 
-#include "paddle/phi/backends/xpu/enforce_xpu.h"
-#include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/common/scalar.h"
+#include "paddle/phi/core/dense_tensor.h"
 
 namespace phi {
 
 template <typename T, typename Context>
-void BitwiseNotKernel(const Context& ctx,
+void CumsumGradKernel(const Context& dev_ctx,
                       const DenseTensor& x,
-                      DenseTensor* out) {
-  using XPUDataType = typename XPUTypeTrait<T>::Type;
-  ctx.template Alloc<T>(out);
-  int r = xpu::logical_not(ctx.x_context(),
-                           reinterpret_cast<const XPUDataType*>(x.data<T>()),
-                           reinterpret_cast<XPUDataType*>(out->data<T>()),
-                           x.numel());
-  PADDLE_ENFORCE_XDNN_SUCCESS(r, "bitwise not");
-}
-}  // namespace phi
+                      const DenseTensor& out_grad,
+                      const Scalar& axis,
+                      bool flatten,
+                      bool exclusive,
+                      bool reverse,
+                      DenseTensor* x_grad);
 
-PD_REGISTER_KERNEL(bitwise_not, XPU, ALL_LAYOUT, phi::BitwiseNotKernel, bool) {}
+}  // namespace phi
