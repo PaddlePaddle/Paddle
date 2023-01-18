@@ -2180,7 +2180,6 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(res[0].shape, ())
         self.assertEqual(res[1].shape, ())
         self.assertEqual(res[2].shape, ())
-        self.assertEqual(res[3].shape, ())
 
     @prog_scope()
     def test_while_loop_backward(self):
@@ -2198,7 +2197,7 @@ class TestSundryAPIStatic(unittest.TestCase):
             i.stop_gradient = False
             eleven = paddle.full(shape=[], value=11, dtype='float32')
             one = paddle.full(shape=[], value=1, dtype='float32')
-            x = fluid.data(name='x', shape=[], dtype='float32')
+            x = paddle.static.data(name='x', shape=[], dtype='float32')
             x.stop_gradient = False
 
             out_i, out_x = paddle.static.nn.while_loop(cond, body, [i, x])
@@ -2219,6 +2218,8 @@ class TestSundryAPIStatic(unittest.TestCase):
             feed={'i': feed_i, 'x': feed_x},
             fetch_list=[out_x.name, i.grad_name],
         )
+        self.assertEqual(res[0].shape, ())
+        self.assertEqual(res[1].shape, ())
 
 
 # Use to test API whose zero-dim input tensors don't have grad and not need to test backward in OpTest.
