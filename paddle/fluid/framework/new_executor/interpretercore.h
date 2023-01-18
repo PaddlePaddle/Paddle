@@ -97,6 +97,10 @@ class InterpreterCore {
       const std::vector<std::vector<size_t>>& input_var2op, size_t var_index);
   void SetFeedVarsInplaceSkip(const std::vector<std::string>& feed_names);
 
+  // cuda graph
+  void CheckCUDAGraphBeforeRun(const std::vector<std::string>& feed_names);
+  void PrepareForCUDAGraphCapture();
+
   // execution
   void RunImpl();
   void ExecuteInstructionList(const std::vector<Instruction>& vec_instr);

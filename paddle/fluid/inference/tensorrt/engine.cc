@@ -148,7 +148,9 @@ void TensorRTEngine::FreezeNetwork() {
                           platform::errors::InvalidArgument(
                               "Call InitNetwork first to initialize network."));
   // build engine.
-  infer_builder_->setMaxBatchSize(max_batch_);
+  if (!with_dynamic_shape_) {
+    infer_builder_->setMaxBatchSize(max_batch_);
+  }
 #if IS_TRT_VERSION_GE(8300)
   infer_builder_config_->setMemoryPoolLimit(
       nvinfer1::MemoryPoolType::kWORKSPACE, max_workspace_);
