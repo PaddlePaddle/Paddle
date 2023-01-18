@@ -96,6 +96,9 @@ class CinnLaunchContext {
     return skip_eager_vars_;
   }
 
+  // Redirect the name of a Paddle variable to the orignal if it was inplaced
+  std::string RedirectVarName(const std::string& var_name);
+
   // Return internal variable names list
   const std::unordered_set<std::string>& GetInternalVarNames() const {
     return internal_var_names_;
@@ -151,11 +154,10 @@ class CinnLaunchContext {
   std::unordered_map<std::string, std::string> cinn2paddle_varmap_;
   // a list of internal variable names in Paddle
   std::unordered_set<std::string> internal_var_names_;
+  // a list of inplace variable names of the compiled subgraph
+  std::unordered_set<std::string> inplace_var_names_;
   // the names of the cinn arguments used in compiled executable program
   std::unordered_set<std::string> cinn_argument_names_;
-  // TODO(CtfGo): remove this list after fixing batch_norm bug
-  // due to duplicate association in the same variable.
-  std::vector<std::string> initialized_beforehand_vars_;
   // the variable scope compiled from cinn
   const std::shared_ptr<CinnScope> cinn_scope_;
 
