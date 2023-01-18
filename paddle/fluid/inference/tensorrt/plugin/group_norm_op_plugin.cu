@@ -457,7 +457,7 @@ bool GroupNormPluginDynamic::supportsFormatCombination(
   if (pos == 0) {
     if (with_fp16_) {
       return ((in.type == nvinfer1::DataType::kHALF) &&
-              (in.format == nvinfer1::PluginFormat::kLINEAR ||
+              ((!with_silu_ && in.format == nvinfer1::PluginFormat::kLINEAR) ||
                in.format == nvinfer1::PluginFormat::kHWC8));
     } else {
       return (in.type == nvinfer1::DataType::kFLOAT) &&
@@ -624,7 +624,7 @@ int GroupNormPluginDynamic::enqueue(
         cPerBlock = 8;
       }
 
-      params_.withSwish = false;
+      params_.withSwish = with_silu_;
       params_.dst = static_cast<half *>(outputs[0]);
       params_.srcX = static_cast<half const *>(inputs[0]);
       params_.gamma = scale_gpu_;
