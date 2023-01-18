@@ -123,6 +123,24 @@ struct SimpleOpTypeSetTeller : public Teller {
         return false;
       }
 #endif
+#if !IS_TRT_VERSION_GE(8500)
+      std::unordered_set<std::string> unary_op_list = {
+          "relu", "exp",   "log",   "sqrt", "atanh",       "ceil",
+          "abs",  "sin",   "cos",   "tan",  "tanh",        "sinh",
+          "cosh", "asin",  "acos",  "atan", "asinh",       "acosh",
+          "erf",  "floor", "round", "sign", "logical_not", "reciprocal",
+      };
+      if (act_op_list.find(op_type) != act_op_list.end()) {
+        auto type = x_var_desc->GetDataType();
+        if ((type ==
+             paddle::framework::proto::VarType_Type::VarType_Type_INT32) ||
+            (type ==
+             paddle::framework::proto::VarType_Type::VarType_Type_INT8)) {
+          VLOG(3) << op_type << " op does not support integer inpput.";
+          return false;
+        }
+      }
+#endif
     }
 
     // In static shape in Paddle-TRT, we can't allow that one op has a
