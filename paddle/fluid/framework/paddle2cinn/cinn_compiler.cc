@@ -239,12 +239,18 @@ void CinnCompiler::CheckCompiledValid(
     const std::map<std::string, const phi::DenseTensor *> &input_tensors,
     const CinnCompiledObject &compiled_obj) const {
   const auto &input_var_names = graph.Get<std::vector<std::string>>(kInputVars);
+  const auto &inplace_var_names =
+      graph.Get<std::unordered_set<std::string>>(kInplaceVarNames);
   const auto &output_var_names =
       graph.Get<std::vector<std::string>>(kOutputVars);
   auto *launch_context = compiled_obj.launch_context.get();
   // 1. check all of the output variables will be assigned by compiled program
   for (auto &&var_name : output_var_names) {
-    PADDLE_ENFORCE_EQ(launch_context->IsVariableUsed(var_name),
+    std::string name_key = var_name;
+    if (inplace_var_names.count(var_name)) {
+      name_key += "@InplaceOut";
+    }
+    PADDLE_ENFORCE_EQ(launch_context->IsVariableUsed(name_key),
                       true,
                       platform::errors::PreconditionNotMet(
                           "Variable(%s) not applied in CINN", var_name));
