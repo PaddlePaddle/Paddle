@@ -917,6 +917,11 @@ class TestSundryAPI(unittest.TestCase):
         self.assertEqual(out.grad.shape, [1])
         self.assertEqual(x.grad.shape, [])
 
+    def test_histogram(self):
+        x = paddle.rand([])
+        out = paddle.histogram(x, bins=5, min=1, max=5)
+        self.assertEqual(out.shape, [5])
+
     def test_scale(self):
         x = paddle.rand([])
         x.stop_gradient = False
@@ -953,6 +958,34 @@ class TestSundryAPI(unittest.TestCase):
 
         np.testing.assert_array_equal(out3_1.numpy(), out3_2.numpy())
         np.testing.assert_array_equal(out3_2.numpy(), np.asarray(1))
+
+    def test_cumsum(self):
+        x1 = paddle.rand([])
+        x1.stop_gradient = False
+
+        out1 = paddle.cumsum(x1)
+        out2 = paddle.cumsum(x1, axis=0)
+        out3 = paddle.cumsum(x1, axis=-1)
+
+        out1.retain_grads()
+        out2.retain_grads()
+        out3.retain_grads()
+
+        out1.backward()
+        out2.backward()
+        out3.backward()
+
+        self.assertEqual(x1.grad.shape, [])
+        self.assertTrue(x1.grad.numpy() == 3)
+        self.assertEqual(out1.shape, [1])
+        self.assertEqual(out1.grad.shape, [1])
+        self.assertTrue(out1.grad.numpy() == 1)
+        self.assertEqual(out2.shape, [])
+        self.assertEqual(out2.grad.shape, [])
+        self.assertTrue(out2.grad.numpy() == 1)
+        self.assertEqual(out3.shape, [])
+        self.assertEqual(out3.grad.shape, [])
+        self.assertTrue(out3.grad.numpy() == 1)
 
     def test_add_n(self):
         x1 = paddle.rand([])
@@ -1329,6 +1362,17 @@ class TestSundryAPI(unittest.TestCase):
         self.assertEqual(out2.shape, [1])
         self.assertEqual(x1.grad.shape, [])
 
+    def test_t(self):
+        x = paddle.full([], 2.0)
+        x.stop_gradient = False
+        x.retain_grads()
+        out = paddle.t(x)
+        out.retain_grads()
+        out.backward()
+        self.assertEqual(out.shape, [])
+        self.assertEqual(out.grad.shape, [])
+        self.assertEqual(x.grad.shape, [])
+
 
 class TestSundryAPIStatic(unittest.TestCase):
     def setUp(self):
@@ -1648,6 +1692,16 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(res[2].shape, (1,))
 
     @prog_scope()
+    def test_histogram(self):
+        x = paddle.full([], 1, 'float32')
+        out = paddle.histogram(x, bins=5, min=1, max=5)
+
+        prog = paddle.static.default_main_program()
+        res = self.exe.run(prog, feed={}, fetch_list=[out])
+
+        self.assertEqual(res[0].shape, (5,))
+
+    @prog_scope()
     def test_scale(self):
         x = paddle.rand([])
         x.stop_gradient = False
@@ -1691,6 +1745,45 @@ class TestSundryAPIStatic(unittest.TestCase):
         np.testing.assert_array_equal(out3_2, np.asarray(1))
 
     @prog_scope()
+    def test_cumsum(self):
+        x1 = paddle.rand([])
+        x1.stop_gradient = False
+
+        out1 = paddle.cumsum(x1)
+        out2 = paddle.cumsum(x1, axis=0)
+        out3 = paddle.cumsum(x1, axis=-1)
+
+        paddle.static.append_backward(out1.sum())
+        paddle.static.append_backward(out2.sum())
+        paddle.static.append_backward(out3.sum())
+
+        prog = paddle.static.default_main_program()
+        res = self.exe.run(
+            prog,
+            fetch_list=[
+                out1,
+                out2,
+                out3,
+                x1.grad_name,
+                out1.grad_name,
+                out2.grad_name,
+                out3.grad_name,
+            ],
+        )
+        self.assertEqual(res[0].shape, (1,))
+        self.assertEqual(res[1].shape, ())
+        self.assertEqual(res[2].shape, ())
+        self.assertEqual(res[3].shape, ())
+        self.assertEqual(res[3], 1)
+        self.assertEqual(res[4].shape, (1,))
+        self.assertEqual(res[4], 1)
+        self.assertEqual(res[5].shape, ())
+        self.assertEqual(res[5], 1)
+        self.assertEqual(res[6].shape, ())
+        self.assertEqual(res[6], 1)
+        self.assertEqual(out2.shape, ())
+        self.assertEqual(out3.shape, ())
+
     def test_add_n(self):
         x1 = paddle.rand([])
         x1.stop_gradient = False
@@ -2042,6 +2135,21 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(res[1].shape, (1,))
         self.assertEqual(res[2].shape, ())
         self.assertEqual(res[3].shape, ())
+
+    @prog_scope()
+    def test_t(self):
+        x = paddle.full([], 2.0)
+        x.stop_gradient = False
+        out = paddle.t(x)
+        paddle.static.append_backward(out.sum())
+        prog = paddle.static.default_main_program()
+        res = self.exe.run(
+            prog, feed={}, fetch_list=[out, out.grad_name, x.grad_name]
+        )
+
+        self.assertEqual(res[0].shape, ())
+        self.assertEqual(res[1].shape, ())
+        self.assertEqual(res[2].shape, ())
 
 
 # Use to test API whose zero-dim input tensors don't have grad and not need to test backward in OpTest.
