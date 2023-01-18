@@ -54,10 +54,10 @@ class CustomFMHAXPUKernel : public framework::OpKernel<T> {
     const int* cu_seq_len_ptr =
         reinterpret_cast<const int*>(cu_seq_len->data<int>());
     printf("====> host_seq_len_ptr: %p\n", host_seq_len_ptr);
-    // printf("====> cu_seq_len_ptr: %p\n", cu_seq_len_ptr);
+    printf("====> cu_seq_len_ptr: %p\n", cu_seq_len_ptr);
 
     int tmp_size = host_seq_len->numel();
-    int* tmp = reinterpret_cast<int*>(tmp_size * sizeof(int));
+    int* tmp = reinterpret_cast<int*>(malloc(tmp_size * sizeof(int)));
     xpu_memcpy(tmp, cu_seq_len_ptr, tmp_size * sizeof(int), XPU_DEVICE_TO_HOST);
     // printf("host_seq_len len: %d\n", tmp_size);
     // for (int i = 0; i < tmp_size; i++) {
@@ -129,8 +129,7 @@ class CustomFMHAGradXPUKernel : public framework::OpKernel<T> {
         ctx.Input<phi::DenseTensor>("DropoutMask");
     const phi::DenseTensor* d_ctx_out = ctx.Input<phi::DenseTensor>("DCtxOut");
     // output
-    phi::DenseTensor* d_qkv = ctx.Output<phi::DenseTensor>("DKQV");
-
+    phi::DenseTensor* d_qkv = ctx.Output<phi::DenseTensor>("DQKV");
     auto& dev_ctx = ctx.template device_context<platform::XPUDeviceContext>();
     xpu::Context* xpu_ctx = dev_ctx.x_context();
     xpu::ctx_guard RAII_GUARD(xpu_ctx);
@@ -154,8 +153,8 @@ class CustomFMHAGradXPUKernel : public framework::OpKernel<T> {
     // printf("====> grad cu_seq_len_ptr: %p\n", cu_seq_len_ptr);
     int tmp_size = host_seq_len->numel();
     int* tmp = reinterpret_cast<int*>(malloc(tmp_size * sizeof(int)));
-    xpu_memcpy(tmp, cu_seq_len_ptr, tmp_size * sizeof(int), XPU_DEVICE_TO_HOST);
-    // for (int i = 0; i < tmp_size; i++) {
+    // xpu_memcpy(tmp, cu_seq_len_ptr, tmp_size * sizeof(int),
+    // XPU_DEVICE_TO_HOST); for (int i = 0; i < tmp_size; i++) {
     //     printf("seq len: %d\n", tmp[i]);
     // }
 
