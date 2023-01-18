@@ -20,10 +20,9 @@ import numpy as np
 
 import paddle
 from paddle import _C_ops, _legacy_C_ops
-from paddle.fluid import core, layers
 from paddle.common_ops_import import dygraph_only
+from paddle.fluid import core
 from paddle.fluid.dygraph import to_variable
-from paddle.framework import core
 from paddle.nn import clip
 
 
