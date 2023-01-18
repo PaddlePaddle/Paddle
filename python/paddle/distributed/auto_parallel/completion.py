@@ -1850,11 +1850,11 @@ class Completer:
                             op_dist_attr.set_output_dims_mapping(
                                 input_var.name, ref_dims_mapping
                             )
-
-                        input_var_attr.process_mesh = ref_process_mesh
-                        self._dist_context.set_tensor_dist_attr_for_program(
-                            input_var, input_var_attr
-                        )
+                        if "SkipUpdate" not in input_name:
+                            input_var_attr.process_mesh = ref_process_mesh
+                            self._dist_context.set_tensor_dist_attr_for_program(
+                                input_var, input_var_attr
+                            )
 
                     self._dist_context.set_op_dist_attr_for_program(
                         op, op_dist_attr
