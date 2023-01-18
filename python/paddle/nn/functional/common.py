@@ -101,10 +101,6 @@ def unfold(x, kernel_sizes, strides=1, paddings=0, dilations=1, name=None):
             y = F.unfold(x, [3, 3], 1, 1, 1)
     """
 
-    helper = LayerHelper("unfold", **locals())
-
-    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'unfold')
-
     assert len(x.shape) == 4, "input should be the format of [N, C, H, W]"
 
     if isinstance(kernel_sizes, int):
@@ -148,6 +144,9 @@ def unfold(x, kernel_sizes, strides=1, paddings=0, dilations=1, name=None):
     if in_dygraph_mode():
         return _C_ops.unfold(x, kernel_sizes, strides, paddings, dilations)
 
+    helper = LayerHelper("unfold", **locals())
+
+    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'unfold')
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(
         type="unfold",
@@ -2236,11 +2235,6 @@ def fold(
             # y.shape = [2,3,4,5]
 
     """
-
-    helper = LayerHelper("fold", **locals())
-
-    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'fold')
-
     assert len(x.shape) == 3, "input should be the format of [N, C, L]"
 
     def _is_list_or_turple_(data):
@@ -2310,6 +2304,9 @@ def fold(
             dilations,
         )
     else:
+        helper = LayerHelper("fold", **locals())
+
+        check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'fold')
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
         helper.append_op(
             type="fold",

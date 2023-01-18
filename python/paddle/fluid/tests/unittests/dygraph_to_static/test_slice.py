@@ -23,7 +23,6 @@ from paddle.static import InputSpec
 
 SEED = 2020
 np.random.seed(SEED)
-prog_trans = paddle.jit.ProgramTranslator()
 
 
 @paddle.jit.to_static
@@ -130,7 +129,7 @@ class TestSliceWithoutControlFlow(unittest.TestCase):
         return self._run(to_static=False)
 
     def _run(self, to_static):
-        prog_trans.enable(to_static)
+        paddle.jit.enable_to_static(to_static)
         res = self.dygraph_func(self.input)
         return res.numpy()
 
@@ -177,7 +176,7 @@ class TestSetValueWithLayerAndSave(unittest.TestCase):
         self.temp_dir.cleanup()
 
     def test_set_value_with_save(self):
-        prog_trans.enable(True)
+        paddle.jit.enable_to_static(True)
         model = LayerWithSetValue(input_dim=10, hidden=1)
         x = paddle.full(shape=[5, 10], fill_value=5.0, dtype="float32")
         paddle.jit.save(

@@ -115,18 +115,25 @@ void KernelFactory::AddToLowPrecisionKernelList(
     if (op_name.find("_grad") != std::string::npos) {
       return;  // only record forward api
     }
-    bool is_low_precision =
-        (kernel_key_type == paddle::experimental::DataType::FLOAT16 ||
-         kernel_key_type == paddle::experimental::DataType::BFLOAT16);
-    bool need_record =
-        FLAGS_low_precision_op_list == 1 ? is_low_precision : true;
-    if (need_record) {
-      low_precision_kernels_[op_name] += 1;
+
+    if (low_precision_kernels_.find(op_name) == low_precision_kernels_.end()) {
+      auto count = OpCount();
+      low_precision_kernels_[op_name] = count;
+    }
+    if (kernel_key_type == paddle::experimental::DataType::FLOAT16) {
+      low_precision_kernels_[op_name].fp16_called_ += 1;
+    } else if (kernel_key_type == paddle::experimental::DataType::BFLOAT16) {
+      low_precision_kernels_[op_name].bf16_called_ += 1;
+    } else if (kernel_key_type == paddle::experimental::DataType::FLOAT32) {
+      low_precision_kernels_[op_name].fp32_called_ += 1;
+    } else {
+      low_precision_kernels_[op_name].other_called_ += 1;
     }
   }
 }
 
-std::map<const std::string, int> KernelFactory::GetLowPrecisionKernelList() {
+std::map<const std::string, OpCount>
+KernelFactory::GetLowPrecisionKernelList() {
   return low_precision_kernels_;
 }
 

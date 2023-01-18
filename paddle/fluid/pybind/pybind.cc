@@ -66,6 +66,7 @@ limitations under the License. */
 #include "paddle/fluid/imperative/amp_auto_cast.h"
 #include "paddle/fluid/imperative/layer.h"
 #include "paddle/fluid/memory/allocation/allocator_strategy.h"
+#include "paddle/fluid/prim/utils/utils.h"
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/memory/allocation/cuda_ipc_allocator.h"
 #endif
@@ -280,6 +281,20 @@ bool IsCompiledWithNPU() {
   return false;
 #else
   return true;
+#endif
+}
+
+bool IsCompiledWithCustomDevice(std::string device_type) {
+#ifndef PADDLE_WITH_CUSTOM_DEVICE
+  return false;
+#else
+  std::vector<std::string> device_types;
+  device_types = phi::DeviceManager::GetAllCustomDeviceTypes();
+  if (std::count(device_types.begin(), device_types.end(), device_type)) {
+    return true;
+  } else {
+    return false;
+  }
 #endif
 }
 
@@ -645,6 +660,8 @@ PYBIND11_MODULE(libpaddle, m) {
         return oss.str();
       });
 
+  m.def("set_prim_enabled", &paddle::prim::PrimCommonUtils::SetPrimEnabled);
+  m.def("is_prim_enabled", &paddle::prim::PrimCommonUtils::IsPrimEnabled);
   m.def("set_num_threads", &platform::SetNumThreads);
 
   m.def("disable_signal_handler", &DisableSignalHandler);
@@ -953,7 +970,7 @@ All parameter, weight, gradient are variables in Paddle.
              }
            })
       .def("set_string_list",
-           [](Variable &self, Strings str_list) {
+           [](Variable &self, std::vector<std::string> str_list) {
              *self.GetMutable<Strings>() = str_list;
            })
       .def("set_vocab",
@@ -1221,11 +1238,56 @@ All parameter, weight, gradient are variables in Paddle.
            const std::unordered_set<std::string> &no_grad_set,
            const std::vector<BlockDesc *> &grad_sub_block) {
           std::unordered_map<std::string, std::string> grad_to_var;
-          std::vector<std::unique_ptr<OpDesc>> grad_op_descs =
-              framework::OpInfoMap::Instance()
-                  .Get(op_desc.Type())
-                  .GradOpMaker()(
-                      op_desc, no_grad_set, &grad_to_var, grad_sub_block);
+
+          auto op_info = framework::OpInfoMap::Instance().Get(op_desc.Type());
+          auto grad_op_maker = op_info.GradOpMaker();
+          auto grad_comp_op_maker = op_info.GradCompOpMaker();
+
+          if ((grad_op_maker == nullptr) && (grad_comp_op_maker == nullptr)) {
+            // Normally, proto_ should not be null, except some special
+            // operators, such as LeaklyReluDoubleGrad op.
+            std::string type =
+                op_info.proto_ ? op_info.proto_->type() : "unknown";
+            PADDLE_THROW(platform::errors::NotFound(
+                "Neither operator %s's GradOpMaker nor GradCompOpMaker has "
+                "been registered.\nPlease check whether (%s) operator has "
+                "gradient operator.\nIf not, please set stop_gradient to be "
+                "True for its input and output variables using "
+                "var.stop_gradient=True.",
+                type.c_str(),
+                type.c_str()));
+          }
+
+          // In PrimEnabled mode, the priority of GradCompOpMaker is greater
+          // than GradCompMaker as we need split first-order grad operator into
+          // primitive operators for compiler. In PrimDisabled mode, the
+          // priority of GradCompOpMaker is less than GradCompMaker for better
+          // performance.
+          std::vector<std::unique_ptr<OpDesc>> grad_op_descs;
+          if (paddle::prim::PrimCommonUtils::IsPrimEnabled()) {
+            if (grad_comp_op_maker != nullptr) {
+              grad_op_descs = grad_comp_op_maker(op_desc,
+                                                 no_grad_set,
+                                                 &grad_to_var,
+                                                 op_desc.Block(),
+                                                 grad_sub_block);
+            } else {
+              grad_op_descs = grad_op_maker(
+                  op_desc, no_grad_set, &grad_to_var, grad_sub_block);
+            }
+          } else {
+            if (grad_op_maker != nullptr) {
+              grad_op_descs = grad_op_maker(
+                  op_desc, no_grad_set, &grad_to_var, grad_sub_block);
+            } else {
+              grad_op_descs = grad_comp_op_maker(op_desc,
+                                                 no_grad_set,
+                                                 &grad_to_var,
+                                                 op_desc.Block(),
+                                                 grad_sub_block);
+            }
+          }
+
           std::vector<OpDesc *> grad_op_desc_ptrs(grad_op_descs.size());
           std::transform(
               grad_op_descs.begin(),
@@ -1511,6 +1573,25 @@ All parameter, weight, gradient are variables in Paddle.
 #endif
     return devices;
   });
+  m.def("get_custom_device_count", [](const std::string &device_type) {
+    size_t device_count = 0;
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+    // TODO(duanyanhui): Optimize DeviceManager::GetDeviceCount to support
+    // returning default device when only one device is registered in
+    // DeviceManager.
+    device_count = phi::DeviceManager::GetDeviceCount(device_type);
+#else
+          VLOG(1) << string::Sprintf(
+              "Cannot use get_custom_device_count because you have "
+              "installed"
+              "CPU/GPU version PaddlePaddle.\n"
+              "If you want to use get_custom_device_count, please try to "
+              "install"
+              "CustomDevice version "
+              "PaddlePaddle by: pip install paddlepaddle\n");
+#endif
+    return device_count;
+  });
 
   py::class_<OperatorBase>(m, "Operator")
       .def_static("create",
@@ -1758,6 +1839,7 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("is_compiled_with_ascend", IsCompiledWithAscend);
   m.def("is_compiled_with_rocm", IsCompiledWithROCM);
   m.def("is_compiled_with_npu", IsCompiledWithNPU);
+  m.def("is_compiled_with_custom_device", IsCompiledWithCustomDevice);
   m.def("is_compiled_with_ipu", IsCompiledWithIPU);
   m.def("is_compiled_with_xpu", IsCompiledWithXPU);
   m.def("is_compiled_with_mkldnn", IsCompiledWithMKLDNN);
@@ -1844,7 +1926,7 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("set_feed_variable",
         static_cast<void (*)(  // NOLINT
             Scope *,
-            const Strings &,
+            const std::vector<std::string> &,
             const std::string &,
             size_t)>(&framework::SetFeedVariable));
   m.def("get_fetch_variable",
@@ -1871,6 +1953,7 @@ All parameter, weight, gradient are variables in Paddle.
   BindGlobalValueGetterSetter(&m);
   BindFleetExecutor(&m);
   BindTCPStore(&m);
+  BindCommContextManager(&m);
   BindAutoParallel(&m);
   BindJitProperty(&m);
 
@@ -2546,7 +2629,17 @@ All parameter, weight, gradient are variables in Paddle.
         [] { return phi::autotune::AutoTuneStatus::Instance().Update(); });
 
   m.def("get_low_precision_op_list", [] {
-    return phi::KernelFactory::Instance().GetLowPrecisionKernelList();
+    py::dict op_list;
+    auto list_op = phi::KernelFactory::Instance().GetLowPrecisionKernelList();
+    for (auto iter = list_op.begin(); iter != list_op.end(); iter++) {
+      auto op_name = (iter->first).c_str();
+      auto counts = iter->second;
+      op_list[op_name] = std::to_string(counts.fp16_called_) + "," +
+                         std::to_string(counts.bf16_called_) + "," +
+                         std::to_string(counts.fp32_called_) + "," +
+                         std::to_string(counts.other_called_);
+    }
+    return op_list;
   });
 
   m.def("autotune_status", [] {

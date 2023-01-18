@@ -72,10 +72,11 @@ bool ProcessGroupBKCL::BKCLTask::Wait(std::chrono::milliseconds timeout) {
 // Same as Wait
 void ProcessGroupBKCL::BKCLTask::Synchronize() { Wait(kWaitTimeout); }
 
-ProcessGroupBKCL::ProcessGroupBKCL(const std::shared_ptr<Store>& store,
-                                   int rank,
-                                   int size,
-                                   int gid)
+ProcessGroupBKCL::ProcessGroupBKCL(
+    const std::shared_ptr<phi::distributed::Store>& store,
+    int rank,
+    int size,
+    int gid)
     : ProcessGroupWithStream(rank, size, gid), store_(store) {}
 
 void ProcessGroupBKCL::GroupStart() {
@@ -127,6 +128,11 @@ void ProcessGroupBKCL::CreateBKCLEnvCache(const Place& place,
       platform::DeviceContextPool::Instance().Get(place));
   // must use XPUDeviceContext here to make sure XPUContext::Init() is called
   auto comm_ctx = std::make_unique<XPUDeviceContext>(place);
+  // set allocator
+  comm_ctx->SetAllocator(memory::allocation::AllocatorFacade::Instance()
+                             .GetAllocator(place)
+                             .get());
+
   BKCLContext_t bkcl_comm;
   BKCLCHECK(bkcl_init_rank(&bkcl_comm, GetRank(), GetSize(), &bkcl_id));
   comm_ctx->SetBkclContext(bkcl_comm);
@@ -276,7 +282,8 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::Reduce(
           const phi::DenseTensor& input,
           BKCLContext_t comm,
           const XPUStream& stream) {
-        phi::DenseTensor output_t(*output);
+        phi::DenseTensor output_t;
+        paddle::framework::TensorCopy(*output, platform::XPUPlace(), &output_t);
         const auto& place = input.place();
         auto* calc_ctx = static_cast<phi::XPUContext*>(
             platform::DeviceContextPool::Instance().Get(place));
@@ -606,7 +613,10 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::AllGather(
 }
 
 std::shared_ptr<ProcessGroupBKCL> ProcessGroupBKCL::CreateProcessGroupBKCL(
-    const std::shared_ptr<Store>& store, int rank, int size, int gid) {
+    const std::shared_ptr<phi::distributed::Store>& store,
+    int rank,
+    int size,
+    int gid) {
   auto process_group =
       std::make_shared<ProcessGroupBKCL>(store, rank, size, gid);
   ProcessGroupIdMap::GetInstance().emplace(gid, process_group);

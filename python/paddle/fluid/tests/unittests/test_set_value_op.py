@@ -20,7 +20,6 @@ from functools import reduce
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
 from paddle.fluid.layer_helper import LayerHelper
 
 
@@ -1028,7 +1027,6 @@ class TestBackward(unittest.TestCase):
         paddle.disable_static()
 
     def func_test_dynamic(self):
-        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         model = Model()
         x = paddle.ones([1, 12, 3, 3]).astype("float32")
         y = paddle.ones([1, 12, 3, 3]).astype("float32")
@@ -1037,7 +1035,6 @@ class TestBackward(unittest.TestCase):
 
         self.assertTrue(var.grad.shape == x.grad[0, :, 0, 0].shape)
         self.assertTrue((0 == x.grad[0, :, 0, 0]).all())
-        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
 
 class TestGradientTruncated(unittest.TestCase):
