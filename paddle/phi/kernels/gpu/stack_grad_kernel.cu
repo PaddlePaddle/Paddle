@@ -92,7 +92,8 @@ void LaunchUnStackKernel(const Context& ctx,
                          std::vector<DenseTensor*>* x_grad) {
   // each x_grad should have same shape
   auto dout_ptr = out_grad.data<T>();
-  funcs::PointerArraySetter<Context, T, Size> setter(ctx, x_grad);
+  funcs::PointerArraySetter<Context, T, Size> setter(
+      ctx, x_grad, /*is_grad=*/true);
 
   if (suf_dim == 1) {
     // For the case axis == (out_grad.dims().size() - 1)

@@ -15,7 +15,7 @@
 #pragma once
 
 #include "paddle/phi/kernels/funcs/fast_divmod.h"
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#ifdef PADDLE_WITH_CUDA
 #include "paddle/phi/backends/gpu/cuda/cuda_graph_with_memory_pool.h"
 #endif
 
@@ -163,8 +163,13 @@ struct PointerArraySetter : public ArraySetterBase<Context> {
  public:
   PointerArray<T, Size> array;
 
+  // is_grad : tensor data needs extra buffer or not.
+  // use_cuda_graph: tensor data shall be captured by cuda_graph or not.
+  // pre_alloc_host_buf: tensor data is temporaily stored by pinned memory or
+  // not.
   PointerArraySetter(const Context& ctx,
                      std::vector<DenseTensor*>* t,
+                     bool is_grad = false,
                      bool use_cuda_graph = false,
                      T** pre_alloc_host_buf = nullptr) {
     ptrs.resize(t->size());
@@ -176,7 +181,8 @@ struct PointerArraySetter : public ArraySetterBase<Context> {
 #endif
     for (int i = 0; i < t->size(); ++i) {
       if (t->at(i) && (t->at(i)->numel() > 0)) {
-        data_ptr[i] = ctx.template Alloc<T>(t->at(i));
+        data_ptr[i] =
+            is_grad ? ctx.template Alloc<T>(t->at(i)) : t->at(i)->data<T>();
       } else {
         data_ptr[i] = nullptr;
       }
@@ -191,7 +197,7 @@ struct PointerArraySetter : public ArraySetterBase<Context> {
     array.Set(data_ptr, t->size(), dev_ptr);
   }
 
- protected:
+ private:
   std::vector<T*> ptrs;
 };
 

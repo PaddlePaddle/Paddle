@@ -20,6 +20,31 @@ limitations under the License. */
 namespace phi {
 namespace funcs {
 
+static inline void GetBlockDims(const phi::GPUContext& context,
+                                int64_t num_rows,
+                                int64_t num_cols,
+                                dim3* block_dims,
+                                dim3* grid_dims) {
+  // Set the thread block and grid according to CurrentDeviceId
+  const int kThreadsPerBlock = 1024;
+  int block_cols = kThreadsPerBlock;
+  if (num_cols < kThreadsPerBlock) {  // block_cols is aligned by 32.
+    block_cols = ((num_cols + 31) >> 5) << 5;
+  }
+  int block_rows = kThreadsPerBlock / block_cols;
+  *block_dims = dim3(block_cols, block_rows, 1);
+
+  constexpr int waves = 1;
+  int max_threads = context.GetMaxPhysicalThreadCount() * waves;
+  int64_t max_blocks = std::max(max_threads / kThreadsPerBlock, 1);
+
+  int grid_cols =
+      std::min((num_cols + block_cols - 1) / block_cols, max_blocks);
+  int grid_rows = std::min(max_blocks / grid_cols,
+                           std::max(num_rows / block_rows, (int64_t)1));
+  *grid_dims = dim3(grid_cols, grid_rows, 1);
+}
+
 #if !defined(_WIN32)
 #define PADDLE_ALIGN(x) __attribute__((aligned(x)))
 #else
@@ -160,31 +185,6 @@ struct alignas(MovSize) Packed {
     char buf[MovSize];
   };
 };
-
-static inline void GetBlockDims(const phi::GPUContext& context,
-                                int64_t num_rows,
-                                int64_t num_cols,
-                                dim3* block_dims,
-                                dim3* grid_dims) {
-  // Set the thread block and grid according to CurrentDeviceId
-  const int kThreadsPerBlock = 1024;
-  int block_cols = kThreadsPerBlock;
-  if (num_cols < kThreadsPerBlock) {  // block_cols is aligned by 32.
-    block_cols = ((num_cols + 31) >> 5) << 5;
-  }
-  int block_rows = kThreadsPerBlock / block_cols;
-  *block_dims = dim3(block_cols, block_rows, 1);
-
-  constexpr int waves = 1;
-  int max_threads = context.GetMaxPhysicalThreadCount() * waves;
-  int64_t max_blocks = std::max(max_threads / kThreadsPerBlock, 1);
-
-  int grid_cols =
-      std::min((num_cols + block_cols - 1) / block_cols, max_blocks);
-  int grid_rows = std::min(max_blocks / grid_cols,
-                           std::max(num_rows / block_rows, (int64_t)1));
-  *grid_dims = dim3(grid_cols, grid_rows, 1);
-}
 
 template <typename IndexT, int MovSize, typename PointerAndColWrapperT>
 __global__ void ConcatTensorWithDifferentShape(
@@ -639,7 +639,11 @@ struct PointerAndColArray
                      std::vector<DenseTensor*>* t,
                      T** pre_alloc_host_buf = nullptr)
       : funcs::PointerArraySetter<phi::GPUContext, T, Size>(
-            ctx, t, true, pre_alloc_host_buf) {
+            ctx,
+            t,
+            /*is_grad=*/false,
+            /*use_cuda_graph=*/true,
+            pre_alloc_host_buf) {
     IndexT* dev_ptr = nullptr;
     if (Size == SegmentedArraySize::kVariableLength) {
       size_t num_bytes = out_col_num * sizeof(IndexT);
@@ -710,7 +714,11 @@ void SplitFunctionDispatchWithSameShape(const phi::GPUContext& ctx,
   GetBlockDims(ctx, out_row, cumulative_col, &block_dims, &grid_dims);
 
   funcs::PointerArraySetter<phi::GPUContext, T, Size> setter(
-      ctx, outs, true, pre_alloc_host_buf);
+      ctx,
+      outs,
+      /*is_grad=*/false,
+      /*use_cuda_graph=*/true,
+      pre_alloc_host_buf);
   SplitTensorWithSameShape<T, IndexT, decltype(setter.array)>
       <<<grid_dims, block_dims, 0, ctx.stream()>>>(
           input_data, out_row, cumulative_col, out_col, setter.array);
@@ -729,9 +737,9 @@ void SplitFunctionDispatchWithDifferentShape(
   dim3 grid_dims;
   dim3 block_dims;
   GetBlockDims(ctx, out_row, cumulative_col, &block_dims, &grid_dims);
-
   PointerAndColArray<T, IndexT, Size> setter(
       ctx, out_col_num, output_cols, outs, pre_alloc_host_buf);
+
   SplitTensorWithDifferentShape<T,
                                 IndexT,
                                 decltype(setter.array),
