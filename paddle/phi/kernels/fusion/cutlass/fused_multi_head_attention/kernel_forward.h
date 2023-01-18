@@ -1,3 +1,36 @@
+// #include <cmath>
+// #include <vector>
+
+// #include "cutlass/bfloat16.h"
+// #include "cutlass/gemm/gemm.h"
+// #include "cutlass/layout/matrix.h"
+// #include "cutlass/layout/vector.h"
+// #include "cutlass/numeric_types.h"
+
+// // todo move below
+// #include "paddle/phi/kernels/fusion/cutlass/fused_multi_head_attention/attention_scaling_coefs_updater.h"
+// #include "cutlass/epilogue/threadblock/default_epilogue_simt.h"
+// #include "cutlass/epilogue/threadblock/default_epilogue_tensor_op.h"
+// #include "cutlass/epilogue/threadblock/default_epilogue_volta_tensor_op.h"
+// #include "cutlass/gemm/device/default_gemm_configuration.h"
+// #include "cutlass/gemm/kernel/default_gemm.h"
+// #include "cutlass/gemm/threadblock/default_mma.h"
+// #include "cutlass/gemm/threadblock/default_mma_core_simt.h"
+// #include "cutlass/gemm/threadblock/default_mma_core_sm70.h"
+// #include "cutlass/gemm/threadblock/default_mma_core_sm75.h"
+// #include "cutlass/gemm/threadblock/default_mma_core_sm80.h"
+// #include "cutlass/gemm/threadblock/threadblock_swizzle.h"
+// #include "cutlass/matrix_shape.h"
+// #include "cutlass/platform/platform.h"
+// #include "cutlass/transform/threadblock/predicated_tile_iterator.h"
+// #include "paddle/phi/kernels/fusion/cutlass/fused_multi_head_attention/debug_utils.h"
+// #include "paddle/phi/kernels/fusion/cutlass/fused_multi_head_attention/epilogue_pipelined.h"
+// #include "paddle/phi/kernels/fusion/cutlass/fused_multi_head_attention/epilogue_rescale_output.h"
+// #include "paddle/phi/kernels/fusion/cutlass/fused_multi_head_attention/find_default_mma.h"
+// #include "paddle/phi/kernels/fusion/cutlass/fused_multi_head_attention/gemm_kernel_utils.h"
+// #include "paddle/phi/kernels/fusion/cutlass/fused_multi_head_attention/mma_from_smem.h"
+// #include "paddle/phi/kernels/fusion/cutlass/fused_multi_head_attention/tile_smem_loader.h"
+
 #include <cmath>
 #include <vector>
 
@@ -7,8 +40,7 @@
 #include "cutlass/layout/vector.h"
 #include "cutlass/numeric_types.h"
 
-// todo move below
-#include "paddle/phi/kernels/fusion/cutlass/fused_multi_head_attention/attention_scaling_coefs_updater.h"
+#include "attention_scaling_coefs_updater.h"
 #include "cutlass/epilogue/threadblock/default_epilogue_simt.h"
 #include "cutlass/epilogue/threadblock/default_epilogue_tensor_op.h"
 #include "cutlass/epilogue/threadblock/default_epilogue_volta_tensor_op.h"
@@ -23,14 +55,13 @@
 #include "cutlass/matrix_shape.h"
 #include "cutlass/platform/platform.h"
 #include "cutlass/transform/threadblock/predicated_tile_iterator.h"
-#include "paddle/phi/kernels/fusion/cutlass/fused_multi_head_attention/debug_utils.h"
-#include "paddle/phi/kernels/fusion/cutlass/fused_multi_head_attention/epilogue_pipelined.h"
-#include "paddle/phi/kernels/fusion/cutlass/fused_multi_head_attention/epilogue_rescale_output.h"
-#include "paddle/phi/kernels/fusion/cutlass/fused_multi_head_attention/find_default_mma.h"
-#include "paddle/phi/kernels/fusion/cutlass/fused_multi_head_attention/gemm_kernel_utils.h"
-#include "paddle/phi/kernels/fusion/cutlass/fused_multi_head_attention/mma_from_smem.h"
-#include "paddle/phi/kernels/fusion/cutlass/fused_multi_head_attention/tile_smem_loader.h"
-
+#include "debug_utils.h"
+#include "epilogue_pipelined.h"
+#include "epilogue_rescale_output.h"
+#include "find_default_mma.h"
+#include "gemm_kernel_utils.h"
+#include "mma_from_smem.h"
+#include "tile_smem_loader.h"
 
 #include <inttypes.h>
 
@@ -111,7 +142,6 @@ struct AttentionKernel {
     int32_t num_keys;
 
     bool causal;
-    bool add_bias; 
     
     int32_t q_strideM;
     int32_t k_strideM;
@@ -604,10 +634,11 @@ struct AttentionKernel {
 
       // multiply by scaling factor
       // problem is here!
-      accum = cutlass::multiplies<typename MM0::Mma::FragmentC>()(1.0f / cutlass::fast_sqrt(float(p.head_dim)), accum);
+      // accum = cutlass::multiplies<typename MM0::Mma::FragmentC>()(1.0f / cutlass::fast_sqrt(float(p.head_dim)), accum);
+      accum = cutlass::multiplies<typename MM0::Mma::FragmentC>()(p.scale, accum);
 
       // apply attention bias if applicable
-      if (p.attn_bias_ptr != nullptr && p.add_bias) {
+      if (p.attn_bias_ptr != nullptr) {
         typename MM0::BiasLoader::GmemTileIterator bias_iter(
             {cutlass::layout::RowMajor(p.bias_strideM)},
             // attn_bias_pointer points to matrix of size (n_queries, n_keys)
@@ -721,7 +752,7 @@ struct AttentionKernel {
         }
 
         typename MM1::Mma::IteratorB iterator_V(
-            typename MM1::IteratorB::Params{MM1::LayoutB(p.v_strideM)},
+             typename MM1::IteratorB::Params{MM1::LayoutB(p.v_strideM)},
             p.value_ptr + iter_key_start * p.v_strideM,
             {problem_size_1_k, problem_size_1_n},
             thread_id(),

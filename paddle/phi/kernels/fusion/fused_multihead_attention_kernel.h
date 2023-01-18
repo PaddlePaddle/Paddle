@@ -24,6 +24,7 @@ void MultiHeadAttentionForwardKernel(const Context& ctx,
                                      const DenseTensor& key, 
                                      const DenseTensor& value, 
                                      const paddle::optional<DenseTensor>& mask, 
+                                     const float scale,
                                      DenseTensor* output);
 
 }  // namespace phi

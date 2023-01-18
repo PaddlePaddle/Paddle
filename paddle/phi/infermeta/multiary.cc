@@ -2985,26 +2985,28 @@ void MoeInferMeta(const MetaTensor& x,
 void FusedMultiHeadAttentionInferMeta(const MetaTensor& query,
                                       const MetaTensor& key,
                                       const MetaTensor& value,
-                                      const MetaTensor& mask, // optional
+                                      const MetaTensor& mask,
+                                      float scale, 
+                                      bool causal, 
                                       MetaTensor* out) {
   PADDLE_ENFORCE_EQ(
         query.dims().size(),
         4,
         phi::errors::InvalidArgument("Query should be a 4-D tensor"
                                      "But received Query dimension(%s)",
-                                     query.size()));
+                                     query.dims().size()));
   PADDLE_ENFORCE_EQ(
         key.dims().size(),
         4,
         phi::errors::InvalidArgument("Key should be a 4-D tensor"
                                      "But received Key dimension(%s)",
-                                     key.size()));
+                                     key.dims().size()));
   PADDLE_ENFORCE_EQ(
         value.dims().size(),
         4,
         phi::errors::InvalidArgument("Value should be a 4-D tensor"
                                      "But received Value dimension(%s)",
-                                     value.size()));
+                                     value.dims().size()));
   const int64_t query_batch_size = query.dims()[0]; 
   const int64_t query_num_head = query.dims()[1]; 
   const int64_t query_seq_length = query.dims()[2]; 

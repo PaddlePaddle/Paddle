@@ -544,7 +544,9 @@ void MoeInferMeta(const MetaTensor& x,
 void FusedMultiHeadAttentionInferMeta(const MetaTensor& query,
                                       const MetaTensor& key,
                                       const MetaTensor& value,
-                                      const MetaTensor& mask, // optional
+                                      const MetaTensor& mask,
+                                      float scale, 
+                                      bool causal, 
                                       MetaTensor* out);
 
 }  // namespace phi

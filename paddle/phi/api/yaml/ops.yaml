@@ -1304,7 +1304,7 @@
   backward : where_grad
 
 - op : cutlass_fused_multihead_attention
-  args : (Tensor query, Tensor key, Tensor value, Tensor mask)
+  args : (Tensor query, Tensor key, Tensor value, Tensor mask, float scale, bool causal)
   output : Tensor
   infer_meta :
     func : FusedMultiHeadAttentionInferMeta

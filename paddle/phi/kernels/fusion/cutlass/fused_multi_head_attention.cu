@@ -23,13 +23,14 @@ namespace cutlass_internal {
 
 struct LaunchParams {
     // meta params
-    const phi::DataType datatype; 
+    phi::DataType datatype; 
 
     // Input tensors
     const void* query_ptr; // [num_queries, num_heads, head_dim]
     const void* key_ptr; // [num_keys, num_heads, head_dim]
     const void* attn_bias_ptr = nullptr; // [num_heads, num_queries, num_keys]
     const void* value_ptr; // [num_keys, num_heads, head_dim_value]
+    
     int32_t* cu_seqlens_q_ptr = nullptr;
     int32_t* cu_seqlens_k_ptr = nullptr;
 
@@ -40,7 +41,7 @@ struct LaunchParams {
 
     // Scale
     // todo: 
-    // accum_t scale;
+    float scale;
 
     // Dimensions/strides
     int32_t num_batches;
@@ -50,7 +51,6 @@ struct LaunchParams {
     int32_t head_size;
     int32_t value_head_size;
     bool causal;
-    bool add_bias; 
     int32_t query_strideM;
     int32_t key_strideM;
     int32_t value_strideM;
@@ -58,7 +58,7 @@ struct LaunchParams {
     int32_t bias_strideM;
     int64_t bias_strideH;
     int64_t bias_strideB;
-}
+}; 
 
 template<typename T, typename ArchTag, bool IsAligned, int QueriesPerBlock, int KeysPerBlock, bool SingleValueIteration> 
 void LaunchMultiHeadAttentionKernel(LaunchParams params, cudaStream_t stream){
@@ -66,10 +66,10 @@ void LaunchMultiHeadAttentionKernel(LaunchParams params, cudaStream_t stream){
 
     typename Attention::Params p;
     { // set parameters
-      p.query_ptr = reinterpret_cast<const T*>(params.query_ptr);
-      p.key_ptr = reinterpret_cast<const T*>(params.key_ptr);
-      p.value_ptr = reinterpret_cast<const T*>(params.value_ptr);
-      p.attn_bias_ptr = reinterpret_cast<const T*>(params.attn_bias_ptr);
+      p.query_ptr = const_cast<T*>(reinterpret_cast<const T*>(params.query_ptr));
+      p.key_ptr = const_cast<T*>(reinterpret_cast<const T*>(params.key_ptr));
+      p.value_ptr = const_cast<T*>(reinterpret_cast<const T*>(params.value_ptr));
+      p.attn_bias_ptr = const_cast<T*>(reinterpret_cast<const T*>(params.attn_bias_ptr));
       // TODO(zhengzekang): check this: 
       p.logsumexp_ptr = nullptr; // Only needed for bw
 
@@ -94,6 +94,7 @@ void LaunchMultiHeadAttentionKernel(LaunchParams params, cudaStream_t stream){
       p.head_dim = params.head_size;
       p.head_dim_value = params.value_head_size;
 
+      p.scale = params.scale; 
       p.causal = params.causal;
 
       // TODO: This might overflow for big tensors
@@ -113,7 +114,6 @@ void LaunchMultiHeadAttentionKernel(LaunchParams params, cudaStream_t stream){
       p.bias_strideB = params.bias_strideB;
       p.v_strideB = p.v_strideH * params.num_heads;
       p.o_strideB = params.value_head_size * params.query_seq_len * params.num_heads;
-      p.add_bias = params.add_bias; 
     }
 
     // launch kernel :)
@@ -133,9 +133,9 @@ void LaunchMultiHeadAttentionKernel(LaunchParams params, cudaStream_t stream){
 
 }
 
-// TODO(zhengzekang) refine dispatch logic. 
-void DispatchFusedMultiheadAttentionKernel(LaucnhParams params, cudaStream_t stream){
-    if(params.datatype == DataType::Float32){
+// // TODO(zhengzekang) refine dispatch logic. 
+void DispatchFusedMultiheadAttentionKernel(LaunchParams params, cudaStream_t stream){
+    if(params.datatype == DataType::FLOAT32){
         // TODO(zhengzekang) check align, dispatch arch, dispatch query per blcok. 
         if (params.value_head_size > 64) {
             static int const kQueriesPerBlock = 32;
@@ -150,7 +150,8 @@ void DispatchFusedMultiheadAttentionKernel(LaucnhParams params, cudaStream_t str
             static int const kKeysPerBlock = 64;
             LaunchMultiHeadAttentionKernel<cutlass::half_t, cutlass::arch::Sm80, true, kQueriesPerBlock, kKeysPerBlock, true>(params, stream); 
         }
-    } else if (){
+    } else if (params.datatype == DataType::FLOAT16){
+        printf("Enter here float16? \n"); 
         if (params.value_head_size > 64) {
             static int const kQueriesPerBlock = 32;
             static int const kKeysPerBlock = 128;
@@ -175,38 +176,48 @@ void MultiHeadAttentionForwardKernel(const Context& ctx,
                                      const DenseTensor& query,
                                      const DenseTensor& key,
                                      const DenseTensor& value,
-                                     const paddle::optional<DenseTensor>& mask,
+                                    //  const paddle::optional<DenseTensor>& mask,
+                                     const DenseTensor& mask, 
+                                     const float scale, 
+                                     const bool causal, 
                                      DenseTensor* output) {
     ctx.template Alloc<T>(output);
-    LaunchParams params; 
+    LaunchParams params{}; 
 
     params.datatype = query.dtype(); 
 
     params.query_ptr = query.data(); 
     params.key_ptr = key.data(); 
+    
+    // TODO(zhengzekang): Check optional.  
     params.attn_bias_ptr = mask.data(); 
-    params.value_ptr = value.data(); 
+    // params.attn_bias_ptr = nullptr; 
 
-    params.output_ptr = output.data();
+    params.value_ptr = value.data(); 
+    params.output_ptr = output->data();
+
     // TODO(zhengzekang): Use paddle allocator to refine.  
-    // params.output_accum_ptr = 
+    params.output_accum_ptr = nullptr;
 
     // TODO(zhengzekang): currently we only used in inference. Maybe add a bool flag to save it ?
-    // params.logsumexp_ptr = nullptr
+    params.logsumexp_ptr = nullptr;
 
-    // TODO(zhengzekang): custom your qk scale. 
-    // params.scale = 0.0; 
 
     params.num_batches = query.dims()[0]; 
     params.num_heads = query.dims()[1]; 
     params.query_seq_len = query.dims()[2]; 
     params.key_value_seq_len = key.dims()[2]; 
     params.head_size = query.dims()[3]; 
-    params.value_head_size = value.dims()[3]; 
+    params.value_head_size = value.dims()[3];
 
-    // TODO(Zhengzekang): custom causal and add_mask logic. 
-    params.causal = false;
-    params.add_bias = false; 
+    // TODO(zhengzekang): custom your qk scale. 
+    float scale_value = sqrt(params.head_size); 
+    if(scale != 0.0f){
+        // assume 0.0f is default value. 
+        scale_value = scale; 
+    }
+    params.scale = scale_value;  
+    params.causal = causal; 
 
     params.query_strideM = query.dims()[3]; 
     params.key_strideM = key.dims()[3]; 
@@ -217,7 +228,16 @@ void MultiHeadAttentionForwardKernel(const Context& ctx,
     params.bias_strideH = mask.dims()[1] == 1 ? 0 : params.bias_strideM * params.key_value_seq_len; 
     params.bias_strideB = mask.dims()[0] == 1 ? 0 : params.bias_strideH * params.num_heads; 
 
+    printf("Bias stride M is: %d \n", int32_t(params.bias_strideM)); 
+    printf("Bias stride H is: %d \n", int32_t(params.bias_strideH)); 
+    printf("Bias stride B is: %d \n", int32_t(params.bias_strideB)); 
 
+    // params.bias_strideM = 0; 
+    // params.bias_strideH = 0; 
+    // params.bias_strideB = 0; 
+
+    auto stream = ctx.stream();
+    DispatchFusedMultiheadAttentionKernel(params, stream); 
 }
 }  // namespace cutlass_internal
 }  // namespace fusion
