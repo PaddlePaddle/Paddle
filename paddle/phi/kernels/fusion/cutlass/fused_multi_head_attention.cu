@@ -51,6 +51,7 @@ struct LaunchParams {
     int32_t head_size;
     int32_t value_head_size;
     bool causal;
+    bool mask_broadcast_row; 
     int32_t query_strideM;
     int32_t key_strideM;
     int32_t value_strideM;
@@ -96,6 +97,7 @@ void LaunchMultiHeadAttentionKernel(LaunchParams params, cudaStream_t stream){
 
       p.scale = params.scale; 
       p.causal = params.causal;
+      p.mask_broadcast_row = params.mask_broadcast_row; 
 
       // TODO: This might overflow for big tensors
       p.q_strideM = params.query_strideM;
@@ -225,9 +227,12 @@ void MultiHeadAttentionForwardKernel(const Context& ctx,
 
     // TODO(zhengzekang): fix it. 
     params.bias_strideM = mask.dims()[2] == 1 ? 0 : mask.dims()[3]; 
-    params.bias_strideH = mask.dims()[1] == 1 ? 0 : params.bias_strideM * params.key_value_seq_len; 
+    params.bias_strideH = mask.dims()[1] == 1 ? 0 : params.bias_strideM * params.query_seq_len; 
     params.bias_strideB = mask.dims()[0] == 1 ? 0 : params.bias_strideH * params.num_heads; 
-
+    params.mask_broadcast_row = false; 
+    if(params.bias_strideM == 0){
+        params.mask_broadcast_row = true; 
+    }
     printf("Bias stride M is: %d \n", int32_t(params.bias_strideM)); 
     printf("Bias stride H is: %d \n", int32_t(params.bias_strideH)); 
     printf("Bias stride B is: %d \n", int32_t(params.bias_strideB)); 

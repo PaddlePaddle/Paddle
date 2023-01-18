@@ -142,6 +142,7 @@ struct AttentionKernel {
     int32_t num_keys;
 
     bool causal;
+    bool mask_broadcast_row; 
     
     int32_t q_strideM;
     int32_t k_strideM;
@@ -639,12 +640,16 @@ struct AttentionKernel {
 
       // apply attention bias if applicable
       if (p.attn_bias_ptr != nullptr) {
+        int32_t bias_iter_m = problem_size_0_m; 
+        if(p.mask_broadcast_row){
+          bias_iter_m = 1; 
+        }
         typename MM0::BiasLoader::GmemTileIterator bias_iter(
             {cutlass::layout::RowMajor(p.bias_strideM)},
             // attn_bias_pointer points to matrix of size (n_queries, n_keys)
             // for the relevant batch_id and head_id
             p.attn_bias_ptr + query_start * p.bias_strideM + iter_key_start,
-            {1, problem_size_0_n},
+            {bias_iter_m, problem_size_0_n},
             thread_id());
 
 
@@ -663,7 +668,11 @@ struct AttentionKernel {
             [&](int accum_m) {},
             [&](int accum_m, int accum_n, int idx) {
               if (accum_m < problem_size_0_m && accum_n < problem_size_0_n) {
-                accum[idx] += bias_tensor_ref.at({0, accum_n});
+                if(p.mask_broadcast_row){
+                  accum[idx] += bias_tensor_ref.at({0, accum_n});
+                } else {
+                  accum[idx] += bias_tensor_ref.at({accum_m, accum_n});
+                }
               }
             },
             [&](int accum_m) {});
