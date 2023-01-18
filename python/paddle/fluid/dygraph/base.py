@@ -20,6 +20,7 @@ import sys
 import numpy as np
 from paddle.fluid import core
 from paddle.fluid import framework
+from paddle.fluid.framework import global_var
 from paddle.fluid.multiprocess_utils import CleanupFuncRegistrar
 from .tracer import Tracer
 import logging
@@ -27,7 +28,6 @@ from ..data_feeder import convert_dtype
 import warnings
 from ..framework import (
     _get_paddle_place,
-    _in_legacy_dygraph,
     _in_eager_without_dygraph_check,
 )
 import paddle
@@ -44,16 +44,15 @@ __all__ = [
     'to_variable',
 ]
 
-# Flag that indicates whether running code under `@declarative`
-_in_declarative_mode_ = False
+# Flag that indicates whether running code under `@to_static`
 
 
 def in_declarative_mode():
     """
-    Return a bool value that indicates whether running code under `@declarative`
+    Return a bool value that indicates whether running code under `@to_static`
 
     """
-    return _in_declarative_mode_
+    return global_var._in_declarative_mode_
 
 
 def declarative_unsupport_argument_warning(
@@ -87,11 +86,11 @@ switch_to_static_graph = wrap_decorator(_switch_to_static_graph_)
 @signature_safe_contextmanager
 def _switch_declarative_mode_guard_(is_declarative=True):
 
-    global _in_declarative_mode_
-    original_val = _in_declarative_mode_
-    _in_declarative_mode_ = is_declarative
+    global global_var
+    original_val = global_var._in_declarative_mode_
+    global_var._in_declarative_mode_ = is_declarative
     yield
-    _in_declarative_mode_ = original_val
+    global_var._in_declarative_mode_ = original_val
 
 
 @signature_safe_contextmanager
@@ -107,17 +106,10 @@ def program_desc_tracing_guard(enable):
             tracer._enable_program_desc_tracing = original_val
 
 
-_functional_dygraph_context_manager = None
-
-
 @signature_safe_contextmanager
 def param_guard(parameters):
     # Note: parameters is a reference of self._parameters or self._buffers
-    if (
-        in_declarative_mode()
-        and not framework._non_static_mode()
-        and parameters
-    ):
+    if in_declarative_mode() and not framework.in_dygraph_mode() and parameters:
         origin_parameters = parameters.copy()
         for name, var_base in parameters.items():
             if isinstance(var_base, list):
@@ -159,6 +151,18 @@ def _convert_into_variable(tensor):
             new_var = tensor._to_static_var(
                 to_parameter=False, persistable=is_persistable
             )
+        # add param into parameter recorder to collect all the params used in this program.
+        if new_var.persistable is True:
+            # TODO(@xiongkun): 0d-tensor may be affected at present,
+            # but there is no particularly good method to identify whether 0d-tensor
+            # is used as buffer or "drop_out_state" in LSTM buffer variable.
+            from paddle.jit.dy2static.program_translator import (
+                ProgramTranslator,
+            )
+
+            ProgramTranslator.get_instance()._params_recorder.add(
+                tensor.block.program, tensor
+            )
         return new_var
     else:
         return tensor
@@ -189,7 +193,7 @@ def enabled():
             print(fluid.dygraph.enabled())  # False
     """
     # TODO(jiabin): Make this check as in_dygraph_mode when we support default eager mode.
-    return framework._non_static_mode()
+    return framework.in_dygraph_mode()
 
 
 def enable_dygraph(place=None):
@@ -215,18 +219,18 @@ def enable_dygraph(place=None):
             print(paddle.in_dynamic_mode())  # True, dynamic mode is turn ON by default since paddle 2.0.0
 
             paddle.enable_static()
-            print(paddle.in_dynamic_mode())  # False, Now we are in static mode
+            print(paddle.in_dynamic_mode())  # False, Now we are in static graph mode
 
             paddle.disable_static()
             print(paddle.in_dynamic_mode())  # True, Now we are in dynamic mode
 
     """
-    global _functional_dygraph_context_manager
-    if _functional_dygraph_context_manager is None:
-        _functional_dygraph_context_manager = guard(
+    global global_var
+    if global_var._functional_dygraph_context_manager is None:
+        global_var._functional_dygraph_context_manager = guard(
             place=_get_paddle_place(place)
         )
-        _functional_dygraph_context_manager.__enter__()
+        global_var._functional_dygraph_context_manager.__enter__()
 
         # call disable_dygraph when Python exit
         CleanupFuncRegistrar.register(disable_dygraph)
@@ -250,16 +254,16 @@ def disable_dygraph():
             print(paddle.in_dynamic_mode())  # True, dynamic mode is turn ON by default since paddle 2.0.0
 
             paddle.enable_static()
-            print(paddle.in_dynamic_mode())  # False, Now we are in static mode
+            print(paddle.in_dynamic_mode())  # False, Now we are in static graph mode
 
             paddle.disable_static()
             print(paddle.in_dynamic_mode())  # True, Now we are in dynamic mode
 
     """
-    global _functional_dygraph_context_manager
-    if _functional_dygraph_context_manager is not None:
-        _functional_dygraph_context_manager.__exit__(*sys.exc_info())
-        _functional_dygraph_context_manager = None
+    global global_var
+    if global_var._functional_dygraph_context_manager is not None:
+        global_var._functional_dygraph_context_manager.__exit__(*sys.exc_info())
+        global_var._functional_dygraph_context_manager = None
 
 
 @signature_safe_contextmanager

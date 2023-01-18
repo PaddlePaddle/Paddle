@@ -237,7 +237,7 @@ class TestMathOpPatches(unittest.TestCase):
         one = paddle.ones(shape=[1], dtype='int32')
         zero = fluid.layers.zeros(shape=[1], dtype='int32')
         cond = one == zero
-        c = fluid.layers.cond(cond, lambda: a + b, lambda: a - b)
+        c = paddle.static.nn.cond(cond, lambda: a + b, lambda: a - b)
 
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)

@@ -19,7 +19,6 @@ from op_test import OpTest
 
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.framework import _test_eager_guard
 
 
 class TestMultiplexOp(OpTest):
@@ -114,28 +113,23 @@ class TestMultiplexODygrap(unittest.TestCase):
             inputs[1].stop_gradient = False
             res = paddle.multiplex(inputs, index)
             res.backward()
-            with _test_eager_guard():
-                inputs_eager = [paddle.to_tensor(img1), paddle.to_tensor(img2)]
-                index_eager = paddle.to_tensor(
-                    np.array([[1], [0]]).astype(np.int32)
-                )
-                inputs_eager[0].stop_gradient = False
-                inputs_eager[1].stop_gradient = False
-                res_eager = paddle.multiplex(inputs_eager, index_eager)
-                res_eager.backward()
-                self.assertEqual((res.numpy() == res_eager.numpy()).all(), True)
-                self.assertEqual(
-                    (
-                        inputs[0].grad.numpy() == inputs_eager[0].grad.numpy()
-                    ).all(),
-                    True,
-                )
-                self.assertEqual(
-                    (
-                        inputs[1].grad.numpy() == inputs_eager[1].grad.numpy()
-                    ).all(),
-                    True,
-                )
+            inputs_eager = [paddle.to_tensor(img1), paddle.to_tensor(img2)]
+            index_eager = paddle.to_tensor(
+                np.array([[1], [0]]).astype(np.int32)
+            )
+            inputs_eager[0].stop_gradient = False
+            inputs_eager[1].stop_gradient = False
+            res_eager = paddle.multiplex(inputs_eager, index_eager)
+            res_eager.backward()
+            self.assertEqual((res.numpy() == res_eager.numpy()).all(), True)
+            self.assertEqual(
+                (inputs[0].grad.numpy() == inputs_eager[0].grad.numpy()).all(),
+                True,
+            )
+            self.assertEqual(
+                (inputs[1].grad.numpy() == inputs_eager[1].grad.numpy()).all(),
+                True,
+            )
 
 
 if __name__ == '__main__':

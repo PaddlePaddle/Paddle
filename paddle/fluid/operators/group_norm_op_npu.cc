@@ -21,8 +21,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
-
 template <typename T>
 struct GroupNormFunction {
  public:
@@ -103,14 +101,14 @@ struct GroupNormFunction {
     const auto& runner = NpuOpRunner("Adds", {*x}, {*y}, {{"value", scalar}});
     runner.Run(stream);
   }
-  Tensor ReduceMeanToNG(const phi::DenseTensor* x,
-                        const DataLayout& data_layout,
-                        const int64_t N,
-                        const int64_t C,
-                        const int64_t H,
-                        const int64_t W,
-                        const int G) {
-    Tensor y(x->type());
+  phi::DenseTensor ReduceMeanToNG(const phi::DenseTensor* x,
+                                  const DataLayout& data_layout,
+                                  const int64_t N,
+                                  const int64_t C,
+                                  const int64_t H,
+                                  const int64_t W,
+                                  const int G) {
+    phi::DenseTensor y(x->type());
     // y.mutable_data<T>( {N,G,1}, place );
     if (data_layout == DataLayout::kNCHW) {
       y.mutable_data<T>({N, G, 1}, place);
@@ -119,7 +117,7 @@ struct GroupNormFunction {
     } else {
       y.mutable_data<T>({N, 1, G}, place);
       //  shape of x is [N, C*H*W/G, G]
-      Tensor x_trans(x->type());
+      phi::DenseTensor x_trans(x->type());
       x_trans.mutable_data<T>({N, G, C * H * W / G}, place);
       this->Transpose(x, &x_trans, std::vector<int>{0, 2, 1});
       this->ReduceMean(&x_trans, &y, std::vector<int>{2});
@@ -150,7 +148,7 @@ class GroupNormNPUKernel : public framework::OpKernel<T> {
     const auto groups = ctx.Attr<int>("groups");
 
     auto place = ctx.GetPlace();
-    Tensor xnorm(x->type());
+    phi::DenseTensor xnorm(x->type());
     xnorm.mutable_data<T>(x->dims(), place);
     GroupNormFunction<T> F(ctx);
     if (data_layout != DataLayout::kNCHW) {
@@ -173,12 +171,12 @@ class GroupNormNPUKernel : public framework::OpKernel<T> {
     F.ReduceMean(&xnorm, mean, axis);
 
     F.Sub(&xnorm, mean, &xnorm);
-    Tensor sqr(x->type());
+    phi::DenseTensor sqr(x->type());
     sqr.mutable_data<T>(xnorm.dims(), place);
 
     F.Mul(&xnorm, &xnorm, &sqr);
     F.ReduceMean(&sqr, var, axis);
-    Tensor std(x->type());
+    phi::DenseTensor std(x->type());
     std.mutable_data<T>(var->dims(), place);
     F.Adds(var, epsilon, &std);
     F.Sqrt(&std, &std);
@@ -186,13 +184,13 @@ class GroupNormNPUKernel : public framework::OpKernel<T> {
     F.Div(&xnorm, &std, y);
     y->Resize({N, C, H, W});
     if (scale) {
-      Tensor scale_t(scale->type());
+      phi::DenseTensor scale_t(scale->type());
       scale_t.ShareDataWith(*scale);
       scale_t.Resize({C, 1, 1});
       F.Mul(y, &scale_t, y);
     }
     if (bias) {
-      Tensor bias_t(bias->type());
+      phi::DenseTensor bias_t(bias->type());
       bias_t.ShareDataWith(*bias);
       bias_t.Resize({C, 1, 1});
       F.Add(y, &bias_t, y);
@@ -231,11 +229,11 @@ class GroupNormGradNPUKernel : public framework::OpKernel<T> {
     auto place = ctx.GetPlace();
     auto _type = y->type();
 
-    Tensor xnorm(_type);
+    phi::DenseTensor xnorm(_type);
     xnorm.mutable_data<T>(y->dims(), place);
-    Tensor scale_share(_type);
+    phi::DenseTensor scale_share(_type);
     scale_share.ShareDataWith(*scale);
-    Tensor bias_share(_type);
+    phi::DenseTensor bias_share(_type);
     bias_share.ShareDataWith(*bias);
 
     int64_t N = y->dims()[0];
@@ -267,7 +265,7 @@ class GroupNormGradNPUKernel : public framework::OpKernel<T> {
     }
     if (d_scale) {
       d_scale->mutable_data<T>(place);
-      Tensor dy_xnorm(_type);
+      phi::DenseTensor dy_xnorm(_type);
       dy_xnorm.mutable_data<T>(d_y->dims(), place);
       F.Mul(d_y, &xnorm, &dy_xnorm);
       if (data_layout == DataLayout::kNCHW) {
@@ -278,12 +276,12 @@ class GroupNormGradNPUKernel : public framework::OpKernel<T> {
     }
 
     //  std = Sqrt(var+epsilon), init shape = [ N, G ]
-    Tensor std(_type);
+    phi::DenseTensor std(_type);
     std.mutable_data<T>(var->dims(), place);
     F.Adds(var, epsilon, &std);
     F.Sqrt(&std, &std);
     //  d_xnorm_std = dy_proc * scale / std
-    Tensor d_xnorm_std(_type);
+    phi::DenseTensor d_xnorm_std(_type);
     d_xnorm_std.mutable_data<T>(y->dims(), place);
     F.Mul(d_y, &scale_share, &d_xnorm_std);
     if (data_layout == DataLayout::kNCHW) {
@@ -303,10 +301,11 @@ class GroupNormGradNPUKernel : public framework::OpKernel<T> {
     d_x->mutable_data<T>(place);
     d_x->Resize(xnorm.dims());
     F.Mul(&d_xnorm_std, &xnorm, d_x);
-    Tensor dx1 = F.ReduceMeanToNG(d_x, data_layout, N, C, H, W, G);
+    phi::DenseTensor dx1 = F.ReduceMeanToNG(d_x, data_layout, N, C, H, W, G);
     F.Mul(&dx1, &xnorm, d_x);
 
-    Tensor dx2 = F.ReduceMeanToNG(&d_xnorm_std, data_layout, N, C, H, W, G);
+    phi::DenseTensor dx2 =
+        F.ReduceMeanToNG(&d_xnorm_std, data_layout, N, C, H, W, G);
 
     F.Sub(&d_xnorm_std, d_x, d_x);
     F.Sub(d_x, &dx2, d_x);

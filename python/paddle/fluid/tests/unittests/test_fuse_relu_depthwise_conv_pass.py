@@ -20,15 +20,16 @@ from parallel_executor_test_base import DeviceType, TestParallelExecutorBase
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
+import paddle.nn.functional as F
 
 
 def norm(*args, **kargs):
-    return fluid.layers.batch_norm(*args, **kargs)
+    return paddle.static.nn.batch_norm(*args, **kargs)
 
 
 def sep_conv(input, channel, stride, filter, dilation=1, act=None):
     # with scope('depthwise'):
-    input = fluid.layers.conv2d(
+    input = paddle.static.nn.conv2d(
         input,
         input.shape[1],
         filter,
@@ -43,7 +44,7 @@ def sep_conv(input, channel, stride, filter, dilation=1, act=None):
     if act:
         input = act(input)
     # with scope('pointwise'):
-    input = fluid.layers.conv2d(
+    input = paddle.static.nn.conv2d(
         input, channel, 1, 1, groups=1, padding=0, bias_attr=False
     )
     input = norm(input)
@@ -59,9 +60,11 @@ def simple_depthwise_net(use_feed):
     hidden = paddle.reshape(img, (-1, 1, 28, 28))
     for _ in range(4):
         hidden = sep_conv(hidden, channel=200, stride=2, filter=5)
-        hidden = fluid.layers.relu(hidden)
-    prediction = fluid.layers.fc(hidden, size=10, act='softmax')
-    loss = fluid.layers.cross_entropy(input=prediction, label=label)
+        hidden = F.relu(hidden)
+    prediction = paddle.static.nn.fc(hidden, size=10, activation='softmax')
+    loss = paddle.nn.functional.cross_entropy(
+        input=prediction, label=label, reduction='none', use_softmax=False
+    )
     loss = paddle.mean(loss)
     return loss
 
@@ -116,9 +119,9 @@ class TestMNIST(TestParallelExecutorBase):
         )
 
         for loss in zip(not_fuse_op_first_loss, fuse_op_first_loss):
-            self.assertAlmostEquals(loss[0], loss[1], delta=1e-6)
+            self.assertAlmostEqual(loss[0], loss[1], delta=1e-6)
         for loss in zip(not_fuse_op_last_loss, fuse_op_last_loss):
-            self.assertAlmostEquals(loss[0], loss[1], delta=1e-6)
+            self.assertAlmostEqual(loss[0], loss[1], delta=1e-6)
 
     def test_simple_depthwise_with_fuse_op(self):
         self._compare(simple_depthwise_net, DeviceType.CUDA)

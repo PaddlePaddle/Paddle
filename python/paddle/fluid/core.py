@@ -305,6 +305,8 @@ try:
     from .libpaddle import _Profiler, _ProfilerResult, _RecordEvent
     from .libpaddle import _set_current_stream
     from .libpaddle import _get_phi_kernel_name
+    from .libpaddle import set_prim_enabled
+    from .libpaddle import is_prim_enabled
 
     if sys.platform != 'win32':
         from .libpaddle import _set_process_pids
@@ -315,6 +317,7 @@ try:
         from .libpaddle import _array_to_share_memory_tensor
         from .libpaddle import _cleanup_mmap_fds
         from .libpaddle import _remove_tensor_list_mmap_fds
+        from .libpaddle import _set_max_memory_map_allocation_pool_size
 except Exception as e:
     if has_paddle_dy_lib:
         sys.stderr.write(
@@ -369,3 +372,37 @@ def set_paddle_lib_path():
 
 
 set_paddle_lib_path()
+
+
+def set_prim_forward(value):
+    """set flag FLAGS_prim_forward."""
+    flag = str(value)
+    if flag.lower() not in ["true", "false", "debug"]:
+        raise TypeError(f"flag {flag} should be string of bool or 'debug'.")
+    os.environ["FLAGS_prim_forward"] = flag
+    return
+
+
+def enable_prim_forward():
+    flag = os.getenv("FLAGS_prim_forward", "true").lower()
+    if flag == "false":
+        return False
+    if flag == "debug":
+        return "debug"
+    return True
+
+
+def set_prim_backward(value):
+    """set flag FLAGS_prim_backward,"""
+    flag = str(value)
+    if flag.lower() not in ["true", "false"]:
+        raise TypeError(f"flag {flag} should be bool or string of bool.")
+    os.environ["FLAGS_prim_backward"] = flag
+    return
+
+
+def enable_prim_backward():
+    flag = os.getenv("FLAGS_prim_backward", "true")
+    if flag.lower() == "false":
+        return False
+    return True

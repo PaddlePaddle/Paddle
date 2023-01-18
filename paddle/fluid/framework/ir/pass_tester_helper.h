@@ -641,6 +641,23 @@ struct Layers {
     return out;
   }
 
+  VarDesc* dequantize_linear(VarDesc* x,
+                             VarDesc* scale,
+                             VarDesc* zero_point,
+                             int bit_length = 8,
+                             int quant_axis = -1) {
+    VarDesc* out = lod_tensor(unique_name());
+    OpDesc* op = program_.MutableBlock(0)->AppendOp();
+    op->SetType("dequantize_linear");
+    op->SetInput("X", {x->Name()});
+    op->SetInput("Scale", {scale->Name()});
+    op->SetInput("ZeroPoint", {zero_point->Name()});
+    op->SetAttr("bit_length", bit_length);
+    op->SetAttr("quant_axis", quant_axis);
+    op->SetOutput("Y", {out->Name()});
+    return out;
+  }
+
   void backward(std::vector<VarDesc*> targets) {
     // This function is designed to simulate the structure of training program,
     //  but is constructed differently as the actual program.

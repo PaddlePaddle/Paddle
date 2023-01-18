@@ -172,7 +172,7 @@ class TestStackAPIWithLoDTensorArray(unittest.TestCase):
             zero = fluid.layers.fill_constant(shape=[1], value=0, dtype="int64")
 
             for i in range(self.iter_num):
-                fluid.layers.array_write(input, zero + i, tensor_array)
+                paddle.tensor.array_write(input, zero + i, tensor_array)
 
             self.out_var = paddle.stack(tensor_array, axis=self.axis)
 
@@ -210,7 +210,7 @@ class TestTensorStackAPIWithLoDTensorArray(unittest.TestCase):
             zero = fluid.layers.fill_constant(shape=[1], value=0, dtype="int64")
 
             for i in range(self.iter_num):
-                fluid.layers.array_write(input, zero + i, tensor_array)
+                paddle.tensor.array_write(input, zero + i, tensor_array)
 
             self.out_var = paddle.stack(tensor_array, axis=self.axis)
 
@@ -308,13 +308,13 @@ class TestStackOpWithNegativeShape(unittest.TestCase):
 class TestStackAPI_ZeroDim(unittest.TestCase):
     def test_dygraph(self):
         paddle.disable_static()
-        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
 
         x1 = paddle.rand([])
         x2 = paddle.rand([])
         x1.stop_gradient = False
         x2.stop_gradient = False
         out = paddle.stack([x1, x2])
+        out.retain_grads()
         out.backward()
 
         self.assertEqual(out.shape, [2])

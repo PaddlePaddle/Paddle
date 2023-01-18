@@ -18,7 +18,6 @@ import numpy as np
 
 import paddle
 import paddle.nn.functional as F
-from paddle.fluid.framework import _test_eager_guard
 from paddle.incubate.optimizer.functional.bfgs import minimize_bfgs
 
 np.random.seed(123)
@@ -125,7 +124,7 @@ class TestBfgs(unittest.TestCase):
         results = test_static_graph(func, x0, dtype='float64')
         np.testing.assert_allclose(0.8, results[2], rtol=1e-05, atol=1e-8)
 
-    def func_rosenbrock(self):
+    def test_rosenbrock(self):
         # The Rosenbrock function is a standard optimization test case.
         a = np.random.random(size=[1]).astype('float32')
         minimum = [a.item(), (a**2).item()]
@@ -143,11 +142,6 @@ class TestBfgs(unittest.TestCase):
 
         results = test_dynamic_graph(func, x0)
         np.testing.assert_allclose(minimum, results[2], rtol=1e-05, atol=1e-8)
-
-    def test_rosenbrock(self):
-        with _test_eager_guard():
-            self.func_rosenbrock()
-        self.func_rosenbrock()
 
     def test_exception(self):
         def func(x):

@@ -27,14 +27,13 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
 using SelectedRows = phi::SelectedRows;
 using DDim = framework::DDim;
 
 constexpr int64_t kNoPadding = -1;
 
 template <typename InT, typename OutT>
-static std::vector<OutT> CopyIdsToVector(const Tensor &ids) {
+static std::vector<OutT> CopyIdsToVector(const phi::DenseTensor &ids) {
   auto numel = ids.numel();
   const auto *src = ids.data<InT>();
   std::vector<OutT> ret(numel);
@@ -51,7 +50,7 @@ static std::vector<OutT> CopyIdsToVector(const Tensor &ids) {
 template <typename T>
 struct LookupTableV2CPUFunctor {
   LookupTableV2CPUFunctor(const framework::ExecutionContext &context,
-                          const Tensor *ids_t)
+                          const phi::DenseTensor *ids_t)
       : context_(context), ids_t_(ids_t) {}
 
   template <typename IdT>
@@ -143,7 +142,7 @@ struct LookupTableV2CPUFunctor {
 
  private:
   const framework::ExecutionContext &context_;
-  const Tensor *ids_t_;
+  const phi::DenseTensor *ids_t_;
 };
 
 template <typename T>
@@ -160,7 +159,7 @@ class LookupTableV2Kernel : public framework::OpKernel<T> {
 template <typename T>
 struct LookupTableV2GradCPUFunctor {
   LookupTableV2GradCPUFunctor(const framework::ExecutionContext &context,
-                              const Tensor *ids_t)
+                              const phi::DenseTensor *ids_t)
       : context_(context), ids_t_(ids_t) {}
 
   template <typename IdT>
@@ -267,7 +266,7 @@ struct LookupTableV2GradCPUFunctor {
 
  private:
   const framework::ExecutionContext &context_;
-  const Tensor *ids_t_;
+  const phi::DenseTensor *ids_t_;
 };
 
 template <typename T>

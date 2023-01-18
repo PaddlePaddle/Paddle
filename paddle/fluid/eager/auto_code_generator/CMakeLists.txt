@@ -22,6 +22,10 @@ if(WITH_ROCM)
   target_link_libraries(eager_generator ${ROCM_HIPRTC_LIB})
 endif()
 
+if(WITH_CINN)
+  target_link_libraries(eager_generator ${PYTHON_LIBRARIES})
+endif()
+
 # Prepare file structure
 message(
   "Generate dygraph file structure at path: ${PADDLE_SOURCE_DIR}/paddle/fluid/eager/generated"

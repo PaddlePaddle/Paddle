@@ -20,7 +20,6 @@ from test_sum_op import TestReduceOPTensorAxisBase
 
 import paddle
 import paddle.fluid.core as core
-from paddle.fluid.framework import _test_eager_guard
 
 
 class ApiMinTest(unittest.TestCase):
@@ -82,10 +81,6 @@ class ApiMinTest(unittest.TestCase):
         np_z = z.numpy()
         z_expected = np.array(np.min(np_x, axis=0))
         self.assertEqual((np_z == z_expected).all(), True)
-
-    def test_eager_api(self):
-        with _test_eager_guard():
-            self.test_imperative_api()
 
 
 class TestOutDtype(unittest.TestCase):

@@ -139,7 +139,7 @@ class SqueezeExcitation(fluid.dygraph.Layer):
         y = paddle.nn.functional.relu(y)
         y = self._excitation(y)
         y = paddle.nn.functional.sigmoid(y)
-        y = fluid.layers.elementwise_mul(x=input, y=y, axis=0)
+        y = paddle.tensor.math._multiply_with_axis(x=input, y=y, axis=0)
         return y
 
 
@@ -350,7 +350,9 @@ class TestSeResNeXt(TestParallelDyGraphRunnerBase):
 
         out = model(img)
         softmax_out = paddle.nn.functional.softmax(out, use_cudnn=False)
-        loss = fluid.layers.cross_entropy(input=softmax_out, label=label)
+        loss = paddle.nn.functional.cross_entropy(
+            input=softmax_out, label=label, reduction='none', use_softmax=False
+        )
         avg_loss = paddle.mean(x=loss)
         return avg_loss
 

@@ -378,7 +378,9 @@ PD_REGISTER_KERNEL(multiply,
                    ALL_LAYOUT,
                    phi::MultiplyKernel,
                    phi::dtype::float16,
-                   float) {}
+                   float,
+                   int,
+                   int64_t) {}
 PD_REGISTER_KERNEL(subtract,
                    XPU,
                    ALL_LAYOUT,

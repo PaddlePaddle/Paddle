@@ -63,19 +63,19 @@ void FusionSquaredMatSubOp::InferShape(
   ctx->SetOutputDim("Out", {x_dims[0], y_dims[1]});
 }
 
-framework::OpKernelType FusionSquaredMatSubOp::GetExpectedKernelType(
+phi::KernelKey FusionSquaredMatSubOp::GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const {
-  return framework::OpKernelType(
-      OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace());
+  return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+                        ctx.GetPlace());
 }
 
 void FusionSquaredMatSubOpMaker::Make() {
-  AddInput("X", "(Tensor) Input Mat A of this operator.");
-  AddInput("Y", "(Tensor) Input Mat B of this operator.");
-  AddOutput("SquaredX", "(Tensor) Squared X.").AsIntermediate();
-  AddOutput("SquaredY", "(Tensor) Squared Y.").AsIntermediate();
-  AddOutput("SquaredXY", "(Tensor) Squared X*Y.").AsIntermediate();
-  AddOutput("Out", "(Tensor) Output tensor of concat operator.");
+  AddInput("X", "(phi::DenseTensor) Input Mat A of this operator.");
+  AddInput("Y", "(phi::DenseTensor) Input Mat B of this operator.");
+  AddOutput("SquaredX", "(phi::DenseTensor) Squared X.").AsIntermediate();
+  AddOutput("SquaredY", "(phi::DenseTensor) Squared Y.").AsIntermediate();
+  AddOutput("SquaredXY", "(phi::DenseTensor) Squared X*Y.").AsIntermediate();
+  AddOutput("Out", "(phi::DenseTensor) Output tensor of concat operator.");
   AddAttr<float>("scalar", "The scalar on output matrix.").SetDefault(1.f);
   AddComment(R"DOC(
     Fusion Squared Matrix and substrct operator.

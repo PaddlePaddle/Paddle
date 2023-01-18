@@ -119,6 +119,8 @@ class KernelContext {
     return static_cast<TensorType*>(outputs_.at(idx));
   }
 
+  TensorBase* MutableOutputAt(size_t idx) { return outputs_.at(idx); }
+
   template <typename TensorType>
   std::vector<TensorType*> MutableOutputBetween(size_t start, size_t end) {
     std::vector<TensorType*> v;

@@ -20,7 +20,6 @@ from op_test import OpTest, convert_float_to_uint16
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid import Program, core, program_guard
-from paddle.fluid.framework import _test_eager_guard
 
 
 class TestSplitOp(OpTest):
@@ -273,16 +272,16 @@ class TestSplitAPI(unittest.TestCase):
         x_1 = fluid.data(shape=[4, 5, 6], dtype='int32', name='x_1')
         x_2 = fluid.data(shape=[4, 5, None], dtype='int32', name='x_2')
 
-        out_0, out_1, out_2 = fluid.layers.split(
-            input=x_1,
+        out_0, out_1, out_2 = paddle.split(
+            x=x_1,
             num_or_sections=[positive_2_int64, positive_1_int32, -1],
-            dim=positive_1_int64,
+            axis=positive_1_int64,
         )
 
-        out_3, out_4, out_5 = fluid.layers.split(
-            input=x_1, num_or_sections=[2, 1, 2], dim=positive_1_int32
+        out_3, out_4, out_5 = paddle.split(
+            x=x_1, num_or_sections=[2, 1, 2], axis=positive_1_int32
         )
-        fluid.layers.split(input=x_2, num_or_sections=2, dim=2)
+        paddle.split(x=x_2, num_or_sections=2, axis=2)
 
         exe = fluid.Executor(place=fluid.CPUPlace())
         [res_0, res_1, res_2, res_3, res_4, res_5] = exe.run(
@@ -306,7 +305,7 @@ class TestSplitOpError(unittest.TestCase):
             # The type of axis in split_op should be int or Variable.
             def test_axis_type():
                 x6 = fluid.layers.data(shape=[4], dtype='float16', name='x3')
-                fluid.layers.split(input=x6, num_or_sections=2, dim=3.2)
+                paddle.split(x=x6, num_or_sections=2, axis=3.2)
 
             self.assertRaises(TypeError, test_axis_type)
 
@@ -314,14 +313,14 @@ class TestSplitOpError(unittest.TestCase):
             def test_axis_variable_type():
                 x9 = fluid.layers.data(shape=[4], dtype='float16', name='x9')
                 x10 = fluid.layers.data(shape=[1], dtype='float16', name='x10')
-                fluid.layers.split(input=x9, num_or_sections=2, dim=x10)
+                paddle.split(x=x9, num_or_sections=2, axis=x10)
 
             self.assertRaises(TypeError, test_axis_variable_type)
 
             # The type of num_or_sections in split_op should be int, tuple or list.
             def test_num_or_sections_type():
                 x6 = fluid.layers.data(shape=[4], dtype='float16', name='x4')
-                fluid.layers.split(input=x6, num_or_sections=2.1, dim=3)
+                paddle.split(x=x6, num_or_sections=2.1, axis=3)
 
             self.assertRaises(TypeError, test_num_or_sections_type)
 
@@ -448,29 +447,26 @@ class API_TestDygraphFluidSplit(unittest.TestCase):
             input_1 = np.random.random([4, 6, 6]).astype("int32")
             # input is a variable which shape is [4, 6, 6]
             input = paddle.to_tensor(input_1)
-            x0, x1, x2 = fluid.layers.split(input, num_or_sections=3, dim=1)
+            x0, x1, x2 = paddle.split(input, num_or_sections=3, axis=1)
             x0_out = x0.numpy()
             x1_out = x1.numpy()
             x2_out = x2.numpy()
             ex_x0, ex_x1, ex_x2 = np.split(input_1, 3, axis=1)
-            with _test_eager_guard():
-                # input is a variable which shape is [4, 6, 6]
-                input = paddle.to_tensor(input_1)
-                input.stop_gradient = False
-                x0, x1, x2 = fluid.layers.split(input, num_or_sections=3, dim=1)
-                eager_x0_out = x0.numpy()
-                eager_x1_out = x1.numpy()
-                eager_x2_out = x2.numpy()
-                loss = x0.sum()
-                loss.backward()
-                manul_grad = np.zeros_like(input_1)
-                manul_grad[:, :2, :] = 1
-                np.testing.assert_allclose(
-                    input.gradient(), manul_grad, rtol=1e-05
-                )
-                np.testing.assert_allclose(ex_x0, eager_x0_out, rtol=1e-05)
-                np.testing.assert_allclose(ex_x1, eager_x1_out, rtol=1e-05)
-                np.testing.assert_allclose(ex_x2, eager_x2_out, rtol=1e-05)
+            # input is a variable which shape is [4, 6, 6]
+            input = paddle.to_tensor(input_1)
+            input.stop_gradient = False
+            x0, x1, x2 = paddle.split(input, num_or_sections=3, axis=1)
+            eager_x0_out = x0.numpy()
+            eager_x1_out = x1.numpy()
+            eager_x2_out = x2.numpy()
+            loss = x0.sum()
+            loss.backward()
+            manul_grad = np.zeros_like(input_1)
+            manul_grad[:, :2, :] = 1
+            np.testing.assert_allclose(input.gradient(), manul_grad, rtol=1e-05)
+            np.testing.assert_allclose(ex_x0, eager_x0_out, rtol=1e-05)
+            np.testing.assert_allclose(ex_x1, eager_x1_out, rtol=1e-05)
+            np.testing.assert_allclose(ex_x2, eager_x2_out, rtol=1e-05)
 
         np.testing.assert_allclose(ex_x0, x0_out, rtol=1e-05)
         np.testing.assert_allclose(ex_x1, x1_out, rtol=1e-05)
@@ -481,29 +477,26 @@ class API_TestDygraphFluidSplit(unittest.TestCase):
             input_1 = np.random.random([4, 6, 6]).astype("int32")
             # input is a variable which shape is [4, 6, 6]
             input = paddle.to_tensor(input_1)
-            x0, x1, x2 = fluid.layers.split(input, [2, 2, 2], dim=1)
+            x0, x1, x2 = paddle.split(input, [2, 2, 2], axis=1)
             x0_out = x0.numpy()
             x1_out = x1.numpy()
             x2_out = x2.numpy()
             ex_x0, ex_x1, ex_x2 = np.split(input_1, 3, axis=1)
-            with _test_eager_guard():
-                # input is a variable which shape is [4, 6, 6]
-                input = paddle.to_tensor(input_1)
-                input.stop_gradient = False
-                x0, x1, x2 = fluid.layers.split(input, [2, 2, 2], dim=1)
-                eager_x0_out = x0.numpy()
-                eager_x1_out = x1.numpy()
-                eager_x2_out = x2.numpy()
-                loss = x0.sum()
-                loss.backward()
-                manul_grad = np.zeros_like(input_1)
-                manul_grad[:, :2, :] = 1
-                np.testing.assert_allclose(
-                    input.gradient(), manul_grad, rtol=1e-05
-                )
-                np.testing.assert_allclose(ex_x0, eager_x0_out, rtol=1e-05)
-                np.testing.assert_allclose(ex_x1, eager_x1_out, rtol=1e-05)
-                np.testing.assert_allclose(ex_x2, eager_x2_out, rtol=1e-05)
+            # input is a variable which shape is [4, 6, 6]
+            input = paddle.to_tensor(input_1)
+            input.stop_gradient = False
+            x0, x1, x2 = paddle.split(input, [2, 2, 2], axis=1)
+            eager_x0_out = x0.numpy()
+            eager_x1_out = x1.numpy()
+            eager_x2_out = x2.numpy()
+            loss = x0.sum()
+            loss.backward()
+            manul_grad = np.zeros_like(input_1)
+            manul_grad[:, :2, :] = 1
+            np.testing.assert_allclose(input.gradient(), manul_grad, rtol=1e-05)
+            np.testing.assert_allclose(ex_x0, eager_x0_out, rtol=1e-05)
+            np.testing.assert_allclose(ex_x1, eager_x1_out, rtol=1e-05)
+            np.testing.assert_allclose(ex_x2, eager_x2_out, rtol=1e-05)
 
         np.testing.assert_allclose(ex_x0, x0_out, rtol=1e-05)
         np.testing.assert_allclose(ex_x1, x1_out, rtol=1e-05)
@@ -522,24 +515,21 @@ class API_TestDygraphSplit(unittest.TestCase):
             x2_out = x2.numpy()
             ex_x0, ex_x1, ex_x2 = np.split(input_1, 3, axis=1)
 
-            with _test_eager_guard():
-                # input is a variable which shape is [4, 6, 6]
-                input = paddle.to_tensor(input_1)
-                input.stop_gradient = False
-                x0, x1, x2 = paddle.split(input, num_or_sections=3, axis=1)
-                eager_x0_out = x0.numpy()
-                eager_x1_out = x1.numpy()
-                eager_x2_out = x2.numpy()
-                loss = x0.sum()
-                loss.backward()
-                manul_grad = np.zeros_like(input_1)
-                manul_grad[:, :2, :] = 1
-                np.testing.assert_allclose(
-                    input.gradient(), manul_grad, rtol=1e-05
-                )
-                np.testing.assert_allclose(ex_x0, eager_x0_out, rtol=1e-05)
-                np.testing.assert_allclose(ex_x1, eager_x1_out, rtol=1e-05)
-                np.testing.assert_allclose(ex_x2, eager_x2_out, rtol=1e-05)
+            # input is a variable which shape is [4, 6, 6]
+            input = paddle.to_tensor(input_1)
+            input.stop_gradient = False
+            x0, x1, x2 = paddle.split(input, num_or_sections=3, axis=1)
+            eager_x0_out = x0.numpy()
+            eager_x1_out = x1.numpy()
+            eager_x2_out = x2.numpy()
+            loss = x0.sum()
+            loss.backward()
+            manul_grad = np.zeros_like(input_1)
+            manul_grad[:, :2, :] = 1
+            np.testing.assert_allclose(input.gradient(), manul_grad, rtol=1e-05)
+            np.testing.assert_allclose(ex_x0, eager_x0_out, rtol=1e-05)
+            np.testing.assert_allclose(ex_x1, eager_x1_out, rtol=1e-05)
+            np.testing.assert_allclose(ex_x2, eager_x2_out, rtol=1e-05)
 
         np.testing.assert_allclose(ex_x0, x0_out, rtol=1e-05)
         np.testing.assert_allclose(ex_x1, x1_out, rtol=1e-05)
@@ -570,12 +560,11 @@ class API_TestDygraphSplit(unittest.TestCase):
             out_dy_np = out_dy.numpy()
             ex_out = np.split(input_1, [6], axis=1)
             ex_out = ex_out[0]
-            with _test_eager_guard():
-                input = paddle.to_tensor(input_1)
-                out_eager = paddle.split(input, [6], axis=1)
-                out_eager = out_eager[0]
-                out_eager_np = out_dy.numpy()
-                np.testing.assert_allclose(ex_out, out_eager_np, rtol=1e-05)
+            input = paddle.to_tensor(input_1)
+            out_eager = paddle.split(input, [6], axis=1)
+            out_eager = out_eager[0]
+            out_eager_np = out_dy.numpy()
+            np.testing.assert_allclose(ex_out, out_eager_np, rtol=1e-05)
         np.testing.assert_allclose(ex_out, out_dy_np, rtol=1e-05)
 
     def test_out_tensor_input(self):
@@ -612,7 +601,7 @@ class API_TestDygraphSplit(unittest.TestCase):
         np.testing.assert_allclose(ex_x1, x1_out, rtol=1e-05)
         np.testing.assert_allclose(ex_x2, x2_out, rtol=1e-05)
 
-    def func_negative_one_section(self):
+    def test_negative_one_section(self):
         with fluid.dygraph.guard():
             input_1 = np.random.random([4, 6, 6]).astype("int32")
             # input is a variable which shape is [4, 6, 6]
@@ -621,11 +610,6 @@ class API_TestDygraphSplit(unittest.TestCase):
             x0 = paddle.split(input, num_or_sections=[-1], axis=num1)
             x0_out = x0[0].numpy()
         np.testing.assert_array_equal(x0_out, input.numpy())
-
-    def test_negative_one_section(self):
-        with _test_eager_guard():
-            self.func_negative_one_section()
-        self.func_negative_one_section()
 
 
 class API_TestEmptySplit(unittest.TestCase):

@@ -85,7 +85,6 @@ inline std::vector<int> get_expand_times(
   }
 }
 
-using Tensor = phi::DenseTensor;
 template <typename T,
           int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>

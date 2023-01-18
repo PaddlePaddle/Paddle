@@ -101,7 +101,7 @@ void TransDataLayoutFromOneDNN(DataLayout in_layout,
     ::paddle::platform::RecordEvent record_reorder(
         "ext_reorder",
         ::paddle::platform::TracerEventType::UserDefined,
-        2,
+        1,
         ::paddle::platform::EventRole::kUniqueOp);
     reorder_p->execute(astream, *reorder_src_memory_p, *reorder_dst_memory_p);
     astream.wait();

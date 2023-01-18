@@ -76,7 +76,6 @@ struct OneHotOpFunctor {
   }
 };
 
-using Tensor = phi::DenseTensor;
 template <typename DeviceContext, typename T>
 class OneHotKernel : public framework::OpKernel<T> {
  public:

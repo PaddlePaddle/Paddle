@@ -19,11 +19,15 @@ from pathlib import Path
 import yaml
 from filters import (
     cartesian_prod_mapping,
+    to_composite_grad_opmaker_name,
     to_input_name,
+    to_int_array_tensor_name,
+    to_int_array_tensors_name,
     to_op_attr_type,
     to_opmaker_name,
     to_opmaker_name_cstr,
     to_pascal_case,
+    to_scalar_tensor_name,
 )
 from generate_op import process_invoke_op
 from jinja2 import Environment, FileSystemLoader, StrictUndefined
@@ -49,9 +53,13 @@ env = Environment(
 env.filters["to_op_attr_type"] = to_op_attr_type
 env.filters["to_opmaker_name"] = to_opmaker_name
 env.filters["to_pascal_case"] = to_pascal_case
+env.filters["to_scalar_tensor_name"] = to_scalar_tensor_name
+env.filters["to_int_array_tensor_name"] = to_int_array_tensor_name
+env.filters["to_int_array_tensors_name"] = to_int_array_tensors_name
 env.filters["to_input_name"] = to_input_name
 env.filters["to_opmaker_name_cstr"] = to_opmaker_name_cstr
 env.filters["cartesian_prod_mapping"] = cartesian_prod_mapping
+env.filters["to_composite_grad_opmaker_name"] = to_composite_grad_opmaker_name
 env.tests["base_op"] = is_base_op
 env.tests["vec"] = is_vec
 env.tests["scalar"] = is_scalar
@@ -128,7 +136,10 @@ def main(op_yaml_path, backward_yaml_path, output_op_path, output_arg_map_path):
     op_template = env.get_template('sparse_op.c.j2')
     with open(output_op_path, "wt") as f:
         msg = op_template.render(
-            ops=ops, backward_ops=backward_ops, op_dict=op_dict
+            ops=ops,
+            backward_ops=backward_ops,
+            op_dict=op_dict,
+            composite_gen_flag=False,
         )
         f.write(msg)
 

@@ -26,6 +26,7 @@ from .framework import convert_np_dtype_to_dtype_, _apply_pass
 from . import core
 from . import unique_name
 from . import compiler
+from . import set_flags
 from .trainer_factory import TrainerFactory
 from .trainer_factory import FetchHandlerMonitor
 import copy
@@ -510,6 +511,16 @@ def _is_dy2st_enable_standalone_executor():
     ]
 
 
+def _is_cuda_graph_enable_standalone_executor():
+    return framework._cuda_graph_enable_standalone_executor_ in [
+        1,
+        '1',
+        True,
+        'True',
+        'true',
+    ]
+
+
 def _prepare_fleet_executor():
     from ..distributed.fleet.proto import fleet_executor_desc_pb2
 
@@ -844,7 +855,19 @@ class _ExecutorCache:
             )
             build_strategy = compiled_program._build_strategy
             # print(f"Program before convert:\n {inner_program}", flush=True)
+            use_cuda_graph = False
+            # When using cuda graph, the cuda graph preparation logic in PE is not
+            # executed, but it is processed in the constructor of new executor.
+            if (
+                build_strategy is not None
+                and build_strategy.allow_cuda_graph_capture
+            ):
+                use_cuda_graph = True
+                build_strategy.allow_cuda_graph_capture = False
+                set_flags({"FLAGS_new_executor_use_cuda_graph": True})
             compiled_program._compile(scope, place)
+            if use_cuda_graph:
+                build_strategy.allow_cuda_graph_capture = True
             ir_graph = framework.IrGraph(compiled_program._graph)
             converted_program = ir_graph.to_program()
 
@@ -870,19 +893,6 @@ class _ExecutorCache:
             fetch_var_name=fetch_var_name,
             use_fetch_v2=True,
         )
-
-        if (
-            os.environ.get('FLAGS_CONVERT_GRAPH_TO_PROGRAM', None)
-            in [1, '1', True, 'True', 'true']
-            and not program._is_start_up_program_
-        ):
-            if program.num_blocks > 1:
-                # If there are multiple blocks in the program, subblock will not be executed with the new executor in temporary
-                logging.warning("There are more than 1 block in program.")
-            elif program.num_blocks == 1:
-                logging.warning("There are 1 block in program.")
-            else:
-                logging.warning("There are no block in program.")
 
         # standalone executor will apply buffer_shared_inplace_pass and
         # inplace_addto_op_pass to program according to build_strategy
@@ -1480,7 +1490,7 @@ class Executor:
                 adam = paddle.optimizer.Adam()
                 adam.minimize(loss)
                 i = paddle.zeros(shape=[1], dtype='int64')
-                array = paddle.fluid.layers.array_write(x=loss, i=i)
+                array = paddle.tensor.array_write(x=loss, i=i)
 
                 # Run the startup program once and only once.
                 exe.run(paddle.static.default_startup_program())
@@ -1711,10 +1721,6 @@ class Executor:
             if core.is_compiled_with_mlu():
                 return False
 
-            use_standalone_executor_for_distribution = os.environ.get(
-                'FLAGS_CONVERT_GRAPH_TO_PROGRAM', None
-            ) in [1, '1', True, 'True', 'true']
-
             compiled = isinstance(
                 program, compiler.CompiledProgram
             ) or isinstance(program._graph, compiler.CompiledProgram)
@@ -1763,18 +1769,7 @@ class Executor:
                     )
                     return False
 
-                # Unsupported case 4: CUDA Graph
-                if (
-                    compiled_program._build_strategy is not None
-                    and compiled_program._build_strategy.allow_cuda_graph_capture
-                ):
-                    warnings.warn(
-                        "Standalone executor is not used for CUDA Graph",
-                        UserWarning,
-                    )
-                    return False
-
-                # Unsupported case 5: async mode
+                # Unsupported case 4: async mode
                 if (
                     compiled_program._build_strategy is not None
                     and compiled_program._build_strategy.async_mode
@@ -1785,19 +1780,19 @@ class Executor:
                     )
                     return False
 
-            # delete this code after supporting fleet
-            from paddle.distributed.fleet import fleet
-
-            if fleet._role_maker is not None:
-                warnings.warn(
-                    "Standalone executor is not used for fleet", UserWarning
-                )
-                return use_standalone_executor_for_distribution
-
+                # Unsupported case 5: CUDA Graph
+                if (
+                    compiled_program._build_strategy is not None
+                    and compiled_program._build_strategy.allow_cuda_graph_capture
+                    and not _is_cuda_graph_enable_standalone_executor()
+                ):
+                    warnings.warn(
+                        "Standalone executor is not used for CUDA Graph when FLAGS_CUDA_GRAPH_USE_STANDALONE_EXECUTOR=0",
+                        UserWarning,
+                    )
+                    return False
             return True
 
-        # NOTE: This is an experimental feature. If `export FLAGS_USE_STANDALONE_EXECUTOR=1 `,
-        # use StandaloneExecutor to run the program.
         if (
             return_merged
             and self._enable_interpreter_core
@@ -1840,8 +1835,13 @@ class Executor:
                 tensor = core.get_variable_tensor(scope, lr_sheduler._var_name)
                 # NOTE(dev): `tensor.set(data, self.place)` always call TensorCopySync that is a blocking behavior. So we use `_copy_from` to replace it.
                 cpu_tensor = _as_lodtensor(data, core.CPUPlace())
-                # for ipu, tensor is allocated on cpu
-                if core.is_compiled_with_ipu():
+                if core.is_cuda_graph_capturing():
+                    warnings.warn(
+                        "Caution!!! When capturing CUDA Graph, the learning rate scheduler would not "
+                        "take any effect! Please set the learning rate manually before each batch!"
+                    )
+                elif core.is_compiled_with_ipu():
+                    # for ipu, tensor is allocated on cpu
                     tensor._copy_from(cpu_tensor, tensor._place())
                 else:
                     tensor._copy_from(cpu_tensor, self.place)

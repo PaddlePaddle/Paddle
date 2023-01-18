@@ -28,7 +28,6 @@ extern "C" {
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
 using LoD = framework::LoD;
 
 class PyramidHashOpMaker : public framework::OpProtoAndCheckerMaker {
@@ -226,10 +225,10 @@ class PyramidHashOP : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "W"), ctx.GetPlace());
+    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "W"),
+                          ctx.GetPlace());
   }
 };
 
@@ -466,10 +465,10 @@ class PyramidHashOpGrad : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "W"), ctx.GetPlace());
+    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "W"),
+                          ctx.GetPlace());
   }
 };
 

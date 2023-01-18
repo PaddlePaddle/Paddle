@@ -20,6 +20,7 @@ namespace platform {
 void CudaProfilerInit(const std::string& output_file,
                       const std::string& output_mode,
                       const std::string& config_file) {
+#if CUDA_VERSION < 11000
   PADDLE_ENFORCE(output_mode == "kvp" || output_mode == "csv",
                  platform::errors::InvalidArgument(
                      "Unsupported cuda profiler output mode, expect `kvp` or "
@@ -28,6 +29,7 @@ void CudaProfilerInit(const std::string& output_file,
   cudaOutputMode_t mode = output_mode == "csv" ? cudaCSV : cudaKeyValuePair;
   PADDLE_ENFORCE_GPU_SUCCESS(
       cudaProfilerInitialize(config_file.c_str(), output_file.c_str(), mode));
+#endif
 }
 
 void CudaProfilerStart() { PADDLE_ENFORCE_GPU_SUCCESS(cudaProfilerStart()); }

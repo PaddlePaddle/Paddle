@@ -20,6 +20,7 @@ from inference_pass_test import InferencePassTest
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
+import paddle.static.nn as nn
 from paddle.fluid.core import AnalysisConfig, PassVersionChecker
 
 
@@ -35,7 +36,7 @@ class TensorRTMatMulDims2Test(InferencePassTest):
                 transpose_y=self.transpose_y,
             )
             matmul_out = paddle.scale(matmul_out, scale=self.alpha)
-            out = fluid.layers.batch_norm(matmul_out, is_test=True)
+            out = nn.batch_norm(matmul_out, is_test=True)
 
         self.feeds = {
             "data": np.ones([24, 24]).astype("float32"),
@@ -74,7 +75,7 @@ class TensorRTMatMulTest(InferencePassTest):
                 transpose_y=self.transpose_y,
             )
             matmul_out = paddle.scale(matmul_out, scale=self.alpha)
-            out = fluid.layers.batch_norm(matmul_out, is_test=True)
+            out = nn.batch_norm(matmul_out, is_test=True)
 
         self.feeds = {
             "data": np.ones([1, 6, 24, 24]).astype("float32"),
@@ -136,7 +137,7 @@ class TensorRTMatMulBroadcastTest(InferencePassTest):
                 transpose_y=self.transpose_y,
             )
             matmul_out = paddle.scale(matmul_out, scale=self.alpha)
-            out = fluid.layers.batch_norm(matmul_out, is_test=True)
+            out = nn.batch_norm(matmul_out, is_test=True)
 
         self.feeds = {
             "data_x": np.ones([2, 6, 24]).astype("float32"),

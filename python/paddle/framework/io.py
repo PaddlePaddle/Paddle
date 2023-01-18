@@ -27,12 +27,6 @@ import paddle
 # deprecated module import
 from paddle import fluid
 from paddle.fluid import core
-from paddle.fluid.dygraph.io import (
-    INFER_MODEL_SUFFIX,
-    INFER_PARAMS_SUFFIX,
-    _construct_params_and_buffers,
-    _construct_program_holders,
-)
 from paddle.fluid.framework import (
     EagerParamBase,
     ParamBase,
@@ -52,6 +46,12 @@ from paddle.fluid.io import (
     _unpack_saved_dict,
 )
 from paddle.jit.api import _SaveLoadConfig
+from paddle.jit.translated_layer import (
+    INFER_MODEL_SUFFIX,
+    INFER_PARAMS_SUFFIX,
+    _construct_params_and_buffers,
+    _construct_program_holders,
+)
 
 __all__ = []
 
@@ -155,7 +155,6 @@ def _load_state_dict_from_save_params(model_path):
 #   - need [full filename] when loading
 #       - paddle.save
 #       - paddle.static.save
-#       - paddle.fluid.save_dygraph
 #   - need [prefix] when loading [compatible for paddle 2.x]
 #       - paddle.jit.save
 #       - paddle.static.save_inference_model
@@ -185,7 +184,6 @@ def _build_load_path_and_config(path, config):
         opti_file_path = path + ".pdopt"
         if os.path.exists(params_file_path) or os.path.exists(opti_file_path):
             error_msg += (
-                " If you want to load the results saved by `fluid.save_dygraph`, "
                 "please specify the full file name, not just the file name prefix. For "
                 "example, it should be written as `paddle.load('model.pdparams')` instead of "
                 "`paddle.load('model')`."
@@ -779,7 +777,7 @@ def save(obj, path, protocol=4, **configs):
         # 2. save object
         dirname = os.path.dirname(path)
         if dirname and not os.path.exists(dirname):
-            os.makedirs(dirname)
+            os.makedirs(dirname, exist_ok=True)
     elif not _is_memory_buffer(path):
         raise ValueError(
             "only supports saving objects to file and `BytesIO`, but got {}".format(
@@ -855,7 +853,7 @@ def _legacy_save(obj, path, protocol=2):
         # 2. save object
         dirname = os.path.dirname(path)
         if dirname and not os.path.exists(dirname):
-            os.makedirs(dirname)
+            os.makedirs(dirname, exist_ok=True)
 
     if isinstance(obj, dict):
         saved_obj = _build_saved_state_dict(obj)
@@ -902,7 +900,7 @@ def load(path, **configs):
         directory, such as ``model`` and model is a directory.
 
     Note:
-        If you load ``state_dict`` from the saved result of static mode API such as
+        If you load ``state_dict`` from the saved result of static graph mode API such as
         ``paddle.static.save`` or ``paddle.static.save_inference_model`` ,
         the structured variable name in dynamic mode will cannot be restored.
         You need to set the argument ``use_structured_name=False`` when using

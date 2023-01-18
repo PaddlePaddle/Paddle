@@ -25,15 +25,13 @@ os.environ["CUDA_VISIBLE_DEVICES"] = "2"
 import paddle
 import paddle.fluid as fluid
 from paddle import _legacy_C_ops
-from paddle.fluid.dygraph import Embedding, to_variable
-from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
+from paddle.fluid.dygraph import to_variable
 from paddle.fluid.framework import _non_static_mode
-from paddle.jit import ProgramTranslator
-from paddle.jit.api import declarative
+from paddle.jit.api import to_static
+from paddle.jit.translated_layer import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 
 SEED = 2020
 
-program_translator = ProgramTranslator()
 # Add InputSpec to make unittest run faster.
 input_specs = [
     paddle.static.InputSpec([None, None], 'int64'),
@@ -371,10 +369,10 @@ class LexNet(fluid.dygraph.Layer):
         self.bigru_num = args.bigru_num
         self.init_bound = 0.1
 
-        self.word_embedding = Embedding(
-            size=[self.vocab_size, self.word_emb_dim],
-            dtype='float32',
-            param_attr=fluid.ParamAttr(
+        self.word_embedding = paddle.nn.Embedding(
+            self.vocab_size,
+            self.word_emb_dim,
+            weight_attr=fluid.ParamAttr(
                 learning_rate=self.emb_lr,
                 name="word_emb",
                 initializer=fluid.initializer.Uniform(
@@ -440,7 +438,7 @@ class LexNet(fluid.dygraph.Layer):
         # share weight
         self.crf_decoding.weight = self.linear_chain_crf.weight
 
-    @declarative(input_spec=input_specs)
+    @to_static(input_spec=input_specs)
     def forward(self, word, target, length=None):
         """
         Configure the network
@@ -542,7 +540,7 @@ class TestLACModel(unittest.TestCase):
         self.dy_param_path = os.path.join(self.temp_dir.name, 'lac_dy_param')
 
     def train(self, args, to_static):
-        program_translator.enable(to_static)
+        paddle.jit.enable_to_static(to_static)
         place = (
             fluid.CUDAPlace(0)
             if fluid.is_compiled_with_cuda()
@@ -622,8 +620,8 @@ class TestLACModel(unittest.TestCase):
                     output_spec=[crf_decode],
                 )
             else:
-                fluid.dygraph.save_dygraph(
-                    model.state_dict(), self.dy_param_path
+                paddle.save(
+                    model.state_dict(), self.dy_param_path + '.pdparams'
                 )
 
             return np.array(loss_data)
@@ -656,11 +654,11 @@ class TestLACModel(unittest.TestCase):
 
     def predict_dygraph(self, batch):
         words, targets, length = batch
-        program_translator.enable(False)
+        paddle.jit.enable_to_static(False)
         with fluid.dygraph.guard(self.place):
             model = LexNet(self.args)
             # load dygraph trained parameters
-            model_dict, _ = fluid.load_dygraph(self.dy_param_path + ".pdparams")
+            model_dict = paddle.load(self.dy_param_path + ".pdparams")
             model.set_dict(model_dict)
             model.eval()
 
@@ -709,5 +707,4 @@ class TestLACModel(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    with fluid.framework._test_eager_guard():
-        unittest.main()
+    unittest.main()

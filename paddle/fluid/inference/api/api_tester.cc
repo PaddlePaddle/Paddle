@@ -87,7 +87,9 @@ TEST(paddle_inference_api, UpdateDllFlag) {
 TEST(paddle_inference_api, AnalysisConfigCopyCtor) {
   AnalysisConfig cfg1;
   cfg1.EnableUseGpu(10);
+#ifdef PADDLE_WITH_TENSORRT
   cfg1.EnableTensorRtEngine();
+#endif
   std::string delete_pass("skip_layernorm_fuse_pass");
   cfg1.pass_builder()->DeletePass(delete_pass);
   AnalysisConfig cfg2(cfg1);

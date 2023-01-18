@@ -38,10 +38,18 @@ from paddle.distributed.fleet.base.private_helper_function import (  # noqa: F40
 from paddle.distributed.fleet.launch_utils import check_backend
 
 # deprecated module import
+# (TODO: GhostScreaming) It will be removed later.
 from paddle.fluid import core
-from paddle.fluid.dygraph import parallel_helper
+
+# (TODO: GhostScreaming) It will be removed later.
 from paddle.fluid.dygraph.parallel import ParallelEnv
-from paddle.fluid.framework import _set_expected_place, in_dygraph_mode
+
+# (TODO: GhostScreaming) It will be removed later.
+from paddle.framework import (
+    _set_expected_place,
+    in_dygraph_mode,
+    parallel_helper,
+)
 
 __all__ = []
 
@@ -235,6 +243,7 @@ def init_parallel_env():
     _set_expected_place(place)
 
     group = None
+
     if backend in _valid_backend_list and in_dygraph_mode():
         if _default_group_name in _get_group_map_by_name():
             return _get_group_map_by_name()[_default_group_name]

@@ -1,4 +1,4 @@
-// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -30,16 +30,21 @@ void SumRawKernel(const Context& dev_ctx,
                   DataType out_dtype,
                   DenseTensor* out) {
   reduce_all = recompute_reduce_all(x, dims, reduce_all);
-  int r = XPUReduce<Context, T>(dev_ctx,
-                                x,
-                                dims.GetData(),
-                                keep_dim,
-                                reduce_all,
-                                out,
-                                xpu::reduce_sum<T>);
+  using XPUType = typename XPUTypeTrait<T>::Type;
+
+  auto f = [](xpu::Context* ctx,
+              const XPUType* x,
+              XPUType* y,
+              const std::vector<int>& xdims,
+              const std::vector<int>& reduce_dims) {
+    return xpu::reduce_sum<XPUType>(ctx, x, y, xdims, reduce_dims);
+  };
+  int r = XPUReduce<Context, XPUType>(
+      dev_ctx, x, dims.GetData(), keep_dim, reduce_all, out, f);
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "reduce_sum");
 }
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(sum_raw, XPU, ALL_LAYOUT, phi::SumRawKernel, float) {}
+PD_REGISTER_KERNEL(
+    sum_raw, XPU, ALL_LAYOUT, phi::SumRawKernel, float, int8_t, int64_t) {}

@@ -19,7 +19,6 @@ import numpy as np
 import paddle
 import paddle.fluid as fluid
 from paddle.jit import to_static
-from paddle.jit.dy2static.program_translator import ProgramTranslator
 
 PLACE = (
     fluid.CUDAPlace(0) if fluid.is_compiled_with_cuda() else fluid.CPUPlace()
@@ -97,7 +96,7 @@ class MainNetWithDict(fluid.dygraph.Layer):
             ),
         }
         # TODO(Aurelius84): The following code will be converted into:
-        # max_len = layers.cond(paddle.shape(input)[0] != max_len,
+        # max_len = paddle.static.nn.cond(paddle.shape(input)[0] != max_len,
         #                       lambda: paddle.shape(input)[0], lambda: max_len)
         # But max_len should be wrapped into tensor, which is not supported.
 
@@ -135,8 +134,7 @@ class TestNetWithDict(unittest.TestCase):
         return self.train(to_static=False)
 
     def train(self, to_static=False):
-        prog_trans = ProgramTranslator()
-        prog_trans.enable(to_static)
+        paddle.jit.enable_to_static(to_static)
         with fluid.dygraph.guard(PLACE):
             net = MainNetWithDict(batch_size=self.batch_size)
             ret = net(self.x)
@@ -191,8 +189,7 @@ class TestDictPop(unittest.TestCase):
         return self._run(to_static=False)
 
     def _run(self, to_static):
-        prog_trans = ProgramTranslator()
-        prog_trans.enable(to_static)
+        paddle.jit.enable_to_static(to_static)
 
         result = self.dygraph_func(self.input)
 
@@ -237,8 +234,7 @@ class TestDictPop3(TestNetWithDict):
         self.x = np.array([2, 2]).astype('float32')
 
     def train(self, to_static=False):
-        prog_trans = ProgramTranslator()
-        prog_trans.enable(to_static)
+        paddle.jit.enable_to_static(to_static)
         with fluid.dygraph.guard(PLACE):
             net = NetWithDictPop()
             ret = net(z=0, x=self.x, y=True)

@@ -37,7 +37,7 @@ class TensorRTInspectorTest(InferencePassTest):
                 transpose_y=self.transpose_y,
             )
             matmul_out = paddle.scale(matmul_out, scale=self.alpha)
-            out = fluid.layers.batch_norm(matmul_out, is_test=True)
+            out = paddle.static.nn.batch_norm(matmul_out, is_test=True)
 
         self.feeds = {
             "data": np.ones([1, 16, 16]).astype("float32"),
