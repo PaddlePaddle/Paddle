@@ -56,9 +56,18 @@ class StaticCompositeContext {
     return generator_->Generate(key);
   }
 
-  void SetPrimEnabled(bool enable_prim) { enable_prim_ = enable_prim; }
+  void SetBwdPrimEnabled(bool enable_prim) { enable_bwd_prim_ = enable_prim; }
 
-  bool IsPrimEnabled() { return enable_prim_; }
+  bool IsBwdPrimEnabled() { return enable_bwd_prim_; }
+
+  void SetFwdPrimEnabled(bool enable_prim) { enable_fwd_prim_ = enable_prim; }
+
+  bool IsFwdPrimEnabled() { return enable_fwd_prim_; }
+
+  void SetAllPrimEnabled(bool enable_prim) {
+    enable_fwd_prim_ = enable_prim;
+    enable_bwd_prim_ = enable_prim;
+  }
 
  private:
   StaticCompositeContext()
@@ -66,7 +75,8 @@ class StaticCompositeContext {
 
   framework::BlockDesc* current_block_desc_;
   std::unique_ptr<UniqueNameGenerator> generator_;
-  static thread_local bool enable_prim_;
+  static thread_local bool enable_bwd_prim_;
+  static thread_local bool enable_fwd_prim_;
   static StaticCompositeContext* static_composite_context_;
   DISABLE_COPY_AND_ASSIGN(StaticCompositeContext);
 };

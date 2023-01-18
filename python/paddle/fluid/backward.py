@@ -1493,7 +1493,7 @@ def _append_backward_ops_(
 
     # remove some backward ops
     # TODO(Jiabin): Support this in prime later, it will prune add_grad, fix this problem
-    if not core.is_prim_enabled():
+    if not core._is_bwd_prim_enabled():
         not_need_ops = _find_not_need_ops(
             grad_op_descs, ops, input_grad_names_set
         )

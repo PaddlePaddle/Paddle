@@ -139,7 +139,7 @@ class TestCompositeSoftmaxPrimBackward(unittest.TestCase):
     "test composite softmax and prim backward"
 
     def setUp(self):
-        core.set_prim_enabled(True)
+        core._set_prim_backward_enabled(True)
         self.dtypes = ["float32"]
         self.shapes = [[2, 3, 4], [2, 3]]
         self.axes = [-1, 0, 1]
