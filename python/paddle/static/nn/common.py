@@ -427,6 +427,7 @@ def continuous_value_model(input, cvm, use_cvm=True):
     )
     return out
 
+
 @static_only
 def unzip(input, lod):
     r"""
@@ -487,6 +488,7 @@ def unzip(input, lod):
         type='unzip', inputs={'X': [input], 'lod': [lod]}, outputs={'Y': [out]}
     )
     return out
+
 
 @static_only
 def data_norm(
