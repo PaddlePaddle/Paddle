@@ -16,8 +16,6 @@
 # 1. When define composite rule of some op, you can only use primitive ops defined in primitives.py.
 # 2. The name and args of target op must be corresponding with standard description of op in
 #    ops.yaml or legacy_ops.yaml.
-from paddle.fluid.layers import fill_constant  # noqa: F401
-from paddle.tensor import mean, ones, reshape, sqrt, square, zeros
 
 from .primitives import *  # noqa: F403
 from .primreg import REGISTER_COMPOSITE, lookup_composite
@@ -43,7 +41,7 @@ def softmax_composite(x, axis):
 def composite_batchnorm(
     x,
     run_mean,
-    variance,
+    run_var,
     scale,
     bias,
     is_test,
@@ -53,44 +51,7 @@ def composite_batchnorm(
     use_global_stats,
     trainable_statistics,
 ):
-    """define composite rule of op softmax"""
-    # reserve_space = (
-    #     None if len(op.output_names) == 5 else get_output_var_list(op)[1]
-    # )
-    print(
-        "x",
-        x,
-        '\n',
-        "run_mean",
-        run_mean,
-        '\n',
-        "variance",
-        variance,
-        '\n',
-        "scale",
-        scale,
-        '\n',
-        "bias",
-        bias,
-        '\n',
-        "is_test",
-        is_test,
-        '\n',
-        "momentum",
-        momentum,
-        '\n',
-        "epsilon",
-        epsilon,
-        '\n',
-        "data_layout",
-        data_layout,
-        '\n',
-        "use_global_stats",
-        use_global_stats,
-        '\n',
-        "trainable_statistics",
-        trainable_statistics,
-    )
+    """define composite rule of op batch_norm"""
 
     feature_axis = (
         1 if data_layout in ('NC', 'NCL', 'NCHW', 'NCHWD') else len(x.shape) - 1
@@ -108,13 +69,12 @@ def composite_batchnorm(
     )
 
     batch_mean = zeros(run_mean.shape, run_mean.dtype)
-    batch_var = zeros(variance.shape, variance.dtype)
-    # breakpoint()
+    batch_var = zeros(run_var.shape, run_var.dtype)
     if not use_run_stat:
-        print("in========================")
         batch_mean = mean(x, reduce_axes, keepdim=True)
+        temp = subtract(x, broadcast_to(batch_mean, x.shape))
         batch_var = mean(
-            square(subtract(x, broadcast_to(batch_mean, x.shape))),
+            multiply(temp, temp),
             reduce_axes,
             keepdim=True,
         )
@@ -136,11 +96,11 @@ def composite_batchnorm(
                 reshape(batch_mean, run_mean.shape),
             ),
         )
-        variance = add(
-            multiply(momentum, variance),
+        run_var = add(
+            multiply(momentum, run_var),
             multiply(
-                subtract(ones(variance.shape, variance.dtype), momentum),
-                reshape(batch_var, variance.shape),
+                subtract(ones(run_var.shape, run_var.dtype), momentum),
+                reshape(batch_var, run_var.shape),
             ),
         )
     else:
@@ -148,7 +108,7 @@ def composite_batchnorm(
             subtract(x, broadcast_to(reshape(run_mean, stats_shape), x.shape)),
             sqrt(
                 add(
-                    broadcast_to(reshape(variance, stats_shape), x.shape),
+                    broadcast_to(reshape(run_var, stats_shape), x.shape),
                     fill_constant(x.shape, x.dtype, epsilon),
                 )
             ),
@@ -158,8 +118,12 @@ def composite_batchnorm(
         broadcast_to(reshape(bias, stats_shape), x_hat.shape),
     )
 
-    # if reserve_space:
+    # add op assign to detach tensor in void unsafe change outside the rule.
+    batch_mean_ = assign(batch_mean)
+    batch_var_ = assign(batch_var)
+    run_mean_ = assign(run_mean)
+    run_var_ = assign(run_var)
     if trainable_statistics or not is_test:
-        return run_mean, None, batch_mean, batch_var, variance, y
+        return run_mean_, None, batch_mean_, batch_var_, run_var_, y
     else:
-        return run_mean, batch_mean, batch_var, variance, y
+        return run_mean_, batch_mean_, batch_var_, run_var_, y
