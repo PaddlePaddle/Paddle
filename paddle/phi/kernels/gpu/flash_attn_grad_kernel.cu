@@ -12,17 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <assert.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#ifdef PADDLE_WITH_FLASHATTN
 
+#include "paddle/phi/kernels/flash_attn_grad_kernel.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/arange_kernel.h"
 #include "paddle/phi/kernels/empty_kernel.h"
-#include "paddle/phi/kernels/flash_attn_grad_kernel.h"
 #include "paddle/phi/kernels/reshape_kernel.h"
 
 #include "paddle/phi/backends/dynload/flashattn.h"
@@ -136,3 +133,5 @@ PD_REGISTER_KERNEL(flash_attn_grad,
                    phi::dtype::bfloat16) {
   kernel->InputAt(5).SetBackend(phi::Backend::CPU);  // seed_offset
 }
+
+#endif

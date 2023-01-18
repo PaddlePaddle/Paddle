@@ -12,12 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#ifdef PADDLE_WITH_FLASHATTN
+
 #include "paddle/phi/kernels/flash_attn_kernel.h"
 
 #include "paddle/fluid/framework/tensor_util.h"
-#include "paddle/infrt/dialect/phi/data_type.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
-#include "paddle/phi/common/bfloat16.h"
+#include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/kernel_registry.h"
 
 #include "paddle/phi/kernels/arange_kernel.h"
@@ -134,3 +135,5 @@ PD_REGISTER_KERNEL(flash_attn,
                    phi::FlashAttnKernel,
                    phi::dtype::float16,
                    phi::dtype::bfloat16) {}
+
+#endif
