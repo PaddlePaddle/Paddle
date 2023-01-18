@@ -564,8 +564,13 @@ function(op_library TARGET)
   string(REGEX MATCH "REGISTER_OP_CPU_KERNEL" regex_result "${TARGET_CONTENT}")
   string(REPLACE "_op" "" TARGET "${TARGET}")
   if(${pybind_flag} EQUAL 0 AND regex_result STREQUAL "")
-    file(APPEND ${pybind_file} "USE_NO_KERNEL_OP(${TARGET});\n")
-    set(pybind_flag 1)
+    # TODO:(lizhiyu) This just for activation. If not using this assert,
+    # there will be "USE_NO_KERNEL_OP(activation)"in pybind.h in the case of WITH_GPU=OFF.
+    # I have a question whether pybind.h is useful.
+    if(NOT ${TARGET} STREQUAL "activation")
+      file(APPEND ${pybind_file} "USE_NO_KERNEL_OP(${TARGET});\n")
+      set(pybind_flag 1)
+    endif()
   endif()
 
   # pybind USE_OP
