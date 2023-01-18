@@ -531,7 +531,7 @@ class Momentum(Optimizer):
 
                 if in_dygraph_mode():
                     found_inf = self._get_auxiliary_var('found_inf')
-                    if found_inf:
+                    if found_inf or found_inf is None:
                         if isinstance(found_inf, core.eager.Tensor):
                             self._set_auxiliary_var('found_inf', True)
                         _, _, _ = _C_ops.merged_momentum_(

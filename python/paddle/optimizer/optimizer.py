@@ -921,7 +921,7 @@ class Optimizer:
 
             if framework._non_static_mode():
                 found_inf = self._get_auxiliary_var('found_inf')
-                if found_inf:
+                if found_inf or found_inf is None:
                     if isinstance(found_inf, core.eager.Tensor):
                         self._set_auxiliary_var('found_inf', True)
                     if isinstance(parameters_and_grads, list):
