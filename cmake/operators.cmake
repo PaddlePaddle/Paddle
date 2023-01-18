@@ -411,6 +411,17 @@ function(op_library TARGET)
       set(pybind_flag 1)
     endif()
 
+    # pybind USE_OP_ITSELF
+    set(op_name "")
+    # Add PHI Kernel Registry Message
+    find_register(${cc_src} "REGISTER_ACTIVATION_OP" op_name)
+    if(NOT ${op_name} EQUAL "")
+      file(APPEND ${pybind_file} "USE_OP_ITSELF(${op_name});\n")
+      # hack: for example, the target in conv_transpose_op.cc is conv2d_transpose, used in mkldnn
+      set(TARGET ${op_name})
+      set(pybind_flag 1)
+    endif()
+
     set(op_name "")
     find_register(${cc_src} "REGISTER_OP_WITHOUT_GRADIENT" op_name)
     if(NOT ${op_name} EQUAL "")
@@ -566,7 +577,6 @@ function(op_library TARGET)
   if(${pybind_flag} EQUAL 0 AND regex_result STREQUAL "")
     # TODO:(lizhiyu) This just for activation. If not using this assert,
     # there will be "USE_NO_KERNEL_OP(activation)"in pybind.h in the case of WITH_GPU=OFF.
-    # I have a question whether pybind.h is useful.
     if(NOT ${TARGET} STREQUAL "activation")
       file(APPEND ${pybind_file} "USE_NO_KERNEL_OP(${TARGET});\n")
       set(pybind_flag 1)

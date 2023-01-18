@@ -922,7 +922,7 @@
   backward : poisson_grad
 
 - op : pow
-  args : (Tensor x, Scalar y)
+  args : (Tensor x, Scalar y=1.0f)
   output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta

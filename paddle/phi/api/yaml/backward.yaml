@@ -960,7 +960,7 @@
   inplace : (grad_x_grad -> x_grad)
 
 - backward_op : pow_grad
-  forward : pow(Tensor x, Scalar y) -> Tensor(out)
+  forward : pow(Tensor x, Scalar y=1.0f) -> Tensor(out)
   args : (Tensor x, Tensor out_grad, Scalar y=-1)
   output : Tensor(x_grad)
   infer_meta :
