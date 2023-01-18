@@ -14,6 +14,9 @@ limitations under the License. */
 
 #include "paddle/phi/kernels/sparse/coalesce_kernel.h"
 
+#include <thrust/sort.h>
+#include <thrust/unique.h>
+
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/core/kernel_registry.h"
