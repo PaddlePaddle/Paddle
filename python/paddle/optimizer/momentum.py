@@ -531,9 +531,12 @@ class Momentum(Optimizer):
 
                 if in_dygraph_mode():
                     found_inf = self._get_auxiliary_var('found_inf')
-                    if found_inf or found_inf is None:
+                    if found_inf:
                         if isinstance(found_inf, core.eager.Tensor):
                             self._set_auxiliary_var('found_inf', True)
+                    else:
+                        if isinstance(found_inf, core.eager.Tensor):
+                            self._set_auxiliary_var('found_inf', False)
                         _, _, _ = _C_ops.merged_momentum_(
                             self._param_dict[key][param_group_idx],
                             grad_dict[key],
@@ -551,9 +554,6 @@ class Momentum(Optimizer):
                             find_master,
                             self._rescale_grad,
                         )
-                    else:
-                        if isinstance(found_inf, core.eager.Tensor):
-                            self._set_auxiliary_var('found_inf', False)
                 else:
                     inputs = {
                         "Param": self._param_dict[key][param_group_idx],

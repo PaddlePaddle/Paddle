@@ -894,17 +894,17 @@ class Optimizer:
 
         if in_dygraph_mode():
             found_inf = self._get_auxiliary_var('found_inf')
-            if found_inf or found_inf is None:
+            if found_inf:
                 if isinstance(found_inf, core.eager.Tensor):
                     self._set_auxiliary_var('found_inf', True)
+            else:
+                if isinstance(found_inf, core.eager.Tensor):
+                    self._set_auxiliary_var('found_inf', False)
                 for param_and_grad in parameters_and_grads:
                     if param_and_grad[1] is None:
                         continue
                     if param_and_grad[0].trainable is True:
                         self._append_optimize_op(target_block, param_and_grad)
-            else:
-                if isinstance(found_inf, core.eager.Tensor):
-                    self._set_auxiliary_var('found_inf', False)
         else:
             for param_and_grad in parameters_and_grads:
                 if param_and_grad[1] is None:
