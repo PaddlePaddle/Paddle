@@ -592,6 +592,29 @@ class TestSundryAPI(unittest.TestCase):
         np.testing.assert_array_equal(out3_1.numpy(), out3_2.numpy())
         np.testing.assert_array_equal(out3_2.numpy(), np.asarray(1))
 
+    def test_cumsum(self):
+        x1 = paddle.rand([])
+        x1.stop_gradient = False
+
+        out1 = paddle.cumsum(x1)
+        out2 = paddle.cumsum(x1, axis=0)
+        out3 = paddle.cumsum(x1, axis=-1)
+
+        out1.retain_grads()
+        out2.retain_grads()
+        out3.retain_grads()
+
+        out1.backward()
+        out2.backward()
+        out3.backward()
+
+        self.assertEqual(out1.shape, [1])
+        self.assertEqual(out1.grad.shape, [1])
+        self.assertEqual(out2.shape, [])
+        self.assertEqual(out2.grad.shape, [])
+        self.assertEqual(out3.shape, [])
+        self.assertEqual(out3.grad.shape, [])
+
     def test_add_n(self):
         x1 = paddle.rand([])
         x1.stop_gradient = False
