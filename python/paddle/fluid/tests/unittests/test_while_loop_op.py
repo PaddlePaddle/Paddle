@@ -236,11 +236,11 @@ class TestApiWhileLoop_Backward(unittest.TestCase):
         main_program = Program()
         startup_program = Program()
         with fluid.program_guard(main_program, startup_program):
-            i = fluid.data(name='i', shape=[], dtype='float32')
+            i = fluid.data(name='i', shape=[1], dtype='float32')
             i.stop_gradient = False
-            eleven = layers.fill_constant(shape=[], dtype='float32', value=11)
-            one = layers.fill_constant(shape=[], dtype='float32', value=1)
-            x = fluid.data(name='x', shape=[], dtype='float32')
+            eleven = layers.fill_constant(shape=[1], dtype='float32', value=11)
+            one = layers.fill_constant(shape=[1], dtype='float32', value=1)
+            x = fluid.data(name='x', shape=[1], dtype='float32')
             x.stop_gradient = False
 
             out = paddle.static.nn.while_loop(cond, body, [i, x])
@@ -254,10 +254,10 @@ class TestApiWhileLoop_Backward(unittest.TestCase):
         )
         exe = fluid.Executor(place)
 
-        feed_i = np.ones([]).astype('float32')
-        feed_x = np.ones([]).astype('float32')
-        data = np.asarray(100).astype('float32')
-        i_grad = np.asarray(110).astype('float32')
+        feed_i = np.ones(1).astype('float32')
+        feed_x = np.ones(1).astype('float32')
+        data = np.asarray([100]).astype('float32')
+        i_grad = np.asarray([110]).astype('float32')
 
         res = exe.run(
             main_program,
