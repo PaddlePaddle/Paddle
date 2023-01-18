@@ -486,7 +486,7 @@ def interpolate(
                 for i, dim in enumerate(out_shape):
                     if isinstance(dim, Variable) and dim.shape != []:
                         out_shape[i] = dim.numpy()[0]
-                    elif isinstance(dim, Variable) and dim.shape != []:
+                    elif isinstance(dim, Variable) and dim.shape == []:
                         out_shape[i] = dim.numpy()
             if not (_is_list_or_turple_(out_shape)):
                 raise TypeError("size should be a list or tuple or Variable.")
