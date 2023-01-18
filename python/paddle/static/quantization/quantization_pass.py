@@ -2890,6 +2890,19 @@ class AddQuantDequantPassV2:
                         )
                         if in_node.persistable():
                             continue
+
+                        if in_node.dtype() not in [
+                            paddle.float64,
+                            paddle.float32,
+                            paddle.float16,
+                        ]:
+                            _logger.warning(
+                                "Since the {} contains an input of type INT, the quantization of this layer is skipped.".format(
+                                    op_node.name()
+                                )
+                            )
+                            break
+
                         if arg_name in dequantized_vars_map:
                             dequant_var_node = dequantized_vars_map[arg_name]
                         else:
@@ -3298,9 +3311,9 @@ class AddQuantDequantForInferencePass:
                         op_node.outputs, var_name
                     )
                     if out_node.dtype() not in [
-                        core.VarDesc.VarType.FP64,
-                        core.VarDesc.VarType.FP32,
-                        core.VarDesc.VarType.FP16,
+                        paddle.float64,
+                        paddle.float32,
+                        paddle.float16,
                     ]:
                         continue
                     if var_name in dequantized_vars_map:
