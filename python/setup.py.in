@@ -487,6 +487,8 @@ if '${WITH_CUDNN_DSO}' == 'ON' and os.path.exists('${CUDNN_LIBRARY}'):
 if not sys.platform.startswith("linux"):
     package_data['paddle.libs']+=[os.path.basename('${GNU_RT_LIB_2}')]
     shutil.copy('${GNU_RT_LIB_2}', libs_path)
+
+if len('$FLASHATTN_LIBRARIES') > 1:
     package_data['paddle.libs']+=[os.path.basename('${FLASHATTN_LIBRARIES}')]
     shutil.copy('${FLASHATTN_LIBRARIES}', libs_path)
 

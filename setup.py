@@ -834,11 +834,9 @@ def get_package_data_and_package_dir():
                     shutil.copy(cudnn_lib, libs_path)
     if not sys.platform.startswith("linux"):
         package_data['paddle.libs'] += [
-            os.path.basename(env_dict.get("GNU_RT_LIB_2")),
-            os.path.basename(env_dict.get("FLASHATTN_LIBRARIES")),
+            os.path.basename(env_dict.get("GNU_RT_LIB_2"))
         ]
         shutil.copy(env_dict.get("GNU_RT_LIB_2"), libs_path)
-        shutil.copy(env_dict.get("FLASHATTN_LIBRARIES"), libs_path)
     if env_dict.get("WITH_MKL") == 'ON':
         shutil.copy(env_dict.get("MKLML_SHARED_LIB"), libs_path)
         shutil.copy(env_dict.get("MKLML_SHARED_IOMP_LIB"), libs_path)
@@ -862,6 +860,11 @@ def get_package_data_and_package_dir():
                 shutil.copy(env_dict.get("OPENBLAS_LIB") + '.0', libs_path)
                 package_data['paddle.libs'] += ['libopenblas.so.0']
 
+    if len(env_dict.get("FLASHATTN_LIBRARIES", "")) > 1:
+        package_data['paddle.libs'] += [
+            os.path.basename(env_dict.get("FLASHATTN_LIBRARIES"))
+        ]
+        shutil.copy(env_dict.get("FLASHATTN_LIBRARIES"), libs_path)
     if env_dict.get("WITH_LITE") == 'ON':
         shutil.copy(env_dict.get("LITE_SHARED_LIB"), libs_path)
         package_data['paddle.libs'] += [
