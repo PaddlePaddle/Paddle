@@ -14,10 +14,8 @@
 
 #pragma once
 
-#include "paddle/phi/kernels/funcs/fast_divmod.h"
-#ifdef PADDLE_WITH_CUDA
 #include "paddle/phi/backends/gpu/cuda/cuda_graph_with_memory_pool.h"
-#endif
+#include "paddle/phi/kernels/funcs/fast_divmod.h"
 
 namespace phi {
 namespace funcs {
