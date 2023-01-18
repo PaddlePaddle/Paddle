@@ -1839,7 +1839,7 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
             False if self.composite_func_info == {} else True
         )
 
-        if is_composite_grad_api:
+        if is_composite_grad_api and next_grad_node_creation_str != '':
             next_grad_node_creation_str = f"""
  if (!paddle::prim::PrimCommonUtils::IsPrimEnabled()) {{
     {next_grad_node_creation_str}
@@ -2282,7 +2282,7 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
         if (
             len(next_grad_node_creation_str) > 0
             or is_invoke_forward_api
-            or inplace_for_grad_outs_str != ''
+            or (inplace_for_grad_outs_str[0:20] == 'if (trace_backward)')
         ):
             compute_require_next_grad_str = f"{indent}bool trace_backward = egr::Controller::Instance().HasGrad() && create_graph;\n"
 
