@@ -130,7 +130,7 @@ struct SimpleOpTypeSetTeller : public Teller {
           "cosh", "asin",  "acos",  "atan", "asinh",       "acosh",
           "erf",  "floor", "round", "sign", "logical_not", "reciprocal",
       };
-      if (act_op_list.find(op_type) != act_op_list.end()) {
+      if (unary_op_list.find(op_type) != unary_op_list.end()) {
         auto type = x_var_desc->GetDataType();
         if ((type ==
              paddle::framework::proto::VarType_Type::VarType_Type_INT32) ||
