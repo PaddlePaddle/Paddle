@@ -424,10 +424,36 @@ void CumInferMeta(const MetaTensor& x,
     out->set_dims(phi::make_ddim({phi::product(x_dims)}));
     out->set_dtype(x.dtype());
   } else {
+    if (x_dims.size() > 0) {
+      PADDLE_ENFORCE_GE(
+          axis,
+          -x_dims.size(),
+          phi::errors::OutOfRange(
+              "axis is out of range (expected to be in range of [%ld, "
+              "%ld), but got %ld).",
+              -(x_dims.size()),
+              x_dims.size(),
+              axis));
+      PADDLE_ENFORCE_LT(
+          axis,
+          x_dims.size(),
+          phi::errors::OutOfRange(
+              "axis is out of range (expected to be in range of [%ld, "
+              "%ld), but got %ld).",
+              -(x_dims.size()),
+              x_dims.size(),
+              axis));
+    } else {
+      PADDLE_ENFORCE_EQ(
+          (axis == 0 || axis == -1),
+          true,
+          errors::InvalidArgument("The axis must be -1 or 0 in 0D Tensor, "
+                                  "but the value given is %d.",
+                                  axis));
+    }
     out->set_dims(x_dims);
     out->set_dtype(x.dtype());
   }
-
   out->share_lod(x);
 }
 
