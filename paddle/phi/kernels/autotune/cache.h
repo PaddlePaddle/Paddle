@@ -45,11 +45,6 @@ struct MatmulAutoTuneResult {
   bool exhaustive_search = false;
 };
 
-struct MatmulCache {
-  int lib_idx{0};   // using cuBlas or cuBlasLt
-  int algo_idx{0};  // algo selected in cuBlasLt
-};
-
 size_t TransposeKey(const std::vector<int64_t>& x_dims,
                     const std::vector<int32_t>& perm,
                     phi::DataType dtype);
@@ -63,10 +58,11 @@ enum class AlgorithmType {
   kConvBackwardDataV8 = 5,
   kConvBackwardFilterV8 = 6,
   kTranspose = 7,
-  kAlgorithmCount = 8
+  kAlgorithmCount = 8,
 #else
-  kTranspose = 4,
-  kAlgorithmCount = 5
+  kTranspose = 9,
+  kMatmul = 10,
+  kAlgorithmCount = 11
 #endif
 };
 

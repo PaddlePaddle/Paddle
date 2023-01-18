@@ -19,7 +19,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/autotune/auto_tune_base.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/complex_functors.h"
-#include "paddle/phi/kernels/impl/matmul_kernel_impl_with_blasLt.h"
+#include "paddle/phi/kernels/funcs/blas/blaslt_impl.cu.h"
 
 namespace phi {
 
@@ -105,7 +105,6 @@ void MatMulFunctionImplWithCuBlas(const Context& dev_ctx,
   // Get data ptr
   const T* x_data = X.data<T>();
   const T* y_data = Y.data<T>();
-
   auto blas = phi::funcs::GetBlas<Context, T>(dev_ctx);
 
   if (x_ndim == 1 && y_ndim == 1) {
@@ -494,12 +493,8 @@ void MatMulFunctionImplWithCublasLt(const Context& dev_ctx,
                                     bool flag = false) {
   const int x_ndim = x_dims.size();
   const int y_ndim = y_dims.size();
-
-  // Get data ptr
   const T* x_data = X.data<T>();
   const T* y_data = Y.data<T>();
-
-  auto blas = phi::funcs::GetBlas<Context, T>(dev_ctx);
 
   if (x_ndim == 1 && y_ndim == 1) {
     const int M = X.numel();
@@ -513,8 +508,7 @@ void MatMulFunctionImplWithCublasLt(const Context& dev_ctx,
             "received Y has [%d] elements",
             M,
             N));
-    // To count MatMul's case from 0 rather than 1 can be consisant with
-    // op-benchmark's config.
+
     // MatMul's case 0  =>  vector * vector
     Out->Resize({1});
     dev_ctx.template Alloc<T>(Out);
@@ -522,10 +516,10 @@ void MatMulFunctionImplWithCublasLt(const Context& dev_ctx,
     CublasLtGEMM<T, Context>()(dev_ctx,
                                y_data,
                                x_data,
+                               dev_ctx.template Alloc<T>(Out),
                                1,
                                1,
                                M,
-                               dev_ctx.template Alloc<T>(Out),
                                false,
                                true);
     return;
@@ -571,10 +565,10 @@ void MatMulFunctionImplWithCublasLt(const Context& dev_ctx,
       CublasLtGEMM<T, Context>()(dev_ctx,
                                  y_data,
                                  x_data,
+                                 dev_ctx.template Alloc<T>(Out),
                                  M,
                                  1,
                                  N,
-                                 dev_ctx.template Alloc<T>(Out),
                                  false,
                                  false);
     } else {
@@ -585,10 +579,10 @@ void MatMulFunctionImplWithCublasLt(const Context& dev_ctx,
         CublasLtGEMM<T, Context>()(dev_ctx,
                                    y_data,
                                    x_data,
+                                   dev_ctx.template Alloc<T>(Out),
                                    M,
                                    1,
                                    N,
-                                   dev_ctx.template Alloc<T>(Out),
                                    true,
                                    false);
       } else {
@@ -596,10 +590,10 @@ void MatMulFunctionImplWithCublasLt(const Context& dev_ctx,
         CublasLtBatchedGEMM<T, Context>()(dev_ctx,
                                           y_data,
                                           x_data,
+                                          dev_ctx.template Alloc<T>(Out),
                                           M,
                                           1,
                                           N,
-                                          dev_ctx.template Alloc<T>(Out),
                                           true,
                                           false,
                                           batch_size,
@@ -654,29 +648,21 @@ void MatMulFunctionImplWithCublasLt(const Context& dev_ctx,
         CublasLtGEMM<T, Context>()(dev_ctx,
                                    x_data,
                                    y_data,
+                                   dev_ctx.template Alloc<T>(Out),
                                    M,
                                    1,
                                    N,
-                                   dev_ctx.template Alloc<T>(Out),
                                    true,
                                    false);
-        blas.GEMV(true,
-                  N,
-                  M,
-                  static_cast<T>(1),
-                  x_data,
-                  y_data,
-                  static_cast<T>(flag),
-                  dev_ctx.template Alloc<T>(Out));
       } else {
         VLOG(3) << "MatMul's case 5";
         CublasLtBatchedGEMM<T, Context>()(dev_ctx,
                                           x_data,
                                           y_data,
+                                          dev_ctx.template Alloc<T>(Out),
                                           M,
                                           1,
                                           N,
-                                          dev_ctx.template Alloc<T>(Out),
                                           true,
                                           false,
                                           batch_size,
@@ -690,10 +676,10 @@ void MatMulFunctionImplWithCublasLt(const Context& dev_ctx,
       CublasLtGEMM<T, Context>()(dev_ctx,
                                  x_data,
                                  y_data,
+                                 dev_ctx.template Alloc<T>(Out),
                                  M,
                                  1,
                                  N,
-                                 dev_ctx.template Alloc<T>(Out),
                                  false,
                                  false);
     }
@@ -772,10 +758,10 @@ void MatMulFunctionImplWithCublasLt(const Context& dev_ctx,
     CublasLtGEMM<T, Context>()(dev_ctx,
                                x_data,
                                y_data,
+                               dev_ctx.template Alloc<T>(Out),
                                M,
                                N,
                                K,
-                               dev_ctx.template Alloc<T>(Out),
                                trans_x,
                                trans_y);
   } else if (x_batch_size == 1) {
@@ -784,10 +770,10 @@ void MatMulFunctionImplWithCublasLt(const Context& dev_ctx,
       CublasLtGEMM<T, Context>()(dev_ctx,
                                  y_data,
                                  x_data,
+                                 dev_ctx.template Alloc<T>(Out),
                                  y_batch_size * N,
                                  1,
                                  K,
-                                 dev_ctx.template Alloc<T>(Out),
                                  false,
                                  false);
     } else {
@@ -795,10 +781,10 @@ void MatMulFunctionImplWithCublasLt(const Context& dev_ctx,
       CublasLtBatchedGEMM<T, Context>()(dev_ctx,
                                         x_data,
                                         y_data,
+                                        dev_ctx.template Alloc<T>(Out),
                                         M,
                                         N,
                                         K,
-                                        dev_ctx.template Alloc<T>(Out),
                                         trans_x,
                                         trans_y,
                                         out_batch_size,
@@ -812,10 +798,10 @@ void MatMulFunctionImplWithCublasLt(const Context& dev_ctx,
       CublasLtGEMM<T, Context>()(dev_ctx,
                                  x_data,
                                  y_data,
+                                 dev_ctx.template Alloc<T>(Out),
                                  x_batch_size * M,
                                  N,
                                  K,
-                                 dev_ctx.template Alloc<T>(Out),
                                  false,
                                  trans_y);
     } else {
@@ -823,10 +809,10 @@ void MatMulFunctionImplWithCublasLt(const Context& dev_ctx,
       CublasLtBatchedGEMM<T, Context>()(dev_ctx,
                                         x_data,
                                         y_data,
+                                        dev_ctx.template Alloc<T>(Out),
                                         M,
                                         N,
                                         K,
-                                        dev_ctx.template Alloc<T>(Out),
                                         true,
                                         trans_y,
                                         out_batch_size,
@@ -839,10 +825,10 @@ void MatMulFunctionImplWithCublasLt(const Context& dev_ctx,
     CublasLtBatchedGEMM<T, Context>()(dev_ctx,
                                       x_data,
                                       y_data,
+                                      dev_ctx.template Alloc<T>(Out),
                                       M,
                                       N,
                                       K,
-                                      dev_ctx.template Alloc<T>(Out),
                                       trans_x,
                                       trans_y,
                                       out_batch_size,
@@ -871,10 +857,10 @@ void MatMulFunctionImplWithCublasLt(const Context& dev_ctx,
     CublasLtBatchedGEMM<T, Context>()(dev_ctx,
                                       x_ptr.data(),
                                       y_ptr.data(),
+                                      out_ptr.data(),
                                       M,
                                       N,
                                       K,
-                                      out_ptr.data(),
                                       trans_x,
                                       trans_y,
                                       out_batch_size);
@@ -902,15 +888,13 @@ void MatmulKernel(const Context& dev_ctx,
                                    " but reviced dims size is 0. "));
 
 #if CUDA_VERSION >= 11060
-  auto* tuner = phi::autotune::MakeMatmulTuner<T>(
-      MatMulFunctionImplWithCuBlas<Context, T>);
-  tuner->AddCallBack(MatMulFunctionImplWithCublasLt<Context, T>);
-  // FIXME: autotune logic
-  // size_t key = phi::autotune::MatmulKey();
-  // tuner->Run(dev_ctx,
-  //            algo,      // phi::autotune::AlgorithmType::kTranspose,
-  // //          key);
-
+  auto* tuner = phi::autotune::MakeMatmulTuner<T>(MatMulFunctionImplWithCuBlas<phi::GPUContext, T>);
+  tuner->AddCallBack(MatMulFunctionImplWithCublasLt<phi::GPUContext, T>);
+  auto matmul_cache = phi::autotune::MatmulKey(x_dims, y_dims, trans_x, trans_y, 
+                                               paddle::experimental::CppTypeToDataType<T>::Type());
+  tuner->Run(dev_ctx,
+             phi::autotune::AlgorithmType::kTranspose, 
+             matmul_cache.key);
 #else
   MatMulFunctionImplWithCuBlas<Context, T>(
       dev_ctx, x, y, x_dims, y_dims, out, trans_x, trans_y);

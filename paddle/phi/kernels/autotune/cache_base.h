@@ -60,6 +60,39 @@ size_t GetKey(Args&&... args) {
   return seed;
 }
 
+struct MatmulCacheKey {
+ public:
+  MatmulCacheKey() {}
+  MatmulCacheKey(const std::vector<int64_t>& x_dims,
+                 const std::vector<int64_t>& y_dims,
+                 const bool trans_x,
+                 const bool trans_y,
+                 phi::DataType dtype) 
+    : x_dims_(x_dims),
+      y_dims_(y_dims),
+      trans_x_(trans_x),
+      trans_y_(trans_y),
+      dtype_(dtype) {
+    key_ = GetKey(x_dims_,
+                  y_dims_,
+                  static_cast<int64_t>(trans_x_),
+                  static_cast<int64_t>(trans_y_),
+                  static_cast<int64_t>(dtype_));
+  }
+
+  size_t GetKey() const { return key_; }
+  
+ private :
+  size_t key_;
+  std::vector<int64_t> x_dims_;
+  std::vector<int64_t> y_dims_;
+  bool trans_x_;
+  bool trans_y_;
+  int best_algo_;
+  phi::DataType dtype_;
+}
+
+
 struct ConvCacheKey {
   ConvCacheKey() {}
   ConvCacheKey(const std::vector<int64_t>& arg_x_dims,
