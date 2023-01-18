@@ -557,7 +557,7 @@ class TestBilinearInitializer(unittest.TestCase):
                 shape=[8, 1, 3, 3],
                 lod_level=0,
                 name="param",
-                initializer=paddle.nn.initializer.BilinearInitializer(),
+                initializer=paddle.nn.initializer.Bilinear(),
             )
         num_ops = 2 if dtype in ["float16", "uint16", "float64"] else 1
         self.assertEqual(len(block.ops), num_ops)
@@ -591,7 +591,7 @@ class TestBilinearInitializerDygraphAPI(unittest.TestCase):
         w_attr = paddle.ParamAttr(
             learning_rate=0.0,
             regularizer=L2Decay(0.0),
-            initializer=paddle.nn.initializer.BilinearInitializer(),
+            initializer=paddle.nn.initializer.Bilinear(),
         )
         data = paddle.rand([B, 3, H, W], dtype='float32')
         conv_up = paddle.nn.Conv2DTranspose(
@@ -612,7 +612,7 @@ class TestBilinearInitializerDygraphAPI(unittest.TestCase):
         w_attr = paddle.ParamAttr(
             learning_rate=0.0,
             regularizer=L2Decay(0.0),
-            initializer=paddle.nn.initializer.BilinearInitializer(),
+            initializer=paddle.nn.initializer.Bilinear(),
         )
         conv2d = paddle.nn.Conv2D(1, 2, 3, weight_attr=w_attr)
         paddle.set_default_dtype("float32")

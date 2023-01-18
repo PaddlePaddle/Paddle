@@ -50,58 +50,6 @@ def _global_bias_initializer():
     return _global_bias_initializer_
 
 
-def calculate_gain(nonlinearity, param=None):
-    """
-    Get the recommended ``gain`` value of some nonlinearity function. ``gain`` value can be used in some
-    ``paddle.nn.initializer`` api to adjust the initialization value.
-
-    Args:
-        nonlinearity(str): name of nonlinearity activation function. If it is a linear function, such as:
-            `linear/conv1d/conv2d/conv3d/conv1d_transpose/conv2d_transpose/conv3d_transpose` , 1.0 will be returned.
-        param(bool|int|float, optional): optional parameter for somme nonlinearity function. Now, it only applies to
-            'leaky_relu'. Default: None, it will be calculated as 0.01 in the formula.
-
-    Returns:
-        A float value, which is the recommended gain for this nonlinearity function.
-
-    Examples:
-        .. code-block:: python
-
-            import paddle
-            gain = paddle.nn.initializer.calculate_gain('tanh') # 5.0 / 3
-            gain = paddle.nn.initializer.calculate_gain('leaky_relu', param=1.0) # 1.0 = math.sqrt(2.0 / (1+param^2))
-            initializer = paddle.nn.initializer.Orthogonal(gain)
-
-    """
-    if param is None:
-        param = 0.01
-    else:
-        assert isinstance(param, (bool, int, float))
-        param = float(param)
-    recommended_gain = {
-        'sigmoid': 1,
-        'linear': 1,
-        'conv1d': 1,
-        'conv2d': 1,
-        'conv3d': 1,
-        'conv1d_transpose': 1,
-        'conv2d_transpose': 1,
-        'conv3d_transpose': 1,
-        'tanh': 5.0 / 3,
-        'relu': math.sqrt(2.0),
-        'leaky_relu': math.sqrt(2.0 / (1 + param**2)),
-        'selu': 3.0 / 4,
-    }
-    if nonlinearity in recommended_gain.keys():
-        return recommended_gain[nonlinearity]
-    else:
-        raise ValueError(
-            "nonlinearity function {} is not suppported now.".format(
-                nonlinearity
-            )
-        )
-
-
 def set_global_initializer(weight_init, bias_init=None):
     """
     This API is used to set up global model parameter initializer in framework.

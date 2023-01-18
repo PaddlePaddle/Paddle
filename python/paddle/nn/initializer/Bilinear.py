@@ -23,7 +23,7 @@ from .initializer import Initializer
 __all__ = []
 
 
-class BilinearInitializer(Initializer):
+class Bilinear(Initializer):
     """
     This initializer can be used in transposed convolution operator to
     act as upsampling. Users can upsample a feature map with shape of
@@ -180,6 +180,3 @@ class BilinearInitializer(Initializer):
 
             var.op = op
             return op
-
-
-Bilinear = BilinearInitializer

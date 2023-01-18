@@ -19,8 +19,7 @@ from paddle import _C_ops
 
 from ...fluid import core, framework, unique_name
 from ...fluid.framework import _current_expected_place, in_dygraph_mode
-from ...fluid.initializer import calculate_gain
-from .initializer import Initializer
+from .initializer import Initializer, calculate_gain
 
 __all__ = []
 
