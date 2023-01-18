@@ -926,6 +926,7 @@ class While:
           .. code-block:: python
 
             import paddle.fluid as fluid
+            import paddle
             import numpy as np
 
             i = paddle.full(shape=[1], dtype='int64', fill_value=0)           # loop counter
@@ -1538,6 +1539,8 @@ class Switch:
     .. code-block:: python
 
         '''
+        import paddle
+        import paddle.fluid as fluid
         with fluid.layers.Switch() as switch:
             with switch.case(cond1):
                 i = paddle.full(shape=[1], dtype='int64', fill_value=1)

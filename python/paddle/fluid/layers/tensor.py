@@ -285,6 +285,7 @@ def sums(input, out=None):
         .. code-block:: python
 
             import paddle.fluid as fluid
+            import paddle
 
             x0 = paddle.full(shape=[16, 32], dtype='int64', fill_value=1)
             x1 = paddle.full(shape=[16, 32], dtype='int64', fill_value=2)
