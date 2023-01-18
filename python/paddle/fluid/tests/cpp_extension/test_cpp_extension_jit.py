@@ -108,7 +108,8 @@ class TestCppExtensionJITInstall(unittest.TestCase):
             )
             np.testing.assert_allclose(
                 power.forward().sum().numpy(),
-                np.sum(np.power(np_x, 2), atol=1e-5),
+                np.sum(np.power(np_x, 2)),
+                atol=1e-5,
             )
 
 
