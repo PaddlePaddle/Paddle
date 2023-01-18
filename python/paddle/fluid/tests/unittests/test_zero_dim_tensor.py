@@ -2204,16 +2204,15 @@ class TestSundryAPIStatic(unittest.TestCase):
             paddle.static.append_backward(out_x.sum())
 
         place = (
-            fluid.CUDAPlace(0)
+            paddle.CUDAPlace(0)
             if paddle.device.is_compiled_with_cuda()
             else paddle.CPUPlace()
         )
-        exe = fluid.Executor(place)
 
         feed_i = np.ones([]).astype('float32')
         feed_x = np.ones([]).astype('float32')
 
-        res = exe.run(
+        res = self.exe.run(
             main_program,
             feed={'i': feed_i, 'x': feed_x},
             fetch_list=[out_x.name, i.grad_name],
