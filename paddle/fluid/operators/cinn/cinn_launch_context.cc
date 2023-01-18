@@ -89,7 +89,13 @@ CinnLaunchContext::CinnLaunchContext(const framework::ir::Graph& graph,
     }
   }
   for (auto&& var_name : output_var_names) {
-    AssignExternalVariable(var_name);
+    if (inplace_var_names_.count(var_name)) {
+      VLOG(4) << "Inplaced variable:" << var_name << " -> "
+              << var_name + InplaceOutSuffix << " as paddle2cinn varmap key";
+      AssignExternalVariable(var_name + InplaceOutSuffix);
+    } else {
+      AssignExternalVariable(var_name);
+    }
   }
   for (auto&& var_name : internal_var_names_) {
     AssignInternalVariable(var_name);
