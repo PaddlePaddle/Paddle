@@ -31,7 +31,7 @@ void tanh_grad(const Tensor& out, const Tensor& grad_out, Tensor* grad_x) {
   auto tmp = pow<T>(out, 2.0);
   tmp = scale<T>(tmp, -1.0, 1.0, true);
   auto grad_x_tmp = multiply<T>(grad_out, tmp);
-  grad_x->set_impl(grad_x_tmp.impl());
+  set_output<T>(grad_x_tmp, grad_x);
 }
 template <typename T>
 void subtract_grad(const Tensor& x,
@@ -48,7 +48,8 @@ void subtract_grad(const Tensor& x,
       auto dy_reduce_res =
           sum<T>(scale_out_grad, phi::vectorize(reduce_dim), y.dtype(), false);
       auto dy_tmp = reshape<T>(dy_reduce_res, phi::vectorize(y.dims()));
-      dy->set_impl(dy_tmp.impl());
+      set_output<T>(dy_tmp, dy);
+      // dy->set_impl(dy_tmp.impl());
     } else {
       by_pass<T>(scale_out_grad, dy);
     }
@@ -60,7 +61,8 @@ void subtract_grad(const Tensor& x,
       auto dx_reduce_res =
           sum<T>(out_grad, phi::vectorize(reduce_dim), x.dtype(), false);
       auto dx_tmp = reshape<T>(dx_reduce_res, phi::vectorize(x.dims()));
-      dx->set_impl(dx_tmp.impl());
+      set_output<T>(dx_tmp, dx);
+      // dx->set_impl(dx_tmp.impl());
     } else {
       by_pass<T>(out_grad, dx);
     }
@@ -81,7 +83,8 @@ void add_grad(const Tensor& x,
       auto dy_reduce_res =
           sum<T>(out_grad, phi::vectorize(reduce_dim), y.dtype(), false);
       auto dy_tmp = reshape<T>(dy_reduce_res, phi::vectorize(y.dims()));
-      dy->set_impl(dy_tmp.impl());
+      set_output<T>(dy_tmp, dy);
+      // dy->set_impl(dy_tmp.impl());
     } else {
       by_pass<T>(out_grad, dy);
     }
@@ -93,7 +96,8 @@ void add_grad(const Tensor& x,
       auto dx_reduce_res =
           sum<T>(out_grad, phi::vectorize(reduce_dim), x.dtype(), false);
       auto dx_tmp = reshape<T>(dx_reduce_res, phi::vectorize(x.dims()));
-      dx->set_impl(dx_tmp.impl());
+      set_output<T>(dx_tmp, dx);
+      // dx->set_impl(dx_tmp.impl());
     } else {
       by_pass<T>(out_grad, dx);
     }
@@ -134,8 +138,8 @@ void sum_grad(const Tensor& x,
   } else {
     x_grad_tmp = expand<T>(out_grad, x_dim);
   }
-
-  x_grad->set_impl(x_grad_tmp.impl());
+  set_output<T>(x_grad_tmp, x_grad);
+  // x_grad->set_impl(x_grad_tmp.impl());
 }
 
 template <typename T>
@@ -158,9 +162,11 @@ void divide_grad(const Tensor& x,
       auto dy_reduce_res =
           sum<T>(dy_res, phi::vectorize(reduce_dim), y.dtype(), false);
       auto dy_tmp = reshape<T>(dy_reduce_res, phi::vectorize(y.dims()));
-      dy->set_impl(dy_tmp.impl());
+      set_output<T>(dy_tmp, dy);
+      // dy->set_impl(dy_tmp.impl());
     } else {
-      dy->set_impl(dy_res.impl());
+      set_output<T>(dy_res, dy);
+      // dy->set_impl(dy_res.impl());
     }
   }  // indicate we will compute dy
   if (dx) {
@@ -174,9 +180,11 @@ void divide_grad(const Tensor& x,
       auto dx_reduce_res =
           sum<T>(dx_res, phi::vectorize(reduce_dim), x.dtype(), false);
       auto dx_tmp = reshape<T>(dx_reduce_res, phi::vectorize(x.dims()));
-      dx->set_impl(dx_tmp.impl());
+      set_output<T>(dx_tmp, dx);
+      // dx->set_impl(dx_tmp.impl());
     } else {
-      dx->set_impl(dx_res.impl());
+      set_output<T>(dx_res, dx);
+      // dx->set_impl(dx_res.impl());
     }
   }  // indicate we will compute dx
 }
@@ -187,7 +195,8 @@ void sqrt_grad(const Tensor& out, const Tensor& out_grad, Tensor* x_grad) {
     auto div_x = full<T>(phi::vectorize(out.dims()), 0.5);
     auto tmp = divide<T>(div_x, out);
     auto x_grad_tmp = multiply<T>(out_grad, tmp);
-    x_grad->set_impl(x_grad_tmp.impl());
+    set_output<T>(x_grad_tmp, x_grad);
+    // x_grad->set_impl(x_grad_tmp.impl());
   }
 }
 }  // namespace prim
