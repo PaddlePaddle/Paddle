@@ -2670,6 +2670,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "skip_merge_layernorm",
       "lookup_table_v2",
       "expand_v2",
+      "fuse_eleadd_transpose",
       "skip_groupnorm_act",
       "preln_groupnorm_act"};
 
@@ -2821,6 +2822,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "lookup_table",
       "lookup_table_v2",
       "expand_v2",
+      "fuse_eleadd_transpose",
       "skip_groupnorm_act",
       "preln_groupnorm_act"};
 };

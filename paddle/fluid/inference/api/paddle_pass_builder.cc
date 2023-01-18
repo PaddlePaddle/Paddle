@@ -142,8 +142,9 @@ const std::vector<std::string> kTRTSubgraphPasses({
       "preln_elementwise_groupnorm_act_pass",  //
       "groupnorm_act_pass",                    //
 #endif
-      "tensorrt_subgraph_pass",  //
-      "conv_bn_fuse_pass",       //
+      "elementwiseadd_transpose_pass",  //
+      "tensorrt_subgraph_pass",         //
+      "conv_bn_fuse_pass",              //
 #if CUDNN_VERSION >= 7100  // To run conv_fusion, the version of cudnn must be
                            // guaranteed at least v7
 // cudnn8.0 has memory leak problem in conv + eltwise + act, so we
