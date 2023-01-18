@@ -371,3 +371,37 @@ def set_paddle_lib_path():
 
 
 set_paddle_lib_path()
+
+
+def set_prim_forward(value):
+    """set flag FLAGS_prim_forward."""
+    flag = str(value)
+    if flag.lower() not in ["true", "false", "debug"]:
+        raise TypeError(f"flag {flag} should be string of bool or 'debug'.")
+    os.environ["FLAGS_prim_forward"] = flag
+    return
+
+
+def enable_prim_forward():
+    flag = os.getenv("FLAGS_prim_forward", "true").lower()
+    if flag == "false":
+        return False
+    if flag == "debug":
+        return "debug"
+    return True
+
+
+def set_prim_backward(value):
+    """set flag FLAGS_prim_backward,"""
+    flag = str(value)
+    if flag.lower() not in ["true", "false"]:
+        raise TypeError(f"flag {flag} should be bool or string of bool.")
+    os.environ["FLAGS_prim_backward"] = flag
+    return
+
+
+def enable_prim_backward():
+    flag = os.getenv("FLAGS_prim_backward", "true")
+    if flag.lower() == "false":
+        return False
+    return True
