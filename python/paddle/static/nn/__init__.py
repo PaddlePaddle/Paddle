@@ -17,7 +17,6 @@ from .common import batch_norm  # noqa: F401
 from .common import instance_norm  # noqa: F401
 from .common import data_norm  # noqa: F401
 from .common import continuous_value_model  # noqa: F401
-from .common import unzip  # noqa: F401
 from .common import group_norm  # noqa: F401
 from .common import deform_conv2d  # noqa: F401
 from .common import conv2d  # noqa: F401
