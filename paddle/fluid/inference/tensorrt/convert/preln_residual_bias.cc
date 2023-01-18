@@ -28,14 +28,6 @@ class PrelnResidualBiasOpConverter : public OpConverter {
                   bool test_mode) override {
     VLOG(4) << "convert fused_bias_dropout_residual_layer_norm op with "
                "drop_rate = 0 to preln_residual_bias tensorrt layer";
-    if (!engine_->with_dynamic_shape()) {
-      VLOG(0) << "preln_residual_bias trt layer can not work with static graph "
-                 "mode. "
-                 "preln_residual_bias trt layer will fall back to phi "
-                 "fused_bias_dropout_residual_layer_norm op and cut the trt "
-                 "subgraph"
-                 "It is recommended to use dynamic shape trt mode instead.";
-    }
     framework::OpDesc op_desc(op, nullptr);
     // Declare inputs
     auto* input1 = engine_->GetITensor(op_desc.Input("X")[0]);
@@ -66,14 +58,6 @@ class PrelnResidualBiasOpConverter : public OpConverter {
     int scale_size = phi::product(scale_dims);
     int ele_bias_size = has_bias ? phi::product(ele_bias_dims) : 0;
     float epsilon = PADDLE_GET_CONST(float, op_desc.GetAttr("ln_epsilon"));
-    float dropout_rate =
-        PADDLE_GET_CONST(float, op_desc.GetAttr("dropout_rate"));
-    if (dropout_rate != 0.0f) {
-      VLOG(4) << "preln_residual_bias trt layer can not work with "
-                 "fused_bias_dropout_residual_layer_norm op in which the "
-                 "dropout_rate != 0, stop convert";
-      return;
-    }
     bool with_fp16 = engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
     if (engine_->precision() == AnalysisConfig::Precision::kInt8) {
       with_fp16 = true;
