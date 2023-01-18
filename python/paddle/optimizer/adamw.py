@@ -500,7 +500,7 @@ class AdamW(Optimizer):
                 beta1_pow_acc,
                 beta2_pow_acc,
                 master_weight,
-                False,
+                None,
                 _beta1,
                 _beta2,
                 self._epsilon,

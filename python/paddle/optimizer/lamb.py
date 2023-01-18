@@ -304,7 +304,7 @@ class Lamb(Optimizer):
                 beta1_pow_acc,
                 beta2_pow_acc,
                 master_weight,
-                False,
+                None,
                 weight_decay,
                 self._beta1,
                 self._beta2,
