@@ -169,11 +169,11 @@ void FusedEmbeddingFCLSTMOp::InferShape(
   ctx->ShareLoD("Ids", "XX");
 }
 
-framework::OpKernelType FusedEmbeddingFCLSTMOp::GetExpectedKernelType(
+phi::KernelKey FusedEmbeddingFCLSTMOp::GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const {
-  return framework::OpKernelType(
+  return phi::KernelKey(
       OperatorWithKernel::IndicateVarDataType(ctx, "Embeddings"),
-      ctx.device_context());
+      ctx.GetPlace());
 }
 
 void FusedEmbeddingFCLSTMOpMaker::Make() {

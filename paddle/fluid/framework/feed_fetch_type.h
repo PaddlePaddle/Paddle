@@ -19,12 +19,14 @@ limitations under the License. */
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/lod_tensor_array.h"
 #include "paddle/fluid/framework/string_array.h"
+#include "paddle/phi/core/extended_tensor.h"
 
 namespace paddle {
 namespace framework {
 using FeedType =
     paddle::variant<phi::DenseTensor, Strings, phi::SparseCooTensor>;
-using FeedList = std::vector<FeedType>;
+
+using FeedList = paddle::framework::PhiVector<FeedType>;
 
 using FetchType = paddle::variant<phi::DenseTensor,
                                   LoDTensorArray,

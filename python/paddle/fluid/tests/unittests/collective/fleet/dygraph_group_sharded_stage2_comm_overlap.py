@@ -53,14 +53,18 @@ class MLP(fluid.Layer):
         return y
 
 
-def reader_decorator(linear_size=1000):
-    def __reader__():
-        for _ in range(100):
-            img = np.random.rand(linear_size).astype('float32')
-            label = np.ones(1).astype('int64')
-            yield img, label
+class RandomDataset(paddle.io.Dataset):
+    def __init__(self, num_samples=2000, linear_size=1000):
+        self.num_samples = num_samples
+        self.linear_size = linear_size
 
-    return __reader__
+    def __getitem__(self, idx):
+        img = np.random.rand(self.linear_size).astype('float32')
+        label = np.ones(1).astype('int64')
+        return img, label
+
+    def __len__(self):
+        return self.num_samples
 
 
 def optimizer_setting(model, use_pure_fp16, opt_group=False):
@@ -124,18 +128,15 @@ def train_mlp(
             )
         return
 
-    train_reader = paddle.batch(
-        reader_decorator(), batch_size=batch_size, drop_last=True
+    paddle.seed(2023)
+    np.random.seed(2023)
+    train_loader = paddle.io.DataLoader(
+        RandomDataset(),
+        batch_size=batch_size,
+        shuffle=False,
+        drop_last=True,
+        num_workers=0,
     )
-
-    train_loader = paddle.io.DataLoader.from_generator(
-        capacity=32,
-        use_double_buffer=True,
-        iterable=True,
-        return_list=True,
-        use_multiprocess=True,
-    )
-    train_loader.set_sample_list_generator(train_reader)
 
     if sharding_stage == 2:
         model.to(device="gpu")

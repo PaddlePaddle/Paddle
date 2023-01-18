@@ -79,6 +79,8 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   set_tests_properties(test_pass_quantization PROPERTIES TIMEOUT 60)
   py_test_modules(test_tuning_recompute MODULES test_tuning_recompute)
   set_tests_properties(test_tuning_recompute PROPERTIES TIMEOUT 240)
+  py_test_modules(test_fused_linear_pass MODULES test_fused_linear_pass)
+  set_tests_properties(test_fused_linear_pass PROPERTIES TIMEOUT 20)
 
   py_test_modules(test_while_op_completion MODULES test_while_op_completion
                   ENVS ${dist_ENVS})
@@ -128,5 +130,6 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   py_test_modules(test_cluster_partition MODULES test_cluster_partition)
   py_test_modules(test_convert_to_process_meshes MODULES
                   test_convert_to_process_meshes)
+  py_test_modules(test_pass_bf16 MODULES test_pass_bf16)
   py_test_modules(test_dist_saver MODULES test_dist_saver)
 endif()

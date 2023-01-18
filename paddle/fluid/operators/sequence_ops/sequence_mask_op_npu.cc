@@ -48,10 +48,14 @@ class SequenceMaskNPUKernel : public framework::OpKernel<T> {
 
     if (maxlen < 0) {
       auto x_numel = x->numel();
-      std::vector<T> x_vec;
-      framework::TensorToVector(*x, dev_ctx, &x_vec);
-      auto x_data = x_vec.data();
-      maxlen = static_cast<int>(*std::max_element(x_data, x_data + x_numel));
+      if (x_numel == 0) {
+        maxlen = 0;
+      } else {
+        std::vector<T> x_vec;
+        framework::TensorToVector(*x, dev_ctx, &x_vec);
+        auto x_data = x_vec.data();
+        maxlen = static_cast<int>(*std::max_element(x_data, x_data + x_numel));
+      }
     }
     auto y_dim = phi::vectorize<int>(x->dims());
     y_dim.push_back(maxlen);

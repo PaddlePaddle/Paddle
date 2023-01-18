@@ -492,11 +492,6 @@ def prior_box(
                 flip=True)
 
     """
-    helper = LayerHelper("prior_box", **locals())
-    dtype = helper.input_dtype()
-    check_variable_and_dtype(
-        input, 'input', ['uint8', 'int8', 'float32', 'float64'], 'prior_box'
-    )
 
     def _is_list_or_tuple_(data):
         return isinstance(data, list) or isinstance(data, tuple)
@@ -541,6 +536,11 @@ def prior_box(
         return box, var
 
     else:
+        helper = LayerHelper("prior_box", **locals())
+        dtype = helper.input_dtype()
+        check_variable_and_dtype(
+            input, 'input', ['uint8', 'int8', 'float32', 'float64'], 'prior_box'
+        )
         attrs = {
             'min_sizes': min_sizes,
             'aspect_ratios': aspect_ratios,
@@ -679,13 +679,6 @@ def box_coder(
                 box_normalized=False)
 
     """
-    check_variable_and_dtype(
-        prior_box, 'prior_box', ['float32', 'float64'], 'box_coder'
-    )
-    check_variable_and_dtype(
-        target_box, 'target_box', ['float32', 'float64'], 'box_coder'
-    )
-
     if in_dygraph_mode():
         if isinstance(prior_box_var, Variable):
             output_box = _C_ops.box_coder(
@@ -712,6 +705,12 @@ def box_coder(
         return output_box
 
     else:
+        check_variable_and_dtype(
+            prior_box, 'prior_box', ['float32', 'float64'], 'box_coder'
+        )
+        check_variable_and_dtype(
+            target_box, 'target_box', ['float32', 'float64'], 'box_coder'
+        )
         helper = LayerHelper("box_coder", **locals())
 
         output_box = helper.create_variable_for_type_inference(
@@ -2268,21 +2267,6 @@ def matrix_nms(
                                  nms_top_k=400, keep_top_k=200, normalized=False)
 
     """
-    check_variable_and_dtype(
-        bboxes, 'BBoxes', ['float32', 'float64'], 'matrix_nms'
-    )
-    check_variable_and_dtype(
-        scores, 'Scores', ['float32', 'float64'], 'matrix_nms'
-    )
-    check_type(score_threshold, 'score_threshold', float, 'matrix_nms')
-    check_type(post_threshold, 'post_threshold', float, 'matrix_nms')
-    check_type(nms_top_k, 'nums_top_k', int, 'matrix_nms')
-    check_type(keep_top_k, 'keep_top_k', int, 'matrix_nms')
-    check_type(normalized, 'normalized', bool, 'matrix_nms')
-    check_type(use_gaussian, 'use_gaussian', bool, 'matrix_nms')
-    check_type(gaussian_sigma, 'gaussian_sigma', float, 'matrix_nms')
-    check_type(background_label, 'background_label', int, 'matrix_nms')
-
     if in_dygraph_mode():
         out, index, rois_num = _C_ops.matrix_nms(
             bboxes,
@@ -2302,6 +2286,20 @@ def matrix_nms(
             rois_num = None
         return out, rois_num, index
     else:
+        check_variable_and_dtype(
+            bboxes, 'BBoxes', ['float32', 'float64'], 'matrix_nms'
+        )
+        check_variable_and_dtype(
+            scores, 'Scores', ['float32', 'float64'], 'matrix_nms'
+        )
+        check_type(score_threshold, 'score_threshold', float, 'matrix_nms')
+        check_type(post_threshold, 'post_threshold', float, 'matrix_nms')
+        check_type(nms_top_k, 'nums_top_k', int, 'matrix_nms')
+        check_type(keep_top_k, 'keep_top_k', int, 'matrix_nms')
+        check_type(normalized, 'normalized', bool, 'matrix_nms')
+        check_type(use_gaussian, 'use_gaussian', bool, 'matrix_nms')
+        check_type(gaussian_sigma, 'gaussian_sigma', float, 'matrix_nms')
+        check_type(background_label, 'background_label', int, 'matrix_nms')
         helper = LayerHelper('matrix_nms', **locals())
         output = helper.create_variable_for_type_inference(dtype=bboxes.dtype)
         index = helper.create_variable_for_type_inference(dtype='int32')
