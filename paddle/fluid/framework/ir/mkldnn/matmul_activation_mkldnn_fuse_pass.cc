@@ -62,13 +62,14 @@ void MatmulActivationMkldnnFusePass::FuseMatmulAct(
         activation_out, activation_out, matmul_act_pattern);
 
     OpDesc* matmul_op = matmul->Op();
-
+    
     matmul_op->SetType("fused_matmul");
     if (matmul_type == "matmul") {
       matmul_op->SetAttr("trans_x", matmul_op->GetAttr("transpose_X"));
       matmul_op->SetAttr("trans_y", matmul_op->GetAttr("transpose_Y"));
       matmul_op->SetAttr("matmul_alpha", matmul_op->GetAttr("alpha"));
     }
+    
     SetActivationAttrs(matmul_op, activation->Op(), act_type);
     matmul_op->SetOutput("Out", {activation_out->Name()});
 
