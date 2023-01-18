@@ -1315,13 +1315,16 @@ class TestSundryAPI(unittest.TestCase):
     def test_unsqueeze(self):
         x1 = paddle.full([], 2)
         x1.stop_gradient = False
+        x1.retain_grads()
         out1 = paddle.unsqueeze(x1, axis=0)
+        out1.retain_grads()
         out1.backward()
         self.assertEqual(out1.shape, [1])
         self.assertEqual(x1.grad.shape, [])
 
         x2 = paddle.full([], 0, dtype='int32')
         out2 = paddle.unsqueeze(x1, axis=x2)
+        out2.retain_grads()
         out2.backward()
         self.assertEqual(out2.shape, [1])
         self.assertEqual(x1.grad.shape, [])
