@@ -46,7 +46,7 @@ class AutoAlign:
 
     def get_var(self, level, step):
         if step < self._step:
-            return self._fetch_list, None
+            return self._fetch_list
         if level == 0:
             return self.get_loss_lr_var()
         elif level == 1:
