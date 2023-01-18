@@ -104,7 +104,6 @@ void Pool2dGradKernel(const Context& ctx,
   }
 
   if (pooling_type == "max") {
-    // TODO(zhanghuan05) to bind max_pool2d_grad_indices xpu api
     r = xpu::max_pool2d_grad<XPUType>(
         ctx.x_context(),
         reinterpret_cast<const XPUType*>(x.data<T>()),
@@ -163,6 +162,8 @@ void MaxPool2dWithIndexGradKernel(const Context& ctx,
   std::vector<int> paddings(paddings_t);
   const auto* index_data = mask.data<int>();
 
+  PADDLE_ENFORCE_NOT_NULL(index_data,
+                          errors::NotFound("index data should not be nullptr"));
   PADDLE_ENFORCE_EQ(
       ksize.size(),
       2,
@@ -170,11 +171,6 @@ void MaxPool2dWithIndexGradKernel(const Context& ctx,
                                    "dimension pooling!, but received "
                                    "%d-dimension pool kernel size",
                                    ksize.size()));
-  PADDLE_ENFORCE_EQ(!adaptive || (ksize[0] * ksize[1] == 1),
-                    true,
-                    phi::errors::InvalidArgument(
-                        "The Pool2d XPU OP does not support (adaptive == "
-                        "true && output_size != 1)"));
   global_pooling = global_pooling || (adaptive && (ksize[0] * ksize[1] == 1));
   if (global_pooling) {
     for (size_t i = 0; i < ksize.size(); ++i) {
