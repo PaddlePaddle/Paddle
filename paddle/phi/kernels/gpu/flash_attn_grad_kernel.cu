@@ -12,18 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifdef PADDLE_WITH_FLASHATTN
-
 #include "paddle/phi/kernels/flash_attn_grad_kernel.h"
 #include "paddle/fluid/framework/tensor_util.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/arange_kernel.h"
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/reshape_kernel.h"
 
+#ifdef PADDLE_WITH_FLASHATTN
 #include "paddle/phi/backends/dynload/flashattn.h"
-#include "paddle/phi/backends/gpu/gpu_context.h"
+#endif
 
 namespace phi {
 
@@ -41,6 +41,7 @@ void FlashAttnGradKernel(const Context& ctx,
                          DenseTensor* dq,
                          DenseTensor* dk,
                          DenseTensor* dv) {
+#ifdef PADDLE_WITH_FLASHATTN
   ctx.template Alloc<T>(dq);
   ctx.template Alloc<T>(dk);
   ctx.template Alloc<T>(dv);
@@ -121,6 +122,7 @@ void FlashAttnGradKernel(const Context& ctx,
                                stream,
                                seed,
                                offset);
+#endif
 }
 
 }  // namespace phi
@@ -133,5 +135,3 @@ PD_REGISTER_KERNEL(flash_attn_grad,
                    phi::dtype::bfloat16) {
   kernel->InputAt(5).SetBackend(phi::Backend::CPU);  // seed_offset
 }
-
-#endif

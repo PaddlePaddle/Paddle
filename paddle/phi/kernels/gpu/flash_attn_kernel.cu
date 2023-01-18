@@ -12,8 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifdef PADDLE_WITH_FLASHATTN
-
 #include "paddle/phi/kernels/flash_attn_kernel.h"
 
 #include "paddle/fluid/framework/tensor_util.h"
@@ -25,7 +23,9 @@
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/reshape_kernel.h"
 
+#ifdef PADDLE_WITH_FLASHATTN
 #include "paddle/phi/backends/dynload/flashattn.h"
+#endif
 
 namespace phi {
 
@@ -41,6 +41,7 @@ void FlashAttnKernel(const Context& ctx,
                      DenseTensor* softmax_lse,
                      DenseTensor* softmax,
                      DenseTensor* seed_offset) {
+#ifdef PADDLE_WITH_FLASHATTN
   ctx.template Alloc<T>(out);
 
   cudaStream_t stream = ctx.stream();
@@ -125,6 +126,7 @@ void FlashAttnKernel(const Context& ctx,
                                stream,
                                seed,
                                offset);
+#endif
 }
 
 }  // namespace phi
@@ -135,5 +137,3 @@ PD_REGISTER_KERNEL(flash_attn,
                    phi::FlashAttnKernel,
                    phi::dtype::float16,
                    phi::dtype::bfloat16) {}
-
-#endif
