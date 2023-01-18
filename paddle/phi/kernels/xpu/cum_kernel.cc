@@ -30,6 +30,15 @@ void CumsumKernel(const Context& dev_ctx,
   using XPUType = typename XPUTypeTrait<T>::Type;
   dev_ctx.template Alloc<T>(out);
 
+  if (x.numel() == 1) {
+    int r = xpu::copy<XPUType>(dev_ctx.x_context(),
+                               reinterpret_cast<const XPUType*>(x.data<T>()),
+                               reinterpret_cast<XPUType*>(out->data<T>()),
+                               x.numel());
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "copy");
+    return;
+  }
+
   // prepare for call xdnn api
   std::vector<int> x_shape = phi::vectorize<int>(x.dims());
   int axis_as_int = axis.to<int>();

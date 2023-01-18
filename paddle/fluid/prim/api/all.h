@@ -13,6 +13,6 @@
 // limitations under the License.
 
 #pragma once
+#include "paddle/fluid/prim/api/generated/prim_api/prim_api.h"
 #include "paddle/fluid/prim/api/manual/backward/composite_backward_api.h"
-#include "paddle/fluid/prim/api/manual/prim_api/prim_api.h"
 #include "paddle/fluid/prim/api/manual/utils/utils.h"
