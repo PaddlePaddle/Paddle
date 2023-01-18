@@ -360,8 +360,6 @@ class Adam(Optimizer):
         # create the adam optimize op
 
         if framework.in_dygraph_mode():
-            found_inf = self._get_auxiliary_var('found_inf')
-
             _beta1 = (
                 self._beta1
                 if not isinstance(self._beta1, Variable)
@@ -382,7 +380,7 @@ class Adam(Optimizer):
                 beta1_pow_acc,
                 beta2_pow_acc,
                 master_weight,
-                found_inf,
+                False,
                 _beta1,
                 _beta2,
                 self._epsilon,
