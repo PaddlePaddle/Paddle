@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/bitwise_kernel.h"
+#include "paddle/phi/kernels/clip_grad_kernel.h"
 
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -20,17 +20,25 @@
 namespace phi {
 
 template <typename T, typename Context>
-void BitwiseNotKernel(const Context& ctx,
-                      const DenseTensor& x,
-                      DenseTensor* out) {
+void ClipGradKernel(const Context& ctx,
+                    const DenseTensor& x,
+                    const DenseTensor& out_grad,
+                    const Scalar& min,
+                    const Scalar& max,
+                    DenseTensor* x_grad) {
+  ctx.template Alloc<T>(x_grad);
   using XPUDataType = typename XPUTypeTrait<T>::Type;
-  ctx.template Alloc<T>(out);
-  int r = xpu::logical_not(ctx.x_context(),
-                           reinterpret_cast<const XPUDataType*>(x.data<T>()),
-                           reinterpret_cast<XPUDataType*>(out->data<T>()),
-                           x.numel());
-  PADDLE_ENFORCE_XDNN_SUCCESS(r, "bitwise not");
+  int r =
+      xpu::clip_grad(ctx.x_context(),
+                     reinterpret_cast<const XPUDataType*>(x.data<T>()),
+                     reinterpret_cast<const XPUDataType*>(out_grad.data<T>()),
+                     reinterpret_cast<XPUDataType*>(x_grad->data<T>()),
+                     x.numel(),
+                     min.to<T>(),
+                     max.to<T>());
+  PADDLE_ENFORCE_XDNN_SUCCESS(r, "clip_grad");
 }
 }  // namespace phi
 
-PD_REGISTER_KERNEL(bitwise_not, XPU, ALL_LAYOUT, phi::BitwiseNotKernel, bool) {}
+PD_REGISTER_KERNEL(
+    clip_grad, XPU, ALL_LAYOUT, phi::ClipGradKernel, float, int) {}
