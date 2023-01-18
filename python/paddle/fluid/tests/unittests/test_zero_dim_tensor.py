@@ -1173,6 +1173,53 @@ class TestSundryAPI(unittest.TestCase):
         self.assertEqual(x1.grad.numpy(), 0.5)
         self.assertEqual(x2.grad.numpy(), 0)
 
+    def test_interpolate(self):
+        import numpy as np
+
+        from paddle.nn.functional import interpolate
+
+        input_data = np.random.random((2, 3, 6, 6)).astype("float32")
+        input_x = paddle.to_tensor(input_data)
+        origin_result = interpolate(
+            x=input_x, size=[12, 12], mode="bilinear", align_corners=False
+        )
+
+        output_size = [
+            paddle.full([], 12, dtype="int32"),
+            paddle.full([], 12, dtype="int32"),
+        ]
+        out1 = interpolate(
+            x=input_x, size=output_size, mode="bilinear", align_corners=False
+        )
+
+        scale_1 = [paddle.full([], 2), paddle.full([], 2)]
+        out2 = interpolate(
+            x=input_x,
+            scale_factor=scale_1,
+            mode="bilinear",
+            align_corners=False,
+        )
+
+        scale_2 = paddle.full([], 2)
+        out3 = interpolate(
+            x=input_x,
+            scale_factor=scale_2,
+            mode="bilinear",
+            align_corners=False,
+        )
+
+        out1.backward()
+
+        np.testing.assert_allclose(
+            origin_result.numpy(), out1.numpy(), rtol=1e-05
+        )
+        np.testing.assert_allclose(
+            origin_result.numpy(), out2.numpy(), rtol=1e-05
+        )
+        np.testing.assert_allclose(
+            origin_result.numpy(), out3.numpy(), rtol=1e-05
+        )
+
 
 class TestSundryAPIStatic(unittest.TestCase):
     def setUp(self):
@@ -1802,6 +1849,41 @@ class TestSundryAPIStatic(unittest.TestCase):
         res = self.exe.run(prog, feed={}, fetch_list=[out])
 
         self.assertEqual(res[0].shape, ())
+
+    @prog_scope()
+    def test_interpolate(self):
+        import numpy as np
+
+        from paddle.nn.functional import interpolate
+
+        input_data = np.random.random((2, 3, 6, 6)).astype("float32")
+        input_x = paddle.to_tensor(input_data)
+
+        output_size = [
+            paddle.full([], 12, dtype="int32"),
+            paddle.full([], 12, dtype="int32"),
+        ]
+        out1 = interpolate(
+            x=input_x, size=output_size, mode="bilinear", align_corners=False
+        )
+
+        paddle.static.append_backward(out1)
+        prog = paddle.static.default_main_program()
+        res1 = self.exe.run(prog, feed={}, fetch_list=[out1])
+
+        scale_1 = np.array(2)
+        out2 = interpolate(
+            x=input_x,
+            scale_factor=scale_1,
+            mode="bilinear",
+            align_corners=False,
+        )
+        paddle.static.append_backward(out2)
+        prog = paddle.static.default_main_program()
+        res2 = self.exe.run(prog, feed={}, fetch_list=[out2])
+
+        self.assertEqual(res1[0].shape, (2, 3, 12, 12))
+        self.assertEqual(res2[0].shape, (2, 3, 12, 12))
 
 
 # Use to test API whose zero-dim input tensors don't have grad and not need to test backward in OpTest.
