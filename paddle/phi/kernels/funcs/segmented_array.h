@@ -191,7 +191,7 @@ struct PointerArraySetter : public ArraySetterBase<Context> {
     array.Set(data_ptr, t->size(), dev_ptr);
   }
 
- private:
+ protected:
   std::vector<T*> ptrs;
 };
 
