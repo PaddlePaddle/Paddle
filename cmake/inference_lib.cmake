@@ -485,6 +485,12 @@ copy(
   SRCS ${DLPACK_INCLUDE_DIR}/dlpack
   DSTS ${dst_dir})
 
+set(dst_dir "${PADDLE_INSTALL_DIR}/third_party/pybind11")
+copy(
+  inference_lib_dist
+  SRCS ${PYBIND_INCLUDE_DIR}/pybind11
+  DSTS ${dst_dir})
+
 set(dst_dir "${PADDLE_INSTALL_DIR}/third_party/install/zlib")
 copy(
   inference_lib_dist

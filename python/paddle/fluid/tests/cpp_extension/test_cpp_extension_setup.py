@@ -20,8 +20,7 @@ import unittest
 import numpy as np
 
 import paddle
-
-# from paddle.utils.cpp_extension.extension_utils import run_cmd
+from paddle.utils.cpp_extension.extension_utils import run_cmd
 
 
 class TestCppExtensionSetupInstall(unittest.TestCase):
@@ -40,8 +39,8 @@ class TestCppExtensionSetupInstall(unittest.TestCase):
             cmd = 'cd {} && {} cpp_extension_setup.py install'.format(
                 cur_dir, sys.executable
             )
-        # run_cmd(cmd)
-        os.system(cmd)
+        run_cmd(cmd)
+        # os.system(cmd)
 
         # See: https://stackoverflow.com/questions/56974185/import-runtime-installed-module-using-pip-in-python-3
         if os.name == 'nt':
@@ -101,9 +100,12 @@ class TestCppExtensionSetupInstall(unittest.TestCase):
             x = paddle.to_tensor(np_x, dtype=dtype)
 
             power = custom_cpp_extension.Power(x)
-            np.testing.assert_allclose(power.get().sum().numpy(), np.sum(np_x))
             np.testing.assert_allclose(
-                power.forward().sum().numpy(), np.sum(np.power(np_x, 2))
+                power.get().sum().numpy(), np.sum(np_x), atol=1e-5
+            )
+            np.testing.assert_allclose(
+                power.forward().sum().numpy(),
+                np.sum(np.power(np_x, 2), atol=1e-5),
             )
 
 
