@@ -51,7 +51,8 @@ using framework::ParallelExecutor;
 using framework::Scope;
 using CinnInstruction = ::cinn::hlir::framework::Instruction;
 using CinnRuntimeProgram = ::cinn::hlir::framework::Program;
-using ::cinn::frontend::paddle::InplaceOutSuffix;
+// using ::cinn::frontend::paddle::InplaceOutSuffix;
+constexpr char InplaceOutSuffix[] = "@InplaceOut";
 using framework::paddle2cinn::kInplaceVarNames;
 using framework::paddle2cinn::kMemOptVarInfoFromMainGraph;
 using framework::paddle2cinn::kSkipGcVarNames;
@@ -129,7 +130,8 @@ CinnLaunchContext::CinnLaunchContext(const framework::ir::Graph& graph,
       "Distribution of variables in the graph compiled:"
       "input[%lu],internal[%lu],output[%lu],"
       "outer_eager_deletion[%lu],skip_eager_deletion[%lu],"
-      "skip_gc_vars_[%lu]" input_var_names.size(),
+      "skip_gc_vars_[%lu]",
+      input_var_names.size(),
       internal_var_names_.size(),
       output_var_names.size(),
       outer_varinfo.size(),
@@ -217,7 +219,8 @@ std::unordered_set<std::string> CinnLaunchContext::ExtractInternalVarNames(
                  [](const auto& name_pair) { return name_pair.first; });
 
   // exclude the input variables and output variables
-  auto exclude_names_fn = [&remain_var_names](const std::string& var_name) {
+  auto exclude_names_fn = [this,
+                           &remain_var_names](const std::string& var_name) {
     remain_var_names.erase(var_name);
     if (inplace_var_names_.count(var_name)) {
       remain_var_names.erase(var_name + InplaceOutSuffix);
@@ -487,7 +490,7 @@ framework::InterpreterCore* CinnLaunchContext::InitializeInterpreterCore(
   return interpreter_core_.get();
 }
 
-std::string RedirectVarName(const std::string& var_name) {
+std::string CinnLaunchContext::RedirectVarName(const std::string& var_name) {
   auto pos = var_name.find(InplaceOutSuffix);
   if (pos == std::string::npos) {
     return var_name;
