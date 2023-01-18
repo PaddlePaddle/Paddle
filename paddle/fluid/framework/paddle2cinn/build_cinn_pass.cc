@@ -163,7 +163,7 @@ std::unordered_set<std::string> OpTransInfo::GetDenyVarNames(
 }
 
 std::unordered_set<std::string> OpTransInfo::GetInplaceVarNames(
-    const GraphNodeSet& cluster) const {
+    const GraphNodeSet& cluster) {
   std::unordered_set<std::string> inplace_var_set;
 
   for (auto* op : cluster) {
@@ -478,6 +478,14 @@ std::unique_ptr<Graph> CreateNewSubGraph(const GraphNodeSet& cluster,
   // initialize empty map for kMemOptVarInfoFromMainGraph attribute,
   // it will be filled on the share_mem_opt_info_to_subgraph pass
   subgraph->GetOrInit<Name2VarInfoMap>(kMemOptVarInfoFromMainGraph);
+
+  auto inplace_var_names = std::make_unique<std::unordered_set<std::string>>(
+      OpTransInfo::GetInplaceVarNames(cluster));
+  VLOG_IF(4, !inplace_var_names->empty())
+      << "Inplace var in cluster are: " << GetDebugInfo(*inplace_var_names);
+  subgraph->Set<std::unordered_set<std::string>>(kInplaceVarNames,
+                                                 inplace_var_names.release());
+
   return subgraph;
 }
 
@@ -569,7 +577,6 @@ void AddCinnOpToGraph(const GraphNodeSet& cluster,
                       const GraphNodeSet& cluster_inputs,
                       const GraphNodeSet& cluster_outputs,
                       int64_t compilation_key,
-                      const std::unordered_set<std::string>& inplace_var_names,
                       Graph* graph) {
   // Add the cinn launch op
   framework::OpDesc cinn_op_desc;
@@ -591,9 +598,6 @@ void AddCinnOpToGraph(const GraphNodeSet& cluster,
   cinn_op_desc.SetAttr(OpProtoAndCheckerMaker::OpRoleAttrName(),
                        ExtractOpRole(cluster));
 
-  std::vector<std::string> inplace_var_name_list(inplace_var_names.begin(),
-                                                 inplace_var_names.end());
-  cinn_op_desc.SetAttr(operators::kInplaceVarNames, inplace_var_name_list);
   cinn_op_desc.Flush();
   auto* cinn_op_node = graph->CreateOpNode(&cinn_op_desc);
   // Add new links from or to the cinn launch op node
@@ -618,21 +622,15 @@ void RemoveSubGraphFromGraph(const GraphNodeSet& cluster,
 // kCinnLaunchOp, and inputs ares cluster_inputs and outputs are
 // cluster_outputs.
 // Meanwhile, move all links of cluster to the cinn op.
-void ReplaceSubGraphWithCinnOpNode(
-    const GraphNodeSet& cluster,
-    const GraphNodeSet& cluster_inputs,
-    const GraphNodeSet& cluster_outputs,
-    const GraphNodeSet& cluster_internals,
-    int64_t compilation_key,
-    const std::unordered_set<std::string>& inplace_var_names,
-    Graph* graph) {
+void ReplaceSubGraphWithCinnOpNode(const GraphNodeSet& cluster,
+                                   const GraphNodeSet& cluster_inputs,
+                                   const GraphNodeSet& cluster_outputs,
+                                   const GraphNodeSet& cluster_internals,
+                                   int64_t compilation_key,
+                                   Graph* graph) {
   // Add the cinn op node whose name is "kCinnLaunchOp" into graph
-  AddCinnOpToGraph(cluster,
-                   cluster_inputs,
-                   cluster_outputs,
-                   compilation_key,
-                   inplace_var_names,
-                   graph);
+  AddCinnOpToGraph(
+      cluster, cluster_inputs, cluster_outputs, compilation_key, graph);
   // Remove the cinn subgraph from graph
   RemoveSubGraphFromGraph(cluster, cluster_internals, graph);
 }
@@ -735,17 +733,12 @@ void SearchAllSubgraphs(Graph* graph, bool is_inference_stage) {
     VLOG(4) << "Compilation Key:\n"
             << cinn_compiler->ReadableKey(compilation_key);
 
-    const auto& inplace_var_names = trans_info.GetInplaceVarNames(cluster_set);
-    VLOG_IF(4, !inplace_var_names.empty())
-        << "Inplace var in cluster are: " << GetDebugInfo(inplace_var_names);
-
     // Replace the found cluster to a new cinn op node
     ReplaceSubGraphWithCinnOpNode(cluster_set,
                                   cluster_inputs,
                                   cluster_outputs,
                                   cluster_internals,
                                   compilation_key,
-                                  inplace_var_names,
                                   graph);
   }
 }

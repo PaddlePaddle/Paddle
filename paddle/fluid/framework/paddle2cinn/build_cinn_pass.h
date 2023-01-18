@@ -39,6 +39,7 @@ constexpr char kOutputVars[] = "OutputVars";
 constexpr char kMemOptVarInfoFromMainGraph[] =
     "mem_opt_var_info_from_main_graph";
 constexpr char kSkipGcVarNames[] = "skip_gc_vars";
+constexpr char kInplaceVarNames[] = "InplaceVars";
 
 using Name2VarInfoMap =
     std::unordered_map<std::string,
@@ -67,8 +68,8 @@ class OpTransInfo {
   std::unordered_set<std::string> GetDenyVarNames(
       const GraphNodeSet& cluster) const;
 
-  std::unordered_set<std::string> GetInplaceVarNames(
-      const GraphNodeSet& cluster) const;
+  static std::unordered_set<std::string> GetInplaceVarNames(
+      const GraphNodeSet& cluster);
 
  private:
   DyOpCondT dynamic_op_cond_;
