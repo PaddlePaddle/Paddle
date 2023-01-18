@@ -136,6 +136,8 @@ void ProcessGroupBKCL::CreateBKCLEnvCache(const Place& place,
   BKCLContext_t bkcl_comm;
   BKCLCHECK(bkcl_init_rank(&bkcl_comm, GetRank(), GetSize(), &bkcl_id));
   comm_ctx->SetBkclContext(bkcl_comm);
+  // comm context creates a separate XPU stream for communication
+  comm_ctx->CreateStream();
 
   place_to_calc_ctx_[place_key] = calc_ctx;
   place_to_comm_ctx_[place_key] = std::move(comm_ctx);
