@@ -69,7 +69,7 @@ struct LaunchParams {
     int64_t mask_strideH; // stride for num_heads
     int64_t mask_strideB; // stride for num_batches
 }; 
-
+ 
 template<typename T, typename ArchTag, bool IsAligned, int QueriesPerBlock, int KeysPerBlock, bool SingleValueIteration> 
 void LaunchMultiHeadAttentionKernel(LaunchParams params, const phi::GPUContext& ctx){
     using Attention = AttentionKernel<T, ArchTag, IsAligned, QueriesPerBlock, KeysPerBlock, SingleValueIteration>; 

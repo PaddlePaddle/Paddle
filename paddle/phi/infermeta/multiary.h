@@ -545,8 +545,8 @@ void FusedMultiHeadAttentionInferMeta(const MetaTensor& query,
                                       const MetaTensor& key,
                                       const MetaTensor& value,
                                       const MetaTensor& mask,
-                                      float scale, 
-                                      bool causal, 
+                                      float scale,
+                                      bool causal,
                                       MetaTensor* out);
 
 }  // namespace phi

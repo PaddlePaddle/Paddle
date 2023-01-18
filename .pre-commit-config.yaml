@@ -8,6 +8,7 @@ exclude: |
         .+_pb2\.py|
         python/paddle/fluid/tests/unittests/npu/.+|
         python/paddle/fluid/tests/unittests/mlu/.+
+        paddle/phi/kernels/fusion/cutlass/fused_multi_head_attention/.+
     )$
 repos:
 # Common hooks

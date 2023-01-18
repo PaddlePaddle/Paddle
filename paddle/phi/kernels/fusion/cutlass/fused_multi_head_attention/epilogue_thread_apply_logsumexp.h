@@ -91,18 +91,18 @@ struct ArrayExponential<half_t, ElementsPerAccess> {
     return result;
   }
 };
-} // namespace detail
+}  // namespace detail
 
 /////////////////////////////////////////////////////////////////////////////////////////////////
 
 /// Applies:
 /// output <- (input - lse).exp()
-template <
-    typename ElementOutput_, // output
-    typename ElementLSE_, // accumulator from LSE
-    typename ElementAccumulator_, // accumulator from matmul
-    typename ElementCompute_, // intermediate compute (and exp calculation)
-    int ElementsPerAccess>
+template <typename ElementOutput_,       // output
+          typename ElementLSE_,          // accumulator from LSE
+          typename ElementAccumulator_,  // accumulator from matmul
+          typename ElementCompute_,      // intermediate compute (and exp
+                                         // calculation)
+          int ElementsPerAccess>
 class ApplyLogSumExp {
  public:
   using ElementOutput = ElementOutput_;
@@ -119,7 +119,7 @@ class ApplyLogSumExp {
   using FragmentAccumulator = Array<ElementAccumulator, kElementsPerAccess>;
   using FragmentCompute = Array<ElementCompute, kElementsPerAccess>;
   using FragmentLSE = Array<ElementLSE, kElementsPerAccess>;
-  using FragmentScaleBias = FragmentLSE; // Used by epilogue_smem_accumulator.h
+  using FragmentScaleBias = FragmentLSE;  // Used by epilogue_smem_accumulator.h
 
  public:
   //
@@ -131,24 +131,20 @@ class ApplyLogSumExp {
 
   /// Returns true if source is needed
   CUTLASS_HOST_DEVICE
-  bool is_source_needed() const {
-    return true;
-  }
+  bool is_source_needed() const { return true; }
 
   /// Functionally required for serial reduction in the epilogue
   CUTLASS_HOST_DEVICE
   void set_k_partition(int k_partition, int k_partition_count) {}
 
   CUTLASS_HOST_DEVICE
-  FragmentOutput operator()(
-      FragmentAccumulator const& AB,
-      FragmentLSE const& scale_unused,
-      // bias used as LSE
-      FragmentLSE const& bias) const {
-    FragmentCompute frag_AB = NumericArrayConverter<
-        ElementCompute,
-        ElementAccumulator,
-        kElementsPerAccess>()(AB);
+  FragmentOutput operator()(FragmentAccumulator const& AB,
+                            FragmentLSE const& scale_unused,
+                            // bias used as LSE
+                            FragmentLSE const& bias) const {
+    FragmentCompute frag_AB = NumericArrayConverter<ElementCompute,
+                                                    ElementAccumulator,
+                                                    kElementsPerAccess>()(AB);
     FragmentCompute frag_lse_compute =
         NumericArrayConverter<ElementCompute, ElementLSE, kElementsPerAccess>()(
             bias);
@@ -159,17 +155,16 @@ class ApplyLogSumExp {
     frag_compute = minus_lse(frag_AB, frag_lse_compute);
     frag_compute = apply_exp(frag_compute);
 
-    return NumericArrayConverter<
-        ElementOutput,
-        ElementCompute,
-        kElementsPerAccess>()(frag_compute);
+    return NumericArrayConverter<ElementOutput,
+                                 ElementCompute,
+                                 kElementsPerAccess>()(frag_compute);
   }
 };
 
 /////////////////////////////////////////////////////////////////////////////////////////////////
 
-} // namespace thread
-} // namespace epilogue
-} // namespace cutlass
+}  // namespace thread
+}  // namespace epilogue
+}  // namespace cutlass
 
 /////////////////////////////////////////////////////////////////////////////////////////////////

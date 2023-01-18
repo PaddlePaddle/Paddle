@@ -69,7 +69,7 @@ def cutlass_fused_multi_head_attention(
     helper.append_op(
         type='cutlass_fused_multihead_attention',
         inputs={'Query': query, 'Key': key, 'Value': value, 'Mask': mask},
-        attrs={"Scale": scale, "Causal": causal}, 
-        outputs={'Out': out}
+        attrs={"Scale": scale, "Causal": causal},
+        outputs={'Out': out},
     )
     return out

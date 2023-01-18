@@ -135,10 +135,9 @@ class CustomMmaMultistage : public CustomMmaBase<Shape_, Policy_, Stages> {
 
   /// Internal structure exposed for introspection.
   struct Detail {
-    static_assert(
-        Base::kWarpGemmIterations > 1,
-        "The pipelined structure requires at least two warp-level "
-        "GEMM operations.");
+    static_assert(Base::kWarpGemmIterations > 1,
+                  "The pipelined structure requires at least two warp-level "
+                  "GEMM operations.");
 
     /// Number of cp.async instructions to load one stage of operand A
     static int const AsyncCopyIterationsPerStageA =
@@ -236,21 +235,13 @@ class CustomMmaMultistage : public CustomMmaBase<Shape_, Policy_, Stages> {
       ///< ID of each thread within a warp
       int lane_idx)
       : CustomMmaMultistage(
-            st.operand_A,
-            st.operand_B,
-            thread_idx,
-            warp_idx,
-            lane_idx) {}
+            st.operand_A, st.operand_B, thread_idx, warp_idx, lane_idx) {}
 
   CUTLASS_DEVICE
-  bool set_prologue_done(bool value) {
-    prologue_done_ = value;
-  }
+  bool set_prologue_done(bool value) { prologue_done_ = value; }
 
   CUTLASS_DEVICE
-  bool set_zero_outside_bounds(bool value) {
-    zero_outside_bounds_ = value;
-  }
+  bool set_zero_outside_bounds(bool value) { zero_outside_bounds_ = value; }
 
   template <bool kLoadA = true, bool kLoadB = true>
   CUTLASS_DEVICE static void prologue(
@@ -261,13 +252,12 @@ class CustomMmaMultistage : public CustomMmaBase<Shape_, Policy_, Stages> {
       IteratorB iterator_B,
       int thread_idx,
       int problem_size_k) {
-    prologue<kLoadA, kLoadB>(
-        shared_storage.operand_A,
-        shared_storage.operand_B,
-        iterator_A,
-        iterator_B,
-        thread_idx,
-        problem_size_k);
+    prologue<kLoadA, kLoadB>(shared_storage.operand_A,
+                             shared_storage.operand_B,
+                             iterator_A,
+                             iterator_B,
+                             thread_idx,
+                             problem_size_k);
   }
 
   template <bool kLoadA = true, bool kLoadB = true>
@@ -288,13 +278,12 @@ class CustomMmaMultistage : public CustomMmaBase<Shape_, Policy_, Stages> {
   }
 
   CUTLASS_DEVICE
-  void copy_tiles_and_advance(
-      IteratorA& iterator_A,
-      IteratorB& iterator_B,
-      int group_start_A = 0,
-      int group_start_B = 0) {
-    iterator_A.set_iteration_index(
-        group_start_A * IteratorA::kAccessesPerVector);
+  void copy_tiles_and_advance(IteratorA& iterator_A,
+                              IteratorB& iterator_B,
+                              int group_start_A = 0,
+                              int group_start_B = 0) {
+    iterator_A.set_iteration_index(group_start_A *
+                                   IteratorA::kAccessesPerVector);
     this->smem_iterator_A_.set_iteration_index(group_start_A);
 
     // Async Copy for operand A
@@ -306,8 +295,8 @@ class CustomMmaMultistage : public CustomMmaBase<Shape_, Policy_, Stages> {
                 this->smem_iterator_A_.get());
 
         int const kSrcBytes = sizeof_bits<typename IteratorA::Element>::value *
-            IteratorA::ThreadMap::kElementsPerAccess /
-            IteratorA::kAccessesPerVector / 8;
+                              IteratorA::ThreadMap::kElementsPerAccess /
+                              IteratorA::kAccessesPerVector / 8;
 
         CUTLASS_PRAGMA_UNROLL
         for (int v = 0; v < IteratorA::kAccessesPerVector; ++v) {
@@ -329,8 +318,8 @@ class CustomMmaMultistage : public CustomMmaBase<Shape_, Policy_, Stages> {
       }
     }
 
-    iterator_B.set_iteration_index(
-        group_start_B * IteratorB::kAccessesPerVector);
+    iterator_B.set_iteration_index(group_start_B *
+                                   IteratorB::kAccessesPerVector);
     this->smem_iterator_B_.set_iteration_index(group_start_B);
 
     // Async Copy for operand B
@@ -342,8 +331,8 @@ class CustomMmaMultistage : public CustomMmaBase<Shape_, Policy_, Stages> {
                 this->smem_iterator_B_.get());
 
         int const kSrcBytes = sizeof_bits<typename IteratorB::Element>::value *
-            IteratorB::ThreadMap::kElementsPerAccess /
-            IteratorB::kAccessesPerVector / 8;
+                              IteratorB::ThreadMap::kElementsPerAccess /
+                              IteratorB::kAccessesPerVector / 8;
 
         CUTLASS_PRAGMA_UNROLL
         for (int v = 0; v < IteratorB::kAccessesPerVector; ++v) {
@@ -366,12 +355,11 @@ class CustomMmaMultistage : public CustomMmaBase<Shape_, Policy_, Stages> {
   }
 
   template <bool kLoadA = true, bool kLoadB = true>
-  CUTLASS_DEVICE static void _prologue(
-      IteratorA& iterator_A,
-      IteratorB& iterator_B,
-      int32_t& gemm_k_iterations,
-      SmemIteratorA& smem_iterator_A_,
-      SmemIteratorB& smem_iterator_B_) {
+  CUTLASS_DEVICE static void _prologue(IteratorA& iterator_A,
+                                       IteratorB& iterator_B,
+                                       int32_t& gemm_k_iterations,
+                                       SmemIteratorA& smem_iterator_A_,
+                                       SmemIteratorB& smem_iterator_B_) {
     // Issue several complete stages
     CUTLASS_PRAGMA_UNROLL
     for (int stage = 0; stage < kNumStagesConcurrentLoad;
@@ -467,19 +455,17 @@ class CustomMmaMultistage : public CustomMmaBase<Shape_, Policy_, Stages> {
     //
 
     if (!prologue_done_) {
-      _prologue<true, true>(
-          iterator_A,
-          iterator_B,
-          gemm_k_iterations,
-          smem_iterator_A_,
-          smem_iterator_B_);
+      _prologue<true, true>(iterator_A,
+                            iterator_B,
+                            gemm_k_iterations,
+                            smem_iterator_A_,
+                            smem_iterator_B_);
     } else if (!kSmemContainsEntireMat) {
-      _prologue<false, false>(
-          iterator_A,
-          iterator_B,
-          gemm_k_iterations,
-          smem_iterator_A_,
-          smem_iterator_B_);
+      _prologue<false, false>(iterator_A,
+                              iterator_B,
+                              gemm_k_iterations,
+                              smem_iterator_A_,
+                              smem_iterator_B_);
     } else {
       gemm_k_iterations -= kNumStagesConcurrentLoad;
     }
@@ -564,11 +550,10 @@ class CustomMmaMultistage : public CustomMmaBase<Shape_, Policy_, Stages> {
     int smem_write_stage_idx = Base::kStages - 1;
     int smem_read_stage_idx = 0;
 
-    warp_mma.transform(
-        warp_transformed_frag_A[0],
-        warp_transformed_frag_B[0],
-        warp_loaded_frag_A[0],
-        warp_loaded_frag_B[0]);
+    warp_mma.transform(warp_transformed_frag_A[0],
+                       warp_transformed_frag_B[0],
+                       warp_loaded_frag_A[0],
+                       warp_loaded_frag_B[0]);
 
     // tf32x3 kernels use staging accumulation. warp_mma uses a temporary
     // accumulator and this temporary accumulator is added to the final
@@ -577,12 +562,10 @@ class CustomMmaMultistage : public CustomMmaBase<Shape_, Policy_, Stages> {
 
     FragmentC tmp_accum;
 
-    if (platform::is_same<
-            typename Operator::MathOperator,
-            arch::OpMultiplyAddFastF32>::value ||
-        platform::is_same<
-            typename Operator::MathOperator,
-            arch::OpMultiplyAddComplexFastF32>::value) {
+    if (platform::is_same<typename Operator::MathOperator,
+                          arch::OpMultiplyAddFastF32>::value ||
+        platform::is_same<typename Operator::MathOperator,
+                          arch::OpMultiplyAddComplexFastF32>::value) {
       tmp_accum.clear();
     }
 
@@ -604,10 +587,10 @@ class CustomMmaMultistage : public CustomMmaBase<Shape_, Policy_, Stages> {
         // Load warp-level tiles from shared memory, wrapping to k offset if
         // this is the last group as the case may be.
 
-        this->warp_tile_iterator_A_.set_kgroup_index(
-            (warp_mma_k + 1) % Base::kWarpGemmIterations);
-        this->warp_tile_iterator_B_.set_kgroup_index(
-            (warp_mma_k + 1) % Base::kWarpGemmIterations);
+        this->warp_tile_iterator_A_.set_kgroup_index((warp_mma_k + 1) %
+                                                     Base::kWarpGemmIterations);
+        this->warp_tile_iterator_B_.set_kgroup_index((warp_mma_k + 1) %
+                                                     Base::kWarpGemmIterations);
 
         // In case of a non-circular buffer ("kSmemContainsEntireMat")
         // make sure we don't load out of bounds data.
@@ -624,34 +607,29 @@ class CustomMmaMultistage : public CustomMmaBase<Shape_, Policy_, Stages> {
         ++this->warp_tile_iterator_B_;
 
         if (warp_mma_k > 0)
-          warp_mma.transform(
-              warp_transformed_frag_A[warp_mma_k % 2],
-              warp_transformed_frag_B[warp_mma_k % 2],
-              warp_loaded_frag_A[warp_mma_k % 2],
-              warp_loaded_frag_B[warp_mma_k % 2]);
+          warp_mma.transform(warp_transformed_frag_A[warp_mma_k % 2],
+                             warp_transformed_frag_B[warp_mma_k % 2],
+                             warp_loaded_frag_A[warp_mma_k % 2],
+                             warp_loaded_frag_B[warp_mma_k % 2]);
 
-        if (platform::is_same<
-                typename Operator::MathOperator,
-                arch::OpMultiplyAddFastF32>::value ||
-            platform::is_same<
-                typename Operator::MathOperator,
-                arch::OpMultiplyAddComplexFastF32>::value) {
-          warp_mma(
-              tmp_accum,
-              warp_transformed_frag_A[warp_mma_k % 2],
-              warp_transformed_frag_B[warp_mma_k % 2],
-              tmp_accum);
+        if (platform::is_same<typename Operator::MathOperator,
+                              arch::OpMultiplyAddFastF32>::value ||
+            platform::is_same<typename Operator::MathOperator,
+                              arch::OpMultiplyAddComplexFastF32>::value) {
+          warp_mma(tmp_accum,
+                   warp_transformed_frag_A[warp_mma_k % 2],
+                   warp_transformed_frag_B[warp_mma_k % 2],
+                   tmp_accum);
 
           if (warp_mma_k == 0) {
             accum = plus_accum(accum, tmp_accum);
             tmp_accum.clear();
           }
         } else {
-          warp_mma(
-              accum,
-              warp_transformed_frag_A[warp_mma_k % 2],
-              warp_transformed_frag_B[warp_mma_k % 2],
-              accum);
+          warp_mma(accum,
+                   warp_transformed_frag_A[warp_mma_k % 2],
+                   warp_transformed_frag_B[warp_mma_k % 2],
+                   accum);
         }
 
         // Issue global->shared copies for the this stage
@@ -662,11 +640,10 @@ class CustomMmaMultistage : public CustomMmaBase<Shape_, Policy_, Stages> {
           group_start_iteration_A = warp_mma_k * Detail::kAccessesPerGroupA;
           group_start_iteration_B = warp_mma_k * Detail::kAccessesPerGroupB;
 
-          copy_tiles_and_advance(
-              iterator_A,
-              iterator_B,
-              group_start_iteration_A,
-              group_start_iteration_B);
+          copy_tiles_and_advance(iterator_A,
+                                 iterator_B,
+                                 group_start_iteration_A,
+                                 group_start_iteration_B);
         }
 
         if (warp_mma_k + 2 == Base::kWarpGemmIterations) {
@@ -677,11 +654,10 @@ class CustomMmaMultistage : public CustomMmaBase<Shape_, Policy_, Stages> {
             group_start_iteration_B =
                 (warp_mma_k + 1) * Detail::kAccessesPerGroupB;
 
-            copy_tiles_and_advance(
-                iterator_A,
-                iterator_B,
-                group_start_iteration_A,
-                group_start_iteration_B);
+            copy_tiles_and_advance(iterator_A,
+                                   iterator_B,
+                                   group_start_iteration_A,
+                                   group_start_iteration_B);
           }
 
           // Inserts a memory fence between stages of cp.async instructions.
@@ -731,20 +707,17 @@ class CustomMmaMultistage : public CustomMmaBase<Shape_, Policy_, Stages> {
         // Do any conversions feeding the first stage at the end of the loop so
         // we can start right away on mma instructions
         if (warp_mma_k + 1 == Base::kWarpGemmIterations)
-          warp_mma.transform(
-              warp_transformed_frag_A[(warp_mma_k + 1) % 2],
-              warp_transformed_frag_B[(warp_mma_k + 1) % 2],
-              warp_loaded_frag_A[(warp_mma_k + 1) % 2],
-              warp_loaded_frag_B[(warp_mma_k + 1) % 2]);
+          warp_mma.transform(warp_transformed_frag_A[(warp_mma_k + 1) % 2],
+                             warp_transformed_frag_B[(warp_mma_k + 1) % 2],
+                             warp_loaded_frag_A[(warp_mma_k + 1) % 2],
+                             warp_loaded_frag_B[(warp_mma_k + 1) % 2]);
       }
     }
 
-    if (platform::is_same<
-            typename Operator::MathOperator,
-            arch::OpMultiplyAddFastF32>::value ||
-        platform::is_same<
-            typename Operator::MathOperator,
-            arch::OpMultiplyAddComplexFastF32>::value) {
+    if (platform::is_same<typename Operator::MathOperator,
+                          arch::OpMultiplyAddFastF32>::value ||
+        platform::is_same<typename Operator::MathOperator,
+                          arch::OpMultiplyAddComplexFastF32>::value) {
       accum = plus_accum(accum, tmp_accum);
     }
 
@@ -760,8 +733,8 @@ class CustomMmaMultistage : public CustomMmaBase<Shape_, Policy_, Stages> {
 
 /////////////////////////////////////////////////////////////////////////////////////////////////
 
-} // namespace threadblock
-} // namespace gemm
-} // namespace cutlass
+}  // namespace threadblock
+}  // namespace gemm
+}  // namespace cutlass
 
 /////////////////////////////////////////////////////////////////////////////////////////////////
