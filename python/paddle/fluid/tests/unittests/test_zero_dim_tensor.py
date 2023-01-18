@@ -2292,7 +2292,7 @@ class TestSundryAPIStatic(unittest.TestCase):
             return [i, ten]
 
         main_program = paddle.static.Program()
-        with fluid.program_guard(main_program, paddle.static.Program()):
+        with paddle.static.program_guard(main_program, paddle.static.Program()):
             i = paddle.full([], 0, 'int64')
             i.stop_gradient = False
             ten = paddle.full([], 10, dtype='int64')
@@ -2323,7 +2323,7 @@ class TestSundryAPIStatic(unittest.TestCase):
             return [i, x]
 
         main_program = paddle.static.Program()
-        with fluid.program_guard(main_program, paddle.static.Program()):
+        with paddle.static.program_guard(main_program, paddle.static.Program()):
             i = paddle.static.data(name='i', shape=[], dtype='float32')
             i.stop_gradient = False
             eleven = paddle.full(shape=[], value=11, dtype='float32')
