@@ -254,7 +254,7 @@ class TestReduceAPI(unittest.TestCase):
                 if len(res) > 2:
                     self.assertEqual(res[2].shape, ())
                     self.assertEqual(res[3].shape, ())
-                    np.testing.assert_allclose(res[2]), np.array(1.0)
+                    np.testing.assert_allclose(res[2], np.array(1.0))
                     np.testing.assert_allclose(res[3], np.array(1.0))
 
         paddle.disable_static()
