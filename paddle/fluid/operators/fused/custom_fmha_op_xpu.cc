@@ -153,7 +153,7 @@ class CustomFMHAGradXPUKernel : public framework::OpKernel<T> {
     printf("====> grad host_seq_len_ptr: %p\n", host_seq_len_ptr);
     // printf("====> grad cu_seq_len_ptr: %p\n", cu_seq_len_ptr);
     int tmp_size = host_seq_len->numel();
-    int* tmp = reinterpret_cast<int*> malloc(tmp_size * sizeof(int));
+    int* tmp = reinterpret_cast<int*>(malloc(tmp_size * sizeof(int)));
     xpu_memcpy(tmp, cu_seq_len_ptr, tmp_size * sizeof(int), XPU_DEVICE_TO_HOST);
     // for (int i = 0; i < tmp_size; i++) {
     //     printf("seq len: %d\n", tmp[i]);
