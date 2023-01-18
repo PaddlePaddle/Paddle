@@ -139,19 +139,23 @@ void sum_grad(const Tensor& x,
     reduce_all = false;
   }
   auto x_grad_tmp = Tensor();
-  if (!keepdim) {
-    auto axis_ = std::vector<int64_t>();
-    if (reduce_all) {
-      for (int64_t i = 1; i < x_dim_size; i++) {
-        axis_.push_back(i);
-      }
-    } else {
-      axis_ = axis.GetData();
-    }
-    auto out_grad_ = unsqueeze<T>(out_grad, axis_);
-    x_grad_tmp = expand<T>(out_grad_, IntArray(x_dim));
-  } else {
+  if (x_dim_size == 1) {
     x_grad_tmp = expand<T>(out_grad, IntArray(x_dim));
+  } else {
+    if (!keepdim) {
+      auto axis_ = std::vector<int64_t>();
+      if (reduce_all) {
+        for (int64_t i = 1; i < x_dim_size; i++) {
+          axis_.push_back(i);
+        }
+      } else {
+        axis_ = axis.GetData();
+      }
+      auto out_grad_ = unsqueeze<T>(out_grad, axis_);
+      x_grad_tmp = expand<T>(out_grad_, IntArray(x_dim));
+    } else {
+      x_grad_tmp = expand<T>(out_grad, IntArray(x_dim));
+    }
   }
 
   set_output<T>(x_grad_tmp, x_grad);

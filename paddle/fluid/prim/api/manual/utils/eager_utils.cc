@@ -49,7 +49,6 @@ void set_output<Tensor>(const paddle::experimental::Tensor& x_tmp,
 template <>
 void by_pass<Tensor>(const paddle::experimental::Tensor& x, Tensor* out) {
   set_output<Tensor>(x, out);
-  // out->set_impl(x.impl());
 }
 
 }  // namespace prim
