@@ -335,7 +335,7 @@ class CommonFeatureValueAccessor {
 #ifdef PADDLE_WITH_PSLIB
 // build阶段从cpu_val赋值给gpu_val
 template <typename ShowClickType>
-  __host__ void BuildFill(float* gpu_val, 
+  __host__ void BuildFill(float* gpu_val,
                           void* _cpu_val,
                           ::paddle::ps::ValueAccessor* _cpu_accessor,
                           int mf_dim) {
@@ -349,12 +349,10 @@ template <typename ShowClickType>
     gpu_val[common_feature_value.ShowIndex()] = cpu_accessor->get_show(ptr_val);
     gpu_val[common_feature_value.ClickIndex()] = cpu_accessor->get_click(ptr_val);
 
-    gpu_val[common_feature_value.SlotIndex()] = 
-        ptr_val[cpu_accessor->get_slot_index()];
+    gpu_val[common_feature_value.SlotIndex()] = ptr_val[cpu_accessor->get_slot_index()];
 
     // lr
-    gpu_val[common_feature_value.EmbedWIndex()] = 
-        ptr_val[cpu_accessor->get_embed_w_index()];
+    gpu_val[common_feature_value.EmbedWIndex()] = ptr_val[cpu_accessor->get_embed_w_index()];
 
     // cpu_ptr
     *(reinterpret_cast<uint64_t*>(gpu_val + common_feature_value.CpuPtrIndex())) = (uint64_t)(cpu_val);
@@ -371,7 +369,7 @@ template <typename ShowClickType>
     constexpr int n = 2 * (sizeof(ShowClickType) / sizeof(float) - 1);
 
     if (cpu_dim > 8 + n) {
-      gpu_val[common_feature_value.MfSizeIndex()] = 
+      gpu_val[common_feature_value.MfSizeIndex()] =
           common_feature_value.MFSize(mf_dim) / sizeof(float);
 
       for (int x = 0; x < int(common_feature_value.MFSize(mf_dim) / sizeof(float));
@@ -451,7 +449,7 @@ template <typename ShowClickType>
       int mf_size = common_feature_value.MFSize(mf_dim) / sizeof(float); // mf_size = gpu_val[common_feature_value.MfSizeIndex()];
       downpour_value->resize(downpour_value_size + mf_size);
     }
-    float* cpu_val = downpour_value->data(); 
+    float* cpu_val = downpour_value->data();
 
     cpu_val[cpu_accessor->get_delta_score_index()] =
         gpu_val[common_feature_value.DeltaScoreIndex()];
@@ -469,7 +467,7 @@ template <typename ShowClickType>
       cpu_val[cpu_accessor->get_embed_g2sum_index() + i] =
         gpu_val[common_feature_value.EmbedG2SumIndex() + i];
     }
-    
+
     if ((int)gpu_val[common_feature_value.MfSizeIndex()] > 0) {
       for (int x = 0; x < int(common_feature_value.MFSize(mf_dim) / sizeof(float));
                 x++) {
@@ -795,9 +793,6 @@ class VirtualAccessor {
         ::paddle::ps::ValueAccessor* cpu_accessor,
         int mf_dim, const std::string& accessor_type="DownpourCtrDymfAccessor") = 0;
 #endif
-
-
-
 
   virtual void CopyForPull(const paddle::platform::Place& place,
                            uint64_t** gpu_keys,
