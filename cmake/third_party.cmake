@@ -315,8 +315,9 @@ if(WITH_PYTHON)
       set(DST_DIR1 ${CMAKE_BINARY_DIR}/paddle/third_party/pybind11)
     endif()
     set(DST_DIR2 ${CMAKE_BINARY_DIR}/python/paddle/include/third_party/pybind11)
+    add_custom_target(copy_pybind)
     add_custom_command(
-      TARGET download_pybind
+      TARGET copy_pybind
       POST_BUILD
       COMMAND ${CMAKE_COMMAND} -E copy_directory ${SRC_DIR} ${DST_DIR1}
       COMMAND ${CMAKE_COMMAND} -E copy_directory ${SRC_DIR} ${DST_DIR2}
