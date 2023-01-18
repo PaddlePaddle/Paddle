@@ -25,6 +25,7 @@ namespace autotune {
 template <typename T, typename ReturnType, typename... Args>
 class KernelCallback {
  public:
+  using ReturnT = ReturnType;
   using FuncType = ReturnType (*)(Args...);
 
   KernelCallback() {}
@@ -122,7 +123,7 @@ class AutoTuneBase {
   float RunAndMeasureKernel(const Context& ctx, const int idx, Args&&... args) {
     // Regard 1st run as warmup, judge the compare result by the time cost
     // of rest cycles.
-    constexpr int repeats = 6;
+    constexpr int repeats = 4;
     phi::GpuTimer timer;
     float time_cost = 0;
     const auto& stream = ctx.stream();
@@ -142,14 +143,12 @@ class AutoTuneBase {
   }
 };
 
-// FIXME: It seems that MakeAutoTuner is used nowhere.
-
-// template <typename T, typename ReturnType, typename... Args>
-// static AutoTuneBase<T, KernelCallback<T, ReturnType, Args...>> MakeAutoTuner(
-//     ReturnType (*func)(Args...)) {
-//   auto obj = MakeCallback<T>(func);
-//   return AutoTuneBase<T, decltype(obj)>(obj);
-// }
+template <typename T, typename ReturnType, typename... Args>
+static AutoTuneBase<T, KernelCallback<T, ReturnType, Args...>> MakeAutoTuner(
+    ReturnType (*func)(Args...)) {
+  auto obj = MakeCallback<T>(func);
+  return AutoTuneBase<T, decltype(obj)>(obj);
+}
 
 template <typename T, typename ReturnType, typename... Args>
 class TransposeAutoTuner
@@ -174,8 +173,6 @@ static AutoTuneBase<T, KernelCallback<T, ReturnType, Args...>>*
 MakeTransposeTuner(ReturnType (*func)(Args...)) {
   return TransposeAutoTuner<T, ReturnType, Args...>::Instance(func);
 }
-
-// FIXME: add MatmulAutoTuner but how to use it ?
 template <typename T, typename ReturnType, typename... Args>
 class MatmulAutoTuner
     : public AutoTuneBase<T, KernelCallback<T, ReturnType, Args...>> {
