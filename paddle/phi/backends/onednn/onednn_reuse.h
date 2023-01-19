@@ -51,6 +51,31 @@ constexpr bool is_bfloat16() {
   return std::is_same<T, dtype::bfloat16>::value;
 }
 
+// oneDNN's permute axis understand axes order in
+// different way than PaddlePaddle's transpose
+static std::vector<int> TransposeToPermuteAxes(const std::vector<int>& axis) {
+  std::vector<int> permute_axis(axis.size());
+  for (size_t i = 0; i < axis.size(); ++i) {
+    permute_axis[axis[i]] = i;
+  }
+  return permute_axis;
+}
+
+static std::vector<int64_t> FakeTransposeStrides(
+    const std::vector<int64_t>& out_dims, const std::vector<int>& axis) {
+  std::vector<int64_t> fake_strides(axis.size());
+  int ndims = static_cast<int>(axis.size());
+
+  int total_stride = 1;
+
+  for (int i = ndims - 1; i >= 0; --i) {
+    fake_strides[axis[i]] = total_stride;
+    total_stride *= out_dims[axis[i]];
+  }
+
+  return fake_strides;
+}
+
 static void AppendActivation(const OneDNNContext& dev_ctx,
                              dnnl::post_ops& post_ops,  // NOLINT
                              float activation_scale = 1.0f) {
@@ -1876,7 +1901,10 @@ class MatmulOneDNNHandler : public OneDNNHandlerNoCachingT<XT, dnnl::matmul> {
 
     // TODO(jczaja): Why not for int8??
     if (!is_int8<OT>() && is_output_fused) {
-      out_strides = FakeTransposeStrides(out_ddims);
+      // matmul_transpose_reshape_mkldnn_fuse_pass guarantees that
+      // output is 4D and transpose axis are: {0, 2, 1, 3}
+      std::vector<int> transpose_axis = {0, 2, 1, 3};
+      out_strides = FakeTransposeStrides(out_ddims, transpose_axis);
     }
 
     auto x_md = memory::desc(x_dims, OneDNNGetDataType<XT>(), x_strides);
@@ -1950,24 +1978,6 @@ class MatmulOneDNNHandler : public OneDNNHandlerNoCachingT<XT, dnnl::matmul> {
 
     matmul_attrs.set_post_ops(post_operations);
     return matmul_attrs;
-  }
-
-  std::vector<int64_t> FakeTransposeStrides(
-      const std::vector<int64_t>& matmul_out_dims) const {
-    // fuse matmul_v2 + transpose + reshape guarantees that output is 4D and
-    // transpose axis are: {0, 2, 1, 3}
-    std::vector<int64_t> transpose_axis = {0, 2, 1, 3};
-    std::vector<int64_t> fake_strides(transpose_axis.size());
-    int ndims = static_cast<int>(transpose_axis.size());
-
-    int total_stride = 1;
-
-    for (int i = ndims - 1; i >= 0; --i) {
-      fake_strides[transpose_axis[i]] = total_stride;
-      total_stride *= matmul_out_dims[transpose_axis[i]];
-    }
-
-    return fake_strides;
   }
 
   std::shared_ptr<memory> AcquireWeightsMemory(const DenseTensor* input) {

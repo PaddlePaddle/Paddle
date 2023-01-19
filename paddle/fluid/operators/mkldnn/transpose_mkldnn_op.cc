@@ -60,7 +60,8 @@ class TransposeMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
                            phi::funcs::GetPlainOneDNNFormat(x_vec_dims.size()));
     // a trick is used here to fake transpose of out_md, so later it will be
     // "untransposed", leaving output data in plain format tag
-    auto dst_strides = FakeTranposeStrides(dst_md, transpose_axis);
+    auto dst_strides =
+        phi::funcs::FakeTransposeStrides(dst_md.dims(), transpose_axis);
 
     dst_md =
         dnnl::memory::desc(x_vec_dims, x->mem_desc().data_type(), dst_strides);
@@ -77,36 +78,7 @@ class TransposeMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     astream.wait();
 
     out->set_mem_desc(reorder_dst_memory_p->get_desc().permute_axes(
-        TransposeToPermuteAxis(transpose_axis)));
-  }
-
- private:
-  // it is needed because oneDNN's permute axis understand axes order in
-  // different way PaddlePaddle's transpose
-  std::vector<int> TransposeToPermuteAxis(
-      const std::vector<int>& transpose_axis) const {
-    std::vector<int> permute_axis(transpose_axis.size());
-
-    for (size_t i = 0; i < transpose_axis.size(); ++i) {
-      permute_axis[transpose_axis[i]] = i;
-    }
-    return permute_axis;
-  }
-
-  std::vector<int64_t> FakeTranposeStrides(
-      const dnnl::memory::desc& dst_md,
-      const std::vector<int>& transpose_axis) const {
-    std::vector<int64_t> fake_strides(transpose_axis.size());
-    auto dims = dst_md.dims();
-    int total_stride = 1;
-    int ndims = static_cast<int>(dims.size());
-
-    for (int i = ndims - 1; i >= 0; --i) {
-      fake_strides[transpose_axis[i]] = total_stride;
-      total_stride *= dims[transpose_axis[i]];
-    }
-
-    return fake_strides;
+        phi::funcs::TransposeToPermuteAxes(transpose_axis)));
   }
 };
 

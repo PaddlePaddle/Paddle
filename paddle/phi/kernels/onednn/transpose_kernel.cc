@@ -71,8 +71,8 @@ void TransposeKernel(const Context& dev_ctx,
                      const std::vector<int>& axis,
                      DenseTensor* out) {
   PADDLE_ENFORCE_EQ(
-      dev_ctx.GetPlace().GetType() == AllocationType::CPU,
-      true,
+      dev_ctx.GetPlace().GetType(),
+      AllocationType::CPU,
       errors::PreconditionNotMet("oneDNN Transpose kernel must use CPUPlace"));
 
   SetInMemDescWithLogicalLayoutFusesSupport(
@@ -116,16 +116,11 @@ void TransposeKernel(const Context& dev_ctx,
   reorder_p->execute(astream, *reorder_src_memory_p, *reorder_dst_memory_p);
   astream.wait();
 
-  // it is needed because oneDNN's permute axis understand axes order in
-  // different way PaddlePaddle's transpose
-  std::vector<int> permute_axis(axis.size());
-  for (size_t i = 0; i < axis.size(); ++i) {
-    permute_axis[axis[i]] = i;
-  }
   funcs::SetOutMemDescWithLogicalLayoutFusesSupport(
       dev_ctx,
       out,
-      reorder_dst_memory_p->get_desc().permute_axes(permute_axis));
+      reorder_dst_memory_p->get_desc().permute_axes(
+          funcs::TransposeToPermuteAxes(axis)));
 }
 }  // namespace phi
 

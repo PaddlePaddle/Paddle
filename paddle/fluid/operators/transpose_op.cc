@@ -41,7 +41,7 @@ class TransposeOp : public framework::OperatorWithKernel {
     // axis_size
     PADDLE_ENFORCE_GE(x_rank,
                       axis_size,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The input tensor's dimension "
                           "should be equal to or greater than the axis's size. "
                           "But received input tensor's dimension is %d, "
@@ -53,7 +53,7 @@ class TransposeOp : public framework::OperatorWithKernel {
     for (size_t i = 0; i < axis_size; i++) {
       PADDLE_ENFORCE_GE(axis[i],
                         0,
-                        platform::errors::InvalidArgument(
+                        phi::errors::InvalidArgument(
                             "The axis should be greater than or equal to 0."
                             "But received %d of axis[%d]",
                             axis[i],
@@ -62,7 +62,7 @@ class TransposeOp : public framework::OperatorWithKernel {
       PADDLE_ENFORCE_EQ(
           axis[i] < static_cast<int>(axis_size) && ++count[axis[i]] == 1,
           true,
-          platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "Each element of Attribute axis should "
               "be a unique value range from 0 to (dims - 1), "
               "where the dims is the axis's size, "
