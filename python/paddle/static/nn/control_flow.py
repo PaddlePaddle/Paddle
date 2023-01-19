@@ -28,7 +28,6 @@ from paddle.fluid.framework import Operator, Program, Variable
 
 # Temporary solution, it will be deleted later
 from paddle.fluid.layers.control_flow import ConditionalBlock, select_input
-from paddle.fluid.layers.tensor import assign, cast
 from paddle.fluid.layers.utils import (
     assert_same_structure,
     copy_mutable_vars,
@@ -1117,7 +1116,7 @@ def cond(pred, true_fn=None, false_fn=None, name=None, return_names=None):
             true_output, false_output
         )
 
-    mask = cast(pred, dtype='int32')
+    mask = paddle.cast(pred, dtype='int32')
     merge_func = (
         lambda name, false_var, true_var: select_input_with_buildin_type(
             [false_var, true_var], mask, name
@@ -1158,7 +1157,7 @@ def copy_var_to_parent_block(var, layer_helper):
         parent_block_var = parent_block.create_var(
             dtype=var.dtype, shape=var.shape, type=var.type
         )
-        assign(var, parent_block_var)
+        paddle.assign(var, parent_block_var)
     return parent_block_var
 
 

@@ -33,7 +33,6 @@ import paddle
 from paddle.fluid import core, unique_name
 from paddle.fluid.data_feeder import convert_dtype
 from paddle.fluid.layer_helper import LayerHelper
-from paddle.fluid.layers import assign
 from paddle.utils import gast
 
 __all__ = []
@@ -156,7 +155,7 @@ def create_undefined_variable():
     helper = LayerHelper('create_undefined_variable', **locals())
     saved_block_ids = helper.main_program.current_block_idx
     helper.main_program.current_block_idx = 0
-    assign(RETURN_NO_VALUE_MAGIC_NUM, var)
+    paddle.assign(RETURN_NO_VALUE_MAGIC_NUM, var)
     helper.main_program.current_block_idx = saved_block_ids
     return var
 

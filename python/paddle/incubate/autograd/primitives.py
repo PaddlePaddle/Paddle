@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.fluid.layers.tensor import cast  # noqa: F401
 from paddle.tensor import abs  # noqa: F401
 from paddle.tensor import acos  # noqa: F401
 from paddle.tensor import acosh  # noqa: F401

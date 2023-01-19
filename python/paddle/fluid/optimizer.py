@@ -4242,9 +4242,9 @@ class ExponentialMovingAverage:
                 decay_t = (self._thres_steps + 1.0) / (self._thres_steps + 10.0)
                 with layers.control_flow.Switch() as switch:
                     with switch.case(decay_t < self._decay):
-                        layers.tensor.assign(decay_t, decay_var)
+                        paddle.assign(decay_t, decay_var)
                     with switch.default():
-                        layers.tensor.assign(
+                        paddle.assign(
                             np.array([self._decay], dtype=np.float32), decay_var
                         )
         return decay_var
