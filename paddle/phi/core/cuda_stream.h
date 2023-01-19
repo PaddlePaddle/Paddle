@@ -35,8 +35,6 @@ namespace phi {
 // Currently, CudaStream is used in python-side API only
 class CUDAStream {
  public:
-  using Priority = int;
-
   enum class StreamFlag : uint8_t {
     kDefaultFlag = 0x0,
     kStreamNonBlocking = 0x1,
@@ -46,7 +44,7 @@ class CUDAStream {
   CUDAStream(const Place& place, const Stream& stream)
       : place_(place), stream_(stream) {}
   CUDAStream(const Place& place,
-             const Priority& priority = 0,
+             const int priority = 0,
              const StreamFlag& flag = StreamFlag::kDefaultFlag) {
     place_ = place;
     gpuStream_t stream = nullptr;

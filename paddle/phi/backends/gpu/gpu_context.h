@@ -25,10 +25,11 @@ limitations under the License. */
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/attribute.h"
-#include "paddle/phi/core/cuda_stream.h"
 #include "paddle/phi/core/device_context.h"
 
 namespace phi {
+
+class CUDAStream;
 
 class DnnWorkspaceHandle {
  public:
@@ -82,7 +83,7 @@ class PADDLE_API GPUContext : public DeviceContext,
  public:
   explicit GPUContext(const GPUPlace& place,
                       bool init = true,
-                      CUDAStream::Priority stream_priority = 0);
+                      int stream_priority = 0);
 
   GPUContext(GPUContext&&);
   GPUContext& operator=(GPUContext&&);
@@ -199,7 +200,7 @@ class PADDLE_API GPUContext : public DeviceContext,
 
   // Note that this is a trick implementation, which can be used to partially
   // initialize when the SetAllocator interface is not called.
-  void PartialInitWithoutAllocator(CUDAStream::Priority stream_priority = 0);
+  void PartialInitWithoutAllocator(int stream_priority = 0);
   // Note that this is a trick implementation that can be used to initialize
   // resources that require an Allocator when the SetAllocator interface is
   // called.
