@@ -204,7 +204,7 @@ class BertModelLayer(Layer):
         self._dtype = "float16" if use_fp16 else "float32"
 
         self._param_initializer = paddle.nn.initializer.TruncatedNormal(
-            scale=config['initializer_range']
+            std=config['initializer_range']
         )
         paddle.set_default_dtype(self._dtype)
         self._src_emb = paddle.nn.Embedding(
@@ -318,7 +318,7 @@ class PretrainModelLayer(Layer):
 
         self._word_emb_name = "word_embedding"
         self._param_initializer = paddle.nn.initializer.TruncatedNormal(
-            scale=config['initializer_range']
+            std=config['initializer_range']
         )
         self._weight_sharing = weight_sharing
         self.use_fp16 = use_fp16

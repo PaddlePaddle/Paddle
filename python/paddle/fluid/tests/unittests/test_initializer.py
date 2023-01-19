@@ -147,7 +147,7 @@ class TestUniformInitializer(unittest.TestCase):
                 shape=[5, 10],
                 lod_level=0,
                 name="param2",
-                initializer=paddle.nn.initializer.Uniform(seed=456),
+                initializer=paddle.nn.initializer.UniformInitializer(seed=456),
             )
         init_op = block.ops[1]
         self.assertEqual(init_op.attr("seed"), 456)
@@ -164,7 +164,9 @@ class TestUniformInitializer(unittest.TestCase):
                 shape=[5, 10],
                 lod_level=0,
                 name="param",
-                initializer=paddle.nn.initializer.Uniform(-4.2, 3.1, 123),
+                initializer=paddle.nn.initializer.UniformInitializer(
+                    -4.2, 3.1, 123
+                ),
             )
         num_ops = 2 if dtype == "float16" else 1
         self.assertEqual(len(block.ops), num_ops)
@@ -691,7 +693,7 @@ class TestSetGlobalInitializer(unittest.TestCase):
         startup_prog = framework.Program()
         fluid.set_global_initializer(
             paddle.nn.initializer.Uniform(low=-0.5, high=0.5),
-            bias_init=paddle.nn.initializer.Normal(loc=0.0, scale=2.0),
+            bias_init=paddle.nn.initializer.Normal(0.0, 2.0),
         )
         with fluid.program_guard(main_prog, startup_prog):
             x = fluid.data(name="x", shape=[1, 3, 32, 32])

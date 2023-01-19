@@ -362,7 +362,7 @@ class conv2d(fluid.dygraph.Layer):
             stride=stride,
             padding=padding,
             weight_attr=paddle.ParamAttr(
-                initializer=paddle.nn.initializer.Normal(loc=0.0, scale=stddev)
+                initializer=paddle.nn.initializer.Normal(mean=0.0, std=stddev)
             ),
             bias_attr=con_bias_attr,
         )

@@ -301,7 +301,7 @@ class TestHSigmoidOpWithSparseGrad(unittest.TestCase):
             is_sparse=is_sparse,
             size=[3, 3],
             param_attr=fluid.ParamAttr(
-                initializer=paddle.nn.initializer.Normal(scale=1 / math.sqrt(3))
+                initializer=paddle.nn.initializer.Normal(std=1 / math.sqrt(3))
             ),
         )
 
