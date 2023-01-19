@@ -1274,6 +1274,7 @@ All parameter, weight, gradient are variables in Paddle.
           std::vector<std::unique_ptr<OpDesc>> grad_op_descs;
           if (paddle::prim::PrimCommonUtils::IsBwdPrimEnabled()) {
             if (grad_comp_op_maker != nullptr) {
+              VLOG(3) << "Runing composite fun for " << op_desc.Type();
               grad_op_descs = grad_comp_op_maker(op_desc,
                                                  no_grad_set,
                                                  &grad_to_var,

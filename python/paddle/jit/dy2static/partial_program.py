@@ -573,7 +573,7 @@ class PartialProgramLayer:
         if targets:
             if self._build_strategy.build_cinn_pass:
                 # TODO(Jiabin): Change this to True if we need this to be default option
-                core.set_prim_all_enabled()
+                core.check_and_set_prim_all_enabled()
             backward.gradients(targets=targets, inputs=[])
 
         start_idx = len(main_program.block(0).ops) + 2 * len(

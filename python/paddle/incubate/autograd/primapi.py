@@ -235,5 +235,6 @@ def to_prim(blocks):
             f"Expect block or sequence of blocks, but got {type(blocks)}."
         )
     with framework.program_guard(main_program):
+        print("Running lowering for forward...")
         primx._lower_composite(blocks)
     return
