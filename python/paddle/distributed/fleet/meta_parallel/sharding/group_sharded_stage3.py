@@ -49,6 +49,7 @@ alignment = {
     "gpu": 256,
 }
 align = {
+    Type.bf16.value: 2,
     Type.fp16.value: 2,
     Type.fp32.value: 4,
 }
@@ -251,6 +252,11 @@ class GroupShardedStage3(nn.Layer):
                     and param2dtype[param.name] == Type.fp16.value
                 ):
                     tmp_var = paddle.cast(tmp_var, Type.fp16.value)
+                elif (
+                    tmp_var.dtype == Type.fp32.value
+                    and param2dtype[param.name] == Type.bf16.value
+                ):
+                    tmp_var = paddle.cast(tmp_var, Type.bf16.value)
                 tmp_var._share_buffer_to(param)
                 del tmp_var
             for grad_storage in self._grad_storages.values():
@@ -312,6 +318,7 @@ class GroupShardedStage3(nn.Layer):
 
     def _handle_unslice_params(self):
         buffer_size = dict()
+        buffer_size[Type.bf16.value] = 0
         buffer_size[Type.fp32.value] = 0
         buffer_size[Type.fp16.value] = 0
         for param in self._unslice_params:
@@ -1088,6 +1095,11 @@ def _cpu2device(param):
         and param2dtype[param.name] == Type.fp16.value
     ):
         tmp_p = paddle.cast(tmp_p, Type.fp16.value)
+    elif (
+        tmp_p.dtype == Type.fp32.value
+        and param2dtype[param.name] == Type.bf16.value
+    ):
+        tmp_p = paddle.cast(tmp_p, Type.bf16.value)
     return tmp_p
 
 

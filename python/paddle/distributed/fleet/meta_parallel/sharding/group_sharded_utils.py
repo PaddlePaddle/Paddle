@@ -181,6 +181,7 @@ def GroupShardedScaler(scaler):
         if not self._enable:
             return
         param_grads = []
+        param_grads_bfp16 = []
         param_grads_fp16 = []
         param_grads_fp32 = []
         if hasattr(optimizer, "update_slice"):
@@ -200,6 +201,8 @@ def GroupShardedScaler(scaler):
                             paddle.float16,
                         ]:
                             param_grads_fp16.append(param.grad)
+                        elif param.grad.dtype in [paddle.bfloat16]:
+                            param_grads_bfp16.append(param.grad)
                         else:
                             param_grads_fp32.append(param.grad)
         else:
@@ -211,10 +214,13 @@ def GroupShardedScaler(scaler):
                         paddle.float16,
                     ]:
                         param_grads_fp16.append(param.grad)
+                    elif param.grad.dtype in [paddle.bfloat16]:
+                        param_grads_bfp16.append(param.grad)
                     else:
                         param_grads_fp32.append(param.grad)
 
         temp_found_inf_fp16 = to_variable(np.array([0]).astype(np.bool_))
+        temp_found_inf_bfp16 = to_variable(np.array([0]).astype(np.bool_))
         temp_found_inf_fp32 = to_variable(np.array([0]).astype(np.bool_))
 
         device = paddle.get_device().split(":")[0]
@@ -224,6 +230,13 @@ def GroupShardedScaler(scaler):
         )
 
         with device_guard(dev_id, device):
+            if len(param_grads_bfp16):
+                _legacy_C_ops.check_finite_and_unscale(
+                    param_grads_bfp16,
+                    self._scale,
+                    param_grads_bfp16,
+                    temp_found_inf_bfp16,
+                )
             if len(param_grads_fp16):
                 _legacy_C_ops.check_finite_and_unscale(
                     param_grads_fp16,
@@ -239,7 +252,13 @@ def GroupShardedScaler(scaler):
                     temp_found_inf_fp32,
                 )
 
-        self._found_inf = 1 if temp_found_inf_fp16 or temp_found_inf_fp32 else 0
+        self._found_inf = (
+            1
+            if temp_found_inf_fp16
+            or temp_found_inf_fp32
+            or temp_found_inf_bfp16
+            else 0
+        )
         is_found_inf = paddle.to_tensor([self._found_inf], dtype="int32")
 
         paddle.distributed.all_reduce(
