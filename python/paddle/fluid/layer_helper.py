@@ -177,10 +177,10 @@ class LayerHelper(LayerHelperBase):
     # TODO (jiabin): should we remove this since it has never be used
     def _get_default_initializer(self, dtype):
         if dtype is None or dtype_is_floating(dtype) is True:
-            return paddle.nn.initializer.XavierInitializer()
+            return paddle.nn.initializer.XavierUniform()
         else:
             # For integer and boolean types, initialize with all zeros
-            return paddle.nn.initializer.ConstantInitializer()
+            return paddle.nn.initializer.Constant()
 
     # TODO (jiabin): reconstruct this in LayerObjHelper and avoid dependency of kwargs
     def is_instance(self, param_name, cls):

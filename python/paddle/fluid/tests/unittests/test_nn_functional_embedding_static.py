@@ -27,7 +27,7 @@ class EmbeddingStatic(unittest.TestCase):
         with fluid.program_guard(prog):
 
             def test_bad_x():
-                initializer = paddle.nn.initializer.NumpyArrayInitializer(
+                initializer = paddle.nn.initializer.Assign(
                     np.random.random(size=(128, 100))
                 )
 
@@ -60,7 +60,7 @@ class EmbeddingStatic(unittest.TestCase):
         with fluid.program_guard(prog):
 
             def test_bad_x():
-                initializer = paddle.nn.initializer.NumpyArrayInitializer(
+                initializer = paddle.nn.initializer.Assign(
                     np.random.random(size=(128, 100))
                 )
 

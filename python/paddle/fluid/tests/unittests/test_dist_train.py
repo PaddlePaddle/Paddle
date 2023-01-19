@@ -89,7 +89,7 @@ class TestSendOp(unittest.TestCase):
                     name="X",
                     append_batch_size=False,
                 )
-                paddle.nn.initializer.ConstantInitializer(value=1.0)(
+                paddle.nn.initializer.Constant(value=1.0)(
                     x, main.global_block()
                 )
                 ops._scale(x=x, scale=10.0, out=out_var)
@@ -117,9 +117,7 @@ class TestSendOp(unittest.TestCase):
                 append_batch_size=False,
             )
             x.persistable = True
-            paddle.nn.initializer.ConstantInitializer(value=2.3)(
-                x, main.global_block()
-            )
+            paddle.nn.initializer.Constant(value=2.3)(x, main.global_block())
 
             get_var = main.global_block().create_var(
                 name="scale_0.tmp_0",  # server side var
@@ -127,7 +125,7 @@ class TestSendOp(unittest.TestCase):
                 persistable=False,
                 shape=[32, 32],
             )
-            paddle.nn.initializer.ConstantInitializer(value=2.3)(
+            paddle.nn.initializer.Constant(value=2.3)(
                 get_var, main.global_block()
             )
 
@@ -153,9 +151,7 @@ class TestSendOp(unittest.TestCase):
                 name='X',
                 append_batch_size=False,
             )
-            paddle.nn.initializer.ConstantInitializer(value=2.3)(
-                x, main.global_block()
-            )
+            paddle.nn.initializer.Constant(value=2.3)(x, main.global_block())
             o = paddle.scale(x=x, scale=10.0)
         exe = fluid.Executor(place)
         self.local_out = exe.run(main, fetch_list=[o])

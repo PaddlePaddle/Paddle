@@ -453,9 +453,7 @@ class Optimizer:
             lr_value = float(self._learning_rate())
             self.helper.set_variable_initializer(
                 lr_var,
-                initializer=paddle.nn.initializer.ConstantInitializer(
-                    value=lr_value
-                ),
+                initializer=paddle.nn.initializer.Constant(value=lr_value),
             )
         elif isinstance(self._learning_rate, float):
             # only create global lr_var once
@@ -729,7 +727,7 @@ class Optimizer:
             with device_guard(device):
                 self.helper.set_variable_initializer(
                     var,
-                    initializer=paddle.nn.initializer.ConstantInitializer(
+                    initializer=paddle.nn.initializer.Constant(
                         value=float(fill_value)
                     ),
                 )

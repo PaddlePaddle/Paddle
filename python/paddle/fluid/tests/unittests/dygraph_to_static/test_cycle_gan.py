@@ -352,7 +352,7 @@ class conv2d(fluid.dygraph.Layer):
             con_bias_attr = False
         else:
             con_bias_attr = fluid.ParamAttr(
-                initializer=paddle.nn.initializer.ConstantInitializer(0.0)
+                initializer=paddle.nn.initializer.Constant(0.0)
             )
 
         self.conv = paddle.nn.Conv2D(
@@ -362,9 +362,7 @@ class conv2d(fluid.dygraph.Layer):
             stride=stride,
             padding=padding,
             weight_attr=paddle.ParamAttr(
-                initializer=paddle.nn.initializer.NormalInitializer(
-                    loc=0.0, scale=stddev
-                )
+                initializer=paddle.nn.initializer.Normal(loc=0.0, scale=stddev)
             ),
             bias_attr=con_bias_attr,
         )
@@ -378,12 +376,10 @@ class conv2d(fluid.dygraph.Layer):
                 use_global_stats=True,  # set True to use deterministic algorithm
                 num_channels=num_filters,
                 param_attr=fluid.ParamAttr(
-                    initializer=paddle.nn.initializer.NormalInitializer(
-                        1.0, 0.02
-                    )
+                    initializer=paddle.nn.initializer.Normal(1.0, 0.02)
                 ),
                 bias_attr=fluid.ParamAttr(
-                    initializer=paddle.nn.initializer.ConstantInitializer(0.0)
+                    initializer=paddle.nn.initializer.Constant(0.0)
                 ),
                 trainable_statistics=True,
             )
@@ -423,7 +419,7 @@ class DeConv2D(fluid.dygraph.Layer):
             de_bias_attr = False
         else:
             de_bias_attr = fluid.ParamAttr(
-                initializer=paddle.nn.initializer.ConstantInitializer(0.0)
+                initializer=paddle.nn.initializer.Constant(0.0)
             )
 
         self._deconv = paddle.nn.Conv2DTranspose(
@@ -433,9 +429,7 @@ class DeConv2D(fluid.dygraph.Layer):
             stride=stride,
             padding=padding,
             weight_attr=fluid.ParamAttr(
-                initializer=paddle.nn.initializer.NormalInitializer(
-                    loc=0.0, scale=stddev
-                )
+                initializer=paddle.nn.initializer.Normal(loc=0.0, scale=stddev)
             ),
             bias_attr=de_bias_attr,
         )
@@ -446,12 +440,10 @@ class DeConv2D(fluid.dygraph.Layer):
                 use_global_stats=True,  # set True to use deterministic algorithm
                 num_channels=num_filters,
                 param_attr=fluid.ParamAttr(
-                    initializer=paddle.nn.initializer.NormalInitializer(
-                        1.0, 0.02
-                    )
+                    initializer=paddle.nn.initializer.Normal(1.0, 0.02)
                 ),
                 bias_attr=fluid.ParamAttr(
-                    initializer=paddle.nn.initializer.ConstantInitializer(0.0)
+                    initializer=paddle.nn.initializer.Constant(0.0)
                 ),
                 trainable_statistics=True,
             )

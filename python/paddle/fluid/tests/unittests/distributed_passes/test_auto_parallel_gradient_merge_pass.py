@@ -42,10 +42,10 @@ class MLPLayer(nn.Layer):
         arr0 = np.random.normal(0, 0.02, size=(d_model, dim_feedforward))
         arr1 = np.random.normal(0, 0.02, size=(dim_feedforward, d_model))
         weight_attr0 = paddle.ParamAttr(
-            initializer=paddle.nn.initializer.NumpyArrayInitializer(arr0)
+            initializer=paddle.nn.initializer.Assign(arr0)
         )
         weight_attr1 = paddle.ParamAttr(
-            initializer=paddle.nn.initializer.NumpyArrayInitializer(arr1)
+            initializer=paddle.nn.initializer.Assign(arr1)
         )
         bias_attr = None
         self.linear0 = nn.Linear(

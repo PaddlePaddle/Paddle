@@ -214,7 +214,7 @@ class TestDistMnistAsync2x2WithGauss(TestFleetBase):
             datas = [dnn_data, lr_data, label]
 
             inference = True
-            init = paddle.nn.initializer.UniformInitializer()
+            init = paddle.nn.initializer.Uniform()
 
             dnn_layer_dims = [128, 64, 32]
             dnn_embedding = fluid.contrib.layers.sparse_embedding(
@@ -235,9 +235,7 @@ class TestDistMnistAsync2x2WithGauss(TestFleetBase):
                     size=dim,
                     activation="relu",
                     weight_attr=fluid.ParamAttr(
-                        initializer=paddle.nn.initializer.ConstantInitializer(
-                            value=0.01
-                        )
+                        initializer=paddle.nn.initializer.Constant(value=0.01)
                     ),
                     name='dnn-fc-%d' % i,
                 )
@@ -250,9 +248,7 @@ class TestDistMnistAsync2x2WithGauss(TestFleetBase):
                 is_test=inference,
                 param_attr=fluid.ParamAttr(
                     name="wide_embedding",
-                    initializer=paddle.nn.initializer.ConstantInitializer(
-                        value=0.01
-                    ),
+                    initializer=paddle.nn.initializer.Constant(value=0.01),
                 ),
             )
 

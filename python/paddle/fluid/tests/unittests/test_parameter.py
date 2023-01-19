@@ -37,7 +37,7 @@ class ParameterChecks(unittest.TestCase):
             name='fc.w',
             shape=shape,
             dtype='float32',
-            initializer=paddle.nn.initializer.ConstantInitializer(val),
+            initializer=paddle.nn.initializer.Constant(val),
         )
         self.assertIsNotNone(param)
         self.assertEqual('fc.w', param.name)

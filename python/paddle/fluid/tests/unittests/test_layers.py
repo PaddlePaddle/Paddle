@@ -144,7 +144,7 @@ class TestLayer(LayerTest):
             linear = paddle.nn.Linear(
                 32,
                 4,
-                bias_attr=paddle.nn.initializer.ConstantInitializer(value=1),
+                bias_attr=paddle.nn.initializer.Constant(value=1),
             )
             ret = linear(t)
             static_ret = self.get_static_graph_result(
@@ -155,7 +155,7 @@ class TestLayer(LayerTest):
             linear = paddle.nn.Linear(
                 32,
                 4,
-                bias_attr=paddle.nn.initializer.ConstantInitializer(value=1),
+                bias_attr=paddle.nn.initializer.Constant(value=1),
             )
             dy_ret = linear(t)
             dy_ret_value = dy_ret.numpy()
@@ -170,9 +170,7 @@ class TestLayer(LayerTest):
                 linear = paddle.nn.Linear(
                     32,
                     4,
-                    bias_attr=paddle.nn.initializer.ConstantInitializer(
-                        value=1
-                    ),
+                    bias_attr=paddle.nn.initializer.Constant(value=1),
                 )
                 linear_ret1 = linear(inp)
 
@@ -185,9 +183,7 @@ class TestLayer(LayerTest):
                 linear = paddle.nn.Linear(
                     32,
                     4,
-                    bias_attr=paddle.nn.initializer.ConstantInitializer(
-                        value=1
-                    ),
+                    bias_attr=paddle.nn.initializer.Constant(value=1),
                 )
                 linear_ret2 = linear(inp)
 
@@ -263,9 +259,7 @@ class TestLayer(LayerTest):
                 linear = paddle.nn.Linear(
                     32,
                     4,
-                    bias_attr=paddle.nn.initializer.ConstantInitializer(
-                        value=1
-                    ),
+                    bias_attr=paddle.nn.initializer.Constant(value=1),
                 )
                 linear_ret1 = linear(inp)
 
@@ -278,9 +272,7 @@ class TestLayer(LayerTest):
                 linear = paddle.nn.Linear(
                     32,
                     4,
-                    bias_attr=paddle.nn.initializer.ConstantInitializer(
-                        value=1
-                    ),
+                    bias_attr=paddle.nn.initializer.Constant(value=1),
                 )
                 linear_ret2 = linear(inp)
 
@@ -399,7 +391,7 @@ class TestLayer(LayerTest):
                 num_filters=10,
                 filter_size=27,
                 act='sigmoid',
-                bias_attr=paddle.nn.initializer.ConstantInitializer(value=1),
+                bias_attr=paddle.nn.initializer.Constant(value=1),
             )
             static_rlt = self.get_static_graph_result(
                 feed={'pixel': inp_np}, fetch_list=[out]
@@ -410,7 +402,7 @@ class TestLayer(LayerTest):
                 3,
                 10,
                 27,
-                bias_attr=paddle.nn.initializer.ConstantInitializer(value=1),
+                bias_attr=paddle.nn.initializer.Constant(value=1),
             )
             out = conv2d_transpose(img)
             out = paddle.nn.functional.sigmoid(out)
@@ -422,7 +414,7 @@ class TestLayer(LayerTest):
                 3,
                 10,
                 27,
-                bias_attr=paddle.nn.initializer.ConstantInitializer(value=1),
+                bias_attr=paddle.nn.initializer.Constant(value=1),
             )
             dy_rlt = conv2d_transpose(base.to_variable(inp_np))
             dy_rlt = paddle.nn.functional.sigmoid(dy_rlt)
@@ -434,9 +426,7 @@ class TestLayer(LayerTest):
             images = np.ones([2, 3, 5, 5], dtype='float32')
             custom_weight = np.random.randn(3, 3, 2, 2).astype("float32")
             weight_attr = fluid.ParamAttr(
-                initializer=paddle.nn.initializer.NumpyArrayInitializer(
-                    custom_weight
-                )
+                initializer=paddle.nn.initializer.Assign(custom_weight)
             )
             conv2d1 = paddle.nn.Conv2DTranspose(3, 3, [2, 2])
             conv2d2 = paddle.nn.Conv2DTranspose(
@@ -508,7 +498,7 @@ class TestLayer(LayerTest):
                 data_x,
                 data_y,
                 6,
-                bias_attr=paddle.nn.initializer.ConstantInitializer(value=1),
+                bias_attr=paddle.nn.initializer.Constant(value=1),
                 act='sigmoid',
             )
 
@@ -527,7 +517,7 @@ class TestLayer(LayerTest):
                 3,
                 3,
                 6,
-                bias_attr=paddle.nn.initializer.ConstantInitializer(value=1),
+                bias_attr=paddle.nn.initializer.Constant(value=1),
             )
             out = btp(data_x, data_y)
             out = paddle.nn.functional.sigmoid(out)
@@ -539,7 +529,7 @@ class TestLayer(LayerTest):
                 3,
                 3,
                 6,
-                bias_attr=paddle.nn.initializer.ConstantInitializer(value=1),
+                bias_attr=paddle.nn.initializer.Constant(value=1),
             )
             dy_rlt = btp(base.to_variable(inp_np_x), base.to_variable(inp_np_y))
             dy_rlt = paddle.nn.functional.sigmoid(dy_rlt)
@@ -575,9 +565,7 @@ class TestLayer(LayerTest):
         with self.dynamic_graph():
             custom_weight = np.random.randn(6, 3, 3).astype("float32")
             weight_attr = fluid.ParamAttr(
-                initializer=paddle.nn.initializer.NumpyArrayInitializer(
-                    custom_weight
-                )
+                initializer=paddle.nn.initializer.Assign(custom_weight)
             )
             btp1 = paddle.nn.Bilinear(3, 3, 6)
             btp2 = paddle.nn.Bilinear(3, 3, 6, weight_attr=weight_attr)
@@ -644,9 +632,7 @@ class TestLayer(LayerTest):
         with self.dynamic_graph():
             custom_weight = np.random.randn(dict_size, 32).astype("float32")
             weight_attr = fluid.ParamAttr(
-                initializer=paddle.nn.initializer.NumpyArrayInitializer(
-                    custom_weight
-                )
+                initializer=paddle.nn.initializer.Assign(custom_weight)
             )
             emb1 = paddle.nn.Embedding(dict_size, 32, sparse=False)
             emb2 = paddle.nn.Embedding(
@@ -744,9 +730,7 @@ class TestLayer(LayerTest):
             images = np.ones([2, 3, 6, 6, 6], dtype='float32')
             custom_weight = np.random.randn(3, 3, 2, 2, 2).astype("float32")
             weight_attr = fluid.ParamAttr(
-                initializer=paddle.nn.initializer.NumpyArrayInitializer(
-                    custom_weight
-                )
+                initializer=paddle.nn.initializer.Assign(custom_weight)
             )
             conv3d1 = paddle.nn.Conv3D(
                 in_channels=3, out_channels=3, kernel_size=2
@@ -805,10 +789,8 @@ class TestLayer(LayerTest):
             ret = paddle.static.nn.group_norm(
                 input=X,
                 groups=2,
-                param_attr=paddle.nn.initializer.UniformInitializer(
-                    low=-0.5, high=0.5
-                ),
-                bias_attr=paddle.nn.initializer.ConstantInitializer(value=1),
+                param_attr=paddle.nn.initializer.Uniform(low=-0.5, high=0.5),
+                bias_attr=paddle.nn.initializer.Constant(value=1),
             )
             static_ret = self.get_static_graph_result(
                 feed={
@@ -831,10 +813,8 @@ class TestLayer(LayerTest):
             groupNorm = paddle.nn.GroupNorm(
                 num_channels=shape[1],
                 num_groups=2,
-                weight_attr=paddle.nn.initializer.UniformInitializer(
-                    low=-0.5, high=0.5
-                ),
-                bias_attr=paddle.nn.initializer.ConstantInitializer(value=1),
+                weight_attr=paddle.nn.initializer.Uniform(low=-0.5, high=0.5),
+                bias_attr=paddle.nn.initializer.Constant(value=1),
             )
             ret = groupNorm(X)
             static_ret2 = self.get_static_graph_result(
@@ -851,10 +831,8 @@ class TestLayer(LayerTest):
             groupNorm = paddle.nn.GroupNorm(
                 num_channels=shape[1],
                 num_groups=2,
-                weight_attr=paddle.nn.initializer.UniformInitializer(
-                    low=-0.5, high=0.5
-                ),
-                bias_attr=paddle.nn.initializer.ConstantInitializer(value=1),
+                weight_attr=paddle.nn.initializer.Uniform(low=-0.5, high=0.5),
+                bias_attr=paddle.nn.initializer.Constant(value=1),
             )
             dy_ret = groupNorm(base.to_variable(input))
             dy_rlt_value = dy_ret.numpy()
@@ -1015,9 +993,7 @@ class TestLayer(LayerTest):
             images = np.ones([2, 3, 6, 6, 6], dtype='float32')
             custom_weight = np.random.randn(3, 3, 2, 2, 2).astype("float32")
             weight_attr = fluid.ParamAttr(
-                initializer=paddle.nn.initializer.NumpyArrayInitializer(
-                    custom_weight
-                )
+                initializer=paddle.nn.initializer.Assign(custom_weight)
             )
             conv3d1 = paddle.nn.Conv3DTranspose(
                 in_channels=3,
@@ -2224,17 +2200,13 @@ class TestBook(LayerTest):
                 param_attr=fluid.ParamAttr(
                     learning_rate=1.0,
                     name="w_0",
-                    initializer=paddle.nn.initializer.XavierInitializer(
-                        uniform=False
-                    ),
+                    initializer=paddle.nn.initializer.XavierNormal(),
                 ),
                 bias_size=[16, 10],
                 bias_attr=fluid.ParamAttr(
                     learning_rate=1.0,
                     name="b_0",
-                    initializer=paddle.nn.initializer.XavierInitializer(
-                        uniform=False
-                    ),
+                    initializer=paddle.nn.initializer.XavierNormal(),
                 ),
                 act="relu",
             )
@@ -2253,9 +2225,7 @@ class TestBook(LayerTest):
                 rank_param_attr=fluid.ParamAttr(
                     learning_rate=1.0,
                     name="ubm_rank_param.w_0",
-                    initializer=paddle.nn.initializer.XavierInitializer(
-                        uniform=False
-                    ),
+                    initializer=paddle.nn.initializer.XavierNormal(),
                 ),
                 max_rank=3,
             )

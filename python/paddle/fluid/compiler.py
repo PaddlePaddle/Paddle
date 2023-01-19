@@ -645,7 +645,7 @@ class IpuDynamicPatcher:
                     with device_guard(device):
                         optimizer.helper.set_variable_initializer(
                             var,
-                            initializer=paddle.nn.initializer.ConstantInitializer(
+                            initializer=paddle.nn.initializer.Constant(
                                 value=0.0
                             ),
                         )

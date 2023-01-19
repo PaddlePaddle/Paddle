@@ -397,9 +397,7 @@ class Optimizer:
             lr_value = float(self._learning_rate())
             self.helper.set_variable_initializer(
                 lr_var,
-                initializer=paddle.nn.initializer.ConstantInitializer(
-                    value=lr_value
-                ),
+                initializer=paddle.nn.initializer.Constant(value=lr_value),
             )
             return
 
@@ -716,7 +714,7 @@ class Optimizer:
         with device_guard(device):
             self.helper.set_variable_initializer(
                 var,
-                initializer=paddle.nn.initializer.ConstantInitializer(
+                initializer=paddle.nn.initializer.Constant(
                     value=float(fill_value)
                 ),
             )
@@ -780,7 +778,7 @@ class Optimizer:
         with device_guard(device):
             self.helper.set_variable_initializer(
                 var,
-                initializer=paddle.nn.initializer.ConstantInitializer(
+                initializer=paddle.nn.initializer.Constant(
                     value=float(fill_value)
                 ),
             )
@@ -1227,11 +1225,11 @@ class Optimizer:
         # so the shape of flatten_param and flatten_grad will be inferred.
         self.helper.set_variable_initializer(
             flatten_param,
-            initializer=paddle.nn.initializer.ConstantInitializer(0.0),
+            initializer=paddle.nn.initializer.Constant(0.0),
         )
         self.helper.set_variable_initializer(
             flatten_grad,
-            initializer=paddle.nn.initializer.ConstantInitializer(0.0),
+            initializer=paddle.nn.initializer.Constant(0.0),
         )
 
         return [(flatten_param, flatten_grad)]

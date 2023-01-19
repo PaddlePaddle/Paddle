@@ -217,9 +217,7 @@ class TestEmbeddingLayerBF16ConstantInitializer(unittest.TestCase):
     """
 
     def set_initializer(self):
-        self.initializer = paddle.nn.initializer.ConstantInitializer(
-            value=self.value
-        )
+        self.initializer = paddle.nn.initializer.Constant(value=self.value)
 
     def setUp(self):
         self.ids_shape = [4, 1]

@@ -30,9 +30,7 @@ class ConvBiasMkldnnFusePassSamePadTest(InferencePassTest):
                 name="data", shape=[-1, 3, 100, 100], dtype="float32"
             )
             param_attr = fluid.ParamAttr(
-                initializer=paddle.nn.initializer.XavierInitializer(
-                    uniform=False
-                ),
+                initializer=paddle.nn.initializer.XavierNormal(),
                 learning_rate=0.001,
             )
             conv_out = paddle.static.nn.conv2d(
@@ -65,9 +63,7 @@ class ConvBiasMkldnnFusePassValidPadTest(ConvBiasMkldnnFusePassSamePadTest):
                 name="data", shape=[-1, 3, 100, 100], dtype="float32"
             )
             param_attr = fluid.ParamAttr(
-                initializer=paddle.nn.initializer.XavierInitializer(
-                    uniform=False
-                ),
+                initializer=paddle.nn.initializer.XavierNormal(),
                 learning_rate=0.001,
             )
             conv_out = paddle.static.nn.conv2d(
@@ -93,9 +89,7 @@ class ConvBiasMkldnnFusePassExplictPadTest(ConvBiasMkldnnFusePassSamePadTest):
                 name="data", shape=[-1, 3, 100, 100], dtype="float32"
             )
             param_attr = fluid.ParamAttr(
-                initializer=paddle.nn.initializer.XavierInitializer(
-                    uniform=False
-                ),
+                initializer=paddle.nn.initializer.XavierNormal(),
                 learning_rate=0.001,
             )
             conv_out = paddle.static.nn.conv2d(
@@ -120,9 +114,7 @@ class ConvBiasMkldnnFusePassGroupTest(ConvBiasMkldnnFusePassSamePadTest):
                 name="data", shape=[-1, 3, 100, 100], dtype="float32"
             )
             param_attr = fluid.ParamAttr(
-                initializer=paddle.nn.initializer.XavierInitializer(
-                    uniform=False
-                ),
+                initializer=paddle.nn.initializer.XavierUniform(),
                 learning_rate=0.001,
             )
             conv_out = paddle.static.nn.conv2d(
@@ -153,9 +145,7 @@ class ConvBiasMkldnnFusePassDialtionsGroupsTest(
                 name="data", shape=[-1, 3, 100, 100], dtype="float32"
             )
             param_attr = fluid.ParamAttr(
-                initializer=paddle.nn.initializer.XavierInitializer(
-                    uniform=False
-                ),
+                initializer=paddle.nn.initializer.XavierNormal(),
                 learning_rate=0.001,
             )
             conv_out = paddle.static.nn.conv2d(
@@ -183,9 +173,7 @@ class ConvTransposeMkldnnFusePassDialtionsGroupsTest(InferencePassTest):
         with fluid.program_guard(self.main_program, self.startup_program):
             data = fluid.data(name="data", shape=[-1, 3, 5, 5], dtype="float32")
             param_attr = fluid.ParamAttr(
-                initializer=paddle.nn.initializer.XavierInitializer(
-                    uniform=False
-                ),
+                initializer=paddle.nn.initializer.XavierNormal(),
                 learning_rate=0.001,
             )
             conv_out = paddle.static.nn.conv2d_transpose(

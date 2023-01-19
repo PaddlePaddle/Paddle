@@ -39,9 +39,7 @@ class TestCommunicatorGeoEnd2End(unittest.TestCase):
             size=[10000, 10],
             param_attr=fluid.ParamAttr(
                 name="embedding",
-                initializer=paddle.nn.initializer.ConstantInitializer(
-                    value=0.01
-                ),
+                initializer=paddle.nn.initializer.Constant(value=0.01),
             ),
             is_sparse=True,
         )

@@ -30,7 +30,7 @@ from paddle.fluid.data_feeder import check_dtype
 from paddle.fluid.framework import Variable, _non_static_mode, static_only
 from paddle.fluid.layers.layer_function_generator import templatedoc
 from paddle.fluid.param_attr import ParamAttr
-from paddle.nn.initializer import ConstantInitializer, NormalInitializer
+from paddle.nn.initializer import Constant, Normal
 
 __all__ = []
 
@@ -338,14 +338,14 @@ def instance_norm(
             attr=helper.param_attr,
             shape=param_shape,
             dtype=dtype,
-            default_initializer=ConstantInitializer(1.0),
+            default_initializer=Constant(1.0),
         )
         bias = helper.create_parameter(
             attr=helper.bias_attr,
             shape=param_shape,
             dtype=dtype,
             is_bias=True,
-            default_initializer=ConstantInitializer(0.0),
+            default_initializer=Constant(0.0),
         )
 
     # create output
@@ -545,7 +545,7 @@ def data_norm(
         scale_w = helper.create_parameter(
             attr=ParamAttr(
                 name=name + '.scale_w',
-                initializer=ConstantInitializer(value=float(scale_w_default)),
+                initializer=Constant(value=float(scale_w_default)),
                 trainable=True,
             ),
             shape=param_shape,
@@ -554,7 +554,7 @@ def data_norm(
         bias = helper.create_parameter(
             attr=ParamAttr(
                 name=name + '.bias',
-                initializer=ConstantInitializer(value=float(bias_default)),
+                initializer=Constant(value=float(bias_default)),
                 trainable=True,
             ),
             shape=param_shape,
@@ -564,7 +564,7 @@ def data_norm(
     batch_size = helper.create_parameter(
         attr=ParamAttr(
             name=name + '.batch_size',
-            initializer=ConstantInitializer(value=float(batch_size_default)),
+            initializer=Constant(value=float(batch_size_default)),
             trainable=True,
         ),
         shape=param_shape,
@@ -574,7 +574,7 @@ def data_norm(
     batch_sum = helper.create_parameter(
         attr=ParamAttr(
             name=name + '.batch_sum',
-            initializer=ConstantInitializer(value=float(batch_sum_default)),
+            initializer=Constant(value=float(batch_sum_default)),
             trainable=True,
         ),
         shape=param_shape,
@@ -584,9 +584,7 @@ def data_norm(
     batch_square_sum = helper.create_parameter(
         attr=ParamAttr(
             name=name + '.batch_square_sum',
-            initializer=ConstantInitializer(
-                value=float(batch_square_sum_default)
-            ),
+            initializer=Constant(value=float(batch_square_sum_default)),
             trainable=True,
         ),
         shape=param_shape,
@@ -711,7 +709,7 @@ def group_norm(
             attr=helper.param_attr,
             shape=param_shape,
             dtype=dtype,
-            default_initializer=ConstantInitializer(1.0),
+            default_initializer=Constant(1.0),
         )
         inputs['Scale'] = scale
     if bias_attr:
@@ -1014,7 +1012,7 @@ def conv2d(
                 "filter size.".format(filter_elem_num)
             )
         std = (2.0 / filter_elem_num) ** 0.5
-        return NormalInitializer(0.0, std, 0)
+        return Normal(0.0, std)
 
     filter_param = helper.create_parameter(
         attr=helper.param_attr,
@@ -1317,7 +1315,7 @@ def conv3d(
             )
 
         std = (2.0 / filter_elem_num) ** 0.5
-        return NormalInitializer(0.0, std, 0)
+        return Normal(0.0, std)
 
     filter_param = helper.create_parameter(
         attr=helper.param_attr,
@@ -2278,7 +2276,7 @@ def deformable_conv(
                 "filter size.".format(filter_elem_num)
             )
         std = (2.0 / filter_elem_num) ** 0.5
-        return paddle.nn.initializer.normal.NormalInitializer(0.0, std, 0)
+        return paddle.nn.initializer.normal.Normal(0.0, std)
 
     filter_param = helper.create_parameter(
         attr=helper.param_attr,
@@ -3430,14 +3428,14 @@ def spectral_norm(weight, dim=0, power_iters=1, eps=1e-12, name=None):
         attr=ParamAttr(),
         shape=[h],
         dtype=dtype,
-        default_initializer=NormalInitializer(0.0, 1.0),
+        default_initializer=Normal(0.0, 1.0),
     )
     u.stop_gradient = True
     v = helper.create_parameter(
         attr=ParamAttr(),
         shape=[w],
         dtype=dtype,
-        default_initializer=NormalInitializer(0.0, 1.0),
+        default_initializer=Normal(0.0, 1.0),
     )
     v.stop_gradient = True
 
@@ -3566,7 +3564,7 @@ def layer_norm(
             attr=helper.param_attr,
             shape=param_shape,
             dtype=dtype,
-            default_initializer=ConstantInitializer(1.0),
+            default_initializer=Constant(1.0),
         )
         inputs['Scale'] = scale
     else:

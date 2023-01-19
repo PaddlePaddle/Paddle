@@ -60,7 +60,7 @@ class ConvBNLayer(fluid.dygraph.Layer):
             padding=padding,
             groups=num_groups,
             weight_attr=ParamAttr(
-                initializer=paddle.nn.initializer.MSRAInitializer(),
+                initializer=paddle.nn.initializer.KaimingUniform(),
                 name=self.full_name() + "_weights",
             ),
             bias_attr=False,
@@ -259,7 +259,7 @@ class MobileNetV1(fluid.dygraph.Layer):
             int(1024 * scale),
             class_dim,
             weight_attr=ParamAttr(
-                initializer=paddle.nn.initializer.MSRAInitializer(),
+                initializer=paddle.nn.initializer.KaimingUniform(),
                 name=self.full_name() + "fc7_weights",
             ),
             bias_attr=ParamAttr(name="fc7_offset"),

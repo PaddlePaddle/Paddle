@@ -96,12 +96,10 @@ class TestFunctionalConv2D(TestCase):
                     padding=self.padding,
                     dilation=self.dilation,
                     groups=self.groups,
-                    param_attr=paddle.nn.initializer.NumpyArrayInitializer(
-                        self.weight
-                    ),
+                    param_attr=paddle.nn.initializer.Assign(self.weight),
                     bias_attr=False
                     if self.no_bias
-                    else paddle.nn.initializer.NumpyArrayInitializer(self.bias),
+                    else paddle.nn.initializer.Assign(self.bias),
                     act=self.act,
                     data_format=self.data_format,
                 )
@@ -516,12 +514,10 @@ class TestFunctionalConv2DErrorCase12(TestCase):
                     padding=self.padding,
                     dilation=self.dilation,
                     groups=self.groups,
-                    param_attr=paddle.nn.initializer.NumpyArrayInitializer(
-                        self.filter
-                    ),
+                    param_attr=paddle.nn.initializer.Assign(self.filter),
                     bias_attr=False
                     if self.bias is None
-                    else paddle.nn.initializer.NumpyArrayInitializer(self.bias),
+                    else paddle.nn.initializer.Assign(self.bias),
                     act=None,
                     data_format=self.data_format,
                 )

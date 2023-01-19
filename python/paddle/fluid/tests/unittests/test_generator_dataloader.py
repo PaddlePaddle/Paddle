@@ -60,9 +60,7 @@ def simple_fc_net(places, use_legacy_py_reader, use_double_buffer):
                     size=hidden_size,
                     activation='tanh',
                     bias_attr=fluid.ParamAttr(
-                        initializer=paddle.nn.initializer.ConstantInitializer(
-                            value=1.0
-                        )
+                        initializer=paddle.nn.initializer.Constant(value=1.0)
                     ),
                 )
 

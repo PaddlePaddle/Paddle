@@ -49,7 +49,7 @@ class EmbeddingLayer:
             padding_idx=self.padding_idx,
             weight_attr=attr.ParamAttr(
                 name=self.name,
-                initializer=paddle.nn.initializer.XavierInitializer(),
+                initializer=paddle.nn.initializer.XavierUniform(),
             ),
         )
 

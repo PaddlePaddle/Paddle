@@ -89,11 +89,11 @@ class TestDistCTR2x2(FleetDistRunnerBase):
         inference = bool(int(os.getenv("INFERENCE", "0")))
 
         if initializer == 0:
-            init = paddle.nn.initializer.ConstantInitializer(value=0.01)
+            init = paddle.nn.initializer.Constant(value=0.01)
         elif initializer == 1:
-            init = paddle.nn.initializer.UniformInitializer()
+            init = paddle.nn.initializer.Uniform()
         elif initializer == 2:
-            init = paddle.nn.initializer.NormalInitializer()
+            init = paddle.nn.initializer.Normal()
         else:
             raise ValueError("error initializer code: {}".format(initializer))
 
@@ -116,9 +116,7 @@ class TestDistCTR2x2(FleetDistRunnerBase):
                 size=dim,
                 activation="relu",
                 weight_attr=fluid.ParamAttr(
-                    initializer=paddle.nn.initializer.ConstantInitializer(
-                        value=0.01
-                    )
+                    initializer=paddle.nn.initializer.Constant(value=0.01)
                 ),
                 name='dnn-fc-%d' % i,
             )
@@ -132,9 +130,7 @@ class TestDistCTR2x2(FleetDistRunnerBase):
             entry=entry,
             param_attr=fluid.ParamAttr(
                 name="wide_embedding",
-                initializer=paddle.nn.initializer.ConstantInitializer(
-                    value=0.01
-                ),
+                initializer=paddle.nn.initializer.Constant(value=0.01),
             ),
         )
 

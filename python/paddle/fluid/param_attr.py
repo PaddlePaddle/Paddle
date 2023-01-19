@@ -142,7 +142,7 @@ class ParamAttr:
         Returns:
             None.
         """
-        self._set_default_initializer(paddle.nn.initializer.XavierInitializer())
+        self._set_default_initializer(paddle.nn.initializer.XavierUniform())
 
     def _set_default_bias_initializer(self):
         """
@@ -154,9 +154,7 @@ class ParamAttr:
         Returns:
             None.
         """
-        self._set_default_initializer(
-            paddle.nn.initializer.ConstantInitializer(0.0)
-        )
+        self._set_default_initializer(paddle.nn.initializer.Constant(0.0))
 
     @staticmethod
     def _to_attr(arg):

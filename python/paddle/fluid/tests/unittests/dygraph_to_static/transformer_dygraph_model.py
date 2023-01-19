@@ -62,14 +62,10 @@ class PrePostProcessLayer(Layer):
                         paddle.nn.LayerNorm(
                             normalized_shape=d_model,
                             weight_attr=fluid.ParamAttr(
-                                initializer=paddle.nn.initializer.ConstantInitializer(
-                                    1.0
-                                )
+                                initializer=paddle.nn.initializer.Constant(1.0)
                             ),
                             bias_attr=fluid.ParamAttr(
-                                initializer=paddle.nn.initializer.ConstantInitializer(
-                                    0.0
-                                )
+                                initializer=paddle.nn.initializer.Constant(0.0)
                             ),
                         ),
                     )
@@ -299,9 +295,7 @@ class Embedder(Layer):
             vocab_size,
             emb_dim,
             weight_attr=fluid.ParamAttr(
-                initializer=paddle.nn.initializer.NormalInitializer(
-                    0.0, emb_dim**-0.5
-                )
+                initializer=paddle.nn.initializer.Normal(0.0, emb_dim**-0.5)
             ),
         )
 
@@ -336,7 +330,7 @@ class WrapEncoder(Layer):
             max_length,
             self.emb_dim,
             weight_attr=fluid.ParamAttr(
-                initializer=paddle.nn.initializer.NumpyArrayInitializer(
+                initializer=paddle.nn.initializer.Assign(
                     position_encoding_init(max_length, self.emb_dim)
                 ),
                 trainable=False,
@@ -528,7 +522,7 @@ class WrapDecoder(Layer):
             max_length,
             self.emb_dim,
             weight_attr=fluid.ParamAttr(
-                initializer=paddle.nn.initializer.NumpyArrayInitializer(
+                initializer=paddle.nn.initializer.Assign(
                     position_encoding_init(max_length, self.emb_dim)
                 ),
                 trainable=False,

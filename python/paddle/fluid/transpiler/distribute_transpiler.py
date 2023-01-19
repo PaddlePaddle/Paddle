@@ -2856,9 +2856,7 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
                             dtype=var.dtype,
                             shape=var.shape,
                             persistable=var.persistable,
-                            initializer=paddle.nn.initializer.ConstantInitializer(
-                                1
-                            ),
+                            initializer=paddle.nn.initializer.Constant(1),
                         )
                     op_role_attr_name = (
                         core.op_proto_and_checker_maker.kOpRoleAttrName()

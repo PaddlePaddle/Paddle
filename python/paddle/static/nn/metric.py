@@ -20,7 +20,7 @@ from paddle.fluid.data_feeder import check_variable_and_dtype
 from paddle.fluid.framework import Variable, _non_static_mode, _varbase_creator
 from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.layers import tensor
-from paddle.nn.initializer import ConstantInitializer
+from paddle.nn.initializer import Constant
 
 __all__ = []
 
@@ -267,7 +267,7 @@ def auc(
     for var in [batch_stat_pos, batch_stat_neg, stat_pos, stat_neg]:
         helper.set_variable_initializer(
             var,
-            ConstantInitializer(value=0.0, force_cpu=False),
+            Constant(value=0.0, force_cpu=False),
         )
 
     # "InsTagWeight": [ins_tag_weight]

@@ -900,7 +900,7 @@ def tdm_child(x, node_nums, child_nums, param_attr=None, dtype='int32'):
         child_nums = 2
         child, leaf_mask  = fluid.contrib.layers.tdm_child(x, node_nums, child_nums,
                                 param_attr=fluid.ParamAttr(
-                                    initializer=paddle.nn.initializer.NumpyArrayInitializer(
+                                    initializer=paddle.nn.initializer.Assign(
                                                                             tree_info_np)))
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
@@ -917,7 +917,7 @@ def tdm_child(x, node_nums, child_nums, param_attr=None, dtype='int32'):
         attr=helper.param_attr,
         shape=[node_nums, 3 + child_nums],
         dtype=dtype,
-        default_initializer=paddle.nn.initializer.ConstantInitializer(0),
+        default_initializer=paddle.nn.initializer.Constant(0),
     )
     tree_info.stop_gradient = True
 
@@ -1016,10 +1016,10 @@ def tdm_sampler(
             layer_node_num_list,
             leaf_node_num,
             tree_travel_attr=fluid.ParamAttr(
-                initializer=paddle.nn.initializer.NumpyArrayInitializer(
+                initializer=paddle.nn.initializer.Assign(
                     travel_array)),
             tree_layer_attr=fluid.ParamAttr(
-                initializer=paddle.nn.initializer.NumpyArrayInitializer(
+                initializer=paddle.nn.initializer.Assign(
                     layer_array)),
             output_positive=True,
             output_list=True,
@@ -1083,7 +1083,7 @@ def tdm_sampler(
         attr=tree_travel_attr,
         shape=travel_shape,
         dtype=tree_dtype,
-        default_initializer=paddle.nn.initializer.ConstantInitializer(0),
+        default_initializer=paddle.nn.initializer.Constant(0),
     )
 
     layer_shape = [node_nums, 1]
@@ -1091,7 +1091,7 @@ def tdm_sampler(
         attr=tree_layer_attr,
         shape=layer_shape,
         dtype=tree_dtype,
-        default_initializer=paddle.nn.initializer.ConstantInitializer(0),
+        default_initializer=paddle.nn.initializer.Constant(0),
     )
 
     out = helper.create_variable_for_type_inference(dtype=dtype)
@@ -1635,7 +1635,7 @@ def fused_bn_add_act(
         attr=helper.param_attr,
         shape=param_shape,
         dtype=bn_param_dtype,
-        default_initializer=paddle.nn.initializer.ConstantInitializer(1.0),
+        default_initializer=paddle.nn.initializer.Constant(1.0),
     )
     bias = helper.create_parameter(
         attr=helper.bias_attr,
@@ -1646,7 +1646,7 @@ def fused_bn_add_act(
     mean = helper.create_parameter(
         attr=ParamAttr(
             name=moving_mean_name,
-            initializer=paddle.nn.initializer.ConstantInitializer(0.0),
+            initializer=paddle.nn.initializer.Constant(0.0),
             trainable=False,
         ),
         shape=param_shape,
@@ -1656,7 +1656,7 @@ def fused_bn_add_act(
     variance = helper.create_parameter(
         attr=ParamAttr(
             name=moving_variance_name,
-            initializer=paddle.nn.initializer.ConstantInitializer(1.0),
+            initializer=paddle.nn.initializer.Constant(1.0),
             trainable=False,
         ),
         shape=param_shape,
@@ -1721,16 +1721,14 @@ def pow2_decay_with_linear_warmup(
     lr = helper.create_global_variable(persistable=True, dtype=dtype, shape=[1])
     helper.set_variable_initializer(
         lr,
-        paddle.nn.initializer.ConstantInitializer(
-            value=float(base_lr) / warmup_steps
-        ),
+        paddle.nn.initializer.Constant(value=float(base_lr) / warmup_steps),
     )
 
     step = helper.create_global_variable(
         persistable=True, dtype='int64', shape=[1]
     )
     helper.set_variable_initializer(
-        step, paddle.nn.initializer.ConstantInitializer(value=0)
+        step, paddle.nn.initializer.Constant(value=0)
     )
     assert (
         warmup_steps <= total_steps

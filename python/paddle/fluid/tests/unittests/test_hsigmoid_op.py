@@ -301,9 +301,7 @@ class TestHSigmoidOpWithSparseGrad(unittest.TestCase):
             is_sparse=is_sparse,
             size=[3, 3],
             param_attr=fluid.ParamAttr(
-                initializer=paddle.nn.initializer.NormalInitializer(
-                    scale=1 / math.sqrt(3)
-                )
+                initializer=paddle.nn.initializer.Normal(scale=1 / math.sqrt(3))
             ),
         )
 
@@ -556,10 +554,8 @@ class TestHSigmoidLossAPI(unittest.TestCase):
             x, labels, self.num_classes, weight, bias, path_table, path_code
         )
 
-        weight_attr = paddle.nn.initializer.NumpyArrayInitializer(
-            self.weight_np
-        )
-        bias_attr = paddle.nn.initializer.NumpyArrayInitializer(self.bias_np)
+        weight_attr = paddle.nn.initializer.Assign(self.weight_np)
+        bias_attr = paddle.nn.initializer.Assign(self.bias_np)
         m = paddle.nn.HSigmoidLoss(
             self.feature_size,
             self.num_classes,
@@ -596,14 +592,10 @@ class TestHSigmoidLossAPI(unittest.TestCase):
             )
 
             weight_attr = paddle.framework.ParamAttr(
-                initializer=paddle.nn.initializer.NumpyArrayInitializer(
-                    self.weight_np
-                )
+                initializer=paddle.nn.initializer.Assign(self.weight_np)
             )
             bias_attr = paddle.framework.ParamAttr(
-                initializer=paddle.nn.initializer.NumpyArrayInitializer(
-                    self.bias_np
-                )
+                initializer=paddle.nn.initializer.Assign(self.bias_np)
             )
             m = paddle.nn.HSigmoidLoss(
                 self.feature_size,
@@ -643,12 +635,8 @@ class TestHSigmoidLossAPI(unittest.TestCase):
             if self.is_custom:
                 path_table = fluid.data('path_table', [-1, -1], 'int64')
                 path_code = fluid.data('path_code', [-1, -1], 'int64')
-            weight_attr = paddle.nn.initializer.NumpyArrayInitializer(
-                self.weight_np
-            )
-            bias_attr = paddle.nn.initializer.NumpyArrayInitializer(
-                self.bias_np
-            )
+            weight_attr = paddle.nn.initializer.Assign(self.weight_np)
+            bias_attr = paddle.nn.initializer.Assign(self.bias_np)
             loss = paddle.nn.HSigmoidLoss(
                 feature_size=x.shape[1],
                 num_classes=self.num_classes,

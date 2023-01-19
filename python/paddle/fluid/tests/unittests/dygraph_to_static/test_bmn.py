@@ -115,15 +115,11 @@ class Conv1D(fluid.dygraph.Layer):
         k = 1.0 / math.sqrt(fan_in)
         param_attr = ParamAttr(
             name=prefix + "_w",
-            initializer=paddle.nn.initializer.UniformInitializer(
-                low=-k, high=k
-            ),
+            initializer=paddle.nn.initializer.Uniform(low=-k, high=k),
         )
         bias_attr = ParamAttr(
             name=prefix + "_b",
-            initializer=paddle.nn.initializer.UniformInitializer(
-                low=-k, high=k
-            ),
+            initializer=paddle.nn.initializer.Uniform(low=-k, high=k),
         )
 
         self._conv2d = paddle.nn.Conv2D(

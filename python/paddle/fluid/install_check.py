@@ -42,7 +42,7 @@ class SimpleLayer(Layer):
             input_size,
             3,
             weight_attr=ParamAttr(
-                initializer=paddle.nn.initializer.ConstantInitializer(value=0.1)
+                initializer=paddle.nn.initializer.Constant(value=0.1)
             ),
         )
 

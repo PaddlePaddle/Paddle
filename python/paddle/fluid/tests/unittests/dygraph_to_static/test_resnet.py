@@ -194,9 +194,7 @@ class ResNet(fluid.dygraph.Layer):
             self.pool2d_avg_output,
             class_dim,
             weight_attr=fluid.param_attr.ParamAttr(
-                initializer=paddle.nn.initializer.UniformInitializer(
-                    -stdv, stdv
-                )
+                initializer=paddle.nn.initializer.Uniform(-stdv, stdv)
             ),
         )
 

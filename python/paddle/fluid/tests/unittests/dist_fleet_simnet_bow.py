@@ -124,7 +124,7 @@ def train_network(
         is_distributed=is_distributed,
         size=[dict_dim, emb_dim],
         param_attr=fluid.ParamAttr(
-            initializer=paddle.nn.initializer.ConstantInitializer(value=0.01),
+            initializer=paddle.nn.initializer.Constant(value=0.01),
             name="__emb__",
         ),
         is_sparse=is_sparse,
@@ -138,7 +138,7 @@ def train_network(
         x=q_ss,
         size=hid_dim,
         weight_attr=fluid.ParamAttr(
-            initializer=paddle.nn.initializer.ConstantInitializer(value=0.01),
+            initializer=paddle.nn.initializer.Constant(value=0.01),
             name="__q_fc__",
             learning_rate=base_lr,
         ),
@@ -150,7 +150,7 @@ def train_network(
         is_distributed=is_distributed,
         size=[dict_dim, emb_dim],
         param_attr=fluid.ParamAttr(
-            initializer=paddle.nn.initializer.ConstantInitializer(value=0.01),
+            initializer=paddle.nn.initializer.Constant(value=0.01),
             name="__emb__",
             learning_rate=emb_lr,
         ),
@@ -165,7 +165,7 @@ def train_network(
         x=pt_ss,
         size=hid_dim,
         weight_attr=fluid.ParamAttr(
-            initializer=paddle.nn.initializer.ConstantInitializer(value=0.01),
+            initializer=paddle.nn.initializer.Constant(value=0.01),
             name="__fc__",
         ),
         bias_attr=fluid.ParamAttr(name="__fc_b__"),
@@ -177,7 +177,7 @@ def train_network(
         is_distributed=is_distributed,
         size=[dict_dim, emb_dim],
         param_attr=fluid.ParamAttr(
-            initializer=paddle.nn.initializer.ConstantInitializer(value=0.01),
+            initializer=paddle.nn.initializer.Constant(value=0.01),
             name="__emb__",
         ),
         is_sparse=is_sparse,
@@ -191,7 +191,7 @@ def train_network(
         x=nt_ss,
         size=hid_dim,
         weight_attr=fluid.ParamAttr(
-            initializer=paddle.nn.initializer.ConstantInitializer(value=0.01),
+            initializer=paddle.nn.initializer.Constant(value=0.01),
             name="__fc__",
         ),
         bias_attr=fluid.ParamAttr(name="__fc_b__"),

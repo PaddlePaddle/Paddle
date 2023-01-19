@@ -89,7 +89,7 @@ class TestDistFleetHeterProgram(unittest.TestCase):
                 size=[100001, 10],
                 param_attr=fluid.ParamAttr(
                     name="SparseFeatFactors",
-                    initializer=paddle.nn.initializer.UniformInitializer(),
+                    initializer=paddle.nn.initializer.Uniform(),
                 ),
             )
 
@@ -103,7 +103,7 @@ class TestDistFleetHeterProgram(unittest.TestCase):
                 size=400,
                 activation="relu",
                 weight_attr=fluid.ParamAttr(
-                    initializer=paddle.nn.initializer.NormalInitializer(
+                    initializer=paddle.nn.initializer.Normal(
                         scale=1 / math.sqrt(concated.shape[1])
                     )
                 ),
@@ -116,7 +116,7 @@ class TestDistFleetHeterProgram(unittest.TestCase):
                 size=400,
                 activation="relu",
                 weight_attr=fluid.ParamAttr(
-                    initializer=paddle.nn.initializer.NormalInitializer(
+                    initializer=paddle.nn.initializer.Normal(
                         scale=1 / math.sqrt(fc1.shape[1])
                     )
                 ),
@@ -129,7 +129,7 @@ class TestDistFleetHeterProgram(unittest.TestCase):
                 size=400,
                 activation="relu",
                 weight_attr=fluid.ParamAttr(
-                    initializer=paddle.nn.initializer.NormalInitializer(
+                    initializer=paddle.nn.initializer.Normal(
                         scale=1 / math.sqrt(fc2.shape[1])
                     )
                 ),
@@ -142,7 +142,7 @@ class TestDistFleetHeterProgram(unittest.TestCase):
                 size=2,
                 activation="softmax",
                 weight_attr=fluid.ParamAttr(
-                    initializer=paddle.nn.initializer.NormalInitializer(
+                    initializer=paddle.nn.initializer.Normal(
                         scale=1 / math.sqrt(fc3.shape[1])
                     )
                 ),

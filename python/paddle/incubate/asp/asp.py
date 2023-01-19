@@ -881,7 +881,7 @@ class ASPHelper:
                             name=ASPHelper._get_mask_name(param.name),
                             shape=param.shape,
                             dtype=param.dtype,
-                            default_initializer=paddle.nn.initializer.ConstantInitializer(
+                            default_initializer=paddle.nn.initializer.Constant(
                                 value=1.0
                             ),
                         )

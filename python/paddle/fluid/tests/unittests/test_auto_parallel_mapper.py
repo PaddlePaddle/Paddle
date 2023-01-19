@@ -373,16 +373,16 @@ class MLPLayer(nn.Layer):
         arr2 = np.random.normal(0, 0.02, size=(d_model, dim_feedforward))
         arr3 = np.random.normal(0, 0.02, size=(dim_feedforward, d_model))
         weight_attr0 = paddle.ParamAttr(
-            initializer=paddle.nn.initializer.NumpyArrayInitializer(arr0)
+            initializer=paddle.nn.initializer.Assign(arr0)
         )
         weight_attr1 = paddle.ParamAttr(
-            initializer=paddle.nn.initializer.NumpyArrayInitializer(arr1)
+            initializer=paddle.nn.initializer.Assign(arr1)
         )
         weight_attr2 = paddle.ParamAttr(
-            initializer=paddle.nn.initializer.NumpyArrayInitializer(arr2)
+            initializer=paddle.nn.initializer.Assign(arr2)
         )
         weight_attr3 = paddle.ParamAttr(
-            initializer=paddle.nn.initializer.NumpyArrayInitializer(arr3)
+            initializer=paddle.nn.initializer.Assign(arr3)
         )
         bias_attr = None
         self.linear0 = nn.Linear(

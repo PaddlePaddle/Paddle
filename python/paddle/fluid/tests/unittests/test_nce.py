@@ -196,7 +196,7 @@ class TestNCECase1SelectedRows(unittest.TestCase):
                 shape=[num_total_classes, 10],
                 dtype='float32',
                 name='nce_w',
-                initializer=paddle.nn.initializer.ConstantInitializer(),
+                initializer=paddle.nn.initializer.Constant(),
             )
         )
         b_param = (
@@ -206,7 +206,7 @@ class TestNCECase1SelectedRows(unittest.TestCase):
                 shape=[num_total_classes, 1],
                 dtype='float32',
                 name='nce_b',
-                initializer=paddle.nn.initializer.ConstantInitializer(),
+                initializer=paddle.nn.initializer.Constant(),
             )
         )
 

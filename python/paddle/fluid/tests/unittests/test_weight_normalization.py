@@ -43,7 +43,7 @@ class TestWeightNormalization(unittest.TestCase):
             weight_attr=WeightNormParamAttr(
                 dim=None,
                 name='weight_norm_param',
-                initializer=paddle.nn.initializer.ConstantInitializer(1.0),
+                initializer=paddle.nn.initializer.Constant(1.0),
             ),
             bias_attr=False,
             activation=None,
