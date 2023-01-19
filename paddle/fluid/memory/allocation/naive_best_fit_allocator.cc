@@ -166,7 +166,7 @@ void *Alloc<platform::XPUPlace>(const platform::XPUPlace &place, size_t size) {
     PADDLE_THROW(platform::errors::Unimplemented(
         "xpu memory FLAGS_init_allocated_mem is not implemented."));
   }
-  VLOG(10) << "  pointer=" << p;
+  VLOG(10) << " xpu pointer=" << p;
   return p;
 #else
   PADDLE_THROW(
