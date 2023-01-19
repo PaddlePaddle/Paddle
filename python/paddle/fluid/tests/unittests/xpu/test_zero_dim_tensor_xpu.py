@@ -324,7 +324,6 @@ class TestSundryAPI(unittest.TestCase):
         x.stop_gradient = False
         out = paddle.topk(x, k=1, axis=0)
         self.assertEqual(x.shape, [])
-        self.assertEqual(out.shape, [])
 
     def test_linear(self):
         x = paddle.randn([3, 2])

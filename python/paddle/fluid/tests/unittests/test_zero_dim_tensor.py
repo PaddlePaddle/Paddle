@@ -569,11 +569,13 @@ class TestSundryAPI(unittest.TestCase):
         x = paddle.full([], 1, 'int32')
         x.stop_gradient = False
         out = paddle.topk(x, k=1, axis=0)
+        self.assertEqual(x.shape, [])
 
     def test_broadcast_to(self):
         x = paddle.full([], 1, 'int32')
         x.stop_gradient = False
         out = paddle.broadcast_to(x, shape=[1])
+        self.assertEqual(x.shape, [])
 
     def test_quantile(self):
         # 1) x is 0D
