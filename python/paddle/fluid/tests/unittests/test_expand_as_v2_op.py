@@ -135,6 +135,19 @@ class TestExpandAsV2API(unittest.TestCase):
         assert np.array_equal(res_1[0], np.tile(input1, (2, 1, 1)))
 
 
+class TestExpandAsOp_ZeroDim(TestExpandAsBasic):
+    def setUp(self):
+        self.op_type = "expand_as_v2"
+        self.python_api = paddle.expand_as
+        x = np.random.uniform(size=[]).astype("float64")
+        target_tensor = np.random.uniform(size=[]).astype("float64")
+        self.inputs = {'X': x, "Y": target_tensor}
+        self.attrs = {'target_shape': target_tensor.shape}
+        bcast_dims = ()
+        output = np.tile(self.inputs['X'], bcast_dims)
+        self.outputs = {'Out': output}
+
+
 if __name__ == "__main__":
     paddle.enable_static()
     unittest.main()

@@ -548,6 +548,33 @@ class TestSundryAPI(unittest.TestCase):
         paddle.disable_static()
         self.x = paddle.rand([])
 
+    def test_expand(self):
+        x = paddle.full([], 1, 'int32')
+        x.stop_gradient = False
+        out = paddle.expand(x, shape=[1])
+        self.assertEqual(x.shape, [])
+        self.assertEqual(out.shape, [])
+
+    def test_expand_as(self):
+        x = paddle.full([], 1, 'int32')
+        x.stop_gradient = False
+        y = paddle.full([], 1, 'int32')
+        y.stop_gradient = False
+        out = paddle.expand_as(x, y)
+        self.assertEqual(x.shape, [])
+        self.assertEqual(y.shape, [])
+        self.assertEqual(out.shape, [])
+
+    def test_top_k(self):
+        x = paddle.full([], 1, 'int32')
+        x.stop_gradient = False
+        out = paddle.topk(x, k=1, axis=0)
+
+    def test_broadcast_to(self):
+        x = paddle.full([], 1, 'int32')
+        x.stop_gradient = False
+        out = paddle.broadcast_to(x, shape=[1])
+
     def test_quantile(self):
         # 1) x is 0D
         x = paddle.rand([])
@@ -1435,6 +1462,72 @@ class TestSundryAPIStatic(unittest.TestCase):
     def setUp(self):
         paddle.enable_static()
         self.exe = paddle.static.Executor()
+
+    @prog_scope()
+    def test_expand(self):
+        x = paddle.full([], 1, 'int32')
+        x.stop_gradient = False
+        out = paddle.expand(x, shape=[1])
+        paddle.static.append_backward(out.sum())
+
+        prog = paddle.static.default_main_program()
+        res = self.exe.run(
+            prog, fetch_list=[x, out, x.grad_name, out.grad_name]
+        )
+        self.assertEqual(res[0].shape, ())
+        self.assertEqual(res[1].shape, ())
+        self.assertEqual(res[2].shape, ())
+        self.assertEqual(res[3].shape, ())
+
+    @prog_scope()
+    def test_expand_as(self):
+        x = paddle.full([], 1, 'int32')
+        x.stop_gradient = False
+        y = paddle.full([], 1, 'int32')
+        y.stop_gradient = False
+        out = paddle.expand(x, y)
+        paddle.static.append_backward(out.sum())
+
+        prog = paddle.static.default_main_program()
+        res = self.exe.run(
+            prog, fetch_list=[x, out, x.grad_name, out.grad_name]
+        )
+        self.assertEqual(res[0].shape, ())
+        self.assertEqual(res[1].shape, ())
+        self.assertEqual(res[2].shape, ())
+        self.assertEqual(res[3].shape, ())
+
+    @prog_scope()
+    def test_top_k(self):
+        x = paddle.full([], 1, 'int32')
+        x.stop_gradient = False
+        out = paddle.topk(x, shape=[1])
+        paddle.static.append_backward(out.sum())
+
+        prog = paddle.static.default_main_program()
+        res = self.exe.run(
+            prog, fetch_list=[x, out, x.grad_name, out.grad_name]
+        )
+        self.assertEqual(res[0].shape, ())
+        self.assertEqual(res[1].shape, ())
+        self.assertEqual(res[2].shape, ())
+        self.assertEqual(res[3].shape, ())
+
+    @prog_scope()
+    def test_broadcast_to(self):
+        x = paddle.full([], 1, 'int32')
+        x.stop_gradient = False
+        out = paddle.broadcast_to(x, shape=[1])
+        paddle.static.append_backward(out.sum())
+
+        prog = paddle.static.default_main_program()
+        res = self.exe.run(
+            prog, fetch_list=[x, out, x.grad_name, out.grad_name]
+        )
+        self.assertEqual(res[0].shape, ())
+        self.assertEqual(res[1].shape, ())
+        self.assertEqual(res[2].shape, ())
+        self.assertEqual(res[3].shape, ())
 
     @prog_scope()
     def test_quantile(self):

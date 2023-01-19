@@ -95,7 +95,7 @@ void ExpandAsKernel(const Context& ctx,
                         rank));
   PADDLE_ENFORCE_GE(
       rank,
-      1,
+      0,
       phi::errors::InvalidArgument("The rank (%d) of the input 'x' for "
                                    "expand_as_v2 op must be positive.",
                                    rank));

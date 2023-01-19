@@ -57,6 +57,11 @@ class TestExpandV2OpRank2_DimExpanding(TestExpandV2OpRank1):
         self.shape = [2, 120]
         self.expand_times = [2, 1]
 
+class TestExpandV2Op_ZeroDim(TestExpandV2OpRank1):
+    def init_data(self):
+        self.ori_shape = ()
+        self.shape = ()
+        self.expand_times = ()
 
 class TestExpandV2OpRank2(TestExpandV2OpRank1):
     def init_data(self):
@@ -134,6 +139,12 @@ class TestExpandV2OpRank2_Corner_tensor_attr(TestExpandV2OpRank1_tensor_attr):
         self.expand_shape = [12, 14]
         self.infer_expand_shape = [12, -1]
 
+class TestExpandV2Op_ZeroDim_ListWithTensor(TestExpandV2OpRank1_tensor_attr):
+    def init_data(self):
+        self.ori_shape = ()
+        self.expand_times = ()
+        self.expand_shape = ()
+        self.infer_expand_shape = ()
 
 # Situation 3: shape is a tensor
 class TestExpandV2OpRank1_tensor(OpTest):
@@ -162,6 +173,11 @@ class TestExpandV2OpRank1_tensor(OpTest):
     def test_check_grad(self):
         self.check_grad(['X'], 'Out')
 
+class TestExpandV2Op_ShapeIsTensor(TestExpandV2OpRank1_tensor):
+    def init_data(self):
+        self.ori_shape = ()
+        self.expand_times = ()
+        self.expand_shape = ()
 
 # Situation 4: input x is Integer
 class TestExpandV2OpInteger(OpTest):
