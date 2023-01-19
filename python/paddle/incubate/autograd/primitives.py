@@ -94,7 +94,6 @@ trigonometric_op = [
 ]
 
 others = [
-    'cast',
     'broadcast_to',
 ]
 
