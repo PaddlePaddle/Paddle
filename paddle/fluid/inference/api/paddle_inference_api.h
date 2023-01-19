@@ -93,6 +93,13 @@ class PD_INFER_DECL Predictor {
   explicit Predictor(const Config& config);
 
   ///
+  /// \brief Get all input names and their corresponding shapes
+  ///
+  /// \return the map of input names and shape
+  ///
+  std::map<std::string, std::vector<int64_t>> GetInputTensorShape();
+
+  ///
   /// \brief Get all input names and their corresponding type
   ///
   /// \return the map of input names and type
@@ -135,6 +142,20 @@ class PD_INFER_DECL Predictor {
   /// \return output tensor
   ///
   std::unique_ptr<Tensor> GetOutputHandle(const std::string& name);
+
+  ///
+  /// \brief Get all output names and their corresponding shapes
+  ///
+  /// \return the map of output names and shape
+  ///
+  std::map<std::string, std::vector<int64_t>> GetOutputTensorShape();
+
+  ///
+  /// \brief Get all output names and their corresponding type
+  ///
+  /// \return the map of output names and type
+  ///
+  std::map<std::string, DataType> GetOutputTypes();
 
   ///
   /// \brief Clone to get the new predictor. thread safe.
