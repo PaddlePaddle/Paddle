@@ -25,7 +25,6 @@ limitations under the License. */
 #include "paddle/fluid/distributed/auto_parallel/process_mesh.h"
 #include "paddle/fluid/distributed/auto_parallel/utils.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/phi/core/cuda_stream.h"
 
 namespace paddle {
 
