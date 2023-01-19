@@ -256,6 +256,8 @@ include(external/xxhash) # download, build, install xxhash
 include(external/warpctc) # download, build, install warpctc
 include(external/warprnnt) # download, build, install warprnnt
 include(external/utf8proc) # download, build, install utf8proc
+include(external/pybind11) # download, build, install pybind11
+include(external/python) # find python and python_module
 
 list(APPEND third_party_deps extern_eigen3 extern_gflags extern_glog
      extern_xxhash)
@@ -267,7 +269,8 @@ list(
   extern_warpctc
   extern_warprnnt
   extern_threadpool
-  extern_utf8proc)
+  extern_utf8proc
+  extern_pybind)
 include(external/lapack) # download, build, install lapack
 
 list(APPEND third_party_deps extern_eigen3 extern_gflags extern_glog
@@ -299,36 +302,6 @@ endif()
 include(external/protobuf) # find first, then download, build, install protobuf
 if(TARGET extern_protobuf)
   list(APPEND third_party_deps extern_protobuf)
-endif()
-
-if(WITH_PYTHON)
-  include(external/python) # find python and python_module
-  include(external/pybind11) # download pybind11
-  list(APPEND third_party_deps extern_pybind)
-
-  if(WITH_TESTING)
-    # copy pybind11, just for unittest can get pybind header file correctly.
-    set(SRC_DIR ${THIRD_PARTY_PATH}/pybind/src/extern_pybind/include/pybind11)
-    if(WIN32 AND (NOT "${CMAKE_GENERATOR}" STREQUAL "Ninja"))
-      set(DST_DIR1 ${CMAKE_BINARY_DIR}/paddle/phi/third_party/pybind11)
-    else()
-      set(DST_DIR1 ${CMAKE_BINARY_DIR}/paddle/third_party/pybind11)
-    endif()
-    set(DST_DIR2 ${CMAKE_BINARY_DIR}/python/paddle/include/third_party/pybind11)
-    # add_custom_target(copy_pybind)
-    add_custom_command(
-      TARGET extern_pybind
-      POST_BUILD
-      COMMAND ${CMAKE_COMMAND} -E copy_directory ${SRC_DIR} ${DST_DIR1}
-      COMMAND ${CMAKE_COMMAND} -E copy_directory ${SRC_DIR} ${DST_DIR2}
-      COMMENT "copy_directory from ${SRC_DIR} to ${DST_DIR1} and ${DST_DIR2}"
-      COMMENT "DEBUG!!!!!!!!!! THIRD_PARTY_PATH ${THIRD_PARTY_PATH}"
-      COMMENT "DEBUG!!!!!!!!!! CMAKE_BINARY_DIR ${CMAKE_BINARY_DIR}"
-      COMMENT "DEBUG!!!!!!!!!! SRC_DIR ${SRC_DIR}"
-      COMMENT "DEBUG!!!!!!!!!! DST_DIR1 ${DST_DIR1}"
-      COMMENT "DEBUG!!!!!!!!!! DST_DIR2 ${DST_DIR2}"
-      COMMENT "DEBUG!!!!!!!!!!")
-  endif()
 endif()
 
 if(WITH_TESTING OR WITH_DISTRIBUTE)

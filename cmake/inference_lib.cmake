@@ -194,10 +194,10 @@ function(copy_part_of_thrid_party TARGET DST)
     SRCS ${XXHASH_INCLUDE_DIR} ${XXHASH_LIBRARIES}
     DSTS ${dst_dir} ${dst_dir}/lib)
 
-  set(dst_dir "${DST}/third_party/install/pybind11")
+  set(dst_dir "${DST}/third_party/install")
   copy(
     ${TARGET}
-    SRCS ${PYBIND_INCLUDE_DIR}/pybind11/*
+    SRCS ${PYBIND_INCLUDE_DIR}/pybind11
     DSTS ${dst_dir})
 
   if(NOT PROTOBUF_FOUND OR WIN32)
@@ -495,10 +495,10 @@ copy(
   SRCS ${DLPACK_INCLUDE_DIR}/dlpack
   DSTS ${dst_dir})
 
-set(dst_dir "${PADDLE_INSTALL_DIR}/third_party/pybind11")
+set(dst_dir "${PADDLE_INSTALL_DIR}/third_party")
 copy(
   inference_lib_dist
-  SRCS ${PYBIND_INCLUDE_DIR}/pybind11/*
+  SRCS ${PYBIND_INCLUDE_DIR}/pybind11
   DSTS ${dst_dir})
 
 set(dst_dir "${PADDLE_INSTALL_DIR}/third_party/install/zlib")
