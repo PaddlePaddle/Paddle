@@ -160,6 +160,7 @@ class FcOpConverter : public OpConverter {
     // assigned from CPU memory, which can't be avoided.
     float* weight_data = nullptr;
     bool enable_int8 = op_desc.HasAttr("enable_int8");
+    bool fallback_fp32 = op_desc.HasAttr("fallback_fp32");
     bool support_int8 = false;
     if (op_desc.HasAttr("support_int8")) {
       support_int8 = BOOST_GET_CONST(bool, op_desc.GetAttr("support_int8"));
@@ -251,6 +252,11 @@ class FcOpConverter : public OpConverter {
                                                     n_output,
                                                     weight.get(),
                                                     bias.get());
+        if(fallback_fp32) {
+          fc_layer_float->setPrecision(nvinfer1::DataType::kFLOAT);
+          LOG(INFO) << "fc[input: " <<  op_desc.Input(i_name).front() << "]"<< " fallback to fp32 in TensorRT";
+          fc_layer_float->setOutputType(0, nvinfer1::DataType::kFLOAT);
+        }
         fc_layer_float->setName(
             ("fc_op_float: FullyConnected (Output: " + output_name + ")")
                 .c_str());
@@ -265,6 +271,10 @@ class FcOpConverter : public OpConverter {
                                    Activation,
                                    *(fc_after_reshape_float->getOutput(0)),
                                    nvinfer1::ActivationType::kRELU);
+          if(fallback_fp32) {
+            relu_layer_float->setPrecision(nvinfer1::DataType::kFLOAT);
+            LOG(INFO) << "JZZ fc relu fallback";
+          }
           RreplenishLayerAndOutput(relu_layer_float,
                                    "relu_after_fc_shuffle",
                                    {output_name},
@@ -402,6 +412,10 @@ class FcOpConverter : public OpConverter {
       }
       regist_fc(reshape_itensor, n_output, weight, bias);
     }
+    // if(fallback_fp32) {
+    //   LOG(INFO) << "JZZ DeclareOutput: " << output_name;
+    //   engine_->DeclareOutput(output_name);
+    // }
   }
 };
 

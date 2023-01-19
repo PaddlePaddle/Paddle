@@ -884,6 +884,8 @@ void AnalysisPredictor::PrepareArgument() {
     argument_.SetTensorRtMaxBatchSize(config_.tensorrt_max_batchsize_);
     argument_.SetTensorRtMinSubgraphSize(config_.tensorrt_min_subgraph_size_);
     argument_.SetTensorRtDisabledOPs(config_.trt_disabled_ops_);
+    argument_.SetTensorRtDisabledVars(config_.trt_disabled_vars_);
+    argument_.SetTensorRtFallbackVars(config_.trt_fallback_vars_);
     argument_.SetTensorRtUseDLA(config_.trt_use_dla_);
     argument_.SetTensorRtDLACore(config_.trt_dla_core_);
     argument_.SetTensorRtUseStaticEngine(config_.trt_use_static_engine_);

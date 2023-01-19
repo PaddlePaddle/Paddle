@@ -239,6 +239,8 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(tensorrt_min_subgraph_size_);
   CP_MEMBER(tensorrt_precision_mode_);
   CP_MEMBER(trt_disabled_ops_);
+  CP_MEMBER(trt_disabled_vars_);
+  CP_MEMBER(trt_fallback_vars_);
   CP_MEMBER(trt_use_dla_);
   CP_MEMBER(trt_dla_core_);
   CP_MEMBER(trt_use_static_engine_);
@@ -492,8 +494,11 @@ void AnalysisConfig::EnableTensorRtDLA(int dla_core) {
 void AnalysisConfig::EnableTensorRtInspector() { trt_use_inspector_ = true; }
 
 void AnalysisConfig::Exp_DisableTensorRtOPs(
-    const std::vector<std::string> &ops) {
+    const std::vector<std::string> &ops, const std::vector<std::string> &vars,
+    const std::vector<std::string> &fallback_vars) {
   trt_disabled_ops_.insert(trt_disabled_ops_.end(), ops.begin(), ops.end());
+  trt_disabled_vars_.insert(trt_disabled_vars_.end(), vars.begin(), vars.end());
+  trt_fallback_vars_.insert(trt_fallback_vars_.end(), fallback_vars.begin(), fallback_vars.end());
 }
 
 void AnalysisConfig::EnableTensorRtOSS() { trt_use_oss_ = true; }

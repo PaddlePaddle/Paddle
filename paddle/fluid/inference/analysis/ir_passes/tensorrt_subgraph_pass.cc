@@ -37,6 +37,8 @@ void analysis::TensorRtSubgraphPass::ApplyImpl(
   auto use_calib_mode = Get<bool>("use_calib_mode");
   bool no_calib_int8 = enable_int8 && !(use_calib_mode);
   auto trt_disabled_ops = Get<std::vector<std::string>>("trt_disabled_ops");
+  auto trt_disabled_vars = Get<std::vector<std::string>>("trt_disabled_vars");
+  auto trt_fallback_vars = Get<std::vector<std::string>>("trt_fallback_vars");  
   auto with_dynamic_shape = Get<bool>("with_dynamic_shape");
   auto teller = [&](const framework::ir::Node *node) {
     if (!node->IsOp() || !node->Op()) return false;
@@ -46,6 +48,31 @@ void analysis::TensorRtSubgraphPass::ApplyImpl(
       VLOG(3) << node->Op()->Type().c_str()
               << " is diabled by config in TensorRT";
       return false;
+    }
+    if (find(trt_fallback_vars.begin(),
+             trt_fallback_vars.end(),
+             node->Op()->Type()) != trt_fallback_vars.end()) {
+      node->Op()->SetAttr("fallback_fp32", true);
+      LOG(INFO) << node->Op()->Type().c_str()
+                << " will fallback to fp32 in TensorRT";
+    }
+    for (const auto &out_var : node->Op()->OutputNames()) {
+      for (const auto &var_name : node->Op()->Output(out_var)) {
+        if (find(trt_disabled_vars.begin(),
+                 trt_disabled_vars.end(),
+                 var_name) != trt_disabled_vars.end()) {
+          LOG(INFO) << node->Op()->Type().c_str()
+                    << " is diabled by config in TensorRT";
+          return false;
+        }
+        if (find(trt_fallback_vars.begin(),
+                 trt_fallback_vars.end(),
+                 var_name) != trt_fallback_vars.end()) {
+          node->Op()->SetAttr("fallback_fp32", true);
+          LOG(INFO) << node->Op()->Type().c_str()
+                    << " will fallback to fp32 in TensorRT";
+        }
+      }
     }
     bool is_ok = tensorrt::OpTeller::Global().Tell(
         node, no_calib_int8, with_dynamic_shape);

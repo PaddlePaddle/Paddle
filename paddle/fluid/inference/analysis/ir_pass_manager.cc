@@ -179,6 +179,10 @@ void IRPassManager::CreatePasses(Argument *argument,
                 new bool(argument->tensorrt_allow_build_at_runtime()));
       pass->Set("trt_disabled_ops", new std::vector<std::string>(
                                         argument->tensorrt_disabled_ops()));
+      pass->Set("trt_disabled_vars", new std::vector<std::string>(
+                                        argument->tensorrt_disabled_vars()));
+      pass->Set("trt_fallback_vars", new std::vector<std::string>(
+                                        argument->tensorrt_fallback_vars()));
       pass->Set("trt_use_dla", new bool(argument->tensorrt_use_dla()));
       pass->Set("trt_dla_core", new int(argument->tensorrt_dla_core()));
       // Setting the disable_trt_plugin_fp16 to true means that TRT plugin will

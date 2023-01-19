@@ -68,6 +68,12 @@ class ActivationOpConverter : public OpConverter {
     auto output_name = op_desc.Output("Out")[0];
 
     RreplenishLayerAndOutput(layer, op_type_, {output_name}, test_mode);
+    bool fallback_fp32 = op_desc.HasAttr("fallback_fp32");
+    if(fallback_fp32) {
+      layer->setPrecision(nvinfer1::DataType::kFLOAT);
+      LOG(INFO) << "relu[input: " <<  op_desc.Input("X")[0] << "]"<< " fallback to fp32 in TensorRT";
+      layer->setOutputType(0, nvinfer1::DataType::kFLOAT);
+    }
   }
 
  protected:

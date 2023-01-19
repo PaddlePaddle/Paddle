@@ -209,6 +209,10 @@ struct Argument {
   DECL_ARGUMENT_FIELD(tensorrt_min_subgraph_size, TensorRtMinSubgraphSize, int);
   DECL_ARGUMENT_FIELD(tensorrt_disabled_ops, TensorRtDisabledOPs,
                       std::vector<std::string>);
+  DECL_ARGUMENT_FIELD(tensorrt_disabled_vars, TensorRtDisabledVars,
+                      std::vector<std::string>);
+  DECL_ARGUMENT_FIELD(tensorrt_fallback_vars, TensorRtFallbackVars,
+                      std::vector<std::string>);
   DECL_ARGUMENT_FIELD(tensorrt_precision_mode, TensorRtPrecisionMode,
                       AnalysisConfig::Precision);
   DECL_ARGUMENT_FIELD(tensorrt_use_static_engine, TensorRtUseStaticEngine,

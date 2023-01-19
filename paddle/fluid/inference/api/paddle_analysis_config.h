@@ -586,7 +586,9 @@ struct PD_INFER_DECL AnalysisConfig {
   /// \brief Prevent ops running in Paddle-TRT
   /// NOTE: just experimental, not an official stable API, easy to be broken.
   ///
-  void Exp_DisableTensorRtOPs(const std::vector<std::string>& ops);
+  void Exp_DisableTensorRtOPs(const std::vector<std::string>& ops,
+                              const std::vector<std::string>& out_vars = {},
+                              const std::vector<std::string>& fallback_vars = {});
 
   ///
   /// \brief Replace some TensorRT plugins to TensorRT OSS(
@@ -919,6 +921,8 @@ struct PD_INFER_DECL AnalysisConfig {
   std::map<std::string, std::vector<int>> max_input_shape_{};
   std::map<std::string, std::vector<int>> optim_input_shape_{};
   std::vector<std::string> trt_disabled_ops_{};
+  std::vector<std::string> trt_disabled_vars_{};
+  std::vector<std::string> trt_fallback_vars_{};
   bool disable_trt_plugin_fp16_{false};
   bool trt_allow_build_at_runtime_{false};
   // tune to get dynamic_shape info.

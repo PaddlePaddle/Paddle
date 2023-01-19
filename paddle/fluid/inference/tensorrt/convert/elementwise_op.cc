@@ -128,6 +128,12 @@ class ElementwiseTensorOpConverter : public OpConverter {
     auto* layer = TRT_ENGINE_ADD_LAYER(
         engine_, ElementWise, *X, *reshape_y_tensor, op_pair->second);
     RreplenishLayerAndOutput(layer, "elementwise", {output_name}, test_mode);
+    bool fallback_fp32 = op_desc.HasAttr("fallback_fp32");
+    if(fallback_fp32) {
+      layer->setPrecision(nvinfer1::DataType::kFLOAT);
+      LOG(INFO) << "ElementWise[input: " <<  op_desc.Input("X").front() << "]"<< " fallback to fp32 in TensorRT";
+      layer->setOutputType(0, nvinfer1::DataType::kFLOAT);
+    }
   }
 
  protected:
