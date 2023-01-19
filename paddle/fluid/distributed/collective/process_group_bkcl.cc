@@ -352,7 +352,6 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::Reduce(
           const phi::DenseTensor& input,
           BKCLContext_t comm,
           const XPUStream& stream) {
-        int root = opts.source_rank + opts.source_root;
         return bkcl_reduce(comm,
                            input.data(),
                            output->data(),
@@ -360,7 +359,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::Reduce(
                            platform::ToBKCLDataType(
                                framework::TransToProtoVarType(input.type())),
                            ToBKCLRedType(opts.reduce_op),
-                           root,
+                           opts.root_rank,
                            stream);
       },
       CommType::REDUCE,
