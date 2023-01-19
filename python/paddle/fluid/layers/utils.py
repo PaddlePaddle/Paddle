@@ -364,7 +364,7 @@ def _contain_var(list_or_tuple):
 
 
 def get_shape_tensor_inputs(inputs, attrs, shape, op_type):
-    from .tensor import fill_constant, cast
+    from .tensor import fill_constant
 
     def _get_attr_shape(list_shape):
         attr_shape = []

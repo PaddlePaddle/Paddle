@@ -947,13 +947,13 @@ class TestDatasetWithFetchHandler(unittest.TestCase):
             data = fluid.layers.data(
                 name=slot, shape=[1], dtype="int64", lod_level=1
             )
-            var = fluid.layers.cast(x=data, dtype='float32')
+            var = paddle.cast(x=data, dtype='float32')
             pool = fluid.layers.sequence_pool(input=var, pool_type='AVERAGE')
 
             slots_vars.append(data)
             poolings.append(pool)
 
-        concated = fluid.layers.concat(poolings, axis=1)
+        concated = paddle.concat(poolings, axis=1)
         fc = paddle.static.nn.fc(x=concated, activation='tanh', size=32)
         return slots_vars, fc
 

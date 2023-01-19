@@ -74,7 +74,7 @@ class TestFleet1(unittest.TestCase):
                 lod_level=1,
                 append_batch_size=False,
             )
-            label_cast = fluid.layers.cast(label, dtype='float32')
+            label_cast = paddle.cast(label, dtype='float32')
             cost = paddle.nn.functional.log_loss(fc, label_cast)
 
         strategy = {}

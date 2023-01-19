@@ -115,7 +115,7 @@ class SlicePluginTRTTestInt32(SlicePluginTRTTest):
             starts = self.params_starts
             ends = self.params_ends
             slice_out = paddle.slice(data, axes=axes, starts=starts, ends=ends)
-            cast_out = fluid.layers.cast(slice_out, 'float32')
+            cast_out = paddle.cast(slice_out, 'float32')
             out = nn.batch_norm(cast_out, is_test=True)
 
         self.feeds = {
@@ -140,7 +140,7 @@ class StaticSlicePluginTRTTestInt32(SlicePluginTRTTest):
             starts = self.params_starts
             ends = self.params_ends
             slice_out = paddle.slice(data, axes=axes, starts=starts, ends=ends)
-            cast_out = fluid.layers.cast(slice_out, 'float32')
+            cast_out = paddle.cast(slice_out, 'float32')
             out = nn.batch_norm(cast_out, is_test=True)
 
         self.feeds = {

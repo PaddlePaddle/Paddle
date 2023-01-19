@@ -75,7 +75,7 @@ class TestDistWord2vec2x2(TestDistRunnerBase):
                 ),
             )
 
-            concat_embed = fluid.layers.concat(
+            concat_embed = paddle.concat(
                 input=[embed_first, embed_second, embed_third, embed_forth],
                 axis=1,
             )

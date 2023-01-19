@@ -150,7 +150,7 @@ class TestVariable(unittest.TestCase):
                     [[19, 20, 21], [22, 23, 24], [25, 26, 27]],
                 ]
             ).astype('float32')
-            var = fluid.layers.assign(tensor_array)
+            var = paddle.assign(tensor_array)
             var1 = var[0, 1, 1]
             var2 = var[1:]
             var3 = var[0:1]

@@ -45,7 +45,7 @@ class TestCommunicatorGeoEnd2End(unittest.TestCase):
         )
 
         pool = fluid.layers.sequence_pool(input=emb, pool_type="sum")
-        z = fluid.layers.concat(input=[x, pool], axis=1)
+        z = paddle.concat(input=[x, pool], axis=1)
         y_predict = paddle.static.nn.fc(x=z, size=1)
         y = fluid.layers.data(name='y', shape=[1], dtype='float32')
 

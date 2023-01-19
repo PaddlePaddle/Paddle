@@ -114,7 +114,7 @@ class SimpleLSTMRNN(fluid.Layer):
                 weight_1 = self.weight_1_arr[k]
                 bias = self.bias_arr[k]
 
-                nn = fluid.layers.concat([self._input, pre_hidden], 1)
+                nn = paddle.concat([self._input, pre_hidden], 1)
                 gate_input = paddle.matmul(x=nn, y=weight_1)
 
                 gate_input = paddle.add(gate_input, bias)
@@ -138,14 +138,14 @@ class SimpleLSTMRNN(fluid.Layer):
             res.append(
                 paddle.reshape(self._input, shape=[1, -1, self._hidden_size])
             )
-        real_res = fluid.layers.concat(res, 0)
+        real_res = paddle.concat(res, 0)
         real_res = paddle.transpose(x=real_res, perm=[1, 0, 2])
-        last_hidden = fluid.layers.concat(self.hidden_array, 1)
+        last_hidden = paddle.concat(self.hidden_array, 1)
         last_hidden = paddle.reshape(
             last_hidden, shape=[-1, self._num_layers, self._hidden_size]
         )
         last_hidden = paddle.transpose(x=last_hidden, perm=[1, 0, 2])
-        last_cell = fluid.layers.concat(self.cell_array, 1)
+        last_cell = paddle.concat(self.cell_array, 1)
         last_cell = paddle.reshape(
             last_cell, shape=[-1, self._num_layers, self._hidden_size]
         )
@@ -216,7 +216,7 @@ class PtbModel(fluid.Layer):
         )
 
         # NPU 'tok_k' kernel only support `int32` dtype, so cast `input` from `int64` to `int32`.
-        input = fluid.layers.cast(input, "int32")
+        input = paddle.cast(input, "int32")
         x_emb = self.embedding(input)
         x_emb = paddle.reshape(
             x_emb, shape=[-1, self.num_steps, self.hidden_size]

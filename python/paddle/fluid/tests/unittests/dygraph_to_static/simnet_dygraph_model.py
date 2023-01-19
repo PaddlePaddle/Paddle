@@ -96,7 +96,7 @@ class ConcatLayer:
         """
         operation
         """
-        concat = fluid.layers.concat(inputs, axis=self.axis)
+        concat = paddle.concat(inputs, axis=self.axis)
         return concat
 
 

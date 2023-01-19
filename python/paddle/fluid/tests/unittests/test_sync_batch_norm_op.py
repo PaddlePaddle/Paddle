@@ -91,9 +91,9 @@ class TestSyncBatchNormOpTraining(unittest.TestCase):
                     is_test=only_forward,
                 )
                 if core.is_compiled_with_rocm():
-                    bn = fluid.layers.cast(bn, 'float32')
+                    bn = paddle.cast(bn, 'float32')
                 else:
-                    bn = fluid.layers.cast(bn, 'float64')
+                    bn = paddle.cast(bn, 'float64')
                 sigmoid = paddle.nn.functional.sigmoid(bn)
                 out = paddle.sum(sigmoid)
                 if not sync_bn:

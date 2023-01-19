@@ -68,7 +68,7 @@ class TestAST2Func(unittest.TestCase):
         x_data = np.random.random([10, 16]).astype('float32')
         main_program = fluid.Program()
         with fluid.program_guard(main_program):
-            x_v = fluid.layers.assign(x_data)
+            x_v = paddle.assign(x_data)
             true_ret = func(x_v)
             test_ret = self._ast2func(func)(x_v)
             exe = fluid.Executor(fluid.CPUPlace())

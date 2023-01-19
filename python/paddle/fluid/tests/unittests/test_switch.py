@@ -36,13 +36,13 @@ class TestSwitch(unittest.TestCase):
 
         with layers.Switch() as switch:
             with switch.case(paddle.less_than(x, zero_var)):
-                layers.assign(zero_var, result)
+                paddle.assign(zero_var, result)
             with switch.case(paddle.less_than(x, one_var)):
-                layers.assign(one_var, result)
+                paddle.assign(one_var, result)
             with switch.case(paddle.less_than(x, two_var)):
-                layers.assign(two_var, result)
+                paddle.assign(two_var, result)
             with switch.default():
-                layers.assign(three_var, result)
+                paddle.assign(three_var, result)
 
         cpu = core.CPUPlace()
         exe = Executor(cpu)
@@ -79,7 +79,7 @@ class TestSwitchCaseError(unittest.TestCase):
             def test_condition_type():
                 with layers.Switch() as switch:
                     with switch.case(1):
-                        layers.assign(zero_var, result)
+                        paddle.assign(zero_var, result)
 
             self.assertRaises(TypeError, test_condition_type)
 
@@ -87,7 +87,7 @@ class TestSwitchCaseError(unittest.TestCase):
             def test_condition_dtype():
                 with layers.Switch() as switch:
                     with switch.case(cond):
-                        layers.assign(zero_var, result)
+                        paddle.assign(zero_var, result)
 
             self.assertRaises(TypeError, test_condition_dtype)
 
