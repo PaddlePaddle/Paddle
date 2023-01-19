@@ -11,21 +11,17 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
-#pragma once
-
-#include "paddle/phi/common/scalar.h"
-#include "paddle/phi/core/dense_tensor.h"
-#include "paddle/phi/core/device_context.h"
+#include "paddle/phi/core/compat/op_utils.h"
 
 namespace phi {
 
-template <typename T, typename Context>
-void ClipGradKernel(const Context& dev_ctx,
-                    const DenseTensor& x,
-                    const DenseTensor& out_grad,
-                    const Scalar& min,
-                    const Scalar& max,
-                    DenseTensor* x_grad);
+KernelSignature CumsumOpArgumentMapping(const ArgumentMappingContext& ctx) {
+  return KernelSignature("cumsum_grad",
+                         {"X", "Out@GRAD"},
+                         {"axis", "flatten", "exclusive", "reverse"},
+                         {"X@GRAD"});
+}
 
 }  // namespace phi
+
+PD_REGISTER_ARG_MAPPING_FN(cumsum_grad, phi::CumsumOpArgumentMapping);
