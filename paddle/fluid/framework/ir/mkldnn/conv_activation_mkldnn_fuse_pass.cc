@@ -14,8 +14,8 @@
 
 #include "paddle/fluid/framework/ir/mkldnn/conv_activation_mkldnn_fuse_pass.h"
 
+#include "paddle/fluid/framework/ir/mkldnn/activation_onednn_fuse_pass.h"
 #include "paddle/fluid/framework/op_version_registry.h"
-#include "paddle/phi/backends/onednn/onednn_reuse.h"
 #include "paddle/utils/string/pretty_log.h"
 
 namespace paddle {
@@ -25,7 +25,7 @@ namespace ir {
 using string::PrettyLogDetail;
 
 void ConvActivationMkldnnFusePass::ApplyImpl(Graph* graph) const {
-  auto act_types = phi::funcs::GetSupportedActivations();
+  auto act_types = GetSupportedActivations();
   std::vector<std::string> conv_types = {"fused_conv2d", "conv2d"};
 
   for (auto& act_type : act_types) {
@@ -40,7 +40,7 @@ void ConvActivationMkldnnFusePass::FuseConvAct(Graph* graph,
                                                const std::string& conv_type,
                                                std::string& act_type) const {
   PADDLE_ENFORCE_NOT_NULL(
-      graph, platform::errors::InvalidArgument("Graph cannot be nullptr."));
+      graph, phi::errors::InvalidArgument("Graph cannot be nullptr."));
   FusePassBase::Init(conv_type + "_" + act_type + "_mkldnn_fuse_pass", graph);
 
   GraphPatternDetector gpd;
@@ -62,28 +62,13 @@ void ConvActivationMkldnnFusePass::FuseConvAct(Graph* graph,
     GET_IR_NODE_FROM_SUBGRAPH(activation_out, activation_out, conv_act_pattern);
 
     OpDesc* conv_op = conv->Op();
-    OpDesc* act_op = activation->Op();
 
     if (conv_op->Type() == "conv2d") {
       conv_op->SetType("fused_conv2d");
     }
 
-    auto attr_map = phi::funcs::GetAttributeMap(act_type);
-    for (const auto& attrs : attr_map) {
-      if (act_op->HasAttr(attrs.first)) {
-        conv_op->SetAttr(attrs.second, act_op->GetAttr(attrs.first));
-      }
-    }
+    SetActivationAttrs(conv_op, activation->Op(), act_type);
 
-    if (act_type == "gelu" && activation->Op()->HasAttr("approximate")) {
-      act_type =
-          PADDLE_GET_CONST(bool, activation->Op()->GetAttr("approximate"))
-              ? "gelu_tanh"
-              : "gelu_erf";
-      conv_op->SetAttr("fuse_alpha", 0.0f);
-      conv_op->SetAttr("fuse_beta", 0.0f);
-    }
-    conv_op->SetAttr("fuse_activation", act_type);
     conv_op->SetOutput("Output", {activation_out->Name()});
 
     IR_NODE_LINK_TO(conv, activation_out);
@@ -105,7 +90,7 @@ void ConvActivationMkldnnFusePass::FuseConvAct(Graph* graph,
 void ConvActivationMkldnnFusePass::FuseConvConcatAct(
     Graph* graph, std::string& act_type) const {
   PADDLE_ENFORCE_NOT_NULL(
-      graph, platform::errors::InvalidArgument("Graph cannot be nullptr."));
+      graph, phi::errors::InvalidArgument("Graph cannot be nullptr."));
   FusePassBase::Init("conv2d_concat_" + act_type + "_mkldnn_fuse_pass", graph);
 
   GraphPatternDetector gpd;
@@ -137,13 +122,13 @@ void ConvActivationMkldnnFusePass::FuseConvConcatAct(
         return;
       }
 
-      bool is_not_conv_mkldnn =
+      bool is_not_conv_onednn =
           !(prev_op_nodes[0]->Op()->GetAttrIfExists<bool>("use_mkldnn"));
       if ((prev_op_nodes[0]->Op()->Type() != "conv2d" &&
            prev_op_nodes[0]->Op()->Type() != "fused_conv2d") ||
-          is_not_conv_mkldnn) {
-        LOG(WARNING) << "This fuse pass supports only conv2d(mkldnn) | "
-                        "fused_conv2d(mkldnn) + activation.";
+          is_not_conv_onednn) {
+        LOG(WARNING) << "This fuse pass supports only conv2d(oneDNN) | "
+                        "fused_conv2d(oneDNN) + activation.";
         return;
       }
     }
@@ -153,23 +138,8 @@ void ConvActivationMkldnnFusePass::FuseConvConcatAct(
       if (conv_op->Type() == "conv2d") {
         conv_op->SetType("fused_conv2d");
       }
-      OpDesc* act_op = activation_op->Op();
 
-      auto attr_map = phi::funcs::GetAttributeMap(act_type);
-      for (const auto& attrs : attr_map) {
-        if (act_op->HasAttr(attrs.first)) {
-          conv_op->SetAttr(attrs.second, act_op->GetAttr(attrs.first));
-        }
-      }
-
-      if (act_type == "gelu" && act_op->HasAttr("approximate")) {
-        act_type = PADDLE_GET_CONST(bool, act_op->GetAttr("approximate"))
-                       ? "gelu_tanh"
-                       : "gelu_erf";
-        conv_op->SetAttr("fuse_alpha", 0.0f);
-        conv_op->SetAttr("fuse_beta", 0.0f);
-      }
-      conv_op->SetAttr("fuse_activation", act_type);
+      SetActivationAttrs(conv_op, activation_op->Op(), act_type);
     }
 
     concat_op->Op()->SetOutput("Out", {activation_out->Name()});

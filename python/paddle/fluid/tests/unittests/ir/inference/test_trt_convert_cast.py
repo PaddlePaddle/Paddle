@@ -29,9 +29,9 @@ class TrtConvertCastTest(TrtLayerAutoScanTest):
         attrs = [
             program_config.ops[i].attrs for i in range(len(program_config.ops))
         ]
-        if attrs[0]['in_dtype'] not in [0, 1, 2, 4, 5] or attrs[0][
+        if attrs[0]['in_dtype'] not in [0, 1, 2, 3, 4, 5] or attrs[0][
             'out_dtype'
-        ] not in [0, 1, 2, 4, 5]:
+        ] not in [0, 1, 2, 3, 4, 5]:
             return False
         compile_version = paddle_infer.get_trt_compile_version()
         runtime_version = paddle_infer.get_trt_runtime_version()
@@ -55,8 +55,14 @@ class TrtConvertCastTest(TrtLayerAutoScanTest):
         def generate_input(type):
             return np.ones([1, 3, 64, 64]).astype(type)
 
-        for in_dtype in [np.bool_, np.int32, np.float32, np.float64]:
-            for out_dtype in [np.bool_, np.int32, np.float32, np.float64]:
+        for in_dtype in [np.bool_, np.int32, np.float32, np.float64, np.int64]:
+            for out_dtype in [
+                np.bool_,
+                np.int32,
+                np.float32,
+                np.float64,
+                np.int64,
+            ]:
                 self.has_bool_dtype = (in_dtype == np.bool_) or (
                     out_dtype == np.bool_
                 )

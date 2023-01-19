@@ -75,8 +75,12 @@ class MemoryMapAllocation : public Allocation {
 
 class RefcountedMemoryMapAllocation : public MemoryMapAllocation {
  public:
-  RefcountedMemoryMapAllocation(
-      void *ptr, size_t size, std::string ipc_name, int flags, int fd);
+  RefcountedMemoryMapAllocation(void *ptr,
+                                size_t size,
+                                std::string ipc_name,
+                                int flags,
+                                int fd,
+                                int buffer_id = -1);
 
   void incref();
   int decref();
@@ -84,6 +88,7 @@ class RefcountedMemoryMapAllocation : public MemoryMapAllocation {
   virtual ~RefcountedMemoryMapAllocation() { close(); }
 
  protected:
+  int buffer_id_ = -1;
   void initializeRefercount();
   void resetBaseptr();
 };
@@ -94,7 +99,8 @@ void AllocateMemoryMap(
 std::shared_ptr<RefcountedMemoryMapAllocation>
 AllocateRefcountedMemoryMapAllocation(std::string filename,
                                       int flags,
-                                      size_t size);
+                                      size_t size,
+                                      int buffer_id = -1);
 
 class MemoryMapWriterAllocation : public Allocation {
  public:
@@ -150,6 +156,68 @@ class MemoryMapFdSet {
   MemoryMapFdSet() = default;
 
   std::unordered_set<std::string> fd_set_;
+  std::mutex mtx_;
+};
+
+class MemoryMapInfo {
+ public:
+  explicit MemoryMapInfo(int flags,
+                         size_t data_size,
+                         std::string file_name,
+                         void *mmap_ptr)
+      : flags_(flags),
+        data_size_(data_size),
+        file_name_(file_name),
+        mmap_ptr_(mmap_ptr) {}
+
+  int flags_ = 0;
+  size_t data_size_ = 0;
+  std::string file_name_;
+  void *mmap_ptr_ = nullptr;
+};
+
+/* Note(zhangbo):
+MemoryMapAllocationPool is used to cache and reuse shm, thus reducing munmap in
+dataloader. The munmap(shm_mmap_ptr) instruction in
+RefcountedMemoryMapAllocation::close() function may block other threads of the
+process. Therefore, the logic of shm cache and reuse is designed: the shm
+created by the _share_filename process will be cached and reused according to
+the data_size of shm, thus eliminating the problem of munmap blocking other
+threads
+*/
+class MemoryMapAllocationPool {
+ public:
+  static MemoryMapAllocationPool &Instance() {
+    if (pool_ == nullptr) {
+      pool_ = new MemoryMapAllocationPool();
+    }
+    return *pool_;
+  }
+
+  void Insert(const MemoryMapInfo &memory_map);
+
+  int FindFromCache(const int &flag,
+                    const size_t &data_size,
+                    const std::string &file_name = "",
+                    bool check_refcount = true);
+
+  const MemoryMapInfo &GetById(int id);
+
+  size_t BufferSize() { return memory_map_allocations_.size(); }
+
+  void Clear();
+
+  void SetMaxPoolSize(const int &size);
+
+  int MaxPoolSize() { return max_pool_size_; }
+
+  ~MemoryMapAllocationPool();
+
+ private:
+  MemoryMapAllocationPool() = default;
+  static MemoryMapAllocationPool *pool_;
+  std::vector<MemoryMapInfo> memory_map_allocations_;
+  int max_pool_size_ = 0;
   std::mutex mtx_;
 };
 
