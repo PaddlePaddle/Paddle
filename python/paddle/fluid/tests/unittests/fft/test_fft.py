@@ -1825,9 +1825,9 @@ class TestFftFreq(unittest.TestCase):
 
 @place(DEVICES)
 @parameterize(
-    (TEST_CASE_NAME, 'n', 'd', 'dtype'),
+    (TEST_CASE_NAME, 'n', 'd', 'dtype', 'expect_exception'),
     [
-        ('test_with_d0', 20, 0, 'float32'),
+        ('test_with_d0', 20, 0, 'float32', ValueError),
     ],
 )
 class TestFftFreqException(unittest.TestCase):
