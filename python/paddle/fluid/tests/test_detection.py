@@ -20,7 +20,6 @@ from unittests.test_imperative_base import new_program_scope
 
 import paddle
 import paddle.fluid as fluid
-import paddle.fluid.layers as layers
 from paddle.fluid import core
 from paddle.fluid.dygraph import base
 from paddle.fluid.framework import Program, program_guard
@@ -148,25 +147,6 @@ class TestGenerateProposals(LayerTest):
         np.testing.assert_array_equal(np.array(rois_stat), rois_dy)
         np.testing.assert_array_equal(np.array(roi_probs_stat), roi_probs_dy)
         np.testing.assert_array_equal(np.array(rois_num_stat), rois_num_dy)
-
-
-class TestMulticlassNMS2(unittest.TestCase):
-    def test_multiclass_nms2(self):
-        program = Program()
-        with program_guard(program):
-            bboxes = layers.data(
-                name='bboxes', shape=[-1, 10, 4], dtype='float32'
-            )
-            scores = layers.data(name='scores', shape=[-1, 10], dtype='float32')
-            output = fluid.contrib.multiclass_nms2(
-                bboxes, scores, 0.3, 400, 200, 0.7
-            )
-            output2, index = fluid.contrib.multiclass_nms2(
-                bboxes, scores, 0.3, 400, 200, 0.7, return_index=True
-            )
-            self.assertIsNotNone(output)
-            self.assertIsNotNone(output2)
-            self.assertIsNotNone(index)
 
 
 class TestDistributeFpnProposals(LayerTest):

@@ -146,8 +146,6 @@ class TestIgnoreVarNameInWhile(unittest.TestCase):
 
         def body_func(i, ten, batch_info, origin_seq):
             print(batch_info)
-            batch_info = fluid.contrib.layers.shuffle_batch(batch_info)
-            print(batch_info)
             i = i + 1
             return [i, ten, batch_info, origin_seq]
 
