@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import time
 import warnings
 
 import paddle
@@ -142,6 +143,7 @@ class Momentum(Optimizer):
         )
         if isinstance(parameters, list):
             if isinstance(parameters[0], dict):
+                start_time = time.time()
                 for param_group in parameters:
                     decay = (
                         param_group['weight_decay']
@@ -153,6 +155,7 @@ class Momentum(Optimizer):
                     param_group['regularization_coeff'] = reg_coeff
                     py_regular = None if predicate(decay) else decay
                     param_group['weight_decay'] = py_regular
+                print("for time47: ", time.time() - start_time)
 
         py_regular = None if predicate(weight_decay) else weight_decay
         super().__init__(
@@ -269,6 +272,7 @@ class Momentum(Optimizer):
         if isinstance(parameters, dict):
             parameters = self._update_param_group(parameters)
 
+        start_time = time.time()
         for p in parameters:
             if self._multi_precision and p.dtype == core.VarDesc.VarType.FP16:
                 master_p = self._create_master_weight(p)
@@ -283,6 +287,7 @@ class Momentum(Optimizer):
                     "Consider using multi_precision=True option of the Momentum optimizer."
                 )
             self._add_accumulator(self._velocity_acc_str, p)
+        print("for time48: ", time.time() - start_time)
 
     def _create_regularization_of_grad(self, param, grad, regularization=None):
         """Create and add backward regularization Operators
@@ -396,6 +401,7 @@ class Momentum(Optimizer):
             parameters: list of parameter tensors for the optimizer
         """
         self._create_accumulators(target_block, parameters)
+        start_time = time.time()
         for param in parameters:
             velocity_acc = self._get_accumulator(self._velocity_acc_str, param)
             regularization_method = self._regularization_method
@@ -449,6 +455,7 @@ class Momentum(Optimizer):
                 raise ValueError(
                     "Now multi_tensor_momentum only support fp32 and fp16 parameters and grad is LOD_TENSOR."
                 )
+        print("for time49: ", time.time() - start_time)
 
     def _append_optimize_multi_tensor_op(
         self,
@@ -465,6 +472,7 @@ class Momentum(Optimizer):
         lr_dict = {'FP32_LODTensor': [], 'FP16_LODTensor': []}
 
         if isinstance(parameters_and_grads, list):
+            start_time = time.time()
             for param_and_grad in parameters_and_grads:
                 if param_and_grad[1] is None:
                     continue
@@ -485,7 +493,9 @@ class Momentum(Optimizer):
                         grad_dict['FP16_LODTensor'].append(param_and_grad[1])
                         lr = self._create_param_lr(param_and_grad)
                         lr_dict['FP16_LODTensor'].append(lr)
+            print("for time50: ", time.time() - start_time)
         else:
+            start_time = time.time()
             for param_and_grad in parameters_and_grads['params']:
                 if param_and_grad[1] is None:
                     continue
@@ -516,8 +526,10 @@ class Momentum(Optimizer):
                         grad_dict['FP16_LODTensor'].append(param_and_grad[1])
                         lr = self._create_param_lr(param_and_grad)
                         lr_dict['FP16_LODTensor'].append(lr)
+            print("for time51: ", time.time() - start_time)
 
         multi_tensor_list = ['FP32_LODTensor', 'FP16_LODTensor']
+        start_time = time.time()
         for key in multi_tensor_list:
             if len(self._param_dict[key][param_group_idx]) > 0:
                 find_master = self._multi_precision and key == 'FP16_LODTensor'
@@ -583,6 +595,7 @@ class Momentum(Optimizer):
                         attrs=attrs,
                         stop_gradient=True,
                     )
+        print("for time52: ", time.time() - start_time)
         return None
 
     def _update_param_group(self, parameters):

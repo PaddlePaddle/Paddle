@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import time
+
 from paddle import _C_ops
 
 from ..fluid import framework
@@ -144,9 +146,11 @@ class Adadelta(Optimizer):
         if isinstance(parameters, dict):
             parameters = parameters.get('params')
 
+        start_time = time.time()
         for p in parameters:
             self._add_accumulator(self._avg_squared_grad_acc_str, p)
             self._add_accumulator(self._avg_squared_update_acc_str, p)
+        print("for time28: ", time.time() - start_time)
 
     def _append_optimize_op(self, block, param_and_grad):
         if isinstance(param_and_grad, dict):

@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import time
 import warnings
 
 import paddle
@@ -128,6 +129,7 @@ class SGD(Optimizer):
             parameters = self._update_param_group(parameters)
 
         # Create accumulator tensors for first and second moments
+        start_time = time.time()
         for p in parameters:
             if self._multi_precision and p.dtype == core.VarDesc.VarType.FP16:
                 master_p = self._create_master_weight(p)
@@ -140,6 +142,7 @@ class SGD(Optimizer):
                     "Accumulating with FP16 in optimizer can lead to poor accuracy or slow convergence."
                     "Consider using multi_precision=True option of the Adam optimizer."
                 )
+        print("for time54: ", time.time() - start_time)
 
     @no_grad
     def _append_optimize_op(self, block, param_and_grad):

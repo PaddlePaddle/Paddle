@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import time
+
 from ..fluid import framework
 from .optimizer import Optimizer
 
@@ -138,12 +140,14 @@ class Adagrad(Optimizer):
         if isinstance(parameters, dict):
             parameters = self._update_param_group(parameters)
 
+        start_time = time.time()
         for p in parameters:
             self._add_accumulator(
                 self._moment_acc_str,
                 p,
                 fill_value=self.initial_accumulator_value,
             )
+        print("for time29: ", time.time() - start_time)
 
     def _append_optimize_op(self, block, param_and_grad):
         assert isinstance(block, framework.Block)

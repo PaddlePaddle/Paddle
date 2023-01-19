@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import time
 import warnings
 from collections import defaultdict
 from collections.abc import Callable
@@ -226,10 +227,12 @@ class AdamW(Optimizer):
         # Infer the dtype form parameter
         if self._parameter_list:
             if isinstance(self._parameter_list[0], dict):
+                start_time = time.time()
                 for param_group in self._parameter_list:
                     assert (
                         'params' in param_group
                     ), 'params should be set in parameters if parameter groups are optimized in different options'
+                print("for time40: ", time.time() - start_time)
                 self._dtype = self._parameter_list[0]['params'][0].dtype
             else:
                 self._dtype = self._parameter_list[0].dtype
@@ -273,8 +276,10 @@ class AdamW(Optimizer):
 
         self._param_groups = []
         if self._parameter_list and isinstance(self._parameter_list[0], dict):
+            start_time = time.time()
             for param_group in self._parameter_list:
                 self._add_param_group(param_group.copy())
+            print("for time41: ", time.time() - start_time)
         else:
             self._param_groups = self._parameter_list
 
@@ -310,9 +315,11 @@ class AdamW(Optimizer):
         else:
             param_group['params'] = list(params)
 
+        start_time = time.time()
         # Update optimization options for each groups
         for k, v in self._default_dict.items():
             param_group.setdefault(k, v)
+        print("for time42: ", time.time() - start_time)
 
         param_set = set()
         for group in self._param_groups:
@@ -421,6 +428,7 @@ class AdamW(Optimizer):
             parameters = self._update_param_group(parameters)
 
         # Create accumulator tensors for first and second moments
+        start_time = time.time()
         for p in parameters:
             if self._multi_precision and self._is_dtype_fp16_or_bf16(p.dtype):
                 master_p = self._create_master_weight(p)
@@ -435,6 +443,7 @@ class AdamW(Optimizer):
                     "Consider using multi_precision=True option of the Adam optimizer."
                 )
             self._add_moments_pows(p)
+        print("for time43: ", time.time() - start_time)
 
     def _append_optimize_op(self, block, param_and_grad):
         assert isinstance(block, framework.Block)
@@ -605,6 +614,7 @@ class AdamW(Optimizer):
         """
         if not isinstance(self._parameter_list[0], dict):
             params_grads = []
+            start_time = time.time()
             for param in self._parameter_list:
                 if param.stop_gradient:
                     continue
@@ -629,12 +639,14 @@ class AdamW(Optimizer):
                                 "AdamW don't support weight_decay with sparse parameters, please set it to None."
                             )
                     params_grads.append((param, grad_var))
+            print("for time44: ", time.time() - start_time)
 
             optimize_ops = self._apply_optimize(
                 loss=None, startup_program=None, params_grads=params_grads
             )
         else:
             # optimize parameters in groups
+            start_time = time.time()
             for param_group in self._param_groups:
                 params_grads = defaultdict(lambda: list())
                 for param in param_group['params']:
@@ -667,6 +679,7 @@ class AdamW(Optimizer):
                 self._apply_optimize(
                     loss=None, startup_program=None, params_grads=params_grads
                 )
+            print("for time45: ", time.time() - start_time)
 
     def _update_param_group(self, parameters):
         self._beta1 = parameters.get('beta1', self._default_dict['beta1'])

@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import time
 import warnings
 from collections import defaultdict
 
@@ -316,6 +317,7 @@ class Adam(Optimizer):
             parameters = self._update_param_group(parameters)
 
         # Create accumulator tensors for first and second moments
+        start_time = time.time()
         for p in parameters:
             if self._multi_precision and self._is_dtype_fp16_or_bf16(p.dtype):
                 master_p = self._create_master_weight(p)
@@ -330,6 +332,7 @@ class Adam(Optimizer):
                     "Consider using multi_precision=True option of the Adam optimizer."
                 )
             self._add_moments_pows(p)
+        print("for time31: ", time.time() - start_time)
 
     def _append_optimize_op(self, block, param_and_grad):
         assert isinstance(block, framework.Block)
@@ -469,6 +472,7 @@ class Adam(Optimizer):
         """
         if not isinstance(self._parameter_list[0], dict):
             params_grads = []
+            start_time = time.time()
             for param in self._parameter_list:
                 if param.stop_gradient:
                     continue
@@ -493,7 +497,7 @@ class Adam(Optimizer):
                                 "Adam don't support weight_decay with sparse parameters, please set it to None."
                             )
                     params_grads.append((param, grad_var))
-
+            print("for time32: ", time.time() - start_time)
             optimize_ops = self._apply_optimize(
                 loss=None,
                 startup_program=None,
@@ -502,6 +506,7 @@ class Adam(Optimizer):
             )
         else:
             # optimize parameters in groups
+            start_time = time.time()
             for idx, param_group in enumerate(self._param_groups):
                 params_grads = defaultdict(lambda: list())
                 for param in param_group['params']:
@@ -519,6 +524,7 @@ class Adam(Optimizer):
                     params_grads=params_grads,
                     param_group_idx=idx,
                 )
+            print("for time33: ", time.time() - start_time)
 
     def _multi_tensor_init(self, target_block, parameters, param_group_idx):
         """
@@ -529,6 +535,7 @@ class Adam(Optimizer):
             parameters: list of parameter tensors for the optimizer
         """
         self._create_accumulators(target_block, parameters)
+        start_time = time.time()
         for param in parameters:
             moment1 = self._get_accumulator(self._moment1_acc_str, param)
             moment2 = self._get_accumulator(self._moment2_acc_str, param)
@@ -581,6 +588,7 @@ class Adam(Optimizer):
                 raise ValueError(
                     "Now multi_tensor_momentum only support fp32, fp16 or bf16 parameters and grad is LOD_TENSOR."
                 )
+        print("for time34: ", time.time() - start_time)
 
     def _append_optimize_multi_tensor_op(
         self,
@@ -598,6 +606,7 @@ class Adam(Optimizer):
 
         if isinstance(parameters_and_grads, list):
             if framework.in_dygraph_mode():
+                start_time = time.time()
                 params = [pair[0] for pair in parameters_and_grads]
                 grads_types = core.eager.get_grads_types(params)
                 for index, tp in enumerate(grads_types):
@@ -613,6 +622,7 @@ class Adam(Optimizer):
                         )
                         lr = self._create_param_lr(parameters_and_grads[index])
                         lr_dict['FP16_LODTensor'].append(lr)
+                print("for time35: ", time.time() - start_time)
             else:
                 for param_and_grad in parameters_and_grads:
                     if param_and_grad[1] is None:
@@ -639,6 +649,7 @@ class Adam(Optimizer):
                             lr = self._create_param_lr(param_and_grad)
                             lr_dict['FP16_LODTensor'].append(lr)
         else:
+            start_time = time.time()
             for param_and_grad in parameters_and_grads['params']:
                 if param_and_grad[1] is None:
                     continue
@@ -669,8 +680,9 @@ class Adam(Optimizer):
                         grad_dict['FP16_LODTensor'].append(param_and_grad[1])
                         lr = self._create_param_lr(param_and_grad)
                         lr_dict['FP16_LODTensor'].append(lr)
-
+            print("for time36: ", time.time() - start_time)
         multi_tensor_list = ['FP32_LODTensor', 'FP16_LODTensor']
+        start_time = time.time()
         for key in multi_tensor_list:
             if len(self._param_dict[key][param_group_idx]) > 0:
                 find_master = self._multi_precision and key == 'FP16_LODTensor'
@@ -753,6 +765,7 @@ class Adam(Optimizer):
                         attrs=attrs,
                         stop_gradient=True,
                     )
+        print("for time30: ", time.time() - start_time)
         return None
 
     def _update_param_group(self, parameters):

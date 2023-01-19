@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import time
+
 from paddle import _C_ops
 
 from ..fluid import framework
@@ -175,6 +177,7 @@ class Adamax(Optimizer):
             parameters = self._update_param_group(parameters)
 
         # Create accumulator tensors for first moment and infinity norm
+        start_time = time.time()
         for p in parameters:
             self._add_accumulator(self._moment_acc_str, p)
             self._add_accumulator(self._inf_norm_acc_str, p)
@@ -184,6 +187,7 @@ class Adamax(Optimizer):
                 fill_value=self._beta1,
                 shape=[1],
             )
+        print("for time38: ", time.time() - start_time)
 
     def _append_optimize_op(self, block, param_and_grad):
         assert isinstance(block, framework.Block)
@@ -241,6 +245,7 @@ class Adamax(Optimizer):
         """Update Beta1 Power accumulator"""
         assert isinstance(block, framework.Block)
         if isinstance(parameters_and_grads, list):
+            start_time = time.time()
             for param, grad in parameters_and_grads:
                 if grad is None or param.stop_gradient is True:
                     continue
@@ -267,7 +272,9 @@ class Adamax(Optimizer):
                             attrs={"scale": self._beta1},
                             stop_gradient=True,
                         )
+            print("for time39: ", time.time() - start_time)
         else:
+            start_time = time.time()
             for param, grad in parameters_and_grads['params']:
                 if grad is None or param.stop_gradient is True:
                     continue
@@ -300,6 +307,7 @@ class Adamax(Optimizer):
                             attrs={"scale": self._beta1},
                             stop_gradient=True,
                         )
+            print("for time37: ", time.time() - start_time)
 
     def _update_param_group(self, parameters):
         self._beta1 = parameters.get('beta1', self._default_dict['beta1'])

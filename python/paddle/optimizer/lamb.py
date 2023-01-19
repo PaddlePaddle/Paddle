@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import time
+
 import paddle
 from paddle import _C_ops
 from paddle.fluid.executor import global_scope
@@ -189,12 +191,14 @@ class Lamb(Optimizer):
             parameters = self._update_param_group(parameters)
 
         # Create accumulator tensors for first and second moments
+        start_time = time.time()
         for p in parameters:
             if self._multi_precision and p.dtype == core.VarDesc.VarType.FP16:
                 master_p = self._create_master_weight(p)
                 self._add_moments_pows(master_p)
             else:
                 self._add_moments_pows(p)
+        print("for time46: ", time.time() - start_time)
 
     def _get_accumulator(self, name, param):
         """Utility function to fetch an accumulator for a parameter

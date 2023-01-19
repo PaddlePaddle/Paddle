@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import logging
+import time
 from collections import defaultdict
 
 import numpy as np
@@ -57,10 +58,12 @@ def append_backward_new(
         program.num_blocks == 1
     ), "The append_backward_new interface is designed to process only one block."
     block = program.current_block()
+    start_time = time.time()
     for el in loss_list:
         assert (
             el.block == block
         ), 'variable in loss_list should be in current block of main program'
+    print("for time1: ", time.time() - start_time)
 
     orig2prim(block)
     ad = Transform(block)
@@ -71,11 +74,13 @@ def append_backward_new(
 
     # remove param_dot and their constructor ops
     op_indexes = []
+    start_time = time.time()
     for var in param_dot:
         if var is not None:
             op_index = block.ops.index(var.op)
             assert op_index >= 0
             op_indexes.append(op_index)
+    print("for time2: ", time.time() - start_time)
 
     ad.erase_ops(sorted(op_indexes))
     ad.erase_dots(param_dot)
@@ -84,8 +89,10 @@ def append_backward_new(
         params_and_grads = [(parameter_list, param_bar)]
     else:
         params_and_grads = []
+        start_time = time.time()
         for i, param in enumerate(parameter_list):
             params_and_grads.append((param, param_bar[i]))
+        print("for time3: ", time.time() - start_time)
     return params_and_grads
 
 
@@ -202,6 +209,7 @@ class Optimizer:
                 )
             if weight_decay is not None:
                 if not isinstance(self._parameter_list[0], dict):
+                    # start_time = time.time()
                     for param in self._parameter_list:
                         if (
                             hasattr(param, 'regularizer')
@@ -213,6 +221,7 @@ class Optimizer:
                                 % weight_decay.__str__()
                             )
                             break
+                    # print("for time4: ", time.time()-start_time)
 
         if not isinstance(learning_rate, (float, LRScheduler)):
             raise TypeError(
@@ -237,10 +246,12 @@ class Optimizer:
         # Infer the dtype form parameter
         if self._parameter_list:
             if isinstance(self._parameter_list[0], dict):
+                start_time = time.time()
                 for param_group in self._parameter_list:
                     assert (
                         'params' in param_group
                     ), 'params should be set in parameters if parameter groups are optimized in different options'
+                print("for time5: ", time.time() - start_time)
                 self._dtype = self._parameter_list[0]['params'][0].dtype
             else:
                 self._dtype = self._parameter_list[0].dtype
@@ -265,8 +276,10 @@ class Optimizer:
 
         self._param_groups = []
         if self._parameter_list and isinstance(self._parameter_list[0], dict):
+            start_time = time.time()
             for param_group in self._parameter_list:
                 self._add_param_group(param_group.copy())
+            print("for time6: ", time.time() - start_time)
         else:
             self._param_groups = self._parameter_list
 
@@ -313,9 +326,11 @@ class Optimizer:
 
         '''
         state_dict = {}
+        start_time = time.time()
         for k, v in self._accumulators.items():
             for para_name, var_tmp in v.items():
                 state_dict[var_tmp.name] = var_tmp
+        print("for time7: ", time.time() - start_time)
         # if has master weight and then save master weight
         if hasattr(self, "_master_weights"):
             if len(self._master_weights) != 0:
@@ -370,6 +385,7 @@ class Optimizer:
                 self._master_weights = state_dict["master_weights"]
             state_dict.pop("master_weights")
         self._accumulators_holder = state_dict
+        start_time = time.time()
         for k, v in self._accumulators.items():
             for para_name, var_tmp in v.items():
                 assert (
@@ -407,6 +423,7 @@ class Optimizer:
                 )
 
                 tensor.set(load_para_np, framework._current_expected_place())
+        print("for time8: ", time.time() - start_time)
 
     def get_opti_var_name_list(self):
         return self._opti_name_list
@@ -765,6 +782,7 @@ class Optimizer:
         return self._accumulators[name][param.name]
 
     def _update_param_device_map(self, parameters_and_grads, target_block):
+        start_time = time.time()
         for param_and_grad in parameters_and_grads:
             if param_and_grad[0].stop_gradient is False:
                 param_name = param_and_grad[0].name
@@ -779,6 +797,7 @@ class Optimizer:
                             device_attr_name
                         )
                         break
+        print("for time9: ", time.time() - start_time)
 
     def _get_device_for_param(self, param_name):
         device = None
@@ -840,6 +859,7 @@ class Optimizer:
             ):
                 if isinstance(parameters_and_grads, list):
                     assert param_group_idx == 0
+                    start_time = time.time()
                     self._multi_tensor_init(
                         target_block,
                         [
@@ -849,8 +869,10 @@ class Optimizer:
                         ],
                         param_group_idx,
                     )
+                    print("for time10: ", time.time() - start_time)
                 else:
                     self._update_param_group(parameters_and_grads)
+                    start_time = time.time()
                     self._multi_tensor_init(
                         target_block,
                         [
@@ -860,6 +882,7 @@ class Optimizer:
                         ],
                         param_group_idx,
                     )
+                    print("for time11: ", time.time() - start_time)
             if framework._non_static_mode():
                 self._append_optimize_multi_tensor_op(
                     target_block,
@@ -873,6 +896,7 @@ class Optimizer:
                 # NOTE: Multi Tensor requires all parameters to be in the same device and program.
                 # param_grad_list = [p_0,g_0,p_1,g_1,....]
                 param_grad_list = []
+                start_time = time.time()
                 for param_and_grad in parameters_and_grads:
                     if (
                         not param_and_grad[0].stop_gradient
@@ -880,6 +904,7 @@ class Optimizer:
                     ):
                         param_grad_list.append(param_and_grad[0])
                         param_grad_list.append(param_and_grad[1])
+                print("for time12: ", time.time() - start_time)
                 with param_grad_list[0].block.program._optimized_guard(
                     param_grad_list
                 ), name_scope("optimizer"):
@@ -902,6 +927,7 @@ class Optimizer:
                 )
 
             if isinstance(parameters_and_grads, list):
+                start_time = time.time()
                 self._create_accumulators(
                     target_block,
                     [
@@ -910,17 +936,21 @@ class Optimizer:
                         if not p[0].stop_gradient
                     ],
                 )
+                print("for time13: ", time.time() - start_time)
             else:
                 params_acc_dict = parameters_and_grads.copy()
+                start_time = time.time()
                 params_acc_dict['params'] = [
                     p[0]
                     for p in params_acc_dict['params']
                     if not p[0].stop_gradient
                 ]
+                print("for time14: ", time.time() - start_time)
                 self._create_accumulators(target_block, params_acc_dict)
 
             if framework._non_static_mode():
                 if isinstance(parameters_and_grads, list):
+                    # start_time = time.time()
                     for param_and_grad in parameters_and_grads:
                         if param_and_grad[1] is None:
                             continue
@@ -928,7 +958,9 @@ class Optimizer:
                             self._append_optimize_op(
                                 target_block, param_and_grad
                             )
+                    # print("for time15: ", time.time()-start_time)
                 else:
+                    # start_time = time.time()
                     for param_and_grad in parameters_and_grads['params']:
                         if param_and_grad[1] is None:
                             continue
@@ -945,7 +977,9 @@ class Optimizer:
                             self._append_optimize_op(
                                 target_block, param_grad_dict
                             )
+                    # print("for time16: ", time.time()-start_time)
             else:
+                # start_time = time.time()
                 for param_and_grad in parameters_and_grads:
                     if param_and_grad[1] is None:
                         continue
@@ -960,6 +994,7 @@ class Optimizer:
                                 optimize_op = self._append_optimize_op(
                                     target_block, param_and_grad
                                 )
+                # print("for time17: ", time.time()-start_time)
 
         # Get custom finish ops for subclasses
         # FIXME: Need to fix this once we figure out how to handle dependencies
@@ -1032,9 +1067,11 @@ class Optimizer:
             # We put this part of the code on the c++ side to improve the speed in eager mode.
             params_grads = []
             grads = core.eager.get_all_grads(parameter_list)
+            start_time = time.time()
             for index, grad in enumerate(grads):
                 if grad is not None:
                     params_grads.append((parameter_list[index], grad))
+            print("for time18: ", time.time() - start_time)
         else:
             if callbacks is None:
                 callbacks = [paddle.nn.clip.error_clip_callback]
@@ -1224,14 +1261,17 @@ class Optimizer:
         """
         params_and_grads = []
         if framework._non_static_mode():
+            start_time = time.time()
             for param, grad in parameters_and_grads:
                 new_grad = self._create_regularization_of_grad(
                     param, grad, regularization
                 )
                 params_and_grads.append((param, new_grad))
+            print("for time19: ", time.time() - start_time)
         else:
             repeate_regularizer = False
             with framework.name_scope('regularization'):
+                start_time = time.time()
                 for param, grad in parameters_and_grads:
                     if (
                         not repeate_regularizer
@@ -1249,14 +1289,17 @@ class Optimizer:
                             param, grad, regularization
                         )
                         params_and_grads.append((param, new_grad))
+                print("for time20: ", time.time() - start_time)
         return params_and_grads
 
     def _get_no_grad_set(self, loss, no_grad_set=None):
         no_grad_set = _get_no_grad_set_name(no_grad_set)
         parameters = loss.block.program.global_block().all_parameters()
+        start_time = time.time()
         param_no_trainable = set(
             [param.name for param in parameters if param.stop_gradient is True]
         )
+        print("for time21: ", time.time() - start_time)
         # If the parameter is no trainable, it should not have a gradient.
         no_grad_set.update(param_no_trainable)
 
@@ -1297,18 +1340,24 @@ class Optimizer:
         if self._parameter_list is None or not isinstance(
             self._parameter_list[0], dict
         ):
+            start_time = time.time()
             for p in self._parameter_list:
                 if not p.stop_gradient:
                     param_list.append(p)
+            print("for time22: ", time.time() - start_time)
         else:
+            start_time = time.time()
             for param_group in self._param_groups:
                 for p in param_group['params']:
                     if not p.stop_gradient:
                         param_list.append(p)
+            print("for time23: ", time.time() - start_time)
 
         if _in_eager_without_dygraph_check():
+            start_time = time.time()
             for p in param_list:
                 p.clear_gradient(set_to_zero)
+            print("for time24: ", time.time() - start_time)
         else:
             core.clear_gradients(param_list, set_to_zero)
 
@@ -1402,12 +1451,14 @@ class Optimizer:
 
         if not isinstance(self._param_groups[0], dict):
             params_grads = []
+            start_time = time.time()
             for param in self._param_groups:
                 if param.stop_gradient:
                     continue
                 if param._grad_ivar() is not None:
                     grad_var = param._grad_ivar()
                     params_grads.append((param, grad_var))
+            print("for time25: ", time.time() - start_time)
 
             self._apply_optimize(
                 loss=None,
@@ -1415,9 +1466,9 @@ class Optimizer:
                 params_grads=params_grads,
                 param_group_idx=0,
             )
-
         else:
             # optimize parameters in groups
+            start_time = time.time()
             for idx, param_group in enumerate(self._param_groups):
                 params_grads = defaultdict(lambda: list())
                 for param in param_group['params']:
@@ -1435,6 +1486,7 @@ class Optimizer:
                     params_grads=params_grads,
                     param_group_idx=idx,
                 )
+            print("for time26: ", time.time() - start_time)
 
     def _add_param_group(self, param_group):
         """
@@ -1456,6 +1508,7 @@ class Optimizer:
             param_group['params'] = list(params)
 
         # Update optimization options for each groups
+        start_time = time.time()
         for k, v in self._default_dict.items():
             param_group.setdefault(k, v)
 
@@ -1480,6 +1533,7 @@ class Optimizer:
             param.optimize_attr['learning_rate'] = param_group.get(
                 'learning_rate', 1.0
             )
+        print("for time27: ", time.time() - start_time)
 
         self._param_groups.append(param_group)
 

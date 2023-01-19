@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import time
 import warnings
 from collections import defaultdict
 from enum import Enum
@@ -19,7 +20,7 @@ from enum import Enum
 import numpy as np
 
 from paddle import _legacy_C_ops
-from paddle.fluid import core, in_dygraph_mode
+from paddle.fluid import core
 from paddle.fluid.data_feeder import check_type
 from paddle.fluid.dygraph import to_variable
 from paddle.fluid.framework import _dygraph_tracer, dygraph_only
@@ -270,6 +271,7 @@ class AmpScaler:
             param_grads_fp16 = []
             param_grads_bf16 = []
             param_grads_fp32 = []
+            start_time = time.time()
             for group in optimizer._param_groups:
                 for param in group['params']:
                     if param._grad_ivar() is not None:
@@ -286,38 +288,13 @@ class AmpScaler:
                             param_grads_bf16.append(param._grad_ivar())
                         else:
                             param_grads_fp32.append(param._grad_ivar())
+            print("for time55: ", time.time() - start_time)
         else:
-            if in_dygraph_mode():
-                # It is very time-consuming to call c++ functions in a loop on the python side.
-                # We put this part of the code on the c++ side to improve the speed in eager mode.
-                (
-                    param_grads_fp16,
-                    param_grads_bf16,
-                    param_grads_fp32,
-                ) = core.eager.get_grads_lists(optimizer._parameter_list)
-            else:
-                # Keep the original code to support legacy mode.
-                # Delete the else branch when the legacy mode exits.
-                param_grads = [
-                    param._grad_ivar()
-                    for param in optimizer._parameter_list
-                    if param._grad_ivar() is not None
-                ]
-                param_grads_fp16 = [
-                    param
-                    for param in param_grads
-                    if param.dtype == core.VarDesc.VarType.FP16
-                ]
-                param_grads_bf16 = [
-                    param
-                    for param in param_grads
-                    if param.dtype == core.VarDesc.VarType.BF16
-                ]
-                param_grads_fp32 = [
-                    param
-                    for param in param_grads
-                    if param.dtype == core.VarDesc.VarType.FP32
-                ]
+            (
+                param_grads_fp16,
+                param_grads_bf16,
+                param_grads_fp32,
+            ) = core.eager.get_grads_lists(optimizer._parameter_list)
         if core.is_compiled_with_npu():
             float_status = _legacy_C_ops.alloc_float_status()
             _legacy_C_ops.clear_float_status(float_status, float_status)
