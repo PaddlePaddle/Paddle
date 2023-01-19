@@ -25,13 +25,13 @@ limitations under the License. */
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
-#include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/allocator.h"
 #include "paddle/phi/core/expect.h"
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/fluid/memory/allocation/cuda_device_context_allocator.h"
 #include "paddle/fluid/platform/cuda_device_guard.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
 #endif
 
 #ifdef PADDLE_WITH_MLU
