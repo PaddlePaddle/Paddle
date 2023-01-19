@@ -46,6 +46,8 @@ phi_header_path_compat(
   ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/phi/common)
 phi_header_path_compat(
   ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/phi/core)
+phi_header_path_compat(
+  ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/utils)
 
 # In order to be compatible with the original behavior, the header file name needs to be changed
 file(RENAME
