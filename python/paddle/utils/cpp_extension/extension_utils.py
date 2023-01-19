@@ -179,11 +179,15 @@ def custom_write_stub(resource, pyfile):
 
         def __bootstrap__():
             assert os.path.exists(so_path)
-            spec = importlib.util.spec_from_file_location(__name__, so_path)
-            assert spec is not None
-            mod = importlib.util.module_from_spec(spec)
-            assert isinstance(spec.loader, importlib.abc.Loader)
-            spec.loader.exec_module(mod)
+            try:
+                spec = importlib.util.spec_from_file_location(__name__, so_path)
+                assert spec is not None
+                mod = importlib.util.module_from_spec(spec)
+                assert isinstance(spec.loader, importlib.abc.Loader)
+                spec.loader.exec_module(mod)
+            except ImportError:
+                print('using custom operator only')
+                mod = types.ModuleType(__name__)
 
             # load custom op shared library with abs path
             custom_ops = paddle.utils.cpp_extension.load_op_meta_info_and_register_op(so_path)
@@ -943,9 +947,7 @@ def _import_module_from_library(module_name, build_directory, verbose=False):
         dynamic_suffix = '.dylib'
     else:
         dynamic_suffix = '.so'
-    ext_path = os.path.join(
-        build_directory, module_name + "_pd_" + dynamic_suffix
-    )
+    ext_path = os.path.join(build_directory, module_name + dynamic_suffix)
     if not os.path.exists(ext_path):
         raise FileNotFoundError(
             "Extension path: {} does not exist.".format(ext_path)
@@ -955,18 +957,24 @@ def _import_module_from_library(module_name, build_directory, verbose=False):
     log_v('loading shared library from: {}'.format(ext_path), verbose)
     op_names = load_op_meta_info_and_register_op(ext_path)
 
-    spec = importlib.util.spec_from_file_location(module_name, ext_path)
-    assert spec is not None
-    module = importlib.util.module_from_spec(spec)
-    assert isinstance(spec.loader, importlib.abc.Loader)
-    spec.loader.exec_module(module)
+    try:
+        spec = importlib.util.spec_from_file_location(module_name, ext_path)
+        assert spec is not None
+        module = importlib.util.module_from_spec(spec)
+        assert isinstance(spec.loader, importlib.abc.Loader)
+        spec.loader.exec_module(module)
+    except ImportError:
+        log_v('using custom operator only')
+        return _generate_python_module(
+            module_name, op_names, build_directory, verbose
+        )
 
     # generate Python api in ext_path
     op_module = _generate_python_module(
         module_name, op_names, build_directory, verbose
     )
     for op_name in op_names:
-        module.op_name = op_module.op_name
+        setattr(module, op_name, getattr(module, op_name))
 
     return module
 

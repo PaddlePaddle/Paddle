@@ -225,7 +225,7 @@ copy(
 set(dst_dir "${PADDLE_INFERENCE_INSTALL_DIR}/third_party/pybind11")
 copy(
   inference_lib_dist
-  SRCS ${PYBIND_INCLUDE_DIR}/pybind11
+  SRCS ${PYBIND_INCLUDE_DIR}/pybind11/*
   DSTS ${dst_dir})
 
 # GPU must copy externalErrorMsg.pb
@@ -498,7 +498,7 @@ copy(
 set(dst_dir "${PADDLE_INSTALL_DIR}/third_party/pybind11")
 copy(
   inference_lib_dist
-  SRCS ${PYBIND_INCLUDE_DIR}/pybind11
+  SRCS ${PYBIND_INCLUDE_DIR}/pybind11/*
   DSTS ${dst_dir})
 
 set(dst_dir "${PADDLE_INSTALL_DIR}/third_party/install/zlib")
