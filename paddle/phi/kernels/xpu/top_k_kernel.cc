@@ -47,7 +47,10 @@ void TopkKernel(const Context& dev_ctx,
       errors::External(
           "XPU API does not support smallest topk operation currently."
           " Operator will be supported in future update."));
-
+  if (in_dims.size() == 0) {
+    phi::Copy<Context>(dev_ctx, x, dev_ctx.GetPlace(), false, out);
+    return;
+  }
   if (axis < 0) axis += in_dims.size();
 
   size_t k = k_scalar.to<int>();

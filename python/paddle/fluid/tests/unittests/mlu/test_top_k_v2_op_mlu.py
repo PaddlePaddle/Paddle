@@ -159,6 +159,25 @@ class TestTopkOp6(OpTest):
         )
         self.outputs = {'Out': output, 'Indices': indices}
 
+class TestTopkOp_ZeroDim(OpTest):
+    def init_args(self):
+        self.k = 1
+        self.axis = 0
+        self.largest = True
+
+    def setUp(self):
+        self.op_type = "top_k_v2"
+        self.place = paddle.device.MLUPlace(0)
+        self.__class__.use_mlu = True
+        self.dtype = np.float32
+        self.input_data = np.random.uniform(size=[]).astype(self.dtype)
+        self.init_args()
+        self.inputs = {'X': self.input_data}
+        self.attrs = {'k': self.k, 'axis': self.axis, 'largest': self.largest}
+        output, indices = numpy_topk(
+            self.input_data, axis=self.axis, k=self.k, largest=self.largest
+        )
+        self.outputs = {'Out': output, 'Indices': indices}
 
 class TestTopKAPI(unittest.TestCase):
     def setUp(self):

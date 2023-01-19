@@ -74,6 +74,12 @@ class XPUTestExpandV2Op(XPUOpTestWrapper):
             self.shape = [2, 120]
             self.expand_times = [2, 1]
 
+    class TestExpandV2Op_ZeroDim(TestExpandV2XPUOp):
+        def init_data(self):
+            self.ori_shape = ()
+            self.shape = ()
+            self.expand_times = ()
+
     class TestExpandV2OpRank2(TestExpandV2XPUOp):
         def init_data(self):
             self.ori_shape = [1, 140]
@@ -141,6 +147,15 @@ class XPUTestExpandV2Op(XPUOpTestWrapper):
             self.expand_shape = [12, 14]
             self.infer_expand_shape = [12, -1]
 
+    class TestExpandV2Op_ZeroDim_ListWithTensor(
+        TestExpandV2OpXPURank1_tensor_attr
+    ):
+        def init_data(self):
+            self.ori_shape = ()
+            self.expand_times = ()
+            self.expand_shape = ()
+            self.infer_expand_shape = ()
+
     # Situation 3: shape is a tensor
     class TestExpandV2XPUOp_tensor(TestExpandV2XPUOp):
         def setUp(self):
@@ -162,6 +177,12 @@ class XPUTestExpandV2Op(XPUOpTestWrapper):
             self.ori_shape = [100]
             self.expand_times = [2, 1]
             self.expand_shape = [2, 100]
+
+    class TestExpandV2XPUOp_ZeroDim_ShapeIsTensor(TestExpandV2XPUOp_tensor):
+        def init_data(self):
+            self.ori_shape = ()
+            self.expand_times = ()
+            self.expand_shape = ()
 
 
 # Situation 5: input x is int32

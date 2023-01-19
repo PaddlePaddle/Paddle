@@ -302,6 +302,30 @@ class TestSundryAPI(unittest.TestCase):
         paddle.disable_static()
         self.x = paddle.rand([])
 
+    def test_expand(self):
+        x = paddle.full([], 1, 'int32')
+        x.stop_gradient = False
+        out = paddle.expand(x, shape=[1])
+        self.assertEqual(x.shape, [])
+        self.assertEqual(out.shape, [])
+
+    def test_expand_as(self):
+        x = paddle.full([], 1, 'int32')
+        x.stop_gradient = False
+        y = paddle.full([], 1, 'int32')
+        y.stop_gradient = False
+        out = paddle.expand_as(x, y)
+        self.assertEqual(x.shape, [])
+        self.assertEqual(y.shape, [])
+        self.assertEqual(out.shape, [])
+
+    def test_top_k(self):
+        x = paddle.full([], 1, 'int32')
+        x.stop_gradient = False
+        out = paddle.topk(x, k=1, axis=0)
+        self.assertEqual(x.shape, [])
+        self.assertEqual(out.shape, [])
+
     def test_linear(self):
         x = paddle.randn([3, 2])
         w = paddle.full(shape=[2, 4], fill_value=0.5)

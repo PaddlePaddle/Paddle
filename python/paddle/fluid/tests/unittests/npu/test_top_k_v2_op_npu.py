@@ -204,6 +204,14 @@ class TestTopkV2Op4Float64(TestTopkV2OP4Int32):
     def set_input_data(self):
         self.input_data = np.random.rand(10, 20).astype(self.dtype)
 
+class TestTopkV2OP_ZeroDim(TestTopkV2NPUOp):
+    def set_attrs(self):
+        self.k = 1
+        self.axis = 0
+        self.largest = False
+
+    def set_input_data(self):
+        self.input_data = np.random.uniform(size=[]).astype(self.dtype)
 
 class TestTopKAPI(unittest.TestCase):
     def setUp(self):

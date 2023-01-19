@@ -167,6 +167,13 @@ class XPUTestTopKV2Op(XPUOpTestWrapper):
             self.largest = True
             self.input_data = np.random.rand(10, 10, 5).astype(self.dtype)
 
+    class TestTopkOp_ZeroDim(TestTopkOp):
+        def init_args(self):
+            self.k = 1
+            self.axis = 0
+            self.largest = True
+            self.input_data = np.random.uniform(size=[]).astype(self.dtype)
+
 
 support_types = get_xpu_op_support_types('top_k_v2')
 for stype in support_types:

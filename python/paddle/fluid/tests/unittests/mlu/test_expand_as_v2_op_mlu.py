@@ -132,6 +132,32 @@ def test_class4(op_type, typename):
     globals()[cls_name] = TestExpandAsOpRank4
 
 
+def test_class5(op_type, typename):
+    class TestExpandAsOpRank5(OpTest):
+        def setUp(self):
+            self.set_mlu()
+            self.op_type = "expand_as_v2"
+            self.python_api = paddle.expand_as
+            x = np.random.uniform(size=[]).astype(typename)
+            target_tensor = np.random.uniform(size=[]).astype(typename)
+            self.inputs = {'X': x}
+            self.attrs = {'target_shape': target_tensor.shape}
+            bcast_dims = ()
+            output = np.tile(self.inputs['X'], bcast_dims)
+            self.outputs = {'Out': output}
+
+        def set_mlu(self):
+            self.__class__.use_mlu = True
+            self.place = paddle.device.MLUPlace(0)
+            self.__class__.no_need_check_grad = True
+
+        def test_check_output(self):
+            self.check_output_with_place(self.place)
+
+    cls_name = str(op_type) + "_" + str(typename) + "_5"
+    TestExpandAsOpRank5.__name__ = cls_name
+    globals()[cls_name] = TestExpandAsOpRank5
+
 # Test python API
 class TestExpandAsV2API(unittest.TestCase):
     def test_api(self):
@@ -172,6 +198,7 @@ for _typename in {
     test_class2('expand_as_v2', _typename)
     test_class3('expand_as_v2', _typename)
     test_class4('expand_as_v2', _typename)
+    test_class5('expand_as_v2', _typename)
 
 if __name__ == "__main__":
     unittest.main()

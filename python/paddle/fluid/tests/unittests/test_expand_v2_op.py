@@ -325,6 +325,28 @@ class TestExpandTripleGradCheck(unittest.TestCase):
             self.func(p)
 
 
+class TestExpandV2Op_ZeroDim(TestExpandV2OpRank1):
+    def init_data(self):
+        self.ori_shape = ()
+        self.shape = ()
+        self.expand_times = ()
+
+
+class TestExpandV2Op_ZeroDim_ListWithTensor(TestExpandV2OpRank1_tensor_attr):
+    def init_data(self):
+        self.ori_shape = ()
+        self.expand_times = ()
+        self.expand_shape = ()
+        self.infer_expand_shape = ()
+
+
+class TestExpandV2Op_ZeroDim_ShapeIsTensor(TestExpandV2OpRank1_tensor):
+    def init_data(self):
+        self.ori_shape = ()
+        self.expand_times = ()
+        self.expand_shape = ()
+
+
 if __name__ == "__main__":
     paddle.enable_static()
     unittest.main()
