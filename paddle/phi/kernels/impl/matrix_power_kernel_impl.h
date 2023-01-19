@@ -189,7 +189,7 @@ void MatrixPowerKernel(const Context& ctx,
   const auto& x_dims = X->dims();
   const int x_ndim = x_dims.size();
 
-  for (size_t i = 0; i < x_ndim; ++i) {
+  for (int i = 0; i < x_ndim; ++i) {
     PADDLE_ENFORCE_NE(
         x_dims[i],
         0,
