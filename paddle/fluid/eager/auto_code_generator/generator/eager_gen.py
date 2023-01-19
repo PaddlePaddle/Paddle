@@ -1841,7 +1841,7 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
 
         if is_composite_grad_api and next_grad_node_creation_str != '':
             next_grad_node_creation_str = f"""
- if (!paddle::prim::PrimCommonUtils::IsPrimEnabled()) {{
+ if (!paddle::prim::PrimCommonUtils::IsBwdPrimEnabled()) {{
     {next_grad_node_creation_str}
  }}
   """
