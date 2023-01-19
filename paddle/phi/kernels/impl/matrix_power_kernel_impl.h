@@ -189,10 +189,12 @@ void MatrixPowerKernel(const Context& ctx,
   const auto& x_dims = X->dims();
   const int x_ndim = x_dims.size();
 
-  PADDLE_ENFORCE_NE(
-      (int64_t)0,
-      x.numel(),
-      errors::InvalidArgument("The size of Input(X) should not be 0."));
+  for (size_t i = 0; i < x_ndim; ++i) {
+    PADDLE_ENFORCE_NE(
+        x_dims[i],
+        0,
+        errors::InvalidArgument("The size of Input(X) should not be 0."));
+  }
 
   PADDLE_ENFORCE_EQ(
       x_dims[x_ndim - 2],
