@@ -1827,6 +1827,21 @@ class TestFftFreq(unittest.TestCase):
 @parameterize(
     (TEST_CASE_NAME, 'n', 'd', 'dtype'),
     [
+        ('test_with_d0', 20, 0, 'float32'),
+    ],
+)
+class TestFftFreqException(unittest.TestCase):
+    def test_fftfreq2(self):
+        """Test fftfreq with d = 0"""
+        with paddle.fluid.dygraph.guard(self.place):
+            with self.assertRaises(self.expect_exception):
+                paddle.fft.fftfreq(self.n, self.d, self.dtype)
+
+
+@place(DEVICES)
+@parameterize(
+    (TEST_CASE_NAME, 'n', 'd', 'dtype'),
+    [
         ('test_without_d', 20, 1, 'float32'),
         ('test_with_d', 20, 0.5, 'float32'),
     ],
