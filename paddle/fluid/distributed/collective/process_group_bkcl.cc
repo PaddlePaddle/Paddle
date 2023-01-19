@@ -352,20 +352,30 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::Reduce(
           const phi::DenseTensor& input,
           BKCLContext_t comm,
           const XPUStream& stream) {
-        phi::DenseTensor output_t;
-        paddle::framework::TensorCopy(*output, platform::XPUPlace(), &output_t);
+        // phi::DenseTensor output_t;
+        // paddle::framework::TensorCopy(*output, platform::XPUPlace(),
+        // &output_t);
         const auto& place = input.place();
         auto* calc_ctx = static_cast<phi::XPUContext*>(
             platform::DeviceContextPool::Instance().Get(place));
+        xpu::ctx_guard RAII_GUARD(calc_ctx->x_context());
+        void* output_copy_ptr = nullptr;
+        int num_bytes = 0;
         switch (input.dtype()) {
           case phi::DataType::FLOAT32:
-            calc_ctx->template Alloc<float>(&output_t);
+            output_copy_ptr = reinterpret_cast<void*>(
+                RAII_GUARD.alloc_l3_or_gm<float>(input.numel()));
+            num_bytes = input.numel() * sizeof(float);
             break;
           case phi::DataType::FLOAT16:
-            calc_ctx->template Alloc<float16>(&output_t);
+            output_copy_ptr = reinterpret_cast<void*>(
+                RAII_GUARD.alloc_l3_or_gm<float16>(input.numel()));
+            num_bytes = input.numel() * sizeof(float16);
             break;
           case phi::DataType::INT32:
-            calc_ctx->template Alloc<int>(&output_t);
+            output_copy_ptr = reinterpret_cast<void*>(
+                RAII_GUARD.alloc_l3_or_gm<int>(input.numel()));
+            num_bytes = input.numel() * sizeof(int);
             break;
           default:
             VLOG(0) << "Error: type " << input.dtype() << " not supported for "
@@ -375,14 +385,18 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::Reduce(
         int ret =
             bkcl_all_reduce(comm,
                             input.data(),
-                            output_t.data(),
+                            output_copy_ptr,
                             input.numel(),
                             platform::ToBKCLDataType(
                                 framework::TransToProtoVarType(input.type())),
                             ToBKCLRedType(opts.reduce_op),
                             stream);
+        xpu_wait(stream);
         if (rank_ == opts.root_rank) {
-          *output = output_t;
+          xpu::copy(calc_ctx->x_context(),
+                    reinterpret_cast<int8_t*>(output_copy_ptr),
+                    reinterpret_cast<int8_t*>(output->data()),
+                    num_bytes);
         }
         return ret;
       },
