@@ -41,7 +41,7 @@ void Squeeze(const Context& dev_ctx,
              DenseTensor* out) {
   MetaTensor meta_out(out);
   SqueezeInferMeta(x, axes, &meta_out);
-  SqueezeInferKernel<T, Context>(dev_ctx, x, axes, out);
+  SqueezeKernel<T, Context>(dev_ctx, x, axes, out);
 }
 
 }  // namespace phi
