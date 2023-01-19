@@ -1384,7 +1384,7 @@ struct SimpleOpTypeSetTeller : public Teller {
             y_dtype == framework::proto::VarType::BOOL) {
           VLOG(3)
               << "ElementWiseOperation::kLESS/ElementWiseOperation::kGREATER "
-                 "do not support boolean datatype..";
+                 "do not support boolean datatype.";
           return false;
         }
       }

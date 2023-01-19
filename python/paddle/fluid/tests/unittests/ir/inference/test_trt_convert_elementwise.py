@@ -25,7 +25,7 @@ import paddle.inference as paddle_infer
 
 # This is the special test case with weight including batch dimension
 # I don't want to mess up the code written by others, so I wrote a class specifically
-class TrtConvertElementwiseTest_one_input_special_case0(TrtLayerAutoScanTest):
+class TrtConvertElementwiseTestOneInputSpecialCase0(TrtLayerAutoScanTest):
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         return True
 
@@ -158,7 +158,7 @@ class TrtConvertElementwiseTest_one_input_special_case0(TrtLayerAutoScanTest):
 
 
 # This is the special test case
-class TrtConvertElementwiseTest_one_input_special_case1(TrtLayerAutoScanTest):
+class TrtConvertElementwiseTestOneInputSpecialCase1(TrtLayerAutoScanTest):
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         return True
 
@@ -279,7 +279,7 @@ class TrtConvertElementwiseTest_one_input_special_case1(TrtLayerAutoScanTest):
         self.run_test()
 
 
-class TrtConvertElementwiseTest_one_input(TrtLayerAutoScanTest):
+class TrtConvertElementwiseTestOneInput(TrtLayerAutoScanTest):
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         return True
 
@@ -431,9 +431,7 @@ class TrtConvertElementwiseTest_one_input(TrtLayerAutoScanTest):
         self.run_test()
 
 
-class TrtConvertElementwiseTest_two_input_without_broadcast(
-    TrtLayerAutoScanTest
-):
+class TrtConvertElementwiseTestTwoInputWithoutBroadcast(TrtLayerAutoScanTest):
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         return True
 
@@ -592,7 +590,7 @@ class TrtConvertElementwiseTest_two_input_without_broadcast(
         self.run_test()
 
 
-class TrtConvertElementwiseTest_two_input_with_broadcast(TrtLayerAutoScanTest):
+class TrtConvertElementwiseTestTwoInputWithBroadcast(TrtLayerAutoScanTest):
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         inputs = program_config.inputs
         if len(inputs['input_data1'].shape) != len(inputs['input_data2'].shape):
@@ -754,7 +752,7 @@ class TrtConvertElementwiseTest_two_input_with_broadcast(TrtLayerAutoScanTest):
         self.run_test()
 
 
-class TrtConvertElementwiseTest_one_input_corner_case(TrtLayerAutoScanTest):
+class TrtConvertElementwiseTestOneInputCornerCase(TrtLayerAutoScanTest):
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         return True
 
@@ -896,7 +894,7 @@ class TrtConvertElementwiseTest_one_input_corner_case(TrtLayerAutoScanTest):
         self.run_test()
 
 
-class TrtConvertElementwiseTest_two_input_skip_case(TrtLayerAutoScanTest):
+class TrtConvertElementwiseTestTwoInputSkipCase(TrtLayerAutoScanTest):
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         # if program_config.ops[0].type in "round":
         return True
