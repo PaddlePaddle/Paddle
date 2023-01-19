@@ -673,12 +673,6 @@ void PSGPUWrapper::BuildPull(std::shared_ptr<HeterContext> gpu_task) {
   // auto& device_mutex = gpu_task->mutex_;
 
   std::vector<std::thread> threads(thread_keys_shard_num_);
-#ifdef PADDLE_WITH_PSLIB
-  auto fleet_ptr = FleetWrapper::GetInstance();
-#endif
-#ifdef PADDLE_WITH_PSCORE
-  auto fleet_ptr = paddle::distributed::FleetWrapper::GetInstance();
-#endif
 
 #if (defined PADDLE_WITH_PSLIB) && (defined PADDLE_WITH_HETERPS)
   // get day_id: day nums from 1970
@@ -689,25 +683,22 @@ void PSGPUWrapper::BuildPull(std::shared_ptr<HeterContext> gpu_task) {
   b.tm_min = b.tm_hour = b.tm_sec = 0;
   std::time_t seconds_from_1970 = std::mktime(&b);
   int day_id = seconds_from_1970 / 86400;
-  fleet_ptr->pslib_ptr_->_worker_ptr->set_day_id(table_id_, day_id);
+  fleet_ptr_->pslib_ptr_->_worker_ptr->set_day_id(table_id_, day_id);
 #endif
 
   timeline.Start();
 
   auto ptl_dynamic_mf_func =
-      [this, &local_dim_keys, &local_dim_ptr, &fleet_ptr, &gpu_task](int i,
+      [this, &local_dim_keys, &local_dim_ptr, &gpu_task](int i,
                                                                      int j) {
         size_t key_size = local_dim_keys[i][j].size();
         int32_t status = -1;
         int32_t cnt = 0;
 #ifdef PADDLE_WITH_PSLIB
         while (true) {
-          auto tt = fleet_ptr->pslib_ptr_->_worker_ptr->pull_sparse_ptr(
-              i,
-              reinterpret_cast<char**>(local_dim_ptr[i][j].data()),
-              this->table_id_,
-              local_dim_keys[i][j].data(),
-              key_size);
+          auto tt = fleet_ptr_->pslib_ptr_->_worker_ptr->pull_sparse_ptr(i,
+              reinterpret_cast<char**>(local_dim_ptr[i][j].data()), this->table_id_,
+              local_dim_keys[i][j].data(), key_size, gpu_task->pass_id_);
           bool flag = true;
 
           tt.wait();
@@ -736,7 +727,7 @@ void PSGPUWrapper::BuildPull(std::shared_ptr<HeterContext> gpu_task) {
 #endif
 #ifdef PADDLE_WITH_PSCORE
         while (true) {
-          auto tt = fleet_ptr->worker_ptr_->PullSparsePtr(
+          auto tt = fleet_ptr_->worker_ptr_->PullSparsePtr(
               i,
               reinterpret_cast<char**>(local_dim_ptr[i][j].data()),
               this->table_id_,
