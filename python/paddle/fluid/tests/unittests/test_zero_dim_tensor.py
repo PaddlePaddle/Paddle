@@ -2295,7 +2295,7 @@ class TestSundryAPIStatic(unittest.TestCase):
         with paddle.static.program_guard(main_program, paddle.static.Program()):
             i = paddle.full([], 0, 'int64')
             i.stop_gradient = False
-            ten = paddle.full([], 10, dtype='int64')
+            ten = paddle.full([], 10, 'int64')
             out_i, out_ten = paddle.static.nn.while_loop(cond, body, [i, ten])
             paddle.static.append_backward(out_i.sum())
 
@@ -2326,8 +2326,8 @@ class TestSundryAPIStatic(unittest.TestCase):
         with paddle.static.program_guard(main_program, paddle.static.Program()):
             i = paddle.static.data(name='i', shape=[], dtype='float32')
             i.stop_gradient = False
-            eleven = paddle.full(shape=[], value=11, dtype='float32')
-            one = paddle.full(shape=[], value=1, dtype='float32')
+            eleven = paddle.full([], 11, 'float32')
+            one = paddle.full([], 1, 'float32')
             x = paddle.static.data(name='x', shape=[], dtype='float32')
             x.stop_gradient = False
 
