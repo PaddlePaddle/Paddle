@@ -218,7 +218,7 @@ struct GPUContext::Impl {
     InitDnnWorkspace();
   }
 
-  void PartialInitWithoutAllocator() {
+  void PartialInitWithoutAllocator(CUDAStream::Priority stream_priority) {
     owned_ = true;
     stream_owned_ = true;
     backends::gpu::GPUDeviceGuard guard(place_.device);
@@ -230,7 +230,7 @@ struct GPUContext::Impl {
                            &max_threads_per_mp_,
                            &max_threads_per_block_,
                            &max_grid_dim_size_);
-    stream_ = new CUDAStream(place_);
+    stream_ = new CUDAStream(place_, stream_priority);
   }
 
   void PartialInitWithAllocator() {
@@ -818,10 +818,12 @@ GPUContext::GPUContext(GPUContext&&) = default;
 
 GPUContext& GPUContext::operator=(GPUContext&&) = default;
 
-GPUContext::GPUContext(const GPUPlace& place, bool init)
+GPUContext::GPUContext(const GPUPlace& place,
+                       bool init,
+                       CUDAStream::Priority stream_priority)
     : DeviceContext(), impl_(std::make_unique<Impl>(place)) {
   if (init) {
-    impl_->PartialInitWithoutAllocator();
+    impl_->PartialInitWithoutAllocator(stream_priority);
   }
 }
 
@@ -1001,8 +1003,9 @@ void GPUContext::SetDnnWorkspaceHandle(DnnWorkspaceHandle* handle) {
   impl_->workspace_ = handle;
 }
 
-void GPUContext::PartialInitWithoutAllocator() {
-  impl_->PartialInitWithoutAllocator();
+void GPUContext::PartialInitWithoutAllocator(
+    CUDAStream::Priority stream_priority) {
+  impl_->PartialInitWithoutAllocator(stream_priority);
 }
 
 void GPUContext::PartialInitWithAllocator() {
