@@ -414,7 +414,7 @@ class TestResnet(unittest.TestCase):
             ),
         )
 
-    def _test_resnet(self):
+    def test_resnet(self):
         static_loss = self.train(to_static=True)
         dygraph_loss = self.train(to_static=False)
         np.testing.assert_allclose(
@@ -427,7 +427,7 @@ class TestResnet(unittest.TestCase):
         )
         self.verify_predict()
 
-    def _test_resnet_composite_backward(self):
+    def test_resnet_composite_backward(self):
         core._set_prim_backward_enabled(True)
         static_loss = self.train(to_static=True)
         core._set_prim_backward_enabled(False)
@@ -459,7 +459,7 @@ class TestResnet(unittest.TestCase):
         else:
             pass
 
-    def _test_in_static_mode_mkldnn(self):
+    def test_in_static_mode_mkldnn(self):
         fluid.set_flags({'FLAGS_use_mkldnn': True})
         try:
             if paddle.fluid.core.is_compiled_with_mkldnn():
