@@ -100,8 +100,12 @@ class TestUnstackZeroInputOp(unittest.TestCase):
         paddle.unstack(x, axis=1)
 
     def test_type_error(self):
+        paddle.disable_static()
+
         self.assertRaises(ValueError, self.unstack_zero_input_dynamic)
         self.assertRaises(ValueError, self.unstack_zero_input_static)
+
+        paddle.disable_static()
 
 
 if __name__ == '__main__':
