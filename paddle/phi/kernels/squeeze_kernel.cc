@@ -26,8 +26,6 @@ void SqueezeInferKernel(const Context& dev_ctx,
                         const IntArray& axes,
                         DenseTensor* out) {
   auto out_dims = out->dims();
-  out->Resize(out_dims);
-
   dev_ctx.template Alloc<T>(out);
   phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
   out->Resize(out_dims);  // copy will reset the dims.
