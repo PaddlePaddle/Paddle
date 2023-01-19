@@ -191,7 +191,7 @@ void MatrixPowerKernel(const Context& ctx,
 
   PADDLE_ENFORCE_NE(
       0,
-      numel(x),
+      x.numel(),
       errors::InvalidArgument("The size of Input(X) should not be 0."));
 
   PADDLE_ENFORCE_EQ(
