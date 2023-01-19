@@ -974,7 +974,7 @@ def _import_module_from_library(module_name, build_directory, verbose=False):
         module_name, op_names, build_directory, verbose
     )
     for op_name in op_names:
-        setattr(module, op_name, getattr(module, op_name))
+        setattr(module, op_name, getattr(op_module, op_name))
 
     return module
 

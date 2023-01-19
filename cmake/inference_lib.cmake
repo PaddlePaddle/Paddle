@@ -194,6 +194,12 @@ function(copy_part_of_thrid_party TARGET DST)
     SRCS ${XXHASH_INCLUDE_DIR} ${XXHASH_LIBRARIES}
     DSTS ${dst_dir} ${dst_dir}/lib)
 
+  set(dst_dir "${DST}/third_party/pybind11")
+  copy(
+    ${TARGET}
+    SRCS ${PYBIND_INCLUDE_DIR}/pybind11/*
+    DSTS ${dst_dir})
+
   if(NOT PROTOBUF_FOUND OR WIN32)
     set(dst_dir "${DST}/third_party/install/protobuf")
     copy(
@@ -220,12 +226,6 @@ set(dst_dir "${PADDLE_INFERENCE_INSTALL_DIR}/third_party/threadpool")
 copy(
   inference_lib_dist
   SRCS ${THREADPOOL_INCLUDE_DIR}/ThreadPool.h
-  DSTS ${dst_dir})
-
-set(dst_dir "${PADDLE_INFERENCE_INSTALL_DIR}/third_party/pybind11")
-copy(
-  inference_lib_dist
-  SRCS ${PYBIND_INCLUDE_DIR}/pybind11/*
   DSTS ${dst_dir})
 
 # GPU must copy externalErrorMsg.pb
@@ -495,11 +495,11 @@ copy(
   SRCS ${DLPACK_INCLUDE_DIR}/dlpack
   DSTS ${dst_dir})
 
-set(dst_dir "${PADDLE_INSTALL_DIR}/third_party/pybind11")
-copy(
-  inference_lib_dist
-  SRCS ${PYBIND_INCLUDE_DIR}/pybind11/*
-  DSTS ${dst_dir})
+# set(dst_dir "${PADDLE_INSTALL_DIR}/third_party/pybind11")
+# copy(
+#   inference_lib_dist
+#   SRCS ${PYBIND_INCLUDE_DIR}/pybind11/*
+#   DSTS ${dst_dir})
 
 set(dst_dir "${PADDLE_INSTALL_DIR}/third_party/install/zlib")
 copy(
