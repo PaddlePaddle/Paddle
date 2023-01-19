@@ -1,4 +1,4 @@
-//   Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+//   Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -24,114 +24,110 @@
 namespace paddle {
 namespace operators {
 
-class MatMulV2Op : public framework::OperatorWithKernel {
- public:
-  using framework::OperatorWithKernel::OperatorWithKernel;
-  void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "matmul_v2");
-    OP_INOUT_CHECK(ctx->HasInput("Y"), "Input", "Y", "matmul_v2");
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "matmul_v2");
-    bool trans_x = ctx->Attrs().Get<bool>("trans_x");
-    bool trans_y = ctx->Attrs().Get<bool>("trans_y");
+void MatMulV2Op::InferShape(framework::InferShapeContext* ctx) const {
+  OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "matmul_v2");
+  OP_INOUT_CHECK(ctx->HasInput("Y"), "Input", "Y", "matmul_v2");
+  OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "matmul_v2");
+  bool trans_x = ctx->Attrs().Get<bool>("trans_x");
+  bool trans_y = ctx->Attrs().Get<bool>("trans_y");
 
-    std::vector<int64_t> dims_x = phi::vectorize(ctx->GetInputDim("X"));
-    std::vector<int64_t> dims_y = phi::vectorize(ctx->GetInputDim("Y"));
-    auto ndims_x = dims_x.size();
-    auto ndims_y = dims_y.size();
-    PADDLE_ENFORCE_GT(ndims_x,
-                      0,
-                      platform::errors::InvalidArgument(
-                          "The Input(X) dims size must be greater than 0,"
-                          " but received dims size is 0. "));
-    PADDLE_ENFORCE_GT(ndims_y,
-                      0,
-                      platform::errors::InvalidArgument(
-                          "The Input(Y) dims size must be greater than 0,"
-                          " but received dims size is 0. "));
+  std::vector<int64_t> dims_x = phi::vectorize(ctx->GetInputDim("X"));
+  std::vector<int64_t> dims_y = phi::vectorize(ctx->GetInputDim("Y"));
+  auto ndims_x = dims_x.size();
+  auto ndims_y = dims_y.size();
+  PADDLE_ENFORCE_GT(ndims_x,
+                    0,
+                    phi::errors::InvalidArgument(
+                        "The Input(X) dims size must be greater than 0,"
+                        " but received dims size is 0. "));
+  PADDLE_ENFORCE_GT(ndims_y,
+                    0,
+                    phi::errors::InvalidArgument(
+                        "The Input(Y) dims size must be greater than 0,"
+                        " but received dims size is 0. "));
 
-    bool x_broadcasted = false, y_broadcasted = false;
-    if (ndims_x == 1) {
-      dims_x.insert(dims_x.begin(), 1);
-      ndims_x = 2;
-      x_broadcasted = true;
-    }
+  bool x_broadcasted = false;
+  bool y_broadcasted = false;
 
-    if (ndims_y == 1) {
-      dims_y.push_back(1);
-      ndims_y = 2;
-      y_broadcasted = true;
-    }
-
-    size_t M, N;
-    if (trans_x) {
-      M = dims_x[ndims_x - 1];
-    } else {
-      M = dims_x[ndims_x - 2];
-    }
-    if (trans_y) {
-      N = dims_y[ndims_y - 2];
-    } else {
-      N = dims_y[ndims_y - 1];
-    }
-
-    std::vector<int64_t> new_dims;
-    if (ndims_x > ndims_y) {
-      new_dims.assign(dims_x.begin(), dims_x.end() - 2);
-    } else if (ndims_x < ndims_y) {
-      new_dims.assign(dims_y.begin(), dims_y.end() - 2);
-    } else {
-      new_dims.reserve(ndims_x);
-      for (size_t i = 0; i < ndims_x - 2; ++i) {
-        new_dims.push_back(std::max(dims_x[i], dims_y[i]));
-      }
-    }
-    if (!x_broadcasted) {
-      new_dims.push_back(M);
-    }
-    if (!y_broadcasted) {
-      new_dims.push_back(N);
-    }
-    if (x_broadcasted && y_broadcasted) {
-      new_dims.push_back(1);
-    }
-
-    ctx->SetOutputDim("Out", phi::make_ddim(new_dims));
-    ctx->ShareLoD("X", "Out");
+  if (ndims_x == 1) {
+    dims_x.insert(dims_x.begin(), 1);
+    ndims_x = 2;
+    x_broadcasted = true;
   }
 
- protected:
-  phi::KernelKey GetExpectedKernelType(
-      const framework::ExecutionContext& ctx) const override {
-    auto input_data_type =
-        OperatorWithKernel::IndicateOrPromoteVarDataTypes(ctx, "X", "Y");
-    return phi::KernelKey(input_data_type, ctx.GetPlace());
+  if (ndims_y == 1) {
+    dims_y.push_back(1);
+    ndims_y = 2;
+    y_broadcasted = true;
   }
 
-  phi::KernelKey GetKernelTypeForVar(
-      const std::string& var_name,
-      const phi::DenseTensor& tensor,
-      const phi::KernelKey& expected_kernel_type) const override {
-    if (framework::IsComplexType(expected_kernel_type.dtype())) {
-      // only promote inputs’s types when contains complex input
-      return phi::KernelKey(tensor.place(), tensor.layout(), tensor.dtype());
-    } else {
+  size_t M, N;
+  if (trans_x) {
+    M = dims_x[ndims_x - 1];
+  } else {
+    M = dims_x[ndims_x - 2];
+  }
+  if (trans_y) {
+    N = dims_y[ndims_y - 2];
+  } else {
+    N = dims_y[ndims_y - 1];
+  }
+
+  std::vector<int64_t> new_dims;
+  if (ndims_x > ndims_y) {
+    new_dims.assign(dims_x.begin(), dims_x.end() - 2);
+  } else if (ndims_x < ndims_y) {
+    new_dims.assign(dims_y.begin(), dims_y.end() - 2);
+  } else {
+    new_dims.reserve(ndims_x);
+    for (size_t i = 0; i < ndims_x - 2; ++i) {
+      new_dims.push_back(std::max(dims_x[i], dims_y[i]));
+    }
+  }
+  if (!x_broadcasted) {
+    new_dims.push_back(M);
+  }
+  if (!y_broadcasted) {
+    new_dims.push_back(N);
+  }
+  if (x_broadcasted && y_broadcasted) {
+    new_dims.push_back(1);
+  }
+
+  ctx->SetOutputDim("Out", phi::make_ddim(new_dims));
+  ctx->ShareLoD("X", "Out");
+}
+
+phi::KernelKey MatMulV2Op::GetExpectedKernelType(
+    const framework::ExecutionContext& ctx) const {
+  auto input_data_type =
+      OperatorWithKernel::IndicateOrPromoteVarDataTypes(ctx, "X", "Y");
+  return phi::KernelKey(input_data_type, ctx.GetPlace());
+}
+
+phi::KernelKey MatMulV2Op::GetKernelTypeForVar(
+    const std::string& var_name,
+    const phi::DenseTensor& tensor,
+    const phi::KernelKey& expected_kernel_type) const {
+  if (framework::IsComplexType(expected_kernel_type.dtype())) {
+    // only promote inputs’s types when contains complex input
+    return phi::KernelKey(tensor.place(), tensor.layout(), tensor.dtype());
+  } else {
 #ifdef PADDLE_WITH_MKLDNN
-      // When matmul_v2 is first oneDNN op in a chain (there was some non oneDNN
-      // op previously) then we also need to rotate shape NHWC -> NCWH
-      if ((expected_kernel_type.layout() == phi::DataLayout::ONEDNN) &&
-          (tensor.layout() != phi::DataLayout::ONEDNN) &&
-          phi::OneDNNContext::tls().get_cur_paddle_data_layout() ==
-              phi::DataLayout::kNHWC) {
-        return phi::KernelKey(tensor.place(),
-                              phi::DataLayout::kNHWC,
-                              expected_kernel_type.dtype());
-      }
-#endif
+    // When matmul_v2 is first oneDNN op in a chain (there was some non oneDNN
+    // op previously) then we also need to rotate shape NHWC -> NCWH
+    if ((expected_kernel_type.layout() == phi::DataLayout::ONEDNN) &&
+        (tensor.layout() != phi::DataLayout::ONEDNN) &&
+        phi::OneDNNContext::tls().get_cur_paddle_data_layout() ==
+            phi::DataLayout::kNHWC) {
       return phi::KernelKey(
-          tensor.place(), tensor.layout(), expected_kernel_type.dtype());
+          tensor.place(), phi::DataLayout::kNHWC, expected_kernel_type.dtype());
     }
+#endif
+    return phi::KernelKey(
+        tensor.place(), tensor.layout(), expected_kernel_type.dtype());
   }
-};
+}
 
 void MatMulV2OpMaker::Make() {
   AddInput("X", "tensor of shape (d0, d1 ... M, K)");

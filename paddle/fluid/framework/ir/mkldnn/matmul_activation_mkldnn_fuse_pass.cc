@@ -1,4 +1,4 @@
-// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -62,7 +62,6 @@ void MatmulActivationMkldnnFusePass::FuseMatmulAct(
         activation_out, activation_out, matmul_act_pattern);
 
     OpDesc* matmul_op = matmul->Op();
-    SetActivationAttrs(matmul->Op(), activation->Op(), act_type);
 
     matmul_op->SetType("fused_matmul");
     if (matmul_type == "matmul") {
@@ -70,6 +69,8 @@ void MatmulActivationMkldnnFusePass::FuseMatmulAct(
       matmul_op->SetAttr("trans_y", matmul_op->GetAttr("transpose_Y"));
       matmul_op->SetAttr("matmul_alpha", matmul_op->GetAttr("alpha"));
     }
+
+    SetActivationAttrs(matmul_op, activation->Op(), act_type);
     matmul_op->SetOutput("Out", {activation_out->Name()});
 
     IR_NODE_LINK_TO(matmul, activation_out);

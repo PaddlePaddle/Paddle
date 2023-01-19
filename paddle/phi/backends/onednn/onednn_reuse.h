@@ -1,4 +1,4 @@
-/* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -51,8 +51,6 @@ constexpr bool is_bfloat16() {
   return std::is_same<T, dtype::bfloat16>::value;
 }
 
-// TODO(Silv3S): remove dev_ctx and default values
-// after all fused operators are implemented.
 static void AppendActivation(const OneDNNContext& dev_ctx,
                              dnnl::post_ops& post_ops,  // NOLINT
                              float activation_scale = 1.0f,
