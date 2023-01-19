@@ -47,7 +47,6 @@ class TestPrimForward(unittest.TestCase):
     """
 
     def setUp(self):
-        core.set_prim_backward(False)
         paddle.seed(2022)
         self.x = paddle.randn([2, 4])
         self.x.stop_gradient = False
