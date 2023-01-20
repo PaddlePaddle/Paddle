@@ -21,7 +21,6 @@ from decorator_helper import prog_scope
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-import paddle.fluid.layers as layers
 from paddle.fluid import Program, program_guard
 from paddle.fluid.tests.unittests.op_test import OpTest, convert_float_to_uint16
 
@@ -289,7 +288,9 @@ class TestTransposeOpError(unittest.TestCase):
     def test_errors(self):
         paddle.enable_static()
         with program_guard(Program(), Program()):
-            x = fluid.layers.data(name='x', shape=[10, 5, 3], dtype='float64')
+            x = paddle.static.data(
+                name='x', shape=[-1, 10, 5, 3], dtype='float64'
+            )
 
             def test_x_Variable_check():
                 # the Input(x)'s type must be Variable
@@ -299,8 +300,8 @@ class TestTransposeOpError(unittest.TestCase):
 
             def test_x_dtype_check():
                 # the Input(x)'s dtype must be one of [bool, float16, float32, float64, int32, int64]
-                x1 = fluid.layers.data(
-                    name='x1', shape=[10, 5, 3], dtype='int8'
+                x1 = paddle.static.data(
+                    name='x1', shape=[-1, 10, 5, 3], dtype='int8'
                 )
                 paddle.transpose(x1, perm=[1, 0, 2])
 
@@ -520,7 +521,7 @@ class TestTransposeDoubleGradCheck(unittest.TestCase):
         eps = 0.005
         dtype = np.float32
 
-        data = layers.data('data', [2, 3, 4], False, dtype)
+        data = paddle.static.data('data', [2, 3, 4], dtype)
         data.persistable = True
         out = paddle.transpose(data, [1, 0, 2])
         data_arr = np.random.uniform(-1, 1, data.shape).astype(dtype)
@@ -551,7 +552,7 @@ class TestTransposeTripleGradCheck(unittest.TestCase):
         eps = 0.005
         dtype = np.float32
 
-        data = layers.data('data', [2, 3, 4], False, dtype)
+        data = paddle.static.data('data', [2, 3, 4], dtype)
         data.persistable = True
         out = paddle.transpose(data, [1, 0, 2])
         data_arr = np.random.uniform(-1, 1, data.shape).astype(dtype)
