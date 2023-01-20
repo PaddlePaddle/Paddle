@@ -40,7 +40,7 @@ def get_usr_combined_features():
 
     USR_DICT_SIZE = paddle.dataset.movielens.max_user_id() + 1
 
-    uid = layers.data(name='user_id', shape=[1], dtype='int64')
+    uid = paddle.static.data(name='user_id', shape=[-1, 1], dtype='int64')
 
     usr_emb = layers.embedding(
         input=uid,
@@ -54,7 +54,9 @@ def get_usr_combined_features():
 
     USR_GENDER_DICT_SIZE = 2
 
-    usr_gender_id = layers.data(name='gender_id', shape=[1], dtype='int64')
+    usr_gender_id = paddle.static.data(
+        name='gender_id', shape=[-1, 1], dtype='int64'
+    )
 
     usr_gender_emb = layers.embedding(
         input=usr_gender_id,
@@ -66,7 +68,7 @@ def get_usr_combined_features():
     usr_gender_fc = paddle.static.nn.fc(x=usr_gender_emb, size=16)
 
     USR_AGE_DICT_SIZE = len(paddle.dataset.movielens.age_table)
-    usr_age_id = layers.data(name='age_id', shape=[1], dtype="int64")
+    usr_age_id = paddle.static.data(name='age_id', shape=[-1, 1], dtype="int64")
 
     usr_age_emb = layers.embedding(
         input=usr_age_id,
@@ -78,7 +80,7 @@ def get_usr_combined_features():
     usr_age_fc = paddle.static.nn.fc(x=usr_age_emb, size=16)
 
     USR_JOB_DICT_SIZE = paddle.dataset.movielens.max_job_id() + 1
-    usr_job_id = layers.data(name='job_id', shape=[1], dtype="int64")
+    usr_job_id = paddle.static.data(name='job_id', shape=[-1, 1], dtype="int64")
 
     usr_job_emb = layers.embedding(
         input=usr_job_id,
@@ -104,7 +106,7 @@ def get_mov_combined_features():
 
     MOV_DICT_SIZE = paddle.dataset.movielens.max_movie_id() + 1
 
-    mov_id = layers.data(name='movie_id', shape=[1], dtype='int64')
+    mov_id = paddle.static.data(name='movie_id', shape=[-1, 1], dtype='int64')
 
     mov_emb = layers.embedding(
         input=mov_id,
@@ -118,8 +120,8 @@ def get_mov_combined_features():
 
     CATEGORY_DICT_SIZE = len(paddle.dataset.movielens.movie_categories())
 
-    category_id = layers.data(
-        name='category_id', shape=[1], dtype='int64', lod_level=1
+    category_id = paddle.static.data(
+        name='category_id', shape=[-1, 1], dtype='int64', lod_level=1
     )
 
     mov_categories_emb = layers.embedding(
@@ -132,8 +134,8 @@ def get_mov_combined_features():
 
     MOV_TITLE_DICT_SIZE = len(paddle.dataset.movielens.get_movie_title_dict())
 
-    mov_title_id = layers.data(
-        name='movie_title', shape=[1], dtype='int64', lod_level=1
+    mov_title_id = paddle.static.data(
+        name='movie_title', shape=[-1, 1], dtype='int64', lod_level=1
     )
 
     mov_title_emb = layers.embedding(
@@ -170,7 +172,7 @@ def model():
     )
     scale_infer = paddle.scale(x=inference, scale=5.0)
 
-    label = layers.data(name='score', shape=[1], dtype='float32')
+    label = paddle.static.data(name='score', shape=[-1, 1], dtype='float32')
     square_cost = paddle.nn.functional.square_error_cost(
         input=scale_infer, label=label
     )

@@ -107,8 +107,12 @@ class TestSequenceReverseOpError(unittest.TestCase):
 
         def test_dtype():
             # dtype must be 'float32', 'float64', 'int8', 'int32', 'int64'
-            x2_data = fluid.layers.data(name='x2', shape=[4], dtype='float16')
+
+            x2_data = paddle.static.data(
+                name='x2', shape=[-1, 4], dtype='float16'
+            )
             paddle.static.nn.sequence_lod.sequence_reverse(x=x2_data)
+
 
         self.assertRaises(TypeError, test_dtype)
 

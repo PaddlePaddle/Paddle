@@ -67,12 +67,8 @@ class EntryAttrChecks(unittest.TestCase):
 
         with fluid.scope_guard(scope):
             with fluid.program_guard(prog):
-                input = fluid.layers.data(
-                    name="dnn_data",
-                    shape=[-1, 1],
-                    dtype="int64",
-                    lod_level=1,
-                    append_batch_size=False,
+                input = paddle.static.data(
+                    name="dnn_data", shape=[-1, 1], dtype="int64", lod_level=1
                 )
                 prob = ProbabilityEntry(0.5)
                 emb = paddle.static.nn.sparse_embedding(
