@@ -297,7 +297,7 @@ void AddNInferMeta(const std::vector<const MetaTensor*>& x,
   if (N == 1) {
     VLOG(3) << "Warning: SumOp have only one input, may waste memory";
   }
-
+  bool is_all_0d_tensor = true;
   phi::DDim in_dim({0});
   for (size_t i = 0; i < x.size(); ++i) {
     auto x_dim = x[i]->dims();
@@ -313,6 +313,7 @@ void AddNInferMeta(const std::vector<const MetaTensor*>& x,
     if (x_dim.size() == 0) {
       continue;
     }
+    is_all_0d_tensor = false;
     if (phi::product(in_dim) == 0) {
       in_dim = x_dim;
     } else {
@@ -360,7 +361,11 @@ void AddNInferMeta(const std::vector<const MetaTensor*>& x,
       }
     }
   }
-  out->set_dims(in_dim);
+  if (is_all_0d_tensor) {
+    out->set_dims(make_ddim({}));
+  } else {
+    out->set_dims(in_dim);
+  }
   out->share_lod(*x[0]);
 }
 

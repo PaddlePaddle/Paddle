@@ -871,6 +871,18 @@
   kernel :
     func : npu_identity
 
+- op : numel
+  args : (Tensor x)
+  output : Tensor(size)
+  infer_meta :
+    func : NumelInferMeta
+  kernel :
+    func : numel
+    data_type : x
+  data_transform:
+    skip_transform : x
+  no_need_buffer : x
+
 - op : overlap_add
   args: (Tensor x, int hop_length, int axis=-1)
   output: Tensor
@@ -1029,6 +1041,28 @@
     func : selu
   backward : selu_grad
 
+- op : send_u_recv
+  args : (Tensor x, Tensor src_index, Tensor dst_index, str reduce_op = "SUM", IntArray out_size = {0})
+  output : Tensor(out), Tensor(dst_count)
+  infer_meta :
+    func : SendURecvInferMeta
+  kernel :
+    func : send_u_recv
+    data_type : x
+  intermediate : dst_count
+  backward : send_u_recv_grad
+
+- op : send_ue_recv
+  args : (Tensor x, Tensor y, Tensor src_index, Tensor dst_index, str message_op="ADD", str reduce_op="SUM", IntArray out_size={0})
+  output : Tensor(out), Tensor(dst_count)
+  infer_meta :
+    func : SendUERecvInferMeta
+  kernel :
+    func : send_ue_recv
+    data_type : x
+  intermediate : dst_count
+  backward : send_ue_recv_grad
+
 - op : send_uv
   args : (Tensor x, Tensor y, Tensor src_index, Tensor dst_index, str message_op = "ADD")
   output : Tensor(out)
@@ -1082,6 +1116,15 @@
   kernel :
     func : sinh
   backward : sinh_grad
+
+- op : slogdet
+  args : (Tensor x)
+  output : Tensor
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel :
+    func : slogdet
+  backward : slogdet_grad
 
 - op : softplus
   args : (Tensor x, float beta = 1.0, float threshold = 20.0f)

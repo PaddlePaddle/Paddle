@@ -31,18 +31,16 @@ class TestMultiheadAttention(unittest.TestCase):
 
     def set_program(self):
         """Build the test program."""
-        queries = fluid.layers.data(
+        queries = paddle.static.data(
             name="queries",
             shape=self.input_shape,
             dtype="float32",
-            append_batch_size=False,
         )
         queries.stop_gradient = False
-        keys = fluid.layers.data(
+        keys = paddle.static.data(
             name="keys",
             shape=self.input_shape,
             dtype="float32",
-            append_batch_size=False,
         )
         keys.stop_gradient = False
 
