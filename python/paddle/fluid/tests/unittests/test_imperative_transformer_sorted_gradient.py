@@ -221,14 +221,13 @@ def make_all_inputs(input_fields):
     """
     inputs = []
     for input_field in input_fields:
-        input_var = fluid.layers.data(
+        input_var = paddle.static.data(
             name=input_field,
             shape=input_descs[input_field][0],
             dtype=input_descs[input_field][1],
             lod_level=input_descs[input_field][2]
             if len(input_descs[input_field]) == 3
             else 0,
-            append_batch_size=False,
         )
         inputs.append(input_var)
     return inputs
