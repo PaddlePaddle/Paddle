@@ -433,10 +433,8 @@ class TestSeqConvApi(unittest.TestCase):
     def test_api(self):
         import paddle.fluid as fluid
 
-
         x = paddle.static.data('x', shape=[-1, 32], lod_level=1)
         y = paddle.static.nn.sequence_lod.sequence_conv(
-
             input=x, num_filters=2, filter_size=3, padding_start=None
         )
 
