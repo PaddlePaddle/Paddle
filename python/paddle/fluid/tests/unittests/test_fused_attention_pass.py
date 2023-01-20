@@ -159,6 +159,10 @@ class TestFusedAttentionPass(unittest.TestCase):
         ops = main_prog.global_block().ops
         assert ops[2].type == 'reduce_mean'
         assert ops[4].type == 'reduce_mean_grad'
+        # two ops for linear, one op for reduce mean
+        # one fill constant
+        # one op for reduce mean grad, two ops for linear bwd
+        # the eighth op should be the optimizer
         assert ops[7].type == 'sgd'
 
 
