@@ -36,6 +36,7 @@ cc_library(
        interceptor.cc
        compute_interceptor.cc
        amplifier_interceptor.cc
+       cond_interceptor.cc
        source_interceptor.cc
        sink_interceptor.cc
        message_service.cc
@@ -66,6 +67,8 @@ if(WITH_DISTRIBUTE)
   set_source_files_properties(
     amplifier_interceptor.cc PROPERTIES COMPILE_FLAGS
                                         ${DISTRIBUTE_COMPILE_FLAGS})
+  set_source_files_properties(
+    cond_interceptor.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
   set_source_files_properties(
     source_interceptor.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
   set_source_files_properties(
