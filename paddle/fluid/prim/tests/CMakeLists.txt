@@ -19,7 +19,7 @@ set(prim_generated_deps final_dygraph_function final_dygraph_node
                         dygraph_function dygraph_node)
 
 cc_test_old(
-  test_static_prim
+  test_comp_static
   SRCS
   test_static_prim.cc
   DEPS
@@ -37,7 +37,7 @@ cc_test_old(
 
 if(NOT (NOT WITH_PYTHON AND ON_INFER))
   cc_test_old(
-    test_eager_prim
+    test_comp_eager
     SRCS
     test_eager_prim.cc
     DEPS
