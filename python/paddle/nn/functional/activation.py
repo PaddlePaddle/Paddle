@@ -495,12 +495,11 @@ def prelu(x, weight, data_format="NCHW", name=None):
             #    [ 6.  ,  7.  ,  8.  ,  9.  ]]]]
     """
     assert (
-        len(weight.shape) == 1
-    ), "The dim count of weight shape should be 1 in prelu()."
+        len(weight.shape) == 0 or len(weight.shape) == 1
+    ), "The dim count of weight shape should be 0 or 1 in prelu()."
 
     mode = 'all'
-    if weight.shape[0] > 1:
-
+    if len(weight.shape) == 1 and weight.shape[0] > 1:
         true_data_format = [
             'NC',
             'NCL',
