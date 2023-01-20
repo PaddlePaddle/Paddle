@@ -1296,7 +1296,7 @@ def t(input, name=None):
             "tensor.transpose() instead." % len(input.shape)
         )
     if in_dygraph_mode():
-        if len(input.shape) == 1:
+        if len(input.shape) <= 1:
             return input
         # 2-D tensor
         perm = [1, 0]
@@ -1313,7 +1313,7 @@ def t(input, name=None):
         helper = LayerHelper('t', **locals())
         out = helper.create_variable_for_type_inference(input.dtype)
         input_shape = helper.create_variable_for_type_inference(input.dtype)
-        if len(input.shape) == 1:
+        if len(input.shape) <= 1:
             out = input
         else:
             helper.append_op(

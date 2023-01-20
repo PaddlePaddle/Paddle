@@ -329,7 +329,7 @@ def _pull_sparse(
         .. code-block:: python
 
           import paddle.fluid as fluid
-          data = fluid.layers.data(name='sequence', shape=[1], dtype='int64', lod_level=1)
+          data = paddle.static.data(name='sequence', shape=[-1, 1], dtype='int64', lod_level=1)
           emb = fluid.layers.nn._pull_sparse(
               input=data, size=11, table_id=0, accessor_class="DownpourCtrAccessor")
     """
@@ -403,7 +403,7 @@ def _pull_sparse_v2(
         .. code-block:: python
 
           import paddle.fluid as fluid
-          data = fluid.layers.data(name='sequence', shape=[1], dtype='int64', lod_level=1)
+          data = paddle.static.data(name='sequence', shape=[-1, 1], dtype='int64', lod_level=1)
           emb = fluid.layers.nn._pull_sparse_v2(
               input=data, size=11, table_id=0, accessor_class="DownpourCtrAccessor")
     """
@@ -464,9 +464,9 @@ def _pull_gpups_sparse(
 
           import paddle.fluid as fluid
           slots = []
-          data_1 = fluid.layers.data(name='sequence', shape=[1], dtype='int64', lod_level=1)
+          data_1 = paddle.static.data(name='sequence', shape=[-1,1], dtype='int64', lod_level=1)
           slots.append(data_1)
-          data_2 = fluid.layers.data(name='sequence', shape=[1], dtype='int64', lod_level=1)
+          data_2 = paddle.static.data(name='sequence', shape=[-1,1], dtype='int64', lod_level=1)
           slots.append(data_2)
           embs = fluid.layers.pull_gpups_sparse(input=slots, size=[11, 35])
     """
@@ -526,7 +526,7 @@ def _pull_box_sparse(
         .. code-block:: python
 
           import paddle.fluid as fluid
-          data = fluid.layers.data(name='sequence', shape=[1], dtype='int64', lod_level=1)
+          data = paddle.static.data(name='sequence', shape=[-1,1], dtype='int64', lod_level=1)
           emb = fluid.layers.pull_box_sparse(input=data, size=[11])
     """
     helper = LayerHelper('pull_box_sparse', **locals())
@@ -711,7 +711,7 @@ def unsqueeze(input, axes, name=None):
         .. code-block:: python
 
             import paddle.fluid as fluid
-            x = fluid.layers.data(name='x', shape=[5, 10])
+            x = paddle.static.data(name='x', shape=[-1, 5, 10], dtype="float32")
             y = fluid.layers.unsqueeze(input=x, axes=[1])
 
     """
