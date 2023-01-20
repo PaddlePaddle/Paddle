@@ -1,4 +1,4 @@
-// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,50 +20,17 @@
 namespace phi {
 
 template <typename T, typename Context>
-void BitwiseAndKernel(const Context& ctx,
-                      const DenseTensor& x,
-                      const DenseTensor& y,
-                      DenseTensor* out) {
-  ctx.template Alloc<T>(out);
-  int r = xpu::logical_and(
-      ctx.x_context(), x.data<T>(), y.data<T>(), out->data<T>(), x.numel());
-  PADDLE_ENFORCE_XDNN_SUCCESS(r, "bitwise and");
-}
-
-template <typename T, typename Context>
-void BitwiseOrKernel(const Context& ctx,
-                     const DenseTensor& x,
-                     const DenseTensor& y,
-                     DenseTensor* out) {
-  ctx.template Alloc<T>(out);
-  int r = xpu::logical_or(
-      ctx.x_context(), x.data<T>(), y.data<T>(), out->data<T>(), x.numel());
-  PADDLE_ENFORCE_XDNN_SUCCESS(r, "bitwise or");
-}
-
-template <typename T, typename Context>
-void BitwiseXorKernel(const Context& ctx,
-                      const DenseTensor& x,
-                      const DenseTensor& y,
-                      DenseTensor* out) {
-  ctx.template Alloc<T>(out);
-  int r = xpu::logical_xor(
-      ctx.x_context(), x.data<T>(), y.data<T>(), out->data<T>(), x.numel());
-  PADDLE_ENFORCE_XDNN_SUCCESS(r, "bitwise xor");
-}
-
-template <typename T, typename Context>
 void BitwiseNotKernel(const Context& ctx,
                       const DenseTensor& x,
                       DenseTensor* out) {
+  using XPUDataType = typename XPUTypeTrait<T>::Type;
   ctx.template Alloc<T>(out);
-  int r =
-      xpu::logical_not(ctx.x_context(), x.data<T>(), out->data<T>(), x.numel());
+  int r = xpu::logical_not(ctx.x_context(),
+                           reinterpret_cast<const XPUDataType*>(x.data<T>()),
+                           reinterpret_cast<XPUDataType*>(out->data<T>()),
+                           x.numel());
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "bitwise not");
 }
 }  // namespace phi
 
-PD_REGISTER_KERNEL(bitwise_and, XPU, ALL_LAYOUT, phi::BitwiseAndKernel, bool) {}
-PD_REGISTER_KERNEL(bitwise_or, XPU, ALL_LAYOUT, phi::BitwiseOrKernel, bool) {}
-PD_REGISTER_KERNEL(bitwise_xor, XPU, ALL_LAYOUT, phi::BitwiseXorKernel, bool) {}
 PD_REGISTER_KERNEL(bitwise_not, XPU, ALL_LAYOUT, phi::BitwiseNotKernel, bool) {}

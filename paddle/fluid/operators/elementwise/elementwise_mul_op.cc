@@ -88,6 +88,7 @@ class ElementwiseMulGradCompositeOpMaker
         static_cast<int>(this->Attr<int>("axis")),
         x_grad_p,
         y_grad_p);
+    VLOG(3) << "Runing mul_grad composite func";
     this->RecoverOutputName(x_grad, x_grad_name);
     this->RecoverOutputName(y_grad, y_grad_name);
   }

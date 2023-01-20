@@ -21,8 +21,10 @@ import paddle.fluid as fluid
 class TestFuseBatchNormActPass(unittest.TestCase):
     def build_program(self, main_program, startup_program, use_cuda, seed=1):
         with fluid.program_guard(main_program, startup_program):
-            x = fluid.layers.data(name='x', shape=[1, 28, 28], dtype='float32')
-            y = fluid.layers.data(name="y", shape=[1], dtype='int64')
+            x = paddle.static.data(
+                name='x', shape=[-1, 1, 28, 28], dtype='float32'
+            )
+            y = paddle.static.data(name="y", shape=[-1, 1], dtype='int64')
             hidden1 = paddle.static.nn.conv2d(
                 input=x,
                 filter_size=3,
