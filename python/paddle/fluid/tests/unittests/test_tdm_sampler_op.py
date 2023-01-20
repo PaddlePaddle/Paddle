@@ -267,7 +267,9 @@ class TestCase7(TestTDMSamplerOp):
 
 class TestTDMSamplerShape(unittest.TestCase):
     def test_shape(self):
-        x = fluid.layers.data(name='x', shape=[1], dtype='int32', lod_level=1)
+        x = paddle.static.data(
+            name='x', shape=[-1, 1], dtype='int32', lod_level=1
+        )
         tdm_tree_travel = create_tdm_travel()
         tdm_tree_layer = create_tdm_layer()
         layer_node_num_list = [len(i) for i in tdm_tree_layer]

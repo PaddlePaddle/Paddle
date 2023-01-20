@@ -705,31 +705,27 @@ class TestPool2DAPI(unittest.TestCase):
         x_NHWC = np.random.random([2, 5, 5, 3]).astype("float32")
         x_NCHW = np.random.random([2, 3, 5, 5]).astype("float32")
 
-        input_NHWC = fluid.layers.data(
+        input_NHWC = paddle.static.data(
             name="input_NHWC",
             shape=[2, 5, 5, 3],
-            append_batch_size=False,
             dtype="float32",
         )
 
-        input_NCHW = fluid.layers.data(
+        input_NCHW = paddle.static.data(
             name="input_NCHW",
             shape=[2, 3, 5, 5],
-            append_batch_size=False,
             dtype="float32",
         )
 
-        input_NHWC_negetive = fluid.layers.data(
+        input_NHWC_negetive = paddle.static.data(
             name="input_NHWC_negetive",
             shape=[2, -1, 5, 3],
-            append_batch_size=False,
             dtype="float32",
         )
 
-        input_NCHW_negetive = fluid.layers.data(
+        input_NCHW_negetive = paddle.static.data(
             name="input_NCHW_negetive",
             shape=[2, 3, -1, -1],
-            append_batch_size=False,
             dtype="float32",
         )
 
@@ -930,10 +926,9 @@ class TestPool2DAPI(unittest.TestCase):
 
 class TestPool2DAPI_Error(unittest.TestCase):
     def test_api(self):
-        input_NHWC = fluid.layers.data(
+        input_NHWC = paddle.static.data(
             name="input_NHWC",
             shape=[2, 5, 5, 3],
-            append_batch_size=False,
             dtype="float32",
         )
         ksize = [3, 3]

@@ -157,7 +157,7 @@ func (config *Config) UseFcPadding() bool {
 /// \param deviceId the GPU card to use.
 ///
 func (config *Config) EnableUseGpu(memorySize uint64, deviceId int32) {
-	C.PD_ConfigEnableUseGpu(config.c, C.uint64_t(memorySize), C.int32_t(deviceId))
+	C.PD_ConfigEnableUseGpu(config.c, C.uint64_t(memorySize), C.int32_t(deviceId), 0)
 }
 
 ///

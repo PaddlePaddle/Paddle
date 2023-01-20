@@ -191,6 +191,18 @@ class AnalysisPredictor : public PaddlePredictor {
   /// \return the map of input names and type
   ///
   std::map<std::string, paddle_infer::DataType> GetInputTypes() override;
+  ///
+  /// \brief Get all output names and their corresponding shapes
+  ///
+  /// \return the map of output names and shapes
+  ///
+  std::map<std::string, std::vector<int64_t>> GetOutputTensorShape() override;
+  ///
+  /// \brief Get all output names and their corresponding type
+  ///
+  /// \return the map of output names and type
+  ///
+  std::map<std::string, paddle_infer::DataType> GetOutputTypes() override;
 
   ///
   /// \brief Run the prediction engine

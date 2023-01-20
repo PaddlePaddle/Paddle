@@ -24,8 +24,8 @@ import paddle.fluid.core as core
 
 
 def simple_fc_net(use_feed):
-    img = fluid.layers.data(name='image', shape=[784], dtype='float32')
-    label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+    img = paddle.static.data(name='image', shape=[-1, 784], dtype='float32')
+    label = paddle.static.data(name='label', shape=[-1, 1], dtype='int64')
     hidden = img
     for _ in range(4):
         hidden = paddle.static.nn.fc(
@@ -45,8 +45,8 @@ def simple_fc_net(use_feed):
 
 
 def fc_with_batchnorm(use_feed):
-    img = fluid.layers.data(name='image', shape=[784], dtype='float32')
-    label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+    img = paddle.static.data(name='image', shape=[-1, 784], dtype='float32')
+    label = paddle.static.data(name='label', shape=[-1, 1], dtype='int64')
 
     hidden = img
     for _ in range(1):

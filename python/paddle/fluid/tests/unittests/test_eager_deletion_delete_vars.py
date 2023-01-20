@@ -32,8 +32,8 @@ fluid.core._set_eager_deletion_mode(0.0, 1.0, True)
 
 
 def simple_fc_net():
-    image = fluid.layers.data(name='image', shape=[784], dtype='float32')
-    label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+    image = paddle.static.data(name='image', shape=[-1, 784], dtype='float32')
+    label = paddle.static.data(name='label', shape=[-1, 1], dtype='int64')
     hidden = image
     for _ in range(4):
         hidden = paddle.static.nn.fc(
