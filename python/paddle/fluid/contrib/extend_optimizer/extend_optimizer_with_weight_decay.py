@@ -96,7 +96,7 @@ class DecoupledWeightDecay:
                 [param, grad]
             ), framework.name_scope('weight decay'):
                 updated_param = paddle.subtract(x=param, y=scaled_param)
-                paddle.assign(input=updated_param, output=param)
+                paddle.assign(updated_param, param)
 
         optimize_ops = self.apply_optimize(
             loss=loss,
