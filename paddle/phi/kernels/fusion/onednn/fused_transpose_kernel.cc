@@ -12,21 +12,71 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/transpose_kernel.h"
 #include "paddle/phi/backends/onednn/onednn_reuse.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/transpose_kernel.h"
 
 namespace phi {
 
+void SetInMemDescWithSqueeze2FuseSupport(
+    const std::vector<int> fused_squeeze2_axes,
+    DenseTensor* in,
+    const dnnl::memory::desc& in_md) {
+  const std::set<int64_t> squeeze2_axes_set(fused_squeeze2_axes.begin(),
+                                            fused_squeeze2_axes.end());
+  const std::vector<int64_t>& x_vec_dims = in_md.dims();
+  std::vector<int64_t> squeezed_op_tz(
+      x_vec_dims.size() - fused_squeeze2_axes.size(), 0);
+
+  int j = 0;
+  for (size_t i = 0; i < x_vec_dims.size(); ++i) {
+    if (squeeze2_axes_set.count(i) ||
+        squeeze2_axes_set.count(i - x_vec_dims.size())) {
+      PADDLE_ENFORCE_EQ(
+          x_vec_dims[i],
+          1,
+          errors::InvalidArgument(
+              "Squeeze2 input dim %d should be equal to one, but get %d.",
+              i,
+              x_vec_dims[i]));
+      continue;
+    }
+    squeezed_op_tz[j++] = x_vec_dims[i];
+  }
+
+  in->set_mem_desc(in_md.reshape(squeezed_op_tz));
+  in->Resize(make_ddim(squeezed_op_tz));
+}
+
+void SetInMemDescWithLogicalLayoutFusesSupport(
+    const OneDNNContext& dev_ctx,
+    DenseTensor* in,
+    const dnnl::memory::desc& in_md) {
+  const auto fused_squeeze2_axes =
+      dev_ctx.HasDnnAttr("fused_squeeze2_axes")
+          ? PADDLE_GET_CONST(std::vector<int>,
+                             dev_ctx.GetDnnAttr("fused_squeeze2_axes"))
+          : std::vector<int>();
+  if (fused_squeeze2_axes.empty()) {
+    in->set_mem_desc(in_md);
+    in->Resize(make_ddim(in_md.dims()));
+  } else {
+    SetInMemDescWithSqueeze2FuseSupport(fused_squeeze2_axes, in, in_md);
+  }
+}
+
 template <typename T, typename Context>
-void TransposeKernel(const Context& dev_ctx,
-                     const DenseTensor& x,
-                     const std::vector<int>& axis,
-                     DenseTensor* out) {
+void FusedTransposeKernel(const Context& dev_ctx,
+                          const DenseTensor& x,
+                          const std::vector<int>& axis,
+                          DenseTensor* out) {
   PADDLE_ENFORCE_EQ(
       dev_ctx.GetPlace().GetType(),
       AllocationType::CPU,
       errors::PreconditionNotMet("oneDNN Transpose kernel must use CPUPlace"));
+
+  SetInMemDescWithLogicalLayoutFusesSupport(
+      dev_ctx, const_cast<DenseTensor*>(&x), x.mem_desc());
 
   if (axis.size() == 1) {
     Copy<Context>(dev_ctx, x, x.place(), false, out);
@@ -66,15 +116,18 @@ void TransposeKernel(const Context& dev_ctx,
   reorder_p->execute(astream, *reorder_src_memory_p, *reorder_dst_memory_p);
   astream.wait();
 
-  out->set_mem_desc(reorder_dst_memory_p->get_desc().permute_axes(
-      funcs::TransposeToPermuteAxes(axis)));
+  funcs::SetOutMemDescWithLogicalLayoutFusesSupport(
+      dev_ctx,
+      out,
+      reorder_dst_memory_p->get_desc().permute_axes(
+          funcs::TransposeToPermuteAxes(axis)));
 }
 }  // namespace phi
 
-PD_REGISTER_KERNEL(transpose,
+PD_REGISTER_KERNEL(fused_transpose,
                    OneDNN,
                    ONEDNN,
-                   phi::TransposeKernel,
+                   phi::FusedTransposeKernel,
                    float,
                    uint8_t,
                    int8_t,
