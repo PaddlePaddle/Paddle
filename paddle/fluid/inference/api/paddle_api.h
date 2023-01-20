@@ -243,6 +243,19 @@ class PD_INFER_DECL PaddlePredictor {
   /// \return Output tensor names.
   virtual std::vector<std::string> GetOutputNames() { return {}; }
 
+  /// \brief Get the output shape of the model.
+  /// \return A map contains all the output names and shape defined in the
+  /// model.
+  virtual std::map<std::string, std::vector<int64_t>> GetOutputTensorShape() {
+    return {};
+  }
+
+  /// \brief Get the output type of the model.
+  /// \return A map contains all the output names and type defined in the model.
+  virtual std::map<std::string, paddle_infer::DataType> GetOutputTypes() {
+    return {};
+  }
+
   /// \brief Get the input ZeroCopyTensor by name.
   /// Be inherited by AnalysisPredictor, Only used in ZeroCopy scenarios.
   /// The name is obtained from the GetInputNames() interface.

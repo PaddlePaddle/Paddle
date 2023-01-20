@@ -134,10 +134,12 @@ class TestWeightDecay(unittest.TestCase):
         startup_prog = fluid.framework.Program()
 
         with prog_scope_guard(main_prog=main_prog, startup_prog=startup_prog):
-            data = fluid.layers.data(
-                name="words", shape=[1], dtype="int64", lod_level=1
+            data = paddle.static.data(
+                name="words", shape=[-1, 1], dtype="int64", lod_level=1
             )
-            label = fluid.layers.data(name="label", shape=[1], dtype="int64")
+            label = paddle.static.data(
+                name="label", shape=[-1, 1], dtype="int64"
+            )
             avg_cost = model(data, label, self.word_dict_len)
             AdamW = fluid.contrib.extend_with_decoupled_weight_decay(
                 fluid.optimizer.Adam
@@ -158,10 +160,12 @@ class TestWeightDecay(unittest.TestCase):
         startup_prog = fluid.framework.Program()
 
         with prog_scope_guard(main_prog=main_prog, startup_prog=startup_prog):
-            data = fluid.layers.data(
-                name="words", shape=[1], dtype="int64", lod_level=1
+            data = paddle.static.data(
+                name="words", shape=[-1, 1], dtype="int64", lod_level=1
             )
-            label = fluid.layers.data(name="label", shape=[1], dtype="int64")
+            label = paddle.static.data(
+                name="label", shape=[-1, 1], dtype="int64"
+            )
 
             avg_cost = model(data, label, self.word_dict_len)
 

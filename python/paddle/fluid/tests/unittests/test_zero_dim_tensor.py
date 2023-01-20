@@ -84,6 +84,9 @@ unary_api_list = [
     paddle.poisson,
     paddle.bernoulli,
     paddle.median,
+    paddle.nn.functional.softmax,
+    paddle.nn.functional.log_softmax,
+    paddle.nn.functional.gumbel_softmax,
 ]
 
 inplace_api_list = [
@@ -1430,6 +1433,26 @@ class TestSundryAPI(unittest.TestCase):
         self.assertEqual(out.grad.shape, [])
         self.assertEqual(x.grad.shape, [])
 
+    def test_prelu(self):
+        x = paddle.full([], 1.0, 'float32')
+        x.stop_gradient = False
+
+        w1 = paddle.to_tensor([0.25], dtype='float32')
+        out1 = paddle.nn.functional.prelu(x, w1)
+        out1.retain_grads()
+        out1.backward()
+        self.assertEqual(out1.shape, [])
+        self.assertEqual(out1.grad.shape, [])
+        self.assertEqual(x.grad.shape, [])
+
+        w2 = paddle.full([], 0.25, dtype='float32')
+        out2 = paddle.nn.functional.prelu(x, w2)
+        out2.retain_grads()
+        out2.backward()
+        self.assertEqual(out2.shape, [])
+        self.assertEqual(out1.grad.shape, [])
+        self.assertEqual(x.grad.shape, [])
+
 
 class TestSundryAPIStatic(unittest.TestCase):
     def setUp(self):
@@ -2282,6 +2305,53 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(res[1].shape, ())
         self.assertEqual(res[2].shape, ())
 
+    def test_prelu(self):
+        x1 = paddle.full([], 1.0, 'float32')
+        x1.stop_gradient = False
+        w1 = paddle.to_tensor([0.25], dtype='float32')
+        out1 = paddle.nn.functional.prelu(x1, w1)
+        paddle.static.append_backward(out1.sum())
+
+        x2 = paddle.full([], 1.0, 'float32')
+        x2.stop_gradient = False
+        w2 = paddle.full([], 0.25, dtype='float32')
+        out2 = paddle.nn.functional.prelu(x2, w2)
+        paddle.static.append_backward(out2.sum())
+
+        prog = paddle.static.default_main_program()
+        res = self.exe.run(
+            prog,
+            fetch_list=[
+                out1,
+                out2,
+                x1.grad_name,
+                x2.grad_name,
+                out1.grad_name,
+                out2.grad_name,
+            ],
+        )
+        self.assertEqual(res[0].shape, ())
+        self.assertEqual(res[1].shape, ())
+        self.assertEqual(res[2].shape, ())
+        self.assertEqual(res[3].shape, ())
+        self.assertEqual(res[4].shape, ())
+        self.assertEqual(res[5].shape, ())
+
+    @prog_scope()
+    def test_sequence_pad(self):
+        x = paddle.static.data("x", [-1, 2], dtype=paddle.int64, lod_level=1)
+        value = paddle.to_tensor(1000, dtype=paddle.int64).squeeze()
+        out = paddle.static.nn.sequence_pad(x, value)
+
+        x_tensor = paddle.fluid.create_lod_tensor(
+            np.arange(20).astype(np.int64).reshape(-1, 2),
+            [[3, 3, 4]],
+            place=self.exe.place,
+        )
+        prog = paddle.static.default_main_program()
+        res = self.exe.run(prog, feed={"x": x_tensor}, fetch_list=[out])
+        self.assertEqual(res[0].shape, (3, 4, 2))
+
 
 # Use to test API whose zero-dim input tensors don't have grad and not need to test backward in OpTest.
 class TestNoBackwardAPI(unittest.TestCase):
@@ -2631,6 +2701,178 @@ class TestNoBackwardAPIStatic(unittest.TestCase):
 
         self.assertEqual(res[0].shape, (4,))
         self.assertEqual(res[0][2], 1)
+
+
+unary_apis_with_complex_input = [
+    paddle.real,
+    paddle.imag,
+    paddle.angle,
+    paddle.conj,
+]
+
+
+class TestUnaryElementwiseAPIWithComplexInput(unittest.TestCase):
+    def test_dygraph_unary(self):
+        paddle.disable_static()
+        for api in unary_apis_with_complex_input:
+            x = paddle.to_tensor(2.0 + 3.0j).squeeze()
+            x.stop_gradient = False
+            x.retain_grads()
+            out = api(x)
+            out.retain_grads()
+            out.backward()
+
+            self.assertEqual(x.shape, [])
+            self.assertEqual(out.shape, [])
+            if x.grad is not None:
+                self.assertEqual(x.grad.shape, [])
+                self.assertEqual(out.grad.shape, [])
+
+        paddle.enable_static()
+
+    def test_static_unary(self):
+        paddle.enable_static()
+
+        for api in unary_apis_with_complex_input:
+            main_prog = paddle.static.Program()
+            block = main_prog.global_block()
+            exe = paddle.static.Executor()
+            with paddle.static.program_guard(
+                main_prog, paddle.static.Program()
+            ):
+                # before full support for complex, we cannot create complex tensor with the same code as in dynamic graph
+                x = paddle.complex(
+                    paddle.to_tensor(2.0), paddle.to_tensor(2.0)
+                ).squeeze()
+                x.stop_gradient = False
+                out = api(x)
+                # TODO(zhouwei):
+                # ScaleLossGradOp / append_backward set grad shape to [1]
+                # after output 0D, may change it to []
+                # use out.sum() to avoid this two problem now
+                loss = out.sum()
+                paddle.static.append_backward(loss)
+
+                fetch_list = [x, out]
+                if block.has_var(x.grad_name):
+                    fetch_list.extend([x.grad_name, out.grad_name])
+
+                # 1) Test Program
+                res = exe.run(main_prog, fetch_list=fetch_list)
+                for item in res:
+                    self.assertEqual(item.shape, ())
+
+                # 2) Test CompiledProgram Program
+                if paddle.device.is_compiled_with_cuda():
+                    places = [paddle.CUDAPlace(0)]
+                    expect_shape = ()
+                else:
+                    places = [paddle.CPUPlace()] * 4
+                    expect_shape = (4,)
+                compile_prog = paddle.static.CompiledProgram(
+                    main_prog
+                ).with_data_parallel(loss.name, places=places)
+
+                # return_merged=False #
+                res = exe.run(
+                    compile_prog, fetch_list=fetch_list, return_merged=False
+                )
+                for item1 in res:
+                    for item2 in item1:
+                        self.assertEqual(item2.shape, ())
+
+                # return_merged=True #
+                res = exe.run(
+                    compile_prog, fetch_list=fetch_list, return_merged=True
+                )
+                for item in res:
+                    self.assertEqual(item.shape, expect_shape)
+
+        paddle.disable_static()
+
+
+class TestAsReal(unittest.TestCase):
+    def test_dygraph(self):
+        paddle.disable_static()
+        for api in unary_apis_with_complex_input:
+            x = paddle.to_tensor(2.0 + 3.0j).squeeze()
+            x.stop_gradient = False
+            x.retain_grads()
+            out = paddle.as_real(x)
+            out.retain_grads()
+            out.backward()
+
+            self.assertEqual(x.shape, [])
+            self.assertEqual(out.shape, [2])
+            if x.grad is not None:
+                self.assertEqual(x.grad.shape, [])
+                self.assertEqual(out.grad.shape, [2])
+
+        paddle.enable_static()
+
+    def test_static(self):
+        paddle.enable_static()
+
+        for api in unary_apis_with_complex_input:
+            main_prog = paddle.static.Program()
+            block = main_prog.global_block()
+            exe = paddle.static.Executor()
+            with paddle.static.program_guard(
+                main_prog, paddle.static.Program()
+            ):
+                # before full support for complex, we cannot create complex tensor with the same code as in dynamic graph
+                x = paddle.complex(
+                    paddle.to_tensor(2.0), paddle.to_tensor(2.0)
+                ).squeeze()
+                x.stop_gradient = False
+                out = paddle.as_real(x)
+                self.assertEqual(x.shape, ())
+                self.assertEqual(out.shape, (2,))
+                # TODO(zhouwei):
+                # ScaleLossGradOp / append_backward set grad shape to [1]
+                # after output 0D, may change it to []
+                # use out.sum() to avoid this two problem now
+                loss = out.abs().sum()
+                paddle.static.append_backward(loss)
+
+                fetch_list = [x, out]
+                if block.has_var(x.grad_name):
+                    fetch_list.extend([x.grad_name, out.grad_name])
+
+                # 1) Test Program
+                res = exe.run(main_prog, fetch_list=fetch_list)
+                self.assertEqual(res[0].shape, ())
+                self.assertEqual(res[1].shape, (2,))
+                self.assertEqual(res[2].shape, ())
+                self.assertEqual(res[3].shape, (2,))
+
+                # 2) Test CompiledProgram Program
+                if paddle.device.is_compiled_with_cuda():
+                    places = [paddle.CUDAPlace(0)]
+                    expect_shapes = (), (2,), (), (2,)
+                else:
+                    places = [paddle.CPUPlace()] * 4
+                    expect_shapes = (4,), (8,), (4,), (8,)
+                compile_prog = paddle.static.CompiledProgram(
+                    main_prog
+                ).with_data_parallel(loss.name, places=places)
+
+                # return_merged=False #
+                res = exe.run(
+                    compile_prog, fetch_list=fetch_list, return_merged=False
+                )
+                for out_i, expect in zip(res, [(), (2,), (), (2,)]):
+                    for replica in out_i:
+                        self.assertEqual(replica.shape, expect)
+
+                # return_merged=True #
+                res = exe.run(
+                    compile_prog, fetch_list=fetch_list, return_merged=True
+                )
+                for actual, expect in zip(res, expect_shapes):
+                    self.assertEqual(actual.shape, expect)
+
+        paddle.disable_static()
 
 
 if __name__ == "__main__":

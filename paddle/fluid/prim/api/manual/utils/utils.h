@@ -38,6 +38,10 @@ template <typename T>
 void by_pass(const paddle::experimental::Tensor& x,
              paddle::experimental::Tensor* out);
 
+template <typename T>
+void set_output(const paddle::experimental::Tensor& x_tmp,
+                paddle::experimental::Tensor* x);
+
 // These method don't need to be specified
 static phi::DDim get_reduce_dims_from_out(const phi::DDim& dout_dims,
                                           const phi::DDim& in_dims) {
