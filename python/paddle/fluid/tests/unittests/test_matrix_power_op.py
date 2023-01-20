@@ -314,8 +314,8 @@ class TestMatrixPowerAPIError(unittest.TestCase):
 
         # The size of input should not be 0
         with paddle.fluid.dygraph.guard():
-            input = fluid.data(
-                name="input_4", shape=[1, 1, 0, 0], dtype="float32"
+            input = paddle.to_tensor(
+                paddle.uniform([1, 1, 0, 0]).astype('float32')
             )
             self.assertRaises(ValueError, paddle.linalg.matrix_power, input, 2)
 
