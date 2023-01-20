@@ -145,7 +145,6 @@ class TestIgnoreVarNameInWhile(unittest.TestCase):
             i = i + 1
             return [i, ten, batch_info, origin_seq]
 
-
         x = paddle.static.data(name='x', shape=[-1, 1, 4], dtype='float32')
         y = paddle.static.data(name='y', shape=[-1, 1, 1], dtype='float32')
         x.desc.set_need_check_feed(False)

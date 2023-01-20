@@ -22,7 +22,6 @@ from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import (
     fleet,
 )
 
-
 input_x = paddle.static.data(name="x", shape=[-1, 32], dtype='float32')
 input_y = paddle.static.data(name="y", shape=[-1, 1], dtype='int64')
 input_y = paddle.cast(input_y, dtype="float32")

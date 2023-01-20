@@ -271,7 +271,6 @@ class TestConcatOpError(unittest.TestCase):
             x8 = paddle.static.data(shape=[-1, 4], dtype='float32', name='x8')
             paddle.concat([x6, x7])
 
-
             # The type of axis in concat_op should be int or Variable.
             def test_axis_type():
                 paddle.concat([x6, x7], 3.2)
