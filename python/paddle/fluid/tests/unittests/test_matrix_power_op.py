@@ -312,16 +312,9 @@ class TestMatrixPowerAPIError(unittest.TestCase):
         input = fluid.data(name="input_3", shape=[4, 5], dtype="float32")
         self.assertRaises(ValueError, paddle.linalg.matrix_power, input, 2)
 
-        # The size of input should not be 0 (static graph)
+        # The size of input should not be 0
         input = fluid.data(name="input_4", shape=[1, 1, 0, 0], dtype="float32")
         self.assertRaises(ValueError, paddle.linalg.matrix_power, input, 2)
-
-        # The size of input should not be 0 (dynamic graph)
-        with paddle.fluid.dygraph.guard():
-            input = paddle.to_tensor(
-                paddle.uniform([1, 1, 0, 0]).astype('float32')
-            )
-            self.assertRaises(ValueError, paddle.linalg.matrix_power, input, 2)
 
 
 class TestMatrixPowerSingularAPI(unittest.TestCase):
