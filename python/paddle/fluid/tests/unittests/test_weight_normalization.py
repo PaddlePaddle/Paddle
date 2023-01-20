@@ -35,8 +35,8 @@ class TestWeightNormalization(unittest.TestCase):
 
     @classmethod
     def set_program(cls):
-        data = fluid.layers.data(
-            name=cls.data_desc[0][0], shape=cls.data_desc[0][1]
+        data = paddle.static.data(
+            name=cls.data_desc[0][0], shape=[-1] + cls.data_desc[0][1]
         )
         out = paddle.static.nn.fc(
             x=data,
