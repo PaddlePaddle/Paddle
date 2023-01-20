@@ -4596,15 +4596,24 @@ void UniqueRawInferMeta(const MetaTensor& x,
                         MetaTensor* index,
                         MetaTensor* counts) {
   if (!is_sorted) {
-    PADDLE_ENFORCE_EQ(
-        x.dims().size(),
-        1,
-        phi::errors::InvalidArgument("The Input(X) should be 1-D Tensor, "
-                                     "But now the dims of Input(X) is %d.",
-                                     x.dims().size()));
+    PADDLE_ENFORCE_EQ(x.dims().size() == 1 || x.dims().size() == 0,
+                      true,
+                      phi::errors::InvalidArgument(
+                          "The Input(X) should be 0-D or 1-D Tensor, "
+                          "But now the dims of Input(X) is %d.",
+                          x.dims().size()));
     out->set_dims(phi::make_ddim({-1}));
     index->set_dims(x.dims());
     return;
+  }
+
+  if (x.dims().size() == 0) {
+    PADDLE_ENFORCE_EQ(axis.empty(),
+                      true,
+                      phi::errors::InvalidArgument(
+                          "The Input(X) with 0-D Tensor, axis must be None"
+                          "But now the axis is %d.",
+                          axis[0]));
   }
 
   if (axis.empty()) {
