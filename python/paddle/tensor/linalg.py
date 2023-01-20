@@ -529,7 +529,7 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
         )
         return out
 
-    if x.size == 0:
+    if not isinstance(x, str) and not isinstance(x, int) and x.size == 0:
         raise ValueError("input size should not be 0")
 
     if axis is None and p is not None:
