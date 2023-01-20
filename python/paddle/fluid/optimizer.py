@@ -3901,7 +3901,7 @@ class ModelAverage(Optimizer):
             self._get_accumulator('num_updates', param)
         )
         # backup param value to grad
-        paddle.assign(input=param, output=grad)
+        paddle.assign(param, output=grad)
         # param = (sum_1 + sum_2 + sum_3) / (num_accumulates + old_num_accumulates)
         tmp = paddle.add_n([num_accumulates, old_num_accumulates])
         sum = paddle.add_n([sum_1, sum_2, sum_3])
@@ -3916,7 +3916,7 @@ class ModelAverage(Optimizer):
     def _add_average_restore_op(self, block, param_grad):
         param = block._clone_variable(param_grad[0])
         grad = block._clone_variable(param_grad[1])
-        paddle.assign(input=grad, output=param)
+        paddle.assign(grad, output=param)
 
     def _append_average_accumulate_op(self, param):
         self.helper = LayerHelper("average_accumulate")
@@ -4210,7 +4210,7 @@ class ExponentialMovingAverage:
                 param = block._clone_variable(param)
                 tmp = block._clone_variable(tmp)
                 ema = block._clone_variable(self._ema_vars[param.name])
-                paddle.assign(input=param, output=tmp)
+                paddle.assign(param, output=tmp)
                 # bias correction
                 with layers.control_flow.Switch() as switch:
                     with switch.case(global_step > 0):
@@ -4218,7 +4218,7 @@ class ExponentialMovingAverage:
                             output=param, input=ema / (1.0 - decay_pow)
                         )
                     with switch.default():
-                        paddle.assign(output=param, input=ema)
+                        paddle.assign(ema, output=param)
 
         self.restore_program = Program()
         block = self.restore_program.global_block()
@@ -4226,7 +4226,7 @@ class ExponentialMovingAverage:
             for param, tmp in self._params_tmps:
                 tmp = block._clone_variable(tmp)
                 param = block._clone_variable(param)
-                paddle.assign(input=tmp, output=param)
+                paddle.assign(tmp, output=param)
 
     def _get_ema_decay(self):
         with default_main_program()._lr_schedule_guard():
@@ -4294,7 +4294,7 @@ class ExponentialMovingAverage:
                     ema_t = param_ema * self._decay_var + param * (
                         1 - self._decay_var
                     )
-                    paddle.assign(input=ema_t, output=param_ema)
+                    paddle.assign(ema_t, output=param_ema)
 
         # for fp16 params
         for param_ema, master_ema in param_master_emas:
@@ -7253,7 +7253,7 @@ class LookaheadOptimizer:
                     for param_name in params:
                         fast_var = main_block.var(param_name)
                         slow_var = param_to_slow[param_name]
-                        paddle.assign(input=fast_var, output=slow_var)
+                        paddle.assign(fast_var, output=slow_var)
                 with switch.case(mod == zero_var):
                     for param_name in params:
                         fast_var = main_block.var(param_name)
@@ -7264,8 +7264,8 @@ class LookaheadOptimizer:
                                 slow_var, paddle.subtract(one_var, alpha)
                             ),
                         )
-                        paddle.assign(input=tmp_var, output=slow_var)
-                        paddle.assign(input=tmp_var, output=fast_var)
+                        paddle.assign(tmp_var, output=slow_var)
+                        paddle.assign(tmp_var, output=fast_var)
                 with switch.default():
                     pass
         return mini_out

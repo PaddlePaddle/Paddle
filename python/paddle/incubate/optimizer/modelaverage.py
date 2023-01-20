@@ -546,7 +546,7 @@ class ModelAverage(Optimizer):
             self._get_accumulator('old_num_accumulates', param)
         )
         # backup param value to grad
-        paddle.assign(input=param, output=grad)
+        paddle.assign(param, output=grad)
         # param = (sum_1 + sum_2 + sum_3) / (num_accumulates + old_num_accumulates)
         tmp = paddle.add_n([num_accumulates, old_num_accumulates])
         sum = paddle.add_n([sum_1, sum_2, sum_3])
@@ -561,4 +561,4 @@ class ModelAverage(Optimizer):
     def _add_average_restore_op(self, block, param):
         param = block._clone_variable(param)
         grad = block._clone_variable(self._get_accumulator('restore', param))
-        paddle.assign(input=grad, output=param)
+        paddle.assign(grad, output=param)

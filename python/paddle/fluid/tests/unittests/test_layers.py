@@ -2175,8 +2175,8 @@ class TestBook(LayerTest):
             seqs = paddle.static.data(
                 name='x', shape=[-1, 10, 5], dtype='float32', lod_level=1
             )
-            offset = paddle.assign(input=np.array([[0, 1]]).astype('int32'))
-            length = paddle.assign(input=np.array([[2, 1]]).astype('int32'))
+            offset = paddle.assign(np.array([[0, 1]]).astype('int32'))
+            length = paddle.assign(np.array([[2, 1]]).astype('int32'))
             out = layers.sequence_slice(
                 input=seqs, offset=offset, length=length
             )

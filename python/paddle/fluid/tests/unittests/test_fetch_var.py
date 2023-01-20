@@ -29,7 +29,7 @@ class TestFetchVar(unittest.TestCase):
         x = paddle.tensor.create_tensor(
             dtype="int32", persistable=True, name="x"
         )
-        paddle.assign(input=self.val, output=x)
+        paddle.assign(self.val, output=x)
         exe = fluid.Executor(fluid.CPUPlace())
         exe.run(fluid.default_main_program(), feed={}, fetch_list=[])
         fetched_x = fluid.executor._fetch_var("x")
