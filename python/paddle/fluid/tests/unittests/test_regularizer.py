@@ -198,10 +198,12 @@ class TestRegularizer(unittest.TestCase):
         with self.scope_prog_guard(
             main_prog=main_prog, startup_prog=startup_prog
         ):
-            data = fluid.layers.data(
-                name="words", shape=[1], dtype="int64", lod_level=1
+            data = paddle.static.data(
+                name="words", shape=[-1, 1], dtype="int64", lod_level=1
             )
-            label = fluid.layers.data(name="label", shape=[1], dtype="int64")
+            label = paddle.static.data(
+                name="label", shape=[-1, 1], dtype="int64"
+            )
 
             avg_cost = model(data, label, self.word_len)
 
@@ -221,10 +223,12 @@ class TestRegularizer(unittest.TestCase):
         with self.scope_prog_guard(
             main_prog=main_prog, startup_prog=startup_prog
         ):
-            data = fluid.layers.data(
-                name="words", shape=[1], dtype="int64", lod_level=1
+            data = paddle.static.data(
+                name="words", shape=[-1, 1], dtype="int64", lod_level=1
             )
-            label = fluid.layers.data(name="label", shape=[1], dtype="int64")
+            label = paddle.static.data(
+                name="label", shape=[-1, 1], dtype="int64"
+            )
 
             avg_cost_l2 = model(data, label, self.word_len)
 

@@ -22,7 +22,6 @@ from op_test import OpTest, convert_float_to_uint16, convert_uint16_to_float
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-import paddle.fluid.layers as layers
 from paddle.fluid import Program, program_guard
 
 
@@ -142,7 +141,7 @@ class TestCastDoubleGradCheck(unittest.TestCase):
         eps = 0.005
         dtype = np.float32
 
-        data = layers.data('data', [2, 3, 4], False, dtype)
+        data = paddle.static.data('data', [2, 3, 4], dtype)
         data.persistable = True
         out = paddle.cast(data, 'float64')
         data_arr = np.random.uniform(-1, 1, data.shape).astype(dtype)
@@ -173,7 +172,7 @@ class TestCastTripleGradCheck(unittest.TestCase):
         eps = 0.005
         dtype = np.float32
 
-        data = layers.data('data', [2, 3, 4], False, dtype)
+        data = paddle.static.data('data', [2, 3, 4], dtype)
         data.persistable = True
         out = paddle.cast(data, 'float64')
         data_arr = np.random.uniform(-1, 1, data.shape).astype(dtype)

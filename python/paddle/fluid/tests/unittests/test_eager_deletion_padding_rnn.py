@@ -333,30 +333,22 @@ def lm_model(
         return real_res, last_hidden, last_cell
 
     batch_size_each = batch_size
-    x = layers.data(
-        name="x",
-        shape=[batch_size_each, num_steps, 1],
-        dtype='int64',
-        append_batch_size=False,
+    x = paddle.static.data(
+        name="x", shape=[batch_size_each, num_steps, 1], dtype='int64'
     )
-    y = layers.data(
-        name="y",
-        shape=[batch_size_each * num_steps, 1],
-        dtype='int64',
-        append_batch_size=False,
+    y = paddle.static.data(
+        name="y", shape=[batch_size_each * num_steps, 1], dtype='int64'
     )
 
-    init_hidden = layers.data(
+    init_hidden = paddle.static.data(
         name="init_hidden",
         shape=[num_layers, batch_size_each, hidden_size],
         dtype='float32',
-        append_batch_size=False,
     )
-    init_cell = layers.data(
+    init_cell = paddle.static.data(
         name="init_cell",
         shape=[num_layers, batch_size_each, hidden_size],
         dtype='float32',
-        append_batch_size=False,
     )
 
     init_cell.persistable = True
