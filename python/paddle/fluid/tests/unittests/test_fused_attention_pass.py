@@ -159,7 +159,7 @@ class TestFusedAttentionPass(unittest.TestCase):
         ops = main_prog.global_block().ops
         assert ops[2].type == 'reduce_mean'
         assert ops[4].type == 'reduce_mean_grad'
-        assert ops[9].type == 'sgd'
+        assert ops[8].type == 'sgd'
 
 
 if __name__ == "__main__":

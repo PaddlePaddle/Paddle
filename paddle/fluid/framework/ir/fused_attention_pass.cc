@@ -372,6 +372,7 @@ PDNode* FusedAttentionGradPattern::operator()(PDNode* x,
   // add residual
   PDNode* residual_ele_add_grad_out_node{nullptr};
   PDNode* residual_ele_add_grad_x_node{nullptr};
+  PDNode* residual_ele_add_grad_x_grad_node{nullptr};
   if (add_residual) {
     PDNode* ele_add_grad_input = x;
     if (post_layer_norm) {
@@ -389,12 +390,16 @@ PDNode* FusedAttentionGradPattern::operator()(PDNode* x,
     residual_ele_add_grad_out_node =
         pattern->NewNode(residual_ele_add_grad_bias_grad_repr())
             ->assert_is_op_output("elementwise_add_grad", "Y@GRAD");
+    residual_ele_add_grad_x_grad_node =
+        pattern->NewNode(residual_ele_add_grad_x_grad_repr())
+            ->assert_is_op_output("elementwise_add_grad", "X@GRAD");
     ele_add_grad_input->assert_is_op_input("elementwise_add_grad", "Out@GRAD");
     residual_ele_add_grad_node
         ->LinksFrom({ele_add_grad_input,
                      residual_ele_add_grad_x_node,
                      residual_ele_add_grad_bias_node})
-        .LinksTo({residual_ele_add_grad_out_node});
+        .LinksTo({residual_ele_add_grad_x_grad_node,
+                  residual_ele_add_grad_out_node});
   }
 
   // get the real input x for dropout grad
@@ -742,7 +747,21 @@ PDNode* FusedAttentionGradPattern::operator()(PDNode* x,
                 pre_layer_norm_grad_bias_grad_node,
                 pre_layer_norm_grad_x_grad_node});
 
-  return pre_layer_norm_grad_x_grad_node;
+  if (!add_residual) {
+    return pre_layer_norm_grad_x_grad_node;
+  }
+
+  auto* grad_accumulation_sum_node =
+      pattern->NewNode(grad_accumulation_sum_op_repr())->assert_is_op("sum");
+  auto* grad_accumulation_sum_out_node =
+      pattern->NewNode(grad_accumulation_out_repr())
+          ->assert_is_op_output("sum");
+  grad_accumulation_sum_node
+      ->LinksFrom(
+          {pre_layer_norm_grad_x_grad_node, residual_ele_add_grad_x_grad_node})
+      .LinksTo({grad_accumulation_sum_out_node});
+
+  return grad_accumulation_sum_out_node;
 }
 
 }  // namespace patterns

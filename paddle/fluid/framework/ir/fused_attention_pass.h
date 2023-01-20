@@ -156,6 +156,7 @@ struct FusedAttentionGradPattern : public PatternBase {
   PATTERN_DECL_NODE(residual_ele_add_grad_x);
   PATTERN_DECL_NODE(residual_ele_add_grad_bias);
   PATTERN_DECL_NODE(residual_ele_add_grad_bias_grad);
+  PATTERN_DECL_NODE(residual_ele_add_grad_x_grad);
 
   // out linear grad
   PATTERN_DECL_NODE(out_linear_dropout_grad_op);
@@ -245,6 +246,10 @@ struct FusedAttentionGradPattern : public PatternBase {
   PATTERN_DECL_NODE(pre_layer_norm_grad_scale_grad);
   PATTERN_DECL_NODE(pre_layer_norm_grad_bias_grad);
   PATTERN_DECL_NODE(pre_layer_norm_grad_x_grad);
+
+  // grad accumulation
+  PATTERN_DECL_NODE(grad_accumulation_sum_op);
+  PATTERN_DECL_NODE(grad_accumulation_out);
 };
 
 }  // namespace patterns
