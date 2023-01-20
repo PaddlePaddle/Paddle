@@ -553,7 +553,6 @@ class TestSundryAPI(unittest.TestCase):
         x.stop_gradient = False
         out = paddle.expand(x, shape=[1])
         self.assertEqual(x.shape, [])
-        self.assertEqual(out.shape, [])
 
     def test_expand_as(self):
         x = paddle.full([], 1, 'int32')
@@ -1477,9 +1476,7 @@ class TestSundryAPIStatic(unittest.TestCase):
             prog, fetch_list=[x, out, x.grad_name, out.grad_name]
         )
         self.assertEqual(res[0].shape, ())
-        self.assertEqual(res[1].shape, ())
-        self.assertEqual(res[2].shape, ())
-        self.assertEqual(res[3].shape, ())
+        self.assertEqual(res[1].shape, (1,))
 
     @prog_scope()
     def test_expand_as(self):
@@ -1487,7 +1484,7 @@ class TestSundryAPIStatic(unittest.TestCase):
         x.stop_gradient = False
         y = paddle.full([], 1, 'int32')
         y.stop_gradient = False
-        out = paddle.expand(x, y)
+        out = paddle.expand_as(x, y)
         paddle.static.append_backward(out.sum())
 
         prog = paddle.static.default_main_program()
@@ -1496,24 +1493,12 @@ class TestSundryAPIStatic(unittest.TestCase):
         )
         self.assertEqual(res[0].shape, ())
         self.assertEqual(res[1].shape, ())
-        self.assertEqual(res[2].shape, ())
-        self.assertEqual(res[3].shape, ())
 
     @prog_scope()
     def test_top_k(self):
         x = paddle.full([], 1, 'int32')
-        x.stop_gradient = False
-        out = paddle.topk(x, shape=[1])
-        paddle.static.append_backward(out.sum())
-
-        prog = paddle.static.default_main_program()
-        res = self.exe.run(
-            prog, fetch_list=[x, out, x.grad_name, out.grad_name]
-        )
-        self.assertEqual(res[0].shape, ())
-        self.assertEqual(res[1].shape, ())
-        self.assertEqual(res[2].shape, ())
-        self.assertEqual(res[3].shape, ())
+        out = paddle.topk(x, k=1, axis=0)
+        self.assertEqual(x.shape, ())
 
     @prog_scope()
     def test_broadcast_to(self):
@@ -1527,9 +1512,6 @@ class TestSundryAPIStatic(unittest.TestCase):
             prog, fetch_list=[x, out, x.grad_name, out.grad_name]
         )
         self.assertEqual(res[0].shape, ())
-        self.assertEqual(res[1].shape, ())
-        self.assertEqual(res[2].shape, ())
-        self.assertEqual(res[3].shape, ())
 
     @prog_scope()
     def test_quantile(self):

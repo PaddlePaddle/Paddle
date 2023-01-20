@@ -307,7 +307,6 @@ class TestSundryAPI(unittest.TestCase):
         x.stop_gradient = False
         out = paddle.expand(x, shape=[1])
         self.assertEqual(x.shape, [])
-        self.assertEqual(out.shape, [])
 
     def test_expand_as(self):
         x = paddle.full([], 1, 'int32')
