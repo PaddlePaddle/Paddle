@@ -1921,6 +1921,10 @@ def svd(x, full_matrices=False, name=None):
             #                  U * UH == I
             #                  V * VH == I
     """
+
+    if x.size == 0:
+        raise ValueError("input size should not be 0")
+
     if in_dygraph_mode():
         return _C_ops.svd(x, full_matrices)
     else:
