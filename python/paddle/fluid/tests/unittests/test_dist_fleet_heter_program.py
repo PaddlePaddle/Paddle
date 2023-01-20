@@ -104,7 +104,7 @@ class TestDistFleetHeterProgram(unittest.TestCase):
                 activation="relu",
                 weight_attr=fluid.ParamAttr(
                     initializer=paddle.nn.initializer.Normal(
-                        scale=1 / math.sqrt(concated.shape[1])
+                        std=1 / math.sqrt(concated.shape[1])
                     )
                 ),
                 name="fc1",
@@ -117,7 +117,7 @@ class TestDistFleetHeterProgram(unittest.TestCase):
                 activation="relu",
                 weight_attr=fluid.ParamAttr(
                     initializer=paddle.nn.initializer.Normal(
-                        scale=1 / math.sqrt(fc1.shape[1])
+                        std=1 / math.sqrt(fc1.shape[1])
                     )
                 ),
                 name="fc2",
@@ -130,7 +130,7 @@ class TestDistFleetHeterProgram(unittest.TestCase):
                 activation="relu",
                 weight_attr=fluid.ParamAttr(
                     initializer=paddle.nn.initializer.Normal(
-                        scale=1 / math.sqrt(fc2.shape[1])
+                        std=1 / math.sqrt(fc2.shape[1])
                     )
                 ),
                 name="fc3",
@@ -143,7 +143,7 @@ class TestDistFleetHeterProgram(unittest.TestCase):
                 activation="softmax",
                 weight_attr=fluid.ParamAttr(
                     initializer=paddle.nn.initializer.Normal(
-                        scale=1 / math.sqrt(fc3.shape[1])
+                        std=1 / math.sqrt(fc3.shape[1])
                     )
                 ),
             )

@@ -429,7 +429,7 @@ class DeConv2D(fluid.dygraph.Layer):
             stride=stride,
             padding=padding,
             weight_attr=fluid.ParamAttr(
-                initializer=paddle.nn.initializer.Normal(loc=0.0, scale=stddev)
+                initializer=paddle.nn.initializer.Normal(mean=0.0, std=stddev)
             ),
             bias_attr=de_bias_attr,
         )
