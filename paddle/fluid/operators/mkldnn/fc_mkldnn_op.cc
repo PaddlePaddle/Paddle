@@ -450,31 +450,6 @@ class FCMKLDNNKernel : public framework::OpKernel<T_in> {
     }
   }
 
-  void SetOutMemDescWithUnsqueeze2FuseSupport(
-      const framework::ExecutionContext& ctx,
-      phi::DenseTensor* out,
-      const dnnl::memory::desc& out_md) const {
-    const std::vector<int>& fused_unsqueeze2_axes =
-        ctx.Attr<std::vector<int>>("fused_unsqueeze2_axes");
-    const std::vector<int64_t>& op_tz = out_md.dims();
-    std::vector<int64_t> unsqueezed_op_tz(
-        op_tz.size() + fused_unsqueeze2_axes.size(), 0);
-
-    for (const auto& axis : fused_unsqueeze2_axes) {
-      int positive_axis = axis < 0 ? unsqueezed_op_tz.size() + axis : axis;
-      unsqueezed_op_tz[positive_axis] = 1;
-    }
-
-    int j = 0;
-    for (size_t i = 0; i < unsqueezed_op_tz.size(); ++i) {
-      if (unsqueezed_op_tz[i] == 0) {
-        unsqueezed_op_tz[i] = op_tz[j++];
-      }
-    }
-    out->set_mem_desc(out_md.reshape(unsqueezed_op_tz));
-    out->Resize(phi::make_ddim(unsqueezed_op_tz));
-  }
-
   void SetOutMemDescWithReshape2FuseSupport(
       const framework::ExecutionContext& ctx,
       phi::DenseTensor* out,
@@ -504,13 +479,8 @@ class FCMKLDNNKernel : public framework::OpKernel<T_in> {
       const framework::ExecutionContext& ctx,
       phi::DenseTensor* out,
       const dnnl::memory::desc& out_md) const {
-    if (ctx.HasAttr("fused_unsqueeze2_axes")) {
-      SetOutMemDescWithUnsqueeze2FuseSupport(ctx, out, out_md);
-    } else if (ctx.HasAttr("fused_reshape2_shape")) {
+    if (ctx.HasAttr("fused_reshape2_shape")) {
       SetOutMemDescWithReshape2FuseSupport(ctx, out, out_md);
-    } else if (ctx.HasAttr("fused_squeeze2_axes")) {
-      out->set_mem_desc(out_md);
-      out->Resize(phi::make_ddim(out_md.dims()));
     } else {
       out->set_mem_desc(out_md);
     }
