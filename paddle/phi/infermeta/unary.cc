@@ -1889,6 +1889,11 @@ void MatrixPowerInferMeta(const MetaTensor& x, int n, MetaTensor* out) {
                         "The Input(X) should have at least 2 dimensions. But "
                         "received a %d dimension tensor.",
                         n_dim));
+  for (int i = 0; i < n_dim; ++i)
+    PADDLE_ENFORCE_NE(
+        dims[i],
+        0,
+        phi::errors::InvalidArgument("The size of Input(X) should not be 0."));
   PADDLE_ENFORCE_EQ(dims[n_dim - 2],
                     dims[n_dim - 1],
                     phi::errors::InvalidArgument(
