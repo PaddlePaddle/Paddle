@@ -122,8 +122,8 @@ class TestSequenceConcatOpError(unittest.TestCase):
 
         def test_0_shape():
             # dtype must be 'float32', 'float64', 'int64'
-            x4_data = fluid.layers.data(name="x4", shape=[0], dtype='int32')
-            y4_data = fluid.layers.data(name="y4", shape=[1], dtype='int16')
+            x4_data = fluid.layers.data(name="x4", shape=[0], dtype='float32')
+            y4_data = fluid.layers.data(name="y4", shape=[1], dtype='float32')
             input_list = [x4_data, y4_data]
             fluid.layers.sequence_concat(input=input_list)
 
