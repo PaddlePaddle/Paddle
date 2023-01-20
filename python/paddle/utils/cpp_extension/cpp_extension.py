@@ -17,6 +17,8 @@
 import os
 import copy
 import re
+import sys
+import shlex
 
 import setuptools
 from setuptools.command.easy_install import easy_install
@@ -480,6 +482,18 @@ class BuildExtension(build_ext):
                 # shared library have same ABI suffix with libpaddle.so.
                 # See https://stackoverflow.com/questions/34571583/understanding-gcc-5s-glibcxx-use-cxx11-abi-or-the-new-abi
                 add_compile_flag(cflags, ['-D_GLIBCXX_USE_CXX11_ABI=1'])
+
+                add_compile_flag(cflags, ["-fvisibility=hidden"])
+                env_cflags = os.environ.get("CFLAGS", "")
+                env_cppflags = os.environ.get("CPPFLAGS", "")
+                c_cpp_flags = shlex.split(env_cflags) + shlex.split(
+                    env_cppflags
+                )
+                if not any(opt.startswith("-g") for opt in c_cpp_flags):
+                    add_compile_flag(cflags, ["-g0"])
+                if sys.platform.startswith('darwin'):
+                    add_compile_flag(cflags, ["-stdlib=libc++"])
+
                 # Append this macor only when jointly compiling .cc with .cu
                 if not is_cuda_file(src) and self.contain_cuda_file:
                     if core.is_compiled_with_rocm():
@@ -645,6 +659,7 @@ class BuildExtension(build_ext):
 
     def get_ext_filename(self, fullname):
         # for example: customized_extension.cpython-37m-x86_64-linux-gnu.so
+        # fullname = customized_extension -> ext_name = customized_extension.cpython-37m-x86_64-linux-gnu.so
         ext_name = super().get_ext_filename(fullname)
         split_str = '.'
         name_items = ext_name.split(split_str)
@@ -658,7 +673,7 @@ class BuildExtension(build_ext):
             ext_name = split_str.join(name_items)
 
         # customized_extension.dylib
-        if OS_NAME.startswith('darwin'):
+        if OS_NAME.startswith('darwin'):  # WHY?
             name_items[-1] = 'dylib'
             ext_name = split_str.join(name_items)
         return ext_name

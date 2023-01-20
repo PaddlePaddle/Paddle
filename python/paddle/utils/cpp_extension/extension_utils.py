@@ -65,6 +65,8 @@ MSVC_COMPILE_FLAGS = [
     '/DBOOST_HAS_STATIC_ASSERT',
     '/DNDEBUG',
     '/DPADDLE_USE_DSO',
+    "/EHsc",
+    "/bigobj",
 ]
 CLANG_COMPILE_FLAGS = [
     '-fno-common',
@@ -75,6 +77,8 @@ CLANG_COMPILE_FLAGS = [
     '-O3',
     '-arch',
     'x86_64',
+    "-stdlib=libc++",
+    "-fvisibility=hidden",
 ]
 CLANG_LINK_FLAGS = [
     '-dynamiclib',
@@ -82,6 +86,7 @@ CLANG_LINK_FLAGS = [
     'dynamic_lookup',
     '-arch',
     'x86_64',
+    "-stdlib=libc++",
 ]
 
 MSVC_LINK_FLAGS = ['/MACHINE:X64']
