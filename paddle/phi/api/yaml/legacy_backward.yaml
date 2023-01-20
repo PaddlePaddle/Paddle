@@ -42,7 +42,7 @@
   kernel :
     func : add_grad
   no_need_buffer : x, y
-  composite : add_grad(Tensor x, Tensor y, Tensor out_grad, int axis)
+  composite : add_grad(x, y, out_grad, axis)
   backward : add_double_grad
   inplace : (out_grad -> x_grad)
 
@@ -390,7 +390,7 @@
     param : [x, y]
   kernel :
     func : divide_grad
-  composite : divide_grad(Tensor x, Tensor y, Tensor out, Tensor out_grad, int axis = -1)
+  composite : divide_grad(x, y, out, out_grad, -1)
   backward : divide_double_grad
 
 - backward_op : dropout_grad
@@ -1319,7 +1319,7 @@
   kernel :
     func : subtract_grad
   no_need_buffer : x, y
-  composite : subtract_grad(Tensor x, Tensor y, Tensor out_grad, int axis)
+  composite : subtract_grad(x, y, out_grad, axis)
   backward : subtract_double_grad
   inplace : (out_grad -> x_grad)
 
