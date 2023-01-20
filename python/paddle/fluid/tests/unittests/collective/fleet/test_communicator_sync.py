@@ -27,8 +27,8 @@ import paddle.fluid as fluid
 
 class TestCommunicator(unittest.TestCase):
     def net(self):
-        x = fluid.layers.data(name='x', shape=[1], dtype='float32')
-        y = fluid.layers.data(name='y', shape=[1], dtype='float32')
+        x = paddle.static.data(name='x', shape=[-1, 1], dtype='float32')
+        y = paddle.static.data(name='y', shape=[-1, 1], dtype='float32')
         cost = paddle.nn.functional.square_error_cost(input=x, label=y)
         avg_cost = paddle.mean(cost)
         return avg_cost

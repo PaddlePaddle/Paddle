@@ -50,11 +50,11 @@ class TestClass(unittest.TestCase):
             main_prog = fluid.Program()
             startup_prog = fluid.Program()
             with fluid.program_guard(main_prog, startup_prog):
-                img = fluid.layers.data(
-                    shape=img_shape, dtype='float32', name='image'
+                img = paddle.static.data(
+                    shape=[-1] + img_shape, dtype='float32', name='image'
                 )
-                label = fluid.layers.data(
-                    shape=label_shape, dtype='int64', name='label'
+                label = paddle.static.data(
+                    shape=[-1] + label_shape, dtype='int64', name='label'
                 )
 
                 feeder = fluid.DataFeeder(feed_list=[img, label], place=p)

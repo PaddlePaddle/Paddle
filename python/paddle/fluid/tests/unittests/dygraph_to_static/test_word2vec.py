@@ -20,8 +20,7 @@ import numpy as np
 
 import paddle
 import paddle.fluid as fluid
-from paddle.jit import ProgramTranslator
-from paddle.jit.api import declarative
+from paddle.jit.api import to_static
 from paddle.nn import Embedding
 
 
@@ -250,7 +249,7 @@ class SkipGram(fluid.dygraph.Layer):
             ),
         )
 
-    @declarative
+    @to_static
     def forward(self, center_words, target_words, label):
         center_words_emb = self.embedding(center_words)
         target_words_emb = self.embedding_out(target_words)
@@ -278,8 +277,7 @@ total_steps = len(dataset) * epoch_num // batch_size
 
 
 def train(to_static):
-    program_translator = ProgramTranslator()
-    program_translator.enable(to_static)
+    paddle.jit.enable_to_static(to_static)
 
     random.seed(0)
     np.random.seed(0)

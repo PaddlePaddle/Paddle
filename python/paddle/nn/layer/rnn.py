@@ -29,6 +29,7 @@ from paddle.nn import Layer
 from paddle.nn import functional as F
 from paddle.nn import initializer as I
 from paddle.static import Variable, default_startup_program, program_guard
+from paddle.tensor.manipulation import tensor_array_to_tensor
 
 from .container import LayerList
 
@@ -319,14 +320,10 @@ def _rnn_static_graph(
             new_cond = paddle.tensor.less_than(start_i, end)
             paddle.fluid.layers.assign(new_cond, cond)
 
-    out, _ = paddle.fluid.layers.tensor_array_to_tensor(
-        out_array, axis=0, use_stack=True
-    )
+    out, _ = tensor_array_to_tensor(out_array, axis=0, use_stack=True)
 
     all_state = map_structure(
-        lambda x: paddle.fluid.layers.tensor_array_to_tensor(
-            x, axis=0, use_stack=True
-        )[0],
+        lambda x: tensor_array_to_tensor(x, axis=0, use_stack=True)[0],
         init_array,
     )
     final_outputs = out

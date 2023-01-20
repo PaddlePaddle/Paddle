@@ -100,8 +100,8 @@ class TestDataset(unittest.TestCase):
         slots = ["slot1", "slot2", "slot3", "slot4"]
         slots_vars = []
         for slot in slots:
-            var = fluid.layers.data(
-                name=slot, shape=[1], dtype="int64", lod_level=1
+            var = paddle.static.data(
+                name=slot, shape=[-1, 1], dtype="int64", lod_level=1
             )
             slots_vars.append(var)
 
@@ -192,8 +192,8 @@ class TestDataset(unittest.TestCase):
         slots = ["slot1", "slot2", "slot3", "slot4"]
         slots_vars = []
         for slot in slots:
-            var = fluid.layers.data(
-                name=slot, shape=[1], dtype="int64", lod_level=1
+            var = paddle.static.data(
+                name=slot, shape=[-1, 1], dtype="int64", lod_level=1
             )
             slots_vars.append(var)
 
@@ -257,8 +257,8 @@ class TestDataset(unittest.TestCase):
         slots = ["slot1", "slot2", "slot3", "slot4"]
         slots_vars = []
         for slot in slots:
-            var = fluid.layers.data(
-                name=slot, shape=[1], dtype="int64", lod_level=1
+            var = paddle.static.data(
+                name=slot, shape=[-1, 1], dtype="int64", lod_level=1
             )
             slots_vars.append(var)
 
@@ -292,6 +292,27 @@ class TestDataset(unittest.TestCase):
                     self.assertTrue(False)
 
         temp_dir.cleanup()
+
+    def test_in_memory_dataset_gpugraph_mode(self):
+        """
+        Testcase for InMemoryDataset in gpugraph mode.
+        """
+        dataset = fluid.DatasetFactory().create_dataset("InMemoryDataset")
+        dataset.set_feed_type("SlotRecordInMemoryDataFeed")
+        graph_config = {
+            "walk_len": 24,
+            "walk_degree": 10,
+            "once_sample_startid_len": 80000,
+            "sample_times_one_chunk": 5,
+            "window": 3,
+            "debug_mode": 0,
+            "batch_size": 800,
+            "meta_path": "cuid2clk-clk2cuid;cuid2conv-conv2cuid;clk2cuid-cuid2clk;clk2cuid-cuid2conv",
+            "gpu_graph_training": 1,
+        }
+        dataset.set_graph_config(graph_config)
+        dataset.set_pass_id(0)
+        dataset.get_pass_id()
 
     def test_in_memory_dataset_masterpatch(self):
         """
@@ -329,13 +350,13 @@ class TestDataset(unittest.TestCase):
         startup_program = fluid.Program()
         with fluid.program_guard(train_program, startup_program):
             for slot in slots[:2]:
-                var = fluid.layers.data(
-                    name=slot, shape=[1], dtype="int64", lod_level=1
+                var = paddle.static.data(
+                    name=slot, shape=[-1, 1], dtype="int64", lod_level=1
                 )
                 slots_vars.append(var)
             for slot in slots[2:]:
-                var = fluid.layers.data(
-                    name=slot, shape=[1], dtype="float32", lod_level=1
+                var = paddle.static.data(
+                    name=slot, shape=[-1, 1], dtype="float32", lod_level=1
                 )
                 slots_vars.append(var)
 
@@ -404,17 +425,17 @@ class TestDataset(unittest.TestCase):
         train_program = fluid.Program()
         startup_program = fluid.Program()
         with fluid.program_guard(train_program, startup_program):
-            var1 = fluid.layers.data(
-                name="slot1", shape=[1], dtype="int64", lod_level=0
+            var1 = paddle.static.data(
+                name="slot1", shape=[-1, 1], dtype="int64", lod_level=0
             )
-            var2 = fluid.layers.data(
-                name="slot2", shape=[1], dtype="int64", lod_level=0
+            var2 = paddle.static.data(
+                name="slot2", shape=[-1, 1], dtype="int64", lod_level=0
             )
-            var3 = fluid.layers.data(
-                name="slot3", shape=[1], dtype="float32", lod_level=0
+            var3 = paddle.static.data(
+                name="slot3", shape=[-1, 1], dtype="float32", lod_level=0
             )
-            var4 = fluid.layers.data(
-                name="slot4", shape=[1], dtype="float32", lod_level=0
+            var4 = paddle.static.data(
+                name="slot4", shape=[-1, 1], dtype="float32", lod_level=0
             )
             slots_vars = [var1, var2, var3, var4]
 
@@ -477,8 +498,8 @@ class TestDataset(unittest.TestCase):
         slots = ["slot1_f", "slot2_f", "slot3_f", "slot4_f"]
         slots_vars = []
         for slot in slots:
-            var = fluid.layers.data(
-                name=slot, shape=[1], dtype="float32", lod_level=1
+            var = paddle.static.data(
+                name=slot, shape=[-1, 1], dtype="float32", lod_level=1
             )
             slots_vars.append(var)
 
@@ -593,8 +614,8 @@ class TestDataset(unittest.TestCase):
         slots = ["slot1", "slot2", "slot3", "slot4"]
         slots_vars = []
         for slot in slots:
-            var = fluid.layers.data(
-                name=slot, shape=[1], dtype="int64", lod_level=1
+            var = paddle.static.data(
+                name=slot, shape=[-1, 1], dtype="int64", lod_level=1
             )
             slots_vars.append(var)
 
@@ -661,8 +682,8 @@ class TestDataset(unittest.TestCase):
         slots = ["slot1_f", "slot2_f", "slot3_f", "slot4_f"]
         slots_vars = []
         for slot in slots:
-            var = fluid.layers.data(
-                name=slot, shape=[1], dtype="float32", lod_level=1
+            var = paddle.static.data(
+                name=slot, shape=[-1, 1], dtype="float32", lod_level=1
             )
             slots_vars.append(var)
 
@@ -786,8 +807,8 @@ class TestDataset(unittest.TestCase):
         slots = ["slot1", "slot2", "slot3", "slot4"]
         slots_vars = []
         for slot in slots:
-            var = fluid.layers.data(
-                name=slot, shape=[1], dtype="int64", lod_level=1
+            var = paddle.static.data(
+                name=slot, shape=[-1, 1], dtype="int64", lod_level=1
             )
             slots_vars.append(var)
 
@@ -824,6 +845,77 @@ class TestDataset(unittest.TestCase):
 
         temp_dir.cleanup()
 
+    def test_cuda_in_memory_dataset_run(self):
+        """
+        Testcase for cuda inmemory dataset hogwild_worker train to run(barrier).
+        """
+        temp_dir = tempfile.TemporaryDirectory()
+        filename1 = os.path.join(
+            temp_dir.name, "test_in_memory_dataset_run_a.txt"
+        )
+        filename2 = os.path.join(
+            temp_dir.name, "test_in_memory_dataset_run_b.txt"
+        )
+
+        with open(filename1, "w") as f:
+            data = "1 1 2 3 3 4 5 5 5 5 1 1\n"
+            data += "1 2 2 3 4 4 6 6 6 6 1 2\n"
+            data += "1 3 2 3 5 4 7 7 7 7 1 3\n"
+            f.write(data)
+        with open(filename2, "w") as f:
+            data = "1 4 2 3 3 4 5 5 5 5 1 4\n"
+            data += "1 5 2 3 4 4 6 6 6 6 1 5\n"
+            data += "1 6 2 3 5 4 7 7 7 7 1 6\n"
+            data += "1 7 2 3 6 4 8 8 8 8 1 7\n"
+            f.write(data)
+
+        slots = ["slot1", "slot2", "slot3", "slot4"]
+        slots_vars = []
+        for slot in slots:
+            var = paddle.static.data(
+                name=slot, shape=[-1, 1], dtype="int64", lod_level=1
+            )
+            slots_vars.append(var)
+
+        dataset = fluid.DatasetFactory().create_dataset("InMemoryDataset")
+        dataset.set_feed_type("SlotRecordInMemoryDataFeed")
+        dataset.set_batch_size(1)
+        dataset.set_pipe_command("cat")
+        dataset.set_use_var(slots_vars)
+        dataset.set_filelist([filename1, filename2])
+
+        graph_config = {
+            "walk_len": 24,
+            "walk_degree": 10,
+            "once_sample_startid_len": 80000,
+            "sample_times_one_chunk": 5,
+            "window": 3,
+            "debug_mode": 0,
+            "batch_size": 800,
+            "meta_path": "cuid2clk-clk2cuid;cuid2conv-conv2cuid;clk2cuid-cuid2clk;clk2cuid-cuid2conv",
+            "gpu_graph_training": 1,
+        }
+        dataset.set_graph_config(graph_config)
+        dataset.set_pass_id(2)
+        pass_id = dataset.get_pass_id()
+
+        dataset.load_into_memory()
+
+        dataset.get_memory_data_size()
+
+        exe = fluid.Executor(
+            fluid.CPUPlace()
+            if not core.is_compiled_with_cuda()
+            else fluid.CUDAPlace(0)
+        )
+        exe.run(fluid.default_startup_program())
+        for i in range(self.epoch_num):
+            try:
+                exe.train_from_dataset(fluid.default_main_program(), dataset)
+            except Exception as e:
+                self.assertTrue(False)
+        temp_dir.cleanup()
+
 
 class TestDatasetWithDataLoader(TestDataset):
     """
@@ -852,8 +944,8 @@ class TestDatasetWithFetchHandler(unittest.TestCase):
         slots_vars = []
         poolings = []
         for slot in slots:
-            data = fluid.layers.data(
-                name=slot, shape=[1], dtype="int64", lod_level=1
+            data = paddle.static.data(
+                name=slot, shape=[-1, 1], dtype="int64", lod_level=1
             )
             var = fluid.layers.cast(x=data, dtype='float32')
             pool = fluid.layers.sequence_pool(input=var, pool_type='AVERAGE')
@@ -862,7 +954,7 @@ class TestDatasetWithFetchHandler(unittest.TestCase):
             poolings.append(pool)
 
         concated = fluid.layers.concat(poolings, axis=1)
-        fc = fluid.layers.fc(input=concated, act='tanh', size=32)
+        fc = paddle.static.nn.fc(x=concated, activation='tanh', size=32)
         return slots_vars, fc
 
     def get_dataset(self, inputs, files):
@@ -1025,8 +1117,8 @@ class TestDataset2(unittest.TestCase):
             slots = ["slot1_ff", "slot2_ff", "slot3_ff", "slot4_ff"]
             slots_vars = []
             for slot in slots:
-                var = fluid.layers.data(
-                    name=slot, shape=[1], dtype="float32", lod_level=1
+                var = paddle.static.data(
+                    name=slot, shape=[-1, 1], dtype="float32", lod_level=1
                 )
                 slots_vars.append(var)
             fake_cost = paddle.subtract(slots_vars[0], slots_vars[-1])
@@ -1095,8 +1187,8 @@ class TestDataset2(unittest.TestCase):
             slots = ["slot1_ff", "slot2_ff", "slot3_ff", "slot4_ff"]
             slots_vars = []
             for slot in slots:
-                var = fluid.layers.data(
-                    name=slot, shape=[1], dtype="float32", lod_level=1
+                var = paddle.static.data(
+                    name=slot, shape=[-1, 1], dtype="float32", lod_level=1
                 )
                 slots_vars.append(var)
             fake_cost = paddle.subtract(slots_vars[0], slots_vars[-1])
@@ -1226,8 +1318,8 @@ class TestDataset2(unittest.TestCase):
             slots = ["slot1_ff", "slot2_ff", "slot3_ff", "slot4_ff"]
             slots_vars = []
             for slot in slots:
-                var = fluid.layers.data(
-                    name=slot, shape=[1], dtype="float32", lod_level=1
+                var = paddle.static.data(
+                    name=slot, shape=[-1, 1], dtype="float32", lod_level=1
                 )
                 slots_vars.append(var)
             fake_cost = paddle.subtract(slots_vars[0], slots_vars[-1])

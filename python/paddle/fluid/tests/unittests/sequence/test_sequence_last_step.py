@@ -16,6 +16,7 @@ import unittest
 
 import numpy as np
 
+import paddle
 import paddle.fluid as fluid
 from paddle.fluid.framework import Program, program_guard
 
@@ -35,10 +36,9 @@ class TestSequenceLastStepOpError(unittest.TestCase):
 
             def test_input_dtype():
                 # the dtype of input must be int64
-                type_data = fluid.layers.data(
+                type_data = paddle.static.data(
                     name='type_data',
                     shape=[7, 1],
-                    append_batch_size=False,
                     dtype='int64',
                     lod_level=1,
                 )

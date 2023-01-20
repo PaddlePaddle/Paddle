@@ -127,7 +127,7 @@ class ElementwiseActivationMkldnnFusePassTest_Add_Clip(
 ):
     def set_params(self):
         self.operand = paddle.add
-        self.act = fluid.layers.clip
+        self.act = paddle.clip
         self.act_alpha = 0.0
         self.act_beta = 10.0
 
@@ -219,7 +219,7 @@ class ElementwiseActivationMkldnnFusePassTest_Sub_Clip(
 ):
     def set_params(self):
         self.operand = paddle.subtract
-        self.act = fluid.layers.clip
+        self.act = paddle.clip
         self.act_alpha = 0.0
         self.act_beta = 10.0
 
@@ -319,7 +319,7 @@ class ElementwiseActivationMkldnnFusePassTest_Mul_Clip(
 ):
     def set_params(self):
         self.operand = paddle.multiply
-        self.act = fluid.layers.clip
+        self.act = paddle.clip
         self.act_alpha = 0.0
         self.act_beta = 10.0
 

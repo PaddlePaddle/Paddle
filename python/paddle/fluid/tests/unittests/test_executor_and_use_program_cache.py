@@ -17,8 +17,8 @@ import unittest
 import numpy as np
 from test_eager_deletion_padding_rnn import PaddingRNNTestBase, RNNConfig
 
+import paddle
 import paddle.fluid as fluid
-import paddle.fluid.core as core
 
 
 class TestExecutor(unittest.TestCase):
@@ -26,21 +26,18 @@ class TestExecutor(unittest.TestCase):
         main_program = fluid.Program()
         startup_program = fluid.Program()
         with fluid.program_guard(main_program, startup_program):
-            a = fluid.layers.data(name='a', shape=[784], dtype='float32')
-            b = fluid.layers.data(
-                name='b',
-                shape=[784, 100],
-                dtype='float32',
-                append_batch_size=False,
-            )
-            output = fluid.layers.mul(x=a, y=b)
+            a = paddle.static.data(name='a', shape=[-1, 784], dtype='float32')
+            b = paddle.static.data(name='b', shape=[784, 100], dtype='float32')
+            a.desc.set_need_check_feed(False)
+            b.desc.set_need_check_feed(False)
+            output = paddle.matmul(x=a, y=b)
 
         # Compute with numpy
         a_np = np.random.random((100, 784)).astype('float32')
         b_np = np.random.random((784, 100)).astype('float32')
         out_np = np.dot(a_np, b_np)
 
-        place = core.CPUPlace()
+        place = paddle.CPUPlace()
         exe = fluid.Executor(place)
 
         def _train(use_program_cache, max_iters=1):

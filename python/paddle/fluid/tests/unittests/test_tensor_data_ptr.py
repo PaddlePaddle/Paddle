@@ -25,6 +25,7 @@ class TestTensorDataPtr(unittest.TestCase):
         src = paddle.to_tensor(np_src, dtype="float64")
         dst = paddle.Tensor()
         src._share_buffer_to(dst)
+        self.assertTrue(src.data_ptr() is not None)
         self.assertEqual(src.data_ptr(), dst.data_ptr())
 
 

@@ -185,10 +185,10 @@ class FleetUtil:
 
               # below is part of model
               emb = my_slot_net(slots, label) # emb can be fc layer of size 1
-              similarity_norm = fluid.layers.sigmoid(fluid.layers.clip(\
+              similarity_norm = fluid.layers.sigmoid(paddle.clip(\
                   emb, min=-15.0, max=15.0), name="similarity_norm")\
               binary_predict = fluid.layers.concat(input=[\
-                  fluid.layers.elementwise_sub(\
+                  paddle.subtract(\
                       fluid.layers.ceil(similarity_norm), similarity_norm),\
                   similarity_norm], axis=1)
               auc, batch_auc, [batch_stat_pos, batch_stat_neg, stat_pos, \
@@ -1371,13 +1371,13 @@ class FleetUtil:
                                                           local_total_ins.name)
 
               # below is part of example model
-              label = fluid.layers.data(name="click", shape=[-1, 1],\
-                  dtype="int64", lod_level=0, append_batch_size=False)
+              label = paddle.static.data(name="click", shape=[-1, 1],\
+                  dtype="int64", lod_level=0)
               emb = my_slot_net(slots, label) # emb can be fc layer of size 1
-              similarity_norm = fluid.layers.sigmoid(fluid.layers.clip(\
+              similarity_norm = fluid.layers.sigmoid(paddle.clip(\
                   emb, min=-15.0, max=15.0), name="similarity_norm")\
               binary_predict = fluid.layers.concat(input=[\
-                  fluid.layers.elementwise_sub(\
+                  paddle.subtract(\
                       fluid.layers.ceil(similarity_norm), similarity_norm),\
                   similarity_norm], axis=1)
               auc, batch_auc, [batch_stat_pos, batch_stat_neg, stat_pos, \
@@ -1571,13 +1571,13 @@ class FleetUtil:
                                               local_total_ins.name)
 
               # below is part of model
-              label = fluid.layers.data(name="click", shape=[-1, 1],\
-                  dtype="int64", lod_level=0, append_batch_size=False)
+              label = paddle.static.data(name="click", shape=[-1, 1],\
+                  dtype="int64", lod_level=0)
               emb = my_slot_net(slots, label) # emb can be fc layer of size 1
-              similarity_norm = fluid.layers.sigmoid(fluid.layers.clip(\
+              similarity_norm = fluid.layers.sigmoid(paddle.clip(\
                   emb, min=-15.0, max=15.0), name="similarity_norm")\
               binary_predict = fluid.layers.concat(input=[\
-                  fluid.layers.elementwise_sub(\
+                  paddle.subtract(\
                       fluid.layers.ceil(similarity_norm), similarity_norm),\
                   similarity_norm], axis=1)
               auc, batch_auc, [batch_stat_pos, batch_stat_neg, stat_pos, \

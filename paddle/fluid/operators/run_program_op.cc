@@ -47,17 +47,18 @@ class RunProgramOp : public framework::OperatorWithKernel {
    *
    * Of course, the data type here is also not important.
    */
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(framework::proto::VarType::FP32,
-                                   ctx.GetPlace());
+    return phi::KernelKey(framework::proto::VarType::FP32, ctx.GetPlace());
   }
 
-  framework::OpKernelType GetKernelTypeForVar(
+  phi::KernelKey GetKernelTypeForVar(
       const std::string& var_name,
       const phi::DenseTensor& tensor,
-      const framework::OpKernelType& expected_kernel_type) const override {
-    return expected_kernel_type;
+      const phi::KernelKey& expected_kernel_type) const override {
+    return phi::KernelKey(phi::Backend::ALL_BACKEND,
+                          expected_kernel_type.layout(),
+                          expected_kernel_type.dtype());
   }
 };
 
@@ -130,6 +131,14 @@ class RunProgramOpMaker : public framework::OpProtoAndCheckerMaker {
                         "(BlockDesc *)"
                         "The global block of executed backward program desc.")
         .SetDefault(nullptr);
+    AddAttr<std::vector<std::string>>("param_grad_names",
+                                      "std::vector<std::string>"
+                                      "The names of parameter gradients.")
+        .SetDefault({});
+    AddAttr<std::vector<std::string>>("out_grad_names",
+                                      "std::vector<std::string>"
+                                      "The names of output gradients.")
+        .SetDefault({});
     AddComment(R"DOC(
 RunProgram operator.
 
@@ -165,17 +174,18 @@ class RunProgramGradOp : public framework::OperatorWithKernel {
 
  protected:
   /* see [Why use single type kernel] */
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(framework::proto::VarType::FP32,
-                                   ctx.GetPlace());
+    return phi::KernelKey(framework::proto::VarType::FP32, ctx.GetPlace());
   }
 
-  framework::OpKernelType GetKernelTypeForVar(
+  phi::KernelKey GetKernelTypeForVar(
       const std::string& var_name,
       const phi::DenseTensor& tensor,
-      const framework::OpKernelType& expected_kernel_type) const override {
-    return expected_kernel_type;
+      const phi::KernelKey& expected_kernel_type) const override {
+    return phi::KernelKey(phi::Backend::ALL_BACKEND,
+                          expected_kernel_type.layout(),
+                          expected_kernel_type.dtype());
   }
 };
 

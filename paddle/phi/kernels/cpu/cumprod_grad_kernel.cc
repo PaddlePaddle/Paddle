@@ -44,6 +44,10 @@ void CumprodGradKernel(const Context& dev_ctx,
   size_t mid_dim = 1;
   size_t inner_dim = 1;
   GetCumprodDimInfo(shape, dim, &outer_dim, &mid_dim, &inner_dim);
+  if (shape.size() == 0) {
+    phi::Copy<Context>(dev_ctx, d_out, dev_ctx.GetPlace(), false, d_x);
+    return;
+  }
   size_t numel = outer_dim * mid_dim * inner_dim;
 
   // deal with complex

@@ -38,6 +38,7 @@ constexpr char kInternalVars[] = "InternalVars";
 constexpr char kOutputVars[] = "OutputVars";
 constexpr char kMemOptVarInfoFromMainGraph[] =
     "mem_opt_var_info_from_main_graph";
+constexpr char kSkipGcVarNames[] = "skip_gc_vars";
 
 using Name2VarInfoMap =
     std::unordered_map<std::string,
@@ -66,13 +67,20 @@ class OpTransInfo {
   std::unordered_set<std::string> GetDenyVarNames(
       const GraphNodeSet& cluster) const;
 
-  static bool IsInplaceOp(const OpDesc& op_desc);
+  std::unordered_set<std::string> GetIgnoreInplaceVarNames(
+      const OpDesc& op_desc) const;
+
+  bool IsInplaceOp(const OpDesc& op_desc,
+                   const std::unordered_set<std::string>& deny_var_names) const;
 
  private:
   DyOpCondT dynamic_op_cond_;
 
   DeParamCondT deny_param_cond_{{"batch_norm", {"ReserveSpace"}},
                                 {"batch_norm_grad", {"ReserveSpace"}}};
+
+  DeParamCondT ignore_inplace_param_cond_{
+      {"batch_norm", {"MeanOut", "VarianceOut"}}};
 
   std::unordered_set<std::string> default_deny_ops_{"feed", "fetch"};
 };

@@ -59,11 +59,11 @@ def cnn_model(data):
     param_shape = [reduce(lambda a, b: a * b, input_shape[1:], 1)] + [SIZE]
     scale = (2.0 / (param_shape[0] ** 2 * SIZE)) ** 0.5
 
-    predict = fluid.layers.fc(
-        input=conv_pool_2,
+    predict = paddle.static.nn.fc(
+        x=conv_pool_2,
         size=SIZE,
-        act="softmax",
-        param_attr=fluid.param_attr.ParamAttr(
+        activation="softmax",
+        weight_attr=fluid.param_attr.ParamAttr(
             initializer=fluid.initializer.Constant(value=0.01)
         ),
     )
@@ -77,10 +77,12 @@ class TestDistMnist2x2(TestDistRunnerBase):
         if dist_strategy:
             fleet.init(is_collective=True)
         with fluid.device_guard("gpu:0"):
-            images = fluid.layers.data(
-                name='pixel', shape=[1, 28, 28], dtype=DTYPE
+            images = paddle.static.data(
+                name='pixel', shape=[-1, 1, 28, 28], dtype=DTYPE
             )
-            label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+            label = paddle.static.data(
+                name='label', shape=[-1, 1], dtype='int64'
+            )
 
             if dist_strategy:
                 data_loader = fluid.io.DataLoader.from_generator(

@@ -43,8 +43,7 @@ namespace framework {
 
 OpKernelType TransPhiKernelKeyToOpKernelType(const phi::KernelKey& kernel_key);
 phi::KernelKey TransOpKernelTypeToPhiKernelKey(const OpKernelType& kernel_type);
-phi::KernelKey FallBackToCpu(const OpKernelType& expected_kernel_key,
-                             const phi::KernelKey& kernel_key,
+phi::KernelKey FallBackToCpu(const phi::KernelKey& kernel_key,
                              const framework::OperatorBase& op);
 
 /* Kernel Args parse */

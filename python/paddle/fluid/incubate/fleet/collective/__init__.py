@@ -555,7 +555,7 @@ class CollectiveOptimizer(DistributedOptimizer):
                 self.raiseOptimizeError(
                     "mixed_precision", self._optimizer.__class__.__name__
                 )
-            self._optimizer = fluid.contrib.mixed_precision.decorate(
+            self._optimizer = paddle.static.amp.decorate(
                 self._optimizer,
                 init_loss_scaling=self._amp_loss_scaling,
                 use_dynamic_loss_scaling=True,

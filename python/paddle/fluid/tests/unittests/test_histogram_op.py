@@ -153,6 +153,14 @@ class TestHistogramOp(OpTest):
         self.check_output(check_eager=True)
 
 
+class TestHistogramOp_ZeroDim(TestHistogramOp):
+    def init_test_case(self):
+        self.in_shape = []
+        self.bins = 5
+        self.min = 1
+        self.max = 5
+
+
 if __name__ == "__main__":
     paddle.enable_static()
     unittest.main()
