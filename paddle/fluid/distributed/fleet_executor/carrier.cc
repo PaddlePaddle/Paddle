@@ -33,6 +33,7 @@ USE_INTERCEPTOR(Source);
 USE_INTERCEPTOR(Compute);
 USE_INTERCEPTOR(Amplifier);
 USE_INTERCEPTOR(Sink);
+USE_INTERCEPTOR(Cond);
 
 void Carrier::Init(
     int64_t rank,
@@ -93,29 +94,30 @@ void Carrier::CopyParameters(
     int microbatch_id,
     const framework::ProgramDesc& program,
     const std::vector<std::string>& inference_root_scope_vars) {
-  auto& global_block = program.Block(0);
-
   std::map<std::string, int> inference_root_scope_var_map;
   for (auto var_name : inference_root_scope_vars) {
     inference_root_scope_var_map.insert({var_name, 1});
   }
-  for (auto& var : global_block.AllVars()) {
-    std::string var_name = var->Name();
-    bool force_root = inference_root_scope_var_map.find(var_name) !=
-                      inference_root_scope_var_map.end();
-    if (force_root) {
-      VLOG(4) << var_name << " will be forced to be created in the root scope.";
-    }
-    if ((var->Persistable() || force_root) && microbatch_id == 0) {
-      auto* ptr = root_scope_->Var(var->Name());
-      InitializeVariable(ptr, var->GetType());
-      VLOG(5) << "Create persistable var: " << var->Name()
-              << ", which pointer is " << ptr;
-    } else if (!var->Persistable()) {
-      auto* ptr = microbatch_scopes_[microbatch_id]->Var(var->Name());
-      VLOG(5) << "Create variable " << var->Name() << " for microbatch "
-              << microbatch_id << ", which pointer is " << ptr << ".";
-      InitializeVariable(ptr, var->GetType());
+  for (size_t i = 0; i < program.Size(); ++i) {
+    for (auto& var : program.Block(i).AllVars()) {
+      std::string var_name = var->Name();
+      bool force_root = inference_root_scope_var_map.find(var_name) !=
+                        inference_root_scope_var_map.end();
+      if (force_root) {
+        VLOG(4) << var_name
+                << " will be forced to be created in the root scope.";
+      }
+      if ((var->Persistable() || force_root) && microbatch_id == 0) {
+        auto* ptr = root_scope_->Var(var->Name());
+        InitializeVariable(ptr, var->GetType());
+        VLOG(5) << "Create persistable var: " << var->Name()
+                << ", which pointer is " << ptr;
+      } else if (!var->Persistable()) {
+        auto* ptr = microbatch_scopes_[microbatch_id]->Var(var->Name());
+        VLOG(5) << "Create variable " << var->Name() << " for microbatch "
+                << microbatch_id << ", which pointer is " << ptr << ".";
+        InitializeVariable(ptr, var->GetType());
+      }
     }
   }
 }
