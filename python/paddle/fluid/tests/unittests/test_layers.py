@@ -2164,7 +2164,6 @@ class TestBook(LayerTest):
             )
             return out
 
-
     def test_row_conv(self):
         # TODO(minqiyang): dygraph do not support lod now
         with self.static_graph():

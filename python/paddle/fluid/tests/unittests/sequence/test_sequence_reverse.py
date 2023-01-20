@@ -18,7 +18,6 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
 
 sys.path.append("../")
 from op_test import OpTest
@@ -112,7 +111,6 @@ class TestSequenceReverseOpError(unittest.TestCase):
                 name='x2', shape=[-1, 4], dtype='float16'
             )
             paddle.static.nn.sequence_lod.sequence_reverse(x=x2_data)
-
 
         self.assertRaises(TypeError, test_dtype)
 

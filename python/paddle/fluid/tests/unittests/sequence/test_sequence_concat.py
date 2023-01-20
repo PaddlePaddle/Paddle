@@ -21,7 +21,6 @@ sys.path.append("../")
 from op_test import OpTest
 
 import paddle
-from paddle import fluid
 
 
 class TestSequenceConcat(OpTest):
@@ -89,12 +88,10 @@ class TestSequenceConcatOpError(unittest.TestCase):
     def test_errors(self):
         def test_input_list():
             # the input type must be list
-
             x_data = paddle.static.data(
                 name='x', shape=[-1, 4], dtype='float32'
             )
             paddle.static.nn.sequence_lod.sequence_concat(input=x_data)
-
 
         self.assertRaises(TypeError, test_input_list)
 
@@ -105,15 +102,18 @@ class TestSequenceConcatOpError(unittest.TestCase):
             y1_data = paddle.static.data(
                 name='y1', shape=[-1, 4], dtype='float32'
             )
-            paddle.static.nn.sequence_lod.sequence_concat(input=[x1_data, y1_data])
+            paddle.static.nn.sequence_lod.sequence_concat(
+                input=[x1_data, y1_data]
+            )
 
         def test_variable2():
             x2_data = np.array([[3, 5]]).astype('float32')
             y2_data = paddle.static.data(
                 name='y2', shape=[-1, 4], dtype='float32'
             )
-            paddle.static.nn.sequence_lod.sequence_concat(input=[y2_data, x2_data])
-
+            paddle.static.nn.sequence_lod.sequence_concat(
+                input=[y2_data, x2_data]
+            )
 
         for i in range(2):
             if i == 0:

@@ -437,7 +437,6 @@ class TestSeqConvApi(unittest.TestCase):
         y = paddle.static.nn.sequence_lod.sequence_conv(
             input=x, num_filters=2, filter_size=3, padding_start=None
         )
-
         place = fluid.CPUPlace()
         x_tensor = fluid.create_lod_tensor(
             np.random.rand(10, 32).astype("float32"), [[2, 3, 1, 4]], place
