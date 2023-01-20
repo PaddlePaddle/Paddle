@@ -947,29 +947,23 @@ ir::Graph* FusedAttentionsPass::PreMaskDropResPostBwd(Graph* graph) const {
     GET_IR_NODE_FROM_SUBGRAPH(pre_layer_norm_grad_op_node,
                               pre_layer_norm_grad_op,
                               fused_attention_grad_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(grad_accumulation_sum_op_node,
+                              grad_accumulation_sum_op,
+                              fused_attention_grad_pattern);
 
     // TODO(Yuang Liu): finish the handler
 
-    GraphSafeRemoveNodes(g,
-                         {post_layer_norm_grad_op_node,
-                          residual_ele_add_grad_op_node,
-                          out_linear_dropout_grad_op_node,
-                          out_linear_ele_add_grad_op_node,
-                          out_linear_matmul_grad_op_node,
-                          qkv_reshape_grad_op_node,
-                          qkv_transpose_grad_op_node,
-                          qkv_matmul_grad_op_node,
-                          attn_dropout_grad_op_node,
-                          qk_softmax_grad_op_node,
-                          add_mask_ele_add_grad_op_node,
-                          qk_scale_grad_op_node,
-                          qk_matmul_grad_op_node,
-                          fuse_qkv_split_grad_op_node,
-                          fuse_qkv_transpose_grad_op_node,
-                          fuse_qkv_reshape_grad_op_node,
-                          fuse_qkv_ele_add_grad_op_node,
-                          fuse_qkv_matmul_grad_op_node,
-                          pre_layer_norm_grad_op_node});
+    GraphSafeRemoveNodes(
+        g, {post_layer_norm_grad_op_node,    residual_ele_add_grad_op_node,
+            out_linear_dropout_grad_op_node, out_linear_ele_add_grad_op_node,
+            out_linear_matmul_grad_op_node,  qkv_reshape_grad_op_node,
+            qkv_transpose_grad_op_node,      qkv_matmul_grad_op_node,
+            attn_dropout_grad_op_node,       qk_softmax_grad_op_node,
+            add_mask_ele_add_grad_op_node,   qk_scale_grad_op_node,
+            qk_matmul_grad_op_node,          fuse_qkv_split_grad_op_node,
+            fuse_qkv_transpose_grad_op_node, fuse_qkv_reshape_grad_op_node,
+            fuse_qkv_ele_add_grad_op_node,   fuse_qkv_matmul_grad_op_node,
+            pre_layer_norm_grad_op_node,     grad_accumulation_sum_op_node});
 
     found_fused_attention++;
   };
