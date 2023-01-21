@@ -2158,6 +2158,9 @@ def lu(x, pivot=True, get_infos=False, name=None):
             # one can verify : X = P @ L @ U ;
     """
 
+    if x.size == 0:
+        raise ValueError("input size should not be 0")
+
     if in_dygraph_mode():
         lu, p, info = _C_ops.lu(x, pivot)
     else:
