@@ -615,6 +615,8 @@ def fused_multi_head_attention(
         'downgrade_in_infer' if mode == 'downscale_in_infer' else mode
     )  # semantic transfer
 
+    assert x.ndim == 3, "The dims of the x should be 3."
+
     if _non_static_mode():
         if default_main_program().random_seed != 0:
             seed = default_main_program().random_seed
