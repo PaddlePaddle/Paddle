@@ -100,6 +100,16 @@ void CropTensorFunction(const Context& dev_ctx,
   out->Resize(out_dims);
   dev_ctx.template Alloc<T>(out);
   for (size_t i = 0; i < offsets_vec.size(); ++i) {
+    PADDLE_ENFORCE_GE(
+        offsets_vec[i],
+        0,
+        errors::InvalidArgument("The offsets (%d) of the %uth elements of"
+                                " Op(crop_tensor) "
+                                "should be greater than or "
+                                "equal to 0.",
+                                offsets_vec[i],
+                                i));
+
     PADDLE_ENFORCE_LE(offsets_vec[i] + shape_vec[i],
                       x_dims[i],
                       errors::InvalidArgument(
@@ -111,6 +121,17 @@ void CropTensorFunction(const Context& dev_ctx,
                           offsets_vec[i],
                           shape_vec[i],
                           i));
+
+    PADDLE_ENFORCE_GE(offsets_vec[i] + shape_vec[i],
+                      0,
+                      errors::InvalidArgument(
+                          "The sum of the %uth elements of "
+                          "offsets (%d) and shape (%d) of Op(crop_tensor) "
+                          "should be greater than or "
+                          "equal to 0.",
+                          i,
+                          offsets_vec[i],
+                          shape_vec[i]));
   }
 
   auto x_tensor = EigenTensor<T, D>::From(x);
