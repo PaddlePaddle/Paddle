@@ -4231,7 +4231,20 @@ void UnbindInferMeta(const MetaTensor& x,
                      std::vector<MetaTensor*> outs) {
   auto in_dims = x.dims();
   std::vector<int> out_dim;
+
+  PADDLE_ENFORCE_GE(
+      axis,
+      -in_dims.size(),
+      phi::error::InvalidArgument(
+          "axis must be in range(%d, %d).", -in_dims.size(), in_dims.size()));
+  PADDLE_ENFORCE_LT(
+      axis,
+      in_dims.size(),
+      phi::error::InvalidArgument(
+          "axis must be in range(%d, %d).", -in_dims.size(), in_dims.size()));
+
   axis = axis < 0 ? in_dims.size() + axis : axis;
+
   for (int i = 0; i < in_dims.size(); ++i) {
     if (i != axis) out_dim.push_back(in_dims[i]);
   }
