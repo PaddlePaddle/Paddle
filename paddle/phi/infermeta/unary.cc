@@ -3603,7 +3603,7 @@ void SplitWithNumInferMeta(const MetaTensor& x,
     PADDLE_ENFORCE_NE(
         num,
         0,
-        phi::errors::InvalidArgument("Attr(num_or_sections) should be 0."));
+        phi::errors::InvalidArgument("Attr(num_or_sections) should not be 0."));
     PADDLE_ENFORCE_EQ(input_axis_dim % num,
                       0,
                       phi::errors::InvalidArgument(

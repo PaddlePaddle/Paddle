@@ -336,11 +336,13 @@ class TestSplitOpError(unittest.TestCase):
 
             self.assertRaises(TypeError, test_axis_type_tensor)
 
-            def test_0_num_tensor():
-                x9 = fluid.layers.data(shape=[4], dtype='float32', name='x7')
-                paddle.split(input=x9, num_or_sections=0)
+        with paddle.fluid.dygraph.guard():
 
-            self.assertRaises(TypeError, test_0_num_tensor)
+            def test_0_num_tensor():
+                x = paddle.uniform([1, 1, 1], dtype='float32')
+                paddle.split(x, num_or_sections=0)
+
+            self.assertRaises(ValueError, test_0_num_tensor)
 
 
 class API_TestSplit(unittest.TestCase):
