@@ -4235,12 +4235,12 @@ void UnbindInferMeta(const MetaTensor& x,
   PADDLE_ENFORCE_GE(
       axis,
       -in_dims.size(),
-      phi::error::InvalidArgument(
+      phi::errors::InvalidArgument(
           "axis must be in range(%d, %d).", -in_dims.size(), in_dims.size()));
   PADDLE_ENFORCE_LT(
       axis,
       in_dims.size(),
-      phi::error::InvalidArgument(
+      phi::errors::InvalidArgument(
           "axis must be in range(%d, %d).", -in_dims.size(), in_dims.size()));
 
   axis = axis < 0 ? in_dims.size() + axis : axis;

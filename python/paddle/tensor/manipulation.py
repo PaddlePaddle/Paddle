@@ -2751,6 +2751,10 @@ def unbind(input, axis=0):
             # x2.shape [3, 5]
             # x3.shape [3, 5]
     """
+    assert axis in range(
+        -input.ndim, input.ndim
+    ), f'The axis must in range({-input.ndim}, {input.ndim})'
+
     if in_dygraph_mode():
         return _C_ops.unbind(input, axis)
     else:
