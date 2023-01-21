@@ -3071,27 +3071,40 @@ void RepeatInterleaveInferMeta(const MetaTensor& x,
                                MetaTensor* out) {
   const auto& input_dim = x.dims();
   auto output_dim = phi::vectorize(input_dim);
+  auto n_dim = dim;
 
-  PADDLE_ENFORCE_EQ(
-      dim < input_dim.size() && dim >= (0 - input_dim.size()),
-      true,
+  if (n_dim < 0) n_dim += input_dim.size();
+
+  PADDLE_ENFORCE_LT(
+      dim,
+      input_dim.size(),
       phi::errors::OutOfRange(
           "Attr(dim) is out of range, It's expected "
-          "to be in range of [-%d, %d]. But received Attr(dim) = %d.",
-          input_dim.size(),
+          "to be in range of [%d, %d]. But received Attr(dim) = %d.",
+          -input_dim.size(),
           input_dim.size() - 1,
           dim));
-  PADDLE_ENFORCE_EQ(
-      repeats > 0,
-      true,
+  PADDLE_ENFORCE_GE(
+      dim,
+      (0 - input_dim.size()),
+      phi::errors::OutOfRange(
+          "Attr(dim) is out of range, It's expected "
+          "to be in range of [%d, %d]. But received Attr(dim) = %d.",
+          -input_dim.size(),
+          input_dim.size() - 1,
+          dim));
+
+  PADDLE_ENFORCE_GT(
+      repeats,
+      0,
       phi::errors::InvalidArgument("repeats should be larger than zero"));
 
-  PADDLE_ENFORCE_NE(out,
-                    nullptr,
-                    phi::errors::InvalidArgument(
-                        "repeat_interleave's output tensor can't be nullptr"));
+  PADDLE_ENFORCE_NOT_NULL(
+      out,
+      phi::errors::InvalidArgument(
+          "repeat_interleave's output tensor can't be nullptr"));
 
-  output_dim[dim] = input_dim[dim] * repeats;
+  output_dim[n_dim] = input_dim[n_dim] * repeats;
   out->set_dims(phi::make_ddim(output_dim));
   out->share_lod(x);
   out->set_dtype(x.dtype());
