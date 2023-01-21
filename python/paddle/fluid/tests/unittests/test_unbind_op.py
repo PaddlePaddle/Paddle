@@ -25,6 +25,7 @@ from paddle.fluid import Program, program_guard
 
 class TestUnbind(unittest.TestCase):
     def test_unbind(self):
+        paddle.enable_static()
 
         x_1 = fluid.data(shape=[2, 3], dtype='float32', name='x_1')
         [out_0, out_1] = tensor.unbind(input=x_1, axis=0)
@@ -59,6 +60,7 @@ class TestUnbind(unittest.TestCase):
 
 class TestLayersUnbind(unittest.TestCase):
     def test_layers_unbind(self):
+        paddle.enable_static()
 
         x_1 = fluid.data(shape=[2, 3], dtype='float32', name='x_1')
         [out_0, out_1] = paddle.unbind(input=x_1, axis=0)
