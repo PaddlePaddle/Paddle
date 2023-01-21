@@ -22,7 +22,6 @@
 #include "paddle/fluid/imperative/type_defs.h"
 #include "paddle/fluid/imperative/var_helper.h"
 
-DECLARE_bool(low_precision_op_list);
 namespace paddle {
 namespace imperative {
 
@@ -194,16 +193,6 @@ AmpOperators::GetMutableUnsupportedBf16Ops() {
   return unsupported_bf16_ops_;
 }
 
-void AmpOperators::AddToAmpOpList(const std::string& op_name) {
-  if (FLAGS_low_precision_op_list) {
-    current_amp_ops_[op_name] += 1;
-  }
-}
-
-std::map<const std::string, int> AmpOperators::GetAmpOpList() {
-  return current_amp_ops_;
-}
-
 std::ostream& operator<<(std::ostream& os, AmpOperators& ops) {
   os << "allow ops: ";
   auto allow_ops = ops.GetMutableAllowOps();
@@ -348,6 +337,11 @@ NameVarMap<VarType> AutoCastInputs(const std::string& op_type,
           pair.first != "X") {
         continue;
       }
+      if ((op_type == "max_pool2d_with_index_grad" ||
+           op_type == "max_pool2d_with_index") &&
+          pair.first == "Mask") {
+        continue;
+      }
 
       if ((op_type == "fused_attention" || op_type == "fused_feedforward")) {
         if (pair.first == "LnScale" || pair.first == "LnBias" ||
@@ -390,6 +384,11 @@ NameVarMap<VarType> AutoCastInputs(const std::string& op_type,
       if ((op_type == "batch_norm" || op_type == "layer_norm" ||
            op_type == "sync_batch_norm") &&
           pair.first == "X" && dst_type == framework::proto::VarType::FP32) {
+        continue;
+      }
+      if ((op_type == "max_pool2d_with_index_grad" ||
+           op_type == "max_pool2d_with_index") &&
+          pair.first != "Mask" && dst_type == framework::proto::VarType::FP32) {
         continue;
       }
       if ((op_type == "fused_attention" || op_type == "fused_feedforwad") &&
@@ -437,6 +436,11 @@ NameVarMap<VarType> CastPureFp16Inputs(const std::string& op_type,
     if ((op_type == "batch_norm" || op_type == "layer_norm" ||
          op_type == "sync_batch_norm") &&
         pair.first != "X") {
+      continue;
+    }
+    if ((op_type == "max_pool2d_with_index_grad" ||
+         op_type == "max_pool2d_with_index") &&
+        pair.first == "Mask") {
       continue;
     }
     if ((op_type == "fused_attention" || op_type == "fused_feedforward")) {

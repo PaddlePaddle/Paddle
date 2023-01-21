@@ -20,7 +20,6 @@ from functools import reduce
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
 from paddle.fluid.layer_helper import LayerHelper
 
 
@@ -899,7 +898,7 @@ class TestSetValueValueShape5(TestSetValueApi):
 # 4. Test error
 class TestError(TestSetValueBase):
     def _value_type_error(self):
-        with self.assertRaisesRegexp(
+        with self.assertRaisesRegex(
             TypeError,
             "Only support to assign an integer, float, numpy.ndarray or paddle.Tensor",
         ):
@@ -908,7 +907,7 @@ class TestError(TestSetValueBase):
             x[0] = value
 
     def _dtype_error(self):
-        with self.assertRaisesRegexp(
+        with self.assertRaisesRegex(
             TypeError,
             "When assign a numpy.ndarray, integer or float to a paddle.Tensor, ",
         ):
@@ -916,17 +915,17 @@ class TestError(TestSetValueBase):
             y[0] = 1
 
     def _step_error(self):
-        with self.assertRaisesRegexp(ValueError, "step can not be 0"):
+        with self.assertRaisesRegex(ValueError, "step can not be 0"):
             x = paddle.ones(shape=self.shape, dtype=self.dtype)
             x[0:1:0] = self.value
 
     def _ellipsis_error(self):
-        with self.assertRaisesRegexp(
+        with self.assertRaisesRegex(
             IndexError, "An index can only have a single ellipsis"
         ):
             x = paddle.ones(shape=self.shape, dtype=self.dtype)
             x[..., ...] = self.value
-        with self.assertRaisesRegexp(ValueError, "the start or end is None"):
+        with self.assertRaisesRegex(ValueError, "the start or end is None"):
             x = paddle.ones(shape=self.shape, dtype=self.dtype)
             one = paddle.ones([1])
             x[::one] = self.value
@@ -1028,7 +1027,6 @@ class TestBackward(unittest.TestCase):
         paddle.disable_static()
 
     def func_test_dynamic(self):
-        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         model = Model()
         x = paddle.ones([1, 12, 3, 3]).astype("float32")
         y = paddle.ones([1, 12, 3, 3]).astype("float32")
@@ -1037,7 +1035,6 @@ class TestBackward(unittest.TestCase):
 
         self.assertTrue(var.grad.shape == x.grad[0, :, 0, 0].shape)
         self.assertTrue((0 == x.grad[0, :, 0, 0]).all())
-        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
 
 class TestGradientTruncated(unittest.TestCase):

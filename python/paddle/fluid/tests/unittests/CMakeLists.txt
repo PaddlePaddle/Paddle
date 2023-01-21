@@ -76,6 +76,7 @@ if(NOT WITH_GPU)
   list(REMOVE_ITEM TEST_OPS test_fused_transformer_encoder_layer)
   list(REMOVE_ITEM TEST_OPS test_fused_bias_dropout_residual_layer_norm_op)
   list(REMOVE_ITEM TEST_OPS test_fused_bias_dropout_residual_layer_norm_op_api)
+  list(REMOVE_ITEM TEST_OPS test_fused_attention_pass)
 endif()
 
 list(REMOVE_ITEM TEST_OPS test_fused_ec_moe_op)
@@ -836,7 +837,9 @@ add_subdirectory(sequence)
 add_subdirectory(dygraph_to_static)
 add_subdirectory(rnn)
 add_subdirectory(autograd)
+add_subdirectory(composite_ops)
 add_subdirectory(distribution)
+add_subdirectory(prim)
 
 if(NOT WIN32 OR NOT WITH_GPU)
   add_subdirectory(fft)
@@ -1251,13 +1254,12 @@ py_test_modules(
   test_eager_deletion_padding_rnn_for_interpretercore MODULES
   test_eager_deletion_padding_rnn ENVS FLAGS_CONVERT_GRAPH_TO_PROGRAM=true)
 
-set_tests_properties(
-  test_buffer_shared_memory_reuse_pass
-  test_buffer_shared_memory_reuse_pass_and_fuse_optimization_op_pass
-  PROPERTIES ENVIRONMENT FLAGS_CONVERT_GRAPH_TO_PROGRAM=true)
-
 # ExecutionStrategy is deprecated in standalone executor
 set_tests_properties(test_parallel_executor_dry_run
                      PROPERTIES ENVIRONMENT "FLAGS_USE_STANDALONE_EXECUTOR=0")
 set_tests_properties(test_parallel_executor_drop_scope
                      PROPERTIES ENVIRONMENT "FLAGS_USE_STANDALONE_EXECUTOR=0")
+
+set_tests_properties(
+  test_cuda_graph_static_mode
+  PROPERTIES ENVIRONMENT "FLAGS_CUDA_GRAPH_USE_STANDALONE_EXECUTOR=1")

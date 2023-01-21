@@ -22,15 +22,13 @@ from functools import reduce
 import numpy as np
 
 import paddle
-from paddle.fluid.framework import Variable
 from paddle.fluid.io import is_belong_to_optimizer, is_parameter
 from paddle.framework import core
+from paddle.static import Variable
 
-from .dist_attribute import (
-    OperatorDistributedAttribute,
-    TensorDistributedAttribute,
-)
+from .dist_attribute import OperatorDistAttr, TensorDistAttr
 from .process_group import get_all_process_groups
+from .process_mesh import ProcessMesh
 
 OpRole = core.op_proto_and_checker_maker.OpRole
 OP_ROLE_KEY = core.op_proto_and_checker_maker.kOpRoleAttrName()
@@ -621,7 +619,7 @@ def save_distributed_checkpoint(
     """
     from .dist_context import get_default_distributed_context
 
-    assert isinstance(program, paddle.fluid.framework.Program)
+    assert isinstance(program, paddle.static.Program)
     assert isinstance(is_integrated, bool)
     if dist_context is None:
         dist_context = get_default_distributed_context()
@@ -704,7 +702,7 @@ def load_checkpoint_into_program(
     """
     from .dist_context import get_default_distributed_context
 
-    assert isinstance(program, paddle.fluid.framework.Program)
+    assert isinstance(program, paddle.static.Program)
     assert _check_valid_path(
         checkpoint_path
     ), "'checkpoint_path' cannot be None."
@@ -733,7 +731,7 @@ def load_parameter_into_program(param_dict, program):
         program(Program): the program to be updated
     """
     assert isinstance(param_dict, dict)
-    assert program and isinstance(program, paddle.fluid.framework.Program)
+    assert program and isinstance(program, paddle.static.Program)
     if not param_dict:
         return
     program.set_state_dict(param_dict)
@@ -820,7 +818,7 @@ def get_dist_attr(program, dist_context=None):
     """
     from .dist_context import get_default_distributed_context
 
-    assert isinstance(program, paddle.fluid.framework.Program)
+    assert isinstance(program, paddle.static.Program)
     if dist_context is None:
         dist_context = get_default_distributed_context()
     dist_attr = {}
@@ -1386,10 +1384,19 @@ def get_loss_op(block):
 
 
 def set_var_dist_attr(dist_context, var, dims_mapping, process_mesh, **kwargs):
-    tensor_dist_attr = TensorDistributedAttribute()
+    tensor_dist_attr = TensorDistAttr()
     tensor_dist_attr.dims_mapping = dims_mapping
     # TODO get global mesh group
-    tensor_dist_attr.process_mesh = process_mesh
+    if isinstance(process_mesh, (list, np.ndarray)):
+        tensor_dist_attr.process_mesh = ProcessMesh(process_mesh)
+    elif isinstance(process_mesh, core.ProcessMesh):
+        tensor_dist_attr.process_mesh = process_mesh
+    else:
+        raise ValueError(
+            "{} must be a instance of ProcessMesh or list, but receive {}".format(
+                process_mesh, type(process_mesh)
+            )
+        )
     if "mark_annotated" in kwargs and kwargs["mark_annotated"]:
         tensor_dist_attr.mark_annotated("dims_mapping")
         tensor_dist_attr.mark_annotated("process_mesh")
@@ -1403,7 +1410,7 @@ def naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
     assert process_mesh is not None
     assert ref_mapping is not None
 
-    new_op_dist_attr = OperatorDistributedAttribute()
+    new_op_dist_attr = OperatorDistAttr()
 
     for input_varname in new_op.desc.input_arg_names():
         new_op_dist_attr.set_input_dims_mapping(input_varname, ref_mapping)
@@ -1422,7 +1429,7 @@ def naive_set_dist_op_attr_for_program_by_mesh(
         return
     assert process_mesh is not None
 
-    new_op_dist_attr = OperatorDistributedAttribute()
+    new_op_dist_attr = OperatorDistAttr()
 
     for input_varname in new_op.desc.input_arg_names():
         var = ctx.serial_main_program.global_block().var(input_varname)
@@ -1838,7 +1845,7 @@ def get_var_numel(var):
 def get_lr(optimizer):
     if isinstance(optimizer, paddle.optimizer.Optimizer):
         return optimizer.get_lr()
-    elif isinstance(optimizer, paddle.fluid.optimizer.Optimizer):
+    elif isinstance(optimizer, paddle.static.Optimizer):
         if isinstance(optimizer._learning_rate, float):
             return optimizer._learning_rate
         else:
@@ -1846,9 +1853,7 @@ def get_lr(optimizer):
     else:
         raise TypeError(
             "'optimizer' must be object of class `paddle.optimizer.Optimizer`"
-            " or `paddle.fluid.optimizer.Optimizer`, but got {}.".format(
-                type(optimizer)
-            )
+            " or `paddle.static.Optimizer`, but got {}.".format(type(optimizer))
         )
 
 
@@ -2078,20 +2083,20 @@ def _copy_tensor_dist_attr_to_cpp(cpp_dist_attr, py_dist_attr):
             ["d" + str(i) for i in range(len(py_process_mesh.shape))],
         )
     cpp_dist_attr.dims_mapping = py_dist_attr.dims_mapping
-    cpp_dist_attr.annotated = py_dist_attr._is_annotated
+    cpp_dist_attr.annotated = py_dist_attr.annotated
 
 
 def _copy_tensor_dist_attr_from_cpp(cpp_dist_attr, py_dist_attr):
     from .process_mesh import ProcessMesh
 
     cpp_process_mesh = cpp_dist_attr.process_mesh
-    if not cpp_process_mesh.empty():
+    if cpp_process_mesh is not None:
         py_dist_attr.process_mesh = ProcessMesh(
             shape=cpp_process_mesh.shape,
             process_ids=cpp_process_mesh.process_ids,
         )
     py_dist_attr.dims_mapping = cpp_dist_attr.dims_mapping
-    py_dist_attr._is_annotated = cpp_dist_attr.annotated
+    py_dist_attr.annotated = cpp_dist_attr.annotated
 
 
 def _copy_op_dist_attr_to_cpp(cpp_dist_attr, py_dist_attr):
@@ -2104,7 +2109,8 @@ def _copy_op_dist_attr_to_cpp(cpp_dist_attr, py_dist_attr):
         )
     cpp_dist_attr.impl_type = py_dist_attr.impl_type
     cpp_dist_attr.impl_idx = py_dist_attr.impl_idx
-    cpp_dist_attr.annotated = py_dist_attr._is_annotated
+    cpp_dist_attr.is_recompute = py_dist_attr.is_recompute
+    cpp_dist_attr.annotated = py_dist_attr.annotated
     for name, py_tensor_dist_attr in py_dist_attr.inputs_dist_attrs.items():
         cpp_tensor_dist_attr = cpp_dist_attr.get_input_dist_attr(name)
         _copy_tensor_dist_attr_to_cpp(cpp_tensor_dist_attr, py_tensor_dist_attr)
@@ -2117,15 +2123,15 @@ def _copy_op_dist_attr_from_cpp(cpp_dist_attr, py_dist_attr):
     from .process_mesh import ProcessMesh
 
     cpp_process_mesh = cpp_dist_attr.process_mesh
-    if not cpp_process_mesh.empty():
+    if cpp_process_mesh is not None:
         py_dist_attr.process_mesh = ProcessMesh(
             shape=cpp_process_mesh.shape,
             process_ids=cpp_process_mesh.process_ids,
         )
     py_dist_attr.impl_type = cpp_dist_attr.impl_type
     py_dist_attr.impl_idx = cpp_dist_attr.impl_idx
-    py_dist_attr._is_annotated = cpp_dist_attr.annotated
-    py_dist_attr.op_type = cpp_dist_attr.op.type()
+    py_dist_attr.is_recompute = cpp_dist_attr.is_recompute
+    py_dist_attr.annotated = cpp_dist_attr.annotated
     for name, cpp_tensor_dist_attr in cpp_dist_attr.inputs_dist_attrs.items():
         py_tensor_dist_attr = py_dist_attr.get_input_dist_attr(name)
         _copy_tensor_dist_attr_from_cpp(
@@ -2329,13 +2335,3 @@ def is_dep_skip_op(op):
         return True
 
     return False
-
-
-def use_standalone_executor():
-    return os.environ.get('FLAGS_CONVERT_GRAPH_TO_PROGRAM', None) in [
-        1,
-        '1',
-        True,
-        'True',
-        'true',
-    ]

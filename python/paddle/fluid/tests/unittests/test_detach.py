@@ -106,6 +106,7 @@ class Test_Detach(unittest.TestCase):
             )
             data = to_variable(data)
             x = linear(data)
+            x.retain_grads()
             x1 = linear1(x)
             loss = x1
             # print(loss, loss.shape)
@@ -153,6 +154,7 @@ class Test_Detach(unittest.TestCase):
             )
             data = to_variable(data)
             x = linear(data)
+            x.retain_grads()
             x_detach = x.detach()
             x1 = linear1(x)
             x2 = linear2(x_detach)
@@ -162,12 +164,10 @@ class Test_Detach(unittest.TestCase):
             return x.gradient()
 
     def test_NoDetachMulti_DetachMulti(self):
-        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         array_no_detach_multi = self.no_detach_multi()
         array_detach_multi = self.detach_multi()
 
         assert not np.array_equal(array_no_detach_multi, array_detach_multi)
-        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
     def test_NoDetachSingle_DetachMulti(self):
         array_no_detach_single = self.no_detach_single()
@@ -210,7 +210,7 @@ class TestInplace(unittest.TestCase):
             var_d = var_b**2
 
             loss = paddle.nn.functional.relu(var_c + var_d)
-            with self.assertRaisesRegexp(
+            with self.assertRaisesRegex(
                 RuntimeError,
                 "received tensor_version:{} != wrapper_version_snapshot:{}".format(
                     1, 0

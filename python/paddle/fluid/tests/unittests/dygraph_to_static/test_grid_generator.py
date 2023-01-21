@@ -136,8 +136,7 @@ class TestGridGenerator(unittest.TestCase):
         self.x = paddle.uniform(shape=[1, 20, 2], dtype='float32')
 
     def _run(self, to_static):
-        prog_trans = paddle.jit.ProgramTranslator()
-        prog_trans.enable(to_static)
+        paddle.jit.enable_to_static(to_static)
 
         net = GridGenerator(40, 20)
         ret = net(self.x, [32, 100])

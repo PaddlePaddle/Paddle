@@ -20,7 +20,6 @@ import paddle
 import paddle.fluid as fluid
 from paddle.fluid.dygraph import to_variable
 from paddle.fluid.framework import EagerParamBase, ParamBase, in_dygraph_mode
-from paddle.jit import ProgramTranslator
 
 
 class L1(fluid.Layer):
@@ -177,12 +176,12 @@ class TestBuffer(unittest.TestCase):
             net = fluid.Layer()
             var = to_variable(np.zeros([1]))
 
-            with self.assertRaisesRegexp(
+            with self.assertRaisesRegex(
                 TypeError, "name of buffer should be a string"
             ):
                 net.register_buffer(12, var)
 
-            with self.assertRaisesRegexp(
+            with self.assertRaisesRegex(
                 TypeError, "buffer should be a Paddle.Tensor"
             ):
                 if in_dygraph_mode():
@@ -194,18 +193,18 @@ class TestBuffer(unittest.TestCase):
                         "buffer_name", ParamBase([2, 2], 'float32')
                     )
 
-            with self.assertRaisesRegexp(
+            with self.assertRaisesRegex(
                 KeyError, "name of buffer can not contain"
             ):
                 net.register_buffer("buffer.name", var)
 
-            with self.assertRaisesRegexp(
+            with self.assertRaisesRegex(
                 KeyError, "name of buffer can not be empty"
             ):
                 net.register_buffer("", var)
 
             net.attr_name = 10
-            with self.assertRaisesRegexp(KeyError, "already exists"):
+            with self.assertRaisesRegex(KeyError, "already exists"):
                 net.register_buffer("attr_name", var)
 
             del net.attr_name
@@ -213,7 +212,7 @@ class TestBuffer(unittest.TestCase):
                 net.attr_name = EagerParamBase([2, 2], 'float32')
             else:
                 net.attr_name = ParamBase([2, 2], 'float32')
-            with self.assertRaisesRegexp(KeyError, "already exists"):
+            with self.assertRaisesRegex(KeyError, "already exists"):
                 net.register_buffer("attr_name", var)
 
     def test_register_buffer_same_name(self):
@@ -339,11 +338,10 @@ class BufferNetWithModification(paddle.nn.Layer):
 class TestModifiedBuffer(unittest.TestCase):
     def funcsetUp(self):
         paddle.disable_static()
-        self.prog_trans = ProgramTranslator()
         self.shape = [10, 16]
 
     def _run(self, to_static=False):
-        self.prog_trans.enable(to_static)
+        paddle.jit.enable_to_static(to_static)
 
         x = paddle.ones([1], 'int32')
         net = BufferNetWithModification(self.shape)

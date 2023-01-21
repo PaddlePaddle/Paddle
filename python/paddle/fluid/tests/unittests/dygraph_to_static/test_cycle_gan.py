@@ -38,7 +38,6 @@ os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 
 import paddle
 from paddle.fluid.dygraph import to_variable
-from paddle.jit import ProgramTranslator
 from paddle.jit.api import to_static
 from paddle.nn import BatchNorm
 
@@ -60,8 +59,6 @@ lambda_identity = 0.5
 # It will lead to timeout if set 256 in CI.
 IMAGE_SIZE = 64
 SEED = 2020
-
-program_translator = ProgramTranslator()
 
 
 class Cycle_Gan(fluid.dygraph.Layer):
@@ -560,7 +557,7 @@ def train(args, to_static):
         else fluid.CPUPlace()
     )
 
-    program_translator.enable(to_static)
+    paddle.jit.enable_to_static(to_static)
 
     with fluid.dygraph.guard(place):
         max_images_num = args.max_images_num

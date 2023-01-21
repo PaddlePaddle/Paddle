@@ -20,32 +20,22 @@
 #include <unordered_map>
 #include <vector>
 
-#include "paddle/fluid/distributed/collective/process_group_stream.h"
-#include "paddle/fluid/distributed/store/store.h"
-#include "paddle/fluid/platform/cuda_device_guard.h"
+#include "paddle/fluid/distributed/collective/process_group.h"
+#include "paddle/fluid/distributed/collective/process_group_with_stream.h"
 #include "paddle/fluid/platform/device_event.h"
-#include "paddle/fluid/platform/enforce.h"
+#include "paddle/phi/backends/gpu/forwards.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/device_context.h"
-
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-#include "paddle/fluid/distributed/collective/nccl_tools.h"
-#endif
-
-#ifdef PADDLE_WITH_RCCL
-#include "paddle/phi/backends/dynload/rccl.h"
-#elif PADDLE_WITH_NCCL
-#include "paddle/phi/backends/dynload/nccl.h"
-#endif
+#include "paddle/phi/core/distributed/store/store.h"
 
 namespace paddle {
 namespace distributed {
 
-using Place = paddle::platform::Place;
+using Place = phi::Place;
 
-class ProcessGroupNCCL final : public ProcessGroupStream {
+class ProcessGroupNCCL final : public ProcessGroupWithStream {
  public:
-  class NCCLTask final : public ProcessGroupStream::TaskStream,
+  class NCCLTask final : public ProcessGroupWithStream::TaskStream,
                          public std::enable_shared_from_this<NCCLTask> {
    public:
     NCCLTask(const Place& place,
@@ -77,19 +67,22 @@ class ProcessGroupNCCL final : public ProcessGroupStream {
 
  public:
   static std::shared_ptr<ProcessGroupNCCL> CreateProcessGroupNCCL(
-      const std::shared_ptr<Store>& store, int rank, int size, int gid);
+      const std::shared_ptr<phi::distributed::Store>& store,
+      int rank,
+      int size,
+      int gid);
 
-  ProcessGroupNCCL(const std::shared_ptr<Store>& store,
+  ProcessGroupNCCL(const std::shared_ptr<phi::distributed::Store>& store,
                    int rank,
                    int size,
                    int gid);
 
   std::string GetBackendName() const override { return "NCCL"; }
 
+  phi::DeviceContext* GetDeviceContext(const Place& place) const override;
+
   phi::DeviceContext* GetDeviceContext(const Place& place,
                                        bool use_calc_stream) const override;
-
-  phi::DeviceContext* GetDeviceContext(const Place& place) const override;
 
   std::shared_ptr<ProcessGroup::Task> AllGather(
       phi::DenseTensor* out_tensor,
@@ -244,7 +237,7 @@ class ProcessGroupNCCL final : public ProcessGroupStream {
                               const std::vector<Place>& places);
 
  private:
-  std::shared_ptr<Store> store_;
+  std::shared_ptr<phi::distributed::Store> store_;
 
   std::unordered_map<std::string, platform::DeviceEvent>
       place_to_calc_event_;  // event on calc stream

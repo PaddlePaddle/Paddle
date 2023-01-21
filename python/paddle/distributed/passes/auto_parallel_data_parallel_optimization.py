@@ -27,11 +27,11 @@ from paddle.distributed.auto_parallel.utils import (
     is_loss_grad_op,
     is_optimize_op,
     ring_id_to_process_group,
-    use_standalone_executor,
 )
 from paddle.distributed.fleet.meta_optimizers.common import OP_ROLE_KEY, OpRole
-from paddle.fluid import unique_name
-from paddle.fluid.framework import default_main_program
+from paddle.fluid.executor import _is_enable_standalone_executor
+from paddle.static import default_main_program
+from paddle.utils import unique_name
 
 from .pass_base import PassBase, PassType, register_pass
 
@@ -92,7 +92,7 @@ class DataParallelOptimizationPass(PassBase):
         self.global_rank = int(self.get_attr("global_rank"))
         self.use_sharding = self.get_attr("use_sharding")
         self.coalesce_prefix = 'coalesce_grad'
-        if use_standalone_executor():
+        if _is_enable_standalone_executor():
             self.gradient_sync_stream = "gradient_sync_stream"
 
         with paddle.static.program_guard(main_program, startup_program):
@@ -313,7 +313,7 @@ class DataParallelOptimizationPass(PassBase):
 
     def _calc_wait_comms(self):
 
-        if use_standalone_executor():
+        if _is_enable_standalone_executor():
             return
 
         block = default_main_program().global_block()
@@ -546,7 +546,7 @@ class DataParallelOptimizationPass(PassBase):
         # multiple stream executor(standalone exe). This function just for standalone exe. Refactor here
         # in future when only one executor stay.
 
-        if not use_standalone_executor() or len(grad_groups) == 0:
+        if not _is_enable_standalone_executor() or len(grad_groups) == 0:
             return
         block = default_main_program().global_block()
 

@@ -160,30 +160,17 @@ void InitExpertChoiceRouteKernelLauncher(
           <<<grid, block, 0, stream>>>(reinterpret_cast<half*>(buffer), \
                                        (const half*)attr_mask,          \
                                        batch_size,                      \
-                                       head_num,                        \
-                                       seq_len_1,                       \
-                                       seq_len_2,                       \
-                                       (const half)scalar);             \
+                                       seq_len);                        \
     } else {                                                            \
       softmax_kernel_v4_half2<__half, ITEMS_PER_THREAD>                 \
           <<<grid, block, 0, stream>>>(reinterpret_cast<half*>(buffer), \
                                        (const half*)attr_mask,          \
                                        batch_size,                      \
-                                       head_num,                        \
-                                       seq_len_1,                       \
-                                       seq_len_2,                       \
-                                       (const half)scalar);             \
+                                       seq_len);                        \
     }                                                                   \
   } else {                                                              \
-    softmax_kernel_v4<ITEMS_PER_THREAD, T>                              \
-        <<<grid, block, 0, stream>>>(buffer,                            \
-                                     buffer_src,                        \
-                                     attr_mask,                         \
-                                     batch_size,                        \
-                                     head_num,                          \
-                                     seq_len_1,                         \
-                                     seq_len_2,                         \
-                                     scalar);                           \
+    softmax_kernel_v4<ITEMS_PER_THREAD, T><<<grid, block, 0, stream>>>( \
+        buffer, buffer_src, attr_mask, batch_size, seq_len);            \
   }
 
 template <typename T>
@@ -191,19 +178,16 @@ void invokeMaskedSoftMax(T* buffer,
                          const T* buffer_src,
                          const T* attr_mask,
                          const int batch_size,
-                         const int seq_len_1,
-                         const int seq_len_2,
-                         const int head_num,
-                         const T scalar,
+                         const int seq_len,
                          cudaStream_t stream) {
-  // NOTE: attention scores shape (batch_size, head_num, seq_len_1, seq_len_2)
-  dim3 grid(seq_len_1, batch_size, head_num);
-  if (batch_size * head_num > 360) {
-    grid.x = ceil(static_cast<float>(seq_len_1) / 32.0f);
+  // NOTE: attention scores shape (batch_size, seq_len)
+  dim3 grid(1, batch_size, 1);
+  if (batch_size > 360) {
+    grid.x = ceil(static_cast<float>(1) / 32.0f);
   }
 
-  bool is_half2 = sizeof(T) == 2 && sizeof(T) == 2 && seq_len_2 % 2 == 0;
-  dim3 block((seq_len_2 / (is_half2 ? 2 : 1) + 31) / 32 * 32);
+  bool is_half2 = sizeof(T) == 2 && sizeof(T) == 2 && seq_len % 2 == 0;
+  dim3 block((seq_len / (is_half2 ? 2 : 1) + 31) / 32 * 32);
 
   if (block.x > 2048 && block.x <= 4096) {
     SOFTMAX_KERNEL(4)
@@ -766,26 +750,19 @@ void MoeKernel(const Context& ctx,
       k,
       batch_size,
       ctx.stream());
-  T scalar = (T)1.0f;
   if (IS_FP16) {
     invokeMaskedSoftMax<__half>(reinterpret_cast<__half*>(gating_output),
                                 reinterpret_cast<const __half*>(gating_output),
                                 reinterpret_cast<const __half*>(attr_mask),
                                 /*batch_size=*/num_rows,
-                                /*seq_len_1=*/1,
-                                /*seq_len_2=*/num_experts,
-                                /*head_num=*/1,
-                                *reinterpret_cast<const __half*>(&scalar),
+                                /*seq_len=*/num_experts,
                                 ctx.stream());
   } else {
     invokeMaskedSoftMax<float>(reinterpret_cast<float*>(gating_output),
                                reinterpret_cast<const float*>(gating_output),
                                reinterpret_cast<const float*>(attr_mask),
                                /*batch_size=*/num_rows,
-                               /*seq_len_1=*/1,
-                               /*seq_len_2=*/num_experts,
-                               /*head_num=*/1,
-                               *reinterpret_cast<const float*>(&scalar),
+                               /*seq_len=*/num_experts,
                                ctx.stream());
   }
   InvokeTransposeAxis01(
