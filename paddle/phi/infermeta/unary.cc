@@ -3356,6 +3356,21 @@ void SliceRawInferMeta(const MetaTensor& input,
     }
   }
 
+  PADDLE_ENFORCE_EQ(
+      axes.size(),
+      starts_arr.size(),
+      phi::errors::InvalidArgument(
+          "The length of axes (%d) and length of starts (%d) should be same.",
+          axes.size(),
+          starts_arr.size()));
+  PADDLE_ENFORCE_EQ(
+      axes.size(),
+      ends_arr.size(),
+      phi::errors::InvalidArgument(
+          "The length of axes (%d) and length of ends (%d) should be same.",
+          axes.size(),
+          ends_arr.size()));
+
   // 2.1 Check attrs.
   std::vector<int64_t> starts = starts_arr.GetData();
   std::vector<int64_t> ends = ends_arr.GetData();
