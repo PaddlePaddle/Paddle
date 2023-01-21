@@ -388,6 +388,12 @@ class PiecewiseDecay(LRScheduler):
     """
 
     def __init__(self, boundaries, values, last_epoch=-1, verbose=False):
+        assert len(boundaries) != 0, 'boundaries cannot be empty.'
+        assert len(values) != 0, 'values cannot be empty.'
+        assert len(values) >= len(
+            boundaries
+        ), 'len(values) should >= len(boundaries)'
+
         self.boundaries = boundaries
         self.values = values
         super().__init__(last_epoch=last_epoch, verbose=verbose)
