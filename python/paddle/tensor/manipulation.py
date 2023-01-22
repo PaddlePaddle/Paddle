@@ -4337,6 +4337,8 @@ def moveaxis(x, source, destination, name=None):
         raise ValueError("Each elemment of 'source' must be unique!")
     if len(dst) != len(set(dst)):
         raise ValueError("Each elemment of 'destination' must be unique!")
+    if len(src) == 0 or len(dst) == 0:
+        raise ValueError("len of 'source' or 'destination' should not be 0.")
 
     ndim = len(x.shape)
 

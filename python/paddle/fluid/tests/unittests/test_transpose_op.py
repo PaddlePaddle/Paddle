@@ -509,6 +509,10 @@ class TestMoveAxis(unittest.TestCase):
         with self.assertRaises(AssertionError):
             paddle.moveaxis(x, [2, 1], [10, 3])
 
+        # len of 'source' or 'destination' should not be 0.
+        with self.assertRaises(ValueError):
+            paddle.moveaxis(x, [], [])
+
 
 class TestTransposeDoubleGradCheck(unittest.TestCase):
     def transpose_wrapper(self, x):
