@@ -149,13 +149,23 @@ class TestSpectralNormOpError(unittest.TestCase):
             # the data type of type must be float32 or float64
             self.assertRaises(TypeError, test_weight_dtype)
 
-            def test_dim_out_of_range():
-                weight_2 = np.random.random((2, 4)).astype("int32")
+            def test_dim_out_of_range_1():
+                weight_3 = np.random.random((2, 4)).astype("float32")
+                tensor_3 = paddle.to_tensor(weight_3)
                 paddle.static.nn.spectral_norm(
-                    weight_2, dim=1382376303, power_iters=2
+                    tensor_3, dim=1382376303, power_iters=2
                 )
 
-            self.assertRaises(ValueError, test_dim_out_of_range)
+            # the dim must be 0 or 1
+            self.assertRaises(ValueError, test_dim_out_of_range_1)
+
+            def test_dim_out_of_range_2():
+                weight_4 = np.random.random((2, 4)).astype("float32")
+                tensor_4 = paddle.to_tensor(weight_4)
+                paddle.static.nn.spectral_norm(tensor_4, dim=-1, power_iters=2)
+
+            # the dim must be 0 or 1
+            self.assertRaises(ValueError, test_dim_out_of_range_2)
 
 
 class TestDygraphSpectralNormOpError(unittest.TestCase):
