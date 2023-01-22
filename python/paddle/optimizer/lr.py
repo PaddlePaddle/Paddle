@@ -37,6 +37,7 @@ __all__ = [  # noqa
     'MultiplicativeDecay',
     'OneCycleLR',
     'CyclicLR',
+    'CosineAnnealingWarmRestarts',
 ]
 
 
@@ -2102,3 +2103,143 @@ class CyclicLR(LRScheduler):
         lr = self.base_lr + base_height * self.scale_fn(eval(self.scale_mode))
 
         return lr
+
+
+class CosineAnnealingWarmRestart(LRScheduler):
+    r"""Set the learning rate according to the cosine annealing schedule with warm restarts, where :math:`\T_{cur}` is
+    the number of epochs since the last restart. :math:`\T_{i}` is the number of epochs between two warm restarts in SGDR.
+
+    The algorithm can be described as following.
+
+    .. math::
+
+        \eta_t = \eta_{min} + \frac{1}{2}(\eta_{max} - \eta_{min})\left(1 + \cos(\frac{T_{cur}}{T_{i}}\pi)\right).
+
+    It has been proposed in `SGDR: Stochastic Gradient Descent with Warm Restarts <https://arxiv.org/abs/1608.03983>`_.
+
+    Args:
+        learning_rate (float): The initial learning rate, that is :math:`\eta_{max}`.
+        T_0 (int): The number of iterations for the first restart.
+        T_mult (int, optional): A factor increases :math:`\T_{i}` after a restart. Default: 1.
+        eta_min (float, optional): The minimum learning rate, that is :math:`\eta_{min}`. Default: 0.
+        last_epoch (int, optional): The index of last epoch. Default: -1, means initial learning rate.
+        verbose (bool, optional): If ``True``, prints a message to stdout for each update. Default: ``False ``.
+
+    Returns:
+        ``CosineAnnealingWarmRestart`` instance to schedule learning rate.
+
+    Examples:
+
+        .. code-block:: python
+
+            import paddle
+            from paddle.optimizer.lr import CosineAnnealingWarmRestart
+
+            # train on default dynamic graph mode
+            linear = paddle.nn.linear(10,10)
+            # initialize learning rate scheduler
+            scheduler = CosineAnnealingWarmRestart(learning_rate=0.5, T_0=10, T_mult=1, eta_min=0, last_epoch=-1, verbose=False)
+            sgd = paddle.optimizer.SGD(learning_rate=scheduler, parameters=model.parameters())
+            for epoch in range(20):
+                for batch_id in range(5):
+                    x = paddle.randn([10, 10], 'float32')
+                    out = linear(x)
+                    loss = paddle.mean(out)
+                    loss.backward()
+                    sgd.step()
+                    sgd.clear_gradients()
+                    scheduler.step()    # If you update learning rate each step
+              # scheduler.steop()     # If you update learning rate each epoch
+
+            # train on static graph mode
+            paddle.enable_static()
+            main_prog = paddle.static.Program()
+            start_prog = paddle.static.Program()
+            with paddle.static.program_guard(main_prog, start_prog):
+                x = paddle.static.data(name='x', shape=[None, 4, 5])
+                y = paddle.static.data(name='y', shape=[None, 4, 5])
+                z = paddle.static.nn.fc(x, 100)
+                loss = paddle.mean(z)
+                scheduler = paddle.optimizer.lr.CosineAnnealingWarmRestart(learning_rate=0.5, T_0=10, T_mult=1, eta_min=0, last_epoch=-1, verbose=False)
+                sgd = paddle.optimizer.SGD(learning_rate=scheduler)
+                sgd.minimize(loss)
+
+            exe = paddle.static.Executor()
+            exe.run(start_prog)
+            for epoch in range(20):
+                for batch_id in range(5):
+                    out = exe.run(
+                        main_prog,
+                        feed={
+                            'x': np.random.randn(3, 4, 5).astype('float32'),
+                            'y': np.random.randn(3, 4, 5).astype('float32')
+                        },
+                        fetch_list=loss.name)
+                    scheduler.step()    # If you update learning rate each step
+              # scheduler.step()        # If you update learning rate each epoch
+    """
+
+    def __init__(
+        self,
+        learning_rate,
+        T_0,
+        T_mult=1,
+        eta_min=0,
+        last_epoch=-1,
+        verbose=False,
+    ):
+        if T_0 <= 0 or not isinstance(T_0, int):
+            raise ValueError(
+                "Expected positive integer T_0, but got {}".format(T_0)
+            )
+        if T_mult < 1 or not isinstance(T_mult, int):
+            raise ValueError(
+                "Expected integer T_mult >= 1, but got {}".format(T_mult)
+            )
+        self.T_0 = T_0
+        self.T_i = T_0
+        self.T_mult = T_mult
+        self.eta_min = eta_min
+        self.T_cur = last_epoch
+        super(CosineAnnealingWarmRestart, self).__init__(
+            learning_rate, last_epoch=last_epoch, verbose=verbose
+        )
+
+    def get_lr(self):
+        return (
+            self.eta_min
+            + (self.base_lr - self.eta_min)
+            * (1 + math.cos(math.pi * self.T_cur / self.T_i))
+            / 2
+        )
+
+    def step(self, epoch=None):
+        if epoch is None:
+            epoch = (
+                self.last_epoch + 1
+                if self.last_epoch < 0
+                else self.last_epoch + 1
+            )
+            self.T_cur = self.T_cur + 1
+            if self.T_cur >= self.T_i:
+                self.T_cur = self.T_cur - self.T_i
+                self.T_i = self.T_i * self.T_mult
+        else:
+            if epoch >= self.T_0:
+                n = int((epoch // self.T_0) / self.T_mult)
+                self.T_cur = epoch - self.T_0 * (self.T_mult**n - 1) // (
+                    self.T_mult - 1
+                )
+                self.T_i = self.T_0 * self.T_mult ** (n)
+            else:
+                self.T_i = self.T_0
+                self.T_cur = epoch
+        self.last_lr = self.get_lr()
+        self.last_epoch = math.floor(epoch)
+
+        if self.verbose:
+            print(
+                'Epoch {}: {} set learning rate to {}.'.format(
+                    self.last_epoch, self.__class__.__name__, self.last_lr
+                )
+            )
