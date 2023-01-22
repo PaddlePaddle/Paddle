@@ -216,6 +216,11 @@ class TestUnbindAxisError(unittest.TestCase):
 
             self.assertRaises(TypeError, test_table_Variable)
 
+            def test_invalid_axis():
+                tensor.unbind(input=x, axis=2)
+
+            self.assertRaises(ValueError, test_invalid_axis)
+
 
 if __name__ == '__main__':
     unittest.main()

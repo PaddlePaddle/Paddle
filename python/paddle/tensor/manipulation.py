@@ -2751,9 +2751,6 @@ def unbind(input, axis=0):
             # x2.shape [3, 5]
             # x3.shape [3, 5]
     """
-    if isinstance(axis, np.generic):
-        axis = axis.item()
-
     if not isinstance(axis, (int)):
         raise TypeError(
             "The type of 'axis'  must be int, but received %s." % (type(axis))
