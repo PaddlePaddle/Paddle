@@ -28,7 +28,6 @@ class TestFloorModOp(unittest.TestCase):
             try:
                 paddle.floor_mod(x, y)
             except Exception as e:
-                print(e.__class__)
                 print("Error: Mod by zero encounter in floor_mod\n")
 
 
