@@ -3416,11 +3416,10 @@ def spectral_norm(weight, dim=0, power_iters=1, eps=1e-12, name=None):
     # create intput and parameters
     input_shape = weight.shape
     assert weight.numel() > 0, "Any dimension of input cannot be equal to 0."
-    assert dim in range(
-        -weight.ndim, weight.ndim
-    ), "The input `dim` should be in range [-rank(`weight`), rank(`weight`) - 1], but received dim={}".format(
-        dim
-    )
+    if dim not in range(-weight.ndim, weight.ndim):
+        raise ValueError(
+            f"The input `dim` should be in range [-rank(`weight`), rank(`weight`) - 1], but received dim={dim}"
+        )
 
     if dim < 0:
         dim += weight.ndim
