@@ -124,6 +124,11 @@ void ConvKernelImpl(const Context& dev_ctx,
                               filter.numel() / filter.dims()[0]};
   filter.Resize(filter_matrix_shape);
 
+  PADDLE_ENFORCE_NE(
+      transformed_output.dims()[0] * transformed_output.dims()[1],
+      0,
+      phi::errors::InvalidArgument("The Output size should not be 0."));
+
   DDim output_matrix_shape = {
       transformed_output.dims()[1],
       transformed_output.numel() /
