@@ -95,8 +95,11 @@ void HandleLargeDimGrad(const Context& dev_ctx,
       unreduced * reduced,
       x_numel,
       phi::errors::InvalidArgument(
-          "An error occurred in HandleLargeDimGrad, which means a "
-          "tensor has at least a 0 dimension but is not empty."));
+          "Reducing failed in HandleLargeDimGrad, when try to transpose (%d) "
+          "operands into 2D tensor with shape (%d, %d).",
+          x_numel,
+          unreduced,
+          reduced));
 
   DDim out_dim(out->dims());
   DDim x_dim(x->dims());

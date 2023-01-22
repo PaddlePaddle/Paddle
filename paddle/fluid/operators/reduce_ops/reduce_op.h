@@ -145,11 +145,15 @@ void HandleLargeDim(const framework::ExecutionContext& context,
   // assume: 0 / 0 == 0, which allow process 0 dim tensor
   const int64_t reduced = (unreduced != 0) ? (input_numel / unreduced) : 0;
 
-  PADDLE_ENFORCE_EQ(unreduced * reduced,
-                    input_numel,
-                    phi::errors::InvalidArgument(
-                        "An error occurred in HandleLargeDim, which means a "
-                        "tensor has at least a 0 dimension but is not empty."));
+  PADDLE_ENFORCE_EQ(
+      unreduced * reduced,
+      input_numel,
+      phi::errors::InvalidArgument(
+          "Reducing failed in HandleLargeDim, when try to transpose (%d) "
+          "operands into 2D tensor with shape (%d, %d).",
+          input_numel,
+          unreduced,
+          reduced));
 
   shuffled_input.Resize({unreduced, reduced});
 
@@ -181,8 +185,11 @@ void HandleLargeDimGrad(const framework::ExecutionContext& context,
       unreduced * reduced,
       x_numel,
       phi::errors::InvalidArgument(
-          "An error occurred in HandleLargeDimGrad, which means a "
-          "tensor has at least a 0 dimension but is not empty."));
+          "Reducing failed in HandleLargeDimGrad, when try to transpose (%d) "
+          "operands into 2D tensor with shape (%d, %d).",
+          x_numel,
+          unreduced,
+          reduced));
 
   DDim out_dim(out->dims());
   DDim x_dim(x->dims());
