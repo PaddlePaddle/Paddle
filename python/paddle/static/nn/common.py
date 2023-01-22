@@ -515,7 +515,10 @@ def data_norm(
 
     input_shape = input.shape
     if data_layout == 'NCHW':
-        channel_num = input_shape[1]
+        if len(input_shape) > 1:
+            channel_num = input_shape[1]
+        else:
+            raise ValueError("The channel_num shoule not be null in this data layout:" + data_layout)
     else:
         if data_layout == 'NHWC':
             channel_num = input_shape[-1]
@@ -2727,7 +2730,10 @@ def batch_norm(
 
     input_shape = input.shape
     if data_layout == 'NCHW':
-        channel_num = input_shape[1]
+        if len(input_shape) > 1:
+            channel_num = input_shape[1]
+        else:
+            raise ValueError("The channel_num shoule not be null in this data layout:" + data_layout)
     else:
         if data_layout == 'NHWC':
             channel_num = input_shape[-1]
