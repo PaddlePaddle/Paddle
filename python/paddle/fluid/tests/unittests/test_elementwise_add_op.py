@@ -737,6 +737,22 @@ class TestElementwiseAddop1(unittest.TestCase):
         paddle.enable_static()
 
 
+class TestTensorAddNumpyScalar(unittest.TestCase):
+    def test_float32_add(self):
+        paddle.disable_static()
+        a = paddle.full([4, 5, 6], 1.5, dtype='float32')
+        b = np.array(1.5, dtype='float32')
+        c = a + b
+        self.assertTrue(c.dtype == core.VarDesc.VarType.FP32)
+
+    def test_float16_add(self):
+        paddle.disable_static()
+        a = paddle.full([4, 5, 6], 1.5, dtype='float16')
+        b = np.array(1.5, dtype='float16')
+        c = a + b
+        self.assertTrue(c.dtype == core.VarDesc.VarType.FP16)
+
+
 if __name__ == '__main__':
     paddle.enable_static()
     unittest.main()
