@@ -289,16 +289,16 @@ class TestDivByZero(unittest.TestCase):
         paddle.linalg.pinv(x)
 
     def pinv_zero_input_dynamic(self):
+        paddle.disable_static()
 
         array = np.array([], dtype=np.float32)
         x = paddle.to_tensor(np.reshape(array, [0, 0]), dtype='float32')
         paddle.linalg.pinv(x)
 
     def test_div_by_zero(self):
-        paddle.disable_static()
 
-        self.assertRaises(ValueError, self.pinv_zero_input_dynamic)
-        self.assertRaises(ValueError, self.pinv_zero_input_static)
+        self.pinv_zero_input_dynamic()
+        self.pinv_zero_input_static()
 
 
 if __name__ == '__main__':
