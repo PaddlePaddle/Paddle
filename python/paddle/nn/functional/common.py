@@ -400,10 +400,10 @@ def interpolate(
     if (
         size is not None
         and isinstance(size, paddle.Tensor)
-        and size.ndim != x.ndim - 2
+        and len(size) != x.ndim - 2
     ):
         raise ValueError(
-            'The x and size should satisfy rank(x) - 2 == rank(size).'
+            'The x and size should satisfy rank(x) - 2 == len(size).'
         )
 
     if not isinstance(align_corners, bool):
