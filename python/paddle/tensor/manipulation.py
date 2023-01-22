@@ -2764,6 +2764,8 @@ def unbind(input, axis=0):
     if in_dygraph_mode():
         return _C_ops.unbind(input, axis)
     else:
+        if isinstance(axis, np.generic):
+            axis = np.asscalar(axis)
         input_shape = input.shape
         axis_ = axis if axis >= 0 else len(input_shape) + axis
         num = input_shape[axis_]
