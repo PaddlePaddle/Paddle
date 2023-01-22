@@ -1678,6 +1678,12 @@ def conv3d_transpose(
                 x.shape
             )
         )
+    if len(weight.shape) != 5:
+        raise ValueError(
+            "Input weight should be 5D tensor, but received weight with the shape of {}".format(
+                weight.shape
+            )
+        )
     num_channels = x.shape[channel_dim]
     num_filters = weight.shape[1]
     if num_channels < 0:
