@@ -397,10 +397,14 @@ def interpolate(
     if size is None and scale_factor is None:
         raise ValueError("One of size and scale_factor must not be None.")
 
-    if size is not None and isinstance(size, paddle.Tensor):
-        assert (
-            size.ndim == x.ndim - 2
-        ), f'The size should be a {x.ndim - 2}-D Tensor when x is a {x.ndim}-D Tensor and size is a Tensor.'
+    if (
+        size is not None
+        and isinstance(size, paddle.Tensor)
+        and size.ndim != x.ndim - 2
+    ):
+        raise ValueError(
+            'The x and size should satisfy rank(x) - 2 == rank(size).'
+        )
 
     if not isinstance(align_corners, bool):
         raise TypeError("Attr align_corners should be a bool value")
