@@ -2727,9 +2727,21 @@ def batch_norm(
 
     input_shape = input.shape
     if data_layout == 'NCHW':
+        if len(data_layout.shape) != 4:
+            raise ValueError(
+                "Input should be 4D tensor, but received Input with the shape of {}".format(
+                    data_layout.shape
+                )
+            )
         channel_num = input_shape[1]
     else:
         if data_layout == 'NHWC':
+            if len(data_layout.shape) != 4:
+                raise ValueError(
+                    "Input should be 4D tensor, but received Input with the shape of {}".format(
+                        data_layout.shape
+                    )
+                )
             channel_num = input_shape[-1]
         else:
             raise ValueError("unsupported data layout:" + data_layout)
