@@ -746,6 +746,8 @@ class TestTensorAddNumpyScalar(unittest.TestCase):
         self.assertTrue(c.dtype == core.VarDesc.VarType.FP32)
 
     def test_float16_add(self):
+        if not core.is_compiled_with_cuda():
+            return
         paddle.disable_static()
         a = paddle.full([4, 5, 6], 1.5, dtype='float16')
         b = np.array(1.5, dtype='float16')
