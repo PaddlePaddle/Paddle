@@ -1542,6 +1542,9 @@ def conv2d_transpose(
             "but received {}".format(len(input.shape))
         )
 
+    if num_filters == 0:
+        raise ValueError("num of filters should not be 0.")
+
     if data_format not in ['NCHW', 'NHWC']:
         raise ValueError(
             "Attr(data_format) of Op(paddle.static.nn.layers.conv2d_transpose) got wrong value: received "
