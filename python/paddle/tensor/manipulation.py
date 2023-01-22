@@ -1329,7 +1329,8 @@ def flip(x, axis, name=None):
     if isinstance(axis, int):
         axis = [axis]
 
-    assert np.array(axis).ndim == 1
+    if np.array(axis).ndim != 1:
+        raise ValueError('The axis of flip must be a list, tuple or int.')
 
     if in_dygraph_mode():
         return _C_ops.flip(x, axis)
