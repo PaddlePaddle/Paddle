@@ -88,17 +88,15 @@ void HandleLargeDimGrad(const Context& dev_ctx,
                         const std::vector<int>& dims) {
   const int64_t unreduced = out->numel();
   const int64_t x_numel = x->numel();
+  // assume: 0 / 0 == 0, which allow process 0 dim tensor
+  const int64_t reduced = (unreduced != 0) ? (x_numel / unreduced) : 0;
 
-  // this enforce will always pass if the memory is functioning normally
-  PADDLE_ENFORCE_NE(
-      unreduced == 0 && x_numel != 0,
-      true,
+  PADDLE_ENFORCE_EQ(
+      unreduced * reduced,
+      x_numel,
       phi::errors::InvalidArgument(
           "An error occurred in HandleLargeDimGrad, which means a "
           "tensor has at least a 0 dimension but is not empty."));
-
-  // assume: 0 / 0 == 0, which allow process 0 dim tensor
-  const int64_t reduced = unreduced != 0 ? (x_numel / unreduced) : 0;
 
   DDim out_dim(out->dims());
   DDim x_dim(x->dims());

@@ -1229,16 +1229,15 @@ void HandleLargeDim(const DeviceContext& dev_ctx,
   // transpose to 2D tensor whose shape is {unreduced, reduced}.
   const int64_t unreduced = output->numel();
   const int64_t input_numel = shuffled_input.numel();
+  // assume: 0 / 0 == 0, which allow process 0 dim tensor
+  const int64_t reduced = (unreduced != 0) ? (input_numel / unreduced) : 0;
 
-  // this enforce will always pass if the memory is functioning normally
-  PADDLE_ENFORCE_NE(unreduced == 0 && input_numel != 0,
-                    true,
+  PADDLE_ENFORCE_EQ(unreduced * reduced,
+                    input_numel,
                     phi::errors::InvalidArgument(
                         "An error occurred in HandleLargeDim, which means a "
                         "tensor has at least a 0 dimension but is not empty."));
 
-  // assume: 0 / 0 == 0, which allow process 0 dim tensor
-  const int64_t reduced = unreduced != 0 ? (input_numel / unreduced) : 0;
   shuffled_input.ResizeAndAllocate({unreduced, reduced});
 
   DDim output_dim = output->dims();
