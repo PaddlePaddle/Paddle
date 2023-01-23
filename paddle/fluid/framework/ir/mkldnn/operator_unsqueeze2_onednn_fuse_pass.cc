@@ -89,6 +89,10 @@ void FuseOperatorUnsqueeze2OneDNNPass::FuseUnsqueeze2(
       return;
     }
 
+    if (op_type == "transpose2") {
+      operator_op->Op()->SetType("fused_transpose");
+    }
+
     operator_op->Op()->SetAttr("fused_unsqueeze2_axes", unsqueeze2_axes);
     operator_op->Op()->SetOutput("Out", {unsqueeze2_out->Name()});
 

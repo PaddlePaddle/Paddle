@@ -59,6 +59,8 @@ void FuseSqueeze2Transpose2OneDNNPass::ApplyImpl(Graph *graph) const {
 
     std::vector<int> squeeze2_axes =
         PADDLE_GET_CONST(std::vector<int>, squeeze2_op->Op()->GetAttr("axes"));
+
+    transpose2_op->Op()->SetType("fused_transpose");
     transpose2_op->Op()->SetAttr("fused_squeeze2_axes", squeeze2_axes);
     transpose2_op->Op()->SetInput("X", {squeeze2_op_in->Name()});
 

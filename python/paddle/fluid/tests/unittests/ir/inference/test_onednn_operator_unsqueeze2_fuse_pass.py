@@ -78,7 +78,7 @@ class TestTranspose2Unsqueeze2OneDNNFusePass(PassAutoScanTest):
                 "operator_unsqueeze2_onednn_fuse_pass",
             ],
         )
-        yield config, ["transpose2"], (1e-5, 1e-5)
+        yield config, ["fused_transpose"], (1e-5, 1e-5)
 
     def test(self):
         self.run_and_statis(
