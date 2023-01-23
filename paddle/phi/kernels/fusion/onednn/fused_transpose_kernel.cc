@@ -48,23 +48,6 @@ void SetInMemDescWithSqueeze2FuseSupport(
   in->Resize(make_ddim(squeezed_op_tz));
 }
 
-void SetInMemDescWithLogicalLayoutFusesSupport(
-    const OneDNNContext& dev_ctx,
-    DenseTensor* in,
-    const dnnl::memory::desc& in_md) {
-  const auto fused_squeeze2_axes =
-      dev_ctx.HasDnnAttr("fused_squeeze2_axes")
-          ? PADDLE_GET_CONST(std::vector<int>,
-                             dev_ctx.GetDnnAttr("fused_squeeze2_axes"))
-          : std::vector<int>();
-  if (fused_squeeze2_axes.empty()) {
-    in->set_mem_desc(in_md);
-    in->Resize(make_ddim(in_md.dims()));
-  } else {
-    SetInMemDescWithSqueeze2FuseSupport(fused_squeeze2_axes, in, in_md);
-  }
-}
-
 void SetOutMemDescWithReshape2FuseSupport(
     const std::vector<int> fused_reshape2_shape_,
     phi::DenseTensor* out,
@@ -102,8 +85,10 @@ void FusedTransposeKernel(const Context& dev_ctx,
       AllocationType::CPU,
       errors::PreconditionNotMet("oneDNN Transpose kernel must use CPUPlace"));
 
-  SetInMemDescWithLogicalLayoutFusesSupport(
-      dev_ctx, const_cast<DenseTensor*>(&x), x.mem_desc());
+  if (!(fused_squeeze2_axes.empty())) {
+    SetInMemDescWithSqueeze2FuseSupport(
+        fused_squeeze2_axes, const_cast<DenseTensor*>(&x), x.mem_desc());
+  }
 
   if (axis.size() == 1) {
     Copy<Context>(dev_ctx, x, x.place(), false, out);
