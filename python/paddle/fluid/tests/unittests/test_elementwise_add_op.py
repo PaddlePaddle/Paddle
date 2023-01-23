@@ -741,7 +741,7 @@ class TestTensorAddNumpyScalar(unittest.TestCase):
     def test_float32_add(self):
         paddle.disable_static()
         a = paddle.full([4, 5, 6], 1.5, dtype='float32')
-        b = np.array(1.5, dtype='float32')
+        b = np.array([1.5], dtype='float32')[0]
         c = a + b
         self.assertTrue(c.dtype == core.VarDesc.VarType.FP32)
 
@@ -750,7 +750,7 @@ class TestTensorAddNumpyScalar(unittest.TestCase):
             return
         paddle.disable_static()
         a = paddle.full([4, 5, 6], 1.5, dtype='float16')
-        b = np.array(1.5, dtype='float16')
+        b = np.array([1.5], dtype='float16')[0]
         c = a + b
         self.assertTrue(c.dtype == core.VarDesc.VarType.FP16)
 
