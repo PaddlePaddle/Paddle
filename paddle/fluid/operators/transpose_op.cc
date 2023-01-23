@@ -250,6 +250,7 @@ The behavior of this operator is similar to how `numpy.transpose` works.
 $[0, 2, 3, 1]$, then shape of the output tensor will be: $(N, H, W, C)$.
 
 )DOC");
+  Apply();
 }
 
 template <typename T>
