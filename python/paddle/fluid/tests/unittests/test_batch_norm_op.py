@@ -768,13 +768,14 @@ class TestBatchNormOpError(unittest.TestCase):
             )
             self.assertRaises(TypeError, paddle.static.nn.batch_norm, x2)
 
-            def test_channel_num():
+            def test_channel_num_is_null():
                 paddle.enable_static()
                 input = paddle.static.data("", shape=[0], dtype="float32")
                 paddle.static.nn.batch_norm(input)
 
             # the channel_num should not be null in NCHW.
-            self.assertRaises(ValueError, test_channel_num)
+            self.assertRaises(ValueError, test_channel_num_is_null)
+
 
 class TestDygraphBatchNormAPIError(unittest.TestCase):
     def test_errors(self):
