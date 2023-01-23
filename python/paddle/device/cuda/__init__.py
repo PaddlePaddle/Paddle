@@ -46,7 +46,7 @@ def current_stream(device=None):
                 If device is None, the device is the current device. Default: None.
 
     Returns:
-        CUDAStream: the stream to the device.
+            CUDAStream: the stream to the device.
 
     Examples:
         .. code-block:: python
