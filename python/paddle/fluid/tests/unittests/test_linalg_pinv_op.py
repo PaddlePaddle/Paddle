@@ -297,8 +297,8 @@ class TestDivByZero(unittest.TestCase):
 
     def test_div_by_zero(self):
 
-        self.assertRaises(ValueError, self.pinv_zero_input_dynamic)
-        self.assertRaises(ValueError, self.pinv_zero_input_static)
+        self.assertRaises(ValueError, self.pinv_zero_input_dynamic())
+        self.assertRaises(ValueError, self.pinv_zero_input_static())
 
 
 if __name__ == '__main__':
