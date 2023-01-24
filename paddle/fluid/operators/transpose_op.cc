@@ -16,9 +16,6 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
-#ifdef PADDLE_WITH_MKLDNN
-#include "paddle/fluid/platform/mkldnn_helper.h"
-#endif
 #include "paddle/fluid/operators/transpose_op.h"
 
 namespace paddle {
@@ -124,12 +121,6 @@ class TransposeOpMaker : public framework::OpProtoAndCheckerMaker {
         "Defaults to \"NHWC\". Specify the data format of the output data, "
         "the input will be transformed automatically. ")
         .SetDefault("AnyLayout")
-        .AsExtra();
-    AddAttr<bool>(
-        "use_quantizer",
-        "(bool, default false) "
-        "This parameter is no longer used. Use 'mkldnn_data_type' instead.")
-        .SetDefault(false)
         .AsExtra();
     AddAttr<std::string>(
         "mkldnn_data_type",
