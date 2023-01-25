@@ -142,6 +142,17 @@ void KLDivInferMeta(const MetaTensor& x,
 }
 
 void Atan2InferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out) {
+  auto x_dims = x.dims();
+  auto y_dims = y.dims();
+
+  PADDLE_ENFORCE_LE(
+      x_dims[0],
+      y_dims[0],
+      phi::errors::InvalidArgument("The count (%d) of elements of X shall not "
+                                   "greater than count (%d) of elements of Y.",
+                                   x_dims[0],
+                                   y_dims[0]));
+
   out->share_meta(x);
   if (x.dtype() == DataType::INT32 || x.dtype() == DataType::INT64 ||
       y.dtype() == DataType::INT32 || y.dtype() == DataType::INT64) {
