@@ -99,6 +99,7 @@ void ScatterAssign(const phi::CPUContext& ctx,
   auto dst_dims = output->dims();
 
   const T* p_src = src.data<T>();
+  // IndexT is int32 or int64, so direct compare is allowed.
   const IndexT* p_index = index.data<IndexT>();
   T* p_output = output->data<T>();
 
@@ -139,6 +140,17 @@ void ScatterAssign(const phi::CPUContext& ctx,
                           "input meet the requirements. It should "
                           "be greater than or equal to 0, but received [%d]",
                           index_));
+
+    PADDLE_ENFORCE_LT(
+        index_,
+        dst_dims[0],
+        phi::errors::OutOfRange(
+            "The index is out of bounds, "
+            "please check whether the values of index and "
+            "dimensions of input meet the requirements. each index should "
+            "be less than 1st-dim size (%d) of input, but received [%d]",
+            dst_dims[0],
+            index_));
 
     memcpy(p_output + index_ * slice_size, p_src + i * slice_size, slice_bytes);
   }
