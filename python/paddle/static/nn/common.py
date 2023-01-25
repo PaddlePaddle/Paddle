@@ -2726,14 +2726,14 @@ def batch_norm(
         dtype = core.VarDesc.VarType.FP32
 
     input_shape = input.shape
-    if data_layout == 'NCHW':
-        if len(input_shape) > 1:
-            channel_num = input_shape[1]
-        else:
-            raise ValueError(
-                "The channel_num shoule not be null in this data layout:"
-                + data_layout
+    if len(input.shape) < 2 or len(input.shape) > 5:
+        raise ValueError(
+            'expected 2D or 3D or 4D or 5D input (got {}D input, input shape is: {})'.format(
+                len(input.shape), input_shape
             )
+        )
+    if data_layout == 'NCHW':
+        channel_num = input_shape[1]
     else:
         if data_layout == 'NHWC':
             channel_num = input_shape[-1]
