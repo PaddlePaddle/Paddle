@@ -3178,11 +3178,26 @@ def lstsq(x, y, rcond=None, driver=None, name=None):
             "Only support x and y have the same dtype such as 'float32' and 'float64'."
         )
 
-    assert x.ndim >= 2, "the shape of x should be (*, M, N)"
-    assert y.ndim >= 2, "the shape of y should be (*, M, K)"
-    assert (
-        x.shape[-2] == y.shape[-2]
-    ), "x with shape (*, M, N) and y with shape (*, M, K) should have same M."
+    if x.ndim >= 2:
+        pass
+    else:
+        raise ValueError(
+            f"The shape of x should be (*, M, N), but received ndim is [{x.ndim} < 2]"
+        )
+
+    if y.ndim >= 2:
+        pass
+    else:
+        raise ValueError(
+            f"The shape of y should be (*, M, K), but received ndim is [{y.ndim} < 2]"
+        )
+
+    if x.shape[-2] == y.shape[-2]:
+        pass
+    else:
+        raise ValueError(
+            f"x with shape (*, M = {x.shape[-2]}, N) and y with shape (*, M = {y.shape[-2]}, K) should have same M."
+        )
 
     if rcond is None:
         if x.dtype == paddle.float32:
