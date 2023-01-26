@@ -17,8 +17,6 @@
 import os
 import copy
 import re
-import sys
-import shlex
 
 import setuptools
 from setuptools.command.easy_install import easy_install
@@ -483,16 +481,16 @@ class BuildExtension(build_ext):
                 # See https://stackoverflow.com/questions/34571583/understanding-gcc-5s-glibcxx-use-cxx11-abi-or-the-new-abi
                 add_compile_flag(cflags, ['-D_GLIBCXX_USE_CXX11_ABI=1'])
 
-                add_compile_flag(cflags, ["-fvisibility=hidden"])
-                env_cflags = os.environ.get("CFLAGS", "")
-                env_cppflags = os.environ.get("CPPFLAGS", "")
-                c_cpp_flags = shlex.split(env_cflags) + shlex.split(
-                    env_cppflags
-                )
-                if not any(opt.startswith("-g") for opt in c_cpp_flags):
-                    add_compile_flag(cflags, ["-g0"])
-                if sys.platform.startswith('darwin'):
-                    add_compile_flag(cflags, ["-stdlib=libc++"])
+                # add_compile_flag(cflags, ["-fvisibility=hidden"])
+                # env_cflags = os.environ.get("CFLAGS", "")
+                # env_cppflags = os.environ.get("CPPFLAGS", "")
+                # c_cpp_flags = shlex.split(env_cflags) + shlex.split(
+                #     env_cppflags
+                # )
+                # if not any(opt.startswith("-g") for opt in c_cpp_flags):
+                #     add_compile_flag(cflags, ["-g0"])
+                # if sys.platform.startswith('darwin'):
+                #     add_compile_flag(cflags, ["-stdlib=libc++"])
 
                 # Append this macor only when jointly compiling .cc with .cu
                 if not is_cuda_file(src) and self.contain_cuda_file:
