@@ -408,8 +408,6 @@ struct OneFunctor {
       : output_(output), idtptr_(idtptr), w_(w), dim_(dim) {}
 
   HOSTDEVICE void operator()(size_t idx) const {
-    PADDLE_ENFORCE_NOT_NULL(
-        output_, phi::errors::Fatal("Output of OneFunctor is nullptr."));
     output_[w_ * idtptr_[idx] + idx % dim_] = static_cast<T>(1);
   }
 
