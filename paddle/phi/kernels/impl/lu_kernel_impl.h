@@ -494,7 +494,8 @@ void Unpack_Pivot(const Context& dev_ctx,
   setter(dev_ctx, P, static_cast<T>(0));
 
   auto batchsize = product(phi::slice_ddim(dims, 0, prank - 1));
-  batchsize = std::max(static_cast<int>(batchsize), 1);
+  if (prank == 1) batchsize = std::max(static_cast<int>(batchsize), 1);
+
   DenseTensor idt;
   for (int i = 0; i < batchsize; i++) {
     arange<Context>(dev_ctx, &idt, h);
