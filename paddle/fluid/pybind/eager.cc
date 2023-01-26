@@ -1134,6 +1134,20 @@ static void TensorDealloc(TensorObject* self) {
   Py_TYPE(self)->tp_free(reinterpret_cast<PyObject*>(self));
 }
 
+PyDoc_STRVAR(
+    TensorDoc,
+    R"DOC(Tensor($self, /, value, place, persistable, zero_copy, name, stop_gradient, dims, dtype, type)
+--
+
+Tensor is the basic data structure in PaddlePaddle. There are some ways to create a Tensor:
+
+- Use the data to create a Tensor, please refer to :ref:`api_paddle_to_tensor`.
+- Create a Tensor with a specified shape, please refer to :ref:`api_paddle_ones`,
+    :ref:`api_paddle_zeros`, :ref:`api_paddle_full`.
+- Create a Tensor with the same shape and dtype as other Tensor, please refer to
+    :ref:`api_paddle_ones_like`, :ref:`api_paddle_zeros_like` , :ref:`api_paddle_full_like`.
+)DOC");
+
 extern struct PyGetSetDef variable_properties[];
 extern struct PyGetSetDef string_tensor_variable_properties[];
 
@@ -1167,6 +1181,7 @@ void BindEager(pybind11::module* module) {
   type->tp_getset = variable_properties;
   type->tp_init = TensorInit;
   type->tp_new = TensorNew;
+  type->tp_doc = TensorDoc;
   type->tp_weaklistoffset = offsetof(TensorObject, weakrefs);
   Py_INCREF(&PyBaseObject_Type);
   type->tp_base = reinterpret_cast<PyTypeObject*>(&PyBaseObject_Type);
