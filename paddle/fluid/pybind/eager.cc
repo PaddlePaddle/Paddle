@@ -1141,7 +1141,7 @@ PyDoc_STRVAR(
 
 Tensor is the basic data structure in PaddlePaddle. There are some ways to create a Tensor:
 
-- Use the data to create a Tensor, please refer to :ref:`api_paddle_to_tensor`.
+- Use the exsiting data to create a Tensor, please refer to :ref:`api_paddle_to_tensor`.
 - Create a Tensor with a specified shape, please refer to :ref:`api_paddle_ones`,
     :ref:`api_paddle_zeros`, :ref:`api_paddle_full`.
 - Create a Tensor with the same shape and dtype as other Tensor, please refer to
