@@ -26,6 +26,14 @@ void TransposeGradKernel(const Context& dev_ctx,
                          DenseTensor* x_grad) {
   using XPUType = typename XPUTypeTrait<T>::Type;
   dev_ctx.template Alloc<T>(x_grad);
+  if (x_grad->numel() == 0) {
+    return;
+  }
+  if (axis.size() == 0) {
+    phi::Copy<Context>(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
+    return;
+  }
+
   std::vector<int> reversed_axis(axis);
   for (size_t i = 0; i < axis.size(); i++) {
     reversed_axis[axis[i]] = i;

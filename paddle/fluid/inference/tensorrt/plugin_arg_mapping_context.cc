@@ -112,6 +112,12 @@ bool PluginArgumentMappingContext::IsSparseCooTensorInput(
     const std::string& name) const {
   return false;
 }
+
+bool PluginArgumentMappingContext::IsSparseCooTensorOutput(
+    const std::string& name) const {
+  return false;
+}
+
 bool PluginArgumentMappingContext::IsSparseCsrTensorInput(
     const std::string& name) const {
   return false;

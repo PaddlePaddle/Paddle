@@ -404,6 +404,10 @@ def median(x, axis=None, keepdim=False, name=None):
     """
     if not isinstance(x, Variable):
         raise TypeError("In median, the input x should be a Tensor.")
+
+    if len(x.shape) == 0:
+        return x.clone()
+
     is_flatten = axis is None
     dims = len(x.shape)
     if is_flatten:
@@ -496,8 +500,6 @@ def _compute_quantile(x, q, axis=None, keepdim=False, ignore_nan=False):
         out_shape = [1] * dims
     else:
         if isinstance(axis, list):
-            if len(axis) <= 0:
-                raise ValueError("axis should not be empty")
             axis_src, axis_dst = [], []
             for axis_single in axis:
                 if not isinstance(axis_single, int) or not (
@@ -510,10 +512,15 @@ def _compute_quantile(x, q, axis=None, keepdim=False, ignore_nan=False):
                     axis_single = axis_single + dims
                 axis_src.append(axis_single)
                 out_shape[axis_single] = 1
+
             axis_dst = list(range(-len(axis), 0))
             x = paddle.moveaxis(x, axis_src, axis_dst)
-            x = paddle.flatten(x, axis_dst[0], axis_dst[-1])
-            axis = axis_dst[0]
+            if len(axis_dst) == 0:
+                x = paddle.flatten(x)
+                axis = 0
+            else:
+                x = paddle.flatten(x, axis_dst[0], axis_dst[-1])
+                axis = axis_dst[0]
         else:
             if not isinstance(axis, int) or not (axis < dims and axis >= -dims):
                 raise ValueError(

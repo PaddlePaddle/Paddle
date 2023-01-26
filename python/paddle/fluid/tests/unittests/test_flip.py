@@ -22,7 +22,6 @@ from op_test import OpTest
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-import paddle.fluid.layers as layers
 
 
 class TestFlipOp_API(unittest.TestCase):
@@ -145,7 +144,7 @@ class TestFlipDoubleGradCheck(unittest.TestCase):
         eps = 0.005
         dtype = np.float32
 
-        data = layers.data('data', [3, 2, 2], False, dtype)
+        data = paddle.static.data('data', [3, 2, 2], dtype)
         data.persistable = True
         out = paddle.flip(data, [0, 1])
         data_arr = np.random.uniform(-1, 1, data.shape).astype(dtype)
@@ -177,7 +176,7 @@ class TestFlipTripleGradCheck(unittest.TestCase):
         eps = 0.005
         dtype = np.float32
 
-        data = layers.data('data', [3, 2, 2], False, dtype)
+        data = paddle.static.data('data', [3, 2, 2], dtype)
         data.persistable = True
         out = paddle.flip(data, [0, 1])
         data_arr = np.random.uniform(-1, 1, data.shape).astype(dtype)

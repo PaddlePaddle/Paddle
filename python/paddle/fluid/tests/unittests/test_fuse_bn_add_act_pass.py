@@ -64,8 +64,10 @@ class TestFusedBnAddActAPI(unittest.TestCase):
         self, main_program, startup_program, use_cuda, seed=1
     ):
         with fluid.program_guard(main_program, startup_program):
-            x = fluid.layers.data(name='x', shape=[1, 28, 28], dtype='float32')
-            y = fluid.layers.data(name="y", shape=[1], dtype='int64')
+            x = paddle.static.data(
+                name='x', shape=[-1, 1, 28, 28], dtype='float32'
+            )
+            y = paddle.static.data(name="y", shape=[-1, 1], dtype='int64')
             conv1_1 = paddle.static.nn.conv2d(
                 input=x,
                 filter_size=3,
@@ -112,7 +114,7 @@ class TestFusedBnAddActAPI(unittest.TestCase):
             )
             loss = paddle.mean(loss)
             sgd = fluid.optimizer.SGD(learning_rate=0.001)
-            sgd = fluid.contrib.mixed_precision.decorate(
+            sgd = paddle.static.amp.decorate(
                 sgd, use_dynamic_loss_scaling=True, init_loss_scaling=128.0
             )
             sgd.minimize(loss)
@@ -123,8 +125,10 @@ class TestFusedBnAddActAPI(unittest.TestCase):
         self, main_program, startup_program, use_cuda, seed=1
     ):
         with fluid.program_guard(main_program, startup_program):
-            x = fluid.layers.data(name='x', shape=[1, 28, 28], dtype='float32')
-            y = fluid.layers.data(name="y", shape=[1], dtype='int64')
+            x = paddle.static.data(
+                name='x', shape=[-1, 1, 28, 28], dtype='float32'
+            )
+            y = paddle.static.data(name="y", shape=[-1, 1], dtype='int64')
             conv1_1 = paddle.static.nn.conv2d(
                 input=x,
                 filter_size=3,
@@ -173,7 +177,7 @@ class TestFusedBnAddActAPI(unittest.TestCase):
             )
             loss = paddle.mean(loss)
             sgd = fluid.optimizer.SGD(learning_rate=0.001)
-            sgd = fluid.contrib.mixed_precision.decorate(
+            sgd = paddle.static.amp.decorate(
                 sgd, use_dynamic_loss_scaling=True, init_loss_scaling=128.0
             )
             sgd.minimize(loss)
