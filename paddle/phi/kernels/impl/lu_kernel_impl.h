@@ -408,6 +408,8 @@ struct OneFunctor {
       : output_(output), idtptr_(idtptr), w_(w), dim_(dim) {}
 
   HOSTDEVICE void operator()(size_t idx) const {
+    PADDLE_ENFORCE_NOT_NULL(
+        output_, phi::errors::Fatal("Output of OneFunctor is nullptr."));
     output_[w_ * idtptr_[idx] + idx % dim_] = static_cast<T>(1);
   }
 
@@ -443,7 +445,10 @@ void LU_Unpack(const Context& dev_ctx,
   auto dim = std::min(H, W);
   DenseTensor rowtensor, rt_dev;
   auto batchsize = product(phi::slice_ddim(udims, 0, udims.size() - 2));
-  batchsize = std::max(static_cast<int>(batchsize), 1);
+
+  // if udims is [0, ..., H, W], it should be 0
+  if (udims.size() == 2) batchsize = std::max(static_cast<int>(batchsize), 1);
+
   arange<Context>(dev_ctx, &rowtensor, dim, batchsize, H);
   auto idtptr = rowtensor.data<int32_t>();
   if (phi::AllocationType::GPU == dev_ctx.GetPlace().GetType()) {
