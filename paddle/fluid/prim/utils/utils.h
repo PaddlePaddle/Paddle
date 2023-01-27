@@ -18,8 +18,11 @@ namespace paddle {
 namespace prim {
 class PrimCommonUtils {
  public:
-  static bool IsPrimEnabled();
-  static void SetPrimEnabled(bool enabled);
+  static bool IsBwdPrimEnabled();
+  static void SetBwdPrimEnabled(bool enabled);
+  static bool IsFwdPrimEnabled();
+  static void SetFwdPrimEnabled(bool enabled);
+  static void SetAllPrimEnabled(bool enabled);
 };
 }  // namespace prim
 }  // namespace paddle

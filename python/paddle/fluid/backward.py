@@ -1493,14 +1493,15 @@ def _append_backward_ops_(
 
     # remove some backward ops
     # TODO(Jiabin): Support this in prime later, it will prune add_grad, fix this problem
-    if not core.is_prim_enabled():
+    if not core._is_bwd_prim_enabled():
         not_need_ops = _find_not_need_ops(
             grad_op_descs, ops, input_grad_names_set
         )
-
         grad_op_descs = [
             op_desc for op_desc in grad_op_descs if op_desc not in not_need_ops
         ]
+    else:
+        logging.debug("Runing backward composite and disable find_not_need_ops")
 
     # append op_desc in grad_op_descs to target_block
     op_role_attr_name = core.op_proto_and_checker_maker.kOpRoleAttrName()
