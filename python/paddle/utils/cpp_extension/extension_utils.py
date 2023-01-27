@@ -78,8 +78,8 @@ CLANG_COMPILE_FLAGS = [
     '-O3',
     '-arch',
     'x86_64',
-    "-stdlib=libc++",
-    "-fvisibility=hidden",
+    # "-stdlib=libc++",
+    # "-fvisibility=hidden",
 ]
 CLANG_LINK_FLAGS = [
     '-dynamiclib',
@@ -87,7 +87,7 @@ CLANG_LINK_FLAGS = [
     'dynamic_lookup',
     '-arch',
     'x86_64',
-    "-stdlib=libc++",
+    # "-stdlib=libc++",
 ]
 
 MSVC_LINK_FLAGS = ['/MACHINE:X64']

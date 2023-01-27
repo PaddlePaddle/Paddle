@@ -37,9 +37,6 @@ if os.name == 'nt' and os.path.isfile(file):
     run_cmd(cmd, True)
 
 # Compile and load custom op Just-In-Time.
-# custom_relu_op_dup.cc is only used for multi ops test,
-# not a new op, if you want to test only one op, remove this
-# source file
 sources = ["custom_add.cc", "custom_sub.cc"]
 paddle_includes = []
 for site_packages_path in getsitepackages():
@@ -49,16 +46,16 @@ for site_packages_path in getsitepackages():
     paddle_includes.append(
         os.path.join(site_packages_path, 'paddle', 'include', 'third_party')
     )
+# include "custom_power.h"
+paddle_includes.append(os.path.dirname(os.path.abspath(__file__)))
 
 custom_cpp_extension = load(
     name='custom_cpp_extension',
     sources=sources,
-    extra_include_paths=paddle_includes
-    + [os.path.dirname(os.path.abspath(__file__))],  # add for Coverage CI
+    extra_include_paths=paddle_includes,  # add for Coverage CI
     extra_cxx_cflags=['-w', '-g'],
     verbose=True,
 )
-print(custom_cpp_extension)
 
 
 class TestCppExtensionJITInstall(unittest.TestCase):
