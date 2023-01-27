@@ -185,15 +185,19 @@ def custom_write_stub(resource, pyfile):
 
         def __bootstrap__():
             assert os.path.exists(so_path)
-            try:
-                spec = importlib.util.spec_from_file_location(__name__, so_path)
-                assert spec is not None
-                mod = importlib.util.module_from_spec(spec)
-                assert isinstance(spec.loader, importlib.abc.Loader)
-                spec.loader.exec_module(mod)
-            except ImportError:
-                print('using custom operator only')
+            if os.name == 'nt' or sys.platform.startswith('darwin'):
+                # only support Linux now
                 mod = types.ModuleType(__name__)
+            else:
+                try:
+                    spec = importlib.util.spec_from_file_location(__name__, so_path)
+                    assert spec is not None
+                    mod = importlib.util.module_from_spec(spec)
+                    assert isinstance(spec.loader, importlib.abc.Loader)
+                    spec.loader.exec_module(mod)
+                except ImportError:
+                    print('using custom operator only')
+                    mod = types.ModuleType(__name__)
 
             # load custom op shared library with abs path
             custom_ops = paddle.utils.cpp_extension.load_op_meta_info_and_register_op(so_path)
