@@ -365,7 +365,8 @@ void ConvBNFusePass::ApplyImpl(ir::Graph* graph) const {
     bool is_mkldnn = fuse_option == FUSE_MKLDNN;
     auto input_names = conv->Op()->InputNames();
     bool has_bias = std::find(input_names.begin(), input_names.end(), "Bias") !=
-                    input_names.end();
+                        input_names.end() &&
+                    conv->Op()->Input("Bias").size() > 0;
     bool mkldnn_with_bias = is_mkldnn && has_bias;
 
     // Create eltwise_y (conv bias) variable
@@ -420,7 +421,7 @@ void ConvBNFusePass::ApplyImpl(ir::Graph* graph) const {
         PADDLE_ENFORCE_EQ(
             conv_bias_names.size(),
             1UL,
-            platform::errors::InvalidArgument("Find input var Bais error."));
+            platform::errors::InvalidArgument("Find input var Bias error."));
         auto* conv_bias_var = scope->FindVar(conv_bias_names[0]);
         auto* conv_bias_tensor = conv_bias_var->GetMutable<phi::DenseTensor>();
         PADDLE_ENFORCE_EQ(conv_bias_tensor->dims(),
