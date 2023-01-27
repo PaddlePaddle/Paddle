@@ -68,16 +68,16 @@ TEST(EagerPrim, TanhBackwardTest) {
   paddle::experimental::Tensor out0 = tanh_ad_func(tensor0);
   std::vector<paddle::experimental::Tensor> outs0 = {out0};
   // Disable prim
-  PrimCommonUtils::SetPrimEnabled(false);
-  ASSERT_FALSE(PrimCommonUtils::IsPrimEnabled());
+  PrimCommonUtils::SetBwdPrimEnabled(false);
+  ASSERT_FALSE(PrimCommonUtils::IsBwdPrimEnabled());
   // 4. Run Backward
   egr::Backward(outs0, {}, false);
 
   paddle::experimental::Tensor out1 = tanh_ad_func(tensor1);
   std::vector<paddle::experimental::Tensor> outs1 = {out1};
   // Disable prim
-  PrimCommonUtils::SetPrimEnabled(true);
-  ASSERT_TRUE(PrimCommonUtils::IsPrimEnabled());
+  PrimCommonUtils::SetBwdPrimEnabled(true);
+  ASSERT_TRUE(PrimCommonUtils::IsBwdPrimEnabled());
   // 4. Run Backward
   ::egr::Backward(outs1, {}, false);
   VLOG(7)
@@ -99,10 +99,10 @@ TEST(EagerPrim, TanhBackwardTest) {
 }
 
 TEST(EagerPrim, TestFlags) {
-  PrimCommonUtils::SetPrimEnabled(true);
-  ASSERT_TRUE(PrimCommonUtils::IsPrimEnabled());
-  PrimCommonUtils::SetPrimEnabled(false);
-  ASSERT_FALSE(PrimCommonUtils::IsPrimEnabled());
+  PrimCommonUtils::SetBwdPrimEnabled(true);
+  ASSERT_TRUE(PrimCommonUtils::IsBwdPrimEnabled());
+  PrimCommonUtils::SetBwdPrimEnabled(false);
+  ASSERT_FALSE(PrimCommonUtils::IsBwdPrimEnabled());
 }
 
 }  // namespace prim

@@ -17,11 +17,11 @@
 import paddle
 
 from ..fluid.data_feeder import check_type, check_variable_and_dtype
-from ..fluid.framework import _in_eager_mode_
+from ..fluid.framework import global_var
 from ..static import Variable
 from .layer_function_generator import templatedoc
 
-if _in_eager_mode_:
+if global_var._in_eager_mode_:
     Tensor = paddle.fluid.framework.core.eager.Tensor
 else:
     from ..framework import VarBase as Tensor

@@ -56,6 +56,7 @@ class SequencePadOp : public framework::OperatorWithKernel {
     auto pad_value_dims = ctx->GetInputDim("PadValue");
     PADDLE_ENFORCE_EQ(
         pad_value_dims == phi::make_ddim({1}) ||
+            pad_value_dims == phi::make_ddim({}) ||
             pad_value_dims == time_step_dims,
         true,
         platform::errors::InvalidArgument(
