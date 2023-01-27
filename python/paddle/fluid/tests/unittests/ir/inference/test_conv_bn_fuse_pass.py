@@ -199,23 +199,10 @@ class TestConvBnFusePass(PassAutoScanTest):
                 return True
             return False
 
-        # mkldnn Output has diff with bias!
-        def teller2(program_config, predictor_config):
-            return (
-                predictor_config.mkldnn_enabled()
-                and program_config.ops[0].attrs['has_bias']
-            )
-
         self.add_ignore_check_case(
             teller1,
             IgnoreReasons.PASS_ACCURACY_ERROR,
             "The output format of conv2d is wrong when data_format attribute is NHWC",
-        )
-
-        self.add_ignore_check_case(
-            teller2,
-            IgnoreReasons.PASS_ACCURACY_ERROR,
-            "Currently mkldnn Output has diff with bias!",
         )
 
     def test(self):
