@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import os
+import sys
 import unittest
 from site import getsitepackages
 
@@ -114,4 +115,7 @@ class TestCppExtensionJITInstall(unittest.TestCase):
 
 
 if __name__ == '__main__':
+    if os.name == 'nt' or sys.platform.startswith('darwin'):
+        # only support Linux now
+        exit()
     unittest.main()

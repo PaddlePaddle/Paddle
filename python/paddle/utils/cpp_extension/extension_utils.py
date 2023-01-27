@@ -969,6 +969,11 @@ def _import_module_from_library(module_name, build_directory, verbose=False):
     log_v('loading shared library from: {}'.format(ext_path), verbose)
     op_names = load_op_meta_info_and_register_op(ext_path)
 
+    if os.name == 'nt' or sys.platform.startswith('darwin'):
+        # only support Linux now
+        return _generate_python_module(
+            module_name, op_names, build_directory, verbose
+        )
     try:
         spec = importlib.util.spec_from_file_location(module_name, ext_path)
         assert spec is not None
