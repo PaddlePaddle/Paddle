@@ -55,6 +55,34 @@ __global__ void hard_swish_kernel(float threshold,
   }
 }
 
+template <typename T, unsigned TPB>
+__global__ void hard_swish_kernel_qdq(float threshold,
+                                      float scale,
+                                      float offset,
+                                      float dq_scale,
+                                      float q_scale,
+                                      int n,
+                                      const T *input,
+                                      T *output) {
+  const int idx = blockIdx.x * TPB + threadIdx.x;
+  int tmp = input[idx];
+  float in_data = tmp * dq_scale;
+
+  float out_data = 0.f;
+
+  if (idx < n) {
+    out_data = in_data / scale *
+               kMin<float>(kMax<float>(in_data + offset, 0), threshold);
+  }
+  tmp = __float2int_rn(out_data * q_scale);
+  if (tmp >= 127)
+    tmp = 127;
+  else if (tmp <= -127)
+    tmp = -127;
+
+  output[idx] = tmp;
+}
+
 int HardSwishPlugin::enqueue(int batch_size,
                              const void *const *inputs,
 #if IS_TRT_VERSION_LT(8000)
@@ -113,11 +141,24 @@ int HardSwishPluginDynamic::enqueue(
   float offset = offset_;
   const int block_size = 256;
   const int grid_size = (num + block_size - 1) / block_size;
-  const float *input = static_cast<const float *>(inputs[0]);
-  float *output = static_cast<float *>(outputs[0]);
-  hard_swish_kernel<float, block_size><<<grid_size, block_size, 0, stream>>>(
-      threshold, scale, offset, num, input, output);
 
+  auto input_type = input_desc[0].type;
+  if (input_type == nvinfer1::DataType::kFLOAT) {
+    std::cout << "输入是float32" << std::endl;
+    const float *input = static_cast<const float *>(inputs[0]);
+    float *output = static_cast<float *>(outputs[0]);
+    hard_swish_kernel<float, block_size><<<grid_size, block_size, 0, stream>>>(
+        threshold, scale, offset, num, input, output);
+  } else if (input_type == nvinfer1::DataType::kINT8) {
+    std::cout << "输入是int8" << std::endl;
+    const int8_t *input = static_cast<const int8_t *>(inputs[0]);
+    int8_t *output = static_cast<int8_t *>(outputs[0]);
+    float qscale = input_desc[0].scale;
+    float dqscale = 1.f / output_desc[0].scale;
+    hard_swish_kernel_qdq<int8_t, block_size>
+        <<<grid_size, block_size, 0, stream>>>(
+            threshold, scale, offset, qscale, dqscale, num, input, output);
+  }
   return cudaGetLastError() != cudaSuccess;
 }
 
@@ -155,8 +196,8 @@ bool HardSwishPluginDynamic::supportsFormatCombination(
 
   const nvinfer1::PluginTensorDesc &in = in_out[pos];
   if (pos == 0) {
-    return (in.type == nvinfer1::DataType::kFLOAT) &&
-           (in.format == nvinfer1::TensorFormat::kLINEAR);
+    return (in.type == nvinfer1::DataType::kFLOAT) ||
+           (in.type == nvinfer1::DataType::kINT8);
   }
   const nvinfer1::PluginTensorDesc &prev = in_out[pos - 1];
   // output
