@@ -2283,6 +2283,21 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(res[2].shape, ())
 
     @prog_scope()
+    def test_sequence_pad(self):
+        x = paddle.static.data("x", [-1, 2], dtype=paddle.int64, lod_level=1)
+        value = paddle.to_tensor(1000, dtype=paddle.int64).squeeze()
+        out = paddle.static.nn.sequence_pad(x, value)
+
+        x_tensor = paddle.fluid.create_lod_tensor(
+            np.arange(20).astype(np.int64).reshape(-1, 2),
+            [[3, 3, 4]],
+            place=self.exe.place,
+        )
+        prog = paddle.static.default_main_program()
+        res = self.exe.run(prog, feed={"x": x_tensor}, fetch_list=[out])
+        self.assertEqual(res[0].shape, (3, 4, 2))
+
+    @prog_scope()
     def test_while_loop(self):
         def cond(i, x):
             return paddle.less_than(i, eleven)
@@ -2470,6 +2485,29 @@ class TestNoBackwardAPI(unittest.TestCase):
         one_hot_label = paddle.nn.functional.one_hot(label, num_classes=4)
         self.assertEqual(one_hot_label.shape, [4])
         self.assertEqual(one_hot_label.numpy()[2], 1)
+
+    def test_unique(self):
+        places = ['cpu']
+        if paddle.is_compiled_with_cuda():
+            places.append('gpu')
+        for place in places:
+            paddle.set_device(place)
+            x = paddle.rand([])
+            y, index, inverse, counts = paddle.unique(
+                x,
+                return_index=True,
+                return_inverse=True,
+                return_counts=True,
+            )
+
+            self.assertEqual(y, x)
+            self.assertEqual(index, 0)
+            self.assertEqual(inverse, 0)
+            self.assertEqual(counts, 1)
+            self.assertEqual(y.shape, [1])
+            self.assertEqual(index.shape, [1])
+            self.assertEqual(inverse.shape, [1])
+            self.assertEqual(counts.shape, [1])
 
 
 class TestNoBackwardAPIStatic(unittest.TestCase):
@@ -2672,6 +2710,195 @@ class TestNoBackwardAPIStatic(unittest.TestCase):
 
         self.assertEqual(res[0].shape, (4,))
         self.assertEqual(res[0][2], 1)
+
+    def test_unique(self):
+        x = paddle.rand([])
+        y, index, inverse, counts = paddle.unique(
+            x, return_index=True, return_inverse=True, return_counts=True
+        )
+
+        prog = paddle.static.default_main_program()
+        res = self.exe.run(prog, fetch_list=[y, index, inverse, counts])
+        self.assertEqual(y, x)
+        self.assertEqual(index, 0)
+        self.assertEqual(inverse, 0)
+        self.assertEqual(counts, 1)
+        self.assertEqual(res[0].shape, (1,))
+        self.assertEqual(res[1].shape, (1,))
+        self.assertEqual(res[2].shape, (1,))
+        self.assertEqual(res[3].shape, (1,))
+
+
+unary_apis_with_complex_input = [
+    paddle.real,
+    paddle.imag,
+    paddle.angle,
+    paddle.conj,
+]
+
+
+class TestUnaryElementwiseAPIWithComplexInput(unittest.TestCase):
+    def test_dygraph_unary(self):
+        paddle.disable_static()
+        for api in unary_apis_with_complex_input:
+            x = paddle.to_tensor(2.0 + 3.0j).squeeze()
+            x.stop_gradient = False
+            x.retain_grads()
+            out = api(x)
+            out.retain_grads()
+            out.backward()
+
+            self.assertEqual(x.shape, [])
+            self.assertEqual(out.shape, [])
+            if x.grad is not None:
+                self.assertEqual(x.grad.shape, [])
+                self.assertEqual(out.grad.shape, [])
+
+        paddle.enable_static()
+
+    def test_static_unary(self):
+        paddle.enable_static()
+
+        for api in unary_apis_with_complex_input:
+            main_prog = paddle.static.Program()
+            block = main_prog.global_block()
+            exe = paddle.static.Executor()
+            with paddle.static.program_guard(
+                main_prog, paddle.static.Program()
+            ):
+                # before full support for complex, we cannot create complex tensor with the same code as in dynamic graph
+                x = paddle.complex(
+                    paddle.to_tensor(2.0), paddle.to_tensor(2.0)
+                ).squeeze()
+                x.stop_gradient = False
+                out = api(x)
+                # TODO(zhouwei):
+                # ScaleLossGradOp / append_backward set grad shape to [1]
+                # after output 0D, may change it to []
+                # use out.sum() to avoid this two problem now
+                loss = out.sum()
+                paddle.static.append_backward(loss)
+
+                fetch_list = [x, out]
+                if block.has_var(x.grad_name):
+                    fetch_list.extend([x.grad_name, out.grad_name])
+
+                # 1) Test Program
+                res = exe.run(main_prog, fetch_list=fetch_list)
+                for item in res:
+                    self.assertEqual(item.shape, ())
+
+                # 2) Test CompiledProgram Program
+                if paddle.device.is_compiled_with_cuda():
+                    places = [paddle.CUDAPlace(0)]
+                    expect_shape = ()
+                else:
+                    places = [paddle.CPUPlace()] * 4
+                    expect_shape = (4,)
+                compile_prog = paddle.static.CompiledProgram(
+                    main_prog
+                ).with_data_parallel(loss.name, places=places)
+
+                # return_merged=False #
+                res = exe.run(
+                    compile_prog, fetch_list=fetch_list, return_merged=False
+                )
+                for item1 in res:
+                    for item2 in item1:
+                        self.assertEqual(item2.shape, ())
+
+                # return_merged=True #
+                res = exe.run(
+                    compile_prog, fetch_list=fetch_list, return_merged=True
+                )
+                for item in res:
+                    self.assertEqual(item.shape, expect_shape)
+
+        paddle.disable_static()
+
+
+class TestAsReal(unittest.TestCase):
+    def test_dygraph(self):
+        paddle.disable_static()
+        for api in unary_apis_with_complex_input:
+            x = paddle.to_tensor(2.0 + 3.0j).squeeze()
+            x.stop_gradient = False
+            x.retain_grads()
+            out = paddle.as_real(x)
+            out.retain_grads()
+            out.backward()
+
+            self.assertEqual(x.shape, [])
+            self.assertEqual(out.shape, [2])
+            if x.grad is not None:
+                self.assertEqual(x.grad.shape, [])
+                self.assertEqual(out.grad.shape, [2])
+
+        paddle.enable_static()
+
+    def test_static(self):
+        paddle.enable_static()
+
+        for api in unary_apis_with_complex_input:
+            main_prog = paddle.static.Program()
+            block = main_prog.global_block()
+            exe = paddle.static.Executor()
+            with paddle.static.program_guard(
+                main_prog, paddle.static.Program()
+            ):
+                # before full support for complex, we cannot create complex tensor with the same code as in dynamic graph
+                x = paddle.complex(
+                    paddle.to_tensor(2.0), paddle.to_tensor(2.0)
+                ).squeeze()
+                x.stop_gradient = False
+                out = paddle.as_real(x)
+                self.assertEqual(x.shape, ())
+                self.assertEqual(out.shape, (2,))
+                # TODO(zhouwei):
+                # ScaleLossGradOp / append_backward set grad shape to [1]
+                # after output 0D, may change it to []
+                # use out.sum() to avoid this two problem now
+                loss = out.abs().sum()
+                paddle.static.append_backward(loss)
+
+                fetch_list = [x, out]
+                if block.has_var(x.grad_name):
+                    fetch_list.extend([x.grad_name, out.grad_name])
+
+                # 1) Test Program
+                res = exe.run(main_prog, fetch_list=fetch_list)
+                self.assertEqual(res[0].shape, ())
+                self.assertEqual(res[1].shape, (2,))
+                self.assertEqual(res[2].shape, ())
+                self.assertEqual(res[3].shape, (2,))
+
+                # 2) Test CompiledProgram Program
+                if paddle.device.is_compiled_with_cuda():
+                    places = [paddle.CUDAPlace(0)]
+                    expect_shapes = (), (2,), (), (2,)
+                else:
+                    places = [paddle.CPUPlace()] * 4
+                    expect_shapes = (4,), (8,), (4,), (8,)
+                compile_prog = paddle.static.CompiledProgram(
+                    main_prog
+                ).with_data_parallel(loss.name, places=places)
+
+                # return_merged=False #
+                res = exe.run(
+                    compile_prog, fetch_list=fetch_list, return_merged=False
+                )
+                for out_i, expect in zip(res, [(), (2,), (), (2,)]):
+                    for replica in out_i:
+                        self.assertEqual(replica.shape, expect)
+
+                # return_merged=True #
+                res = exe.run(
+                    compile_prog, fetch_list=fetch_list, return_merged=True
+                )
+                for actual, expect in zip(res, expect_shapes):
+                    self.assertEqual(actual.shape, expect)
+
+        paddle.disable_static()
 
 
 if __name__ == "__main__":
