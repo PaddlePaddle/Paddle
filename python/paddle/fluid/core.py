@@ -313,6 +313,7 @@ try:
     from .libpaddle import __set_fwd_prim_enabled
     from .libpaddle import _is_fwd_prim_enabled
     from .libpaddle import __set_all_prim_enabled
+    from .libpaddle import _set_prim_target_grad
 
     # custom devivce
     from .libpaddle import _get_current_custom_device_stream

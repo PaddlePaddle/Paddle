@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <map>
 namespace paddle {
 namespace prim {
 class PrimCommonUtils {
@@ -23,6 +24,7 @@ class PrimCommonUtils {
   static bool IsFwdPrimEnabled();
   static void SetFwdPrimEnabled(bool enabled);
   static void SetAllPrimEnabled(bool enabled);
+  static void SetPrimTargetGrad(const std::map<std::string, std::string>& m);
 };
 }  // namespace prim
 }  // namespace paddle

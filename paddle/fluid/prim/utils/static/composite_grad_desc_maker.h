@@ -318,6 +318,7 @@ class CompositeGradOpMakerBase {
       grad_var_name = framework::kEmptyVarName;
       if (drop_empty_grad) return nullptr;
     }
+
     if (original_block_->HasVar(grad_var_name)) {
       // Copy Var from original block to active block, or create a new one.
       CopyVarFromOrig(grad_var_name);
@@ -333,6 +334,19 @@ class CompositeGradOpMakerBase {
     auto grad_var_name = framework::GradVarName(var_name);
     (*this->grad_to_var_)[grad_var_name] = var_name;
     VLOG(8) << "Valid gradients: " << grad_var_name;
+
+    auto target_grad = StaticCompositeContext::Instance().GetTargetGrad();
+    std::cout << "target_grad: " << std::endl;
+    for (auto iter = target_grad.begin(); iter != target_grad.end(); iter++) {
+      std::cout << "first: " << iter->first << " "
+                << "second: " << iter->second;
+    }
+    std::cout << std::endl;
+    if (target_grad.find(grad_var_name) != target_grad.end()) {
+      grad_var_name = target_grad.at(grad_var_name);
+    }
+    std::cout << "grad_var_name: " << grad_var_name << std::endl;
+
     if (original_block_->HasVar(grad_var_name)) {
       // Copy Var from original block to active block, or create a new one.
       CopyVarFromOrig(grad_var_name);

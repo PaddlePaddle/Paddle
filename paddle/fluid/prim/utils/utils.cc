@@ -38,5 +38,11 @@ void PrimCommonUtils::SetFwdPrimEnabled(bool enable_prim) {
 void PrimCommonUtils::SetAllPrimEnabled(bool enable_prim) {
   return StaticCompositeContext::Instance().SetAllPrimEnabled(enable_prim);
 }
+
+void PrimCommonUtils::SetPrimTargetGrad(
+    const std::map<std::string, std::string>& m) {
+  StaticCompositeContext::Instance().SetTargetGrad(m);
+}
+
 }  // namespace prim
 }  // namespace paddle
