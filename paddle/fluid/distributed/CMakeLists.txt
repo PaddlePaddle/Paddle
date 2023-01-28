@@ -35,7 +35,7 @@ if(WITH_PYTHON)
     add_custom_command(
       TARGET pslib_py_proto
       POST_BUILD
-      COMMAND copy /Y ps_pb2.py ${pslib_proto_dstpath})
+      COMMAND copy /Y ps_pb2.py ${PSLIB_PROTO_DSTPATH})
   endif()
   message(STATUS "Copy generated python ps_pb2.py into directory ${PSLIB_PROTO_DSTPATH}")
 endif()
