@@ -23,7 +23,6 @@ import os
 import re
 import subprocess
 import sys
-import sysconfig
 import textwrap
 import threading
 import warnings
@@ -545,12 +544,6 @@ def normalize_extension_kwargs(kwargs, use_cuda=False):
     include_dirs = list(kwargs.get('include_dirs', []))
     include_dirs.extend(compile_include_dirs)
     include_dirs.extend(find_paddle_includes(use_cuda))
-
-    python_include_path = sysconfig.get_path(
-        'include', scheme='nt' if IS_WINDOWS else 'posix_prefix'
-    )
-    if python_include_path is not None:
-        include_dirs.append(python_include_path)
 
     kwargs['include_dirs'] = include_dirs
 
