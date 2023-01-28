@@ -232,8 +232,8 @@ void multiply_grad(const Tensor& x,
                    Tensor* y_grad) {
   if (x_grad) {
     auto x_grad_unreduce = multiply<T>(out_grad, y);
-    if (out_grad.dims() != x.dims()) {
-      auto axes = get_reduce_dims(out_grad.dims(), x.dims());
+    if (x_grad_unreduce.dims() != x.dims()) {
+      auto axes = get_reduce_dims_from_out(x_grad_unreduce.dims(), x.dims());
       if (!axes.size()) {
         set_output<T>(x_grad_unreduce, x_grad);
       } else {
@@ -252,8 +252,8 @@ void multiply_grad(const Tensor& x,
   }
   if (y_grad) {
     auto y_grad_unreduce = multiply<T>(out_grad, x);
-    if (out_grad.dims() != y.dims()) {
-      auto axes = get_reduce_dims_from_out(out_grad.dims(), y.dims());
+    if (y_grad_unreduce.dims() != y.dims()) {
+      auto axes = get_reduce_dims_from_out(y_grad_unreduce.dims(), y.dims());
       if (!axes.size()) {
         set_output<T>(y_grad_unreduce, y_grad);
       } else {

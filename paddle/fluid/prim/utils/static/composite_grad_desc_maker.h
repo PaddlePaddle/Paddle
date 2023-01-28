@@ -336,16 +336,9 @@ class CompositeGradOpMakerBase {
     VLOG(8) << "Valid gradients: " << grad_var_name;
 
     auto target_grad = StaticCompositeContext::Instance().GetTargetGrad();
-    std::cout << "target_grad: " << std::endl;
-    for (auto iter = target_grad.begin(); iter != target_grad.end(); iter++) {
-      std::cout << "first: " << iter->first << " "
-                << "second: " << iter->second;
-    }
-    std::cout << std::endl;
     if (target_grad.find(grad_var_name) != target_grad.end()) {
       grad_var_name = target_grad.at(grad_var_name);
     }
-    std::cout << "grad_var_name: " << grad_var_name << std::endl;
 
     if (original_block_->HasVar(grad_var_name)) {
       // Copy Var from original block to active block, or create a new one.
@@ -435,7 +428,11 @@ class CompositeGradOpMakerBase {
                      return g_name;
                    });
     std::vector<framework::VarDesc*> grad_out;
-    for (const auto& name : ret_val) {
+    for (auto name : ret_val) {
+      auto target_grad = StaticCompositeContext::Instance().GetTargetGrad();
+      if (target_grad.find(name) != target_grad.end()) {
+        name = target_grad.at(name);
+      }
       // TODO(jiabin): Will this cause fill zeros error?
       if (original_block_->HasVar(name)) {
         // Copy Var from original block to active block, or create a new one.

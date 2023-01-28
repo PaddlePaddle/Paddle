@@ -209,7 +209,7 @@ Tensor sum<DescTensor>(const Tensor& x,
       "Out", {std::static_pointer_cast<prim::DescTensor>(out.impl())->Name()});
   op->CheckAttrs();
   op->InferVarType(block);
-  // TODO(jiabin, cxxly): This may have runtime shape skip infershape for now.
+  op->InferShape(*block);
   return out;
 }
 
@@ -232,7 +232,7 @@ Tensor reshape<DescTensor>(const Tensor& x, const IntArray& shape) {
       "Out", {std::static_pointer_cast<prim::DescTensor>(out.impl())->Name()});
   op->CheckAttrs();
   op->InferVarType(block);
-  // TODO(jiabin, cxxly): This may have runtime shape skip infershape for now.
+  op->InferShape(*block);
   return out;
 }
 
