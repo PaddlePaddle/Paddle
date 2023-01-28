@@ -23,9 +23,9 @@ paddle.enable_static()
 class TestFleetExecutorTaskNode(unittest.TestCase):
     def test_task_node(self):
         program = paddle.static.Program()
-        task_node_0 = core.TaskNode(program.desc, 0, 1, 1)
+        task_node_0 = core.TaskNode(program.desc, 0, 0, 1)
         task_node_1 = core.TaskNode(program.desc, 0, 1, 1)
-        task_node_2 = core.TaskNode(program.desc, 0, 1, 1)
+        task_node_2 = core.TaskNode(program.desc, 0, 2, 1)
         self.assertEqual(task_node_0.task_id(), 0)
         self.assertEqual(task_node_1.task_id(), 1)
         self.assertEqual(task_node_2.task_id(), 2)
