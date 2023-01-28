@@ -2284,36 +2284,6 @@ class TestSundryAPIStatic(unittest.TestCase):
 
     @prog_scope()
     def test_while_loop(self):
-        def cond(i, ten):
-            return i < ten
-
-        def body(i, ten):
-            i = i + 1
-            return [i, ten]
-
-        main_program = paddle.static.Program()
-        with paddle.static.program_guard(main_program, paddle.static.Program()):
-            i = paddle.full([], 0, 'int64')
-            i.stop_gradient = False
-            ten = paddle.full([], 10, 'int64')
-            out_i, out_ten = paddle.static.nn.while_loop(cond, body, [i, ten])
-            paddle.static.append_backward(out_i.sum())
-
-        place = (
-            paddle.CUDAPlace(0)
-            if paddle.device.is_compiled_with_cuda()
-            else paddle.CPUPlace()
-        )
-        res = self.exe.run(
-            main_program,
-            fetch_list=[out_i.name, out_ten.name, i.grad_name],
-        )
-        self.assertEqual(res[0].shape, ())
-        self.assertEqual(res[1].shape, ())
-        self.assertEqual(res[2].shape, ())
-
-    @prog_scope()
-    def test_while_loop_backward(self):
         def cond(i, x):
             return paddle.less_than(i, eleven)
 
@@ -2346,10 +2316,12 @@ class TestSundryAPIStatic(unittest.TestCase):
         res = self.exe.run(
             main_program,
             feed={'i': feed_i, 'x': feed_x},
-            fetch_list=[out_x.name, i.grad_name],
+            fetch_list=[out_i.name, out_x.name, i.grad_name, x.grad_name],
         )
         self.assertEqual(res[0].shape, ())
         self.assertEqual(res[1].shape, ())
+        self.assertEqual(res[2].shape, ())
+        self.assertEqual(res[3].shape, ())
 
 
 # Use to test API whose zero-dim input tensors don't have grad and not need to test backward in OpTest.
