@@ -9,7 +9,9 @@ if(WITH_PYTHON)
     COMMAND ${CMAKE_COMMAND} -E make_directory
             ${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto)
   add_dependencies(ps_py_proto ps_py_proto_init)
-  SET(PSLIB_PROTO_DSTPATH "${PADDLE_BINARY_DIR}/python/paddle/fluid/incubate/fleet/parameter_server/pslib/") 
+  set(PSLIB_PROTO_DSTPATH
+      "${PADDLE_SOURCE_DIR}/python/paddle/fluid/incubate/fleet/parameter_server/pslib/"
+  )
   if(NOT WIN32)
     add_custom_command(
       TARGET ps_py_proto
@@ -37,7 +39,9 @@ if(WITH_PYTHON)
       POST_BUILD
       COMMAND copy /Y ps_pb2.py ${PSLIB_PROTO_DSTPATH})
   endif()
-  message(STATUS "Copy generated python ps_pb2.py into directory ${PSLIB_PROTO_DSTPATH}")
+  message(
+    STATUS
+      "Copy generated python ps_pb2.py into directory ${PSLIB_PROTO_DSTPATH}")
 endif()
 
 if(WITH_RPC)
