@@ -40,28 +40,6 @@ void StackGradKernel(const Context& ctx,
   funcs::UnStackRawKernel<T, Context>(ctx, out_grad, axis, &x_grad);
 }
 
-template <typename T, typename Context>
-void UnStackKernel(const Context& ctx,
-                   const DenseTensor& x,
-                   int axis,
-                   int num,
-                   std::vector<DenseTensor*> outs) {
-  if (x.numel() == 0) return;
-  if (axis < 0) axis += x.dims().size();
-
-  int64_t split_dim = x.dims()[axis];
-  PADDLE_ENFORCE_EQ(
-      split_dim,
-      outs.size(),
-      phi::errors::InvalidArgument(
-          "Output outs's size should be equal to the split_dim, but"
-          " received split_dim is:%d outs's size is:%d.",
-          split_dim,
-          outs.size()));
-
-  UnStackRawKernel<T, Context>(ctx, x, axis, &outs);
-}
-
 }  // namespace phi
 
 PD_REGISTER_KERNEL(stack_grad,
