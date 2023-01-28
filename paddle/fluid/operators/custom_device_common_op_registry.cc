@@ -62,6 +62,7 @@ void FeedStringsKernel(const Context& dev_ctx,
                        phi::ExtendedTensor* out);
 
 void RegisterCustomDeviceCommonKernel(const std::string& dev_type) {
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
   auto device_type = dev_type.c_str();
   /* see [Why use single type kernel] */
   REGISTER_OP_CUSTOM_DEVICE_KERNEL(
@@ -113,9 +114,11 @@ void RegisterCustomDeviceCommonKernel(const std::string& dev_type) {
       device_type,
       ALL_LAYOUT,
       paddle::operators::FeedStringsKernel<phi::CustomContext>);
+#endif
 }
 
 }  // namespace operators
 }  // namespace paddle
 
 #undef REGISTER_OP_CUSTOM_DEVICE_KERNEL
+#undef REGISTER_CUSTOM_DEVICE_GENERAL_KERNEL
