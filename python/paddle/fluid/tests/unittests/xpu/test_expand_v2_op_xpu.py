@@ -199,7 +199,7 @@ class TestExpandV2API(unittest.TestCase):
             input = np.random.random([12, 14]).astype("float32")
             x = paddle.static.data(
                 name='x',
-                shape=[-1, 12, 14],
+                shape=[12, 14],
                 dtype="float32",
             )
 
