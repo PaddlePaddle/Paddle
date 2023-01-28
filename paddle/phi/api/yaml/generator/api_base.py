@@ -1195,6 +1195,10 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
         for kernel_out in outputs_args:
             fallback_kernel_output_trans += f"""
 {code_indent}    TransDataBackend({kernel_out}, kernel_backend, {kernel_out});"""
+        if inplace_flag:
+            fallback_kernel_output_trans += f"""
+{code_indent}  if (kernel_backend == Backend::XPU)
+{code_indent}    PADDLE_THROW(phi::errors::Unimplemented("The fallback_cpu function for inplace update is unimplemented, please implement api {self.api}_ for backend XPU"));"""
         return f"""
 {code_indent}  VLOG(6) << "{self.api} API kernel key: [" << kernel_backend << ", " << kernel_layout << ", "<< kernel_data_type << "]";
 {code_indent}  auto kernel_result = phi::KernelFactory::Instance().SelectKernelOrThrowError(
