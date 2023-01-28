@@ -126,11 +126,13 @@ nv_test(
   DEPS paddle_framework ${GLOB_OPERATOR_DEPS} tensorrt_engine
        tensorrt_converter)
 
+# link_directories(${Python3_LIBRARIES})
 nv_test(
   test_custom_plugin_creater
   SRCS test_custom_plugin_creater.cc
   DEPS paddle_framework tensorrt_converter op_meta_info custom_operator
        pybind_util)
+target_link_libraries(test_custom_plugin_creater ${PYTHON_LIBRARIES})
 
 if(WITH_ONNXRUNTIME AND WIN32)
   # Copy onnxruntime for some c++ test in Windows, since the test will
