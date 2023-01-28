@@ -1429,7 +1429,7 @@ static void Interpolate1DInferShapeCheck(
         phi::errors::InvalidArgument(
             "Scale's dimension size must be 1 or 0, but got dimension = %d .",
             scale_tensor_dim.size()));
-    if (scale_tensor_dim.size()) {
+    if (scale_tensor_dim.size() == 1) {
       PADDLE_ENFORCE_EQ(scale_tensor_dim[0],
                         1,
                         phi::errors::InvalidArgument(

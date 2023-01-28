@@ -926,7 +926,6 @@ class TestSundryAPI(unittest.TestCase):
         self.assertEqual(out2.shape, [1])
 
 
-
 # Use to test API whose zero-dim input tensors don't have grad and not need to test backward in OpTest.
 
 

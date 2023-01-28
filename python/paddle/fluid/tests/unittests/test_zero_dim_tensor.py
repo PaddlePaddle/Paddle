@@ -1442,6 +1442,7 @@ class TestSundryAPI(unittest.TestCase):
         np.testing.assert_allclose(
             origin_result.numpy(), out3.numpy(), rtol=1e-05
         )
+
         
     def test_maseked_select(self):
         x = paddle.rand([])
@@ -1484,7 +1485,6 @@ class TestSundryAPI(unittest.TestCase):
         self.assertEqual(out.shape, [])
         self.assertEqual(out.grad.shape, [])
         self.assertEqual(x.grad.shape, [])
-
 
 
 class TestSundryAPIStatic(unittest.TestCase):
@@ -2313,7 +2313,8 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(res1[1].shape, (2, 3, 6, 6))
         self.assertEqual(res2[0].shape, (2, 3, 12, 12))
         self.assertEqual(res2[1].shape, (2, 3, 6, 6))
-        
+
+    
     @prog_scope()
     def test_maseked_select(self):
         x = paddle.rand([])
