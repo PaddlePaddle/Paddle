@@ -111,22 +111,35 @@ __global__ void UnStackCudaKernel(const T* __restrict__ input,
   // In this case they are equal
   assert(split_dim % num_split == 0);
 
-  IndexT size = out_row * split_dim * out_col;
+  IndexT numel = out_row * split_dim * out_col;
   IndexT each_dim_size = split_dim / num_split;
+  IndexT split_dim_with_out_col = split_dim * out_col;
 
-  for (IndexT offset = blockIdx.x * blockDim.x + threadIdx.x; offset < size;
-       offset += blockDim.x * gridDim.x) {
-    IndexT i = offset / (split_dim * out_col);
-    IndexT j = (offset % (split_dim * out_col)) / out_col;
-    IndexT k = offset % out_col;
+  IndexT offset = blockIdx.x * blockDim.x + threadIdx.x;
+  if (each_dim_size == 1) {
+    for (; offset < numel; offset += blockDim.x * gridDim.x) {
+      IndexT i = offset / split_dim_with_out_col;
+      IndexT j = offset / out_col - i * out_row;
+      IndexT k = offset % out_col;
 
-    T* output = array.data[j / each_dim_size];
-    if (output == nullptr) {
-      return;
+      T* output = array.data[j];
+      if (output) {
+        IndexT output_idx = i * out_col + k;
+        *(output + output_idx) = input[offset];
+      }
     }
-    IndexT output_ind =
-        i * each_dim_size * out_col + (j % each_dim_size) * out_col + k;
-    *(output + output_ind) = input[offset];
+  } else {
+    for (; offset < numel; offset += blockDim.x * gridDim.x) {
+      IndexT i = offset / split_dim_with_out_col;
+      IndexT j = offset / out_col - i * out_row;
+      IndexT k = offset % out_col;
+
+      T* output = array.data[j / each_dim_size];
+      if (output) {
+        IndexT output_idx = (i + j % each_dim_size) * out_col + k;
+        *(output + output_idx) = input[offset];
+      }
+    }
   }
 }
 
