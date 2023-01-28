@@ -94,7 +94,7 @@ class TestIndexSelectAPI(unittest.TestCase):
                 [5.0, 6.0, 7.0, 8.0],
                 [9.0, 10.0, 11.0, 12.0],
             ]
-        )
+        ).astype('float32')
         self.data_index = np.array([0, 1, 1]).astype('int32')
 
     def test_index_select_api(self):
