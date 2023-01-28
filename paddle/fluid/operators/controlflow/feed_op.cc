@@ -305,8 +305,8 @@ PD_REGISTER_GENERAL_KERNEL(
     ALL_LAYOUT,
     paddle::operators::FeedStringsKernel<phi::CustomContext>,
     ALL_DTYPE) {}
-
-#elif defined(PADDLE_WITH_CUSTOM_DEVICE)
+#endif
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
 namespace paddle {
 namespace operators {
 template void FeedDenseTensorKernel<phi::CustomContext>(
@@ -314,16 +314,6 @@ template void FeedDenseTensorKernel<phi::CustomContext>(
     const phi::ExtendedTensor& x,
     int col,
     phi::DenseTensor* out);
-template void FeedSparseCooTensorKernel<phi::CustomContext>(
-    const phi::CustomContext& dev_ctx,
-    const phi::ExtendedTensor& x,
-    int col,
-    phi::SparseCooTensor* out);
-template void FeedStringsKernel<phi::CustomContext>(
-    const phi::CustomContext& dev_ctx,
-    const phi::ExtendedTensor& x,
-    int col,
-    phi::ExtendedTensor* out);
 }  // namespace operators
 }  // namespace paddle
 #endif

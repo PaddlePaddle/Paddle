@@ -49,18 +49,6 @@ void FeedDenseTensorKernel(const Context& dev_ctx,
                            int col,
                            phi::DenseTensor* out);
 
-template <typename Context>
-void FeedSparseCooTensorKernel(const Context& dev_ctx,
-                               const phi::ExtendedTensor& x,
-                               int col,
-                               phi::SparseCooTensor* out);
-
-template <typename Context>
-void FeedStringsKernel(const Context& dev_ctx,
-                       const phi::ExtendedTensor& x,
-                       int col,
-                       phi::ExtendedTensor* out);
-
 void RegisterCustomDeviceCommonKernel(const std::string& dev_type) {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
   auto device_type = dev_type.c_str();
@@ -104,16 +92,6 @@ void RegisterCustomDeviceCommonKernel(const std::string& dev_type) {
       device_type,
       ALL_LAYOUT,
       paddle::operators::FeedDenseTensorKernel<phi::CustomContext>);
-  REGISTER_CUSTOM_DEVICE_GENERAL_KERNEL(
-      feed_sparse_coo_tensor,
-      device_type,
-      ALL_LAYOUT,
-      paddle::operators::FeedSparseCooTensorKernel<phi::CustomContext>);
-  REGISTER_CUSTOM_DEVICE_GENERAL_KERNEL(
-      feed_strings,
-      device_type,
-      ALL_LAYOUT,
-      paddle::operators::FeedStringsKernel<phi::CustomContext>);
 #endif
 }
 
