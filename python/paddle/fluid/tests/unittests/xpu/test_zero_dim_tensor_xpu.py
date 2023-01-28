@@ -461,6 +461,7 @@ class TestSundryAPI(unittest.TestCase):
         x = paddle.rand([])
         x.stop_gradient = False
         out = paddle.transpose(x, [])
+        out.retain_grads()
         out.backward()
 
         self.assertEqual(out.shape, [])
@@ -476,6 +477,7 @@ class TestSundryAPI(unittest.TestCase):
         x = paddle.rand([])
         x.stop_gradient = False
         out = paddle.moveaxis(x, [], [])
+        out.retain_grads()
         out.backward()
 
         self.assertEqual(out.shape, [])
