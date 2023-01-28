@@ -183,6 +183,7 @@ class XPUDeviceContext : public phi::XPUContext {
   virtual ~XPUDeviceContext();
   Eigen::DefaultDevice* eigen_device() const { return nullptr; }
   xpuStream stream() const { return XPUContext::x_context()->xpu_stream; }
+  void CreateStream() { XPUContext::CreateStream(); }
 };
 
 template <>

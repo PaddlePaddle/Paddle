@@ -424,10 +424,36 @@ void CumInferMeta(const MetaTensor& x,
     out->set_dims(phi::make_ddim({phi::product(x_dims)}));
     out->set_dtype(x.dtype());
   } else {
+    if (x_dims.size() > 0) {
+      PADDLE_ENFORCE_GE(
+          axis,
+          -x_dims.size(),
+          phi::errors::OutOfRange(
+              "axis is out of range (expected to be in range of [%ld, "
+              "%ld), but got %ld).",
+              -(x_dims.size()),
+              x_dims.size(),
+              axis));
+      PADDLE_ENFORCE_LT(
+          axis,
+          x_dims.size(),
+          phi::errors::OutOfRange(
+              "axis is out of range (expected to be in range of [%ld, "
+              "%ld), but got %ld).",
+              -(x_dims.size()),
+              x_dims.size(),
+              axis));
+    } else {
+      PADDLE_ENFORCE_EQ(
+          (axis == 0 || axis == -1),
+          true,
+          errors::InvalidArgument("The axis must be -1 or 0 in 0D Tensor, "
+                                  "but the value given is %d.",
+                                  axis));
+    }
     out->set_dims(x_dims);
     out->set_dtype(x.dtype());
   }
-
   out->share_lod(x);
 }
 
@@ -4570,15 +4596,24 @@ void UniqueRawInferMeta(const MetaTensor& x,
                         MetaTensor* index,
                         MetaTensor* counts) {
   if (!is_sorted) {
-    PADDLE_ENFORCE_EQ(
-        x.dims().size(),
-        1,
-        phi::errors::InvalidArgument("The Input(X) should be 1-D Tensor, "
-                                     "But now the dims of Input(X) is %d.",
-                                     x.dims().size()));
+    PADDLE_ENFORCE_EQ(x.dims().size() == 1 || x.dims().size() == 0,
+                      true,
+                      phi::errors::InvalidArgument(
+                          "The Input(X) should be 0-D or 1-D Tensor, "
+                          "But now the dims of Input(X) is %d.",
+                          x.dims().size()));
     out->set_dims(phi::make_ddim({-1}));
     index->set_dims(x.dims());
     return;
+  }
+
+  if (x.dims().size() == 0) {
+    PADDLE_ENFORCE_EQ(axis.empty(),
+                      true,
+                      phi::errors::InvalidArgument(
+                          "The Input(X) with 0-D Tensor, axis must be None"
+                          "But now the axis is %d.",
+                          axis[0]));
   }
 
   if (axis.empty()) {

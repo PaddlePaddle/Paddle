@@ -34,13 +34,13 @@ class TestSqrtOpError(unittest.TestCase):
             in1 = 1
             self.assertRaises(TypeError, paddle.sqrt, in1)
             # The input dtype of sqrt op must be float16, float32, float64.
-            in2 = fluid.layers.data(
-                name='input2', shape=[12, 10], dtype="int32"
+            in2 = paddle.static.data(
+                name='input2', shape=[-1, 12, 10], dtype="int32"
             )
             self.assertRaises(TypeError, paddle.sqrt, in2)
 
-            in3 = fluid.layers.data(
-                name='input3', shape=[12, 10], dtype="float16"
+            in3 = paddle.static.data(
+                name='input3', shape=[-1, 12, 10], dtype="float16"
             )
             paddle.sqrt(x=in3)
 
@@ -167,8 +167,8 @@ class TestExpm1API(unittest.TestCase):
 class TestParameter:
     def test_out_name(self):
         with fluid.program_guard(fluid.Program()):
-            np_x = np.array([0.1])
-            data = fluid.layers.data(name="X", shape=[1])
+            np_x = np.array([0.1]).astype('float32').reshape((-1, 1))
+            data = paddle.static.data(name="X", shape=[-1, 1], dtype="float32")
             out = eval("paddle.%s(data, name='Y')" % self.op_type)
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
@@ -520,8 +520,8 @@ class TestAtan(TestActivation, TestParameter):
 
     def test_out_name(self):
         with fluid.program_guard(fluid.Program()):
-            np_x = np.array([0.1])
-            data = fluid.layers.data(name="X", shape=[1])
+            np_x = np.array([0.1]).astype('float32').reshape((-1, 1))
+            data = paddle.static.data(name="X", shape=[-1, 1], dtype="float32")
             out = paddle.atan(data, name='Y')
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
@@ -582,10 +582,9 @@ class TestSinhAPI(unittest.TestCase):
             input_x = np.random.uniform(0.1, 1, test_data_shape).astype(
                 "float32"
             )
-            data_x = fluid.layers.data(
+            data_x = paddle.static.data(
                 name="data_x",
                 shape=test_data_shape,
-                append_batch_size=False,
                 dtype="float32",
             )
 
@@ -667,10 +666,9 @@ class TestCoshAPI(unittest.TestCase):
             input_x = np.random.uniform(0.1, 1, test_data_shape).astype(
                 "float32"
             )
-            data_x = fluid.layers.data(
+            data_x = paddle.static.data(
                 name="data_x",
                 shape=test_data_shape,
-                append_batch_size=False,
                 dtype="float32",
             )
 
@@ -2399,12 +2397,8 @@ class TestLog(TestActivation):
         self.check_grad(['X'], 'Out', check_eager=True)
 
     def test_error(self):
-        in1 = fluid.layers.data(
-            name="in1", shape=[11, 17], append_batch_size=False, dtype="int32"
-        )
-        in2 = fluid.layers.data(
-            name="in2", shape=[11, 17], append_batch_size=False, dtype="int64"
-        )
+        in1 = paddle.static.data(name="in1", shape=[11, 17], dtype="int32")
+        in2 = paddle.static.data(name="in2", shape=[11, 17], dtype="int64")
 
         self.assertRaises(TypeError, paddle.log, in1)
         self.assertRaises(TypeError, paddle.log, in2)
@@ -2569,10 +2563,9 @@ class TestLog1pAPI(unittest.TestCase):
     def test_api(self):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
             input_x = np.random.uniform(0.1, 1, [11, 17]).astype("float64")
-            data_x = fluid.layers.data(
+            data_x = paddle.static.data(
                 name="data_x",
                 shape=[11, 17],
-                append_batch_size=False,
                 dtype="float64",
             )
 
@@ -2718,12 +2711,8 @@ class TestPow_factor_tensor(TestActivation):
 
     def test_api(self):
         input = np.random.uniform(1, 2, [11, 17]).astype("float32")
-        x = fluid.layers.data(
-            name="x", shape=[11, 17], append_batch_size=False, dtype="float32"
-        )
-        res = fluid.layers.data(
-            name="res", shape=[11, 17], append_batch_size=False, dtype="float32"
-        )
+        x = paddle.static.data(name="x", shape=[11, 17], dtype="float32")
+        res = paddle.static.data(name="res", shape=[11, 17], dtype="float32")
 
         factor_1 = 2.0
         factor_2 = fluid.layers.fill_constant([1], "float32", 3.0)
