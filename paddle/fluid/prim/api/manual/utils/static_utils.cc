@@ -48,6 +48,12 @@ Tensor empty_like<DescTensor>(const Tensor& x,
 }
 
 template <>
+void set_output<DescTensor>(const paddle::experimental::Tensor& x_tmp,
+                            paddle::experimental::Tensor* x) {
+  x->set_impl(x_tmp.impl());
+}
+
+template <>
 void by_pass<DescTensor>(const paddle::experimental::Tensor& x,
                          paddle::experimental::Tensor* out) {
   Tensor new_out =
@@ -62,7 +68,7 @@ void by_pass<DescTensor>(const paddle::experimental::Tensor& x,
   op->CheckAttrs();
   op->InferVarType(block);
   op->InferShape(*block);
-  out->set_impl(new_out.impl());
+  set_output<DescTensor>(new_out, out);
 }
 
 }  // namespace prim

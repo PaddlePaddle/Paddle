@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include "paddle/phi/kernels/funcs/fast_divmod.h"
+#include "paddle/phi/core/dense_tensor.h"
 
 namespace phi {
 namespace funcs {

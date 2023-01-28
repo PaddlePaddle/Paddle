@@ -381,7 +381,11 @@ void CompareAllInferMeta(const MetaTensor& x,
       errors::InvalidArgument(
           "The size of dim_y should not be greater than dim_x's."));
   out->share_lod(x);
-  out->set_dims(make_ddim({1}));
+  if (!x.dims().size() || !y.dims().size()) {
+    out->set_dims(make_ddim({}));
+  } else {
+    out->set_dims(make_ddim({1}));
+  }
   out->set_dtype(DataType::BOOL);
 }
 

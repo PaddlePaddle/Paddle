@@ -29,7 +29,9 @@ def _composite(op, *args):
 @REGISTER_COMPOSITE('softmax')
 def softmax_composite(x, axis):
     """define composite rule of op softmax"""
-    molecular = exp(x)
-    denominator = broadcast_to(sum(molecular, axis=axis, keepdim=True), x.shape)
+    max_temp = max(x, axis, keepdim=True)
+    max_temp.stop_gradient = True
+    molecular = exp(x - max_temp)
+    denominator = sum(molecular, axis=axis, keepdim=True)
     res = divide(molecular, denominator)
     return res
