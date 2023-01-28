@@ -55,9 +55,11 @@ TEST(ComputeInterceptor, Compute) {
   msg_bus->Init(0, {{0, "127.0.0.0:0"}}, "");
 
   // NOTE: don't delete, otherwise interceptor will use undefined node
-  TaskNode* node_a = new TaskNode(0, 0, 0, 3, 0);  // role, rank, task_id
-  TaskNode* node_b = new TaskNode(0, 0, 1, 3, 0);
-  TaskNode* node_c = new TaskNode(0, 0, 2, 3, 0);
+  TaskNode* source =
+      new TaskNode(0, SOURCE_ID, 3);  // rank, task_id, max_run_times
+  TaskNode* node_a = new TaskNode(0, 0, 0, 3);
+  TaskNode* node_b = new TaskNode(0, 0, 1, 3);
+  TaskNode* sink = new TaskNode(0, SINK_ID, 3);
 
   // a->b->c
   node_a->AddDownstreamTask(1, 3);

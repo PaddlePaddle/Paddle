@@ -26,7 +26,6 @@ class TaskNode:
         self,
         rank,
         max_run_times,
-        max_slot_times,
         role=None,
         node_type=None,
         task_id=0,
@@ -38,7 +37,6 @@ class TaskNode:
         """
         :param rank (int): Current rank of the task node.
         :param max_run_times (int): The max run times of the task node.
-        :param max_slot_times (int): The mas slot times of the task node.
         :param role (int): The role of the task node. (Will be removed in the future)
         :param node_type (str): The type of the task node.
         :param task_id (int): The id of task node.
@@ -56,7 +54,6 @@ class TaskNode:
         self.id = int(task_id)
         self.rank = rank
         self.max_run_times = max_run_times
-        self.max_slot_times = max_slot_times
         self.node_type = node_type
         self.program = program
         self.lazy_initialize = lazy_initialize
@@ -72,11 +69,18 @@ class TaskNode:
                     role is not None and task_id is not None
                 ), "If init task node with ops, should provide `role` and `task_id`."
                 self.node = core.TaskNode(
-                    role, ops, rank, task_id, max_run_times, max_slot_times
+                    role,
+                    ops,
+                    rank,
+                    task_id,
+                    max_run_times,
                 )
             else:
                 self.node = core.TaskNode(
-                    program.desc, rank, self.id, max_run_times, max_slot_times
+                    program.desc,
+                    rank,
+                    self.id,
+                    max_run_times,
                 )
             if self.node_type:
                 self.node.set_type(self.node_type)
@@ -88,7 +92,6 @@ class TaskNode:
                 self.rank,
                 self.id,
                 self.max_run_times,
-                self.max_slot_times,
             )
             if self.node_type:
                 self.node.set_type(self.node_type)
@@ -318,33 +321,28 @@ class FleetExecutorUtils:
         return task_node_map
 
     def construct_task_nodes_1f1b(self, program_map):
-        max_slot_times = int(self.max_run_times - self.coord['pp_idx'])
         cur_start_id = int(self.rank * self.num_of_functionality)
         lr_task_node = TaskNode(
             rank=self.rank,
             max_run_times=self.max_run_times,
-            max_slot_times=max_slot_times,
             program=program_map["lr"],
             task_id=cur_start_id,
         )
         fwd_task_node = TaskNode(
             rank=self.rank,
             max_run_times=self.max_run_times,
-            max_slot_times=max_slot_times,
             program=program_map["fwd"],
             task_id=cur_start_id + 1,
         )
         bwd_task_node = TaskNode(
             rank=self.rank,
             max_run_times=self.max_run_times,
-            max_slot_times=max_slot_times,
             program=program_map["bwd"],
             task_id=cur_start_id + 2,
         )
         opt_task_node = TaskNode(
             rank=self.rank,
             max_run_times=self.max_run_times,
-            max_slot_times=max_slot_times,
             program=program_map["opt"],
             task_id=cur_start_id + 3,
         )
@@ -363,12 +361,10 @@ class FleetExecutorUtils:
         return task_id_to_rank
 
     def construct_task_nodes_1f1b_op_list(self, op_list_map):
-        max_slot_times = int(self.max_run_times - self.coord['pp_idx'])
         cur_start_id = int(self.rank * self.num_of_functionality)
         lr_task_node = TaskNode(
             rank=self.rank,
             max_run_times=self.max_run_times,
-            max_slot_times=max_slot_times,
             role=int(OpRole.Optimize.LRSched),
             ops=op_list_map["lr"],
             task_id=cur_start_id,
@@ -378,7 +374,6 @@ class FleetExecutorUtils:
         fwd_task_node = TaskNode(
             rank=self.rank,
             max_run_times=self.max_run_times,
-            max_slot_times=max_slot_times,
             role=int(OpRole.Forward),
             ops=op_list_map["fwd"],
             task_id=cur_start_id + 1,
@@ -387,7 +382,6 @@ class FleetExecutorUtils:
         bwd_task_node = TaskNode(
             rank=self.rank,
             max_run_times=self.max_run_times,
-            max_slot_times=max_slot_times,
             role=int(OpRole.Backward),
             ops=op_list_map["bwd"],
             task_id=cur_start_id + 2,
@@ -396,7 +390,6 @@ class FleetExecutorUtils:
         opt_task_node = TaskNode(
             rank=self.rank,
             max_run_times=self.max_run_times,
-            max_slot_times=max_slot_times,
             role=int(OpRole.Optimize),
             ops=op_list_map["opt"],
             task_id=cur_start_id + 3,
@@ -480,7 +473,6 @@ def origin(program, rank):
         rank=rank,
         node_type="Compute",
         max_run_times=1,
-        max_slot_times=1,
     )
     task_id_to_rank = {task_node.task_id(): rank}
     return [task_node.task_node()], task_id_to_rank

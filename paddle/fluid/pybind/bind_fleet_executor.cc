@@ -171,15 +171,9 @@ void BindFleetExecutor(py::module* m) {
       .value("STOP_LOOP", DependType::STOP_LOOP);
 
   py::class_<TaskNode>(*m, "TaskNode")
-      .def(py::init<framework::ProgramDesc*,
-                    int64_t,
-                    int64_t,
-                    int64_t,
-                    int64_t>())
       .def(py::init<framework::ProgramDesc*, int64_t, int64_t, int64_t>())
       .def(py::init<int32_t,
                     const std::vector<framework::OpDesc*>&,
-                    int64_t,
                     int64_t,
                     int64_t,
                     int64_t>())

@@ -37,34 +37,23 @@ class TaskNode final {
  public:
   using OperatorBase = paddle::framework::OperatorBase;
   TaskNode(int64_t rank, int64_t task_id, int64_t max_run_times);
-  TaskNode(int32_t role,
-           int64_t rank,
-           int64_t task_id,
-           int64_t max_run_times,
-           int64_t max_slot_nums);
+  TaskNode(int32_t role, int64_t rank, int64_t task_id, int64_t max_run_times);
   TaskNode(int32_t role,
            const std::vector<framework::OpDesc*>& op_descs,
            int64_t rank,
            int64_t task_id,
-           int64_t max_run_times,
-           int64_t max_slot_nums);
+           int64_t max_run_times);
   TaskNode(int32_t role,
            const std::vector<framework::OperatorBase*>& ops,
            int64_t rank,
            int64_t task_id,
-           int64_t max_run_times,
-           int64_t max_slot_nums);
-  TaskNode(paddle::framework::ProgramDesc* program,
-           int64_t rank,
-           int64_t max_run_times,
-           int64_t max_slot_nums);
+           int64_t max_run_times);
   TaskNode(paddle::framework::ProgramDesc* program, int64_t rank);
   // TODO(liyurui): This will be the only constructor for task node
   TaskNode(paddle::framework::ProgramDesc* program,
            int64_t task_id,
            int64_t rank,
-           int64_t max_run_times,
-           int64_t max_slot_nums);
+           int64_t max_run_times);
 
   ~TaskNode() = default;
 
@@ -74,7 +63,6 @@ class TaskNode final {
   int64_t task_id() const { return task_id_; }
   int32_t role() const { return role_; }
   int64_t max_run_times() const { return max_run_times_; }
-  int64_t max_slot_nums() const { return max_slot_nums_; }
   int64_t run_per_steps() const { return run_per_steps_; }
   int64_t run_at_offset() const { return run_at_offset_; }
   int64_t reply_up_per_steps() const { return reply_up_per_steps_; }
@@ -151,7 +139,6 @@ class TaskNode final {
   int64_t rank_;
   int64_t task_id_;
   int64_t max_run_times_;
-  int64_t max_slot_nums_;
 
   int64_t run_per_steps_{1};
   int64_t run_at_offset_{0};
