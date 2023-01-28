@@ -1430,6 +1430,15 @@ class TestSundryAPI(unittest.TestCase):
         )
         out3.backward()
 
+        # for coverage
+        scale_3 = paddle.full([1], 2)
+        out4 = interpolate(
+            x=input_x,
+            scale_factor=scale_2,
+            mode="bilinear",
+            align_corners=False,
+        )
+
         self.assertEqual(out3.shape, [2, 3, 12, 12])
         self.assertEqual(input_x.grad.shape, [2, 3, 6, 6])
 
@@ -1443,7 +1452,6 @@ class TestSundryAPI(unittest.TestCase):
             origin_result.numpy(), out3.numpy(), rtol=1e-05
         )
 
-        
     def test_maseked_select(self):
         x = paddle.rand([])
         x.stop_gradient = False
@@ -2314,7 +2322,6 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(res2[0].shape, (2, 3, 12, 12))
         self.assertEqual(res2[1].shape, (2, 3, 6, 6))
 
-    
     @prog_scope()
     def test_maseked_select(self):
         x = paddle.rand([])

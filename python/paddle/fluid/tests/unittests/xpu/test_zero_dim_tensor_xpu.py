@@ -835,7 +835,6 @@ class TestSundryAPI(unittest.TestCase):
         y = paddle.full([], 0.6)
         self.assertFalse(paddle.allclose(x, y))
 
-
     def test_interpolate(self):
         from paddle.nn.functional import interpolate
 
