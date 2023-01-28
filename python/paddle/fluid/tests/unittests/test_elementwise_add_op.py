@@ -737,6 +737,39 @@ class TestElementwiseAddop1(unittest.TestCase):
         paddle.enable_static()
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "only support compiled with CUDA"
+)
+class TestEmptyTensorAddOp(unittest.TestCase):
+    def test_empty_tensor_add(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(np.array([]))
+        y = paddle.to_tensor(np.array([]))
+        z = x + y
+        self.assertEqual(z.shape, (0,))
+
+    def test_empty_diff_shape_tensor_add1(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(np.array([]))
+        y = paddle.to_tensor(np.array([]).reshape([0, 0]))
+        z = x + y
+        self.assertEqual(z.shape, (0, 0))
+
+    def test_empty_diff_shape_tensor_add2(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(np.array([]))
+        y = paddle.to_tensor(np.array([]).reshape([0, 1]))
+        z = x + y
+        self.assertEqual(z.shape, (0, 0))
+
+    def test_empty_diff_shape_tensor_add3(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(np.array([]).reshape([0, 1]))
+        y = paddle.to_tensor(np.array([]).reshape([0, 2]))
+        z = x + y
+        self.assertEqual(z.shape, (0, 2))
+
+
 if __name__ == '__main__':
     paddle.enable_static()
     unittest.main()
