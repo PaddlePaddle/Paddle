@@ -132,7 +132,9 @@ nv_test(
   SRCS test_custom_plugin_creater.cc
   DEPS paddle_framework tensorrt_converter op_meta_info custom_operator
        pybind_util)
-target_link_libraries(test_custom_plugin_creater ${PYTHON_LIBRARIES})
+if(WIN32)
+  target_link_libraries(test_custom_plugin_creater ${PYTHON_LIBRARIES})
+endif()
 
 if(WITH_ONNXRUNTIME AND WIN32)
   # Copy onnxruntime for some c++ test in Windows, since the test will
