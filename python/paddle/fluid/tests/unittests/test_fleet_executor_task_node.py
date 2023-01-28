@@ -46,7 +46,6 @@ class TestFleetExecutorTaskNode(unittest.TestCase):
             program=program,
             rank=0,
             max_run_times=1,
-            max_slot_times=1,
             lazy_initialize=True,
         )
         task_node = task.task_node()

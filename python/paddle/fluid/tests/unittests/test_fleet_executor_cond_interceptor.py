@@ -94,7 +94,6 @@ class TestFleetExecutor(unittest.TestCase):
         task_a = TaskNode(
             0,
             num_micro_batches,
-            0,
             node_type="Compute",
             task_id=0,
             program=program_a,
@@ -103,7 +102,6 @@ class TestFleetExecutor(unittest.TestCase):
         task_b = TaskNode(
             0,
             num_micro_batches,
-            0,
             node_type="Cond",
             task_id=1,
             program=paddle.static.Program(),
@@ -113,7 +111,6 @@ class TestFleetExecutor(unittest.TestCase):
         task_c = TaskNode(
             0,
             num_micro_batches,
-            0,
             node_type="Compute",
             task_id=2,
             program=program_b,
@@ -122,7 +119,6 @@ class TestFleetExecutor(unittest.TestCase):
         task_d = TaskNode(
             0,
             num_micro_batches,
-            0,
             node_type="Compute",
             task_id=3,
             program=paddle.static.Program(),
@@ -131,7 +127,6 @@ class TestFleetExecutor(unittest.TestCase):
         task_e = TaskNode(
             0,
             num_micro_batches,
-            0,
             node_type="Compute",
             task_id=4,
             program=paddle.static.Program(),
