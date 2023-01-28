@@ -78,8 +78,6 @@ CLANG_COMPILE_FLAGS = [
     '-O3',
     '-arch',
     'x86_64',
-    # "-stdlib=libc++",
-    # "-fvisibility=hidden",
 ]
 CLANG_LINK_FLAGS = [
     '-dynamiclib',
@@ -87,7 +85,6 @@ CLANG_LINK_FLAGS = [
     'dynamic_lookup',
     '-arch',
     'x86_64',
-    # "-stdlib=libc++",
 ]
 
 MSVC_LINK_FLAGS = ['/MACHINE:X64']
@@ -186,7 +183,7 @@ def custom_write_stub(resource, pyfile):
         def __bootstrap__():
             assert os.path.exists(so_path)
             if os.name == 'nt' or sys.platform.startswith('darwin'):
-                # only support Linux now
+                # Cpp Extension only support Linux now
                 mod = types.ModuleType(__name__)
             else:
                 try:
@@ -974,7 +971,7 @@ def _import_module_from_library(module_name, build_directory, verbose=False):
     op_names = load_op_meta_info_and_register_op(ext_path)
 
     if os.name == 'nt' or sys.platform.startswith('darwin'):
-        # only support Linux now
+        # Cpp Extension only support Linux now
         return _generate_python_module(
             module_name, op_names, build_directory, verbose
         )
@@ -995,6 +992,7 @@ def _import_module_from_library(module_name, build_directory, verbose=False):
         module_name, op_names, build_directory, verbose
     )
     for op_name in op_names:
+        # Mix use of Cpp Extension and Custom Operator
         setattr(module, op_name, getattr(op_module, op_name))
 
     return module

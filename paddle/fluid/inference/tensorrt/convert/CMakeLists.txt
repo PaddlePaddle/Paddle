@@ -126,7 +126,6 @@ nv_test(
   DEPS paddle_framework ${GLOB_OPERATOR_DEPS} tensorrt_engine
        tensorrt_converter)
 
-# link_directories(${Python3_LIBRARIES})
 nv_test(
   test_custom_plugin_creater
   SRCS test_custom_plugin_creater.cc
