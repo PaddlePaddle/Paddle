@@ -66,8 +66,6 @@ MSVC_COMPILE_FLAGS = [
     '/DBOOST_HAS_STATIC_ASSERT',
     '/DNDEBUG',
     '/DPADDLE_USE_DSO',
-    "/EHsc",
-    "/bigobj",
 ]
 CLANG_COMPILE_FLAGS = [
     '-fno-common',
