@@ -17,6 +17,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/run_program_op.h"
 #include "paddle/fluid/operators/save_combine_op.h"
 #include "paddle/phi/backends/device_manager.h"
+#include "paddle/phi/core/kernel_registry.h"
 
 #define REGISTER_OP_CUSTOM_DEVICE_KERNEL(op_type, dev_type, ...)             \
   static paddle::framework::OpKernelRegistrar<phi::CustomPlace, __VA_ARGS__> \
@@ -26,8 +27,39 @@ limitations under the License. */
           paddle::framework::OpKernelType::kDefaultCustomizedTypeValue);     \
   __op_custom_device_kernel_registrar_##op_type##_##__acosf##__.Touch();
 
+#define REGISTER_CUSTOM_DEVICE_GENERAL_KERNEL(                             \
+    kernel_name, dev_type, layout, kernel_fn)                              \
+  static phi::KernelRegistrar                                              \
+      __reg_custom_device_phi_kernel_##kernel_name##_##backend##_##layout( \
+          phi::RegType::INNER,                                             \
+          #kernel_name,                                                    \
+          dev_type,                                                        \
+          DATALAYOUT(layout),                                              \
+          ::phi::KernelArgsParseFunctor<decltype(&kernel_fn)>::Parse,      \
+          [](const phi::KernelKey& kernel_key, phi::Kernel* kernel) {},    \
+          PHI_KERNEL(kernel_fn),                                           \
+          PHI_VARIADIC_KERNEL(kernel_fn))
+
 namespace paddle {
 namespace operators {
+
+template <typename Context>
+void FeedDenseTensorKernel(const Context& dev_ctx,
+                           const phi::ExtendedTensor& x,
+                           int col,
+                           phi::DenseTensor* out);
+
+template <typename Context>
+void FeedSparseCooTensorKernel(const Context& dev_ctx,
+                               const phi::ExtendedTensor& x,
+                               int col,
+                               phi::SparseCooTensor* out);
+
+template <typename Context>
+void FeedStringsKernel(const Context& dev_ctx,
+                       const phi::ExtendedTensor& x,
+                       int col,
+                       phi::ExtendedTensor* out);
 
 void RegisterCustomDeviceCommonKernel(const std::string& dev_type) {
   auto device_type = dev_type.c_str();
@@ -66,6 +98,21 @@ void RegisterCustomDeviceCommonKernel(const std::string& dev_type) {
           LoadCombineOpKernel<paddle::platform::CustomDeviceContext, int8_t>,
       paddle::operators::
           LoadCombineOpKernel<paddle::platform::CustomDeviceContext, int64_t>);
+  REGISTER_CUSTOM_DEVICE_GENERAL_KERNEL(
+      feed_dense_tensor,
+      device_type,
+      ALL_LAYOUT,
+      paddle::operators::FeedDenseTensorKernel<phi::CustomContext>);
+  REGISTER_CUSTOM_DEVICE_GENERAL_KERNEL(
+      feed_sparse_coo_tensor,
+      device_type,
+      ALL_LAYOUT,
+      paddle::operators::FeedSparseCooTensorKernel<phi::CustomContext>);
+  REGISTER_CUSTOM_DEVICE_GENERAL_KERNEL(
+      feed_strings,
+      device_type,
+      ALL_LAYOUT,
+      paddle::operators::FeedStringsKernel<phi::CustomContext>);
 }
 
 }  // namespace operators
