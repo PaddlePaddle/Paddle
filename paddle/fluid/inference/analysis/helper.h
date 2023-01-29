@@ -247,12 +247,28 @@ static std::string GetTrtEngineSerializedData(
   return "";
 }
 
-static void SaveTrtEngineSerializedDataToFile(
-    const std::string &trt_serialized_path,
-    const std::string &engine_serialized_data) {
-  std::ofstream outfile(trt_serialized_path, std::ios::binary);
-  outfile << engine_serialized_data;
+static void SaveSerializedDataToFile(const std::string &path,
+                                     const std::string &data) {
+  std::ofstream outfile(path, std::ios::binary);
+  outfile << data;
   outfile.close();
+}
+
+static std::string GetTrtTimingCacheSerializedData(
+    const std::string &timing_cache_dir) {
+  std::string timing_cache_file = timing_cache_dir + "/paddle_trt_timing.cache";
+  if (FileExists(timing_cache_file)) {
+    VLOG(3) << "Trt timing chache file: " << timing_cache_file
+            << "is found here";
+    std::ifstream infile(timing_cache_file, std::ios::binary);
+    std::stringstream buffer;
+    buffer << infile.rdbuf();
+    std::string trt_timing_cache_data(buffer.str());
+    return trt_timing_cache_data;
+  } else {
+    VLOG(3) << "Trt timing chache file does not exist";
+    return "";
+  }
 }
 
 }  // namespace analysis

@@ -350,6 +350,16 @@ class TensorRTEngine {
     return ihost_memory_.get();
   }
 
+  nvinfer1::IHostMemory* SerializeTimingCache() {
+#if IS_TRT_VERSION_GE(8250)
+    PADDLE_ENFORCE_NOT_NULL(
+        infer_timing_cache_,
+        platform::errors::InvalidArgument(
+            "The TensorRT Timing Cache must be not null when serializing"));
+    return infer_timing_cache_->serialize();
+#endif
+  }
+
   void Deserialize(const std::string& engine_serialized_data);
 
   void SetRuntimeBatch(size_t batch_size);
@@ -631,6 +641,15 @@ class TensorRTEngine {
     context_memory_sharing_ = context_memory_sharing;
   }
 
+  void SetUseTimingCache(bool use_timing_cache) {
+    use_timing_cache_ = use_timing_cache;
+  }
+#if IS_TRT_VERSION_GE(8250)
+  void SetTimingCacheData(const std::string& timing_cache_data) {
+    timing_cache_data_ = timing_cache_data;
+  }
+#endif
+
  private:
   // Each ICudaEngine object is bound to a specific GPU when it is instantiated,
   // ensure that the thread is associated with the correct device by calling
@@ -705,6 +724,13 @@ class TensorRTEngine {
 #endif
   std::mutex mutex_;
   bool use_inspector_;
+
+  // For timing cache
+  bool use_timing_cache_{false};
+#if IS_TRT_VERSION_GE(8250)
+  std::string timing_cache_data_;
+  std::unique_ptr<nvinfer1::ITimingCache> infer_timing_cache_;
+#endif
 
  public:
   thread_local static int predictor_id_per_thread;

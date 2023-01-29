@@ -575,6 +575,9 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
       graph->Has(framework::ir::kMultiheadMatmulPass));
   trt_engine->SetContextMemorySharing(Get<bool>("context_memory_sharing"));
 
+  auto use_timing_cache = Get<bool>("use_timing_cache");
+  trt_engine->SetUseTimingCache(use_timing_cache);
+
   if (use_static_engine) {
     trt_engine_serialized_data = GetTrtEngineSerializedData(
         Get<std::string>("model_opt_cache_dir"), engine_key);
@@ -586,6 +589,25 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
                        Get<std::string>("model_opt_cache_dir"), engine_key);
       return;
     }
+  }
+
+  std::string trt_timing_cache_data;
+  std::string timing_cache_dir = "/tmp";
+  if (use_timing_cache) {
+#if IS_TRT_VERSION_GE(8250)
+    trt_timing_cache_data = GetTrtTimingCacheSerializedData(timing_cache_dir);
+    if (!trt_timing_cache_data.empty()) {
+      LOG(INFO) << "Load TRT Timing Cache";
+    } else {
+      LOG(INFO) << "No TRT Timing Cache Found";
+    }
+    trt_engine->SetTimingCacheData(trt_timing_cache_data);
+#else
+    LOG(INFO) << "TensorRT Timing Cache only support TRT version >= 8250, but "
+                 "now using "
+              << NV_TENSORRT_MAJOR * 1000 + NV_TENSORRT_MINOR * 100 +
+                     NV_TENSORRT_PATCH * 10 + NV_TENSORRT_BUILD;
+#endif
   }
 
   // the following code will NOT run in following situation:
@@ -610,7 +632,7 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
     trt_engine_serialized_data =
         std::string((const char *)serialized_engine_data->data(),
                     serialized_engine_data->size());
-    SaveTrtEngineSerializedDataToFile(
+    SaveSerializedDataToFile(
         GetTrtEngineSerializedPath(Get<std::string>("model_opt_cache_dir"),
                                    engine_key),
         trt_engine_serialized_data);
@@ -618,6 +640,17 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
               << GetTrtEngineSerializedPath(
                      Get<std::string>("model_opt_cache_dir"), engine_key);
   }
+#if IS_TRT_VERSION_GE(8250)
+  if (use_timing_cache) {
+    nvinfer1::IHostMemory *serialized_timing_cache_data =
+        trt_engine->SerializeTimingCache();
+    trt_timing_cache_data =
+        std::string((const char *)serialized_timing_cache_data->data(),
+                    serialized_timing_cache_data->size());
+    SaveSerializedDataToFile(timing_cache_dir + "/paddle_trt_timing.cache",
+                             trt_timing_cache_data);
+  }
+#endif
 }
 
 }  // namespace analysis

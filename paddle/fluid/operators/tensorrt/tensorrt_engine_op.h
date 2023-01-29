@@ -399,7 +399,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
             std::string trt_engine_serialized_data =
                 std::string((const char *)serialized_engine_data->data(),
                             serialized_engine_data->size());
-            inference::analysis::SaveTrtEngineSerializedDataToFile(
+            inference::analysis::SaveSerializedDataToFile(
                 inference::analysis::GetTrtEngineSerializedPath(
                     model_opt_cache_dir_, engine_key_),
                 trt_engine_serialized_data);

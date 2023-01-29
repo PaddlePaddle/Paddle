@@ -177,6 +177,7 @@ class QuantDequantTest(unittest.TestCase):
         config.switch_specify_input_names(True)
         config.switch_ir_optim(True)
         config.switch_use_feed_fetch_ops(False)
+        config.enable_tensorrt_timing_cache(True)
         if use_gpu:
             config.enable_use_gpu(100, 0)
             if use_trt:

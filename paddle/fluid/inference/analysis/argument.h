@@ -231,6 +231,7 @@ struct Argument {
                       TensorRtUseStaticEngine,
                       bool);
   DECL_ARGUMENT_FIELD(tensorrt_use_calib_mode, TensorRtUseCalibMode, bool);
+  DECL_ARGUMENT_FIELD(tensorrt_use_timing_cache, TensorRtUseTimingCache, bool);
   DECL_ARGUMENT_FIELD(tensorrt_use_varseqlen, TensorRtUseOSS, bool);
   DECL_ARGUMENT_FIELD(tensorrt_with_interleaved, TensorRtWithInterleaved, bool);
   DECL_ARGUMENT_FIELD(tensorrt_transformer_posid,

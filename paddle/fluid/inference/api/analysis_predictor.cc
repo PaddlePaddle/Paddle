@@ -1139,6 +1139,7 @@ void AnalysisPredictor::PrepareArgument() {
         config_.trt_allow_build_at_runtime());
     argument_->SetTensorRtUseInspector(config_.trt_use_inspector_);
     argument_->SetTrtEngineMemorySharing(config_.trt_engine_memory_sharing());
+    argument_->SetTensorRtUseTimingCache(config_.trt_use_timing_cache());
   }
 
   if (config_.dlnne_enabled()) {

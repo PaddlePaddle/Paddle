@@ -313,6 +313,13 @@ void TensorRTEngine::FreezeNetwork() {
         nvinfer1::ProfilingVerbosity::kDETAILED);
   }
 #endif
+#if IS_TRT_VERSION_GE(8250)
+  if (use_timing_cache_) {
+    infer_timing_cache_.reset(infer_builder_config_->createTimingCache(
+        timing_cache_data_.data(), timing_cache_data_.size()));
+    infer_builder_config_->setTimingCache(*infer_timing_cache_.get(), false);
+  }
+#endif
 
 #if IS_TRT_VERSION_LT(8000)
   infer_engine_.reset(infer_builder_->buildEngineWithConfig(

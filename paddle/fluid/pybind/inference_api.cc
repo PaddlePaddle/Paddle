@@ -770,6 +770,9 @@ void BindAnalysisConfig(py::module *m) {
            &AnalysisConfig::EnableTensorRTMemoryOptim,
            py::arg("engine_memory_sharing") = true,
            py::arg("sharing_identifier") = 0)
+      .def("enable_tensorrt_timing_cache",
+           &AnalysisConfig::EnableTensorRTTimingCache,
+           py::arg("use_timing_cache") = true)
       .def("tensorrt_precision_mode", &AnalysisConfig::tensorrt_precision_mode)
       .def("set_trt_dynamic_shape_info",
            &AnalysisConfig::SetTRTDynamicShapeInfo,

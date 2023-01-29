@@ -154,8 +154,10 @@ void IRPassManager::CreatePasses(Argument *argument,
       pass->Set("program",
                 new framework::ProgramDesc *(&argument->main_program()));
       pass->Set("predictor_id", new int(argument->predictor_id()));
+
       bool use_calib_mode = argument->tensorrt_use_calib_mode();
       pass->Set("use_calib_mode", new bool(use_calib_mode));
+
       pass->Set("precision_mode",
                 new AnalysisConfig::Precision(precision_mode));
       pass->Set("context_memory_sharing",
@@ -222,6 +224,9 @@ void IRPassManager::CreatePasses(Argument *argument,
       // not run fp16.
       pass->Set("disable_trt_plugin_fp16",
                 new bool(argument->disable_trt_plugin_fp16()));
+
+      bool use_timing_cache = argument->tensorrt_use_timing_cache();
+      pass->Set("use_timing_cache", new bool(use_timing_cache));
     } else if (pass_name == "dlnne_subgraph_pass") {
       auto precision_mode = argument->dlnne_precision_mode();
       pass->Set("min_subgraph_size",

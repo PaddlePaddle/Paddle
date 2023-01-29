@@ -600,6 +600,17 @@ struct PD_INFER_DECL AnalysisConfig {
   void EnableTensorRTMemoryOptim(bool engine_memory_sharing = true,
                                  int sharing_identifier = 0);
   ///
+  /// \brief Turn on the TensorRT timing cache
+  ///
+  /// \param use_timing_cache Whether to enable TensorRT timing cache
+  ///
+  void EnableTensorRTTimingCache(bool use_timing_cache = true);
+  ///
+  /// \brief A boolean state telling whether the tensorrt engine timing cache
+  /// is activated.
+  ///
+  bool trt_use_timing_cache() const;
+  ///
   /// \brief A boolean state telling whether the tensorrt engine memory sharing
   /// is activated.
   ///
@@ -1097,6 +1108,7 @@ struct PD_INFER_DECL AnalysisConfig {
   Precision tensorrt_precision_mode_{Precision::kFloat32};
   bool trt_use_static_engine_{false};
   bool trt_use_calib_mode_{true};
+  bool trt_use_timing_cache_{false};
   bool trt_use_varseqlen_{false};
   bool trt_with_interleaved_{false};
   std::string tensorrt_transformer_posid_{""};

@@ -424,6 +424,7 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(trt_dla_core_);
   CP_MEMBER(trt_use_static_engine_);
   CP_MEMBER(trt_use_calib_mode_);
+  CP_MEMBER(trt_use_timing_cache_)
   CP_MEMBER(trt_use_varseqlen_);
   CP_MEMBER(trt_with_interleaved_);
   CP_MEMBER(tensorrt_transformer_posid_);
@@ -725,6 +726,15 @@ void AnalysisConfig::EnableTensorRtEngine(
   trt_use_calib_mode_ = use_calib_mode;
 
   Update();
+#else
+  PADDLE_THROW(platform::errors::PreconditionNotMet(
+      "To use Paddle-TensorRT, please compile with TENSORRT first."));
+#endif
+}
+
+void AnalysisConfig::EnableTensorRTTimingCache(bool use_timing_cache) {
+#ifdef PADDLE_WITH_TENSORRT
+  trt_use_timing_cache_ = use_timing_cache;
 #else
   PADDLE_THROW(platform::errors::PreconditionNotMet(
       "To use Paddle-TensorRT, please compile with TENSORRT first."));
@@ -1171,6 +1181,10 @@ bool AnalysisConfig::trt_engine_memory_sharing() const {
   return trt_engine_memory_sharing_;
 }
 
+bool AnalysisConfig::trt_use_timing_cache() const {
+  return trt_use_timing_cache_;
+}
+
 void AnalysisConfig::SetModelBuffer(const char *prog_buffer,
                                     size_t prog_buffer_size,
                                     const char *param_buffer,
@@ -1313,6 +1327,8 @@ std::string AnalysisConfig::Summary() {
                     trt_use_static_engine_ ? "true" : "false"});
       os.InsertRow(
           {"tensorrt_use_calib_mode", trt_use_calib_mode_ ? "true" : "false"});
+      os.InsertRow({"tensorrt_use_timing_cache",
+                    trt_use_timing_cache_ ? "true" : "false"});
 
       // dynamic_shape
       os.InsertRow({"tensorrt_enable_dynamic_shape",
