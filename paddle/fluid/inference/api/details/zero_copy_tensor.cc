@@ -16,6 +16,7 @@
 #include "paddle/fluid/framework/data_layout_transform.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/scope.h"
+#include "paddle/fluid/framework/string_array.h"
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
 #include "paddle/fluid/inference/api/paddle_tensor.h"
 #include "paddle/fluid/memory/memcpy.h"
@@ -76,7 +77,8 @@ void Tensor::ReshapeStrings(const size_t &shape) {
       var,
       paddle::platform::errors::PreconditionNotMet(
           "No tensor called [%s] in the runtime scope", name_));
-  paddle_infer::Strings *tensor = var->GetMutable<paddle_infer::Strings>();
+  paddle::framework::Strings *tensor =
+      var->GetMutable<paddle::framework::Strings>();
   tensor->resize(shape);
 }
 
@@ -261,7 +263,9 @@ void Tensor::CopyFromCpu(const T *data) {
     paddle::platform::DeviceContextPool &pool =
         paddle::platform::DeviceContextPool::Instance();
     paddle::platform::CustomPlace custom_place(
-        phi::GetGlobalDeviceType(device_type_id), device_);
+        phi::CustomRegisteredDeviceMap::Instance().GetGlobalDeviceType(
+            device_type_id),
+        device_);
     auto *t_data = tensor->mutable_data<T>(custom_place);
     auto *dev_ctx = static_cast<const paddle::platform::CustomDeviceContext *>(
         pool.Get(custom_place));
@@ -354,7 +358,7 @@ void Tensor::ShareExternalData(const T *data,
 }
 
 void Tensor::CopyStringsFromCpu(const paddle_infer::Strings *data) {
-  EAGER_GET_TENSOR(paddle_infer::Strings);
+  EAGER_GET_TENSOR(paddle::framework::Strings);
   PADDLE_ENFORCE_GE(tensor->size(),
                     0,
                     paddle::platform::errors::PreconditionNotMet(

@@ -702,7 +702,9 @@ class Engine:
         # For now, the completer has to be passed to the planner,
         # because we may use it to complete the annotation of the backwarkward and update.
         parallelizer = Parallelizer(
-            mode, self._planners[mode].completer, self._dist_contexts[mode]
+            mode,
+            self._planners[mode].completer,
+            self._dist_contexts[mode],
         )
         if not all_ranks:
             parallelizer.parallel(self._cur_rank)

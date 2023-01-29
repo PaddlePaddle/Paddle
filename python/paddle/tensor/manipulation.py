@@ -14,8 +14,6 @@
 
 # TODO: define functions to manipulate a tensor
 
-from collections import Counter
-
 import numpy as np
 
 import paddle
@@ -1916,31 +1914,20 @@ def split(x, num_or_sections, axis=0, name=None):
     input = x
     dim = axis
     if in_dygraph_mode():
-        num = None
-        attrs = ()
-
         if isinstance(dim, Variable):
             dim = dim.numpy()
             dim = dim.item(0)
         assert len(input.shape) + dim >= 0, "(rank(x) + axis) must >= 0"
         dim = (len(input.shape) + dim) if dim < 0 else dim
-        attrs += ('axis', dim)
 
-        if isinstance(num_or_sections, int):
-            num = num_or_sections
-            attrs += ('num', num_or_sections)
-        elif isinstance(num_or_sections, (list, tuple)):
-            num = len(num_or_sections)
+        if isinstance(num_or_sections, (list, tuple)):
             if utils._contain_var(num_or_sections):
                 for index, item in enumerate(num_or_sections):
                     if isinstance(item, Variable):
                         num_or_sections[index] = num_or_sections[index].numpy()[
                             0
                         ]
-                attrs += ('sections', list(num_or_sections))
-            else:
-                attrs += ('sections', list(num_or_sections))
-        else:
+        elif not isinstance(num_or_sections, int):
             raise TypeError(
                 "The type of 'num_or_sections' in split must be int, list or tuple in imperative mode, but "
                 "received %s." % (type(num_or_sections))
@@ -4346,11 +4333,9 @@ def moveaxis(x, source, destination, name=None):
         dst
     ), "'source' must have the same number with 'destination'"
 
-    count = Counter(src).most_common(1)
-    if count[0][1] > 1:
+    if len(src) != len(set(src)):
         raise ValueError("Each elemment of 'source' must be unique!")
-    count = Counter(dst).most_common(1)
-    if count[0][1] > 1:
+    if len(dst) != len(set(dst)):
         raise ValueError("Each elemment of 'destination' must be unique!")
 
     ndim = len(x.shape)
