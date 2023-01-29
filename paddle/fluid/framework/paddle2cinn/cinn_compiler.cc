@@ -253,8 +253,7 @@ void CinnCompiler::CheckCompiledValid(
     if (inplace_var_names.count(var_name)) {
       name_key += InplaceOutSuffix;
     }
-    PADDLE_ENFORCE_EQ(launch_context->IsVariableUsed(name_key),
-                      true,
+    PADDLE_ENFORCE_EQ(launch_context->IsVariableUsed(name_key), true,
                       platform::errors::PreconditionNotMet(
                           "Variable(%s) not applied in CINN", var_name));
   }
