@@ -1839,6 +1839,13 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
             False if self.composite_func_info == {} else True
         )
 
+        if is_composite_grad_api and next_grad_node_creation_str != '':
+            next_grad_node_creation_str = f"""
+ if (!paddle::prim::PrimCommonUtils::IsBwdPrimEnabled()) {{
+    {next_grad_node_creation_str}
+ }}
+  """
+
         if next_node_generator is not None:
             has_higher_order_node = True
             return (
@@ -1850,9 +1857,6 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
                 next_node_generator.backward_forward_inputs_map,
             )
         # TODO(Ruting):Integrate invoke and composite as composite so the rest branch canbe covered
-        # TODO(Ruting): modify next_grad_node_creation_str when Flags_prim_enable deleted in the future
-        # if is_composite_grad_api:
-        #     next_grad_node_creation_str = ''
         elif not is_invoke_forward_api and not is_composite_grad_api:
             next_grad_node_creation_str = f"""  if(trace_backward) {{
     PADDLE_THROW(phi::errors::Unavailable(
@@ -1978,6 +1982,7 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
         backward_attrs_list = self.backward_attrs_list
         backward_inplace_map = self.backward_inplace_map
         indent = GetIndent(1)
+        need_gen_trace_backard_for_inplace = False
 
         # Construct grad_api function args
         # Order: TensorWrappers, GradTensors, Attributes
@@ -2207,6 +2212,7 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
   }} else {{
     {inplace_str}
   }}"""
+                        need_gen_trace_backard_for_inplace = True
                     else:
                         inplace_for_grad_outs_str += inplace_str
 
@@ -2255,7 +2261,7 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
         # TODO(Ruting):using composite only when we don't have backward kernel in the future.
         elif is_composite_grad_api:
             grad_function_call_str = f"""
-  if (paddle::prim::PrimCommonUtils::IsPrimEnabled()) {{
+  if (paddle::prim::PrimCommonUtils::IsBwdPrimEnabled()) {{
   {indent}{composite_grad_api_namespace}{composite_grad_api_name}{composite_template_name}({composite_grad_api_args_str});
   VLOG(4) << "Composite api {composite_grad_api_name} is called ";
   }}else{{
@@ -2275,7 +2281,11 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
         # Prepare for Node Creation if Necessary
         outputs_autograd_meta_str = ""
         compute_require_next_grad_str = ""
-        if len(next_grad_node_creation_str) > 0 or is_invoke_forward_api:
+        if (
+            len(next_grad_node_creation_str) > 0
+            or is_invoke_forward_api
+            or need_gen_trace_backard_for_inplace
+        ):
             compute_require_next_grad_str = f"{indent}bool trace_backward = egr::Controller::Instance().HasGrad() && create_graph;\n"
 
         # 3. Get Output AutoGradMeta

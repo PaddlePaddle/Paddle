@@ -355,7 +355,7 @@ def save_vars(
             main_prog = fluid.Program()
             startup_prog = fluid.Program()
             with fluid.program_guard(main_prog, startup_prog):
-                data = fluid.layers.data(name="img", shape=[64, 784], append_batch_size=False)
+                data = paddle.static.data(name="img", shape=[64, 784])
                 w = paddle.create_parameter(shape=[784, 200], dtype='float32', name='fc_w')
                 b = paddle.create_parameter(shape=[200], dtype='float32', name='fc_b')
                 hidden_w = paddle.matmul(x=data, y=w)
@@ -830,7 +830,7 @@ def load_vars(
             main_prog = fluid.Program()
             startup_prog = fluid.Program()
             with fluid.program_guard(main_prog, startup_prog):
-                data = fluid.layers.data(name="img", shape=[64, 784], append_batch_size=False)
+                data = paddle.static.data(name="img", shape=[64, 784])
                 w = paddle.create_parameter(shape=[784, 200], dtype='float32', name='fc_w')
                 b = paddle.create_parameter(shape=[200], dtype='float32', name='fc_b')
                 hidden_w = paddle.matmul(x=data, y=w)
@@ -1598,7 +1598,7 @@ def load_inference_model(
             main_prog = fluid.Program()
             startup_prog = fluid.Program()
             with fluid.program_guard(main_prog, startup_prog):
-                data = fluid.layers.data(name="img", shape=[64, 784], append_batch_size=False)
+                data = paddle.static.data(name="img", shape=[-1, 64, 784])
                 w = paddle.create_parameter(shape=[784, 200], dtype='float32')
                 b = paddle.create_parameter(shape=[200], dtype='float32')
                 hidden_w = paddle.matmul(x=data, y=w)

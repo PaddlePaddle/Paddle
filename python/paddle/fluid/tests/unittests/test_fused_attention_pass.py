@@ -114,9 +114,7 @@ class TestFusedAttentionPass(unittest.TestCase):
         hidden_size = 768
         num_heads = 12
 
-        x_data = np.random.rand(batch_size, seq_len, hidden_size).astype(
-            'float32'
-        )
+        x_data = np.random.rand(batch_size, seq_len, seq_len).astype('float32')
         mask_data = np.random.rand(
             batch_size, num_heads, seq_len, seq_len
         ).astype('float32')
@@ -127,7 +125,7 @@ class TestFusedAttentionPass(unittest.TestCase):
         with paddle.static.program_guard(main_prog, startup_prog):
             data = paddle.static.data(
                 name="x",
-                shape=[-1, seq_len, hidden_size],
+                shape=[-1, seq_len, seq_len],
                 dtype='float32',
             )
             if self.add_mask:
@@ -138,6 +136,7 @@ class TestFusedAttentionPass(unittest.TestCase):
                 )
             else:
                 attn_mask = None
+            data_linear = paddle.nn.Linear(seq_len, hidden_size)
             multi_head_attn = MultiHeadAttention(
                 hidden_size,
                 num_heads,
@@ -146,7 +145,9 @@ class TestFusedAttentionPass(unittest.TestCase):
                 post_ln=self.post_ln,
                 attn_dropout=self.attn_dropout,
             )
-            out = multi_head_attn(data, attn_mask)
+
+            attn_input = data_linear(data)
+            out = multi_head_attn(attn_input, attn_mask)
             loss = paddle.mean(out)
 
             sgd_optimizer = paddle.fluid.optimizer.SGD(learning_rate=0.001)
@@ -156,7 +157,13 @@ class TestFusedAttentionPass(unittest.TestCase):
         pass_manager.apply([main_prog], [startup_prog])
 
         ops = main_prog.global_block().ops
-        assert ops[0].type == 'reduce_mean'
+        assert ops[2].type == 'reduce_mean'
+        assert ops[4].type == 'reduce_mean_grad'
+        # two ops for linear, one op for reduce mean
+        # one fill constant
+        # one op for reduce mean grad, two ops for linear bwd
+        # the eighth op should be the optimizer
+        assert ops[7].type == 'sgd'
 
 
 if __name__ == "__main__":

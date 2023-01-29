@@ -19,6 +19,7 @@ from utils import TOLERANCE
 
 import paddle
 import paddle.nn.functional as F
+from paddle.fluid import core
 
 
 def generate_data(shape, dtype="float32"):
@@ -57,8 +58,7 @@ attrs = Attr()
 
 
 def fn(x):
-    y = paddle.tan(x)
-    return F.softmax(y, axis=attrs.axis, dtype=attrs.dtype)
+    return F.softmax(x, axis=attrs.axis, dtype=attrs.dtype)
 
 
 def expect_forward(inputs):
@@ -73,6 +73,7 @@ class TestCompositeSoftmax(unittest.TestCase):
 
     def cal_composite(self, inputs):
         paddle.enable_static()
+        core._set_prim_forward_enabled(True)
         startup_program = paddle.static.Program()
         main_program = paddle.static.Program()
         with paddle.static.program_guard(main_program, startup_program):
@@ -81,12 +82,22 @@ class TestCompositeSoftmax(unittest.TestCase):
             )
             y = fn(x)
             blocks = main_program.blocks
+
+            fwd_ops = [op.type for op in blocks[0].ops]
+            # Ensure that softmax in original block
+            self.assertTrue('softmax' in fwd_ops)
+
             paddle.incubate.autograd.to_prim(blocks)
+
+            fwd_ops_new = [op.type for op in blocks[0].ops]
+            # Ensure that softmax is splitted into small ops
+            self.assertTrue('softmax' not in fwd_ops_new)
 
         exe = paddle.static.Executor()
         exe.run(startup_program)
         res = exe.run(main_program, feed={'x': inputs}, fetch_list=[y])
         paddle.disable_static()
+        core._set_prim_forward_enabled(False)
         return res
 
     def compare_forward(self):
@@ -97,7 +108,7 @@ class TestCompositeSoftmax(unittest.TestCase):
         actual = self.cal_composite(np_data)[0]
 
         assert expect.dtype == actual.dtype
-        assert np.allclose(
+        np.testing.assert_allclose(
             expect,
             actual,
             rtol=attrs.get_rtol("forward"),

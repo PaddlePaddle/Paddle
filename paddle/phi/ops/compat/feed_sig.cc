@@ -14,4 +14,19 @@
 
 #include "paddle/phi/core/compat/op_utils.h"
 
-PD_REGISTER_BASE_KERNEL_NAME(size, numel);
+namespace phi {
+
+KernelSignature FeedOpArgumentMapping(const ArgumentMappingContext& ctx) {
+  if (ctx.IsDenseTensorOutput("Out")) {
+    return KernelSignature("feed_dense_tensor", {"X"}, {"col"}, {"Out"});
+  } else if (ctx.IsSparseCooTensorOutput("Out")) {
+    return KernelSignature("feed_sparse_coo_tensor", {"X"}, {"col"}, {"Out"});
+  } else {
+    return KernelSignature("feed_strings", {"X"}, {"col"}, {"Out"});
+  }
+}
+
+}  // namespace phi
+
+PD_REGISTER_BASE_KERNEL_NAME(feed, feed_dense_tensor);
+PD_REGISTER_ARG_MAPPING_FN(feed, phi::FeedOpArgumentMapping);
