@@ -154,7 +154,10 @@ class CinnLaunchContext {
   std::unordered_map<std::string, std::string> cinn2paddle_varmap_;
   // a list of internal variable names in Paddle
   std::unordered_set<std::string> internal_var_names_;
-  // a list of inplace variable names of the compiled subgraph
+  // In CINN, there are two variables(in/out) mapped to the one inplaced
+  // variable of Paddle. To resovle this conflict, we add a output counterpart
+  // in Paddle with the name suffixed by @InplaceOut.
+  // This set stores which Paddle variable names are inplaced.
   std::unordered_set<std::string> inplace_var_names_;
   // the names of the cinn arguments used in compiled executable program
   std::unordered_set<std::string> cinn_argument_names_;

@@ -26,6 +26,7 @@
 #include "cinn/auto_schedule/tuning.h"
 #include "cinn/common/target.h"
 #include "cinn/common/type.h"
+#include "cinn/frontend/op_mapper_registry.h"
 #include "cinn/frontend/optimize.h"
 #include "cinn/frontend/syntax.h"
 #include "cinn/hlir/framework/graph.h"
@@ -54,6 +55,7 @@ namespace paddle2cinn {
 using ::cinn::auto_schedule::AutoTuner;
 using ::cinn::common::Target;
 using ::cinn::frontend::Optimize;
+using ::cinn::frontend::paddle::InplaceOutSuffix;
 using ::cinn::hlir::framework::BuildScope;
 using ::cinn::hlir::framework::GraphCompiler;
 using inference::analysis::Dot;
@@ -247,8 +249,9 @@ void CinnCompiler::CheckCompiledValid(
   // 1. check all of the output variables will be assigned by compiled program
   for (auto &&var_name : output_var_names) {
     std::string name_key = var_name;
+    // inplace variables are renamed with a specified suffix
     if (inplace_var_names.count(var_name)) {
-      name_key += "@InplaceOut";
+      name_key += InplaceOutSuffix;
     }
     PADDLE_ENFORCE_EQ(launch_context->IsVariableUsed(name_key),
                       true,
