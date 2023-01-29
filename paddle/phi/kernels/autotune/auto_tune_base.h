@@ -70,7 +70,7 @@ class AutoTuneBase {
     PADDLE_ENFORCE_GT(
         kernels_.size(),
         0,
-        paddle::platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "kernel num must be greater than 0, now is %d", kernels_.size()));
     is_init_ = true;
 
@@ -102,7 +102,7 @@ class AutoTuneBase {
     PADDLE_ENFORCE_GT(
         kernels_.size(),
         0,
-        paddle::platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "kernel num must be greater than 0, now is %d", kernels_.size()));
     size_t best_idx = 0;
     float min_time = std::numeric_limits<float>::max();
@@ -123,7 +123,7 @@ class AutoTuneBase {
   float RunAndMeasureKernel(const Context& ctx, const int idx, Args&&... args) {
     // Regard 1st run as warmup, judge the compare result by the time cost
     // of rest cycles.
-    constexpr int repeats = 3;
+    constexpr int repeats = 6;
     phi::GpuTimer timer;
     float time_cost = 0;
     const auto& stream = ctx.stream();
@@ -143,12 +143,14 @@ class AutoTuneBase {
   }
 };
 
-template <typename T, typename ReturnType, typename... Args>
-static AutoTuneBase<T, KernelCallback<T, ReturnType, Args...>> MakeAutoTuner(
-    ReturnType (*func)(Args...)) {
-  auto obj = MakeCallback<T>(func);
-  return AutoTuneBase<T, decltype(obj)>(obj);
-}
+// FIXME: It seems that MakeAutoTuner is used nowhere.
+
+// template <typename T, typename ReturnType, typename... Args>
+// static AutoTuneBase<T, KernelCallback<T, ReturnType, Args...>> MakeAutoTuner(
+//     ReturnType (*func)(Args...)) {
+//   auto obj = MakeCallback<T>(func);
+//   return AutoTuneBase<T, decltype(obj)>(obj);
+// }
 
 template <typename T, typename ReturnType, typename... Args>
 class TransposeAutoTuner
@@ -172,6 +174,31 @@ template <typename T, typename ReturnType, typename... Args>
 static AutoTuneBase<T, KernelCallback<T, ReturnType, Args...>>*
 MakeTransposeTuner(ReturnType (*func)(Args...)) {
   return TransposeAutoTuner<T, ReturnType, Args...>::Instance(func);
+}
+
+// FIXME: add MatmulAutoTuner but how to use it ?
+template <typename T, typename ReturnType, typename... Args>
+class MatmulAutoTuner
+    : public AutoTuneBase<T, KernelCallback<T, ReturnType, Args...>> {
+ public:
+  static AutoTuneBase<T, KernelCallback<T, ReturnType, Args...>>* Instance(
+      ReturnType (*func)(Args...)) {
+    static std::once_flag matmul_init_flag_;
+    static std::unique_ptr<
+        AutoTuneBase<T, KernelCallback<T, ReturnType, Args...>>>
+        instance_;
+    std::call_once(matmul_init_flag_, [&] {
+      auto obj = MakeCallback<T>(func);
+      instance_.reset(new AutoTuneBase<T, decltype(obj)>(obj));
+    });
+    return instance_.get();
+  }
+};
+
+template <typename T, typename ReturnType, typename... Args>
+static AutoTuneBase<T, KernelCallback<T, ReturnType, Args...>>* MakeMatmulTuner(
+    ReturnType (*func)(Args...)) {
+  return MatmulAutoTuner<T, ReturnType, Args...>::Instance(func);
 }
 
 }  // namespace autotune
