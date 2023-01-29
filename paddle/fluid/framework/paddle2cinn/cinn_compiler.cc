@@ -247,16 +247,15 @@ void CinnCompiler::CheckCompiledValid(
       graph.Get<std::vector<std::string>>(kOutputVars);
   auto *launch_context = compiled_obj.launch_context.get();
   // 1. check all of the output variables will be assigned by compiled program
-  for (auto &&var_name : output_var_names) {
-    std::string name_key = var_name;
+  for (auto var_name : output_var_names) {
     // inplace variables are renamed with a specified suffix
     if (inplace_var_names.count(var_name)) {
-      name_key += InplaceOutSuffix;
+      var_name += InplaceOutSuffix;
     }
-    PADDLE_ENFORCE_EQ(launch_context->IsVariableUsed(name_key),
+    PADDLE_ENFORCE_EQ(launch_context->IsVariableUsed(var_name),
                       true,
                       platform::errors::PreconditionNotMet(
-                          "Variable(%s) is not applied in CINN", var_name));
+                          "Variable(%s) not applied in CINN", var_name));
   }
   // 2. check all of the used input variables were correctly deduced by CINN.
   for (const auto &var_name : input_var_names) {
