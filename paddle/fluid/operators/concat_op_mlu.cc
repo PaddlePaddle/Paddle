@@ -22,8 +22,8 @@ template <typename T>
 class ConcatMLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto ins = ctx.MultiInput<framework::LoDTensor>("X");
-    framework::LoDTensor* out = ctx.Output<framework::LoDTensor>("Out");
+    auto ins = ctx.MultiInput<phi::DenseTensor>("X");
+    phi::DenseTensor* out = ctx.Output<phi::DenseTensor>("Out");
     PADDLE_ENFORCE_NOT_NULL(ins[0],
                             platform::errors::NotFound(
                                 "The first input tensor is not initalized."));
@@ -85,10 +85,9 @@ class ConcatGradMLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* out_grad = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
-    auto ins = ctx.MultiInput<framework::LoDTensor>("X");
+    auto ins = ctx.MultiInput<phi::DenseTensor>("X");
     auto out_var_names = ctx.OutputNames(framework::GradVarName("X"));
-    auto outs =
-        ctx.MultiOutput<framework::LoDTensor>(framework::GradVarName("X"));
+    auto outs = ctx.MultiOutput<phi::DenseTensor>(framework::GradVarName("X"));
     auto axis = ctx.Attr<int>("axis");
     int split_num = ins.size();
 
@@ -120,7 +119,7 @@ class ConcatGradMLUKernel : public framework::OpKernel<T> {
             out_grad->dims().size()));
     // get output tensor that the name is not kEmptyVarName
     std::vector<void*> outputs_vec;
-    std::vector<Tensor> tmp_outputs_vec;
+    std::vector<phi::DenseTensor> tmp_outputs_vec;
     std::vector<MLUCnnlTensorDesc> output_descs;
     std::vector<cnnlTensorDescriptor_t> descs_vec;
     for (size_t j = 0; j < outs.size(); ++j) {
@@ -130,7 +129,7 @@ class ConcatGradMLUKernel : public framework::OpKernel<T> {
         output_descs.emplace_back(MLUCnnlTensorDesc(*outs[j]));
         outputs_vec.push_back(GetBasePtr(outs[j]));
       } else {
-        Tensor tmp_tensor;
+        phi::DenseTensor tmp_tensor;
         tmp_tensor.mutable_data<T>(ins[j]->dims(), ctx.GetPlace());
         tmp_outputs_vec.push_back(tmp_tensor);
         output_descs.emplace_back(MLUCnnlTensorDesc(*ins[j]));

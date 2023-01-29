@@ -175,10 +175,11 @@ class CoalesceGradTensorPass : public ir::Pass {
                 p_g.second));
         pinned_var_set->insert(it->Var()->Name());
       }
-      PADDLE_ENFORCE_EQ(IsLoDTensorType(GetTypeOfVar(vars_info, p_g.second)),
-                        true,
-                        platform::errors::InvalidArgument(
-                            "Parameter@Grad %s is not LoDTensor.", p_g.second));
+      PADDLE_ENFORCE_EQ(
+          IsLoDTensorType(GetTypeOfVar(vars_info, p_g.second)),
+          true,
+          platform::errors::InvalidArgument(
+              "Parameter@Grad %s is not phi::DenseTensor.", p_g.second));
     }
   }
 

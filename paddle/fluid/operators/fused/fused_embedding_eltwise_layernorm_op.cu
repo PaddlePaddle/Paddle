@@ -33,7 +33,6 @@ template <typename DeviceContext, typename T>
 class EmbeddingEltWiseLayerNormKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
-    using Tensor = phi::DenseTensor;
     auto &device_ctx = context.template device_context<DeviceContext>();
     auto ids = context.MultiInput<phi::DenseTensor>("Ids");
     auto embs = context.MultiInput<phi::DenseTensor>("Embs");

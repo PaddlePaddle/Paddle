@@ -13,11 +13,11 @@
 # limitations under the License.
 
 import unittest
+
 from paddle.fluid.framework import Program
 
 
 class TestDebugStringFramework(unittest.TestCase):
-
     def test_debug_str(self):
         p = Program()
         p.current_block().create_var(name='t', shape=[0, 1])

@@ -136,7 +136,8 @@ class VariableCompatTensor
 
   void* AllocateFrom(phi::Allocator* allocator,
                      phi::DataType dtype,
-                     size_t requested_size = 0) override {
+                     size_t requested_size = 0,
+                     bool fake_alloc = false) override {
     PADDLE_THROW(paddle::platform::errors::Unavailable(
         "VariableCompatTensor does not support `AllocateFrom` method."));
   }
@@ -247,8 +248,7 @@ class EagerVariable final {
   std::shared_ptr<phi::TensorBase> GetTensorBase() {
     // Construct allocation only once.
     if (var_.IsInitialized()) {
-      if (var_.IsType<paddle::framework::LoDTensor>() ||
-          var_.IsType<phi::DenseTensor>()) {
+      if (var_.IsType<phi::DenseTensor>() || var_.IsType<phi::DenseTensor>()) {
         return SetImplWithLegacyTensor<phi::DenseTensor>();
       } else if (var_.IsType<phi::SelectedRows>()) {
         return SetImplWithLegacyTensor<phi::SelectedRows>();

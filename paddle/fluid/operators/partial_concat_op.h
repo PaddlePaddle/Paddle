@@ -23,7 +23,6 @@ limitations under the License. */
 
 namespace paddle {
 namespace operators {
-using Tensor = phi::DenseTensor;
 
 static inline int64_t ComputeStartIndex(int64_t start_index, int64_t size) {
   PADDLE_ENFORCE_EQ(
@@ -90,9 +89,8 @@ class PartialConcatGradientOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* out_grad = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
-    auto ins = ctx.MultiInput<framework::LoDTensor>("X");
-    auto outs =
-        ctx.MultiOutput<framework::LoDTensor>(framework::GradVarName("X"));
+    auto ins = ctx.MultiInput<phi::DenseTensor>("X");
+    auto outs = ctx.MultiOutput<phi::DenseTensor>(framework::GradVarName("X"));
 
     PADDLE_ENFORCE_EQ(ins[0] != nullptr,
                       true,

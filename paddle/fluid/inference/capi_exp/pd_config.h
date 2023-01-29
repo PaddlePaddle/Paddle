@@ -132,11 +132,13 @@ PADDLE_CAPI_EXPORT extern PD_Bool PD_ConfigUseFcPadding(
 /// \param[in] memory_pool_init_size_mb initial size of the GPU memory pool in
 /// MB.
 /// \param[in] device_id device_id the GPU card to use.
+/// \param[in] precision_mode the precision used in Paddle-GPU inference.
 ///
 PADDLE_CAPI_EXPORT extern void PD_ConfigEnableUseGpu(
     __pd_keep PD_Config* pd_config,
     uint64_t memory_pool_init_size_mb,
-    int32_t device_id);
+    int32_t device_id,
+    PD_PrecisionType precision_mode);
 ///
 /// \brief Turn off GPU.
 ///
@@ -200,6 +202,7 @@ PADDLE_CAPI_EXPORT extern void PD_ConfigEnableORTOptimization(
 ///       file will be used and autotune will not be performed again.
 /// \param precision Calculation accuracy of multi_encoder
 /// \param adaptive_seqlen Is the input of multi_encoder variable length
+/// \param enable_multi_stream Whether to enable the multi stream of xpu.
 ///
 PADDLE_CAPI_EXPORT extern void PD_ConfigEnableXpu(
     __pd_keep PD_Config* pd_config,
@@ -208,7 +211,8 @@ PADDLE_CAPI_EXPORT extern void PD_ConfigEnableXpu(
     PD_Bool autotune,
     const char* autotune_file,
     const char* precision,
-    PD_Bool adaptive_seqlen);
+    PD_Bool adaptive_seqlen,
+    PD_Bool enable_multi_stream);
 ///
 /// \brief Turn on NPU.
 ///
@@ -605,6 +609,22 @@ PADDLE_CAPI_EXPORT extern PD_Bool PD_ConfigMkldnnBfloat16Enabled(
 PADDLE_CAPI_EXPORT extern void PD_ConfigSetBfloat16Op(
     __pd_keep PD_Config* pd_config, size_t ops_num, const char** op_list);
 ///
+/// \brief Turn on MKLDNN int8.
+///
+/// \param[in] pd_onfig config
+///
+PADDLE_CAPI_EXPORT extern void PD_ConfigEnableMkldnnInt8(
+    __pd_keep PD_Config* pd_config);
+///
+/// \brief A boolean state telling whether to use the MKLDNN int8.
+///
+/// \param[in] pd_onfig config
+/// \return Whether to use the MKLDNN int8.
+///
+PADDLE_CAPI_EXPORT extern PD_Bool PD_ConfigMkldnnInt8Enabled(
+    __pd_keep PD_Config* pd_config);
+
+///
 /// \brief Enable the GPU multi-computing stream feature.
 /// NOTE: The current behavior of this interface is to bind the computation
 /// stream to the thread, and this behavior may be changed in the future.
@@ -622,6 +642,12 @@ PADDLE_CAPI_EXPORT extern void PD_ConfigEnableGpuMultiStream(
 ///
 PADDLE_CAPI_EXPORT extern PD_Bool PD_ConfigThreadLocalStreamEnabled(
     __pd_keep PD_Config* pd_config);
+///
+/// \brief Set execution stream. If not set a stream will be created
+/// internally.
+///
+PADDLE_CAPI_EXPORT extern void PD_ConfigSetExecStream(
+    __pd_keep PD_Config* pd_config, void* stream);
 ///
 /// \brief Specify the memory buffer of program and parameter.
 /// Used when model and params are loaded directly from memory.

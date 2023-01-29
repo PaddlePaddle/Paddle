@@ -26,7 +26,6 @@ void LayerNormKernel(const Context& ctx,
                      const paddle::optional<DenseTensor>& bias,
                      float epsilon,
                      int begin_norm_axis,
-                     bool is_test,
                      DenseTensor* out,
                      DenseTensor* mean,
                      DenseTensor* variance) {

@@ -48,7 +48,6 @@ namespace operators {
             keep_dim);                                           \
   }
 
-using Tensor = phi::DenseTensor;
 using DDim = framework::DDim;
 
 inline void GetShuffledDim(const DDim& src_dims,
@@ -137,7 +136,7 @@ void HandleLargeDim(const framework::ExecutionContext& context,
                     const std::vector<int>& dims,
                     bool keep_dim) {
   //  shuffle the reduced dim to the end
-  Tensor shuffled_input;
+  phi::DenseTensor shuffled_input;
   GetShuffledInput<DeviceContext, OutT>(context, input, &shuffled_input, dims);
 
   // transpose to 2D tensor whose shape is {unreduced, reduced}.
@@ -168,7 +167,7 @@ void HandleLargeDimGrad(const framework::ExecutionContext& context,
   DDim out_dim(out->dims());
   DDim x_dim(x->dims());
   // transpose and reshape X
-  Tensor shuffled_x;
+  phi::DenseTensor shuffled_x;
   GetShuffledInput<DeviceContext, T>(context, x, &shuffled_x, dims);
   DDim shuffled_dim = shuffled_x.dims();
   shuffled_x.Resize({unreduced, reduced});
@@ -185,7 +184,7 @@ void HandleLargeDimGrad(const framework::ExecutionContext& context,
   // transpose dX
   std::vector<int> origin_axis(x_dim.size());
   GetOriginDimFromShuffled(x_dim, dims, &origin_axis);
-  Tensor dx_tmp;
+  phi::DenseTensor dx_tmp;
   framework::TensorCopy(*dx, context.GetPlace(), &dx_tmp);
   dx_tmp.Resize(shuffled_dim);
   dx->Resize(x_dim);
@@ -453,15 +452,15 @@ class ReduceGradKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& context) const override {
     int in_dtype = context.Attr<int>("in_dtype");
     if (in_dtype >= 0) {
-      Tensor tmp_tensor;
+      phi::DenseTensor tmp_tensor;
       auto* pre_input =
           context.Input<phi::DenseTensor>(framework::GradVarName("Out"));
-      auto in_kernel_type = framework::OpKernelType(
-          framework::TransToProtoVarType(pre_input->dtype()),
-          context.GetPlace());
-      auto out_kernel_type = framework::OpKernelType(
-          static_cast<framework::proto::VarType::Type>(in_dtype),
-          context.GetPlace());
+      auto in_kernel_type =
+          phi::KernelKey(framework::TransToProtoVarType(pre_input->dtype()),
+                         context.GetPlace());
+      auto out_kernel_type =
+          phi::KernelKey(static_cast<framework::proto::VarType::Type>(in_dtype),
+                         context.GetPlace());
       framework::TransDataType(
           in_kernel_type, out_kernel_type, *pre_input, &tmp_tensor);
       ComputeFromInput(&tmp_tensor, context);
@@ -555,13 +554,17 @@ class ReduceOp : public framework::OperatorWithKernel {
   static bool HasOptimizedOneDNNKernel(const framework::ExecutionContext& ctx) {
     // native reduce kernels don't support bf16
     // so oneDNN kernel is enforced in that case
-    if (ctx.Input<framework::LoDTensor>("X")->dtype() ==
+    if (ctx.Input<phi::DenseTensor>("X")->dtype() ==
         experimental::DataType::BFLOAT16)
       return true;
 
+    if (!ctx.HasAttr("dim") || !ctx.HasAttr("reduce_all")) {
+      return false;
+    }
+
     auto reduce_dims = ctx.Attr<std::vector<int>>("dim");
     const bool reduce_all = ctx.Attr<bool>("reduce_all");
-    int ndims = ctx.Input<framework::LoDTensor>("X")->dims().size();
+    int ndims = ctx.Input<phi::DenseTensor>("X")->dims().size();
 
     if (reduce_all) {
       return true;
@@ -581,23 +584,17 @@ class ReduceOp : public framework::OperatorWithKernel {
     return true;
   }
 
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     // choose cudnn kernel if the runtime supported.
     auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
 
-    if (ctx.Input<paddle::framework::LoDTensor>("X")->dims().size() > 5)
-      return framework::OpKernelType(input_data_type, ctx.GetPlace());
-
-#ifdef PADDLE_WITH_MKLDNN
-    if (this->CanMKLDNNBeUsed(ctx, input_data_type) &&
-        HasOptimizedOneDNNKernel(ctx)) {
-      return framework::OpKernelType(input_data_type,
-                                     ctx.GetPlace(),
-                                     framework::DataLayout::kMKLDNN,
-                                     framework::LibraryType::kMKLDNN);
+    // NOTE(jiahongyu): Below codes originally enclosed by PADDLE_WITH_MKLDNN
+    if (ctx.Input<phi::DenseTensor>("X")->dims().size() > 5 ||
+        !HasOptimizedOneDNNKernel(ctx)) {
+      this->SetDnnFallback(true);
     }
-#endif
+    // NOTE(jiahongyu): Above codes originally enclosed by PADDLE_WITH_MKLDNN
 
     if (input_data_type == framework::proto::VarType::FP16) {
       PADDLE_ENFORCE_EQ(
@@ -609,7 +606,7 @@ class ReduceOp : public framework::OperatorWithKernel {
           platform::errors::InvalidArgument(
               "float16 can only be used on GPU or NPU or MLU place"));
     }
-    return framework::OpKernelType(input_data_type, ctx.GetPlace());
+    return phi::KernelKey(input_data_type, ctx.GetPlace());
   }
 };
 
@@ -618,10 +615,11 @@ class ReduceOpUseInputPlace : public ReduceOp {
   using ReduceOp::ReduceOp;
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    framework::OpKernelType kt = OperatorWithKernel::GetExpectedKernelType(ctx);
-    kt.place_ = ctx.Input<framework::LoDTensor>("X")->place();
+    phi::KernelKey kt = OperatorWithKernel::GetExpectedKernelType(ctx);
+    kt.set_backend(
+        phi::TransToPhiBackend(ctx.Input<phi::DenseTensor>("X")->place()));
     return kt;
   }
 };
@@ -666,7 +664,7 @@ class ReduceGradOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     int out_dtype = ctx.Attr<int>("out_dtype");
     auto input_data_type =
@@ -674,24 +672,15 @@ class ReduceGradOp : public framework::OperatorWithKernel {
             ? static_cast<framework::proto::VarType::Type>(out_dtype)
             : OperatorWithKernel::IndicateVarDataType(
                   ctx, framework::GradVarName("Out"));
-#ifdef PADDLE_WITH_MKLDNN
-    auto CanMKLDNNReduceGradBeUsed = [&]() {
-      auto dx_dims = ctx.Input<phi::DenseTensor>("X")->dims();
 
-      if (dx_dims.size() > 5) return false;  // max 5D tensor is supported
-
-      return true;
-    };
-    if (this->CanMKLDNNBeUsed(ctx, input_data_type) &&
-        CanMKLDNNReduceGradBeUsed()) {
-      return framework::OpKernelType(input_data_type,
-                                     ctx.GetPlace(),
-                                     framework::DataLayout::kMKLDNN,
-                                     framework::LibraryType::kMKLDNN);
+    // NOTE(jiahongyu): Below codes originally enclosed by PADDLE_WITH_MKLDNN
+    // max 5D tensor is supported
+    if (ctx.Input<phi::DenseTensor>("X")->dims().size() > 5) {
+      dnn_fallback_ = true;
     }
-#endif
+    // NOTE(jiahongyu): Above codes originally enclosed by PADDLE_WITH_MKLDNN
 
-    return framework::OpKernelType(input_data_type, ctx.GetPlace());
+    return phi::KernelKey(input_data_type, ctx.GetPlace());
   }
 };
 

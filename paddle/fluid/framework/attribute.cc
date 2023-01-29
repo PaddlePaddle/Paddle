@@ -119,8 +119,30 @@ Attribute GetAttrValue(const proto::OpDesc::Attr& attr_desc) {
     }
 
     default:
-      PADDLE_THROW(platform::errors::Unavailable("Unsupport attribute type %d.",
-                                                 attr_desc.type()));
+      PADDLE_THROW(platform::errors::Unavailable(
+          "Unsupported attribute type %d.", attr_desc.type()));
+  }
+  return paddle::blank();
+}
+
+Attribute GetAttrValue(const proto::VarDesc::Attr& attr_desc) {
+  switch (attr_desc.type()) {
+    case proto::AttrType::INT: {
+      return attr_desc.i();
+    }
+    case proto::AttrType::STRING: {
+      return attr_desc.s();
+    }
+    case proto::AttrType::INTS: {
+      std::vector<int> val(attr_desc.ints_size());
+      for (int i = 0; i < attr_desc.ints_size(); ++i) {
+        val[i] = attr_desc.ints(i);
+      }
+      return val;
+    }
+    default:
+      PADDLE_THROW(platform::errors::Unavailable(
+          "Unsupported attribute type %d.", attr_desc.type()));
   }
   return paddle::blank();
 }

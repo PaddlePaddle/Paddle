@@ -15,20 +15,17 @@
 #include "paddle/fluid/operators/requantize_op.h"
 
 #include "paddle/fluid/framework/op_version_registry.h"
-#ifdef PADDLE_WITH_MKLDNN
-#include "paddle/fluid/platform/mkldnn_helper.h"
-#endif
 
 namespace paddle {
 namespace operators {
 
-framework::OpKernelType ReQuantOp::GetExpectedKernelType(
+phi::KernelKey ReQuantOp::GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const {
-  return framework::OpKernelType(
-      OperatorWithKernel::IndicateVarDataType(ctx, "Input"),
-      ctx.GetPlace(),
-      framework::DataLayout::kMKLDNN,
-      framework::LibraryType::kMKLDNN);
+  return phi::KernelKey(
+      phi::Backend::ONEDNN,
+      phi::DataLayout::ONEDNN,
+      phi::TransToPhiDataType(
+          OperatorWithKernel::IndicateVarDataType(ctx, "Input")));
 }
 
 void ReQuantOpMaker::Make() {

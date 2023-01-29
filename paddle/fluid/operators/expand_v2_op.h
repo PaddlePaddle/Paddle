@@ -29,7 +29,7 @@ namespace operators {
 inline std::vector<int> get_expand_shape(
     const framework::ExecutionContext& ctx) {
   if (ctx.HasInput("Shape")) {
-    auto* shape_tensor = ctx.Input<framework::LoDTensor>("Shape");
+    auto* shape_tensor = ctx.Input<phi::DenseTensor>("Shape");
     auto* shape_data = shape_tensor->data<int>();
     phi::DenseTensor cpu_shape_tensor;
     if (platform::is_gpu_place(shape_tensor->place())) {

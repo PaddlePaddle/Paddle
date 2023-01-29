@@ -29,7 +29,7 @@ class XPUClipByNormKernel : public framework::OpKernel<T> {
 
     phi::DenseTensor* output = nullptr;
     const phi::DenseTensor* input = nullptr;
-    if (in_var->IsType<framework::LoDTensor>()) {
+    if (in_var->IsType<phi::DenseTensor>()) {
       input = context.Input<phi::DenseTensor>("X");
 
       output = context.Output<phi::DenseTensor>("Out");

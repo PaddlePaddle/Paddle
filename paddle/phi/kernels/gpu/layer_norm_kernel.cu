@@ -50,6 +50,7 @@ void LayerNormDirectCUDAFunctor<T, U>::operator()(gpuStream_t stream,
 }
 
 template class LayerNormDirectCUDAFunctor<float, float>;
+template class LayerNormDirectCUDAFunctor<double, double>;
 #if defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP)
 template class LayerNormDirectCUDAFunctor<half, float>;
 #endif
@@ -61,7 +62,6 @@ void LayerNormKernel(const Context &dev_ctx,
                      const paddle::optional<DenseTensor> &bias_opt,
                      float epsilon,
                      int begin_norm_axis,
-                     bool is_test,
                      DenseTensor *y,
                      DenseTensor *mean,
                      DenseTensor *var) {

@@ -66,6 +66,12 @@ enum class AlgorithmType {
   kAlgorithmCount = 8
 #else
   kTranspose = 4,
+#ifdef PADDLE_WITH_CUDNN_FRONTEND
+  kConvForwardV8 = 5,
+  kConvBackwardDataV8 = 6,
+  kConvBackwardFilterV8 = 7,
+  kAlgorithmCount = 8
+#else
   kAlgorithmCount = 5
 #endif
 };

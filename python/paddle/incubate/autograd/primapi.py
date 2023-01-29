@@ -12,9 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import logging
 import typing
 
-from paddle.fluid import backward, framework
+import paddle
+from paddle.fluid import backward, core, framework
 from paddle.incubate.autograd import primx, utils
 
 
@@ -23,7 +25,7 @@ def forward_grad(outputs, inputs, grad_inputs=None):
     """Forward mode of automatic differentiation.
 
     Note:
-        **ONLY available in the static mode and primitive operators.**
+        **ONLY available in the static graph mode and primitive operators.**
 
     Args:
         outputs(Tensor|Sequence[Tensor]): The output tensor or tensors.
@@ -64,25 +66,35 @@ def forward_grad(outputs, inputs, grad_inputs=None):
             paddle.disable_static()
     """
     if not utils.prim_enabled():
-        raise RuntimeError('forward_grad must be running on primitive'
-                           'operators, use enable_prim to turn it on.')
+        raise RuntimeError(
+            'forward_grad must be running on primitive'
+            'operators, use enable_prim to turn it on.'
+        )
 
     if not isinstance(outputs, (framework.Variable, typing.Sequence)):
-        raise TypeError(f'Expected outputs is Tensor|Sequence[Tesnor], '
-                        f'but got {type(outputs)}.')
+        raise TypeError(
+            f'Expected outputs is Tensor|Sequence[Tesnor], '
+            f'but got {type(outputs)}.'
+        )
 
     if not isinstance(inputs, (framework.Variable, typing.Sequence)):
-        raise TypeError(f'Expected inputs is Tensor|Sequence[Tesnor], '
-                        f'but got {type(inputs)}.')
+        raise TypeError(
+            f'Expected inputs is Tensor|Sequence[Tesnor], '
+            f'but got {type(inputs)}.'
+        )
 
-    ys, xs, xs_dot = utils.as_tensors(outputs), utils.as_tensors(
-        inputs), utils.as_tensors(grad_inputs)
+    ys, xs, xs_dot = (
+        utils.as_tensors(outputs),
+        utils.as_tensors(inputs),
+        utils.as_tensors(grad_inputs),
+    )
 
     block = framework.default_main_program().current_block()
     if any(x.block != block for x in xs + ys):
         raise RuntimeError(
             'Variable in inputs and targets should exist in current block of '
-            'main program.')
+            'main program.'
+        )
 
     primx.orig2prim(block)
     ad = primx.Transform(ys[0].block)
@@ -96,7 +108,7 @@ def grad(outputs, inputs, grad_outputs=None):
     """Reverse mode of automatic differentiation.
 
     Note:
-        **ONLY available in the static mode and primitive operators**
+        **ONLY available in the static graph mode and primitive operators**
 
     Args:
         outputs(Tensor|Sequence[Tensor]): The output Tensor or Tensors.
@@ -141,22 +153,32 @@ def grad(outputs, inputs, grad_outputs=None):
         # backward.gradients returns a list though the inputs is a signle Tensor.
         # The follow code snippet fixes the problem by return the first element
         # of grad_inputs when the inputs is a signle Tensor.
-        if isinstance(inputs, framework.Variable) and isinstance(
-                grad_inputs, typing.Sequence) and len(grad_inputs) > 0:
+        if (
+            isinstance(inputs, framework.Variable)
+            and isinstance(grad_inputs, typing.Sequence)
+            and len(grad_inputs) > 0
+        ):
             return grad_inputs[0]
         else:
             return grad_inputs
 
     if not isinstance(outputs, (framework.Variable, typing.Sequence)):
-        raise TypeError(f'Expected outputs is Tensor|Sequence[Tesnor], '
-                        f'but got {type(outputs)}.')
+        raise TypeError(
+            f'Expected outputs is Tensor|Sequence[Tesnor], '
+            f'but got {type(outputs)}.'
+        )
 
     if not isinstance(inputs, (framework.Variable, typing.Sequence)):
-        raise TypeError(f'Expected inputs is Tensor|Sequence[Tesnor], '
-                        f'but got {type(inputs)}.')
+        raise TypeError(
+            f'Expected inputs is Tensor|Sequence[Tesnor], '
+            f'but got {type(inputs)}.'
+        )
 
-    ys, xs, ys_bar = utils.as_tensors(outputs), utils.as_tensors(
-        inputs), utils.as_tensors(grad_outputs)
+    ys, xs, ys_bar = (
+        utils.as_tensors(outputs),
+        utils.as_tensors(inputs),
+        utils.as_tensors(grad_outputs),
+    )
     block = framework.default_main_program().current_block()
     if any((x is not None and x.block != block) for x in xs + ys):
         raise RuntimeError(
@@ -191,3 +213,28 @@ def grad(outputs, inputs, grad_outputs=None):
     ad.erase_dots(xs_dot)
 
     return xs_bar[0] if isinstance(inputs, framework.Variable) else xs_bar
+
+
+@framework.static_only
+def to_prim(blocks):
+    """Search nonbasic ops which have be registered composite rules and replace them with primitive ops."""
+    if not core._is_fwd_prim_enabled():
+        return
+    if isinstance(blocks, paddle.fluid.framework.Block):
+        logging.info("Atomize composite op to primitive ops begin.")
+        main_program = blocks.program
+    elif isinstance(blocks, typing.Sequence):
+        for item in blocks:
+            if not isinstance(item, paddle.fluid.framework.Block):
+                raise TypeError(
+                    f"Expect block or sequence of blocks, but sequence contains {type(item)}."
+                )
+        main_program = blocks[0].program
+    else:
+        raise TypeError(
+            f"Expect block or sequence of blocks, but got {type(blocks)}."
+        )
+    with framework.program_guard(main_program):
+        print("Running lowering for forward...")
+        primx._lower_composite(blocks)
+    return

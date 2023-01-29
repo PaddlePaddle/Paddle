@@ -13,22 +13,22 @@
 # limitations under the License.
 
 import os
-import paddle
-import unittest
 import tempfile
+import unittest
+
 import numpy as np
-from paddle.static import InputSpec
+
+import paddle
 from paddle.fluid.framework import _dygraph_place_guard
 from paddle.jit.layer import Layer
-from paddle.fluid.dygraph.dygraph_to_static.program_translator import ProgramTranslator
+from paddle.static import InputSpec
 
 paddle.seed(1)
 
 
 class Net(paddle.nn.Layer):
-
     def __init__(self):
-        super(Net, self).__init__()
+        super().__init__()
         self.fc1 = paddle.nn.Linear(4, 4)
         self.fc2 = paddle.nn.Linear(4, 4)
         self._bias = 0.4
@@ -50,7 +50,6 @@ class Net(paddle.nn.Layer):
 
 
 class TestMultiLoad(unittest.TestCase):
-
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()
 
@@ -61,11 +60,10 @@ class TestMultiLoad(unittest.TestCase):
 
         x = paddle.full([2, 4], 2)
         model = Net()
-        program_translator = ProgramTranslator()
-        program_translator.enable(False)
+        paddle.jit.enable_to_static(False)
         forward_out1 = model.forward(x)
         infer_out1 = model.infer(x)
-        program_translator.enable(True)
+        paddle.jit.enable_to_static(True)
 
         model_path = os.path.join(self.temp_dir.name, 'multi_program')
         paddle.jit.save(model, model_path, combine_params=True)
@@ -81,20 +79,19 @@ class TestMultiLoad(unittest.TestCase):
 
 
 class SaveLinear(paddle.nn.Layer):
-
     def __init__(self):
         super().__init__()
         self.linear = paddle.nn.Linear(80, 80)
 
     @paddle.jit.to_static(
-        input_spec=[InputSpec(shape=[None, 80], dtype='float32')])
+        input_spec=[InputSpec(shape=[None, 80], dtype='float32')]
+    )
     def forward(self, x):
         out = self.linear(x)
         return out
 
 
 class TestMKLOutput(unittest.TestCase):
-
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()
 

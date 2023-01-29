@@ -13,23 +13,24 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
+
 import paddle
-from paddle.incubate import sparse
-from paddle.incubate.sparse import nn
-from paddle.fluid.framework import _test_eager_guard
+from paddle.sparse import nn
 
 
 class TestGradientAdd(unittest.TestCase):
-
     def sparse(self, sp_x):
         indentity = sp_x
         out = nn.functional.relu(sp_x)
         values = out.values() + indentity.values()
-        out = sparse.sparse_coo_tensor(out.indices(),
-                                       values,
-                                       shape=out.shape,
-                                       stop_gradient=out.stop_gradient)
+        out = paddle.sparse.sparse_coo_tensor(
+            out.indices(),
+            values,
+            shape=out.shape,
+            stop_gradient=out.stop_gradient,
+        )
         return out
 
     def dense(self, x):
@@ -39,29 +40,27 @@ class TestGradientAdd(unittest.TestCase):
         return out
 
     def test(self):
-        with _test_eager_guard():
-            x = paddle.randn((3, 3))
-            sparse_x = x.to_sparse_coo(sparse_dim=2)
+        x = paddle.randn((3, 3))
+        sparse_x = x.to_sparse_coo(sparse_dim=2)
 
-            x.stop_gradient = False
-            sparse_x.stop_gradient = False
+        x.stop_gradient = False
+        sparse_x.stop_gradient = False
 
-            dense_out = self.dense(x)
-            loss = dense_out.mean()
-            loss.backward(retain_graph=True)
+        dense_out = self.dense(x)
+        loss = dense_out.mean()
+        loss.backward(retain_graph=True)
 
-            sparse_out = self.sparse(sparse_x)
-            sparse_loss = sparse_out.values().mean()
-            sparse_loss.backward(retain_graph=True)
+        sparse_out = self.sparse(sparse_x)
+        sparse_loss = sparse_out.values().mean()
+        sparse_loss.backward(retain_graph=True)
 
-            assert np.allclose(dense_out.numpy(), sparse_out.to_dense().numpy())
-            assert np.allclose(loss.numpy(), loss.numpy())
-            assert np.allclose(x.grad.numpy(), sparse_x.grad.to_dense().numpy())
+        assert np.allclose(dense_out.numpy(), sparse_out.to_dense().numpy())
+        assert np.allclose(x.grad.numpy(), sparse_x.grad.to_dense().numpy())
 
-            loss.backward()
-            sparse_loss.backward()
+        loss.backward()
+        sparse_loss.backward()
 
-            assert np.allclose(x.grad.numpy(), sparse_x.grad.to_dense().numpy())
+        assert np.allclose(x.grad.numpy(), sparse_x.grad.to_dense().numpy())
 
 
 if __name__ == "__main__":

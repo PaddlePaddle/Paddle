@@ -313,6 +313,10 @@ copy(
   DSTS ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/phi/core/)
 copy(
   inference_lib_dist
+  SRCS ${PADDLE_SOURCE_DIR}/paddle/phi/core/hostdevice.h
+  DSTS ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/phi/core/)
+copy(
+  inference_lib_dist
   SRCS ${PADDLE_SOURCE_DIR}/paddle/utils/any.h
   DSTS ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/utils/)
 copy(
@@ -354,6 +358,10 @@ else()
   set(paddle_inference_c_lib
       ${PADDLE_BINARY_DIR}/paddle/fluid/inference/capi_exp/libpaddle_inference_c.*
   )
+endif()
+
+if(WITH_INFERENCE_NVTX AND NOT WIN32)
+  add_definitions(-DPADDLE_WITH_INFERENCE_NVTX)
 endif()
 
 copy(

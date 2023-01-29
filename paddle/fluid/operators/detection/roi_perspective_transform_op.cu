@@ -15,12 +15,12 @@ limitations under the License. */
 #include <algorithm>
 
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/fluid/platform/float16.h"
+#include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 using paddle::platform::float16;
-using paddle::platform::PADDLE_CUDA_NUM_THREADS;
+using phi::PADDLE_CUDA_NUM_THREADS;
 
 namespace paddle {
 namespace operators {
@@ -368,7 +368,7 @@ class CUDAROIPerspectiveTransformOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* in = ctx.Input<phi::DenseTensor>("X");
-    auto* rois = ctx.Input<framework::LoDTensor>("ROIs");
+    auto* rois = ctx.Input<phi::DenseTensor>("ROIs");
     auto* out = ctx.Output<phi::DenseTensor>("Out");
     auto* out2in_idx = ctx.Output<phi::DenseTensor>("Out2InIdx");
     auto* out2in_w = ctx.Output<phi::DenseTensor>("Out2InWeights");
@@ -511,8 +511,8 @@ template <typename T>
 class CUDAROIPerspectiveTransformGradOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* out2in_idx = ctx.Input<framework::LoDTensor>("Out2InIdx");
-    auto* out2in_w = ctx.Input<framework::LoDTensor>("Out2InWeights");
+    auto* out2in_idx = ctx.Input<phi::DenseTensor>("Out2InIdx");
+    auto* out2in_w = ctx.Input<phi::DenseTensor>("Out2InWeights");
     auto* out_grad = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
     auto* in_grad = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
 

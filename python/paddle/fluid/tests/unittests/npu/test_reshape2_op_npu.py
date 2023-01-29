@@ -26,7 +26,6 @@ SEED = 2021
 
 
 class TestReshape2(OpTest):
-
     def setUp(self):
         self.set_npu()
         self.op_type = "reshape2"
@@ -37,7 +36,7 @@ class TestReshape2(OpTest):
         self.attrs = {"shape": self.new_shape}
         self.outputs = {
             "Out": self.inputs["X"].reshape(self.infered_shape),
-            'XShape': np.random.random(self.ori_shape).astype("float32")
+            'XShape': np.random.random(self.ori_shape).astype("float32"),
         }
 
     def set_npu(self):
@@ -56,7 +55,6 @@ class TestReshape2(OpTest):
 
 
 class TestReshape2_case2(TestReshape2):
-
     def init_data(self):
         self.ori_shape = (2, 100)
         self.new_shape = (-1, 10)
@@ -64,7 +62,6 @@ class TestReshape2_case2(TestReshape2):
 
 
 class TestReshape2_case3(TestReshape2):
-
     def init_data(self):
         self.ori_shape = (100, 5, 6)
         self.new_shape = (-1, 0, 3)

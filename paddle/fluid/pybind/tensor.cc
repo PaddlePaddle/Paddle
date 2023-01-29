@@ -55,7 +55,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/phi_utils.h"
 #include "paddle/fluid/framework/prune.h"
 #include "paddle/fluid/framework/reader.h"
-#include "paddle/fluid/framework/save_load_util.h"
 #include "paddle/fluid/framework/scope_pool.h"
 #include "paddle/fluid/framework/selected_rows_utils.h"
 #include "paddle/fluid/framework/tensor_util.h"
@@ -73,7 +72,6 @@ limitations under the License. */
 #include "paddle/fluid/operators/common_infer_shape_functions.h"
 #include "paddle/fluid/operators/py_func_op.h"
 #include "paddle/fluid/platform/cpu_helper.h"
-#include "paddle/fluid/platform/cpu_info.h"
 #include "paddle/fluid/platform/device/device_wrapper.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/dynload/dynamic_loader.h"
@@ -90,6 +88,7 @@ limitations under the License. */
 #include "paddle/fluid/pybind/eager.h"
 #include "paddle/fluid/pybind/imperative.h"
 #include "paddle/fluid/pybind/io.h"
+#include "paddle/phi/backends/cpu/cpu_info.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/lod_utils.h"
 #include "paddle/utils/none.h"
@@ -183,6 +182,7 @@ limitations under the License. */
 #include "pybind11/stl.h"
 
 DECLARE_bool(use_mkldnn);
+DECLARE_bool(use_shm_cache);
 
 // disable auto conversion to list in Python
 PYBIND11_MAKE_OPAQUE(paddle::framework::LoDTensorArray);
@@ -233,7 +233,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
            })
       .def("_set_layout",
            [](phi::DenseTensor &self, const std::string &layout) {
-             self.set_layout(StringToDataLayout(layout));
+             self.set_layout(phi::StringToDataLayout(layout));
            })
       .def("_alloc_float",
            [](phi::DenseTensor &self, paddle::platform::CustomPlace &place) {
@@ -503,7 +503,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
            })
       .def("_layout",
            [](phi::DenseTensor &self) {
-             return DataLayoutToString(self.layout());
+             return phi::DataLayoutToString(self.layout());
            })
       .def("_share_data_with", &phi::DenseTensor::ShareDataWith)
       .def("__getitem__", PySliceTensor, py::return_value_policy::reference)
@@ -911,9 +911,16 @@ void BindTensor(pybind11::module &m) {  // NOLINT
                int flags = memory::allocation::MAPPED_SHAREDMEM |
                            memory::allocation::MAPPED_EXCLUSIVE;
                std::string handle = memory::allocation::GetIPCName();
+               int find_id = -1;
+               if (FLAGS_use_shm_cache) {
+                 find_id = memory::allocation::MemoryMapAllocationPool::Instance().FindFromCache(flags, data_size); // NOLINT
+               }
+               if (find_id != -1) {
+                 handle = memory::allocation::MemoryMapAllocationPool::Instance().GetById(find_id).file_name_; // NOLINT
+               }
                auto shared_holder =
                    memory::allocation::AllocateRefcountedMemoryMapAllocation(
-                       handle, flags, data_size);
+                       handle, flags, data_size, find_id);
 
                // copy data & reset holder
                if (platform::is_cuda_pinned_place(holder->place())) {
@@ -962,10 +969,13 @@ void BindTensor(pybind11::module &m) {  // NOLINT
              size_t size = t[1].cast<size_t>();
              int flags = memory::allocation::MAPPED_SHAREDMEM |
                          memory::allocation::MAPPED_NOCREATE;
-
+             int find_id = -1;
+             if (FLAGS_use_shm_cache) {
+               find_id = memory::allocation::MemoryMapAllocationPool::Instance().FindFromCache(flags, size, ipc_name, /*check_refcount*/ false); // NOLINT
+             }
              auto shared_holder =
                  memory::allocation::AllocateRefcountedMemoryMapAllocation(
-                     ipc_name, flags, size);
+                     ipc_name, flags, size, find_id);
 
              // 3. Rebuild Tensor
              tensor.ResetHolderWithType(

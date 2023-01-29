@@ -16,6 +16,9 @@
 
 #include <algorithm>
 #include <chrono>
+#include <ctime>
+#include <sstream>
+#include <vector>
 
 namespace infrt {
 namespace tests {
@@ -40,7 +43,12 @@ class ChronoTimer {
   TimePoint start_;
 };
 
-using WallClockTimer = ChronoTimer<std::chrono::steady_clock>;
+// To learn more about the difference between system_clock and steady_clock,
+// please refer to https://www.cnblogs.com/zhongpan/p/7490657.html.
+// To learn more about the difference between Wall Time and CPU Time,
+// please refer to https://blog.csdn.net/aganlengzi/article/details/21888351
+// and https://blog.csdn.net/filyouzicha/article/details/52447887.
+using WallClockTimer = ChronoTimer<std::chrono::system_clock>;
 
 class CpuClockTimer {
  public:
@@ -73,8 +81,10 @@ class BenchmarkStats {
     std::sort(wall_time_.begin(), wall_time_.end());
     std::sort(cpu_time_.begin(), cpu_time_.end());
     auto percentile = [](float p, const std::vector<float>& stats) {
-      assert(p >= 0 && p < 1);
-      return stats[stats.size() * p];
+      size_t mark = stats.size() * p;
+      mark = std::max(mark, static_cast<size_t>(0));
+      mark = std::min(mark, stats.size() - 1);
+      return stats[mark];
     };
     for (auto p : percents) {
       ss << "=== Wall Time (ms): \n";

@@ -50,19 +50,7 @@ with section("parse"):
                 "DEPS": '*',
             }
         },
-        "hip_library": {
-            "kwargs": {
-                "SRCS": '*',
-                "DEPS": '*',
-            }
-        },
         "xpu_library": {
-            "kwargs": {
-                "SRCS": '*',
-                "DEPS": '*',
-            }
-        },
-        "hip_library": {
             "kwargs": {
                 "SRCS": '*',
                 "DEPS": '*',
@@ -121,5 +109,5 @@ with section("parse"):
                 "SRCS": '*',
                 "DEPS": '*',
             }
-        }
+        },
     }

@@ -71,8 +71,8 @@ template <typename DeviceContext, typename T>
 class SpaceToDepthKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
-    auto *out = context.Output<framework::LoDTensor>("Out");
-    auto *x = context.Input<framework::LoDTensor>("X");
+    auto *out = context.Output<phi::DenseTensor>("Out");
+    auto *x = context.Input<phi::DenseTensor>("X");
     auto blocksize = context.Attr<int64_t>("blocksize");
     auto in_dims = x->dims();
     out->mutable_data(context.GetPlace(), x->type());
@@ -101,9 +101,8 @@ class SpaceToDepthGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
     auto *d_out =
-        context.Input<framework::LoDTensor>(framework::GradVarName("Out"));
-    auto *d_x =
-        context.Output<framework::LoDTensor>(framework::GradVarName("X"));
+        context.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+    auto *d_x = context.Output<phi::DenseTensor>(framework::GradVarName("X"));
     auto blocksize = context.Attr<int64_t>("blocksize");
     auto in_dims = d_x->dims();
     d_x->mutable_data(context.GetPlace(), d_out->type());

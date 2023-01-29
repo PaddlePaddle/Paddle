@@ -26,7 +26,6 @@ SEED = 2021
 
 
 class TestExp(OpTest):
-
     def setUp(self):
         self.set_mlu()
         self.op_type = "exp"
@@ -55,7 +54,6 @@ class TestExp(OpTest):
 
 
 class TestExpFp16(OpTest):
-
     def setUp(self):
         self.set_mlu()
         self.op_type = "exp"
@@ -82,7 +80,6 @@ class TestExpFp16(OpTest):
 
 
 class TestExpNeg(OpTest):
-
     def setUp(self):
         self.set_mlu()
         self.op_type = "exp"

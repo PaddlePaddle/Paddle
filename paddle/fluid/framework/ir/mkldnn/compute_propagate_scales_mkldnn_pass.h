@@ -17,13 +17,11 @@
 #include <string>
 
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
+#include "paddle/fluid/framework/ir/mkldnn/mkldnn_pass_util.h"
 
 namespace paddle {
 namespace framework {
 namespace ir {
-
-using StringPairMap =
-    std::unordered_map<std::string, std::pair<bool, phi::DenseTensor>>;
 
 class ComputePropagateScalesMkldnnPass : public FusePassBase {
  public:
@@ -78,10 +76,13 @@ class ComputePropagateScalesMkldnnPass : public FusePassBase {
                            Scope* scope,
                            StringPairMap* var_quant_scales) const;
 
-  void UpdateScaleOpInScale(Node* op_node,
-                            const std::string& input_name,
-                            const std::string& output_name,
-                            StringPairMap* var_quant_scales) const;
+  void UpdateReluOutputScales(ir::Graph* graph,
+                              StringPairMap* var_quant_scales) const;
+
+  void UpdateScaleOpInOutScales(Node* op_node,
+                                const std::string& input_name,
+                                const std::string& output_name,
+                                StringPairMap* var_quant_scales) const;
 
   std::unordered_set<std::string> UpdateScales(
       ir::Graph* graph,
@@ -92,10 +93,6 @@ class ComputePropagateScalesMkldnnPass : public FusePassBase {
       ir::Graph* graph,
       StringPairMap* var_quant_scales,
       const std::unordered_set<std::string>& scale_immutable_ops) const;
-
-  void ConvertStringPairMap(
-      const StringPairMap& var_quant_scales,
-      std::unordered_map<std::string, std::vector<float>>* info_map) const;
 };
 }  // namespace ir
 }  // namespace framework

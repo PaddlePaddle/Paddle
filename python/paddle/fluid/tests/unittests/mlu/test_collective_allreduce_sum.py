@@ -23,33 +23,38 @@ paddle.enable_static()
 
 
 class TestCAllreduceOp(TestDistBase):
-
     def _setup_config(self):
         pass
 
     def test_allreduce_sum_fp32(self):
-        self.check_with_place("collective_allreduce_op.py", "allreduce_sum",
-                              "float32")
+        self.check_with_place(
+            "collective_allreduce_op.py", "allreduce_sum", "float32"
+        )
 
     def test_allreduce_sum_fp16(self):
-        self.check_with_place("collective_allreduce_op.py", "allreduce_sum",
-                              "float16")
+        self.check_with_place(
+            "collective_allreduce_op.py", "allreduce_sum", "float16"
+        )
 
     def test_allreduce_sum_int32(self):
-        self.check_with_place("collective_allreduce_op.py", "allreduce_sum",
-                              "int32")
+        self.check_with_place(
+            "collective_allreduce_op.py", "allreduce_sum", "int32"
+        )
 
     def test_allreduce_sum_int16(self):
-        self.check_with_place("collective_allreduce_op.py", "allreduce_sum",
-                              "int16")
+        self.check_with_place(
+            "collective_allreduce_op.py", "allreduce_sum", "int16"
+        )
 
     def test_allreduce_sum_int8(self):
-        self.check_with_place("collective_allreduce_op.py", "allreduce_sum",
-                              "int8")
+        self.check_with_place(
+            "collective_allreduce_op.py", "allreduce_sum", "int8"
+        )
 
     def test_allreduce_sum_uint8(self):
-        self.check_with_place("collective_allreduce_op.py", "allreduce_sum",
-                              "uint8")
+        self.check_with_place(
+            "collective_allreduce_op.py", "allreduce_sum", "uint8"
+        )
 
 
 if __name__ == '__main__':

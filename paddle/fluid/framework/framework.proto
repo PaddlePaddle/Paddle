@@ -156,6 +156,8 @@ message VarType {
     PSTRING = 29;
     // the data type of phi::SparseCooTensor
     SPARSE_COO = 30;
+    // the data type of phi::SparseCsrTensor
+    SPARSE_CSR = 31;
   }
 
   required Type type = 1;
@@ -189,6 +191,7 @@ message VarType {
   optional TensorDesc strings = 9;
   optional TensorDesc vocab = 10;
   optional TensorDesc sparse_coo = 11;
+  optional TensorDesc sparse_csr = 12;
 }
 
 message VarDesc {

@@ -104,8 +104,8 @@ class VariableWrapper {
     bool is_empty = true;
     if (var_.IsInitialized()) {
       const phi::DenseTensor* tensor = nullptr;
-      if (var_.IsType<framework::LoDTensor>()) {
-        tensor = &(var_.Get<framework::LoDTensor>());
+      if (var_.IsType<phi::DenseTensor>()) {
+        tensor = &(var_.Get<phi::DenseTensor>());
       } else if (var_.IsType<phi::SelectedRows>()) {
         tensor = &(var_.Get<phi::SelectedRows>().value());
       } else {
@@ -153,7 +153,7 @@ class VariableWrapper {
     const phi::DenseTensor* tensor = nullptr;
     if (var_.IsInitialized()) {
       if (type_ == framework::proto::VarType::LOD_TENSOR) {
-        tensor = &(var_.Get<framework::LoDTensor>());
+        tensor = &(var_.Get<phi::DenseTensor>());
       } else if (type_ == framework::proto::VarType::SELECTED_ROWS) {
         tensor = &(var_.Get<phi::SelectedRows>().value());
       } else if (type_ == framework::proto::VarType::VOCAB) {
@@ -187,11 +187,9 @@ class VariableWrapper {
     return fwd_data_type_;
   }
 
-  paddle::experimental::DataLayout DataLayout() { return layout_; }
+  phi::DataLayout DataLayout() { return layout_; }
 
-  void SetDataLayout(const paddle::experimental::DataLayout layout) {
-    layout_ = layout;
-  }
+  void SetDataLayout(const phi::DataLayout layout) { layout_ = layout; }
 
   const platform::Place Place() const {
     const phi::DenseTensor* tensor = nullptr;
@@ -199,7 +197,7 @@ class VariableWrapper {
         platform::CPUPlace();  // Default place for var not initialized.
     if (var_.IsInitialized()) {
       if (type_ == framework::proto::VarType::LOD_TENSOR) {
-        tensor = &(var_.Get<framework::LoDTensor>());
+        tensor = &(var_.Get<phi::DenseTensor>());
       } else if (type_ == framework::proto::VarType::SELECTED_ROWS) {
         tensor = &(var_.Get<phi::SelectedRows>().value());
       } else {
@@ -236,16 +234,15 @@ class VariableWrapper {
     }
   }
 
-  bool hasCacheKey(const paddle::framework::OpKernelType& key) {
+  bool hasCacheKey(const phi::KernelKey& key) {
     return var_cache.find(key) != var_cache.end();
   }
 
-  std::shared_ptr<VariableWrapper> getCacheValue(
-      const paddle::framework::OpKernelType& key) {
+  std::shared_ptr<VariableWrapper> getCacheValue(const phi::KernelKey& key) {
     return var_cache[key];
   }
 
-  void setCacheValue(const paddle::framework::OpKernelType& key,
+  void setCacheValue(const phi::KernelKey& key,
                      std::shared_ptr<VariableWrapper> val) {
     var_cache[key] = val;
     return;
@@ -325,8 +322,7 @@ class VariableWrapper {
 
   // Used for cache the dtype promotioned variableWrapper in real and complex
   // compute of Paddle Quantum
-  std::map<paddle::framework::OpKernelType, std::shared_ptr<VariableWrapper>>
-      var_cache;
+  std::map<phi::KernelKey, std::shared_ptr<VariableWrapper>> var_cache;
   // add this property for users may set stop_gradient themselves and this
   // should override the frameworks setting (-1) unset, (1) true, (0) false
   int overrided_stop_gradient_{-1};
@@ -368,8 +364,7 @@ class VariableWrapper {
   std::vector<std::shared_ptr<std::function<void()>>> void_hooks_;
 
   // DataLayout for layoutAutotune
-  paddle::experimental::DataLayout layout_{
-      paddle::experimental::DataLayout::UNDEFINED};
+  phi::DataLayout layout_{phi::DataLayout::UNDEFINED};
 };
 
 }  // namespace imperative

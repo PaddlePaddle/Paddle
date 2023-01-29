@@ -13,12 +13,12 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
 from op_test import OpTest
 
 
 class TestHingeLossOp(OpTest):
-
     def setUp(self):
         self.op_type = 'hinge_loss'
         samples_num = 100

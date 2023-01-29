@@ -309,7 +309,7 @@ void MLUMinMaxGradHelper(const framework::ExecutionContext& ctx) {
   // mask = Logic(x, y) only support min & max
   cnnlLogicOp_t logic =
       Functor == MAXIMUM_GRAD ? CNNL_LOGIC_OP_GE : CNNL_LOGIC_OP_LE;
-  Tensor mask(x->dtype());
+  phi::DenseTensor mask(x->dtype());
   mask.Resize(phi::make_ddim(out_dims_array));
   mask.mutable_data<Tin>(ctx.GetPlace());
 
@@ -327,7 +327,7 @@ void MLUMinMaxGradHelper(const framework::ExecutionContext& ctx) {
                  GetBasePtr(&mask));
 
   // dx = Mul(dz, mask)
-  Tensor dx_temp(x->dtype());
+  phi::DenseTensor dx_temp(x->dtype());
   dx_temp.Resize(dout->dims());
   dx_temp.mutable_data<Tout>(ctx.GetPlace());
   MLUCnnlTensorDesc dout_desc(*dout);
@@ -344,7 +344,7 @@ void MLUMinMaxGradHelper(const framework::ExecutionContext& ctx) {
                     data_type);
 
   // dy = Sub(dz, dx)
-  Tensor dy_temp(y->dtype());
+  phi::DenseTensor dy_temp(y->dtype());
   dy_temp.Resize(dout->dims());
   dy_temp.mutable_data<Tout>(ctx.GetPlace());
   MLUCnnlOpTensorDesc sub_op_desc(

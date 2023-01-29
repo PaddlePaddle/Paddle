@@ -28,7 +28,6 @@ alignment = 512
 
 
 class TestAllocContinuousSpace(OpTest):
-
     def setUp(self):
         self.__class__.use_npu = True
         self.op_type = "coalesce_tensor"
@@ -39,7 +38,8 @@ class TestAllocContinuousSpace(OpTest):
         self.set_constant = attrs["set_constant"]
         self.Inputs = self.init_input()
         self.Outputs, self.FusedOutput = self.init_output(
-            self.Inputs, self.set_constant, self.constant)
+            self.Inputs, self.set_constant, self.constant
+        )
         self.inputs = {'Input': self.Inputs}
         self.attrs = attrs
         self.outputs = {'Output': self.Outputs, 'FusedOutput': self.FusedOutput}
@@ -59,7 +59,7 @@ class TestAllocContinuousSpace(OpTest):
             "set_constant": False,
             "constant": 0.0,
             "use_align": True,
-            "dtype": self.fluid_dtype
+            "dtype": self.fluid_dtype,
         }
 
     def init_output(self, input_list, set_constant, constant):
@@ -85,7 +85,6 @@ class TestAllocContinuousSpace(OpTest):
 
 
 class TestAllocContinuousSpace2(TestAllocContinuousSpace):
-
     def init_attr(self):
         return {
             "copy_data": True,
@@ -93,7 +92,7 @@ class TestAllocContinuousSpace2(TestAllocContinuousSpace):
             "constant": 0.5,
             "use_align": True,
             "dtype": self.fluid_dtype,
-            "user_defined_size_of_dtype": 2
+            "user_defined_size_of_dtype": 2,
         }
 
     def test_check_output(self):

@@ -22,9 +22,9 @@ template <typename T>
 class TopkV2MLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* input = ctx.Input<framework::LoDTensor>("X");
-    auto* output = ctx.Output<framework::LoDTensor>("Out");
-    auto* indices = ctx.Output<framework::LoDTensor>("Indices");
+    auto* input = ctx.Input<phi::DenseTensor>("X");
+    auto* output = ctx.Output<phi::DenseTensor>("Out");
+    auto* indices = ctx.Output<phi::DenseTensor>("Indices");
     const auto& place = ctx.GetPlace();
 
     const auto& sorted = static_cast<bool>(ctx.Attr<bool>("sorted"));

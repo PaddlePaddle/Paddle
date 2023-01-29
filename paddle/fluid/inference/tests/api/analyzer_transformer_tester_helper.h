@@ -154,7 +154,7 @@ void PrepareInputs(std::vector<PaddleTensor> *input_slots,
 
   init_idx.name = "init_idx";
   init_idx.shape.assign({batch_size});
-  init_idx.dtype = PaddleDType::INT32;
+  init_idx.dtype = PaddleDType::INT64;
   TensorAssignData<int64_t>(&init_idx, one_batch.init_idx);
 
   trg_src_attn_bias.name = "trg_src_attn_bias";

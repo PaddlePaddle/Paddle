@@ -28,8 +28,9 @@ class PrelnResidualBiasOpConverter : public OpConverter {
                   bool test_mode) override {
     VLOG(4) << "convert fused preln_residual_bias op to tensorrt layer";
     if (!engine_->with_dynamic_shape()) {
-      PADDLE_THROW(platform::errors::Fatal(
-          "Unsupported static mode. Please set dynamic shape of inputs."));
+      PADDLE_THROW(
+          platform::errors::Fatal("Unsupported static graph mode. Please set "
+                                  "dynamic shape of inputs."));
     }
     framework::OpDesc op_desc(op, nullptr);
     // Declare inputs
@@ -42,7 +43,7 @@ class PrelnResidualBiasOpConverter : public OpConverter {
                                     framework::DDim* dims) -> float* {
       std::string var_name = op_desc.Input(arg_name).front();
       auto* temp_var = scope.FindVar(var_name);
-      auto* temp_tensor = temp_var->GetMutable<framework::LoDTensor>();
+      auto* temp_tensor = temp_var->GetMutable<phi::DenseTensor>();
       (*dims) = temp_tensor->dims();
       auto* temp_data = const_cast<float*>(static_cast<const float*>(
           engine_->GetFp32TrtWeight(var_name, *temp_tensor).get().values));

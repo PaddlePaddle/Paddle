@@ -20,8 +20,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
-using DataLayout = framework::DataLayout;
+using DataLayout = phi::DataLayout;
 
 template <typename T>
 class Conv2DTransposeMLUKernel : public framework::OpKernel<T> {
@@ -61,8 +60,8 @@ class Conv2DTransposeMLUKernel : public framework::OpKernel<T> {
     phi::UpdatePaddingAndDilation(
         &paddings, &dilations, padding_algorithm, in_data_dims, strides, ksize);
 
-    Tensor input_tensor(input->type());
-    Tensor output_tensor(output->type());
+    phi::DenseTensor input_tensor(input->type());
+    phi::DenseTensor output_tensor(output->type());
     input_tensor.set_layout(DataLayout::kNHWC);
     output_tensor.set_layout(DataLayout::kNHWC);
     const std::vector<int> perm_to_nhwc = {0, 2, 3, 1};
@@ -84,7 +83,7 @@ class Conv2DTransposeMLUKernel : public framework::OpKernel<T> {
     }
 
     // transpose filter from MCHW to MHWC
-    Tensor trans_filter(filter->type());
+    phi::DenseTensor trans_filter(filter->type());
     TransposeFromMLUTensor<T>(ctx,
                               perm_to_nhwc,
                               filter,
@@ -148,14 +147,13 @@ class Conv2DTransposeGradMLUKernel : public framework::OpKernel<T> {
     const int groups = ctx.Attr<int>("groups");
     std::string padding_algorithm = ctx.Attr<std::string>("padding_algorithm");
     const std::string data_format = ctx.Attr<std::string>("data_format");
-    const framework::DataLayout data_layout =
-        framework::StringToDataLayout(data_format);
+    const phi::DataLayout data_layout = phi::StringToDataLayout(data_format);
 
     auto in_dims = input->dims();
     auto filter_dims = filter->dims();
     auto in_dims_size = in_dims.size();
 
-    const bool channel_last = (data_layout == framework::DataLayout::kNHWC);
+    const bool channel_last = (data_layout == phi::DataLayout::kNHWC);
 
     framework::DDim in_data_dims;
     if (channel_last) {
@@ -169,8 +167,8 @@ class Conv2DTransposeGradMLUKernel : public framework::OpKernel<T> {
     phi::UpdatePaddingAndDilation(
         &paddings, &dilations, padding_algorithm, in_data_dims, strides, ksize);
 
-    Tensor input_tensor(input->type());
-    Tensor output_grad_tensor(output_grad->type());
+    phi::DenseTensor input_tensor(input->type());
+    phi::DenseTensor output_grad_tensor(output_grad->type());
     output_grad_tensor.set_layout(DataLayout::kNHWC);
 
     const std::vector<int> perm_to_nhwc = {0, 2, 3, 1};
@@ -192,7 +190,7 @@ class Conv2DTransposeGradMLUKernel : public framework::OpKernel<T> {
     }
 
     // transpose filter from MCHW to MHWC
-    Tensor trans_filter(filter->type());
+    phi::DenseTensor trans_filter(filter->type());
     TransposeFromMLUTensor<T>(ctx,
                               perm_to_nhwc,
                               filter,
@@ -218,7 +216,7 @@ class Conv2DTransposeGradMLUKernel : public framework::OpKernel<T> {
 
     if (filter_grad) {
       filter_grad->mutable_data<T>(ctx.GetPlace());
-      Tensor filter_grad_tensor(filter_grad->type());
+      phi::DenseTensor filter_grad_tensor(filter_grad->type());
       // filter_grad always MCHW
       // filter_grad_tensor always MHWC
       auto filter_grad_dims = filter_grad->dims();
@@ -254,7 +252,7 @@ class Conv2DTransposeGradMLUKernel : public framework::OpKernel<T> {
 
     if (input_grad) {
       input_grad->mutable_data<T>(ctx.GetPlace());
-      Tensor input_grad_tensor(input_grad->type());
+      phi::DenseTensor input_grad_tensor(input_grad->type());
       input_tensor.set_layout(DataLayout::kNHWC);
 
       if (channel_last) {

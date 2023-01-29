@@ -23,6 +23,7 @@
 
 #include "paddle/fluid/framework/feed_fetch_type.h"
 #include "paddle/fluid/framework/lod_tensor_array.h"
+#include "paddle/fluid/framework/raw_tensor.h"
 #include "paddle/fluid/framework/string_array.h"
 #include "paddle/fluid/platform/place.h"
 #ifdef PADDLE_WITH_CUDA
@@ -55,6 +56,7 @@ namespace phi {
 class DenseTensor;
 class SelectedRows;
 class SparseCooTensor;
+class SparseCsrTensor;
 }  // namespace phi
 
 // Users should add forward declarations here
@@ -79,7 +81,7 @@ class BKCLCommunicator;
 
 namespace framework {
 class LoDRankTable;
-class ScopeBase;
+class Scope;
 class ReaderHolder;
 class Scope;
 }  // namespace framework
@@ -182,6 +184,7 @@ using VarTypeRegistry = detail::VarTypeRegistryImpl<
     phi::DenseTensor,
     phi::SelectedRows,
     phi::SparseCooTensor,
+    phi::SparseCsrTensor,
     std::vector<Scope *>,
     LoDRankTable,
     Strings,
@@ -217,7 +220,9 @@ using VarTypeRegistry = detail::VarTypeRegistryImpl<
     float,
     Vocab,
     std::vector<int>,
-    std::vector<float>>;
+    std::vector<float>,
+    std::vector<std::string>,
+    RawTensor>;
 template <typename T>
 struct VarTypeTrait {
   static_assert(VarTypeRegistry::IsRegistered<T>(), "Must be registered type");
@@ -240,7 +245,7 @@ struct VarTypeTrait {
 
 // Users should set some of variable type ids to be what is defined in
 // framework.proto below
-REG_PROTO_VAR_TYPE_TRAIT(LoDTensor, proto::VarType::LOD_TENSOR);
+REG_PROTO_VAR_TYPE_TRAIT(phi::DenseTensor, proto::VarType::LOD_TENSOR);
 REG_PROTO_VAR_TYPE_TRAIT(phi::SelectedRows, proto::VarType::SELECTED_ROWS);
 REG_PROTO_VAR_TYPE_TRAIT(std::vector<Scope *>, proto::VarType::STEP_SCOPES);
 REG_PROTO_VAR_TYPE_TRAIT(LoDRankTable, proto::VarType::LOD_RANK_TABLE);

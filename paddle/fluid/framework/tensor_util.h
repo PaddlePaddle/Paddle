@@ -112,7 +112,9 @@ template <typename T>
 void TesnorToVector(const phi::DenseTensor& src, std::vector<T>* dst);
 
 // convert dlpack's DLTensor to tensor
+
 void TensorFromDLPack(const ::DLTensor& dl_tensor, phi::DenseTensor* dst);
+void TensorFromDLPack(const DLManagedTensor* src, phi::DenseTensor* dst);
 
 //
 // The implementation of template functions.
@@ -188,6 +190,11 @@ void TensorFromArray(const T* src,
         src_ptr,
         size,
         reinterpret_cast<const platform::CustomDeviceContext&>(ctx).stream());
+  }
+#endif
+#ifdef PADDLE_WITH_XPU
+  else if (platform::is_xpu_place(dst_place)) {  // NOLINT
+    memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size);
   }
 #endif
   else {  // NOLINT

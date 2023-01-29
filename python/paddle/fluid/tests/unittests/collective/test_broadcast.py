@@ -13,15 +13,15 @@
 # limitations under the License.
 
 import unittest
-import paddle
 
 from test_collective_base import TestDistBase
+
+import paddle
 
 paddle.enable_static()
 
 
 class TestCBroadcastOp(TestDistBase):
-
     def _setup_config(self):
         pass
 

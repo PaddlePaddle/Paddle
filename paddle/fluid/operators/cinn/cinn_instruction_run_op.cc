@@ -57,10 +57,9 @@ class CinnInstructionRunOp : public framework::OperatorWithKernel {
    * specified a data type here.
    *
    */
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(framework::proto::VarType::FP32,
-                                   ctx.GetPlace());
+    return phi::KernelKey(framework::proto::VarType::FP32, ctx.GetPlace());
   }
 };
 
@@ -68,11 +67,11 @@ class CinnInstructionRunOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput(kX,
-             "(vector<LoDTensor>)"
+             "(vector<phi::DenseTensor>)"
              "which are the input arguments of this cinn instruction")
         .AsDuplicable();
     AddOutput(kOutputs,
-              "(vector<LoDTensor>)"
+              "(vector<phi::DenseTensor>)"
               "which are the output arguments of this cinn instruction")
         .AsDuplicable();
     AddAttr<int64_t>(

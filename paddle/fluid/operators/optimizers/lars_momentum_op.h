@@ -23,12 +23,12 @@ template <typename T>
 class LarsMomentumOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto param_out = ctx.MultiOutput<framework::LoDTensor>("ParamOut");
-    auto velocity_out = ctx.MultiOutput<framework::LoDTensor>("VelocityOut");
-    auto param = ctx.MultiInput<framework::LoDTensor>("Param");
-    auto velocity = ctx.MultiInput<framework::LoDTensor>("Velocity");
-    auto learning_rate = ctx.MultiInput<framework::LoDTensor>("LearningRate");
-    auto grad = ctx.MultiInput<framework::LoDTensor>("Grad");
+    auto param_out = ctx.MultiOutput<phi::DenseTensor>("ParamOut");
+    auto velocity_out = ctx.MultiOutput<phi::DenseTensor>("VelocityOut");
+    auto param = ctx.MultiInput<phi::DenseTensor>("Param");
+    auto velocity = ctx.MultiInput<phi::DenseTensor>("Velocity");
+    auto learning_rate = ctx.MultiInput<phi::DenseTensor>("LearningRate");
+    auto grad = ctx.MultiInput<phi::DenseTensor>("Grad");
     auto weight_decay_arr = ctx.Attr<std::vector<float>>("lars_weight_decay");
     T mu = static_cast<T>(ctx.Attr<float>("mu"));
     T lars_coeff = ctx.Attr<float>("lars_coeff");

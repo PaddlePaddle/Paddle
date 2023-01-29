@@ -12,16 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import numpy as np
 import sys
+import unittest
+
+import numpy as np
 
 sys.path.append("../")
 from op_test import OpTest
 
 
 class TestSequenceExpand(OpTest):
-
     def set_data(self):
         x_data = np.random.uniform(0.1, 1, [3, 40]).astype('float64')
         y_data = np.random.uniform(0.1, 1, [8, 1]).astype('float64')
@@ -38,7 +38,7 @@ class TestSequenceExpand(OpTest):
         else:
             ref_level = len(y_lod) - 1
 
-        out = np.zeros(shape=((0, ) + x_data.shape[1:]), dtype=x_data.dtype)
+        out = np.zeros(shape=((0,) + x_data.shape[1:]), dtype=x_data.dtype)
 
         if x_lod is None:
             # x_idx = [i for i in xrange(x_data.shape[0] + 1)]
@@ -53,7 +53,7 @@ class TestSequenceExpand(OpTest):
             x_len = x_idx[i]
 
             if repeat_num > 0:
-                x_sub = x_data[offset:(offset + x_len), :]
+                x_sub = x_data[offset : (offset + x_len), :]
                 stacked_x_sub = x_sub
                 for r in range(repeat_num - 1):
                     stacked_x_sub = np.vstack((stacked_x_sub, x_sub))
@@ -81,7 +81,6 @@ class TestSequenceExpand(OpTest):
 
 
 class TestSequenceExpandCase1(TestSequenceExpand):
-
     def set_data(self):
         x_data = np.random.uniform(0.1, 1, [5, 20]).astype('float64')
         y_data = np.random.uniform(0.1, 1, [13, 1]).astype('float64')
@@ -91,7 +90,6 @@ class TestSequenceExpandCase1(TestSequenceExpand):
 
 
 class TestSequenceExpandCase2(TestSequenceExpand):
-
     def set_data(self):
         x_data = np.random.uniform(0.1, 1, [1, 2, 50]).astype('float64')
         x_lod = [[1]]
@@ -102,7 +100,6 @@ class TestSequenceExpandCase2(TestSequenceExpand):
 
 
 class TestSequenceExpandCase3(TestSequenceExpand):
-
     def set_data(self):
         x_data = np.random.uniform(0.1, 1, [4, 25]).astype('float64')
         x_lod = [[1, 1, 1, 1]]
@@ -112,7 +109,6 @@ class TestSequenceExpandCase3(TestSequenceExpand):
 
 
 class TestSequenceExpandCase4(TestSequenceExpand):
-
     def set_data(self):
         data = np.random.uniform(0.1, 1, [5 * 20, 1])
         x_data = np.array(data).reshape([5, 20]).astype('float64')
@@ -123,7 +119,6 @@ class TestSequenceExpandCase4(TestSequenceExpand):
 
 
 class TestSequenceExpandCase5(TestSequenceExpand):
-
     def set_data(self):
         x_data = np.random.uniform(0.1, 1, [6, 20]).astype('float64')
         y_data = np.random.uniform(0.1, 1, [13, 1]).astype('float64')
@@ -133,7 +128,6 @@ class TestSequenceExpandCase5(TestSequenceExpand):
 
 
 class TestSequenceExpandCase6(TestSequenceExpand):
-
     def set_data(self):
         x_data = np.random.uniform(0.1, 1, [4, 25]).astype('float64')
         x_lod = [[1, 1, 0, 1, 1]]

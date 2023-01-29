@@ -151,7 +151,7 @@ class BinaryLogicalOpXPUKernel : public framework::OpKernel<T> {
                                    XpuLogicalType2Str(xpu_type)));
 
     if (need_broad_cast && dev_ctx.x_context()->xpu_stream != nullptr) {
-      xpu_wait();
+      dev_ctx.Wait();
     }
   }
 };

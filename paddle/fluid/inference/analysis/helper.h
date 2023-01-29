@@ -153,25 +153,6 @@ T &GetFromScope(const framework::Scope &scope, const std::string &name) {
   return *var->GetMutable<T>();
 }
 
-static framework::proto::ProgramDesc LoadProgramDesc(
-    const std::string &model_path) {
-  std::ifstream fin(model_path, std::ios::in | std::ios::binary);
-  PADDLE_ENFORCE_EQ(
-      fin.is_open(),
-      true,
-      platform::errors::NotFound(
-          "Cannot open file %s, please confirm whether the file exists",
-          model_path));
-  fin.seekg(0, std::ios::end);
-  std::string buffer(fin.tellg(), ' ');
-  fin.seekg(0, std::ios::beg);
-  fin.read(&buffer[0], buffer.size());
-  fin.close();
-  framework::proto::ProgramDesc program_desc;
-  program_desc.ParseFromString(buffer);
-  return program_desc;
-}
-
 static bool FileExists(const std::string &filepath) {
   std::ifstream file(filepath);
   bool exists = file.is_open();

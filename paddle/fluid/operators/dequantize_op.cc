@@ -15,22 +15,18 @@ limitations under the License. */
 #include "paddle/fluid/operators/dequantize_op.h"
 
 #include "paddle/fluid/framework/op_version_registry.h"
-#ifdef PADDLE_WITH_MKLDNN
-#include "paddle/fluid/platform/mkldnn_helper.h"
-#endif
 
 namespace paddle {
 namespace operators {
 
-framework::OpKernelType DeQuantOp::GetExpectedKernelType(
+phi::KernelKey DeQuantOp::GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const {
   auto input_data_type =
       framework::OperatorWithKernel::IndicateVarDataType(ctx, "Input");
 
-  return framework::OpKernelType(input_data_type,
-                                 ctx.GetPlace(),
-                                 framework::DataLayout::kMKLDNN,
-                                 framework::LibraryType::kMKLDNN);
+  return phi::KernelKey(phi::Backend::ONEDNN,
+                        phi::DataLayout::ONEDNN,
+                        phi::TransToPhiDataType(input_data_type));
 }
 
 void DeQuantOpMaker::Make() {

@@ -13,17 +13,26 @@
 # limitations under the License.
 
 import collections
-import six
 
 from paddle.fluid import core
 from paddle.fluid.framework import Block
 
-from paddle.fluid.incubate.fleet.parameter_server.ir.public import _get_optimize_ops
+from paddle.fluid.incubate.fleet.parameter_server.ir.public import (
+    _get_optimize_ops,
+)
 from paddle.fluid.incubate.fleet.parameter_server.ir.public import _orig_varname
-from paddle.fluid.incubate.fleet.parameter_server.ir.public import _get_varname_parts
-from paddle.fluid.incubate.fleet.parameter_server.ir.public import is_distributed_sparse_op
-from paddle.fluid.incubate.fleet.parameter_server.ir.public import get_sparse_tablename
-from paddle.fluid.incubate.fleet.parameter_server.ir.public import get_sparse_tablenames
+from paddle.fluid.incubate.fleet.parameter_server.ir.public import (
+    _get_varname_parts,
+)
+from paddle.fluid.incubate.fleet.parameter_server.ir.public import (
+    is_distributed_sparse_op,
+)
+from paddle.fluid.incubate.fleet.parameter_server.ir.public import (
+    get_sparse_tablename,
+)
+from paddle.fluid.incubate.fleet.parameter_server.ir.public import (
+    get_sparse_tablenames,
+)
 from paddle.fluid.incubate.fleet.parameter_server.ir.public import _get_lr_ops
 
 LEARNING_RATE_DECAY_COUNTER = "@LR_DECAY_COUNTER@"
@@ -34,8 +43,7 @@ LR_SCHED_OP_ROLE_ATTR_VALUE = core.op_proto_and_checker_maker.OpRole.LRSched
 
 
 def _is_optimizer_op(op):
-    if "Param" in op.input_names and \
-            "LearningRate" in op.input_names:
+    if "Param" in op.input_names and "LearningRate" in op.input_names:
         return True
     return False
 
@@ -76,12 +84,12 @@ def _get_optimizer_input_shape(op_type, varkey, orig_shape, param_shape):
         pass
     else:
         raise ValueError(
-            "Not supported optimizer for distributed training: %s" % op_type)
+            "Not supported optimizer for distributed training: %s" % op_type
+        )
     return orig_shape
 
 
 def _append_pserver_non_opt_ops(optimize_block, opt_op, origin_program, config):
-
     def _get_pserver_grad_param_var(var, var_dict):
         """
         Return pserver side grad/param variable, return None
@@ -95,7 +103,7 @@ def _append_pserver_non_opt_ops(optimize_block, opt_op, origin_program, config):
         """
 
         grad_block = None
-        for _, g in six.iteritems(var_dict):
+        for _, g in var_dict.items():
             if _orig_varname(g.name) == _orig_varname(var.name):
                 # skip per trainer vars
                 if g.name.find(".trainer_") == -1:
@@ -113,7 +121,7 @@ def _append_pserver_non_opt_ops(optimize_block, opt_op, origin_program, config):
     program = optimize_block.program
     # Append the ops for parameters that do not need to be optimized / updated
     inputs = _get_input_map_from_op(origin_program.global_block().vars, opt_op)
-    for key, varlist in six.iteritems(inputs):
+    for key, varlist in inputs.items():
         if not isinstance(varlist, list):
             varlist = [varlist]
         for i in range(len(varlist)):
@@ -121,8 +129,8 @@ def _append_pserver_non_opt_ops(optimize_block, opt_op, origin_program, config):
             # for ops like clipping and weight decay, get the split var(xxx.block0)
             # for inputs / outputs
             grad_block = _get_pserver_grad_param_var(
-                var,
-                program.global_block().vars)
+                var, program.global_block().vars
+            )
             if grad_block:
                 varlist[i] = grad_block
             elif var.name not in program.global_block().vars:
@@ -132,16 +140,17 @@ def _append_pserver_non_opt_ops(optimize_block, opt_op, origin_program, config):
                 varlist[i] = program.global_block().vars[var.name]
         inputs[key] = varlist
 
-    outputs = _get_output_map_from_op(origin_program.global_block().vars,
-                                      opt_op)
-    for key, varlist in six.iteritems(outputs):
+    outputs = _get_output_map_from_op(
+        origin_program.global_block().vars, opt_op
+    )
+    for key, varlist in outputs.items():
         if not isinstance(varlist, list):
             varlist = [varlist]
         for i in range(len(varlist)):
             var = varlist[i]
             grad_block = _get_pserver_grad_param_var(
-                var,
-                program.global_block().vars)
+                var, program.global_block().vars
+            )
             if grad_block:
                 varlist[i] = grad_block
             elif var.name not in program.global_block().vars:
@@ -151,15 +160,24 @@ def _append_pserver_non_opt_ops(optimize_block, opt_op, origin_program, config):
                 varlist[i] = program.global_block().vars[var.name]
         outputs[key] = varlist
 
-    return optimize_block.append_op(type=opt_op.type,
-                                    inputs=inputs,
-                                    outputs=outputs,
-                                    attrs=opt_op.all_attrs())
+    return optimize_block.append_op(
+        type=opt_op.type,
+        inputs=inputs,
+        outputs=outputs,
+        attrs=opt_op.all_attrs(),
+    )
 
 
-def _append_pserver_ops(optimize_block, opt_op, endpoint, grad_to_block_id,
-                        origin_program, merged_var, sparse_grad_to_param,
-                        config):
+def _append_pserver_ops(
+    optimize_block,
+    opt_op,
+    endpoint,
+    grad_to_block_id,
+    origin_program,
+    merged_var,
+    sparse_grad_to_param,
+    config,
+):
     program = optimize_block.program
     pserver_block = program.global_block()
     new_inputs = collections.OrderedDict()
@@ -181,8 +199,10 @@ def _append_pserver_ops(optimize_block, opt_op, endpoint, grad_to_block_id,
             for pairs in config.merged_variables_pairs:
                 merged_p = pairs[0]
                 if merged_p.merged_var.name == orig_varname:
-                    if merged_p.merged_var.name == merged_p.ordered_vars[
-                            0].name:
+                    if (
+                        merged_p.merged_var.name
+                        == merged_p.ordered_vars[0].name
+                    ):
                         unmerged_vars.append(merged_p.ordered_vars[0])
                     else:
                         merged_vars.append(merged_p.merged_var)
@@ -210,8 +230,10 @@ def _append_pserver_ops(optimize_block, opt_op, endpoint, grad_to_block_id,
             # because it will create a new tensor for
             # decayed gradient but not inplace modify the origin one
             origin_grad_name = opt_op.input(key)[0]
-            if core.kNewGradSuffix(
-            ) in origin_grad_name and pserver_block.has_var(origin_grad_name):
+            if (
+                core.kNewGradSuffix() in origin_grad_name
+                and pserver_block.has_var(origin_grad_name)
+            ):
                 new_grad = pserver_block.var(origin_grad_name)
                 new_inputs[key] = new_grad
             else:
@@ -221,10 +243,12 @@ def _append_pserver_ops(optimize_block, opt_op, endpoint, grad_to_block_id,
 
             if not param_block:
                 return
-            tmpvar = pserver_block.create_var(name=param_block.name,
-                                              persistable=True,
-                                              dtype=param_block.dtype,
-                                              shape=param_block.shape)
+            tmpvar = pserver_block.create_var(
+                name=param_block.name,
+                persistable=True,
+                dtype=param_block.dtype,
+                shape=param_block.shape,
+            )
             new_inputs[key] = tmpvar
 
         elif key == "LearningRate":
@@ -239,40 +263,52 @@ def _append_pserver_ops(optimize_block, opt_op, endpoint, grad_to_block_id,
                     name=origin_var.name,
                     persistable=origin_var.persistable,
                     dtype=origin_var.dtype,
-                    shape=origin_var.shape)
+                    shape=origin_var.shape,
+                )
                 new_inputs[key] = tmpvar
 
     for key in opt_op.input_names:
         new_shape = None
         if key in [
-                "Param", "Grad", "LearningRate", "MasterParam", "Beta1Tensor",
-                "Beta2Tensor"
+            "Param",
+            "Grad",
+            "LearningRate",
+            "MasterParam",
+            "Beta1Tensor",
+            "Beta2Tensor",
         ]:
             continue
         var = origin_program.global_block().vars[opt_op.input(key)[0]]
         param_var = new_inputs["Param"]
         # update accumulator variable shape
-        new_shape = _get_optimizer_input_shape(opt_op.type, key, var.shape,
-                                               param_var.shape)
-        tmpvar = pserver_block.create_var(name=var.name,
-                                          persistable=var.persistable,
-                                          dtype=var.dtype,
-                                          shape=new_shape)
+        new_shape = _get_optimizer_input_shape(
+            opt_op.type, key, var.shape, param_var.shape
+        )
+        tmpvar = pserver_block.create_var(
+            name=var.name,
+            persistable=var.persistable,
+            dtype=var.dtype,
+            shape=new_shape,
+        )
         new_inputs[key] = tmpvar
 
     # change output's ParamOut variable
-    outputs = _get_output_map_from_op(origin_program.global_block().vars,
-                                      opt_op)
+    outputs = _get_output_map_from_op(
+        origin_program.global_block().vars, opt_op
+    )
     outputs["ParamOut"] = new_inputs["Param"]
-    optimize_block.append_op(type=opt_op.type,
-                             inputs=new_inputs,
-                             outputs=outputs,
-                             attrs=opt_op.all_attrs())
+    optimize_block.append_op(
+        type=opt_op.type,
+        inputs=new_inputs,
+        outputs=outputs,
+        attrs=opt_op.all_attrs(),
+    )
 
     # record sparse grad to param name
     if new_inputs["Grad"].type == core.VarDesc.VarType.SELECTED_ROWS:
         sparse_grad_to_param.append(
-            str(new_inputs["Grad"].name) + ":" + str(new_inputs["Param"].name))
+            str(new_inputs["Grad"].name) + ":" + str(new_inputs["Param"].name)
+        )
 
 
 def _get_input_map_from_op(varmap, op):
@@ -317,7 +353,6 @@ def add_listen_and_serv_pass(program, config):
         "lr_decay_block_id": None,
         "dense_optimize_blocks": None,
         "sparse_optimize_blocks": None,
-
         # runtime attribute
         "endpoint": config.get_ps_endpoint(),
         "pserver_id": config.get_role_id(),
@@ -325,14 +360,13 @@ def add_listen_and_serv_pass(program, config):
         "distributed_mode": config.get_distributed_mode(),
         "rpc_get_thread_num": -1,
         "rpc_send_thread_num": -1,
-        "rpc_prefetch_thread_num": -1
+        "rpc_prefetch_thread_num": -1,
     }
 
     # step5 append the listen_and_serv op
-    program.global_block().append_op(type="listen_and_serv",
-                                     inputs={'X': []},
-                                     outputs={},
-                                     attrs=attrs)
+    program.global_block().append_op(
+        type="listen_and_serv", inputs={'X': []}, outputs={}, attrs=attrs
+    )
 
     return program
 
@@ -347,7 +381,8 @@ def add_rpc_global_flags_pass(program, config):
 
     if get_threads < 1 or send_threads < 1 or pull_threads < 1:
         raise ValueError(
-            "error arguments in get_threads/send_threads/pull_threads")
+            "error arguments in get_threads/send_threads/pull_threads"
+        )
 
     op._set_attr("rpc_get_thread_num", get_threads)
     op._set_attr("rpc_send_thread_num", send_threads)
@@ -357,18 +392,20 @@ def add_rpc_global_flags_pass(program, config):
 
 
 def _clone_var(block, var, persistable=True):
-    return block.create_var(name=var.name,
-                            shape=var.shape,
-                            dtype=var.dtype,
-                            type=var.type,
-                            lod_level=var.lod_level,
-                            persistable=persistable)
+    return block.create_var(
+        name=var.name,
+        shape=var.shape,
+        dtype=var.dtype,
+        type=var.type,
+        lod_level=var.lod_level,
+        persistable=persistable,
+    )
 
 
 def add_optimizer_pass(program, config):
-
-    def _append_pserver_grad_merge_ops(optimize_block, grad_varname_for_block,
-                                       endpoint, grad_to_block_id):
+    def _append_pserver_grad_merge_ops(
+        optimize_block, grad_varname_for_block, endpoint, grad_to_block_id
+    ):
         trainers = config.get_trainers()
 
         program = optimize_block.program
@@ -376,8 +413,7 @@ def add_optimizer_pass(program, config):
         grad_block = None
 
         for g in config.param_grad_ep_mapping[endpoint]["grads"]:
-            if _orig_varname(g.name) == \
-                    _orig_varname(grad_varname_for_block):
+            if _orig_varname(g.name) == _orig_varname(grad_varname_for_block):
                 grad_block = g
                 break
 
@@ -387,41 +423,48 @@ def add_optimizer_pass(program, config):
             return None
 
         orig_varname, block_name, trainer_name = _get_varname_parts(
-            grad_block.name)
+            grad_block.name
+        )
 
         if block_name:
             merged_var_name = '.'.join([orig_varname, block_name])
         else:
             merged_var_name = orig_varname
 
-        merged_var = pserver_block.create_var(name=grad_block.name,
-                                              persistable=True,
-                                              type=grad_block.type,
-                                              dtype=grad_block.dtype,
-                                              shape=grad_block.shape)
+        merged_var = pserver_block.create_var(
+            name=grad_block.name,
+            persistable=True,
+            type=grad_block.type,
+            dtype=grad_block.dtype,
+            shape=grad_block.shape,
+        )
 
         grad_to_block_id.append(merged_var.name + ":" + str(optimize_block.idx))
         if config.is_sync_mode() and trainers > 1:
             vars2merge = []
             for i in range(trainers):
-                per_trainer_name = "%s.trainer_%d" % \
-                                   (merged_var_name, i)
+                per_trainer_name = "%s.trainer_%d" % (merged_var_name, i)
                 per_trainer_var = pserver_block.create_var(
                     name=per_trainer_name,
                     persistable=False,
                     type=grad_block.type,
                     dtype=grad_block.dtype,
-                    shape=grad_block.shape)
+                    shape=grad_block.shape,
+                )
                 vars2merge.append(per_trainer_var)
 
-            optimize_block.append_op(type="sum",
-                                     inputs={"X": vars2merge},
-                                     outputs={"Out": merged_var},
-                                     attrs={"use_mkldnn": False})
-            optimize_block.append_op(type="scale",
-                                     inputs={"X": merged_var},
-                                     outputs={"Out": merged_var},
-                                     attrs={"scale": 1.0 / float(trainers)})
+            optimize_block.append_op(
+                type="sum",
+                inputs={"X": vars2merge},
+                outputs={"Out": merged_var},
+                attrs={"use_mkldnn": False},
+            )
+            optimize_block.append_op(
+                type="scale",
+                inputs={"X": merged_var},
+                outputs={"Out": merged_var},
+                attrs={"scale": 1.0 / float(trainers)},
+            )
         return merged_var
 
     origin_program = config.get_origin_main_program()
@@ -451,8 +494,10 @@ def add_optimizer_pass(program, config):
             for pairs in config.merged_variables_pairs:
                 merged_p = pairs[0]
                 if merged_p.merged_var.name == orig_varname:
-                    if merged_p.merged_var.name == merged_p.ordered_vars[
-                            0].name:
+                    if (
+                        merged_p.merged_var.name
+                        == merged_p.ordered_vars[0].name
+                    ):
                         unmerged_varnames.append(merged_p.ordered_vars[0].name)
                     else:
                         merged_varnames.append(merged_p.merged_var.name)
@@ -474,9 +519,16 @@ def add_optimizer_pass(program, config):
 
     def __append_optimize_op__(op, block, grad_to_block_id, merged_var, lr_ops):
         if _is_optimizer_op(op):
-            _append_pserver_ops(block, op, ps_endpoint, grad_to_block_id,
-                                origin_program, merged_var,
-                                sparse_grad_to_param, config)
+            _append_pserver_ops(
+                block,
+                op,
+                ps_endpoint,
+                grad_to_block_id,
+                origin_program,
+                merged_var,
+                sparse_grad_to_param,
+                config,
+            )
         elif op not in lr_ops:
             _append_pserver_non_opt_ops(block, op, origin_program, config)
 
@@ -507,8 +559,9 @@ def add_optimizer_pass(program, config):
         lr_decay_block = program._create_block(program.num_blocks - 1)
         optimize_blocks.append(lr_decay_block)
         for op in lr_ops:
-            cloned_op = _append_pserver_non_opt_ops(lr_decay_block, op,
-                                                    origin_program, config)
+            cloned_op = _append_pserver_non_opt_ops(
+                lr_decay_block, op, origin_program, config
+            )
             # append sub blocks to pserver_program in lr_decay_op
             # todo(tangwei12): __clone_lr_op_sub_block__
         lr_decay_block_id = lr_decay_block.idx
@@ -530,18 +583,25 @@ def add_optimizer_pass(program, config):
             grad_varname_for_block = op.attr(OP_ROLE_VAR_ATTR_NAME)[1]
             if op.attr(OP_ROLE_VAR_ATTR_NAME)[0] == optimize_target_param_name:
                 merged_var = _append_pserver_grad_merge_ops(
-                    per_opt_block, grad_varname_for_block, ps_endpoint,
-                    grad_to_block_id)
+                    per_opt_block,
+                    grad_varname_for_block,
+                    ps_endpoint,
+                    grad_to_block_id,
+                )
                 if merged_var:
                     break  # append optimize op once then append other ops.
 
         if merged_var:
             for _, op in enumerate(optimize_ops):
                 # optimizer is connected to itself
-                if op.attr(OP_ROLE_VAR_ATTR_NAME)[0] == optimize_target_param_name and \
-                        op not in global_ops:
-                    __append_optimize_op__(op, per_opt_block, grad_to_block_id,
-                                           merged_var, lr_ops)
+                if (
+                    op.attr(OP_ROLE_VAR_ATTR_NAME)[0]
+                    == optimize_target_param_name
+                    and op not in global_ops
+                ):
+                    __append_optimize_op__(
+                        op, per_opt_block, grad_to_block_id, merged_var, lr_ops
+                    )
 
     # dedup grad to ids list
     grad_to_block_id = list(set(grad_to_block_id))
@@ -550,8 +610,9 @@ def add_optimizer_pass(program, config):
         opt_state_block = program._create_block(program.num_blocks - 1)
         optimize_blocks.append(opt_state_block)
         for glb_op in global_ops:
-            __append_optimize_op__(glb_op, opt_state_block, grad_to_block_id,
-                                   None, lr_ops)
+            __append_optimize_op__(
+                glb_op, opt_state_block, grad_to_block_id, None, lr_ops
+            )
 
     if len(optimize_blocks) == 0:
         pre_block_idx = program.num_blocks - 1
@@ -591,8 +652,10 @@ def large_scale_sparse_pass(program, main_program, config, is_startup=False):
         origin_name = _orig_varname(param_name)
         o_main_program = config.get_origin_main_program()
         for op in o_main_program.global_block().ops:
-            if is_distributed_sparse_op(op) and get_sparse_tablename(
-                    op) == origin_name:
+            if (
+                is_distributed_sparse_op(op)
+                and get_sparse_tablename(op) == origin_name
+            ):
                 entry = op.attr("entry")
                 return entry
 
@@ -605,8 +668,10 @@ def large_scale_sparse_pass(program, main_program, config, is_startup=False):
         for value_name in acture_value_names:
             origin_var_name = _orig_varname(value_name)
             for op in o_startup_program.global_block().ops:
-                if op.type in opt_init_map.keys(
-                ) and origin_var_name == op.output("Out")[0]:
+                if (
+                    op.type in opt_init_map.keys()
+                    and origin_var_name == op.output("Out")[0]
+                ):
                     init_attr = [op.type]
                     for attr in opt_init_map[op.type]:
                         init_attr.append(str(op.attr(attr)))
@@ -647,8 +712,16 @@ def large_scale_sparse_pass(program, main_program, config, is_startup=False):
                 break
         return grad, opt_idx, value_names, value_dims, acture_names, fuse
 
-    def add_fuse_large_scale_op(block, global_block, table_name, value_names,
-                                acture_names, grad, is_entry, opt_idx):
+    def add_fuse_large_scale_op(
+        block,
+        global_block,
+        table_name,
+        value_names,
+        acture_names,
+        grad,
+        is_entry,
+        opt_idx,
+    ):
 
         op = block.ops[opt_idx]
 
@@ -656,99 +729,108 @@ def large_scale_sparse_pass(program, main_program, config, is_startup=False):
             grad = main_program.global_block().vars[op.input("Grad")[0]]
             lr = main_program.global_block().vars[op.input("LearningRate")[0]]
 
-            block._insert_op(opt_idx,
-                             type="lookup_sparse_table_fuse_sgd",
-                             inputs={
-                                 "Grad": grad,
-                                 "LearningRate": lr
-                             },
-                             attrs={
-                                 "is_entry": is_entry,
-                                 "tablename": table_name,
-                                 "value_names": value_names
-                             })
+            block._insert_op(
+                opt_idx,
+                type="lookup_sparse_table_fuse_sgd",
+                inputs={"Grad": grad, "LearningRate": lr},
+                attrs={
+                    "is_entry": is_entry,
+                    "tablename": table_name,
+                    "value_names": value_names,
+                },
+            )
 
         elif op.type == "adam":
             grad = main_program.global_block().vars[op.input("Grad")[0]]
             lr = main_program.global_block().vars[op.input("LearningRate")[0]]
-            beta1_pow = main_program.global_block().vars[op.input("Beta1Pow")
-                                                         [0]]
-            beta2_pow = main_program.global_block().vars[op.input("Beta2Pow")
-                                                         [0]]
-            beta1_pow_o = main_program.global_block().vars[op.output(
-                "Beta1PowOut")[0]]
-            beta2_pow_o = main_program.global_block().vars[op.output(
-                "Beta2PowOut")[0]]
+            beta1_pow = main_program.global_block().vars[
+                op.input("Beta1Pow")[0]
+            ]
+            beta2_pow = main_program.global_block().vars[
+                op.input("Beta2Pow")[0]
+            ]
+            beta1_pow_o = main_program.global_block().vars[
+                op.output("Beta1PowOut")[0]
+            ]
+            beta2_pow_o = main_program.global_block().vars[
+                op.output("Beta2PowOut")[0]
+            ]
 
             beta1 = op.attr('beta1')
             beta2 = op.attr('beta2')
             epsilon = op.attr('epsilon')
 
-            block._insert_op(opt_idx,
-                             type="lookup_sparse_table_fuse_adam",
-                             inputs={
-                                 "Grad": grad,
-                                 "LearningRate": lr,
-                                 "Beta1Pow": beta1_pow,
-                                 "Beta2Pow": beta2_pow
-                             },
-                             outputs={
-                                 "Beta1PowOut": beta1_pow_o,
-                                 "Beta2PowOut": beta2_pow_o
-                             },
-                             attrs={
-                                 "beta1": beta1,
-                                 "beta2": beta2,
-                                 "epsilon": epsilon,
-                                 "is_entry": is_entry,
-                                 "tablename": table_name,
-                                 "value_names": value_names
-                             })
+            block._insert_op(
+                opt_idx,
+                type="lookup_sparse_table_fuse_adam",
+                inputs={
+                    "Grad": grad,
+                    "LearningRate": lr,
+                    "Beta1Pow": beta1_pow,
+                    "Beta2Pow": beta2_pow,
+                },
+                outputs={
+                    "Beta1PowOut": beta1_pow_o,
+                    "Beta2PowOut": beta2_pow_o,
+                },
+                attrs={
+                    "beta1": beta1,
+                    "beta2": beta2,
+                    "epsilon": epsilon,
+                    "is_entry": is_entry,
+                    "tablename": table_name,
+                    "value_names": value_names,
+                },
+            )
         else:
             raise ValueError("only support sgd/adam optimizer now")
 
-    def add_large_scale_op(block, global_block, table_name, value_names,
-                           acture_names, grad, is_entry, opt_idx):
-        ids = global_block.create_var(name="kSparseIDs@{}".format(table_name),
-                                      persistable=False,
-                                      dtype="int64",
-                                      shape=[1, 1],
-                                      lod_level=0)
+    def add_large_scale_op(
+        block,
+        global_block,
+        table_name,
+        value_names,
+        acture_names,
+        grad,
+        is_entry,
+        opt_idx,
+    ):
+        ids = global_block.create_var(
+            name="kSparseIDs@{}".format(table_name),
+            persistable=False,
+            dtype="int64",
+            shape=[1, 1],
+            lod_level=0,
+        )
 
         # insert grad split to ids and tensor op
-        block._insert_op(opt_idx,
-                         type="lookup_sparse_table_grad_split",
-                         inputs={"Grad": grad},
-                         outputs={
-                             "Row": ids,
-                             "Value": grad
-                         },
-                         attrs={
-                             "tablename": table_name,
-                             "is_entry": is_entry
-                         })
+        block._insert_op(
+            opt_idx,
+            type="lookup_sparse_table_grad_split",
+            inputs={"Grad": grad},
+            outputs={"Row": ids, "Value": grad},
+            attrs={"tablename": table_name, "is_entry": is_entry},
+        )
 
         # insert read at first
         vars = [global_block.vars[acture_name] for acture_name in acture_names]
-        block._insert_op(opt_idx + 1,
-                         type="lookup_sparse_table_read",
-                         inputs={"Ids": ids},
-                         outputs={"Out": vars},
-                         attrs={
-                             "tablename": table_name,
-                             "value_names": value_names
-                         })
+        block._insert_op(
+            opt_idx + 1,
+            type="lookup_sparse_table_read",
+            inputs={"Ids": ids},
+            outputs={"Out": vars},
+            attrs={"tablename": table_name, "value_names": value_names},
+        )
 
         # append write at last
         inputs = {"Ids": ids, "In": vars}
 
-        block.append_op(type="lookup_sparse_table_write",
-                        inputs=inputs,
-                        outputs={},
-                        attrs={
-                            "tablename": table_name,
-                            "value_names": value_names
-                        })
+        block.append_op(
+            type="lookup_sparse_table_write",
+            inputs=inputs,
+            outputs={},
+            attrs={"tablename": table_name, "value_names": value_names},
+        )
 
     op = get_op_by_type(main_program.global_block(), "listen_and_serv")
 
@@ -776,27 +858,53 @@ def large_scale_sparse_pass(program, main_program, config, is_startup=False):
         for param, blockid in param_blockid_map.items():
             opt_block = program.block(blockid)
 
-            grad, opt_idx, value_names, value_dims, acture_names, fuse = \
-                get_optimizer_values(opt_block)
+            (
+                grad,
+                opt_idx,
+                value_names,
+                value_dims,
+                acture_names,
+                fuse,
+            ) = get_optimizer_values(opt_block)
 
             entry_attr = get_entry_attr(param)
             is_entry = False if entry_attr == "none" else True
 
             if fuse:
-                add_fuse_large_scale_op(opt_block, program.global_block(),
-                                        param, value_names, acture_names, grad,
-                                        is_entry, opt_idx)
+                add_fuse_large_scale_op(
+                    opt_block,
+                    program.global_block(),
+                    param,
+                    value_names,
+                    acture_names,
+                    grad,
+                    is_entry,
+                    opt_idx,
+                )
             else:
-                add_large_scale_op(opt_block, program.global_block(), param,
-                                   value_names, acture_names, grad, is_entry,
-                                   opt_idx)
+                add_large_scale_op(
+                    opt_block,
+                    program.global_block(),
+                    param,
+                    value_names,
+                    acture_names,
+                    grad,
+                    is_entry,
+                    opt_idx,
+                )
     else:
         large_scale_kv_metas = []
         for param, blockid in param_blockid_map.items():
             opt_block = main_program.block(blockid)
 
-            grad, opt_idx, value_names, value_dims, acture_names, fuse = \
-                get_optimizer_values(opt_block)
+            (
+                grad,
+                opt_idx,
+                value_names,
+                value_dims,
+                acture_names,
+                fuse,
+            ) = get_optimizer_values(opt_block)
 
             entry_attr = get_entry_attr(param)
 
@@ -812,10 +920,18 @@ def large_scale_sparse_pass(program, main_program, config, is_startup=False):
             cached_str = ",".join(acture_names + [ids_name])
             init_attr_str = get_initializer_attrs(acture_names)
 
-            meta_str = ":".join([
-                param, names_str, dims_str, mode, grad.name, cached_str,
-                init_attr_str, entry_attr
-            ])
+            meta_str = ":".join(
+                [
+                    param,
+                    names_str,
+                    dims_str,
+                    mode,
+                    grad.name,
+                    cached_str,
+                    init_attr_str,
+                    entry_attr,
+                ]
+            )
             print("large_scale_metas: {}".format(meta_str))
             large_scale_kv_metas.append(meta_str)
 
@@ -823,7 +939,8 @@ def large_scale_sparse_pass(program, main_program, config, is_startup=False):
             type="lookup_sparse_table_init",
             inputs=None,
             outputs=None,
-            attrs={"large_scale_metas": large_scale_kv_metas})
+            attrs={"large_scale_metas": large_scale_kv_metas},
+        )
 
     # todo: need delete unused var.
     return program
@@ -844,7 +961,8 @@ def get_distributed_from_listen_and_serv(program, origin_program):
 def delete_unused_in_main_pass(program, config):
     origin_program = config.get_origin_main_program()
     sparse_params = get_distributed_from_listen_and_serv(
-        program, origin_program)
+        program, origin_program
+    )
 
     for var in sparse_params:
         if program.global_block().has_var(var):
@@ -855,7 +973,8 @@ def delete_unused_in_main_pass(program, config):
 def delete_unused_in_startup_pass(program, main_program, config):
     origin_program = config.get_origin_main_program()
     sparse_params = get_distributed_from_listen_and_serv(
-        main_program, origin_program)
+        main_program, origin_program
+    )
     remove_ops = []
 
     for op in program.global_block().ops:
@@ -913,7 +1032,7 @@ def build_pserver_startup_program_pass(program, p_main_program, config):
     pserver_vars = p_main_program.global_block().vars
 
     created_var_map = collections.OrderedDict()
-    for _, var in six.iteritems(pserver_vars):
+    for _, var in pserver_vars.items():
         tmpvar = program.global_block()._clone_variable(var)
         created_var_map[var.name] = tmpvar
 
@@ -938,15 +1057,19 @@ def build_pserver_startup_program_pass(program, p_main_program, config):
             new_inputs = _get_input_map_from_op(pserver_vars, op)
 
             if op.type in [
-                    "gaussian_random", "fill_constant", "uniform_random",
-                    "truncated_gaussian_random"
+                "gaussian_random",
+                "fill_constant",
+                "uniform_random",
+                "truncated_gaussian_random",
             ]:
                 op._set_attr("shape", list(new_outputs["Out"].shape))
 
-            program.global_block().append_op(type=op.type,
-                                             inputs=new_inputs,
-                                             outputs=new_outputs,
-                                             attrs=op.all_attrs())
+            program.global_block().append_op(
+                type=op.type,
+                inputs=new_inputs,
+                outputs=new_outputs,
+                attrs=op.all_attrs(),
+            )
 
     return program
 
@@ -955,8 +1078,9 @@ def add_geo_optimizer_pass(program, config):
     endpoint = config.get_ps_endpoint()
     params = [p for p in config.param_grad_ep_mapping[endpoint]["params"]]
 
-    sparse_tablenames = get_sparse_tablenames(config.get_origin_main_program(),
-                                              False)
+    sparse_tablenames = get_sparse_tablenames(
+        config.get_origin_main_program(), False
+    )
 
     for param in params:
         _clone_var(program.global_block(), param)
@@ -979,15 +1103,17 @@ def add_geo_optimizer_pass(program, config):
         if origin_varname in sparse_tablenames:
             sparse_grad_to_param.append(":".join([delta_var_name, param.name]))
 
-        delta_var = pserver_block.create_var(name=delta_var_name,
-                                             persistable=False,
-                                             type=param.type,
-                                             dtype=param.dtype,
-                                             shape=param.shape)
+        delta_var = pserver_block.create_var(
+            name=delta_var_name,
+            persistable=False,
+            type=param.type,
+            dtype=param.dtype,
+            shape=param.shape,
+        )
 
-        per_opt_block.append_op(type="sum",
-                                inputs={"X": [param, delta_var]},
-                                outputs={"Out": param})
+        per_opt_block.append_op(
+            type="sum", inputs={"X": [param, delta_var]}, outputs={"Out": param}
+        )
 
         param_to_block_id.append(delta_var_name + ":" + str(per_opt_block.idx))
 

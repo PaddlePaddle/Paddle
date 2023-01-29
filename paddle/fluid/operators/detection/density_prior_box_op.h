@@ -66,7 +66,7 @@ class DensityPriorBoxOpKernel : public framework::OpKernel<T> {
 
     auto box_dim = vars->dims();
     boxes->Resize({feature_height, feature_width, num_priors, 4});
-    auto e_boxes = framework::EigenTensor<T, 4>::From(*boxes).setConstant(0.0);
+    auto e_boxes = phi::EigenTensor<T, 4>::From(*boxes).setConstant(0.0);
     int step_average = static_cast<int>((step_width + step_height) * 0.5);
 
     std::vector<float> sqrt_fixed_ratios;
@@ -126,7 +126,7 @@ class DensityPriorBoxOpKernel : public framework::OpKernel<T> {
         phi::make_ddim({1, static_cast<int>(variances.size())}),
         ctx.GetPlace());
 
-    auto var_et = framework::EigenTensor<T, 2>::From(var_t);
+    auto var_et = phi::EigenTensor<T, 2>::From(var_t);
 
     for (size_t i = 0; i < variances.size(); ++i) {
       var_et(0, i) = variances[i];
@@ -136,7 +136,7 @@ class DensityPriorBoxOpKernel : public framework::OpKernel<T> {
     auto var_dim = vars->dims();
     vars->Resize({box_num, static_cast<int>(variances.size())});
 
-    auto e_vars = framework::EigenMatrix<T, Eigen::RowMajor>::From(*vars);
+    auto e_vars = phi::EigenMatrix<T, Eigen::RowMajor>::From(*vars);
 #ifdef PADDLE_WITH_MKLML
 #pragma omp parallel for collapse(2)
 #endif

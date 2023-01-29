@@ -12,10 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .optimizer import Optimizer
-from ..fluid import core
+from paddle import _C_ops
+
 from ..fluid import framework
-from ..fluid.framework import Variable
+from ..fluid.framework import in_dygraph_mode
+from .optimizer import Optimizer
 
 __all__ = []
 
@@ -85,7 +86,7 @@ class RMSProp(Optimizer):
           different parameter groups such as the learning rate, weight decay, etc,
           then the parameters are list of dict. Note that the learning_rate in paramter groups
           represents the scale of base learning_rate.
-          The default value is None in static mode, at this time all parameters will be updated.
+          The default value is None in static graph mode, at this time all parameters will be updated.
         weight_decay (float|WeightDecayRegularizer, optional): The strategy of regularization.
           It canbe a float value as coeff of L2 regularization or \
           :ref:`api_fluid_regularizer_L1Decay`, :ref:`api_fluid_regularizer_L2Decay`.
@@ -143,16 +144,18 @@ class RMSProp(Optimizer):
     _mean_square_acc_str = "mean_square"
     _mean_grad_acc_str = "mean_grad"
 
-    def __init__(self,
-                 learning_rate,
-                 rho=0.95,
-                 epsilon=1.0e-6,
-                 momentum=0.0,
-                 centered=False,
-                 parameters=None,
-                 weight_decay=None,
-                 grad_clip=None,
-                 name=None):
+    def __init__(
+        self,
+        learning_rate,
+        rho=0.95,
+        epsilon=1.0e-6,
+        momentum=0.0,
+        centered=False,
+        parameters=None,
+        weight_decay=None,
+        grad_clip=None,
+        name=None,
+    ):
         if learning_rate is None:
             raise ValueError("learning_rate is not set.")
         if rho is None:
@@ -168,11 +171,13 @@ class RMSProp(Optimizer):
         if not 0.0 <= rho:
             raise ValueError("Invalid value of rho, expect rho >= 0.")
 
-        super(RMSProp, self).__init__(learning_rate=learning_rate,
-                                      parameters=parameters,
-                                      weight_decay=weight_decay,
-                                      grad_clip=grad_clip,
-                                      name=name)
+        super().__init__(
+            learning_rate=learning_rate,
+            parameters=parameters,
+            weight_decay=weight_decay,
+            grad_clip=grad_clip,
+            name=name,
+        )
 
         self.type = "rmsprop"
         self._rho = rho
@@ -205,49 +210,66 @@ class RMSProp(Optimizer):
         if isinstance(param_and_grad, dict):
             param_and_grad = self._update_param_group(param_and_grad)
 
-        momentum_acc = self._get_accumulator(self._momentum_acc_str,
-                                             param_and_grad[0])
-        mean_square_acc = self._get_accumulator(self._mean_square_acc_str,
-                                                param_and_grad[0])
-        mean_grad_acc = self._get_accumulator(self._mean_grad_acc_str,
-                                              param_and_grad[0])
-        rmsprop_op = block.append_op(type=self.type,
-                                     inputs={
-                                         "Param":
-                                         param_and_grad[0],
-                                         "Grad":
-                                         param_and_grad[1],
-                                         "Moment":
-                                         momentum_acc,
-                                         "MeanSquare":
-                                         mean_square_acc,
-                                         "MeanGrad":
-                                         mean_grad_acc,
-                                         "LearningRate":
-                                         self._create_param_lr(param_and_grad),
-                                     },
-                                     outputs={
-                                         "ParamOut": param_and_grad[0],
-                                         "MomentOut": momentum_acc,
-                                         "MeanSquareOut": mean_square_acc,
-                                         "MeanGradOut": mean_grad_acc
-                                     },
-                                     attrs={
-                                         "epsilon": self._epsilon,
-                                         "decay": self._rho,
-                                         "momentum": self._momentum,
-                                         "centered": self._centered
-                                     },
-                                     stop_gradient=True)
+        momentum_acc = self._get_accumulator(
+            self._momentum_acc_str, param_and_grad[0]
+        )
+        mean_square_acc = self._get_accumulator(
+            self._mean_square_acc_str, param_and_grad[0]
+        )
+        mean_grad_acc = self._get_accumulator(
+            self._mean_grad_acc_str, param_and_grad[0]
+        )
 
-        return rmsprop_op
+        if in_dygraph_mode():
+            _C_ops.rmsprop_(
+                param_and_grad[0],
+                mean_square_acc,
+                param_and_grad[1],
+                momentum_acc,
+                self._create_param_lr(param_and_grad),
+                mean_grad_acc,
+                self._epsilon,
+                self._rho,
+                self._momentum,
+                self._centered,
+            )
+            return None
+        else:
+            rmsprop_op = block.append_op(
+                type=self.type,
+                inputs={
+                    "Param": param_and_grad[0],
+                    "Grad": param_and_grad[1],
+                    "Moment": momentum_acc,
+                    "MeanSquare": mean_square_acc,
+                    "MeanGrad": mean_grad_acc,
+                    "LearningRate": self._create_param_lr(param_and_grad),
+                },
+                outputs={
+                    "ParamOut": param_and_grad[0],
+                    "MomentOut": momentum_acc,
+                    "MeanSquareOut": mean_square_acc,
+                    "MeanGradOut": mean_grad_acc,
+                },
+                attrs={
+                    "epsilon": self._epsilon,
+                    "decay": self._rho,
+                    "momentum": self._momentum,
+                    "centered": self._centered,
+                },
+                stop_gradient=True,
+            )
+
+            return rmsprop_op
 
     def _update_param_group(self, parameters):
         self._epsilon = parameters.get('epsilon', self._default_dict['epsilon'])
         self._rho = parameters.get('rho', self._default_dict['rho'])
-        self._momentum = parameters.get('momentum',
-                                        self._default_dict['momentum'])
-        self._centered = parameters.get('centered',
-                                        self._default_dict['centered'])
+        self._momentum = parameters.get(
+            'momentum', self._default_dict['momentum']
+        )
+        self._centered = parameters.get(
+            'centered', self._default_dict['centered']
+        )
         parameters = parameters.get('params')
         return parameters

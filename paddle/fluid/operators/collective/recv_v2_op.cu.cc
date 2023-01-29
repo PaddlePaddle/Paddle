@@ -19,7 +19,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #endif
 
-#include "paddle/fluid/distributed/collective/ProcessGroup.h"
+#include "paddle/fluid/distributed/collective/process_group.h"
 #include "paddle/phi/api/include/tensor.h"
 
 namespace paddle {
@@ -135,7 +135,7 @@ class RecvOpV2CUDAKernel : public framework::OpKernel<T> {
       distributed::ProcessGroup *pg = map->get(rid);
       std::vector<phi::DenseTensor> out_tensor;
       auto out_shape = ctx.Attr<std::vector<int>>("out_shape");
-      auto out = ctx.Output<framework::LoDTensor>("Out");
+      auto out = ctx.Output<phi::DenseTensor>("Out");
       auto out_dims = out->dims();
 
       if (dynamic_shape) {
@@ -157,8 +157,8 @@ class RecvOpV2CUDAKernel : public framework::OpKernel<T> {
     }
     auto comm = platform::NCCLCommContext::Instance().Get(rid, place);
     if (ctx.Attr<bool>("use_calc_stream")) {
-      auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);
-      stream = static_cast<phi::GPUContext *>(dev_ctx)->stream();
+      // should ExecutionContext for calc stream.
+      stream = ctx.cuda_device_context().stream();
     } else {
       stream = comm->stream();
     }
@@ -198,7 +198,7 @@ class RecvOpV2CUDAKernel : public framework::OpKernel<T> {
     }
 
     auto out_shape = ctx.Attr<std::vector<int>>("out_shape");
-    auto out = ctx.Output<framework::LoDTensor>("Out");
+    auto out = ctx.Output<phi::DenseTensor>("Out");
     auto out_dims = out->dims();
     auto numel = out->numel();
 
@@ -236,7 +236,7 @@ namespace plat = paddle::platform;
 REGISTER_OP_CUDA_KERNEL(recv_v2,
                         ops::RecvOpV2CUDAKernel<float>,
                         ops::RecvOpV2CUDAKernel<double>,
-#if CUDNN_VERSION_MIN(8, 1, 0) && NCCL_VERSION_CODE >= 21000
+#if NCCL_VERSION_CODE >= 21000
                         ops::RecvOpV2CUDAKernel<plat::bfloat16>,
 #endif
                         ops::RecvOpV2CUDAKernel<int>,

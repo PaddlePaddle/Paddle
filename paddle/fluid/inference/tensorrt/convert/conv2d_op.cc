@@ -49,7 +49,7 @@ void ConvertConv2d(TensorRTEngine* engine,
       Y_v,
       platform::errors::NotFound("Can not find %s presistale var in scope.",
                                  filter_var_name));
-  auto* Y_t = Y_v->GetMutable<framework::LoDTensor>();
+  auto* Y_t = Y_v->GetMutable<phi::DenseTensor>();
 
   bool enable_int8 = op_desc.HasAttr("enable_int8");
 
@@ -118,7 +118,7 @@ void ConvertConv2d(TensorRTEngine* engine,
   bias.SetValues(nullptr);
   if (op_desc.Type() == "conv2d_fusion") {
     auto* bias_tensor = scope.GetVar(op_desc.Input("Bias").front());
-    auto* bias_tensor_data = bias_tensor->GetMutable<framework::LoDTensor>();
+    auto* bias_tensor_data = bias_tensor->GetMutable<phi::DenseTensor>();
     bias =
         engine->GetTrtWeight(op_desc.Input("Bias").front(), *bias_tensor_data);
   }
@@ -142,7 +142,8 @@ void ConvertConv2d(TensorRTEngine* engine,
       layer,
       platform::errors::Fatal("TensorRT create conv2d/conv2d_transpose"
                               " layer failed."));
-  layer->setStride(nv_strides);
+  layer->setStrideNd(nv_strides);
+
   layer->setPrePadding(nv_pre_paddings);
   if (output_padding.size() > 0) {
     nv_post_paddings.d[0] -= output_padding[0];
@@ -189,7 +190,7 @@ class Conv2dOpConverter : public OpConverter {
             TensorRTEngine::Weight& weight,
             TensorRTEngine::Weight& bias) -> nvinfer1::IConvolutionLayer* {
           auto* layer = TRT_ENGINE_ADD_LAYER(engine_,
-                                             Convolution,
+                                             ConvolutionNd,
                                              *inputs,
                                              n_output,
                                              ksize,

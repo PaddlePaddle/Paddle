@@ -42,6 +42,8 @@ limitations under the License. */
 #include "paddle/phi/core/stream.h"
 #include "paddle/utils/any.h"
 
+DECLARE_bool(trt_ibuilder_cache);
+
 namespace paddle {
 namespace inference {
 namespace tensorrt {
@@ -60,14 +62,18 @@ TRT_DT FluidDataType2TRT(FluidDT type) {
     case FluidDT::VarType_Type_FP32:
       return TRT_DT::kFLOAT;
     case FluidDT::VarType_Type_INT32:
+    case FluidDT::VarType_Type_INT64:
       return TRT_DT::kINT32;
     case FluidDT::VarType_Type_FP16:
       return TRT_DT::kHALF;
+#if IS_TRT_VERSION_GE(8400)
+    case FluidDT::VarType_Type_BOOL:
+      return TRT_DT::kBOOL;
+#endif
     default:
-      return TRT_DT::kINT32;
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "unknown fluid datatype in TRT op converter"));
   }
-  PADDLE_THROW(platform::errors::InvalidArgument(
-      "unknown fluid datatype in TRT op converter"));
   return TRT_DT::kINT32;
 }
 
@@ -217,6 +223,9 @@ class TensorRTEngine {
       const ShapeMapType min_input_shape = {},
       const ShapeMapType max_input_shape = {},
       const ShapeMapType optim_input_shape = {},
+      const ShapeMapType min_shape_tensor = {},
+      const ShapeMapType max_shape_tensor = {},
+      const ShapeMapType optim_shape_tensor = {},
       bool disable_trt_plugin_fp16 = false,
       phi::DataType model_precision = phi::DataType::FLOAT32,
       nvinfer1::ILogger& logger = NaiveLogger::Global())
@@ -228,6 +237,9 @@ class TensorRTEngine {
         min_input_shape_(min_input_shape),
         max_input_shape_(max_input_shape),
         optim_input_shape_(optim_input_shape),
+        min_shape_tensor_(min_shape_tensor),
+        max_shape_tensor_(max_shape_tensor),
+        optim_shape_tensor_(optim_shape_tensor),
         disable_trt_plugin_fp16_(disable_trt_plugin_fp16),
         model_precision_(model_precision),
         logger_(logger) {
@@ -280,13 +292,17 @@ class TensorRTEngine {
                      const std::string& name);
   // Set the itensor_map_[name] as the network's output, and set its name.
   void DeclareOutput(const std::string& name);
+  // Set the itensor_map_[name] as the network's output, and set its name and
+  // data type.
+  void DeclareOutput(const std::string& name, nvinfer1::DataType dtype);
   void ClearTensorMap() { itensor_map_.clear(); }
 
   void DeleteITensor(const std::string& name, nvinfer1::ITensor* tensor);
   void SetITensor(const std::string& name, nvinfer1::ITensor* tensor);
   // Get an ITensor called name.
-  nvinfer1::ITensor* GetITensor(const std::string& name);
-  nvinfer1::ITensor* ConvertWeight2ITensor(const std::string& name);
+  nvinfer1::ITensor* GetITensor(const std::string& name, bool scalar = false);
+  nvinfer1::ITensor* ConvertWeight2ITensor(const std::string& name,
+                                           bool scalar = false);
   std::unordered_map<std::string, nvinfer1::ITensor*>* GetITensorMap();
 
   nvinfer1::ICudaEngine* engine() { return infer_engine_.get(); }
@@ -315,6 +331,7 @@ class TensorRTEngine {
     std::unique_lock<std::mutex> lock(mutex_);
     infer_context_[predictor_id_per_thread].reset(nullptr);
     infer_context_.erase(predictor_id_per_thread);
+    cur_profile_num_ = 0;
   }
 
   nvinfer1::IHostMemory* Serialize() {
@@ -443,6 +460,9 @@ class TensorRTEngine {
   ShapeMapType min_input_shape() { return min_input_shape_; }
   ShapeMapType max_input_shape() { return max_input_shape_; }
   ShapeMapType optim_input_shape() { return optim_input_shape_; }
+  ShapeMapType min_shape_tensor() { return min_shape_tensor_; }
+  ShapeMapType max_shape_tensor() { return max_shape_tensor_; }
+  ShapeMapType optim_shape_tensor() { return optim_shape_tensor_; }
 
   bool AdjustDynamicShapeRange(const ShapeMapType& runtime_input_shape,
                                std::vector<std::string>* changed) {
@@ -641,6 +661,9 @@ class TensorRTEngine {
   ShapeMapType min_input_shape_;
   ShapeMapType max_input_shape_;
   ShapeMapType optim_input_shape_;
+  ShapeMapType min_shape_tensor_;
+  ShapeMapType max_shape_tensor_;
+  ShapeMapType optim_shape_tensor_;
   bool disable_trt_plugin_fp16_{false};
   phi::DataType model_precision_{phi::DataType::FLOAT32};
   bool use_varseqlen_{false};
@@ -661,16 +684,6 @@ class TensorRTEngine {
   std::vector<std::unique_ptr<nvinfer1::IPluginV2IOExt>> owned_plugin_v2ioext_;
 
   // TensorRT related internal members
-  template <typename T>
-  struct Destroyer {
-    void operator()(T* x) {
-      if (x) {
-        x->destroy();
-      }
-    }
-  };
-  template <typename T>
-  using infer_ptr = std::unique_ptr<T, Destroyer<T>>;
   infer_ptr<nvinfer1::IBuilder> infer_builder_;
   infer_ptr<nvinfer1::INetworkDefinition> infer_network_;
   infer_ptr<nvinfer1::ICudaEngine> infer_engine_;
@@ -715,6 +728,15 @@ class TRTEngineManager {
   using AllocationPtr = phi::Allocator::AllocationPtr;
 
  public:
+  TRTEngineManager() {
+    // createInferBuilder loads trt kernels and take a few second
+    // But as long as one IBuilder lives, trt kernel will not be unloaded
+    // Hence, a persistent IBuilder to avoid TensorRT unload/reload kernels
+    if (FLAGS_trt_ibuilder_cache) {
+      holder_.reset(createInferBuilder(&NaiveLogger::Global()));
+    }
+  }
+
   bool Empty() const {
     std::lock_guard<std::mutex> lock(mutex_);
     return engines_.size() == 0;
@@ -741,6 +763,9 @@ class TRTEngineManager {
       const std::map<std::string, std::vector<int>> min_input_shape = {},
       const std::map<std::string, std::vector<int>> max_input_shape = {},
       const std::map<std::string, std::vector<int>> optim_input_shape = {},
+      const std::map<std::string, std::vector<int>> min_shape_tensor = {},
+      const std::map<std::string, std::vector<int>> max_shape_tensor = {},
+      const std::map<std::string, std::vector<int>> optim_shape_tensor = {},
       bool disable_trt_plugin_fp16 = false,
       phi::DataType model_precision = phi::DataType::FLOAT32,
       nvinfer1::ILogger& logger = NaiveLogger::Global()) {
@@ -752,6 +777,9 @@ class TRTEngineManager {
                                  min_input_shape,
                                  max_input_shape,
                                  optim_input_shape,
+                                 min_shape_tensor,
+                                 max_shape_tensor,
+                                 optim_shape_tensor,
                                  disable_trt_plugin_fp16,
                                  model_precision,
                                  logger);
@@ -778,6 +806,9 @@ class TRTEngineManager {
   }
 
   void updateContextMemorySize(size_t mem_size, PredictorID predictor_id) {
+    VLOG(3) << "TensorRT engine context memory size is "
+            << mem_size / 1024.0 / 1024.0 << "MiB in predictor id "
+            << predictor_id;
     bool size_updated{false};
 
     {
@@ -801,7 +832,6 @@ class TRTEngineManager {
     if (context_memorys_.count(predictor_id) == 0) {
       auto context_memory =
           memory::Alloc(place, max_ctx_mem_size_ + alignment, stream);
-      // context_memory_[predictor_id].reset(context_memory.release());
       context_memorys_[predictor_id] = std::move(context_memory);
     }
     return getAlignedMemory(context_memorys_[predictor_id]->ptr(), alignment);
@@ -829,6 +859,7 @@ class TRTEngineManager {
   size_t max_ctx_mem_size_{0};
   std::unordered_map<PredictorID, AllocationPtr> context_memorys_;
   std::unordered_map<std::string, std::unique_ptr<TensorRTEngine>> engines_;
+  infer_ptr<nvinfer1::IBuilder> holder_;
 };
 
 }  // namespace tensorrt

@@ -170,7 +170,8 @@ class SparseCooTensor : public TensorBase,
   /// \brief This function is not recommended
   void* AllocateFrom(Allocator* allocator,
                      DataType dtype,
-                     size_t requested_size = 0) override;
+                     size_t requested_size = 0,
+                     bool fake_alloc = false) override;
 
   /// \brief get the sparse dim
   int32_t sparse_dim() const;
@@ -274,7 +275,7 @@ class SparseCooTensor : public TensorBase,
                 [0, 0, 0, 0]]
      dims_ = (4, 4)
      non_zero_elements_ = [[0, 1, 0, 0], [0, 0, 4, 0]]
-     non_zero_indices_ = [0, 2],
+     non_zero_indices_ = [[0, 2], [1, 2]]
    */
 };
 

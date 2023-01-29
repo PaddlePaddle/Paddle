@@ -18,17 +18,12 @@ limitations under the License. */
 #include <string>
 
 #include "paddle/fluid/framework/data_layout.h"
-#ifdef PADDLE_WITH_MKLDNN
-#include "paddle/fluid/platform/mkldnn_helper.h"
-#endif
 #include "paddle/fluid/framework/op_version_registry.h"
 
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
-using LoDTensor = framework::LoDTensor;
-using DataLayout = framework::DataLayout;
+using DataLayout = phi::DataLayout;
 
 template <typename T>
 using EigenArrayMap =
@@ -71,8 +66,8 @@ class DataNormOp : public framework::OperatorWithKernel {
     }
 
     const auto x_dims = ctx->GetInputDim("X");
-    const DataLayout data_layout = framework::StringToDataLayout(
-        ctx->Attrs().Get<std::string>("data_layout"));
+    const DataLayout data_layout =
+        phi::StringToDataLayout(ctx->Attrs().Get<std::string>("data_layout"));
 
     PADDLE_ENFORCE_EQ(x_dims.size() >= 2 && x_dims.size() <= 5,
                       true,
@@ -164,7 +159,7 @@ class DataNormOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
     // By default, the type of the scale, bias, mean,
@@ -199,17 +194,8 @@ class DataNormOp : public framework::OperatorWithKernel {
                         platform::errors::InvalidArgument(
                             "bias input should be of float type"));
     }
-    // TODO(pzelazko-intel): enable MKLDNN layout when it's ready
-#ifdef PADDLE_WITH_MKLDNN
-    if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
-      return framework::OpKernelType(input_data_type,
-                                     ctx.GetPlace(),
-                                     framework::DataLayout::kMKLDNN,
-                                     framework::LibraryType::kMKLDNN);
-    }
-#endif
 
-    return framework::OpKernelType(input_data_type, ctx.GetPlace());
+    return phi::KernelKey(input_data_type, ctx.GetPlace());
   }
 };
 
@@ -286,8 +272,7 @@ class DataNormKernel<phi::CPUContext, T> : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext &ctx) const override {
     // const bool is_test = ctx.Attr<bool>("is_test");
     const std::string data_layout_str = ctx.Attr<std::string>("data_layout");
-    const DataLayout data_layout =
-        framework::StringToDataLayout(data_layout_str);
+    const DataLayout data_layout = phi::StringToDataLayout(data_layout_str);
 
     const auto *x = ctx.Input<phi::DenseTensor>("X");
     const auto &x_dims = x->dims();
@@ -457,8 +442,8 @@ class DataNormGradOp : public framework::OperatorWithKernel {
                    "DataNormGrad");
 
     const auto x_dims = ctx->GetInputDim("X");
-    const DataLayout data_layout = framework::StringToDataLayout(
-        ctx->Attrs().Get<std::string>("data_layout"));
+    const DataLayout data_layout =
+        phi::StringToDataLayout(ctx->Attrs().Get<std::string>("data_layout"));
     const int C =
         (data_layout == DataLayout::kNCHW ? x_dims[1]
                                           : x_dims[x_dims.size() - 1]);
@@ -490,37 +475,26 @@ class DataNormGradOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     const auto *var = ctx.InputVar(framework::GradVarName("Y"));
     if (var == nullptr) {
       PADDLE_THROW(platform::errors::InvalidArgument(
           "Y@GRAD can not be found for computation"));
     }
-    const Tensor *t = nullptr;
-    if (var->IsType<Tensor>()) {
-      t = &var->Get<Tensor>();
-    } else if (var->IsType<LoDTensor>()) {
-      t = &var->Get<LoDTensor>();
+    const phi::DenseTensor *t = nullptr;
+    if (var->IsType<phi::DenseTensor>()) {
+      t = &var->Get<phi::DenseTensor>();
+    } else if (var->IsType<phi::DenseTensor>()) {
+      t = &var->Get<phi::DenseTensor>();
     }
     if (t == nullptr) {
       PADDLE_THROW(platform::errors::InvalidArgument(
           "Y@GRAD can not be found for computation"));
     }
 
-    // TODO(pzelazko-intel): enable MKLDNN layout when it's ready
     auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
-
-#ifdef PADDLE_WITH_MKLDNN
-    if (this->CanMKLDNNBeUsed(ctx, data_type)) {
-      return framework::OpKernelType(data_type,
-                                     ctx.GetPlace(),
-                                     framework::DataLayout::kMKLDNN,
-                                     framework::LibraryType::kMKLDNN);
-    }
-#endif
-
-    return framework::OpKernelType(data_type, ctx.GetPlace());
+    return phi::KernelKey(data_type, ctx.GetPlace());
   }
 };
 
@@ -534,8 +508,7 @@ class DataNormGradKernel<phi::CPUContext, T> : public framework::OpKernel<T> {
     const auto *means = ctx.Input<phi::DenseTensor>("Means");
 
     const std::string data_layout_str = ctx.Attr<std::string>("data_layout");
-    const DataLayout data_layout =
-        framework::StringToDataLayout(data_layout_str);
+    const DataLayout data_layout = phi::StringToDataLayout(data_layout_str);
 
     // Get the size for each dimension.
     // NCHW [batch_size, in_channels, in_height, in_width]
@@ -549,7 +522,7 @@ class DataNormGradKernel<phi::CPUContext, T> : public framework::OpKernel<T> {
         (data_layout == DataLayout::kNCHW ? x_dims[1]
                                           : x_dims[x_dims.size() - 1]);
     // init output
-    Tensor *d_x = nullptr;
+    phi::DenseTensor *d_x = nullptr;
     if (ctx.HasOutput(framework::GradVarName("X"))) {
       d_x = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
     }
@@ -613,12 +586,12 @@ class DataNormGradKernel<phi::CPUContext, T> : public framework::OpKernel<T> {
 
             EigenVectorArrayMap<T> d_bias_arr(d_bias_data, C);
             EigenVectorArrayMap<T> d_scale_arr(d_scale_data, C);
-            Tensor dy_sum;
+            phi::DenseTensor dy_sum;
             dy_sum.Resize({C});
             dy_sum.mutable_data<T>(ctx.GetPlace());
             EigenVectorArrayMap<T> dy_sum_arr(
                 dy_sum.mutable_data<T>(ctx.GetPlace()), C);
-            Tensor dy_mul_x_sub_mean_mul_invstd_sum;
+            phi::DenseTensor dy_mul_x_sub_mean_mul_invstd_sum;
             dy_mul_x_sub_mean_mul_invstd_sum.Resize({C});
             dy_mul_x_sub_mean_mul_invstd_sum.mutable_data<T>(ctx.GetPlace());
             EigenVectorArrayMap<T> dy_mul_x_sub_mean_mul_invstd_sum_arr(

@@ -27,8 +27,8 @@ class CBroadcastOPMLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
 #if defined(PADDLE_WITH_CNCL)
-    auto x = ctx.Input<framework::LoDTensor>("X");
-    auto out = ctx.Output<framework::LoDTensor>("Out");
+    auto x = ctx.Input<phi::DenseTensor>("X");
+    auto out = ctx.Output<phi::DenseTensor>("Out");
     int numel = x->numel();
     cnclDataType_t dtype =
         platform::ToCNCLDataType(framework::TransToProtoVarType(x->dtype()));

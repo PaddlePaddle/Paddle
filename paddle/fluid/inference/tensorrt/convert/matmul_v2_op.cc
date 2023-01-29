@@ -37,9 +37,9 @@ class MatMulV2OpConverter : public OpConverter {
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope,
                   bool test_mode) override {
-    VLOG(3) << "convert a fluid matmul_v2 op to tensorrt matmul layer ";
+    VLOG(3) << "convert a matmul_v2 op to tensorrt IMatrixMultiplyLayer layer ";
     framework::OpDesc op_desc(op, nullptr);
-    nvinfer1::ILayer* layer = nullptr;
+    nvinfer1::IMatrixMultiplyLayer* layer = nullptr;
 
     // Declare inputs
     auto* input1 = engine_->GetITensor(op_desc.Input("X")[0]);
@@ -61,8 +61,9 @@ class MatMulV2OpConverter : public OpConverter {
                     : nvinfer1::MatrixOperation::kNONE;
 
     int one_num = 0;
+    bool all_matrix = dims_x.nbDims >= 2 && dims_y.nbDims >= 2;
     nvinfer1::ITensor* new_shape_tensor = nullptr;
-    if (dims_x.nbDims < dims_y.nbDims) {
+    if (dims_x.nbDims < dims_y.nbDims && all_matrix) {
       one_num = dims_y.nbDims - dims_x.nbDims;
       new_shape_tensor = Shape(input1);
       std::vector<int32_t> one_vec(one_num, 1);
@@ -80,7 +81,7 @@ class MatMulV2OpConverter : public OpConverter {
                                    *input2,
                                    matrix_operation_Y);
 
-    } else if (dims_x.nbDims > dims_y.nbDims) {
+    } else if (dims_x.nbDims > dims_y.nbDims && all_matrix) {
       one_num = dims_x.nbDims - dims_y.nbDims;
       new_shape_tensor = Shape(input2);
       std::vector<int32_t> one_vec(one_num, 1);
@@ -105,9 +106,26 @@ class MatMulV2OpConverter : public OpConverter {
                                    *input2,
                                    matrix_operation_Y);
     }
-    VLOG(3) << "Convert a fluid matmul_v2_op_float to TensorRT ";
+    if (dims_x.nbDims == 1)
+      layer->setOperation(0, nvinfer1::MatrixOperation::kVECTOR);
+    if (dims_y.nbDims == 1)
+      layer->setOperation(1, nvinfer1::MatrixOperation::kVECTOR);
+    nvinfer1::ILayer* final_layer = static_cast<nvinfer1::ILayer*>(layer);
+    // When vec * vec, trt produces a scalar, so to be consistent with paddle,
+    // we need add a reshape.
+    if (dims_x.nbDims == 1 && dims_y.nbDims == 1) {
+      auto reshape_layer =
+          TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *layer->getOutput(0));
+      nvinfer1::Dims reshape_dim;
+      reshape_dim.nbDims = 1;
+      reshape_dim.d[0] = 1;
+      reshape_layer->setReshapeDimensions(reshape_dim);
+      final_layer = static_cast<nvinfer1::ILayer*>(reshape_layer);
+    }
+    VLOG(3) << "Convert a matmul_v2_op to TensorRT ";
 
-    RreplenishLayerAndOutput(layer, "matmul_v2_op", {output_name}, test_mode);
+    RreplenishLayerAndOutput(
+        final_layer, "matmul_v2_op", {output_name}, test_mode);
   }
 };
 

@@ -19,8 +19,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
-
 template <typename T>
 class CheckFiniteAndUnscaleMLUKernel : public framework::OpKernel<T> {
   using MPDType = typename details::MPTypeTrait<T>::Type;
@@ -45,7 +43,7 @@ class CheckFiniteAndUnscaleMLUKernel : public framework::OpKernel<T> {
       out->mutable_data<T>(ctx.GetPlace());
 
       // check is_finite or is_nan
-      Tensor is_finite(found_inf->type());
+      phi::DenseTensor is_finite(found_inf->type());
       if (i != 0) {
         is_finite.Resize(phi::make_ddim({1}));
         is_finite.mutable_data<bool>(ctx.GetPlace());
@@ -78,8 +76,8 @@ class CheckFiniteAndUnscaleMLUKernel : public framework::OpKernel<T> {
       // out = in/scale, if found_inf = false
       // But when found_inf is true, the data of Out should not be used.
       // So, on MLU, we always compute out with in/scale.
-      Tensor float_x;
-      Tensor float_out;
+      phi::DenseTensor float_x;
+      phi::DenseTensor float_out;
       if (std::is_same<T, paddle::platform::float16>::value) {
         float_x.Resize(x->dims());
         float_out.Resize(out->dims());

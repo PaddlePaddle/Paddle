@@ -313,9 +313,9 @@ TEST(DenseTensor, ReshapeToMatrix) {
 
 TEST(DenseTensor, Layout) {
   phi::DenseTensor src;
-  ASSERT_EQ(src.layout(), framework::DataLayout::kNCHW);
-  src.set_layout(framework::DataLayout::kAnyLayout);
-  ASSERT_EQ(src.layout(), framework::DataLayout::kAnyLayout);
+  ASSERT_EQ(src.layout(), phi::DataLayout::kNCHW);
+  src.set_layout(phi::DataLayout::kAnyLayout);
+  ASSERT_EQ(src.layout(), phi::DataLayout::kAnyLayout);
 }
 
 TEST(DenseTensor, FP16) {

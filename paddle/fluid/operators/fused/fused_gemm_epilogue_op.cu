@@ -17,13 +17,12 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/framework/scope_guard.h"
+#include "paddle/fluid/platform/bfloat16.h"
 #include "paddle/fluid/platform/dynload/cublasLt.h"
 #include "paddle/fluid/platform/float16.h"
 
 namespace paddle {
 namespace operators {
-
-using Tensor = phi::DenseTensor;
 
 template <typename DeviceContext, typename T>
 class FusedGemmEpilogueKernel : public framework::OpKernel<T> {
@@ -62,6 +61,9 @@ class FusedGemmEpilogueKernel : public framework::OpKernel<T> {
     cublasComputeType_t compute_type = CUBLAS_COMPUTE_32F;
     if (std::is_same<T, paddle::platform::float16>::value) {
       mat_type = CUDA_R_16F;
+    }
+    if (std::is_same<T, platform::bfloat16>::value) {
+      mat_type = CUDA_R_16BF;
     }
     if (std::is_same<T, double>::value) {
       mat_type = CUDA_R_64F;
@@ -104,15 +106,21 @@ class FusedGemmEpilogueKernel : public framework::OpKernel<T> {
             sizeof(bias_data)));
 
     if (enable_auxiliary && activation != "none") {
-      size_t reserve_space_size = 0;
+      // Note (Ming Huang): The initialization of ReseveSpace is happened in the
+      // dev_ctx.Alloc. Therefore, we set real date type up here.
       if (activation == "relu") {
-        // Count in bits.
-        reserve_space_size = phi::product(out->dims()) / 8;
+        paddle::experimental::DataType rs_type =
+            paddle::experimental::DataType::BOOL;
+        size_t reserve_space_size =
+            phi::product(reserve_space->dims()) * SizeOf(rs_type);
+        dev_ctx.Alloc(reserve_space, rs_type, reserve_space_size);
       } else {
-        reserve_space_size = phi::product(out->dims()) * sizeof(T);
+        size_t reserve_space_size =
+            phi::product(reserve_space->dims()) * sizeof(T);
+        dev_ctx.Alloc<T>(reserve_space, reserve_space_size);
       }
-      dev_ctx.Alloc(reserve_space, out->type(), reserve_space_size);
-      void* aux_data = reinterpret_cast<void*>(reserve_space->data<T>());
+
+      void* aux_data = reserve_space->data();
 
       PADDLE_ENFORCE_GPU_SUCCESS(
           platform::dynload::cublasLtMatmulDescSetAttribute(
@@ -182,7 +190,6 @@ class FusedGemmEpilogueKernel : public framework::OpKernel<T> {
                                                               stream,
                                                               workspace->ptr(),
                                                               workspace_size);
-
     PADDLE_ENFORCE_GPU_SUCCESS(
         platform::dynload::cublasLtMatmul(lt_handle,
                                           operation_desc,
@@ -354,6 +361,9 @@ class FusedGemmEpilogueGradKernel : public framework::OpKernel<T> {
     if (std::is_same<T, paddle::platform::float16>::value) {
       mat_type = CUDA_R_16F;
     }
+    if (std::is_same<T, platform::bfloat16>::value) {
+      mat_type = CUDA_R_16BF;
+    }
     if (std::is_same<T, double>::value) {
       mat_type = CUDA_R_64F;
       scale_type = CUDA_R_64F;
@@ -473,7 +483,7 @@ class FusedGemmEpilogueGradKernel : public framework::OpKernel<T> {
               sizeof(epiloque_func_for_dx)));
 
       if (activation_grad != "none") {
-        auto* aux_data = reserve_space->data<T>();
+        auto* aux_data = reserve_space->data();
         PADDLE_ENFORCE_GPU_SUCCESS(
             platform::dynload::cublasLtMatmulDescSetAttribute(
                 dx_operation_desc,
@@ -688,12 +698,14 @@ REGISTER_OP_CUDA_KERNEL(
     fused_gemm_epilogue,
     ops::FusedGemmEpilogueKernel<phi::GPUContext, float>,
     ops::FusedGemmEpilogueKernel<phi::GPUContext, double>,
-    ops::FusedGemmEpilogueKernel<phi::GPUContext, paddle::platform::float16>);
+    ops::FusedGemmEpilogueKernel<phi::GPUContext, paddle::platform::float16>,
+    ops::FusedGemmEpilogueKernel<phi::GPUContext, paddle::platform::bfloat16>);
 
 REGISTER_OP_CUDA_KERNEL(
     fused_gemm_epilogue_grad,
     ops::FusedGemmEpilogueGradKernel<phi::GPUContext, float>,
     ops::FusedGemmEpilogueGradKernel<phi::GPUContext, double>,
     ops::FusedGemmEpilogueGradKernel<phi::GPUContext,
-                                     paddle::platform::float16>);
+                                     paddle::platform::float16>,
+    ops::FusedGemmEpilogueKernel<phi::GPUContext, paddle::platform::bfloat16>);
 #endif

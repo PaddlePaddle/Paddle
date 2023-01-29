@@ -253,7 +253,7 @@ void AdamDenseKernel(const Context& dev_ctx,
         param.numel());
     if (!use_global_beta_pow) {
       // Update with gpu
-      UpdateBetaPow<MPDType><<<1, 32, 0, dev_ctx.stream()>>>(
+      UpdateBetaPow<MPDType><<<1, 1, 0, dev_ctx.stream()>>>(
           beta1_,
           beta2_,
           beta1_pow.data<MPDType>(),
@@ -352,7 +352,7 @@ void MergedAdamKernel(
           param[idx]->numel());
       if (!use_global_beta_pow) {
         // Update with gpu
-        UpdateBetaPow<MPDType><<<1, 32, 0, dev_ctx.stream()>>>(
+        UpdateBetaPow<MPDType><<<1, 1, 0, dev_ctx.stream()>>>(
             beta1_,
             beta2_,
             beta1_pow[idx]->data<MPDType>(),
@@ -372,7 +372,8 @@ PD_REGISTER_KERNEL(adam,
                    phi::AdamDenseKernel,
                    float,
                    double,
-                   phi::dtype::float16) {
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {
   // Skip beta1_pow, beta2_pow, skip_update data transform
   kernel->InputAt(5).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(6).SetBackend(phi::Backend::ALL_BACKEND);
@@ -385,7 +386,8 @@ PD_REGISTER_KERNEL(merged_adam,
                    phi::MergedAdamKernel,
                    float,
                    double,
-                   phi::dtype::float16) {
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {
   // Skip beta1_pow, beta2_pow data transform
   kernel->InputAt(5).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(6).SetBackend(phi::Backend::ALL_BACKEND);

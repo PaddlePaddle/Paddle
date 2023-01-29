@@ -13,16 +13,16 @@
 # limitations under the License.
 
 import unittest
-import paddle
-import numpy as np
-from paddle.fluid.dygraph.dygraph_to_static.program_translator import StaticFunction
-
-from test_rollback import Net, foo
 from copy import deepcopy
+
+import numpy as np
+from test_rollback import Net, foo
+
+import paddle
+from paddle.jit.dy2static.program_translator import StaticFunction
 
 
 class TestDeepCopy(unittest.TestCase):
-
     def test_net(self):
         net = Net()
         net = paddle.jit.to_static(net)

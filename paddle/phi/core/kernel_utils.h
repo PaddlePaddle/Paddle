@@ -14,17 +14,12 @@
 
 #pragma once
 
-#include "paddle/phi/backends/cpu/cpu_context.h"
-#include "paddle/phi/backends/custom/custom_context.h"
-#include "paddle/phi/backends/gpu/gpu_context.h"
-#include "paddle/phi/backends/onednn/onednn_context.h"
-#ifdef PADDLE_WITH_XPU
-#include "paddle/phi/backends/xpu/xpu_context.h"
-#endif
+#include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/common/int_array.h"
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/enforce.h"
+#include "paddle/phi/core/extended_tensor.h"
 #include "paddle/phi/core/kernel_context.h"
 #include "paddle/phi/core/selected_rows.h"
 #include "paddle/phi/core/sparse_coo_tensor.h"
@@ -270,6 +265,8 @@ struct KernelImpl<Return (*)(DevCtx, Args...), kernel_fn> {
   PD_SPECIALIZE_KernelCallHelper_FOR_OPTIONAL_INPUT(DenseTensor);
   PD_SPECIALIZE_KernelCallHelper_FOR_OPTIONAL_INPUT(SelectedRows);
   PD_SPECIALIZE_KernelCallHelper_FOR_MULTI_INPUT(DenseTensor);
+  PD_SPECIALIZE_KernelCallHelper_FOR_INPUT(ExtendedTensor);
+  PD_SPECIALIZE_KernelCallHelper_FOR_MULTI_INPUT(ExtendedTensor);
   PD_SPECIALIZE_KernelCallHelper_FOR_MULTI_INPUT(TensorBase);
   PD_SPECIALIZE_KernelCallHelper_FOR_MULTI_INPUT(SelectedRows);
   PD_SPECIALIZE_KernelCallHelper_FOR_INPUT(SelectedRows);
@@ -329,21 +326,7 @@ struct KernelImpl<Return (*)(DevCtx, Args...), kernel_fn> {
   PD_SPECIALIZE_KernelCallHelper_FOR_MULTI_OUTPUT(StringTensor);
 
   PD_SPECIALIZE_KernelCallHelper_FOR_OUTPUT(TensorArray);
-
-  template <typename... Tail>
-  struct KernelCallHelper<const RuntimeAttrs&, Tail...> {
-    template <int dev_ctx_idx,
-              int in_idx,
-              int attr_idx,
-              int out_idx,
-              typename... PreviousArgs>
-    static void Compute(KernelContext* ctx, PreviousArgs&... pargs) {
-      const auto& runtime_attrs = ctx->GetRuntimeAttrs();
-      KernelCallHelper<Tail...>::
-          template Compute<dev_ctx_idx, in_idx, attr_idx, out_idx>(
-              ctx, pargs..., runtime_attrs);
-    }
-  };
+  PD_SPECIALIZE_KernelCallHelper_FOR_OUTPUT(ExtendedTensor);
 
   /* End case */
   template <typename T>
@@ -356,5 +339,16 @@ struct KernelImpl<Return (*)(DevCtx, Args...), kernel_fn> {
     }
   };
 };
+
+inline bool recompute_reduce_all(const DenseTensor& x,
+                                 const IntArray& dims,
+                                 bool reduce_all = false) {
+  if (dims.size() == 0 || static_cast<int>(dims.size()) == x.dims().size() ||
+      reduce_all) {
+    return true;
+  } else {
+    return false;
+  }
+}
 
 }  // namespace phi

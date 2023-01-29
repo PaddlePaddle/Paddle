@@ -16,7 +16,11 @@ import math
 import functools
 from . import framework
 from . import core
-from .framework import _non_static_mode, in_dygraph_mode, _in_legacy_dygraph, default_main_program, _current_expected_place
+from .framework import (
+    in_dygraph_mode,
+    default_main_program,
+    _current_expected_place,
+)
 from .lazy_init import lazy_init_helper
 from .framework import program_guard
 import numpy as np
@@ -27,17 +31,29 @@ from paddle import _C_ops, _legacy_C_ops
 import paddle
 
 __all__ = [
-    'Constant', 'Uniform', 'Normal', 'TruncatedNormal', 'Xavier', 'Bilinear',
-    'MSRA', 'ConstantInitializer', 'UniformInitializer', 'NormalInitializer',
-    'TruncatedNormalInitializer', 'XavierInitializer', 'BilinearInitializer',
-    'MSRAInitializer', 'NumpyArrayInitializer', 'set_global_initializer'
+    'Constant',
+    'Uniform',
+    'Normal',
+    'TruncatedNormal',
+    'Xavier',
+    'Bilinear',
+    'MSRA',
+    'ConstantInitializer',
+    'UniformInitializer',
+    'NormalInitializer',
+    'TruncatedNormalInitializer',
+    'XavierInitializer',
+    'BilinearInitializer',
+    'MSRAInitializer',
+    'NumpyArrayInitializer',
+    'set_global_initializer',
 ]
 
 _global_weight_initializer_ = None
 _global_bias_initializer_ = None
 
 
-class Initializer(object):
+class Initializer:
     """Base class for variable initializers
 
     Defines the common interface of variable initializers.
@@ -56,8 +72,7 @@ class Initializer(object):
         return self._lazy_init(param, block)
 
     def forward(self, param, block=None):
-        """Add corresponding initialization operations to the network
-        """
+        """Add corresponding initialization operations to the network"""
         raise NotImplementedError()
 
     def _lazy_init(self, param, block=None):
@@ -74,8 +89,9 @@ class Initializer(object):
 
         # Add hook function for initializing param in dygraph mode
         param.set_init_func(functools.partial(self.forward, param, block))
-        param._init_op_creator = functools.partial(init_op_creator,
-                                                   self.forward, param)
+        param._init_op_creator = functools.partial(
+            init_op_creator, self.forward, param
+        )
 
         return param
 
@@ -134,16 +150,16 @@ class ConstantInitializer(Initializer):
             import paddle.fluid as fluid
             paddle.enable_static()
             x = fluid.data(name="data", shape=[8, 32, 32], dtype="float32")
-            fc = fluid.layers.fc(
-                input=x,
+            fc = paddle.static.nn.fc(
+                x,
                 size=10,
-                param_attr=fluid.initializer.Constant(value=2.0))
+                weight_attr=fluid.initializer.Constant(value=2.0))
 
     """
 
     def __init__(self, value=0.0, force_cpu=False):
         assert value is not None
-        super(ConstantInitializer, self).__init__()
+        super().__init__()
         self._value = value
         self._force_cpu = force_cpu
 
@@ -160,35 +176,32 @@ class ConstantInitializer(Initializer):
         """
         block = self._check_block(block)
 
-        assert (isinstance(var, framework.Variable)
-                or isinstance(var, framework.EagerParamBase))
+        assert isinstance(var, framework.Variable) or isinstance(
+            var, framework.EagerParamBase
+        )
         assert isinstance(block, framework.Block)
 
         if in_dygraph_mode():
             place = _current_expected_place()
             if self._force_cpu:
                 place = core.CPUPlace()
-            _C_ops.full_(var, var.shape, str(float(self._value)), var.dtype,
-                         place)
-            return None
-        elif _in_legacy_dygraph():
-            _legacy_C_ops.fill_constant(var, 'value', float(self._value),
-                                        'force_cpu', self._force_cpu, 'dtype',
-                                        int(var.dtype), 'str_value',
-                                        str(float(self._value)), 'shape',
-                                        var.shape)
+            _C_ops.full_(
+                var, var.shape, str(float(self._value)), var.dtype, place
+            )
             return None
         else:
-            op = block.append_op(type="fill_constant",
-                                 outputs={"Out": var},
-                                 attrs={
-                                     "shape": var.shape,
-                                     "dtype": int(var.dtype),
-                                     "value": float(self._value),
-                                     'str_value': str(float(self._value)),
-                                     'force_cpu': self._force_cpu
-                                 },
-                                 stop_gradient=True)
+            op = block.append_op(
+                type="fill_constant",
+                outputs={"Out": var},
+                attrs={
+                    "shape": var.shape,
+                    "dtype": int(var.dtype),
+                    "value": float(self._value),
+                    'str_value': str(float(self._value)),
+                    'force_cpu': self._force_cpu,
+                },
+                stop_gradient=True,
+            )
 
             var.op = op
             return op
@@ -211,19 +224,17 @@ class UniformInitializer(Initializer):
     Examples:
         .. code-block:: python
 
+            import paddle
             import paddle.fluid as fluid
+            paddle.enable_static()
             x = fluid.data(name='x', shape=[None, 1], dtype='float32')
-            fc = fluid.layers.fc(input=x, size=10,
-    		param_attr=fluid.initializer.Uniform(low=-0.5, high=0.5))
+            fc = paddle.static.nn.fc(x, size=10,
+                weight_attr=fluid.initializer.Uniform(low=-0.5, high=0.5))
     """
 
-    def __init__(self,
-                 low=-1.0,
-                 high=1.0,
-                 seed=0,
-                 diag_num=0,
-                 diag_step=0,
-                 diag_val=1.0):
+    def __init__(
+        self, low=-1.0, high=1.0, seed=0, diag_num=0, diag_step=0, diag_val=1.0
+    ):
         assert low is not None
         assert high is not None
         assert high >= low
@@ -232,8 +243,8 @@ class UniformInitializer(Initializer):
         assert diag_step is not None
         assert diag_val is not None
         if diag_num > 0 or diag_step > 0:
-            assert (diag_num > 0 and diag_step > 0)
-        super(UniformInitializer, self).__init__()
+            assert diag_num > 0 and diag_step > 0
+        super().__init__()
         self._low = low
         self._high = high
         self._seed = seed
@@ -255,9 +266,13 @@ class UniformInitializer(Initializer):
         block = self._check_block(block)
 
         assert isinstance(block, framework.Block)
-        check_variable_and_dtype(var, "Out",
-                                 ["uint16", "float16", "float32", "float64"],
-                                 "uniform_random")
+        if not in_dygraph_mode():
+            check_variable_and_dtype(
+                var,
+                "Out",
+                ["uint16", "float16", "float32", "float64"],
+                "uniform_random",
+            )
 
         if self._seed == 0:
             self._seed = block.program.random_seed
@@ -265,62 +280,59 @@ class UniformInitializer(Initializer):
         # to be compatible of fp16 initializers
         if var.dtype == VarDesc.VarType.FP16:
             out_dtype = VarDesc.VarType.FP32
-            out_var = block.create_var(name=unique_name.generate(".".join(
-                ['uniform_random', var.name, 'tmp'])),
-                                       shape=var.shape,
-                                       dtype=out_dtype,
-                                       type=VarDesc.VarType.LOD_TENSOR,
-                                       persistable=False)
+            out_var = block.create_var(
+                name=unique_name.generate(
+                    ".".join(['uniform_random', var.name, 'tmp'])
+                ),
+                shape=var.shape,
+                dtype=out_dtype,
+                type=VarDesc.VarType.LOD_TENSOR,
+                persistable=False,
+            )
         else:
             out_dtype = var.dtype
             out_var = var
 
-        if framework._non_static_mode():
-            if in_dygraph_mode():
-                out_var = _C_ops.uniform_random(var.shape, out_dtype, self._low,
-                                                self._high, self._seed,
-                                                _current_expected_place())
-            elif _in_legacy_dygraph():
-                out_var = _legacy_C_ops.uniform_random(
-                    'shape', var.shape, 'min', self._low, 'max', self._high,
-                    'seed', self._seed, 'dtype', out_dtype, 'diag_num',
-                    self._diag_num, 'diag_step', self._diag_step, 'diag_val',
-                    self._diag_val)
+        if in_dygraph_mode():
+            out_var = _C_ops.uniform(
+                var.shape,
+                out_dtype,
+                self._low,
+                self._high,
+                self._seed,
+                _current_expected_place(),
+            )
             if var.dtype == VarDesc.VarType.FP16:
-                if in_dygraph_mode():
-                    var_tmp = _C_ops.cast(out_var, var.dtype)
-                elif _in_legacy_dygraph():
-                    var_tmp = _legacy_C_ops.cast(out_var, 'in_dtype',
-                                                 out_var.dtype, 'out_dtype',
-                                                 var.dtype)
+                var_tmp = _C_ops.cast(out_var, var.dtype)
                 var_tmp._share_underline_tensor_to(var)
             else:
                 out_var._share_underline_tensor_to(var)
             return None
         else:
-            op = block.append_op(type="uniform_random",
-                                 inputs={},
-                                 outputs={"Out": out_var},
-                                 attrs={
-                                     "shape": var.shape,
-                                     "dtype": out_dtype,
-                                     "min": self._low,
-                                     "max": self._high,
-                                     "seed": self._seed,
-                                     "diag_num": self._diag_num,
-                                     "diag_step": self._diag_step,
-                                     "diag_val": self._diag_val
-                                 },
-                                 stop_gradient=True)
+            op = block.append_op(
+                type="uniform_random",
+                inputs={},
+                outputs={"Out": out_var},
+                attrs={
+                    "shape": var.shape,
+                    "dtype": out_dtype,
+                    "min": self._low,
+                    "max": self._high,
+                    "seed": self._seed,
+                    "diag_num": self._diag_num,
+                    "diag_step": self._diag_step,
+                    "diag_val": self._diag_val,
+                },
+                stop_gradient=True,
+            )
 
             if var.dtype == VarDesc.VarType.FP16:
-                block.append_op(type="cast",
-                                inputs={"X": out_var},
-                                outputs={"Out": var},
-                                attrs={
-                                    "in_dtype": out_var.dtype,
-                                    "out_dtype": var.dtype
-                                })
+                block.append_op(
+                    type="cast",
+                    inputs={"X": out_var},
+                    outputs={"Out": var},
+                    attrs={"in_dtype": out_var.dtype, "out_dtype": var.dtype},
+                )
 
             var.op = op
             return op
@@ -337,10 +349,12 @@ class NormalInitializer(Initializer):
     Examples:
         .. code-block:: python
 
+            import paddle
             import paddle.fluid as fluid
+            paddle.enable_static()
             x = fluid.data(name="data", shape=[None, 32, 32], dtype="float32")
-            fc = fluid.layers.fc(input=x, size=10,
-                param_attr=fluid.initializer.Normal(loc=0.0, scale=2.0))
+            fc = paddle.static.nn.fc(x, size=10,
+                weight_attr=fluid.initializer.Normal(loc=0.0, scale=2.0))
 
     """
 
@@ -348,7 +362,7 @@ class NormalInitializer(Initializer):
         assert loc is not None
         assert scale is not None
         assert seed is not None
-        super(NormalInitializer, self).__init__()
+        super().__init__()
         self._mean = loc
         self._std_dev = scale
         self._seed = seed
@@ -368,40 +382,42 @@ class NormalInitializer(Initializer):
 
         assert isinstance(block, framework.Block)
 
-        check_variable_and_dtype(var, "Out",
-                                 ["uint16", "float16", "float32", "float64"],
-                                 "guassian_random")
-
         if self._seed == 0:
             self._seed = block.program.random_seed
 
         if in_dygraph_mode():
             place = _current_expected_place()
-            out_var = _C_ops.gaussian_random(var.shape, self._mean,
-                                             self._std_dev, self._seed,
-                                             var.dtype, place)
+            out_var = _C_ops.gaussian(
+                var.shape,
+                self._mean,
+                self._std_dev,
+                self._seed,
+                var.dtype,
+                place,
+            )
             out_var._share_underline_tensor_to(var)
             return None
 
-        if _in_legacy_dygraph():
-            out_var = _legacy_C_ops.gaussian_random(
-                'shape', var.shape, 'dtype', var.dtype, 'mean', self._mean,
-                'std', self._std_dev, 'seed', self._seed, 'use_mkldnn', False)
-
-            out_var._share_underline_tensor_to(var)
-            return None
         else:
-            op = block.append_op(type="gaussian_random",
-                                 outputs={"Out": var},
-                                 attrs={
-                                     "shape": var.shape,
-                                     "dtype": var.dtype,
-                                     "mean": self._mean,
-                                     "std": self._std_dev,
-                                     "seed": self._seed,
-                                     "use_mkldnn": False
-                                 },
-                                 stop_gradient=True)
+            check_variable_and_dtype(
+                var,
+                "Out",
+                ["uint16", "float16", "float32", "float64"],
+                "guassian_random",
+            )
+            op = block.append_op(
+                type="gaussian_random",
+                outputs={"Out": var},
+                attrs={
+                    "shape": var.shape,
+                    "dtype": var.dtype,
+                    "mean": self._mean,
+                    "std": self._std_dev,
+                    "seed": self._seed,
+                    "use_mkldnn": False,
+                },
+                stop_gradient=True,
+            )
             var.op = op
             return op
 
@@ -417,17 +433,19 @@ class TruncatedNormalInitializer(Initializer):
     Examples:
         .. code-block:: python
 
+            import paddle
             import paddle.fluid as fluid
+            paddle.enable_static()
             x = fluid.data(name='x', shape=[None, 1], dtype='float32')
-            fc = fluid.layers.fc(input=x, size=10,
-                param_attr=fluid.initializer.TruncatedNormal(loc=0.0, scale=2.0))
+            fc = paddle.static.nn.fc(x, size=10,
+                weight_attr=fluid.initializer.TruncatedNormal(loc=0.0, scale=2.0))
     """
 
     def __init__(self, loc=0.0, scale=1.0, seed=0):
         assert loc is not None
         assert scale is not None
         assert seed is not None
-        super(TruncatedNormalInitializer, self).__init__()
+        super().__init__()
         self._mean = loc
         self._std_dev = scale
         self._seed = seed
@@ -454,20 +472,28 @@ class TruncatedNormalInitializer(Initializer):
         # to be compatible of fp16 initalizers
         if var.dtype in [VarDesc.VarType.FP16, VarDesc.VarType.BF16]:
             out_dtype = VarDesc.VarType.FP32
-            out_var = block.create_var(name=unique_name.generate(".".join(
-                ['truncated_gaussian_random', var.name, 'tmp'])),
-                                       shape=var.shape,
-                                       dtype=out_dtype,
-                                       type=VarDesc.VarType.LOD_TENSOR,
-                                       persistable=False)
+            out_var = block.create_var(
+                name=unique_name.generate(
+                    ".".join(['truncated_gaussian_random', var.name, 'tmp'])
+                ),
+                shape=var.shape,
+                dtype=out_dtype,
+                type=VarDesc.VarType.LOD_TENSOR,
+                persistable=False,
+            )
         else:
             out_dtype = var.dtype
             out_var = var
 
         if in_dygraph_mode():
             out_var = _C_ops.truncated_gaussian_random(
-                var.shape, self._mean, self._std_dev, self._seed, out_dtype,
-                _current_expected_place())
+                var.shape,
+                self._mean,
+                self._std_dev,
+                self._seed,
+                out_dtype,
+                _current_expected_place(),
+            )
             if var.dtype in [VarDesc.VarType.FP16, VarDesc.VarType.BF16]:
                 var_tmp = _C_ops.cast(out_var, var.dtype)
                 var_tmp._share_underline_tensor_to(var)
@@ -475,37 +501,27 @@ class TruncatedNormalInitializer(Initializer):
                 out_var._share_underline_tensor_to(var)
             return None
 
-        if _in_legacy_dygraph():
-            out_var = _legacy_C_ops.truncated_gaussian_random(
-                'shape', var.shape, 'dtype', out_dtype, 'mean', self._mean,
-                'std', self._std_dev, 'seed', self._seed)
-            if var.dtype in [VarDesc.VarType.FP16, VarDesc.VarType.BF16]:
-                var_tmp = _legacy_C_ops.cast(out_var, 'in_dtype', out_var.dtype,
-                                             'out_dtype', var.dtype)
-                var_tmp._share_underline_tensor_to(var)
-            else:
-                out_var._share_underline_tensor_to(var)
-            return None
         else:
-            op = block.append_op(type="truncated_gaussian_random",
-                                 outputs={"Out": out_var},
-                                 attrs={
-                                     "shape": var.shape,
-                                     "dtype": out_dtype,
-                                     "mean": self._mean,
-                                     "std": self._std_dev,
-                                     "seed": self._seed
-                                 },
-                                 stop_gradient=True)
+            op = block.append_op(
+                type="truncated_gaussian_random",
+                outputs={"Out": out_var},
+                attrs={
+                    "shape": var.shape,
+                    "dtype": out_dtype,
+                    "mean": self._mean,
+                    "std": self._std_dev,
+                    "seed": self._seed,
+                },
+                stop_gradient=True,
+            )
 
             if var.dtype in [VarDesc.VarType.FP16, VarDesc.VarType.BF16]:
-                block.append_op(type="cast",
-                                inputs={"X": out_var},
-                                outputs={"Out": var},
-                                attrs={
-                                    "in_dtype": out_var.dtype,
-                                    "out_dtype": var.dtype
-                                })
+                block.append_op(
+                    type="cast",
+                    inputs={"X": out_var},
+                    outputs={"Out": var},
+                    attrs={"in_dtype": out_var.dtype, "out_dtype": var.dtype},
+                )
             var.op = op
             return op
 
@@ -547,18 +563,20 @@ class XavierInitializer(Initializer):
     Examples:
         .. code-block:: python
 
+            import paddle
             import paddle.fluid as fluid
+            paddle.enable_static()
             queries = fluid.data(name='x', shape=[None,1], dtype='float32')
-            fc = fluid.layers.fc(
-                input=queries, size=10,
-                param_attr=fluid.initializer.Xavier(uniform=False))
+            fc = paddle.static.nn.fc(
+                x=queries, size=10,
+                weight_attr=fluid.initializer.Xavier(uniform=False))
 
     """
 
     def __init__(self, uniform=True, fan_in=None, fan_out=None, seed=0):
         assert uniform is not None
         assert seed is not None
-        super(XavierInitializer, self).__init__()
+        super().__init__()
         self._uniform = uniform
         self._fan_in = fan_in
         self._fan_out = fan_out
@@ -578,9 +596,13 @@ class XavierInitializer(Initializer):
         block = self._check_block(block)
 
         assert isinstance(block, framework.Block)
-        check_variable_and_dtype(var, "Out",
-                                 ["uint16", "float16", "float32", "float64"],
-                                 "xavier_init")
+        if not in_dygraph_mode():
+            check_variable_and_dtype(
+                var,
+                "Out",
+                ["uint16", "float16", "float32", "float64"],
+                "xavier_init",
+            )
 
         f_in, f_out = self._compute_fans(var)
 
@@ -593,50 +615,45 @@ class XavierInitializer(Initializer):
 
         # to be compatible of fp16 initalizers
         if var.dtype == VarDesc.VarType.FP16 or (
-                var.dtype == VarDesc.VarType.BF16 and not self._uniform):
+            var.dtype == VarDesc.VarType.BF16 and not self._uniform
+        ):
             out_dtype = VarDesc.VarType.FP32
-            out_var = block.create_var(name=unique_name.generate(".".join(
-                ['xavier_init', var.name, 'tmp'])),
-                                       shape=var.shape,
-                                       dtype=out_dtype,
-                                       type=VarDesc.VarType.LOD_TENSOR,
-                                       persistable=False)
+            out_var = block.create_var(
+                name=unique_name.generate(
+                    ".".join(['xavier_init', var.name, 'tmp'])
+                ),
+                shape=var.shape,
+                dtype=out_dtype,
+                type=VarDesc.VarType.LOD_TENSOR,
+                persistable=False,
+            )
         else:
             out_dtype = var.dtype
             out_var = var
 
-        if framework._non_static_mode():
+        if in_dygraph_mode():
             if self._uniform:
                 limit = math.sqrt(6.0 / float(fan_in + fan_out))
-                if in_dygraph_mode():
-                    out_var = _C_ops.uniform_random(out_var.shape, out_dtype,
-                                                    -limit, limit, self._seed,
-                                                    _current_expected_place())
-                elif _in_legacy_dygraph():
-                    out_var = _legacy_C_ops.uniform_random(
-                        'shape', out_var.shape, 'min', -limit, 'max', limit,
-                        'seed', self._seed, 'dtype', out_dtype)
+                out_var = _C_ops.uniform(
+                    out_var.shape,
+                    out_dtype,
+                    -limit,
+                    limit,
+                    self._seed,
+                    _current_expected_place(),
+                )
             else:
                 std = math.sqrt(2.0 / float(fan_in + fan_out))
 
-                if in_dygraph_mode():
-                    place = _current_expected_place()
-                    out_var = _C_ops.gaussian_random(out_var.shape, 0.0, std,
-                                                     self._seed, out_dtype,
-                                                     place)
-                else:
-                    out_var = _legacy_C_ops.gaussian_random(
-                        'shape', out_var.shape, 'dtype', out_dtype, 'mean', 0.0,
-                        'std', std, 'seed', self._seed)
+                place = _current_expected_place()
+                out_var = _C_ops.gaussian(
+                    out_var.shape, 0.0, std, self._seed, out_dtype, place
+                )
 
             if var.dtype == VarDesc.VarType.FP16 or (
-                    var.dtype == VarDesc.VarType.BF16 and not self._uniform):
-                if in_dygraph_mode():
-                    var_tmp = _C_ops.cast(out_var, var.dtype)
-                elif _in_legacy_dygraph():
-                    var_tmp = _legacy_C_ops.cast(out_var, 'in_dtype',
-                                                 out_var.dtype, 'out_dtype',
-                                                 var.dtype)
+                var.dtype == VarDesc.VarType.BF16 and not self._uniform
+            ):
+                var_tmp = _C_ops.cast(out_var, var.dtype)
                 var_tmp._share_underline_tensor_to(var)
             else:
                 out_var._share_underline_tensor_to(var)
@@ -644,39 +661,43 @@ class XavierInitializer(Initializer):
         else:
             if self._uniform:
                 limit = math.sqrt(6.0 / float(fan_in + fan_out))
-                op = block.append_op(type="uniform_random",
-                                     inputs={},
-                                     outputs={"Out": out_var},
-                                     attrs={
-                                         "shape": out_var.shape,
-                                         "dtype": out_dtype,
-                                         "min": -limit,
-                                         "max": limit,
-                                         "seed": self._seed
-                                     },
-                                     stop_gradient=True)
+                op = block.append_op(
+                    type="uniform_random",
+                    inputs={},
+                    outputs={"Out": out_var},
+                    attrs={
+                        "shape": out_var.shape,
+                        "dtype": out_dtype,
+                        "min": -limit,
+                        "max": limit,
+                        "seed": self._seed,
+                    },
+                    stop_gradient=True,
+                )
             else:
                 std = math.sqrt(2.0 / float(fan_in + fan_out))
-                op = block.append_op(type="gaussian_random",
-                                     outputs={"Out": out_var},
-                                     attrs={
-                                         "shape": out_var.shape,
-                                         "dtype": out_var.dtype,
-                                         "mean": 0.0,
-                                         "std": std,
-                                         "seed": self._seed
-                                     },
-                                     stop_gradient=True)
+                op = block.append_op(
+                    type="gaussian_random",
+                    outputs={"Out": out_var},
+                    attrs={
+                        "shape": out_var.shape,
+                        "dtype": out_var.dtype,
+                        "mean": 0.0,
+                        "std": std,
+                        "seed": self._seed,
+                    },
+                    stop_gradient=True,
+                )
 
             if var.dtype == VarDesc.VarType.FP16 or (
-                    var.dtype == VarDesc.VarType.BF16 and not self._uniform):
-                block.append_op(type="cast",
-                                inputs={"X": out_var},
-                                outputs={"Out": var},
-                                attrs={
-                                    "in_dtype": out_var.dtype,
-                                    "out_dtype": var.dtype
-                                })
+                var.dtype == VarDesc.VarType.BF16 and not self._uniform
+            ):
+                block.append_op(
+                    type="cast",
+                    inputs={"X": out_var},
+                    outputs={"Out": var},
+                    attrs={"in_dtype": out_var.dtype, "out_dtype": var.dtype},
+                )
 
             var.op = op
             return op
@@ -720,22 +741,23 @@ class MSRAInitializer(Initializer):
             import paddle.fluid as fluid
             paddle.enable_static()
             x = fluid.data(name="data", shape=[8, 32, 32], dtype="float32")
-            fc = fluid.layers.fc(input=x, size=10,
-                param_attr=fluid.initializer.MSRA(uniform=False))
+            fc = paddle.static.nn.fc(x, size=10,
+                weight_attr=fluid.initializer.MSRA(uniform=False))
 
     """
 
-    def __init__(self,
-                 uniform=True,
-                 fan_in=None,
-                 seed=0,
-                 negative_slope=0,
-                 nonlinearity='relu'):
-        """Constructor for MSRAInitializer
-        """
+    def __init__(
+        self,
+        uniform=True,
+        fan_in=None,
+        seed=0,
+        negative_slope=0,
+        nonlinearity='relu',
+    ):
+        """Constructor for MSRAInitializer"""
         assert uniform is not None
         assert seed is not None
-        super(MSRAInitializer, self).__init__()
+        super().__init__()
         self._uniform = uniform
         self._fan_in = fan_in
         self._seed = seed
@@ -762,56 +784,61 @@ class MSRAInitializer(Initializer):
         # If fan_in is passed, use it
         fan_in = f_in if self._fan_in is None else self._fan_in
 
+        if fan_in == 0:
+            if self._fan_in is None:
+                raise ValueError(
+                    "The in_features of the Tensor contain zero, can not initialize the Tensor."
+                )
+            else:
+                raise ValueError(
+                    "fan_in should not be zero, can not initialize the Tensor."
+                )
+
         if self._seed == 0:
             self._seed = block.program.random_seed
 
         # to be compatible of fp16 initalizers
         if var.dtype == VarDesc.VarType.FP16 or (
-                var.dtype == VarDesc.VarType.BF16 and not self._uniform):
+            var.dtype == VarDesc.VarType.BF16 and not self._uniform
+        ):
             out_dtype = VarDesc.VarType.FP32
-            out_var = block.create_var(name=unique_name.generate(".".join(
-                ['masra_init', var.name, 'tmp'])),
-                                       shape=var.shape,
-                                       dtype=out_dtype,
-                                       type=VarDesc.VarType.LOD_TENSOR,
-                                       persistable=False)
+            out_var = block.create_var(
+                name=unique_name.generate(
+                    ".".join(['masra_init', var.name, 'tmp'])
+                ),
+                shape=var.shape,
+                dtype=out_dtype,
+                type=VarDesc.VarType.LOD_TENSOR,
+                persistable=False,
+            )
         else:
             out_dtype = var.dtype
             out_var = var
 
-        if framework._non_static_mode():
+        if in_dygraph_mode():
             if self._uniform:
                 gain = calculate_gain(self._nonlinearity, self._negative_slope)
                 limit = gain * math.sqrt(3.0 / float(fan_in))
-                if in_dygraph_mode():
-                    out_var = _C_ops.uniform_random(var.shape, out_dtype,
-                                                    -limit, limit, self._seed,
-                                                    _current_expected_place())
-                else:
-                    out_var = _legacy_C_ops.uniform_random(
-                        'shape', out_var.shape, 'min', -limit, 'max', limit,
-                        'seed', self._seed, 'dtype', int(out_dtype))
+                out_var = _C_ops.uniform(
+                    var.shape,
+                    out_dtype,
+                    -limit,
+                    limit,
+                    self._seed,
+                    _current_expected_place(),
+                )
             else:
                 gain = calculate_gain(self._nonlinearity, self._negative_slope)
                 std = gain / math.sqrt(float(fan_in))
-                if in_dygraph_mode():
-                    place = _current_expected_place()
-                    out_var = _C_ops.gaussian_random(out_var.shape, 0.0, std,
-                                                     self._seed, out_dtype,
-                                                     place)
-                else:
-                    out_var = _legacy_C_ops.gaussian_random(
-                        'shape', out_var.shape, 'dtype', int(out_dtype), 'mean',
-                        0.0, 'std', std, 'seed', self._seed)
+                place = _current_expected_place()
+                out_var = _C_ops.gaussian(
+                    out_var.shape, 0.0, std, self._seed, out_dtype, place
+                )
 
             if var.dtype == VarDesc.VarType.FP16 or (
-                    var.dtype == VarDesc.VarType.BF16 and not self._uniform):
-                if in_dygraph_mode():
-                    var_tmp = _C_ops.cast(out_var, var.dtype)
-                elif _in_legacy_dygraph():
-                    var_tmp = _legacy_C_ops.cast(out_var, 'in_dtype',
-                                                 out_var.dtype, 'out_dtype',
-                                                 var.dtype)
+                var.dtype == VarDesc.VarType.BF16 and not self._uniform
+            ):
+                var_tmp = _C_ops.cast(out_var, var.dtype)
                 var_tmp._share_underline_tensor_to(var)
             else:
                 out_var._share_underline_tensor_to(var)
@@ -820,41 +847,45 @@ class MSRAInitializer(Initializer):
             if self._uniform:
                 gain = calculate_gain(self._nonlinearity, self._negative_slope)
                 limit = gain * math.sqrt(3.0 / float(fan_in))
-                op = block.append_op(type="uniform_random",
-                                     inputs={},
-                                     outputs={"Out": out_var},
-                                     attrs={
-                                         "shape": out_var.shape,
-                                         "dtype": int(out_dtype),
-                                         "min": -limit,
-                                         "max": limit,
-                                         "seed": self._seed
-                                     },
-                                     stop_gradient=True)
+                op = block.append_op(
+                    type="uniform_random",
+                    inputs={},
+                    outputs={"Out": out_var},
+                    attrs={
+                        "shape": out_var.shape,
+                        "dtype": int(out_dtype),
+                        "min": -limit,
+                        "max": limit,
+                        "seed": self._seed,
+                    },
+                    stop_gradient=True,
+                )
 
             else:
                 gain = calculate_gain(self._nonlinearity, self._negative_slope)
                 std = gain / math.sqrt(float(fan_in))
-                op = block.append_op(type="gaussian_random",
-                                     outputs={"Out": out_var},
-                                     attrs={
-                                         "shape": out_var.shape,
-                                         "dtype": int(out_dtype),
-                                         "mean": 0.0,
-                                         "std": std,
-                                         "seed": self._seed
-                                     },
-                                     stop_gradient=True)
+                op = block.append_op(
+                    type="gaussian_random",
+                    outputs={"Out": out_var},
+                    attrs={
+                        "shape": out_var.shape,
+                        "dtype": int(out_dtype),
+                        "mean": 0.0,
+                        "std": std,
+                        "seed": self._seed,
+                    },
+                    stop_gradient=True,
+                )
 
             if var.dtype == VarDesc.VarType.FP16 or (
-                    var.dtype == VarDesc.VarType.BF16 and not self._uniform):
-                block.append_op(type="cast",
-                                inputs={"X": out_var},
-                                outputs={"Out": var},
-                                attrs={
-                                    "in_dtype": out_var.dtype,
-                                    "out_dtype": var.dtype
-                                })
+                var.dtype == VarDesc.VarType.BF16 and not self._uniform
+            ):
+                block.append_op(
+                    type="cast",
+                    inputs={"X": out_var},
+                    outputs={"Out": var},
+                    attrs={"in_dtype": out_var.dtype, "out_dtype": var.dtype},
+                )
 
             var.op = op
             return op
@@ -905,9 +936,8 @@ class BilinearInitializer(Initializer):
     """
 
     def __init__(self):
-        """Constructor for BilinearInitializer.
-        """
-        super(BilinearInitializer, self).__init__()
+        """Constructor for BilinearInitializer."""
+        super().__init__()
 
     def forward(self, var, block=None):
         """Initialize the input tensor with Bilinear initialization.
@@ -937,9 +967,9 @@ class BilinearInitializer(Initializer):
         weight = np.zeros(np.prod(var.shape), dtype='float32')
         size = shape[3]
         # factor
-        f = np.ceil(size / 2.)
+        f = np.ceil(size / 2.0)
         # center
-        c = (2 * f - 1 - f % 2) / (2. * f)
+        c = (2 * f - 1 - f % 2) / (2.0 * f)
         for i in range(np.prod(shape)):
             x = i % size
             y = (i / size) % size
@@ -948,15 +978,20 @@ class BilinearInitializer(Initializer):
 
         # to be compatible of fp16 initalizers
         if var.dtype in [
-                VarDesc.VarType.FP16, VarDesc.VarType.BF16, VarDesc.VarType.FP64
+            VarDesc.VarType.FP16,
+            VarDesc.VarType.BF16,
+            VarDesc.VarType.FP64,
         ]:
             out_dtype = VarDesc.VarType.FP32
-            out_var = block.create_var(name=unique_name.generate(".".join(
-                ['bilinear_init', var.name, 'tmp'])),
-                                       shape=var.shape,
-                                       dtype=out_dtype,
-                                       type=VarDesc.VarType.LOD_TENSOR,
-                                       persistable=False)
+            out_var = block.create_var(
+                name=unique_name.generate(
+                    ".".join(['bilinear_init', var.name, 'tmp'])
+                ),
+                shape=var.shape,
+                dtype=out_dtype,
+                type=VarDesc.VarType.LOD_TENSOR,
+                persistable=False,
+            )
         else:
             out_dtype = var.dtype
             out_var = var
@@ -970,48 +1005,46 @@ class BilinearInitializer(Initializer):
         if np.prod(shape) > 1024 * 1024:
             raise ValueError("The size of input is too big. ")
 
-        if framework._non_static_mode():
-            if in_dygraph_mode():
-                _C_ops.assign_value_(out_var, list(shape), out_dtype, values,
-                                     _current_expected_place())
-            elif _in_legacy_dygraph():
-                _legacy_C_ops.assign_value(out_var, 'shape', list(shape),
-                                           'dtype', out_dtype, value_name,
-                                           values)
+        if in_dygraph_mode():
+            _C_ops.assign_value_(
+                out_var,
+                list(shape),
+                out_dtype,
+                values,
+                _current_expected_place(),
+            )
             if var.dtype in [
-                    VarDesc.VarType.FP16, VarDesc.VarType.BF16,
-                    VarDesc.VarType.FP64
+                VarDesc.VarType.FP16,
+                VarDesc.VarType.BF16,
+                VarDesc.VarType.FP64,
             ]:
-                if in_dygraph_mode():
-                    var_tmp = _C_ops.cast(out_var, var.dtype)
-                elif _in_legacy_dygraph():
-                    var_tmp = _legacy_C_ops.cast(out_var, 'in_dtype',
-                                                 out_var.dtype, 'out_dtype',
-                                                 var.dtype)
+                var_tmp = _C_ops.cast(out_var, var.dtype)
                 var_tmp._share_underline_tensor_to(var)
             else:
                 out_var._share_underline_tensor_to(var)
             return None
         else:
-            op = block.append_op(type='assign_value',
-                                 outputs={'Out': [out_var]},
-                                 attrs={
-                                     'dtype': out_dtype,
-                                     'shape': list(shape),
-                                     value_name: values
-                                 })
+            op = block.append_op(
+                type='assign_value',
+                outputs={'Out': [out_var]},
+                attrs={
+                    'dtype': out_dtype,
+                    'shape': list(shape),
+                    value_name: values,
+                },
+            )
 
             if var.dtype in [
-                    VarDesc.VarType.FP16, VarDesc.VarType.BF16,
-                    VarDesc.VarType.FP64
+                VarDesc.VarType.FP16,
+                VarDesc.VarType.BF16,
+                VarDesc.VarType.FP64,
             ]:
-                block.append_op(type="cast",
-                                inputs={"X": out_var},
-                                outputs={"Out": var},
-                                attrs={
-                                    "in_dtype": out_var.dtype,
-                                    "out_dtype": var.dtype
-                                })
+                block.append_op(
+                    type="cast",
+                    inputs={"X": out_var},
+                    outputs={"Out": var},
+                    attrs={"in_dtype": out_var.dtype, "out_dtype": var.dtype},
+                )
 
             var.op = op
             return op
@@ -1030,17 +1063,20 @@ class NumpyArrayInitializer(Initializer):
     Examples:
         .. code-block:: python
 
+            import paddle
             import paddle.fluid as fluid
             import numpy
+            paddle.enable_static()
             x = fluid.data(name="x", shape=[2, 1], dtype='float32')
-            fc = fluid.layers.fc(input=x, size=10,
-                param_attr=fluid.initializer.NumpyArrayInitializer(numpy.array([1,2])))
+            fc = paddle.static.nn.fc(x, size=10,
+                weight_attr=fluid.initializer.NumpyArrayInitializer(numpy.array([1,2])))
     """
 
     def __init__(self, value):
         import numpy
+
         assert isinstance(value, numpy.ndarray)
-        super(NumpyArrayInitializer, self).__init__()
+        super().__init__()
         self._value = value
 
     def forward(self, var, block=None):
@@ -1063,12 +1099,15 @@ class NumpyArrayInitializer(Initializer):
         if var.dtype in [VarDesc.VarType.FP16, VarDesc.VarType.BF16]:
             out_dtype = VarDesc.VarType.FP32
             np_value = self._value.astype("float32")
-            out_var = block.create_var(name=unique_name.generate(".".join(
-                ['numpy_array_init', var.name, 'tmp'])),
-                                       shape=var.shape,
-                                       dtype=out_dtype,
-                                       type=VarDesc.VarType.LOD_TENSOR,
-                                       persistable=False)
+            out_var = block.create_var(
+                name=unique_name.generate(
+                    ".".join(['numpy_array_init', var.name, 'tmp'])
+                ),
+                shape=var.shape,
+                dtype=out_dtype,
+                type=VarDesc.VarType.LOD_TENSOR,
+                persistable=False,
+            )
         else:
             out_var = var
             out_dtype = var.dtype
@@ -1083,47 +1122,44 @@ class NumpyArrayInitializer(Initializer):
         else:
             raise ValueError("Unsupported dtype %s", self._value.dtype)
         if self._value.size > 1024 * 1024 * 1024:
-            raise ValueError("The size of input is too big. Please consider "
-                             "saving it to file and 'load_op' to load it")
+            raise ValueError(
+                "The size of input is too big. Please consider "
+                "saving it to file and 'load_op' to load it"
+            )
 
-        if framework._non_static_mode():
-            if in_dygraph_mode():
-                _C_ops.assign_value_(out_var,
-                                     list(self._value.shape), out_dtype, values,
-                                     _current_expected_place())
-            elif _in_legacy_dygraph():
-                _legacy_C_ops.assign_value(out_var, 'shape',
-                                           list(self._value.shape), 'dtype',
-                                           out_dtype, value_name, values)
+        if in_dygraph_mode():
+            _C_ops.assign_value_(
+                out_var,
+                list(self._value.shape),
+                out_dtype,
+                values,
+                _current_expected_place(),
+            )
             if var.dtype in [VarDesc.VarType.FP16, VarDesc.VarType.BF16]:
-                if in_dygraph_mode():
-                    var_tmp = _C_ops.cast(out_var, var.dtype)
-                elif _in_legacy_dygraph():
-                    var_tmp = _legacy_C_ops.cast(out_var, 'in_dtype',
-                                                 out_var.dtype, 'out_dtype',
-                                                 var.dtype)
+                var_tmp = _C_ops.cast(out_var, var.dtype)
                 var_tmp._share_underline_tensor_to(var)
             else:
                 out_var._share_underline_tensor_to(var)
             return None
         else:
-            op = block.append_op(type='assign_value',
-                                 outputs={'Out': out_var},
-                                 attrs={
-                                     'dtype': out_dtype,
-                                     'shape': list(self._value.shape),
-                                     value_name: values
-                                 },
-                                 stop_gradient=True)
+            op = block.append_op(
+                type='assign_value',
+                outputs={'Out': out_var},
+                attrs={
+                    'dtype': out_dtype,
+                    'shape': list(self._value.shape),
+                    value_name: values,
+                },
+                stop_gradient=True,
+            )
 
             if var.dtype in [VarDesc.VarType.FP16, VarDesc.VarType.BF16]:
-                block.append_op(type="cast",
-                                inputs={"X": out_var},
-                                outputs={"Out": var},
-                                attrs={
-                                    "in_dtype": out_var.dtype,
-                                    "out_dtype": var.dtype
-                                })
+                block.append_op(
+                    type="cast",
+                    inputs={"X": out_var},
+                    outputs={"Out": var},
+                    attrs={"in_dtype": out_var.dtype, "out_dtype": var.dtype},
+                )
 
             var.op = op
             return op
@@ -1179,13 +1215,21 @@ def set_global_initializer(weight_init, bias_init=None):
             nn.initializer.set_global_initializer(None)
     """
 
-    check_type(weight_init, 'weight_init', (Initializer, type(None)),
-               'set_global_initializer')
+    check_type(
+        weight_init,
+        'weight_init',
+        (Initializer, type(None)),
+        'set_global_initializer',
+    )
     global _global_weight_initializer_
     _global_weight_initializer_ = weight_init
 
-    check_type(bias_init, 'bias_init', (Initializer, type(None)),
-               'set_global_initializer')
+    check_type(
+        bias_init,
+        'bias_init',
+        (Initializer, type(None)),
+        'set_global_initializer',
+    )
     global _global_bias_initializer_
     _global_bias_initializer_ = bias_init
 
@@ -1244,23 +1288,26 @@ def calculate_gain(nonlinearity, param=None):
         'tanh': 5.0 / 3,
         'relu': math.sqrt(2.0),
         'leaky_relu': math.sqrt(2.0 / (1 + param**2)),
-        'selu': 3.0 / 4
+        'selu': 3.0 / 4,
     }
     if nonlinearity in recommended_gain.keys():
         return recommended_gain[nonlinearity]
     else:
         raise ValueError(
             "nonlinearity function {} is not suppported now.".format(
-                nonlinearity))
+                nonlinearity
+            )
+        )
 
 
 # We short the class name, since users will use the initializer with the package
 # name. The sample code:
 #
+# import paddle
 # import paddle.fluid as fluid
 #
-# hidden = fluid.layers.fc(...,
-#                          param_attr=ParamAttr(fluid.initializer.Xavier()))
+# hidden = paddle.static.nn.fc(...,
+#                          weight_attr=ParamAttr(fluid.initializer.Xavier()))
 #
 # It is no need to add an `Initializer` as the class suffix
 Constant = ConstantInitializer

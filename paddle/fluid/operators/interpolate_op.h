@@ -25,9 +25,8 @@ template <typename T,
           size_t D,
           int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
-using EigenTensor = framework::EigenTensor<T, D, MajorType, IndexType>;
-using Tensor = phi::DenseTensor;
-using DataLayout = framework::DataLayout;
+using EigenTensor = phi::EigenTensor<T, D, MajorType, IndexType>;
+using DataLayout = phi::DataLayout;
 
 inline std::vector<int> get_new_shape(
     const std::vector<const phi::DenseTensor*>& list_new_shape_tensor) {
@@ -502,7 +501,7 @@ HOSTDEVICE inline T cubic_convolution2(T x, T A) {
 
 template <typename T>
 HOSTDEVICE inline void get_cubic_upsample_coefficients(T coeffs[4], T t) {
-  T A = -0.75;
+  T A = static_cast<T>(-0.75);
 
   T x1 = t;
   coeffs[0] = cubic_convolution2<T>(x1 + 1.0, A);
@@ -858,7 +857,7 @@ static void Interpolate1DCPUFwd(const framework::ExecutionContext& ctx,
                                 const phi::DenseTensor& input,
                                 phi::DenseTensor* output) {
   const std::string data_layout_str = ctx.Attr<std::string>("data_layout");
-  const DataLayout data_layout = framework::StringToDataLayout(data_layout_str);
+  const DataLayout data_layout = phi::StringToDataLayout(data_layout_str);
   int n, c, in_d, in_h, in_w;
   ExtractNCDWH(input.dims(), data_layout, &n, &c, &in_d, &in_h, &in_w);
 
@@ -932,7 +931,7 @@ static void Interpolate2DCPUFwd(const framework::ExecutionContext& ctx,
                                 const phi::DenseTensor& input,
                                 phi::DenseTensor* output) {
   const std::string data_layout_str = ctx.Attr<std::string>("data_layout");
-  const DataLayout data_layout = framework::StringToDataLayout(data_layout_str);
+  const DataLayout data_layout = phi::StringToDataLayout(data_layout_str);
   int n, c, in_d, in_h, in_w;
   ExtractNCDWH(input.dims(), data_layout, &n, &c, &in_d, &in_h, &in_w);
 
@@ -1049,7 +1048,7 @@ static void Interpolate3DCPUFwd(const framework::ExecutionContext& ctx,
                                 const phi::DenseTensor& input,
                                 phi::DenseTensor* output) {
   const std::string data_layout_str = ctx.Attr<std::string>("data_layout");
-  const DataLayout data_layout = framework::StringToDataLayout(data_layout_str);
+  const DataLayout data_layout = phi::StringToDataLayout(data_layout_str);
   int n, c, in_d, in_h, in_w;
   ExtractNCDWH(input.dims(), data_layout, &n, &c, &in_d, &in_h, &in_w);
 
@@ -1162,7 +1161,7 @@ static void Interpolate1DCPUBwd(const framework::ExecutionContext& ctx,
                                 const phi::DenseTensor& output_grad) {
   auto* input = ctx.Input<phi::DenseTensor>("X");
   const std::string data_layout_str = ctx.Attr<std::string>("data_layout");
-  const DataLayout data_layout = framework::StringToDataLayout(data_layout_str);
+  const DataLayout data_layout = phi::StringToDataLayout(data_layout_str);
   int n, c, in_d, in_h, in_w;
   ExtractNCDWH(input->dims(), data_layout, &n, &c, &in_d, &in_h, &in_w);
 
@@ -1236,7 +1235,7 @@ static void Interpolate2DCPUBwd(const framework::ExecutionContext& ctx,
                                 const phi::DenseTensor& output_grad) {
   auto* input = ctx.Input<phi::DenseTensor>("X");
   const std::string data_layout_str = ctx.Attr<std::string>("data_layout");
-  const DataLayout data_layout = framework::StringToDataLayout(data_layout_str);
+  const DataLayout data_layout = phi::StringToDataLayout(data_layout_str);
   int n, c, in_d, in_h, in_w;
   ExtractNCDWH(input->dims(), data_layout, &n, &c, &in_d, &in_h, &in_w);
 
@@ -1344,10 +1343,10 @@ static void Interpolate2DCPUBwd(const framework::ExecutionContext& ctx,
 template <typename T>
 static void Interpolate3DCPUBwd(const framework::ExecutionContext& ctx,
                                 phi::DenseTensor* input_grad,
-                                const Tensor output_grad) {
+                                const phi::DenseTensor output_grad) {
   auto* input = ctx.Input<phi::DenseTensor>("X");
   const std::string data_layout_str = ctx.Attr<std::string>("data_layout");
-  const DataLayout data_layout = framework::StringToDataLayout(data_layout_str);
+  const DataLayout data_layout = phi::StringToDataLayout(data_layout_str);
   int n, c, in_d, in_h, in_w;
   ExtractNCDWH(input->dims(), data_layout, &n, &c, &in_d, &in_h, &in_w);
 

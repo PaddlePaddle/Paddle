@@ -16,10 +16,7 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/framework/op_registry.h"
-#ifdef PADDLE_WITH_CUDA
-#include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
-#endif
-#include "paddle/fluid/platform/cudnn_workspace_helper.h"
+#include "paddle/phi/backends/gpu/cuda/cudnn_workspace_helper.h"
 
 namespace paddle {
 namespace operators {
@@ -74,11 +71,10 @@ class ConvInceptionFusionOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "Input"),
-        ctx.device_context());
+    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "Input"),
+                          ctx.GetPlace());
   }
 };
 
@@ -116,7 +112,7 @@ class ConvInceptionFusionOpMaker : public framework::OpProtoAndCheckerMaker {
                  "allocated/freed each time the operator runs, larger "
                  "workspace size can increase performance but also requires "
                  "better hardware. This size should be chosen carefully.")
-        .SetDefault(platform::GetDefaultConvWorkspaceSizeLimitMB());
+        .SetDefault(phi::backends::gpu::GetDefaultConvWorkspaceSizeLimitMB());
     AddComment(R"DOC(
 )DOC");
   }

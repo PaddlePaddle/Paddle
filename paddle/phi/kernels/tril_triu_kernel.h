@@ -27,6 +27,18 @@ void TrilTriuKernel(const Context& ctx,
                     DenseTensor* out);
 
 template <typename T, typename Context>
+void TrilKernel(const Context& ctx,
+                const DenseTensor& x,
+                int diagonal,
+                DenseTensor* out);
+
+template <typename T, typename Context>
+void TriuKernel(const Context& ctx,
+                const DenseTensor& x,
+                int diagonal,
+                DenseTensor* out);
+
+template <typename T, typename Context>
 DenseTensor TrilTriu(const Context& ctx,
                      const DenseTensor& x,
                      int diagonal,

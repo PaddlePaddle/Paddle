@@ -72,10 +72,12 @@ def create_lod_tensor(data, recursive_seq_lens, place):
     elif isinstance(data, list):
         # dtype and shape are not important here,
         # we only want to reuse code of DataToLoDTensorConverter
-        converter = DataToLoDTensorConverter(place=place,
-                                             lod_level=len(recursive_seq_lens),
-                                             shape=[],
-                                             dtype=core.VarDesc.VarType.FP32)
+        converter = DataToLoDTensorConverter(
+            place=place,
+            lod_level=len(recursive_seq_lens),
+            shape=[],
+            dtype=core.VarDesc.VarType.FP32,
+        )
 
         new_recursive_seq_lens = []
         for seq in data:
@@ -91,7 +93,7 @@ def create_lod_tensor(data, recursive_seq_lens, place):
         # FIXME(zjl): the original logic of create_lod_tensor would append
         # 1 to the shape. Maybe it is not a right way? Currently, we only
         # follow the previous logic
-        arr = arr.reshape(arr.shape + (1, ))
+        arr = arr.reshape(arr.shape + (1,))
         tensor = core.LoDTensor()
         tensor.set(arr, place)
         tensor.set_recursive_sequence_lengths(recursive_seq_lens)
@@ -100,18 +102,21 @@ def create_lod_tensor(data, recursive_seq_lens, place):
         tensor = core.LoDTensor()
         tensor.set(data, place)
         tensor.set_recursive_sequence_lengths(recursive_seq_lens)
-        assert tensor.has_valid_recursive_sequence_lengths(
+        assert (
+            tensor.has_valid_recursive_sequence_lengths()
         ), "the provided lod info is invalid"
         return tensor
     else:
         raise TypeError(
-            "data should be either a LoDTensor, a Numpy array or a list")
+            "data should be either a LoDTensor, a Numpy array or a list"
+        )
 
 
-def create_random_int_lodtensor(recursive_seq_lens, base_shape, place, low,
-                                high):
+def create_random_int_lodtensor(
+    recursive_seq_lens, base_shape, place, low, high
+):
     """
-	:api_attr: Static Graph
+        :api_attr: Static Graph
 
     Create a LoDTensor containing random integers.
 

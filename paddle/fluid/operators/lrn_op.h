@@ -24,7 +24,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using DataLayout = framework::DataLayout;
+using DataLayout = phi::DataLayout;
 
 template <typename place, typename T>
 struct LRNFunctor {
@@ -46,8 +46,6 @@ struct LRNFunctor {
 template <typename DeviceContext, typename T>
 class LRNKernel : public framework::OpKernel<T> {
  public:
-  using Tensor = phi::DenseTensor;
-
   // f(x) = x * ( k + alpha * SUM((x)^2) )^(-beta)
   // x represents inputs
   // f(x) represents outputs
@@ -57,8 +55,8 @@ class LRNKernel : public framework::OpKernel<T> {
     auto x_dims = x.dims();
 
     const std::string data_layout_str = ctx.Attr<std::string>("data_format");
-    const framework::DataLayout data_layout =
-        framework::StringToDataLayout(data_layout_str);
+    const phi::DataLayout data_layout =
+        phi::StringToDataLayout(data_layout_str);
     // NCHW
     int N = x_dims[0];
     int C = (data_layout != DataLayout::kNHWC ? x_dims[1] : x_dims[3]);
@@ -141,7 +139,6 @@ struct LRNGradFunctor {
 template <typename DeviceContext, typename T>
 class LRNGradKernel : public framework::OpKernel<T> {
  public:
-  using Tensor = phi::DenseTensor;
   void Compute(const framework::ExecutionContext& ctx) const override {
     const phi::DenseTensor& x = *ctx.Input<phi::DenseTensor>("X");
     const phi::DenseTensor& out = *ctx.Input<phi::DenseTensor>("Out");
@@ -149,8 +146,8 @@ class LRNGradKernel : public framework::OpKernel<T> {
         *ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
     const phi::DenseTensor& mid = *ctx.Input<phi::DenseTensor>("MidOut");
     const std::string data_layout_str = ctx.Attr<std::string>("data_format");
-    const framework::DataLayout data_layout =
-        framework::StringToDataLayout(data_layout_str);
+    const phi::DataLayout data_layout =
+        phi::StringToDataLayout(data_layout_str);
 
     auto x_g = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
     x_g->mutable_data<T>(ctx.GetPlace());

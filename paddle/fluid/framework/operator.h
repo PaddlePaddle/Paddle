@@ -121,7 +121,7 @@ inline std::string GradOriginalVarName(const std::string& grad_var_name) {
 }
 
 inline bool VarIsTensor(const Variable& var) {
-  return var.IsType<LoDTensor>() || var.IsType<phi::SelectedRows>();
+  return var.IsType<phi::DenseTensor>() || var.IsType<phi::SelectedRows>();
 }
 
 const phi::DenseTensor* GetLoDTensorOrSelectedRowsValueFromVar(
@@ -168,7 +168,7 @@ class OperatorBase {
   virtual void Stop() {}
 
   /// if scope is not null, also show dimensions of arguments
-  virtual std::string DebugStringEx(const ScopeBase* scope) const;
+  virtual std::string DebugStringEx(const Scope* scope) const;
   std::string DebugString() const { return DebugStringEx(nullptr); }
 
   virtual bool SupportGPU() const { return false; }
@@ -251,6 +251,10 @@ class OperatorBase {
     return place;
   }
 
+  uint64_t Id() const { return id_; }
+
+  void SetId(uint64_t id) { id_ = id; }
+
  protected:
   std::string type_;
   // NOTE: in case of OpGrad, inputs_ contains:
@@ -272,6 +276,9 @@ class OperatorBase {
 
   // OpInfo
   const OpInfo* info_;
+
+  // OpDesc Id
+  uint64_t id_ = UINT64_MAX;
 
   // Whether this operator executes in an Executor.
   bool run_by_executor_{true};
@@ -323,10 +330,16 @@ class ExecutionContext {
   virtual const Attribute& GetAttr(const std::string& name) const {
     auto iter = op_.Attrs().find(name);
     if (iter == op_.Attrs().end()) {
-      return op_.RuntimeAttrs().at(name);
-    } else {
-      return iter->second;
+      iter = op_.RuntimeAttrs().find(name);
+      PADDLE_ENFORCE_NE(
+          iter,
+          op_.RuntimeAttrs().end(),
+          platform::errors::NotFound("(%s) is not found in AttributeMap and "
+                                     "RuntimeAttributeMap of (%s) operator.",
+                                     name,
+                                     op_.Type()));
     }
+    return iter->second;
   }
 
   virtual bool HasInput(const std::string& name) const;
@@ -537,6 +550,18 @@ class ExecutionArgumentMappingContext : public phi::ArgumentMappingContext {
     return var->IsType<phi::SparseCooTensor>();
   }
 
+  bool IsSparseCooTensorOutput(const std::string& name) const override {
+    auto vars = ctx_.MultiOutputVar(name);
+    return std::all_of(vars.begin(), vars.end(), [](const Variable* var) {
+      return var->IsType<phi::SparseCooTensor>();
+    });
+  }
+
+  bool IsSparseCsrTensorInput(const std::string& name) const override {
+    const auto* var = ctx_.InputVar(name);
+    return var->IsType<phi::SparseCsrTensor>();
+  }
+
   bool IsDenseTensorOutput(const std::string& name) const override {
     auto vars = ctx_.MultiOutputVar(name);
     return std::all_of(vars.begin(), vars.end(), [](const Variable* var) {
@@ -594,8 +619,9 @@ class OperatorWithKernel : public OperatorBase {
   OperatorWithKernel(const std::string& type,
                      const VariableNameMap& inputs,
                      const VariableNameMap& outputs,
-                     const AttributeMap& attrs)
-      : OperatorBase(type, inputs, outputs, attrs) {}
+                     const AttributeMap& attrs);
+
+  virtual ~OperatorWithKernel();
 
   static paddle::flat_hash_map<std::string /* op_type */, OpKernelMap>&
   AllOpKernels() {
@@ -619,12 +645,24 @@ class OperatorWithKernel : public OperatorBase {
 
   bool SupportXPU() const override;
 
-  bool SupportsMKLDNN(proto::VarType::Type data_type) const;
+  bool SupportsMKLDNN(phi::DataType data_type) const;
 
-  bool SupportsKernelType(const OpKernelType& kernel_type) const;
+  bool SupportsCUDNN(phi::DataType data_type) const;
+
+  bool SupportsKernelType(const OpKernelType& kernel_type,
+                          const ExecutionContext& exe_ctx) const;
+
+  bool CanMKLDNNBeUsed(const framework::ExecutionContext& ctx,
+                       phi::DataType data_type) const;
 
   bool CanMKLDNNBeUsed(const framework::ExecutionContext& ctx,
                        proto::VarType::Type data_type) const;
+
+  bool CanCUDNNBeUsed(const framework::ExecutionContext& ctx,
+                      phi::DataType data_type) const;
+
+  bool CanCUDNNBeUsed(const framework::ExecutionContext& ctx,
+                      proto::VarType::Type data_type) const;
 
   virtual void InferShape(InferShapeContext* ctx) const;
 
@@ -640,14 +678,15 @@ class OperatorWithKernel : public OperatorBase {
       const std::string& name1,
       const std::string& name2) const;
 
-  virtual OpKernelType GetExpectedKernelType(const ExecutionContext& ctx) const;
+  virtual phi::KernelKey GetExpectedKernelType(
+      const ExecutionContext& ctx) const;
 
   // change this to public so that in dygraph mode we can call it to check if we
   // need transform data
-  virtual OpKernelType GetKernelTypeForVar(
+  virtual phi::KernelKey GetKernelTypeForVar(
       const std::string& var_name,
       const phi::DenseTensor& tensor,
-      const OpKernelType& expected_kernel_type) const;
+      const phi::KernelKey& expected_kernel_type) const;
 
   platform::Place GetExecutionPlace(
       const platform::Place& platform) const override {
@@ -692,6 +731,10 @@ class OperatorWithKernel : public OperatorBase {
     kernel_type_.reset(kernel_type);
   }
 
+  bool DnnFallback() const { return dnn_fallback_; }
+
+  void SetDnnFallback(bool dnn_fallback) const { dnn_fallback_ = dnn_fallback; }
+
  private:
   void RunImpl(const Scope& scope, const platform::Place& place) const final;
   void RunImpl(const Scope& scope,
@@ -705,9 +748,14 @@ class OperatorWithKernel : public OperatorBase {
    * transfered_inplace_vars is a output vector.
    */
   Scope* PrepareData(const Scope& scope,
-                     const OpKernelType& expected_kernel_key,
+                     const phi::KernelKey& expected_kernel_key,
                      std::vector<std::string>* transfered_inplace_vars,
-                     RuntimeContext* ctx) const;
+                     RuntimeContext* ctx,
+                     const phi::Place& place) const;
+
+  void CheckWhetherPreparePhiData(const VariableNameMap& innames,
+                                  const VariableNameMap& outnames,
+                                  const Scope& scope) const;
 
   void TransferInplaceVarsBack(const Scope& scope,
                                const std::vector<std::string>& inplace_vars,
@@ -744,6 +792,10 @@ class OperatorWithKernel : public OperatorBase {
   mutable bool all_kernels_must_compute_runtime_shape_ = false;
   mutable std::mutex cache_update_mutex_;
   mutable bool enable_cache_transfer_scope_ = false;
+  // NOTE(jiahongyu): Whether fallback to plain kernel after calling
+  // GetExpectedKernelType, use this bool flag to solve mkldnn and cudnn hard
+  // code
+  mutable bool dnn_fallback_ = false;
   // NOTE(chenweihang): Similar op members are used to adapt to
   // new phi kernel, if there is a better design in the future,
   // we may polish the implementation here
@@ -753,8 +805,9 @@ class OperatorWithKernel : public OperatorBase {
   mutable std::unique_ptr<phi::Kernel> phi_kernel_;
   mutable std::unique_ptr<phi::ArgumentMappingFn> arg_map_fn_;
 
+ private:
   struct CacheImpl;
-  mutable CacheImpl* impl_{nullptr};
+  mutable std::unique_ptr<CacheImpl> impl_;
 };
 
 extern bool OpSupportGPU(const std::string& op_type);

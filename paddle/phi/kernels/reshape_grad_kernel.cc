@@ -17,6 +17,9 @@
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
+#ifdef PADDLE_WITH_XPU
+#include "paddle/phi/backends/xpu/enforce_xpu.h"
+#endif
 
 namespace phi {
 
@@ -28,6 +31,25 @@ void ReshapeGradKernel(const Context& dev_ctx,
   phi::Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
   x_grad->Resize(x_dims);
 }
+
+#ifdef PADDLE_WITH_XPU
+template <>
+void ReshapeGradKernel<phi::XPUContext>(const XPUContext& dev_ctx,
+                                        const DenseTensor& out_grad,
+                                        DenseTensor* x_grad) {
+  auto x_dims = x_grad->dims();
+  dev_ctx.Alloc(x_grad, out_grad.dtype());
+  auto* src_ptr = out_grad.data();
+  auto* dst_ptr = x_grad->data();
+  auto size = out_grad.numel() * paddle::experimental::SizeOf(out_grad.dtype());
+  int ret = xpu::copy(dev_ctx.x_context(),
+                      reinterpret_cast<const int8_t*>(src_ptr),
+                      reinterpret_cast<int8_t*>(dst_ptr),
+                      size);
+  PADDLE_ENFORCE_XDNN_SUCCESS(ret, "copy");
+  x_grad->Resize(x_dims);
+}
+#endif
 
 template <typename Context>
 void ReshapeDoubleGradKernel(const Context& dev_ctx,

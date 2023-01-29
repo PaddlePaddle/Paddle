@@ -29,7 +29,7 @@
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
 #include "paddle/fluid/inference/tests/api/tester_helper.h"
 #include "paddle/fluid/inference/utils/io_utils.h"
-#include "paddle/fluid/platform/cpu_info.h"
+#include "paddle/phi/backends/cpu/cpu_info.h"
 
 DEFINE_string(dirname, "", "dirname to tests.");
 
@@ -106,6 +106,8 @@ TEST(AnalysisPredictor, analysis_on) {
   ASSERT_EQ(predictor->scope_->parent(), nullptr);
   ASSERT_EQ(predictor->sub_scope_->parent(), predictor->scope_.get());
   ASSERT_EQ(predictor->GetInputTypes().size(), 4UL);
+  ASSERT_EQ(predictor->GetOutputTypes().size(), 1UL);
+  ASSERT_EQ(predictor->GetOutputTensorShape().size(), 1UL);
   // 2. Dummy Input Data
   int64_t data[4] = {1, 2, 3, 4};
   PaddleTensor tensor;
@@ -327,7 +329,7 @@ TEST(AnalysisPredictor, bf16_gpu_pass_strategy) {
   config.EnableUseGpu(100, 0);
   config.EnableMkldnnBfloat16();
 #ifdef PADDLE_WITH_MKLDNN
-  if (platform::MayIUse(platform::cpu_isa_t::avx512_core))
+  if (phi::backends::cpu::MayIUse(phi::backends::cpu::cpu_isa_t::avx512_core))
     ASSERT_EQ(config.mkldnn_bfloat16_enabled(), true);
   else
     ASSERT_EQ(config.mkldnn_bfloat16_enabled(), false);
@@ -342,6 +344,45 @@ TEST(AnalysisPredictor, bf16_pass_strategy) {
   PassStrategy passStrategy(passes);
   passStrategy.EnableMkldnnBfloat16();
 }
+
+TEST(AnalysisPredictor, mkldnn_fc_pass_strategy) {
+  std::vector<std::string> passes;
+  PassStrategy passStrategy(passes);
+  passStrategy.DisableMkldnnFcPasses();
+  ASSERT_EQ(passes.size(), (size_t)0);
+}
+
+#ifdef PADDLE_WITH_MKLDNN
+TEST(AnalysisPredictor, mkldnn_fc_passes_cpu_pass_strategy) {
+  CpuPassStrategy cpuPassStrategy;
+  cpuPassStrategy.EnableMKLDNN();
+  const std::vector<std::string> fc_passes_to_erase(
+      {"fc_mkldnn_pass",
+       "fc_act_mkldnn_fuse_pass",
+       "fc_elementwise_add_mkldnn_fuse_pass"});
+  for (const auto& pass : fc_passes_to_erase) {
+    ASSERT_NE(cpuPassStrategy.GetPassIndex(pass), (size_t)-1);
+  }
+  cpuPassStrategy.DisableMkldnnFcPasses();
+  for (const auto& pass : fc_passes_to_erase) {
+    ASSERT_EQ(cpuPassStrategy.GetPassIndex(pass), (size_t)-1);
+  }
+}
+#endif
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+TEST(AnalysisPredictor, mkldnn_fc_passes_gpu_pass_strategy) {
+  AnalysisConfig config;
+  config.EnableUseGpu(100, 0);
+  config.EnableMKLDNN();
+  config.DisableMkldnnFcPasses();
+#ifdef PADDLE_WITH_MKLDNN
+  ASSERT_TRUE(config.mkldnn_fc_passes_disabled());
+#else
+  ASSERT_FALSE(config.mkldnn_fc_passes_disabled());
+#endif
+}
+#endif
 
 #ifdef PADDLE_WITH_XPU
 TEST(AnalysisPredictor, set_xpu_device_id) {
@@ -391,6 +432,8 @@ TEST(Predictor, Run) {
 
   auto predictor = CreatePredictor(config);
   ASSERT_EQ(predictor->GetInputTypes().size(), 4UL);
+  ASSERT_EQ(predictor->GetOutputTypes().size(), 1UL);
+  ASSERT_EQ(predictor->GetOutputTensorShape().size(), 1UL);
 
   auto w0 = predictor->GetInputHandle("firstw");
   auto w1 = predictor->GetInputHandle("secondw");
@@ -610,5 +653,52 @@ TEST(Predictor, Streams) {
   }
 }
 #endif
+
+TEST(AnalysisPredictor, OutputHookFunc) {
+  auto hookfunc = [](const std::string& type,
+                     const std::string& var_name,
+                     const Tensor& tensor) { LOG(INFO) << "in hook function"; };
+
+  {
+    Config config;
+    config.SetModel(FLAGS_dirname);
+    config.EnableUseGpu(100, 0);
+
+    auto predictor = CreatePredictor(config);
+
+    predictor->RegisterOutputHook(hookfunc);
+    auto w0 = predictor->GetInputHandle("firstw");
+    auto w1 = predictor->GetInputHandle("secondw");
+    auto w2 = predictor->GetInputHandle("thirdw");
+    auto w3 = predictor->GetInputHandle("forthw");
+    w0->Reshape({4, 1});
+    w1->Reshape({4, 1});
+    w2->Reshape({4, 1});
+    w3->Reshape({4, 1});
+    auto* w0_data = w0->mutable_data<int64_t>(PlaceType::kCPU);
+    auto* w1_data = w1->mutable_data<int64_t>(PlaceType::kCPU);
+    auto* w2_data = w2->mutable_data<int64_t>(PlaceType::kCPU);
+    auto* w3_data = w3->mutable_data<int64_t>(PlaceType::kCPU);
+    for (int i = 0; i < 4; i++) {
+      w0_data[i] = i;
+      w1_data[i] = i;
+      w2_data[i] = i;
+      w3_data[i] = i;
+    }
+    predictor->Run();
+    predictor->TryShrinkMemory();
+  }
+
+  {
+    Config config;
+    config.SetModel(FLAGS_dirname);
+    config.EnableMemoryOptim();
+    config.EnableUseGpu(100, 0);
+
+    auto predictor = CreatePredictor(config);
+
+    predictor->RegisterOutputHook(hookfunc);
+  }
+}
 
 }  // namespace paddle_infer

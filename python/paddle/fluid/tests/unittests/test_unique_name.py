@@ -13,11 +13,11 @@
 # limitations under the License.
 
 import unittest
+
 import paddle.fluid as fluid
 
 
 class TestUniqueName(unittest.TestCase):
-
     def test_guard(self):
         with fluid.unique_name.guard():
             name_1 = fluid.unique_name.generate('')
@@ -45,7 +45,6 @@ class TestUniqueName(unittest.TestCase):
 
 
 class TestImperativeUniqueName(unittest.TestCase):
-
     def test_name_generator(self):
         with fluid.dygraph.guard():
             tracer = fluid.framework._dygraph_tracer()

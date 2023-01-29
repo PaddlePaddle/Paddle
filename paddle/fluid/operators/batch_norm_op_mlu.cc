@@ -36,7 +36,7 @@ class MLUBatchNormOpKernel : public framework::OpKernel<T> {
     bool global_stats = test_mode || use_global_stats;
 
     const std::string data_layout_str = ctx.Attr<std::string>("data_layout");
-    DataLayout data_layout = framework::StringToDataLayout(data_layout_str);
+    DataLayout data_layout = phi::StringToDataLayout(data_layout_str);
 
     const auto *x = ctx.Input<phi::DenseTensor>("X");
     const auto &x_dims = x->dims();
@@ -78,8 +78,8 @@ class MLUBatchNormOpKernel : public framework::OpKernel<T> {
     saved_mean->mutable_data<MPDType>(place);
     saved_variance->mutable_data<MPDType>(place);
 
-    Tensor transformed_x;
-    Tensor transformed_y;
+    phi::DenseTensor transformed_x;
+    phi::DenseTensor transformed_y;
     const int transformed_dim_size = 4;
     const int transformed_shape[transformed_dim_size] = {N, sample_size, 1, C};
     MLUCnnlTensorDesc transformed_desc(transformed_dim_size,
@@ -116,7 +116,7 @@ class MLUBatchNormOpKernel : public framework::OpKernel<T> {
 
     if (ctx.HasInput("MomentumTensor")) {
       const auto *mom_tensor = ctx.Input<phi::DenseTensor>("MomentumTensor");
-      Tensor mom_cpu;
+      phi::DenseTensor mom_cpu;
       framework::TensorCopySync(*mom_tensor, platform::CPUPlace(), &mom_cpu);
       momentum = mom_cpu.data<float>()[0];
     }
@@ -173,7 +173,7 @@ class MLUBatchNormGradOpKernel : public framework::OpKernel<T> {
     bool use_global_stats = ctx.Attr<bool>("use_global_stats");
     const bool is_test = ctx.Attr<bool>("is_test");
     const float epsilon = ctx.Attr<float>("epsilon");
-    DataLayout data_layout = framework::StringToDataLayout(data_layout_str);
+    DataLayout data_layout = phi::StringToDataLayout(data_layout_str);
 
     auto *d_x = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
     auto *d_scale =
@@ -226,9 +226,9 @@ class MLUBatchNormGradOpKernel : public framework::OpKernel<T> {
                                           : x_dims[x_dims.size() - 1]);
     const int sample_size = x->numel() / N / C;
 
-    Tensor transformed_d_y;
-    Tensor transformed_x;
-    Tensor transformed_d_x;
+    phi::DenseTensor transformed_d_y;
+    phi::DenseTensor transformed_x;
+    phi::DenseTensor transformed_d_x;
     const int transformed_dim_size = 4;
     const int transformed_shape[transformed_dim_size] = {N, sample_size, 1, C};
 

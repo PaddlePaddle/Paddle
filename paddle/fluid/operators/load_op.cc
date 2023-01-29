@@ -26,18 +26,16 @@ class LoadOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext *ctx) const override {}
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    framework::OpKernelType kt = framework::OpKernelType(
-        framework::proto::VarType::FP32, ctx.GetPlace());
-    return kt;
+    return phi::KernelKey(framework::proto::VarType::FP32, ctx.GetPlace());
   }
 };
 
 class LoadOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddOutput("Out", "The LoDTensor / SelectedRows need to be loaded");
+    AddOutput("Out", "The phi::DenseTensor / SelectedRows need to be loaded");
     AddAttr<bool>(
         "load_as_fp16",
         "If true, the tensor will be first loaded and then "
@@ -54,7 +52,8 @@ class LoadOpProtoMaker : public framework::OpProtoAndCheckerMaker {
                                   "(vector<int64_t>) The shape of the output")
         .SetDefault({});
     AddComment(
-        "Load operator will load a LoDTensor / SelectedRows variable from "
+        "Load operator will load a phi::DenseTensor / SelectedRows variable "
+        "from "
         "disk "
         "file.");
   }

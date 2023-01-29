@@ -182,14 +182,14 @@ class RandomCropKernel : public framework::OpKernel<T> {
   virtual void Compute(const framework::ExecutionContext& ctx) const {
     int64_t seed = 0;
     auto& seed_tensor = GET_DATA_SAFELY(
-        ctx.Input<framework::LoDTensor>("Seed"), "Input", "Seed", "RandomCrop");
+        ctx.Input<phi::DenseTensor>("Seed"), "Input", "Seed", "RandomCrop");
     if (seed_tensor.IsInitialized()) {
       if (platform::is_cpu_place(seed_tensor.place())) {
         seed = *seed_tensor.template data<int64_t>();
       } else {
         LOG(WARNING) << "It is slow to place seed in GPU memory. Please verify "
                         "your program";
-        framework::LoDTensor cpu_seed;
+        phi::DenseTensor cpu_seed;
         framework::TensorCopySync(seed_tensor, platform::CPUPlace(), &cpu_seed);
         seed = *cpu_seed.data<int64_t>();
       }
@@ -200,9 +200,9 @@ class RandomCropKernel : public framework::OpKernel<T> {
     }
     auto shape = ctx.Attr<std::vector<int>>("shape");
     auto& x = GET_DATA_SAFELY(
-        ctx.Input<framework::LoDTensor>("X"), "Input", "X", "RandomCrop");
+        ctx.Input<phi::DenseTensor>("X"), "Input", "X", "RandomCrop");
     auto& out = GET_DATA_SAFELY(
-        ctx.Output<framework::LoDTensor>("Out"), "Output", "Out", "RandomCrop");
+        ctx.Output<phi::DenseTensor>("Out"), "Output", "Out", "RandomCrop");
 
     int num_batchsize_dims = x.dims().size() - shape.size();
     RandomCropFunctor<DeviceContext, T> functor(
@@ -221,7 +221,7 @@ class RandomCropKernel : public framework::OpKernel<T> {
     Random<phi::CPUContext>::Engine engine(seed);
     engine.discard(functor.prod_batchsize_dims_ *
                    (functor.rank_ - functor.num_batchsize_dims_));
-    *ctx.Output<framework::LoDTensor>("SeedOut")->mutable_data<int64_t>(
+    *ctx.Output<phi::DenseTensor>("SeedOut")->mutable_data<int64_t>(
         phi::make_ddim({1}), platform::CPUPlace()) = engine();
   }
 };

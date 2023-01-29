@@ -20,7 +20,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using DataLayout = framework::DataLayout;
+using DataLayout = phi::DataLayout;
 
 inline std::vector<int> get_new_shape_mlu(
     const std::vector<const phi::DenseTensor*>& list_new_shape_tensor) {
@@ -61,8 +61,7 @@ class InterpolateV2MLUKernel : public framework::OpKernel<T> {
                                    "range less or equal than 5. "));
 
     const std::string data_layout_str = ctx.Attr<std::string>("data_layout");
-    const DataLayout data_layout =
-        framework::StringToDataLayout(data_layout_str);
+    const DataLayout data_layout = phi::StringToDataLayout(data_layout_str);
     int n, c, in_d, in_h, in_w;
     ExtractNCDWH(input_dims, data_layout, &n, &c, &in_d, &in_h, &in_w);
 
@@ -176,7 +175,7 @@ class InterpolateV2MLUKernel : public framework::OpKernel<T> {
     // cnnlInterp_v2 only accepts NHWC when mode is CNNL_INTERP_BILINEAR and
     // CNNL_INTERP_NEAREST,
     framework::DDim dim_in, dim_in_trans, dim_out, dim_out_trans;
-    Tensor transformed_input, transformed_output;
+    phi::DenseTensor transformed_input, transformed_output;
     bool need_transpose = input_dims.size() != 2;
     if (input_dims.size() == 4) {
       // need to do transpose if layout is kNCHW
@@ -373,8 +372,7 @@ class InterpolateV2GradMLUKernel : public framework::OpKernel<T> {
     auto* input = ctx.Input<phi::DenseTensor>("X");
     auto input_dims = input->dims();
     const std::string data_layout_str = ctx.Attr<std::string>("data_layout");
-    const DataLayout data_layout =
-        framework::StringToDataLayout(data_layout_str);
+    const DataLayout data_layout = phi::StringToDataLayout(data_layout_str);
     int n, c, in_d, in_h, in_w;
     ExtractNCDWH(input->dims(), data_layout, &n, &c, &in_d, &in_h, &in_w);
 
@@ -441,7 +439,7 @@ class InterpolateV2GradMLUKernel : public framework::OpKernel<T> {
     framework::DDim dim_grad;
     framework::DDim dim_out_grad, dim_out_trans_grad, dim_in_grad,
         dim_in_trans_grad;
-    Tensor transformed_output_grad, transformed_input_grad;
+    phi::DenseTensor transformed_output_grad, transformed_input_grad;
     bool need_transpose =
         input_dims.size() != 2 && data_layout == DataLayout::kNCHW;
 

@@ -31,7 +31,7 @@ def reference_matmul(X, Y, transpose_X=False, transpose_Y=False, scale=1.0):
     # transpose X and Y appropriately.
     if transpose_X:
         if X.ndim == 1:
-            X = X.reshape((X.size, ))
+            X = X.reshape((X.size,))
         elif X.ndim == 2:
             X = X.T
         else:
@@ -40,7 +40,7 @@ def reference_matmul(X, Y, transpose_X=False, transpose_Y=False, scale=1.0):
             X = np.transpose(X, tuple(dim))
     if transpose_Y:
         if Y.ndim == 1:
-            Y = Y.reshape((Y.size, ))
+            Y = Y.reshape((Y.size,))
         else:
             dim = [i for i in range(len(Y.shape))]
             dim[-1], dim[len(Y.shape) - 2] = dim[len(Y.shape) - 2], dim[-1]
@@ -76,14 +76,15 @@ class TestMatMulOp(OpTest):
         X = -0.1 + 0.2 * X
         Y = -0.1 + 0.2 * Y
 
-        Out = reference_matmul(X, Y, self.transpose_X, self.transpose_Y,
-                               self.alpha)
+        Out = reference_matmul(
+            X, Y, self.transpose_X, self.transpose_Y, self.alpha
+        )
         Out = Out.astype(self.dtype)
         self.inputs = {'X': X, 'Y': Y}
         self.attrs = {
             'transpose_X': self.transpose_X,
             'transpose_Y': self.transpose_Y,
-            'alpha': self.alpha
+            'alpha': self.alpha,
         }
         self.outputs = {'Out': Out}
 
@@ -92,8 +93,8 @@ class TestMatMulOp(OpTest):
         self.place = paddle.device.MLUPlace(0)
 
     def config(self):
-        self.x_shape = (100, )
-        self.y_shape = (100, )
+        self.x_shape = (100,)
+        self.y_shape = (100,)
         self.transpose_X = False
         self.transpose_Y = False
 
@@ -116,7 +117,7 @@ class TestMatMulOp1(TestMatMulOp):
     """
 
     def config(self):
-        self.x_shape = (100, )
+        self.x_shape = (100,)
         self.y_shape = (1, 3, 2, 100)
         self.transpose_X = False
         self.transpose_Y = True
@@ -129,7 +130,7 @@ class TestMatMulOp2(TestMatMulOp):
 
     def config(self):
         self.x_shape = (1, 2, 100, 1)
-        self.y_shape = (100, )
+        self.y_shape = (100,)
         self.transpose_X = True
         self.transpose_Y = False
 
@@ -248,7 +249,7 @@ class TestMatMulOp12(TestMatMulOp):
     """
 
     def config(self):
-        self.x_shape = (100)
+        self.x_shape = 100
         self.y_shape = (1, 2, 2, 100, 2)
         self.transpose_X = False
         self.transpose_Y = False
@@ -261,13 +262,13 @@ class TestMatMulOp13(TestMatMulOp):
 
     def config(self):
         self.x_shape = (2, 1, 100)
-        self.y_shape = (100)
+        self.y_shape = 100
         self.transpose_X = False
         self.transpose_Y = False
 
 
 # TODO(mlu): alpha will be supported in next version
-#--------------------test matmul alpha--------------------
+# --------------------test matmul alpha--------------------
 # def create_test_alpha_class(parent):
 #     class TestMatMulOpAlphaCase(parent):
 #         def init_alpha(self):
@@ -291,11 +292,9 @@ class TestMatMulOp13(TestMatMulOp):
 # create_test_alpha_class(TestMatMulOp13)
 
 
-#--------------------test matmul fp16--------------------
+# --------------------test matmul fp16--------------------
 def create_test_fp16_class(parent, atol=0.001, max_relative_error=2.5):
-
     class TestMatMulOpFp16Case(parent):
-
         def init_kernel_type(self):
             self.dtype = np.float16
 
@@ -303,9 +302,12 @@ def create_test_fp16_class(parent, atol=0.001, max_relative_error=2.5):
             self.check_output_with_place(self.place, atol=atol)
 
         def test_check_grad(self):
-            self.check_grad_with_place(self.place, ['X', 'Y'],
-                                       'Out',
-                                       max_relative_error=max_relative_error)
+            self.check_grad_with_place(
+                self.place,
+                ['X', 'Y'],
+                'Out',
+                max_relative_error=max_relative_error,
+            )
 
     cls_name = "{0}_{1}".format(parent.__name__, "Fp16")
     TestMatMulOpFp16Case.__name__ = cls_name

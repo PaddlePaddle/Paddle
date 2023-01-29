@@ -20,6 +20,7 @@
 #include <thrust/functional.h>
 #include <thrust/scatter.h>
 #include <thrust/sequence.h>
+#include <thrust/sort.h>
 #include <thrust/unique.h>
 
 #include <iostream>
@@ -563,6 +564,7 @@ void UniqueRawKernel(const Context& context,
   } else {
     // 'axis' is required.
     int axis_value = axis[0];
+    axis_value = (axis_value == -1) ? (x.dims().size() - 1) : axis_value;
     phi::VisitDataTypeTiny(dtype,
                            UniqueDimsCUDAFunctor<Context, T>(context,
                                                              x,

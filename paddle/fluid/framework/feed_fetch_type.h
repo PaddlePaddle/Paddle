@@ -19,21 +19,26 @@ limitations under the License. */
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/lod_tensor_array.h"
 #include "paddle/fluid/framework/string_array.h"
+#include "paddle/phi/core/extended_tensor.h"
 
 namespace paddle {
 namespace framework {
-using FeedType = paddle::variant<LoDTensor, Strings, phi::SparseCooTensor>;
-using FeedList = std::vector<FeedType>;
+using FeedType =
+    paddle::variant<phi::DenseTensor, Strings, phi::SparseCooTensor>;
 
-using FetchType = paddle::
-    variant<LoDTensor, LoDTensorArray, framework::Vocab, phi::SparseCooTensor>;
+using FeedList = paddle::framework::PhiVector<FeedType>;
+
+using FetchType = paddle::variant<phi::DenseTensor,
+                                  LoDTensorArray,
+                                  framework::Vocab,
+                                  phi::SparseCooTensor>;
 using FetchList = std::vector<FetchType>;
 
 using FetchUnmergedList = std::vector<std::vector<FetchType>>;
 using FetchResultType = paddle::variant<FetchList, FetchUnmergedList>;
 
 inline bool data_is_lod_tensor(const FetchType &data) {
-  if (data.type() == typeid(LoDTensor)) {
+  if (data.type() == typeid(phi::DenseTensor)) {
     return true;
   }
   return false;

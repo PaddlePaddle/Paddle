@@ -24,7 +24,7 @@ class PartialSendOpASCENDKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
 #if defined(PADDLE_WITH_ASCEND_CL)
-    auto x = ctx.Input<framework::LoDTensor>("X");
+    auto x = ctx.Input<phi::DenseTensor>("X");
     int num = ctx.Attr<int>("num");
     int id = ctx.Attr<int>("id");
     int send_numel = x->numel() / num;

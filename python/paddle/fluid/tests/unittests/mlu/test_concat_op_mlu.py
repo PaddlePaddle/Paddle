@@ -26,7 +26,6 @@ SEED = 2021
 
 
 class TestConcatOp(OpTest):
-
     def setUp(self):
         self.set_mlu()
         self.op_type = "concat"
@@ -43,8 +42,9 @@ class TestConcatOp(OpTest):
             self.actual_axis = self.axis
 
         self.outputs = {
-            'Out':
-            np.concatenate((self.x0, self.x1, self.x2), axis=self.actual_axis)
+            'Out': np.concatenate(
+                (self.x0, self.x1, self.x2), axis=self.actual_axis
+            )
         }
 
     def set_mlu(self):
@@ -69,7 +69,6 @@ class TestConcatOp(OpTest):
 
 
 class TestConcatOp2(TestConcatOp):
-
     def init_test_data(self):
         self.x0 = np.random.random((2, 3, 4, 5)).astype(self.dtype)
         self.x1 = np.random.random((2, 3, 4, 5)).astype(self.dtype)
@@ -78,9 +77,9 @@ class TestConcatOp2(TestConcatOp):
 
 
 @skip_check_grad_ci(
-    reason="The function 'check_grad' for large inputs is too slow.")
+    reason="The function 'check_grad' for large inputs is too slow."
+)
 class TestConcatOp3(TestConcatOp):
-
     def init_test_data(self):
         self.x0 = np.random.random((1, 256, 170, 256)).astype(self.dtype)
         self.x1 = np.random.random((1, 128, 170, 256)).astype(self.dtype)
@@ -92,11 +91,9 @@ class TestConcatOp3(TestConcatOp):
 
 
 @skip_check_grad_ci(
-    reason=
-    "This test will meet fetch error when there is a null grad. The detailed information is in PR#17015."
+    reason="This test will meet fetch error when there is a null grad. The detailed information is in PR#17015."
 )
 class TestConcatOp4(TestConcatOp):
-
     def init_test_data(self):
         self.x0 = np.random.random((2, 3, 4, 5)).astype(self.dtype)
         self.x1 = np.random.random((2, 3, 4, 5)).astype(self.dtype)
@@ -108,7 +105,6 @@ class TestConcatOp4(TestConcatOp):
 
 
 class TestConcatOp5(TestConcatOp):
-
     def init_test_data(self):
         self.x0 = np.random.random((5, 1, 4, 5)).astype(self.dtype)
         self.x1 = np.random.random((5, 2, 4, 5)).astype(self.dtype)
@@ -116,11 +112,9 @@ class TestConcatOp5(TestConcatOp):
         self.axis = -3
 
 
-#----------------Concat Fp16----------------
+# ----------------Concat Fp16----------------
 def create_test_fp16(parent):
-
     class TestConcatFp16(parent):
-
         def init_dtype(self):
             self.dtype = np.float16
 
@@ -136,11 +130,9 @@ create_test_fp16(TestConcatOp4)
 create_test_fp16(TestConcatOp5)
 
 
-#----------------Concat Int64----------------
+# ----------------Concat Int64----------------
 def create_test_int64(parent):
-
     class TestConcatInt64(parent):
-
         def init_dtype(self):
             self.dtype = np.int64
 
@@ -159,11 +151,9 @@ create_test_int64(TestConcatOp4)
 create_test_int64(TestConcatOp5)
 
 
-#----------------Concat Int32----------------
+# ----------------Concat Int32----------------
 def create_test_int32(parent):
-
     class TestConcatInt32(parent):
-
         def init_dtype(self):
             self.dtype = np.int32
 
@@ -182,11 +172,9 @@ create_test_int32(TestConcatOp4)
 create_test_int32(TestConcatOp5)
 
 
-#----------------Concat AxisTensor----------------
+# ----------------Concat AxisTensor----------------
 def create_test_AxisTensor(parent):
-
     class TestConcatAxisTensor(parent):
-
         def setUp(self):
             self.op_type = "concat"
             self.init_dtype()
@@ -194,20 +182,22 @@ def create_test_AxisTensor(parent):
 
             self.inputs = {
                 'X': [('x0', self.x0), ('x1', self.x1), ('x2', self.x2)],
-                'AxisTensor': np.array([self.axis]).astype("int32")
+                'AxisTensor': np.array([self.axis]).astype("int32"),
             }
             self.attrs = {}
 
             if self.axis < 0:
                 self.actual_axis = self.axis + len(self.x0.shape)
-                self.actual_axis = self.actual_axis if self.actual_axis > 0 else 0
+                self.actual_axis = (
+                    self.actual_axis if self.actual_axis > 0 else 0
+                )
             else:
                 self.actual_axis = self.axis
 
             self.outputs = {
-                'Out':
-                np.concatenate((self.x0, self.x1, self.x2),
-                               axis=self.actual_axis)
+                'Out': np.concatenate(
+                    (self.x0, self.x1, self.x2), axis=self.actual_axis
+                )
             }
 
             self.place = paddle.device.MLUPlace(0)

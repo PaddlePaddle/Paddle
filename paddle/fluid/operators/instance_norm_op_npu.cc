@@ -18,7 +18,6 @@ limitations under the License. */
 
 namespace paddle {
 namespace operators {
-using Tensor = phi::DenseTensor;
 
 template <typename DeviceContext, typename T>
 class InstanceNormNPUKernel : public framework::OpKernel<T> {
@@ -56,14 +55,14 @@ class InstanceNormNPUKernel : public framework::OpKernel<T> {
       }
     }
 
-    Tensor tmp_x, tmp_y;
+    phi::DenseTensor tmp_x, tmp_y;
     tmp_x.ShareDataWith(*x);
 
     tmp_x.Resize(phi::make_ddim(tmp_x_dims));
-    tmp_x.set_layout(paddle::framework::DataLayout::NCDHW);
+    tmp_x.set_layout(phi::DataLayout::NCDHW);
     tmp_y.ShareDataWith(*y);
     tmp_y.Resize(phi::make_ddim(tmp_y_dims));
-    tmp_y.set_layout(paddle::framework::DataLayout::NCDHW);
+    tmp_y.set_layout(phi::DataLayout::NCDHW);
 
     NpuOpRunner runner;
 

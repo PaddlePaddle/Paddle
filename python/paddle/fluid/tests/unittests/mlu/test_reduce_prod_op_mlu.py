@@ -29,7 +29,6 @@ def raw_reduce_prod(x, dim=[0], keep_dim=False):
 
 
 class TestProdOp(OpTest):
-
     def setUp(self):
         self.op_type = "reduce_prod"
         self.place = paddle.device.MLUPlace(0)
@@ -47,7 +46,6 @@ class TestProdOp(OpTest):
 
 
 class TestProd6DOp(OpTest):
-
     def setUp(self):
         self.op_type = "reduce_prod"
         self.place = paddle.device.MLUPlace(0)
@@ -70,7 +68,6 @@ class TestProd6DOp(OpTest):
 
 
 class TestProd8DOp(OpTest):
-
     def setUp(self):
         self.op_type = "reduce_prod"
         self.place = paddle.device.MLUPlace(0)
@@ -78,8 +75,9 @@ class TestProd8DOp(OpTest):
         self.python_api = raw_reduce_prod
         self.init_data_type()
         self.inputs = {
-            'X': np.random.random(
-                (2, 5, 3, 2, 2, 3, 4, 2)).astype(self.data_type)
+            'X': np.random.random((2, 5, 3, 2, 2, 3, 4, 2)).astype(
+                self.data_type
+            )
         }
         self.attrs = {'dim': [2, 3, 4]}
         self.outputs = {

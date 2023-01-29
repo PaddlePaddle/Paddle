@@ -25,10 +25,7 @@ void MinKernel(const Context& dev_ctx,
                const IntArray& dims,
                bool keep_dim,
                DenseTensor* out) {
-  bool reduce_all = false;
-  if (dims.size() == 0 || static_cast<int>(dims.size()) == x.dims().size()) {
-    reduce_all = true;
-  }
+  bool reduce_all = recompute_reduce_all(x, dims);
   MinRawKernel<T>(dev_ctx, x, dims, keep_dim, reduce_all, out);
 }
 
@@ -48,7 +45,7 @@ PD_REGISTER_KERNEL(min, KPS, ALL_LAYOUT, phi::MinKernel, float) {}
 
 #if defined(PADDLE_WITH_MKLDNN)
 PD_REGISTER_KERNEL(
-    min, OneDNN, ALL_LAYOUT, phi::MinKernel, float, phi::dtype::bfloat16) {}
+    min, OneDNN, ONEDNN, phi::MinKernel, float, phi::dtype::bfloat16) {}
 #endif
 
 #if defined(PADDLE_WITH_XPU)

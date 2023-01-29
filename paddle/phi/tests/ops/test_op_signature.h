@@ -90,6 +90,14 @@ class TestArgumentMappingContext : public phi::ArgumentMappingContext {
     return false;
   }
 
+  bool IsSparseCsrTensorInput(const std::string& name) const override {
+    return false;
+  }
+
+  bool IsSparseCooTensorOutput(const std::string& name) const override {
+    return false;
+  }
+
   bool IsDenseTensorOutput(const std::string& name) const override {
     return dense_tensor_outputs.count(name) > 0;
   }

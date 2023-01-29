@@ -61,19 +61,20 @@ class CompareOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    framework::OpKernelType kt = OperatorWithKernel::GetExpectedKernelType(ctx);
+    phi::KernelKey kt = OperatorWithKernel::GetExpectedKernelType(ctx);
     // CompareOp kernel's device type is decided by input tensor place
     bool force_cpu = ctx.Attr<bool>("force_cpu");
     if (force_cpu) {
-      kt.place_ = platform::CPUPlace();
+      kt.set_backend(phi::Backend::CPU);
     } else {
-      if (ctx.Input<framework::LoDTensor>("X")->place().GetType() !=
+      if (ctx.Input<phi::DenseTensor>("X")->place().GetType() !=
           phi::AllocationType::GPUPINNED) {
-        kt.place_ = ctx.Input<framework::LoDTensor>("X")->place();
+        kt.set_backend(
+            phi::TransToPhiBackend(ctx.Input<phi::DenseTensor>("X")->place()));
       } else {
-        kt.place_ = ctx.GetPlace();
+        kt.set_backend(phi::TransToPhiBackend(ctx.GetPlace()));
       }
     }
     return kt;
@@ -100,7 +101,7 @@ class CompareOp : public framework::OperatorWithKernel {
   char _##op_type##Comment::equation[]{_equation};                       \
   DECLARE_INFER_SHAPE_FUNCTOR(op_type,                                   \
                               op_type##_InferShapeFunctor,               \
-                              PD_INFER_META(phi::CompareInferMeta));     \
+                              PD_INFER_META(phi::CompareRawInferMeta));  \
   REGISTER_OPERATOR(                                                     \
       op_type,                                                           \
       ::paddle::operators::CompareOp<_##op_type##Comment>,               \

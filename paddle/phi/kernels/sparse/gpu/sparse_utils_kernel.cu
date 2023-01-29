@@ -539,7 +539,8 @@ PD_REGISTER_KERNEL(csr_to_coo,
                    int8_t,
                    int16_t,
                    int,
-                   int64_t) {}
+                   int64_t,
+                   bool) {}
 
 PD_REGISTER_KERNEL(coo_to_csr,
                    GPU,
@@ -552,7 +553,8 @@ PD_REGISTER_KERNEL(coo_to_csr,
                    int8_t,
                    int16_t,
                    int,
-                   int64_t) {}
+                   int64_t,
+                   bool) {}
 
 PD_REGISTER_KERNEL(dense_to_csr,
                    GPU,

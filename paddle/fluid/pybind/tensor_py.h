@@ -34,6 +34,7 @@ limitations under the License. */
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #endif
+#include "paddle/fluid/eager/api/generated/eager_generated/forwards/dygraph_functions.h"
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/platform/device_context.h"
@@ -609,7 +610,7 @@ void SetStringTensorFromPyArray(phi::StringTensor *self,
 
 template <typename T>
 void SetUVATensorFromPyArrayImpl(
-    framework::LoDTensor *self_tensor,
+    phi::DenseTensor *self_tensor,
     const py::array_t<T, py::array::c_style | py::array::forcecast> &array,
     int device_id) {
 #if defined(PADDLE_WITH_CUDA)
@@ -652,7 +653,7 @@ void SetUVATensorFromPyArray(
     int device_id) {
 #if defined(PADDLE_WITH_CUDA)
   VLOG(4) << "Running in SetUVATensorFromPyArray for VarBase.";
-  auto *self_tensor = self->MutableVar()->GetMutable<framework::LoDTensor>();
+  auto *self_tensor = self->MutableVar()->GetMutable<phi::DenseTensor>();
   SetUVATensorFromPyArrayImpl<T>(self_tensor, array, device_id);
 #endif
 }
@@ -672,8 +673,7 @@ void SetUVATensorFromPyArray(
           .get(),
       meta);
   self.get()->set_impl(tmp_t);
-  auto *self_tensor =
-      static_cast<paddle::framework::LoDTensor *>(self.get()->impl().get());
+  auto *self_tensor = static_cast<phi::DenseTensor *>(self.get()->impl().get());
 
   SetUVATensorFromPyArrayImpl<T>(self_tensor, array, device_id);
 #endif
@@ -1168,6 +1168,19 @@ inline py::array TensorToPyArray(const phi::DenseTensor &tensor,
         platform::errors::InvalidArgument(
             "PyArray does not own data, in which case  memory leak "
             "or double free would occur"));
+
+    // TODO(qili93): temporary for ascned npu performance to be removed along
+    // with npu_identity op
+    paddle::experimental::Tensor tensor_out(
+        std::make_shared<phi::DenseTensor>());
+    if (tensor.storage_properties_initialized()) {
+      paddle::experimental::Tensor tensor_in(
+          std::make_shared<phi::DenseTensor>(tensor));
+      tensor_out = npu_identity_ad_func(tensor_in, -1);
+      auto dense_tensor =
+          std::dynamic_pointer_cast<phi::DenseTensor>(tensor_out.impl());
+      tensor_buf_ptr = dense_tensor->data();
+    }
 
     size_t copy_bytes = sizeof_dtype * numel;
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();

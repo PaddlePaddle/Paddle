@@ -13,12 +13,14 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
-import paddle.fluid as fluid
 from op_test import OpTest, skip_check_grad_ci
 
-from paddle.fluid import core
-from paddle.fluid.framework import program_guard, Program
+import paddle
+from paddle.fluid.framework import Program, program_guard
+
+paddle.enable_static()
 
 
 def spectral_norm(weight, u, v, dim, power_iters, eps):
@@ -48,15 +50,15 @@ def spectral_norm(weight, u, v, dim, power_iters, eps):
 @skip_check_grad_ci(
     reason="Spectral norm do not check grad when power_iters > 0 "
     "because grad is not calculated in power iterations, "
-    "which cannot be checked by python grad unittests")
+    "which cannot be checked by python grad unittests"
+)
 class TestSpectralNormOpNoGrad(OpTest):
-
     def setUp(self):
         self.initTestCase()
         self.op_type = 'spectral_norm'
         weight = np.random.random(self.weight_shape).astype('float64')
-        u = np.random.normal(0., 1., self.u_shape).astype('float64')
-        v = np.random.normal(0., 1., self.v_shape).astype('float64')
+        u = np.random.normal(0.0, 1.0, self.u_shape).astype('float64')
+        v = np.random.normal(0.0, 1.0, self.v_shape).astype('float64')
 
         self.attrs = {
             "dim": self.dim,
@@ -70,8 +72,9 @@ class TestSpectralNormOpNoGrad(OpTest):
             "V": v,
         }
 
-        output = spectral_norm(weight, u, v, self.dim, self.power_iters,
-                               self.eps)
+        output = spectral_norm(
+            weight, u, v, self.dim, self.power_iters, self.eps
+        )
         self.outputs = {"Out": output}
 
     def test_check_output(self):
@@ -79,8 +82,8 @@ class TestSpectralNormOpNoGrad(OpTest):
 
     def initTestCase(self):
         self.weight_shape = (10, 12)
-        self.u_shape = (10, )
-        self.v_shape = (12, )
+        self.u_shape = (10,)
+        self.v_shape = (12,)
         self.dim = 0
         self.power_iters = 5
         self.eps = 1e-12
@@ -89,20 +92,19 @@ class TestSpectralNormOpNoGrad(OpTest):
 @skip_check_grad_ci(
     reason="Spectral norm do not check grad when power_iters > 0 "
     "because grad is not calculated in power iterations, "
-    "which cannot be checked by python grad unittests")
+    "which cannot be checked by python grad unittests"
+)
 class TestSpectralNormOpNoGrad2(TestSpectralNormOpNoGrad):
-
     def initTestCase(self):
         self.weight_shape = (2, 3, 3, 3)
-        self.u_shape = (3, )
-        self.v_shape = (18, )
+        self.u_shape = (3,)
+        self.v_shape = (18,)
         self.dim = 1
         self.power_iters = 10
         self.eps = 1e-12
 
 
 class TestSpectralNormOp(TestSpectralNormOpNoGrad):
-
     def test_check_grad_ignore_uv(self):
         self.check_grad(
             ['Weight'],
@@ -112,52 +114,47 @@ class TestSpectralNormOp(TestSpectralNormOpNoGrad):
 
     def initTestCase(self):
         self.weight_shape = (10, 12)
-        self.u_shape = (10, )
-        self.v_shape = (12, )
+        self.u_shape = (10,)
+        self.v_shape = (12,)
         self.dim = 0
         self.power_iters = 0
         self.eps = 1e-12
 
 
 class TestSpectralNormOp2(TestSpectralNormOp):
-
     def initTestCase(self):
         self.weight_shape = (2, 6, 3, 3)
-        self.u_shape = (6, )
-        self.v_shape = (18, )
+        self.u_shape = (6,)
+        self.v_shape = (18,)
         self.dim = 1
         self.power_iters = 0
         self.eps = 1e-12
 
 
 class TestSpectralNormOpError(unittest.TestCase):
-
     def test_errors(self):
         with program_guard(Program(), Program()):
 
             def test_Variable():
                 weight_1 = np.random.random((2, 4)).astype("float32")
-                fluid.layers.spectral_norm(weight_1, dim=1, power_iters=2)
+                paddle.static.nn.spectral_norm(weight_1, dim=1, power_iters=2)
 
             # the weight type of spectral_norm must be Variable
             self.assertRaises(TypeError, test_Variable)
 
             def test_weight_dtype():
                 weight_2 = np.random.random((2, 4)).astype("int32")
-                fluid.layers.spectral_norm(weight_2, dim=1, power_iters=2)
+                paddle.static.nn.spectral_norm(weight_2, dim=1, power_iters=2)
 
             # the data type of type must be float32 or float64
             self.assertRaises(TypeError, test_weight_dtype)
 
 
 class TestDygraphSpectralNormOpError(unittest.TestCase):
-
     def test_errors(self):
         with program_guard(Program(), Program()):
             shape = (2, 4, 3, 3)
-            spectralNorm = fluid.dygraph.nn.SpectralNorm(shape,
-                                                         dim=1,
-                                                         power_iters=2)
+            spectralNorm = paddle.nn.SpectralNorm(shape, dim=1, power_iters=2)
 
             def test_Variable():
                 weight_1 = np.random.random((2, 4)).astype("float32")

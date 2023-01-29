@@ -21,8 +21,6 @@ limitations under the License. */
 #include <unordered_set>
 
 #include "paddle/fluid/framework/ir/pass.h"
-#include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/errors.h"
 
 namespace paddle {
 namespace framework {
@@ -40,39 +38,46 @@ constexpr char kInternalVars[] = "InternalVars";
 constexpr char kOutputVars[] = "OutputVars";
 constexpr char kMemOptVarInfoFromMainGraph[] =
     "mem_opt_var_info_from_main_graph";
+constexpr char kSkipGcVarNames[] = "skip_gc_vars";
+constexpr char kInplaceVarNames[] = "InplaceVars";
 
 using Name2VarInfoMap =
     std::unordered_map<std::string,
                        std::shared_ptr<framework::ir::MemOptVarInfo>>;
 using GraphNodeSet = std::unordered_set<ir::Node*>;
 
-struct OpTransInfo {
-  const std::unordered_set<std::string> default_deny_ops{"feed", "fetch"};
+// OpTransInfo contains informations used to detect subgraphs
+// supported by the CINN compiler.
+class OpTransInfo {
+  using DyOpCondT =
+      std::unordered_map<std::string, std::function<bool(const ir::Node&)>>;
+  using DeParamCondT =
+      std::unordered_map<std::string, std::unordered_set<std::string>>;
 
-  const std::unordered_map<std::string, std::function<bool(const ir::Node*)>>
-      dynamic_op_cond{
-          {"slice", [](const ir::Node* node) -> bool {
-             if (!node->IsOp()) {
-               return false;
-             }
-             auto* op_desc = node->Op();
-             auto infer_flags =
-                 op_desc->GetAttrIfExists<std::vector<int>>("infer_flags");
-             if (std::find_if(
-                     infer_flags.begin(), infer_flags.end(), [](int v) {
-                       return v < 0;
-                     }) != infer_flags.end()) {
-               return true;
-             }
-             return false;
-           }}};
+ public:
+  OpTransInfo();
 
-  const std::unordered_map<std::string, std::unordered_set<std::string>>
-      deny_param_cond{{"batch_norm", {"ReserveSpace"}},
-                      {"batch_norm_grad", {"ReserveSpace"}}};
+  const DyOpCondT& dynamic_op_cond() const { return dynamic_op_cond_; }
+
+  const DeParamCondT& deny_param_cond() const { return deny_param_cond_; }
+
+  const std::unordered_set<std::string>& default_deny_ops() const {
+    return default_deny_ops_;
+  }
 
   std::unordered_set<std::string> GetDenyVarNames(
       const GraphNodeSet& cluster) const;
+
+  static std::unordered_set<std::string> GetInplaceVarNames(
+      const GraphNodeSet& cluster);
+
+ private:
+  DyOpCondT dynamic_op_cond_;
+
+  DeParamCondT deny_param_cond_{{"batch_norm", {"ReserveSpace"}},
+                                {"batch_norm_grad", {"ReserveSpace"}}};
+
+  std::unordered_set<std::string> default_deny_ops_{"feed", "fetch"};
 };
 
 // A pass named BuildCinnPass, the function of this pass is:

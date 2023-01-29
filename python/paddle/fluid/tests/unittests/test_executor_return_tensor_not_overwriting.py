@@ -13,15 +13,16 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
-import paddle.fluid.core as core
-import paddle.fluid as fluid
 from op_test import OpTest, skip_check_grad_ci
+
+import paddle
+import paddle.fluid as fluid
 
 
 @skip_check_grad_ci(reason="Not op test but call the method of class OpTest.")
 class TestExecutorReturnTensorNotOverwritingWithOptest(OpTest):
-
     def setUp(self):
         pass
 
@@ -31,7 +32,7 @@ class TestExecutorReturnTensorNotOverwritingWithOptest(OpTest):
         self.out = np.add(self.x, self.y)
         self.inputs = {
             'X': OpTest.np_dtype_to_fluid_dtype(self.x),
-            'Y': OpTest.np_dtype_to_fluid_dtype(self.y)
+            'Y': OpTest.np_dtype_to_fluid_dtype(self.y),
         }
         self.outputs = {'Out': self.out}
         self.op_type = "elementwise_add"
@@ -45,7 +46,7 @@ class TestExecutorReturnTensorNotOverwritingWithOptest(OpTest):
         self.out = np.dot(self.x, self.y)
         self.inputs = {
             'X': OpTest.np_dtype_to_fluid_dtype(self.x),
-            'Y': OpTest.np_dtype_to_fluid_dtype(self.y)
+            'Y': OpTest.np_dtype_to_fluid_dtype(self.y),
         }
         self.outputs = {'Out': self.out}
         self.op_type = "mul"
@@ -68,30 +69,31 @@ class TestExecutorReturnTensorNotOverwritingWithOptest(OpTest):
 
 
 class TestExecutorReturnTensorNotOverOverwritingWithLayers(unittest.TestCase):
-
     def setUp(self):
         pass
 
     def calc_add_out(self, place=None, parallel=None):
-        x = fluid.layers.ones(shape=[3, 3], dtype='float32')
-        y = fluid.layers.ones(shape=[3, 3], dtype='float32')
-        out = fluid.layers.elementwise_add(x=x, y=y)
+        x = paddle.ones(shape=[3, 3], dtype='float32')
+        y = paddle.ones(shape=[3, 3], dtype='float32')
+        out = paddle.add(x=x, y=y)
         program = fluid.default_main_program()
         if parallel:
             program = fluid.CompiledProgram(program).with_data_parallel(
-                places=place)
+                places=place
+            )
         exe = fluid.Executor(place)
         out = exe.run(program, fetch_list=[out], return_numpy=False)
         return out
 
     def calc_sub_out(self, place=None, parallel=None):
-        x = fluid.layers.ones(shape=[2, 2], dtype='float32')
-        y = fluid.layers.ones(shape=[2, 2], dtype='float32')
-        out = fluid.layers.elementwise_sub(x=x, y=y)
+        x = paddle.ones(shape=[2, 2], dtype='float32')
+        y = paddle.ones(shape=[2, 2], dtype='float32')
+        out = paddle.subtract(x=x, y=y)
         program = fluid.default_main_program()
         if parallel:
             program = fluid.CompiledProgram(program).with_data_parallel(
-                places=place)
+                places=place
+            )
         exe = fluid.Executor(place)
         out = exe.run(program, fetch_list=[out], return_numpy=False)
         return out

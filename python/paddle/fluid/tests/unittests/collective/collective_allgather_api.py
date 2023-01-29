@@ -13,18 +13,18 @@
 # limitations under the License.
 
 import os
+import pickle
 import sys
+
+import test_collective_api_base as test_base
+
 import paddle
 import paddle.fluid as fluid
-import pickle
-import paddle.fluid.layers as layers
-import test_collective_api_base as test_base
 
 paddle.enable_static()
 
 
 class TestCollectiveAllgatherAPI(test_base.TestCollectiveAPIRunnerBase):
-
     def __init__(self):
         self.global_ring_id = 0
 
@@ -32,7 +32,9 @@ class TestCollectiveAllgatherAPI(test_base.TestCollectiveAPIRunnerBase):
         dtype = "float32" if dtype is None else dtype
         with fluid.program_guard(main_prog, startup_program):
             tensor_list = []
-            tindata = layers.data(name="tindata", shape=[10, 1000], dtype=dtype)
+            tindata = paddle.static.data(
+                name="tindata", shape=[-1, 10, 1000], dtype=dtype
+            )
             paddle.distributed.all_gather(tensor_list, tindata)
             return tensor_list
 
@@ -47,29 +49,30 @@ class TestCollectiveAllgatherAPI(test_base.TestCollectiveAPIRunnerBase):
         if args['backend'] == 'nccl':
             device_id = int(os.getenv("FLAGS_selected_gpus", "0"))
             place = fluid.CUDAPlace(
-                device_id)  #if args.use_gpu else fluid.CPUPlace()
+                device_id
+            )  # if args.use_gpu else fluid.CPUPlace()
         elif args['backend'] == 'bkcl':
             device_id = int(os.getenv("FLAGS_selected_xpus", "0"))
             place = fluid.XPUPlace(device_id)
         else:
             place = fluid.CPUPlace()
-        indata = test_base.create_test_data(shape=(10, 1000),
-                                            dtype=args["dtype"],
-                                            seed=os.getpid())
-        assert args[
-            'static_mode'] == 1, "collective_allgather_api only support static mode"
-        result = self.get_model(train_prog,
-                                startup_prog,
-                                rank,
-                                dtype=args["dtype"])
+        indata = test_base.create_test_data(
+            shape=(10, 1000), dtype=args["dtype"], seed=os.getpid()
+        )
+        assert (
+            args['static_mode'] == 1
+        ), "collective_allgather_api only support static graph mode"
+        result = self.get_model(
+            train_prog, startup_prog, rank, dtype=args["dtype"]
+        )
         exe = fluid.Executor(place)
         exe.run(startup_prog)
         fetch_list = []
         for elem in result:
             fetch_list.append(elem.name)
-        out = exe.run(train_prog,
-                      feed={'tindata': indata},
-                      fetch_list=fetch_list)
+        out = exe.run(
+            train_prog, feed={'tindata': indata}, fetch_list=fetch_list
+        )
         sys.stdout.buffer.write(pickle.dumps(out))
 
 

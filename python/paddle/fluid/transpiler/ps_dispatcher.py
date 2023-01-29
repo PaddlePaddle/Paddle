@@ -13,7 +13,7 @@
 # limitations under the License.
 
 
-class PSDispatcher(object):
+class PSDispatcher:
     """
     PSDispatcher is the base class for dispatching vars
     into different pserver instance.
@@ -46,7 +46,7 @@ class PSDispatcher(object):
 
 class HashName(PSDispatcher):
     """
-	:api_attr: Static Graph
+        :api_attr: Static Graph
 
     Hash variable names to several endpoints using python
     "hash()" function.
@@ -66,7 +66,7 @@ class HashName(PSDispatcher):
     """
 
     def __init__(self, pserver_endpoints):
-        super(self.__class__, self).__init__(pserver_endpoints)
+        super().__init__(pserver_endpoints)
 
     def _hash_block(self, block_str, total):
         return hash(block_str) % total
@@ -88,7 +88,7 @@ class HashName(PSDispatcher):
 
 class RoundRobin(PSDispatcher):
     """
-	:api_attr: Static Graph
+        :api_attr: Static Graph
 
     Distribute variables to several endpoints using
     RondRobin<https://en.wikipedia.org/wiki/Round-robin_scheduling> method.
@@ -108,7 +108,7 @@ class RoundRobin(PSDispatcher):
     """
 
     def __init__(self, pserver_endpoints):
-        super(RoundRobin, self).__init__(pserver_endpoints)
+        super().__init__(pserver_endpoints)
 
     def dispatch(self, varlist):
         """

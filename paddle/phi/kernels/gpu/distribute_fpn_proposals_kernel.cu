@@ -24,6 +24,7 @@ namespace cub = hipcub;
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/funcs/detection/bbox_util.h"
 #include "paddle/phi/kernels/funcs/distribute_fpn_proposals_functor.h"
 #include "paddle/phi/kernels/funcs/for_range.h"
 #include "paddle/phi/kernels/funcs/gather.cu.h"
@@ -31,8 +32,7 @@ namespace cub = hipcub;
 
 #include "paddle/fluid/memory/allocation/allocator.h"
 #include "paddle/fluid/memory/memcpy.h"
-#include "paddle/fluid/operators/detection/bbox_util.h"
-#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
+#include "paddle/phi/backends/gpu/gpu_primitives.h"
 
 namespace phi {
 
@@ -62,14 +62,25 @@ __global__ void GPUDistFpnProposalsHelper(const int nthreads,
     const T* offset_roi = rois + i * BBoxSize;
     int roi_batch_ind = roi_batch_id_data[i];
     // get the target level of current rois
-    T roi_area = paddle::operators::RoIArea(offset_roi, pixel_offset);
+    T roi_area;
+    if (offset_roi[2] < offset_roi[0] || offset_roi[3] < offset_roi[1]) {
+      roi_area = static_cast<T>(0.);
+    } else {
+      const T w = offset_roi[2] - offset_roi[0];
+      const T h = offset_roi[3] - offset_roi[1];
+      if (pixel_offset) {
+        roi_area = (w + 1) * (h + 1);
+      } else {
+        roi_area = w * h;
+      }
+    }
     T roi_scale = sqrt(roi_area);
     int tgt_lvl = floor(
         log2(roi_scale / static_cast<T>(refer_scale) + (T)1e-8) + refer_level);
     tgt_lvl = min(max_level, max(tgt_lvl, min_level));
     target_lvls[i] = tgt_lvl;
     // compute number of rois in the same batch and same target level
-    paddle::platform::CudaAtomicAdd(
+    phi::CudaAtomicAdd(
         sub_lod_list + (tgt_lvl - min_level) * lod_size + roi_batch_ind, 1);
   }
 }
@@ -155,7 +166,7 @@ void DistributeFpnProposalsKernel(
   index_in_t.Resize({roi_num});
   int* idx_in = dev_ctx.template Alloc<int>(&index_in_t);
   funcs::ForRange<phi::GPUContext> for_range(dev_ctx, roi_num);
-  for_range(paddle::operators::RangeInitFunctor{0, 1, idx_in});
+  for_range(funcs::RangeInitFunctor{0, 1, idx_in});
 
   DenseTensor keys_out_t;
   keys_out_t.Resize({roi_num});

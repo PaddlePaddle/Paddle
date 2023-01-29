@@ -22,7 +22,6 @@ paddle.enable_static()
 
 
 class TestCollectiveReduceAPI(TestDistBase):
-
     def _setup_config(self):
         pass
 

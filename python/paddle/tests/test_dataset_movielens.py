@@ -13,13 +13,13 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
 
 from paddle.text.datasets import Movielens
 
 
 class TestMovielensTrain(unittest.TestCase):
-
     def test_main(self):
         movielens = Movielens(mode='train')
         # movielens dataset random split train/test
@@ -37,7 +37,6 @@ class TestMovielensTrain(unittest.TestCase):
 
 
 class TestMovielensTest(unittest.TestCase):
-
     def test_main(self):
         movielens = Movielens(mode='test')
         # movielens dataset random split train/test

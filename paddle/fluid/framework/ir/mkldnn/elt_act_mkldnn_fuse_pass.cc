@@ -15,10 +15,10 @@
 #include "paddle/fluid/framework/ir/mkldnn/elt_act_mkldnn_fuse_pass.h"
 
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
+#include "paddle/fluid/framework/ir/mkldnn/activation_onednn_fuse_pass.h"
 #include "paddle/fluid/framework/op_version_registry.h"
-#include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/mkldnn_reuse.h"
-#include "paddle/fluid/string/pretty_log.h"
+#include "paddle/phi/core/enforce.h"
+#include "paddle/utils/string/pretty_log.h"
 
 namespace paddle {
 namespace framework {
@@ -27,7 +27,7 @@ namespace ir {
 using string::PrettyLogDetail;
 
 void ElementwiseActivationOneDNNPass::ApplyImpl(Graph *graph) const {
-  auto act_types = paddle::platform::GetSupportedActivations();
+  auto act_types = GetSupportedActivations();
   std::vector<std::string> elt_types = {
       "elementwise_add", "elementwise_sub", "elementwise_mul"};
 
@@ -42,7 +42,7 @@ void ElementwiseActivationOneDNNPass::FuseElementwiseAct(
     const std::string &elt_type,
     const std::string &act_type) const {
   PADDLE_ENFORCE_NOT_NULL(
-      graph, platform::errors::InvalidArgument("Graph cannot be nullptr."));
+      graph, phi::errors::InvalidArgument("Graph cannot be nullptr."));
   FusePassBase::Init(elt_type + "_" + act_type + "_mkldnn_fuse_pass", graph);
 
   GraphPatternDetector gpd;
@@ -62,35 +62,8 @@ void ElementwiseActivationOneDNNPass::FuseElementwiseAct(
     GET_IR_NODE_FROM_SUBGRAPH(
         activation_out, activation_out, elementwise_act_pattern);
 
-    auto *elementwise_op = elementwise->Op();
-
-    if (elementwise_op->HasAttr("use_mkldnn")) {
-      const std::string wo_elt_type =
-          "The " + elt_type;  // Workaround for PP error message checking.
-      PADDLE_ENFORCE_EQ(
-          PADDLE_GET_CONST(bool, elementwise_op->GetAttr("use_mkldnn")),
-          true,
-          platform::errors::PreconditionNotMet(
-              wo_elt_type + "+Act fusion may happen only when oneDNN library "
-                            "is used."));
-    }
-
-    auto *activation_op = activation->Op();
-    auto attr_map = paddle::platform::GetAttributeMap(act_type);
-    for (const auto &attr : attr_map) {
-      if (activation_op->HasAttr(attr.first)) {
-        elementwise_op->SetAttr(attr.second,
-                                activation_op->GetAttr(attr.first));
-      }
-    }
-
-    if (act_type == "gelu" && activation_op->HasAttr("approximate") &&
-        PADDLE_GET_CONST(bool, activation_op->GetAttr("approximate")))
-      elementwise_op->SetAttr("fuse_activation", std::string("gelu_tanh"));
-    else
-      elementwise_op->SetAttr("fuse_activation", act_type);
-
-    elementwise_op->SetOutput("Out", {activation_out->Name()});
+    SetActivationAttrs(elementwise->Op(), activation->Op(), act_type);
+    elementwise->Op()->SetOutput("Out", {activation_out->Name()});
 
     IR_OP_VAR_LINK(elementwise, activation_out);
     GraphSafeRemoveNodes(g, {activation, elementwise_out});
@@ -99,7 +72,8 @@ void ElementwiseActivationOneDNNPass::FuseElementwiseAct(
 
   gpd(graph, handler);
   AddStatis(found_elementwise_activation_count);
-  if (!Has("disable_logs") || !Get<bool>("disable_logs"))
+  if ((!Has("disable_logs") || !Get<bool>("disable_logs")) &&
+      (found_elementwise_activation_count > 0))
     PrettyLogDetail("---    fused %d %s with %s activation",
                     found_elementwise_activation_count,
                     elt_type,

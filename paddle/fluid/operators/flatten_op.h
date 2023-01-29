@@ -31,8 +31,8 @@ template <typename DeviceContext, typename T>
 class FlattenKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
-    auto *in = context.Input<framework::LoDTensor>("X");
-    auto *out = context.Output<framework::LoDTensor>("Out");
+    auto *in = context.Input<phi::DenseTensor>("X");
+    auto *out = context.Output<phi::DenseTensor>("Out");
 
     auto &axes = context.Attr<int>("axis");
     auto x_dims = in->dims();
@@ -49,6 +49,10 @@ class FlattenKernel : public framework::OpKernel<T> {
 
   static std::vector<int32_t> GetOutputShape(const int axis,
                                              const framework::DDim &in_dims) {
+    if (in_dims.size() == 0) {
+      return {1};
+    }
+
     int64_t outer = 1, inner = 1;
     for (int i = 0; i < in_dims.size(); ++i) {
       if (i < axis) {
@@ -68,10 +72,9 @@ template <typename DeviceContext, typename T>
 class FlattenGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-    auto *d_x = ctx.Output<framework::LoDTensor>(framework::GradVarName("X"));
-    auto *d_out =
-        ctx.Input<framework::LoDTensor>(framework::GradVarName("Out"));
-    auto in_dims = ctx.Input<framework::LoDTensor>("X")->dims();
+    auto *d_x = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
+    auto *d_out = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+    auto in_dims = ctx.Input<phi::DenseTensor>("X")->dims();
 
     d_x->mutable_data(ctx.GetPlace(), d_out->type());
     framework::TensorCopy(
@@ -89,10 +92,10 @@ class Flatten2Kernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext &context) const override {
     auto &axes = context.Attr<int>("axis");
 
-    auto *in = context.Input<framework::LoDTensor>("X");
+    auto *in = context.Input<phi::DenseTensor>("X");
     auto x_dims = in->dims();
 
-    auto *out = context.Output<framework::LoDTensor>("Out");
+    auto *out = context.Output<phi::DenseTensor>("Out");
 
     auto out_dims = phi::make_ddim(
         FlattenKernel<DeviceContext, T>::GetOutputShape(axes, x_dims));
@@ -111,11 +114,10 @@ template <typename DeviceContext, typename T>
 class Flatten2GradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-    auto *d_x = ctx.Output<framework::LoDTensor>(framework::GradVarName("X"));
-    auto *d_out =
-        ctx.Input<framework::LoDTensor>(framework::GradVarName("Out"));
+    auto *d_x = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
+    auto *d_out = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
 
-    auto xshape_dims = ctx.Input<framework::LoDTensor>("XShape")->dims();
+    auto xshape_dims = ctx.Input<phi::DenseTensor>("XShape")->dims();
     auto x_dims = phi::slice_ddim(xshape_dims, 1, xshape_dims.size());
 
     d_x->mutable_data(ctx.GetPlace(), d_out->type());

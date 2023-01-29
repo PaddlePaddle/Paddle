@@ -18,7 +18,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #if defined(__NVCC__) || defined(__HIPCC__)
-#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
+#include "paddle/phi/backends/gpu/gpu_primitives.h"
 #endif
 
 namespace paddle {
@@ -96,7 +96,7 @@ DEVICE void PrRoIPoolingDistributeDiff(T* diff,
                                        const T coeff) {
   bool overflow = (h < 0) || (w < 0) || (h >= height) || (w >= width);
   if (!overflow) {
-    paddle::platform::CudaAtomicAdd(diff + h * width + w, top_diff * coeff);
+    phi::CudaAtomicAdd(diff + h * width + w, top_diff * coeff);
   }
 }
 #else
@@ -166,7 +166,7 @@ HOSTDEVICE void PrRoIPoolingMatDistributeDiff(T* diff,
 #if defined(__NVCC__) || defined(__HIPCC__)
 template <typename T>
 DEVICE void AccumulateRois(T* offset, T data) {
-  paddle::platform::CudaAtomicAdd(offset, data);
+  phi::CudaAtomicAdd(offset, data);
 }
 #else
 template <typename T>
@@ -332,7 +332,7 @@ class CPUPRROIPoolOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* in = ctx.Input<phi::DenseTensor>("X");
-    auto* rois = ctx.Input<framework::LoDTensor>("ROIs");
+    auto* rois = ctx.Input<phi::DenseTensor>("ROIs");
     auto* out = ctx.Output<phi::DenseTensor>("Out");
 
     auto pooled_height = ctx.Attr<int>("pooled_height");
@@ -487,7 +487,7 @@ class CPUPRROIPoolGradOpKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* in = ctx.Input<phi::DenseTensor>("X");
     auto* out = ctx.Input<phi::DenseTensor>("Out");
-    auto* rois = ctx.Input<framework::LoDTensor>("ROIs");
+    auto* rois = ctx.Input<phi::DenseTensor>("ROIs");
     auto* output_grad =
         ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
     auto* input_grad =

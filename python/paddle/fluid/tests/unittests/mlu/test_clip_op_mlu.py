@@ -21,13 +21,11 @@ import paddle
 import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
 from op_test import OpTest
-from paddle.fluid.framework import _test_eager_guard
 
 paddle.enable_static()
 
 
 class TestClipOp(OpTest):
-
     def setUp(self):
         self.place = paddle.device.MLUPlace(0)
         self.__class__.use_mlu = True
@@ -73,7 +71,6 @@ class TestClipOp(OpTest):
 
 
 class TestCase1(TestClipOp):
-
     def initTestCase(self):
         self.dtype = np.float32
         self.shape = (8, 16, 8)
@@ -82,7 +79,6 @@ class TestCase1(TestClipOp):
 
 
 class TestCase2(TestClipOp):
-
     def initTestCase(self):
         self.dtype = np.float32
         self.shape = (8, 16)
@@ -91,7 +87,6 @@ class TestCase2(TestClipOp):
 
 
 class TestCase3(TestClipOp):
-
     def initTestCase(self):
         self.dtype = np.float32
         self.shape = (4, 8, 16)
@@ -100,7 +95,6 @@ class TestCase3(TestClipOp):
 
 
 class TestCase4(TestClipOp):
-
     def initTestCase(self):
         self.dtype = np.float32
         self.shape = (4, 8, 8)
@@ -111,7 +105,6 @@ class TestCase4(TestClipOp):
 
 
 class TestCase5(TestClipOp):
-
     def initTestCase(self):
         self.dtype = np.float32
         self.shape = (4, 8, 16)
@@ -120,7 +113,6 @@ class TestCase5(TestClipOp):
 
 
 class TestCase6(TestClipOp):
-
     def initTestCase(self):
         self.dtype = np.float16
         self.shape = (4, 8, 8)

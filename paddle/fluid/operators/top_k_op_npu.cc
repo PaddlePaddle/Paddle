@@ -42,9 +42,9 @@ class TopkNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     // read input
-    auto* input = ctx.Input<framework::LoDTensor>("X");
-    auto* output = ctx.Output<framework::LoDTensor>("Out");
-    auto* indices = ctx.Output<framework::LoDTensor>("Indices");
+    auto* input = ctx.Input<phi::DenseTensor>("X");
+    auto* output = ctx.Output<phi::DenseTensor>("Out");
+    auto* indices = ctx.Output<phi::DenseTensor>("Indices");
 
     size_t k = static_cast<int>(ctx.Attr<int>("k"));
 
@@ -65,7 +65,7 @@ class TopkNPUKernel : public framework::OpKernel<T> {
                                              {"dim", -1},
                                              {"largest", true}};
 
-    Tensor tmp_indices(experimental::DataType::INT32);
+    phi::DenseTensor tmp_indices(experimental::DataType::INT32);
     tmp_indices.Resize(indices->dims());
     tmp_indices.mutable_data<int>(ctx.GetPlace());
 
