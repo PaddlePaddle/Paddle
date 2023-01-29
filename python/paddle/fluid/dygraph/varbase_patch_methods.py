@@ -1073,7 +1073,7 @@ def monkey_patch_varbase():
         # NOTE(zhiqiu): pybind11 will set a default __str__ method of enum class.
         # So, we need to overwrite it to a more readable one.
         # See details in https://github.com/pybind/pybind11/issues/2537.
-        origin = getattr(core.VarDesc.VarType, "__repr__")
+        origin = getattr(core.VarDesc.VarType, "__str__")
 
         def dtype_str(dtype):
             if dtype in _PADDLE_DTYPE_2_NUMPY_DTYPE:
