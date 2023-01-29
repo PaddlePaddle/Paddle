@@ -23,9 +23,11 @@ limitations under the License. */
 #include <thrust/shuffle.h>
 #include <sstream>
 #include "cub/cub.cuh"
+#ifdef PADDLE_WITH_GPU_GRAPH
 #include "paddle/fluid/framework/fleet/heter_ps/gpu_graph_node.h"
 #include "paddle/fluid/framework/fleet/heter_ps/gpu_graph_utils.h"
 #include "paddle/fluid/framework/fleet/heter_ps/graph_gpu_wrapper.h"
+#endif
 #include "paddle/fluid/framework/fleet/heter_ps/hashtable.h"
 #include "paddle/fluid/framework/fleet/ps_gpu_wrapper.h"
 #include "paddle/phi/kernels/gpu/graph_reindex_funcs.h"
@@ -434,6 +436,7 @@ __global__ void CopyDuplicateKeys(int64_t *dist_tensor,
   }
 }
 
+#ifdef PADDLE_WITH_GPU_GRAPH
 int GraphDataGenerator::AcquireInstance(BufState *state) {
   //
   if (state->GetNextStep()) {
@@ -2801,6 +2804,7 @@ void GraphDataGenerator::SetConfig(
   }
   copy_unique_len_ = 0;
 }
+#endif
 
 }  // namespace framework
 }  // namespace paddle

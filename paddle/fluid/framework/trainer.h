@@ -36,10 +36,6 @@ limitations under the License. */
 #include "paddle/fluid/operators/reader/blocking_queue.h"
 #include "paddle/phi/backends/dynload/port.h"
 
-#ifdef PADDLE_WITH_PSLIB
-#include "proto/the_one_ps.pb.h"
-#endif
-
 namespace paddle {
 namespace framework {
 

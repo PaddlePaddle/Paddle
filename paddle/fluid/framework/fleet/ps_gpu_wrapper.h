@@ -35,7 +35,9 @@ limitations under the License. */
 #include "paddle/fluid/distributed/ps/thirdparty/round_robin.h"
 #include "paddle/fluid/framework/channel.h"
 #include "paddle/fluid/framework/fleet/heter_context.h"
+#ifdef PADDLE_WITH_GPU_GRAPH
 #include "paddle/fluid/framework/fleet/heter_ps/graph_gpu_wrapper.h"
+#endif
 #include "paddle/fluid/framework/fleet/heter_ps/heter_ps_base.h"
 #include "paddle/fluid/framework/fleet/heter_ps/heter_resource.h"
 #include "paddle/fluid/framework/heter_util.h"
@@ -60,8 +62,6 @@ limitations under the License. */
 #endif
 #ifdef PADDLE_WITH_PSLIB
 #include "afs_api.h"  // NOLINT
-#endif
-#ifdef PADDLE_WITH_PSLIB
 #include "downpour_accessor.h"  // NOLINT
 #endif
 #include "paddle/fluid/framework/fleet/heter_ps/log_patch.h"
