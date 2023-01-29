@@ -358,6 +358,7 @@ class TensorRTEngine {
             "The TensorRT Timing Cache must be not null when serializing"));
     return infer_timing_cache_->serialize();
 #endif
+    return nullptr;
   }
 
   void Deserialize(const std::string& engine_serialized_data);
