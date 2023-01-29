@@ -536,6 +536,14 @@ class Event(object):
         interprocess (bool): if True, the event can be shared between processes, default is False
     Returns:
         Event: The event.
+    Examples:
+        .. code-block:: python
+            # required: custom_device
+            import paddle
+            e1 = paddle.device.Event()
+            e2 = paddle.device.Event('custom_cpu')
+            e3 = paddle.device.Event('custom_cpu:0')
+            e4 = paddle.device.Event(paddle.CustomPlace('custom_cpu', 0))
     '''
 
     def __init__(
@@ -581,6 +589,15 @@ class Event(object):
             event will be recorded in current_stream.
         Returns:
             None.
+        Examples:
+            .. code-block:: python
+                # required: custom_device
+                import paddle
+                e = paddle.device.Event()
+                e.record()
+
+                s = paddle.device.Stream()
+                e.record(s)
         '''
         if stream is None:
             stream = current_stream(self.device)
@@ -592,6 +609,12 @@ class Event(object):
         Checks if all work currently captured by event has completed.
         Returns:
             bool: Whether all work currently captured by event has completed.
+        Examples:
+            .. code-block:: python
+                # required: custom_device
+                import paddle
+                e = paddle.device.Event()
+                e.query()
         '''
         return self.event_base.query()
 
@@ -601,6 +624,13 @@ class Event(object):
         recorded and before the end_event was recorded.
         Returns:
             int: The time.
+        Examples:
+            .. code-block:: python
+                # required: custom_device
+                import paddle
+                e1 = paddle.device.Event()
+                e2 = paddle.device.Event()
+                e1.elapsed_time(e2)
         '''
         return 0
 
@@ -611,6 +641,12 @@ class Event(object):
         This prevents the CPU thread from proceeding until the event completes.
         Returns:
             None.
+        Examples:
+            .. code-block:: python
+                # required: custom_device
+                import paddle
+                e = paddle.device.Event()
+                e.synchronize()
         '''
         self.event_base.synchronize()
 
@@ -632,8 +668,12 @@ class Stream(object):
         Stream: The stream.
     Examples:
         .. code-block:: python
+            # required: custom_device
             import paddle
-            s = paddle.device.Stream()
+            s1 = paddle.device.Stream()
+            s2 = paddle.device.Stream('custom_cpu')
+            s3 = paddle.device.Stream('custom_cpu:0')
+            s4 = paddle.device.Stream(paddle.CustomPlace('custom_cpu', 0))
     '''
 
     def __init__(self, device=None, priority=2, stream_base=None):
@@ -683,6 +723,13 @@ class Stream(object):
             event (Event): an event to wait for.
         Returns:
             None.
+        Examples:
+            .. code-block:: python
+                # required: custom_device
+                import paddle
+                s = paddle.device.Stream()
+                e = paddle.device.Event()
+                s.wait_event(e)
         '''
         self.stream_base.wait_event(event.event_base)
 
@@ -695,6 +742,13 @@ class Stream(object):
             stream (Stream): a stream to synchronize.
         Returns:
             None.
+        Examples:
+            .. code-block:: python
+                # required: custom_device
+                import paddle
+                s1 = paddle.device.Stream()
+                s2 = paddle.device.Stream()
+                s1.wait_stream(s2)
         '''
         self.stream_base.wait_stream(stream.stream_base)
 
@@ -706,6 +760,15 @@ class Stream(object):
                 will be allocated.
         Returns:
             Event: Recorded event.
+        Examples:
+            .. code-block:: python
+                # required: custom_device
+                import paddle
+                s = paddle.device.Stream()
+                e1 = s.record_event()
+
+                e2 = paddle.device.Event()
+                s.record_event(e2)
         '''
         if event is None:
             event = Event(self.device)
@@ -717,6 +780,12 @@ class Stream(object):
         Checks if all the work submitted has been completed.
         Returns:
             bool: Whether all kernels in this stream are completed.
+        Examples:
+            .. code-block:: python
+                # required: custom_device
+                import paddle
+                s = paddle.device.Stream()
+                s.query()
         '''
         return self.stream_base.query()
 
@@ -725,6 +794,12 @@ class Stream(object):
         Wait for all the kernels in this stream to complete.
         Returns:
             None.
+        Examples:
+            .. code-block:: python
+                # required: custom_device
+                import paddle
+                s = paddle.device.Stream()
+                s.synchronize()
         '''
         self.stream_base.synchronize()
 
@@ -760,6 +835,7 @@ def current_stream(device=None):
         Stream: The stream to the device.
     Examples:
         .. code-block:: python
+            # required: custom_device
             import paddle
             s1 = paddle.device.current_stream()
             s2 = paddle.device.current_stream("gpu:0")
@@ -798,6 +874,12 @@ def set_stream(stream):
         stream(Stream): The selected stream.
     Returns:
         Stream: The previous stream.
+    Examples:
+        .. code-block:: python
+            # required: custom_device
+            import paddle
+            s = paddle.device.Stream()
+            paddle.device.set_stream(s)
     '''
 
     prev_stream = current_stream(stream.stream_base.place)
@@ -833,6 +915,7 @@ class stream_guard(object):
         None.
     Examples:
         .. code-block:: python
+            # required: custom_device
             import paddle
             s = paddle.device.Stream()
             data1 = paddle.ones(shape=[20])
@@ -882,6 +965,7 @@ def synchronize(device=None):
             where ``x`` is the index of the GPUs, XPUs, NPUs or MLUs. And it can be paddle.CUDAPlace(n) or paddle.XPUPlace(n) or paddle.CustomPlace(n).
     Examples:
         .. code-block:: python
+            # required: custom_device
             import paddle
             paddle.device.synchronize()
             paddle.device.synchronize("gpu:0")
