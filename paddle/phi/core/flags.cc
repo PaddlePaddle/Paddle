@@ -156,7 +156,7 @@ PADDLE_DEFINE_EXPORTED_bool(
     false,
     "Whether to use fp16 compute type when the input and output is fp16, "
     "faster but it may loss precision in most case. If true, the compute "
-    "type will be set to fp32. Default is true.");
+    "type will be set to fp16. Default is false.");
 
 /**
  * CUDA related FLAG
