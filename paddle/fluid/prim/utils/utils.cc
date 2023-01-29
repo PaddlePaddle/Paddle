@@ -39,9 +39,9 @@ void PrimCommonUtils::SetAllPrimEnabled(bool enable_prim) {
   return StaticCompositeContext::Instance().SetAllPrimEnabled(enable_prim);
 }
 
-void PrimCommonUtils::SetPrimTargetGrad(
+void PrimCommonUtils::SetTargetGradName(
     const std::map<std::string, std::string>& m) {
-  StaticCompositeContext::Instance().SetTargetGrad(m);
+  StaticCompositeContext::Instance().SetTargetGradName(m);
 }
 
 }  // namespace prim

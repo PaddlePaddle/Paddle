@@ -2380,7 +2380,7 @@ def calc_gradient(targets, inputs, target_gradients=None, no_grad_set=None):
                 outputs={'Out': [output]},
                 attrs={'value': 1.0, 'dtype': target.dtype},
             )
-
+            block._remove_var(grad_name)
             op_role_attr_name = (
                 core.op_proto_and_checker_maker.kOpRoleAttrName()
             )
@@ -2409,7 +2409,7 @@ def calc_gradient(targets, inputs, target_gradients=None, no_grad_set=None):
             rename_var_map[grad_name] = grad.name
 
     if core._is_bwd_prim_enabled():
-        core._set_prim_target_grad(target_grad_map)
+        core._set_prim_target_grad_name(target_grad_map)
 
     # For double backward, input_grad_names is used for filter
     # some non-used gradients op. rename_var_map is used to

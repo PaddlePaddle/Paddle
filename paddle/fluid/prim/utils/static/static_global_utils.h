@@ -69,11 +69,13 @@ class StaticCompositeContext {
     enable_bwd_prim_ = enable_prim;
   }
 
-  void SetTargetGrad(const std::map<std::string, std::string>& m) {
-    target_grad_ = m;
+  void SetTargetGradName(const std::map<std::string, std::string>& m) {
+    target_grad_name_ = m;
   }
 
-  std::map<std::string, std::string> GetTargetGrad() { return target_grad_; }
+  std::map<std::string, std::string> GetTargetGradName() {
+    return target_grad_name_;
+  }
 
  private:
   StaticCompositeContext()
@@ -81,7 +83,7 @@ class StaticCompositeContext {
 
   framework::BlockDesc* current_block_desc_;
   std::unique_ptr<UniqueNameGenerator> generator_;
-  std::map<std::string, std::string> target_grad_;
+  std::map<std::string, std::string> target_grad_name_;
   static thread_local bool enable_bwd_prim_;
   static thread_local bool enable_fwd_prim_;
   static StaticCompositeContext* static_composite_context_;

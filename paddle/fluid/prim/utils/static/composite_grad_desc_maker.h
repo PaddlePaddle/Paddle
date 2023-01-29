@@ -335,7 +335,7 @@ class CompositeGradOpMakerBase {
     (*this->grad_to_var_)[grad_var_name] = var_name;
     VLOG(8) << "Valid gradients: " << grad_var_name;
 
-    auto target_grad = StaticCompositeContext::Instance().GetTargetGrad();
+    auto target_grad = StaticCompositeContext::Instance().GetTargetGradName();
     if (target_grad.find(grad_var_name) != target_grad.end()) {
       grad_var_name = target_grad.at(grad_var_name);
     }
@@ -429,7 +429,7 @@ class CompositeGradOpMakerBase {
                    });
     std::vector<framework::VarDesc*> grad_out;
     for (auto name : ret_val) {
-      auto target_grad = StaticCompositeContext::Instance().GetTargetGrad();
+      auto target_grad = StaticCompositeContext::Instance().GetTargetGradName();
       if (target_grad.find(name) != target_grad.end()) {
         name = target_grad.at(name);
       }
