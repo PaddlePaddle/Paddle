@@ -14,7 +14,7 @@
 
 #include "paddle/phi/kernels/stack_grad_kernel.h"
 
-#include "paddle/fluid/memory/memory.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/stack_and_unstack.h"
 

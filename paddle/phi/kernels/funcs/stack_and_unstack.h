@@ -104,22 +104,22 @@ __global__ void UnStackCudaKernel(const T* __restrict__ input,
                                   IndexT out_row,
                                   IndexT split_dim,
                                   IndexT out_col,
-                                  IndexT num_split,
+                                  IndexT num_splits,
                                   ArrayT array) {
   assert(blockDim.y == 1);
   assert(blockDim.z == 1);
   // In this case they are equal
-  assert(split_dim % num_split == 0);
+  assert(split_dim % num_splits == 0);
 
   IndexT numel = out_row * split_dim * out_col;
-  IndexT each_dim_size = split_dim / num_split;
+  IndexT each_dim_size = split_dim / num_splits;
   IndexT split_dim_with_out_col = split_dim * out_col;
 
   IndexT offset = blockIdx.x * blockDim.x + threadIdx.x;
   if (each_dim_size == 1) {
     for (; offset < numel; offset += blockDim.x * gridDim.x) {
       IndexT i = offset / split_dim_with_out_col;
-      IndexT j = offset / out_col - i * out_row;
+      IndexT j = offset / out_col - i * split_dim;
       IndexT k = offset % out_col;
 
       T* output = array.data[j];
@@ -131,7 +131,7 @@ __global__ void UnStackCudaKernel(const T* __restrict__ input,
   } else {
     for (; offset < numel; offset += blockDim.x * gridDim.x) {
       IndexT i = offset / split_dim_with_out_col;
-      IndexT j = offset / out_col - i * out_row;
+      IndexT j = offset / out_col - i * split_dim;
       IndexT k = offset % out_col;
 
       T* output = array.data[j / each_dim_size];
@@ -182,7 +182,10 @@ void LaunchUnStackKernel(const Context& ctx,
                          const IndexT num_splits,
                          const DenseTensor& x,
                          std::vector<DenseTensor*>* outs) {
-  // each tensor in outs should have same shape
+  // each tensor in outs should have same shape.
+  VLOG(6) << "out_row=" << out_row << ", split_dim=" << split_dim
+          << ", out_col=" << out_col << ", num_splits=" << num_splits;
+
   auto x_ptr = x.data<T>();
   PointerArraySetter<Context, T, Size> setter(ctx, outs);
 
