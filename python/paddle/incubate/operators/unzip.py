@@ -46,7 +46,7 @@ def unzip(input, lod):
           input = paddle.to_tensor(input_np, "int64")
           lod = paddle.to_tensor(lod_np, "int64")
 
-          unzipped_input = fluid.contrib.layers.nn.unzip(input, lod)
+          unzipped_input = paddle.incubate.unzip(input, lod)
           '''
           unzipped_input is [
                         [1.0, 2.0, 3.0, 4.0],
