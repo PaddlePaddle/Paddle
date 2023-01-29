@@ -141,13 +141,19 @@ TaskNode::TaskNode(int32_t role,
       max_run_times_(max_run_times),
       max_slot_nums_(max_slot_nums) {}
 
-bool TaskNode::AddUpstreamTask(int64_t task_id, int64_t buff_size) {
+bool TaskNode::AddUpstreamTask(int64_t task_id,
+                               int64_t buff_size,
+                               DependType type) {
   const auto& ret = upstream_.emplace(task_id, buff_size);
+  id_to_dep_type_.emplace(task_id, type);
   return ret.second;
 }
 
-bool TaskNode::AddDownstreamTask(int64_t task_id, int64_t buff_size) {
+bool TaskNode::AddDownstreamTask(int64_t task_id,
+                                 int64_t buff_size,
+                                 DependType type) {
   const auto& ret = downstream_.emplace(task_id, buff_size);
+  id_to_dep_type_.emplace(task_id, type);
   return ret.second;
 }
 

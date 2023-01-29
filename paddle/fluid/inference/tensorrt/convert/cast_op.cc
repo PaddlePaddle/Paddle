@@ -46,6 +46,7 @@ class CastOpConverter : public OpConverter {
         layer->setOutputType(0, nvinfer1::DataType::kBOOL);
         break;
       case 2:  // INT32 = 2
+      case 3:  // INT64 = 3 there is no int64 in tensorrt subgraph
         layer->setOutputType(0, nvinfer1::DataType::kINT32);
         break;
       case 4:  // FP16 = 4

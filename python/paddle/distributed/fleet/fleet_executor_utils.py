@@ -33,6 +33,7 @@ class TaskNode:
         ops=None,
         program=None,
         lazy_initialize=False,
+        cond_var_name=None,
     ):
         """
         :param rank (int): Current rank of the task node.
@@ -44,6 +45,7 @@ class TaskNode:
         :param ops (list): A list of op.desc to init the task node. (Will be removed in the future)
         :param program (Program): An instance of Program to init the task node.
         :param lazy_initialize (bool): In user-defined task, the program may change adding feed/fetch op. As efficient consideration, the task node will have the C++ object later.
+        :param cond_var_name (string): Indicate the cond var name of while.
         """
         assert (ops is not None) ^ (
             program is not None
@@ -58,6 +60,7 @@ class TaskNode:
         self.node_type = node_type
         self.program = program
         self.lazy_initialize = lazy_initialize
+        self.cond_var_name = cond_var_name
         self.run_pre_steps = None
         self.run_at_offset = None
         self.node = None
@@ -93,10 +96,12 @@ class TaskNode:
                 self.node.set_run_pre_steps(self.run_pre_steps)
             if self.run_at_offset:
                 self.node.set_run_at_offset(self.run_at_offset)
+            if self.cond_var_name:
+                self.node.set_cond_var_name(self.cond_var_name)
             for up in self.upstreams:
-                self.node.add_upstream_task(up[0], up[1])
+                self.node.add_upstream_task(up[0], up[1], up[2])
             for down in self.downstreams:
-                self.node.add_downstream_task(down[0], down[1])
+                self.node.add_downstream_task(down[0], down[1], down[2])
             self.lazy_initialize = False
         return self.node
 
@@ -124,17 +129,21 @@ class TaskNode:
         else:
             self.node.set_run_at_offset(offset)
 
-    def add_upstream_task(self, upstream, buffer_size=2):
+    def add_upstream_task(
+        self, upstream, buffer_size=2, depend_type=core.DependType.NORMAL
+    ):
         if self.lazy_initialize:
-            self.upstreams.append((upstream, buffer_size))
+            self.upstreams.append((upstream, buffer_size, depend_type))
         else:
-            self.node.add_upstream_task(upstream, buffer_size)
+            self.node.add_upstream_task(upstream, buffer_size, depend_type)
 
-    def add_downstream_task(self, downstream, buffer_size=2):
+    def add_downstream_task(
+        self, downstream, buffer_size=2, depend_type=core.DependType.NORMAL
+    ):
         if self.lazy_initialize:
-            self.downstreams.append((downstream, buffer_size))
+            self.downstreams.append((downstream, buffer_size, depend_type))
         else:
-            self.node.add_downstream_task(downstream, buffer_size)
+            self.node.add_downstream_task(downstream, buffer_size, depend_type)
 
     def task_id(self):
         return self.id

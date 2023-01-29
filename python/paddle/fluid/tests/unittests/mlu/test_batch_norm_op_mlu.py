@@ -745,7 +745,7 @@ class TestBatchNormOpError(unittest.TestCase):
 
             # the input dtype of batch_norm must be float16 or float32 or float64
             # float16 only can be set on GPU place
-            x2 = fluid.layers.data(name='x2', shape=[3, 4, 5, 6], dtype="int32")
+            x2 = paddle.static.data(name='x2', shape=[-1, 3, 4, 5, 6], dtype="int32")
             self.assertRaises(TypeError, paddle.static.nn.batch_norm, x2)
 
 
@@ -761,7 +761,7 @@ class TestDygraphBatchNormAPIError(unittest.TestCase):
 
             # the input dtype of BatchNorm must be float16 or float32 or float64
             # float16 only can be set on GPU place
-            x2 = fluid.layers.data(name='x2', shape=[3, 4, 5, 6], dtype="int32")
+            x2 = paddle.static.data(name='x2', shape=[-1, 3, 4, 5, 6], dtype="int32")
             self.assertRaises(TypeError, batch_norm, x2)
 
 

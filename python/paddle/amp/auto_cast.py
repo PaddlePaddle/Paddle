@@ -29,6 +29,7 @@ WHITE_LIST = {
     'conv2d',
     'matmul',
     'matmul_v2',
+    'max_pool2d_with_index',
     'mul',
     'fake_quantize_dequantize_abs_max',
     'fake_quantize_dequantize_moving_average_abs_max',
