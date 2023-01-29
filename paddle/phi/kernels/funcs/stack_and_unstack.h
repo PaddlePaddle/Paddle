@@ -105,6 +105,7 @@ __global__ void UnStackCudaKernel(const T* __restrict__ input,
                                   IndexT split_dim,
                                   IndexT out_col,
                                   IndexT num_splits,
+                                  GeneralDivMod<IndexT> col_divmoder,
                                   ArrayT array) {
   assert(blockDim.y == 1);
   assert(blockDim.z == 1);
@@ -118,9 +119,11 @@ __global__ void UnStackCudaKernel(const T* __restrict__ input,
   IndexT offset = blockIdx.x * blockDim.x + threadIdx.x;
   if (each_dim_size == 1) {
     for (; offset < numel; offset += blockDim.x * gridDim.x) {
+      auto col_divmod_rslt = col_divmoder.div_mod(offset);
+
       IndexT i = offset / split_dim_with_out_col;
-      IndexT j = offset / out_col - i * split_dim;
-      IndexT k = offset % out_col;
+      IndexT j = col_divmod_rslt[0] - i * split_dim;
+      IndexT k = col_divmod_rslt[1];  // offset % out_col
 
       T* output = array.data[j];
       if (output) {
@@ -130,9 +133,11 @@ __global__ void UnStackCudaKernel(const T* __restrict__ input,
     }
   } else {
     for (; offset < numel; offset += blockDim.x * gridDim.x) {
+      auto col_divmod_rslt = col_divmoder.div_mod(offset);
+
       IndexT i = offset / split_dim_with_out_col;
-      IndexT j = offset / out_col - i * split_dim;
-      IndexT k = offset % out_col;
+      IndexT j = col_divmod_rslt[0] - i * split_dim;
+      IndexT k = col_divmod_rslt[1];  // offset % out_col
 
       T* output = array.data[j / each_dim_size];
       if (output) {
@@ -215,6 +220,7 @@ void LaunchUnStackKernel(const Context& ctx,
         <<<grids, blocks, 0, ctx.stream()>>>(
             x_ptr, split_dim, out_row, tile_x_num, setter.array);
   } else {
+    GeneralDivMod<IndexT> col_divmoder(out_col);
     auto config = phi::backends::gpu::GetGpuLaunchConfig1D(
         ctx, out_row * split_dim * out_col);
 
@@ -222,8 +228,13 @@ void LaunchUnStackKernel(const Context& ctx,
         <<<config.block_per_grid.x,
            config.thread_per_block.x,
            0,
-           ctx.stream()>>>(
-            x_ptr, out_row, split_dim, out_col, num_splits, setter.array);
+           ctx.stream()>>>(x_ptr,
+                           out_row,
+                           split_dim,
+                           out_col,
+                           num_splits,
+                           col_divmoder,
+                           setter.array);
   }
 }
 
