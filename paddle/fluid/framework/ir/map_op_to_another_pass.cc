@@ -55,7 +55,7 @@ void MapOp2AnotherPass::ApplyImpl(ir::Graph* graph) const {
     } else if (op_type == "depthwise_conv2d") {
       auto groups = PADDLE_GET_CONST(int, op_desc->GetAttr("groups"));
       if (groups > 1) {
-#if CUDNN_VERSION >= 8000
+#if CUDNN_VERSION >= 8100
         op_desc->SetType(replaced_map[op_type]);
         op_desc->SetAttr("use_cudnn", true);
 #endif
