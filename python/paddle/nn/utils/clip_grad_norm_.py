@@ -16,6 +16,7 @@ import paddle
 
 __all__ = ['clip_grad_norm_']
 
+
 @paddle.no_grad()
 def clip_grad_norm_(
     parameters: paddle.Tensor,
