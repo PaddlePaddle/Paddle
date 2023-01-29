@@ -163,25 +163,23 @@ std::unordered_set<std::string> OpTransInfo::GetDenyVarNames(
 }
 
 std::unordered_set<std::string> OpTransInfo::GetInplaceVarNames(
-    const GraphNodeSet& cluster) {
+    const GraphNodeSet& cluster_inputs, const GraphNodeSet& cluster_outputs) {
+  std::unordered_set<std::string> all_inputs, all_outputs;
+
+  for (auto* var : cluster_inputs) {
+    all_inputs.insert(var->Name());
+  }
+  for (auto* var : cluster_outputs) {
+    all_outputs.insert(var->Name());
+  }
+
   std::unordered_set<std::string> inplace_var_set;
-
-  for (auto* op : cluster) {
-    // skip if not op
-    if (!op->IsOp() || !op->Op()) {
-      continue;
-    }
-    const auto& op_desc = *op->Op();
-
-    // check whether input and output have same argument
-    auto inputs = op_desc.InputArgumentNames();
-    std::unordered_set<std::string> input_set(inputs.begin(), inputs.end());
-    for (auto& name : op_desc.OutputArgumentNames()) {
-      if (input_set.count(name)) {
-        inplace_var_set.insert(name);
-      }
+  for (const auto& var_name : all_inputs) {
+    if (all_outputs.count(var_name)) {
+      inplace_var_set.insert(var_name);
     }
   }
+
   return inplace_var_set;
 }
 
@@ -480,7 +478,7 @@ std::unique_ptr<Graph> CreateNewSubGraph(const GraphNodeSet& cluster,
   subgraph->GetOrInit<Name2VarInfoMap>(kMemOptVarInfoFromMainGraph);
 
   auto inplace_var_names = std::make_unique<std::unordered_set<std::string>>(
-      OpTransInfo::GetInplaceVarNames(cluster));
+      OpTransInfo::GetInplaceVarNames(cluster_inputs, cluster_outputs));
   VLOG_IF(4, !inplace_var_names->empty())
       << "Inplace var in cluster are: " << GetDebugInfo(*inplace_var_names);
   subgraph->Set<std::unordered_set<std::string>>(kInplaceVarNames,
