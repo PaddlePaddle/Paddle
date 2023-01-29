@@ -69,7 +69,7 @@ class OpTransInfo {
       const GraphNodeSet& cluster) const;
 
   static std::unordered_set<std::string> GetInplaceVarNames(
-      const GraphNodeSet& cluster);
+      const GraphNodeSet& cluster_inputs, const GraphNodeSet& cluster_outputs);
 
  private:
   DyOpCondT dynamic_op_cond_;
