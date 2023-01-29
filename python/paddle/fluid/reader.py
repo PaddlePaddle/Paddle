@@ -567,7 +567,7 @@ class DataLoader(object):
             return _DataLoaderIterMultiProcess(self)
 
     def __call__(self):
-        return self.__iter__
+        return self
 
     @staticmethod
     def from_generator(feed_list=None,
