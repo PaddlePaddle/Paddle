@@ -20,6 +20,7 @@ limitations under the License. */
 
 #if CUDA_VERSION >= 11060
 #include "paddle/phi/kernels/autotune/cache_cublas_Lt.h"
+#endif
 
 namespace phi {
 
@@ -160,7 +161,7 @@ struct CublasLtGEMM<T, phi::GPUContext> {
         dev_ctx.GetPlace(),
         workspace_size,
         phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
-
+#if CUDA_VERSION >= 11060
     auto algo = CublasLtAlgoCache::Instance().GetGemmAlgo(lt_handle,
                                                           operation_desc,
                                                           y_desc,
@@ -174,6 +175,10 @@ struct CublasLtGEMM<T, phi::GPUContext> {
                                                           stream,
                                                           workspace->ptr(),
                                                           workspace_size);
+#else
+    auto algo = nullptr;
+#endif
+
     // We can take the advantage of cublasLtMatmul shortcut notation with
     // algo = NULL which will force matmul to get the basic heuristic result
     // internally. Downsides of this approach are that there is no way to
@@ -320,7 +325,7 @@ struct CublasLtBatchedGEMM<T, phi::GPUContext> {
         dev_ctx.GetPlace(),
         workspace_size,
         phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
-
+#if CUDA_VERSION >= 11060
     auto algo = CublasLtAlgoCache::Instance().GetGemmAlgo(lt_handle,  // OK
                                                           operation_desc,
                                                           y_desc,
@@ -334,6 +339,9 @@ struct CublasLtBatchedGEMM<T, phi::GPUContext> {
                                                           stream,
                                                           workspace->ptr(),
                                                           workspace_size);
+#else
+    auto algo = nullptr;
+#endif
     // We can take the advantage of cublasLtMatmul shortcut notation with
     // algo = NULL which will force matmul to get the basic heuristic result
     // internally. Downsides of this approach are that there is no way to
@@ -396,5 +404,4 @@ struct CublasLtBatchedGEMM<T, phi::GPUContext> {
 
 }  // namespace phi
 
-#endif
 #endif
