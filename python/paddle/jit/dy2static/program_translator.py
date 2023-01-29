@@ -1092,8 +1092,9 @@ class ProgramCache:
     def _build_once(self, cache_key):
         # TODO(Aurelius84): Need a gloabl FLAGS to enable/disable to_prim
         enable_prim = cache_key.kwargs['build_strategy'].build_cinn_pass
-        if enable_prim and core.enable_prim_backward():
-            core.set_prim_enabled(True)
+        if enable_prim:
+            # TODO(Jiabin): Change this to True if we need this to be default option
+            core.check_and_set_prim_all_enabled()
 
         concrete_program = ConcreteProgram.from_func_spec(
             func_spec=cache_key.function_spec,
@@ -1103,9 +1104,7 @@ class ProgramCache:
             **cache_key.kwargs
         )
 
-        if enable_prim or core.enable_prim_forward() == "debug":
-            concrete_program._to_prim()
-            core.set_prim_enabled(False)
+        concrete_program._to_prim()
         return concrete_program, partial_program_from(concrete_program)
 
     def __getitem__(self, item):

@@ -1193,3 +1193,16 @@ PADDLE_DEFINE_EXPORTED_int32(cudnn_cache_saturation_count, 1, "");
 PADDLE_DEFINE_EXPORTED_bool(trt_ibuilder_cache,
                             false,
                             "Add a persistent ibuilder.");
+
+/**
+ * mmap_allocator related FLAG
+ * Name: use_shm_cache
+ * Since Version: 2.5.0
+ * Value Range: bool, default=true
+ * Example:
+ * Note: . If True, mmap_allocator will cache shm file to decrease munmap
+ * operation.
+ */
+PADDLE_DEFINE_EXPORTED_bool(use_shm_cache,
+                            true,
+                            "Use shm cache in mmap_allocator.");
