@@ -54,8 +54,8 @@ namespace paddle2cinn {
 
 using ::cinn::auto_schedule::AutoTuner;
 using ::cinn::common::Target;
+using ::cinn::frontend::InplaceOutSuffix;
 using ::cinn::frontend::Optimize;
-using ::cinn::frontend::paddle::InplaceOutSuffix;
 using ::cinn::hlir::framework::BuildScope;
 using ::cinn::hlir::framework::GraphCompiler;
 using inference::analysis::Dot;

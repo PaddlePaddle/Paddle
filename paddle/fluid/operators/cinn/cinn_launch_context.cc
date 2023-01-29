@@ -51,7 +51,7 @@ using framework::ParallelExecutor;
 using framework::Scope;
 using CinnInstruction = ::cinn::hlir::framework::Instruction;
 using CinnRuntimeProgram = ::cinn::hlir::framework::Program;
-using ::cinn::frontend::paddle::InplaceOutSuffix;
+using ::cinn::frontend::InplaceOutSuffix;
 using framework::paddle2cinn::kInplaceVarNames;
 using framework::paddle2cinn::kMemOptVarInfoFromMainGraph;
 using framework::paddle2cinn::kSkipGcVarNames;
