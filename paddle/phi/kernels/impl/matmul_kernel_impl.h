@@ -482,6 +482,7 @@ void MatMulFunctionImplWithCuBlas(const Context& dev_ctx,
 // Core implement with cublasLt
 // This is almost a copy from MatMulFunctionImplWithCublas
 // compare cublas with cublasLt kernels when Matmul autotune is on
+#if CUDA_VERSION >= 11060
 template <typename Context, typename T>
 void MatMulFunctionImplWithCuBlasLt(const Context& dev_ctx,
                                     const DenseTensor& X,
@@ -870,6 +871,7 @@ void MatMulFunctionImplWithCuBlasLt(const Context& dev_ctx,
                                       out_batch_size);
   }
 }
+#endif
 
 template <typename Context, typename T>
 void MatMulFunction(const Context& dev_ctx,
