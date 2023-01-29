@@ -15,12 +15,12 @@
 import unittest
 
 import numpy as np
+from eager_op_test import OpTest, skip_check_grad_ci
 
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 import paddle.nn.functional as F
-from eager_op_test import OpTest, skip_check_grad_ci
 from paddle.fluid import Program
 
 

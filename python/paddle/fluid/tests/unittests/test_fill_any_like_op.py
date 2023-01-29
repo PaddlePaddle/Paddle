@@ -15,10 +15,10 @@
 import unittest
 
 import numpy as np
+from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
 import paddle.fluid.core as core
-from eager_op_test import OpTest, convert_float_to_uint16
 
 
 def fill_any_like_wrapper(x, value):
