@@ -647,6 +647,7 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
     trt_timing_cache_data =
         std::string((const char *)serialized_timing_cache_data->data(),
                     serialized_timing_cache_data->size());
+
     SaveSerializedDataToFile(timing_cache_dir + "/paddle_trt_timing.cache",
                              trt_timing_cache_data);
   }
