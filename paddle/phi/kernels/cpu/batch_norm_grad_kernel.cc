@@ -63,7 +63,8 @@ void BatchNormGradRawKernel(const Context& ctx,
   auto* d_scale = scale_grad;
   auto* d_bias = bias_grad;
 
-  use_global_stats = is_test || use_global_stats;
+  bool test_mode = is_test && (!trainable_statistics);
+  use_global_stats = test_mode || use_global_stats;
 
   // batch_norm with inplace as false will take X as grad input, which
   // is same as cuDNN batch_norm backward calculation, batch_norm
