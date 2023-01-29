@@ -1432,8 +1432,9 @@ class TestSundryAPI(unittest.TestCase):
 
         # for coverage
         scale_3 = paddle.full([1], 2)
+        input_3d = paddle.rand([2, 3, 6])
         out4 = interpolate(
-            x=input_x,
+            x=input_3d,
             scale_factor=scale_2,
             mode="bilinear",
             align_corners=False,
