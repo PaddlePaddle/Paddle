@@ -28,6 +28,7 @@ void TopkKernel(const Context& dev_ctx,
                 bool sorted,
                 DenseTensor* out,
                 DenseTensor* indices) {
+  using XPUType = typename XPUTypeTrait<T>::Type;
   const auto& in_dims = x.dims();
   const T* in_data = x.data<T>();
   int64_t* indices_data = dev_ctx.template Alloc<int64_t>(indices);
@@ -48,7 +49,11 @@ void TopkKernel(const Context& dev_ctx,
           "XPU API does not support smallest topk operation currently."
           " Operator will be supported in future update."));
   if (in_dims.size() == 0) {
-    phi::Copy<Context>(dev_ctx, x, dev_ctx.GetPlace(), false, out);
+    int r = xpu::copy<XPUType>(dev_ctx.x_context(),
+                               reinterpret_cast<const XPUType*>(x.data<T>()),
+                               reinterpret_cast<XPUType*>(out->data<T>()),
+                               x.numel());
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "copy");
     return;
   }
   if (axis < 0) axis += in_dims.size();
