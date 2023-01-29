@@ -12,47 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// #include <cmath>
-// #include <vector>
-
-// #include "cutlass/bfloat16.h"
-// #include "cutlass/gemm/gemm.h"
-// #include "cutlass/layout/matrix.h"
-// #include "cutlass/layout/vector.h"
-// #include "cutlass/numeric_types.h"
-
-// // todo move below
-// #include
-// "paddle/phi/kernels/fusion/cutlass/fused_multi_head_attention/attention_scaling_coefs_updater.h"
-// #include "cutlass/epilogue/threadblock/default_epilogue_simt.h"
-// #include "cutlass/epilogue/threadblock/default_epilogue_tensor_op.h"
-// #include "cutlass/epilogue/threadblock/default_epilogue_volta_tensor_op.h"
-// #include "cutlass/gemm/device/default_gemm_configuration.h"
-// #include "cutlass/gemm/kernel/default_gemm.h"
-// #include "cutlass/gemm/threadblock/default_mma.h"
-// #include "cutlass/gemm/threadblock/default_mma_core_simt.h"
-// #include "cutlass/gemm/threadblock/default_mma_core_sm70.h"
-// #include "cutlass/gemm/threadblock/default_mma_core_sm75.h"
-// #include "cutlass/gemm/threadblock/default_mma_core_sm80.h"
-// #include "cutlass/gemm/threadblock/threadblock_swizzle.h"
-// #include "cutlass/matrix_shape.h"
-// #include "cutlass/platform/platform.h"
-// #include "cutlass/transform/threadblock/predicated_tile_iterator.h"
-// #include
-// "paddle/phi/kernels/fusion/cutlass/fused_multi_head_attention/debug_utils.h"
-// #include
-// "paddle/phi/kernels/fusion/cutlass/fused_multi_head_attention/epilogue_pipelined.h"
-// #include
-// "paddle/phi/kernels/fusion/cutlass/fused_multi_head_attention/epilogue_rescale_output.h"
-// #include
-// "paddle/phi/kernels/fusion/cutlass/fused_multi_head_attention/find_default_mma.h"
-// #include
-// "paddle/phi/kernels/fusion/cutlass/fused_multi_head_attention/gemm_kernel_utils.h"
-// #include
-// "paddle/phi/kernels/fusion/cutlass/fused_multi_head_attention/mma_from_smem.h"
-// #include
-// "paddle/phi/kernels/fusion/cutlass/fused_multi_head_attention/tile_smem_loader.h"
-
 #include <cmath>
 #include <vector>
 
@@ -177,22 +136,20 @@ struct AttentionKernel {
     int32_t k_strideH;
     int32_t v_strideH;
 
-    int32_t o_strideH;
-
     int64_t mask_strideH;
 
     int64_t q_strideB;
     int64_t k_strideB;
     int64_t v_strideB;
 
-    int64_t o_strideB;
-
     int64_t mask_strideB;
 
     int32_t num_batches;
     int32_t num_heads;
 
-    CUTLASS_HOST_DEVICE int32_t o_strideM() const { return head_dim_value; }
+    CUTLASS_HOST_DEVICE int32_t o_strideM() const {
+      return head_dim_value * num_heads;
+    }
     // Moves pointers to what we should process
     // Returns "false" if there is no work to do
     CUTLASS_DEVICE bool advance_to_block() {
@@ -222,9 +179,9 @@ struct AttentionKernel {
         query_ptr += batch_id * q_strideB;
         key_ptr += batch_id * k_strideB;
         value_ptr += batch_id * v_strideB;
-        output_ptr += batch_id * o_strideB;
+        output_ptr += int64_t(batch_id * num_queries) * o_strideM();
         if (output_accum_ptr != nullptr) {
-          output_accum_ptr += batch_id * o_strideB;
+          output_accum_ptr += int64_t(batch_id * num_queries) * o_strideM();
         }
         q_start = 0;
         k_start = 0;
@@ -234,8 +191,8 @@ struct AttentionKernel {
       query_ptr += (q_start + query_start) * q_strideM + head_id * q_strideH;
       key_ptr += k_start * k_strideM + head_id * k_strideH;
       value_ptr += k_start * v_strideM + head_id * v_strideH;
-      output_ptr +=
-          int64_t(q_start + query_start) * o_strideM() + head_id * o_strideH;
+      output_ptr += int64_t(q_start + query_start) * o_strideM() +
+                    head_id * head_dim_value;
 
       if (mask_ptr != nullptr) {
         const int64_t mask_offset =
@@ -244,8 +201,8 @@ struct AttentionKernel {
       }
 
       if (output_accum_ptr != nullptr) {
-        output_accum_ptr +=
-            int64_t(q_start + query_start) * o_strideM() + head_id * o_strideH;
+        output_accum_ptr += int64_t(q_start + query_start) * o_strideM() +
+                            head_id * head_dim_value;
       } else {
         // Accumulate directly in the destination buffer (eg for f32)
         output_accum_ptr = (accum_t*)output_ptr;
@@ -496,6 +453,7 @@ struct AttentionKernel {
       SharedStorageEpilogueAtEnd,
       SharedStorageEpilogueInLoop>::type;
 
+  // Maybe change to check strideH
   static bool __host__ check_supported(Params const& p) {
     CHECK_ALIGNED_PTR(p.query_ptr, kAlignmentQ);
     CHECK_ALIGNED_PTR(p.key_ptr, kAlignmentK);
@@ -941,87 +899,87 @@ __global__ void __launch_bounds__(AK::kNumThreads, AK::kMinBlocksPerSm)
   AK::attention_kernel(p);
 }
 
-template <typename AK>
-__global__ void __launch_bounds__(AK::kNumThreads, AK::kMinBlocksPerSm)
-    attention_kernel_batched(typename AK::Params params);
+// template <typename AK>
+// __global__ void __launch_bounds__(AK::kNumThreads, AK::kMinBlocksPerSm)
+//     attention_kernel_batched(typename AK::Params params);
 
-#define _ATTENTION_KERNEL_FORWARD_BEGIN(...)                                  \
-  template <>                                                                 \
-  __global__ void __launch_bounds__(__VA_ARGS__::kNumThreads,                 \
-                                    __VA_ARGS__::kMinBlocksPerSm)             \
-      attention_kernel_batched<__VA_ARGS__>(typename __VA_ARGS__::Params p) { \
-    using Kernel = __VA_ARGS__;
-#define _ATTENTION_KERNEL_FORWARD_END() }
+// #define _ATTENTION_KERNEL_FORWARD_BEGIN(...)                                  \
+//   template <>                                                                 \
+//   __global__ void __launch_bounds__(__VA_ARGS__::kNumThreads,                 \
+//                                     __VA_ARGS__::kMinBlocksPerSm)             \
+//       attention_kernel_batched<__VA_ARGS__>(typename __VA_ARGS__::Params p) { \
+//     using Kernel = __VA_ARGS__;
+// #define _ATTENTION_KERNEL_FORWARD_END() }
 
-#ifdef __CUDA_ARCH__
-#define __CUDA_ARCH_OR_ZERO__ __CUDA_ARCH__
-#else
-#define __CUDA_ARCH_OR_ZERO__ 0
-#endif
+// #ifdef __CUDA_ARCH__
+// #define __CUDA_ARCH_OR_ZERO__ __CUDA_ARCH__
+// #else
+// #define __CUDA_ARCH_OR_ZERO__ 0
+// #endif
 
-#define INSTANTIATE_ATTENTION_KERNEL_FORWARD(ARCH,                         \
-                                             SCALAR_T,                     \
-                                             IS_ALIGNED,                   \
-                                             QUERIES_PER_BLOCK,            \
-                                             KEYS_PER_BLOCK,               \
-                                             SINGLE_VALUE_ITER)            \
-  _ATTENTION_KERNEL_FORWARD_BEGIN(AttentionKernel<SCALAR_T,                \
-                                                  cutlass::arch::Sm##ARCH, \
-                                                  IS_ALIGNED,              \
-                                                  QUERIES_PER_BLOCK,       \
-                                                  KEYS_PER_BLOCK,          \
-                                                  SINGLE_VALUE_ITER>)      \
-  if (!p.advance_to_block()) {                                             \
-    return;                                                                \
-  }                                                                        \
-  Kernel::attention_kernel(p);                                             \
-  _ATTENTION_KERNEL_FORWARD_END();
+// #define INSTANTIATE_ATTENTION_KERNEL_FORWARD(ARCH,                         \
+//                                              SCALAR_T,                     \
+//                                              IS_ALIGNED,                   \
+//                                              QUERIES_PER_BLOCK,            \
+//                                              KEYS_PER_BLOCK,               \
+//                                              SINGLE_VALUE_ITER)            \
+//   _ATTENTION_KERNEL_FORWARD_BEGIN(AttentionKernel<SCALAR_T,                \
+//                                                   cutlass::arch::Sm##ARCH, \
+//                                                   IS_ALIGNED,              \
+//                                                   QUERIES_PER_BLOCK,       \
+//                                                   KEYS_PER_BLOCK,          \
+//                                                   SINGLE_VALUE_ITER>)      \
+//   if (!p.advance_to_block()) {                                             \
+//     return;                                                                \
+//   }                                                                        \
+//   Kernel::attention_kernel(p);                                             \
+//   _ATTENTION_KERNEL_FORWARD_END();
 
-#define INSTANTIATE_ATTENTION_KERNEL_FORWARD_DISABLED(ARCH,                \
-                                                      SCALAR_T,            \
-                                                      IS_ALIGNED,          \
-                                                      QUERIES_PER_BLOCK,   \
-                                                      KEYS_PER_BLOCK,      \
-                                                      SINGLE_VALUE_ITER)   \
-  _ATTENTION_KERNEL_FORWARD_BEGIN(AttentionKernel<SCALAR_T,                \
-                                                  cutlass::arch::Sm##ARCH, \
-                                                  IS_ALIGNED,              \
-                                                  QUERIES_PER_BLOCK,       \
-                                                  KEYS_PER_BLOCK,          \
-                                                  SINGLE_VALUE_ITER>)      \
-  printf("FATAL: this function is for sm%d, but was built for sm%d\n",     \
-         int(ARCH),                                                        \
-         int(__CUDA_ARCH_OR_ZERO__));                                      \
-  _ATTENTION_KERNEL_FORWARD_END();
+// #define INSTANTIATE_ATTENTION_KERNEL_FORWARD_DISABLED(ARCH,                \
+//                                                       SCALAR_T,            \
+//                                                       IS_ALIGNED,          \
+//                                                       QUERIES_PER_BLOCK,   \
+//                                                       KEYS_PER_BLOCK,      \
+//                                                       SINGLE_VALUE_ITER)   \
+//   _ATTENTION_KERNEL_FORWARD_BEGIN(AttentionKernel<SCALAR_T,                \
+//                                                   cutlass::arch::Sm##ARCH, \
+//                                                   IS_ALIGNED,              \
+//                                                   QUERIES_PER_BLOCK,       \
+//                                                   KEYS_PER_BLOCK,          \
+//                                                   SINGLE_VALUE_ITER>)      \
+//   printf("FATAL: this function is for sm%d, but was built for sm%d\n",     \
+//          int(ARCH),                                                        \
+//          int(__CUDA_ARCH_OR_ZERO__));                                      \
+//   _ATTENTION_KERNEL_FORWARD_END();
 
-// All kernels are disabled by default
-#define INSTANTIATE_ATTENTION_KERNEL_FORWARD_SM50(...) \
-  INSTANTIATE_ATTENTION_KERNEL_FORWARD_DISABLED(50, __VA_ARGS__)
-#define INSTANTIATE_ATTENTION_KERNEL_FORWARD_SM70(...) \
-  INSTANTIATE_ATTENTION_KERNEL_FORWARD_DISABLED(70, __VA_ARGS__)
-#define INSTANTIATE_ATTENTION_KERNEL_FORWARD_SM75(...) \
-  INSTANTIATE_ATTENTION_KERNEL_FORWARD_DISABLED(75, __VA_ARGS__)
-#define INSTANTIATE_ATTENTION_KERNEL_FORWARD_SM80(...) \
-  INSTANTIATE_ATTENTION_KERNEL_FORWARD_DISABLED(80, __VA_ARGS__)
+// // All kernels are disabled by default
+// #define INSTANTIATE_ATTENTION_KERNEL_FORWARD_SM50(...) \
+//   INSTANTIATE_ATTENTION_KERNEL_FORWARD_DISABLED(50, __VA_ARGS__)
+// #define INSTANTIATE_ATTENTION_KERNEL_FORWARD_SM70(...) \
+//   INSTANTIATE_ATTENTION_KERNEL_FORWARD_DISABLED(70, __VA_ARGS__)
+// #define INSTANTIATE_ATTENTION_KERNEL_FORWARD_SM75(...) \
+//   INSTANTIATE_ATTENTION_KERNEL_FORWARD_DISABLED(75, __VA_ARGS__)
+// #define INSTANTIATE_ATTENTION_KERNEL_FORWARD_SM80(...) \
+//   INSTANTIATE_ATTENTION_KERNEL_FORWARD_DISABLED(80, __VA_ARGS__)
 
-// Enable the right one based on __CUDA_ARCH__
-#ifndef __CUDA_ARCH__
-#elif __CUDA_ARCH__ < 500
-#error "Need cuda arch at least 5.0"
-#elif __CUDA_ARCH__ < 700
-#undef INSTANTIATE_ATTENTION_KERNEL_FORWARD_SM50
-#define INSTANTIATE_ATTENTION_KERNEL_FORWARD_SM50(...) \
-  INSTANTIATE_ATTENTION_KERNEL_FORWARD(50, __VA_ARGS__)
-#elif __CUDA_ARCH__ < 750
-#undef INSTANTIATE_ATTENTION_KERNEL_FORWARD_SM70
-#define INSTANTIATE_ATTENTION_KERNEL_FORWARD_SM70(...) \
-  INSTANTIATE_ATTENTION_KERNEL_FORWARD(70, __VA_ARGS__)
-#elif __CUDA_ARCH__ < 800
-#undef INSTANTIATE_ATTENTION_KERNEL_FORWARD_SM75
-#define INSTANTIATE_ATTENTION_KERNEL_FORWARD_SM75(...) \
-  INSTANTIATE_ATTENTION_KERNEL_FORWARD(75, __VA_ARGS__)
-#elif __CUDA_ARCH__ >= 800
-#undef INSTANTIATE_ATTENTION_KERNEL_FORWARD_SM80
-#define INSTANTIATE_ATTENTION_KERNEL_FORWARD_SM80(...) \
-  INSTANTIATE_ATTENTION_KERNEL_FORWARD(80, __VA_ARGS__)
-#endif
+// // Enable the right one based on __CUDA_ARCH__
+// #ifndef __CUDA_ARCH__
+// #elif __CUDA_ARCH__ < 500
+// #error "Need cuda arch at least 5.0"
+// #elif __CUDA_ARCH__ < 700
+// #undef INSTANTIATE_ATTENTION_KERNEL_FORWARD_SM50
+// #define INSTANTIATE_ATTENTION_KERNEL_FORWARD_SM50(...) \
+//   INSTANTIATE_ATTENTION_KERNEL_FORWARD(50, __VA_ARGS__)
+// #elif __CUDA_ARCH__ < 750
+// #undef INSTANTIATE_ATTENTION_KERNEL_FORWARD_SM70
+// #define INSTANTIATE_ATTENTION_KERNEL_FORWARD_SM70(...) \
+//   INSTANTIATE_ATTENTION_KERNEL_FORWARD(70, __VA_ARGS__)
+// #elif __CUDA_ARCH__ < 800
+// #undef INSTANTIATE_ATTENTION_KERNEL_FORWARD_SM75
+// #define INSTANTIATE_ATTENTION_KERNEL_FORWARD_SM75(...) \
+//   INSTANTIATE_ATTENTION_KERNEL_FORWARD(75, __VA_ARGS__)
+// #elif __CUDA_ARCH__ >= 800
+// #undef INSTANTIATE_ATTENTION_KERNEL_FORWARD_SM80
+// #define INSTANTIATE_ATTENTION_KERNEL_FORWARD_SM80(...) \
+//   INSTANTIATE_ATTENTION_KERNEL_FORWARD(80, __VA_ARGS__)
+// #endif

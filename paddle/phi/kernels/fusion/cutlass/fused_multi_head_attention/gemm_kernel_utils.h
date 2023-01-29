@@ -37,20 +37,20 @@
 ////////////////////////////////////////////////////////////////////////////////
 // Some helper functions
 ////////////////////////////////////////////////////////////////////////////////
-#define DISPATCH_TYPES(tensor, func)                                        \
-  {                                                                         \
-    if (query.scalar_type() == at::ScalarType::Float) {                     \
-      using scalar_t = float;                                               \
-      func();                                                               \
-    } else if (query.scalar_type() == at::ScalarType::Half) {               \
-      using scalar_t = cutlass::half_t;                                     \
-      func();                                                               \
-    } else if (query.scalar_type() == at::ScalarType::BFloat16) {           \
-      using scalar_t = cutlass::bfloat16_t;                                 \
-      func();                                                               \
-    } else {                                                                \
-      TORCH_CHECK(false, "Only fp32, half & bf16 supported at the moment"); \
-    }                                                                       \
+#define DISPATCH_TYPES(tensor, func)                                           \
+  {                                                                            \
+    if (query.scalar_type() == at::ScalarType::Float) {                        \
+      using scalar_t = float;                                                  \
+      func();                                                                  \
+    } else if (query.scalar_type() == at::ScalarType::Half) {                  \
+      using scalar_t = cutlass::half_t;                                        \
+      func();                                                                  \
+    } else if (query.scalar_type() == at::ScalarType::BFloat16) {              \
+      using scalar_t = cutlass::bfloat16_t;                                    \
+      func();                                                                  \
+    } else {                                                                   \
+      XFORMERS_CHECK(false, "Only fp32, half & bf16 supported at the moment"); \
+    }                                                                          \
   }
 
 #define DISPATCH_BOOL(BOOL_V, BOOL_NAME, F) \
@@ -78,26 +78,27 @@
       using ArchTag = cutlass::arch::Sm50;                                \
       func();                                                             \
     } else {                                                              \
-      TORCH_CHECK(                                                        \
+      XFORMERS_CHECK(                                                     \
           false,                                                          \
           "Your device is too old. We require compute capability >= 50"); \
     }                                                                     \
   }
 
-#define CHECK_NOSPARSE_CONTIGUOUS_CUDA(TENSOR)                         \
-  TORCH_CHECK(TENSOR.is_cuda(), #TENSOR " must be a CUDA tensor");     \
-  TORCH_CHECK(!TENSOR.is_sparse(), #TENSOR " must be a dense tensor"); \
-  TORCH_CHECK(TENSOR.is_contiguous());
+#define CHECK_NOSPARSE_CONTIGUOUS_CUDA(TENSOR)                            \
+  XFORMERS_CHECK(TENSOR.is_cuda(), #TENSOR " must be a CUDA tensor");     \
+  XFORMERS_CHECK(!TENSOR.is_sparse(), #TENSOR " must be a dense tensor"); \
+  XFORMERS_CHECK(TENSOR.is_contiguous());
 
-#define CHECK_NOSPARSE_LASTCONTIGUOUS_CUDA(TENSOR)                     \
-  TORCH_CHECK(TENSOR.is_cuda(), #TENSOR " must be a CUDA tensor");     \
-  TORCH_CHECK(!TENSOR.is_sparse(), #TENSOR " must be a dense tensor"); \
-  TORCH_CHECK(TENSOR.stride(-1) == 1,                                  \
-              #TENSOR ": last dimension must be contiguous");
+#define CHECK_NOSPARSE_LASTCONTIGUOUS_CUDA(TENSOR)                        \
+  XFORMERS_CHECK(TENSOR.is_cuda(), #TENSOR " must be a CUDA tensor");     \
+  XFORMERS_CHECK(!TENSOR.is_sparse(), #TENSOR " must be a dense tensor"); \
+  XFORMERS_CHECK(TENSOR.stride(-1) == 1,                                  \
+                 #TENSOR ": last dimension must be contiguous");
 
-#ifdef HAS_PYTORCH
-#define CHECK_ALIGNED_PTR(PTR, ALIGNMENT) \
-  TORCH_CHECK(uint64_t(PTR) % ALIGNMENT == 0, #PTR " is not correctly aligned")
+#ifdef TORCH_CHECK
+#define CHECK_ALIGNED_PTR(PTR, ALIGNMENT)        \
+  XFORMERS_CHECK(uint64_t(PTR) % ALIGNMENT == 0, \
+                 #PTR " is not correctly aligned")
 #define XFORMERS_CHECK TORCH_CHECK
 #elif defined(__CUDACC_RTC__)
 #define CHECK_ALIGNED_PTR(PTR, ALIGNMENT)  \
@@ -109,6 +110,7 @@
     return false;                 \
   }
 #else
+#include <iostream>
 #define CHECK_ALIGNED_PTR(PTR, ALIGNMENT)            \
   if (!(uint64_t(PTR) % ALIGNMENT == 0)) {           \
     std::cerr << #PTR " is not correctly aligned\n"; \
@@ -121,71 +123,23 @@
   }
 #endif
 
-#define ASSIGN_CHECK_OVERFLOW(A, B)                                        \
-  {                                                                        \
-    A = B;                                                                 \
-    TORCH_CHECK(B < cutlass::platform::numeric_limits<decltype(A)>::max(), \
-                #B " overflows");                                          \
+#define ASSIGN_CHECK_OVERFLOW(A, B)                             \
+  {                                                             \
+    A = B;                                                      \
+    XFORMERS_CHECK(B < std::numeric_limits<decltype(A)>::max(), \
+                   #B " overflows");                            \
   }
 
 namespace gemm_kernel_utils {
 
-#ifdef HAS_PYTORCH
-template <typename scalar_t>
-struct TypeTraits;
-
-template <>
-struct TypeTraits<cutlass::half_t> {
-  using scalar_t = cutlass::half_t;
-
-  static constexpr __host__ at::ScalarType atScalarType() {
-    return at::ScalarType::Half;
-  }
-  template <int nDim>
-  static __host__ at::PackedTensorAccessor32<scalar_t, nDim> packed_accessor(
-      at::Tensor const& tensor) {
-    return at::PackedTensorAccessor32<scalar_t, nDim>(
-        (scalar_t*)(tensor.data_ptr()),
-        tensor.sizes().data(),
-        tensor.strides().data());
-  }
-};
-
-template <>
-struct TypeTraits<cutlass::bfloat16_t> {
-  using scalar_t = cutlass::bfloat16_t;
-
-  static constexpr __host__ at::ScalarType atScalarType() {
-    return at::ScalarType::BFloat16;
-  }
-  template <int nDim>
-  static __host__ at::PackedTensorAccessor32<scalar_t, nDim> packed_accessor(
-      at::Tensor const& tensor) {
-    return at::PackedTensorAccessor32<scalar_t, nDim>(
-        (scalar_t*)(tensor.data_ptr()),
-        tensor.sizes().data(),
-        tensor.strides().data());
-  }
-};
-
-template <>
-struct TypeTraits<float> {
-  using scalar_t = float;
-
-  static constexpr __host__ at::ScalarType atScalarType() {
-    return at::ScalarType::Float;
-  }
-  template <int nDim>
-  static __host__ at::PackedTensorAccessor32<scalar_t, nDim> packed_accessor(
-      at::Tensor const& tensor) {
-    return tensor.packed_accessor32<scalar_t, nDim>();
-  }
-};
-#endif
-
 template <typename integer>
 constexpr CUTLASS_HOST_DEVICE integer ceil_div(integer n, integer m) {
   return (n + m - 1) / m;
+}
+
+template <typename integer>
+constexpr CUTLASS_HOST_DEVICE integer align_up(integer n, integer m) {
+  return ((n + m - 1) / m) * m;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

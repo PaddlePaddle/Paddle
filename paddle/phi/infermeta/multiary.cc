@@ -3008,18 +3008,18 @@ void FusedMultiHeadAttentionInferMeta(const MetaTensor& query,
                                    "But received Value dimension(%s)",
                                    value.dims().size()));
   const int64_t query_batch_size = query.dims()[0];
-  const int64_t query_num_head = query.dims()[1];
-  const int64_t query_seq_length = query.dims()[2];
+  const int64_t query_seq_length = query.dims()[1];
+  const int64_t query_num_head = query.dims()[2];
   const int64_t query_head_size = query.dims()[3];
 
   const int64_t key_batch_size = key.dims()[0];
-  const int64_t key_num_head = key.dims()[1];
-  const int64_t key_seq_length = key.dims()[2];
+  const int64_t key_seq_length = key.dims()[1];
+  const int64_t key_num_head = key.dims()[2];
   const int64_t key_head_size = key.dims()[3];
 
   const int64_t value_batch_size = value.dims()[0];
-  const int64_t value_num_head = value.dims()[1];
-  const int64_t value_seq_length = value.dims()[2];
+  const int64_t value_seq_length = value.dims()[1];
+  const int64_t value_num_head = value.dims()[2];
   const int64_t value_head_size = value.dims()[3];
 
   PADDLE_ENFORCE_EQ(
@@ -3048,7 +3048,8 @@ void FusedMultiHeadAttentionInferMeta(const MetaTensor& query,
   // TODO(zhengzekang): Add check for mask.
 
   std::vector<int64_t> out_dims(
-      {query_batch_size, query_num_head, query_seq_length, value_head_size});
+      {query_batch_size, query_seq_length, query_num_head, value_head_size});
+
   out->set_dims(phi::make_ddim(out_dims));
   out->share_lod(query);
   out->set_dtype(query.dtype());

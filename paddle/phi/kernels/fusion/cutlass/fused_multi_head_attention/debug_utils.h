@@ -48,19 +48,51 @@
   }
 
 // Print on the first thread of the first block
-#if 0
+#if 1
 #define PRINT_WARP_ID 0
 #define PRINT_LANE_ID 0
 #define PRINT_T0_L0(msg, ...)                                         \
   if (blockIdx.x == 0 && blockIdx.y == 0 && blockIdx.z == 0 &&        \
       threadIdx.x == PRINT_LANE_ID && threadIdx.y == PRINT_WARP_ID && \
       threadIdx.z == 0) {                                             \
-    printf(msg "\n", __VA_ARGS__);                                    \
+    printf(msg "\n", ##__VA_ARGS__);                                  \
   }
+#define PRINT_TX_LX(msg, ...)                                                 \
+  for (int bx = 0; bx < gridDim.x; ++bx) {                                    \
+    for (int by = 0; by < gridDim.y; ++by) {                                  \
+      for (int bz = 0; bz < gridDim.z; ++bz) {                                \
+        for (int tx = 0; tx < blockDim.x; ++tx) {                             \
+          for (int ty = 0; ty < blockDim.y; ++ty) {                           \
+            for (int tz = 0; tz < blockDim.z; ++tz) {                         \
+              __syncthreads();                                                \
+              if (blockIdx.x == bx && blockIdx.y == by && blockIdx.z == bz && \
+                  threadIdx.x == tx && threadIdx.y == ty &&                   \
+                  threadIdx.z == tz) {                                        \
+                printf("[%d,%d,%d][%d,%d,%d]" msg "\n",                       \
+                       bx,                                                    \
+                       by,                                                    \
+                       bz,                                                    \
+                       tx,                                                    \
+                       ty,                                                    \
+                       tz,                                                    \
+                       ##__VA_ARGS__);                                        \
+              }                                                               \
+            }                                                                 \
+          }                                                                   \
+        }                                                                     \
+      }                                                                       \
+    }                                                                         \
+  }
+#else
+#define PRINT_T0_L0
+#define PRINT_TX_LX
+#endif
+
 struct __string_view {
   char const* data;
   std::size_t size;
 };
+#if __cplusplus >= 201402L
 template <class T>
 constexpr __string_view __get_type_name() {
   char const* p = __PRETTY_FUNCTION__;
@@ -77,14 +109,16 @@ constexpr __string_view __get_type_name() {
         break;
       case ']':
         --count;
-        if (!count)
-          return {p, std::size_t(p2 - p)};
+        if (!count) return {p, std::size_t(p2 - p)};
     }
   }
   return {};
 }
 #else
-#define PRINT_T0_L0
+template <class T>
+constexpr __string_view __get_type_name() {
+  return {"unsupported", 11};
+}
 #endif
 
 // Print a given array

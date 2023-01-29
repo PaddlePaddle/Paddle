@@ -26,22 +26,25 @@ struct LaunchParams {
   // meta params
   phi::DataType datatype;
 
-  // Input tensors
-  const void* query_ptr;  // [num_batches, num_heads, query_seq_len, head_size]
-  const void*
-      key_ptr;  // [num_batches, num_heads, key_value_seq_len, value_head_size]
-  const void* mask_ptr =
-      nullptr;  // [num_batches, num_heads, key_value_seq_len, query_seq_len]
-                // and it can be broadcasted in axis0/1/2.
-  const void* value_ptr;  // [num_batches, num_heads, key_value_seq_len,
-                          // value_head_size]
+  // Create Input tensors in BMHK format, where
+  // B = batch_size
+  // M = sequence length
+  // H = num_heads
+  // K = embedding size per head
+
+  const void* query_ptr;
+  const void* key_ptr;
+  const void* value_ptr;
+  // Mask Tensor format is BHMK
+  // and it can be broadcasted in axis0, 1, 2.
+  const void* mask_ptr = nullptr;
 
   int32_t* cu_seqlens_q_ptr = nullptr;
   int32_t* cu_seqlens_k_ptr = nullptr;
 
   // Output tensors
-  void* output_ptr;        // [num_batches, num_heads, query_seq_len, head_size]
-  void* output_accum_ptr;  // [num_batches, num_heads, query_seq_len, head_size]
+  void* output_ptr;        // [num_batches, query_seq_len, num_heads, head_size]
+  void* output_accum_ptr;  // [num_batches, query_seq_len, num_heads, head_size]
   void* logsumexp_ptr;  // [num_batches, num_heads, num_queries] - can be null
 
   // Scale
@@ -63,11 +66,12 @@ struct LaunchParams {
   Here M is: query_seq_len, K is: head_size, N is: key_value_seq_len.
   The stride concept is equals to torch's, it means the offset to move to next
   axis. For Q matrix(M, K), we need to move K(which equals to head_size) offset
-  to next row(in M axis), so here query_strideM equals to K = head_size.
+  to next row(in M axis).
   */
-  int32_t query_strideM;
-  int32_t key_strideM;
-  int32_t value_strideM;
+  int32_t query_strideH;
+  int32_t key_strideH;
+  int32_t value_strideH;
+
   // Since bias can be broadcasted, we need to assign each stride
   int32_t mask_strideM;
   int64_t mask_strideH;  // stride for num_heads
@@ -134,23 +138,20 @@ void LaunchMultiHeadAttentionKernel(LaunchParams params,
     p.mask_broadcast_row = params.mask_broadcast_row;
 
     // TODO(zhengzekang): This might overflow for big tensors
-    p.q_strideM = params.query_strideM;
-    p.k_strideM = params.key_strideM;
-    p.mask_strideM = params.mask_strideM;
-    p.v_strideM = params.value_strideM;
-
-    p.q_strideH = p.q_strideM * params.query_seq_len;
-    p.k_strideH = p.k_strideM * params.key_value_seq_len;
+    p.q_strideH = params.query_strideH;
+    p.k_strideH = params.key_strideH;
+    p.v_strideH = params.value_strideH;
     p.mask_strideH = params.mask_strideH;
-    p.v_strideH = p.v_strideM * params.key_value_seq_len;
-    p.o_strideH = params.value_head_size * params.query_seq_len;
 
-    p.q_strideB = p.q_strideH * params.num_heads;
-    p.k_strideB = p.k_strideH * params.num_heads;
+    p.q_strideM = p.q_strideH * params.num_heads;
+    p.k_strideM = p.k_strideH * params.num_heads;
+    p.v_strideM = p.v_strideH * params.num_heads;
+    p.mask_strideM = params.mask_strideM;
+
+    p.q_strideB = p.q_strideM * params.query_seq_len;
+    p.k_strideB = p.k_strideM * params.key_value_seq_len;
+    p.v_strideB = p.v_strideM * params.key_value_seq_len;
     p.mask_strideB = params.mask_strideB;
-    p.v_strideB = p.v_strideH * params.num_heads;
-    p.o_strideB =
-        params.value_head_size * params.query_seq_len * params.num_heads;
   }
 
   constexpr auto kernel_fn = attention_kernel_batched_impl<Attention>;
@@ -214,9 +215,9 @@ void DispatchFMHAIsAligned(LaunchParams params, const phi::GPUContext& ctx) {
   if (reinterpret_cast<uintptr_t>(params.query_ptr) % 16 == 0 &&
       reinterpret_cast<uintptr_t>(params.key_ptr) % 16 == 0 &&
       reinterpret_cast<uintptr_t>(params.value_ptr) % 16 == 0 &&
-      params.query_strideM % (16 / sizeof(T)) == 0 &&
-      params.query_strideM % (16 / sizeof(T)) == 0 &&
-      params.value_strideM % (16 / sizeof(T)) == 0) {
+      params.query_strideH % (16 / sizeof(T)) == 0 &&
+      params.query_strideH % (16 / sizeof(T)) == 0 &&
+      params.value_strideH % (16 / sizeof(T)) == 0) {
     DispatchFMHABlockSize<T, ArchTag, true>(params, ctx);
   } else {
     DispatchFMHABlockSize<T, ArchTag, false>(params, ctx);
@@ -226,7 +227,6 @@ void DispatchFMHAIsAligned(LaunchParams params, const phi::GPUContext& ctx) {
 template <typename T>
 void DispatchFMHAArchTag(LaunchParams params, const phi::GPUContext& ctx) {
   const int compute_capability = ctx.GetComputeCapability();
-  printf("Compute capability is: %d \n", compute_capability);
   if (compute_capability == 80) {
     DispatchFMHAIsAligned<T, cutlass::arch::Sm80>(params, ctx);
   } else if (compute_capability == 75) {
@@ -290,13 +290,14 @@ void MultiHeadAttentionForwardKernel(
   params.logsumexp_ptr = nullptr;
 
   params.num_batches = query.dims()[0];
-  params.num_heads = query.dims()[1];
-  params.query_seq_len = query.dims()[2];
-  params.key_value_seq_len = key.dims()[2];
+  params.query_seq_len = query.dims()[1];
+  params.num_heads = query.dims()[2];
+  params.key_value_seq_len = key.dims()[1];
   params.head_size = query.dims()[3];
   params.value_head_size = value.dims()[3];
 
-  float scale_value = sqrt(params.head_size);
+  // set default scale value.
+  float scale_value = 1.0f / sqrt(params.head_size);
   if (scale != 0.0f) {
     // assume 0.0f is default value.
     scale_value = scale;
@@ -304,23 +305,22 @@ void MultiHeadAttentionForwardKernel(
   params.scale = scale_value;
   params.causal = causal;
 
-  params.query_strideM = query.dims()[3];
-  params.key_strideM = key.dims()[3];
-  params.value_strideM = value.dims()[3];
+  params.query_strideH = query.dims()[3];
+  params.key_strideH = key.dims()[3];
+  params.value_strideH = value.dims()[3];
   params.mask_strideM = mask.dims()[2] == 1 ? 0 : mask.dims()[3];
   params.mask_strideH =
-      mask.dims()[1] == 1 ? 0 : params.mask_strideM * params.query_seq_len;
-  params.mask_strideB =
-      mask.dims()[0] == 1 ? 0 : params.mask_strideH * params.num_heads;
+      mask.dims()[1] == 1 ? 0 : mask.dims()[2] * mask.dims()[3];
+  params.mask_strideB = mask.dims()[0] == 1
+                            ? 0
+                            : mask.dims()[1] * mask.dims()[2] * mask.dims()[3];
   params.mask_broadcast_row = false;
   if (params.mask_strideM == 0) {
     params.mask_broadcast_row = true;
   }
-  printf("Bias stride M is: %d \n", int32_t(params.mask_strideM));
-  printf("Bias stride H is: %d \n", int32_t(params.mask_strideH));
-  printf("Bias stride B is: %d \n", int32_t(params.mask_strideB));
   DispatchFusedMultiheadAttentionKernel(params, ctx);
 }
+
 }  // namespace cutlass_internal
 }  // namespace fusion
 }  // namespace phi
