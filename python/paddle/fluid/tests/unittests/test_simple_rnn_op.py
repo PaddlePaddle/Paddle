@@ -17,14 +17,14 @@ import sys
 import unittest
 
 import numpy as np
-from op_test import OpTest
 
 import paddle
 import paddle.fluid.core as core
+from eager_op_test import OpTest
 
 sys.path.append("./rnn")
-from convert import get_params_for_net
-from rnn_numpy import SimpleRNN
+from rnn.convert import get_params_for_net
+from rnn.rnn_numpy import SimpleRNN
 
 random.seed(2)
 np.set_printoptions(threshold=np.inf)
@@ -44,6 +44,7 @@ class TestSimpleRNNOp(OpTest):
 
     def setUp(self):
         self.op_type = "rnn"
+        self.python_api = paddle.nn.layer.rnn.rnn
         self.dtype = "float32" if core.is_compiled_with_rocm() else "float64"
         self.sequence_length = (
             None

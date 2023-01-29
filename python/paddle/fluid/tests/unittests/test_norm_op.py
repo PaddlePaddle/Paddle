@@ -15,10 +15,10 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, skip_check_grad_ci
 
 import paddle
 import paddle.fluid as fluid
+from eager_op_test import OpTest, skip_check_grad_ci
 
 
 def l2_norm(x, axis, epsilon):
@@ -29,10 +29,15 @@ def l2_norm(x, axis, epsilon):
     return y, r
 
 
+def normalize_wrapper(x, axis=1, epsilon=1e-12, is_test=False):
+    return paddle.nn.functional.normalize(x, axis=axis, epsilon=epsilon)
+
+
 class TestNormOp(OpTest):
     def setUp(self):
         self.op_type = "norm"
-        self.python_api = paddle.nn.functional.normalize
+        self.python_api = normalize_wrapper
+        self.python_out_sig = ['Out']
         self.init_test_case()
         self.init_dtype()
         x = np.random.random(self.shape).astype(self.dtype)
@@ -126,6 +131,8 @@ class TestNormOp7(TestNormOp):
 class TestNormTestOp(OpTest):
     def setUp(self):
         self.op_type = "norm"
+        self.python_api = normalize_wrapper
+        self.python_out_sig = ['Out']
         self.init_test_case()
         x = np.random.random(self.shape).astype("float64")
         y, norm = l2_norm(x, self.axis, self.epsilon)

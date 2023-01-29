@@ -15,7 +15,8 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+
+from eager_op_test import OpTest
 
 
 def calc_precision(tp_count, fp_count):
@@ -115,7 +116,8 @@ class TestPrecisionRecallOp_0(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        # Does not support this op test for dynamic dygraph
+        self.check_output(icheck_dygraph=False)
 
 
 class TestPrecisionRecallOp_1(OpTest):
@@ -155,7 +157,8 @@ class TestPrecisionRecallOp_1(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        # Does not support this op test for dynamic dygraph
+        self.check_output(check_dygraph=False)
 
 
 class TestPrecisionRecallOp_2(OpTest):
@@ -199,7 +202,8 @@ class TestPrecisionRecallOp_2(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        # Does not support this op test for dynamic dygraph
+        self.check_output(check_dygraph=False)
 
 
 if __name__ == '__main__':

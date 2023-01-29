@@ -17,18 +17,19 @@ import unittest
 import gradient_checker
 import numpy as np
 from decorator_helper import prog_scope
-from op_test import OpTest
 
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 import paddle.fluid.layers as layers
+from eager_op_test import OpTest
 from paddle.fluid import Program, program_guard
 
 
 class TestSignOp(OpTest):
     def setUp(self):
         self.op_type = "sign"
+        self.python_api = paddle.sign
         self.inputs = {
             'X': np.random.uniform(-10, 10, (10, 10)).astype("float64")
         }

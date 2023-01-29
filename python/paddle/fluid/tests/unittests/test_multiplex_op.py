@@ -15,15 +15,16 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
 
 import paddle
 import paddle.fluid as fluid
+from eager_op_test import OpTest
 
 
 class TestMultiplexOp(OpTest):
     def setUp(self):
         self.op_type = "multiplex"
+        self.python_api = paddle.tensor.multiplex
         rows = 4
         index = np.arange(0, rows).astype('int32')
         np.random.shuffle(index)

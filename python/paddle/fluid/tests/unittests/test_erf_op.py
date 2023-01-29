@@ -15,17 +15,18 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
 from scipy.special import erf
 
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.dygraph as dg
+from eager_op_test import OpTest
 
 
 class TestErfOp(OpTest):
     def setUp(self):
         self.op_type = "erf"
+        self.python_api = paddle.erf
         self.dtype = self._init_dtype()
         self.x_shape = [11, 17]
         x = np.random.uniform(-1, 1, size=self.x_shape).astype(self.dtype)

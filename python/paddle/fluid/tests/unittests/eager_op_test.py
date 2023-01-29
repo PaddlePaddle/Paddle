@@ -931,7 +931,9 @@ class OpTest(unittest.TestCase):
             for inp in inp_args:
                 assert isinstance(
                     inp, list
-                ), "currently only support `X` is [Tensor], don't support other structure."
+                ), "currently only support `X` is [Tensor], don't support other structure.:{}".format(
+                    inp
+                )
             args = [
                 inp[0] if len(inp) == 1 else inp for inp in inp_args
             ] + args[inp_num:]
@@ -1527,7 +1529,9 @@ class OpTest(unittest.TestCase):
                         return dygraph_outs[name][i]
             self.assertTrue(
                 False,
-                "Found failed {} {}".format(dygraph_outs.keys(), target_name),
+                "Found failed {} {} len of outs:{}".format(
+                    dygraph_outs.keys(), target_name, len(dygraph_outs['Out'])
+                ),
             )
 
         def find_actual(target_name, fetch_list):
@@ -1762,7 +1766,11 @@ class OpTest(unittest.TestCase):
                         + ") has diff at "
                         + str(place)
                         + " in "
-                        + self.checker_name,
+                        + self.checker_name
+                        + "real:"
+                        + str(actual_np.sum())
+                        + "exp:"
+                        + str(expect_np.sum()),
                     )
 
         class EagerChecker(DygraphChecker):

@@ -16,7 +16,8 @@ import random
 import unittest
 
 import numpy as np
-from op_test import OpTest
+
+from eager_op_test import OpTest
 
 
 def gen_match_and_neg_indices(num_prior, gt_lod, neg_lod):

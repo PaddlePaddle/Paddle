@@ -15,11 +15,11 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
 
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
+from eager_op_test import OpTest
 from paddle import _legacy_C_ops
 from paddle.fluid.data_feeder import check_variable_and_dtype
 from paddle.fluid.framework import _non_static_mode
@@ -93,9 +93,17 @@ def dropout_nd(
 paddle.enable_static()
 
 
+def dropout_wrapper(
+    x, dropout_prob=0.0, fix_seed=True, is_test=False, axis=[1]
+):
+    assert False, type(x)
+    return paddle.nn.functional.dropout(x, p=dropout_prob, axis=axis[0])
+
+
 class TestDropoutNdOp(OpTest):
     def setUp(self):
         self.op_type = "dropout_nd"
+        self.python_api = paddle.nn.functional.dropout
         self.inputs = {'X': np.random.random((4, 32, 16)).astype("float64")}
         self.attrs = {
             'dropout_prob': 0.0,

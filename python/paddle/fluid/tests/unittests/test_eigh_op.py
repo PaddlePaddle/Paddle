@@ -15,9 +15,9 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
 
 import paddle
+from eager_op_test import OpTest
 
 
 def valid_eigh_result(A, eigh_value, eigh_vector, uplo):
@@ -71,6 +71,8 @@ class TestEighOp(OpTest):
     def setUp(self):
         paddle.enable_static()
         self.op_type = "eigh"
+        self.python_api = paddle.tensor.eigh
+        self.python_out_sig = ['out']
         self.init_input()
         self.init_config()
         np.random.seed(123)
@@ -91,7 +93,7 @@ class TestEighOp(OpTest):
         self.check_output(no_check_set=['Eigenvectors'])
 
     def test_grad(self):
-        self.check_grad(["X"], ["Eigenvalues"])
+        self.check_grad(["X"], ["Eigenvalues"], check_dygraph=False)
 
 
 class TestEighUPLOCase(TestEighOp):

@@ -15,10 +15,11 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
 
 import paddle
 import paddle.fluid.core as core
+import paddle.nn.functional as F
+from eager_op_test import OpTest
 
 
 def adaptive_start_index(index, input_size, output_size):
@@ -271,9 +272,36 @@ def avg_pool3D_forward_naive(
     return out
 
 
+def avg_pool3d_wrapper(
+    x,
+    strides=None,
+    paddings=0,
+    ksize=1,
+    pooling_type='avg',
+    global_pooling=False,
+    use_cudnn=False,
+    ceil_mode=False,
+    data_format="NCDHW",
+    exclusive=True,
+    adaptive=False,
+    padding_algorithm=None,
+):
+    return F.avg_pool3d(
+        x,
+        ksize,
+        stride=strides,
+        padding=paddings,
+        ceil_mode=ceil_mode,
+        exclusive=exclusive,
+        divisor_override=None,
+        data_format=data_format,
+    )
+
+
 class TestPool3D_Op(OpTest):
     def setUp(self):
         self.op_type = "pool3d"
+        self.python_api = avg_pool3d_wrapper
         self.init_kernel_type()
         self.dtype = np.float32 if core.is_compiled_with_rocm() else np.float64
         self.init_test_case()

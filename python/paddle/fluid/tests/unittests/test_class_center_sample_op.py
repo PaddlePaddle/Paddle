@@ -15,10 +15,10 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
 
 import paddle
 import paddle.fluid.core as core
+from eager_op_test import OpTest
 from paddle.fluid import Program, program_guard
 
 
@@ -115,7 +115,7 @@ class TestClassCenterSampleOp(OpTest):
 
     def test_check_output(self):
         self.check_output(
-            no_check_set=['SampledLocalClassCenter'], check_eager=True
+            no_check_set=['SampledLocalClassCenter'], check_dygraph=True
         )
 
 

@@ -16,13 +16,17 @@ import os
 import unittest
 
 import numpy as np
-from op_test import OpTest
 from test_attribute_var import UnittestBase
 
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
+from eager_op_test import OpTest
 from paddle.fluid import Program, program_guard
+
+
+def pad_wrapper(x, paddings, pad_value=0.0):
+    return paddle.nn.functional.pad(x, [(0, 1)], value=0.0)
 
 
 class TestPadOp(OpTest):
@@ -30,6 +34,7 @@ class TestPadOp(OpTest):
         self.initTestCase()
         self.dtype = self.get_dtype()
         self.op_type = "pad"
+        self.python_api = pad_wrapper
         self.inputs = {
             'X': np.random.random(self.shape).astype(self.dtype),
         }

@@ -17,11 +17,11 @@ import unittest
 import gradient_checker
 import numpy as np
 from decorator_helper import prog_scope
-from op_test import OpTest
 
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
+from eager_op_test import OpTest
 from paddle.fluid import Program, core, program_guard
 
 
@@ -43,10 +43,10 @@ class TestExpandV2OpRank1(OpTest):
         self.expand_times = [1]
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_dygraph=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_eager=True)
+        self.check_grad(['X'], 'Out', check_dygraph=True)
 
 
 class TestExpandV2OpRank2_DimExpanding(TestExpandV2OpRank1):
@@ -81,6 +81,7 @@ class TestExpandV2OpRank4(TestExpandV2OpRank1):
 class TestExpandV2OpRank1_tensor_attr(OpTest):
     def setUp(self):
         self.op_type = "expand_v2"
+        self.python_api = paddle.expand
         self.init_data()
         expand_shapes_tensor = []
         for index, ele in enumerate(self.expand_shape):
@@ -121,6 +122,7 @@ class TestExpandV2OpRank2_Corner_tensor_attr(TestExpandV2OpRank1_tensor_attr):
 class TestExpandV2OpRank1_tensor(OpTest):
     def setUp(self):
         self.op_type = "expand_v2"
+        self.python_api = paddle.expand
         self.init_data()
 
         self.inputs = {
@@ -147,6 +149,7 @@ class TestExpandV2OpRank1_tensor(OpTest):
 class TestExpandV2OpInteger(OpTest):
     def setUp(self):
         self.op_type = "expand_v2"
+        self.python_api = paddle.expand
         self.inputs = {
             'X': np.random.randint(10, size=(2, 4, 5)).astype("int32")
         }
@@ -162,6 +165,7 @@ class TestExpandV2OpInteger(OpTest):
 class TestExpandV2OpBoolean(OpTest):
     def setUp(self):
         self.op_type = "expand_v2"
+        self.python_api = paddle.expand
         self.inputs = {'X': np.random.randint(2, size=(2, 4, 5)).astype("bool")}
         self.attrs = {'shape': [2, 4, 5]}
         output = np.tile(self.inputs['X'], (1, 1, 1))
@@ -175,6 +179,7 @@ class TestExpandV2OpBoolean(OpTest):
 class TestExpandV2OpInt64_t(OpTest):
     def setUp(self):
         self.op_type = "expand_v2"
+        self.python_api = paddle.expand
         self.inputs = {
             'X': np.random.randint(10, size=(2, 4, 5)).astype("int64")
         }

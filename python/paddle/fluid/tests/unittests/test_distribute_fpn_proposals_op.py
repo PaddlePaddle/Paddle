@@ -15,9 +15,9 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
 
 import paddle
+from eager_op_test import OpTest
 
 
 def distribute_fpn_proposals_wrapper(

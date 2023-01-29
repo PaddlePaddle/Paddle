@@ -15,16 +15,17 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
 
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
+from eager_op_test import OpTest
 
 
 class TestUniqueOp(OpTest):
     def setUp(self):
         self.op_type = "unique"
+        self.python_api = paddle.unique
         self.init_config()
 
     def test_check_output(self):
@@ -41,6 +42,7 @@ class TestUniqueOp(OpTest):
             'Out': np.array([2, 3, 1, 5], dtype='int64'),
             'Index': np.array([0, 1, 1, 2, 3, 1], dtype='int32'),
         }
+        self.python_out_sig = ["Out", "Index"]
 
 
 class TestOne(TestUniqueOp):
@@ -129,6 +131,7 @@ class TestRandomGPU(TestUniqueOp):
         )
 
         self.outputs = {'Out': target_out, 'Index': target_index}
+        self.python_out_sig = ["Out", "Index"]
 
     def test_check_output(self):
         if core.is_compiled_with_cuda():
@@ -182,6 +185,7 @@ class TestUniqueOpAxisNone(TestUniqueOp):
             "axis": None,
             "is_sorted": True,
         }
+        self.python_out_sig = ["Out", "Indices", "Index", "Counts"]
         self.outputs = {
             'Out': unique,
             'Indices': indices,
@@ -214,6 +218,7 @@ class TestUniqueOpAxis1(TestUniqueOp):
             "Index": inverse,
             "Counts": counts,
         }
+        self.python_out_sig = ["Out", "Indices", "Index", "Counts"]
 
 
 class TestUniqueAPI(unittest.TestCase):

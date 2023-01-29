@@ -323,9 +323,9 @@ class RReluTest(OpTest):
         self.is_test = True
         self.init_params()
         self.python_api = rrelu
-        self.python_out_sig = [
-            "Out"
-        ]  # python out sig is customized output signature.
+        # self.python_out_sig = [
+        #    "Out"
+        # ]  # python out sig is customized output signature.
 
     def init_params(self):
         self.dtype = "float64"
@@ -359,9 +359,9 @@ class RReluTrainingTest(RReluTest):
         self.is_test = False
         self.init_params()
         self.python_api = rrelu
-        self.python_out_sig = [
-            "Out"
-        ]  # python out sig is customized output signature.
+        # self.python_out_sig = [
+        #    "Out"
+        # ]  # python out sig is customized output signature.
 
 
 if __name__ == "__main__":

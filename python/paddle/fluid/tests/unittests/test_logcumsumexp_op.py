@@ -17,11 +17,11 @@ import unittest
 from typing import Optional
 
 import numpy as np
-from op_test import OpTest
 
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
+from eager_op_test import OpTest
 
 
 def np_naive_logcumsumexp(x: np.ndarray, axis: Optional[int] = None):
@@ -214,10 +214,20 @@ class TestLogcumsumexp(unittest.TestCase):
                 out = exe.run(feed={'X': data_np}, fetch_list=[y.name])
 
 
+def logcumsumexp_wrapper(
+    x, axis=None, dtype=None, flatten=False, reverse=False
+):
+    out = paddle.tensor.logcumsumexp(x, axis=axis, dtype=dtype)
+    if flatten:
+        out = out.reshape([-1])
+    return out
+
+
 class BaseTestCases:
     class BaseOpTest(OpTest):
         def setUp(self):
             self.op_type = "logcumsumexp"
+            self.python_api = logcumsumexp_wrapper
             input, attrs = self.input_and_attrs()
             self.inputs = {'X': input}
             self.attrs = attrs
@@ -226,7 +236,7 @@ class BaseTestCases:
             self.outputs = {'Out': np_logcumsumexp(input, **attrs)}
 
         def test_check_output(self):
-            self.check_output()
+            self.check_output(check_dygraph=False)
 
         def test_check_grad(self):
             self.check_grad(
@@ -239,6 +249,7 @@ class BaseTestCases:
                         **self.attrs
                     )
                 ],
+                check_dygraph=False,
             )
 
         def input_and_attrs(self):

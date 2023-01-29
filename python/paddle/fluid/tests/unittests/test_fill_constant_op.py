@@ -15,11 +15,11 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16
 
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
+from eager_op_test import OpTest, convert_float_to_uint16
 from paddle.fluid import Program, program_guard
 from paddle.fluid.op import Operator
 

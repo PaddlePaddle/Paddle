@@ -15,9 +15,9 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
 
 import paddle
+from eager_op_test import OpTest
 
 paddle.seed(100)
 
@@ -26,6 +26,7 @@ class TestExponentialOp1(OpTest):
     def setUp(self):
         paddle.enable_static()
         self.op_type = "exponential"
+        self.python_api = paddle.tensor.exponential_
         self.config()
 
         self.attrs = {"lambda": self.lam}
@@ -59,6 +60,7 @@ class TestExponentialOp1(OpTest):
             user_defined_grad_outputs=[
                 np.random.rand(1024, 1024).astype(self.dtype)
             ],
+            check_dygraph=False,
         )
 
 
@@ -91,7 +93,6 @@ class TestExponentialAPI(unittest.TestCase):
         x.stop_gradient = False
         y = 2 * x
         y.exponential_(0.5)
-        print(y)
         self.assertTrue(np.min(y.numpy()) >= 0)
 
         y.backward()

@@ -15,9 +15,9 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
 
 import paddle.fluid as fluid
+from eager_op_test import OpTest
 
 
 # Situation 1: expand_times is a list(without tensor)

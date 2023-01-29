@@ -15,14 +15,26 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
 
 import paddle
+from eager_op_test import OpTest
 
 
 def huber_loss_forward(val, delta):
-    abs_val = abs(val)
+    if isinstance(val, paddle.Tensor):
+        abs_val = val.abs()
+    else:
+        abs_val = abs(val)
     if abs_val <= delta:
+        return 0.5 * val * val
+    else:
+        return delta * (abs_val - 0.5 * delta)
+
+
+def huber_loss(val, delta):
+    abs_val = val.abs()
+    m_val = float(paddle.max(abs_val).numpy()[0])
+    if m_val <= delta:
         return 0.5 * val * val
     else:
         return delta * (abs_val - 0.5 * delta)
@@ -31,6 +43,7 @@ def huber_loss_forward(val, delta):
 class TestHuberLossOp(OpTest):
     def setUp(self):
         self.op_type = 'huber_loss'
+        self.python_api = huber_loss
         self.python_out_sig = ["Out"]
         self.delta = 1.0
         self.init_input()
@@ -53,19 +66,27 @@ class TestHuberLossOp(OpTest):
         return (100, 1)
 
     def test_check_output(self):
-        self.check_output(check_eager=False)
+        self.check_output(check_dygraph=False)
 
     def test_check_grad_normal(self):
-        self.check_grad(['X', 'Y'], 'Out', check_eager=False)
+        self.check_grad(['X', 'Y'], 'Out', check_dygraph=False)
 
     def test_check_grad_ingore_x(self):
         self.check_grad(
-            ['Y'], 'Out', max_relative_error=0.008, no_grad_set=set("residual")
+            ['Y'],
+            'Out',
+            max_relative_error=0.008,
+            no_grad_set=set("residual"),
+            check_dygraph=True,
         )
 
     def test_check_grad_ingore_y(self):
         self.check_grad(
-            ['X'], 'Out', max_relative_error=0.008, no_grad_set=set('residual')
+            ['X'],
+            'Out',
+            max_relative_error=0.008,
+            no_grad_set=set('residual'),
+            check_dygraph=False,
         )
 
 

@@ -15,16 +15,17 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
 
 import paddle
 import paddle.fluid as fluid
+from eager_op_test import OpTest
 from paddle.fluid import Program, program_guard
 
 
 class TestAccuracyOp(OpTest):
     def setUp(self):
         self.op_type = "accuracy"
+        self.python_api = paddle.metric.accuracy
         self.dtype = np.float32
         self.init_dtype()
         n = 8192
@@ -99,6 +100,7 @@ class TestAccuracyAPI1(unittest.TestCase):
         self.expect_value = np.array([0.5], dtype='float32')
 
     def test_api(self):
+        paddle.enable_static()
         exe = paddle.static.Executor()
         (result,) = exe.run(
             feed={
@@ -108,6 +110,7 @@ class TestAccuracyAPI1(unittest.TestCase):
             fetch_list=[self.result.name],
         )
         self.assertEqual((result == self.expect_value).all(), True)
+        paddle.disable_static()
 
 
 class TestAccuracyAPI2(unittest.TestCase):

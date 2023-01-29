@@ -20,12 +20,17 @@ import numpy as np
 import paddle.fluid.core as core
 
 sys.path.append("..")
-from op_test import OpTest
+from eager_op_test import OpTest
+
+
+def mul_wrapper(x, y):
+    return x * y
 
 
 class TestMulOp(OpTest):
     def setUp(self):
         self.op_type = "mul"
+        self.python_api = mul_wrapper
         self.dtype = np.float64
         self.init_dtype_type()
         self.inputs = {

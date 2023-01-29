@@ -17,12 +17,12 @@ import unittest
 import gradient_checker
 import numpy as np
 from decorator_helper import prog_scope
-from op_test import OpTest, convert_float_to_uint16
 
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 import paddle.fluid.layers as layers
+from eager_op_test import OpTest, convert_float_to_uint16
 from paddle.tensor.manipulation import tensor_array_to_tensor
 
 paddle.enable_static()
@@ -33,6 +33,7 @@ paddle.enable_static()
 class TestSliceOp(OpTest):
     def setUp(self):
         self.op_type = "slice"
+        self.python_api = paddle.slice
         self.config()
         self.inputs = {'Input': self.input}
         self.outputs = {'Out': self.out}
@@ -81,6 +82,7 @@ class TestCase2(TestSliceOp):
 class TestSliceZerosShapeTensor(OpTest):
     def setUp(self):
         self.op_type = "slice"
+        self.python_api = paddle.slice
         self.config()
         self.inputs = {'Input': self.input}
         self.outputs = {'Out': self.out}
@@ -108,6 +110,7 @@ class TestSliceZerosShapeTensor(OpTest):
 class TestSliceOp_decs_dim(OpTest):
     def setUp(self):
         self.op_type = "slice"
+        self.python_api = paddle.slice
         self.config()
         self.inputs = {'Input': self.input}
         self.outputs = {'Out': self.out}
@@ -178,6 +181,9 @@ class TestSliceOp_decs_dim_5(TestSliceOp_decs_dim):
         self.infer_flags = [1, 1, 1]
         self.out = self.input[:, :, :, -1]
 
+    def test_check_output(self):
+        self.check_output(check_dygraph=False)
+
 
 class TestSliceOp_decs_dim_6(TestSliceOp_decs_dim):
     def config(self):
@@ -195,6 +201,7 @@ class TestSliceOp_decs_dim_6(TestSliceOp_decs_dim):
 class TestSliceOp_starts_ListTensor(OpTest):
     def setUp(self):
         self.op_type = "slice"
+        self.python_api = paddle.slice
         self.config()
 
         starts_tensor = []
@@ -234,6 +241,7 @@ class TestSliceOp_starts_ListTensor(OpTest):
 class TestSliceOp_decs_dim_starts_ListTensor(OpTest):
     def setUp(self):
         self.op_type = "slice"
+        self.python_api = paddle.slice
         self.config()
 
         starts_tensor = []
@@ -285,12 +293,16 @@ class TestSliceOp_decs_dim_5_starts_ListTensor(
 
         self.starts_infer = [-1]
 
+    def test_check_output(self):
+        self.check_output(check_dygraph=False)
+
 
 # Situation 3: starts(tensor), ends(list, no tensor)
 # with attr(decrease)
 class TestSliceOp_decs_dim_starts_OneTensor(OpTest):
     def setUp(self):
         self.op_type = "slice"
+        self.python_api = paddle.slice
         self.config()
         self.inputs = {
             'Input': self.input,
@@ -326,6 +338,7 @@ class TestSliceOp_decs_dim_starts_OneTensor(OpTest):
 class TestSliceOp_starts_OneTensor_ends_OneTensor(OpTest):
     def setUp(self):
         self.op_type = "slice"
+        self.python_api = paddle.slice
         self.config()
 
         self.inputs = {
@@ -361,6 +374,7 @@ class TestSliceOp_starts_OneTensor_ends_OneTensor(OpTest):
 class TestSliceOp_decs_dim_starts_and_ends_OneTensor(OpTest):
     def setUp(self):
         self.op_type = "slice"
+        self.python_api = paddle.slice
         self.config()
         self.inputs = {
             'Input': self.input,
@@ -397,6 +411,7 @@ class TestSliceOp_decs_dim_starts_and_ends_OneTensor(OpTest):
 class TestSliceOp_starts_OneTensor_ends_ListTensor(OpTest):
     def setUp(self):
         self.op_type = "slice"
+        self.python_api = paddle.slice
         self.config()
 
         ends_tensor = []
@@ -442,6 +457,7 @@ class TestSliceOp_starts_OneTensor_ends_ListTensor(OpTest):
 class TestFP16(OpTest):
     def setUp(self):
         self.op_type = "slice"
+        self.python_api = paddle.slice
         self.config()
         self.inputs = {'Input': self.input}
         self.outputs = {'Out': self.out}
@@ -480,6 +496,7 @@ class TestFP16(OpTest):
 class TestFP16_2(OpTest):
     def setUp(self):
         self.op_type = "slice"
+        self.python_api = paddle.slice
         self.config()
         self.inputs = {'Input': self.input}
         self.outputs = {'Out': self.out}
@@ -519,6 +536,7 @@ class TestFP16_2(OpTest):
 class TestBF16(OpTest):
     def setUp(self):
         self.op_type = "slice"
+        self.python_api = paddle.slice
         self.config()
         self.inputs = {'Input': convert_float_to_uint16(self.input)}
         self.outputs = {'Out': convert_float_to_uint16(self.out)}

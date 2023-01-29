@@ -19,7 +19,8 @@ import unittest
 import numpy as np
 
 sys.path.append("../")
-from op_test import OpTest
+import paddle
+from eager_op_test import OpTest
 
 
 def seqconv(
@@ -86,7 +87,7 @@ class TestSeqProject(OpTest):
     def setUp(self):
         self.init_test_case()
         self.op_type = 'sequence_conv'
-
+        self.python_api = paddle.fluid.layers.sequence_conv
         if (
             self.context_length == 1
             and self.context_start == 0

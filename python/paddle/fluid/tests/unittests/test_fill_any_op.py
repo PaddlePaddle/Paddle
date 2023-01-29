@@ -15,14 +15,20 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
 
 import paddle
+from eager_op_test import OpTest
+
+
+def fill_any_wrapper(x, value_float=None, value_int=None):
+    x.fill_(value_float)
+    return x
 
 
 class TestFillAnyOp(OpTest):
     def setUp(self):
         self.op_type = "fill_any"
+        self.python_api = fill_any_wrapper
         self.dtype = 'float64'
         self.value = 0.0
         self.init()

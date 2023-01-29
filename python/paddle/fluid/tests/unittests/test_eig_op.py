@@ -15,11 +15,11 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, skip_check_grad_ci
 
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
+from eager_op_test import OpTest, skip_check_grad_ci
 
 
 # cast output to complex for numpy.linalg.eig
@@ -63,6 +63,7 @@ class TestEigOp(OpTest):
         paddle.enable_static()
         paddle.device.set_device("cpu")
         self.op_type = "eig"
+        self.python_api = paddle.tensor.eig
         self.__class__.op_type = self.op_type
         self.init_input()
         self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(self.x)}
@@ -192,6 +193,7 @@ class TestEigOp(OpTest):
             ['Eigenvalues', 'Eigenvectors'],
             user_defined_grads=[self.grad_x],
             user_defined_grad_outputs=[self.grad_w, self.grad_v],
+            check_dygraph=False,
         )
 
 
@@ -273,6 +275,16 @@ class TestEigStatic(TestEigOp):
             + '\n'
             + 'But got: '
             + str(np.abs(fetch_vec)),
+        )
+
+    def test_check_grad(self):
+        self.init_grad()
+        self.check_grad(
+            ['X'],
+            ['Eigenvalues', 'Eigenvectors'],
+            user_defined_grads=[self.grad_x],
+            user_defined_grad_outputs=[self.grad_w, self.grad_v],
+            check_dygraph=False,
         )
 
 

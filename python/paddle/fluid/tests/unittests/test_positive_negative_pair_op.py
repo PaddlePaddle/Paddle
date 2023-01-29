@@ -16,7 +16,8 @@ import itertools
 import unittest
 
 import numpy as np
-from op_test import OpTest
+
+from eager_op_test import OpTest
 
 
 def py_pnpair_op(score, label, query, column=-1, weight=None):
@@ -75,7 +76,8 @@ class TestPositiveNegativePairOp(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        # Does not support this op test for dynamic dygraph
+        self.check_output(check_dygraph=False)
 
 
 class TestPositiveNegativePairOpAccumulateWeight(OpTest):
@@ -123,7 +125,8 @@ class TestPositiveNegativePairOpAccumulateWeight(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        # Does not support this op test for dynamic dygraph
+        self.check_output(check_dygraph=False)
 
 
 if __name__ == '__main__':

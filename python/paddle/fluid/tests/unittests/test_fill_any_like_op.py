@@ -15,15 +15,24 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16
 
 import paddle
 import paddle.fluid.core as core
+from eager_op_test import OpTest, convert_float_to_uint16
+
+
+def fill_any_like_wrapper(x, value, dtype=None):
+    out = paddle.ones_like(x)
+    out.fill_(value)
+    if dtype is not None:
+        out = out.astype(dtype)
+    return out
 
 
 class TestFillAnyLikeOp(OpTest):
     def setUp(self):
         self.op_type = "fill_any_like"
+        self.python_api = fill_any_like_wrapper
         self.dtype = np.int32
         self.value = 0.0
         self.init()
@@ -50,6 +59,7 @@ class TestFillAnyLikeOpFloat32(TestFillAnyLikeOp):
 class TestFillAnyLikeOpBfloat16(OpTest):
     def setUp(self):
         self.op_type = "fill_any_like"
+        self.python_api = fill_any_like_wrapper
         self.dtype = np.uint16
         self.value = 0.0
         self.inputs = {'X': np.random.random((219, 232)).astype(np.float32)}
@@ -83,6 +93,7 @@ class TestFillAnyLikeOpValue3(TestFillAnyLikeOp):
 class TestFillAnyLikeOpType(TestFillAnyLikeOp):
     def setUp(self):
         self.op_type = "fill_any_like"
+        self.python_api = fill_any_like_wrapper
         self.dtype = np.int32
         self.value = 0.0
         self.init()
