@@ -14,9 +14,9 @@
 
 import paddle
 
-__all__ = []
+__all__ = ['clip_grad_norm_']
 
-
+@paddle.no_grad()
 def clip_grad_norm_(
     parameters: paddle.Tensor,
     max_norm: float,
@@ -28,7 +28,7 @@ def clip_grad_norm_(
     The norm is computed over all gradients together, as if they were
     concatenated into a single vector. Gradients are modified in-place.
 
-    This API can only run in dynamic mode, not static mode.
+    This API can only run in dynamic graph mode, not static graph mode.
 
     Args:
         parameters (paddle.Tensor): Tensors or a single Tensor
@@ -48,9 +48,7 @@ def clip_grad_norm_(
 
             x = paddle.uniform([10, 10], min=-1.0, max=1.0, dtype='float32')
             max_norm = float(5.0)
-            linear = paddle.nn.Linear(in_features=10, out_features=10,
-                                      weight_attr=paddle.ParamAttr(need_clip=True),
-                                      bias_attr=paddle.ParamAttr(need_clip=False))
+            linear = paddle.nn.Linear(in_features=10, out_features=10)
             out = linear(x)
             loss = paddle.mean(out)
             loss.backward()

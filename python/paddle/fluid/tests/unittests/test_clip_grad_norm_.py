@@ -76,9 +76,9 @@ class TestClipGradNorm(unittest.TestCase):
                 np.random.random([1, 2]).astype(np.float32)
             )
             clip_grad_norm_(input_pd, max_norm=2, norm_type=float("inf"))
+            paddle.disable_static()
 
         self.assertRaises(RuntimeError, TestRuntimeErrorStaticMode)
-        paddle.disable_static()
 
 
 def run_test_equal(
