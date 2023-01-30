@@ -17,10 +17,10 @@ import unittest
 import gradient_checker
 import numpy as np
 from decorator_helper import prog_scope
+from eager_op_test import OpTest
 
 import paddle
 import paddle.fluid as fluid
-from eager_op_test import OpTest
 from paddle.fluid import Program, core, program_guard
 
 
@@ -42,10 +42,10 @@ class TestExpandV2OpRank1(OpTest):
         self.expand_times = [1]
 
     def test_check_output(self):
-        self.check_output(check_dygraph=True)
+        self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_dygraph=True)
+        self.check_grad(['X'], 'Out')
 
 
 class TestExpandV2OpRank2_DimExpanding(TestExpandV2OpRank1):

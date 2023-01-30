@@ -15,12 +15,12 @@
 import unittest
 
 import numpy as np
+from eager_op_test import OpTest
 from scipy.special import erf
 
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.dygraph as dg
-from eager_op_test import OpTest
 
 
 class TestErfOp(OpTest):

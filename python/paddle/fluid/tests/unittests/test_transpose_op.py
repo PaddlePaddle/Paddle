@@ -17,11 +17,11 @@ import unittest
 import gradient_checker
 import numpy as np
 from decorator_helper import prog_scope
+from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-from eager_op_test import OpTest, convert_float_to_uint16
 from paddle.fluid import Program, program_guard
 
 paddle.enable_static()
@@ -47,10 +47,10 @@ class TestTransposeOp(OpTest):
         self.use_mkldnn = False
 
     def test_check_output(self):
-        self.check_output(no_check_set=['XShape'], check_dygraph=True)
+        self.check_output(no_check_set=['XShape'])
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_dygraph=True)
+        self.check_grad(['X'], 'Out')
 
     def initTestCase(self):
         self.shape = (3, 40)
@@ -150,11 +150,11 @@ class TestAutoTuneTransposeOp(OpTest):
         self.use_mkldnn = False
 
     def test_check_output(self):
-        self.check_output(no_check_set=['XShape'], check_dygraph=True)
+        self.check_output(no_check_set=['XShape'])
         fluid.core.disable_autotune()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_dygraph=True)
+        self.check_grad(['X'], 'Out')
 
 
 class TestTransposeBF16Op(OpTest):

@@ -15,9 +15,9 @@
 import unittest
 
 import numpy as np
+from eager_op_test import OpTest
 
 import paddle
-from eager_op_test import OpTest
 
 paddle.seed(100)
 
@@ -53,6 +53,7 @@ class TestExponentialOp1(OpTest):
         np.testing.assert_allclose(hist1, hist2, rtol=0.02)
 
     def test_check_grad_normal(self):
+        # no grad check for inplace op
         self.check_grad(
             ['X'],
             'Out',
