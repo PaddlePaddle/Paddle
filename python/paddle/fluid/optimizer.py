@@ -2605,6 +2605,7 @@ class AdamaxOptimizer(Optimizer):
             some derived class of ``GradientClipBase`` . There are three cliping strategies
             ( :ref:`api_fluid_clip_GradientClipByGlobalNorm` , :ref:`api_fluid_clip_GradientClipByNorm` ,
             :ref:`api_fluid_clip_GradientClipByValue` ). Default None, meaning there is no gradient clipping.
+        multi_precision (bool, optional): Whether to use multi-precision during weight updating.
         name (str, optional): Normally there is no need for user to set this property.
             For more information, please refer to :ref:`api_guide_Name`.
             The default value is None.
@@ -2654,6 +2655,7 @@ class AdamaxOptimizer(Optimizer):
         parameter_list=None,
         regularization=None,
         grad_clip=None,
+        multi_precision=False,
         name=None,
     ):
         assert learning_rate is not None
@@ -2668,13 +2670,54 @@ class AdamaxOptimizer(Optimizer):
             name=name,
         )
         self.type = "adamax"
+        self._multi_precision = multi_precision
         self._beta1 = beta1
         self._beta2 = beta2
         self._epsilon = epsilon
 
+    def _get_accumulator(self, name, param):
+        """Utility function to fetch an accumulator for a parameter
+        Args:
+            name: name of the accumulator
+            param: parameter variable for which accumulator is to be fetched
+        Returns:
+            accumulator variable for the parameter
+        """
+        if self._name is not None:
+            name = self._name + "_" + name
+        find_master = (
+            self._multi_precision and param.dtype == core.VarDesc.VarType.FP16
+        )
+        target_param = (
+            self._master_weights[param.name] if find_master else param
+        )
+        target_name = target_param.name
+        if (
+            name not in self._accumulators
+            or target_name not in self._accumulators[name]
+        ):
+            raise Exception(
+                "Accumulator {} does not exist for parameter {}".format(
+                    name, target_name
+                )
+            )
+        return self._accumulators[name][target_name]
+
     def _create_accumulators(self, block, parameters):
         # Create accumulator tensors for first moment and infinity norm
         for p in parameters:
+            if self._multi_precision and p.dtype == core.VarDesc.VarType.FP16:
+                master_p = self._create_master_weight(p)
+                self._add_accumulator(self._velocity_acc_str, master_p)
+                continue
+            if (
+                p.dtype == core.VarDesc.VarType.FP16
+                and not self._multi_precision
+            ):
+                warnings.warn(
+                    "Accumulating with FP16 in optimizer can lead to poor accuracy or slow convergence."
+                    "Consider using multi_precision=True option of the Lars optimizer."
+                )
             self._add_accumulator(self._moment_acc_str, p)
             self._add_accumulator(self._inf_norm_acc_str, p)
             self._add_accumulator(
@@ -2695,6 +2738,16 @@ class AdamaxOptimizer(Optimizer):
             self._beta1_pow_acc_str, param_and_grad[0]
         )
 
+        find_master = (
+            self._multi_precision
+            and param_and_grad[0].dtype == core.VarDesc.VarType.FP16
+        )
+        master_weight = (
+            self._master_weights[param_and_grad[0].name]
+            if find_master
+            else None
+        )
+
         if in_dygraph_mode():
             _C_ops.adamax_(
                 param_and_grad[0],
@@ -2703,32 +2756,40 @@ class AdamaxOptimizer(Optimizer):
                 moment,
                 inf_norm,
                 beta1_pow_acc,
+                master_weight,
                 self._beta1,
                 self._beta2,
                 self._epsilon,
             )
         else:
             # create the adamax optimize op
+            inputs = {
+                "Param": param_and_grad[0],
+                "Grad": param_and_grad[1],
+                "LearningRate": self._create_param_lr(param_and_grad),
+                "Moment": moment,
+                "InfNorm": inf_norm,
+                "Beta1Pow": beta1_pow_acc,
+            }
+            outputs = {
+                "ParamOut": param_and_grad[0],
+                "MomentOut": moment,
+                "InfNormOut": inf_norm,
+            }
+            if find_master:
+                inputs["MasterParam"] = master_weight
+                outputs["MasterParamOut"] = master_weight
+            attrs = {
+                "beta1": self._beta1,
+                "beta2": self._beta2,
+                "epsilon": self._epsilon,
+            }
+
             adamax_op = block.append_op(
                 type=self.type,
-                inputs={
-                    "Param": param_and_grad[0],
-                    "Grad": param_and_grad[1],
-                    "LearningRate": self._create_param_lr(param_and_grad),
-                    "Moment": moment,
-                    "InfNorm": inf_norm,
-                    "Beta1Pow": beta1_pow_acc,
-                },
-                outputs={
-                    "ParamOut": param_and_grad[0],
-                    "MomentOut": moment,
-                    "InfNormOut": inf_norm,
-                },
-                attrs={
-                    "beta1": self._beta1,
-                    "beta2": self._beta2,
-                    "epsilon": self._epsilon,
-                },
+                inputs=inputs,
+                outputs=outputs,
+                attrs=attrs,
                 stop_gradient=True,
             )
 

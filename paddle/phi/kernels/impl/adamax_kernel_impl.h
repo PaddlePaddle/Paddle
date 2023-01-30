@@ -28,12 +28,15 @@ void AdamaxKernel(const Context& dev_ctx,
                   const DenseTensor& moment,
                   const DenseTensor& inf_norm,
                   const DenseTensor& beta1_pow,
+                  const paddle::optional<DenseTensor>& master_param,
                   float beta1,
                   float beta2,
                   float epsilon,
+                  bool multi_precision,
                   DenseTensor* param_out,
                   DenseTensor* moment_out,
-                  DenseTensor* inf_norm_out) {
+                  DenseTensor* inf_norm_out,
+                  DenseTensor* master_param_outs) {
   dev_ctx.template Alloc<T>(param_out);
   dev_ctx.template Alloc<T>(moment_out);
   dev_ctx.template Alloc<T>(inf_norm_out);
@@ -56,10 +59,10 @@ void AdamaxKernel(const Context& dev_ctx,
   auto& place = *dev_ctx.eigen_device();
 
   eigen_moment_out.device(place) =
-      beta1_ * eigen_moment + (1 - beta1_) * eigen_grad;
+      beta1_ * eigen_moment + (static_cast<T>(1) - beta1_) * eigen_grad;
   eigen_inf_norm_out.device(place) =
       eigen_grad.abs().cwiseMax((beta2_ * eigen_inf_norm) + epsilon_);
-  auto lr_t = eigen_lr / (1 - eigen_beta1_pow);
+  auto lr_t = eigen_lr / (static_cast<T>(1) - eigen_beta1_pow);
   Eigen::DSizes<int, 1> m_dsize(moment_out->numel());
   eigen_param_out.device(place) =
       eigen_param -
