@@ -293,7 +293,6 @@ class Lamb(Optimizer):
             self._used_master_weights[p_name] = master_weight.name
         else:
             master_weight = None
-        found_inf = self._get_auxiliary_var('found_inf')
 
         if framework.in_dygraph_mode():
             _C_ops.lamb_(
@@ -305,7 +304,7 @@ class Lamb(Optimizer):
                 beta1_pow_acc,
                 beta2_pow_acc,
                 master_weight,
-                found_inf,
+                None,
                 weight_decay,
                 self._beta1,
                 self._beta2,
@@ -343,6 +342,7 @@ class Lamb(Optimizer):
                 inputs["MasterParam"] = master_weight
                 outputs["MasterParamOut"] = master_weight
 
+            found_inf = self._get_auxiliary_var('found_inf')
             if found_inf:
                 inputs["SkipUpdate"] = found_inf
 
