@@ -35,6 +35,7 @@ class TestFillConstantOp1(OpTest):
         '''Test fill_constant op with specified value'''
         self.op_type = "fill_constant"
         self.python_api = fill_wrapper
+
         self.inputs = {}
         self.attrs = {'shape': [123, 92], 'value': 3.8}
         self.outputs = {'Out': np.full((123, 92), 3.8)}

@@ -15,11 +15,11 @@
 import unittest
 
 import numpy as np
+from eager_op_test import OpTest
 
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-from eager_op_test import OpTest
 from paddle.fluid.framework import Program, program_guard
 
 
@@ -30,9 +30,9 @@ def one_hot_wrapper(x, depth_tensor, **keargs):
 class TestOneHotOp(OpTest):
     def setUp(self):
         self.op_type = 'one_hot_v2'
-        depth = 10
         self.python_api = one_hot_wrapper
         self.python_out_sig = ['Out']
+        depth = 10
         depth_np = np.array(10).astype('int32')
         dimension = 12
         x_lod = [[4, 1, 3, 3]]

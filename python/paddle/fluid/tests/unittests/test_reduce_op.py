@@ -15,12 +15,13 @@
 import unittest
 
 import numpy as np
+from eager_op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
 
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-from eager_op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
 from paddle.fluid import Program, program_guard
+from paddle.fluid.framework import convert_np_dtype_to_dtype_
 
 
 def reduce_with_dtype_wrapper(
@@ -915,15 +916,17 @@ class Test1DReduceWithAxes1(OpTest):
         self.check_grad(['X'], 'Out')
 
 
-def reduce_all_sum(x, reduce_all=True, in_dtype='float32', out_dtype='float64'):
-    return x.sum()  # .astype('float64')
+def sum_wrapper(x, dim=None, in_dtype=None, out_dtype=None):
+    if dim is None:
+        return x.sum()
+    else:
+        return x.sum(axis=dim)
 
 
-"""
- class TestReduceWithDtype(OpTest):
+class TestReduceWithDtype(OpTest):
     def setUp(self):
         self.op_type = "reduce_sum"
-        self.python_api = reduce_all_sum
+        self.python_api = sum_wrapper
         self.inputs = {'X': np.random.random((6, 2, 10)).astype("float32")}
         self.outputs = {'Out': self.inputs['X'].sum().astype('float64')}
         self.attrs = {'reduce_all': True}
@@ -937,14 +940,14 @@ def reduce_all_sum(x, reduce_all=True, in_dtype='float32', out_dtype='float64'):
     def test_check_output(self):
         self.check_output()
 
-    #def test_check_grad(self):
-    #    self.check_grad(['X'], 'Out')
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out')
 
 
- class TestReduceWithDtype1(TestReduceWithDtype):
+class TestReduceWithDtype1(TestReduceWithDtype):
     def setUp(self):
         self.op_type = "reduce_sum"
-        self.python_api = reduce_with_dtype_wrapper
+        self.python_api = sum_wrapper
         self.inputs = {'X': np.random.random((6, 2, 10)).astype("float64")}
         self.outputs = {'Out': self.inputs['X'].sum(axis=1)}
         self.attrs = {'dim': [1]}
@@ -954,16 +957,16 @@ def reduce_all_sum(x, reduce_all=True, in_dtype='float32', out_dtype='float64'):
                 'out_dtype': int(convert_np_dtype_to_dtype_(np.float64)),
             }
         )
-    def test_check_output(self):
-        # It has diff on CPU
-        self.check_output(check_dygraph=False)
 
 
+def sum_keep_dim(x, *args, **kargs):
+    return x.sum(axis=1, keepdim=True)
 
- class TestReduceWithDtype2(TestReduceWithDtype):
+
+class TestReduceWithDtype2(TestReduceWithDtype):
     def setUp(self):
         self.op_type = "reduce_sum"
-        self.python_api = reduce_with_dtype_wrapper
+        self.python_api = sum_keep_dim
         self.inputs = {'X': np.random.random((6, 2, 10)).astype("float64")}
         self.outputs = {'Out': self.inputs['X'].sum(axis=1, keepdims=True)}
         self.attrs = {'dim': [1], 'keep_dim': True}
@@ -973,7 +976,6 @@ def reduce_all_sum(x, reduce_all=True, in_dtype='float32', out_dtype='float64'):
                 'out_dtype': int(convert_np_dtype_to_dtype_(np.float64)),
             }
         )
-"""
 
 
 class TestReduceSumOpError(unittest.TestCase):

@@ -15,9 +15,9 @@
 import unittest
 
 import numpy as np
+from eager_op_test import OpTest
 
 import paddle
-from eager_op_test import OpTest
 
 
 def common_setup(self, index_num, nshards, shard_id, ignore_value):

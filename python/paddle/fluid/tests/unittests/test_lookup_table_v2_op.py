@@ -15,11 +15,11 @@
 import unittest
 
 import numpy as np
+from eager_op_test import OpTest, skip_check_grad_ci
 
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-from eager_op_test import OpTest, skip_check_grad_ci
 from paddle.fluid import Program, program_guard
 from paddle.fluid.op import Operator
 
@@ -57,12 +57,10 @@ class TestLookupTableOp(OpTest):
         return "int64"
 
     def test_check_output(self):
-        self.check_output(check_dygraph=True)
+        self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(
-            ['W'], 'Out', no_grad_set=set('Ids'), check_dygraph=True
-        )
+        self.check_grad(['W'], 'Out', no_grad_set=set('Ids'))
 
 
 class TestLookupTableOpInt16(OpTest):
