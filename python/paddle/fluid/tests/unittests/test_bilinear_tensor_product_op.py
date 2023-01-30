@@ -35,6 +35,12 @@ class TestDygraphBilinearTensorProductAPIError(unittest.TestCase):
             x2 = fluid.data(name='x2', shape=[-1, 4], dtype="float32")
             self.assertRaises(TypeError, layer, x1, x2)
 
+        with fluid.program_guard(fluid.Program(), fluid.Program()):
+            paddle.enable_static()
+            x3 = paddle.static.data("", shape=[0], dtype="float32")
+            x4 = paddle.static.data("", shape=[0], dtype="float32")
+            paddle.static.nn.bilinear_tensor_product(x3, x4, 1000)
+
 
 class TestBilinearTensorProductOp(OpTest):
     def setUp(self):
