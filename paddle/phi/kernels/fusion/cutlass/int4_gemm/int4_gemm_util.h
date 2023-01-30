@@ -50,6 +50,13 @@ inline int getSMVersion() {
 
 template <typename Destination, typename Source>
 void DynamicConvert(Source const *s, Destination *t, int N);
+
+template <typename T>
+void ExpandKernel(const T *vector,
+                  T *matrix,
+                  const unsigned vlen,
+                  const unsigned mdim,
+                  const unsigned col_major = 0);
 }  // namespace cutlass_gemm_internal
 }  // namespace fusion
 }  // namespace phi

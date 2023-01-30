@@ -95,6 +95,29 @@ void DynamicConvert<cutlass::int4b_t, int8_t>(int8_t const *s,
   return;
 }
 
+template <typename T>
+__global__ void ExpendKernel(const T *vector,
+                             T *matrix,
+                             const unsigned vlen,
+                             const unsigned mdim,
+                             const unsigned col_major = 0) {
+  if (col_major) {
+    int idx = threadIdx.x + blockIdx.x * mdim;
+    T myval = vector[blockIdx.x];
+    while (idx < ((blockIdx.x + 1) * mdim)) {
+      matrix[idx] = myval;
+      idx += blockDim.x;
+    }
+  } else {
+    int idx = threadIdx.x + blockDim.x * blockIdx.x;
+    T myval = vector[idx % vlen];
+    while (idx < mdim * vlen) {
+      matrix[idx] = myval;
+      idx += gridDim.x * blockDim.x;
+    }
+  }
+}
+
 }  // namespace cutlass_gemm_internal
 }  // namespace fusion
 }  // namespace phi
