@@ -15,13 +15,16 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+
+from eager_op_test import OpTest
+from paddle import _C_ops
 
 
 class TestAdamaxOp1(OpTest):
     def setUp(self):
         '''Test Adamax Operator with supplied attributes'''
         self.op_type = "adamax"
+        self.python_api = _C_ops.adamax_
         param = np.random.uniform(-1, 1, (102, 105)).astype("float32")
         grad = np.random.uniform(-1, 1, (102, 105)).astype("float32")
         moment = np.random.uniform(-1, 1, (102, 105)).astype("float32")
@@ -64,6 +67,7 @@ class TestAdamaxOp2(OpTest):
 
     def setUp(self):
         self.op_type = "adamax"
+        self.python_api = _C_ops.adamax_
         param = np.random.uniform(-1, 1, (102, 105)).astype("float32")
         grad = np.random.uniform(-1, 1, (102, 105)).astype("float32")
         moment = np.random.uniform(-1, 1, (102, 105)).astype("float32")
@@ -102,6 +106,7 @@ class TestAdamaxOpMultipleSteps(OpTest):
     def setUp(self):
         '''Test Adamax Operator with supplied attributes'''
         self.op_type = "adamax"
+        self.python_api = _C_ops.adamax_
         self.num_steps = 10
 
         param = np.random.uniform(-1, 1, (102, 105)).astype("float32")

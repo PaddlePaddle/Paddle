@@ -15,16 +15,21 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
 
 import paddle
+from eager_op_test import OpTest
 from paddle.fluid import core
 from paddle.static import Program, program_guard
+
+
+def arange_wrapper(start, end, step, dtype=None):
+    return paddle.arange(start, end, step, dtype)
 
 
 class TestArangeOp(OpTest):
     def setUp(self):
         self.op_type = "range"
+        self.python_api = arange_wrapper
         self.init_config()
         self.inputs = {
             'Start': np.array([self.case[0]]).astype(self.dtype),
