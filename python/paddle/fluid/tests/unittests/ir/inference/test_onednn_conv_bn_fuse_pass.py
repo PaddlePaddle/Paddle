@@ -1,4 +1,4 @@
-# Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -22,9 +22,6 @@ from program_config import OpConfig, ProgramConfig, TensorConfig
 
 
 class TestOneDNNConvBnFusePass(PassAutoScanTest):
-    def is_program_valid(self, program_config: ProgramConfig) -> bool:
-        return True
-
     def sample_program_config(self, draw):
         use_mkldnn = True
         padding_algorithm = draw(st.sampled_from(["EXPLICIT", "SAME", "VALID"]))
@@ -66,26 +63,8 @@ class TestOneDNNConvBnFusePass(PassAutoScanTest):
         var_shape = [out_channel]
         mean_shape = [out_channel]
 
-        def generate_conv2d_Input():
-            return np.random.random(x_shape).astype(np.float32)
-
-        def generate_conv2d_Filter():
-            return np.random.random(w_shape).astype(np.float32)
-
-        def generate_conv2d_Bias():
-            return np.random.random(bias_shape).astype(np.float32)
-
-        def generate_bn_Scale():
-            return np.random.random(scale_shape).astype(np.float32)
-
-        def generate_bn_Bias():
-            return np.random.random(bias_shape).astype(np.float32)
-
-        def generate_bn_Mean():
-            return np.random.random(mean_shape).astype(np.float32)
-
-        def generate_bn_Var():
-            return np.random.random(var_shape).astype(np.float32)
+        def generate_data(shape):
+            return np.random.random(shape).astype(np.float32)
 
         conv2d_op = OpConfig(
             "conv2d",
@@ -134,27 +113,33 @@ class TestOneDNNConvBnFusePass(PassAutoScanTest):
             ops=ops,
             inputs={
                 "conv2d_input": TensorConfig(
-                    data_gen=partial(generate_conv2d_Input)
+                    data_gen=partial(generate_data, x_shape)
                 ),
             },
             weights={
                 "conv2d_weight": TensorConfig(
-                    data_gen=partial(generate_conv2d_Filter)
+                    data_gen=partial(generate_data, w_shape)
                 ),
-                "batch_norm_Scale": TensorConfig(data_gen=generate_bn_Scale),
-                "batch_norm_Bias": TensorConfig(data_gen=generate_bn_Bias),
-                "batch_norm_Mean": TensorConfig(data_gen=generate_bn_Mean),
-                "batch_norm_Variance": TensorConfig(data_gen=generate_bn_Var),
+                "batch_norm_Scale": TensorConfig(
+                    data_gen=partial(generate_data, scale_shape)
+                ),
+                "batch_norm_Bias": TensorConfig(
+                    data_gen=partial(generate_data, bias_shape)
+                ),
+                "batch_norm_Mean": TensorConfig(
+                    data_gen=partial(generate_data, mean_shape)
+                ),
+                "batch_norm_Variance": TensorConfig(
+                    data_gen=partial(generate_data, var_shape)
+                ),
             },
             outputs=["batch_norm_Y"],
         )
         if has_bias:
             program_config.weights["conv2d_bias"] = TensorConfig(
-                data_gen=partial(generate_conv2d_Bias)
+                data_gen=partial(generate_data, bias_shape)
             )
 
-        print(conv2d_op.inputs)
-        print(program_config.weights)
         return program_config
 
     def sample_predictor_configs(self, program_config):

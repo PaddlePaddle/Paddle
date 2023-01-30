@@ -421,12 +421,12 @@ void ConvBNFusePass::ApplyImpl(ir::Graph* graph) const {
         PADDLE_ENFORCE_EQ(
             conv_bias_names.size(),
             1UL,
-            platform::errors::InvalidArgument("Find input var Bias error."));
+            phi::errors::InvalidArgument("Find input var Bias error."));
         auto* conv_bias_var = scope->FindVar(conv_bias_names[0]);
         auto* conv_bias_tensor = conv_bias_var->GetMutable<phi::DenseTensor>();
         PADDLE_ENFORCE_EQ(conv_bias_tensor->dims(),
                           bn_bias_tensor->dims(),
-                          platform::errors::InvalidArgument(
+                          phi::errors::InvalidArgument(
                               "phi::DenseTensor convolution bias(%d) and batch "
                               "normalization bias (%d) "
                               "must have same dims.",
