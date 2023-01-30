@@ -615,9 +615,7 @@ def fused_multi_head_attention(
         'downgrade_in_infer' if mode == 'downscale_in_infer' else mode
     )  # semantic transfer
 
-    if x.ndim == 3:
-        pass
-    else:
+    if x.ndim != 3:
         raise ValueError(
             f"The rank of the x should be 3, but received {x.ndim}."
         )
