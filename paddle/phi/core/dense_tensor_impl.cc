@@ -203,26 +203,6 @@ LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(::phi::dtype::complex<double>)
 
 #undef LEGACY_DATA_MEMBER_FUNC_INSTANTIATION
 
-#define LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(dtype)                \
-  template dtype* DenseTensor::mutable_data_l3(                        \
-      const DDim& dims, const Place& place, size_t requested_size); \
-  template dtype* DenseTensor::mutable_data_l3(const Place& place,     \
-                                            size_t requested_size);
-
-LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(bool)
-LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(int8_t)
-LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(uint8_t)
-LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(int16_t)
-LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(int32_t)
-LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(int64_t)
-LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(float)
-LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(double)
-LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(::phi::dtype::bfloat16)
-LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(::phi::dtype::float16)
-LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(::phi::dtype::complex<float>)
-LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(::phi::dtype::complex<double>)
-
-#undef LEGACY_DATA_MEMBER_FUNC_INSTANTIATION
 /* ------------------------------ */
 /*   From phi::DenseTensor    */
 /* ------------------------------ */
