@@ -756,6 +756,8 @@ PADDLE_DEFINE_EXPORTED_string(tracer_mkldnn_ops_on,
                               "",
                               "List of OneDNN operation types to be turned on");
 
+PADDLE_DEFINE_EXPORTED_string(tensor_operator, "", "Tensor operator mode");
+
 /**
  * Debug related FLAG
  * Name: tracer_mkldnn_ops_off

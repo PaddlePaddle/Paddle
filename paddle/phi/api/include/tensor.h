@@ -33,6 +33,7 @@ using gpuStream_t = hipStream_t;
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/layout.h"
 #include "paddle/phi/common/place.h"
+#include "paddle/phi/core/operator_manager.h"
 
 namespace phi {
 class DenseTensor;
@@ -505,6 +506,22 @@ class PADDLE_API Tensor final {
    * @return Tensor&
    */
   Tensor& operator=(Tensor&& x) &;
+
+  // Tensor& operator+=(const Tensor& other) {
+  //   return OperatorManager::Instance().add_(const_cast<Tensor&>(*this),
+  //   other);
+  //   // return *this;
+  // }
+
+  Tensor operator*(const Tensor& other) {
+    return OperatorManager::Instance().multiply(const_cast<Tensor&>(*this),
+                                                other);
+  }
+
+  Tensor& operator*=(const Tensor& other) {
+    return OperatorManager::Instance().multiply(const_cast<Tensor&>(*this),
+                                                other);
+  }
 
   /* Part 8: Autograd methods */
 

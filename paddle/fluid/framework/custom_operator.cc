@@ -45,6 +45,10 @@ limitations under the License. */
 #include "paddle/phi/backends/device_manager.h"
 #endif
 
+#include "gflags/gflags.h"
+
+DECLARE_string(tensor_operator);
+
 namespace paddle {
 namespace framework {
 
@@ -764,6 +768,7 @@ void RegisterOperatorWithMetaInfo(const std::vector<OpMetaInfo>& op_meta_infos,
                      const VariableNameMap& inputs,
                      const VariableNameMap& outputs,
                      const AttributeMap& attrs) {
+    FLAGS_tensor_operator = "static";
     return new CustomOperator(op_name, inputs, outputs, attrs);
   };
 
@@ -966,6 +971,7 @@ void RegisterOperatorWithMetaInfo(const std::vector<OpMetaInfo>& op_meta_infos,
                             const VariableNameMap& inputs,
                             const VariableNameMap& outputs,
                             const AttributeMap& attrs) {
+      FLAGS_tensor_operator = "static";
       return new CustomOperator(type, inputs, outputs, attrs);
     };
 

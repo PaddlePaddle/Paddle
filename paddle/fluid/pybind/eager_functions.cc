@@ -54,6 +54,10 @@ typedef SSIZE_T ssize_t;
 #include "paddle/fluid/pybind/cuda_streams_py.h"
 #endif
 
+#include "gflags/gflags.h"
+
+DECLARE_string(tensor_operator);
+
 namespace paddle {
 namespace pybind {
 
@@ -491,6 +495,7 @@ static PyObject* eager_api_run_custom_op(PyObject* self,
                                          PyObject* args,
                                          PyObject* kwargs) {
   EAGER_TRY
+  FLAGS_tensor_operator = "phi";
   paddle::CustomOpKernelContext ctx =
       CastPyArg2CustomOpKernelContext(PyTuple_GET_ITEM(args, 0), 0);
   std::string op_type = CastPyArg2AttrString(PyTuple_GET_ITEM(args, 1), 1);
