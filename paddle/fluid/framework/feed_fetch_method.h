@@ -35,7 +35,7 @@ void SetFeedVariable(Scope* scope,
                      size_t index);
 
 void SetFeedVariable(Scope* scope,
-                     const Strings& input,
+                     const std::vector<std::string>& input,
                      const std::string& var_name,
                      size_t index);
 

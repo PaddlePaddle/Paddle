@@ -103,6 +103,7 @@ class TestCondInputOutput(unittest.TestCase):
         exe = fluid.Executor(place)
         (ret,) = exe.run(main_program, fetch_list=[out.name])
         np.testing.assert_allclose(np.asarray(ret), np.array(2), rtol=1e-05)
+        self.assertEqual(ret.shape, ())
 
     def test_0d_tensor_as_cond(self):
         """
@@ -129,7 +130,7 @@ class TestCondInputOutput(unittest.TestCase):
             y = paddle.full(shape=[], dtype='float32', fill_value=0.23)
             pred = paddle.greater_equal(y, x)
             out = paddle.static.nn.cond(pred, true_func, false_func)
-            # out is one tensor
+            # out is a tensor
 
         place = (
             fluid.CUDAPlace(0)
@@ -168,14 +169,41 @@ class TestCondInputOutput(unittest.TestCase):
             if core.is_compiled_with_cuda()
             else fluid.CPUPlace()
         )
+
         exe = fluid.Executor(place)
         ret = exe.run(main_program, fetch_list=[out.name, a.grad_name])
         np.testing.assert_allclose(
             np.asarray(ret[0]), np.array(2.0), rtol=1e-05
         )
+        self.assertEqual(ret[0].shape, ())
         np.testing.assert_allclose(
             np.asarray(ret[1]), np.array(-1.0), rtol=1e-05
         )
+        self.assertEqual(ret[1].shape, ())
+
+    def test_0d_tensor_dygraph(self):
+        """
+        pseudocode:
+
+        a = -2.0
+        if a >= 0:
+            return a
+        else:
+            return -a
+        """
+        paddle.disable_static()
+        a = paddle.full(shape=[], dtype='float32', fill_value=-2.0)
+        a.stop_gradient = False
+        out = paddle.static.nn.cond(a >= 0, lambda: a, lambda: -a)
+        out.backward()
+
+        np.testing.assert_allclose(np.asarray(out), np.array(2.0), rtol=1e-05)
+        self.assertEqual(out.shape, [])
+
+        np.testing.assert_allclose(
+            np.asarray(a.grad), np.array(-1.0), rtol=1e-05
+        )
+        self.assertEqual(a.grad.shape, [])
 
     def test_return_var_tuple(self):
         """
@@ -527,9 +555,11 @@ class TestCondNestedControlFlow(unittest.TestCase):
         np.testing.assert_allclose(
             np.asarray(ret[0]), np.array(7.0), rtol=1e-05
         )
+        self.assertEqual(ret[0].shape, ())
         np.testing.assert_allclose(
             np.asarray(ret[1]), np.array(2.0), rtol=1e-05
         )
+        self.assertEqual(ret[1].shape, ())
 
     def test_cond_op_in_condition(self):
         paddle.enable_static()
