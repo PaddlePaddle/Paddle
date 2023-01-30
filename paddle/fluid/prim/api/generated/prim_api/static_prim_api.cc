@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <string.h>
 #include <memory>
 #include <sstream>
 #include <string>
@@ -166,7 +167,16 @@ Tensor full<DescTensor>(const IntArray& shape,
       phi::errors::InvalidArgument(
           "We only support float32/float16 for full, but we got data type: %s",
           phi::DataTypeToString(dtype)));
-  op->SetAttr("value", value.to<float>());
+  if (dtype == phi::DataType::FLOAT32) {
+    op->SetAttr("value", value.to<float>());
+  } else if (dtype == phi::DataType::FLOAT64) {
+    op->SetAttr("str_value", std::to_string(value.to<double>()));
+  } else if (dtype == phi::DataType::FLOAT16) {
+    op->SetAttr("str_value", std::to_string(value.to<float>()));
+  } else {
+    PADDLE_THROW(phi::errors::Unimplemented(
+        "We only support float64/float32/float16 for full"));
+  }
   op->SetAttr("dtype", paddle::framework::TransToProtoVarType(dtype));
   op->SetOutput(
       "Out", {std::static_pointer_cast<prim::DescTensor>(out.impl())->Name()});
